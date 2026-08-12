@@ -4,29 +4,19 @@
      `cd packages/musa-web && python3 -m http.server`, then /examples/cdn.html
      (the page resolves dist-cdn/ relative to itself). -->
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>musa, one script tag</title>
-</head>
-<body>
-  <main>
-    <p>No bundler, no modules — one script tag and markup:</p>
-    <musa-score>
-piece "plain" {
-    tempo 1/4 = 84;
-    meter 6/8;
-    score {
-        part fiddle {
-            voice line {
-                | d4/8 e4/8 f#4/8 g4/8 a4/8 b4/8
-                | c5/4. d5/4.
-            }
-        }
-    }
-}
-    </musa-score>
-  </main>
-  <!-- dist-cdn/musa-web.js and musa_wasm_bg.wasm sit beside each other. -->
-  <script src="../dist-cdn/musa-web.js" data-musa-autostart></script>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <title>musa, one script tag</title>
+  </head>
+  <body>
+    <main>
+      <p>No bundler, no modules — one script tag and markup:</p>
+      <musa-score>
+        piece "plain" { tempo 1/4 = 84; meter 6/8; score { part fiddle { voice
+        line { | d4/8 e4/8 f#4/8 g4/8 a4/8 b4/8 | c5/4. d5/4. } } } }
+      </musa-score>
+    </main>
+    <!-- dist-cdn/musa-web.js and musa_wasm_bg.wasm sit beside each other. -->
+    <script src="../dist-cdn/musa-web.js" data-musa-autostart></script>
+  </body>
 </html>

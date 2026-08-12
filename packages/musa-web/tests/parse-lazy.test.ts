@@ -21,7 +21,9 @@ vi.mock("musa-engrave", () => ({
 import { parse } from "../src/index";
 
 const BROKEN = readFileSync(
-  fileURLToPath(new URL("../../../examples/broken/bar-too-long.musa", import.meta.url)),
+  fileURLToPath(
+    new URL("../../../examples/broken/bar-too-long.musa", import.meta.url),
+  ),
   "utf8",
 );
 

@@ -31,13 +31,19 @@ const TIMES_FALLBACK = /\s+font-family="Times(?:,\s*serif)?"/g;
 const BLACK_PAINT = /\s+(fill|stroke)="(?:black|#000|#000000)"/gi;
 
 /** The `viewBox` of the `.definition-scale` element — the page's own units. */
-const PAGE_VIEW_BOX = /<svg\b[^>]*\bclass="definition-scale"[^>]*\bviewBox="0 0 ([\d.]+) ([\d.]+)"/;
+const PAGE_VIEW_BOX =
+  /<svg\b[^>]*\bclass="definition-scale"[^>]*\bviewBox="0 0 ([\d.]+) ([\d.]+)"/;
 
 export function sanitize(svg: string): string {
   return svg
-    .replace(DEFINITION_SCALE_TAG, (tag) => tag.replace(BLACK_COLOUR_ATTRIBUTE, ""))
+    .replace(DEFINITION_SCALE_TAG, (tag) =>
+      tag.replace(BLACK_COLOUR_ATTRIBUTE, ""),
+    )
     .replace(TIMES_FALLBACK, "")
-    .replace(BLACK_PAINT, (_match, attribute: string) => ` ${attribute}="currentColor"`);
+    .replace(
+      BLACK_PAINT,
+      (_match, attribute: string) => ` ${attribute}="currentColor"`,
+    );
 }
 
 /**

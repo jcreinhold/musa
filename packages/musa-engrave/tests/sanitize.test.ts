@@ -54,11 +54,15 @@ describe.each(FIXTURES)("%s", (name) => {
   });
 
   it("preserves every id verbatim — the id map is the engraver's contract", () => {
-    expect(identifiers(sanitize(raw[name]))).toStrictEqual(identifiers(raw[name]));
+    expect(identifiers(sanitize(raw[name]))).toStrictEqual(
+      identifiers(raw[name]),
+    );
   });
 
   it("engraves at least one event id the editor can select by", () => {
-    const events = identifiers(sanitize(raw[name])).filter((id) => id.startsWith("event-"));
+    const events = identifiers(sanitize(raw[name])).filter((id) =>
+      id.startsWith("event-"),
+    );
     expect(events.length).toBeGreaterThan(0);
   });
 
@@ -80,7 +84,9 @@ describe("sanitize", () => {
       '<svg class="definition-scale" color="black" viewBox="0 0 100 50">' +
       '<g class="note" color="black"/></svg>';
     const clean = sanitize(svg);
-    expect(clean).toContain('<svg class="definition-scale" viewBox="0 0 100 50">');
+    expect(clean).toContain(
+      '<svg class="definition-scale" viewBox="0 0 100 50">',
+    );
     expect(clean).toContain('<g class="note" color="black"/>');
   });
 });

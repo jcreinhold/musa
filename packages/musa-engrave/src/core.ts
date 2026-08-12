@@ -33,7 +33,9 @@ let newest = 0;
 let ids: string[] = [];
 
 function ready(): Promise<VerovioToolkit> {
-  starting ??= createVerovioModule().then((module) => new VerovioToolkit(module));
+  starting ??= createVerovioModule().then(
+    (module) => new VerovioToolkit(module),
+  );
   return starting;
 }
 
@@ -41,8 +43,8 @@ function ready(): Promise<VerovioToolkit> {
 function staffSpaceOf(svg: string): number {
   // Verovio draws the five staff lines as `<path d="M0 450 L… 450" …>`; the
   // gap between the first two is one staff space, in the page's own units.
-  const lines = [...svg.matchAll(/<path d="M[\d.]+ ([\d.]+) L[\d.]+ \1"/g)].map((match) =>
-    Number(match[1]),
+  const lines = [...svg.matchAll(/<path d="M[\d.]+ ([\d.]+) L[\d.]+ \1"/g)].map(
+    (match) => Number(match[1]),
   );
   for (let index = 1; index < lines.length; index += 1) {
     const gap = (lines[index] ?? 0) - (lines[index - 1] ?? 0);
@@ -57,7 +59,9 @@ function staffSpaceOf(svg: string): number {
  * defeat the point of rendering pages on demand (§7).
  */
 function identifiersOf(mei: string): string[] {
-  return [...mei.matchAll(/xml:id="(event-[^"]+)"/g)].map((match) => match[1] ?? "");
+  return [...mei.matchAll(/xml:id="(event-[^"]+)"/g)].map(
+    (match) => match[1] ?? "",
+  );
 }
 
 /** Handle one request against the shared toolkit. */
@@ -106,7 +110,12 @@ export async function engrave(request: Request): Promise<EngraveOutcome> {
       const svg = sanitize(verovio.renderToSVG(request.page));
       return {
         kind: "page",
-        page: { page: request.page, svg, box: pageBox(svg), generation: request.generation },
+        page: {
+          page: request.page,
+          svg,
+          box: pageBox(svg),
+          generation: request.generation,
+        },
       };
     }
     case "locate": {

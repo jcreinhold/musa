@@ -11,12 +11,16 @@ async function settled(page: import("@playwright/test").Page, path: string) {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(String(error)));
   await page.goto(path);
-  await page.evaluate(() => (window as unknown as { typesetDone?: Promise<void> }).typesetDone);
+  await page.evaluate(
+    () => (window as unknown as { typesetDone?: Promise<void> }).typesetDone,
+  );
   return errors;
 }
 
 test.describe("typeset", () => {
-  test("script-tag, element, and inline snippets all engrave", async ({ page }) => {
+  test("script-tag, element, and inline snippets all engrave", async ({
+    page,
+  }) => {
     const errors = await settled(page, "/tests/dom/pages/basic.html");
     expect(errors).toEqual([]);
 
@@ -27,7 +31,10 @@ test.describe("typeset", () => {
     // The element renders into its shadow root…
     const shadowSvg = await page
       .locator("#snippet-element")
-      .evaluate((host) => host.shadowRoot?.querySelectorAll(".musa-content > svg").length ?? 0);
+      .evaluate(
+        (host) =>
+          host.shadowRoot?.querySelectorAll(".musa-content > svg").length ?? 0,
+      );
     expect(shadowSvg).toBe(1);
 
     // …and its source stays in the light DOM.
@@ -37,7 +44,10 @@ test.describe("typeset", () => {
     // The inline element engraves too.
     const inlineSvg = await page
       .locator("#snippet-inline")
-      .evaluate((host) => host.shadowRoot?.querySelectorAll(".musa-content > svg").length ?? 0);
+      .evaluate(
+        (host) =>
+          host.shadowRoot?.querySelectorAll(".musa-content > svg").length ?? 0,
+      );
     expect(inlineSvg).toBe(1);
 
     // Material is an empty state, not an error.
@@ -51,7 +61,9 @@ test.describe("typeset", () => {
     expect(material.error).toBeNull();
   });
 
-  test("processed markers make re-scanning idempotent; reprocess re-typesets", async ({ page }) => {
+  test("processed markers make re-scanning idempotent; reprocess re-typesets", async ({
+    page,
+  }) => {
     await settled(page, "/tests/dom/pages/basic.html");
     await expect(page.locator("[data-musa-processed]")).toHaveCount(4);
 
@@ -63,7 +75,10 @@ test.describe("typeset", () => {
     });
     const shadowSvg = await page
       .locator("#snippet-element")
-      .evaluate((host) => host.shadowRoot?.querySelectorAll(".musa-content > svg").length ?? 0);
+      .evaluate(
+        (host) =>
+          host.shadowRoot?.querySelectorAll(".musa-content > svg").length ?? 0,
+      );
     expect(shadowSvg).toBe(1);
 
     // Reprocess replaces rather than duplicates.
@@ -74,11 +89,16 @@ test.describe("typeset", () => {
     });
     const reprocessed = await page
       .locator("#snippet-element")
-      .evaluate((host) => host.shadowRoot?.querySelectorAll(".musa-content > svg").length ?? 0);
+      .evaluate(
+        (host) =>
+          host.shadowRoot?.querySelectorAll(".musa-content > svg").length ?? 0,
+      );
     expect(reprocessed).toBe(1);
   });
 
-  test("an invalid score gets an error box where the score would be", async ({ page }) => {
+  test("an invalid score gets an error box where the score would be", async ({
+    page,
+  }) => {
     const errors = await settled(page, "/tests/dom/pages/errors.html");
     expect(errors).toEqual([]);
 
@@ -94,11 +114,16 @@ test.describe("typeset", () => {
     // Per-snippet isolation: the good score typesets anyway.
     const goodSvg = await page
       .locator("#good")
-      .evaluate((host) => host.shadowRoot?.querySelectorAll(".musa-content > svg").length ?? 0);
+      .evaluate(
+        (host) =>
+          host.shadowRoot?.querySelectorAll(".musa-content > svg").length ?? 0,
+      );
     expect(goodSvg).toBe(1);
   });
 
-  test("the watcher typesets snippets appended after load", async ({ page }) => {
+  test("the watcher typesets snippets appended after load", async ({
+    page,
+  }) => {
     const errors = await settled(page, "/tests/dom/pages/watch.html");
     expect(errors).toEqual([]);
 
@@ -107,7 +132,11 @@ test.describe("typeset", () => {
       .poll(async () =>
         page
           .locator("#appended")
-          .evaluate((host) => host.shadowRoot?.querySelectorAll(".musa-content > svg").length ?? 0),
+          .evaluate(
+            (host) =>
+              host.shadowRoot?.querySelectorAll(".musa-content > svg").length ??
+              0,
+          ),
       )
       .toBe(1);
   });
@@ -120,7 +149,11 @@ test.describe("typeset", () => {
       .poll(async () =>
         page
           .locator("#auto")
-          .evaluate((host) => host.shadowRoot?.querySelectorAll(".musa-content > svg").length ?? 0),
+          .evaluate(
+            (host) =>
+              host.shadowRoot?.querySelectorAll(".musa-content > svg").length ??
+              0,
+          ),
       )
       .toBe(1);
     expect(errors).toEqual([]);

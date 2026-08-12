@@ -20,14 +20,17 @@ test.beforeEach(async ({ page }) => {
 });
 
 /** The tied event's two piece ids, from the engraved SVG. */
-async function tiePieces(page: import("@playwright/test").Page): Promise<[string, string]> {
+async function tiePieces(
+  page: import("@playwright/test").Page,
+): Promise<[string, string]> {
   return page.locator("#score-a").evaluate((host) => {
-    const ids = [...(host.shadowRoot?.querySelectorAll('[id^="event-"]') ?? [])].map((el) =>
-      el.getAttribute("id"),
-    );
+    const ids = [
+      ...(host.shadowRoot?.querySelectorAll('[id^="event-"]') ?? []),
+    ].map((el) => el.getAttribute("id"));
     const second = ids.find((id) => /-t2$/.test(id ?? ""));
     const first = second?.replace(/-t2$/, "");
-    if (first === undefined || second === undefined) throw new Error(`no tie in ${ids.join()}`);
+    if (first === undefined || second === undefined)
+      throw new Error(`no tie in ${ids.join()}`);
     return [first, second] as [string, string];
   });
 }
@@ -55,7 +58,10 @@ test("a click on a note fires the callback with the exact EventId and its contai
 test("both pieces of a tie fire the same EventId", async ({ page }) => {
   const [first, second] = await tiePieces(page);
   await page.locator(`#score-a [id="${first}"]`).first().dispatchEvent("click");
-  await page.locator(`#score-a [id="${second}"]`).first().dispatchEvent("click");
+  await page
+    .locator(`#score-a [id="${second}"]`)
+    .first()
+    .dispatchEvent("click");
   const clicks = await page.evaluate(() => window.clicks);
   expect(clicks).toHaveLength(2);
   expect(clicks[0]?.id).toBe(compilerId(first));
@@ -71,15 +77,21 @@ test("unmapped elements never fire", async ({ page }) => {
   expect(await page.evaluate(() => window.clicks)).toHaveLength(0);
 });
 
-test("highlight marks every piece of a tied event and clears on null", async ({ page }) => {
+test("highlight marks every piece of a tied event and clears on null", async ({
+  page,
+}) => {
   const [first, second] = await tiePieces(page);
   await page.evaluate(async (id) => {
     const specifier = "/src/index.ts";
     const { highlight } = await import(specifier);
     highlight(id);
   }, compilerId(first));
-  await expect(page.locator(`#score-a [id="${first}"]`).first()).toHaveClass(/musa-event-active/);
-  await expect(page.locator(`#score-a [id="${second}"]`).first()).toHaveClass(/musa-event-active/);
+  await expect(page.locator(`#score-a [id="${first}"]`).first()).toHaveClass(
+    /musa-event-active/,
+  );
+  await expect(page.locator(`#score-a [id="${second}"]`).first()).toHaveClass(
+    /musa-event-active/,
+  );
 
   await page.evaluate(async () => {
     const specifier = "/src/index.ts";

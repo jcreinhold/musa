@@ -10,7 +10,8 @@ let scriptBase: string | undefined;
 export function noteScriptBase(): void {
   if (typeof document === "undefined") return;
   const current = document.currentScript;
-  if (current instanceof HTMLScriptElement && current.src !== "") scriptBase = current.src;
+  if (current instanceof HTMLScriptElement && current.src !== "")
+    scriptBase = current.src;
 }
 
 /**
@@ -26,11 +27,13 @@ export function musaWasmUrl(): string {
   if (config.assetsPath !== undefined) {
     return `${config.assetsPath.replace(/\/+$/, "")}/musa_wasm_bg.wasm`;
   }
-  if (scriptBase !== undefined) return new URL("musa_wasm_bg.wasm", scriptBase).href;
+  if (scriptBase !== undefined)
+    return new URL("musa_wasm_bg.wasm", scriptBase).href;
   return (
     // @vite-ignore inside the constructor: library mode would inline the
     // wasm as base64 into the JS; it stays a separate, cacheable file
     // beside the package instead.
-    new URL(/* @vite-ignore */ "../wasm/musa_wasm_bg.wasm", import.meta.url).href
+    new URL(/* @vite-ignore */ "../wasm/musa_wasm_bg.wasm", import.meta.url)
+      .href
   );
 }

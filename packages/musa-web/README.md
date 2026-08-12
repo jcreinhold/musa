@@ -54,7 +54,9 @@ window.MusaWeb = {
     // target:  the SVGElement that was hit (the exact piece)
     // context: { element, source } — which score, and its source text
   },
-  onEventHover: (eventId, target) => { /* id or null on leave */ },
+  onEventHover: (eventId, target) => {
+    /* id or null on leave */
+  },
 };
 ```
 
@@ -62,7 +64,9 @@ Event-mapped elements get the class `musa-event`; `highlight(eventId)` marks eve
 pieces at once — with `musa-event-active`, and `highlight(null)` clears it. The active colour is one custom property:
 
 ```css
-musa-score { --musa-event-active: #c05621; }
+musa-score {
+  --musa-event-active: #c05621;
+}
 ```
 
 Unmapped elements (barlines, staff lines, text) never fire: there is no "unidentified object" state.
@@ -81,9 +85,7 @@ resolves beside the package module; bundlers rewrite it, or set `configure({ was
 
 ```html
 <script src="musa-web.js" data-musa-autostart></script>
-<musa-score>
-piece "plain" { … }
-</musa-score>
+<musa-score> piece "plain" { … } </musa-score>
 ```
 
 The worker (with the engraver inside) arrives as an inlined Blob — there is no worker URL to configure. The only

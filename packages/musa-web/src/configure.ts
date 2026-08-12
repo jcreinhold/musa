@@ -33,7 +33,11 @@ export interface WebConfig {
    * Fires for clicks on event-mapped notation. The id is the compiler's
    * EventId hex — tie-piece suffixes already stripped.
    */
-  onEventClick?: (eventId: string, target: SVGElement, context: MusaElementContext) => void;
+  onEventClick?: (
+    eventId: string,
+    target: SVGElement,
+    context: MusaElementContext,
+  ) => void;
   /** Entering an event fires its id; leaving the last one fires null. */
   onEventHover?: (eventId: string | null, target: SVGElement | null) => void;
 }

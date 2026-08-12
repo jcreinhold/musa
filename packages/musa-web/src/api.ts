@@ -62,13 +62,19 @@ let revision = 0;
  * analog. An invalid score resolves — `svg` and `mei` empty, diagnostics
  * full; rejection is reserved for the environment failing.
  */
-export function render(source: string, options?: RenderOptions): Promise<RenderResult> {
+export function render(
+  source: string,
+  options?: RenderOptions,
+): Promise<RenderResult> {
   const run = queue.then(() => renderNow(source, options));
   queue = run.catch(() => undefined);
   return run;
 }
 
-async function renderNow(source: string, options?: RenderOptions): Promise<RenderResult> {
+async function renderNow(
+  source: string,
+  options?: RenderOptions,
+): Promise<RenderResult> {
   const result = await compileSnippet(source);
   if (!result.mei) {
     return { svg: "", mei: "", diagnostics: result.diagnostics };

@@ -4,11 +4,20 @@
  */
 
 export { parse, render } from "./api";
-export { configure, type MusaElementContext, type WebConfig } from "./configure";
+export {
+  configure,
+  type MusaElementContext,
+  type WebConfig,
+} from "./configure";
 export { highlight } from "./interaction";
 export { typeset, type TypesetOptions } from "./typeset";
 export type { LayoutOptions } from "musa-engrave";
-export type { MusaDiagnostic, MusaLabel, RenderOptions, RenderResult } from "./types";
+export type {
+  MusaDiagnostic,
+  MusaLabel,
+  RenderOptions,
+  RenderResult,
+} from "./types";
 
 import { configure, type WebConfig } from "./configure";
 import { noteScriptBase } from "./assets";
@@ -33,10 +42,14 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
   // `document.currentScript` is only set for classic scripts (the CDN build);
   // module scripts use `window.MusaWeb = { autoStart: true }` instead.
   const script = document.currentScript;
-  const autoStart = preset?.autoStart === true || script?.hasAttribute("data-musa-autostart") === true;
+  const autoStart =
+    preset?.autoStart === true ||
+    script?.hasAttribute("data-musa-autostart") === true;
   if (autoStart) {
     if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", () => void typeset(), { once: true });
+      document.addEventListener("DOMContentLoaded", () => void typeset(), {
+        once: true,
+      });
     } else {
       void typeset();
     }

@@ -79,7 +79,6 @@ svg {
 ${SHARED_CSS}
 `;
 
-
 /**
  * The processed `<musa-score>` keeps its source in the light DOM — the page
  * stays a projection of the text — but visually hidden. Zeroing the font

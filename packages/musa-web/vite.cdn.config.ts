@@ -2,8 +2,12 @@ import { fileURLToPath } from "node:url";
 
 import { defineConfig, type Plugin } from "vite";
 
-const WORKER_STUB = fileURLToPath(new URL("./src/cdn-worker-default-stub.ts", import.meta.url));
-const CORE_STUB = fileURLToPath(new URL("./src/cdn-core-stub.ts", import.meta.url));
+const WORKER_STUB = fileURLToPath(
+  new URL("./src/cdn-worker-default-stub.ts", import.meta.url),
+);
+const CORE_STUB = fileURLToPath(
+  new URL("./src/cdn-core-stub.ts", import.meta.url),
+);
 
 /**
  * Two aliasing rules keep the main file lean:
@@ -21,7 +25,8 @@ function cdnAliases(): Plugin {
     resolveId: {
       filter: { id: /^\.(\/worker-default|\/core)$/ },
       handler(source, importer) {
-        if (importer?.endsWith("musa-engrave/src/engraver.ts") !== true) return null;
+        if (importer?.endsWith("musa-engrave/src/engraver.ts") !== true)
+          return null;
         return source === "./core" ? CORE_STUB : WORKER_STUB;
       },
     },

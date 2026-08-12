@@ -20,7 +20,10 @@ const targets = new Map<Element | ShadowRoot, Element>();
  * the listener lives on the shadow root itself, so `event.target` is the
  * hit element, not a retargeted host. Idempotent per target.
  */
-export function attachInteraction(target: Element | ShadowRoot, context: MusaElementContext): void {
+export function attachInteraction(
+  target: Element | ShadowRoot,
+  context: MusaElementContext,
+): void {
   if (targets.has(target)) return;
   targets.set(target, context.element);
 
@@ -50,11 +53,14 @@ export function attachInteraction(target: Element | ShadowRoot, context: MusaEle
 }
 
 /** The event an event target belongs to, walking up to the id-bearing group. */
-function eventHit(target: EventTarget | null): { id: string; element: SVGElement } | null {
+function eventHit(
+  target: EventTarget | null,
+): { id: string; element: SVGElement } | null {
   let node = target as Element | null;
   while (node instanceof Element) {
     const match = EVENT_ID.exec(node.getAttribute("id") ?? "");
-    if (match?.[1] !== undefined) return { id: match[1], element: node as unknown as SVGElement };
+    if (match?.[1] !== undefined)
+      return { id: match[1], element: node as unknown as SVGElement };
     node = node.parentElement;
   }
   return null;
@@ -63,7 +69,8 @@ function eventHit(target: EventTarget | null): { id: string; element: SVGElement
 /** Mark every mapped element of a freshly typeset target with `.musa-event`. */
 export function markEvents(target: Element | ShadowRoot): void {
   for (const element of target.querySelectorAll('[id^="event-"]')) {
-    if (EVENT_ID.test(element.getAttribute("id") ?? "")) element.classList.add("musa-event");
+    if (EVENT_ID.test(element.getAttribute("id") ?? ""))
+      element.classList.add("musa-event");
   }
 }
 
@@ -71,7 +78,10 @@ export function markEvents(target: Element | ShadowRoot): void {
  * Add `.musa-event-active` to every rendered piece of an event — all tie
  * pieces, across the whole document or one root — or clear it with `null`.
  */
-export function highlight(eventId: string | null, root: Document | Element = document): void {
+export function highlight(
+  eventId: string | null,
+  root: Document | Element = document,
+): void {
   for (const [target, host] of targets) {
     if (!host.isConnected) {
       targets.delete(target);
@@ -82,7 +92,9 @@ export function highlight(eventId: string | null, root: Document | Element = doc
       element.classList.remove("musa-event-active");
     }
     if (eventId !== null) {
-      const pieces = target.querySelectorAll(`[id="event-${eventId}"], [id^="event-${eventId}-t"]`);
+      const pieces = target.querySelectorAll(
+        `[id="event-${eventId}"], [id^="event-${eventId}-t"]`,
+      );
       for (const piece of pieces) piece.classList.add("musa-event-active");
     }
   }

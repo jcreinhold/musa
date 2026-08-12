@@ -3,72 +3,52 @@
      an inline fragment, and a material document. Driven by an explicit
      typeset() call. -->
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>musa-web basic</title>
-</head>
-<body>
-  <article>
-    <p>A script-tag snippet:</p>
-    <script type="text/musa" id="snippet-script">
-piece "twinkle" {
-    composer "traditional";
-    tempo 1/4 = 104;
-    meter 4/4;
-    key c major;
-    score {
-        part piano {
-            voice melody {
-                | c4/4 c4/4 g4/4 g4/4
-                | a4/4 a4/4 g4/2
+  <head>
+    <meta charset="utf-8" />
+    <title>musa-web basic</title>
+  </head>
+  <body>
+    <article>
+      <p>A script-tag snippet:</p>
+      <script type="text/musa" id="snippet-script">
+        piece "twinkle" {
+            composer "traditional";
+            tempo 1/4 = 104;
+            meter 4/4;
+            key c major;
+            score {
+                part piano {
+                    voice melody {
+                        | c4/4 c4/4 g4/4 g4/4
+                        | a4/4 a4/4 g4/2
+                    }
+                }
             }
         }
-    }
-}
+      </script>
+
+      <p>An element snippet:</p>
+      <musa-score id="snippet-element">
+        piece "answer" { tempo 1/4 = 96; meter 3/4; score { part flute { voice
+        melody { | d4/4 e4/4 f#4/4 | g4/2. } } } }
+      </musa-score>
+
+      <p>
+        And inline:
+        <musa-score inline id="snippet-inline">
+          piece "cell" { tempo 1/4 = 60; meter 1/4; score { part cello { voice
+          line { | c3/4 } } } }
+        </musa-score>
+        inside a sentence.
+      </p>
+
+      <musa-score id="snippet-material">
+        library { motif rise(root: pitch = c5) { root/4 d5/4 } }
+      </musa-score>
+    </article>
+    <script type="module">
+      import { typeset } from "/src/index.ts";
+      window.typesetDone = typeset();
     </script>
-
-    <p>An element snippet:</p>
-    <musa-score id="snippet-element">
-piece "answer" {
-    tempo 1/4 = 96;
-    meter 3/4;
-    score {
-        part flute {
-            voice melody {
-                | d4/4 e4/4 f#4/4
-                | g4/2.
-            }
-        }
-    }
-}
-    </musa-score>
-
-    <p>And inline: <musa-score inline id="snippet-inline">
-piece "cell" {
-    tempo 1/4 = 60;
-    meter 1/4;
-    score {
-        part cello {
-            voice line {
-                | c3/4
-            }
-        }
-    }
-}
-    </musa-score> inside a sentence.</p>
-
-    <musa-score id="snippet-material">
-library {
-    motif rise(root: pitch = c5) {
-        root/4
-        d5/4
-    }
-}
-    </musa-score>
-  </article>
-  <script type="module">
-    import { typeset } from "/src/index.ts";
-    window.typesetDone = typeset();
-  </script>
-</body>
+  </body>
 </html>

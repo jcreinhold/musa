@@ -41,9 +41,13 @@ export function typeset(
 
 let queue: Promise<void> = Promise.resolve();
 
-async function typesetNow(root: Document | Element, options: TypesetOptions): Promise<void> {
+async function typesetNow(
+  root: Document | Element,
+  options: TypesetOptions,
+): Promise<void> {
   const config = getConfig();
-  const doc = root instanceof Document ? root : (root.ownerDocument ?? document);
+  const doc =
+    root instanceof Document ? root : (root.ownerDocument ?? document);
   ensureDocumentStyles(doc);
   const elements = scan(root, config.selector, options.reprocess ?? false);
   const done: Element[] = [];
@@ -65,8 +69,15 @@ async function typesetNow(root: Document | Element, options: TypesetOptions): Pr
 }
 
 /** Every unprocessed snippet under the root, in document order. */
-function scan(root: Document | Element, selector: string | undefined, reprocess: boolean): Element[] {
-  const wanted = selector === undefined ? BUILT_IN_SELECTOR : `${BUILT_IN_SELECTOR}, ${selector}`;
+function scan(
+  root: Document | Element,
+  selector: string | undefined,
+  reprocess: boolean,
+): Element[] {
+  const wanted =
+    selector === undefined
+      ? BUILT_IN_SELECTOR
+      : `${BUILT_IN_SELECTOR}, ${selector}`;
   const found = new Set<Element>();
   if (root instanceof Element && root.matches(wanted)) found.add(root);
   for (const element of root.querySelectorAll(wanted)) found.add(element);
@@ -82,7 +93,9 @@ async function typesetOne(element: Element): Promise<void> {
   const result = await render(source);
   const doc = element.ownerDocument ?? document;
   const target = targetFor(element);
-  if (result.diagnostics.some((diagnostic) => diagnostic.severity === "error")) {
+  if (
+    result.diagnostics.some((diagnostic) => diagnostic.severity === "error")
+  ) {
     target.replaceChildren(errorBox(doc, source, result.diagnostics));
   } else if (result.svg === "") {
     // Material declares and does not sound; that is an empty state, not an

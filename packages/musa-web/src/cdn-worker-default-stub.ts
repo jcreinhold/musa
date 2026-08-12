@@ -4,5 +4,7 @@
  * — and must not emit a worker asset nobody will fetch.
  */
 export function defaultWorker(): Worker {
-  throw new Error("@musa/web CDN build: the worker is inlined; the engraver factory must supply it");
+  throw new Error(
+    "@musa/web CDN build: the worker is inlined; the engraver factory must supply it",
+  );
 }

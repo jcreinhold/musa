@@ -46,7 +46,12 @@ describe("the in-process engraver", () => {
 
 describe("the supersede rule", () => {
   it("answers an abandoned page with an empty one rather than stranding it", async () => {
-    await engrave({ kind: "load", generation: 5, mei: MEI, options: DEFAULT_LAYOUT });
+    await engrave({
+      kind: "load",
+      generation: 5,
+      mei: MEI,
+      options: DEFAULT_LAYOUT,
+    });
     const stale = await engrave({ kind: "page", generation: 4, page: 1 });
     if (stale.kind !== "page") throw new Error("expected a page outcome");
     expect(stale.page.svg).toBe("");

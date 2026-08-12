@@ -2,43 +2,24 @@
 <!-- One broken snippet beside one good one: the error box appears where the
      score would be, and the good snippet typesets anyway. -->
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>musa-web errors</title>
-</head>
-<body>
-  <musa-score id="broken">
-piece "Over" {
-    tempo quarter = 96;
-    meter 4/4;
-    score {
-        part piano {
-            voice right {
-                | c4/4 d4/4 e4/4 f4/4
-                | g4/4 a4/4 b4/4 c5/4 d5/4
-            }
-        }
-    }
-}
-  </musa-score>
+  <head>
+    <meta charset="utf-8" />
+    <title>musa-web errors</title>
+  </head>
+  <body>
+    <musa-score id="broken">
+      piece "Over" { tempo quarter = 96; meter 4/4; score { part piano { voice
+      right { | c4/4 d4/4 e4/4 f4/4 | g4/4 a4/4 b4/4 c5/4 d5/4 } } } }
+    </musa-score>
 
-  <musa-score id="good">
-piece "cell" {
-    tempo 1/4 = 60;
-    meter 1/4;
-    score {
-        part cello {
-            voice line {
-                | c3/4
-            }
-        }
-    }
-}
-  </musa-score>
+    <musa-score id="good">
+      piece "cell" { tempo 1/4 = 60; meter 1/4; score { part cello { voice line
+      { | c3/4 } } } }
+    </musa-score>
 
-  <script type="module">
-    import { typeset } from "/src/index.ts";
-    window.typesetDone = typeset();
-  </script>
-</body>
+    <script type="module">
+      import { typeset } from "/src/index.ts";
+      window.typesetDone = typeset();
+    </script>
+  </body>
 </html>

@@ -50,7 +50,8 @@ export function excerptFor(source: string, label: MusaLabel): ErrorExcerpt {
     line: source.slice(lineStart, lineEnd),
     lineNumber: source.slice(0, lineStart).split("\n").length,
     spanStart: Math.max(start, lineStart) - lineStart,
-    spanEnd: Math.max(Math.min(end, lineEnd), Math.max(start, lineStart)) - lineStart,
+    spanEnd:
+      Math.max(Math.min(end, lineEnd), Math.max(start, lineStart)) - lineStart,
   };
 }
 
@@ -71,10 +72,13 @@ export function errorBox(
   box.className = ERROR_STYLE_CLASS;
   box.setAttribute("role", "alert");
 
-  const first = diagnostics.find((diagnostic) => diagnostic.severity === "error") ?? diagnostics[0];
+  const first =
+    diagnostics.find((diagnostic) => diagnostic.severity === "error") ??
+    diagnostics[0];
   if (first === undefined) return box;
 
-  const label = first.labels.find((candidate) => candidate.primary) ?? first.labels[0];
+  const label =
+    first.labels.find((candidate) => candidate.primary) ?? first.labels[0];
   if (label !== undefined) {
     const excerpt = excerptFor(source, label);
     const pre = doc.createElement("pre");

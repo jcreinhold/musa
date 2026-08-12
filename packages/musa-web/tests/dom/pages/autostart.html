@@ -2,27 +2,18 @@
 <!-- Config-before-load: window.MusaWeb set by a classic script before the
      module loads; autoStart typesets with no explicit call. -->
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>musa-web autostart</title>
-  <script>
-    window.MusaWeb = { autoStart: true };
-  </script>
-</head>
-<body>
-  <musa-score id="auto">
-piece "cell" {
-    tempo 1/4 = 60;
-    meter 1/4;
-    score {
-        part cello {
-            voice line {
-                | c3/4
-            }
-        }
-    }
-}
-  </musa-score>
-  <script type="module" src="/src/index.ts"></script>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <title>musa-web autostart</title>
+    <script>
+      window.MusaWeb = { autoStart: true };
+    </script>
+  </head>
+  <body>
+    <musa-score id="auto">
+      piece "cell" { tempo 1/4 = 60; meter 1/4; score { part cello { voice line
+      { | c3/4 } } } }
+    </musa-score>
+    <script type="module" src="/src/index.ts"></script>
+  </body>
 </html>

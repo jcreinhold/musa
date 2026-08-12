@@ -2,29 +2,29 @@
 <!-- A static-site page before typeset-pages runs: the snippet is markup,
      and the build bakes the SVG in. See typeset.mjs. -->
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>Pre-typeset at build time</title>
-</head>
-<body>
-  <article>
-    <h1>No wasm on this page</h1>
-    <p>The score below was engraved when the site was built.</p>
-    <script type="text/musa">
-piece "baked" {
-    tempo 1/4 = 112;
-    meter 4/4;
-    key d major;
-    score {
-        part fiddle {
-            voice line {
-                | d4/8 e4/8 f#4/8 g4/8 a4/8 b4/8 a4/8 g4/8
-                | f#4/4. e4/4. d4/4
+  <head>
+    <meta charset="utf-8" />
+    <title>Pre-typeset at build time</title>
+  </head>
+  <body>
+    <article>
+      <h1>No wasm on this page</h1>
+      <p>The score below was engraved when the site was built.</p>
+      <script type="text/musa">
+        piece "baked" {
+            tempo 1/4 = 112;
+            meter 4/4;
+            key d major;
+            score {
+                part fiddle {
+                    voice line {
+                        | d4/8 e4/8 f#4/8 g4/8 a4/8 b4/8 a4/8 g4/8
+                        | f#4/4. e4/4. d4/4
+                    }
+                }
             }
         }
-    }
-}
-    </script>
-  </article>
-</body>
+      </script>
+    </article>
+  </body>
 </html>

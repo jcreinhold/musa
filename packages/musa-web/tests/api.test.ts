@@ -16,20 +16,29 @@ const CANON = readFileSync(
   "utf8",
 );
 const BROKEN = readFileSync(
-  fileURLToPath(new URL("../../../examples/broken/bar-too-long.musa", import.meta.url)),
+  fileURLToPath(
+    new URL("../../../examples/broken/bar-too-long.musa", import.meta.url),
+  ),
   "utf8",
 );
-const MATERIAL = "library {\n    motif rise(root: pitch = c5) {\n        root/4\n        d5/4\n    }\n}\n";
+const MATERIAL =
+  "library {\n    motif rise(root: pitch = c5) {\n        root/4\n        d5/4\n    }\n}\n";
 
 describe("render", () => {
   it("keeps the id contract on a tie-heavy fixture, pieces and all", async () => {
     const tied = readFileSync(
-      fileURLToPath(new URL("../../../examples/tuplet-fixture.musa", import.meta.url)),
+      fileURLToPath(
+        new URL("../../../examples/tuplet-fixture.musa", import.meta.url),
+      ),
       "utf8",
     );
     const result = await render(tied);
-    const meiIds = new Set([...result.mei.matchAll(/xml:id="([^"]+)"/g)].map((m) => m[1]));
-    const svgIds = [...result.svg.matchAll(/\bid="(event-[^"]+)"/g)].map((m) => m[1] ?? "");
+    const meiIds = new Set(
+      [...result.mei.matchAll(/xml:id="([^"]+)"/g)].map((m) => m[1]),
+    );
+    const svgIds = [...result.svg.matchAll(/\bid="(event-[^"]+)"/g)].map(
+      (m) => m[1] ?? "",
+    );
     expect(svgIds.some((id) => /-t\d+$/.test(id))).toBe(true);
     for (const id of svgIds) expect(meiIds.has(id)).toBe(true);
   }, 60_000);
@@ -38,11 +47,17 @@ describe("render", () => {
     const result = await render(CANON);
     expect(result.mei).toContain("<mei");
     expect(result.svg).toContain("<svg");
-    expect(result.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toEqual(
+      [],
+    );
     // The contract guard: every engraved event id is an MEI xml:id. If a
     // Verovio upgrade ever rewrites ids, it breaks here, not on a page.
-    const meiIds = new Set([...result.mei.matchAll(/xml:id="([^"]+)"/g)].map((m) => m[1]));
-    const svgIds = [...result.svg.matchAll(/\bid="(event-[^"]+)"/g)].map((m) => m[1] ?? "");
+    const meiIds = new Set(
+      [...result.mei.matchAll(/xml:id="([^"]+)"/g)].map((m) => m[1]),
+    );
+    const svgIds = [...result.svg.matchAll(/\bid="(event-[^"]+)"/g)].map(
+      (m) => m[1] ?? "",
+    );
     expect(svgIds.length).toBeGreaterThan(0);
     for (const id of svgIds) expect(meiIds.has(id)).toBe(true);
   }, 60_000);
@@ -58,7 +73,9 @@ describe("render", () => {
     const result = await render(MATERIAL);
     expect(result.svg).toBe("");
     expect(result.mei).toBe("");
-    expect(result.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toEqual(
+      [],
+    );
   });
 
   it("serves concurrent renders of different snippets correctly", async () => {

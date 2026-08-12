@@ -83,7 +83,9 @@ export function pageFor(
     // Continuous is one system, so the width is the scroll rather than the
     // leaf; `adjustPageWidth` trims what this allows down to the music.
     pageWidth:
-      mode === "continuous" ? CONTINUOUS_WIDTH : Math.max(Math.round(width * units), 500),
+      mode === "continuous"
+        ? CONTINUOUS_WIDTH
+        : Math.max(Math.round(width * units), 500),
     pageHeight: Math.max(Math.round(height * units), 500),
   };
 }
@@ -102,7 +104,9 @@ export function pixelsPerUnit(zoom: number): number {
 }
 
 /** The Verovio option object for a layout. */
-export function verovioOptions(options: LayoutOptions): Record<string, unknown> {
+export function verovioOptions(
+  options: LayoutOptions,
+): Record<string, unknown> {
   // Verovio bounds page dimensions to [100, 100000] (a hundred metres was
   // never really on offer); out-of-bounds values are refused with a console
   // error. Clamp here so the continuous ceiling stays silent and every

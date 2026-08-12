@@ -4,81 +4,51 @@
      built package directly and runs under the package's vite server
      (`pnpm --filter @musa/web exec vite`, then /examples/blog.html). -->
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>Canon, written out — a musa example</title>
-  <style>
-    body { max-width: 38em; margin: 2em auto; font-family: Georgia, serif; line-height: 1.5; }
-  </style>
-</head>
-<body>
-  <article>
-    <h1>Canon, written out</h1>
-    <p>
-      A canon is one line chasing itself. In musa the chase is the text: the
-      second voice is the first voice, moved. Here is the subject:
-    </p>
+  <head>
+    <meta charset="utf-8" />
+    <title>Canon, written out — a musa example</title>
+    <style>
+      body {
+        max-width: 38em;
+        margin: 2em auto;
+        font-family: Georgia, serif;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <article>
+      <h1>Canon, written out</h1>
+      <p>
+        A canon is one line chasing itself. In musa the chase is the text: the
+        second voice is the first voice, moved. Here is the subject:
+      </p>
 
-    <musa-score id="subject">
-piece "subject" {
-    tempo 1/4 = 96;
-    meter 4/4;
-    key g major;
-    score {
-        part violin {
-            voice line {
-                | g4/4 a4/4 b4/4 f#4/4
-                | g4/2 b4/2
-            }
-        }
-    }
-}
-    </musa-score>
-
-    <p>
-      And the same cell, compressed to an answer, belongs
-      <musa-score inline>
-piece "cell" {
-    tempo 1/4 = 96;
-    meter 2/4;
-    key g major;
-    score {
-        part violin {
-            voice line {
-                | g4/8 a4/8 b4/8 f#4/8 g4/4
-            }
-        }
-    }
-}
+      <musa-score id="subject">
+        piece "subject" { tempo 1/4 = 96; meter 4/4; key g major; score { part
+        violin { voice line { | g4/4 a4/4 b4/4 f#4/4 | g4/2 b4/2 } } } }
       </musa-score>
-      anywhere in the sentence.
-    </p>
 
-    <p>
-      Meter is a fact, not a habit; when it changes, the bar says so:
-    </p>
+      <p>
+        And the same cell, compressed to an answer, belongs
+        <musa-score inline>
+          piece "cell" { tempo 1/4 = 96; meter 2/4; key g major; score { part
+          violin { voice line { | g4/8 a4/8 b4/8 f#4/8 g4/4 } } } }
+        </musa-score>
+        anywhere in the sentence.
+      </p>
 
-    <musa-score id="changing-meter">
-piece "turning" {
-    tempo 1/4 = 72;
-    meter 4/4;
-    score {
-        part oboe {
-            voice line {
-                | c4/4 d4/4 e4/4 f4/4
-                meter 3/4;
-                | g4/4 a4/4 b4/4
-                | c5/2.
-            }
-        }
-    }
-}
-    </musa-score>
-  </article>
+      <p>Meter is a fact, not a habit; when it changes, the bar says so:</p>
 
-  <script type="module">
-    import { typeset } from "../dist/index.js"; // in your app: "@musa/web"
-    window.typesetDone = typeset();
-  </script>
-</body>
+      <musa-score id="changing-meter">
+        piece "turning" { tempo 1/4 = 72; meter 4/4; score { part oboe { voice
+        line { | c4/4 d4/4 e4/4 f4/4 meter 3/4; | g4/4 a4/4 b4/4 | c5/2. } } } }
+      </musa-score>
+    </article>
+
+    <script type="module">
+      import { typeset } from "../dist/index.js"; // in your app: "@musa/web"
+      window.typesetDone = typeset();
+    </script>
+  </body>
 </html>

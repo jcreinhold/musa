@@ -5,5 +5,7 @@
  * alias this file away and keep the unused worker asset out of its output.
  */
 export function defaultWorker(): Worker {
-  return new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
+  return new Worker(new URL("./worker.ts", import.meta.url), {
+    type: "module",
+  });
 }

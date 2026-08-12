@@ -33,7 +33,12 @@ describe("excerptFor", () => {
     const charStart = source.indexOf("f5/4");
     const encoder = new TextEncoder();
     const byteStart = encoder.encode(source.slice(0, charStart)).length;
-    const excerpt = excerptFor(source, { start: byteStart, end: byteStart + 4, text: "", primary: true });
+    const excerpt = excerptFor(source, {
+      start: byteStart,
+      end: byteStart + 4,
+      text: "",
+      primary: true,
+    });
     expect(excerpt.line).toBe("    | c4/4 d4/4 e4/4 f4/4 f5/4");
     expect(excerpt.lineNumber).toBe(2);
     expect(excerpt.line.slice(excerpt.spanStart, excerpt.spanEnd)).toBe("f5/4");
@@ -41,17 +46,27 @@ describe("excerptFor", () => {
 
   it("clamps a span that runs off the line", () => {
     const source = "one\ntwo\nthree\n";
-    const excerpt = excerptFor(source, { start: 2, end: 12, text: "", primary: true });
+    const excerpt = excerptFor(source, {
+      start: 2,
+      end: 12,
+      text: "",
+      primary: true,
+    });
     expect(excerpt.line).toBe("one");
     expect(excerpt.line.slice(excerpt.spanStart, excerpt.spanEnd)).toBe("e");
   });
 
   it("lands on the right text after multi-byte characters", () => {
-    const source = 'tempo 1/4 = 104; ♩\n    | g4/2\n';
+    const source = "tempo 1/4 = 104; ♩\n    | g4/2\n";
     const charStart = source.indexOf("g4/2");
     const encoder = new TextEncoder();
     const byteStart = encoder.encode(source.slice(0, charStart)).length;
-    const excerpt = excerptFor(source, { start: byteStart, end: byteStart + 4, text: "", primary: true });
+    const excerpt = excerptFor(source, {
+      start: byteStart,
+      end: byteStart + 4,
+      text: "",
+      primary: true,
+    });
     expect(excerpt.line.slice(excerpt.spanStart, excerpt.spanEnd)).toBe("g4/2");
   });
 });

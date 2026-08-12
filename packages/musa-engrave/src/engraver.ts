@@ -7,14 +7,25 @@
  */
 
 import { DEFAULT_LAYOUT } from "./options";
-import type { Box, Layout, LayoutOptions, PageSvg, Request, Response } from "./protocol";
+import type {
+  Box,
+  Layout,
+  LayoutOptions,
+  PageSvg,
+  Request,
+  Response,
+} from "./protocol";
 import type { EngraveOutcome } from "./core";
 import { defaultWorker } from "./worker-default";
 
 export type { Box, Layout, LayoutOptions, PageSvg };
 
 export interface Engraver {
-  load(mei: string, revision: number, options?: Partial<LayoutOptions>): Promise<Layout>;
+  load(
+    mei: string,
+    revision: number,
+    options?: Partial<LayoutOptions>,
+  ): Promise<Layout>;
   page(n: number): Promise<PageSvg>;
   relayout(options: Partial<LayoutOptions>): Promise<Layout>;
   /** The page an event was engraved on, for scroll-to and anchoring. */
@@ -67,7 +78,11 @@ class WorkerEngraver implements Engraver {
   }
 
   /** A new load supersedes every in-flight page render. */
-  load(mei: string, revision: number, options?: Partial<LayoutOptions>): Promise<Layout> {
+  load(
+    mei: string,
+    revision: number,
+    options?: Partial<LayoutOptions>,
+  ): Promise<Layout> {
     if (options) this.#options = { ...this.#options, ...options };
     this.#generation = Math.max(this.#generation, revision) + 1;
     return this.#send<Layout>({
@@ -81,11 +96,19 @@ class WorkerEngraver implements Engraver {
   relayout(options: Partial<LayoutOptions>): Promise<Layout> {
     this.#options = { ...this.#options, ...options };
     this.#generation += 1;
-    return this.#send<Layout>({ kind: "relayout", generation: this.#generation, options: this.#options });
+    return this.#send<Layout>({
+      kind: "relayout",
+      generation: this.#generation,
+      options: this.#options,
+    });
   }
 
   page(n: number): Promise<PageSvg> {
-    return this.#send<PageSvg>({ kind: "page", generation: this.#generation, page: n });
+    return this.#send<PageSvg>({
+      kind: "page",
+      generation: this.#generation,
+      page: n,
+    });
   }
 
   locate(eventId: string): Promise<number | null> {
@@ -121,7 +144,11 @@ class LocalEngraver implements Engraver {
     return engrave(request);
   }
 
-  async load(mei: string, revision: number, options?: Partial<LayoutOptions>): Promise<Layout> {
+  async load(
+    mei: string,
+    revision: number,
+    options?: Partial<LayoutOptions>,
+  ): Promise<Layout> {
     if (options) this.#options = { ...this.#options, ...options };
     this.#generation = Math.max(this.#generation, revision) + 1;
     const outcome = await this.#engrave({
@@ -130,7 +157,8 @@ class LocalEngraver implements Engraver {
       mei,
       options: this.#options,
     });
-    if (outcome.kind !== "layout") throw new Error(`engrave: expected a layout, got ${outcome.kind}`);
+    if (outcome.kind !== "layout")
+      throw new Error(`engrave: expected a layout, got ${outcome.kind}`);
     return outcome.layout;
   }
 
@@ -142,19 +170,30 @@ class LocalEngraver implements Engraver {
       generation: this.#generation,
       options: this.#options,
     });
-    if (outcome.kind !== "layout") throw new Error(`engrave: expected a layout, got ${outcome.kind}`);
+    if (outcome.kind !== "layout")
+      throw new Error(`engrave: expected a layout, got ${outcome.kind}`);
     return outcome.layout;
   }
 
   async page(n: number): Promise<PageSvg> {
-    const outcome = await this.#engrave({ kind: "page", generation: this.#generation, page: n });
-    if (outcome.kind !== "page") throw new Error(`engrave: expected a page, got ${outcome.kind}`);
+    const outcome = await this.#engrave({
+      kind: "page",
+      generation: this.#generation,
+      page: n,
+    });
+    if (outcome.kind !== "page")
+      throw new Error(`engrave: expected a page, got ${outcome.kind}`);
     return outcome.page;
   }
 
   async locate(eventId: string): Promise<number | null> {
-    const outcome = await this.#engrave({ kind: "locate", generation: this.#generation, eventId });
-    if (outcome.kind !== "located") throw new Error(`engrave: expected a location, got ${outcome.kind}`);
+    const outcome = await this.#engrave({
+      kind: "locate",
+      generation: this.#generation,
+      eventId,
+    });
+    if (outcome.kind !== "located")
+      throw new Error(`engrave: expected a location, got ${outcome.kind}`);
     return outcome.page;
   }
 
@@ -174,5 +213,7 @@ export interface EngraverOptions {
  * same rules in-process where they do not (Node).
  */
 export function createEngraver(options?: EngraverOptions): Engraver {
-  return typeof Worker === "undefined" ? new LocalEngraver() : new WorkerEngraver(options?.worker?.());
+  return typeof Worker === "undefined"
+    ? new LocalEngraver()
+    : new WorkerEngraver(options?.worker?.());
 }
