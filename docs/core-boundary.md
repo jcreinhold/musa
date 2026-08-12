@@ -88,14 +88,14 @@ orientation, not a contract.
 | `senza` | `Scale` over an unmeasured region | `elaborate.rs:3026` `elaborate_senza` |  |
 | `mobile` | `Seq` in a chosen order | `elaborate.rs:2476` `elaborate_mobile` | The choice is a compile parameter; the freedom is recorded on the payload (kernel Q2). |
 | `improvise` | `FactKind::Improvise` | `elaborate.rs:2548` `elaborate_improvise` |  |
-| `studio` | **none** | `studio.rs:591` | Compiles to `StudioSpec`, a typed-port dataflow graph. **No calculus.** |
-| `patch` | **none** | `studio.rs:591` `declare_patch` | **No calculus.** |
-| `bus` | **none** | `studio.rs:592` `declare_bus` | **No calculus.** |
-| `assign` | **none** | `studio.rs:623` | Which patch realizes a part. **No calculus.** |
-| `route` | **none** | `studio.rs:655` | **No calculus.** |
-| `send` | **none** | `studio.rs:682` `resolve_send` | **No calculus.** |
-| `modulate` | **none** | `studio.rs:683` | **No calculus.** |
-| `master` | **none** | `studio.rs` | The final mix bus. **No calculus.** |
+| `studio` | **none** | `studio.rs:591` | Compiles to `StudioSpec`, then a private finite typed process IR. No temporal/source term. |
+| `patch` | **none** | `studio.rs:591` `declare_patch` | A process-description declaration, not a temporal term. |
+| `bus` | **none** | `studio.rs:592` | As above. |
+| `assign` | **none** | `studio.rs:623` | Which instrument realizes a part; resolved during process preparation. |
+| `route` | **none** | `studio.rs:655` | A typed process connection. |
+| `send` | **none** | `studio.rs:682` `resolve_send` | A typed process connection. |
+| `modulate` | **none** | `studio.rs:683` | A process-control connection. |
+| `master` | **none** | `studio.rs` | The final process boundary output. |
 | `at` | **none** | `studio.rs:682` | The level of a send. |
 | `output` | **none** | `studio.rs:591` | Where a patch's signal leaves. |
 | `pitch` | none | `stdlib/src/pitch.musa` | A standard-library module name, not a construct. |
@@ -138,9 +138,9 @@ Three groups, and the boundary runs between the second and the third.
    structures, signatures. Their semantics is the value calculus of `docs/language/02-core-calculus.md`, which is itself
    a core. Their `none` is correct and permanent.
 3. **Performance and sound** — 13 spellings (`profile`, `performance`, `groove`, `studio`, `patch`, `bus`, `assign`,
-   `route`, `send`, `modulate`, `master`, `at`, `output`) elaborate to nothing and have **no core of any kind under
-   them**. Their meaning is whatever `profile.rs`, `performance.rs`, `groove.rs`, and `studio.rs` do. This is the gap
-   the decision is about.
+   `route`, `send`, `modulate`, `master`, `at`, `output`) elaborate to no *temporal term*. Performance belongs to a
+   second temporal payload; studio declarations prepare a private finite process definition with its own formation and
+   tick semantics. Neither becomes a source value merely because its implementation has a calculus.
 
 Group 3 splits again, and the split is the whole answer:
 
@@ -234,10 +234,11 @@ payload unchanged, hold with a new proof, or fail?
 | T5 (observation commutes with sharing) | **Unchanged.** | Unchanged. |
 | T6 (instantiation preserves denotation up to payloads) | **Unchanged.** | Unchanged. |
 
-B needs **no new proof of any law**, because it adds no term, no operation, and no constraint. The obligation it does
-create is on the payload, not on the kernel: a second payload must supply a `canonical_key` that is deterministic,
-total, and injective, and that emits no address, no hash-ordered iteration, and no float. That is an admission rule, and
-`docs/kernel/` does not yet state it — see the ledger's new prompt 129a.
+B needs **no new proof of any temporal algebra law**, because it adds no term or temporal operation. The obligation it
+does create is on identity: a second payload supplies a deterministic total key, an owner id, and a quotient version.
+Key equality defines the admitted payload equality and may deliberately identify raw stored values whose omitted fields
+are presentation-only. The persisted temporal record must frame arbitrary key bytes exactly. `docs/kernel/` states this
+at prompt 129a.
 
 **C is rejected here**, by a law of the calculus rather than by tone. `docs/kernel/10-term-calculus.md` states the
 kernel's **scope rule**: a form belongs to the calculus only if it serves sharing, deferred observation, or interchange,
@@ -303,9 +304,9 @@ cheapest honest estimate is that prompts 127–146 would be replaced rather than
 ## 4. The decision
 
 **Candidate B. The core is a calculus of occurrences of a canonical payload over exact rational time — and it always
-was.** `ScoreFact` is one payload. A gesture/control payload is a second. Nothing about `musa-kernel` changes: the
-generic parameter, the `Canonical` contract, and the law suite at `u8` are already the evidence that B is the design the
-kernel was built to.
+was.** `ScoreFact` is one payload. A gesture/control payload is a second. The temporal algebra and generic carrier do
+not change. The identity contract is repaired: current display-text hashing is not uniquely framed and the old
+“injective-on-values while quotienting fields” wording is contradictory.
 
 What changes is the compiler's answer to the question "what is a performance?" Today: a `Vec` of scheduled events built
 by a pass. Under B: a `Timeline[Gesture]`, normalized, semantically equal or not, semantically hashed, and obeying
@@ -313,11 +314,11 @@ L1–L24 without a new line of proof. Prompt 130's `GestureTimeline` becomes an 
 
 The obligations this creates, in order:
 
-1. **State the payload-admission rule in `docs/kernel/` before admitting a payload.** What a payload owes (`Canonical`:
-   deterministic, total, injective, no addresses, no hash-ordered iteration, no floats), what it may not do (add an
-   operation, require the kernel to look inside it, carry absolute time), and the law-transport statement (L1–L24 and
-   T1–T6 hold at every admitted payload by genericity, with L24 conditional on the payload carrying a `Progress`). New
-   prompt **129a**.
+1. **Satisfied by `docs/kernel/12-payload-admission.md`: state the payload-admission and exact-framing rules before
+   admitting a payload.** A payload key is deterministic and total, names its owner/quotient version, and defines
+   admitted equality. It emits no address, hash-ordered iteration, or float. A versioned length-framed temporal encoder,
+   separate from display, is the basis of hashing. L1–L24 and T1–T6 transport at every admitted payload, with L24
+   conditional on `Progress`. Prompt **129a**.
 2. **Instantiate at the gesture payload** — prompt 130, repaired to say "instantiate the kernel" rather than "define
    exact internal `GestureTimeline`/`GestureLane` values".
 3. **Do not instantiate at the signal boundary** — §5.
@@ -347,22 +348,24 @@ no duration is not a payload the kernel can be a calculus of.
 
 ### The object that crosses
 
-**The prepared render plan.** The compiler produces `Timeline[Gesture]` — exact, finite, normalized, hashable. Audio
-preparation (prompt 131) binds that timeline, the instrument declarations, and the mix intent into an opaque prepared
-plan, and *that* is what the audio layer holds. The boundary is one function, and it is the only place a rational
-becomes a float.
+**The prepared execution.** The compiler produces `Timeline[Gesture]` — exact, finite, normalized, and versioned. Audio
+preparation (prompt 131) binds its semantic projection, instrument/mix bindings, realization seed, and complete options
+into an opaque prepared execution containing a finite typed process definition and initial resources. That is what the
+audio layer holds. The boundary is one function, and it is the only place a rational becomes a float.
 
 ### The law
 
 Written into `docs/kernel/07-backend-contract.md` by prompt 129a:
 
-> **R1 — rendering is a function of meaning.** For all gesture timelines `M`, `N`, all instrument bindings `B`, and all
-> realization seeds `s`: if `M ≡ N` (semantic equality, N4) then `prepare(M, B, s) = prepare(N, B, s)`, and the rendered
-> sample stream is identical frame for frame. Rendering may not observe anything normalization forgets (N7).
+> **R1 — execution preparation factors through meaning.**
+> `prepare_execution : Sem_Gesture × Bindings × Seed × Options → Result PreparedExecution PrepareError` is pure and
+> deterministic. Equal complete arguments produce an equal complete result. Presentation-only data is handled by a
+> separate lineage pass and cannot affect execution. Equal rendered frames additionally require equal external inputs,
+> initial state/allocation semantics, and conforming deterministic processors.
 
-R1 is what makes the semantic hash worth computing on the sound side: a cache keyed on `semantic_hash(M) ⊕ B ⊕ s` is
-correct exactly because R1 holds. It is stated as a law so prompt 144 can measure against it and prompt 145 can audit
-it.
+R1 permits a sound-side cache only when its versioned argument record includes **all** four inputs and lookup confirms
+their exact framed bytes after digest lookup. Hash equality alone is never a cache hit. Prompt 144 measures the
+factorization and runtime premises; prompt 145 audits them.
 
 ### What reopens this
 
@@ -372,9 +375,10 @@ events, and on nothing else:
 1. **A surface construct is proposed whose meaning is a signal with musical extent** — a written `.musa` form that both
    sounds continuously and has a notated duration that other music is positioned against. Live coding and reactive input
    are the obvious sources. This is kernel Q1's trigger, and it reopens Q1 rather than this document.
-2. **R1 is measured false.** If prompt 144's closure finds two semantically equal gesture timelines that render
-   differently under the same bindings and seed, then something the kernel forgets is load-bearing for sound, and the
-   boundary is in the wrong place. The measurement is prompt 144's; the report belongs here.
+2. **R1 is measured false.** If prompt 144 finds equal complete semantic arguments whose preparation results differ, the
+   operation is observing omitted or ambient state and the boundary is wrong. If preparation agrees but execution
+   differs, the failed allocation/input/processor premise is identified separately rather than blamed on the temporal
+   kernel. The report belongs here either way.
 
 ## 6. What this forbids
 
@@ -395,8 +399,10 @@ A later prompt may not quietly re-open any of these. Re-opening requires amendin
 5. **No dependent indices in the kernel.** Part, voice, meter, tuning, and transposition stay payload data and resolver
    facts. §3.5 is the reason and it does not expire.
 6. **No `join`.** X3 stands at every payload: nothing flattens `Timeline[Timeline[A]]`.
-7. **No calculus under the studio.** `StudioSpec` stays a typed-port dataflow graph. Prompts 128–143 make it
-   discoverable, exact, and well-typed; none of them make it temporal.
+7. **No temporal or universal source calculus under the studio.** `StudioSpec` stays a finite typed-port description
+   with no musical extent. It elaborates to the private process calculus in `docs/spec/03-process-calculus.md`:
+   whole-node scheduling, first-order total transitions, and feedback only through explicit registers. This formal
+   semantics is required; it does not make process nodes source values or temporal payloads.
 8. **No second kernel crate, and no kernel dependency on a musical type.** `musa-kernel` stays a leaf that knows nothing
    musical. A gesture payload is defined in `musa-compiler` and implements `musa-kernel`'s trait, in exactly the
    direction `ScoreFact` already does.
@@ -409,11 +415,11 @@ leaves it exactly as written, and its **Contingent on prompt 126** banner is rep
 | Prompt | Verdict | What changes |
 | --- | --- | --- |
 | 127 elaboration-performance-closure | **unchanged** | Score-side measurement. Carried no banner and needs none. |
-| 128 studio-vocabulary | **unchanged** | The studio has no calculus under it by decision §5; a discoverable vocabulary over a dataflow graph is exactly right. Banner replaced. |
+| 128 studio-vocabulary | **repaired** | Vocabulary remains a closed description surface; its target is the private process calculus, not an untyped graph or temporal term. |
 | 129 exact-studio-values | **unchanged** | Exactness until the one float boundary is R1's precondition. Banner replaced. |
-| **129a payload-admission-rule** | **new** | States the payload-admission rule and law transport in `docs/kernel/`, and writes R1 into `07-backend-contract.md`. Must land before 130. |
+| **129a payload-admission-rule** | **repaired** | States payload equality/schema admission, replaces the refuted display-text hash with exact framing, and writes exact R1 into `07-backend-contract.md`. Must land before 130. |
 | 130 performance-gestures | **repaired** | `GestureTimeline` becomes `Timeline[Gesture]` — an instantiation of `musa-kernel`, not a new structure. `depends_on` gains 129a. The prompt keeps its Target; what changes is that ordering, equality, and hashing come from the kernel rather than being re-specified. |
-| 131 instrument-contracts | **repaired** | The prepared plan is named as the object that crosses the signal boundary (§5), and the audio-preparation operation is the one place a rational becomes a float. |
+| 131 instrument-contracts | **repaired** | Preparation takes complete semantic arguments/options and returns a complete result; presentation lineage is separate. The private plan implements the process calculus. |
 | 132 part-instrument-routing | **unchanged** | `PartId` on the gesture payload is what B already implies. Banner replaced. |
 | 133 expressive-control-realization | **unchanged** | Controls are payload values; resolution to private parameters is downstream of the boundary. Banner replaced. |
 | 134 ergonomic-sound-bindings | **unchanged** | Surface ergonomics over independent declarations. Banner replaced. |
@@ -426,15 +432,14 @@ leaves it exactly as written, and its **Contingent on prompt 126** banner is rep
 | 141 audio-clips | **unchanged** | Banner replaced. |
 | 142 sound-mix-workbench | **unchanged** | Banner replaced. |
 | 143 audio-language-tooling | **unchanged** | Banner replaced. |
-| 144 audio-performance-closure | **repaired** | Gains R1 as a measured obligation: two semantically equal gesture timelines must render identically, and the finding reopens §5 if it does not. |
-| 145 audio-conformance | **repaired** | Gains one conformance row per §6 rule, with executable evidence rather than a reading; `depends_on` gains 129a. |
+| 144 audio-performance-closure | **repaired** | Measures exact R1 arguments/results, collision-confirmed caching, process conformance, and host-block partition independence. |
+| 145 audio-conformance | **repaired** | Audits every §6 rule, including the required private process calculus rather than the former “no calculus” claim. |
 | 146 language-conformance | **unchanged** | Graduation criteria are untouched; this decision changes what the prompts do, not whether they are checked. Banner replaced. |
 
-**Deleted: none.** No prompt in the range assumed candidate A or candidate C in a way that survives the decision. The
-nineteen banners were placed precisely because the answer was open: fourteen resolve to "proceed unchanged", five to a
-repair that narrows the prompt rather than replacing it. That the ledger is this quiet is itself evidence for B — the
-decision the prompts were waiting on turns out to be the one the kernel was already built to, so most of them were
-already right.
+**Deleted: none.** No prompt requires indexed CBPV or a signal-valued temporal kernel. The later process/identity review
+repaired 128, 129a, 131, 144, and 145 more deeply than the original ledger: a studio needs private formal process
+semantics, and correctness-sensitive identity/cache claims need exact framing and complete arguments. These are
+deliberate amendments to the ledger, not evidence for a universal kernel.
 
 ### Why 129a is inserted as a suffixed rank
 

@@ -80,10 +80,14 @@ Two halves, and the split is the whole design:
   thing the kernel knows about. By the time a `Term` exists, every choice is made — so evaluation is still total, still
   deterministic, still confluent, and the normal form still has a hash.
 
-The determinism law, stated so an implementation can be tested against it:
+The realization determinism law, stated so an implementation can be tested against it (and named R0 to avoid conflating
+it with the later execution-boundary R1 in `07-backend-contract.md`):
 
-> **R1.** Same source **and same realization** ⇒ same term, same normal form, same semantic hash, byte-identical
-> exports.
+> **R0.** Same source, realization, compiler/schema versions, and export options imply the same term, same normal form,
+> same semantic hash, and byte-identical output from a deterministic exporter.
+
+This is a source-to-finite-presentation law. It makes no unconditional audio-frame claim; R1 and R1-frames state the
+additional preparation, input, state, allocation, and processor premises.
 
 ## Identity: a choice must be nameable across an edit
 

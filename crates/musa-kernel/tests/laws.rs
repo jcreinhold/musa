@@ -37,6 +37,55 @@ fn arb_timeline() -> impl Strategy<Value = Timeline<u8>> {
     (0i64..=16).prop_flat_map(arb_timeline_at)
 }
 
+/// A payload intentionally unlike the scalar used by the original law suite.
+/// It exercises variable text, an exact rational, and a local-time curve.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct AdmissionProbe {
+    label: String,
+    ratio: Ratio<i64>,
+    shape: Progress,
+}
+
+impl musa_kernel::Canonical for AdmissionProbe {
+    const OWNER_TYPE_ID: &'static str = "musa.kernel.tests.AdmissionProbe";
+    const QUOTIENT_VERSION: u32 = 1;
+
+    fn canonical_key(&self) -> String {
+        format!(
+            "{}:{}|{}/{}|{}",
+            self.label.len(),
+            self.label,
+            self.ratio.numer(),
+            self.ratio.denom(),
+            self.shape.canonical_key()
+        )
+    }
+}
+
+fn probe(value: u8) -> AdmissionProbe {
+    AdmissionProbe {
+        label: format!("probe\n{value}; from to"),
+        ratio: Ratio::new(i64::from(value) + 1, 9),
+        shape: Progress::piecewise([
+            (Ratio::ZERO, Ratio::ZERO),
+            (Ratio::new(1, 2), Ratio::new(i64::from(value), 8)),
+            (Ratio::ONE, Ratio::ONE),
+        ])
+        .expect("ordered fixed probe"),
+    }
+}
+
+fn probe_timeline(source: &Timeline<u8>) -> Timeline<AdmissionProbe> {
+    source.map_payload(|value| probe(*value))
+}
+
+fn probe_observed(observation: &musa_kernel::Observation<'_, AdmissionProbe>) -> Vec<(Span, Span, String)> {
+    observation
+        .observed()
+        .map(|(visible, occurrence)| (occurrence.span(), visible, occurrence.payload().canonical_key()))
+        .collect()
+}
+
 /// Two timelines of independently generated content but equal extents — the
 /// synchronization precondition of L18.
 fn arb_synchronized_pair() -> impl Strategy<Value = (Timeline<u8>, Timeline<u8>)> {
@@ -379,16 +428,255 @@ proptest! {
     }
 }
 
-/// N6: the digest is over exactly the canonical bytes, so it is reproducible
-/// from the serialization alone — by another process, another run, or a tool
-/// that never linked this crate.
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(32))]
+
+    /// L1–L24 and N6 keep the same statements for an admitted structured
+    /// payload. This is the second generic instantiation required by the
+    /// payload-admission rule; no theory-specific premise is added.
+    #[test]
+    fn admitted_structured_payload_transports_the_temporal_laws(
+        raw_m in arb_timeline(),
+        raw_n in arb_timeline(),
+        raw_p in arb_timeline(),
+        synchronized_mn in arb_synchronized_pair(),
+        synchronized_pq in arb_synchronized_pair(),
+        windows in arb_timeline_with_two_windows(),
+        at_quarters in 0i64..=12,
+    ) {
+        let m = probe_timeline(&raw_m);
+        let n = probe_timeline(&raw_n);
+        let p = probe_timeline(&raw_p);
+
+        // L1–L6 and X1.
+        prop_assert!(sequence(vec![sequence(vec![m.clone(), n.clone()]), p.clone()])
+            .semantic_eq(&sequence(vec![m.clone(), sequence(vec![n.clone(), p.clone()])] )));
+        let zero = timeline(Beat::ZERO, Vec::<Occurrence<AdmissionProbe>>::new()).expect("empty");
+        prop_assert!(sequence(vec![zero.clone(), m.clone()]).semantic_eq(&m));
+        prop_assert!(sequence(vec![m.clone(), zero]).semantic_eq(&m));
+        prop_assert_eq!(
+            sequence(vec![m.clone(), n.clone()]).extent().as_ratio(),
+            m.extent().as_ratio() + n.extent().as_ratio()
+        );
+        prop_assert!(overlay(vec![overlay(vec![m.clone(), n.clone()]), p.clone()])
+            .semantic_eq(&overlay(vec![m.clone(), overlay(vec![n.clone(), p.clone()])] )));
+        prop_assert!(overlay(vec![m.clone(), n.clone()]).semantic_eq(&overlay(vec![n.clone(), m.clone()])));
+        let empty = timeline(m.extent(), Vec::<Occurrence<AdmissionProbe>>::new()).expect("empty");
+        prop_assert!(overlay(vec![m.clone(), empty]).semantic_eq(&m));
+        if !m.occurrences().is_empty() {
+            prop_assert!(!overlay(vec![m.clone(), m.clone()]).semantic_eq(&m));
+        }
+
+        // L9–L12.
+        prop_assert!(m.map_payload(Clone::clone).semantic_eq(&m));
+        let f = |value: &AdmissionProbe| format!("{}:{}", value.label, value.ratio);
+        let g = |value: &String| format!("[{value}]");
+        prop_assert!(m.map_payload(|value| g(&f(value))).semantic_eq(&m.map_payload(f).map_payload(g)));
+        let rename = |value: &AdmissionProbe| format!("{}:{}", value.label, value.shape.canonical_key());
+        prop_assert!(sequence(vec![m.clone(), n.clone()]).map_payload(rename)
+            .semantic_eq(&sequence(vec![m.map_payload(rename), n.map_payload(rename)])));
+        prop_assert!(overlay(vec![m.clone(), n.clone()]).map_payload(rename)
+            .semantic_eq(&overlay(vec![m.map_payload(rename), n.map_payload(rename)])));
+
+        // L13–L15.
+        prop_assert!(m.scale(Ratio::ONE).expect("positive").semantic_eq(&m));
+        let r = Ratio::new(3, 2);
+        let s = Ratio::new(5, 4);
+        prop_assert!(m.scale(s).and_then(|scaled| scaled.scale(r)).expect("positive")
+            .semantic_eq(&m.scale(r * s).expect("positive")));
+        prop_assert!(sequence(vec![m.clone(), n.clone()]).scale(r).expect("positive")
+            .semantic_eq(&sequence(vec![m.scale(r).expect("positive"), n.scale(r).expect("positive")])));
+        prop_assert!(overlay(vec![m.clone(), n.clone()]).scale(r).expect("positive")
+            .semantic_eq(&overlay(vec![m.scale(r).expect("positive"), n.scale(r).expect("positive")])));
+
+        // L16–L17.
+        let full = Span::new(Beat::ZERO, m.extent()).expect("ordered");
+        let observed = probe_observed(&m.restrict(full));
+        let whole: Vec<(Span, Span, String)> = m.occurrences().iter().map(|occurrence| {
+            (occurrence.span(), occurrence.span(), occurrence.payload().canonical_key())
+        }).collect();
+        prop_assert_eq!(observed, whole);
+        let (window_source, (j0, j1), (k0, k1)) = windows;
+        let window_source = probe_timeline(&window_source);
+        let j = Span::new(quarters(j0), quarters(j1)).expect("ordered");
+        let k = Span::new(quarters(k0), quarters(k1)).expect("ordered");
+        let composed = window_source.restrict(j).restrict(k);
+        if j0.max(k0) <= j1.min(k1) {
+            let meet = Span::new(quarters(j0.max(k0)), quarters(j1.min(k1))).expect("ordered");
+            prop_assert_eq!(probe_observed(&composed), probe_observed(&window_source.restrict(meet)));
+        } else {
+            prop_assert!(composed.is_empty());
+        }
+
+        // L18–L19.
+        let (sm, sn) = synchronized_mn;
+        let (sp, sq) = synchronized_pq;
+        let (sm, sn, sp, sq) = (
+            probe_timeline(&sm), probe_timeline(&sn), probe_timeline(&sp), probe_timeline(&sq),
+        );
+        prop_assert!(sequence(vec![overlay(vec![sm.clone(), sn.clone()]), overlay(vec![sp.clone(), sq.clone()])])
+            .semantic_eq(&overlay(vec![sequence(vec![sm, sp]), sequence(vec![sn, sq])])));
+        let reversed = timeline(
+            m.extent(),
+            m.occurrences().iter().rev().cloned().collect(),
+        ).expect("same bounds");
+        prop_assert!(m.semantic_eq(&reversed));
+        prop_assert!(overlay(vec![m.clone(), n.clone()]).semantic_eq(&overlay(vec![reversed.clone(), n.clone()])));
+
+        // L20–L23.
+        let at = quarters(at_quarters);
+        if at <= m.extent() {
+            let mut covered: Vec<(Span, String)> = m.covering(at)
+                .map(|occurrence| (occurrence.span(), occurrence.payload().canonical_key()))
+                .collect();
+            let tight_end = Beat::new((at.as_ratio() + quarters(1).as_ratio()).min(m.extent().as_ratio()));
+            if tight_end > at {
+                let tight = Span::new(at, tight_end).expect("ordered");
+                let mut observed: Vec<(Span, String)> = m.restrict(tight).observed()
+                    .map(|(_, occurrence)| (occurrence.span(), occurrence.payload().canonical_key()))
+                    .filter(|(span, _)| span.contains(at))
+                    .collect();
+                covered.sort_by_key(|(span, key)| (span.start(), span.end(), key.clone()));
+                observed.sort_by_key(|(span, key)| (span.start(), span.end(), key.clone()));
+                prop_assert_eq!(covered, observed);
+            }
+            let scaled = m.scale(r).expect("positive");
+            let here: Vec<String> = m.covering(at).map(|o| o.payload().canonical_key()).collect();
+            let there: Vec<String> = scaled.covering(Beat::new(at.as_ratio() * r))
+                .map(|o| o.payload().canonical_key()).collect();
+            prop_assert_eq!(here, there);
+        }
+        let select = |value: &AdmissionProbe| (value.ratio.numer() % 2 == 0).then_some(value.label.clone());
+        let expected = m.canonical_occurrences().into_iter()
+            .rfind(|o| o.span().start() <= at && o.payload().ratio.numer() % 2 == 0)
+            .map(|o| o.payload().label.clone());
+        prop_assert_eq!(m.prevailing(at, select), expected);
+        let later_start = Beat::new(at.as_ratio() + quarters(1).as_ratio());
+        let later_end = Beat::new(later_start.as_ratio() + quarters(1).as_ratio());
+        let later = timeline(later_end, vec![Occurrence::new(
+            Span::new(later_start, later_end).expect("ordered"), probe(1),
+        )]).expect("in bounds");
+        prop_assert_eq!(overlay(vec![m.clone(), later]).prevailing(at, select), m.prevailing(at, select));
+
+        // L24 and N6.
+        let payload_keys: Vec<String> = m.occurrences().iter().map(|o| o.payload().canonical_key()).collect();
+        let scaled_keys: Vec<String> = m.scale(r).expect("positive").occurrences().iter()
+            .map(|o| o.payload().canonical_key()).collect();
+        prop_assert_eq!(payload_keys, scaled_keys);
+        prop_assert_eq!(m.semantic_hash(), reversed.semantic_hash());
+    }
+}
+
+/// N6: the digest is over exact framed semantic bytes, independently rebuilt
+/// here so a version/tag/field-order drift fails loudly.
 #[test]
-fn the_digest_is_the_canonical_text_and_nothing_else() {
+fn the_digest_is_the_framed_semantic_encoding_and_nothing_else() {
     let m = timeline(quarters(8), vec![occurrence_at(0, 4, 1), occurrence_at(4, 8, 2)]).expect("valid");
-    assert_eq!(m.semantic_hash().to_string(), fnv1a_128(m.to_string().as_bytes()));
+    let bytes = independently_frame_u8_timeline(&m);
+    assert_eq!(m.semantic_hash().to_string(), fnv1a_128(&bytes));
     // Fixed here so a change of algorithm, offset basis, or byte order fails
     // loudly rather than silently invalidating every stored identity.
-    assert_eq!(m.semantic_hash().to_string(), "b5e6067cdac4672b72b3eb478b05170b");
+    assert_eq!(m.semantic_hash().to_string(), "48295d3fdbf5c741a806ce38516db1d9");
+}
+
+fn independently_frame_u8_timeline(timeline: &Timeline<u8>) -> Vec<u8> {
+    fn bytes(out: &mut Vec<u8>, value: &[u8]) {
+        out.extend_from_slice(&(value.len() as u64).to_be_bytes());
+        out.extend_from_slice(value);
+    }
+    fn rational(out: &mut Vec<u8>, value: Beat) {
+        let ratio = value.as_ratio();
+        out.extend_from_slice(&ratio.numer().to_be_bytes());
+        out.extend_from_slice(&ratio.denom().to_be_bytes());
+    }
+
+    let mut out = Vec::new();
+    bytes(&mut out, b"musa.timeline.semantic");
+    out.extend_from_slice(&2u32.to_be_bytes());
+    bytes(&mut out, b"musa.kernel.u8");
+    out.extend_from_slice(&1u32.to_be_bytes());
+    rational(&mut out, timeline.extent());
+    out.extend_from_slice(&(timeline.occurrences().len() as u64).to_be_bytes());
+    for occurrence in timeline.canonical_occurrences() {
+        rational(&mut out, occurrence.span().start());
+        rational(&mut out, occurrence.span().end());
+        bytes(&mut out, occurrence.payload().canonical_key().as_bytes());
+    }
+    out
+}
+
+#[test]
+fn framed_identity_separates_the_old_display_collision() {
+    let one = timeline(
+        quarters(8),
+        vec![Occurrence::new(
+            Span::new(quarters(4), quarters(8)).expect("ordered"),
+            "a from 0 to 1;\n  occurrence b".to_owned(),
+        )],
+    )
+    .expect("in bounds");
+    let two = timeline(
+        quarters(8),
+        vec![
+            Occurrence::new(Span::new(quarters(0), quarters(4)).expect("ordered"), "a".to_owned()),
+            Occurrence::new(Span::new(quarters(4), quarters(8)).expect("ordered"), "b".to_owned()),
+        ],
+    )
+    .expect("in bounds");
+
+    assert_eq!(
+        one.to_string(),
+        two.to_string(),
+        "this is the verified old N5 collision"
+    );
+    assert!(!one.semantic_eq(&two));
+    assert_ne!(one.semantic_hash(), two.semantic_hash());
+}
+
+#[derive(Clone)]
+struct SameKeyOtherSchema;
+
+impl musa_kernel::Canonical for SameKeyOtherSchema {
+    const OWNER_TYPE_ID: &'static str = "musa.kernel.tests.OtherSchema";
+    const QUOTIENT_VERSION: u32 = 7;
+
+    fn canonical_key(&self) -> String {
+        "1".to_owned()
+    }
+}
+
+#[test]
+fn framed_identity_covers_schema_and_multiplicity() {
+    let scalar = timeline(quarters(4), vec![occurrence_at(0, 4, 1)]).expect("valid");
+    let other = timeline(
+        quarters(4),
+        vec![Occurrence::new(
+            Span::new(quarters(0), quarters(4)).expect("ordered"),
+            SameKeyOtherSchema,
+        )],
+    )
+    .expect("valid");
+    let doubled = overlay(vec![scalar.clone(), scalar.clone()]);
+
+    assert_ne!(scalar.semantic_hash(), other.semantic_hash());
+    assert_ne!(scalar.semantic_hash(), doubled.semantic_hash());
+}
+
+proptest! {
+    #[test]
+    fn arbitrary_payload_delimiters_preserve_equality_hash_agreement(
+        extent in 0i64..=16,
+        payloads in prop::collection::vec(any::<String>(), 0..8),
+    ) {
+        let extent = quarters(extent);
+        let occurrences: Vec<Occurrence<String>> = payloads.into_iter().map(|payload| {
+            Occurrence::new(Span::new(Beat::ZERO, extent).expect("ordered"), payload)
+        }).collect();
+        let value = timeline(extent, occurrences).expect("in bounds");
+        let shuffled = timeline(extent, value.occurrences().iter().rev().cloned().collect()).expect("same bounds");
+        prop_assert!(value.semantic_eq(&shuffled));
+        prop_assert_eq!(value.semantic_hash(), shuffled.semantic_hash());
+    }
 }
 
 /// The published FNV-1a 128 parameters, written out independently of the

@@ -30,12 +30,12 @@ use crate::timeline::timeline;
 /// How a payload is spelled in a file.
 ///
 /// The two directions are one trait because they are one decision: a payload
-/// text form that cannot be read back is not a text form, and N3 already
-/// requires the writer to be injective, which is exactly the round-trip
-/// property. Implementations live with the payload — `ScoreFact`'s is in
+/// text form that cannot be read back is not an interchange form. This is the
+/// stronger round-trip contract, separate from N3's possibly quotienting
+/// equality key. Implementations live with the payload — `ScoreFact`'s is in
 /// `musa-compiler` — and the kernel never looks inside the string.
 pub trait PayloadText: Sized {
-    /// The payload's text form. Must be injective on values (N3).
+    /// The payload's text form. Must round-trip every stored value.
     fn to_text(&self) -> String;
 
     /// The inverse of [`Self::to_text`], or `None` if `text` is not one.

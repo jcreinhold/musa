@@ -1,0 +1,107 @@
+# 12 — Payload Admission
+
+The temporal kernel is parametric in a payload `A`. This document fixes the evidence a type must supply before it is
+used with normalization, equality, or semantic identity. Admission does not add a temporal operation and does not teach
+the kernel the payload's musical meaning.
+
+## A1 — A payload is opaque
+
+A payload is an ordinary finite value at the type parameter `A`. The kernel may move, copy, sort, and compare its
+canonical key; it never branches on the value or rewrites one of its fields. `timeline`, `sequence`, `overlay`, `scale`,
+and `restrict` act on occurrence support. L24 is the strongest instance: a locally normalized `Progress` keeps identical
+payload bytes while its containing span moves or stretches.
+
+## A2 — The `Canonical` obligation
+
+An admitted payload implements:
+
+```text
+Canonical A = {
+  OWNER_TYPE_ID : stable text,
+  QUOTIENT_VERSION : u32,
+  canonical_key : A → text,
+}.
+```
+
+The owner id names the schema which defines the value. The quotient version names its equality projection and key
+encoding. `canonical_key` is deterministic and total. It emits no address, hash-iteration order, platform-dependent
+value, or float.
+
+Key equality **defines** admitted payload equality:
+
+```text
+a ≡_A b  iff  canonical_key(a) = canonical_key(b).
+```
+
+The key is complete for these equality classes. It need not distinguish two raw implementation values when the declared
+quotient intentionally identifies them. Changing an observed field, a deliberately omitted field, or the field encoding
+is an equality design decision and requires reviewing and normally incrementing `QUOTIENT_VERSION`.
+
+## A3 — What a payload may not demand
+
+An admission may not:
+
+- add a kernel operation or term form—`10-term-calculus.md`'s scope rule and `core-boundary.md` §6.1 apply;
+- require the kernel to inspect musical content—payload opacity and `core-boundary.md` §6.8 apply;
+- carry absolute seconds, frames, or samples—K2 and `core-boundary.md` §6.4 apply; or
+- carry a coinductive stream or process—a finite timeline is not a signal, under `core-boundary.md` §5–6.
+
+An exact rational control shape indexed by normalized local occurrence time is finite payload data. A sample stream is
+not.
+
+## A4 — Law transport
+
+L1–L23, X1–X3, and T1–T6 quantify generically over `A` and transport unchanged to every admitted payload. N1–N7 hold
+given the `Canonical` contract. L24 is conditional: it applies to a payload which carries a `Progress` indexed by local
+normalized time.
+
+This is parametric transport, not a new theory-specific proof. `crates/musa-kernel/tests/laws.rs` instantiates the same
+statements both at scalar `u8` and at `AdmissionProbe`, a record containing delimiter-bearing `String`, exact `Ratio`,
+and `Progress` fields. If a new payload needs a changed temporal-law statement, it has failed admission.
+
+## A5 — Equality projection is not interchange
+
+N3's key may drop presentation detail and therefore need not reconstruct the stored payload. A kernel interchange
+adapter owes the stronger round-trip law and uses `TextPayload`; it is a different function. Dropped fields and their
+cost are recorded below. A consumer needing a finer relation defines a separately named projection rather than silently
+strengthening kernel equality.
+
+## A6 — Admission table
+
+| Payload | Owner | Key includes | Deliberately quotients away | Falsifying example |
+| --- | --- | --- | --- | --- |
+| `u8` | `musa-kernel` | decimal scalar | nothing | two bytes receive one decimal key |
+| `String` | `musa-kernel` adapter for Rust `String` | the exact UTF-8 string | nothing | two strings receive equal bytes |
+| `Progress` | `musa-kernel` | every exact ordered `(u,v)` breakpoint | nothing | distinct curves receive one breakpoint list |
+| `ScoreFact` | `musa-compiler` | scope; full fact kind; source span; expansion path | elaboration-only `tied`; `Origin.definition_span`; `Origin.declaration` | a cache, projection, or lineage consumer requires one omitted field to distinguish execution results |
+
+The `ScoreFact` row records the implementation as it exists. Its omitted origin fields remain available in the stored
+fact and its interchange form. Kernel semantic equality does not observe them. A future identity-sensitive preparation
+must use a complete presentation or a named semantic projection whose fields match its actual decisions; it may not
+pretend the coarser `ScoreFact` equality contains those fields.
+
+## A7 — Exact temporal framing
+
+Human N5 display is not an identity grammar: keys may contain its newlines and delimiters. N6 therefore hashes a private
+versioned record with this field order:
+
+```text
+length(domain tag), domain tag,
+timeline encoding version,
+length(payload owner id), payload owner id,
+payload quotient version,
+extent numerator, extent denominator,
+occurrence count,
+for each canonical occurrence:
+  start numerator, start denominator,
+  end numerator, end denominator,
+  length(payload-key bytes), payload-key bytes.
+```
+
+Lengths/counts are unsigned 64-bit big-endian; versions are unsigned 32-bit big-endian; rational components are signed
+64-bit big-endian and denominators are positive. Rationals are reduced by the exact-time representation. The current
+timeline encoding version is 2; version 1 was the unframed N5 display stream and is not interpreted as version 2.
+
+This grammar is uniquely decodable. At a fixed schema its complete framed-byte equality is exactly N4 semantic equality.
+`SemanticHash` is FNV-1a-128 over these bytes, but the digest is only an index: an equal digest does not prove byte
+equality. Correctness-sensitive caches retain and confirm the complete framed arguments after lookup.

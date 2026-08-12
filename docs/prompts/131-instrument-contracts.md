@@ -22,6 +22,8 @@ into an opaque prepared plan.
 
 - `docs/core-boundary.md` §5 — the signal question, and why the prepared plan is the object that crosses. `R1` in
   `docs/kernel/07-backend-contract.md`, which this prompt's preparation operation must satisfy.
+- `docs/spec/03-process-calculus.md`, `04-identity-and-realization.md`, and `docs/architecture/process-runtime.md`;
+  these fix the private IR, whole-node scheduling, exact preparation signature, and factorization/cache premises.
 - `docs/language/08-performance-and-sound.md`; roadmap §§2, 6.5, 10.6, 13, 15.
 - Current `StudioSpec`, `StudioGraphSpec`, `RenderPlan`, project/CLI/offline/engine callers, and prompts 29–31 repairs.
 - Module-design audit of `musa-compiler`, `musa-audio`, and `musa-engine`; compare recent history for their facades.
@@ -47,32 +49,42 @@ Choose the second unless caller inspection proves otherwise. Graph compiler, nod
 buffers, sample voices, and DSP processor instances remain private to `musa-audio`. The engine receives only a prepared,
 RT-safe plan and transport commands.
 
-**The prepared plan is the object that crosses the signal boundary.** `docs/core-boundary.md` §5 settled that signals
-stay outside the core: a signal is coinductive where a timeline is inductive and finite, and a signal graph has no
-extent. The consequence for this prompt is precise, and it is the reason preparation is one operation rather than
+**The prepared execution is the object that crosses the signal boundary.** `docs/core-boundary.md` §5 settled that
+signals stay outside the core: a signal is coinductive where a timeline is inductive and finite, and a signal graph has
+no extent. The consequence for this prompt is precise, and it is the reason preparation is one operation rather than
 several:
 
-- `prepare` takes an exact, finite, normalized `Timeline<Gesture>`, the instrument bindings, and the realization seed,
-  and returns the opaque plan. It is **the one place a rational becomes a float**; nothing upstream of it holds seconds,
-  frames, or samples, and nothing downstream of it holds a `Beat`.
-- It must satisfy **`R1`** (`docs/kernel/07-backend-contract.md`, written at prompt 129a): semantically equal gesture
-  timelines prepare identically and render frame-for-frame identically under the same bindings and seed. Preparation may
-  therefore observe nothing that normalization forgets (N7). Prompt 144 measures this; a measured failure reopens
-  `docs/core-boundary.md` §5 rather than being patched here.
-- R1 is also what makes a preparation cache keyed on `semantic_hash(M) ⊕ bindings ⊕ seed` correct. Whether to build one
-  is prompt 144's question, not this prompt's; keeping preparation a pure function of those three inputs is what leaves
-  the option open.
+- Implement the conceptual signature
+  `prepare_execution(Sem_Gesture, Bindings, Seed, Options) -> Result<PreparedExecution, PrepareError>`. `Options`
+  includes sample rate, channel contract, fixed semantic tick/block policy, render bounds, and every deterministic
+  quality/acceptance choice. No option remains ambient. This is **the one place a rational becomes a float**; nothing
+  upstream holds seconds/frames/samples and nothing downstream holds a `Beat`.
+- `Sem_Gesture` is the structured admitted semantic projection, not a full presentation and not merely a finite digest.
+  Presentation-only origin fields feed a separate `prepare_lineage(Presentation_Gesture, PreparedExecution)` operation
+  and cannot modify the execution result.
+- The successful result owns a private finite process definition implementing `docs/spec/03-process-calculus.md`:
+  first-order total node transitions, a whole-node dependency DAG, and feedback only through explicit initialized
+  registers. A port-level DAG is not sufficient. The semantic tick is fixed in options and independent of caller render
+  partition.
+- **R1** is equality of the complete preparation `Result` under equal complete arguments. Frame equality is conditional
+  on equal allocation/initial state, external inputs, and conforming deterministic processors. Do not strengthen R1 to
+  lineage equality or unconditional cross-device bit equality.
+- A later cache uses a digest only to find candidates and confirms the exact complete versioned argument bytes. A key of
+  `semantic_hash(M) ⊕ bindings ⊕ seed` is incomplete because it omits options and trusts finite hashes.
 
 ## Target
 
 - Instrument/signature declarations in language/compiler and migration of patches as specified.
 - Native graph implementation hidden behind `musa-audio` preparation; curated facade and documented invariants.
+- Private typed process IR, formation checker, canonical whole-node schedule, explicit register state, and reference
+  tick evaluator in `musa-audio`; current caller-block-sensitive feedback is migrated to the fixed semantic tick.
 - Static checking for duplicate/missing controls, incompatible mappings, private-node access, technique support, and
   channel shape.
 - Instrument replacement law: two implementations of one signature accept the same gesture/control lanes without
   changing their schedule.
-- One preparation operation, pure in `(Timeline<Gesture>, bindings, seed)`, with a test for R1's equal-in-meaning case:
-  two gesture timelines that differ only in what normalization forgets prepare to the same plan.
+- One preparation operation pure in all complete arguments, plus separate presentation lineage. Test equal semantic
+  timelines with unequal presentation-only data, every execution-affecting option independently, the whole-node
+  scheduling counterexample, registered cycles, and caller-block partitions.
 - Module-design audit and caller comparison; delete pass-through surface made obsolete by the deep boundary.
 
 ## Check
@@ -95,4 +107,4 @@ Commit as `Give instruments typed sound contracts`.
 - No part routing yet, no sample decoding, and no GUI graph canvas.
 - No score, context, measure, or notation type crosses into `musa-audio`.
 - No signal, stream, or other coinductive value in a kernel payload, and no `Beat` past the preparation boundary. The
-  boundary is one function in one direction (`docs/core-boundary.md` §6 rule 4).
+  execution boundary is one function in one direction; the separate lineage query cannot mutate it.

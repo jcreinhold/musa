@@ -6,27 +6,31 @@ the semantic core is Rust, the UI is a replaceable projection.
 
 ## The documents that govern this repo
 
-1. **`docs/initial-design-roadmap.md`** — the architecture. Semantic layers, crate ownership, language design, DSP
-   rules, and what is explicitly rejected or deferred. Read the cited sections before changing anything structural.
+1. **`docs/governance/`** — the constitution and its derived obligations. Source authority, plural theory-owned
+   presentations, exact ambient time, the finite-process/running-signal distinction, typed derivation coherence, and
+   versioned exact identity. Removing one changes what Musa is; amend deliberately.
 2. **`docs/course-correction.md`** — the semantic course correction: a small temporal kernel (ambient exact rational
    time, typed occurrences, `timeline`/`sequence`/`overlay`) is the ontology; the surface language elaborates into it.
    Where it and the roadmap disagree, the course correction wins. Its authoritative elaboration is **`docs/kernel/`**,
-   the governing kernel specification. §36 is its one amendment, made at prompt 126.
+   the governing kernel specification. §36 is its boundary amendment, refined by the cross-stage specification.
 3. **`docs/core-boundary.md`** — what the core is a calculus *of*: occurrences of any canonical payload over exact
    rational time, `ScoreFact` being one payload and the performance gesture another. Signals stay outside the core
-   because a signal is coinductive and a signal graph has no extent; the prepared render plan is what crosses, under the
-   law `R1`. It sits under the course correction and governs over `docs/language/`. Its §"What this forbids" is
-   deliberately hard to re-open: doing so means amending it and course correction §36 together.
-4. **`docs/interface/`** — the desktop interface specification: visual language, engraving quality bar, interaction and
+   because a signal is coinductive and a process graph has no musical extent. A complete semantic preparation result
+   crosses under exact `R1`; the private process IR has its own formal tick semantics. Its §"What this forbids" is hard
+   to re-open: amend it and course correction §36 together.
+4. **`docs/spec/`** and **`docs/architecture/`** — the cross-stage formal specification and its Rust realization map.
+   The spec owns presentation/pass/process/identity semantics; architecture says what current code implements or lacks.
+   They refine **`docs/initial-design-roadmap.md`**, which still owns the broad crate/product plan.
+5. **`docs/interface/`** — the desktop interface specification: visual language, engraving quality bar, interaction and
    selection model, Origin view, states and voice, performance budgets. Roadmap §14 fixes the app's *architecture*;
    `docs/interface/` fixes everything §14 leaves open, and §14's wireframe is not a visual spec. Governing since prompt
    26.
-5. **`docs/language-correction.md`** — the language correction: the musical domains are a *proved* conservative
+6. **`docs/language-correction.md`** — the language correction: the musical domains are a *proved* conservative
    extension rather than an accumulating fragment, the standard library is a package with a real module tree, and
    `import` and `use` are two words because they were always two statements. It governs over **`docs/language/`** (the
    elaboration-language specification; candidate until prompt 146 graduates it) the way the course correction governs
    over the roadmap.
-6. **`docs/prompts/`** — the numbered work plan, currently 155 prompts through rank 153, with its README defining prompt
+7. **`docs/prompts/`** — the numbered work plan, currently 155 prompts through rank 153, with its README defining prompt
    anatomy and execution rules. Implementation happens in dependency order (see the `prompt-stack` skill).
 
 If code and these documents disagree, either the code is wrong or the document needs a deliberate repair — never let
@@ -54,6 +58,9 @@ them drift silently.
 | `examples/` | `.musa` fixtures — executable specifications, not demos |
 | `docs/kernel/` | the temporal-kernel specification (governing) |
 | `docs/core-boundary.md` | what the core is a calculus of, and what that forbids (governing) |
+| `docs/governance/` | constitutional commitments and derived obligations (governing) |
+| `docs/spec/` | cross-stage presentations, derivations, process semantics, identity (governing) |
+| `docs/architecture/` | implementation strategy and spec-to-code status map |
 | `docs/interface/` | the desktop interface specification (governing) |
 | `docs/language/` | the elaboration-language specification (candidate until prompt 146) |
 | `docs/prompts/` | numbered implementation prompts + README |

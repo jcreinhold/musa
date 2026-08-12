@@ -50,8 +50,9 @@ kernel-side contract is:
 - Field types resolve (`text`, `rational`, `integer`, `bool`, or a previously-declared payload type — no forward
   references, hence no recursion).
 - A payload **value** must match its declared schema exactly: every field present, no extra fields.
-- Every payload type used with normalization, semantic equality, or serialization must provide a **canonical
-  serialization** (`05-normalization.md`, N3): a deterministic, total, injective-on-values text form.
+- Every payload type used with normalization, semantic equality, or semantic identity must satisfy the admission rule
+  (`12-payload-admission.md`): a stable owner id, a quotient version, and a deterministic total key complete for the
+  admitted equality classes. It need not distinguish raw fields which the declared quotient intentionally omits.
 
 ## K6 — Multiset discipline
 

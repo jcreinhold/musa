@@ -53,11 +53,10 @@ It is not:
 - a complete orchestral sample workstation;
 - a universal formalization of music theory.
 
-> **Candidate refinement (prompt 92; not governing until prompt 144):** `docs/language/` specifies the next source and
-> sound direction without changing this layer separation. Its score path is lossless source → total typed elaboration →
-> contextual, context-neutral `music` → closed `Term[ScoreFact]` → `Timeline[ScoreFact]`. Its sound path is score facts
-> → exact performance gestures → typed instrument behavior → signals → mix. The old “compositional model” boxes in this
-> roadmap name ownership layers, not a requirement that every intermediate be a timeline or one mutable object.
+> **Governing cross-stage refinement:** `docs/governance/` states the identity-level commitments, `docs/spec/` fixes the
+> formal presentation/pass/process boundaries, and `docs/architecture/` maps them to this workspace. Where they are more
+> precise than this older roadmap, they govern. `docs/language/` remains candidate until its graduation prompt. The old
+> “compositional model” boxes name ownership layers, not one universal musical object or mutable representation.
 
 Those should remain external tools or later extensions.
 
@@ -456,6 +455,10 @@ signal-processing language. That is a better conceptual model for the studio lay
 
 The score algebra and signal algebra are analogous, but they are not the same algebra. They should not share a universal
 “node” type.
+
+`docs/spec/03-process-calculus.md` makes the DSP side precise: same-tick dependencies form a whole-node DAG, a primitive
+node steps only after all of its inputs are available, and every feedback path crosses explicit initialized register
+state. The calculus is a private finite process IR, not a temporal kernel term or mandatory source language.
 
 ---
 
@@ -1488,10 +1491,11 @@ effects and routing graph
 master output
 ```
 
-The candidate refines the two middle arrows as
-`Timeline[ScoreFact] → GestureTimeline[Signature] → ScheduledGestureLane → Signal`; score marks remain symbolic,
-profiles choose their reading, and instruments implement typed controls privately. Physical frames and DSP floats appear
-at one late preparation boundary. This is a candidate contract, not permission to put signals or seconds in the kernel.
+The cross-stage specification refines the middle arrows as
+`Timeline[ScoreFact] → Timeline[Gesture] → PreparedExecution → observed audio history`; score marks remain symbolic,
+profiles choose their reading, and instruments implement typed controls privately. Preparation consumes complete
+semantic gestures, bindings, seed, and options and returns a complete result. Physical frames and DSP floats appear at
+that late boundary. This is not permission to put signals or seconds in the temporal kernel.
 
 Use CPAL for cross-platform audio-device and stream access. It exposes device enumeration, supported configurations, and
 audio streams without dictating the synthesis architecture. citeturn797105search0
@@ -1509,7 +1513,8 @@ The audio callback must not:
 - write logs;
 - destroy large graph objects.
 
-The control side compiles a declarative graph into a preallocated `RenderPlan`. The audio side only executes that plan.
+The control side compiles a declarative graph into a preallocated `PreparedExecution` whose private process definition
+has a checked whole-node schedule and explicit register state. The audio side only executes that plan.
 
 Use `rtrb`, a wait-free single-producer/single-consumer ring buffer, for control and transport commands crossing the
 real-time boundary. citeturn193176search1
@@ -1535,10 +1540,10 @@ pub struct RenderPlan {
 
 `StudioGraphSpec` is declarative and editable.
 
-`RenderPlan` contains:
+`RenderPlan`/`PreparedExecution` contains:
 
 - resolved ports;
-- topological order;
+- whole-node topological order over same-tick dependencies;
 - preallocated buffers;
 - initialized DSP state;
 - parameter smoothing;
@@ -1553,8 +1558,9 @@ Do not use a general graph library as the public representation. A specialized c
 - illegal feedback;
 - unreachable processors.
 
-A cycle is allowed only if it passes through an explicit delay node. That makes causality visible rather than relying on
-arbitrary graph-evaluation behavior.
+A cycle is allowed only if it passes through an explicit initialized register/delay edge. The semantic tick is fixed by
+preparation options, not caller render-block size. This makes causality visible and makes block-partition independence a
+testable law rather than arbitrary graph-evaluation behavior.
 
 ## 13.4 Typed ports
 
@@ -2602,22 +2608,22 @@ The final conceptual design is:
                               │
             ┌─────────────────┴─────────────────┐
             │                                   │
-   high-level musical model                 StudioSpec
- motifs, references, transforms       patches, effects, routing
+  contextual musical values                StudioSpec
+ theory-owned data, refs, transforms   patches, effects, routing
             │                                   │
      finite elaboration                         │
             │                                   │
-       ScoreSnapshot                            │
+ Timeline<ScoreFact>                            │
             │                                   │
       ┌─────┴──────────────┐                    │
       │                    │                    │
-NotationPlan        PerformancePlan             │
+NotationPlan        Timeline<Gesture>            │
       │                    │                    │
  ┌────┼─────┐              └──────────┬─────────┘
  │    │     │                         │
-MEI  Lily  MusicXML             playback compiler
+MEI  Lily  MusicXML             execution preparation
  │                                      │
-Verovio SVG                         RenderPlan
+Verovio SVG                    PreparedExecution
  │                                      │
 interactive score             CPAL live / Hound WAV
       \                                  /
@@ -2629,7 +2635,8 @@ interactive score             CPAL live / Hound WAV
          Tauri/Svelte application
 ```
 
-The project’s distinctive contribution is not any individual box.
+Typed derivation records connect these boxes through source/target anchors and explicit losses; they do not identify the
+boxes or require a universal quotient. The project’s distinctive contribution is not any individual box.
 
 It is the **provenance-preserving composition model** that allows:
 

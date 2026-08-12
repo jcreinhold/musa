@@ -150,3 +150,5 @@ musician-facing Musa source
 | `08-open-questions.md` | What is deliberately undecided. |
 | `09-performance.md` | The measured cost of the kernel path, prompt by prompt. |
 | `10-term-calculus.md` | The term calculus: syntax, evaluation, soundness theorems. |
+| `11-realization.md` | Seeded finite realization and its reproducibility laws. |
+| `12-payload-admission.md` | Payload equality, schema ownership, law transport, and exact identity framing. |

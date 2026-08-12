@@ -22,6 +22,7 @@ real-time row before the whole-language graduation prompt may run. This prompt a
 
 - `docs/core-boundary.md` §6 in full — the eight things the decision forbids are audit rows here, and this is the prompt
   that catches a later prompt having quietly re-opened one. `docs/kernel/12-payload-admission.md`'s admission table.
+- `docs/spec/03-process-calculus.md`, `04-identity-and-realization.md`, and the architecture spec-to-implementation map.
 - Prompt 93 baseline and expected-change ledger; all prompt 128–142 completion/repair notes and benchmark artifacts.
 - The candidate sound/assets specs, roadmap/course-correction/kernel boundaries, interface specification, handbook, SFZ
   support matrix, SoundFont support matrix, package/asset schemas, and public crate facades.
@@ -49,13 +50,14 @@ and observed result. At minimum cover:
   - **no bespoke temporal structure above the kernel** — no type outside `musa-kernel` pairs a rational extent with a
     positioned collection and defines its own ordering or equality. This is the rule most likely to have been broken by
     convenience, and finding one is a repair of the owning prompt, not an exception here;
-  - every payload instantiated anywhere has a row in the admission table, and each row's stated quotient matches what
-    its `canonical_key` actually drops;
+  - every payload instantiated anywhere has a row in the admission table; owner/quotient versions match its key, framed
+    semantic encoding survives adversarial delimiters, and no hash-only comparison is treated as exact equality;
   - no signal, stream, or other coinductive value in a payload, and no absolute time (seconds, frames, samples) in one —
     including a fixed cue's asset duration;
   - no dependent indices in the kernel; part, voice, meter, tuning, and transposition remain payload data;
   - no `join` over `Timeline[Timeline[A]]` at any payload;
-  - `StudioSpec` is still a dataflow graph with no extent;
+  - `StudioSpec` is still a finite dataflow description with no extent, and its prepared private process IR satisfies
+    whole-node scheduling, registered-feedback, fixed-semantic-tick, causality, and host-block-partition laws;
   - `musa-kernel` still depends on no musical type.
 
 The prompt 93 expected-change ledger must be empty. Test unsupported SFZ/SoundFont behavior rather than counting rows in

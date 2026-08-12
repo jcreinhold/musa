@@ -219,11 +219,13 @@ with `∅ ⊢ t ⇓ v`, for closed well-formed `t`; equality is semantic equalit
   for any `t`, `u`:
 
   ```text
-  ⟦t⟧ ≡ ⟦u⟧   ⟺   canonical(⟦t⟧) = canonical(⟦u⟧)   ⟺   hash(⟦t⟧) = hash(⟦u⟧)   (up to N6's collision bound)
+  ⟦t⟧ ≡ ⟦u⟧   ⟺   canonical(⟦t⟧) = canonical(⟦u⟧)
+  ⟦t⟧ ≡ ⟦u⟧   ⟹   hash(⟦t⟧) = hash(⟦u⟧)
   ```
 
   This is the theorem that stops the term language from becoming a second notion of equality. There is one equality in
-  this kernel; terms do not get their own, and two terms are equal exactly when the timelines they denote are.
+  this kernel; terms do not get their own, and two terms are equal exactly when the timelines they denote are. Hash
+  equality has no converse: N6 treats a finite digest as a candidate index, never as proof.
   Test: `evaluation_agrees_with_normalization`.
 
 - **T4 — totality.** Every closed well-formed term evaluates, in finitely many steps, to a value. There is no diverging

@@ -2,23 +2,38 @@
 
 use crate::time::Span;
 
-/// Canonical serialization of a payload (docs/kernel/05 N3).
+/// Admitted semantic equality for a payload (docs/kernel/05 N3, 12).
 ///
-/// Keys must be deterministic, total, and injective on values, so semantic
-/// equality of payloads is equality of keys. Implementations must never emit
-/// addresses, hash-order data, or floats.
+/// Key equality defines the payload's admitted equality. A key must be
+/// deterministic, total, and complete for those equality classes; it need
+/// not distinguish stored values which the declared quotient intentionally
+/// identifies. Implementations must never emit addresses, hash-order data,
+/// or floats. Changing the observed fields or their encoding requires a new
+/// [`QUOTIENT_VERSION`](Self::QUOTIENT_VERSION).
 pub trait Canonical {
-    /// The canonical key; distinct values produce distinct keys.
+    /// Stable owner of this payload schema, framed into temporal identity.
+    const OWNER_TYPE_ID: &'static str;
+
+    /// Version of the equality projection and canonical-key encoding.
+    const QUOTIENT_VERSION: u32;
+
+    /// The canonical key; equal keys are definitionally equal payloads.
     fn canonical_key(&self) -> String;
 }
 
 impl Canonical for u8 {
+    const OWNER_TYPE_ID: &'static str = "musa.kernel.u8";
+    const QUOTIENT_VERSION: u32 = 1;
+
     fn canonical_key(&self) -> String {
         self.to_string()
     }
 }
 
 impl Canonical for String {
+    const OWNER_TYPE_ID: &'static str = "rust.alloc.string.String";
+    const QUOTIENT_VERSION: u32 = 1;
+
     fn canonical_key(&self) -> String {
         self.clone()
     }

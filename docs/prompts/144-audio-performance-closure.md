@@ -26,6 +26,8 @@ no-allocation/no-lock/no-I/O contract.
   roadmap §§13.2/17.5, and all completion notes from prompts 130–143.
 - Audio/compiler/project benchmarks, callback instrumentation, offline/live render code, prepared-plan queues and
   retirement, decoded-asset store, sampler/media voices, UI Sound/Mix performance tests.
+- `docs/spec/03-process-calculus.md` and `04-identity-and-realization.md`; prompt 131's process/identity completion
+  notes.
 
 ## Design
 
@@ -44,21 +46,23 @@ memory, prepared-plan size, callback max/p95 time and deadline misses, voices pr
 offline throughput, UI response, and cache behavior. Record machine/toolchain, sample rate, block size, corpus digests,
 method, uncertainty, and raw results.
 
-**Measure `R1`, and report the result whether or not it is convenient.** `docs/core-boundary.md` §5 deferred the signal
-question on the strength of one law: semantically equal gesture timelines prepare identically and render frame for frame
-identically under the same instrument bindings and realization seed. The measurement is a differential one and belongs
-with the workloads above — construct pairs of gesture timelines that differ only in what normalization forgets (N7:
-declaration order where order does not matter, an inlined name, sharing structure) and compare prepared plans byte for
-byte and rendered output frame for frame. A failure is not a bug to patch downstream: it means something the kernel
-forgets is load-bearing for sound, and it reopens `docs/core-boundary.md` §5, whose §5 "what reopens this" clause says
-the report belongs there. Record the finding in the comparison report either way.
+**Measure `R1`, and report the result whether or not it is convenient.** Construct presentation pairs with equal
+`Sem_Gesture` and unequal presentation-only fields; under equal bindings, seed, and complete options they must return
+the same complete preparation `Result`. Then vary each option, binding, and seed independently to prove it is in the
+exact argument record rather than ambient. Lineage may differ and is measured separately. A preparation difference under
+equal complete inputs means the boundary is wrong and is reported against `docs/core-boundary.md` §5.
 
-Rendering must be independent of host block partition wherever the specification promises it. Caches key on exact
-source/studio semantics, instrument signature/body, locked asset/package digests, realization seed, sample rate, and
-render options. A cache keyed on the gesture timeline's semantic hash is correct exactly because R1 holds, so the R1
-measurement is a precondition for the cache rather than a nicety alongside it. Eviction changes cost only. Streaming is
-admitted only if measured preloading misses a stated workload; its control-side producer, bounded queue, underrun
-semantics, and offline determinism must then be specified and tested.
+Frame comparison is a second conditional experiment: hold allocation/initial node and register state, external input
+history, parameters, and processor conformance fixed, then compare output. Report whether the promise is exact bits or a
+named numeric tolerance per processor/target. Do not attribute a failed runtime premise to temporal semantic equality.
+
+Rendering must be independent of host block partition wherever the specification promises it. Test all partitions of the
+same frame count, especially registered feedback, envelopes, modulation, and media. Caches key on one canonical complete
+`ExecArgs` record covering the operation version, exact gesture semantic bytes/schema, instrument/studio bindings,
+locked asset/package identities, seed, sample rate/channel/tick policy, bounds, and render options. A digest selects
+candidates; exact complete argument bytes confirm a hit. Inject deliberate digest collisions. Eviction changes cost
+only. Streaming is admitted only if measured preloading misses a stated workload; its control-side producer, bounded
+queue, underrun semantics, and offline determinism must then be specified and tested.
 
 ## Target
 
@@ -66,7 +70,8 @@ semantics, and offline determinism must then be specified and tested.
 - Measured budgets and scale variables added to language/interface performance documentation.
 - Focused fixes tied to observed profiles, with cached/uncached and block-partition differential laws.
 - RT instrumentation proving callback and destruction constraints across native/sample/media plans.
-- The R1 differential result, in the comparison report, with the pairs used and the outcome stated plainly.
+- The R1 preparation, conditional-frame, lineage-separation, digest-collision, and host-partition differential results,
+  with pairs/premises/outcomes stated plainly.
 - Public-surface/dependency audit after optimization.
 
 ## Check

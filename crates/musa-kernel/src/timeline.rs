@@ -328,32 +328,33 @@ impl<A: Canonical> Timeline<A> {
             .next_back()
     }
 
-    /// A stable digest of the canonical form (N6).
+    /// A stable digest of the exact framed semantic encoding (N6).
     ///
     /// Equal canonical forms hash equal, in every run and every process:
     /// `self.semantic_eq(other)` implies `self.semantic_hash() ==
-    /// other.semantic_hash()`. The converse holds up to the collision
-    /// probability of a 128-bit digest, so an unequal hash *proves* the
-    /// semantics differ — which is the direction a caller deciding whether to
-    /// rebuild something actually needs.
+    /// other.semantic_hash()`. An unequal hash proves that the framed
+    /// semantic encodings differ. Equal hashes are only candidate matches and
+    /// require exact confirmation whenever correctness depends on equality.
     ///
-    /// The digest is over exactly the bytes [`Display`](std::fmt::Display)
-    /// writes, produced by the same writer, so the two can never disagree.
-    /// It therefore covers whatever the payload's
+    /// The encoding is versioned and uniquely frames the timeline, payload
+    /// schema, rational fields, occurrence count, and payload keys. It is
+    /// intentionally separate from human [`Display`](std::fmt::Display),
+    /// whose unescaped payload text is not an injective record encoding. It
+    /// covers whatever the payload's
     /// [`canonical_key`](Canonical::canonical_key) covers — for musa's score
     /// facts, provenance included. A pure re-indentation moves source spans
     /// and changes the hash: the question this answers is "is this the same
     /// compiled piece", never "does it sound the same".
     pub fn semantic_hash(&self) -> crate::SemanticHash {
         let mut digest = crate::hash::Digest::new();
-        // Writing to a `Digest` cannot fail, so there is no error to report.
-        let _ = self.write_canonical(&mut digest);
+        self.write_semantic(&mut digest);
         digest.finish()
     }
 
-    /// The canonical serialization (N5). One writer serves both
-    /// [`Display`](std::fmt::Display) and [`Self::semantic_hash`].
-    fn write_canonical<W: std::fmt::Write>(&self, out: &mut W) -> std::fmt::Result {
+    /// The human canonical display (N5). This is deterministic but is not a
+    /// persisted identity encoding; payload keys are intentionally readable
+    /// and may contain its delimiters.
+    fn write_display<W: std::fmt::Write>(&self, out: &mut W) -> std::fmt::Result {
         writeln!(out, "timeline {} {{", self.extent)?;
         for occurrence in self.canonical_occurrences() {
             writeln!(
@@ -366,12 +367,48 @@ impl<A: Canonical> Timeline<A> {
         }
         writeln!(out, "}}")
     }
+
+    /// Write N6's private, versioned, uniquely framed semantic bytes.
+    fn write_semantic(&self, out: &mut crate::hash::Digest) {
+        const DOMAIN: &[u8] = b"musa.timeline.semantic";
+        const ENCODING_VERSION: u32 = 2;
+
+        write_bytes(out, DOMAIN);
+        out.write(&ENCODING_VERSION.to_be_bytes());
+        write_bytes(out, A::OWNER_TYPE_ID.as_bytes());
+        out.write(&A::QUOTIENT_VERSION.to_be_bytes());
+        write_rational(out, self.extent);
+
+        write_len(out, self.occurrences.len());
+        for occurrence in self.canonical_occurrences() {
+            write_rational(out, occurrence.span().start());
+            write_rational(out, occurrence.span().end());
+            write_bytes(out, occurrence.payload().canonical_key().as_bytes());
+        }
+    }
+}
+
+fn write_len(out: &mut crate::hash::Digest, len: usize) {
+    // Every supported Rust target has `usize` no wider than `u64`.
+    let len = u64::try_from(len).unwrap_or(u64::MAX);
+    out.write(&len.to_be_bytes());
+}
+
+fn write_bytes(out: &mut crate::hash::Digest, bytes: &[u8]) {
+    write_len(out, bytes.len());
+    out.write(bytes);
+}
+
+fn write_rational(out: &mut crate::hash::Digest, value: Beat) {
+    let ratio = value.as_ratio();
+    out.write(&ratio.numer().to_be_bytes());
+    out.write(&ratio.denom().to_be_bytes());
 }
 
 impl<A: Canonical> std::fmt::Display for Timeline<A> {
-    /// The canonical serialization (N5): deterministic bytes for golden
-    /// tests and semantic hashes.
+    /// The canonical human serialization (N5): deterministic display bytes,
+    /// deliberately separate from framed semantic identity (N6).
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.write_canonical(f)
+        self.write_display(f)
     }
 }

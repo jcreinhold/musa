@@ -133,15 +133,15 @@ proptest! {
 
     /// T3 — evaluation is normalization: normalizing an evaluated term is the
     /// canonical form, and two terms are semantically equal exactly when
-    /// their canonical forms — and therefore their hashes — agree. There is
-    /// one equality in this kernel.
+    /// those canonical values agree. Equal canonical values have equal framed
+    /// hashes; digest equality alone is not used as a converse.
     #[test]
     fn evaluation_agrees_with_normalization(left in arb_term(2), right in arb_term(2)) {
         let (lv, rv) = (evaluate(left), evaluate(right));
         prop_assert!(lv.normalize().semantic_eq(&lv), "normalize preserves meaning");
         prop_assert_eq!(
             lv.semantic_eq(&rv),
-            lv.normalize().to_string() == rv.normalize().to_string(),
+            lv.normalize() == rv.normalize(),
             "semantic equality is equality of canonical forms"
         );
         if lv.semantic_eq(&rv) {
@@ -289,6 +289,9 @@ fn shift_denotes_its_stated_expansion() {
 struct Awkward(String);
 
 impl musa_kernel::Canonical for Awkward {
+    const OWNER_TYPE_ID: &'static str = "musa.kernel.tests.Awkward";
+    const QUOTIENT_VERSION: u32 = 1;
+
     fn canonical_key(&self) -> String {
         self.0.clone()
     }

@@ -6,6 +6,10 @@ This directory is the executable work plan for building musa according to
 [`../interface/`](../interface/README.md). Each numbered prompt delivers one feature and builds on the prompts it
 depends on. Work them in dependency order; when in doubt, work them in numeric order.
 
+`docs/governance/` now owns identity-level commitments. `docs/spec/` owns cross-stage formal semantics, including the
+private process calculus and exact preparation/cache laws; `docs/architecture/` maps those rules to current code. A
+pending prompt which contradicts them is repaired and committed before implementation, per execution rule 5.
+
 **Where the roadmap and the course correction disagree** — most importantly, the course correction's rule that the
 surface grammar does not define the ontology and that a small temporal kernel (`timeline` / `sequence` / `overlay` over
 exact rational ambient time) is the semantic core — the course correction wins. Prompts 08–12 specify, implement, prove,

@@ -54,6 +54,34 @@ temporal kernel → tempo/performance → physical musical events → instrument
 No DSP concept enters the kernel; no kernel concept enters a sample buffer. The engine consumes scheduled physical
 events, never timelines.
 
+### R1 — exact preparation and conditional frame equality
+
+The realization boundary has the conceptual operation:
+
+```text
+prepare_execution :
+  Sem_Gesture × Bindings × Seed × Options
+  → Result PreparedExecution PrepareError.
+```
+
+`Sem_Gesture` is the exact structured gesture semantics under its admitted schema. `Bindings`, `Seed`, `Options`, and
+the complete `Result` each own a versioned canonical equality; `Options` includes every acceptance- or
+execution-affecting choice, including rate, channel contract, semantic tick policy, bounds, and deterministic quality
+policy. Presentation-only lineage is produced separately and cannot affect `PreparedExecution`.
+
+**R1.** Equal complete arguments to a pure deterministic `prepare_execution` return equal complete results. This is
+function congruence, not a cache or hash assumption.
+
+Equal successful preparation results yield equal output ticks only with equal external input histories, equal initial
+and allocation state, and processors conforming to the deterministic process contract in
+`docs/spec/03-process-calculus.md`. Floating-point/device equality is no stronger than those processor premises.
+`prepare_lineage` separately relates the presentation gesture to process anchors and records losses; it does not modify
+execution.
+
+A preparation cache stores the named operation version, every complete framed argument, and the complete result. A
+digest locates candidates. A hit is returned only after exact complete-argument confirmation, so a digest collision
+cannot change the answer.
+
 ## The preserved boundaries (§27–28)
 
 - `ScoreSnapshot` is the score-specific interpretation of the normalized denotation. Note-specific assumptions live
@@ -182,9 +210,9 @@ three things and nothing more:
    hairpin's breakpoints — is exact and must stay exact. A consumer that reads a shape through `f64` and writes it back
    has produced a different piece, and the semantic hash will say so. Where to sample is still free, exactly as above.
 3. **Agree on the meaning, not the spelling.** Two consumers conform when they evaluate a file to timelines with the
-   same normal form (N5) and therefore the same semantic hash (N6). How they got there — whether they expanded `let`
-   eagerly, kept the sharing, or restricted before evaluating — is their business, because the calculus's theorems
-   (`10-term-calculus.md` T1–T5) say those choices cannot change the answer.
+   same N4 canonical semantic value and therefore the same semantic hash (N6). N5 human text alone is insufficient. How
+   they got there — whether they expanded `let` eagerly, kept the sharing, or restricted before evaluating — is their
+   business, because the calculus's theorems (`10-term-calculus.md` T1–T5) say those choices cannot change the answer.
 
 What a consumer does **not** owe: understanding the payload. A file's payloads are opaque strings typed by
 `Timeline[<PayloadType>]`, and a consumer that does not own that payload type may still check the file's structure,

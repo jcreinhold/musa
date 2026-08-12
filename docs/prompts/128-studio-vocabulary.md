@@ -24,6 +24,8 @@ desktop, and generated reference material consume the same facts.
 - `crates/musa-compiler/src/studio.rs`, especially `Processor::params`/`ParamSpec`; `musa-audio` parameter descriptors;
   keyword docs and `musa-lsp/src/features/hover.rs::at_studio`.
 - Existing Sound/Mix facts and all hard-coded processor/parameter name matches. Count them before choosing an owner.
+- `docs/spec/03-process-calculus.md` and `docs/architecture/process-runtime.md`; the catalogue's stable processor/port
+  descriptors become the closed registry used by the private process IR at prompt 131.
 
 ## Design
 
@@ -31,6 +33,11 @@ The compiler-side surface catalogue owns processor spelling, musician-facing sum
 names, aliases, unit, written range/default, signal role, and example. The audio descriptor continues to own the
 post-conversion DSP range, smoothing, and combination policy. Join them by a checked stable key; do not force two
 different questions into one descriptor and do not introduce a new crate for a table.
+
+The catalogue entry also fixes the versioned processor identity and public port/parameter schema which preparation will
+validate. It does not expose the private node state or implement the process calculus in this prompt. A built-in which
+cannot supply a first-order total-transition/resource contract is marked unavailable to the native process registry
+rather than admitted through a callback-shaped escape hatch.
 
 Canonicalize filter `resonance`; accept `q` as a source-compatible deprecated alias with a certain code action. Hover
 explains that resonance is conventionally represented by quality factor Q. Existing source and audio remain unchanged

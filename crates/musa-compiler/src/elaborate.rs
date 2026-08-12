@@ -351,8 +351,13 @@ impl ScoreFact {
 }
 
 impl musa_kernel::Canonical for ScoreFact {
-    /// Deterministic, injective key for canonical ordering and semantic
-    /// equality (docs/kernel/05 N3): identity, kind, and full provenance.
+    const OWNER_TYPE_ID: &'static str = "musa.compiler.ScoreFact";
+    const QUOTIENT_VERSION: u32 = 1;
+
+    /// Deterministic key for canonical ordering and the admitted score-fact
+    /// equality (docs/kernel/05 N3, 12): scope, kind, source span, and
+    /// expansion path. Other stored compilation details are deliberately not
+    /// part of this quotient.
     ///
     /// A note or rest with nothing written on it keys exactly as it did
     /// before facts were heterogeneous, so a piece of plain notes has the
@@ -4357,8 +4362,9 @@ fn check_tuplets(resolver: &mut Resolver, snapshot: &ScoreSnapshot) {
     }
 }
 
-/// The normalized kernel text of a source's piece timeline, for golden
-/// snapshots and semantic hashing (docs/kernel/05 N5–N6). `None` when the
+/// The normalized human-display text of a source's piece timeline, for golden
+/// snapshots (docs/kernel/05 N5). Semantic hashing uses separate framed N6
+/// bytes. `None` when the
 /// source does not elaborate cleanly.
 ///
 /// One timeline, not one per part: a compilation has exactly

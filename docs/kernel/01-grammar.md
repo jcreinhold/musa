@@ -1,9 +1,10 @@
 # 01 — Kernel Interchange Grammar
 
 This document defines the **kernel interchange syntax**: the concrete notation for the terms of `10-term-calculus.md`.
-It is a semantic/interchange language for golden tests, semantic hashing, and cross-tool exchange. **It is not the
-syntax musicians write** (course correction §24); the musician-facing surface language is the `.musa` grammar handled by
-`musa-language`, and its elaboration is specified in `06-surface-elaboration.md`.
+It is a semantic/interchange language for golden tests, semantic comparison, and cross-tool exchange. Parsing and
+evaluation produce the timeline whose separately framed N6 bytes are hashed. **It is not the syntax musicians write**
+(course correction §24); the musician-facing surface language is the `.musa` grammar handled by `musa-language`, and its
+elaboration is specified in `06-surface-elaboration.md`.
 
 **Grammar here, calculus there.** This document says how a term is written; `10-term-calculus.md` says what it means,
 which terms are well-formed (with `02-static-semantics.md` K7), and which theorems hold. Neither is complete without the

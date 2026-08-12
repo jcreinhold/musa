@@ -119,9 +119,12 @@ impl Progress {
 }
 
 impl Canonical for Progress {
+    const OWNER_TYPE_ID: &'static str = "musa.kernel.Progress";
+    const QUOTIENT_VERSION: u32 = 1;
+
     /// `u:v` pairs joined by `,`, each rational as `num/den` (docs/kernel/05
-    /// N3). Exact, float-free, and injective because the breakpoints are
-    /// strictly increasing.
+    /// N3). Exact, float-free, and complete for `Progress` equality because
+    /// the breakpoints are strictly increasing.
     fn canonical_key(&self) -> String {
         let mut key = String::with_capacity(self.points.len() * 12);
         for (index, (u, v)) in self.points.iter().enumerate() {
