@@ -96,7 +96,7 @@ Per the working rules: what emerged that was not put in.
    quotient map `Frame::locate` documented as returning "the canonical representative", and a test asserting a square
    between two levels commutes. T is *corroborated* by the convergence and *not* advanced by it — the probe tested the
    repo, not the music. The one residue is a cleanup: `voice_leading.rs:445` open-codes what `Frame::locate` provides.
-2. **Answer Q-B** (`docs/kernel-hypothesis/05-open-questions.md`) — decides whether F-strong is a kernel change or an
+2. **Answer Q-B** (`docs/scratch/kernel-hypothesis/05-open-questions.md`) — decides whether F-strong is a kernel change or an
    analysis feature, and therefore whether the base is in the motive.
 3. **Constrain `B`'s equality when `B` is introduced** — *restated after [07](07-probe-log.md) P-3 corrected it.* The
    earlier wording claimed a present defect and named the wrong object. `B` is R1's *instrument bindings*, not

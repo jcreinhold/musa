@@ -1,10 +1,10 @@
 # Scratch: the search for the musical motive
 
-**Status: scratch. Governs nothing. Not even research-grade yet.** `docs/kernel/` is the governing kernel specification,
-`docs/course-correction.md` the governing ontology, `docs/core-boundary.md` the governing boundary decision.
-`docs/kernel-hypothesis/` is research that governs nothing and is *upstream* of this directory. This directory is
-downstream of all of them and is a working notebook: hard copies of thinking, kept so they can be iterated on and so
-that a claim which gets refuted stays visible next to its refutation.
+**Status: research. Governs nothing.** `docs/governance/` holds the decisions this work fed into, `docs/kernel/` the
+governing kernel specification, `docs/spec/` the cross-stage rules distilled from files 19–57 below.
+[`kernel-hypothesis/`](kernel-hypothesis/README.md) is the earlier research line, *upstream* of the numbered files here.
+This directory is downstream of all of them and is a working notebook: hard copies of thinking, kept so they can be
+iterated on and so that a claim which gets refuted stays visible next to its refutation.
 
 ## Why this directory exists
 
@@ -52,6 +52,10 @@ evidence.
 
 ## Reading order
 
+Files 00–18 are the motive search, in sequence. Files 19 onward are four later lines of inquiry, summarized after the
+table — they are the ones `docs/spec/` and `docs/governance/` were actually distilled from, and they are appended to as
+the work continues, so they are indexed by line rather than one row per file.
+
 | File | What it holds |
 | --- | --- |
 | [00-the-motive-question.md](00-the-motive-question.md) | The question stated precisely enough to be answered wrongly, and the three tests any answer must pass |
@@ -72,12 +76,25 @@ evidence.
 | [15-candidate-frames.md](15-candidate-frames.md) | Candidate F₂ — context-indexed worlds; pitch collections, transposition, and conditional key families from free constructions and frame actions |
 | [16-candidate-fibred-equipment.md](16-candidate-fibred-equipment.md) | Candidate E₂ — synthesis as context-indexed monoidal process worlds joined by modules, with a small dependently sorted diagram language |
 | [17-sieve-and-prototype.md](17-sieve-and-prototype.md) | Comparative sieve, the smallest surviving conjecture, and a fixed-signature prototype plan designed to falsify it |
-| [18-minimal-recommendation.md](18-minimal-recommendation.md) | **Current recommendation** — begin with one multi-sorted compositional syntax; worlds, links, dependency, choice, and guarded computation must earn admission through failed examples |
+| [18-minimal-recommendation.md](18-minimal-recommendation.md) | End of the motive search — begin with one multi-sorted compositional syntax; worlds, links, dependency, choice, and guarded computation must earn admission through failed examples |
+
+### After the motive search
+
+Four lines, each following the same shape: a candidate, its metatheory, then an adversarial proof review that is kept
+whether or not it was kind to the candidate.
+
+| Files | Line | What came of it |
+| --- | --- | --- |
+| [19](19-domain-obligations.md) | **Domain obligations** — what a second kernel would have to earn before it exists | The standing precondition on all three lines below |
+| [20](20-candidate-staged-algebras.md)–[27](27-lineage-is-the-link.md) | **K₁** — a total metalanguage with staged deep algebras, its semantics, encodings, five-case sieve, metatheory, and proof review; then candidates E₃ and H, and the turn to lineage | K₁ fell; [27](27-lineage-is-the-link.md) is where "lineage is the link" replaced the search for a common residue |
+| [28](28-candidate-k2.md)–[33](33-studio-feedback-semantics.md) | **K₂** — the smallest coherent core, its metatheory and proof review; theory modules as candidate T₂; the derivation diagram as the coherent object; studio feedback | [32](32-the-coherent-object-is-the-diagram.md) is the load-bearing result: the coherent object is the derivation diagram, not a musical motive. It is what `docs/spec/02-derivation-diagrams.md` became |
+| [34](34-candidate-k3-stratified-kernels.md)–[45](45-proof-review-k3.3.md) | **K₃** — three small kernels and one coherence discipline, closed in three passes (K₃.1 framing, K₃.2 semantic framing and typed lineage paths, K₃.3 integration), each with its proof review; plus [40](40-canonical-framing-bug.md), a governing bug, and [43](43-what-the-iut-analogy-earns.md) | The reviewed source of `docs/spec/` and of the identity rules in `docs/governance/`. `docs/spec/05-metatheory.md` §1 cites 25/30/35/39/42/45 as the proof-review record |
+| [36](36-theory-module-paper-prototypes.md)–[37](37-calculus-of-theory-modules.md), [46](46-proof-review-t2a.md)– | **T₂** — theory modules, from paper prototypes and the T₂a nominal calculus through source closure (T₂b–T₂e), active packages (T₂f), source packages and caches (T₂g), and onward | Open. This is the live line; it is a proposal, not an accepted design |
 
 ## Standard of evidence
 
-Inherited unchanged from `docs/kernel-hypothesis/README.md`, because it is the right standard and because these
-documents are meant to be read next to those:
+Inherited unchanged from [`kernel-hypothesis/README.md`](kernel-hypothesis/README.md), because it is the right standard
+and because these documents are meant to be read next to those:
 
 - **Cited** — a claim about music theory, with an Open Music Theory chapter given by filename.
 - **Derived** — a mathematical consequence of stated definitions, as a numbered proposition.
@@ -94,10 +111,10 @@ kind of work they govern:
 
 Honesty about provenance, because most of this directory's value is in the two or three genuinely new claims:
 
-- **Converges with `docs/kernel-hypothesis/`**, arrived at independently from OMT before that directory was read: the
-  group-action reading of Tₙ/Iₙ (its Atom 5), normal order and prime form as canonicalization-then-orbit (its Atom 6),
-  and the metrical-layer reading of hypermeter and metrical dissonance (its Atom 4). Where this directory and that one
-  agree, that one has priority and better evidence.
+- **Converges with [`kernel-hypothesis/`](kernel-hypothesis/README.md)**, arrived at independently from OMT before that
+  directory was read: the group-action reading of Tₙ/Iₙ (its Atom 5), normal order and prime form as
+  canonicalization-then-orbit (its Atom 6), and the metrical-layer reading of hypermeter and metrical dissonance (its
+  Atom 4). Where this directory and that one agree, that one has priority and better evidence.
 - **New here:** the polarity/CBPV reading ([02](02-candidate-polarity.md)), which is absent there and which answers the
   studio question that started this; the tropical-semiring grading ([03](03-candidate-graded.md)); the observation that
   **L18's side condition is itself the evidence for Atom 4** ([04](04-candidate-fibred.md)), which is an argument for

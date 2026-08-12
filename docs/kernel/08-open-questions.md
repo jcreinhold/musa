@@ -59,7 +59,7 @@ invent one. A kernel-level partial order would have had nothing to do in either 
 Two things this deliberately does not settle, both recorded rather than closed. A **partially ordered** succession (OMT
 `110-row-properties.md` §"Partially ordered sets" — segments fixed, internal order free) and **divisi** (one line
 splitting and rejoining) are still inexpressible with per-note tags. Neither has a consumer, and under the standing rule
-demand precedes design; the analysis is in `docs/kernel-hypothesis/06-evidence-log.md` Gate 2, which is what a future
+demand precedes design; the analysis is in `docs/scratch/kernel-hypothesis/06-evidence-log.md` Gate 2, which is what a future
 proposal has to beat.
 
 ## Q4 — Time-varying continuous controls — **RESOLVED (prompt 45)**

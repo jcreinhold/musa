@@ -3,7 +3,7 @@
 **Source.** `~/Code/papers/category-theory/grothendieck-method/process.md` for the test;
 `docs/kernel/04-algebraic-laws.md` L18 and X-laws for the symptom; OMT `117-hypermeter.md`,
 `118-metrical-dissonance.md`, `098-twentieth-century-rhythmic-techniques.md` §Polymeter for the content;
-`docs/kernel-hypothesis/01-atoms.md` §4 for the atom this argues for.
+`docs/scratch/kernel-hypothesis/01-atoms.md` §4 for the atom this argues for.
 
 **One-line claim.** L18's side condition is not a wart. It is the kernel telling us that it has objects it has not
 named, and naming them is the same move as admitting metrical layers.
@@ -74,7 +74,7 @@ moves between fibres by adding, `⊕` acts within one. L18 becomes unconditional
 grade algebra used as a base rather than as bookkeeping. It buys the law and nothing musical.
 
 **F-strong — fibre over metrical contexts.** An object is a finite set of pulse layers `(phase, period)`, which is
-`docs/kernel-hypothesis/01-atoms.md` Atom 4 exactly. Then:
+`docs/scratch/kernel-hypothesis/01-atoms.md` Atom 4 exactly. Then:
 
 - Re-barring is a **change of base** that leaves the fibre alone — which is Atom 4 §4.2's "the barline is derived",
   arrived at from the other direction.
@@ -100,7 +100,7 @@ and T4's totality argument is untouched — the change is to what an object is, 
 
 ## 6. Gaps — stated, not patched
 
-**G-1. Where do layers come from?** `docs/kernel-hypothesis/01-atoms.md` §4 names this as the sharpest unresolved
+**G-1. Where do layers come from?** `docs/scratch/kernel-hypothesis/01-atoms.md` §4 names this as the sharpest unresolved
 question in that directory and does not settle it: notated meter supplies one layer, but hypermeter and implicit
 polymeter are *heard*. If layers are denotation, an analysis that hears a hypermeter is changing the piece. If they are
 analysis, the base is not part of the motive and F-strong collapses to F-weak. **F does not resolve this and must not
@@ -127,6 +127,6 @@ repeat prompt 37's mistake in reverse.
 
 **The strongest structural candidate, and the one to test next.** It is the only candidate here that is argued from a
 defect *internal to the existing kernel* — L18's proviso — rather than from an outside framework, and it lands on the
-one atom that survived both gates in `docs/kernel-hypothesis/`. It is not the motive either: it describes the base, and
+one atom that survived both gates in `docs/scratch/kernel-hypothesis/`. It is not the motive either: it describes the base, and
 [05](05-candidate-torsor.md) describes the fibre's payload. If both are right, the motive is a pair, and §6 G-1 is the
 question that decides whether the base half is real.

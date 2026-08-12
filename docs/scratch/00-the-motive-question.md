@@ -66,7 +66,7 @@ informative fact in the law list.
 The motive must be neither too coarse nor too fine.
 
 - **Too coarse** — it forgets something some realization needs. *Falsified by:* two pieces that `M` identifies and some
-  realization distinguishes. `docs/kernel-hypothesis/01-atoms.md` Proposition A is an attempt at exactly this
+  realization distinguishes. `docs/scratch/kernel-hypothesis/01-atoms.md` Proposition A is an attempt at exactly this
   falsification (parallel motion versus voice exchange), and `06-evidence-log.md` G0.2 records that it fails against the
   real pipeline because the voice tag rides in the payload.
 - **Too fine** — it carries something no realization reads. *Falsified by:* a field of `M` that no realization consumes.
