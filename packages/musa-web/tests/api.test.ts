@@ -22,7 +22,7 @@ const BROKEN = readFileSync(
   "utf8",
 );
 const MATERIAL =
-  "library {\n    motif rise(root: pitch = c5) {\n        root/4\n        d5/4\n    }\n}\n";
+  "library {\n    motif rise(root: Pitch = c5) {\n        root/4\n        d5/4\n    }\n}\n";
 
 describe("render", () => {
   it("keeps the id contract on a tie-heavy fixture, pieces and all", async () => {
