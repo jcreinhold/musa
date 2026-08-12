@@ -28,99 +28,54 @@ kernel "Changes" {
         occurrence "voice 4294967295 4294967295 note d6 1/4 [4294967295:4294967295 def 1435:1439 #4]" from 27/4 to 7;
         occurrence "voice 4294967295 4294967295 note c6 1 [4294967295:4294967295 def 1448:1452 #4]" from 7 to 8;
       }
-    in let shared1 = timeline 8 {
-        occurrence "voice 4294967295 4294967295 note d5 1/4 [4294967295:4294967295 def 1175:1179 #4]" from 0 to 1/4;
-        occurrence "voice 4294967295 4294967295 note f5 1/4 [4294967295:4294967295 def 1188:1192 #4]" from 1/4 to 1/2;
-        occurrence "voice 4294967295 4294967295 note a5 1/4 [4294967295:4294967295 def 1201:1205 #4]" from 1/2 to 3/4;
-        occurrence "voice 4294967295 4294967295 note c6 1/4 [4294967295:4294967295 def 1214:1218 #4]" from 3/4 to 1;
-        occurrence "voice 4294967295 4294967295 note b5 1/2 [4294967295:4294967295 def 1227:1231 #4]" from 1 to 3/2;
-        occurrence "voice 4294967295 4294967295 note g5 1/2 [4294967295:4294967295 def 1240:1244 #4]" from 3/2 to 2;
-        occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 1253:1257 #4]" from 2 to 9/4;
-        occurrence "voice 4294967295 4294967295 note b5 1/4 [4294967295:4294967295 def 1266:1270 #4]" from 9/4 to 5/2;
-        occurrence "voice 4294967295 4294967295 note d6 1/4 [4294967295:4294967295 def 1279:1283 #4]" from 5/2 to 11/4;
-        occurrence "voice 4294967295 4294967295 note f6 1/4 [4294967295:4294967295 def 1292:1296 #4]" from 11/4 to 3;
-        occurrence "voice 4294967295 4294967295 note e6 1 [4294967295:4294967295 def 1305:1309 #4]" from 3 to 4;
-        occurrence "voice 4294967295 4294967295 note c6 1/4 [4294967295:4294967295 def 1318:1322 #4]" from 4 to 17/4;
-        occurrence "voice 4294967295 4294967295 note a5 1/4 [4294967295:4294967295 def 1331:1335 #4]" from 17/4 to 9/2;
-        occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 1344:1348 #4]" from 9/2 to 19/4;
-        occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 1357:1361 #4]" from 19/4 to 5;
-        occurrence "voice 4294967295 4294967295 note d5 1/2 [4294967295:4294967295 def 1370:1374 #4]" from 5 to 11/2;
-        occurrence "voice 4294967295 4294967295 note f5 1/2 [4294967295:4294967295 def 1383:1387 #4]" from 11/2 to 6;
-        occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 1396:1400 #4]" from 6 to 25/4;
-        occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 1409:1413 #4]" from 25/4 to 13/2;
-        occurrence "voice 4294967295 4294967295 note b5 1/4 [4294967295:4294967295 def 1422:1426 #4]" from 13/2 to 27/4;
-        occurrence "voice 4294967295 4294967295 note d6 1/4 [4294967295:4294967295 def 1435:1439 #4]" from 27/4 to 7;
-        occurrence "voice 4294967295 4294967295 note c6 1 [4294967295:4294967295 def 1448:1452 #4]" from 7 to 8;
-      }
-    in let shared2 = timeline 1 {
+    in let shared1 = timeline 1 {
         occurrence "voice 4294967295 4294967295 note d3 1/4 [4294967295:4294967295 def 1667:1671 #5]" from 0 to 1/4;
         occurrence "voice 4294967295 4294967295 note f3 1/4 [4294967295:4294967295 def 1684:1688 #5]" from 1/4 to 1/2;
         occurrence "voice 4294967295 4294967295 note a3 1/4 [4294967295:4294967295 def 1701:1705 #5]" from 1/2 to 3/4;
         occurrence "voice 4294967295 4294967295 note c4 1/4 [4294967295:4294967295 def 1718:1722 #5]" from 3/4 to 1;
       }
-    in let shared3 = overlay {
+    in let shared2 = overlay {
         sequence {
-          shared2 @ "depth 0 via repeat 0";
-          shared2 @ "depth 0 via repeat 1";
-          shared2 @ "depth 0 via repeat 2";
-          shared2 @ "depth 0 via repeat 3";
-          shared2 @ "depth 0 via repeat 4";
-          shared2 @ "depth 0 via repeat 5";
-          shared2 @ "depth 0 via repeat 6";
-          shared2 @ "depth 0 via repeat 7"
+          shared1 @ "depth 0 via repeat 0";
+          shared1 @ "depth 0 via repeat 1";
+          shared1 @ "depth 0 via repeat 2";
+          shared1 @ "depth 0 via repeat 3";
+          shared1 @ "depth 0 via repeat 4";
+          shared1 @ "depth 0 via repeat 5";
+          shared1 @ "depth 0 via repeat 6";
+          shared1 @ "depth 0 via repeat 7"
         };
         timeline 8 {
           occurrence "voice 4294967295 4294967295 repeat 8 [4294967295:4294967295 def 1644:1732 #5]" from 0 to 8;
         }
       }
-    in let shared4 = timeline 1 {
+    in let shared3 = timeline 1 {
         occurrence "voice 4294967295 4294967295 note d3 1/4 [4294967295:4294967295 def 1796:1800 #6]" from 0 to 1/4;
         occurrence "voice 4294967295 4294967295 note f3 1/4 [4294967295:4294967295 def 1813:1817 #6]" from 1/4 to 1/2;
         occurrence "voice 4294967295 4294967295 note g3 1/4 [4294967295:4294967295 def 1830:1834 #6]" from 1/2 to 3/4;
         occurrence "voice 4294967295 4294967295 note b3 1/4 [4294967295:4294967295 def 1847:1851 #6]" from 3/4 to 1;
       }
-    in let shared5 = overlay {
+    in let shared4 = overlay {
         sequence {
-          shared4 @ "depth 0 via repeat 0";
-          shared4 @ "depth 0 via repeat 1";
-          shared4 @ "depth 0 via repeat 2";
-          shared4 @ "depth 0 via repeat 3";
-          shared4 @ "depth 0 via repeat 4";
-          shared4 @ "depth 0 via repeat 5";
-          shared4 @ "depth 0 via repeat 6";
-          shared4 @ "depth 0 via repeat 7";
-          shared4 @ "depth 0 via repeat 8";
-          shared4 @ "depth 0 via repeat 9";
-          shared4 @ "depth 0 via repeat 10";
-          shared4 @ "depth 0 via repeat 11";
-          shared4 @ "depth 0 via repeat 12";
-          shared4 @ "depth 0 via repeat 13";
-          shared4 @ "depth 0 via repeat 14";
-          shared4 @ "depth 0 via repeat 15"
+          shared3 @ "depth 0 via repeat 0";
+          shared3 @ "depth 0 via repeat 1";
+          shared3 @ "depth 0 via repeat 2";
+          shared3 @ "depth 0 via repeat 3";
+          shared3 @ "depth 0 via repeat 4";
+          shared3 @ "depth 0 via repeat 5";
+          shared3 @ "depth 0 via repeat 6";
+          shared3 @ "depth 0 via repeat 7";
+          shared3 @ "depth 0 via repeat 8";
+          shared3 @ "depth 0 via repeat 9";
+          shared3 @ "depth 0 via repeat 10";
+          shared3 @ "depth 0 via repeat 11";
+          shared3 @ "depth 0 via repeat 12";
+          shared3 @ "depth 0 via repeat 13";
+          shared3 @ "depth 0 via repeat 14";
+          shared3 @ "depth 0 via repeat 15"
         };
         timeline 16 {
           occurrence "voice 4294967295 4294967295 repeat 16 [4294967295:4294967295 def 1772:1861 #6]" from 0 to 16;
-        }
-      }
-    in let shared6 = timeline 1 {
-        occurrence "voice 4294967295 4294967295 note d3 1/4 [4294967295:4294967295 def 1667:1671 #5]" from 0 to 1/4;
-        occurrence "voice 4294967295 4294967295 note f3 1/4 [4294967295:4294967295 def 1684:1688 #5]" from 1/4 to 1/2;
-        occurrence "voice 4294967295 4294967295 note a3 1/4 [4294967295:4294967295 def 1701:1705 #5]" from 1/2 to 3/4;
-        occurrence "voice 4294967295 4294967295 note c4 1/4 [4294967295:4294967295 def 1718:1722 #5]" from 3/4 to 1;
-      }
-    in let shared7 = overlay {
-        sequence {
-          shared6 @ "depth 0 via repeat 0";
-          shared6 @ "depth 0 via repeat 1";
-          shared6 @ "depth 0 via repeat 2";
-          shared6 @ "depth 0 via repeat 3";
-          shared6 @ "depth 0 via repeat 4";
-          shared6 @ "depth 0 via repeat 5";
-          shared6 @ "depth 0 via repeat 6";
-          shared6 @ "depth 0 via repeat 7"
-        };
-        timeline 8 {
-          occurrence "voice 4294967295 4294967295 repeat 8 [4294967295:4294967295 def 1644:1732 #5]" from 0 to 8;
         }
       }
     in overlay {
@@ -129,15 +84,15 @@ kernel "Changes" {
         timeline 16 {
           occurrence "voice 0 0 improvise over 'Dm7 | G7 | Cmaj7 | Cmaj7' [1968:2015 #7]" from 0 to 16;
         };
-        shared1 @ "depth 0 origin 2032:2041 scope voice 0 0 via motif 2032:2041";
+        shared0 @ "depth 0 origin 2032:2041 scope voice 0 0 via motif 2032:2041";
         timeline 9/8 {
           occurrence "voice 0 0 note c6 9/8 spelled '1' free 1 4 [2058:2069 #7]" from 0 to 9/8;
         }
       };
       sequence {
-        shared3 @ "depth 0 origin 2156:2170 scope voice 1 0 via motif 2156:2170";
-        shared5 @ "depth 0 origin 2187:2201 scope voice 1 0 via motif 2187:2201";
-        shared7 @ "depth 0 origin 2218:2232 scope voice 1 0 via motif 2218:2232";
+        shared2 @ "depth 0 origin 2156:2170 scope voice 1 0 via motif 2156:2170";
+        shared4 @ "depth 0 origin 2187:2201 scope voice 1 0 via motif 2187:2201";
+        shared2 @ "depth 0 origin 2218:2232 scope voice 1 0 via motif 2218:2232";
         timeline 9/8 {
           occurrence "voice 1 0 note c3 9/8 spelled '1' free 1 4 [2249:2260 #8]" from 0 to 9/8;
         }

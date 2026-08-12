@@ -14,6 +14,92 @@ use crate::compile::{Compilation, CompileOptions, SourceDocument};
 use crate::elaborate::VoiceTimeline;
 use crate::resolve::Resolver;
 
+/// How a sharing workload writes the same music (prompt 127).
+///
+/// The three shapes denote different pieces on purpose — comparing them is
+/// how the two sharing gaps are priced. [`Sharing::Identical`] is the
+/// call-site gap: every call denotes the same body and the compiler must
+/// decide whether it elaborates it once. [`Sharing::Distinct`] and
+/// [`Sharing::Hoisted`] are the full-laziness gap: the same music, written
+/// with the argument-independent tail inside the parameterized body and
+/// written beside it.
+/// How many distinct arguments [`sharing_source`] has to spend: seven letters
+/// over five octaves.
+pub const DISTINCT_ROOTS: usize = 35;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Sharing {
+    /// `calls` calls of one parameterless motif, at `calls` distinct sites.
+    Identical,
+    /// `calls` calls of one motif whose first note is its argument and whose
+    /// remaining `body` notes are not.
+    Distinct,
+    /// The same music as [`Sharing::Distinct`], with the argument-independent
+    /// notes hoisted by hand into a motif of their own.
+    Hoisted,
+}
+
+/// A generated piece whose sharing behaviour is the whole point.
+///
+/// `calls` is the number of call sites and `body` the number of
+/// argument-independent notes in the body, so the duplicated work a compiler
+/// could avoid is `calls * body` notes and the music itself is fixed by the
+/// pair. Generated rather than committed because the workload is a *curve*:
+/// one row of it would say nothing about how the cost scales.
+///
+/// The arguments walk seven letters over five octaves, so a workload of more
+/// than [`DISTINCT_ROOTS`] calls repeats arguments. That is not a shortcut:
+/// the written range is finite and a real piece calling one motif five
+/// hundred times is calling it on the same notes more than once.
+pub fn sharing_source(shape: Sharing, calls: usize, body: usize) -> String {
+    use std::fmt::Write as _;
+
+    const LETTERS: [&str; 7] = ["c", "d", "e", "f", "g", "a", "b"];
+    const OCTAVES: [&str; 5] = ["2", "3", "4", "5", "6"];
+    let letter = |index: usize| LETTERS.get(index % 7).copied().unwrap_or("c");
+    let octave = |index: usize| OCTAVES.get((index / 7) % 5).copied().unwrap_or("4");
+    let tail = |source: &mut String| {
+        for note in 0..body {
+            let _ = write!(source, " {}5/16", letter(note));
+        }
+    };
+
+    let mut source = String::from("piece \"Sharing\" {\n    meter 4/4;\n    key c major;\n\n");
+    match shape {
+        Sharing::Identical => {
+            source.push_str("    motif cell() {");
+            tail(&mut source);
+            source.push_str(" }\n");
+        }
+        Sharing::Distinct => {
+            source.push_str("    motif cell(root: Pitch = c5) { root/16");
+            tail(&mut source);
+            source.push_str(" }\n");
+        }
+        Sharing::Hoisted => {
+            source.push_str("    motif head(root: Pitch = c5) { root/16 }\n    motif tail() {");
+            tail(&mut source);
+            source.push_str(" }\n");
+        }
+    }
+    source.push_str("\n    score {\n        part p {\n            voice v {\n");
+    for call in 0..calls {
+        let root = format!("{}{}", letter(call), octave(call));
+        match shape {
+            Sharing::Identical => source.push_str("                use cell();\n"),
+            Sharing::Distinct => {
+                let _ = writeln!(source, "                use cell({root});");
+            }
+            Sharing::Hoisted => {
+                let _ = writeln!(source, "                use head({root});");
+                source.push_str("                use tail();\n");
+            }
+        }
+    }
+    source.push_str("            }\n        }\n    }\n}\n");
+    source
+}
+
 /// A parsed document, held so a benchmark can exclude parsing from its
 /// measurement.
 pub struct Parsed {

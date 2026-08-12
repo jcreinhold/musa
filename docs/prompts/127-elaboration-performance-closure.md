@@ -1,7 +1,7 @@
 ---
 id: 127
 slug: elaboration-performance-closure
-status: pending
+status: done
 depends_on: [93, 98, 104, 115, 118, 119, 121, 122, 124]
 phase: 3
 ---

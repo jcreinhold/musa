@@ -61,7 +61,30 @@ These are design constraints, not tuning, and they are the reason the budgets ar
 6. **No `filter`, `backdrop-filter`, or `box-shadow` animation** anywhere. The single leaf shadow is static. These are
    the standard causes of an application that scrolls at 30 fps.
 
-## 4. What is deliberately not optimized
+## 4. What the compiler contributes (prompt 127)
+
+B1 and B2 are end-to-end numbers, and the compile inside them is measured separately in
+`docs/language/06-performance.md`. Recorded here so a missed budget can be attributed rather than guessed at:
+
+| workload | compile (P1) | share of B1's 120 ms |
+| --- | ---: | ---: |
+| `examples/glass-mountain.musa` (the small case) | 159 µs | 0.1% |
+| `tests/fixtures/large-score.musa` (the large case) | 4.4 ms | 3.7% |
+| an edit in the first bar of the large case | 4.5 ms | 3.8% |
+| an edit in the last bar of the large case | 4.5 ms | 3.8% |
+| a 16.5 KB document mid-keystroke, recovering | 171 µs | 0.1% |
+| the heaviest committed workload (`kernel-pressure`) | 9.6 ms | 8.0% |
+
+Compilation is therefore not what B1 and B2 spend their time on; engraving is, and the structural rules in §3 are what
+keep that true. Two consequences are worth stating because they are what a future miss should be checked against first:
+
+- **The compiler is not incremental, and the measurement says it does not need to be.** An edit in the first bar and an
+  edit in the last bar of a 100-bar score cost the same 4.5 ms, which is what a full recompile costs. §5's condition for
+  reconsidering that — a measured B1 or B2 failure on a real piece — has not been met.
+- **The point query is not a compile.** Asking which name is under the cursor costs 4.6 ns against a compilation the
+  session already has. Hover and completion never sit behind the debounce.
+
+## 5. What is deliberately not optimized
 
 Per roadmap §17, no speculative optimization. Compilation stays synchronous inside `ProjectSession` (prompt 19's
 decision); a worker-thread or incremental (Salsa) compiler is considered only when B1 or B2 is measured to fail on a

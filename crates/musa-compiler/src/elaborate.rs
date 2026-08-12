@@ -3460,8 +3460,17 @@ fn instantiate_music(
         music: music.clone(),
         named_music: cx.named_music.clone(),
     };
-    let key = music_key(&name, &inner, music.definition_span, call_span);
+    let key = music_key(&name, &inner, music.definition_span, scale_in_force(resolver, &inner));
     let (binding, extent, occurrences) = match share.lookup(&key) {
+        // A hit charges the output meter nothing, and neither did the miss.
+        // That meter is reserved exactly once, at the compilation boundary,
+        // against the occurrence count the lanes report; everything before it
+        // only *previews* a forthcoming aggregate so an oversized repeat is
+        // refused before it allocates. Charging a hit would therefore not
+        // "charge the program anyway" — it would charge it twice, and refuse
+        // pieces that the same music spelled as one `repeat` is accepted at.
+        // What keeps the meter honest across sharing is `occurrences`, which
+        // the reference carries out of the table and the boundary counts.
         Some(found) => found,
         None => {
             let elaborated = elaborate_music_value(resolver, share, music, &inner, SHARED_SCOPE);
@@ -3486,13 +3495,22 @@ fn instantiate_music(
     }
 }
 
-fn music_key(name: &str, inner: &ExpandCx, definition: SourceSpan, placement: SourceSpan) -> String {
+/// Everything a body's facts depend on, and nothing about where it is called.
+///
+/// The call site used to be in this key, which meant two calls of one motif
+/// shared a body only when they were written in the same place — so the same
+/// music was elaborated once per `use` and the term carried a copy per call.
+/// What the call site was standing in for is `pitch`: the scale a `step`
+/// reads is the innermost `in scale`, or else the key latest at the cursor,
+/// and neither is a property of the motif. Naming it directly is what lets
+/// the site itself go, because the site is otherwise carried at the
+/// *reference*, in its mark, and never baked into the body.
+fn music_key(name: &str, inner: &ExpandCx, definition: SourceSpan, pitch: Option<crate::scale::Scale>) -> String {
     let mut key = format!(
-        "{name}|{}:{}|at={}:{}|scale={}|decl={:?}|limit={}|foreign={}|choice={:?}|",
+        "{name}|{}:{}|pitch={}|scale={}|decl={:?}|limit={}|foreign={}|choice={:?}|",
         definition.start,
         definition.end,
-        placement.start,
-        placement.end,
+        pitch.map_or_else(|| "-".to_owned(), |scale| scale.to_string()),
         inner.scale,
         inner.declaration,
         inner.max_motif,

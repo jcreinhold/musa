@@ -56,7 +56,7 @@ needs the intentionally hidden contextual-`music` representation, source-aware p
 or the private finite representation/work budget needed to preserve total evaluation under rank-1 monomorphization.
 Everything expressible through public values and those operations belongs in ordinary `.musa` source, including the
 bundled standard library. Adding a Rust implementation merely because a source function is familiar or potentially
-faster is not semantics-preserving evidence; prompt 124 requires measurement and an equivalence law before such an
+faster is not semantics-preserving evidence; prompt 127 requires measurement and an equivalence law before such an
 optimization.
 
 Contextual music has one private semantic observation:
