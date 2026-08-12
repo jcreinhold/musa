@@ -1,10 +1,14 @@
 # Close the Musa language design
 
-**Status: restarted around type inference.** The first target stopped after its final review found two false claims in
-the proof for retained programs. It was not promoted. The new target keeps Rust-like syntax but replaces mandatory local
-annotations and special call rules with Hindley–Milner inference, explicit closures, and complete calls. Governing rules
-and implementation prompts remain unchanged until the new target passes its proof gate. See
-[`../notes/research/language-design-closure/19-inference-course-correction.md`](../notes/research/language-design-closure/19-inference-course-correction.md).
+**Status: restarted around type inference and plain musical source.** The first target stopped after its final review
+found two false claims in the proof for retained programs. It was not promoted. The new target uses broad Hindley–Milner
+inference, explicit closures, complete calls, and an indentation-based functional surface. Governing rules and
+implementation prompts remain unchanged until the new target passes its proof gate. See
+[`19-inference-course-correction.md`](../notes/research/language-design-closure/19-inference-course-correction.md),
+[`20-compiler-pipeline.md`](../notes/research/language-design-closure/20-compiler-pipeline.md), and
+[`21-surface-syntax.md`](../notes/research/language-design-closure/21-surface-syntax.md). The syntax work continues in
+[`22-syntax-extension.md`](../notes/research/language-design-closure/22-syntax-extension.md) and
+[`23-values-not-types.md`](../notes/research/language-design-closure/23-values-not-types.md).
 
 ## Course correction after the failed proof gate
 
@@ -13,9 +17,12 @@ are not the active candidate.
 
 The replacement is bounded to six steps:
 
-1. Rewrite the five paper programs with Rust-like syntax and inferred local types. Count every annotation that remains.
-2. Specify rank-1 Hindley–Milner inference, complete calls, explicit closures, nominal data, and module sealing.
-3. Specify elaboration into the accepted total core and saturated compiler operations.
+1. Rewrite the five paper programs with the indentation-based syntax and inferred local types. Count every annotation
+   and compiler-owned surface form that remains.
+2. Specify rank-1 Hindley–Milner inference, complete calls, explicit closures, nominal data, opaque module types,
+   file-based modules, and the boundary that keeps values out of types.
+3. Specify hygienic syntax expansion, the resolved program, typed bodies, the total evaluation core, saturated compiler
+   operations, and target adapters.
 4. Prove principal types, type safety, termination, `Music` closure, and typed stage composition.
 5. Allow one hostile proof review, one repair, and one final review.
 6. Run Tasks 7–8 below only if the final review has no fatal, High, or Medium issue.

@@ -1,17 +1,21 @@
 # Language design closure
 
-**Status: a new inference-first target is active after the earlier proof gate failed. Governs nothing.** This directory carries out
-[`docs/plan/language-design-closure.md`](../../../plan/language-design-closure.md). Its purpose is to settle Musa's
-source language, not to invent another temporal kernel or a package cache.
+**Status: a new inference-first target is active after the earlier proof gate failed. Governs nothing.** This directory
+carries out [`docs/plan/language-design-closure.md`](../../../plan/language-design-closure.md). Its purpose is to settle
+Musa's source language, not to invent another temporal kernel or a package cache.
 
 The five musical cases support the small call-by-value design. The repository is private and pre-release, so the later
 repair rejects partial calls of compiler-owned operations instead of adding foreign function values to the core. The
 final review found two false claims in the proof for retained programs: partial calls do not handle intervening defaults
 correctly, and the proof does not relate a function's captured defaults to the surrounding declaration values. See
 [17-final-proof-review.md](17-final-proof-review.md) and [18-final-blocker.md](18-final-blocker.md). The design was not
-promoted. The user then set a clearer goal: Rust-like syntax, easy local reasoning, and OCaml/Haskell-style inference.
-[19-inference-course-correction.md](19-inference-course-correction.md) starts that new target without changing governing
-documents.
+promoted. The user then set a clearer goal: easy local reasoning, broad type inference, and a surface shaped by musical
+work rather than compiler tradition. [19-inference-course-correction.md](19-inference-course-correction.md) starts the
+inference-first target. [20-compiler-pipeline.md](20-compiler-pipeline.md) gives its private compiler forms.
+[21-surface-syntax.md](21-surface-syntax.md) replaces the Rust-like surface target with an indentation-based functional
+candidate. [22-syntax-extension.md](22-syntax-extension.md) adds bounded package syntax adapters, and
+[23-values-not-types.md](23-values-not-types.md) keeps note values out of the type language. None of these notes changes
+governing documents.
 
 ## The question
 
@@ -71,3 +75,11 @@ ship.
     is reopened.
 20. [19-inference-course-correction.md](19-inference-course-correction.md) replaces the annotation-heavy target with
     Rust-like syntax, Hindley–Milner inference, explicit closures, and complete calls.
+21. [20-compiler-pipeline.md](20-compiler-pipeline.md) gives each private compiler form one job and shows where the
+    common front end branches toward notation, analysis, performance, and sound.
+22. [21-surface-syntax.md](21-surface-syntax.md) tests brace-based, S-expression, and indentation-based syntax, selects
+    the indentation-based form for the next paper programs, and records the first, too-broad rejection of public macros.
+23. [22-syntax-extension.md](22-syntax-extension.md) corrects that rejection and proposes one bounded, hygienic
+    expansion system for package-owned notation and studio syntax.
+24. [23-values-not-types.md](23-values-not-types.md) explains why pitch literals and transformations are ordinary values
+    and functions rather than a reason to add dependent types.
