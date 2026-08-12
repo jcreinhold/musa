@@ -2,8 +2,9 @@
 
 This document defines the **kernel interchange syntax**: the concrete notation for the terms of `10-term-calculus.md`.
 It is a semantic/interchange language for golden tests, semantic comparison, and cross-tool exchange. Parsing and
-evaluation produce the timeline whose separately framed N6 bytes are hashed. **It is not the syntax musicians write**; the musician-facing surface language is the `.musa` grammar handled by `musa-language`, and its
-elaboration is specified in `06-surface-elaboration.md`.
+evaluation produce the timeline whose separately framed N6 bytes are hashed. **It is not the syntax musicians write**;
+the musician-facing surface language is the `.musa` grammar handled by `musa-language`, and its elaboration is specified
+in `06-surface-elaboration.md`.
 
 **Grammar here, calculus there.** This document says how a term is written; `10-term-calculus.md` says what it means,
 which terms are well-formed (with `02-static-semantics.md` K7), and which theorems hold. Neither is complete without the
@@ -133,10 +134,10 @@ Four notes a reader needs:
 
 ## Payload values
 
-**A payload is an opaque quoted string.** The kernel is generic in its payload type and never looks inside one: it
-reads the string and hands it to the consumer that owns the payload — `musa-compiler` for `ScoreFact`. The
-`payload-type` in the composition's type annotation exists so a reader can *refuse* a file whose payloads it does not
-own, not so it can validate one it does.
+**A payload is an opaque quoted string.** The kernel is generic in its payload type and never looks inside one: it reads
+the string and hands it to the consumer that owns the payload — `musa-compiler` for `ScoreFact`. The `payload-type` in
+the composition's type annotation exists so a reader can *refuse* a file whose payloads it does not own, not so it can
+validate one it does.
 
 This is a repair to an earlier draft of this document, which specified a `payload` declaration and record-shaped payload
 values. That design would have made a kernel file self-describing at the cost of the invariant the crate exists to hold:

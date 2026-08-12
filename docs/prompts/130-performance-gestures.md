@@ -21,9 +21,9 @@ render-plan parameter index.
 
 ## Read
 
-- `docs/governance/01-constitution.md` §7 (the decision and what it forbids, in particular rule 2: no
-  bespoke temporal structure above the kernel). `docs/kernel/12-payload-admission.md` from prompt 129a — the rule this
-  prompt's payload must satisfy, written before the payload existed so that it could not be fitted to it.
+- `docs/governance/01-constitution.md` §7 (the decision and what it forbids, in particular rule 2: no bespoke temporal
+  structure above the kernel). `docs/kernel/12-payload-admission.md` from prompt 129a — the rule this prompt's payload
+  must satisfy, written before the payload existed so that it could not be fitted to it.
 - `crates/musa-kernel/src/{term,timeline,occurrence}.rs` and `tests/laws.rs`, which already prove L1–L24 at a payload
   that is not `ScoreFact`.
 - `docs/language/08-performance-and-sound.md`; kernel `Progress` semantics and backend contract; roadmap §§6.4–6.5.
@@ -40,8 +40,8 @@ many things positioned in it, so it is a kernel timeline, and its ordering (N2),
 equality (N4), and semantic hash (N6) come from `musa-kernel` rather than being specified again here. Define `Gesture`,
 implement `Canonical` for it against prompt 129a's rule, and add its row to that document's admission table — stating
 what the key includes and what it deliberately quotients away. Writing a `Vec<(Beat, Beat, Gesture)>` with its own
-ordering and its own equality is the defect this repair exists to prevent (`docs/governance/01-constitution.md` §7d` §6 rule 2), and
-prompt 145 audits for it.
+ordering and its own equality is the defect this repair exists to prevent (`docs/governance/01-constitution.md` §7d §6
+rule 2), and prompt 145 audits for it.
 
 Nothing is added to `musa-kernel`: no term form, no operation, no public-surface change. `sequence`, `overlay`, `scale`,
 and `restrict` on a gesture timeline mean what L1–L24 already say they mean, and L24 is what keeps a control curve a

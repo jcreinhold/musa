@@ -5,8 +5,8 @@ it. Nothing here may be settled by convenience: no open question is closed becau
 
 ## Q1 — Infinite / live patterns
 
-A `Pattern[A]` is **not** part of the finite kernel grammar. Working stance: a pattern is anything that can
-produce coherent finite observations `P(I)` for every bounded interval `I`, obeying the compatibility law
+A `Pattern[A]` is **not** part of the finite kernel grammar. Working stance: a pattern is anything that can produce
+coherent finite observations `P(I)` for every bounded interval `I`, obeying the compatibility law
 `J ⊆ I ⟹ restrict_J(P(I)) = P(J)`. Loops, algorithmic generators, aleatory realizations, and live-coded patterns all
 expose finite kernel observations without sharing a computation model. *Settle when:* a concrete loop/live feature
 (prompt 29-era or later) shows whether observation coherence needs kernel-level support (e.g. a `Pattern` type with a
@@ -14,11 +14,11 @@ restrict-based contract) or stays a library convention.
 
 ## Q2 — Aleatory semantics — **RESOLVED (prompt 66)**
 
-Probability, nondeterminism, performer choice, and reactive improvisation are different phenomena; **no**
-universal `Choice` kernel construct exists or is planned. The working stance was: each realized performance of an
-aleatory surface construct produces an ordinary finite kernel timeline; the choice mechanism lives in the surface/HIR
-and its provenance. The stated trigger was: *"the first aleatory surface feature is designed — its provenance needs
-(which choice was taken?) will show whether the kernel needs anything beyond occurrence payloads."*
+Probability, nondeterminism, performer choice, and reactive improvisation are different phenomena; **no** universal
+`Choice` kernel construct exists or is planned. The working stance was: each realized performance of an aleatory surface
+construct produces an ordinary finite kernel timeline; the choice mechanism lives in the surface/HIR and its provenance.
+The stated trigger was: *"the first aleatory surface feature is designed — its provenance needs (which choice was
+taken?) will show whether the kernel needs anything beyond occurrence payloads."*
 
 That trigger fired at prompt 66, and the working stance is **confirmed, not reversed**.
 
@@ -39,10 +39,10 @@ realization*, so fixtures pin a seed and the interface must be able to show whic
 
 ## Q3 — Voice identity — **RESOLVED (prompt 119)**
 
-Candidates: payload metadata; a separate temporal relation; HIR structure plus provenance; or a combination. The
-working stance (adopted by `06-surface-elaboration.md`) was **payload metadata + HIR structure** — voice identity
-carries (part, voice) on the fact, the kernel stays identity-free, and `ScoreSnapshot`'s lanes are an adapter
-projection. It was to be settled by a consumer that needed voice-level temporal queries the projection could not answer.
+Candidates: payload metadata; a separate temporal relation; HIR structure plus provenance; or a combination. The working
+stance (adopted by `06-surface-elaboration.md`) was **payload metadata + HIR structure** — voice identity carries (part,
+voice) on the fact, the kernel stays identity-free, and `ScoreSnapshot`'s lanes are an adapter projection. It was to be
+settled by a consumer that needed voice-level temporal queries the projection could not answer.
 
 **Answer: the working stance holds, and the kernel gains no succession relation.** The deciding consumer is
 voice-leading and counterpoint analysis, which is the one part of the system whose entire subject matter is *lines*:
@@ -64,8 +64,8 @@ future proposal has to beat.
 
 ## Q4 — Time-varying continuous controls — **RESOLVED (prompt 45)**
 
-Automation (crescendo, glissando, parameter curves) does not obviously belong to discrete occurrences. The
-candidates were: typed interval payloads; a separate behavior/curve layer; the performance/audio model.
+Automation (crescendo, glissando, parameter curves) does not obviously belong to discrete occurrences. The candidates
+were: typed interval payloads; a separate behavior/curve layer; the performance/audio model.
 
 **Answer: a typed payload value, and no kernel operation.** `Progress` (`03-denotational-semantics.md`) is a monotone
 piecewise-linear map from an occurrence's normalized *local* time to a unit-free fraction. Because it is indexed by
@@ -84,8 +84,8 @@ prompt wants one, and that is an implementation convenience, not a change of lay
 ## Q5 — Recursive / generative source programs
 
 The surface language may eventually need recursion or generative facilities; this does **not** imply the finite kernel
-needs them. Working stance: surface programs must have finite observable output for any finite query; termination
-is a surface-language static property (as with motif ordering today, roadmap §6.5). *Settle when:* a surface recursion
+needs them. Working stance: surface programs must have finite observable output for any finite query; termination is a
+surface-language static property (as with motif ordering today, roadmap §6.5). *Settle when:* a surface recursion
 proposal exists; its elaboration must produce finite observations or be rejected.
 
 ## Q6 — Kernel-file parser — **RESOLVED (prompt 48)**
@@ -278,10 +278,10 @@ Anything discovered while implementing prompts 09–12 is appended here with its
   only sound because a written rest is an occurrence, so a piece ending in silence still ends where the silence ends;
   that is now a fixture rather than an argument. Second, `resolve_position` used to read the snapshot it was helping to
   build — the last place where a temporal fact was computed from the adapter's output rather than from the timeline —
-  and it now reads the meter occurrence. **Tempo did not move and will not**: it is the map from symbolic to
-  physical time, and a place where `stretch` and *ritardando* could be confused is exactly what the kernel must not
-  offer. `TempoMap` now carries that reasoning as a comment, because the next reader will otherwise ask why tempo was
-  left behind and answer the question wrong.
+  and it now reads the meter occurrence. **Tempo did not move and will not**: it is the map from symbolic to physical
+  time, and a place where `stretch` and *ritardando* could be confused is exactly what the kernel must not offer.
+  `TempoMap` now carries that reasoning as a comment, because the next reader will otherwise ask why tempo was left
+  behind and answer the question wrong.
 - **Prompt 44 (coverage and prevailing-value queries):** the kernel gained an *interface*, not an ontology — two
   queries, no constructor, no stored state, no payload requirement. The finding that justified them is that four
   consumers were answering "what is in force here" privately and **disagreeing**: two keyed the answer on

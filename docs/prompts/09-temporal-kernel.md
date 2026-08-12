@@ -18,9 +18,10 @@ changes, no compiler changes (elaboration is prompt 11).
 ## Read
 
 - `docs/kernel/03-denotational-semantics.md` and `05-normalization.md` (the normative definitions; prompt 08).
-- `docs/kernel/03-denotational-semantics.md` and `04-algebraic-laws.md` (the algebra), `docs/architecture/stage-pipeline.md` (the kernel's public interface is approximately
-  `construct/check timeline`, `sequence`, `overlay`, `restrict`, `normalize`, `compare`, `map payloads`, `scale time` —
-  internals hidden), §29 ("do not split each concept into its own microcrate").
+- `docs/kernel/03-denotational-semantics.md` and `04-algebraic-laws.md` (the algebra),
+  `docs/architecture/stage-pipeline.md` (the kernel's public interface is approximately `construct/check timeline`,
+  `sequence`, `overlay`, `restrict`, `normalize`, `compare`, `map payloads`, `scale time` — internals hidden), §29 ("do
+  not split each concept into its own microcrate").
 - `musa-compiler/src/time.rs` for the existing rational-time conventions (the kernel uses the same `num-rational`
   exactness discipline but is its own crate — payloads, not the kernel, carry musical meaning; §12).
 
@@ -55,8 +56,8 @@ changes, no compiler changes (elaboration is prompt 11).
 - Occurrences form a multiset: equal occurrences never collapse (§6). Canonical order: start, end, then payload ordering
   — define a `Canonical` trait (`fn canonical_key(&self) -> String` or `Ord` bound; pick one, document) so semantic
   equality and hashing are well-defined for arbitrary payloads.
-- `restrict` returns the observation representation of `docs/kernel/03-denotational-semantics.md`: each observed occurrence reports
-  `whole_span` and `visible_span` — cropping never rewrites where an occurrence began.
+- `restrict` returns the observation representation of `docs/kernel/03-denotational-semantics.md`: each observed
+  occurrence reports `whole_span` and `visible_span` — cropping never rewrites where an occurrence began.
 - Semantic equality: `Timeline::semantic_eq` comparing canonical forms (extent + sorted occurrence multiset), not
   pointer/insertion identity.
 - Canonical serialization to the `05-normalization.md` text form (`Display`), deterministic, for golden tests and

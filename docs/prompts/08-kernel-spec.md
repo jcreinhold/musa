@@ -29,12 +29,12 @@ code in this prompt; the spec is the deliverable that prompts 09–12 implement.
 Author nine documents, each with a "Status: candidate" banner until prompt 12:
 
 - `docs/kernel/00-purpose.md` — the two-picture architecture (rich surface / small kernel); the question the kernel
-  answers ("what musical facts exist, and where in musical time"); the governing rule of `docs/kernel/00-purpose.md` (semantic
-  necessity, quoted verbatim, as the acceptance test for every future kernel proposal).
-- `01-grammar.md` — the kernel interchange syntax of `docs/kernel/01-grammar.md` (timeline / sequence / overlay / composition
-  references), plus a deliberately boring first-order payload-schema grammar; the file is an interchange language, not
-  the musician-facing syntax. A parser for it is deferred (see `08-open-questions.md`); prompt 09 implements canonical
-  serialization only.
+  answers ("what musical facts exist, and where in musical time"); the governing rule of `docs/kernel/00-purpose.md`
+  (semantic necessity, quoted verbatim, as the acceptance test for every future kernel proposal).
+- `01-grammar.md` — the kernel interchange syntax of `docs/kernel/01-grammar.md` (timeline / sequence / overlay /
+  composition references), plus a deliberately boring first-order payload-schema grammar; the file is an interchange
+  language, not the musician-facing syntax. A parser for it is deferred (see `08-open-questions.md`); prompt 09
+  implements canonical serialization only.
 - `02-static-semantics.md` — well-formedness: occurrence bounds `0 ≤ s ≤ e ≤ d`, positive scaling factors, reference
   resolution, acyclic composition references; payload schemas are checked by their own modules, not the kernel.
 - `03-denotational-semantics.md` — the denotation `(d, E)` with `E` a finite multiset of `(s, e, a)`; definitions of

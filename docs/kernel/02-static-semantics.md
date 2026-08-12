@@ -56,9 +56,9 @@ kernel-side contract is:
 
 ## K6 — Multiset discipline
 
-Occurrences form a finite **multiset**, not a set: two occurrences identical in span and payload are two
-occurrences. No operation in the kernel may deduplicate them. Two performers playing the same note must not collapse
-merely because all visible values coincide.
+Occurrences form a finite **multiset**, not a set: two occurrences identical in span and payload are two occurrences. No
+operation in the kernel may deduplicate them. Two performers playing the same note must not collapse merely because all
+visible values coincide.
 
 ## K7 — Term well-formedness *(specified prompt 46, implemented prompt 47)*
 

@@ -15,15 +15,15 @@ well, because the projections preserve the kernel's guarantees.
 - **Ambient extent.** A timeline's extent may exceed every occurrence's end; the tail is real temporal extent, not an
   error.
 - **Semantic equality.** Comparison, caching, and golden testing use the canonical form (N4–N6) and nothing else.
-- **Opacity.** Payloads are typed and serializable, but their musical meaning belongs to their own theory modules.
-  A consumer interprets the payload types it understands and ignores nothing silently — unknown payload types are an
+- **Opacity.** Payloads are typed and serializable, but their musical meaning belongs to their own theory modules. A
+  consumer interprets the payload types it understands and ignores nothing silently — unknown payload types are an
   explicit skip, never a misread.
 
 ## What consumers must decide themselves
 
-- **Rest glyphs are a notation decision**. An uncovered region of a notated voice is filled with rest symbols by
-  the *notation* layer (`NotationPlan`), choosing glyph shapes per meter and convention. The kernel stores nothing
-  there, and no backend may claim the kernel "has rests."
+- **Rest glyphs are a notation decision**. An uncovered region of a notated voice is filled with rest symbols by the
+  *notation* layer (`NotationPlan`), choosing glyph shapes per meter and convention. The kernel stores nothing there,
+  and no backend may claim the kernel "has rests."
 - **Notation spelling stays verbatim.** Written pitch spelling passes through from the payload; backends do not respell
   (roadmap §6.3).
 - **Layout/engraving is downstream.** The plan and the kernel are semantic, not typographic (roadmap §12.1).
@@ -140,8 +140,8 @@ The guarantee the kernel now carries is simple, and is the reason these are quer
 | Where do the boundaries fall — end instants, points, ties? | The convention table in D10–D11, stated once |
 
 Two things consumers may *not* assume. The queries return occurrences, never identities: `EventId` is the score layer's
-invention and the kernel does not know it. And `prevailing` takes a selector, not a payload trait — the caller
-says which facts are context-bearing, because "this is a key signature" is musical knowledge the kernel must not learn.
+invention and the kernel does not know it. And `prevailing` takes a selector, not a payload trait — the caller says
+which facts are context-bearing, because "this is a key signature" is musical knowledge the kernel must not learn.
 
 Consumers that must answer for *every* event keep their ordered sweep and honour the conventions rather than calling a
 query per event; D10's performance rule says why, and benchmark P3 enforces it.
@@ -155,7 +155,8 @@ semantic hash, so two implementations that disagree about a shape are reading di
 **Where** to sample the shape is not part of the contract. musa's performance layer samples a hairpin once per notated
 event, at `u = index / (count − 1)`, because a hairpin is written around notes and the arrival should not depend on the
 rhythm. A consumer that samples per onset, per frame, or per control-rate tick is equally conforming; it will agree at
-the endpoints and may differ between them. That is the same latitude a consumer already has over tempo realization, and it is stated here so nobody encodes musa's sampling choice as though it were the specification.
+the endpoints and may differ between them. That is the same latitude a consumer already has over tempo realization, and
+it is stated here so nobody encodes musa's sampling choice as though it were the specification.
 
 ### A gradual tempo change is the second reader of that rule (prompt 73)
 

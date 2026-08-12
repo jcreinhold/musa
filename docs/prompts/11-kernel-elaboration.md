@@ -18,10 +18,10 @@ lowerer stays as the regression oracle; this prompt adds the new path **alongsid
 ## Read
 
 - `docs/kernel/06-surface-elaboration.md` (normative elaboration rules; prompt 08) and `07-backend-contract.md`.
-- `docs/kernel/06-surface-elaboration.md` (surface structure is preserved in the HIR; normalization is a semantic boundary, not the
-  working representation), §20 (provenance above the semantic quotient — provenance rides in payload metadata), §27
-  (`ScoreSnapshot` as the score-specific interpretation of the normalized denotation), §30 Steps 4–5, §33 (falsification
-  corpus).
+- `docs/kernel/06-surface-elaboration.md` (surface structure is preserved in the HIR; normalization is a semantic
+  boundary, not the working representation), §20 (provenance above the semantic quotient — provenance rides in payload
+  metadata), §27 (`ScoreSnapshot` as the score-specific interpretation of the normalized denotation), §30 Steps 4–5, §33
+  (falsification corpus).
 - Prompt 05's `lower.rs` (the oracle), prompt 06's expansion pass (motif/repeat/transpose semantics that must be
   reproduced exactly), prompt 09's `musa-kernel` surface.
 

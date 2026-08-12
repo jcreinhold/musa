@@ -130,8 +130,8 @@ Nothing yet. Concretely:
   evidence. A kernel-shape change is the one irreversible-feeling move here and it should be the last one made.
 - **Renumbering.** Per the standing convention, new work becomes numbered prompts with the rest renumbered. Track A and
   B prompts belong in the phase-3 block (115–127). A Track C prompt belongs *after*
-  [146](../../prompts/146-language-conformance.md), the whole-language conformance and graduation prompt, because changing
-  the kernel denotation before the language is graduated against it would invalidate the graduation.
+  [146](../../prompts/146-language-conformance.md), the whole-language conformance and graduation prompt, because
+  changing the kernel denotation before the language is graduated against it would invalidate the graduation.
 - **This directory's status.** It stays research. If Tracks A and B land, `00-constitution.md`'s Amendments III, V, and
   VI get folded into `docs/course-correction.md` as amendments to it, and Amendments II and IV are either withdrawn or
   carried forward with the evidence log attached.
@@ -190,8 +190,8 @@ In order, smallest first:
 1. Run Track A step 1 — the quotient audit. It is half a day and it either produces Atom 6's demand or removes it.
 2. Write the explicit-polymeter fixture (Track B step 2). It is an hour and it is a permanent regression test either
    way.
-3. ~~Resume the prompt stack at [114](../../prompts/114-angle-bracketed-type-parameters.md) and run through 119 as written,
-   reading 116–119 as the gates in §2 rather than as ordinary features.~~ **Done**; 114–119 are all `done`.
+3. ~~Resume the prompt stack at [114](../../prompts/114-angle-bracketed-type-parameters.md) and run through 119 as
+   written, reading 116–119 as the gates in §2 rather than as ordinary features.~~ **Done**; 114–119 are all `done`.
 4. ~~Return here after 119 with the evidence, and decide Atom 2 then.~~ **Done**; see Gate 2. Atom 2 is withdrawn and
    Track C is closed, which leaves Track A (items 1 and 2 above) as the whole of the outstanding work here.
 

@@ -1,8 +1,8 @@
 # Musa Implementation Prompts
 
-This directory is the executable work plan for building musa according to
-[`../roadmap.md`](../roadmap.md), with the temporal kernel governed by [`../kernel/`](../kernel/README.md) and the
-desktop interface by [`../interface/`](../interface/README.md). Each numbered prompt delivers one feature and builds on the prompts it
+This directory is the executable work plan for building musa according to [`../roadmap.md`](../roadmap.md), with the
+temporal kernel governed by [`../kernel/`](../kernel/README.md) and the desktop interface by
+[`../interface/`](../interface/README.md). Each numbered prompt delivers one feature and builds on the prompts it
 depends on. Work them in dependency order; when in doubt, work them in numeric order.
 
 `docs/governance/` now owns identity-level commitments. `docs/spec/` owns cross-stage formal semantics, including the
@@ -477,11 +477,12 @@ documentation paths — one by musical task and one by language implementation �
 from source. 126 stops before the sound block and answers the question nineteen prompts were about to assume: what the
 core is a calculus of. It takes a census of every surface construct against the kernel term it elaborates to, costs
 three answers against that census, settles whether signals join an inductive calculus at all, and is allowed to repair,
-delete, and create prompts — the sound block is contingent on it. Its answer, now `docs/governance/01-constitution.md` §7: the core is a
-calculus of occurrences of any canonical payload, which is what `musa-kernel` was always generic over; signals stay
-outside it because a signal is coinductive and a signal graph has no extent; and the prepared render plan is what
-crosses. 127 compares score elaboration to 93's baseline and permits caching or incrementality only when semantic keys
-and measured need are demonstrated. Audio retains its frozen baseline and receives its own measured closure at 142.
+delete, and create prompts — the sound block is contingent on it. Its answer, now `docs/governance/01-constitution.md`
+§7: the core is a calculus of occurrences of any canonical payload, which is what `musa-kernel` was always generic over;
+signals stay outside it because a signal is coinductive and a signal graph has no extent; and the prepared render plan
+is what crosses. 127 compares score elaboration to 93's baseline and permits caching or incrementality only when
+semantic keys and measured need are demonstrated. Audio retains its frozen baseline and receives its own measured
+closure at 142.
 
 **128–134 replace the accidental score↔DSP wire with a typed instrument boundary.** 128 makes the studio vocabulary
 discoverable from one catalogue; 129 restores exact written quantities; 129a states what a kernel payload owes before

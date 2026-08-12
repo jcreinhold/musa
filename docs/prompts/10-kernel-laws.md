@@ -18,8 +18,8 @@ acceptance gate for the kernel; the "Status: candidate" banner does not come off
 
 - `docs/kernel/04-algebraic-laws.md` — the normative law list with formal statements; each law names its property test
   there, and this prompt must make that cross-reference real.
-- `docs/kernel/04-algebraic-laws.md` in full — the laws, the non-distributivity non-law, the synchronized interchange with its
-  duration-equality preconditions), §30 Step 3 (the checklist).
+- `docs/kernel/04-algebraic-laws.md` in full — the laws, the non-distributivity non-law, the synchronized interchange
+  with its duration-equality preconditions), §30 Step 3 (the checklist).
 - Prompt 09's `musa-kernel` public surface; the proptest conventions already used in `musa-language`/`musa-compiler`
   (module-level `arithmetic_side_effects` allowance with justification, small case counts).
 

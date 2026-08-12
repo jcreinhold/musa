@@ -21,9 +21,9 @@ This prompt adds **no kernel constructor**. That it needs none is the evidence `
 
 ## Read
 
-- `docs/kernel/02-static-semantics.md` (payloads are typed and musically opaque to the kernel), §21 (typed interval payloads are the
-  agreed shape for facts with temporal extent), §27 (if a score concept will not fit, the *snapshot* grows, not the
-  kernel), §34.
+- `docs/kernel/02-static-semantics.md` (payloads are typed and musically opaque to the kernel), §21 (typed interval
+  payloads are the agreed shape for facts with temporal extent), §27 (if a score concept will not fit, the *snapshot*
+  grows, not the kernel), §34.
 - `docs/kernel/06-surface-elaboration.md` — the elaboration table this prompt rewrites, and the adapter contract it must
   keep satisfying.
 - `crates/musa-compiler/src/elaborate.rs`: `Marks`, `VoicePayload`, `PayloadKind`, `adapt_voice`, `reverse`, `retie`.

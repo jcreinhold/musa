@@ -20,8 +20,8 @@ notated-duration ≠ performed-duration row, and the first time musa has used it
 
 ## Read
 
-- `docs/kernel/06-surface-elaboration.md` — tempo is `Beat → Second`. A groove is `Beat → Beat`, applied first, and the document
-  must say why the two compose in that order and not the other.
+- `docs/kernel/06-surface-elaboration.md` — tempo is `Beat → Second`. A groove is `Beat → Beat`, applied first, and the
+  document must say why the two compose in that order and not the other.
 - `crates/musa-compiler/src/performance.rs` — `IntegratedTempoMap` (:76), `lower_performance` (:326), and where written
   time becomes frames. The warp goes strictly before the integration.
 - Prompt 28 — performance profiles, `articulation`/`mark` settings, and how a profile is attached to a part.

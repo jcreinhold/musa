@@ -3,10 +3,10 @@
 Status: **governing**.
 
 The language grew a middle. A piece no longer only spells notes and expands motifs: it calls functions, instantiates
-templates, imports modules, asserts theory, and quotes the kernel, and `docs/language/02-core-calculus.md` §5.8 says those are a
-proved conservative extension rather than a bolt-on. This document fixes what that means for a screen — what a composer
-is shown about a term, where generated music says it came from, how an advisory reading appears without being mistaken
-for a mistake, and what a raw kernel document looks like.
+templates, imports modules, asserts theory, and quotes the kernel, and `docs/language/02-core-calculus.md` §5.8 says
+those are a proved conservative extension rather than a bolt-on. This document fixes what that means for a screen — what
+a composer is shown about a term, where generated music says it came from, how an advisory reading appears without being
+mistaken for a mistake, and what a raw kernel document looks like.
 
 One rule stands above the rest and is the reason this file exists: **the interface has no theory of the language.**
 Every sentence on this page is one the core wrote. The frontend chooses where it goes.

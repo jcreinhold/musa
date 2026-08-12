@@ -21,12 +21,13 @@ real-time row before the whole-language graduation prompt may run. This prompt a
 
 ## Read
 
-- `docs/governance/01-constitution.md` §7 and §4 in full — the things the decision forbids are audit rows here, and this is the prompt
-  that catches a later prompt having quietly re-opened one. `docs/kernel/12-payload-admission.md`'s admission table.
+- `docs/governance/01-constitution.md` §7 and §4 in full — the things the decision forbids are audit rows here, and this
+  is the prompt that catches a later prompt having quietly re-opened one. `docs/kernel/12-payload-admission.md`'s
+  admission table.
 - `docs/spec/03-process-calculus.md`, `04-identity-and-realization.md`, and the architecture spec-to-implementation map.
 - Prompt 93 baseline and expected-change ledger; all prompt 128–142 completion/repair notes and benchmark artifacts.
-- The candidate sound/assets specs, roadmap/kernel boundaries, interface specification, handbook, SFZ
-  support matrix, SoundFont support matrix, package/asset schemas, and public crate facades.
+- The candidate sound/assets specs, roadmap/kernel boundaries, interface specification, handbook, SFZ support matrix,
+  SoundFont support matrix, package/asset schemas, and public crate facades.
 - Every audio preparation/offline/live/project/CLI/LSP/desktop caller and every unsafe/RT-sensitive block.
 
 ## Design
@@ -44,8 +45,8 @@ and observed result. At minimum cover:
 - source-edit authority, Origin/navigation, generated docs, editor drift, accessibility, stale/error states;
 - offline/live equality, deterministic outputs, NaN/silence laws, callback/retirement instrumentation, and prompt 144
   budgets;
-- **the core boundary itself** — one row per rule forbidden by `docs/governance/01-constitution.md` §7 and §4, each with executable evidence rather than
-  a reading:
+- **the core boundary itself** — one row per rule forbidden by `docs/governance/01-constitution.md` §7 and §4, each with
+  executable evidence rather than a reading:
   - no fourth combinator, and no addition to `musa-kernel`'s public surface since prompt 126 (`git diff` on the facade
     is the evidence);
   - **no bespoke temporal structure above the kernel** — no type outside `musa-kernel` pairs a rational extent with a
@@ -67,10 +68,10 @@ failure, reinstall, and callback underrun if streaming was admitted. Audit depen
 remove dead compatibility internals but retain accepted source aliases according to their deprecation policy.
 
 A red row in the core-boundary group is repaired at the owning prompt, or — if the rule itself turns out to be wrong —
-by amending `docs/governance/01-constitution.md` §7, by its README's amendment procedure, which is a decision and therefore
-not this prompt's to make alone. If any row is red or unowned, repair the smallest responsible prompt/design and stop
-this prompt. Do not weaken a law, support claim, golden, or budget to make the matrix green. This audit does not yet
-graduate `docs/language/`; prompt 146 does so only after combining it with the score/elaboration audit.
+by amending `docs/governance/01-constitution.md` §7, by its README's amendment procedure, which is a decision and
+therefore not this prompt's to make alone. If any row is red or unowned, repair the smallest responsible prompt/design
+and stop this prompt. Do not weaken a law, support claim, golden, or budget to make the matrix green. This audit does
+not yet graduate `docs/language/`; prompt 146 does so only after combining it with the score/elaboration audit.
 
 ## Target
 

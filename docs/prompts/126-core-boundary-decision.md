@@ -105,16 +105,17 @@ repair and the decision that forces it are one change.
 
 ## Target
 
-- The core-boundary decision record (`docs/scratch/61-core-boundary-decision-record.md`): the census, the three candidates, the five tests applied to each, the
-  chosen answer, the signal question settled, and the ledger over prompts 127–146. It states its own precedence: it
-  governs over `docs/language/` where they differ, and sits under the temporal-kernel specification — the amendment is
-  written into the governing documents themselves, in this commit, or it has not been made.
+- The core-boundary decision record (`docs/scratch/61-core-boundary-decision-record.md`): the census, the three
+  candidates, the five tests applied to each, the chosen answer, the signal question settled, and the ledger over
+  prompts 127–146. It states its own precedence: it governs over `docs/language/` where they differ, and sits under the
+  temporal-kernel specification — the amendment is written into the governing documents themselves, in this commit, or
+  it has not been made.
 - Repairs to the `Design` and `depends_on` of every prompt in 127–146 the decision changes, and new prompt files for
   work the decision requires that no prompt covers, inserted with `scripts/renumber-prompts.py`.
 - Updated `docs/prompts/README.md` (index table, block summaries) and `AGENTS.md` (governing-document list, prompt
   count).
-- A `docs/governance/01-constitution.md` §7 listing what the chosen answer takes off the table, so that a later
-  prompt cannot quietly re-open it.
+- A `docs/governance/01-constitution.md` §7 listing what the chosen answer takes off the table, so that a later prompt
+  cannot quietly re-open it.
 
 ## Check
 

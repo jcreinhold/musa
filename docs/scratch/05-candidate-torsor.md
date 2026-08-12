@@ -2,8 +2,9 @@
 
 **Source.** OMT `016-intervals.md`, `099-pitch-and-pitch-class.md`,
 `101-pitch-class-sets-normal-order-and-transformations.md`, `102-set-class-and-prime-form.md`,
-`109-naming-conventions-for-rows.md`, `072-neo-riemannian-triadic-progressions.md`. `docs/scratch/kernel-hypothesis/01-atoms.md`
-Atoms 5 and 6 state this content as two atoms; this document argues they are one thing and that the thing is the motive.
+`109-naming-conventions-for-rows.md`, `072-neo-riemannian-triadic-progressions.md`.
+`docs/scratch/kernel-hypothesis/01-atoms.md` Atoms 5 and 6 state this content as two atoms; this document argues they
+are one thing and that the thing is the motive.
 
 **One-line claim.** The realizations of a piece differ by *how much they forget about pitch*, the forgettings are
 quotients by subgroups of one group acting on one torsor, and that tower is the part of the motive we can actually
@@ -51,12 +52,12 @@ realization maps being *forgetful* rather than arbitrary.
 
 ## 3. Why this is one atom and not two
 
-`docs/scratch/kernel-hypothesis/01-atoms.md` separates the action (Atom 5) from the quotient (Atom 6). For a motive they are
-inseparable: the group is what makes the levels of the tower *comparable*, and the quotients are what make the levels
-*distinct*. An action with no quotient gives forty-eight row forms and no notion of row class; a quotient with no action
-gives set classes with no way to say which transposition relates two members. The evidence log ranks both as surviving
-untouched and cheapest to test — this document's only addition is that testing them separately would test the wrong
-thing.
+`docs/scratch/kernel-hypothesis/01-atoms.md` separates the action (Atom 5) from the quotient (Atom 6). For a motive they
+are inseparable: the group is what makes the levels of the tower *comparable*, and the quotients are what make the
+levels *distinct*. An action with no quotient gives forty-eight row forms and no notion of row class; a quotient with no
+action gives set classes with no way to say which transposition relates two members. The evidence log ranks both as
+surviving untouched and cheapest to test — this document's only addition is that testing them separately would test the
+wrong thing.
 
 ## 4. The morphisms, which is where this gets interesting and thin
 

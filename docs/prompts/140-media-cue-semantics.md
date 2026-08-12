@@ -21,8 +21,8 @@ before any clip player is written.
 
 ## Read
 
-- `docs/governance/01-constitution.md` §4 and §7 — the boundary this prompt draws at the surface is the same one the core
-  boundary draws in the type system, and rule 4 is the constraint the cue payload has to satisfy.
+- `docs/governance/01-constitution.md` §4 and §7 — the boundary this prompt draws at the surface is the same one the
+  core boundary draws in the type system, and rule 4 is the constraint the cue payload has to satisfy.
   `docs/kernel/12-payload-admission.md` from prompt 129a for what a media payload owes.
 - `docs/language/08-performance-and-sound.md` and `09-assets-and-packages.md`; kernel occurrence/transform laws; backend
   contract's Beat→Second realization; prompt 70's printed `sample`/`cue` marks; prompt 135 assets.
@@ -42,12 +42,12 @@ Define three disjoint constructs:
 3. A **fixed-media cue** is a point occurrence at beat `b` referencing an asset and playback settings. Its physical
    start is `tempo(b)` and its physical end is `tempo(b)+L`; its asset duration `L` is never stored as a kernel extent.
 
-**This distinction is `docs/governance/01-constitution.md` §4 at the surface, and the Design must say so.** A musical clip has
-musical extent, so it is an occurrence in a timeline and every kernel law applies to it. A fixed-media cue has physical
-duration, which the core has no vocabulary for, so it is a *point* occurrence carrying an asset reference and playback
-settings — and its duration `L` belongs to the prepared plan, not to any payload. §6 rule 4 forbids absolute time in a
-payload outright: `L` is read from the asset at preparation, and a cue payload that stored it would be a payload the
-kernel could not be a calculus of. State that as a local invariant with a test, not as a convention.
+**This distinction is `docs/governance/01-constitution.md` §4 at the surface, and the Design must say so.** A musical
+clip has musical extent, so it is an occurrence in a timeline and every kernel law applies to it. A fixed-media cue has
+physical duration, which the core has no vocabulary for, so it is a *point* occurrence carrying an asset reference and
+playback settings — and its duration `L` belongs to the prepared plan, not to any payload. §6 rule 4 forbids absolute
+time in a payload outright: `L` is read from the asset at preparation, and a cue payload that stored it would be a
+payload the kernel could not be a calculus of. State that as a local invariant with a test, not as a convention.
 
 Kernel transforms move/duplicate/restrict the occurrence support only. Stretching/repeating a fixed cue moves or
 duplicates its onset but does not stretch its media. Retrograde relocates the cue and does not reverse audio. A musical

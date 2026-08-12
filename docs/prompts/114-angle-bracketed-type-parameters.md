@@ -16,8 +16,8 @@ constructor, and the language still has exactly two.
 
 ## Read
 
-- `docs/language/01-surface.md` §1, which governs this prompt, and `docs/scratch/60-language-decision-record.md` for why this is not the
-  introduction of parametric polymorphism.
+- `docs/language/01-surface.md` §1, which governs this prompt, and `docs/scratch/60-language-decision-record.md` for why
+  this is not the introduction of parametric polymorphism.
 - `docs/language/01-surface.md` §1, whose `type` production carries `"option" "[" type "]"` beside a `list` expression
   production and a list pattern that both also spell `[`.
 - `crates/musa-language/src/parser.rs`, `type_atom` and `expr_atom` — the two readings of `[` that this prompt

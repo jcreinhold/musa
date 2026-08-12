@@ -17,8 +17,8 @@ and thrown away. Two consequences, and they are the reason this is a kernel prom
 - The `.kernel` interchange artifact (prompt 48) cannot carry the shape, so two implementations reading the same file
   produce different sound. That is not an implementation difference; it is a specification hole.
 - Every future continuous control — `gliss`, *rit.*, a filter sweep, a fader move — arrives with nowhere to live, and
-  the pressure will be to invent a private curve for each. Four private curves is `docs/kernel/08-open-questions.md`'s Q4
-  going unanswered four times.
+  the pressure will be to invent a private curve for each. Four private curves is `docs/kernel/08-open-questions.md`'s
+  Q4 going unanswered four times.
 
 Answer Q4. Add one payload value type, `Progress`, and prove that it needs **no new kernel operation** and **no change
 to any existing law**.

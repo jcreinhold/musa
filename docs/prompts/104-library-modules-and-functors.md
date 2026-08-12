@@ -18,8 +18,8 @@ real tonal-context bundle as the caller, while keeping modules out of the value 
 
 - `docs/language/04-templates-and-modules.md`; prompt 99's bundled library and prompt 103's structural staging.
 - Current import/reference/index behavior across files and projects.
-- The design comparison in the elaboration-language essay (`docs/scratch/60-language-decision-record.md`): Reader `local`, `music -> music`, declaration template, and
-  OCaml-style module functor are four different mechanisms.
+- The design comparison in the elaboration-language essay (`docs/scratch/60-language-decision-record.md`): Reader
+  `local`, `music -> music`, declaration template, and OCaml-style module functor are four different mechanisms.
 
 ## Design
 

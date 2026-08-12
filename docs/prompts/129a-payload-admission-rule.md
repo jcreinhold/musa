@@ -11,11 +11,10 @@ phase: 3
 ## Task
 
 Write the payload-admission rule into `docs/kernel/` **before** prompt 130 admits the first payload that is not
-`ScoreFact`, repair the verified unframed semantic-identity bug, and state exact `R1`. Prompt 126 decided
-that the core is a calculus of occurrences of any canonical payload. The later proof review found that the current N5
-display writer is not an injective encoding and that “injective on values” contradicts `ScoreFact` deliberately dropping
-fields. This prompt repairs the governing rule and implementation together; it adds no temporal operation or compiler
-feature.
+`ScoreFact`, repair the verified unframed semantic-identity bug, and state exact `R1`. Prompt 126 decided that the core
+is a calculus of occurrences of any canonical payload. The later proof review found that the current N5 display writer
+is not an injective encoding and that “injective on values” contradicts `ScoreFact` deliberately dropping fields. This
+prompt repairs the governing rule and implementation together; it adds no temporal operation or compiler feature.
 
 ## Read
 

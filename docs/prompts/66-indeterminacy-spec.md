@@ -22,8 +22,8 @@ Specification only. Prompt 67 implements the mechanism; prompt 68 gives it a sur
 - `docs/kernel/08-open-questions.md` **Q2** — read the working stance first. It already says each realized performance
   produces an ordinary finite kernel timeline and that the choice mechanism lives in the surface and its provenance.
   This prompt is that stance being *confirmed by design*, not reversed.
-- `docs/kernel/08-open-questions.md` (no canonical `join`), §32 (do not prematurely decide), §34 (semantic necessity), §35
-  item 11 (do not add aleatory choice to the finite kernel).
+- `docs/kernel/08-open-questions.md` (no canonical `join`), §32 (do not prematurely decide), §34 (semantic necessity),
+  §35 item 11 (do not add aleatory choice to the finite kernel).
 - `docs/kernel/10-term-calculus.md` — T2 (`let` transparency), T3 (evaluation is normalization), T4 (totality and
   determinism); `05-normalization.md` N6 (the semantic hash).
 - Prompt 43 — the semantic hash and what recompiles when it moves.

@@ -18,10 +18,10 @@ prompt is green with every example exactly as it stands.
 
 ## Read
 
-- `docs/roadmap.md`, the duration section: *"Canonical duration syntax should be fractions of a whole
-  note… The editor may display familiar note symbols and accept shortcuts such as `q`, `h`, or `e`, but those should
-  elaborate into exact values."* A shorthand that elaborates to the same rational is already sanctioned; this is that
-  sentence taken up, with `/4` instead of `q` because `/4` says which fraction.
+- `docs/roadmap.md`, the duration section: *"Canonical duration syntax should be fractions of a whole note… The editor
+  may display familiar note symbols and accept shortcuts such as `q`, `h`, or `e`, but those should elaborate into exact
+  values."* A shorthand that elaborates to the same rational is already sanctioned; this is that sentence taken up, with
+  `/4` instead of `q` because `/4` says which fraction.
 - `crates/musa-language/src/lexer.rs` — `logos`, maximal munch with backtracking. `c4` and `1/4` are each **one** token,
   there is no `/` token at all, and a lone `/` lexes as an error.
 - `crates/musa-compiler/src/resolve.rs` `parse_duration`, and `crates/musa-language/src/edits.rs` `set_duration`. Both

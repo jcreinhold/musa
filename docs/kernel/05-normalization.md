@@ -1,7 +1,7 @@
 # 05 — Normalization, Semantic Equality, Serialization
 
-Every finite kernel composition normalizes to one flat timeline. This document fixes the normal
-form, canonical occurrence order, semantic equality, human canonical display, and separately framed semantic identity.
+Every finite kernel composition normalizes to one flat timeline. This document fixes the normal form, canonical
+occurrence order, semantic equality, human canonical display, and separately framed semantic identity.
 
 ## N1 — Normal form
 

@@ -17,8 +17,8 @@ embedding generated from the `mod` traversal rather than transcribed beside it.
 `import "path.musa";` imports a local `library`; `import std::list;` and `import std::tonal::harmony;` import bundled
 modules. Both run through the same parser, checker, evaluator, cycle detection, and name-collision rules, and both bind
 into the flat value namespace — see `01-surface.md` for why that differs from §4's `Structure.member` rule, and
-`docs/scratch/60-language-decision-record.md` for the correction that introduced packages. There is no prelude, environment search,
-registry, or dependency solver.
+`docs/scratch/60-language-decision-record.md` for the correction that introduced packages. There is no prelude,
+environment search, registry, or dependency solver.
 
 ## 1. Declaration-template judgment
 

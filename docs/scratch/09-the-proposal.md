@@ -248,8 +248,8 @@ Ordered so that each step is independently valuable and none depends on §7 bein
 
 Steps 1–4 are engineering with proofs attached and touch no governing document's forbids — they add indices and a
 coercion, not combinators. Step 5 amends `docs/core-boundary.md` and `docs/course-correction.md` §36 together and should
-not be started until `docs/scratch/kernel-hypothesis/` Q-B ("are metrical layers denotation or analysis?") has an answer,
-because the answer decides whether the base belongs in the object at all.
+not be started until `docs/scratch/kernel-hypothesis/` Q-B ("are metrical layers denotation or analysis?") has an
+answer, because the answer decides whether the base belongs in the object at all.
 
 ## 9. What would falsify this
 

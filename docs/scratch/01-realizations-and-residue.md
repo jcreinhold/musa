@@ -36,9 +36,9 @@ reads a quotient that depends on a temperament parameter it supplies itself.
 - **EN** a bracketed 3 over three eighths; **PF/SD/MI** onsets at exact thirds; **AN** notes the division; **EQ** must
   make `1/3 + 1/3 + 1/3 = 1`.
 
-**Residue.** Exact rational time, unanimously. This is `docs/scratch/kernel-hypothesis/01-atoms.md` Atom 1 and no realization
-disputes it. *Nothing here is contested;* it is recorded because a motive must contain it and because it is the one atom
-that has never been challenged.
+**Residue.** Exact rational time, unanimously. This is `docs/scratch/kernel-hypothesis/01-atoms.md` Atom 1 and no
+realization disputes it. *Nothing here is contested;* it is recorded because a motive must contain it and because it is
+the one atom that has never been challenged.
 
 ## E4. Parallel motion versus voice exchange
 
@@ -123,9 +123,9 @@ Two consequences follow immediately, and both are checkable:
 
 - Every realization: one hearing, both endings sounding at different times. **EQ** the expansion is deterministic.
 
-**Residue.** Nothing new. Recorded because `docs/scratch/kernel-hypothesis/06-evidence-log.md` G0.3 established that this
-example was *mis-cited* as evidence for a conflict primitive, and a table that omitted the refuted row would be hiding
-its own correction.
+**Residue.** Nothing new. Recorded because `docs/scratch/kernel-hypothesis/06-evidence-log.md` G0.3 established that
+this example was *mis-cited* as evidence for a conflict primitive, and a table that omitted the refuted row would be
+hiding its own correction.
 
 ## E10. An ossia, or a mobile
 
@@ -163,5 +163,5 @@ Two things fell out that were not put in:
   why that candidate is the leading one.
 
 One thing required a side condition and is flagged for [04](04-candidate-fibred.md): E5's layers cannot be added to the
-present kernel without deciding whether layers are denotation or analysis, which `docs/scratch/kernel-hypothesis/01-atoms.md` §4
-already names as the sharpest unresolved question and does not settle.
+present kernel without deciding whether layers are denotation or analysis, which
+`docs/scratch/kernel-hypothesis/01-atoms.md` §4 already names as the sharpest unresolved question and does not settle.

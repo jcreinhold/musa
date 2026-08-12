@@ -13,14 +13,16 @@ phase: 3
 Complete the transformation story on top of the temporal kernel: `stretch`, `retrograde`, and `invert` alongside
 `transpose`; occurrence specialization (`use sigh() with { ... }`) so prompt 25's `Specialize` mode becomes real; and
 the laws of roadmap §5.4 — including retrograde's anti-homomorphism — as executable property tests. Every transform is
-an **elaboration-time function over timelines or payloads** (`docs/kernel/04-algebraic-laws.md`–14); none adds a kernel constructor.
+an **elaboration-time function over timelines or payloads** (`docs/kernel/04-algebraic-laws.md`–14); none adds a kernel
+constructor.
 
 ## Read
 
-- `docs/kernel/04-algebraic-laws.md` (payload mapping is functorial — transposition/inversion are payload maps, no `Transform` kernel
-  node), §14 (time scaling is an external action — augmentation/diminution evaluate into ordinary kernel timelines, no
-  permanent `Stretch` node), §19–20 (surface structure and provenance stay above the normalized kernel), §29 (do not add
-  dedicated lowering cases for new musical concepts), §34 (the governing rule: semantic necessity only).
+- `docs/kernel/04-algebraic-laws.md` (payload mapping is functorial — transposition/inversion are payload maps, no
+  `Transform` kernel node), §14 (time scaling is an external action — augmentation/diminution evaluate into ordinary
+  kernel timelines, no permanent `Stretch` node), §19–20 (surface structure and provenance stay above the normalized
+  kernel), §29 (do not add dedicated lowering cases for new musical concepts), §34 (the governing rule: semantic
+  necessity only).
 - Roadmap §5.4 (transformation laws; retrograde reverses order: `retro(a then b) = retro(b) then retro(a)`;
   transformations may fail, change shape, or require a pitch system), §7.2 (finite constructs list), §9 (occurrence
   specialization syntax and semantics), §17.2 (law tests).
@@ -52,8 +54,8 @@ an **elaboration-time function over timelines or payloads** (`docs/kernel/04-alg
   an existing call, or merging into one that exists). This completes roadmap §9's editing story.
 - Property tests (roadmap §17.2): `stretch(1, x) = x`; `retrograde(retrograde(x)) = x`;
   `retrograde(a then b) = retrograde(b) then retrograde(a)` — expressed as kernel `sequence` anti-homomorphism;
-  `invert(invert(x)) = x` (when inversion succeeds); stretch distributes over `sequence`/`overlay` (`docs/kernel/04-algebraic-laws.md`
-  §14 already proves scaling does — test it at the elaboration level).
+  `invert(invert(x)) = x` (when inversion succeeds); stretch distributes over `sequence`/`overlay`
+  (`docs/kernel/04-algebraic-laws.md` §14 already proves scaling does — test it at the elaboration level).
 
 ## Target
 
@@ -110,8 +112,8 @@ Commit as `Add stretch, retrograde, invert, and occurrence specialization`.
 
 ## Stop
 
-- No new kernel constructors for any of these (the kernel specification, §34); a perceived need is a spec repair, committed
-  first.
+- No new kernel constructors for any of these (the kernel specification, §34); a perceived need is a spec repair,
+  committed first.
 - No "variation" operators beyond these three (no random/humanize transforms — roadmap §7.2 finite + deterministic; §8.3
   rejects unstable semantics).
 - No theory-driven transforms (neo-Riemannian etc. — roadmap §8.2 libraries, not core).

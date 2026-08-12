@@ -1,7 +1,7 @@
 # Probe log
 
-Append-only, on the model of `docs/scratch/kernel-hypothesis/06-evidence-log.md`. A probe that damages a claim stays here next
-to the claim it damaged.
+Append-only, on the model of `docs/scratch/kernel-hypothesis/06-evidence-log.md`. A probe that damages a claim stays
+here next to the claim it damaged.
 
 ---
 
@@ -68,8 +68,8 @@ claimed and better-aimed evidence than D-2 asked for.
 ### Consequences
 
 1. **D-2 is amended, not withdrawn.** Its claim is now: the tower is named where OMT names it, and unnamed where OMT
-   states the equivalence without naming the construction — which is `docs/scratch/kernel-hypothesis/01-atoms.md` §6's own
-   observation ("the theory has been describing quotients by group actions in four chapters without a single name")
+   states the equivalence without naming the construction — which is `docs/scratch/kernel-hypothesis/01-atoms.md` §6's
+   own observation ("the theory has been describing quotients by group actions in four chapters without a single name")
    showing up in the code.
 2. **This does not yet justify a refactor.** Two sites is not a pattern, and course-correction §34 wants a consumer. The
    honest next step is not to introduce a quotient abstraction but to check whether a *third* consumer wants the

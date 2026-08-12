@@ -21,8 +21,8 @@ no-allocation/no-lock/no-I/O contract.
 
 ## Read
 
-- `docs/governance/01-constitution.md` §4, whose deferral of the signal question names *this prompt's measurement* as one of the two
-  events that reopens it. `R1` in `docs/kernel/07-backend-contract.md`.
+- `docs/governance/01-constitution.md` §4, whose deferral of the signal question names *this prompt's measurement* as
+  one of the two events that reopens it. `R1` in `docs/kernel/07-backend-contract.md`.
 - Prompt 93 baseline/expected-change ledger, prompt 127 score-elaboration report, `docs/interface/06-performance.md`,
   roadmap §§13.2/17.5, and all completion notes from prompts 130–143.
 - Audio/compiler/project benchmarks, callback instrumentation, offline/live render code, prepared-plan queues and

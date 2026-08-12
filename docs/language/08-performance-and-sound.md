@@ -1,8 +1,8 @@
 # Performance and sound
 
-> **`docs/governance/01-constitution.md` §7 governs where this document differs.** The `GestureTimeline` named below is the temporal
-> kernel at a gesture payload — `Timeline<Gesture>` — not a structure with its own ordering, equality, or hash. Signals
-> stay outside the core; the prepared render plan is what crosses, under the law `R1`.
+> **`docs/governance/01-constitution.md` §7 governs where this document differs.** The `GestureTimeline` named below is
+> the temporal kernel at a gesture payload — `Timeline<Gesture>` — not a structure with its own ordering, equality, or
+> hash. Signals stay outside the core; the prepared render plan is what crosses, under the law `R1`.
 
 Sound belongs in Musa because a canonical source should be capable of naming the intended performance, instrument, and
 room. It remains downstream of score semantics because a written mark is not a waveform. The studio describes the

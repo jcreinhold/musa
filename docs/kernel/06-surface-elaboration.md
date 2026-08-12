@@ -1,7 +1,8 @@
 # 06 — Surface Elaboration
 
-How the existing `.musa` surface language elaborates into the temporal kernel.
-This document describes elaboration of the grammar **as it exists today** (prompts 02–06); it is not a surface redesign. The implementation is prompt 11 (`docs/prompts/11-kernel-elaboration.md`).
+How the existing `.musa` surface language elaborates into the temporal kernel. This document describes elaboration of
+the grammar **as it exists today** (prompts 02–06); it is not a surface redesign. The implementation is prompt 11
+(`docs/prompts/11-kernel-elaboration.md`).
 
 ## The elaboration boundary
 
@@ -34,8 +35,8 @@ Decisions recorded against the open questions of `08-open-questions.md`:
 
 - **Voice identity rides in payload metadata** — it is not a temporal primitive. The candidate answer to the §32 open
   question is "payload metadata + HIR structure"; prompt 11 gathers the evidence.
-- **Provenance rides in the payload**: the kernel quotient forgets production history, so history travels with
-  each occurrence as data the kernel is opaque to. `Origin` never participates in temporal semantics; it participates in
+- **Provenance rides in the payload**: the kernel quotient forgets production history, so history travels with each
+  occurrence as data the kernel is opaque to. `Origin` never participates in temporal semantics; it participates in
   canonical payload serialization only as a stable, deterministic key (N3), so semantic equality can still distinguish
   occurrences a consumer must tell apart.
 - **No duration field in the payload** — duration is temporal support (D0).
@@ -90,9 +91,9 @@ violated, the elaboration that violated it is the bug.
 
 Elaboration emits a **term** (`10-term-calculus.md`), evaluated at the compiler's boundary. `repeat n { body }`
 elaborates the body **once** into a `let` and references it `n` times; a `use motif(args)` elaborates the motif's body
-once per distinct argument tuple and references it at each call site. The rule being implemented is that normalization is a semantic
-boundary, not the internal representation of every compiler pass: nothing requires duplicating thousands of nodes
-merely to obey the normalized model.
+once per distinct argument tuple and references it at each call site. The rule being implemented is that normalization
+is a semantic boundary, not the internal representation of every compiler pass: nothing requires duplicating thousands
+of nodes merely to obey the normalized model.
 
 **The provenance question, and its answer.** Every occurrence of the third repetition must carry `RepeatIteration(2)`,
 and the Origin view depends on it. If the body is elaborated once, the occurrences inside the `let` cannot each carry a
@@ -259,11 +260,11 @@ quotient; interchange must reproduce. `05-normalization.md` N3 states the same r
 
 ## Key, meter, harmony: the present shape
 
-Key, meter, and harmony are **regions**: typed interval payloads in the kernel whenever their temporal extent
-matters — e.g. `modulate to C major { … }`. Prompt 40 put them there **before** the surface grew such a
-construct, and that order was deliberate: a region that happens to cover the whole piece is not a special case, but a
-piece-wide scalar called `MeterMap` is. Modelling meter as one region over `[0, d]` now means the later change adds
-*more occurrences* rather than a second way to ask the same question (PoSD ch. 10).
+Key, meter, and harmony are **regions**: typed interval payloads in the kernel whenever their temporal extent matters —
+e.g. `modulate to C major { … }`. Prompt 40 put them there **before** the surface grew such a construct, and that order
+was deliberate: a region that happens to cover the whole piece is not a special case, but a piece-wide scalar called
+`MeterMap` is. Modelling meter as one region over `[0, d]` now means the later change adds *more occurrences* rather
+than a second way to ask the same question (PoSD ch. 10).
 
 So today:
 
@@ -320,8 +321,8 @@ it.
 
 ## What elaboration must never do
 
-- Introduce rest/silence occurrences to "fill" regions the author left empty — a `rest` the author wrote is
-  material and elaborates to an occurrence; a gap is not.
+- Introduce rest/silence occurrences to "fill" regions the author left empty — a `rest` the author wrote is material and
+  elaborates to an occurrence; a gap is not.
 - Push production history into kernel semantics (e.g. making equality motif-aware).
 - Add kernel constructs because one surface feature is awkward — awkwardness is elaboration's problem.
 - Change the surface grammar to make elaboration easier.

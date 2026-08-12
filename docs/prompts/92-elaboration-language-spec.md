@@ -10,22 +10,22 @@ phase: 3
 
 ## Task
 
-Turn the elaboration-language design essay from a revised proposal into a precise candidate specification before any new syntax
-or compiler path is implemented. Reconcile the roadmap, the kernel elaboration documents, the style guide,
-and prompt stack around one staged design: a total value calculus; contextual, context-neutral `music`; closed kernel
-terms; declaration templates; a typed kernel escape; and an explicit score→performance-gesture→instrument→signal→mix
-pipeline. Settle the remaining surface spellings with a corpus that a musician can read and a language implementor can
-type-check without hidden rules. The candidate is the implementation contract for prompts 93–145 but does not outrank
-the existing governing documents until prompt 146's audit graduates it.
+Turn the elaboration-language design essay from a revised proposal into a precise candidate specification before any new
+syntax or compiler path is implemented. Reconcile the roadmap, the kernel elaboration documents, the style guide, and
+prompt stack around one staged design: a total value calculus; contextual, context-neutral `music`; closed kernel terms;
+declaration templates; a typed kernel escape; and an explicit score→performance-gesture→instrument→signal→mix pipeline.
+Settle the remaining surface spellings with a corpus that a musician can read and a language implementor can type-check
+without hidden rules. The candidate is the implementation contract for prompts 93–145 but does not outrank the existing
+governing documents until prompt 146's audit graduates it.
 
 ## Read
 
-- The elaboration-language design essay, in full (now summarized in `docs/scratch/60-language-decision-record.md`). Its rejection of timeline flattening, distinction between open `music` and a
-  closed term, theory-domain separations, equality relations, and private compiler boundary are the decisions this
-  prompt makes precise rather than re-litigates.
-- Every file in `docs/kernel/`, especially
-  `06-surface-elaboration.md` and `10-term-calculus.md`. The kernel still has no join, lambda, scale, chord, or musical
-  payload knowledge.
+- The elaboration-language design essay, in full (now summarized in `docs/scratch/60-language-decision-record.md`). Its
+  rejection of timeline flattening, distinction between open `music` and a closed term, theory-domain separations,
+  equality relations, and private compiler boundary are the decisions this prompt makes precise rather than
+  re-litigates.
+- Every file in `docs/kernel/`, especially `06-surface-elaboration.md` and `10-term-calculus.md`. The kernel still has
+  no join, lambda, scale, chord, or musical payload knowledge.
 - Roadmap §§2–10, 15, 17–19; `docs/interface/03-interaction.md` and `04-provenance.md`.
 - Open Music Theory (OMT) `005`, `013`–`021`, `023`–`028`, `033`–`036`, `049`–`051`, `061`–`076`, and `099`–`110` under
   `~/Code/papers/music-theory/open-music-theory/`. Cite the exact chapter file for every imported music-theory
@@ -104,9 +104,8 @@ new public API is justified by a specification document.
 
 - `docs/language/{00-semantics,01-surface,02-core-calculus,03-musical-domains,04-templates-and-modules,
   05-verification,08-performance-and-sound,09-assets-and-packages}.md`.
-- Deliberate repairs to `docs/{roadmap,style-guide}.md` and
-  `docs/kernel/06-surface-elaboration.md`; remove or mark every contradiction while keeping existing governing
-  precedence until prompt 146.
+- Deliberate repairs to `docs/{roadmap,style-guide}.md` and `docs/kernel/06-surface-elaboration.md`; remove or mark
+  every contradiction while keeping existing governing precedence until prompt 146.
 - `docs/language/README.md`: candidate status, precedence, scope, document map, and prompt-139 graduation condition.
 - The design essay: marked as non-governing design input and linked to the split candidate specification.
 - A source-map table in `03-musical-domains.md`: concept, Musa definition, OMT chapter or local theorem, falsifying

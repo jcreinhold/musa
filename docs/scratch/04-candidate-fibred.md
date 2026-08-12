@@ -100,11 +100,11 @@ and T4's totality argument is untouched — the change is to what an object is, 
 
 ## 6. Gaps — stated, not patched
 
-**G-1. Where do layers come from?** `docs/scratch/kernel-hypothesis/01-atoms.md` §4 names this as the sharpest unresolved
-question in that directory and does not settle it: notated meter supplies one layer, but hypermeter and implicit
-polymeter are *heard*. If layers are denotation, an analysis that hears a hypermeter is changing the piece. If they are
-analysis, the base is not part of the motive and F-strong collapses to F-weak. **F does not resolve this and must not
-pretend to.** It is Q-B there.
+**G-1. Where do layers come from?** `docs/scratch/kernel-hypothesis/01-atoms.md` §4 names this as the sharpest
+unresolved question in that directory and does not settle it: notated meter supplies one layer, but hypermeter and
+implicit polymeter are *heard*. If layers are denotation, an analysis that hears a hypermeter is changing the piece. If
+they are analysis, the base is not part of the motive and F-strong collapses to F-weak. **F does not resolve this and
+must not pretend to.** It is Q-B there.
 
 **G-2. Reintroducing padding needs a caller.** Course-correction §34 is the acceptance test, and `extend` was struck
 once already for want of one. F-weak's coercion is `extend` under a new name; proposing it without a consumer would
@@ -127,6 +127,6 @@ repeat prompt 37's mistake in reverse.
 
 **The strongest structural candidate, and the one to test next.** It is the only candidate here that is argued from a
 defect *internal to the existing kernel* — L18's proviso — rather than from an outside framework, and it lands on the
-one atom that survived both gates in `docs/scratch/kernel-hypothesis/`. It is not the motive either: it describes the base, and
-[05](05-candidate-torsor.md) describes the fibre's payload. If both are right, the motive is a pair, and §6 G-1 is the
-question that decides whether the base half is real.
+one atom that survived both gates in `docs/scratch/kernel-hypothesis/`. It is not the motive either: it describes the
+base, and [05](05-candidate-torsor.md) describes the fibre's payload. If both are right, the motive is a pair, and §6
+G-1 is the question that decides whether the base half is real.

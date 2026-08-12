@@ -7,9 +7,8 @@ convention, and the conventions disagree.
 Each section below names a distinction Musa keeps, the two types it keeps it with, and a **falsifier** — a concrete case
 where identifying them would produce a wrong answer. A distinction with no falsifier would have been ceremony.
 
-The full table of separations the architecture requires is in `../../roadmap.md` §"Things that must
-remain separate"; the mathematical definitions and their proofs are in
-[`../03-musical-domains.md`](../03-musical-domains.md).
+The full table of separations the architecture requires is in `../../roadmap.md` §"Things that must remain separate";
+the mathematical definitions and their proofs are in [`../03-musical-domains.md`](../03-musical-domains.md).
 
 ## 1. Written pitch is not sounding pitch
 

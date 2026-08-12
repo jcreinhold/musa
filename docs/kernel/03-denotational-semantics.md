@@ -16,11 +16,11 @@ occurrences `(s, e, a)` with `0 ≤ s ≤ e ≤ d` and `a : A`.
 
 Two consequences, both load-bearing:
 
-- **Time is ambient**. `E` may be empty; `[0, d]` exists regardless. There is no `Silence(d)` or `Rest(d)` object:
-  an uncovered region *is* silence with respect to that payload type, by absence.
-- **Duration is temporal support, not a payload field**. A `Note` payload describes *what* is sounding; the
-  occurrence's `[s, e]` describes *when* it sounds. Payloads that smuggle their own duration field invite inconsistency
-  and are rejected at the payload-schema layer (`02-static-semantics.md`, K5, by convention of the score adapter).
+- **Time is ambient**. `E` may be empty; `[0, d]` exists regardless. There is no `Silence(d)` or `Rest(d)` object: an
+  uncovered region *is* silence with respect to that payload type, by absence.
+- **Duration is temporal support, not a payload field**. A `Note` payload describes *what* is sounding; the occurrence's
+  `[s, e]` describes *when* it sounds. Payloads that smuggle their own duration field invite inconsistency and are
+  rejected at the payload-schema layer (`02-static-semantics.md`, K5, by convention of the score adapter).
 
 ## D1 — `timeline`
 
@@ -40,8 +40,8 @@ For `M = (d, E)` and `N = (e, F)`:
 M ; N = (d + e, E ⊎ τ_d(F))    where τ_d(s, t, a) = (d + s, d + t, a)
 ```
 
-The second timeline is translated by the duration of the first. `;` generalizes pointwise to `n` arguments by left-
-or right-fold — associativity (L1) makes the choice immaterial.
+The second timeline is translated by the duration of the first. `;` generalizes pointwise to `n` arguments by left- or
+right-fold — associativity (L1) makes the choice immaterial.
 
 The empty timeline `0 = (0, ∅)` is the two-sided identity (L2). Note the difference from `(d, ∅)` for `d > 0`:
 sequencing after `(d, ∅)` *does* shift what follows — empty timelines have extent, and extent is real.
@@ -52,12 +52,12 @@ sequencing after `(d, ∅)` *does* shift what follows — empty timelines have e
 M ⊕ N = (max(d, e), E ⊎ F)
 ```
 
-Both occurrence multisets live in the union's ambient region. **Nothing is inserted into the uncovered portion of
-the shorter timeline** — it simply lives inside a larger ambient region.
+Both occurrence multisets live in the union's ambient region. **Nothing is inserted into the uncovered portion of the
+shorter timeline** — it simply lives inside a larger ambient region.
 
 - Commutative (L5) and associative (L4).
-- **Not idempotent**: `M ⊕ M ≠ M` whenever `E ≠ ∅` — multiplicity doubles. `overlay` is a union of multisets, never
-  a union of sets.
+- **Not idempotent**: `M ⊕ M ≠ M` whenever `E ≠ ∅` — multiplicity doubles. `overlay` is a union of multisets, never a
+  union of sets.
 - At any fixed extent `d`, overlay forms a commutative monoid with identity `(d, ∅)` (L6).
 
 ## D4 — Ambient extension *(struck: prompt 37)*
@@ -105,8 +105,8 @@ An occurrence is visible through `[i, j)` when:
 The third rule is a fact about the timeline being observed, not about the window: an observation therefore carries the
 extent it was taken from, and narrowing it cannot silently drop an occurrence the wider observation reported (L17).
 
-The observation knows both spans: an occurrence over `[3, 6)` observed through `[5, 8)` has whole support `[3, 6)`
-and visible support `[5, 6)` — cropping never claims the occurrence began at 5. The visible span is a *function* of the
+The observation knows both spans: an occurrence over `[3, 6)` observed through `[5, 8)` has whole support `[3, 6)` and
+visible support `[5, 6)` — cropping never claims the occurrence began at 5. The visible span is a *function* of the
 whole span and the window, so it is computed on demand rather than stored beside it; the normalized serialized kernel
 stores whole spans only.
 
@@ -123,9 +123,9 @@ Timeline(f) (d, E) = (d, { (s, e, f(a)) | (s, e, a) ∈ E })
 ```
 
 Payload mapping preserves temporal support exactly, is functorial (L9–L10), and preserves `sequence` and `overlay`
-(L11–L12). Transformations such as transposition — which touch payload information only — are payload maps
-evaluated before normalization. **No generic opaque `Transform(...)` kernel node exists**; source provenance preserves
-how material was produced, the normalized kernel preserves what it means.
+(L11–L12). Transformations such as transposition — which touch payload information only — are payload maps evaluated
+before normalization. **No generic opaque `Transform(...)` kernel node exists**; source provenance preserves how
+material was produced, the normalized kernel preserves what it means.
 
 ## D8 — Delay (derived)
 
@@ -155,8 +155,8 @@ Progress = a piecewise-linear, monotone map  p : [0, 1] → [0, 1]
 
 `u` is **normalized local time**: the fraction of the *occurrence's own span* that has elapsed. `v` is a unit-free
 fraction of the distance covered. `Progress` says how far along — never how loud, how fast, or how high. What the
-fraction means belongs to the consuming layer: a performance profile maps a hairpin's endpoints to amplitudes, a
-tempo map maps them to seconds. A dynamic marking is still not a decibel.
+fraction means belongs to the consuming layer: a performance profile maps a hairpin's endpoints to amplitudes, a tempo
+map maps them to seconds. A dynamic marking is still not a decibel.
 
 ### The span-alone theorem
 
@@ -213,8 +213,8 @@ Coverage is an **observation, not a constructor**: it stores nothing, changes no
 not already give. It exists because every consumer that wanted "what is sounding here" was computing it privately, and
 they did not agree (prompt 44).
 
-Coverage yields *occurrences*, not identities: which events a score gave names to is the score layer's invention,
-and the kernel must not learn it.
+Coverage yields *occurrences*, not identities: which events a score gave names to is the score layer's invention, and
+the kernel must not learn it.
 
 Coverage and restriction are the same question asked two ways, which L20 states: `covering(M, t)` is exactly what
 `restrict(M, I)` observes for every window `I` containing `t`, filtered to those occurrences containing `t`.
@@ -229,8 +229,8 @@ prevailing(M, t, σ) = σ(a) for the canonically last (s, e, a) ∈ E with s ≤
 ```
 
 The selector, rather than a payload trait, is what keeps the musical knowledge out of the kernel: the *caller* says "the
-key facts", and the kernel never learns what a key is. One timeline therefore supports as many independent
-prevailing values as a consumer has questions — key, meter, clef, dynamic — without a type per kind.
+key facts", and the kernel never learns what a key is. One timeline therefore supports as many independent prevailing
+values as a consumer has questions — key, meter, clef, dynamic — without a type per kind.
 
 Note what is *not* in the definition: the occurrence's end. A prevailing value is anchored by where it was stated, not
 by how far its support happens to reach, which is why a whole-piece key fact and a key fact stated at bar 40 answer the
@@ -262,8 +262,8 @@ this: no caller wants one, and the sweep belongs where the score's ordering live
 ## D12 — Explicitly not defined
 
 - **No `join`.** `Timeline[Timeline[A]]` has no canonical flattening: begin-at-onset, stretch-to-fit, crop, repeat, and
-  preserve-inner-duration are genuinely different musical operations. Specific higher-level abstractions may
-  define their own; the universal kernel does not.
+  preserve-inner-duration are genuinely different musical operations. Specific higher-level abstractions may define
+  their own; the universal kernel does not.
 - **No distributivity.** `M ; (N ⊕ P) ≠ (M ; N) ⊕ (M ; P)` in general — the left side has one copy of `M`, the right
   side two. The kernel is not a semiring, and no law is claimed that would make it one.
 - **No infinity.** Every denotation is finite in extent and in occurrence count. Patterns and loops produce coherent

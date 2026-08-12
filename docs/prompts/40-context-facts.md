@@ -13,15 +13,15 @@ phase: 3
 Finish what prompt 39 started: move the last temporal facts that live outside the timeline into it. Key and meter become
 region occurrences spanning the piece; sections and chord symbols become point occurrences at the time they mark.
 `KeyMap`, `MeterMap`, and the section/harmony arms of `AnnotationStore` become projections. After this prompt there is
-exactly one temporal representation in the compiler, and `docs/kernel/06-surface-elaboration.md`'s promise — that key/meter/harmony
-regions arrive "without any kernel change" — is demonstrated rather than asserted.
+exactly one temporal representation in the compiler, and `docs/kernel/06-surface-elaboration.md`'s promise — that
+key/meter/harmony regions arrive "without any kernel change" — is demonstrated rather than asserted.
 
 Tempo does **not** move. That is not an omission; see below.
 
 ## Read
 
-- `docs/kernel/06-surface-elaboration.md` (key/meter/harmony as typed interval payloads once extent matters), §22 (tempo is the
-  performance layer's `Beat → Second` map and never kernel material).
+- `docs/kernel/06-surface-elaboration.md` (key/meter/harmony as typed interval payloads once extent matters), §22 (tempo
+  is the performance layer's `Beat → Second` map and never kernel material).
 - `docs/kernel/08-open-questions.md` **Q8** — this prompt is its resolution: the working stance was "context maps until
   the surface gives them extent"; this prompt gives them kernel extent *without* waiting for the surface, and records
   why that was the right order.

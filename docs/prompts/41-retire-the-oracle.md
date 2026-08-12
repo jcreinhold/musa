@@ -21,8 +21,8 @@ parts of it the live path depends on.
 
 ## Read
 
-- the kernel specification ("do not grow the direct CST-to-score lowering architecture into the permanent semantic model"),
-  §30 Step 6 (the switch, which prompt 12 performed).
+- the kernel specification ("do not grow the direct CST-to-score lowering architecture into the permanent semantic
+  model"), §30 Step 6 (the switch, which prompt 12 performed).
 - Prompt 12's Design section — it states the retention policy this prompt ends, and the reason (parity), which no longer
   applies.
 - `crates/musa-compiler/src/lower.rs` — read the whole file and sort every item into *shared* or *oracle*. The shared

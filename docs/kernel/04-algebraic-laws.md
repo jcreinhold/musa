@@ -98,8 +98,8 @@ laws described an operation nothing used.
 - **X2 — no distributivity.** `M ; (N ⊕ P) ≠ (M ; N) ⊕ (M ; P)` in general: the left side contains one copy of `M`, the
   right side two. Test: `sequence_does_not_distribute_over_overlay`.
 - **X3 — no monadic join.** There is no operation in the kernel that flattens `Timeline[Timeline[A]]`; any function
-  claiming to be `join` must pick one of several musically distinct meanings. Not a runtime test — a design
-  assertion recorded here so no one adds the operation casually. Enforced by code review against the public surface.
+  claiming to be `join` must pick one of several musically distinct meanings. Not a runtime test — a design assertion
+  recorded here so no one adds the operation casually. Enforced by code review against the public surface.
 
 ## Meta-law
 

@@ -16,9 +16,9 @@ beam groups the beats a player hears, and a double space is what a beam looks li
 
 ## Read
 
-- `docs/roadmap.md`: *"The formatter should operate on syntax, not on the expanded semantic model."* That
-  is the constraint the whole design bends around — the formatter may not ask `musa-render` for a `NotationPlan`,
-  because that is upward in the dependency graph.
+- `docs/roadmap.md`: *"The formatter should operate on syntax, not on the expanded semantic model."* That is the
+  constraint the whole design bends around — the formatter may not ask `musa-render` for a `NotationPlan`, because that
+  is upward in the dependency graph.
 - `crates/musa-language/src/formatter.rs` — all of it, especially `MEASURE`'s nineteen lines of rationale, `inline_bar`,
   `format_token`, and `spaced_before`.
 - Prompt 87's `beat_groups`, which is the shared answer this prompt spaces by and `beam_unit` beams by.

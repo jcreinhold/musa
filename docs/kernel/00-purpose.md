@@ -39,8 +39,8 @@ The anti-pattern is **not** domain-specific syntax; musician-friendly syntax is 
 
 ## The foundational model
 
-Musical time is ambient: it exists independently of what occurs within it (`docs/governance/01-constitution.md` §3). A finite kernel object
-is:
+Musical time is ambient: it exists independently of what occurs within it (`docs/governance/01-constitution.md` §3). A
+finite kernel object is:
 
 1. an ambient region of exact musical time `[0, d]`, `d ∈ ℚ≥0`; and
 2. zero or more typed occurrences `(s, e, a)` supported within that region, `0 ≤ s ≤ e ≤ d`, payload `a : A`.
@@ -49,7 +49,8 @@ If a region contains no note occurrence, that region is silent with respect to n
 needs to exist.** A rest glyph is a notation decision a backend makes about an uncovered region of a notated voice — it
 is not kernel ontology (`07-backend-contract.md`).
 
-Time is exact: positions form the abelian group `(ℚ, +, 0)` and durations the ordered commutative monoid `(ℚ≥0, +, 0)`. Floats never represent symbolic musical time; physical seconds are a separate domain introduced by performance
+Time is exact: positions form the abelian group `(ℚ, +, 0)` and durations the ordered commutative monoid `(ℚ≥0, +, 0)`.
+Floats never represent symbolic musical time; physical seconds are a separate domain introduced by performance
 realization.
 
 ## The governing design rule
@@ -79,8 +80,8 @@ Exactly three structural forms, plus named references for sharing:
 - `overlay` — simultaneous presence in a common ambient region (commutative, associative, **not** idempotent).
 
 No primitive `note`, `rest`, `chord`, `motif`, `voice`, `repeat`, `transpose`, `key`, or `tempo` exists at this level.
-Payloads are typed but musically opaque to the kernel: the kernel knows *where*, *when*, *for how long*, and *what
-typed value* — never what a `Note` means.
+Payloads are typed but musically opaque to the kernel: the kernel knows *where*, *when*, *for how long*, and *what typed
+value* — never what a `Note` means.
 
 ## What the kernel deliberately is not
 

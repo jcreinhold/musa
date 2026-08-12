@@ -5,9 +5,9 @@ Status: **governing**, graduated at prompt 26 on the same pattern as `docs/kerne
 This is now a document the repo is held to: where the built interface and this specification disagree, either the code
 is wrong or the specification needs a deliberate repair, and neither may drift silently.
 
-`docs/roadmap.md` §14 and §15.9 fix the desktop app's architecture: Rust owns the semantics, the frontend
-owns ephemeral state only, the score is the main interface, entry is keyboard-first, invalid source keeps the last valid
-score, the Tauri shell is thin. That remains law.
+`docs/roadmap.md` §14 and §15.9 fix the desktop app's architecture: Rust owns the semantics, the frontend owns ephemeral
+state only, the score is the main interface, entry is keyboard-first, invalid source keeps the last valid score, the
+Tauri shell is thin. That remains law.
 
 This directory fixes everything §14 leaves open — the design. It exists because §14.3's wireframe, read as a visual
 specification, produces a four-panel toolbar application indistinguishable from the notation editors this project exists
