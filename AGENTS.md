@@ -97,6 +97,9 @@ the other.
 requires a doc comment arguing it: what the test protects, what still covers that contract in the fast suite, and what
 breadth is deferred. A slow test without that note should have been made fast.
 
+**When a gate misbehaves rather than fails**, check [`docs/development/`](docs/development/README.md) before debugging
+the code — it collects the toolchain and environment traps that make a green change look broken.
+
 ## Standards
 
 - **Deep modules.** Public facades are narrow (`parse`, `compile`, `render_notation`, `compile_graph`, `AudioEngine`,

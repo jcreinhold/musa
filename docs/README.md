@@ -17,6 +17,7 @@ disagree.
 | [`architecture/`](architecture/README.md) | Which crate implements which stage, and what is implemented, partial, or absent | **Descriptive.** Reports on code; never decides semantics |
 | [`prompts/`](prompts/README.md) | The numbered work plan, executed in dependency order, one prompt per commit | **The work plan.** A prompt that contradicts a governing document is repaired before it is implemented |
 | [`book/`](book/src/introduction.md) | How to *use* musa: tutorials, how-to guides, explanation, reference. Built with `make docs` | **User-facing.** Teaches; does not decide |
+| [`development/`](development/README.md) | Toolchain and environment notes: a gate that misbehaves rather than fails, a tool that needs configuring once | **Operational.** Governs nothing; about the machine, not about Musa |
 | [`scratch/`](scratch/README.md) | The research notebook: candidates, metatheory, proof reviews, and the arguments that failed | **Governs nothing.** Kept so a refuted claim stays visible next to its refutation |
 
 ## Which document wins
@@ -35,8 +36,9 @@ Read top to bottom. A document is bound by everything above it and binds everyth
    specification above disagree, the specification wins.
 6. **`architecture/`** and **`prompts/`** — descriptions and work. If either disagrees with anything above, either the
    code is wrong or the document needs a deliberate repair; neither may drift silently.
-7. **`book/`** and **`scratch/`** — teaching and research. Neither governs anything. Where the book and a specification
-   disagree, the book has a bug.
+7. **`book/`**, **`development/`**, and **`scratch/`** — teaching, tooling, and research. None governs anything. Where
+   the book and a specification disagree, the book has a bug; `development/` is about the machine and cannot disagree
+   with a specification at all.
 
 ## How to tell what is current
 
