@@ -89,7 +89,20 @@ whether or not it was kind to the candidate.
 | [20](20-candidate-staged-algebras.md)–[27](27-lineage-is-the-link.md) | **K₁** — a total metalanguage with staged deep algebras, its semantics, encodings, five-case sieve, metatheory, and proof review; then candidates E₃ and H, and the turn to lineage | K₁ fell; [27](27-lineage-is-the-link.md) is where "lineage is the link" replaced the search for a common residue |
 | [28](28-candidate-k2.md)–[33](33-studio-feedback-semantics.md) | **K₂** — the smallest coherent core, its metatheory and proof review; theory modules as candidate T₂; the derivation diagram as the coherent object; studio feedback | [32](32-the-coherent-object-is-the-diagram.md) is the load-bearing result: the coherent object is the derivation diagram, not a musical motive. It is what `docs/rules/across-stages/02-derivation-diagrams.md` became |
 | [34](34-candidate-k3-stratified-kernels.md)–[45](45-proof-review-k3.3.md) | **K₃** — three small kernels and one coherence discipline, closed in three passes (K₃.1 framing, K₃.2 semantic framing and typed lineage paths, K₃.3 integration), each with its proof review; plus [40](40-canonical-framing-bug.md), a governing bug, and [43](43-what-the-iut-analogy-earns.md) | The reviewed source of `docs/rules/across-stages/` and of the identity rules in `docs/rules/`. `docs/rules/across-stages/05-metatheory.md` §1 cites 25/30/35/39/42/45 as the proof-review record |
-| [36](36-theory-module-paper-prototypes.md)–[37](37-calculus-of-theory-modules.md), [46](46-proof-review-t2a.md)– | **T₂** — theory modules, from paper prototypes and the T₂a nominal calculus through source closure, packages, and caching | Open. Reviews [58](58-proof-review-t2g.md) and [60](60-proof-review-t2h.md) showed that import lists forgot package sharing. Review [64](64-proof-review-t2i.md) accepted [63](63-t2i-package-graphs.md)'s graph but rejected its interface map and two cache theorems; [65](65-t2j-package-graph-closure.md) is the current repair, not an accepted design |
+| [36](36-theory-module-paper-prototypes.md)–[37](37-calculus-of-theory-modules.md), [46](46-proof-review-t2a.md)–[66](66-proof-review-t2j.md) | **T₂** — theory modules, from paper prototypes and the T₂a nominal calculus through source closure, packages, and caching | The source-calculus results remain live. The package and cache line stops at [66](66-proof-review-t2j.md): its graph repairs passed, but it still used hashes as identity and confused package dependencies with module imports. The next work returns to the language and musical cases instead of opening T₂k |
+
+### Package-design stop
+
+The package and cache line has consumed enough work. Review [66](66-proof-review-t2j.md) found two exact errors, but
+neither blocks the source language:
+
+- a package dependency edge is not a source module import; and
+- exact source bytes decide equality, while a hash only finds possible matches.
+
+Prompt 136 can apply those rules when Musa implements exact Git source packages. Until then, language research assumes
+one finite resolved package graph per build and fresh private type identities inside that build. Registries, version
+solving, persistent compiled identities, and compiled-artifact caches are outside the current design closure. A measured
+need in a working package system may reopen them later.
 
 ## Standard of evidence
 
