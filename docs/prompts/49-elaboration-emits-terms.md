@@ -23,7 +23,7 @@ like.
 
 - `docs/kernel/10-term-calculus.md` T2 (`let` is transparent) and T3 (evaluation is normalization) — the theorems that
   make this a representation change and not a semantic one.
-- Course correction §19 (normalization is a semantic boundary, **not** the internal representation of every compiler
+- `docs/kernel/06-surface-elaboration.md` (normalization is a semantic boundary, **not** the internal representation of every compiler
   pass — "nothing requires duplicating thousands of nodes merely to obey the normalized model"). This prompt is that
   sentence finally implemented; quote it in the module docs.
 - §20 (provenance lives above the kernel) — the hard part below.

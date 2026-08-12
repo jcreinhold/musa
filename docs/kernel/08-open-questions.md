@@ -1,11 +1,11 @@
 # 08 — Open Questions
 
 Deliberately undecided. Each entry states the question, the current working stance, and the evidence that would settle
-it. Nothing here may be settled by convenience (course correction §32: "do not prematurely decide").
+it. Nothing here may be settled by convenience: no open question is closed because closing it is convenient.
 
 ## Q1 — Infinite / live patterns
 
-A `Pattern[A]` is **not** part of the finite kernel grammar (§18). Working stance: a pattern is anything that can
+A `Pattern[A]` is **not** part of the finite kernel grammar. Working stance: a pattern is anything that can
 produce coherent finite observations `P(I)` for every bounded interval `I`, obeying the compatibility law
 `J ⊆ I ⟹ restrict_J(P(I)) = P(J)`. Loops, algorithmic generators, aleatory realizations, and live-coded patterns all
 expose finite kernel observations without sharing a computation model. *Settle when:* a concrete loop/live feature
@@ -14,7 +14,7 @@ restrict-based contract) or stays a library convention.
 
 ## Q2 — Aleatory semantics — **RESOLVED (prompt 66)**
 
-Probability, nondeterminism, performer choice, and reactive improvisation are different phenomena (§32); **no**
+Probability, nondeterminism, performer choice, and reactive improvisation are different phenomena; **no**
 universal `Choice` kernel construct exists or is planned. The working stance was: each realized performance of an
 aleatory surface construct produces an ordinary finite kernel timeline; the choice mechanism lives in the surface/HIR
 and its provenance. The stated trigger was: *"the first aleatory surface feature is designed — its provenance needs
@@ -39,7 +39,7 @@ realization*, so fixtures pin a seed and the interface must be able to show whic
 
 ## Q3 — Voice identity — **RESOLVED (prompt 119)**
 
-Candidates (§32): payload metadata; a separate temporal relation; HIR structure plus provenance; or a combination. The
+Candidates: payload metadata; a separate temporal relation; HIR structure plus provenance; or a combination. The
 working stance (adopted by `06-surface-elaboration.md`) was **payload metadata + HIR structure** — voice identity
 carries (part, voice) on the fact, the kernel stays identity-free, and `ScoreSnapshot`'s lanes are an adapter
 projection. It was to be settled by a consumer that needed voice-level temporal queries the projection could not answer.
@@ -59,12 +59,12 @@ invent one. A kernel-level partial order would have had nothing to do in either 
 Two things this deliberately does not settle, both recorded rather than closed. A **partially ordered** succession (OMT
 `110-row-properties.md` §"Partially ordered sets" — segments fixed, internal order free) and **divisi** (one line
 splitting and rejoining) are still inexpressible with per-note tags. Neither has a consumer, and under the standing rule
-demand precedes design; the analysis is in `docs/scratch/kernel-hypothesis/06-evidence-log.md` Gate 2, which is what a future
-proposal has to beat.
+demand precedes design; the analysis is in `docs/scratch/kernel-hypothesis/06-evidence-log.md` Gate 2, which is what a
+future proposal has to beat.
 
 ## Q4 — Time-varying continuous controls — **RESOLVED (prompt 45)**
 
-Automation (crescendo, glissando, parameter curves) does not obviously belong to discrete occurrences (§32). The
+Automation (crescendo, glissando, parameter curves) does not obviously belong to discrete occurrences. The
 candidates were: typed interval payloads; a separate behavior/curve layer; the performance/audio model.
 
 **Answer: a typed payload value, and no kernel operation.** `Progress` (`03-denotational-semantics.md`) is a monotone
@@ -84,7 +84,7 @@ prompt wants one, and that is an implementation convenience, not a change of lay
 ## Q5 — Recursive / generative source programs
 
 The surface language may eventually need recursion or generative facilities; this does **not** imply the finite kernel
-needs them (§32). Working stance: surface programs must have finite observable output for any finite query; termination
+needs them. Working stance: surface programs must have finite observable output for any finite query; termination
 is a surface-language static property (as with motif ordering today, roadmap §6.5). *Settle when:* a surface recursion
 proposal exists; its elaboration must produce finite observations or be rejected.
 
@@ -117,7 +117,7 @@ Two things the stance predicted wrong, both repaired in place:
   not uniquely framed and moved semantic identity to N6's versioned binary record; `05-normalization.md` states the
   current repair.
 - **The payload grammar in `01-grammar.md` had to go.** Record-shaped payload values would make the kernel know what a
-  note is (§12). A payload is now an opaque quoted string, and `01-grammar.md` states that repair.
+  note is. A payload is now an opaque quoted string, and `01-grammar.md` states that repair.
 
 ## Q7 — Chord regrouping fidelity
 
@@ -150,7 +150,7 @@ still one (`prevailing`), and the threshold is unmet by a wider margin than befo
 
 - **Prompt 48 (interchange format):** two documents were repaired against the implementation rather than the other way
   round. (1) `01-grammar.md`'s record-shaped `payload` declaration was struck for an opaque quoted string — a
-  self-describing file is not worth the kernel knowing what a note is (§12). (2) `05-normalization.md`'s "N5 is a strict
+  self-describing file is not worth the kernel knowing what a note is. (2) `05-normalization.md`'s "N5 is a strict
   subset of the grammar" was false in both directions: N5 writes the N3 key bare and has no version header, and the N3
   key for `ScoreFact` quotients away the definition span and declaration id an interchange file must carry. The key
   stayed untouched, the interchange text became a second function, and at prompt 48 no golden or semantic hash moved.
@@ -160,25 +160,33 @@ still one (`prevailing`), and the threshold is unmet by a wider margin than befo
   files rather than insta snapshots, because a corpus that exists to be read by another implementation must be readable
   as kernel text, not wrapped in a `.snap` preamble.
 
-## Falsification corpus status (§33)
+## Falsification corpus status
 
-| # | Example | Status |
-| --- | --- | --- |
-| 1 | Twinkle Twinkle (sequential + rests) | **proven** (prompt 11): `examples/twinkle.musa`, parity + normal form |
-| 2 | Four-part chorale (synchronized voices) | **proven at two parts** (prompt 11): `counterpoint.musa` parity + normal form; extend to four parts with prompt 27-era fixtures |
-| 3 | Canon (reuse, delay, transformation, overlay) | **proven** (prompt 11): `examples/canon.musa` — motif reuse, delay by ambient extent, transposition, overlay |
-| 4 | Tuplets / polyrhythm (exact rationals) | blocked on surface syntax (prompt 27) |
-| 5 | Changing meter and key | **half proven** (prompt 40): key and meter are region occurrences and the context maps are projections of them; a *changing* key or meter still needs surface syntax, and needs no kernel change when it arrives |
-| 6 | Accelerando / ritardando | **partly proven** (prompt 36): stepwise tempo changes integrate exactly; a continuous ramp still needs surface syntax |
-| 7 | Glissando / crescendo | blocked on Q4 |
-| 8 | Loop-based electronic music | blocked on surface loops (Phase 2/3; see Q1) |
-| 9 | Controlled aleatory | unblocked at prompt 66 (Q2 resolved); the design is `11-realization.md`, implemented from prompt 67 |
-| 10 | Improvisational / live process | blocked on Q1; the finite-kernel-as-observation stance is the hypothesis under test |
+Before the architecture may be called settled, it must elaborate materially different music cleanly. Each item names
+what it is a test *of*, not just a piece.
 
-Rule (§33): if several of these require awkward or lossy lowering, reconsider the kernel as a whole. Do not patch
-examples independently.
+| # | Example | Tests | Status |
+| --- | --- | --- | --- |
+| 1 | Twinkle Twinkle | ordinary sequential pitched material and rests | **proven** (prompt 11): `examples/twinkle.musa`, parity + normal form |
+| 2 | A four-part chorale | multiple synchronized voices, harmonic simultaneity | **proven at two parts** (prompt 11): `counterpoint.musa` parity + normal form; extend to four parts with prompt 27-era fixtures |
+| 3 | A canon | reuse, delay, transformation, overlay | **proven** (prompt 11): `examples/canon.musa` — motif reuse, delay by ambient extent, transposition, overlay |
+| 4 | Tuplets and polyrhythm | exact rational temporal relationships | blocked on surface syntax (prompt 27) |
+| 5 | Changing meter and key | contextual temporal information with no semantic special case | **proven** (prompts 63–64, pushed to its edge at 74): `meter none` is a *value* of the meter context, not a mechanism beside it, so music with no barlines needed no kernel form, no second time coordinate, and no new special case. `examples/changing-meter.musa`, `modulation.musa`, `cadenza.musa`, `chant.musa` |
+| 6 | Accelerando and ritardando | symbolic beat structure distinguished from physical-time realization | **proven** (prompt 73): a gradual change is a `Progress` in the tempo marking's payload, integrated exactly at realization and printed at both ends. The symbolic timeline does not move — no notehead changes place, which is the distinction the test states. `examples/rubato.musa`, `riser.musa` |
+| 7 | Glissando and crescendo | where continuous temporal behaviour belongs | **proven** (prompt 44): a shape is a `Progress` in the payload, not a term form. `examples/annotated.musa` |
+| 8 | Loop-based electronic music | surface iteration producing finite observations | **proven** (prompt 67): a ranged repeat is decided once at compile time and everything below it is an ordinary exact repeat. `examples/loop-lengths.musa` |
+| 9 | Controlled aleatory | multiple realizations, each an ordinary finite kernel | **proven** (settled 66, implemented 67, surfaced 68; `11-realization.md`): `examples/mobile.musa` — nineteen fragments, 19! orderings, one permutation in the payload — and `examples/in-c.musa`, fifty-three decision sites that survive an edit to each other |
+| 10 | An improvisational / live process | the finite kernel still useful when the producer is reactive | **proven as far as it can be, and no further** (prompt 68): `examples/changes.musa` writes the improvised chorus as a frame of the right length with the changes on it, so the interchange file holds a complete, finite, exactly timed piece plus the instruction a player needs. A *reactive producer* is refused rather than deferred — musa compiles a reading of the work, it does not follow one. See prompt 68's Stop list |
+| 11 | Polymeter and polytempo | parts counted and paced independently of the score around them | **proven** (prompt 75), and worth reading for how little it cost: `Meter` and `Tempo` were already inherited by `Override`, and `BarLines` was already built on an arbitrary sequence of meters, so both are a **scope argument** — `bars(scope)`, `IntegratedTempoMap::new(score, scope, …)` — and neither is a kernel form, a term, or a second algorithm. `examples/bulgarian.musa` (7/8 against 4/4, barlines that diverge), `hemiola.musa` (6/8 against 3/4, one grid beamed two ways), `canon-x.musa` (Nancarrow's shape: one part accelerating while the other decelerates) |
 
-The kernel graduated at prompt 12 with items 1–3 proven and 4–10 tracked above.
+The rule: if several of these require awkward or lossy lowering, reconsider the kernel as a whole. Do not patch examples
+independently.
+
+The kernel graduated at prompt 12 with items 1–3 proven. Only item 4 is still open, and it is blocked on surface syntax
+rather than on anything the kernel lacks.
+
+One lossy lowering is real and is exactly one, which is what item 11 exists to expose: SMF has a single tempo track, so
+a polytempo export is sonically exact and notationally wrong — and says so.
 
 ## Prompt-implementation log
 
@@ -228,7 +236,7 @@ Anything discovered while implementing prompts 09–12 is appended here with its
   **import** is resolved before elaboration begins: a library contributes declarations, and a declaration is not an
   occurrence until something uses it, so an imported motif and a locally written one elaborate through identical code
   (`import_laws.rs` asserts the two produce the same events). A **tempo change** is a change to the map from beats to
-  seconds (§22), not to the timeline — every note keeps its symbolic position and the performance layer integrates the
+  seconds, not to the timeline — every note keeps its symbolic position and the performance layer integrates the
   segments, which is why `a_hairpin_moves_no_note` and the tempo laws can both be stated as "the score is unchanged". A
   **hairpin** is an annotation with extent, like prompt 35's phrase, anchored to events; it is read at the performance
   boundary and nowhere else. §33 item 6 is therefore partly answered: stepwise tempo is exact, and a continuous ramp
@@ -270,7 +278,7 @@ Anything discovered while implementing prompts 09–12 is appended here with its
   only sound because a written rest is an occurrence, so a piece ending in silence still ends where the silence ends;
   that is now a fixture rather than an argument. Second, `resolve_position` used to read the snapshot it was helping to
   build — the last place where a temporal fact was computed from the adapter's output rather than from the timeline —
-  and it now reads the meter occurrence. **Tempo did not move and will not** (§22): it is the map from symbolic to
+  and it now reads the meter occurrence. **Tempo did not move and will not**: it is the map from symbolic to
   physical time, and a place where `stretch` and *ritardando* could be confused is exactly what the kernel must not
   offer. `TempoMap` now carries that reasoning as a comment, because the next reader will otherwise ask why tempo was
   left behind and answer the question wrong.

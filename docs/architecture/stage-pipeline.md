@@ -35,6 +35,36 @@ These stages use different data because they answer different questions. The com
 intermediate representation. A practice may add another explicit route—for example, phrase instructions directly to
 gestures—without pretending those instructions are Western score facts.
 
+The first arrow above covers four front-end stages, which are worth drawing separately because each one is a place a
+later tool needs to stop at:
+
+```text
+.musa source
+    |
+    | lex and parse, keeping every byte
+    v
+lossless CST                      <- the formatter, text edits, and syntax highlighting read this
+    |
+    | resolve names, apply units, build music-oriented declarations
+    v
+music-oriented HIR                <- diagnostics that talk about voices and motifs read this
+    |
+    | evaluate total expressions
+    v
+closed Term<ScoreFact>            <- kernel documents and typed quotation read this
+    |
+    | evaluate exact musical time
+    v
+Timeline<ScoreFact>
+```
+
+None of these intermediate types crosses a crate boundary. The CST is Rowan-backed and stays inside `musa-language`; the
+HIR and the evaluator's values stay inside `musa-compiler`. What crosses is the closed term and the timeline.
+
+The temporal kernel in particular is not spread through the compiler. Its public interface is roughly: construct and
+check a timeline, sequence, overlay, restrict, normalize, compare, map payloads, and scale time. Its internal
+representation choices stay hidden behind that.
+
 ## 2. Which crate owns what
 
 | Work | Owning crate | Public API should expose |

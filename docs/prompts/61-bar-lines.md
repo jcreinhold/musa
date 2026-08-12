@@ -32,7 +32,7 @@ rather than argued.
 - Prompt 58 and `plan.rs`'s `Fold` — repeats and endings **renumber measures**. This is the hazard the design section
   addresses; read `Fold::at`/`end_at` before writing anything.
 - Prompt 49 and `elaborate.rs`'s `Share` — a shared body is elaborated once and referenced many times.
-- `docs/course-correction.md` §4 (exact rationals) — no float enters this, at any point, for any reason.
+- `docs/kernel/03-denotational-semantics.md` (exact rationals) — no float enters this, at any point, for any reason.
 
 ## Design
 

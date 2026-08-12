@@ -2,33 +2,33 @@
 
 What downstream consumers of the temporal kernel may assume, and what they must never do. Backends today consume
 `ScoreSnapshot` and `NotationPlan` rather than kernel timelines directly; this contract applies to those projections as
-well, because the projections preserve the kernel's guarantees (course correction §27–28).
+well, because the projections preserve the kernel's guarantees.
 
 ## What consumers may assume
 
 - **Normalized timelines only.** No consumer ever sees `sequence`, `overlay`, or references — only flat, canonically
-  ordered occurrence multisets with exact rational spans (§25, `05-normalization.md`).
+  ordered occurrence multisets with exact rational spans (`05-normalization.md`).
 - **Exact positions.** Every span is a pair of exact rationals in beats. No float, no rounding, no sample-frame
   quantization has occurred at this layer.
 - **Multiset multiplicity.** Identical occurrences are distinct facts. A consumer that merges equal occurrences is
-  destroying musical information (two performers, one note) (§6).
+  destroying musical information (two performers, one note).
 - **Ambient extent.** A timeline's extent may exceed every occurrence's end; the tail is real temporal extent, not an
-  error (§9).
+  error.
 - **Semantic equality.** Comparison, caching, and golden testing use the canonical form (N4–N6) and nothing else.
-- **Opacity.** Payloads are typed and serializable, but their musical meaning belongs to their own theory modules (§12).
+- **Opacity.** Payloads are typed and serializable, but their musical meaning belongs to their own theory modules.
   A consumer interprets the payload types it understands and ignores nothing silently — unknown payload types are an
   explicit skip, never a misread.
 
 ## What consumers must decide themselves
 
-- **Rest glyphs are a notation decision** (§2). An uncovered region of a notated voice is filled with rest symbols by
+- **Rest glyphs are a notation decision**. An uncovered region of a notated voice is filled with rest symbols by
   the *notation* layer (`NotationPlan`), choosing glyph shapes per meter and convention. The kernel stores nothing
   there, and no backend may claim the kernel "has rests."
 - **Notation spelling stays verbatim.** Written pitch spelling passes through from the payload; backends do not respell
   (roadmap §6.3).
 - **Layout/engraving is downstream.** The plan and the kernel are semantic, not typographic (roadmap §12.1).
 
-## What performance does (§22)
+## What performance does
 
 Performance realization supplies the monotone map `tempo : Beat → Second` and applies it to symbolic positions:
 
@@ -42,7 +42,7 @@ Performance realization supplies the monotone map `tempo : Beat → Second` and 
   §22 bug this contract exists to prevent.
 - The tempo map is piecewise-monotone; integration details live in the performance layer (prompt 15), not here.
 
-## What audio does (§23)
+## What audio does
 
 Audio is a separate semantic layer: signals `Signal : PhysicalTime → Sample`. It meets the kernel at the
 **realization/instrument boundary**:
@@ -82,15 +82,15 @@ A preparation cache stores the named operation version, every complete framed ar
 digest locates candidates. A hit is returned only after exact complete-argument confirmation, so a digest collision
 cannot change the answer.
 
-## The preserved boundaries (§27–28)
+## The preserved boundaries
 
 - `ScoreSnapshot` is the score-specific interpretation of the normalized denotation. Note-specific assumptions live
   there, not in the kernel; if a score concept cannot be expressed through the adapter, the *snapshot* grows, not the
-  kernel (§27).
+  kernel.
 - The `ScoreSnapshot → NotationPlan → backend` pipeline is unchanged. Notation never learns about motif expansion,
-  repetition semantics, source functions, loops, or transformations — it consumes already-resolved temporal facts (§28).
+  repetition semantics, source functions, loops, or transformations — it consumes already-resolved temporal facts.
 - Provenance flows: `EventId`/`Origin` in the snapshot are the same provenance carried in occurrence payloads, so the
-  editor's source-mapping contract (MEI `xml:id`, click-to-source) survives the kernel unchanged (§20).
+  editor's source-mapping contract (MEI `xml:id`, click-to-source) survives the kernel unchanged.
 
 ## The interface that carries the guarantees (prompt 42)
 
@@ -140,7 +140,7 @@ The guarantee the kernel now carries is simple, and is the reason these are quer
 | Where do the boundaries fall — end instants, points, ties? | The convention table in D10–D11, stated once |
 
 Two things consumers may *not* assume. The queries return occurrences, never identities: `EventId` is the score layer's
-invention and the kernel does not know it (§12). And `prevailing` takes a selector, not a payload trait — the caller
+invention and the kernel does not know it. And `prevailing` takes a selector, not a payload trait — the caller
 says which facts are context-bearing, because "this is a key signature" is musical knowledge the kernel must not learn.
 
 Consumers that must answer for *every* event keep their ordered sweep and honour the conventions rather than calling a
@@ -155,8 +155,7 @@ semantic hash, so two implementations that disagree about a shape are reading di
 **Where** to sample the shape is not part of the contract. musa's performance layer samples a hairpin once per notated
 event, at `u = index / (count − 1)`, because a hairpin is written around notes and the arrival should not depend on the
 rhythm. A consumer that samples per onset, per frame, or per control-rate tick is equally conforming; it will agree at
-the endpoints and may differ between them. That is the same latitude a consumer already has over tempo realization
-(§22), and it is stated here so nobody encodes musa's sampling choice as though it were the specification.
+the endpoints and may differ between them. That is the same latitude a consumer already has over tempo realization, and it is stated here so nobody encodes musa's sampling choice as though it were the specification.
 
 ### A gradual tempo change is the second reader of that rule (prompt 73)
 
@@ -284,7 +283,7 @@ every grace in a group shares a span — so the order lives in the payload's `in
 them in any other order is printing different music. `examples/graces.musa` and `examples/graces-reordered.musa` are the
 conformance pair: identical but for two reversed groups, and their kernel terms differ.
 
-## Falsification duty (§33)
+## Falsification duty
 
 Consumers built against this contract are evidence for or against it. If several materially different musical examples
 (the §33 corpus: chorale, canon, tuplets, meter/key change, accelerando, crescendo, loops, aleatory, live process)

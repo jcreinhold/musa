@@ -99,7 +99,7 @@ Each backend's constant case must produce byte-identical output to before, which
 - `crates/musa-render`: the four exporters above; `plan.rs` walks `BarLines::measures()`.
 - `examples/`: `changing-meter.musa` — a folk tune alternating 7/8 and 4/4, which is the case this exists for, plus a
   pickup in `twinkle.musa`. `examples/broken/meter-mid-bar.musa`.
-- `docs/initial-design-roadmap.md` §7.2; prompt 57's deferral struck with a pointer here.
+- `docs/roadmap.md` §7.2; prompt 57's deferral struck with a pointer here.
 
 ## Check
 

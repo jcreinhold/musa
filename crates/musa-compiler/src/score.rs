@@ -366,7 +366,7 @@ impl PartMap {
 ///
 /// Not a tempo *map* — this is the pair a reader sees printed over the staff.
 /// What it means in seconds is the performance layer's integration of every
-/// such mark in the piece (course correction §22).
+/// such mark in the piece (docs/kernel/06-surface-elaboration.md).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Metronome {
     /// The beat unit as a fraction of a whole note (`1/4` for a quarter).

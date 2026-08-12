@@ -5,7 +5,7 @@ Status: **governing**, graduated at prompt 26 on the same pattern as `docs/kerne
 This is now a document the repo is held to: where the built interface and this specification disagree, either the code
 is wrong or the specification needs a deliberate repair, and neither may drift silently.
 
-`docs/initial-design-roadmap.md` §14 and §15.9 fix the desktop app's architecture: Rust owns the semantics, the frontend
+`docs/roadmap.md` §14 and §15.9 fix the desktop app's architecture: Rust owns the semantics, the frontend
 owns ephemeral state only, the score is the main interface, entry is keyboard-first, invalid source keeps the last valid
 score, the Tauri shell is thin. That remains law.
 

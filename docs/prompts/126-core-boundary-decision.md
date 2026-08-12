@@ -21,7 +21,7 @@ document and a repaired prompt stack. It produces no code.
 
 - Peyton Jones (1987) §§1.2–1.3 and 3 — the enriched-language-to-core translation, and why the core is the semantics.
   §§2.1–2.3 for what makes a calculus a calculus rather than a data structure with functions attached.
-- `docs/course-correction.md` — the temporal kernel as ontology, and the elaboration story it fixes.
+- `docs/kernel/` — the temporal kernel as ontology, and the elaboration story it fixes.
 - `docs/kernel/00-overview.md`, `04-timeline.md`, `05-normalization.md`, `06-surface-elaboration.md`,
   `10-term-calculus.md` — the laws that would have to be re-proved at any new payload.
 - `docs/language/02-core-calculus.md` and `docs/language/00-semantics.md` — the objects the language claims to compute.
@@ -107,8 +107,8 @@ repair and the decision that forces it are one change.
 
 - The core-boundary decision record (`docs/scratch/61-core-boundary-decision-record.md`): the census, the three candidates, the five tests applied to each, the
   chosen answer, the signal question settled, and the ledger over prompts 127–146. It states its own precedence: it
-  governs over `docs/language/` where they differ, and sits under `docs/course-correction.md` — an amendment to the
-  course correction is written into the course correction itself, in this commit, or it has not been made.
+  governs over `docs/language/` where they differ, and sits under the temporal-kernel specification — the amendment is
+  written into the governing documents themselves, in this commit, or it has not been made.
 - Repairs to the `Design` and `depends_on` of every prompt in 127–146 the decision changes, and new prompt files for
   work the decision requires that no prompt covers, inserted with `scripts/renumber-prompts.py`.
 - Updated `docs/prompts/README.md` (index table, block summaries) and `AGENTS.md` (governing-document list, prompt

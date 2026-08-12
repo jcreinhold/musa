@@ -1,7 +1,7 @@
 # 02 — Static Semantics
 
 Well-formedness rules for kernel compositions and kernel files. Everything here is checkable without evaluating anything
-musical — the kernel never inspects payload *meaning* (course correction §12); it checks shapes and bounds.
+musical — the kernel never inspects payload *meaning*; it checks shapes and bounds.
 
 ## K1 — Occurrence bounds
 
@@ -15,13 +15,13 @@ Every occurrence `(s, e, a)` in a timeline of extent `d` must satisfy:
 - Zero-length occurrences (`s = e`) are **well-formed**. Their meaning is a payload-type question (a percussive hit
   might be modeled as a point), not a kernel question.
 - Violations are construction-time errors (`KernelError`), never silently clamped: clamping would rewrite where an
-  occurrence began, which is exactly the lie restriction is designed to avoid (§17).
+  occurrence began, which is exactly the lie restriction is designed to avoid.
 
 ## K2 — Time domain
 
-- Positions and durations are exact rationals. No floating-point value may enter the kernel (§4).
+- Positions and durations are exact rationals. No floating-point value may enter the kernel.
 - Timeline extents are non-negative. The empty timeline at extent `d` is `(d, ∅)` — a perfectly good value, and the
-  identity of `overlay` at fixed duration (§8).
+  identity of `overlay` at fixed duration.
 - Scaling factors are **positive** rationals (`ℚ>0`); zero or negative scaling is a construction error
   (`03-denotational-semantics.md`, D5).
 
@@ -36,7 +36,7 @@ it), and with it the error. Cropping was never extension anyway: it is `restrict
 In a kernel file (or any HIR that names compositions):
 
 - Every `composition-name` referenced in a `composition-expression` must be declared in the same file/scope.
-- The reference graph must be **acyclic**. There is no recursion in the kernel (§32); a cycle is rejected, not lazily
+- The reference graph must be **acyclic**. There is no recursion in the kernel; a cycle is rejected, not lazily
   tolerated.
 - All composition expressions in one `sequence` or `overlay` must share the same payload type. The kernel is parametric
   in `A`, not polymorphic per composition.
@@ -56,7 +56,7 @@ kernel-side contract is:
 
 ## K6 — Multiset discipline
 
-Occurrences form a finite **multiset**, not a set (§6): two occurrences identical in span and payload are two
+Occurrences form a finite **multiset**, not a set: two occurrences identical in span and payload are two
 occurrences. No operation in the kernel may deduplicate them. Two performers playing the same note must not collapse
 merely because all visible values coincide.
 

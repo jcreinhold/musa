@@ -7,7 +7,7 @@
 //! timeline stays the only place a temporal fact lives.
 //!
 //! It is a module rather than a method on the timeline because the kernel
-//! must not learn what a score is (course correction §12).
+//! must not learn what a score is (docs/kernel/02-static-semantics.md).
 //!
 //! Rational arithmetic on musa's magnitudes is total; the workspace
 //! arithmetic lint is allowed module-wide (see musa-compiler/src/time.rs).

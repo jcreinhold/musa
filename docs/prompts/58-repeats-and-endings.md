@@ -134,7 +134,7 @@ Volta brackets are written in the topmost staff's first lane only, as engravers 
 - `examples/repeats.musa`: two parts, two endings; goldens at every backend.
 - `examples/broken/ending-outside-repeat.musa` and `examples/broken/ending-past-the-count.musa`: the rendered reports,
   snapshotted as prompt 56 established.
-- `docs/initial-design-roadmap.md` §2 (the position row and what varies) and §7.2 (the repeat section).
+- `docs/roadmap.md` §2 (the position row and what varies) and §7.2 (the repeat section).
 
 Found along the way, and repaired here:
 

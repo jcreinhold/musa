@@ -108,7 +108,7 @@ reference. `make docs` builds it; `make docs-serve` reads it live.
 
 Three documents govern this repository, and the code is expected to agree with them:
 
-- [`docs/initial-design-roadmap.md`](docs/initial-design-roadmap.md) — the architecture: layers, crate ownership,
+- [`docs/roadmap.md`](docs/roadmap.md) — the architecture: layers, crate ownership,
   language design, DSP rules, and what is deliberately rejected or deferred.
 - [`docs/course-correction.md`](docs/course-correction.md) — the semantic correction that makes a small temporal kernel
   the ontology and the surface language an elaboration into it. Its specification is [`docs/kernel/`](docs/kernel/).

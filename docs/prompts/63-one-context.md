@@ -36,7 +36,7 @@ small prompt instead of each a redesign.
   and does not give you.
 - `crates/musa-compiler/src/resolve.rs::part_metadata` (:701) — clef is read here and last-wins **silently**.
 - `crates/musa-project/src/session.rs` (:387) — the MIDI speller spells against the *piece's* key.
-- `docs/course-correction.md` §2 (ambient time), §22 (tempo is `Beat → Second`), §34 (semantic necessity).
+- `docs/kernel/00-purpose.md` (ambient time), §22 (tempo is `Beat → Second`), §34 (semantic necessity).
 
 ## Design
 

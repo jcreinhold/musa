@@ -30,7 +30,7 @@ every golden stays byte-identical.
   precedent rather than inventing a rule.
 - `crates/musa-compiler/src/resolve.rs::articulation_settings` (:588) — the profile side, which reads `gate` and
   `attack`.
-- `docs/initial-design-roadmap.md` §2 and AGENTS.md's layer table: an articulation as written is not a gate multiplier.
+- `docs/roadmap.md` §2 and AGENTS.md's layer table: an articulation as written is not a gate multiplier.
   The table must not acquire a `gate` column.
 
 ## Design

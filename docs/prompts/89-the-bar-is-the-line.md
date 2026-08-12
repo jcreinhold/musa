@@ -18,7 +18,7 @@ converts the corpus.
 
 ## Read
 
-- `docs/initial-design-roadmap.md` on `bar { }`: *"A bar means nothing… What the brace buys is the assertion."* The
+- `docs/roadmap.md` on `bar { }`: *"A bar means nothing… What the brace buys is the assertion."* The
   assertion is what survives; the brace is what does not. Also *"Newlines should be trivia, not syntax"* — which is why
   one bar per line is prompt 90's decision and not this one's.
 - `docs/style-guide.md` §1 — a named bar "plays where it stands, so its name is an *address*". A named bar is material

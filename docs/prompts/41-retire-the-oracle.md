@@ -21,7 +21,7 @@ parts of it the live path depends on.
 
 ## Read
 
-- Course correction §29 ("do not grow the direct CST-to-score lowering architecture into the permanent semantic model"),
+- the kernel specification ("do not grow the direct CST-to-score lowering architecture into the permanent semantic model"),
   §30 Step 6 (the switch, which prompt 12 performed).
 - Prompt 12's Design section — it states the retention policy this prompt ends, and the reason (parity), which no longer
   applies.

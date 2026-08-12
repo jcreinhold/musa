@@ -17,7 +17,8 @@ musa that can be *wrong* in a way musa can point at.
 
 ## Read
 
-- `docs/course-correction.md` §§3–5 — the surface elaborates into the kernel; it does not add to the ontology. A bar
+- `docs/kernel/00-purpose.md` and `03-denotational-semantics.md` — the surface elaborates into the kernel; it does not
+  add to the ontology. A bar
   adds no operation, no payload, and no second notion of time.
 - Prompt 07 (`NotationPlan`) — measures are **already** computed from the meter. This prompt must not create a second
   measure representation; AGENTS.md's layer table forbids exactly that collapse.
@@ -167,7 +168,7 @@ is now the narrower claim; widening the column is an interface change and is not
   specification: a three-note refrain declared once and played three times, in two parts. `glass-mountain.musa` keeps
   its unbarred voices on purpose; something has to go on proving that loose events still work.
   `examples/broken/bar-too-long.musa` and `bar-too-short.musa` for the goldens.
-- `docs/initial-design-roadmap.md` §7.2 (source language design): the bar section. Not §5 as first written — §5 is the
+- `docs/roadmap.md` §7.2 (source language design): the bar section. Not §5 as first written — §5 is the
   algebraic foundation, and a bar adds nothing to the algebra. That it has no §5 section is the design being true.
 
 ## Check

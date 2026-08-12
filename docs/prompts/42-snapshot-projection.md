@@ -24,7 +24,7 @@ decision, and the next representation change is another workspace-wide edit.
 - PoSD ch. 4 (deep modules), ch. 5 (information hiding), ch. 7 (different layer, different abstraction — the snapshot is
   the *score* layer's abstraction over the timeline, and it should speak score, not storage). The red flags this prompt
   clears: *public fields expose layout*, *public interface mirrors storage*, *information leakage*.
-- Course correction §27 (the snapshot is the score-specific interpretation of the normalized denotation),
+- `docs/kernel/07-backend-contract.md` (the snapshot is the score-specific interpretation of the normalized denotation),
   `docs/kernel/07-backend-contract.md` (what consumers may assume — this prompt makes those assumptions enforceable
   rather than conventional).
 - Every consumer, before designing the accessors: `crates/musa-render/src/plan.rs`, `ly.rs`, `mei.rs`, `musicxml.rs`,

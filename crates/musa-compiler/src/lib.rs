@@ -1,6 +1,6 @@
 //! Semantic core: from parsed source to immutable musical snapshots.
 //!
-//! Pipeline (course correction §26): CST → expansion-aware
+//! Pipeline (docs/architecture/stage-pipeline.md): CST → expansion-aware
 //! elaboration → temporal kernel (`musa-kernel`) → `ScoreSnapshot` adapter.
 //! One semantic path: the kernel — not the
 //! surface grammar — defines the ontology.

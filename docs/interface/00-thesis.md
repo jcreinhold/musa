@@ -4,7 +4,7 @@ Status: **governing** (graduated at prompt 26, alongside the source workspace).
 
 ## 1. What this document is
 
-`docs/initial-design-roadmap.md` §14 fixes the desktop app's *information architecture*: what Rust owns, what the
+`docs/roadmap.md` §14 fixes the desktop app's *information architecture*: what Rust owns, what the
 frontend owns, which workspaces exist, that the score is the main interface, that entry is keyboard-first, that invalid
 source keeps the last valid score. That is law and this document does not contradict it.
 

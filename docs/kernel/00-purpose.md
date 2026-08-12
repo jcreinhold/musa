@@ -32,14 +32,14 @@ above do not already give.
 
 Without a small semantic basis, every surface-language construct becomes something each backend must independently
 understand, each transformation must traverse, equality must account for, serialization must preserve, and tests must
-special-case. That accretion is the failure mode this specification exists to prevent (course correction §1).
+special-case. That accretion is the failure mode this specification exists to prevent.
 
 The anti-pattern is **not** domain-specific syntax; musician-friendly syntax is desirable. The anti-pattern is
-**domain-specific semantic accretion without a stable lower algebra** (course correction §31).
+**domain-specific semantic accretion without a stable lower algebra**.
 
 ## The foundational model
 
-Musical time is ambient: it exists independently of what occurs within it (course correction §2). A finite kernel object
+Musical time is ambient: it exists independently of what occurs within it (`docs/governance/01-constitution.md` §3). A finite kernel object
 is:
 
 1. an ambient region of exact musical time `[0, d]`, `d ∈ ℚ≥0`; and
@@ -47,15 +47,14 @@ is:
 
 If a region contains no note occurrence, that region is silent with respect to notes. **Nothing representing silence
 needs to exist.** A rest glyph is a notation decision a backend makes about an uncovered region of a notated voice — it
-is not kernel ontology (§2, `07-backend-contract.md`).
+is not kernel ontology (`07-backend-contract.md`).
 
-Time is exact: positions form the abelian group `(ℚ, +, 0)` and durations the ordered commutative monoid `(ℚ≥0, +, 0)`
-(§4). Floats never represent symbolic musical time; physical seconds are a separate domain introduced by performance
-realization (§22).
+Time is exact: positions form the abelian group `(ℚ, +, 0)` and durations the ordered commutative monoid `(ℚ≥0, +, 0)`. Floats never represent symbolic musical time; physical seconds are a separate domain introduced by performance
+realization.
 
 ## The governing design rule
 
-Every proposed kernel feature is judged by this rule, quoted verbatim from course correction §34:
+Every proposed kernel feature is judged by this rule:
 
 > **A construct belongs in the kernel only if removing it makes an important class of musical meanings impossible or
 > unnatural to represent faithfully across multiple independent consumers.**
@@ -73,25 +72,25 @@ specification.
 
 ## The initial structural basis
 
-Exactly three structural forms, plus named references for sharing (§5):
+Exactly three structural forms, plus named references for sharing:
 
 - `timeline` — an ambient finite temporal region with facts supported within it;
 - `sequence` — temporal succession (associative concatenation);
 - `overlay` — simultaneous presence in a common ambient region (commutative, associative, **not** idempotent).
 
 No primitive `note`, `rest`, `chord`, `motif`, `voice`, `repeat`, `transpose`, `key`, or `tempo` exists at this level.
-Payloads are typed but musically opaque to the kernel (§12): the kernel knows *where*, *when*, *for how long*, and *what
+Payloads are typed but musically opaque to the kernel: the kernel knows *where*, *when*, *for how long*, and *what
 typed value* — never what a `Note` means.
 
 ## What the kernel deliberately is not
 
 - Not a general-purpose programming language (no recursion, no general computation — §32).
-- Not a semiring or ring; `sequence` does not distribute over `overlay` (§10, `04-algebraic-laws.md`).
-- Not assumed to be a monad; there is no canonical musically-correct `join` (§16).
+- Not a semiring or ring; `sequence` does not distribute over `overlay` (`04-algebraic-laws.md`).
+- Not assumed to be a monad; there is no canonical musically-correct `join`.
 - Not infinite: patterns, loops, and live processes live **above** the finite kernel as producers of coherent finite
-  observations (§18).
+  observations.
 - Not a provenance store: the kernel is a semantic *quotient* of richer source structure; provenance is preserved above
-  it (§20, `06-surface-elaboration.md`).
+  it (`06-surface-elaboration.md`).
 
 ## The calculus, and why it does not cross that line
 

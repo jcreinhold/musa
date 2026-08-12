@@ -11,26 +11,27 @@ phase: 1
 ## Task
 
 Write the authoritative specification for Musa's finite temporal kernel — the small, exact, backend-independent
-semantics into which the surface language elaborates — as the `docs/kernel/` document set named by the course correction
+semantics into which the surface language elaborates — as the `docs/kernel/` document set named by the corrective memo
 §30 Step 1. Marked **candidate** until the law tests of prompt 10 and the falsification corpus of prompt 11 pass. No
 code in this prompt; the spec is the deliverable that prompts 09–12 implement.
 
 ## Read
 
-- `docs/course-correction.md` in full. The kernel sections (§§2–26, 29–35) are the primary source; this prompt
-  transcribes and sharpens them, never contradicts them. Where the course correction and the original roadmap disagree,
-  the course correction wins for kernel matters, and the disagreement is recorded in `08-open-questions.md`.
+- The corrective memo in full. Its kernel sections are the primary source; this prompt transcribes and sharpens them,
+  never contradicts them. Where the memo and the original roadmap disagree, the memo wins for kernel matters, and the
+  disagreement is recorded in `08-open-questions.md`. (The memo was dissolved into these documents afterwards; see
+  `docs/scratch/62-course-correction-decision-record.md`.)
 - Roadmap §6 (the current `ScoreSnapshot`, exact time, provenance) — the kernel spec must state precisely how
-  `ScoreSnapshot` relates to the normalized kernel denotation (course correction §27).
+  `ScoreSnapshot` relates to the normalized kernel denotation (`docs/kernel/07-backend-contract.md`).
 
 ## Design
 
 Author nine documents, each with a "Status: candidate" banner until prompt 12:
 
 - `docs/kernel/00-purpose.md` — the two-picture architecture (rich surface / small kernel); the question the kernel
-  answers ("what musical facts exist, and where in musical time"); the governing rule of course correction §34 (semantic
+  answers ("what musical facts exist, and where in musical time"); the governing rule of `docs/kernel/00-purpose.md` (semantic
   necessity, quoted verbatim, as the acceptance test for every future kernel proposal).
-- `01-grammar.md` — the kernel interchange syntax of course correction §24 (timeline / sequence / overlay / composition
+- `01-grammar.md` — the kernel interchange syntax of `docs/kernel/01-grammar.md` (timeline / sequence / overlay / composition
   references), plus a deliberately boring first-order payload-schema grammar; the file is an interchange language, not
   the musician-facing syntax. A parser for it is deferred (see `08-open-questions.md`); prompt 09 implements canonical
   serialization only.
@@ -40,13 +41,13 @@ Author nine documents, each with a "Status: candidate" banner until prompt 12:
   sequence (§7), overlay (§8), ambient extension (§9), restriction with whole/visible span distinction (§17), payload
   mapping (§13), time scaling (§14), delay as derived (§15). Explicitly: no `Rest`/`Silence` object — uncovered regions
   are silent by absence (§2); not a semiring (§10); not assumed a monad (§16).
-- `04-algebraic-laws.md` — every law of course correction §30 Step 3, stated formally and cross-referenced to the
+- `04-algebraic-laws.md` — every law of the kernel specification Step 3, stated formally and cross-referenced to the
   proptest names that prompt 10 must implement, including the synchronized interchange law (§11) with its
   duration-equality preconditions, and the explicit non-laws (distributivity, overlay idempotence) with counterexamples.
 - `05-normalization.md` — the canonical normal form of §25: flat timeline, no sequence/overlay/references remaining,
   canonical occurrence ordering (define it: start, then end, then canonical payload serialization), semantic equality as
   equality of normal forms, semantic hashing implications.
-- `06-surface-elaboration.md` — how the current surface constructs elaborate (course correction §30 Step 4): note →
+- `06-surface-elaboration.md` — how the current surface constructs elaborate (the kernel specification Step 4): note →
   typed occurrence; rest → ambient extent with no occurrence; chord → simultaneous occurrences; voice/part → payload
   identity metadata (recording the §32 decision to keep voice identity out of the temporal primitives); motif/repeat →
   HIR structure evaluated into the kernel; transpose → payload map; key/meter → typed interval payloads (§21); tempo →

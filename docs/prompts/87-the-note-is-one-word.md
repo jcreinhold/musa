@@ -18,7 +18,7 @@ prompt is green with every example exactly as it stands.
 
 ## Read
 
-- `docs/initial-design-roadmap.md`, the duration section: *"Canonical duration syntax should be fractions of a whole
+- `docs/roadmap.md`, the duration section: *"Canonical duration syntax should be fractions of a whole
   note… The editor may display familiar note symbols and accept shortcuts such as `q`, `h`, or `e`, but those should
   elaborate into exact values."* A shorthand that elaborates to the same rational is already sanctioned; this is that
   sentence taken up, with `/4` instead of `q` because `/4` says which fraction.

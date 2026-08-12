@@ -20,7 +20,7 @@ the semantic core is Rust, the UI is a replaceable projection.
    forbid is hard to re-open — only through `docs/governance/README.md`'s amendment procedure.
 4. **`docs/spec/`** and **`docs/architecture/`** — the cross-stage formal specification and its Rust realization map.
    The spec owns presentation/pass/process/identity semantics; architecture says what current code implements or lacks.
-   They refine **`docs/initial-design-roadmap.md`**, which still owns the broad crate/product plan.
+   They refine **`docs/roadmap.md`**, which still owns the broad crate/product plan.
 5. **`docs/interface/`** — the desktop interface specification: visual language, engraving quality bar, interaction and
    selection model, Origin view, states and voice, performance budgets. Roadmap §14 fixes the app's *architecture*;
    `docs/interface/` fixes everything §14 leaves open, and §14's wireframe is not a visual spec. Governing since prompt

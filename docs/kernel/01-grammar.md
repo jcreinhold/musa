@@ -2,8 +2,7 @@
 
 This document defines the **kernel interchange syntax**: the concrete notation for the terms of `10-term-calculus.md`.
 It is a semantic/interchange language for golden tests, semantic comparison, and cross-tool exchange. Parsing and
-evaluation produce the timeline whose separately framed N6 bytes are hashed. **It is not the syntax musicians write**
-(course correction §24); the musician-facing surface language is the `.musa` grammar handled by `musa-language`, and its
+evaluation produce the timeline whose separately framed N6 bytes are hashed. **It is not the syntax musicians write**; the musician-facing surface language is the `.musa` grammar handled by `musa-language`, and its
 elaboration is specified in `06-surface-elaboration.md`.
 
 **Grammar here, calculus there.** This document says how a term is written; `10-term-calculus.md` says what it means,
@@ -134,7 +133,7 @@ Four notes a reader needs:
 
 ## Payload values
 
-**A payload is an opaque quoted string.** The kernel is generic in its payload type (§12) and never looks inside one: it
+**A payload is an opaque quoted string.** The kernel is generic in its payload type and never looks inside one: it
 reads the string and hands it to the consumer that owns the payload — `musa-compiler` for `ScoreFact`. The
 `payload-type` in the composition's type annotation exists so a reader can *refuse* a file whose payloads it does not
 own, not so it can validate one it does.
@@ -160,7 +159,7 @@ kernel "example" {
 
 ## Design rules
 
-- **Clear names, no unexplained shorthand** (§24): `sequence`/`overlay`/`occurrence`, never `par`/`seq`/`atom`.
+- **Clear names, no unexplained shorthand**: `sequence`/`overlay`/`occurrence`, never `par`/`seq`/`atom`.
 - Durations and positions are beats as exact rationals. `0` and `3/2` are legal; `0.75` is not. This holds inside
   payload text too — a hairpin shape crosses as rational breakpoints, and a consumer that rounds it produces different
   sound from the same file (`07-backend-contract.md`).

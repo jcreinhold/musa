@@ -23,7 +23,7 @@ to horizontal space. All of them are music with real durations and **no barlines
 - `docs/interface/` §engraving — spacing is currently derived from notated duration within a measure. Proportional
   notation makes spacing *the* representation of duration, which is an engraving change and needs the interface spec's
   agreement.
-- `docs/course-correction.md` §33 rows 4–6 — the falsification corpus rows this addresses.
+- `docs/kernel/08-open-questions.md` rows 4–6 — the falsification corpus rows this addresses.
 
 ## Design
 
@@ -97,7 +97,7 @@ no meter. The diagnostic says that.
 - `docs/interface/`: the proportional-spacing rule, agreed and written down.
 - `examples/`: `cadenza.musa` (a measured concerto movement with an unmeasured cadenza inside measure 42), `chant.musa`
   (a fully unmeasured line).
-- `docs/course-correction.md` §33: rows 4–6 updated.
+- `docs/kernel/08-open-questions.md`: rows 4–6 updated.
 
 ## Check
 

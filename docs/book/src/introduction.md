@@ -36,7 +36,7 @@ The book follows [Diátaxis](https://diataxis.fr). Each section serves one kind 
 
 This book describes how to use musa. The documents that govern how it is built stay in the repository:
 
-- `docs/initial-design-roadmap.md` — the architecture;
+- `docs/roadmap.md` — the architecture;
 - `docs/course-correction.md` and `docs/kernel/` — the temporal kernel the surface language elaborates into;
 - `docs/interface/` — the desktop interface specification;
 - `docs/prompts/` — the numbered implementation plan.

@@ -11,14 +11,14 @@ phase: 1
 ## Task
 
 Prove the algebra is the one specified: implement the complete property-test suite of `docs/kernel/04-algebraic-laws.md`
-(course correction §30 Step 3) against `musa-kernel`, including the explicit non-laws. This is the mathematical
+(the kernel specification Step 3) against `musa-kernel`, including the explicit non-laws. This is the mathematical
 acceptance gate for the kernel; the "Status: candidate" banner does not come off until this and prompt 11 pass.
 
 ## Read
 
 - `docs/kernel/04-algebraic-laws.md` — the normative law list with formal statements; each law names its property test
   there, and this prompt must make that cross-reference real.
-- Course correction §§7–17 (the laws in prose), §10 (non-distributivity), §11 (synchronized interchange with its
+- `docs/kernel/04-algebraic-laws.md` in full — the laws, the non-distributivity non-law, the synchronized interchange with its
   duration-equality preconditions), §30 Step 3 (the checklist).
 - Prompt 09's `musa-kernel` public surface; the proptest conventions already used in `musa-language`/`musa-compiler`
   (module-level `arithmetic_side_effects` allowance with justification, small case counts).

@@ -27,7 +27,7 @@ Marked candidate until prompt 48 graduates it, exactly as prompts 08–12 handle
   (N1–N6 — normalization, equality, serialization, hash), `08-open-questions.md` **Q6** (no parser until a second
   producer/consumer exists — prompt 48 is that consumer, so this block is the trigger firing, not an end-run around it)
   and **Q1/Q5** (patterns and recursion stay out).
-- Course correction §5 (named references for sharing are part of the initial basis), §16 (no monadic `join`), §18 (the
+- `docs/kernel/01-grammar.md` (named references for sharing are part of the initial basis), §16 (no monadic `join`), §18 (the
   kernel is finite), §32 (do not prematurely decide), §34 (semantic necessity).
 - `docs/kernel/00-purpose.md`: "Not a general-purpose programming language (no recursion, no general computation)". The
   calculus specified here must not violate that line; see the scope rule below.

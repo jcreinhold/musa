@@ -1,4 +1,4 @@
-//! Performance resolver (roadmap §6.4, §15.3; course correction §22): the
+//! Performance resolver (roadmap §6.4, §15.3; docs/kernel/06-surface-elaboration.md): the
 //! neutral core that integrates the tempo map and schedules a
 //! `ScoreSnapshot` into frame-exact note-on/note-off events.
 //!
@@ -68,7 +68,7 @@ impl Default for PerformanceOptions {
     }
 }
 
-/// A piecewise-monotone tempo map (course correction §22).
+/// A piecewise-monotone tempo map (docs/kernel/06-surface-elaboration.md).
 ///
 /// One segment per written tempo, each carrying the exact number of seconds
 /// elapsed before it begins, accumulated as a rational: the rounding to whole
@@ -718,7 +718,7 @@ pub fn lower_performance(
 
 /// Written time to frames, for one part.
 ///
-/// The composition order is the whole point (course correction §22): the
+/// The composition order is the whole point (docs/kernel/06-surface-elaboration.md): the
 /// groove is a `Beat → Beat` warp and tempo is `Beat → Second`, so the groove
 /// goes **first**. Composed the other way a shuffle would be specified in
 /// seconds and would straighten out as the band sped up.
@@ -879,7 +879,7 @@ fn ratio_to_f32(value: Ratio<i64>) -> f32 {
 }
 
 /// Lower one score event: notes and chord tones become on/off pairs; rests
-/// schedule nothing (absence is silence; course correction §2).
+/// schedule nothing (absence is silence; docs/kernel/00-purpose.md).
 ///
 /// **Where a grace note's time comes from.** A grace is a *point* occurrence —
 /// zero written duration — so performance is where it acquires one, and the

@@ -1,5 +1,5 @@
 //! Elaboration of the surface language through the temporal kernel
-//! (docs/kernel/06, course correction §19–20, §30 Step 4).
+//! (docs/kernel/06-surface-elaboration.md, docs/kernel/05-normalization.md).
 //!
 //! This is *the* semantic path: name resolution, motif registration and unit
 //! checks come from `resolve.rs`, voice content elaborates into
@@ -129,7 +129,7 @@ pub(crate) enum FactKind {
     /// The marking, not the map. `♩ = 92` is notation written at a place —
     /// the engraver prints it, the exporters carry it — and the `Beat →
     /// Second` function performance integrates is *derived* from the markings
-    /// (course correction §22). Keeping the two apart is why this is a fact:
+    /// (docs/kernel/06-surface-elaboration.md). Keeping the two apart is why this is a fact:
     /// a fact has a place in the piece, and a function does not.
     ///
     /// Both halves are optional and neither implies the other. `tempo
@@ -814,7 +814,8 @@ const fn site_key(span: SourceSpan) -> u64 {
 /// the piece's key, meter, form markers and chord symbols, into a single
 /// `Timeline<ScoreFact>` for the whole piece, which is projected once.
 ///
-/// One compilation, one temporal object (course correction §21). Part and
+/// One compilation, one temporal object (docs/kernel/06-surface-elaboration.md).
+/// Part and
 /// voice identity live in `Scope`, not in a timeline per voice, which is the
 /// evidence Q3's working stance asked for.
 fn elaborate_score(
@@ -1334,7 +1335,7 @@ impl Segment {
 }
 
 /// A body elaborated once and referenced many times, and the bindings that
-/// hold them (course correction §19: "nothing requires duplicating thousands
+/// hold them (docs/kernel/06-surface-elaboration.md: "nothing requires duplicating thousands
 /// of nodes merely to obey the normalized model").
 ///
 /// Bindings are piece-level because their references are: two voices calling
@@ -2848,7 +2849,7 @@ fn number_span(ending: &musa_language::ast::EndingStmt) -> SourceSpan {
 /// A bar: its contents, checked against the meter, and then let through.
 ///
 /// The braces are erased. A bar contributes no occurrence, no payload, and no
-/// time of its own — the course correction's ontology has no bar in it, and
+/// time of its own — the kernel's ontology has no bar in it, and
 /// the notation plan already knows where the barlines fall. What the braces
 /// contribute is the check, and, with a name on the front, the fact that the
 /// same measure can be played again from anywhere below.

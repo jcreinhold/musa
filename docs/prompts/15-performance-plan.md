@@ -16,7 +16,7 @@ deliberately minimal — this prompt proves the scheduling pipeline that audio (
 
 ## Read
 
-- Course correction §22 (tempo is a monotone map `Beat → Second` supplied by the performance layer; symbolic kernel
+- `docs/kernel/06-surface-elaboration.md` (tempo is a monotone map `Beat → Second` supplied by the performance layer; symbolic kernel
   positions stay in beats; "stretch the material" and "perform it more slowly" are different operations — this prompt
   implements the second, never the first), §23 (audio is a separate semantic layer; this prompt ends at physical musical
   events).

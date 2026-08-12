@@ -24,7 +24,7 @@ writable, and the corpus is where they are.
 - Prompt 67 — `Decision::{Order, Duration}` exist and have no producer. This prompt is the producer.
 - Prompt 58 §"the timeline holds every pass; the page prints the instruction once" — the rule for how a freedom appears
   on the page.
-- `docs/course-correction.md` §33 rows 7–10 — the falsification corpus. Adding pieces to it is part of this prompt.
+- `docs/kernel/08-open-questions.md` rows 7–10 — the falsification corpus. Adding pieces to it is part of this prompt.
 
 ## Design
 
@@ -106,7 +106,7 @@ realization and nothing else; that is exact for what MIDI is.
 - `crates/musa-render`: the three lossy emissions above, each warning once; `plan.rs` draws the bracket and the box.
 - `examples/`: `in-c.musa` (Riley — the fifty-three-figure test), `mobile.musa` (Klavierstück XI's shape),
   `changes.musa` (a chart with an improvised chorus).
-- `docs/course-correction.md` §33: rows 7–10 marked proven, or the reason they are not.
+- `docs/kernel/08-open-questions.md`: rows 7–10 marked proven, or the reason they are not.
 - `docs/kernel/11-realization.md`: graduated from candidate to governing.
 
 ## Repairs made while implementing

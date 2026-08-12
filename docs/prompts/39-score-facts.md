@@ -17,11 +17,11 @@ Replace that with a heterogeneous payload — `ScoreFact` — so each of those i
 provenance, and no copy of itself on anything else. `ScoreSnapshot` keeps its exact public shape and is computed from
 the timeline by projection.
 
-This prompt adds **no kernel constructor**. That it needs none is the evidence course correction §34 asks for.
+This prompt adds **no kernel constructor**. That it needs none is the evidence `docs/kernel/00-purpose.md` asks for.
 
 ## Read
 
-- Course correction §12 (payloads are typed and musically opaque to the kernel), §21 (typed interval payloads are the
+- `docs/kernel/02-static-semantics.md` (payloads are typed and musically opaque to the kernel), §21 (typed interval payloads are the
   agreed shape for facts with temporal extent), §27 (if a score concept will not fit, the *snapshot* grows, not the
   kernel), §34.
 - `docs/kernel/06-surface-elaboration.md` — the elaboration table this prompt rewrites, and the adapter contract it must

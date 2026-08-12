@@ -25,7 +25,7 @@ real-time row before the whole-language graduation prompt may run. This prompt a
   that catches a later prompt having quietly re-opened one. `docs/kernel/12-payload-admission.md`'s admission table.
 - `docs/spec/03-process-calculus.md`, `04-identity-and-realization.md`, and the architecture spec-to-implementation map.
 - Prompt 93 baseline and expected-change ledger; all prompt 128–142 completion/repair notes and benchmark artifacts.
-- The candidate sound/assets specs, roadmap/course-correction/kernel boundaries, interface specification, handbook, SFZ
+- The candidate sound/assets specs, roadmap/kernel boundaries, interface specification, handbook, SFZ
   support matrix, SoundFont support matrix, package/asset schemas, and public crate facades.
 - Every audio preparation/offline/live/project/CLI/LSP/desktop caller and every unsafe/RT-sensitive block.
 

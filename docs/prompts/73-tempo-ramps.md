@@ -23,7 +23,7 @@ not fit here, its generality was never earned and the prompt should say so.
   consumer's rule, and the rational-breakpoint requirement.
 - `crates/musa-compiler/src/performance.rs` — `IntegratedTempoMap` (:76), `frames()` (:162), `hairpin_curves` (:480),
   which samples a `Progress` at `u = index/(count-1)`.
-- `docs/course-correction.md` §4 (exact rationals) and §22.
+- `docs/kernel/03-denotational-semantics.md` (exact rationals) and §22.
 - Prompt 72 — `FactKind::Tempo`, the marking/map split.
 
 ## Design

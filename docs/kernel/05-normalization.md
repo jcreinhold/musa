@@ -1,6 +1,6 @@
 # 05 — Normalization, Semantic Equality, Serialization
 
-Every finite kernel composition normalizes to one flat timeline (course correction §25). This document fixes the normal
+Every finite kernel composition normalizes to one flat timeline. This document fixes the normal
 form, canonical occurrence order, semantic equality, human canonical display, and separately framed semantic identity.
 
 ## N1 — Normal form
@@ -34,7 +34,7 @@ Occurrences in a normal form are sorted ascending by:
 
 The payload key is last so that musically identical spans produced by different payloads never reorder relative to one
 another except by a total, deterministic rule. Duplicate occurrences (equal in all three) are adjacent and are **both
-retained** — the multiset is preserved through sorting (§6, K6).
+retained** — the multiset is preserved through sorting (K6).
 
 ## N3 — Canonical payload equality key
 
@@ -71,9 +71,9 @@ identity (N6).
 M ≡ N   ⟺   extent(M) = extent(N)  ∧  canonical-occurrences(M) = canonical-occurrences(N)
 ```
 
-with occurrences compared as exact triples `(s, e, payload-serialization)` (§25). This is the only equality downstream
+with occurrences compared as exact triples `(s, e, payload-serialization)`. This is the only equality downstream
 consumers may rely on. In particular, `sequence`/`overlay` trees that denote the same flat timeline are the same kernel
-value: the kernel is a semantic quotient (§20), and structural history is provenance's job, not equality's.
+value: the kernel is a semantic quotient, and structural history is provenance's job, not equality's.
 
 ## N5 — Canonical human display
 
@@ -135,4 +135,4 @@ Normalization erases: motif boundaries, repetition counts, transposition history
 file/import structure. All of it is recoverable where it matters — in provenance (source IDs, expansion paths, source
 maps, HIR structure, §20) — and none of it may leak back into kernel equality. If a consumer finds itself reconstructing
 forgotten structure from the normal form, that is evidence of a missing **payload-level** or **consumer-level** concept,
-not of missing kernel nodes (§34).
+not of missing kernel nodes.

@@ -20,12 +20,12 @@ notated-duration ≠ performed-duration row, and the first time musa has used it
 
 ## Read
 
-- `docs/course-correction.md` §22 — tempo is `Beat → Second`. A groove is `Beat → Beat`, applied first, and the document
+- `docs/kernel/06-surface-elaboration.md` — tempo is `Beat → Second`. A groove is `Beat → Beat`, applied first, and the document
   must say why the two compose in that order and not the other.
 - `crates/musa-compiler/src/performance.rs` — `IntegratedTempoMap` (:76), `lower_performance` (:326), and where written
   time becomes frames. The warp goes strictly before the integration.
 - Prompt 28 — performance profiles, `articulation`/`mark` settings, and how a profile is attached to a part.
-- `docs/initial-design-roadmap.md` §2 — the layer table row this implements.
+- `docs/roadmap.md` §2 — the layer table row this implements.
 
 ## Design
 
@@ -104,7 +104,7 @@ MIDI export **does** apply it, because a MIDI file is a performance. That asymme
   monotonicity and boundary-preservation properties as `proptest`.
 - `crates/musa-project/src/midi.rs`: exported MIDI is grooved.
 - `examples/`: `shuffle.musa` (a twelve-bar blues, swung), `house.musa` (four-on-the-floor with a pushed bass).
-- `docs/initial-design-roadmap.md` §2: the row cited, with groove as its first implementation.
+- `docs/roadmap.md` §2: the row cited, with groove as its first implementation.
 
 ## Check
 

@@ -24,7 +24,7 @@ They are **not** marks, and the prompt exists partly to say why.
 - `docs/kernel/05-normalization.md` **N2** — the ordering: `(start, end, payload key)`. This is the constraint that
   forces the design.
 - Prompt 28 and prompt 70 — profile settings, which is where the time a grace note steals is decided.
-- `docs/initial-design-roadmap.md` §2 — notated duration ≠ performed duration.
+- `docs/roadmap.md` §2 — notated duration ≠ performed duration.
 
 ## Design
 
@@ -71,7 +71,7 @@ profile romantic { grace { steal = 1/32; from = previous;  } }
 ```
 
 Same notation, two performances, and neither is written into the file. This is the clearest payoff §2 has produced so
-far, and it is worth stating in `docs/initial-design-roadmap.md` §2 as a worked example.
+far, and it is worth stating in `docs/roadmap.md` §2 as a worked example.
 
 Absent a profile, the default is `steal = 1/16, from = principal` — a short grace on the beat, which is the reading a
 modern performer defaults to. Defaults go inside; no caller passes this.
@@ -113,7 +113,7 @@ and `07-backend-contract.md`.
 - `crates/musa-compiler/src/performance.rs`: the steal, both directions.
 - `examples/`: `graces.musa` — the same three-note figure under a Baroque and a Romantic profile, which is the fixture
   that proves the split.
-- `docs/initial-design-roadmap.md` §2: the worked example.
+- `docs/roadmap.md` §2: the worked example.
 
 ## Check
 

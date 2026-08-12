@@ -1,4 +1,4 @@
-//! The finite temporal kernel (docs/kernel/, course correction §§3–17): exact
+//! The finite temporal kernel (docs/kernel/): exact
 //! ambient musical time, typed occurrences, `sequence`, `overlay`, ambient
 //! extension, restriction, payload mapping, time scaling, normalization, and
 //! semantic equality.

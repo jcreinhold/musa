@@ -17,7 +17,7 @@ and thrown away. Two consequences, and they are the reason this is a kernel prom
 - The `.kernel` interchange artifact (prompt 48) cannot carry the shape, so two implementations reading the same file
   produce different sound. That is not an implementation difference; it is a specification hole.
 - Every future continuous control — `gliss`, *rit.*, a filter sweep, a fader move — arrives with nowhere to live, and
-  the pressure will be to invent a private curve for each. Four private curves is `docs/course-correction.md` §32's Q4
+  the pressure will be to invent a private curve for each. Four private curves is `docs/kernel/08-open-questions.md`'s Q4
   going unanswered four times.
 
 Answer Q4. Add one payload value type, `Progress`, and prove that it needs **no new kernel operation** and **no change
@@ -25,7 +25,7 @@ to any existing law**.
 
 ## Read
 
-- `docs/course-correction.md` §32 Q4 (continuous controls — the open question this prompt closes), §12 (payload
+- `docs/kernel/08-open-questions.md` Q4 (continuous controls — the open question this prompt closes), §12 (payload
   opacity), §13 (payload mapping is functorial), §14 (time scaling is external to the payload), §4 (exact rationals),
   §22 (tempo is `Beat → Second` and never kernel material), §34 (the smallest complete semantic basis).
 - `crates/musa-compiler/src/performance.rs` — `hairpin_curves` and its `Curve`. Note precisely what it interpolates
@@ -137,7 +137,7 @@ and say so.
 - `docs/kernel/03-denotational-semantics.md`: `Progress` and the span-alone theorem.
 - `docs/kernel/04-algebraic-laws.md`: L24, with its test name.
 - `docs/kernel/05-normalization.md`: the canonical form of a `Progress`.
-- `docs/kernel/08-open-questions.md` and `docs/course-correction.md` §32: **Q4 resolved**, with the answer and why it
+- `docs/kernel/08-open-questions.md` and `docs/kernel/08-open-questions.md`: **Q4 resolved**, with the answer and why it
   cost no operation.
 - `crates/musa-compiler/src/elaborate.rs`: `FactKind::Hairpin` gains a `Progress` (`Progress::linear()` from the current
   grammar).

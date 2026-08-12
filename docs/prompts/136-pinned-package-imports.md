@@ -52,7 +52,7 @@ Offline diagnostics name the exact missing package and fetch command.
 
 ## Target
 
-- Deliberate roadmap/course-correction/candidate-spec repair and exact manifest/lock schemas.
+- Deliberate roadmap/kernel/candidate-spec repair and exact manifest/lock schemas.
 - Project resolver/cache and CLI fetch/update/locked/offline behavior with local test remotes.
 - Namespaced package imports, read-only definition navigation, asset integration, dependency graph/cycle/conflict tests.
 - Reproducibility law: a locked project resolves to the same source+asset closure with the network unavailable.

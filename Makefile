@@ -63,7 +63,6 @@ check-file: ## Compile one .musa file and print its diagnostics (FILE=...)
 render: ## Render FILE to TO (wav|midi|mei|lilypond|musicxml|performance|plan) at OUT
 	@mkdir -p $(dir $(OUT))
 	$(CARGO) run -q -p musa -- render $(FILE) --to $(TO) -o $(OUT)
-	@echo "wrote $(OUT)"
 
 .PHONY: play
 play: ## Play FILE through the audio engine
@@ -79,9 +78,11 @@ build: ## Build the whole Rust workspace (debug)
 release: node_modules ## Bundle the desktop app for distribution
 	cd $(SHELL_D) && $(TAURI) build
 
-node_modules: $(UI)/pnpm-lock.yaml ## Install the UI's dependencies
-	$(PNPM) install --frozen-lockfile
-	@touch $(UI)/node_modules
+# The lockfile lives at the pnpm-workspace root, not in $(UI): one install
+# covers the UI, packages/*, and the workspace links between them.
+node_modules: pnpm-lock.yaml ## Install the UI's dependencies
+	pnpm install --frozen-lockfile
+	@touch node_modules $(UI)/node_modules
 
 .PHONY: setup
 setup: node_modules ## Install everything a fresh checkout needs

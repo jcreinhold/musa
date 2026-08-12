@@ -1,8 +1,7 @@
 # 06 — Surface Elaboration
 
-How the existing `.musa` surface language elaborates into the temporal kernel (course correction §30 Step 4, §19–21).
-This document describes elaboration of the grammar **as it exists today** (prompts 02–06); it is not a surface redesign
-(§31). The implementation is prompt 11 (`docs/prompts/11-kernel-elaboration.md`).
+How the existing `.musa` surface language elaborates into the temporal kernel.
+This document describes elaboration of the grammar **as it exists today** (prompts 02–06); it is not a surface redesign. The implementation is prompt 11 (`docs/prompts/11-kernel-elaboration.md`).
 
 ## The elaboration boundary
 
@@ -14,7 +13,7 @@ finite temporal kernel  (flat timelines; the semantic quotient)
 ScoreSnapshot  (the score-specific projection backends already consume)
 ```
 
-Normalization is a **semantic boundary, not the internal representation of every compiler pass** (§19). The HIR keeps
+Normalization is a **semantic boundary, not the internal representation of every compiler pass**. The HIR keeps
 `repeat`, `loop`, motif references, and transformations for efficiency, editing, provenance, diagnostics, and structural
 display; elaboration evaluates finite observations of them into kernel timelines. Nothing requires duplicating thousands
 of nodes merely to obey the normalized model.
@@ -31,11 +30,11 @@ NotePayload {
 }
 ```
 
-Decisions recorded against course correction §32:
+Decisions recorded against the open questions of `08-open-questions.md`:
 
 - **Voice identity rides in payload metadata** — it is not a temporal primitive. The candidate answer to the §32 open
   question is "payload metadata + HIR structure"; prompt 11 gathers the evidence.
-- **Provenance rides in the payload** (§20): the kernel quotient forgets production history, so history travels with
+- **Provenance rides in the payload**: the kernel quotient forgets production history, so history travels with
   each occurrence as data the kernel is opaque to. `Origin` never participates in temporal semantics; it participates in
   canonical payload serialization only as a stable, deterministic key (N3), so semantic equality can still distinguish
   occurrences a consumer must tell apart.
@@ -46,16 +45,16 @@ Decisions recorded against course correction §32:
 | Surface construct | Elaboration |
 | --- | --- |
 | `c5/4` | One occurrence of `ScoreFact::Note` over the current position's span, carrying pitch, written duration, and any articulations; the voice cursor advances by `1/4`. |
-| `rest/2` | One occurrence of `ScoreFact::Rest` over the current position's span; the voice cursor advances by `1/2`. A *written* rest is notation an author asked for, and export and provenance both need it; what stays absent is unwritten silence (§2). |
-| `[c5 e5 g5]/2` | `overlay` of one `Note` occurrence per pitch over the same span (§30 Step 4). The projection regroups same-span, same-scope, same-origin note occurrences into `ScoreEventKind::Chord`. |
+| `rest/2` | One occurrence of `ScoreFact::Rest` over the current position's span; the voice cursor advances by `1/2`. A *written* rest is notation an author asked for, and export and provenance both need it; what stays absent is unwritten silence. |
+| `[c5 e5 g5]/2` | `overlay` of one `Note` occurrence per pitch over the same span. The projection regroups same-span, same-scope, same-origin note occurrences into `ScoreEventKind::Chord`. |
 | voice body | `sequence` of its items in source order (cursor semantics = left-fold of successive extents). |
 | part | `overlay` of its voice timelines. Voice identity is the fact's `Scope`, not a timeline of its own. |
 | piece score | `overlay` of its part timelines: **one** `Timeline<ScoreFact>` per compilation. |
 | `let x: music = music { … };` | A private contextual value. It captures checked scalar bindings and nested music values, but no absolute beat, voice scope, or mutable key/meter/tempo/clef state. It emits no occurrence until `use`. |
 | `use e;` where `e : music` | Instantiate `e` at the current voice cursor and scope, sequence its fragment, and advance by its exact extent. A shared binding plus a marked reference preserves one body and distinct call-site Origin. Not a kernel concept. |
 | `motif name(args) { … }` | Desugars to `fn name(args) -> music { music { … } }` with a retained `Motif` role. Its `use` follows the preceding general rule; there is no motif-only evaluator. |
-| `repeat n { … }` | HIR-level `sequence` of `n` evaluations (§19); each iteration's occurrences gain the `RepeatIteration(i)` provenance step. |
-| `transpose up P5 { … }` | `map_payload` with the transposition function on `pitch` (§13); occurrences gain the `Transposition` provenance step. |
+| `repeat n { … }` | HIR-level `sequence` of `n` evaluations; each iteration's occurrences gain the `RepeatIteration(i)` provenance step. |
+| `transpose up P5 { … }` | `map_payload` with the transposition function on `pitch`; occurrences gain the `Transposition` provenance step. |
 | `c4/4 ~` (tie) | **No kernel construct, and no fact.** A tie says two written noteheads spell *one* occurrence, so elaboration merges the tied statement with its continuation on the spot: one occurrence, span the sum, `NotatedDuration` the compound spelling. Merging happens at every nesting level, so a tie inside a `retrograde` is gone before the block is reversed and needs no repair. A tie onto a different pitch, or with nothing after it, is a diagnostic. |
 | `c4/4 accent staccato` | Articulations are a **field of the note fact**, not facts of their own: a staccato dot has no extent and no identity apart from its note. The projection emits one `ArticulationMarking` per name, in written order, against the event's id. |
 | `dynamic mf;` | A **point** occurrence of `ScoreFact::Dynamic` at the cursor, with no cursor advance. The projection resolves it to the first event at or after it in the same voice; nothing after it is a diagnostic. |
@@ -65,7 +64,7 @@ Decisions recorded against course correction §32:
 | `profile v;` inside a part | **A binding, not an occurrence.** It names which profile realizes this part; naming an undeclared one is a diagnostic. Both semantic paths read it through the same `part_metadata`, so it cannot drift between them. |
 | `key c major;`, `meter 4/4;` | **Region occurrences** of `ScoreFact::Key`/`Meter`, scoped to the piece and spanning `[0, d]`. An unwritten meter still produces a fact — 4/4 governs a piece that never says so — while an unwritten key produces none, which is why the projection's `key` is an `Option` and its `meter` is not. |
 | `section "A" at 9:1;`, `harmony { at 1:1 c; }` | **Point occurrences** of `ScoreFact::Section`/`Harmony` at the time the coordinate names. The coordinate is resolved against the *meter occurrence* and the timeline's own extent; naming a place the piece never reaches is a diagnostic. |
-| `tempo 1/4 = 60;`, `tempo 1/4 = 90 at 9:1;` | **Not a fact, ever** (§22). Tempo is the performance layer's `Beat → Second` map; it stays on the snapshot's `TempoMap`. See "Tempo stays out" below. |
+| `tempo 1/4 = 60;`, `tempo 1/4 = 90 at 9:1;` | **Not a fact, ever**. Tempo is the performance layer's `Beat → Second` map; it stays on the snapshot's `TempoMap`. See "Tempo stays out" below. |
 | piece | The one timeline **projected** into `ScoreSnapshot` (`musa-compiler/src/project.rs`): voices, context maps, and annotations alike. |
 
 ## The payload, and the adapter contract
@@ -76,7 +75,7 @@ A `ScoreFact` has exactly three axes, and they vary independently:
   where it is in time.
 - **`kind`** — what is stated: a note, a rest, a slur, a phrase, a tuplet, a dynamic, a hairpin, a key, a meter, a
   section, a chord symbol.
-- **`origin`** — why it exists (§20). Provenance stays above the kernel.
+- **`origin`** — why it exists. Provenance stays above the kernel.
 
 *Where it is in time is the occurrence's span*, and is never a field. Keeping the three apart is the point: a slur moves
 in time without changing voice, a voice is renamed without moving anything, a dynamic changes from `mf` to `f` in place.
@@ -91,9 +90,9 @@ violated, the elaboration that violated it is the bug.
 
 Elaboration emits a **term** (`10-term-calculus.md`), evaluated at the compiler's boundary. `repeat n { body }`
 elaborates the body **once** into a `let` and references it `n` times; a `use motif(args)` elaborates the motif's body
-once per distinct argument tuple and references it at each call site. Course correction §19 is the sentence being
-implemented: normalization is a semantic boundary, not the internal representation of every compiler pass — "nothing
-requires duplicating thousands of nodes merely to obey the normalized model".
+once per distinct argument tuple and references it at each call site. The rule being implemented is that normalization is a semantic
+boundary, not the internal representation of every compiler pass: nothing requires duplicating thousands of nodes
+merely to obey the normalized model.
 
 **The provenance question, and its answer.** Every occurrence of the third repetition must carry `RepeatIteration(2)`,
 and the Origin view depends on it. If the body is elaborated once, the occurrences inside the `let` cannot each carry a
@@ -244,7 +243,7 @@ Five rules make it read back:
   `[0:0]` is written as it stands.
 - **Every rational is `p/q`, or `p` when the denominator is one.** Durations still carry the written spelling *and* the
   exact value *and* the tied pieces where those differ, because a tuplet keeps the symbol while changing what it sounds
-  for (§2) and no one of the three derives the others.
+  for and no one of the three derives the others.
 - **A hairpin's shape is its `Progress` in canonical form** — the one place where N3's key and the interchange text
   coincide, because a `Progress` has no provenance to quotient away.
 - **`tied` is absent.** It is elaboration-only and false on every fact that leaves elaboration: a tie says two noteheads
@@ -260,8 +259,8 @@ quotient; interchange must reproduce. `05-normalization.md` N3 states the same r
 
 ## Key, meter, harmony: the present shape
 
-Course correction §21 places key/meter/harmony **regions** in the kernel as typed interval payloads whenever their
-temporal extent matters — e.g. `modulate to C major { … }`. Prompt 40 put them there **before** the surface grew such a
+Key, meter, and harmony are **regions**: typed interval payloads in the kernel whenever their temporal extent
+matters — e.g. `modulate to C major { … }`. Prompt 40 put them there **before** the surface grew such a
 construct, and that order was deliberate: a region that happens to cover the whole piece is not a special case, but a
 piece-wide scalar called `MeterMap` is. Modelling meter as one region over `[0, d]` now means the later change adds
 *more occurrences* rather than a second way to ask the same question (PoSD ch. 10).
@@ -286,7 +285,7 @@ Two consequences worth stating, because a later reader will otherwise re-derive 
 - **Piece-scoped facts sort first at a shared instant.** Their canonical key begins `*|*`, and `*` sorts before any part
   number, so the normal form prints the context a reader meets first.
 
-## Tempo stays out (§22)
+## Tempo stays out
 
 Tempo never elaborates into kernel occurrences and never rescales kernel time. It is the performance layer's monotone
 map `Beat → Second` applied to symbolic positions at realization time (`07-backend-contract.md`). "Stretch the material"
@@ -321,11 +320,11 @@ it.
 
 ## What elaboration must never do
 
-- Introduce rest/silence occurrences to "fill" regions the author left empty (§2) — a `rest` the author wrote is
+- Introduce rest/silence occurrences to "fill" regions the author left empty — a `rest` the author wrote is
   material and elaborates to an occurrence; a gap is not.
-- Push production history into kernel semantics (e.g. making equality motif-aware) (§20).
-- Add kernel constructs because one surface feature is awkward — awkwardness is elaboration's problem (§34).
-- Change the surface grammar to make elaboration easier (§35.9).
+- Push production history into kernel semantics (e.g. making equality motif-aware).
+- Add kernel constructs because one surface feature is awkward — awkwardness is elaboration's problem.
+- Change the surface grammar to make elaboration easier.
 
 ## Prompt-92 language candidate
 

@@ -149,7 +149,7 @@ fn repeat_sounds_the_same_as_its_unrolling() {
     let a = kernel_normal_form(&SourceDocument::new(repeated, "a"), &Realization::deterministic()).expect("elaborates");
     let b = kernel_normal_form(&SourceDocument::new(unrolled, "b"), &Realization::deterministic()).expect("elaborates");
     // Same temporal facts; provenance (and thus the snapshot) differs, which
-    // is exactly the semantic quotient at work (course correction §20).
+    // is exactly the semantic quotient at work (docs/kernel/05-normalization.md).
     assert_ne!(a, b);
     // Payload heads (identity, kind, pitch) and spans agree.
     let heads_and_spans = |form: &str| -> Vec<String> {

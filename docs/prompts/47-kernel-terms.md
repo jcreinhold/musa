@@ -20,7 +20,7 @@ text form and prompt 49's elaboration. Nothing in the compiler changes.
   `docs/kernel/02-static-semantics.md` (well-formedness).
 - `crates/musa-kernel/src/timeline.rs` and `tests/laws.rs` — the value algebra the evaluator produces and the style the
   new property tests follow.
-- Course correction §34 and `docs/kernel/00-purpose.md` — the calculus is structure, not computation.
+- `docs/kernel/00-purpose.md` and `docs/kernel/00-purpose.md` — the calculus is structure, not computation.
 - PoSD ch. 10 (define errors out of existence) for the well-formedness question below; the module-design rule "do not
   add an error case unless a caller can recover from it".
 

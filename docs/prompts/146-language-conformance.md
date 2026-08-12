@@ -81,7 +81,7 @@ accepted compatibility behavior merely because the new path exists.
 
 Graduation is conditional. If any row lacks implementation or evidence, leave `docs/language/` candidate, repair the
 smallest responsible prompt or add a narrowly scoped follow-up, and stop. Only a fully green score and audio matrix may
-update governing-document precedence in the roadmap, course correction, prompt README, and AGENTS.md.
+update governing-document precedence in `docs/README.md`, the roadmap, the prompt README, and AGENTS.md.
 
 ## Target
 

@@ -104,7 +104,7 @@ deliberate.
 A term `map f t` requires `f` to be nameable. Naming a function means a syntax for functions, which means application,
 which means the door to general computation is open — the exact line `00-purpose.md` draws ("not a general-purpose
 programming language"). And the payload domain is where this would hurt most: `01-grammar.md`'s payload schemas are
-first-order and boring on purpose (§24), and a function *over* payloads is the first thing that would need not to be.
+first-order and boring on purpose, and a function *over* payloads is the first thing that would need not to be.
 
 So: **the calculus is one of temporal structure.** Payload transformation happens above it, during elaboration, exactly
 as it does today — transposition applies eagerly and the timeline it produces already carries transposed payloads

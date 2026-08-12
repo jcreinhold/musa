@@ -76,7 +76,7 @@ same commit.
 
 ## Target
 
-- `docs/initial-design-roadmap.md` §15: benchmark harness added to the development-dependency list (separate commit,
+- `docs/roadmap.md` §15: benchmark harness added to the development-dependency list (separate commit,
   first).
 - `crates/musa-compiler/benches/pipeline.rs`: P1–P4.
 - `crates/musa-compiler/Cargo.toml`: `[[bench]]`, dev-dependency.

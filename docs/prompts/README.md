@@ -1,19 +1,18 @@
 # Musa Implementation Prompts
 
 This directory is the executable work plan for building musa according to
-[`../initial-design-roadmap.md`](../initial-design-roadmap.md) as course-corrected by
-[`../course-correction.md`](../course-correction.md), with the desktop interface governed by
-[`../interface/`](../interface/README.md). Each numbered prompt delivers one feature and builds on the prompts it
+[`../roadmap.md`](../roadmap.md), with the temporal kernel governed by [`../kernel/`](../kernel/README.md) and the
+desktop interface by [`../interface/`](../interface/README.md). Each numbered prompt delivers one feature and builds on the prompts it
 depends on. Work them in dependency order; when in doubt, work them in numeric order.
 
 `docs/governance/` now owns identity-level commitments. `docs/spec/` owns cross-stage formal semantics, including the
 private process calculus and exact preparation/cache laws; `docs/architecture/` maps those rules to current code. A
 pending prompt which contradicts them is repaired and committed before implementation, per execution rule 5.
 
-**Where the roadmap and the course correction disagree** — most importantly, the course correction's rule that the
-surface grammar does not define the ontology and that a small temporal kernel (`timeline` / `sequence` / `overlay` over
-exact rational ambient time) is the semantic core — the course correction wins. Prompts 08–12 specify, implement, prove,
-and install that kernel; prompts 13+ proceed exactly as before on top of it.
+**Where the roadmap and the kernel specification disagree** — most importantly, on the rule that the surface grammar
+does not define the ontology and that a small temporal kernel (`timeline` / `sequence` / `overlay` over exact rational
+ambient time) is the semantic core — the kernel wins. Prompts 08–12 specify, implement, prove, and install it; prompts
+13+ proceed exactly as before on top of it.
 
 **Where the roadmap is silent on the desktop interface** — its visual language, engraving quality, interaction model,
 states, and performance budgets — `docs/interface/` is the authority. Roadmap §14 still fixes the architecture. Prompts
@@ -266,13 +265,13 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 152 | web-distribution-and-examples | 5 | CDN iife build, example pages, build-time typesetting recipe |
 | 153 | snippet-playback | 5 | **Deferred**: in-page PCM playback with playhead provenance |
 
-Prompts 08–12 are the course-correction insertion. The direct CST→score lowering built by prompts 05–06 was **frozen as
+Prompts 08–12 are the temporal-kernel insertion. The direct CST→score lowering built by prompts 05–06 was **frozen as
 the regression oracle** when prompt 11 landed: the new kernel elaboration had to reproduce its snapshots exactly
 (differential parity), and prompt 12 made the kernel path canonical. The oracle was retained through prompt 40 and
 **deleted at prompt 41**, once the migration it guarded was finished; what replaced it is the `examples/` corpus with
 goldens at every backend, the law suites, the kernel's property tests, and the kernel normal forms. Nothing built before
 prompt 08 is discarded — lossless parsing, formatting, exact rational time, provenance, `ScoreSnapshot`, and
-`NotationPlan` are explicitly preserved by the course correction (§29, §35.2).
+`NotationPlan` were explicitly preserved while the kernel was built beside them.
 
 Prompts 20–26 are the interface block. They replace a single "Tauri + Svelte + Verovio" prompt that treated the desktop
 app as plumbing and left its design, engraving quality, interaction model, and performance entirely unspecified — which
@@ -371,8 +370,8 @@ Read 44 and 45 together as the answer to a fair objection: the kernel was suppos
 the surface language, but no backend consumed it and no consumer asked it anything. 39–43 made it *total* — the snapshot
 is now a projection of one timeline. 44 gives it an interface, 45 gives it the one thing it genuinely could not say, and
 48 makes the artifact real. Each of the three is a payoff the earlier prompts were only setting up. That 44 and 45 need
-**zero** new constructors is the standing evidence for course correction §34: the operation set was right; the *surface*
-was not.
+**zero** new constructors is the standing evidence for `../kernel/00-purpose.md`'s governing design rule: the operation
+set was right; the *surface* was not.
 
 **84–85 make the project the unit of work.** Roadmap §16 has described directory projects since the beginning and prompt
 36 built the half of it a compiler needs — relative imports, and a `musa.toml` read for two keys — but nothing above the

@@ -19,7 +19,7 @@ its counterexample test. Equality (`=`) throughout is **semantic equality**: equ
 - **L4 — associativity.** `(M ⊕ N) ⊕ P = M ⊕ (N ⊕ P)`. Test: `overlay_associativity`.
 - **L5 — commutativity.** `M ⊕ N = N ⊕ M`. Test: `overlay_commutativity`.
 - **L6 — fixed-duration identity.** For `M` with extent `d`: `M ⊕ (d, ∅) = M = (d, ∅) ⊕ M`. Overlay at fixed duration is
-  a commutative monoid with identity `(d, ∅)` (§8). Test: `overlay_fixed_duration_identity`.
+  a commutative monoid with identity `(d, ∅)`. Test: `overlay_fixed_duration_identity`.
 
 ## Ambient-extension laws *(struck: prompt 37)*
 
@@ -30,13 +30,13 @@ laws described an operation nothing used.
 ## Payload-map laws
 
 - **L9 — identity.** `Timeline(id) = id`. Test: `map_identity`.
-- **L10 — composition.** `Timeline(g ∘ f) = Timeline(g) ∘ Timeline(f)` (§13). Test: `map_composition`.
+- **L10 — composition.** `Timeline(g ∘ f) = Timeline(g) ∘ Timeline(f)`. Test: `map_composition`.
 - **L11 — preserves sequence.** `Timeline(f)(M ; N) = Timeline(f)(M) ; Timeline(f)(N)`. Test: `map_preserves_sequence`.
 - **L12 — preserves overlay.** `Timeline(f)(M ⊕ N) = Timeline(f)(M) ⊕ Timeline(f)(N)`. Test: `map_preserves_overlay`.
 
 ## Time-scaling laws
 
-- **L13 — identity and composition.** `scale_1 = id`; `scale_r ∘ scale_s = scale_{r·s}` (§14). Test: `scale_identity`,
+- **L13 — identity and composition.** `scale_1 = id`; `scale_r ∘ scale_s = scale_{r·s}`. Test: `scale_identity`,
   `scale_composition`.
 - **L14 — preserves sequence.** `scale_r(M ; N) = scale_r(M) ; scale_r(N)`. Test: `scale_preserves_sequence`.
 - **L15 — preserves overlay.** `scale_r(M ⊕ N) = scale_r(M) ⊕ scale_r(N)`. Test: `scale_preserves_overlay`.
@@ -48,7 +48,7 @@ laws described an operation nothing used.
 - **L17 — composition.** For **any** windows `J` and `K` that meet: `restrict_K(restrict_J(M)) = restrict_{J ∩ K}(M)`;
   windows that do not meet observe nothing. Narrowing an observation intersects the windows, so the law holds without a
   nesting precondition (it specializes to `restrict_K(restrict_J(M)) = restrict_K(M)` when `K ⊆ J`). Whole spans are
-  **preserved**: restricting twice never moves an occurrence's origin claim (§17). Test: `restrict_composition`,
+  **preserved**: restricting twice never moves an occurrence's origin claim. Test: `restrict_composition`,
   `restrict_composition_strictly_nested`.
 
 ## Query laws
@@ -72,7 +72,7 @@ laws described an operation nothing used.
 - **L24 — a curve-bearing occurrence transforms by its span alone.** For every operation, an occurrence carrying a
   `Progress` has a byte-identical payload afterwards, and `p(u)` at corresponding absolute instants agrees before and
   after `scale`, `sequence`, `overlay`, and `restrict`. Continuous shape is therefore a payload *value* and costs the
-  kernel no operation (§32 Q4). Test: `a_curve_bearing_occurrence_transforms_by_its_span_alone`.
+  kernel no operation (`08-open-questions.md` Q4). Test: `a_curve_bearing_occurrence_transforms_by_its_span_alone`.
 
 ## The synchronized interchange law
 
@@ -82,7 +82,7 @@ laws described an operation nothing used.
   (M ⊕ N) ; (P ⊕ Q) = (M ; P) ⊕ (N ; Q)
   ```
 
-  (§11). Musically: two voices across two synchronized sections can be built section-wise then sequenced, or
+ . Musically: two voices across two synchronized sections can be built section-wise then sequenced, or
   voice-wise then overlaid; the temporal facts are identical.
   Test: `synchronized_interchange`.
 
@@ -94,11 +94,11 @@ laws described an operation nothing used.
 ## Non-laws (tested as counterexamples)
 
 - **X1 — overlay is not idempotent.** `M ⊕ M ≠ M` whenever `M` has a non-empty occurrence multiset: multiplicity doubles
-  (§8, D3). Two performers playing the same note must not collapse. Test: `overlay_not_idempotent`.
+  (D3). Two performers playing the same note must not collapse. Test: `overlay_not_idempotent`.
 - **X2 — no distributivity.** `M ; (N ⊕ P) ≠ (M ; N) ⊕ (M ; P)` in general: the left side contains one copy of `M`, the
-  right side two (§10). Test: `sequence_does_not_distribute_over_overlay`.
+  right side two. Test: `sequence_does_not_distribute_over_overlay`.
 - **X3 — no monadic join.** There is no operation in the kernel that flattens `Timeline[Timeline[A]]`; any function
-  claiming to be `join` must pick one of several musically distinct meanings (§16). Not a runtime test — a design
+  claiming to be `join` must pick one of several musically distinct meanings. Not a runtime test — a design
   assertion recorded here so no one adds the operation casually. Enforced by code review against the public surface.
 
 ## Meta-law
