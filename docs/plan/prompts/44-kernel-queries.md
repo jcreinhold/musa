@@ -130,7 +130,7 @@ lives.
 ## Target
 
 - `crates/musa-kernel/src/timeline.rs`: `covering`, `prevailing`.
-- `crates/musa-kernel/tests/laws.rs`: L20–L23.
+- `crates/musa-kernel/tests/suite/laws.rs`: L20–L23.
 - `docs/rules/kernel/03-denotational-semantics.md`: D8, D9, and the convention table.
 - `docs/rules/kernel/04-algebraic-laws.md`: L20–L23 with test names.
 - `docs/rules/kernel/07-backend-contract.md`: a section stating that consumers ask the kernel these questions rather

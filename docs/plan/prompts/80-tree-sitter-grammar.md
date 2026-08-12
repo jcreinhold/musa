@@ -22,8 +22,8 @@ it is useful to no one if it can quietly drift from the language it claims to de
   node shapes from examples, and do not guess at disambiguation the hand parser resolves structurally.
 - Roadmap §7 — the language design: explicit semicolons and braces, units as syntax, rational durations. These are what
   make the grammar tractable, and the corpus is where they stay true.
-- `apps/musa-desktop/ui/src/lib/lang-musa/` and `crates/musa-project/tests/ui_fixtures_generators.rs` — the standing
-  answer to drift: a second reader owns no vocabulary, and a generator test writes expectations from the real
+- `apps/musa-desktop/ui/src/lib/lang-musa/` and `crates/musa-project/tests/suite/ui_fixtures_generators.rs` — the
+  standing answer to drift: a second reader owns no vocabulary, and a generator test writes expectations from the real
   implementation so a stale copy fails loudly.
 
 ## Design

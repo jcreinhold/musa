@@ -194,7 +194,7 @@ verb, and `docs/rules/kernel/`. None of those changes, and a blanket substitutio
   spelling; the CLI's `write_artifact` derives every path from it.
 - `crates/musa/src/main.rs`: the two usage lines naming `<file.kernel>`.
 - `examples/kernel/*.kernel` → `*.musa.kernel`, 24 files, regenerated content.
-- `crates/musa-compiler/tests/kernel_interop.rs`: the corpus path, the `format!` that builds a golden's name, the
+- `crates/musa-compiler/tests/suite/kernel_interop.rs`: the corpus path, the `format!` that builds a golden's name, the
   `canon.normal` literal, and the two assertions that pin a packed spelling.
 - `docs/rules/kernel/06-surface-elaboration.md`: the payload EBNF and its two worked examples.
 - `docs/rules/kernel/{01,07,08,09}.md`: the extension, wherever the corpus is named.

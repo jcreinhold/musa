@@ -140,7 +140,7 @@ ever", and prompt 85 routes on exactly that.
 - `apps/musa-desktop/ui`: `kind` and `contents` on `ProjectSnapshot`, the bridge calls behind them, and the two new File
   commands in `commands/map.ts`. No screen: prompt 85 owns that.
 - `examples/album/`: `pieces/02-waltz.musa`, the manifest's running order, and the deleted `.recovery` file.
-- Tests: `crates/musa-project/tests/project_laws.rs`.
+- Tests: `crates/musa-project/tests/suite/project_laws.rs`.
 
 ## Check
 

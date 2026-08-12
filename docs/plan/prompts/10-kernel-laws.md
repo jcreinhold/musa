@@ -48,7 +48,7 @@ until this and prompt 11 pass.
 
 ## Target
 
-- `crates/musa-kernel/tests/laws.rs`: the suite above.
+- `crates/musa-kernel/tests/suite/laws.rs`: the suite above.
 - Any spec corrections discovered while encoding the laws, committed with the prompt-repair note in the message.
 
 ## Check
@@ -57,7 +57,7 @@ until this and prompt 11 pass.
 cargo nextest run -p musa-kernel
 cargo clippy --all-targets -p musa-kernel -- -D warnings
 cargo fmt --check
-grep -c "#\[test\]" crates/musa-kernel/tests/laws.rs   # >= the law count in 04-algebraic-laws.md
+grep -c "#\[test\]" crates/musa-kernel/tests/suite/laws.rs   # >= the law count in 04-algebraic-laws.md
 ```
 
 Commit as `Prove the temporal-kernel laws`.

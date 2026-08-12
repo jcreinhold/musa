@@ -60,8 +60,8 @@ class.
 - No further primitive: `P`, `L`, and `R` are the root moved by a written interval and re-rooted, and `S`, `N`, and `H`
   are compositions of those three, all of it ordinary `.musa`.
 - `examples/neo-riemannian.musa`: OMT chain/cycle examples rendered under two voicing policies.
-- `crates/musa-compiler/tests/transformational_harmony_laws.rs`: OMT examples, involutions, domain rejection, quotient
-  agreement, finite cycles, and spelling-sensitive counterexamples.
+- `crates/musa-compiler/tests/suite/transformational_harmony_laws.rs`: OMT examples, involutions, domain rejection,
+  quotient agreement, finite cycles, and spelling-sensitive counterexamples.
 
 ## Check
 

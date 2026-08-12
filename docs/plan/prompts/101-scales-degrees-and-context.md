@@ -48,7 +48,7 @@ non-commutation of chromatic interval motion with scale stepping.
 - LSP hover/completion for scale names and types; formatter/tree-sitter updates for the small new syntax.
 - `examples/scale-context.musa`: one bound phrase used under C major and C dorian; explicit natural/harmonic minor;
   pentatonic and octatonic cases; a failure fixture with no scale/root membership.
-- `crates/musa-compiler/tests/scale_context_laws.rs`: reference map, context laws, periodicity, step laws, minor
+- `crates/musa-compiler/tests/suite/scale_context_laws.rs`: reference map, context laws, periodicity, step laws, minor
   distinctions, and chromatic/diatonic counterexample.
 
 ## Check

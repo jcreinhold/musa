@@ -131,9 +131,9 @@ that is a test: run the whole `examples/` corpus under three seeds and diff.
 - `crates/musa-kernel/src/text.rs`: the realization header line, written and read.
 - `crates/musa-project`, `crates/musa`: `--seed` on `check`, `render`, `kernel`.
 - `examples/`: `loop-lengths.musa` — a four-bar house pattern whose fills repeat a variable number of times.
-- `crates/musa-compiler/tests/realize.rs`: same seed → same hash; different seed → different hash; determinate pieces
-  are seed-invariant across the corpus; `ChoicePath::canonical` is injective; inserting a named bar above a site does
-  not change that site's decision.
+- `crates/musa-compiler/tests/suite/realize.rs`: same seed → same hash; different seed → different hash; determinate
+  pieces are seed-invariant across the corpus; `ChoicePath::canonical` is injective; inserting a named bar above a site
+  does not change that site's decision.
 
 ## Check
 

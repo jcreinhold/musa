@@ -25,7 +25,7 @@ boundaries. Preserve the audio-bridge baseline unchanged except for explicitly c
   `07-analysis.md`.
 - Cache, semantic-hash, last-valid-artifact, realization, and provenance invariants from prompts 43, 50, 67, and 77.
 - `crates/musa-compiler/src/elaborate.rs` — `Share`, `music_key`, and `scale_in_force`; and
-  `crates/musa-compiler/tests/scale_context_laws.rs`, which fixes what a call site's pitch context means.
+  `crates/musa-compiler/tests/suite/scale_context_laws.rs`, which fixes what a call site's pitch context means.
 - `docs/rules/kernel/10-term-calculus.md` §"Provenance of the sharing discipline", and Peyton Jones (1987) Chapters
   14.7.2, 15, and 23. Chapter 15 defines the technique this prompt must measure; Chapter 23 is why it must be measured
   rather than assumed.
@@ -68,8 +68,8 @@ realistic sizes is closed by recording its number.
 **The call span is load-bearing until something replaces it.** `music_key` records `cx.scale` but not `cx.pitch_scale`,
 and a body reads the scale in force *at the call* (`scale_in_force`): the innermost `in scale`, or else the key latest
 at the cursor. Distinct call spans are what keep two readings of one saved phrase apart today, and
-`crates/musa-compiler/tests/scale_context_laws.rs::one_bound_phrase_elaborates_differently_under_two_scales` fails the
-moment the span is dropped on its own. Closing the call-site gap therefore means keying on the *effective* pitch
+`crates/musa-compiler/tests/suite/scale_context_laws.rs::one_bound_phrase_elaborates_differently_under_two_scales` fails
+the moment the span is dropped on its own. Closing the call-site gap therefore means keying on the *effective* pitch
 context, and showing that what a shared body would otherwise stop doing once per call — the diagnostics reported from
 inside it, the output meter's charge, and the realization decision sequence — is either unchanged or re-charged at the
 reference.

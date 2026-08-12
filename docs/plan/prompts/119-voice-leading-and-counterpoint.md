@@ -58,8 +58,8 @@ fixtures are therefore read by `musa analyze`, and the assertion is demonstrated
   keyword, so a second sense of the word in the surface language would be a collision as well as a category error.
 - `examples/analysis/asserted-voicings.musa`: the assertable rules asserted on chordal passages, one passing and one
   failing per rule, with the header stating why an assertion around a single line would have claimed nothing.
-- `crates/musa-compiler/tests/voice_leading_validation.rs`: one invariant, boundary, and counterexample per rule id;
-  tie/span normalization; fourth-above-bass context; analysis/assertion separation.
+- `crates/musa-compiler/tests/suite/voice_leading_validation.rs`: one invariant, boundary, and counterexample per rule
+  id; tie/span normalization; fourth-above-bass context; analysis/assertion separation.
 - `docs/rules/language/07-analysis.md`: rule table with OMT file/section, strength, assumptions, and known limits.
 
 ## Check

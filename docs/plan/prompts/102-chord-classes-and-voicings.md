@@ -48,7 +48,7 @@ an annotation; prompt 116 adds that explicit claim.
 - Migration of current `ChordSymbol` callers without exposing evaluator values or adding a theory crate.
 - `examples/chord-voicings.musa`: one chord class in two inversions and three voicings, including a jazz rootless policy
   with its omitted root explicit.
-- `crates/musa-compiler/tests/chord_construction_laws.rs`: spelling formula, refinement, inversion/root/bass,
+- `crates/musa-compiler/tests/suite/chord_construction_laws.rs`: spelling formula, refinement, inversion/root/bass,
   voicing-policy preconditions, and annotation independence.
 - MEI/LilyPond/MusicXML/MIDI tests proving written spelling and sounded notes survive separately.
 

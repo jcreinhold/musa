@@ -53,8 +53,8 @@ musical equality plus a specified template-instance Origin step.
   and a voice template taking a transposition function instantiated twice inside it. The second key/scale instance of
   the same piece template is a `template_laws.rs` law rather than a second `make` in the example, because one document
   is one piece.
-- `crates/musa-compiler/tests/template_laws.rs`: substitution, identity, context authority, equivalence, cycles, and
-  negative type/kind cases.
+- `crates/musa-compiler/tests/suite/template_laws.rs`: substitution, identity, context authority, equivalence, cycles,
+  and negative type/kind cases.
 
 ## Check
 

@@ -57,8 +57,8 @@ representability diagnostic. They never silently clamp, respell enharmonically, 
   Musa where they do not need representation access.
 - Backend capability/diagnostic tests for at least natural, double, triple, and extreme alterations.
 - `examples/pitch-arithmetic.musa`: the root-dependent turn plus compound and descending interval cases.
-- `crates/musa-compiler/tests/pitch_action_laws.rs`: group/action laws, quotient law, enharmonic non-equality, round
-  trips, and negative backend cases.
+- `crates/musa-compiler/tests/suite/pitch_action_laws.rs`: group/action laws, quotient law, enharmonic non-equality,
+  round trips, and negative backend cases.
 
 ## Check
 

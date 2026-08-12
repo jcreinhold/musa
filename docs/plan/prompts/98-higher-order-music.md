@@ -51,8 +51,8 @@ field, placement, and realization; no field may be removed without a dependency-
 - `map_note_pitches` with one centralized fact-coverage table and exhaustive tests for every `FactKind`.
 - `examples/{canon-functions,harmonize-function}.musa`, written first for musicians and commented only where the type
   distinction is not audible from the source.
-- `crates/musa-compiler/tests/higher_order_music_laws.rs`: reference examples, laws, provenance, negative type cases,
-  and cache-key separation cases.
+- `crates/musa-compiler/tests/suite/higher_order_music_laws.rs`: reference examples, laws, provenance, negative type
+  cases, and cache-key separation cases.
 - Keyword/LSP hover documentation for the new source-visible constructs, sourced from `musa-language`.
 
 ## Check

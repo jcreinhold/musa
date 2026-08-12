@@ -129,7 +129,7 @@ diff <(cargo run -q -p musa -- kernel examples/graces.musa) \
      <(cargo run -q -p musa -- kernel examples/graces-reordered.musa) && exit 1
 # notation is profile-independent, performance is not — the pair of tests
 # that say so, in the two crates that own the two halves:
-cargo nextest run -p musa-render --test graces -p musa-compiler --test graces
+cargo nextest run -p musa-render -p musa-compiler -E 'test(graces)'
 ```
 
 Commit as `Add grace notes`.

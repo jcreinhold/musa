@@ -46,8 +46,8 @@ primitive, stop and demonstrate what information source code cannot express befo
   documentation and explicit exports. `sequences.musa` already exists and was committed *orphaned* — reachable from no
   import — which is the defect prompt 110 exists to make impossible; this prompt is where it becomes real library.
 - `examples/{diatonic-sequences,rule-of-the-octave}.musa`, rendered with at least two voicing/rhythm policies.
-- `crates/musa-compiler/tests/schema_generation_laws.rs`: OMT examples, reference index patterns, direction, extent,
-  finite boundaries, and source-library-versus-reference agreement.
+- `crates/musa-compiler/tests/suite/schema_generation_laws.rs`: OMT examples, reference index patterns, direction,
+  extent, finite boundaries, and source-library-versus-reference agreement.
 - A primitive-ownership test proving this prompt adds no compiler primitive unless a documented repair was necessary. If
   one is necessary, it discharges prompt 108's D1–D4 and appears in that registry; there is no longer a route by which a
   primitive enters without one.

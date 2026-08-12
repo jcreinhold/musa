@@ -94,7 +94,7 @@ Do not reach for parallelism, arena allocation, interning, or a faster hash func
 
 - `crates/musa-kernel/src/timeline.rs`, `occurrence.rs`: `SemanticHash`, `semantic_hash`, and whatever the measurement
   justifies in `Canonical`.
-- `crates/musa-kernel/tests/laws.rs`: hash/equality agreement property.
+- `crates/musa-kernel/tests/suite/laws.rs`: hash/equality agreement property.
 - `crates/musa-compiler`: the compilation exposes its semantic hash (one accessor, one caller).
 - `crates/musa-project/src/session.rs`: plan installation and any other consumer moved off the counter; new tests.
 - `docs/rules/kernel/05-normalization.md`: N6 made concrete — algorithm named, invariants stated, the provenance caveat.

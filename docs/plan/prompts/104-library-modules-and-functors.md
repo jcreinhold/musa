@@ -46,8 +46,8 @@ demonstrates why a bundle helps without making the module system a language insi
 - Private module checker/matcher/instantiator in the structural stage; import/reference/LSP definition support.
 - `stdlib/context.musa` with the concrete signature and two modules; `examples/module-functor-study.musa` with a real
   consumer.
-- `crates/musa-compiler/tests/module_laws.rs`: matching, generativity/stability, substitution, acyclicity, diagnostic
-  labels, and equivalence to direct declarations.
+- `crates/musa-compiler/tests/suite/module_laws.rs`: matching, generativity/stability, substitution, acyclicity,
+  diagnostic labels, and equivalence to direct declarations.
 - Developer documentation stating why no Rust `Functor` trait or public module object exists.
 
 ## Check

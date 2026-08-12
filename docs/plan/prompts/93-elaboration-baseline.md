@@ -65,7 +65,8 @@ known-wrong audio merely because it was baselined.
 - `crates/musa-compiler/benches/pipeline.rs` and private benchmark seams only as needed.
 - `docs/rules/language/06-performance.md`: workloads, baseline table, measurement protocol, relative gate, B1/B2
   relation, and the rule for resource-exhaustion benchmarks added at prompt 96.
-- `crates/musa-compiler/tests/elaboration_compatibility.rs`: manifest generation/checking with an explicit update flag.
+- `crates/musa-compiler/tests/suite/elaboration_compatibility.rs`: manifest generation/checking with an explicit update
+  flag.
 - An audio compatibility/benchmark test at the narrowest existing owner; do not publish graph or DSP internals merely so
   the manifest can inspect them.
 - Committed compatibility manifest under `tests/fixtures/` or the existing snapshot location.

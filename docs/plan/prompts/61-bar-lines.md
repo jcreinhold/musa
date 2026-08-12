@@ -131,8 +131,8 @@ today.
 - `crates/musa-compiler/src/{elaborate,resolve}.rs`, `crates/musa-project/src/facts.rs`,
   `crates/musa-render/src/plan.rs`: every `measure_len` parameter and every division removed; `facts.rs::position`,
   `plan.rs::measure_of`, `plan.rs::last_measure_of`, and `plan.rs::positioned`'s arithmetic deleted.
-- `crates/musa-compiler/tests/bars.rs`: the inverse property, the degenerate-meter case, and a fixed-input test per
-  deleted function so the replacements are compared against what they replace rather than against themselves.
+- `crates/musa-compiler/tests/suite/bars.rs`: the inverse property, the degenerate-meter case, and a fixed-input test
+  per deleted function so the replacements are compared against what they replace rather than against themselves.
 
 ## Check
 

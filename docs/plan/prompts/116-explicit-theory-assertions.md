@@ -60,8 +60,8 @@ kernel quote in prompt 121 intentionally does not inherit surface assertions unl
 - Assertion syntax/formatting/tree-sitter, private checker registry, stable diagnostics/explanations, Origin step.
 - Reuse/refactor the named-bar check through the same internal obligation mechanism without changing its messages.
 - `examples/theory-assertions.musa` and focused broken fixtures for every claim/policy.
-- `crates/musa-compiler/tests/assertion_laws.rs`: identity-on-success, exact failure witnesses, per-context rechecking,
-  provenance, handwritten/generated parity, and absence of global out-of-key/chord warnings.
+- `crates/musa-compiler/tests/suite/assertion_laws.rs`: identity-on-success, exact failure witnesses, per-context
+  rechecking, provenance, handwritten/generated parity, and absence of global out-of-key/chord warnings.
 
 ## Check
 

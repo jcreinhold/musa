@@ -11,10 +11,23 @@ order. Killing and rerunning seems to help for a while, then it comes back.
 `target/debug/deps` fills up with object files, and macOS's per-exec provenance check degrades badly with the number of
 entries in the directory an executable lives in.
 
-Both halves are needed. The directory grows because a `.rcgu.o` name contains a per-rebuild component, so every
-incremental rebuild writes a fresh set and cargo never removes the superseded ones. On one measurement this repository
-had **776,817 entries and 23 GB in `deps` alone**, of which **769,236 were `.o` files**, 25,344 of them for a single
-crate hash — and all of them less than seven days old. It is not old cruft; it accumulates that fast.
+Both halves are needed. The directory grows because an object file's name carries two components that change under you,
+and cargo reclaims neither:
+
+```
+musa_compiler-369feb4f79724dca.d4nupuuyz6fiwa4t7payhyne5.0zv1c4l.rcgu.o
+              ^metadata hash    ^codegen-unit hash        ^build session
+```
+
+The **metadata hash** fingerprints the unit's inputs — feature set, profile, `--cfg`, dependency versions, lib-versus-
+test. Change any of them and rustc emits a whole new stem's worth of objects beside the old stem, which stays. One
+measurement found 66 crate names holding two retained variants, eight holding four to six; `musa_compiler` had two live
+stems at 512 objects each. The **build session** changes on every recompile of the same stem, so half the stems carried
+two sessions and seven carried three.
+
+On that measurement this repository had **776,817 entries and 23 GB in `deps` alone**, of which **769,236 were `.o`
+files**, 25,344 of them for a single crate hash — and all of them less than seven days old. It is not old cruft; it
+accumulates that fast.
 
 The exec cost then scales, superlinearly, with that count. Same binary, same bytes, only the directory changed:
 
@@ -64,6 +77,39 @@ debug = false
 — are working and worth keeping, but they act on the wrong axis for this symptom. They control how *large* the debug
 info is, not how *many* files exist. They keep the directory from being far bigger than 23 GB; they cannot keep it from
 holding 769,236 entries.
+
+## Slowing the refill: one test binary per crate
+
+`cargo clean` treats the symptom. The growth *rate* is set by how many compilation units a build has, because each one
+emits its own set of objects and each is re-emitted whenever anything it depends on changes.
+
+Cargo makes every file directly under `crates/<crate>/tests/` its own integration-test target — its own binary, its own
+link of the whole workspace, its own object set. This repository had **103** of them, against 10 library crates. So
+touching `musa-compiler/src/lib.rs` did not rebuild one thing; it rebuilt the library and re-emitted every test binary
+downstream of it.
+
+They are now consolidated: the files live in `crates/<crate>/tests/suite/`, and `tests/suite/main.rs` declares one `mod`
+per file, which cargo builds as a single target named `suite`. Ten integration-test binaries instead of 103, and the
+same 1,243 tests. Measured on the same machine, `cargo clean` first in both cases:
+
+|  | Before (103 targets) | After (10) |
+| --- | --- | --- |
+| Cold `cargo nextest run --workspace` | 1:34 | **46s** |
+| `deps` entries after it | 11,107 | **5,448** |
+| Rebuild after touching `musa-compiler/src/lib.rs` | 1:02 | **15s** |
+| `deps` entries that rebuild added | ~17,000 | **3,598** |
+
+Three things the layout depends on, so that moving a test file does not quietly break them:
+
+- **A path in `include_str!` is relative to the file that writes it**, so it gained one `../`. A path built from
+  `env!("CARGO_MANIFEST_DIR")` is relative to the crate and did not change.
+- **insta names a snapshot file after the test target**, so every snapshot gained a `suite__` prefix. Anything that
+  reads those files by name — `elaboration_compatibility.rs` digests the render snapshots — records the fixture's own
+  name rather than the file's, so the oracle does not move when the harness is rearranged.
+- **proptest keeps its regression seeds beside the source file**, so `*.proptest-regressions` moved with it.
+
+The cost is that touching one test file now recompiles its whole crate's suite rather than one small binary. That is the
+trade: a slower edit-test loop on a single test file, against a build that does not leave 17,000 files behind.
 
 ## Confirming it, and a trap
 

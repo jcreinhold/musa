@@ -78,8 +78,8 @@ is a public layout.
 
 ### The tests
 
-One property test per theorem, in `crates/musa-kernel/tests/terms.rs`, using generators that build *terms* (a recursive
-`proptest` strategy with a depth bound — terms are finite and so are the generators):
+One property test per theorem, in `crates/musa-kernel/tests/suite/terms.rs`, using generators that build *terms* (a
+recursive `proptest` strategy with a depth bound — terms are finite and so are the generators):
 
 - T1 homomorphism, for `seq`, `over`, `scale`, `restrict`;
 - T2 `let`-transparency, against a substituting reference evaluator written in the test file for exactly this purpose;
@@ -94,7 +94,7 @@ fails, the calculus and the algebra disagree and the *specification* is wrong �
 
 - `crates/musa-kernel/src/term.rs` (new), `lib.rs` facade updated with `Term`, `evaluate`.
 - `crates/musa-kernel/src/error.rs`: whatever well-formedness cases survived the sorting above, and no more.
-- `crates/musa-kernel/tests/terms.rs`: T1–T5 and the transported laws.
+- `crates/musa-kernel/tests/suite/terms.rs`: T1–T5 and the transported laws.
 - `docs/rules/kernel/10-term-calculus.md`: each theorem's `Test:` line pointed at the real test name.
 - `docs/rules/kernel/09-performance.md`: no row — nothing on the measured path changed.
 

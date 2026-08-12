@@ -46,7 +46,7 @@ library or plural declaration set.
   printer while preserving required header/version behavior.
 - LSP diagnostics, formatting, semantic tokens, symbols, and hover appropriate to kernel documents.
 - Tree-sitter and desktop/sibling editor support for `.musa.kernel` as Musa.
-- `crates/musa-compiler/tests/kernel_subset_laws.rs`: the full corpus, term/denotation equality, unknown payload,
+- `crates/musa-compiler/tests/suite/kernel_subset_laws.rs`: the full corpus, term/denotation equality, unknown payload,
   version refusal, comments/roundtrip, and whole-score `ScoreFact` export.
 - File associations and project opening for `.musa.kernel` without changing ordinary `.musa` defaults.
 

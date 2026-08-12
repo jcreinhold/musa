@@ -67,8 +67,8 @@ cannot drift from itself.
 
 - `crates/musa-language/src/formatter.rs`: the meter pre-walk, `bar_line`, the measurability whitelist, the wrap rule,
   and `spaced_before` deleted.
-- `crates/musa-language/tests/formatter.rs`: `examples_format_to_themselves` re-pinned; the proptest `item()` generator
-  producing `|`-bars.
+- `crates/musa-language/tests/suite/formatter.rs`: `examples_format_to_themselves` re-pinned; the proptest `item()`
+  generator producing `|`-bars.
 - `examples/*.musa` re-formatted by the formatter itself, which is the check that it agrees with prompt 89's hand
   conversion.
 

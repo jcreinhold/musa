@@ -125,11 +125,11 @@ Commit as `Make the tempo marking a fact`.
 
 1. **The prompt's premise about `TempoMap.changes` was stale.** It said the field "exists and nothing ever populates
    it". It was populated — by `tempo 1/4 = 108 at 3:1;`, a header form with a bar:beat coordinate, used by
-   `examples/album/pieces/01-opening.musa` and by three tests in `crates/musa-compiler/tests/curve_laws.rs`. So this
-   prompt is not "make an empty capability real"; it is "collapse two mechanisms into one". The `at` form is **deleted**
-   rather than kept beside the new one: a marking written where it happens and a marking written at a coordinate are two
-   ways to say the same thing, and keeping both would leave exactly the duplication prompt 63 exists to remove.
-   `01-opening.musa` and the three tests were migrated.
+   `examples/album/pieces/01-opening.musa` and by three tests in `crates/musa-compiler/tests/suite/curve_laws.rs`. So
+   this prompt is not "make an empty capability real"; it is "collapse two mechanisms into one". The `at` form is
+   **deleted** rather than kept beside the new one: a marking written where it happens and a marking written at a
+   coordinate are two ways to say the same thing, and keeping both would leave exactly the duplication prompt 63 exists
+   to remove. `01-opening.musa` and the three tests were migrated.
 
 2. **`ContextTrack`'s bound relaxed from `Copy` to `Clone`.** A tempo marking carries a `String`, and every other
    context value is a small `Copy` scalar. `at` and `changes` now hand out references, and `meter_at`/`key_at`/

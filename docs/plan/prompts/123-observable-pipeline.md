@@ -24,8 +24,8 @@ Spans on the facades and counts at the boundaries answer exactly that and nothin
 
 - Roadmap §15.6 and §15.7 — `tracing` is already a listed dependency of `musa-engine` and `musa-project`; §15.3–§15.5,
   §15.8 and §15.11 are silent and this prompt repairs them.
-- Roadmap §13 (real-time rules) and `crates/musa-engine/tests/rt.rs` — the callback allocates nothing, locks nothing,
-  and does no I/O. Logging is I/O.
+- Roadmap §13 (real-time rules) and `crates/musa-engine/tests/suite/rt.rs` — the callback allocates nothing, locks
+  nothing, and does no I/O. Logging is I/O.
 - `crates/musa-compiler/src/compile.rs` and `src/elaborate.rs` — `compile` dispatches on the document alternative and
   `elaborate_parsed` is already split from parsing so the two can be measured apart (`crate::bench`).
 - `crates/musa-project/src/session.rs` — `open`, `apply`, `export`, `analyze`, `realize` are the whole application's
@@ -138,10 +138,10 @@ and precisely what no user can otherwise see. The name is the one field that is 
   installing a subscriber, and the subscriber is a process-wide global that every other test in the binary shares —
   a law that has to win a race is not a law. Reading `MUSA_LOG` is likewise a parameter rather than an environment read,
   because `set_var` mutates the same shared process.
-- Laws in `crates/musa-project/tests/logging_laws.rs`, over a collecting layer under `with_default` — thread-local, so
-  no global is claimed: a compilation opens exactly one `compile` span naming its document; a session command opens one
-  `apply` span naming the command and *not* carrying the source; a second `install` returns `false` rather than
-  panicking.
+- Laws in `crates/musa-project/tests/suite/logging_laws.rs`, over a collecting layer under `with_default` —
+  thread-local, so no global is claimed: a compilation opens exactly one `compile` span naming its document; a session
+  command opens one `apply` span naming the command and *not* carrying the source; a second `install` returns `false`
+  rather than panicking.
 - A law that no logging macro appears below `musa-engine`'s queue boundary, held the way the tree-sitter drift law is
   held: over the source of `core.rs`, with the real-time rule named in its failure message. Held rather than measured
   because the allocation test beside it catches a logging macro only when it happens to allocate, and a fieldless

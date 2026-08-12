@@ -64,7 +64,7 @@ source and confined to one node.
 - `crates/musa-language/src/formatter.rs`: `PitchClass` joins the tight-node list.
 - `crates/musa-compiler/src/pitch.rs`: `WrittenPitch::parse`, `PitchClass::parse`, both `Display`s.
 - `crates/musa-compiler/src/resolve.rs` and `elaborate.rs`: the two diagnostics that offer "an optional `s` or `f`".
-- `crates/musa-language/tests/formatter.rs`: the proptest `pitch()` generator.
+- `crates/musa-language/tests/suite/formatter.rs`: the proptest `pitch()` generator.
 - `editors/tree-sitter-musa/grammar.js` (`pitch_literal`, `pitch_class`, `chord_symbol`) + regenerated `src/parser.c`
   and the corpus expectations; `apps/musa-desktop/ui/src/lib/lang-musa/tokenize.ts` (`bb2` already works; `f#3` needs
   the `#`).

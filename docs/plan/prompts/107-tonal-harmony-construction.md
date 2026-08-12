@@ -96,8 +96,8 @@ modulation remains a claim about a passage and belongs to analysis.
   constructor and three accessors are the refinement wiring the triad and the voicing already have.
 - `examples/tonal-construction.musa`: major/minor diatonic harmonies, secondary dominant, mixture, Neapolitan, augmented
   sixth, and altered dominant, each voiced by an explicit policy.
-- `crates/musa-compiler/tests/tonal_harmony_construction_laws.rs`: OMT formula tables across keys, inversion spelling,
-  minor variants, applied targets, and negative domain cases.
+- `crates/musa-compiler/tests/suite/tonal_harmony_construction_laws.rs`: OMT formula tables across keys, inversion
+  spelling, minor variants, applied targets, and negative domain cases.
 
 ## Check
 

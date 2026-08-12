@@ -162,8 +162,8 @@ prompt only builds the shape and states the bug so 72 has something to point at.
   under prompt 56's machinery, with the first declaration as the secondary label.
 - `crates/musa-render/src/{plan,ly,mei,musicxml}.rs`, `crates/musa-project/src/{facts,midi,session}.rs`: every scalar
   read replaced; `is_constant` guards the existing emission path.
-- `crates/musa-compiler/tests/context.rs`: the four inheritance rules, each with the counterexample that motivates it;
-  `changes()` on a constant track yields exactly one entry.
+- `crates/musa-compiler/tests/suite/context.rs`: the four inheritance rules, each with the counterexample that motivates
+  it; `changes()` on a constant track yields exactly one entry.
 
 ## Check
 

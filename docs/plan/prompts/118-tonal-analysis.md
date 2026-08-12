@@ -43,7 +43,7 @@ only honest answer.
 
 - Tonal/chord/cadence analysis kinds in the prompt 117 service and CLI renderers.
 - `examples/analysis/` fixtures with source notes documenting OMT chapter/section and accepted candidate sets.
-- `crates/musa-compiler/tests/tonal_analysis_validation.rs`: evidence-level assertions, ambiguity/unknown cases,
+- `crates/musa-compiler/tests/suite/tonal_analysis_validation.rs`: evidence-level assertions, ambiguity/unknown cases,
   annotation comparison, and no semantic mutation.
 - `docs/rules/language/07-analysis.md`: algorithms, assumptions, OMT citations, known limits, and false-positive corpus.
 

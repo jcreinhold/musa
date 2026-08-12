@@ -94,7 +94,7 @@ waiver, no severity knobs, no configuration file.
 - `crates/musa-project`: explanations for the four codes (the exhaustive match requires them).
 - `crates/musa`: `--fix` on `check`, one line of usage.
 - `crates/musa-lsp`: one law test — a lint warning publishes with its quick fix.
-- Tests: `crates/musa-compiler/tests/lint_laws.rs` — one firing fixture per rule, the suppression law, the
+- Tests: `crates/musa-compiler/tests/suite/lint_laws.rs` — one firing fixture per rule, the suppression law, the
   fix-application law (apply the fix, recompile, silence), and the corpus law: every valid file in `examples/` compiles
   with zero warnings.
 - `docs/rules/style-guide.md` and this prompt.

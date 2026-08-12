@@ -1,8 +1,8 @@
 # 04 — Algebraic Laws
 
 The laws of the temporal kernel, stated formally against the definitions of `03-denotational-semantics.md`. Every law
-names the property test that must implement it in `crates/musa-kernel/tests/laws.rs` (prompt 10); every non-law names
-its counterexample test. Equality (`=`) throughout is **semantic equality**: equality of canonical normal forms
+names the property test that must implement it in `crates/musa-kernel/tests/suite/laws.rs` (prompt 10); every non-law
+names its counterexample test. Equality (`=`) throughout is **semantic equality**: equality of canonical normal forms
 (`05-normalization.md`, N4), never of internal representation.
 
 `M, N, P, Q` range over finite timelines; `d, e, f` over `ℚ≥0`; `r, s` over `ℚ>0`; `I ⊇ J ⊇ K` over restriction windows;

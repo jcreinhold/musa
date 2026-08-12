@@ -171,8 +171,8 @@ bulgarian's explanatory comment is deleted in the same commit, because the group
 - `editors/tree-sitter-musa/grammar.js` + regenerated `src/parser.c`, and `queries/highlights.scm`.
 - Every `examples/**/*.musa`, converted. `examples/broken/extra-semicolon.musa` is added — the `;` a reader who learned
   the old syntax types after a note. `broken/missing-semicolon.musa` stays: `clef treble` without its `;` is still a
-  genuinely missing terminator, and it is the fixture `crates/musa-lsp/tests/lsp_laws.rs` reads, which this prompt may
-  not touch. `broken/bar-too-short.musa` is rewritten with `|`.
+  genuinely missing terminator, and it is the fixture `crates/musa-lsp/tests/suite/lsp_laws.rs` reads, which this prompt
+  may not touch. `broken/bar-too-short.musa` is rewritten with `|`.
 - Every golden, snapshot and fixture that follows.
 
 ## Check

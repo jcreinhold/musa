@@ -78,7 +78,8 @@ travels the full pipeline in one prompt so no layer drifts ahead of another.
   measure-crossing decomposition — that pass now has a second source feeding it.
 - **The frozen direct lowerer refuses the new constructs** rather than growing to match them. `lower.rs` says it must
   not grow with new features, and parity with the kernel path is what the differential test protects; a refusal keeps
-  both true. `phase_two_constructs_are_kernel_only` in `crates/musa-compiler/tests/elaboration.rs` pins the boundary.
+  both true. `phase_two_constructs_are_kernel_only` in `crates/musa-compiler/tests/suite/elaboration.rs` pins the
+  boundary.
 - **Annotations are emitted after tie merging, not during elaboration.** They name `EventId`s, and merging decides how
   many events exist. Marks ride along in the kernel payload and become annotations in `identify`, which also means a
   group's members are always a contiguous id range — that is what lets the notation plan expand a `TupletSpan` by

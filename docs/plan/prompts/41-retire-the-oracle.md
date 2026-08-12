@@ -32,8 +32,8 @@ parts of it the live path depends on.
   `tempo_reading`, `parse_ratio`, `parse_duration`, `resolve_pitch`, `resolve_duration`, `bind_argument`,
   `check_measure_sanity`. The oracle set is `lower`, `lower_score`, `lower_voice`, `lower_items`, `lower_use`. Verify
   the split against the compiler rather than trusting this list.
-- `crates/musa-compiler/tests/elaboration.rs` (the differential suite, including
-  `phase_two_constructs_are_kernel_only`), `crates/musa-compiler/tests/studio_laws.rs` (one test still selects
+- `crates/musa-compiler/tests/suite/elaboration.rs` (the differential suite, including
+  `phase_two_constructs_are_kernel_only`), `crates/musa-compiler/tests/suite/studio_laws.rs` (one test still selects
   `Elaboration::Direct`).
 - PoSD ch. 16 (modifying existing code: leave the system with a better design than you found, not just a working one)
   and the red flag *conjoined methods* — a module that is both the shared vocabulary and one of two implementations is
@@ -92,7 +92,7 @@ List them in "Repairs made while implementing".
 
 - `crates/musa-compiler/src/resolve.rs` (new, from `lower.rs`), `lower.rs` deleted entirely at step 2.
 - `crates/musa-compiler/src/compile.rs`: `Elaboration` gone; `CompileOptions` gone if empty.
-- `crates/musa-compiler/tests/elaboration.rs` deleted; `studio_laws.rs` updated; any coverage gap closed first.
+- `crates/musa-compiler/tests/suite/elaboration.rs` deleted; `studio_laws.rs` updated; any coverage gap closed first.
 - `crates/musa-project`, `crates/musa`: call-site updates.
 - `docs/rules/kernel/06-surface-elaboration.md`, `docs/plan/prompts/README.md`, `musa-compiler` module docs.
 - `docs/rules/kernel/09-performance.md`: this prompt's row.

@@ -55,9 +55,9 @@ L1–L23, X1–X3, and T1–T6 quantify generically over `A` and transport uncha
 given the `Canonical` contract. L24 is conditional: it applies to a payload which carries a `Progress` indexed by local
 normalized time.
 
-This is parametric transport, not a new theory-specific proof. `crates/musa-kernel/tests/laws.rs` instantiates the same
-statements both at scalar `u8` and at `AdmissionProbe`, a record containing delimiter-bearing `String`, exact `Ratio`,
-and `Progress` fields. If a new payload needs a changed temporal-law statement, it has failed admission.
+This is parametric transport, not a new theory-specific proof. `crates/musa-kernel/tests/suite/laws.rs` instantiates the
+same statements both at scalar `u8` and at `AdmissionProbe`, a record containing delimiter-bearing `String`, exact
+`Ratio`, and `Progress` fields. If a new payload needs a changed temporal-law statement, it has failed admission.
 
 ## A5 — Equality projection is not interchange
 

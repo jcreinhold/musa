@@ -131,7 +131,7 @@ and say so.
 ## Target
 
 - `crates/musa-kernel/src/progress.rs` (new): `Progress`, `Canonical`, the stated non-goals.
-- `crates/musa-kernel/tests/laws.rs`: **L24** — for every operation, a curve-bearing occurrence's payload is
+- `crates/musa-kernel/tests/suite/laws.rs`: **L24** — for every operation, a curve-bearing occurrence's payload is
   byte-identical after transformation, and `at(u)` evaluated at corresponding absolute times agrees before and after
   `scale`, `sequence`, `overlay`, and `restrict`.
 - `docs/rules/kernel/03-denotational-semantics.md`: `Progress` and the span-alone theorem.

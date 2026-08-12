@@ -24,7 +24,8 @@ block and adds its rows to the prompt README.
 - `docs/rules/kernel/08-open-questions.md` prompt-09 and prompt-10 log entries — they record a D6 refinement "updated
   when the candidate banner comes off (prompt 12)". The banner came off; D6 was not updated.
 - `crates/musa-kernel/src/timeline.rs` (`RestrictedView`, `Timeline::extend`, `Timeline::restrict`),
-  `crates/musa-kernel/tests/laws.rs` (`restrict_view` — the helper that exists *because* the API does not compose).
+  `crates/musa-kernel/tests/suite/laws.rs` (`restrict_view` — the helper that exists *because* the API does not
+  compose).
 - `docs/rules/kernel/03-denotational-semantics.md` (observation never moves an occurrence's origin claim), §34 (smallest
   complete basis — this prompt removes a constructor rather than adding one).
 - PoSD ch. 10 "define errors out of existence" and the red flag *information leakage*: the visible span is currently
@@ -93,7 +94,7 @@ is the standalone operation that goes.
 
 - `crates/musa-kernel/src/timeline.rs`, `occurrence.rs`, `error.rs`: `Observation` replaces `RestrictedView` and
   `ObservedOccurrence`; `extend` and `ShrinkingExtension` deleted; `lib.rs` facade list updated.
-- `crates/musa-kernel/tests/laws.rs`: `restrict_view` helper deleted; L16/L17 stated through the public API; L17
+- `crates/musa-kernel/tests/suite/laws.rs`: `restrict_view` helper deleted; L16/L17 stated through the public API; L17
   generalized to arbitrary windows; `extend_identity`, `extend_composition`, `overlay_respects_extension` deleted.
 - `docs/rules/kernel/03`, `04`, `06`, `08`: the repairs above.
 

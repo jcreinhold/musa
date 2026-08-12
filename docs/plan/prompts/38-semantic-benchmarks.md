@@ -23,7 +23,7 @@ end-to-end one.
   incremental compiler is considered "only when B1 or B2 is measured to fail on a real piece, and it becomes its own
   prompt with the measurement as its justification". This prompt supplies the instrument that would justify it.
 - Roadmap §17 (testing strategy and dependency lists), §15 (the dependency lists a new crate must come from).
-- `crates/musa-project/tests/large_score_generators.rs` (how the large fixture is produced today).
+- `crates/musa-project/tests/suite/large_score_generators.rs` (how the large fixture is produced today).
 - PoSD ch. 20 "designing for performance": measure first, and prefer a design change that removes work over tuning that
   makes the same work faster.
 

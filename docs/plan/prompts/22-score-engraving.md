@@ -46,8 +46,8 @@ generated.
   in prompts 23 and 24 without touching Verovio's output.
 - **Fixture**: add `tests/fixtures/large-score.musa` — a generated 100-bar, 4-part piece — as the large-case workload
   for `06-performance.md`. It is a fixture, not an example; it does not go in `examples/`. Both the generator and its
-  output are committed: the generator (`crates/musa-project/tests/large_score_generators.rs`) because it is the only
-  readable description of what the fixture is, the output because the UI imports it and the suites run offline. The
+  output are committed: the generator (`crates/musa-project/tests/suite/large_score_generators.rs`) because it is the
+  only readable description of what the fixture is, the output because the UI imports it and the suites run offline. The
   generator fails when the committed copy is stale, so the two cannot drift.
 - **Goldens** (§9): sanitized-SVG structure snapshots plus raster goldens at 2× for `glass-mountain` / `counterpoint` /
   `twinkle`, **in both themes**, with a documented tolerance and an update command. The dark golden is what proves

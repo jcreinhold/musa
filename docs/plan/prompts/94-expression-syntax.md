@@ -47,7 +47,7 @@ regenerated from it. Compiler behavior for these nodes is a stable `unsupported-
   token comparison data.
 - `musa-lsp` and desktop language support: semantic token/category vocabulary for new syntax on invalid documents.
 - `../vscode-musa` and `../zed-musa`: regenerated syntax/query assets only; no semantic feature yet.
-- `crates/musa-language/tests/expression_syntax_laws.rs`: CST snapshots, parse/format/parse, idempotence, trivia
+- `crates/musa-language/tests/suite/expression_syntax_laws.rs`: CST snapshots, parse/format/parse, idempotence, trivia
   preservation, and recovery cases.
 
 ## Check

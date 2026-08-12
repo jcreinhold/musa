@@ -46,8 +46,8 @@ relationships inside raw text do not, unless an explicit assertion wraps the com
   locus computation, context-neutral payload validation, and `KernelSplice` provenance.
 - `examples/kernel-splice.musa`: raw and antiquoted material, sharing, shift/scale/restrict, outer assertion, and Origin
   inspection; broken fixtures for capture attempts, open refs, payloads, and context facts.
-- `crates/musa-compiler/tests/kernel_quote_laws.rs`: hygiene, closure, exact extent, quotation-locus reference model,
-  frozen-hole behavior, provenance, guarantees/bypasses, and direct-term agreement.
+- `crates/musa-compiler/tests/suite/kernel_quote_laws.rs`: hygiene, closure, exact extent, quotation-locus reference
+  model, frozen-hole behavior, provenance, guarantees/bypasses, and direct-term agreement.
 
 ## Check
 

@@ -7,7 +7,7 @@
  * `syntax_kind.rs`, snake_cased, so the query files read in the language's
  * own vocabulary. Where the trees disagree, the hand parser is right and
  * this file changes: the drift law in
- * `crates/musa-language/tests/tree_sitter_fixtures.rs` is what notices.
+ * `crates/musa-language/tests/suite/tree_sitter_fixtures.rs` is what notices.
  *
  * The grammar needs no external scanner: semicolons and braces are explicit
  * (roadmap §7), so the one-token lookahead LR(1) gives is enough for the

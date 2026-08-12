@@ -196,8 +196,8 @@ an occurrence began, in a term any more than in a value.
 ## Theorems
 
 These are the theorems that make this a calculus rather than a file format. Each names the property test that implements
-it (prompt 47, `crates/musa-kernel/tests/terms.rs`), in the style `04-algebraic-laws.md` uses. `⟦t⟧` abbreviates the `v`
-with `∅ ⊢ t ⇓ v`, for closed well-formed `t`; equality is semantic equality (N4).
+it (prompt 47, `crates/musa-kernel/tests/suite/terms.rs`), in the style `04-algebraic-laws.md` uses. `⟦t⟧` abbreviates
+the `v` with `∅ ⊢ t ⇓ v`, for closed well-formed `t`; equality is semantic equality (N4).
 
 - **T1 — the constructors are a homomorphism.** For all closed well-formed terms,
 

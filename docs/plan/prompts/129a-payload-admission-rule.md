@@ -23,7 +23,7 @@ prompt repairs the governing rule and implementation together; it adds no tempor
   L1–L24 and X1–X3, `05-normalization.md` N1–N7, `07-backend-contract.md`, `10-term-calculus.md` T1–T6 and the scope
   rule.
 - `crates/musa-kernel/src/occurrence.rs` — `Canonical`, the whole contract as it stands.
-- `crates/musa-kernel/tests/laws.rs` — the suite already proves L1–L24 at payload `u8`.
+- `crates/musa-kernel/tests/suite/laws.rs` — the suite already proves L1–L24 at payload `u8`.
 - `crates/musa-compiler/src/elaborate.rs` — `ScoreFact::canonical_key`, the one admission that exists, as the worked
   example the rule must describe rather than contradict.
 - `docs/rules/across-stages/04-identity-and-realization.md`, `docs/notes/research/40-canonical-framing-bug.md`, and the
@@ -107,8 +107,8 @@ law needs a different *statement*, the admission rule is wrong and this prompt i
 - `R1` in `docs/rules/kernel/07-backend-contract.md`.
 - `docs/rules/kernel/00-purpose.md`'s document list and any `docs/rules/kernel/README`-equivalent index updated to name
   the new document.
-- A second payload instantiation in `crates/musa-kernel/tests/laws.rs` exercising the existing law properties, named so
-  the suite says what it protects.
+- A second payload instantiation in `crates/musa-kernel/tests/suite/laws.rs` exercising the existing law properties,
+  named so the suite says what it protects.
 - Versioned schema metadata on every current `Canonical` implementation and a framed semantic hash writer separate from
   `Display`, with the exact/adversarial regressions above.
 - the payload-admission obligation marked satisfied, with the document it points at.

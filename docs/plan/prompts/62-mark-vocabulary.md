@@ -128,8 +128,8 @@ defends. If a column starts to look like performance, it belongs in a profile.
   lookup; `suggest` fed from `VOCABULARY` instead of `NAMES`.
 - `crates/musa-render/src/{plan,ly,mei,musicxml}.rs`: one `Placement::Attached` emitter each, reading the backend
   column.
-- `crates/musa-compiler/tests/marks.rs`: every vocabulary row round-trips through `lookup`; an unknown mark produces
-  prompt 56's diagnostic with a suggestion; the table's names are unique.
+- `crates/musa-compiler/tests/suite/marks.rs`: every vocabulary row round-trips through `lookup`; an unknown mark
+  produces prompt 56's diagnostic with a suggestion; the table's names are unique.
 
 ## Check
 

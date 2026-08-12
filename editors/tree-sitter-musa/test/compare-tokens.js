@@ -2,7 +2,7 @@
 /**
  * The corpus side of the drift law.
  *
- * `crates/musa-language/tests/tree_sitter_fixtures.rs` commits the *real*
+ * `crates/musa-language/tests/suite/tree_sitter_fixtures.rs` commits the *real*
  * lexer's token stream for every compilable fixture, and the *real*
  * parser's syntax verdict on every broken one. This script holds the
  * tree-sitter grammar to both: it parses each fixture through the CLI's

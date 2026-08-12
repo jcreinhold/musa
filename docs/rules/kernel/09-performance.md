@@ -34,7 +34,7 @@ cannot be measured on material with no reuse.* `large-score.musa` contains no `r
 1500 notes is typed out — so prompt 49's sharing had nothing to bite on there. `shared-score.musa` denotes the same
 music at the other extreme of reuse, and a test in `large_score_generators.rs` asserts they agree on note count, so the
 pair is a controlled comparison rather than two unrelated files. Both are generated from the same `LINES` table by
-`crates/musa-project/tests/large_score_generators.rs`.
+`crates/musa-project/tests/suite/large_score_generators.rs`.
 
 Adding a *third* fixture rather than extending the second is deliberate, and is the resolution of the tension prompt 45
 recorded: growing `large-score.musa` would move every P1–P5 number and make this table's existing rows non-comparable. A
