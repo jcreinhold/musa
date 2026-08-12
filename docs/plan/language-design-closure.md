@@ -1,34 +1,30 @@
 # Close the Musa language design
 
-**Status: restarted around type inference and plain musical source.** The first target stopped after its final review
-found two false claims in the proof for retained programs. It was not promoted. The new target uses broad Hindley–Milner
-inference, explicit closures, complete calls, and an indentation-based functional surface. Governing rules and
-implementation prompts remain unchanged until the new target passes its proof gate. See
-[`19-inference-course-correction.md`](../notes/research/language-design-closure/19-inference-course-correction.md),
-[`20-compiler-pipeline.md`](../notes/research/language-design-closure/20-compiler-pipeline.md), and
-[`21-surface-syntax.md`](../notes/research/language-design-closure/21-surface-syntax.md). The syntax work continues in
-[`22-syntax-extension.md`](../notes/research/language-design-closure/22-syntax-extension.md) and
-[`23-values-not-types.md`](../notes/research/language-design-closure/23-values-not-types.md).
+**Status: active research candidate; not yet governing.** The earlier proof target failed and was not promoted. The
+replacement is now consolidated in
+[`26-language-design-decision.md`](../notes/research/language-design-closure/26-language-design-decision.md). It uses
+rank-1 Hindley–Milner inference, explicit closures, complete positional calls, an indentation-based surface, and bounded
+package syntax adapters. Governing rules and implementation prompts remain unchanged until this candidate passes its
+domain and proof gates.
 
 ## Course correction after the failed proof gate
 
 The original Tasks 1–6 remain evidence about the musical domain and stage boundaries. Their source calculus and proof
 are not the active candidate.
 
-The replacement is bounded to six steps:
+The replacement is bounded to seven steps:
 
-1. Rewrite the five paper programs with the indentation-based syntax and inferred local types. Count every annotation
-   and compiler-owned surface form that remains.
-2. Specify rank-1 Hindley–Milner inference, complete calls, explicit closures, nominal data, opaque module types,
-   file-based modules, and the boundary that keeps values out of types.
-3. Specify hygienic syntax expansion, the resolved program, typed bodies, the total evaluation core, saturated compiler
-   operations, and target adapters.
-4. Prove principal types, type safety, termination, `Music` closure, and typed stage composition.
+1. Test the common syntax-adapter boundary with complete staff and studio examples.
+2. Rewrite the five paper programs with the selected syntax and inferred local types.
+3. Specify inference, modules, expansion, the evaluation core, `Music`, and every later stage boundary.
+4. Prove expansion safety, principal types, type safety, termination, `Music` closure, and stage composition.
 5. Allow one hostile proof review, one repair, and one final review.
-6. Run Tasks 7–8 below only if the final review has no fatal, High, or Medium issue.
+6. Promote the design only if the final review has no fatal, High, or Medium issue.
+7. Rewrite the architecture and implementation prompts, then run the full repository gates.
 
 This restart drops the old compatibility theorem. Partial, named, and default calls receive migration diagnostics and
-mechanical rewrites instead. It does not implement compiler changes.
+mechanical rewrites instead. It does not implement compiler changes. It also stops isolated syntax experiments: note 26
+is the sole active candidate unless a concrete trial or proof refutes it.
 
 ## Purpose and limits
 

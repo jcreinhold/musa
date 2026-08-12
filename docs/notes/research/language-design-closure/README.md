@@ -1,8 +1,8 @@
 # Language design closure
 
-**Status: a new inference-first target is active after the earlier proof gate failed. Governs nothing.** This directory
-carries out [`docs/plan/language-design-closure.md`](../../../plan/language-design-closure.md). Its purpose is to settle
-Musa's source language, not to invent another temporal kernel or a package cache.
+**Status: one inference-first candidate is active. It still governs nothing.** This directory carries out
+[`docs/plan/language-design-closure.md`](../../../plan/language-design-closure.md). Its purpose is to settle Musa's
+source language, not to invent another temporal kernel or a package cache.
 
 The five musical cases support the small call-by-value design. The repository is private and pre-release, so the later
 repair rejects partial calls of compiler-owned operations instead of adding foreign function values to the core. The
@@ -16,9 +16,9 @@ inference-first target. [20-compiler-pipeline.md](20-compiler-pipeline.md) gives
 candidate. [22-syntax-extension.md](22-syntax-extension.md) adds bounded package syntax adapters, and
 [23-values-not-types.md](23-values-not-types.md) keeps note values out of the type language.
 [24-pipeline-and-syntax-review.md](24-pipeline-and-syntax-review.md) reviews those four notes and holds the
-paper-program target open on four High findings. [25-surface-and-elaboration.md](25-surface-and-elaboration.md) sets the
-canonical surface around machine authorship and gives packages a Lean-derived elaborator. None of these notes changes
-governing documents.
+paper-program target open on four High findings. [25-surface-and-elaboration.md](25-surface-and-elaboration.md) records
+the last syntax exploration. [26-language-design-decision.md](26-language-design-decision.md) now supersedes notes 19–25
+as the single active candidate. None of these notes changes governing documents.
 
 ## The question
 
@@ -90,3 +90,11 @@ ship.
     and Peyton Jones, and names what must be settled before the five paper programs are written.
 26. [25-surface-and-elaboration.md](25-surface-and-elaboration.md) makes the canonical surface locally checkable for
     machine authorship, and moves the choice of notation to packages through a Lean-derived expansion and printing pair.
+27. [26-language-design-decision.md](26-language-design-decision.md) consolidates the inferred source language, fixed
+    compiler pipeline, bounded syntax adapters, standard staff syntax, and editing contract into one candidate.
+28. [27-adapter-trials.md](27-adapter-trials.md) tests that boundary with complete staff and studio blocks, expansions,
+    diagnostics, and source-preserving edits. Both pass without compiler privilege.
+
+Later numbered notes implement the remaining gate in order: two adapter trials, five complete musical programs, the
+formal specification, three proof documents, and at most two independent proof reviews. Only a passing design moves to
+`docs/rules/`.
