@@ -158,6 +158,7 @@ Thumbs.db
 __pycache__/
 *.py[cod]
 .venv/
+.ruff_cache/
 
 # misc caches
 .cache/

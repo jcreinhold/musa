@@ -24,19 +24,19 @@ file="$(printf '%s' "$input" | jq -r '.tool_input.file_path // empty')"
 
 case "$file" in
 *.rs)
-	# rustfmt walks up to rustfmt.toml, so per-file output matches
-	# `cargo fmt --check` exactly. Generated tree-sitter C is not Rust and
-	# never reaches here.
-	command -v rustfmt >/dev/null 2>&1 && rustfmt "$file" >/dev/null 2>&1 || true
-	;;
+  # rustfmt walks up to rustfmt.toml, so per-file output matches
+  # `cargo fmt --check` exactly. Generated tree-sitter C is not Rust and
+  # never reaches here.
+  command -v rustfmt >/dev/null 2>&1 && rustfmt "$file" >/dev/null 2>&1 || true
+  ;;
 *.toml)
-	# taplo walks up to taplo.toml, mirroring `taplo fmt --check`.
-	command -v taplo >/dev/null 2>&1 && taplo fmt "$file" >/dev/null 2>&1 || true
-	;;
+  # taplo walks up to taplo.toml, mirroring `taplo fmt --check`.
+  command -v taplo >/dev/null 2>&1 && taplo fmt "$file" >/dev/null 2>&1 || true
+  ;;
 *.md)
-	# mdwright walks up to .mdwright.toml.
-	command -v mdwright >/dev/null 2>&1 && mdwright fmt "$file" >/dev/null 2>&1 || true
-	;;
+  # mdwright walks up to .mdwright.toml.
+  command -v mdwright >/dev/null 2>&1 && mdwright fmt "$file" >/dev/null 2>&1 || true
+  ;;
 esac
 
 exit 0
