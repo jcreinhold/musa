@@ -94,6 +94,8 @@ ship.
     compiler pipeline, bounded syntax adapters, standard staff syntax, and editing contract into one candidate.
 28. [27-adapter-trials.md](27-adapter-trials.md) tests that boundary with complete staff and studio blocks, expansions,
     diagnostics, and source-preserving edits. Both pass without compiler privilege.
+29. [28-five-programs.md](28-five-programs.md) rewrites the tonal, flexible-time, phrase-led, ensemble-tuning, and live
+    cases in the active language. The five programs pass without a rejected feature or a required local annotation.
 
 Later numbered notes implement the remaining gate in order: two adapter trials, five complete musical programs, the
 formal specification, three proof documents, and at most two independent proof reviews. Only a passing design moves to
