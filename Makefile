@@ -191,6 +191,7 @@ help: ## List these targets
 	@echo "musa — notation-first music language and workbench"
 	@echo
 	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
-		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[1m%-12s\033[0m %s\n", $$1, $$2}'
+		| sort -t: -k1,1 \
+		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[1m%-13s\033[0m %s\n", $$1, $$2}'
 	@echo
 	@echo "  Variables: FILE=$(FILE) TO=$(TO) OUT=$(OUT)"
