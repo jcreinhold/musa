@@ -454,7 +454,7 @@ admission. `python3 scripts/renumber-prompts.py audit` is the check that it work
 
 Peyton Jones (1987) §§1.2–1.3, 2.1–2.3, 3.1–3.2. `docs/course-correction.md`. `docs/kernel/00-purpose.md`,
 `03-denotational-semantics.md`, `04-algebraic-laws.md`, `05-normalization.md`, `07-backend-contract.md`,
-`08-open-questions.md`, `10-term-calculus.md`. `docs/language-correction.md`, `docs/language/00-semantics.md`.
+`08-open-questions.md`, `10-term-calculus.md`. `docs/language/00-semantics.md`, `docs/language/02-core-calculus.md`.
 `crates/musa-kernel/src/{term,timeline,occurrence}.rs` and `tests/laws.rs`.
 `crates/musa-compiler/src/{elaborate,studio,profile,performance,groove,resolve,core}.rs`. Roadmap §2, §13.1–13.3. OMT
 `007-other-aspects-of-notation.md`, `074-swing-rhythms.md`, `114-core-principles-of-orchestration.md`,

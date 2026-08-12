@@ -18,7 +18,7 @@ source file no `mod` reaches is rejected rather than silently unreachable. The f
 
 ## Read
 
-- `docs/language-correction.md` §3, which governs this prompt.
+- `docs/language/04-templates-and-modules.md`, which governs this prompt.
 - `docs/language/04-templates-and-modules.md`'s repaired source-library boundary, and §4 for the static module system
   this is deliberately *not* — signatures and modules are a checking-time abstraction, not a second import mechanism.
 - `docs/language/01-surface.md` on nested module paths, flat binding, and the alias-at-a-collision rule.
@@ -94,5 +94,5 @@ Commit as `Make the standard library a package with a module tree`.
 - No directory scanning, no implicit module discovery, and no convention that a file's presence makes it importable.
 - No prelude, no implicit import, no glob import, and no re-export (`pub use`) form.
 - No `module` value, no first-class module, and no change to §4's static signature/module/functor layer.
-- Do not qualify bindings by default to "match Rust"; the flat-binding decision is made in `docs/language-correction.md`
+- Do not qualify bindings by default to "match Rust"; the flat-binding decision is made in `docs/language/01-surface.md`
   §3 and reversing it is a specification repair, not an implementation choice.

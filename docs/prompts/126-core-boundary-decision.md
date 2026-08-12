@@ -24,7 +24,7 @@ document and a repaired prompt stack. It produces no code.
 - `docs/course-correction.md` — the temporal kernel as ontology, and the elaboration story it fixes.
 - `docs/kernel/00-overview.md`, `04-timeline.md`, `05-normalization.md`, `06-surface-elaboration.md`,
   `10-term-calculus.md` — the laws that would have to be re-proved at any new payload.
-- `docs/language-correction.md` and `docs/language/00-semantics.md` — the objects the language claims to compute.
+- `docs/language/02-core-calculus.md` and `docs/language/00-semantics.md` — the objects the language claims to compute.
 - `crates/musa-kernel/src/timeline.rs` and `src/occurrence.rs` — the payload type parameter as it actually stands.
 - `crates/musa-compiler/src/elaborate.rs` — every existing surface-to-kernel translation, which is the census's
   evidence.

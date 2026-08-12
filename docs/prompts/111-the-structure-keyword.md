@@ -17,10 +17,10 @@ one keyword and everything that spells it.
 
 ## Read
 
-- `docs/language-correction.md` §5, which governs this prompt, and §1 fault 5 for how the collision was introduced.
+- `docs/language/04-templates-and-modules.md`, which governs this prompt, and `docs/scratch/60-language-decision-record.md` fault 5 for how the collision was introduced.
 - `docs/language/04-templates-and-modules.md` §4, the layer being renamed, including its qualification rule and its
   generative-identity rule.
-- `docs/language-correction.md` §B.4, which states where the static layer's qualification and the import rule
+- `docs/language/01-surface.md`, which states where the static layer's qualification and the import rule
   deliberately differ. That distinction is the reason the two words were confusable and the reason they must not be.
 - Prompt 109 for the migration-diagnostic shape a keyword change takes here, including its applicable fix.
 - Prompt 80 for the tree-sitter drift law: the grammar is held to the real lexer token-for-token, so a keyword change is

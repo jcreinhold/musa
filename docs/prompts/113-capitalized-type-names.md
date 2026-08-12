@@ -17,7 +17,7 @@ about — and that neither of them had right. No type is added, none is removed,
 
 ## Read
 
-- `docs/language-correction.md` §7, which governs this prompt, and §10's last two bullets for what it does not touch.
+- `docs/language/01-surface.md` §1, which governs this prompt, and `docs/scratch/60-language-decision-record.md` for what it does not touch.
 - `docs/language/01-surface.md` §3, which lists the primitive value types and spells the pitch-class type `spelled_pc`
   where `crates/musa-compiler/src/core.rs` spells it `pitchclass`.
 - Open Music Theory `099-pitch-and-pitch-class.md` and `003-reading-clefs.md`, which decide what this type is called:

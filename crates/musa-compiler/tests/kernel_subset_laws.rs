@@ -1,6 +1,6 @@
 //! The two laws that make a kernel file a Musa document (prompt 120).
 //!
-//! `docs/language-correction.md` claims the kernel is a *sublanguage*, not a
+//! `docs/language/01-surface.md` claims the kernel is a *sublanguage*, not a
 //! sidecar format, and `docs/language/01-surface.md` §7 cashes that claim as
 //! a second top-level alternative of the one language. A claim of inclusion
 //! is only worth what its laws are:

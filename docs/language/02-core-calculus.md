@@ -415,8 +415,8 @@ finite fragments; it does not reopen this closure argument.
 Prompts 100–107 add the base types `NoteName`, `Pc12`, `Scale`, `Key`, `Degree`, `Frame`, `ChordClass`, `Triad`,
 `Voicing`, `PcSet12`, `Row12`, and `Roman`, and the compiler-owned operations over them. §5's warning applies to every
 one of them: they are not covered by an appeal to standard STLC. They are covered instead by one parametric theorem
-whose premises are mechanically checked, so that a later domain costs a registry entry rather than a new induction.
-`docs/language-correction.md` §2 is the governing statement; this section is its calculus-side text.
+whose premises are mechanically checked, so that a later domain costs a registry entry rather than a new induction. This
+section is the governing statement of that rule.
 
 Every compiler-owned primitive belongs to exactly one of three families, and that the families are disjoint and
 exhaustive is a checked law:

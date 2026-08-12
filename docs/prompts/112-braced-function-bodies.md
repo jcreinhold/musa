@@ -16,7 +16,7 @@ without adding a statement form, a `let`-in-block, a `return`, or a second seque
 
 ## Read
 
-- `docs/language-correction.md` §6, which governs this prompt, and §1 fault 6 for why the first draft of that document
+- `docs/language/01-surface.md` §1, which governs this prompt, and `docs/scratch/60-language-decision-record.md` fault 6 for why the first draft of that document
   argued the opposite and why the argument was wrong.
 - `docs/language/02-core-calculus.md` §5, whose fragment gains one derived form; §5's normalization proof must be shown
   to be undisturbed, not merely asserted to be.

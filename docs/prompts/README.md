@@ -19,11 +19,11 @@ and install that kernel; prompts 13+ proceed exactly as before on top of it.
 states, and performance budgets — `docs/interface/` is the authority. Roadmap §14 still fixes the architecture. Prompts
 20–26 implement `docs/interface/`; prompt 26 graduated it from candidate to governing, as prompt 12 did for the kernel.
 
-**The elaboration-language direction is a candidate until it earns graduation.** Prompt 92 turns
-`docs/elaboration-language.md` into a precise candidate specification under `docs/language/`; prompts 93–145 implement,
-measure, and audit its score, performance, sound, asset, and package semantics; prompt 146 makes it governing only if
-the complete conformance matrix is green. Until then, the roadmap, course correction, and existing kernel remain
-authoritative where the candidate differs.
+**The elaboration-language direction is a candidate until it earns graduation.** Prompt 92 writes the precise candidate
+specification under `docs/language/`; prompts 93–145 implement, measure, and audit its score, performance, sound, asset,
+and package semantics; prompt 146 makes it governing only if the complete conformance matrix is green. Until then,
+everything above `docs/language/` in [the precedence ladder](../README.md#which-document-wins) remains authoritative
+where the candidate differs.
 
 ## Prompt anatomy
 
@@ -424,18 +424,19 @@ inference; 117 gives analyses a narrow evidence-bearing service; 118–119 add t
 profiles with their repertoire and convention stated. The prompts cite the local Open Music Theory corpus where it is
 authoritative and require local definitions, proofs, and exhaustive finite models where it is not.
 
-**108–114 interrupt that block, and they are the correction it earned.** Governed by
-[`../language-correction.md`](../language-correction.md), they answer a complaint that the language had started to read
-as improvised, and each of the seven names a fault that was found by *writing* or *running* musa rather than by auditing
-it. **108** is the one that matters: `02-core-calculus.md` §5 proves safety and normalization for a fragment of six base
-types and says in its own words that later additions are not covered by an appeal to standard STLC — and prompts 100–107
-then added twelve musical base types and sixty-nine compiler-owned operations without one compatibility case between
-them. The fix is not twelve inductions nobody reads; it is one parametric theorem whose premises the primitive registry
-carries as checked facts, so the next domain costs an entry rather than a proof and cannot be added without one. **109**
-separates `use` the import from `use` the splice, which the grammar had been telling apart by whether the operand
-happened to be a string. **110** makes the standard library a package with a real module tree, because
-`stdlib/manifest.toml` was compiled under `#[cfg(test)]` while four hand-maintained parallel lists did the actual
-resolving — a state that let `stdlib/sequences.musa` be committed, be unreachable from every import, and build green.
+**108–114 interrupt that block, and they are the correction it earned.** Their rules now live in `docs/language/` and
+their reasoning in [`../scratch/60-language-decision-record.md`](../scratch/60-language-decision-record.md); they answer
+a complaint that the language had started to read as improvised, and each of the seven names a fault that was found by
+*writing* or *running* musa rather than by auditing it. **108** is the one that matters: `02-core-calculus.md` §5 proves
+safety and normalization for a fragment of six base types and says in its own words that later additions are not covered
+by an appeal to standard STLC — and prompts 100–107 then added twelve musical base types and sixty-nine compiler-owned
+operations without one compatibility case between them. The fix is not twelve inductions nobody reads; it is one
+parametric theorem whose premises the primitive registry carries as checked facts, so the next domain costs an entry
+rather than a proof and cannot be added without one. **109** separates `use` the import from `use` the splice, which the
+grammar had been telling apart by whether the operand happened to be a string. **110** makes the standard library a
+package with a real module tree, because `stdlib/manifest.toml` was compiled under `#[cfg(test)]` while four
+hand-maintained parallel lists did the actual resolving — a state that let `stdlib/sequences.musa` be committed, be
+unreachable from every import, and build green.
 
 **111** and **112** were found by running the first three. 110 needed a word for a package's children and took `mod`,
 while `module` was already spent on the static signature/module/functor layer — 109's fault committed in the act of

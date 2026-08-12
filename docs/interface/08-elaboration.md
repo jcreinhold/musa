@@ -3,7 +3,7 @@
 Status: **governing**.
 
 The language grew a middle. A piece no longer only spells notes and expands motifs: it calls functions, instantiates
-templates, imports modules, asserts theory, and quotes the kernel, and `docs/language-correction.md` says those are a
+templates, imports modules, asserts theory, and quotes the kernel, and `docs/language/02-core-calculus.md` §5.8 says those are a
 proved conservative extension rather than a bolt-on. This document fixes what that means for a screen — what a composer
 is shown about a term, where generated music says it came from, how an advisory reading appears without being mistaken
 for a mistake, and what a raw kernel document looks like.

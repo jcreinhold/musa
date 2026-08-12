@@ -22,8 +22,9 @@ or undocumented exception.
 ## Read
 
 - Prompt 92's acceptance matrix and all completion/repair notes from prompts 93–145.
-- `docs/elaboration-language.md`, all of `docs/language/`, `docs/kernel/`, `docs/interface/`, the roadmap, course
-  correction, AGENTS.md, and prompt README.
+- All of `docs/language/`, `docs/kernel/`, `docs/interface/`, `docs/governance/`, `docs/spec/`, the roadmap, AGENTS.md,
+  and the prompt README. The reasoning behind the language and the corrections applied to it is
+  `docs/scratch/60-language-decision-record.md`; it is history, and is read for context rather than audited against.
 - Prompt 93's compatibility baseline, prompt 127's score-elaboration report, prompt 144's audio performance report, and
   prompt 145's audio conformance matrix.
 - The OMT/source citation map and local proof obligations delivered by prompts 125 and 139.
@@ -89,14 +90,18 @@ update governing-document precedence in the roadmap, course correction, prompt R
 - End-to-end fixtures spanning musician-facing tonal/modal music, templates/modules, post-tonal/serial material,
   analysis/counterpoint evidence, imports/packages, kernel documents/quotes, instruments/controls, sample adapters,
   routing/media, and deterministic offline playback.
-- Discharge of `docs/language-correction.md`: every musical base type and compiler-owned operation classified and
-  covered by §5.8's theorem with its premises checked, no bundled source file reachable from no import, no surviving
-  hand-maintained parallel module list, and no accepted `use` in import position anywhere in the corpus. The
-  correction's own §8 list of what it deliberately did *not* change is part of the audit, not a footnote to it.
+- Discharge of the corrections applied through prompt 114: every musical base type and compiler-owned operation
+  classified and covered by `docs/language/02-core-calculus.md` §5.8's theorem with its premises checked, no bundled
+  source file reachable from no import, no surviving hand-maintained parallel module list, no accepted `use` in import
+  position anywhere in the corpus, and each of the three hard-error migration rules in `docs/language/01-surface.md` §1
+  emitting its applicable fix. The list of what those corrections deliberately did *not* change
+  (`docs/scratch/60-language-decision-record.md`, final section) is part of the audit, not a footnote to it.
 - Repairs required solely to satisfy already-specified behavior; repair prompt/design text in the same commit and record
   why implementation evidence required it.
-- On a completely green audit only: graduate `docs/language/`, update governing-document precedence/status, and
-  reconcile `docs/elaboration-language.md` as non-governing design history.
+- On a completely green audit only: graduate `docs/language/` and update its status line and the precedence ladder in
+  `docs/README.md`. The documentation reconciliation this step once also owned — dissolving the design essay and the
+  correction memo into `docs/language/` — was done ahead of this prompt in the documentation reorganization; only the
+  graduation itself remains.
 
 ## Check
 

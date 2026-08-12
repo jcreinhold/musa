@@ -10,7 +10,7 @@ self-delimiting and do not take `;`. No added production is newline-sensitive.
 The normative schematic grammar is:
 
 ```ebnf
-type         := primitive | "Option" "[" type "]" | "List" "[" type "]"
+type         := primitive | "Option" "<" type ">" | "List" "<" type ">"
               | "(" type ")" | "(" type "," type ("," type)* ")" | type "->" type
 binding      := "let" IDENT ":" type "=" expr ";"
 function     := "fn" IDENT "(" params? ")" "->" type block
@@ -34,11 +34,11 @@ assertion    := "assert" IDENT "(" args? ")" "{" music-statement* "}"
 analysis     := "analysis" IDENT "=" expr ";"
 kernel-quote := "kernel" "Timeline" "[" "ScoreFact" "]" "{" kernel-item* "}"
 antiquote    := "${" expr "}"
-document     := (import | binding | function | signature | module | template | instance)*
+document     := (import | binding | function | signature | structure | template | instance)*
                 (piece | library | instance)
 signature    := "signature" IDENT "{" member* "}"
 member       := "let" IDENT ":" type ";"
-module       := "module" IDENT params? ":" IDENT "{" (binding | function)* "}"
+structure    := "structure" IDENT params? ":" IDENT "{" (binding | function)* "}"
 template     := "template" decl-kind IDENT "(" params? ")" decl-body
 instance     := "make" IDENT "(" args? ")" "as" IDENT ";"
 path         := IDENT "." IDENT
@@ -87,12 +87,31 @@ named functions because this candidate deliberately has no anonymous-lambda surf
 notation to learn and leaves `repeat n { body }` as the notation-facing fold over `Music`.
 
 The primitive value types added here are `Bool`, `Nat`, `Ratio`, `Duration`, `Pitch`, `Interval`, `NoteName`, `Pc12`,
-`Scale`, `Key`, `Degree`, `ChordClass`, `Triad`, `Roman`, `Voicing`, `Row12`, `Analysis[A]`, and `Music`. Products,
+`Scale`, `Key`, `Degree`, `ChordClass`, `Triad`, `Roman`, `Voicing`, `Row12`, `Analysis<A>`, and `Music`. Products,
 options, lists, and arrows are the constructors described in `02-core-calculus.md`. Declaration kinds are not types.
 Every type is spelled with a capital and every music statement keyword is not, which is what lets `key c major;` set a
-key and `Key` name the type of what it set without either word looking the other up (prompt 113). `NoteName` is the
-letter and accidental as written, with no octave: a pitch class is octave *and* enharmonic equivalence (Open Music
-Theory 99), so a type in which C♯ and D♭ differ is a name rather than a class, and `Pc12` is the class it names.
+key and `Key` name the type of what it set without either word looking the other up (prompt 113). Six of these words —
+`pitch`, `music`, `scale`, `key`, `degree`, `frame` — are *also* music statement keywords, and one word doing two jobs
+in two grammars is a collision a parser can only paper over; a capital settles it in the lexer. `NoteName` is the letter
+and accidental as written, with no octave: a pitch class is octave *and* enharmonic equivalence (Open Music Theory 99),
+so a type in which C♯ and D♭ differ is a name rather than a class, and `Pc12` is the class it names.
+
+A type parameter is angle-bracketed, so `[` keeps exactly one job — the list literal `[c4, d4]` and the list pattern
+`[x, ..xs]`, which are one idea seen from two sides. The ambiguity that makes `<>` expensive elsewhere cannot arise
+here: `Option`, `List`, and `Analysis` are the only parameterized types, all are keyword-headed, and there is no
+user-written type application at all, so the parser knows it is reading a type before it reaches the `<`. This is
+notation, not polymorphism — the language has no user parametric polymorphism and these constructors stay
+compiler-owned.
+
+Three former spellings are **hard errors carrying an applicable fix**, on the same precedent as `use` in import position
+and for the same reason — a language that accepts both spellings has a mixed corpus forever, and the fix machinery makes
+one spelling affordable:
+
+| Former spelling | Current spelling | Rule |
+| --- | --- | --- |
+| `fn f(x: τ) -> υ = e;` | `fn f(x: τ) -> υ { e }` | a function body is a block expression |
+| a lowercase type name, and `pitchclass` | `UpperCamelCase`, and `NoteName` | a type is spelled with a capital |
+| `option[τ]`, `list[τ]` | `Option<τ>`, `List<τ>` | a type parameter is angle-bracketed |
 
 The core literals introduced here are `true`, `false`, nonnegative decimal naturals, exact rational literals, products,
 finite lists, and `Some`/`None`. Existing pitch and interval literals are also expression atoms. Strings and
@@ -109,14 +128,14 @@ staged and desugared by `08-performance-and-sound.md`, not values in the core ca
 
 Imports are explicit and are spelled `import`. A quoted path is resolved lexically relative to the importing file; a
 `module-path` names a module of a package. `std` is reserved, is never searched in the working directory or environment,
-and has no implicit prelude. `use` is not an import: it is the score's splice statement, and the two were one keyword
-until `docs/language-correction.md` §4 separated them. The former spelling `use std::…;` is a hard error carrying an
-applicable fix.
+and has no implicit prelude. `use` is not an import: it is the score's splice statement. The two were one keyword, and
+the former spelling `use std::…;` is a hard error carrying an applicable fix.
 
 Paths nest to any depth, so a bundled module is named by its position in the package's module tree —
-`std::tonal::harmony`, not `std::tonal::harmony`. `docs/language-correction.md` §3 fixes the package layout: a package
-is a directory with `musa.toml` and a source root whose `lib.musa` declares its children with `mod`, a directory module
-declares its own in `mod.musa`, and a source file no `mod` reaches is rejected rather than silently unreachable.
+`std::tonal::harmony`, not the flat `std::tonal_harmony`. A package is a directory with `musa.toml` and a source root
+whose `lib.musa` declares its children with `mod`, a directory module declares its own in `mod.musa`, and a source file
+no `mod` reaches is rejected as *declared nowhere* rather than silently unreachable — as is a `mod` naming no file,
+which is *missing*. Resolution follows declarations, never a directory scan.
 
 Imported definitions enter the current **flat** value namespace, so a score writes `numeral_chord(home, five)` rather
 than qualifying every call. This deliberately differs from the `Module.member` rule that §6.1's static modules use, and
@@ -231,7 +250,7 @@ Interpretation is named and non-blocking:
 analysis harmony = roman_numerals(chorale(), in: key c major);
 ```
 
-This produces `Analysis[roman_numeral]`; it neither changes nor validates the score unless an explicit assertion reads a
+This produces `Analysis<roman_numeral>`; it neither changes nor validates the score unless an explicit assertion reads a
 decidable property of the result.
 
 ## 5. Chords, rows, and explicit register

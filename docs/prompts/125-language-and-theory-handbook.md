@@ -19,7 +19,7 @@ studio, assets, packages, samples, and clips before prompt 146 graduates the com
 
 ## Read
 
-- `docs/elaboration-language.md`, `docs/language/`, `docs/kernel/`, the roadmap language sections, and the style guide.
+- `docs/language/`, `docs/kernel/`, the roadmap language sections, and the style guide.
 - Prompts 92–124 and every bundled `.musa` source file introduced by them.
 - The relevant Open Music Theory chapters under `~/Code/papers/music-theory/open-music-theory/` cited by prompts
   100–119. In particular, use `013-major-scales-scale-degrees-and-key-signatures.md`, `016-intervals.md`,
@@ -61,7 +61,7 @@ errors and snapshot their plain-language diagnostic and repair. Test all interna
   source and validates the cited local chapters and internal links.
 - An explicit citation map from each implemented music-theory domain to the relevant local OMT chapter or Musa proof.
 - Compiling positive examples and diagnostic goldens for negative examples in `examples/` or focused doc-test fixtures.
-- Reconciliation of `docs/elaboration-language.md`: mark resolved choices as implemented, link to governing candidate
+- Reconciliation of the design essay: mark resolved choices as implemented, link to governing candidate
   `docs/language/`, and retain rejected alternatives and rationale as design history. Do not call the candidate
   governing before prompt 146.
 

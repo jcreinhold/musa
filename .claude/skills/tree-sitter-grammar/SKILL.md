@@ -273,8 +273,8 @@ design:
   context-sensitivity.
 - **Durations** (`/8`, `/4.`, tuplets) and **pitch spellings** are lexer-level; every token must match `lexer.rs`
   exactly or the drift law fails.
-- **The language spec is layered:** `docs/language/` (candidate elaboration-language spec) governed by
-  `docs/language-correction.md`. Grammar changes for new surface syntax land with their prompt; check `docs/prompts/`
+- **The language spec is layered:** `docs/language/` (the candidate language spec), whose precedence is set by
+  `docs/README.md`. Grammar changes for new surface syntax land with their prompt; check `docs/prompts/`
   for the owning prompt.
 - **Node names mirror `syntax_kind.rs`, snake_cased** — query files (`highlights.scm`, `outline.scm`, `indents.scm`,
   `folds.scm`, `locals.scm`, `tags.scm`) should read in the language's own vocabulary. `outline.scm` also feeds

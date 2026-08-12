@@ -56,8 +56,8 @@ constructions. `in scale` changes only generative coordinates; `key` emits a con
 local Dorian phrase from falsely declaring modulation, an interpretive continuum discussed in `050-tonicization.md` and
 `051-extended-tonicization-and-modulation-to-closely-related-keys.md`.
 
-A `Degree` is a signed ordinal relative to a scale. `locate(s,p) : option[(degree, register)]` is partial because a
-chromatic pitch may not belong to `s`. `realize(s,degree,register) : pitch` is total. Register is an integer lift
+A `Degree` is a signed ordinal relative to a scale. `locate(s,p) : Option<(Degree, Register)>` is partial because a
+chromatic pitch may not belong to `s`. `realize(s,Degree,Register) : Pitch` is total. Register is an integer lift
 through the scale period; it is mandatory whenever a pitch rather than a pitch class is requested.
 
 **Lemma (round trip).** Because scale members are distinct within a period, Euclidean division of a member's ordered

@@ -20,7 +20,7 @@ registry entry rather than a new induction, and cannot be added without one.
 
 ## Read
 
-- `docs/language-correction.md` §2, which governs this prompt.
+- `docs/language/02-core-calculus.md` §5.8, which governs this prompt.
 - `docs/language/02-core-calculus.md` §5–§5.8: the fragment, its four theorems, the finite-data and contextual-music
   extensions, and the new §5.8 this prompt implements.
 - `docs/language/03-musical-domains.md` for the domain definitions and the counterexamples each one rules out.

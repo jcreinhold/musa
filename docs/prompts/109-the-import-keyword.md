@@ -18,7 +18,7 @@ error carrying an applicable fix.
 
 ## Read
 
-- `docs/language-correction.md` §4, which governs this prompt, and §1 for why `use` rather than `import` keeps the
+- `docs/language/01-surface.md` §1, which governs this prompt, and `docs/scratch/60-language-decision-record.md` for why `use` rather than `import` keeps the
   musical meaning.
 - `docs/language/01-surface.md` §1 (the repaired grammar) and §2 (`use e;` as a splice at the cursor).
 - `docs/language/04-templates-and-modules.md`'s source-library boundary paragraph.

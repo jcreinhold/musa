@@ -1,20 +1,15 @@
 # Musa language candidate
 
 **Status: candidate. Not yet governing.** These documents are the implementation contract for prompts 93–145. Until
-prompt 146 completes its conformance audit, `docs/course-correction.md`, `docs/kernel/`, and the relevant settled parts
-of `docs/initial-design-roadmap.md` take precedence. A contradiction is a prompt defect to repair, not permission to
-implement whichever text is convenient.
+prompt 146 completes its conformance audit, everything above this directory in
+[the precedence ladder](../README.md#which-document-wins) takes precedence: `docs/governance/`, `docs/spec/`,
+`docs/kernel/`, and the relevant settled parts of `docs/roadmap.md`. A contradiction is a prompt defect to repair, not
+permission to implement whichever text is convenient.
 
-**`docs/core-boundary.md` also governs over this directory.** Prompt 126 decided what the core is a calculus of —
-occurrences of any canonical payload over exact rational time — settled that signals stay outside it, and listed what
-that forbids. Where a section here differs, it wins. The concrete consequence for these documents is that
-`GestureTimeline` (00-semantics §2, 08-performance-and-sound) means the kernel at a gesture payload, not a structure of
-its own.
-
-**`docs/language-correction.md` governs over this directory.** It corrects four faults these documents accumulated
-through prompt 107 — an unproved musical-domain extension, a decorative standard-library manifest, a module system that
-cannot nest, and `use` spelled for two unrelated statements. Where it and a section here disagree, it wins, and the
-section is repaired in the prompt that implements the correction. Prompts 108–113 are that work.
+One consequence of the governing core boundary is worth restating here, because it is easy to misread locally: the core
+is a calculus of occurrences of *any* canonical payload over exact rational time, and signals stay outside it. So
+`GestureTimeline` (`00-semantics.md` §2, `08-performance-and-sound.md`) means the kernel at a gesture payload, not a
+structure of its own.
 
 This candidate specifies the language *above* the temporal kernel and the sound pipeline *after* it. It does not add a
 fourth kernel combinator or make sound a temporal-kernel concern. The source remains canonical; every UI edits or
@@ -52,7 +47,8 @@ Prompt 146 may mark this specification governing only after all of the following
 2. every pre-candidate example either retains its meaning or has an explicit, tested migration diagnostic;
 3. the kernel law suite still passes unchanged and no surface convenience has entered `musa-kernel`;
 4. live and offline rendering agree, part routing is isolated, and builds are reproducible from the project closure;
-5. the roadmap, course correction, kernel documents, style guide, implementation, and prompt stack pass a final
+5. the roadmap, governance decisions, kernel documents, style guide, implementation, and prompt stack pass a final
    contradiction audit.
 
-The earlier `docs/elaboration-language.md` remains design history and rationale. It is not an alternative specification.
+The reasoning that produced this candidate — the design essay it was split out of, and the corrections applied to it
+through prompt 113 — is in `docs/scratch/` as a decision record. It is history, not an alternative specification.
