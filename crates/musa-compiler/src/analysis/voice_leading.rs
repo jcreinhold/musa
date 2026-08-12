@@ -38,7 +38,8 @@ use super::segment::Slice;
 use super::{AnalysisError, AnalysisFinding, AnalysisProfile, Lane, NoteRef, Segmentation, Standing};
 use crate::chord::ChordClass;
 use crate::pitch::{PitchClass, WrittenPitch};
-use crate::score::{Key, ScoreSnapshot};
+use crate::scale::{Collection, Degree, Scale};
+use crate::score::{Key, Mode, ScoreSnapshot};
 use crate::time::MusicalTime;
 
 /// The four voices, bottom first, with the range OMT `022` writes for each.
@@ -433,18 +434,25 @@ fn tendency(
     departures
 }
 
-/// Whether `pitch` is the leading tone of `key`: a diatonic step and a
-/// semitone below the tonic, which is what makes it lead.
+/// Whether `pitch` is the leading tone of `key`: the seventh degree that sits
+/// a semitone below the tonic, which is what makes it lead.
 ///
-/// Stated over the two coordinates rather than over a scale, so the raised
-/// seventh of a minor key is the leading tone and the natural seventh is not —
-/// which is the distinction the rule is about.
+/// Read against the collection that *has* a leading tone rather than against
+/// the key signature's own, so the raised seventh of a minor key is the leading
+/// tone and the natural seventh is not — which is the distinction the rule is
+/// about. That is what [`Collection::HarmonicMinor`] is for: the signature of a
+/// minor key spells a subtonic a whole step down, and minor practice raises it
+/// to get a note that leads at all (OMT `014`).
+///
+/// A class comparison and not a frame one, because the rule is about the note
+/// in whatever octave a voice happens to sing it. Membership is by spelling,
+/// as everywhere else: in C major `cb5` leads nowhere, whatever it sounds like.
 fn is_leading_tone(pitch: WrittenPitch, key: Key) -> bool {
-    let tonic = key.tonic();
-    let letter = i64::from(tonic.letter.steps());
-    let semitone = i64::from(tonic.letter.natural_semitone()).saturating_add(i64::from(tonic.accidental.0));
-    pitch.diatonic_height().saturating_add(1).rem_euclid(7) == letter.rem_euclid(7)
-        && pitch.chromatic_height().saturating_add(1).rem_euclid(12) == semitone.rem_euclid(12)
+    let collection = match key.mode() {
+        Mode::Major => Collection::Major,
+        Mode::Minor => Collection::HarmonicMinor,
+    };
+    Scale::new(key.tonic(), collection).class(Degree::new(7)) == Some(pitch.pitch_class())
 }
 
 /// The two voices' notes before and after, when both sound at both instants.

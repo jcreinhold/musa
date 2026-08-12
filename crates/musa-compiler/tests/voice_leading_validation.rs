@@ -904,6 +904,53 @@ fn the_rules_that_need_a_key_say_so() {
     );
 }
 
+/// In a minor key the leading tone is the *raised* seventh, and the seventh
+/// the key signature spells is not one.
+///
+/// The two rules that read a key ask for a note a semitone below the tonic, and
+/// a minor key signature does not supply one: it spells `bb` in C minor, a whole
+/// step down, which is a subtonic and leads nowhere. What leads is the `b` a
+/// minor piece writes as an accidental. So the reading is against the collection
+/// that has a leading tone (harmonic minor), not against the signature's own —
+/// and the two answers are opposite on both notes, in both directions, which is
+/// why this is pinned rather than left to the C-major rows above.
+#[test]
+fn a_minor_key_leads_with_its_raised_seventh() {
+    let doubled_raised = satb_in(Some("c minor"), ["| c3/1", "| b3/1", "| b4/1", "| eb4/1"]);
+    let found = departed(&read(&doubled_raised, "raised.musa", AnalysisProfile::Satb));
+    assert!(
+        found.contains(&"satb_doubling"),
+        "the raised seventh of C minor is its leading tone, and this doubles it: {found:?}"
+    );
+
+    let doubled_natural = satb_in(Some("c minor"), ["| c3/1", "| bb3/1", "| bb4/1", "| eb4/1"]);
+    let found = departed(&read(&doubled_natural, "natural.musa", AnalysisProfile::Satb));
+    assert!(
+        !found.contains(&"satb_doubling"),
+        "the signature's own seventh is a subtonic, not a leading tone to double: {found:?}"
+    );
+
+    let falls = satb_in(
+        Some("c minor"),
+        ["| c3/1 | c3/1", "| b3/1 | g3/1", "| d4/1 | d4/1", "| eb4/1 | eb4/1"],
+    );
+    let found = departed(&read(&falls, "falls.musa", AnalysisProfile::Satb));
+    assert!(
+        found.contains(&"satb_tendency_resolution"),
+        "the raised seventh falls a third instead of rising: {found:?}"
+    );
+
+    let subtonic_falls = satb_in(
+        Some("c minor"),
+        ["| c3/1 | c3/1", "| bb3/1 | g3/1", "| d4/1 | d4/1", "| eb4/1 | eb4/1"],
+    );
+    let found = departed(&read(&subtonic_falls, "subtonic.musa", AnalysisProfile::Satb));
+    assert!(
+        !found.contains(&"satb_tendency_resolution"),
+        "a subtonic is under no obligation to rise: {found:?}"
+    );
+}
+
 /// A tie is one note. The suspension in `species-4.musa` is a single
 /// occurrence spanning the barline, so the departure's span crosses it too.
 #[test]
