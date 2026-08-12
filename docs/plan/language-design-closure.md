@@ -1,11 +1,12 @@
 # Close the Musa language design
 
-**Status: active research candidate; not yet governing.** The earlier proof target failed and was not promoted. The
-replacement is now consolidated in
+**Status: stopped at the final proof gate; not governing.** The replacement candidate was consolidated in
 [`26-language-design-decision.md`](../notes/research/language-design-closure/26-language-design-decision.md). It uses
 rank-1 Hindley–Milner inference, explicit closures, complete positional calls, an indentation-based surface, and bounded
-package syntax adapters. Governing rules and implementation prompts remain unchanged until this candidate passes its
-domain and proof gates.
+package syntax adapters. The first review found four High-severity faults, and the one permitted repair closed several
+of them. The final review found four more.
+[The final blocker](../notes/research/language-design-closure/37-final-blocker.md) records the result. Per §6, governing
+rules, architecture, and implementation prompts remain unchanged.
 
 ## Course correction after the failed proof gate
 

@@ -108,7 +108,9 @@ ship.
     counterexamples and five Medium-severity gaps.
 36. [35-proof-repair.md](35-proof-repair.md) records the one permitted repair: explicit transformer builders, join
     erasure, expression charges, pre-close score-map rewriting, and complete pass coverage.
+37. [36-final-proof-review.md](36-final-proof-review.md) rejects the repaired proof with four new High-severity
+    counterexamples.
+38. [37-final-blocker.md](37-final-blocker.md) stops the bounded effort, records what survived, and names the four
+    definitions required before this work should reopen.
 
-Later numbered notes implement the remaining gate in order: two adapter trials, five complete musical programs, the
-formal specification, three proof documents, and at most two independent proof reviews. Only a passing design moves to
-`docs/rules/`.
+The proof gate failed. Nothing in this workspace moves to `docs/rules/` or into implementation prompts.
