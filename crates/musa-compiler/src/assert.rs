@@ -1,7 +1,7 @@
 //! Explicit musical assertions: claims a composer writes down
 //! and the compiler proves.
 //!
-//! Three things are kept apart here, and `docs/language/05-verification.md` is
+//! Three things are kept apart here, and `docs/rules/language/05-verification.md` is
 //! why. A **constructor invariant** is what a value must satisfy to exist at
 //! all, and it is checked where the value is made. An **analysis** is an
 //! interpretation, it is named, and it never blocks a compilation. Between

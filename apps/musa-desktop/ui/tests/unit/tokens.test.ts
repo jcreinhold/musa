@@ -1,5 +1,5 @@
 /**
- * The contrast floor of `docs/interface/01-visual-language.md` §2, checked
+ * The contrast floor of `docs/rules/desktop/01-visual-language.md` §2, checked
  * over the token file rather than by eye.
  *
  * Text holds 4.5:1 on both the leaf and the surround; `--plate` and `--chalk`

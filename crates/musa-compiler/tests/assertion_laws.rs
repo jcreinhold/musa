@@ -1,6 +1,6 @@
 //! What an `assert` is and is not.
 //!
-//! `docs/language/05-verification.md` puts explicit assertions in the middle
+//! `docs/rules/language/05-verification.md` puts explicit assertions in the middle
 //! of three strengths: decidable, composer-requested, blocking. Everything
 //! this suite pins down follows from that one sentence.
 //!

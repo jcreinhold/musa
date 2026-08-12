@@ -8,7 +8,7 @@
 // So `musa analyze --kind tonal` reports nothing at all, `--kind cadences`
 // reports nothing at all, and `--kind chords` reports the four sonorities —
 // which are facts, they sound — and no fit for any of them. That absence is the finding. There is no weak label, no
-// nearest triad, and no confidence number: `docs/language/07-analysis.md` §3
+// nearest triad, and no confidence number: `docs/rules/language/07-analysis.md` §3
 // forbids a number nobody can derive, and §7's `chords` domain contains only
 // the four stated relations, none of which these notes stand in.
 //

@@ -2,7 +2,7 @@
 /**
  * Verovio, in a worker, forever.
  *
- * docs/interface/02-engraving.md §2: laying out a 100-bar orchestral score
+ * docs/rules/desktop/02-engraving.md §2: laying out a 100-bar orchestral score
  * takes hundreds of milliseconds, and on the main thread that is a frozen
  * window, a dropped playhead, and dropped keystrokes. The toolkit is
  * instantiated once and kept alive; `loadData` runs once per revision and

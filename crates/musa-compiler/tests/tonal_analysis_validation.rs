@@ -1,6 +1,6 @@
 //! What the tonal, chord, and cadence readings may and may not say.
 //!
-//! `docs/language/07-analysis.md` §2 admits a kind only with an abstract
+//! `docs/rules/language/07-analysis.md` §2 admits a kind only with an abstract
 //! domain, an abstraction map, and a soundness claim. These are the soundness
 //! claims of those three kinds, written as tests:
 //!

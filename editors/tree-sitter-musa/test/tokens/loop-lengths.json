@@ -10,7 +10,7 @@
     { "kind": "comment", "text": "// The count is chosen once, at compile time, from the realization" },
     { "kind": "comment", "text": "// (`musa check examples/loop-lengths.musa --seed 42`). Everything below that" },
     { "kind": "comment", "text": "// choice is an ordinary exact repeat, which is why the kernel gains nothing" },
-    { "kind": "comment", "text": "// from this file: see docs/kernel/11-realization.md." },
+    { "kind": "comment", "text": "// from this file: see docs/rules/kernel/11-realization.md." },
     { "kind": "piece", "text": "piece" },
     { "kind": "string", "text": "\"Loop Lengths\"" },
     { "kind": "{", "text": "{" },

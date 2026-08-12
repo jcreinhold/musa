@@ -1,4 +1,4 @@
-//! Chord classes, triads, and voicings (`docs/language/03-musical-domains.md`
+//! Chord classes, triads, and voicings (`docs/rules/language/03-musical-domains.md`
 //! §3).
 //!
 //! Four things a lead sheet blurs together and this module keeps apart:

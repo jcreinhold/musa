@@ -6,7 +6,7 @@
 //! positions — and nothing else. It is a thin shell beside `musa` and the
 //! desktop: every diagnostic, hover, definition, symbol, and fix is a
 //! restatement of the session's facts, and every rule of
-//! `docs/interface/03-interaction.md` §7 — the interface computes no musical
+//! `docs/rules/desktop/03-interaction.md` §7 — the interface computes no musical
 //! facts — holds here as it does there.
 //!
 //! Must never expose: parser, compiler, renderer, DSP, or CPAL types;

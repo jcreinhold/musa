@@ -1,7 +1,7 @@
 {
   "file": "ornaments.musa",
   "tokens": [
-    { "kind": "comment", "text": "// The marks a Baroque page is covered in (docs/prompts/70)." },
+    { "kind": "comment", "text": "// The marks a Baroque page is covered in (docs/plan/prompts/70)." },
     { "kind": "comment", "text": "//" },
     { "kind": "comment", "text": "// Every mark here is written and none is realized. A trill on this page says" },
     { "kind": "comment", "text": "// \"trill\"; what notes it plays is a question Baroque and Romantic practice" },

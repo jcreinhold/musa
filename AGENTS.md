@@ -6,33 +6,38 @@ the semantic core is Rust, the UI is a replaceable projection.
 
 ## The documents that govern this repo
 
-1. **`docs/governance/`** — the constitution and its derived obligations. Source authority, plural theory-owned
-   presentations, exact ambient time, the finite-process/running-signal distinction, typed derivation coherence, and
-   versioned exact identity. Removing one changes what Musa is; amend deliberately. §7 and §4 say what the core is a
-   calculus *of*: occurrences of any canonical payload over exact rational time, `ScoreFact` being one payload and the
-   performance gesture another. Signals stay outside the core because a signal is coinductive and a process graph has no
-   musical extent. A complete semantic preparation result crosses under exact `R1`; the private process IR has its own
-   formal tick semantics. What these forbid is hard to re-open — only through `docs/governance/README.md`'s amendment
-   procedure.
-2. **`docs/kernel/`** — the governing kernel specification: a small temporal kernel (ambient exact rational time, typed
-   occurrences, `timeline`/`sequence`/`overlay`) is the ontology, and the surface language elaborates into it. Where it
-   and the roadmap disagree on semantic architecture, the kernel wins.
-3. **`docs/spec/`** and **`docs/architecture/`** — the cross-stage formal specification and its Rust realization map.
-   The spec owns presentation/pass/process/identity semantics; architecture says what current code implements or lacks.
-   They refine **`docs/roadmap.md`**, which still owns the broad crate/product plan.
-4. **`docs/interface/`** — the desktop interface specification: visual language, engraving quality bar, interaction and
-   selection model, Origin view, states and voice, performance budgets. Roadmap §14 fixes the app's *architecture*;
-   `docs/interface/` fixes everything §14 leaves open, and §14's wireframe is not a visual spec. Governing since prompt
-   26.
-5. **`docs/language/`** — the elaboration-language specification: the musical domains are a *proved* conservative
+Read [`docs/README.md`](docs/README.md) first: it maps the four directories and states the precedence ladder in full.
+`docs/rules/` governs, `docs/plan/` directs, `docs/book/` teaches, `docs/notes/` records. Within `docs/rules/`:
+
+1. **`docs/rules/constitution.md`** and **`docs/rules/obligations.md`** — the core decisions and what follows. Source
+   authority, plural theory-owned presentations, exact ambient time, the finite-process/running-signal distinction,
+   typed derivation coherence, and versioned exact identity. Removing one changes what Musa is; amend deliberately. §7
+   and §4 say what the core is a calculus *of*: occurrences of any canonical payload over exact rational time,
+   `ScoreFact` being one payload and the performance gesture another. Signals stay outside the core because a signal is
+   coinductive and a process graph has no musical extent. A complete semantic preparation result crosses under exact
+   `R1`; the private process IR has its own formal tick semantics. What these forbid is hard to re-open — only through
+   `docs/rules/README.md`'s amendment procedure.
+2. **`docs/rules/kernel/`** — the governing kernel specification: a small temporal kernel (ambient exact rational time,
+   typed occurrences, `timeline`/`sequence`/`overlay`) is the ontology, and the surface language elaborates into it.
+   Where it and the roadmap disagree on semantic architecture, the kernel wins.
+3. **`docs/rules/across-stages/`** — the cross-stage formal specification, owning presentation, pass, process, and
+   identity semantics. It refines **`docs/plan/roadmap.md`**, which still owns the broad crate/product plan.
+4. **`docs/rules/desktop/`** — the desktop interface specification: visual language, engraving quality bar, interaction
+   and selection model, Origin view, states and voice, performance budgets. Roadmap §14 fixes the app's *architecture*;
+   `docs/rules/desktop/` fixes everything §14 leaves open, and §14's wireframe is not a visual spec. Governing since
+   prompt 26.
+5. **`docs/rules/language/`** — the elaboration-language specification: the musical domains are a *proved* conservative
    extension rather than an accumulating fragment, the standard library is a package with a real module tree, and
    `import` and `use` are two words because they were always two statements. Candidate until prompt 146 graduates it, so
    everything above it in `docs/README.md`'s precedence ladder wins where they differ.
-6. **`docs/prompts/`** — the numbered work plan, currently 155 prompts through rank 153, with its README defining prompt
-   anatomy and execution rules. Implementation happens in dependency order (see the `prompt-stack` skill).
 
-If code and these documents disagree, either the code is wrong or the document needs a deliberate repair — never let
-them drift silently.
+Under `docs/plan/`: **`prompts/`** is the numbered work plan, currently 155 prompts through rank 153, with its README
+defining prompt anatomy and execution rules — implementation happens in dependency order (see the `prompt-stack` skill).
+**`code-map/`** reports which crate implements which stage and what is implemented, partial, or absent; it describes
+code and decides nothing.
+
+If code and a governing document disagree, either the code is wrong or the document needs a deliberate repair — never
+let them drift silently.
 
 ## Navigation
 
@@ -54,17 +59,16 @@ them drift silently.
 | `editors/tree-sitter-musa` | tree-sitter grammar + editor queries, held to the real lexer by the drift law |
 | `stdlib/` | the standard library as a real package (`musa.toml` + `src/`) |
 | `examples/` | `.musa` fixtures — executable specifications, not demos |
-| `docs/README.md` | the map of every document below, and the precedence ladder — read this first |
-| `docs/governance/` | constitutional commitments and derived obligations (governing) |
-| `docs/spec/` | cross-stage presentations, derivations, process semantics, identity (governing) |
-| `docs/kernel/` | the temporal-kernel specification (governing) |
-| `docs/interface/` | the desktop interface specification (governing) |
-| `docs/language/` | the elaboration-language specification (candidate until prompt 146) |
-| `docs/roadmap.md` | the broad crate and product plan |
-| `docs/architecture/` | implementation strategy, spec-to-code status map, implementor's reference |
-| `docs/prompts/` | numbered implementation prompts + README |
-| `docs/book/` | the user-facing book: tutorials, guide, how-to, explanation, reference |
-| `docs/scratch/` | research and decision records; governs nothing |
+| `docs/README.md` | the map of the four directories and the precedence ladder — read this first |
+| `docs/rules/` | **governing.** constitution, obligations, and the per-stage specifications |
+| `docs/rules/across-stages/` | cross-stage presentations, derivations, process semantics, identity |
+| `docs/rules/kernel/` | the temporal-kernel specification |
+| `docs/rules/desktop/` | the desktop interface specification |
+| `docs/rules/language/` | the elaboration-language specification (candidate until prompt 146) |
+| `docs/rules/style-guide.md` | `.musa` naming and spelling; the lint pass cites it by section |
+| `docs/plan/` | **directive.** roadmap, numbered prompts, and the spec-to-code map |
+| `docs/book/` | **teaching.** tutorials, guide, how-to, explanation, reference |
+| `docs/notes/` | **governs nothing.** `research/` decision records, `toolchain/` machine traps |
 
 Dependency direction is one-way: language → compiler → {render, audio} → engine → project → {cli, lsp, desktop}, with
 `musa-kernel` a leaf that `musa-compiler` (and later consumers) depend on, and `musa-lsp` the one shell that also
@@ -96,14 +100,14 @@ alone.
 **Generated files are never formatted.** `apps/musa-desktop/ui/src/lib/session/generated/` and
 `apps/musa-desktop/ui/fixtures/` are written by generator tests and compared byte for byte; `.prettierignore` excludes
 both. Change the generator and regenerate, never the file — see
-[`docs/development/generated-files.md`](docs/development/generated-files.md).
+[`docs/notes/toolchain/generated-files.md`](docs/notes/toolchain/generated-files.md).
 
 **Slow tests carry `#[ignore]` and say so in their name**, so the default suite asks for them by name. Marking one
 requires a doc comment arguing it: what the test protects, what still covers that contract in the fast suite, and what
 breadth is deferred. A slow test without that note should have been made fast.
 
-**When a gate misbehaves rather than fails**, check [`docs/development/`](docs/development/README.md) before debugging
-the code — it collects the toolchain and environment traps that make a green change look broken.
+**When a gate misbehaves rather than fails**, check [`docs/notes/toolchain/`](docs/notes/toolchain/README.md) before
+debugging the code — it collects the toolchain and environment traps that make a green change look broken.
 
 ## Standards
 
@@ -118,8 +122,9 @@ the code — it collects the toolchain and environment traps that make a green c
 - **Real-time rules.** The audio callback never allocates, locks, does I/O, logs, or destroys large objects. Plans are
   preallocated on the control side and cross the boundary on `rtrb` queues.
 - **Exact time.** Musical time is rational (`num-rational`); floats appear only at the performance/DSP edge.
-- **`.musa` style.** `docs/style-guide.md` owns what the formatter cannot say — naming, and spellings that are correct
-  and still mislead the player. The lint pass enforces its machine-checkable subset; each rule names its diagnostic.
+- **`.musa` style.** `docs/rules/style-guide.md` owns what the formatter cannot say — naming, and spellings that are
+  correct and still mislead the player. The lint pass enforces its machine-checkable subset; each rule names its
+  diagnostic.
 - **Dependencies.** New crates must come from the roadmap §15 dependency lists and be added in the prompt that needs
   them. FundSP/CPAL/Rowan types stay private to their crate.
 

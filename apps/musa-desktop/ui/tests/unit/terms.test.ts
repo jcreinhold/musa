@@ -1,6 +1,6 @@
 /**
  * What the source column can answer about a term
- * (`docs/interface/08-elaboration.md` §§1–3).
+ * (`docs/rules/desktop/08-elaboration.md` §§1–3).
  *
  * `stdlib-basics.musa` is the case the workbench exists for: names the
  * composer declared, and names they only used — the latter declared in modules

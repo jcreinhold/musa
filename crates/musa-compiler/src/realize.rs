@@ -2,7 +2,7 @@
 //!
 //! A piece may leave decisions to the performance: how many times to repeat a
 //! figure, in what order to play a set of fragments, how long to hold a free
-//! duration. `docs/kernel/11-realization.md` puts those decisions **here** —
+//! duration. `docs/rules/kernel/11-realization.md` puts those decisions **here** —
 //! above the kernel, before a term exists — rather than inside the kernel as a
 //! `choose` form. The four reasons that form was refused are in that document;
 //! the consequence for this module is the whole of its design:
@@ -294,7 +294,7 @@ impl DecisionRecord {
     ///
     /// Spelled here rather than in a frontend because only elaboration knows
     /// the names: `Decision::Order([2, 0, 1])` is not something to show anyone
-    /// (`docs/interface/03-interaction.md` §7).
+    /// (`docs/rules/desktop/03-interaction.md` §7).
     #[must_use]
     pub fn answered(&self) -> &str {
         &self.answered
@@ -464,7 +464,7 @@ mod tests {
         assert_eq!(ChoicePath::parse("z1:x"), None, "no such kind of step");
     }
 
-    /// The wording rule of `docs/interface/`: what a composer reads is a
+    /// The wording rule of `docs/rules/desktop/`: what a composer reads is a
     /// sentence, and it never contains the word `Ordinal`.
     #[test]
     fn a_path_is_shown_as_a_sentence() {

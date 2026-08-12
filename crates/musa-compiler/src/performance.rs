@@ -1,4 +1,4 @@
-//! Performance resolver (roadmap §6.4, §15.3; docs/kernel/06-surface-elaboration.md): the
+//! Performance resolver (roadmap §6.4, §15.3; docs/rules/kernel/06-surface-elaboration.md): the
 //! neutral core that integrates the tempo map and schedules a
 //! `ScoreSnapshot` into frame-exact note-on/note-off events.
 //!
@@ -68,7 +68,7 @@ impl Default for PerformanceOptions {
     }
 }
 
-/// A piecewise-monotone tempo map (docs/kernel/06-surface-elaboration.md).
+/// A piecewise-monotone tempo map (docs/rules/kernel/06-surface-elaboration.md).
 ///
 /// One segment per written tempo, each carrying the exact number of seconds
 /// elapsed before it begins, accumulated as a rational: the rounding to whole
@@ -251,7 +251,7 @@ impl IntegratedTempoMap {
     /// **sampled** here, into `steps_per_whole` constant segments per whole
     /// note of its reach. The density is the caller's argument rather than a
     /// constant of the map, because the shape is normative and the sampling
-    /// is the consumer's policy (docs/kernel/07) — the same rule a hairpin's
+    /// is the consumer's policy (docs/rules/kernel/07) — the same rule a hairpin's
     /// `Progress` is read under, and the reason both are one type.
     pub fn segments(&self, steps_per_whole: u32) -> Vec<TempoSegment> {
         let mut segments = Vec::with_capacity(self.points.len());
@@ -500,7 +500,7 @@ impl PerformancePlan {
     /// Only the exporters ask. SMF has one tempo track, so a polytempo
     /// performance is written out sonically exact and notationally wrong,
     /// and the loss is stated rather than discovered
-    /// (`docs/kernel/07-backend-contract.md`).
+    /// (`docs/rules/kernel/07-backend-contract.md`).
     pub fn is_polytempo(&self) -> bool {
         self.polytempo
     }
@@ -577,7 +577,7 @@ pub fn lower_performance(
             // The prevailing dynamic is per voice: a marking applies from its
             // event onward in the voice that wrote it, not across the part.
             //
-            // This is the kernel's prevailing rule (docs/kernel/03 D11) applied
+            // This is the kernel's prevailing rule (docs/rules/kernel/03 D11) applied
             // in bulk — one ordered pass over the voice, carrying the last
             // marking forward — and not one `Timeline::prevailing` call per
             // event, which would be O(events × markings). The two conventions
@@ -718,7 +718,7 @@ pub fn lower_performance(
 
 /// Written time to frames, for one part.
 ///
-/// The composition order is the whole point (docs/kernel/06-surface-elaboration.md): the
+/// The composition order is the whole point (docs/rules/kernel/06-surface-elaboration.md): the
 /// groove is a `Beat → Beat` warp and tempo is `Beat → Second`, so the groove
 /// goes **first**. Composed the other way a shuffle would be specified in
 /// seconds and would straighten out as the band sped up.
@@ -804,7 +804,7 @@ struct Reached {
 /// Index a voice's events by the hairpin they fall under, sampling each
 /// hairpin's shape once per event.
 ///
-/// **Shape versus sampling policy** (docs/kernel/07). The shape — how the
+/// **Shape versus sampling policy** (docs/rules/kernel/07). The shape — how the
 /// growth is distributed across the region — is a fact about the piece: it
 /// lives in the timeline as a `Progress`, it serializes, and every conforming
 /// consumer must honour it. *Where to sample it* is this layer's choice, and
@@ -848,7 +848,7 @@ fn hairpin_curves(score: &ScoreSnapshot) -> std::collections::HashMap<EventId, R
 /// the same bulk-index-once shape as [`Interpretation::collect`]: one pass
 /// here rather than a scan of every grace per event.
 ///
-/// The sort is by `index`, the ordering the payload carries (docs/kernel/05
+/// The sort is by `index`, the ordering the payload carries (docs/rules/kernel/05
 /// N2). Normalization sorts occurrences by span then payload key, and every
 /// grace in a group shares a span — so `grace { c5 d5 }` and
 /// `grace { d5 c5 }` are told apart by nothing else. Reading the lane's
@@ -879,7 +879,7 @@ fn ratio_to_f32(value: Ratio<i64>) -> f32 {
 }
 
 /// Lower one score event: notes and chord tones become on/off pairs; rests
-/// schedule nothing (absence is silence; docs/kernel/00-purpose.md).
+/// schedule nothing (absence is silence; docs/rules/kernel/00-purpose.md).
 ///
 /// **Where a grace note's time comes from.** A grace is a *point* occurrence —
 /// zero written duration — so performance is where it acquires one, and the

@@ -1,7 +1,7 @@
 {
   "file": "profile-fixture.musa",
   "tokens": [
-    { "kind": "comment", "text": "// Interpretation profiles (docs/prompts/28). The score says what is" },
+    { "kind": "comment", "text": "// Interpretation profiles (docs/plan/prompts/28). The score says what is" },
     { "kind": "comment", "text": "// written; the profile says what this instrument makes of it. Both parts" },
     { "kind": "comment", "text": "// play the same marks and read them differently, which is the point: a" },
     { "kind": "comment", "text": "// staccato is not a number until an instrument says so." },

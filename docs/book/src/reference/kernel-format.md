@@ -65,6 +65,6 @@ kernel "example" {
 }
 ```
 
-The meaning of every production — the denotation, the well-formedness rules, the laws — is specified in `docs/kernel/`
-in the repository, and where that specification and this grammar disagree, the semantics is right: a notation cannot
-promise a meaning the semantics does not define.
+The meaning of every production — the denotation, the well-formedness rules, the laws — is specified in
+`docs/rules/kernel/` in the repository, and where that specification and this grammar disagree, the semantics is right:
+a notation cannot promise a meaning the semantics does not define.

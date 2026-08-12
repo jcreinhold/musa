@@ -11,7 +11,7 @@ Four questions:
    deliberately compressed fragments, and several specify sound and asset
    syntax that prompts 130-142 have not built yet. Holding the whole candidate
    to its corpus is prompt 146's graduation audit
-   (`docs/language/05-verification.md` §7), not this checker's.
+   (`docs/rules/language/05-verification.md` §7), not this checker's.
 2. Does every internal link land? A relative path must exist, and an `#anchor`
    must be a heading in the file it points at. This is asked of **all** of
    `docs/`, plus the two Markdown files at the repository root, because it is

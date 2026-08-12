@@ -1,4 +1,4 @@
-//! The round-trip law of the interchange format (docs/kernel/01).
+//! The round-trip law of the interchange format (docs/rules/kernel/01).
 //!
 //! ```text
 //! for every fixture:  parse(print(t)) evaluates to a timeline with
@@ -25,7 +25,7 @@ use musa_compiler::{
 
 /// The realization every fixture is pinned to.
 ///
-/// `docs/kernel/11-realization.md` concedes the cost up front: a regression
+/// `docs/rules/kernel/11-realization.md` concedes the cost up front: a regression
 /// fixture whose realization is unpinned is not a fixture. Determinate pieces
 /// are unaffected by the number, which is what
 /// [`a_determinate_piece_is_the_same_under_every_seed`] checks.

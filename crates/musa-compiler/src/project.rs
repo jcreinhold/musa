@@ -1,4 +1,4 @@
-//! The timeline → `ScoreSnapshot` projection (docs/kernel/06).
+//! The timeline → `ScoreSnapshot` projection (docs/rules/kernel/06).
 //!
 //! Elaboration produces one `Timeline<ScoreFact>` for the whole piece. A
 //! score, though, is read part by part and voice by voice, with notes that
@@ -7,7 +7,7 @@
 //! timeline stays the only place a temporal fact lives.
 //!
 //! It is a module rather than a method on the timeline because the kernel
-//! must not learn what a score is (docs/kernel/02-static-semantics.md).
+//! must not learn what a score is (docs/rules/kernel/02-static-semantics.md).
 //!
 //! Rational arithmetic on musa's magnitudes is total; the workspace
 //! arithmetic lint is allowed module-wide (see musa-compiler/src/time.rs).
@@ -151,7 +151,7 @@ fn agreed_repeats(
 /// The order is **canonical order** (N2: start, end, payload key), which is
 /// time order with source position as its tie-break — the payload key ends in
 /// the origin's source span. That matters twice. For the context maps it is
-/// the prevailing rule of `docs/kernel/03` D11 applied in bulk: the last fact
+/// the prevailing rule of `docs/rules/kernel/03` D11 applied in bulk: the last fact
 /// starting at or before the piece's start is the one in force, and when
 /// `modulate` arrives this sweep already answers correctly for a key that
 /// changes at bar 40. Sorting on the fact's *source* position
@@ -162,7 +162,7 @@ fn agreed_repeats(
 ///
 /// This is D11's *definition* applied by one ordered pass, not a `prevailing`
 /// call per fact. The kernel says what the answer is; bulk derivation sweeps
-/// (docs/kernel/03 D11, "the performance rule").
+/// (docs/rules/kernel/03 D11, "the performance rule").
 fn project_piece(resolver: &mut Resolver, occurrences: &[&Occurrence<ScoreFact>]) -> crate::score::Contexts {
     let mut ordered: Vec<&&Occurrence<ScoreFact>> = occurrences.iter().collect();
     ordered.sort_by_cached_key(|occurrence| {
@@ -548,7 +548,7 @@ fn project_points(
 /// Order is time order, outermost first, which is the order the annotation
 /// lists have always been in: a region that starts earlier comes first, and
 /// where two start together the one that ends later encloses the other.
-/// Membership follows the kernel's containment convention (docs/kernel/03 D10)
+/// Membership follows the kernel's containment convention (docs/rules/kernel/03 D10)
 /// and is derived by one ordered pass, not by a query per event.
 fn project_regions(
     resolver: &mut Resolver,
@@ -569,7 +569,7 @@ fn project_regions(
         let span = occurrence.span();
         let from_time = MusicalTime::new(span.start().as_ratio());
         let to_time = MusicalTime::new(span.end().as_ratio());
-        // The containment convention of docs/kernel/03 D10, applied in one
+        // The containment convention of docs/rules/kernel/03 D10, applied in one
         // ordered pass rather than one `covering` call per event (D10, "the
         // performance rule"): a region `[s, e)` holds the events whose onset
         // satisfies `s ≤ onset < e`, and a point region holds the events at

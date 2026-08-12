@@ -1,7 +1,7 @@
 {
   "file": "canon-x.musa",
   "tokens": [
-    { "kind": "comment", "text": "// Two parts at their own speeds, converging (docs/prompts/75)." },
+    { "kind": "comment", "text": "// Two parts at their own speeds, converging (docs/plan/prompts/75)." },
     { "kind": "comment", "text": "//" },
     { "kind": "comment", "text": "// Nancarrow's *Study No. 21*, \"Canon X\", is the piece this exists for: one" },
     { "kind": "comment", "text": "// voice begins slow and accelerates throughout, the other begins fast and" },

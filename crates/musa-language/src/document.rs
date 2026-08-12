@@ -1,5 +1,5 @@
 //! Which of the two alternatives a source document is
-//! (`docs/language/01-surface.md` §7).
+//! (`docs/rules/language/01-surface.md` §7).
 //!
 //! A musa document is written in one of two languages: the surface language
 //! this crate parses, or the kernel interchange language `musa-kernel` parses.

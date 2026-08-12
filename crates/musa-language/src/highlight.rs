@@ -7,7 +7,7 @@
 //! deciding what it looks like does not compile.
 //!
 //! The classes are editor vocabulary, not visual instruction — what colour a
-//! class takes is `docs/interface/01-visual-language.md`'s business, and it
+//! class takes is `docs/rules/desktop/01-visual-language.md`'s business, and it
 //! answers with ink weight and one accent rather than a rainbow.
 
 use crate::syntax_kind::SyntaxKind;

@@ -1,6 +1,6 @@
 //! Musical analysis: observing a compiled score without changing it.
 //!
-//! `docs/language/05-verification.md` divides theory work three ways. A
+//! `docs/rules/language/05-verification.md` divides theory work three ways. A
 //! **constructor invariant** is what a value must satisfy to exist. An
 //! **assertion** proves a decidable claim a composer wrote down
 //! ([`crate::assert`]). An **analysis** is the third thing: it reads a
@@ -25,7 +25,7 @@
 //! readings the abstraction says cannot both hold. Without the map those words
 //! are severity labels chosen by feel, and a finding with no stated
 //! relationship to the score is exactly the false claim
-//! `docs/language/03-musical-domains.md` §5 forbids. An analysis whose
+//! `docs/rules/language/03-musical-domains.md` §5 forbids. An analysis whose
 //! soundness claim cannot be written must not ship.
 //!
 //! # What this module may not do

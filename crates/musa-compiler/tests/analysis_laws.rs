@@ -1,8 +1,8 @@
 //! What an analysis is and is not.
 //!
-//! `docs/language/05-verification.md` §3 puts analyses in the third of three
+//! `docs/rules/language/05-verification.md` §3 puts analyses in the third of three
 //! strengths: named services that observe, may be ambiguous, and never make
-//! music. `docs/language/07-analysis.md` adds the discipline that makes the
+//! music. `docs/rules/language/07-analysis.md` adds the discipline that makes the
 //! third strength say something precise — every kind is an abstract
 //! interpretation with a domain, an abstraction map, and a soundness claim.
 //! Everything pinned down here follows from those two.

@@ -2,7 +2,7 @@
 tempo-changes
 ================================================================================
 
-// Tempo changes, and the two things called tempo (docs/prompts/72).
+// Tempo changes, and the two things called tempo (docs/plan/prompts/72).
 //
 // A tempo marking is notation: it is printed, it stands at a place, and some
 // markings are only words. The tempo *map* is a function from beats to

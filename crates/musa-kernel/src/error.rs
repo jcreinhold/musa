@@ -1,4 +1,4 @@
-//! Static violations of the kernel rules (docs/kernel/02). The kernel has no
+//! Static violations of the kernel rules (docs/rules/kernel/02). The kernel has no
 //! warnings: a construct is well-formed or rejected.
 
 use crate::time::{Beat, Span};
@@ -40,7 +40,7 @@ pub enum KernelError {
         /// The offending name.
         name: String,
     },
-    /// Kernel text that is not a term (docs/kernel/01).
+    /// Kernel text that is not a term (docs/rules/kernel/01).
     #[error("kernel text at byte {offset}: {message}")]
     Parse {
         /// The byte offset the reader stopped at.

@@ -1,5 +1,5 @@
 /**
- * The selection model of `docs/interface/03-interaction.md` §1, and the small
+ * The selection model of `docs/rules/desktop/03-interaction.md` §1, and the small
  * amount of state that goes with it.
  *
  * Selection is by `EventId` — never by index, never by DOM node — so it

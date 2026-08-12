@@ -1,12 +1,12 @@
 //! Elaboration of the surface language through the temporal kernel
-//! (docs/kernel/06-surface-elaboration.md, docs/kernel/05-normalization.md).
+//! (docs/rules/kernel/06-surface-elaboration.md, docs/rules/kernel/05-normalization.md).
 //!
 //! This is *the* semantic path: name resolution, motif registration and unit
 //! checks come from `resolve.rs`, voice content elaborates into
 //! `Timeline<ScoreFact>` values built from kernel `sequence`/`overlay`, and
 //! `project.rs` reads a `ScoreSnapshot` back out of the result (§27).
 //!
-//! Design decisions recorded in docs/kernel/06 and 08:
+//! Design decisions recorded in docs/rules/kernel/06 and 08:
 //! - a `rest` statement elaborates to a `Rest` payload occurrence — notation
 //!   intent, a typed fact; the kernel has no silence object (§2);
 //! - transposition applies eagerly during elaboration via the shared
@@ -111,7 +111,7 @@ pub(crate) enum FactKind {
     /// A hairpin over the region it spans, the mark it arrives at, and the
     /// shape of the growth. The shape is a kernel value (`Progress`), so it
     /// survives serialization and every consumer reads the same curve; how
-    /// often to sample it is the consumer's policy (docs/kernel/07).
+    /// often to sample it is the consumer's policy (docs/rules/kernel/07).
     Hairpin {
         grows: bool,
         target: DynamicMark,
@@ -129,7 +129,7 @@ pub(crate) enum FactKind {
     /// The marking, not the map. `♩ = 92` is notation written at a place —
     /// the engraver prints it, the exporters carry it — and the `Beat →
     /// Second` function performance integrates is *derived* from the markings
-    /// (docs/kernel/06-surface-elaboration.md). Keeping the two apart is why this is a fact:
+    /// (docs/rules/kernel/06-surface-elaboration.md). Keeping the two apart is why this is a fact:
     /// a fact has a place in the piece, and a function does not.
     ///
     /// Both halves are optional and neither implies the other. `tempo
@@ -257,7 +257,7 @@ impl FactKind {
 }
 
 /// One elaborated fact of a score: what is stated, where in the score's
-/// structure it belongs, and why it exists (docs/kernel/06).
+/// structure it belongs, and why it exists (docs/rules/kernel/06).
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct ScoreFact {
     pub(crate) scope: Scope,
@@ -355,7 +355,7 @@ impl musa_kernel::Canonical for ScoreFact {
     const QUOTIENT_VERSION: u32 = 1;
 
     /// Deterministic key for canonical ordering and the admitted score-fact
-    /// equality (docs/kernel/05 N3, 12): scope, kind, source span, and
+    /// equality (docs/rules/kernel/05 N3, 12): scope, kind, source span, and
     /// expansion path. Other stored compilation details are deliberately not
     /// part of this quotient.
     ///
@@ -483,7 +483,7 @@ impl musa_kernel::Canonical for ScoreFact {
 }
 
 /// Elaborate `source` through the temporal kernel and adapt the result into
-/// a `ScoreSnapshot` (docs/kernel/06).
+/// a `ScoreSnapshot` (docs/rules/kernel/06).
 pub(crate) fn elaborate(source: &SourceDocument, options: &crate::CompileOptions) -> Compilation {
     let document = musa_language::parse(source.text());
     // Parsing is the one phase with its own timing question — a large file
@@ -497,7 +497,7 @@ pub(crate) fn elaborate(source: &SourceDocument, options: &crate::CompileOptions
 /// One voice's elaborated timeline, before the snapshot adapter sees it.
 pub(crate) type VoiceTimeline = Timeline<ScoreFact>;
 
-/// Everything after parsing (docs/kernel/06): elaborate, adapt, check.
+/// Everything after parsing (docs/rules/kernel/06): elaborate, adapt, check.
 ///
 /// Split out of [`elaborate`] so the parse and the semantic work can be
 /// measured apart; `resolver` arrives from the caller for the same reason
@@ -814,7 +814,7 @@ const fn site_key(span: SourceSpan) -> u64 {
 /// the piece's key, meter, form markers and chord symbols, into a single
 /// `Timeline<ScoreFact>` for the whole piece, which is projected once.
 ///
-/// One compilation, one temporal object (docs/kernel/06-surface-elaboration.md).
+/// One compilation, one temporal object (docs/rules/kernel/06-surface-elaboration.md).
 /// Part and
 /// voice identity live in `Scope`, not in a timeline per voice, which is the
 /// evidence Q3's working stance asked for.
@@ -1335,7 +1335,7 @@ impl Segment {
 }
 
 /// A body elaborated once and referenced many times, and the bindings that
-/// hold them (docs/kernel/06-surface-elaboration.md: "nothing requires duplicating thousands
+/// hold them (docs/rules/kernel/06-surface-elaboration.md: "nothing requires duplicating thousands
 /// of nodes merely to obey the normalized model").
 ///
 /// Bindings are piece-level because their references are: two voices calling
@@ -1560,7 +1560,7 @@ fn total_extent(segments: &[Segment]) -> Beat {
     )
 }
 
-/// Elaborate one voice: `sequence` of its items (docs/kernel/06).
+/// Elaborate one voice: `sequence` of its items (docs/rules/kernel/06).
 fn elaborate_voice(
     resolver: &mut Resolver,
     share: &mut Share,
@@ -2623,7 +2623,7 @@ fn ranged_count(
 /// The ranged form is the piece leaving the count to the performance. It is
 /// resolved *here*, before a term exists, so everything below this function is
 /// the ordinary exact repeat — which is the whole of
-/// `docs/kernel/11-realization.md`'s design in one place.
+/// `docs/rules/kernel/11-realization.md`'s design in one place.
 fn elaborate_repeat(
     resolver: &mut Resolver,
     share: &mut Share,
@@ -3706,7 +3706,7 @@ fn elaborate_music_value(
 /// it already made, it does not re-elaborate the hole under a new context.
 /// That is what makes an outer raw transform able to invalidate a
 /// placement-sensitive assertion that passed inside the hole
-/// (`docs/language/05-verification.md`).
+/// (`docs/rules/language/05-verification.md`).
 fn kernel_quote_segment(
     resolver: &mut Resolver,
     share: &mut Share,
@@ -3963,7 +3963,7 @@ fn specialize(
 ///
 /// A plain function over an elaborated timeline, deliberately: the kernel
 /// needs no reversal primitive to express it, which is the evidence
-/// `docs/kernel/08-open-questions.md` records for §34's smallest complete
+/// `docs/rules/kernel/08-open-questions.md` records for §34's smallest complete
 /// basis.
 ///
 /// Every mark stays with the note that carries it — a staccato is written on
@@ -4364,7 +4364,7 @@ fn check_tuplets(resolver: &mut Resolver, snapshot: &ScoreSnapshot) {
 }
 
 /// The normalized human-display text of a source's piece timeline, for golden
-/// snapshots (docs/kernel/05 N5). Semantic hashing uses separate framed N6
+/// snapshots (docs/rules/kernel/05 N5). Semantic hashing uses separate framed N6
 /// bytes. `None` when the
 /// source does not elaborate cleanly.
 ///
@@ -4377,7 +4377,7 @@ pub fn kernel_normal_form(source: &SourceDocument, realization: &crate::Realizat
     Some(musa_kernel::evaluate_marked(term, instantiate).to_string())
 }
 
-/// The piece as a **term** (docs/kernel/10): its name, and an `over` of one
+/// The piece as a **term** (docs/rules/kernel/10): its name, and an `over` of one
 /// literal per voice plus one for the piece-wide context.
 ///
 /// The shared bodies are `let`-bound around the whole `over`, because a motif

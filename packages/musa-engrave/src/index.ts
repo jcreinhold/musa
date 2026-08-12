@@ -1,6 +1,6 @@
 /**
  * The shared worker engraver: the render layer's entire surface
- * to the desktop UI and to `@musa/web` (docs/interface/02-engraving.md §1).
+ * to the desktop UI and to `@musa/web` (docs/rules/desktop/02-engraving.md §1).
  *
  * No component outside this package touches a Verovio toolkit, an MEI string,
  * or a raw SVG string. Rust owns MEI; this is a projection, not a model.

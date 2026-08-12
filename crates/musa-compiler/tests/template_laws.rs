@@ -1,5 +1,5 @@
 //! What a declaration template promises
-//! (`docs/language/04-templates-and-modules.md` §1–§3).
+//! (`docs/rules/language/04-templates-and-modules.md` §1–§3).
 //!
 //! A template is a declaration with parameters, and the whole claim of this
 //! file is that making one is *binding*, not rewriting: the instance means

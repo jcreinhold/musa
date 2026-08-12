@@ -1,5 +1,5 @@
 //! What the chromatic quotient promises
-//! (`docs/language/03-musical-domains.md` §1 and §4).
+//! (`docs/rules/language/03-musical-domains.md` §1 and §4).
 //!
 //! `pc12` is `Z/12Z` and a spelled pitch class is not one. Only `χ` is total,
 //! and it is not injective; the way back is a policy the author names, which

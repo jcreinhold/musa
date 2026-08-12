@@ -1,4 +1,4 @@
-//! Continuous shape as a payload value (docs/kernel/03 `Progress`, §32 Q4).
+//! Continuous shape as a payload value (docs/rules/kernel/03 `Progress`, §32 Q4).
 //!
 //! Rational arithmetic on musa's magnitudes is total, so the workspace
 //! arithmetic lint is allowed module-wide (the sanctioned pattern, see
@@ -122,7 +122,7 @@ impl Canonical for Progress {
     const OWNER_TYPE_ID: &'static str = "musa.kernel.Progress";
     const QUOTIENT_VERSION: u32 = 1;
 
-    /// `u:v` pairs joined by `,`, each rational as `num/den` (docs/kernel/05
+    /// `u:v` pairs joined by `,`, each rational as `num/den` (docs/rules/kernel/05
     /// N3). Exact, float-free, and complete for `Progress` equality because
     /// the breakpoints are strictly increasing.
     fn canonical_key(&self) -> String {

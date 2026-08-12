@@ -59,7 +59,7 @@ pub struct ProjectSession {
     /// The paths behind those imports, for callers that watch them.
     import_paths: Vec<PathBuf>,
     /// Which reading of the work this session compiles
-    /// (`docs/kernel/11-realization.md`). A piece that leaves nothing open
+    /// (`docs/rules/kernel/11-realization.md`). A piece that leaves nothing open
     /// never consults it, which is why it is a plain field with a default
     /// rather than something an opener has to supply.
     realization: musa_compiler::Realization,
@@ -94,7 +94,7 @@ pub struct ProjectSession {
     /// not change the music does not interrupt it.
     ///
     /// Two documents, because a plan is built from two: the piece's semantic
-    /// identity (docs/kernel/05 N6) and the studio that voices it. Keying on
+    /// identity (docs/rules/kernel/05 N6) and the studio that voices it. Keying on
     /// the score alone would let a changed instrument go unheard until the
     /// next note edit.
     installed: Option<InstalledPlan>,
@@ -192,7 +192,7 @@ impl ProjectSession {
     /// A new piece that has not been given a home yet.
     ///
     /// A new file is playable before it is saved: the "New piece" state of
-    /// `docs/interface/05-states.md` §2 shows a real engraved system and puts
+    /// `docs/rules/desktop/05-states.md` §2 shows a real engraved system and puts
     /// the caret in it, and asking for a path first would make the empty
     /// state a file dialog.
     pub fn new_piece(template: Template, title: &str) -> Self {
@@ -710,7 +710,7 @@ impl ProjectSession {
     /// Not an edit — the source is untouched and nothing about the piece
     /// changed. It *is* a state of the session: the page a composer is
     /// looking at is a function of the source **and** the realization
-    /// (`docs/kernel/11-realization.md`), so a new realization takes a
+    /// (`docs/rules/kernel/11-realization.md`), so a new realization takes a
     /// revision and lands in the history, and undo goes back to the reading
     /// that was on screen before.
     pub fn realize(&mut self, realization: musa_compiler::Realization) -> ProjectUpdate {

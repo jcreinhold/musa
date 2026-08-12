@@ -1,4 +1,4 @@
-//! Exact musical time: positions and spans (docs/kernel/03 D0, §4).
+//! Exact musical time: positions and spans (docs/rules/kernel/03 D0, §4).
 //!
 //! Positions form the abelian group `(ℚ, +, 0)`; durations form the ordered
 //! commutative monoid `(ℚ≥0, +, 0)`. Both are `Ratio<i64>` — floats never
@@ -54,7 +54,7 @@ impl Beat {
 }
 
 impl std::fmt::Display for Beat {
-    /// Reduced `p/q` form; integers print without `/1` (docs/kernel/05 N5).
+    /// Reduced `p/q` form; integers print without `/1` (docs/rules/kernel/05 N5).
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if *self.0.denom() == 1 {
             write!(f, "{}", self.0.numer())
@@ -123,7 +123,7 @@ impl Span {
         }
     }
 
-    /// Whether this span is observable through `window` (docs/kernel/03 D6).
+    /// Whether this span is observable through `window` (docs/rules/kernel/03 D6).
     ///
     /// Non-degenerate spans are visible when `[s, e) ∩ [i, j) ≠ ∅`; degenerate
     /// (point) spans are visible when `s ∈ [i, j)` — otherwise point
@@ -140,7 +140,7 @@ impl Span {
         }
     }
 
-    /// Whether `at` lies inside this span (docs/kernel/03 D8).
+    /// Whether `at` lies inside this span (docs/rules/kernel/03 D8).
     ///
     /// Support is half-open: `s ≤ at < e`. The end instant belongs to
     /// whatever comes next, which is what makes `sequence` unambiguous — the

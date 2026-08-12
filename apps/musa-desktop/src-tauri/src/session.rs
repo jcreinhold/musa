@@ -72,7 +72,7 @@ enum Job {
     ///
     /// A job like the others because it reads the session's score, and
     /// deliberately not a mutating one: an analysis mints no revision and
-    /// raises no diagnostic (`docs/interface/08-elaboration.md` §5).
+    /// raises no diagnostic (`docs/rules/desktop/08-elaboration.md` §5).
     Analyze(String),
 }
 
@@ -445,7 +445,7 @@ mod session_laws {
         Ok(())
     }
 
-    /// The contract `docs/interface/03-interaction.md` §7 fixes: the webview
+    /// The contract `docs/rules/desktop/03-interaction.md` §7 fixes: the webview
     /// is handed UTF-16 code units, never bytes.
     ///
     /// Stated without arithmetic: an em dash and a hyphen are both one code

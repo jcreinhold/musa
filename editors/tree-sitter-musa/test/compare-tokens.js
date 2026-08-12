@@ -155,7 +155,7 @@ function checkTokens(manifestPath) {
  * Hold the grammar to `musa-language` on the top-level alternative: which
  * files are kernel documents, and by what marker.
  *
- * `docs/language/01-surface.md` §7 gives one language two surfaces, and the
+ * `docs/rules/language/01-surface.md` §7 gives one language two surfaces, and the
  * one way for two readers of it to disagree is the one way that matters — a
  * file read as kernel by the grammar and surface by the compiler opens as a
  * page of red in an editor and checks clean on the command line. So both the

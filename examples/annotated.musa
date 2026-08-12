@@ -1,4 +1,4 @@
-// The annotation layer, end to end (docs/prompts/35): named phrases over the
+// The annotation layer, end to end (docs/plan/prompts/35): named phrases over the
 // notes, form markers at measure:beat positions, and a harmony lane.
 //
 // Nothing here is interpreted. The chord symbols are recorded and printed;

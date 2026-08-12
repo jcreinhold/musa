@@ -100,7 +100,7 @@ fn backend_snapshot_digest(prefix: &str) -> Result<(usize, String)> {
 /// The deliberate breaks this baseline has absorbed, and why each one was
 /// allowed to move it.
 ///
-/// `docs/language/README.md`'s graduation criterion 2 asks that a pre-candidate
+/// `docs/rules/language/README.md`'s graduation criterion 2 asks that a pre-candidate
 /// example either keep its meaning or have an explicit, tested migration
 /// diagnostic. A refreshed manifest cannot tell those two apart on its own —
 /// the digests simply become the new digests — so a break is named here before
@@ -300,7 +300,7 @@ fn existing_language_behavior_matches_the_migration_oracle() -> Result {
 #[test]
 fn every_expected_change_names_one_repairing_prompt() -> Result {
     const LEDGER: &str = include_str!("../../../tests/fixtures/elaboration-expected-changes.json");
-    let prompts = repository().join("docs/prompts");
+    let prompts = repository().join("docs/plan/prompts");
     for (defect, slug) in [
         ("processor-hover-gap", "studio-vocabulary"),
         ("eager-studio-f64-conversion", "exact-studio-values"),

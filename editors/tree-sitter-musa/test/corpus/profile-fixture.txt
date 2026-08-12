@@ -2,7 +2,7 @@
 profile-fixture
 ================================================================================
 
-// Interpretation profiles (docs/prompts/28). The score says what is
+// Interpretation profiles (docs/plan/prompts/28). The score says what is
 // written; the profile says what this instrument makes of it. Both parts
 // play the same marks and read them differently, which is the point: a
 // staccato is not a number until an instrument says so.

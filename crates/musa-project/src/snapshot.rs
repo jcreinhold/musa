@@ -73,7 +73,7 @@ pub(crate) struct ValidArtifacts {
     /// completion, signature help, and outline.
     pub(crate) items: Vec<crate::facts::ItemFact>,
     pub(crate) revision: Revision,
-    /// What this score *means* (docs/kernel/05 N6), so a consumer can ask
+    /// What this score *means* (docs/rules/kernel/05 N6), so a consumer can ask
     /// whether an edit changed the music rather than only the text.
     pub(crate) identity: musa_compiler::SemanticHash,
 }
@@ -127,7 +127,7 @@ impl<'session> ProjectSnapshot<'session> {
     /// When false, [`Self::mei`] and playback describe
     /// [`Self::score_revision`], not [`Self::revision`] — the interface must
     /// say so rather than blanking the score (roadmap §14.7,
-    /// `docs/interface/05-states.md` §4).
+    /// `docs/rules/desktop/05-states.md` §4).
     pub fn compiles(&self) -> bool {
         self.compiles
     }

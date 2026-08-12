@@ -1,7 +1,7 @@
 {
   "file": "graces.musa",
   "tokens": [
-    { "kind": "comment", "text": "// Grace notes, and the question the page refuses to answer (docs/prompts/71)." },
+    { "kind": "comment", "text": "// Grace notes, and the question the page refuses to answer (docs/plan/prompts/71)." },
     { "kind": "comment", "text": "//" },
     { "kind": "comment", "text": "// A grace note has no written duration. That is not an omission musa has to" },
     { "kind": "comment", "text": "// patch over — it is the fact about grace notes, and the temporal kernel says" },

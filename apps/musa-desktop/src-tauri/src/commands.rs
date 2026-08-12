@@ -145,7 +145,7 @@ pub fn snapshot(session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
 /// If no piece is open, it has never compiled, or the kind is not one this
 /// compiler runs. Refused rather than answered empty: a reader shown zero
 /// findings would conclude the music is clean
-/// (`docs/interface/08-elaboration.md` §8).
+/// (`docs/rules/desktop/08-elaboration.md` §8).
 #[tauri::command]
 pub fn analyze(kind: String, session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
     session.analyze(kind)
@@ -157,7 +157,7 @@ pub fn analyze(kind: String, session: State<'_, SessionHandle>) -> Result<Value,
 /// The handle is the one the snapshot handed out beside the URI: a term
 /// declared outside the open document travels as a module and an opaque byte
 /// range, because a span on the wire indexes the document the wire carried
-/// (`docs/interface/08-elaboration.md` §3). No session state is touched — a
+/// (`docs/rules/desktop/08-elaboration.md` §3). No session state is touched — a
 /// bundled module is compiled into the binary and is the same in every
 /// window.
 ///

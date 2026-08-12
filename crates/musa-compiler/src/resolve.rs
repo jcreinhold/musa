@@ -409,7 +409,7 @@ pub(crate) struct Resolver {
     pub(crate) timeline_sink: Option<Vec<crate::elaborate::VoiceTimeline>>,
     /// Every name reference resolved, kept for editors.
     pub(crate) references: ReferenceIndex,
-    /// Which performance is being compiled (`docs/kernel/11-realization.md`).
+    /// Which performance is being compiled (`docs/rules/kernel/11-realization.md`).
     ///
     /// It lives here rather than being threaded through elaboration because a
     /// decision site can be anywhere a note can be, and every function on the
@@ -449,7 +449,7 @@ impl Resolver {
     /// The ordinal is per named place, so a site in one voice is unaffected by
     /// sites added in another — and inside a place, a site added *below*
     /// leaves the ones above it alone. Both are the point of
-    /// `docs/kernel/11-realization.md`'s path identity.
+    /// `docs/rules/kernel/11-realization.md`'s path identity.
     pub(crate) fn decide_count(
         &mut self,
         place: &crate::ChoicePath,
@@ -481,7 +481,7 @@ impl Resolver {
         let count = u32::try_from(fragments.len()).unwrap_or(u32::MAX);
         let order = self.realization.order(&path, count);
         // By name, because `[2, 0, 1]` is not something to show anyone and
-        // the names are only known here (`docs/interface/03-interaction.md` §7).
+        // the names are only known here (`docs/rules/desktop/03-interaction.md` §7).
         let played: Vec<&str> = order
             .iter()
             .filter_map(|index| fragments.get(*index as usize).map(String::as_str))

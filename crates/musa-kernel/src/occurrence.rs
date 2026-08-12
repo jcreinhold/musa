@@ -1,8 +1,8 @@
-//! Occurrences: typed values supported over spans (docs/kernel/03 D0).
+//! Occurrences: typed values supported over spans (docs/rules/kernel/03 D0).
 
 use crate::time::Span;
 
-/// Admitted semantic equality for a payload (docs/kernel/05 N3, 12).
+/// Admitted semantic equality for a payload (docs/rules/kernel/05 N3, 12).
 ///
 /// Key equality defines the payload's admitted equality. A key must be
 /// deterministic, total, and complete for those equality classes; it need
@@ -72,7 +72,7 @@ impl<A> Occurrence<A> {
         &self.payload
     }
 
-    /// The occurrence translated by `offset` beats (τ of docs/kernel/03 D2).
+    /// The occurrence translated by `offset` beats (τ of docs/rules/kernel/03 D2).
     pub(crate) fn translate(self, offset: crate::Beat) -> Self {
         Self {
             span: self.span.translate(offset),

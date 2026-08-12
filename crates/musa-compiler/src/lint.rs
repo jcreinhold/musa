@@ -1,7 +1,7 @@
 //! The lint pass: warnings for notation that is spelled
 //! correctly and still misleads.
 //!
-//! The rules are the machine-checkable subset of `docs/style-guide.md`, and
+//! The rules are the machine-checkable subset of `docs/rules/style-guide.md`, and
 //! each diagnostic names its section there; the guide is the authority when a
 //! rule is too coarse. Every rule travels as an ordinary `Warning` with an
 //! ordinary `Fix` where deletion is certain, so every surface that shows
@@ -85,7 +85,7 @@ fn unused_material(document: &ParsedDocument, source: &str, references: &Referen
                 .help(format!(
                     "use it, or delete it — a {what} nobody speaks reads as an abstraction that never landed"
                 ))
-                .note("docs/style-guide.md §1: a name is a promise")
+                .note("docs/rules/style-guide.md §1: a name is a promise")
                 .fix(format!("delete this {what}"), delete_lines(source, &statement), ""),
         );
     }
@@ -117,7 +117,7 @@ fn unassigned_patch(
             Diagnostic::warning(Code::UnassignedPatch, "this patch realizes no part")
                 .at(declaration, "declared here")
                 .help("assign a part to it (`assign violin -> glass_pad;`), or delete it — as written it is wired to silence")
-                .note("docs/style-guide.md §1: a name is a promise")
+                .note("docs/rules/style-guide.md §1: a name is a promise")
                 .fix("delete this patch", delete_lines(source, &statement), ""),
         );
     }
@@ -182,7 +182,7 @@ fn check_marking(
                 Diagnostic::warning(Code::RedundantMarking, format!("this {kind} marking changes nothing"))
                     .at(span_of(node), "states what is already in force")
                     .help("a marking is a change, written where it happens — a reassurance belongs in a comment")
-                    .note("docs/style-guide.md §2: a marking changes something")
+                    .note("docs/rules/style-guide.md §2: a marking changes something")
                     .fix(
                         format!("delete this {kind} marking"),
                         delete_lines(&text_source(node), node),
@@ -239,7 +239,7 @@ fn copied_bars(piece: &PieceDecl, lints: &mut Vec<Diagnostic>) {
             )
             .at(span_of(original.syntax()), "the original")
             .help("say it once in a `motif` and `use` it — then one edit reaches every occurrence")
-            .note("docs/style-guide.md §4: say it once");
+            .note("docs/rules/style-guide.md §4: say it once");
             for copy in copies {
                 diagnostic = diagnostic.also(span_of(copy.syntax()), "a copy");
             }

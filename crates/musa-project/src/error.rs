@@ -36,7 +36,7 @@ pub enum ProjectError {
     },
 
     /// Kernel interchange text could not be read: a parse error positioned
-    /// in the input, or a well-formedness violation (docs/kernel/02 K7).
+    /// in the input, or a well-formedness violation (docs/rules/kernel/02 K7).
     #[error("not valid kernel text: {0}")]
     Kernel(String),
 

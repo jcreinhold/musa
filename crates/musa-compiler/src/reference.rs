@@ -16,7 +16,7 @@
 //! What is listed is what an importing document may name: every declaration at
 //! a bundled module's root, every member a `signature` requires, and, under a
 //! `structure`, only the members its signature exports. A member the signature
-//! does not list is private (`docs/language/04-templates-and-modules.md` §4),
+//! does not list is private (`docs/rules/language/04-templates-and-modules.md` §4),
 //! and documenting it would advertise a name that does not resolve.
 
 use std::fmt::Write as _;

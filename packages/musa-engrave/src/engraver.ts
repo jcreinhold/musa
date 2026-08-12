@@ -1,6 +1,6 @@
 /**
  * The render layer's entire surface to the rest of the UI
- * (docs/interface/02-engraving.md §1).
+ * (docs/rules/desktop/02-engraving.md §1).
  *
  * No component outside this module touches a Verovio toolkit, an MEI string,
  * or a raw SVG string. Rust owns MEI; this is a projection, not a model.

@@ -1,7 +1,7 @@
 {
   "file": "album/pieces/01-opening.musa",
   "tokens": [
-    { "kind": "comment", "text": "// The album's first piece (docs/prompts/36): what it shares it imports, and" },
+    { "kind": "comment", "text": "// The album's first piece (docs/plan/prompts/36): what it shares it imports, and" },
     { "kind": "comment", "text": "// what changes over its length — the tempo, the loudness — is written where" },
     { "kind": "comment", "text": "// it changes rather than assumed constant." },
     { "kind": "piece", "text": "piece" },

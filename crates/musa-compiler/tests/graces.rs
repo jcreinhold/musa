@@ -14,7 +14,7 @@
 //!   performances.
 //!
 //! The third one that matters is `order_survives_normalization`. Every grace
-//! in a group stands at one instant, and docs/kernel/05 N2 orders occurrences
+//! in a group stands at one instant, and docs/rules/kernel/05 N2 orders occurrences
 //! by span and then by payload key — so a span they all share settles nothing,
 //! and two different pieces of music would compile to one term unless the
 //! written order rides in the payload.

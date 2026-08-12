@@ -122,7 +122,7 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer, layout: &Layout) {
                 writer.blank_line_if_pending();
                 // A quote is written as it stands. Its interior is the
                 // kernel's grammar, whose layout the kernel's own printer
-                // owns (`docs/language/01-surface.md` §7), and a formatter
+                // owns (`docs/rules/language/01-surface.md` §7), and a formatter
                 // that re-broke those lines by the host's rules would be a
                 // second opinion about a shape this crate has no reading of.
                 // Only the anchoring is this crate's: the block moves to the

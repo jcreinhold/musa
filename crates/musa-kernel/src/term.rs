@@ -1,4 +1,4 @@
-//! The term calculus (docs/kernel/10-term-calculus.md): a syntax whose
+//! The term calculus (docs/rules/kernel/10-term-calculus.md): a syntax whose
 //! meanings are the timelines this crate already builds.
 //!
 //! Six forms and a reference. Nothing here adds a meaning: every term denotes
@@ -201,7 +201,7 @@ impl<A> Term<A> {
 
     /// Where `name` is referenced, in this term's own time.
     ///
-    /// The *quotation locus* of `docs/language/01-surface.md` §7: the position
+    /// The *quotation locus* of `docs/rules/language/01-surface.md` §7: the position
     /// a hole sits at, which is what a host must know to instantiate the
     /// material it splices in at the right place. It follows the same
     /// compositional reading as [`Term::extent`] — `seq` adds the exact

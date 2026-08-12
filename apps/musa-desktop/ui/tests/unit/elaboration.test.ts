@@ -1,6 +1,6 @@
 /**
  * What Origin says about music the composer did not write note by note
- * (`docs/interface/08-elaboration.md` §§4–5).
+ * (`docs/rules/desktop/08-elaboration.md` §§4–5).
  *
  * `kernel-splice.musa` is the hardest case the workbench has: every note in it
  * is generated, its expansion path runs through a kernel quote, and one of its

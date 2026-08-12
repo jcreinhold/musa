@@ -1,5 +1,5 @@
 //! Signatures, modules, and static module functors
-//! (`docs/language/04-templates-and-modules.md` §4).
+//! (`docs/rules/language/04-templates-and-modules.md` §4).
 //!
 //! A module is a *name for a group of declarations*, not a thing. It holds no
 //! state, is never a value, never crosses a crate boundary, and has stopped

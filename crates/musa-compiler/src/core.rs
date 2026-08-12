@@ -1,4 +1,4 @@
-//! The private total elaboration core (`docs/language/02-core-calculus.md`).
+//! The private total elaboration core (`docs/rules/language/02-core-calculus.md`).
 //!
 //! This module owns lowering, checking, dependency validation, and evaluation
 //! for elaboration values.  Its two crate-private entry points deliberately
@@ -782,7 +782,7 @@ enum Primitive {
 
 /// A base type as a primitive signature names it.
 ///
-/// These are the inert types of `docs/language/02-core-calculus.md` §5.8: a closed value of one is
+/// These are the inert types of `docs/rules/language/02-core-calculus.md` §5.8: a closed value of one is
 /// an opaque constant, no reduction rule inspects its structure, and everything observable about it
 /// is observed by applying a primitive. That is condition D1, and it holds here by construction —
 /// there is no variant for a type with an eliminator.
@@ -6146,7 +6146,7 @@ fn quote_error_span(
 /// Key, meter, tempo and clef are *context*: they hold from where they are
 /// written until they are written again, so a value carrying one would change
 /// its caller's context from inside — the very thing a reusable `music` value
-/// must not do (`docs/language/00-semantics.md`, contextual closure).
+/// must not do (`docs/rules/language/00-semantics.md`, contextual closure).
 fn context_authority(kind: &crate::elaborate::FactKind) -> Option<&'static str> {
     match kind {
         crate::elaborate::FactKind::Key { .. } => Some("a key"),
@@ -6506,7 +6506,7 @@ mod tests {
         );
     }
 
-    // --- `docs/language/02-core-calculus.md` §5.8: the conservative-extension laws ---
+    // --- `docs/rules/language/02-core-calculus.md` §5.8: the conservative-extension laws ---
     //
     // Theorem 5 holds for any base type with no eliminator and any δ-primitives satisfying D1–D4.
     // These laws check its premises against the implementation, so that a later musical domain

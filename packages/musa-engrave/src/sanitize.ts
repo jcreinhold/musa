@@ -1,5 +1,5 @@
 /**
- * The `currentColor` sanitizer — docs/interface/02-engraving.md §3.
+ * The `currentColor` sanitizer — docs/rules/desktop/02-engraving.md §3.
  *
  * Verovio 6 emits no per-element `fill`, but it does set `color="black"` on
  * the `.definition-scale` element and lets everything inherit from there.

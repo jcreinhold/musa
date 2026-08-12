@@ -1,7 +1,7 @@
 {
   "file": "hemiola.musa",
   "tokens": [
-    { "kind": "comment", "text": "// 6/8 against 3/4 (docs/prompts/75)." },
+    { "kind": "comment", "text": "// 6/8 against 3/4 (docs/plan/prompts/75)." },
     { "kind": "comment", "text": "//" },
     { "kind": "comment", "text": "// The other shape polymeter takes, and the cheaper one: the bars are the same" },
     { "kind": "comment", "text": "// *length*, so the barlines never diverge and the whole difference is where" },

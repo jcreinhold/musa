@@ -1,6 +1,6 @@
 //! What a bundled module is, when the interface opens one.
 //!
-//! `docs/interface/08-elaboration.md` §3: a reader who follows a term they did
+//! `docs/rules/desktop/08-elaboration.md` §3: a reader who follows a term they did
 //! not declare is shown the module's own text, read-only, under the name the
 //! language spells rather than the locator the compiler files it under. The
 //! place inside it is restated here because only this side has the text — the

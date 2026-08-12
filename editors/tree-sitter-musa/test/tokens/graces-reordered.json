@@ -1,7 +1,7 @@
 {
   "file": "graces-reordered.musa",
   "tokens": [
-    { "kind": "comment", "text": "// Grace notes, and the question the page refuses to answer (docs/prompts/71)." },
+    { "kind": "comment", "text": "// Grace notes, and the question the page refuses to answer (docs/plan/prompts/71)." },
     { "kind": "comment", "text": "//" },
     { "kind": "comment", "text": "// A grace note has no written duration. That is not an omission musa has to" },
     { "kind": "comment", "text": "// patch over — it is the fact about grace notes, and the temporal kernel says" },
@@ -209,7 +209,7 @@
     { "kind": "comment", "text": "// the reordering and nothing else." },
     { "kind": "comment", "text": "//" },
     { "kind": "comment", "text": "// The diff must not be empty. Every grace in a group stands at one instant, so" },
-    { "kind": "comment", "text": "// normalization (docs/kernel/05, N2) orders occurrences by span and then by" },
+    { "kind": "comment", "text": "// normalization (docs/rules/kernel/05, N2) orders occurrences by span and then by" },
     { "kind": "comment", "text": "// payload key — and a span they all share settles nothing. The written order" },
     { "kind": "comment", "text": "// is carried in the payload as an index, or these two pieces of music are one." }
   ]

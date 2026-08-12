@@ -1,7 +1,7 @@
 {
   "file": "cadenza.musa",
   "tokens": [
-    { "kind": "comment", "text": "// A measured movement with an unmeasured cadenza inside it (docs/prompts/74)." },
+    { "kind": "comment", "text": "// A measured movement with an unmeasured cadenza inside it (docs/plan/prompts/74)." },
     { "kind": "comment", "text": "//" },
     { "kind": "comment", "text": "// The cadenza is `senza { ... }`: the barlines stop for exactly as long as the" },
     { "kind": "comment", "text": "// braces say and the meter that resumes is the one that was already in force," },

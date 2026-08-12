@@ -1,6 +1,6 @@
 //! `Timeline<A>`: the finite kernel denotation `(d, E)` and its algebra
-//! (docs/kernel/03). Stored flat — construction IS normalization
-//! (docs/kernel/05 N1).
+//! (docs/rules/kernel/03). Stored flat — construction IS normalization
+//! (docs/rules/kernel/05 N1).
 //!
 //! Rational arithmetic on musa's magnitudes is total; the workspace
 //! arithmetic lint is allowed module-wide (see musa-compiler/src/time.rs).
@@ -287,7 +287,7 @@ impl<A: Canonical> Timeline<A> {
     }
 
     /// The occurrences whose support contains `at`, in canonical order
-    /// (docs/kernel/03 D8).
+    /// (docs/rules/kernel/03 D8).
     ///
     /// "Contains" is [`Span::contains`]: support is half-open, so a fact is
     /// gone at its end instant, and a point fact is present at its own. The
@@ -298,7 +298,7 @@ impl<A: Canonical> Timeline<A> {
     /// copy: right for asking once ("what is under the cursor"), wrong for
     /// deriving something about every event. Bulk derivation makes one
     /// ordered pass and uses D8's convention directly — see
-    /// `docs/kernel/03-denotational-semantics.md`.
+    /// `docs/rules/kernel/03-denotational-semantics.md`.
     pub fn covering(&self, at: crate::Beat) -> impl Iterator<Item = &Occurrence<A>> {
         self.canonical_occurrences()
             .into_iter()
@@ -306,7 +306,7 @@ impl<A: Canonical> Timeline<A> {
     }
 
     /// The value in force at `at`: the canonically last occurrence starting
-    /// at or before `at` whose payload `select` accepts (docs/kernel/03 D9).
+    /// at or before `at` whose payload `select` accepts (docs/rules/kernel/03 D9).
     ///
     /// A fact starting exactly at `at` does prevail there — `dynamic mf` on a
     /// note applies to that note — and where two candidates start together

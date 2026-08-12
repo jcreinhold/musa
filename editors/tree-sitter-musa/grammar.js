@@ -119,7 +119,7 @@ module.exports = grammar({
         repeat1($.mod_declaration),
       ),
 
-    // The kernel alternative (`docs/language/01-surface.md` §7): a file whose
+    // The kernel alternative (`docs/rules/language/01-surface.md` §7): a file whose
     // first line is the interchange version marker.
     //
     // **Recognized, not parsed.** `musa-kernel` owns the term grammar, and a

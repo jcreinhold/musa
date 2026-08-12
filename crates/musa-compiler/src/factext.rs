@@ -1,4 +1,4 @@
-//! `ScoreFact`'s interchange text form (docs/kernel/01).
+//! `ScoreFact`'s interchange text form (docs/rules/kernel/01).
 //!
 //! The kernel carries payloads as opaque quoted strings (§12); this module is
 //! the other half — the one place that says what a musical fact looks like in

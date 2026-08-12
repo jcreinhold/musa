@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
    * Exact time, set as a real fraction with a true diagonal bar
-   * (docs/interface/01-visual-language.md §3). `7/8`, never `0.875`: musa's
+   * (docs/rules/desktop/01-visual-language.md §3). `7/8`, never `0.875`: musa's
    * time is rational, and the interface says so wherever it appears.
    */
   import type { Fraction } from "../state/snapshot";

@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
    * A musical position, `bar:beat`, bar dominant
-   * (docs/interface/01-visual-language.md §3). A reader scans for the bar, so
+   * (docs/rules/desktop/01-visual-language.md §3). A reader scans for the bar, so
    * the bar carries the weight and the beat sits one step down in
    * `--ink-muted`. A bare tick counter never appears in the UI.
    */

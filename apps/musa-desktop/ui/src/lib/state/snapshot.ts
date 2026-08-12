@@ -7,7 +7,7 @@
  * rather than as a screen that silently renders nothing.
  *
  * The frontend owns nothing musical. Everything here was computed by the
- * core (docs/interface/03-interaction.md §7).
+ * core (docs/rules/desktop/03-interaction.md §7).
  */
 
 import type { HeaderFieldDto } from "../session/generated/HeaderFieldDto";
@@ -273,7 +273,7 @@ export interface ScoreFacts {
  *
  * The strings are written by the core, not assembled here: what a decision
  * is called and how its answer reads are musical facts
- * (`docs/interface/03-interaction.md` §7).
+ * (`docs/rules/desktop/03-interaction.md` §7).
  */
 export interface DecisionFact {
   /** The decision's identity, stable across edits elsewhere. Not shown. */
@@ -410,7 +410,7 @@ export interface ProjectSnapshot {
    * Which of the three things this file is. Material has no score and never
    * will (roadmap §16), which is a different fact from "no score yet"; a
    * kernel document is a term in the interchange format
-   * (`docs/language/01-surface.md` §7) and engraves like a piece, having
+   * (`docs/rules/language/01-surface.md` §7) and engraves like a piece, having
    * arrived at the same timeline by a shorter road.
    */
   kind: "piece" | "material" | "kernel";

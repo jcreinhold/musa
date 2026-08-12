@@ -1,6 +1,6 @@
 //! Generates the list of readings the findings panel offers.
 //!
-//! `docs/interface/08-elaboration.md` §5: an analysis is asked for by name,
+//! `docs/rules/desktop/08-elaboration.md` §5: an analysis is asked for by name,
 //! and the names are the compiler's. A panel carrying its own copy of them
 //! would offer a reading this compiler does not run — or, worse, quietly stop
 //! offering one it does — the first time the list changed.

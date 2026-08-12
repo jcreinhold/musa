@@ -10,7 +10,7 @@
     { "kind": "comment", "text": "// the line above is three bytes and one code unit; the flat sign below is" },
     { "kind": "comment", "text": "// three and one; the treble clef is four and two. Every span the interface" },
     { "kind": "comment", "text": "// receives from a piece like this one is wrong by the accumulated difference" },
-    { "kind": "comment", "text": "// unless the shell restates it — see docs/interface/03-interaction.md §7." },
+    { "kind": "comment", "text": "// unless the shell restates it — see docs/rules/desktop/03-interaction.md §7." },
     { "kind": "comment", "text": "//" },
     { "kind": "comment", "text": "// Nothing here is about notation. The notes are the plainest possible, so" },
     { "kind": "comment", "text": "// that when a linking or highlighting test fails it is the measure that is" },

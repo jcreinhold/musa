@@ -14,7 +14,7 @@
  * would act on, cut the source with it, and read what came out. That is
  * exactly what CodeMirror does with the same numbers when it puts the caret
  * somewhere or draws a mark, and it needs no offsets written down here to
- * go stale. See `docs/interface/03-interaction.md` §7.
+ * go stale. See `docs/rules/desktop/03-interaction.md` §7.
  */
 
 import { describe, expect, it } from "vitest";

@@ -2,7 +2,7 @@
 variation
 ================================================================================
 
-// Variation, end to end (docs/prompts/34): one theme, then the same theme
+// Variation, end to end (docs/plan/prompts/34): one theme, then the same theme
 // stretched, backwards, mirrored, and, in the last bar, one occurrence
 // specialized without touching the motif every other bar uses.
 //

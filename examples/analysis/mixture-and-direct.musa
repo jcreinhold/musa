@@ -7,7 +7,7 @@
 // reading closes a region there rather than pretending not to have seen it,
 // and the report carries C minor as a candidate for the borrowed stretch. The
 // honest reading of mixture needs the parallel-key relation, which this
-// analysis does not yet claim — `docs/language/07-analysis.md` §8 lists it as
+// analysis does not yet claim — `docs/rules/language/07-analysis.md` §8 lists it as
 // a limit, and this fixture is where it is visible.
 //
 // Bars 5–8 are in E major, arrived at with no chord diatonic in both keys.

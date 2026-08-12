@@ -1,7 +1,7 @@
 //! The request handlers: one module per request kind, each a lookup into the
 //! snapshot's facts plus a coordinate conversion.
 //!
-//! The law of this directory is `docs/interface/03-interaction.md` §7: a
+//! The law of this directory is `docs/rules/desktop/03-interaction.md` §7: a
 //! handler restates what the session computed — it never derives a musical
 //! fact from the text itself. A handler that cannot answer from facts answers
 //! `None`.

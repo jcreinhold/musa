@@ -40,5 +40,5 @@ the frontend; skeuomorphic studio hardware; animation as ambience. Entry is keyb
 reachable from the keyboard.
 
 The full specification — visual language, engraving quality bar, interaction model, states, performance budgets — lives
-in `docs/interface/` in the repository, and it is governing: code that drifts from it is wrong until the document is
+in `docs/rules/desktop/` in the repository, and it is governing: code that drifts from it is wrong until the document is
 deliberately repaired.

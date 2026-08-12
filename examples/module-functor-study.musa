@@ -4,7 +4,7 @@
 // The one thing this adds over an ordinary typed parameter is that the facts
 // travel *together*: a key, its collection, and how the two spell a degree
 // are useless apart, and passing them one at a time is how they drift
-// (docs/language/04-templates-and-modules.md §4).
+// (docs/rules/language/04-templates-and-modules.md §4).
 import std::context;
 
 // What a canon needs, gathered once. Members are `let` without their

@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
    * The running order, in the left margin, above the parts
-   * (`docs/interface/07-the-volume.md`).
+   * (`docs/rules/desktop/07-the-volume.md`).
    *
    * The margin reads outside in: volume, piece, structure. This is the first
    * of the three, and it is `Outline.svelte`'s idiom unchanged — right-aligned

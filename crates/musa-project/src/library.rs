@@ -4,7 +4,7 @@
 //! for a window to open. A reader following `triad` to its declaration is
 //! shown the module's text in a document the application makes — read-only,
 //! because an edit would have nowhere to land
-//! (`docs/interface/08-elaboration.md` §3).
+//! (`docs/rules/desktop/08-elaboration.md` §3).
 //!
 //! This module answers with the text *and* the place inside it, because those
 //! two facts are measured against each other. A caller that asked for the text

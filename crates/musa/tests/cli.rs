@@ -457,7 +457,7 @@ fn format_diff_shows_the_change_and_writes_nothing() -> std::io::Result<()> {
 /// compiler built it, and says nothing about whether the piece is good.
 ///
 /// The snapshot is the point: a report a reader cannot diff against yesterday's
-/// is a report nobody can act on (`docs/language/07-analysis.md` §4).
+/// is a report nobody can act on (`docs/rules/language/07-analysis.md` §4).
 #[test]
 fn analyze_prints_a_deterministic_report() -> std::io::Result<()> {
     let annotated = format!("{}/../../examples/annotated.musa", env!("CARGO_MANIFEST_DIR"));

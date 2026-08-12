@@ -1,5 +1,5 @@
 //! Declaration templates: families of pieces and voices, expanded before any
-//! score context exists (`docs/language/04-templates-and-modules.md` §1–§2).
+//! score context exists (`docs/rules/language/04-templates-and-modules.md` §1–§2).
 //!
 //! A template is not a value. Nothing can pass one, return one, store one, or
 //! ask what is inside it — the only thing that may be done with a template is

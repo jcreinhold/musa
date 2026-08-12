@@ -23,7 +23,7 @@
 // hears four possible roots here; this reading reports one, because chord
 // membership is by *spelling* and the other three rootings are spelled with
 // notes this bar does not contain. That is a stated limit of the analysis
-// (`docs/language/07-analysis.md` §7), not an oversight: re-spelling the score
+// (`docs/rules/language/07-analysis.md` §7), not an oversight: re-spelling the score
 // to find more readings would be constructing music, which an analysis may
 // never do.
 piece "Equivocal Sonority" {

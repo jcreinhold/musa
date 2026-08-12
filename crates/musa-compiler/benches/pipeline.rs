@@ -22,8 +22,8 @@
 //! `Vec<ScoreEvent>` per voice with one heterogeneous multiset per piece will
 //! show up there first, if it shows up at all.
 //!
-//! Results are recorded in `docs/kernel/09-performance.md` through the kernel
-//! migration and in `docs/language/06-performance.md` from prompt 93 on. Run
+//! Results are recorded in `docs/rules/kernel/09-performance.md` through the kernel
+//! migration and in `docs/rules/language/06-performance.md` from prompt 93 on. Run
 //! with:
 //!
 //! ```sh
@@ -61,7 +61,7 @@ const DECLARATION_LIBRARIES: [&str; 4] = [
 
 /// The reference workloads, named once.
 ///
-/// `small` and `large` are `docs/interface/06-performance.md`'s two; `shared`
+/// `small` and `large` are `docs/rules/desktop/06-performance.md`'s two; `shared`
 /// exists because neither of the other two contains a `repeat`
 /// or a `use`, and a claim about sharing cannot be measured on
 /// material that shares nothing. It denotes the same 1500 notes as `large`
@@ -221,7 +221,7 @@ fn k0_kernel_document(bencher: divan::Bencher<'_, '_>) {
 }
 
 /// The interactive stages, measured on the large workload because that is the
-/// case `docs/interface/06-performance.md`'s B1 and B2 are stated on.
+/// case `docs/rules/desktop/06-performance.md`'s B1 and B2 are stated on.
 ///
 /// E1 and E2 measure a source the composer is in the middle of writing: a
 /// piece with an unclosed brace and a bar that does not add up is not an

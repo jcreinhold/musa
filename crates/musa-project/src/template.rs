@@ -5,7 +5,7 @@
 /// A new file is never blank by default: an empty document gives a beginner
 /// nothing to modify and gives the score view nothing to draw. The default
 /// template is a piece that already compiles and already sounds
-/// (`docs/interface/05-states.md` §2).
+/// (`docs/rules/desktop/05-states.md` §2).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum Template {

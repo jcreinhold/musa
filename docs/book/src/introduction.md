@@ -36,11 +36,11 @@ The book follows [Diátaxis](https://diataxis.fr). Each section serves one kind 
 
 This book describes how to use musa. The documents that govern how it is built stay in the repository:
 
-- `docs/governance/` — the constitutional commitments everything else answers to;
-- `docs/kernel/` — the temporal kernel the surface language elaborates into;
-- `docs/roadmap.md` — the architecture;
-- `docs/interface/` — the desktop interface specification;
-- `docs/prompts/` — the numbered implementation plan.
+- `docs/rules/` — the constitutional commitments everything else answers to;
+- `docs/rules/kernel/` — the temporal kernel the surface language elaborates into;
+- `docs/plan/roadmap.md` — the architecture;
+- `docs/rules/desktop/` — the desktop interface specification;
+- `docs/plan/prompts/` — the numbered implementation plan.
 
 `docs/README.md` maps the whole tree and says which document wins when two of them disagree. Where those documents and
 the code disagree, the code is wrong or the document needs a deliberate repair.

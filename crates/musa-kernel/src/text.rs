@@ -1,4 +1,4 @@
-//! The kernel interchange format (docs/kernel/01-grammar.md): terms as text,
+//! The kernel interchange format (docs/rules/kernel/01-grammar.md): terms as text,
 //! in both directions.
 //!
 //! This is what makes the kernel an *interchange* format rather than a dump.
@@ -120,7 +120,7 @@ impl<A> Document<A> {
     ///
     /// The kernel does not know what any of them mean — a note is where a
     /// producer records the reading of the work a file projects
-    /// (`docs/kernel/11-realization.md`), and carrying the sentence is the
+    /// (`docs/rules/kernel/11-realization.md`), and carrying the sentence is the
     /// whole of the kernel's involvement.
     pub fn notes(&self) -> &[String] {
         &self.notes
@@ -166,7 +166,7 @@ pub const FORMAT_VERSION: &str = "musa-kernel-1";
 /// A note is one `%` line under the version, and the kernel never looks
 /// inside it. It exists because a file is the projection of *one* reading of a
 /// work and has to say which — a realization, in
-/// `docs/kernel/11-realization.md`'s sense — and because the kernel must not
+/// `docs/rules/kernel/11-realization.md`'s sense — and because the kernel must not
 /// learn what a realization is to carry the sentence. Read back with
 /// [`notes`]. Newlines are stripped, since a note that spanned two lines would
 /// read back as two.
@@ -232,7 +232,7 @@ pub fn parse<A: TextPayload>(text: &str) -> Result<Document<A>, KernelError> {
 /// The reader a *quotation* needs. A quote in a `.musa` file is one
 /// composition expression — no version header, no `kernel "name" {`, no
 /// declaration — and the host language must not grow a second reading of the
-/// term grammar to accept it (`docs/language/01-surface.md` §7). So the host
+/// term grammar to accept it (`docs/rules/language/01-surface.md` §7). So the host
 /// hands the raw text here and gets back the same `Term<A>` a file would have
 /// produced, with parse offsets counted from the start of `text`: the caller
 /// knows where in its own document that was, and this does not.

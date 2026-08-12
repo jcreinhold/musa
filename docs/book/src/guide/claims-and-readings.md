@@ -137,13 +137,13 @@ voice upper {
 
 The report says both readings, with the OMT criteria attached to each, and resolves neither. In the workbench the same
 report appears under the source as findings with their evidence — never as red marks on the score, because a debatable
-theoretical reading is not a syntax error (`../../interface/08-elaboration.md`).
+theoretical reading is not a syntax error (`../../../rules/desktop/08-elaboration.md`).
 
 The exit code of `musa analyze` says whether the *request* could be answered, never what the report contains. A window
 with nothing in it is a window with nothing in it.
 
 The kinds that ship, what each one's abstract domain is, and the admission rule a new kind must pass are in
-[`docs/language/07-analysis.md`](../../../language/07-analysis.md).
+[`docs/rules/language/07-analysis.md`](../../../rules/language/07-analysis.md).
 
 ## 3. The kernel quote
 

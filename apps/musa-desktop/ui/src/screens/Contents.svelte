@@ -1,6 +1,6 @@
 <script lang="ts">
   /**
-   * The volume's front matter (`docs/interface/07-the-volume.md`).
+   * The volume's front matter (`docs/rules/desktop/07-the-volume.md`).
    *
    * A project is not a file tree. Roadmap §16 fixes its shape — a manifest,
    * `pieces/`, `library/` — so disclosure triangles would model a freedom the

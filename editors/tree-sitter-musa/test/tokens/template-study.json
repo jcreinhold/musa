@@ -5,7 +5,7 @@
     { "kind": "comment", "text": "// voice, written once and made as often as it is wanted. What a template" },
     { "kind": "comment", "text": "// body may read is its own parameters and the file's lexical root — never" },
     { "kind": "comment", "text": "// the site that makes it — so an instance means the same thing wherever it" },
-    { "kind": "comment", "text": "// stands (docs/language/04-templates-and-modules.md §3)." },
+    { "kind": "comment", "text": "// stands (docs/rules/language/04-templates-and-modules.md §3)." },
     { "kind": "fn", "text": "fn" },
     { "kind": "identifier", "text": "theme" },
     { "kind": "(", "text": "(" },

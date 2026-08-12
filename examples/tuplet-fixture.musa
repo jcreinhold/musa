@@ -1,4 +1,4 @@
-// The expressive notation layer, end to end (docs/prompts/27): tuplets,
+// The expressive notation layer, end to end (docs/plan/prompts/27): tuplets,
 // ties across a barline, slurs, dynamics, and articulations, including
 // articulations written inside a motif, so provenance carries them too.
 piece "Tuplet Fixture" {

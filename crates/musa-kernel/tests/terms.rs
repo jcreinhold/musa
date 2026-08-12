@@ -1,4 +1,4 @@
-//! The term-calculus theorem suite (docs/kernel/10-term-calculus.md T1–T5),
+//! The term-calculus theorem suite (docs/rules/kernel/10-term-calculus.md T1–T5),
 //! plus the transported algebra: L1/L4/L5/L18 asked at the term level.
 //!
 //! Every test name matches the theorem's `Test:` line in the specification.

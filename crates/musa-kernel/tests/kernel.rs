@@ -66,7 +66,7 @@ fn restrict_reports_whole_and_visible_spans() {
         .map(|(visible, occurrence)| (occurrence.span(), visible))
         .collect();
     // The whole support is [3, 6): cropping must not claim the occurrence
-    // began at 5 (docs/kernel/03 D6).
+    // began at 5 (docs/rules/kernel/03 D6).
     assert_eq!(seen, vec![(span((3, 1), (6, 1)), span((5, 1), (6, 1)))]);
 }
 
@@ -78,7 +78,7 @@ fn point_occurrences_are_observable() {
     assert!(base.restrict(span((4, 1), (8, 1))).is_empty());
 }
 
-/// The final instant of a timeline is observable (docs/kernel/03 D6), and a
+/// The final instant of a timeline is observable (docs/rules/kernel/03 D6), and a
 /// narrowed observation keeps it: the rule is about the timeline's extent,
 /// not about the window it is first seen through.
 #[test]

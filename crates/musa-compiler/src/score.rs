@@ -366,7 +366,7 @@ impl PartMap {
 ///
 /// Not a tempo *map* — this is the pair a reader sees printed over the staff.
 /// What it means in seconds is the performance layer's integration of every
-/// such mark in the piece (docs/kernel/06-surface-elaboration.md).
+/// such mark in the piece (docs/rules/kernel/06-surface-elaboration.md).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Metronome {
     /// The beat unit as a fraction of a whole note (`1/4` for a quarter).
@@ -427,7 +427,7 @@ pub struct Ramp {
     /// How far the change reaches, in whole notes.
     pub over: crate::time::MusicalDuration,
     /// How the change is spread across that reach, in normalized local time
-    /// (docs/kernel/03 `Progress`). The shape is normative; how finely to
+    /// (docs/rules/kernel/03 `Progress`). The shape is normative; how finely to
     /// sample it is each consumer's choice.
     #[serde(with = "progress_serde")]
     pub shape: musa_kernel::Progress,
@@ -829,7 +829,7 @@ pub struct HairpinSpan {
     pub target: DynamicMark,
     /// How the growth is shaped across the region, in normalized local time.
     /// The shape is normative; the sampling policy is the consumer's
-    /// (docs/kernel/07).
+    /// (docs/rules/kernel/07).
     #[serde(with = "progress_serde")]
     pub shape: musa_kernel::Progress,
     /// Why this hairpin exists.
@@ -1108,7 +1108,7 @@ impl AnnotationStore {
 ///
 /// Expansion records the call site; the declaration is the other half of the
 /// answer to "where did this note come from", and only the compiler knows it
-/// (`docs/interface/04-provenance.md` §3).
+/// (`docs/rules/desktop/04-provenance.md` §3).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MotifDeclaration {
     /// The motif's name, as declared.
@@ -1187,7 +1187,7 @@ impl ScoreSnapshot {
     /// asks no questions was not realized, it was simply compiled, and every
     /// consumer that would otherwise show a seed shows nothing.
     /// `Some(seed)` says this page is *one reading* — which is exactly the
-    /// guarantee `docs/kernel/11-realization.md` weakened, said out loud where
+    /// guarantee `docs/rules/kernel/11-realization.md` weakened, said out loud where
     /// a reader of the score can see it.
     pub fn performance(&self) -> Option<u64> {
         self.performance

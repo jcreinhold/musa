@@ -5,7 +5,7 @@ playwright-report
 
 # Written by a program, and compared byte for byte by a currency test. Formatting
 # them makes that test fail against an edit nobody made — it has happened, twice.
-# See docs/development/generated-files.md.
+# See docs/notes/toolchain/generated-files.md.
 src/lib/session/generated
 fixtures
 

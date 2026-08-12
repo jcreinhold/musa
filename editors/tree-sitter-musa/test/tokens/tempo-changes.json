@@ -1,7 +1,7 @@
 {
   "file": "tempo-changes.musa",
   "tokens": [
-    { "kind": "comment", "text": "// Tempo changes, and the two things called tempo (docs/prompts/72)." },
+    { "kind": "comment", "text": "// Tempo changes, and the two things called tempo (docs/plan/prompts/72)." },
     { "kind": "comment", "text": "//" },
     { "kind": "comment", "text": "// A tempo marking is notation: it is printed, it stands at a place, and some" },
     { "kind": "comment", "text": "// markings are only words. The tempo *map* is a function from beats to" },

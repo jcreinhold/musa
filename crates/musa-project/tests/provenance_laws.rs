@@ -1,5 +1,5 @@
 //! The provenance facts Origin view is drawn from
-//! (`docs/interface/04-provenance.md`).
+//! (`docs/rules/desktop/04-provenance.md`).
 //!
 //! `glass-mountain.musa` is the canonical case the specification is written
 //! about: ten of the violin's notes come from two occurrences of one

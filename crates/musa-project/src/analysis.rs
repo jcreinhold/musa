@@ -3,7 +3,7 @@
 //! `musa-compiler`'s report is typed for a program: exact rationals, part ids,
 //! byte offsets. Everything a person reads — the sentence, the bar number, the
 //! line — is computed here, once, for the same reason [`crate::facts`] exists:
-//! `docs/interface/03-interaction.md` §7 lists what a frontend may compute, and
+//! `docs/rules/desktop/03-interaction.md` §7 lists what a frontend may compute, and
 //! nothing musical is on it.
 //!
 //! This is not a pass-through. The report arrives as ids and offsets and

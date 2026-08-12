@@ -1,5 +1,5 @@
 /**
- * The sanitizer's contract (`docs/interface/02-engraving.md` §3).
+ * The sanitizer's contract (`docs/rules/desktop/02-engraving.md` §3).
  *
  * Dark mode must **re-ink** the score, not filter it, and Origin view must be
  * able to re-ink part of the page without touching the rest. Both depend on

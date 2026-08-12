@@ -27,4 +27,4 @@ The machine-checkable subset is enforced by lints; each rule names the diagnosti
 [Lint codes](../reference/lints.md). When a rule and its lint disagree, the guide is the authority and the lint is too
 coarse: repair the lint, do not silence it.
 
-The full guide is `docs/style-guide.md` in the repository. It is prose first and machinery second.
+The full guide is `docs/rules/style-guide.md` in the repository. It is prose first and machinery second.

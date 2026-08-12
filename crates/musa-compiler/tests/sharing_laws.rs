@@ -38,7 +38,7 @@ fn piece(declarations: &str, body: &str) -> String {
 /// that was charged when it crossed.
 ///
 /// `None` when the piece is accepted. The meter's own words are the observable
-/// here: `docs/language/06-performance.md` fixes that a rejection names the
+/// here: `docs/rules/language/06-performance.md` fixes that a rejection names the
 /// operation, metric, attempted count, and limit.
 fn attempted(source: &str) -> Option<(String, u64)> {
     let compilation = compile(
@@ -160,7 +160,7 @@ fn one_more_call_of_a_shared_body_charges_one_more_body() {
 fn a_shared_body_carries_no_call_site_and_each_reference_carries_its_own() {
     // Provenance survives sharing by moving: the body is printed once with a
     // placeholder where the call would be, and every reference states its own
-    // site in its mark (`docs/kernel/10-term-calculus.md` T6).
+    // site in its mark (`docs/rules/kernel/10-term-calculus.md` T6).
     let printed = kernel_text(
         &SourceDocument::new(
             piece(

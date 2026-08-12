@@ -1,17 +1,18 @@
 ---
 name: prompt-stack
-description: Execute the musa implementation prompt stack in docs/prompts/ — run the next pending prompt (or a named one), verify its Check, flip status, and commit. Use for "run the next prompt", "continue the stack", "execute prompt NN", or batch runs of several prompts.
+description: Execute the musa implementation prompt stack in docs/plan/prompts/ — run the next pending prompt (or a named one), verify its Check, flip status, and commit. Use for "run the next prompt", "continue the stack", "execute prompt NN", or batch runs of several prompts.
 ---
 
 # Run the musa prompt stack
 
-Execute prompts from `docs/prompts/` in dependency order. Each prompt is one feature, one commit. The full conventions
-live in `docs/prompts/README.md`; this skill is the operating procedure. Follow it exactly — do not improvise scope.
+Execute prompts from `docs/plan/prompts/` in dependency order. Each prompt is one feature, one commit. The full
+conventions live in `docs/plan/prompts/README.md`; this skill is the operating procedure. Follow it exactly — do not
+improvise scope.
 
 ## 1. Select the prompt
 
 ```sh
-grep -l '^status: pending' docs/prompts/[0-9]*.md | LC_ALL=C sort -t/ -k3,3n -k3,3
+grep -l '^status: pending' docs/plan/prompts/[0-9]*.md | LC_ALL=C sort -t/ -k3,3n -k3,3
 ```
 
 Pick the **lowest-numbered** pending prompt whose `depends_on` are all `done` (frontmatter grep). If the user named a
@@ -30,7 +31,7 @@ If nothing is pending, say so and stop — the stack is complete.
 ## 3. Implement
 
 - Deliver exactly **Target**, honoring **Design** where it fixes APIs. Internals are yours, under the conventions in
-  `docs/prompts/README.md` and root `AGENTS.md`.
+  `docs/plan/prompts/README.md` and root `AGENTS.md`.
 - **Stop** is a hard boundary: no "while I'm in here" work. If a stopped item turns out to be genuinely required, that
   is a prompt-repair situation (§5), not a license.
 - Doc-comment each new public API and its invariants before implementing it.

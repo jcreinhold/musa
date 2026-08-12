@@ -360,7 +360,7 @@ fn token_manifest(relative: &Path, source: &str) -> String {
 
 /// Which files are the *kernel* alternative, by `musa-language`'s reckoning.
 ///
-/// The drift law for `docs/language/01-surface.md` §7. The grammar has its own
+/// The drift law for `docs/rules/language/01-surface.md` §7. The grammar has its own
 /// rule for the top-level alternative and this crate has [`alternative`], and
 /// the one way they can disagree is the one way that matters: a file read as
 /// kernel by one and surface by the other opens as a page of red in an editor

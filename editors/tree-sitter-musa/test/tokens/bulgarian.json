@@ -1,7 +1,7 @@
 {
   "file": "bulgarian.musa",
   "tokens": [
-    { "kind": "comment", "text": "// A 7/8 melody over a 4/4 drum (docs/prompts/75)." },
+    { "kind": "comment", "text": "// A 7/8 melody over a 4/4 drum (docs/plan/prompts/75)." },
     { "kind": "comment", "text": "//" },
     { "kind": "comment", "text": "// Polymeter, in the shape that costs something: the bars are different" },
     { "kind": "comment", "text": "// *lengths*, so the barlines genuinely diverge and only meet again after" },

@@ -173,7 +173,7 @@ fn library_fixtures_are_current() -> Result {
     write_or_compare(&fixtures_dir().join("library-documents.json"), &json)
 }
 
-/// One MEI per engraving fixture (`docs/interface/02-engraving.md` §9).
+/// One MEI per engraving fixture (`docs/rules/desktop/02-engraving.md` §9).
 #[test]
 fn mei_fixtures_are_current() -> Result {
     for name in ["glass-mountain", "counterpoint", "twinkle", "annotated"] {

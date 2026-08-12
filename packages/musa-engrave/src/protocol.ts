@@ -1,6 +1,6 @@
 /**
  * The messages that cross the worker boundary, and the layout vocabulary
- * shared by both sides (docs/interface/02-engraving.md §§1–4).
+ * shared by both sides (docs/rules/desktop/02-engraving.md §§1–4).
  */
 
 /** Verovio layout options. Defaults are fixed in `options.ts`. */

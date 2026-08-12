@@ -1,4 +1,4 @@
-// Grace notes, and the question the page refuses to answer (docs/prompts/71).
+// Grace notes, and the question the page refuses to answer (docs/plan/prompts/71).
 //
 // A grace note has no written duration. That is not an omission musa has to
 // patch over — it is the fact about grace notes, and the temporal kernel says
@@ -117,6 +117,6 @@ piece "Graces" {
 // the reordering and nothing else.
 //
 // The diff must not be empty. Every grace in a group stands at one instant, so
-// normalization (docs/kernel/05, N2) orders occurrences by span and then by
+// normalization (docs/rules/kernel/05, N2) orders occurrences by span and then by
 // payload key — and a span they all share settles nothing. The written order
 // is carried in the payload as an index, or these two pieces of music are one.

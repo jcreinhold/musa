@@ -51,7 +51,7 @@ pub struct CompileOptions {
     ///
     /// A piece that leaves nothing open never consults this, so the default —
     /// `Realization::deterministic()` — is the absence of a question rather
-    /// than a choice of answer (`docs/kernel/11-realization.md`).
+    /// than a choice of answer (`docs/rules/kernel/11-realization.md`).
     pub realization: crate::realize::Realization,
 }
 
@@ -70,7 +70,7 @@ pub enum DocumentKind {
     /// `library { … }` — declarations for other files to import.
     Material,
     /// `% musa-kernel-1` — a kernel interchange file, read as itself
-    /// (`docs/language/01-surface.md` §7).
+    /// (`docs/rules/language/01-surface.md` §7).
     ///
     /// A third kind rather than a second flavour of `Piece`, because the two
     /// differ in what a caller may *do*: a kernel document has no surface
@@ -167,7 +167,7 @@ impl Compilation {
     }
 
     /// Every decision this compilation took, in the order the sites were
-    /// reached (`docs/kernel/11-realization.md`).
+    /// reached (`docs/rules/kernel/11-realization.md`).
     ///
     /// The realization holds only what a composer *pinned*; this is what the
     /// piece actually asked and what it was answered, which is what a header
@@ -178,7 +178,7 @@ impl Compilation {
     }
 
     /// What this compilation *means*, as a digest of the piece's timeline
-    /// (docs/kernel/05 N6).
+    /// (docs/rules/kernel/05 N6).
     ///
     /// Two compilations with the same identity are the same music, whatever
     /// their sources looked like; two with different identities differ in
@@ -237,7 +237,7 @@ impl Compilation {
 /// → temporal kernel → `ScoreSnapshot` adapter. There is one semantic path.
 ///
 /// A document written in the *kernel* alternative
-/// (`docs/language/01-surface.md` §7) joins that path later rather than
+/// (`docs/rules/language/01-surface.md` §7) joins that path later rather than
 /// running beside it: it has no surface syntax to elaborate, so reading and
 /// checking the term replaces everything up to the kernel, and the projection
 /// and every backend after it are shared. Which alternative a text is, is a

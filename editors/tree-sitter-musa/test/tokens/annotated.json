@@ -1,7 +1,7 @@
 {
   "file": "annotated.musa",
   "tokens": [
-    { "kind": "comment", "text": "// The annotation layer, end to end (docs/prompts/35): named phrases over the" },
+    { "kind": "comment", "text": "// The annotation layer, end to end (docs/plan/prompts/35): named phrases over the" },
     { "kind": "comment", "text": "// notes, form markers at measure:beat positions, and a harmony lane." },
     { "kind": "comment", "text": "//" },
     { "kind": "comment", "text": "// Nothing here is interpreted. The chord symbols are recorded and printed;" },

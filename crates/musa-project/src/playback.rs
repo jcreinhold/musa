@@ -91,7 +91,7 @@ pub(crate) fn to_midi(
     // file. Every note is written at the frame it is actually played at, so
     // the file *sounds* exactly right; what it says about itself is the
     // reference part's. Sonically exact, notationally wrong, and said here
-    // rather than discovered (`docs/kernel/07-backend-contract.md`).
+    // rather than discovered (`docs/rules/kernel/07-backend-contract.md`).
     let mut warnings = Vec::new();
     if performance.is_polytempo() {
         warnings.push(

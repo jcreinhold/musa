@@ -190,7 +190,7 @@ pub struct FrontMatter {
     /// A catalogue fact rather than a printed line: a file that leaves a
     /// decision open and does not say which reading it holds cannot be
     /// reproduced, and the formats with somewhere to put a note say so
-    /// (`docs/kernel/11-realization.md`, consumer obligation 1).
+    /// (`docs/rules/kernel/11-realization.md`, consumer obligation 1).
     pub performance: Option<u64>,
 }
 
@@ -1149,7 +1149,7 @@ impl Marks {
         }
         // Sorted by the payload's own index, not by the order the annotation
         // lane happens to hold: `grace { c5 d5 }` and `grace { d5 c5 }`
-        // differ only in that number (docs/kernel/05 N2), so it is what the
+        // differ only in that number (docs/rules/kernel/05 N2), so it is what the
         // page has to print by.
         let mut graces: Vec<_> = annotations.graces().iter().collect();
         graces.sort_by_key(|grace| (grace.at.0, grace.index));

@@ -2,7 +2,7 @@
 //! what an enclosing one said.
 //!
 //! Never where it sits in time — that is the occurrence's span, and keeping
-//! the two apart is the point (docs/kernel/03). A slur moves in time without
+//! the two apart is the point (docs/rules/kernel/03). A slur moves in time without
 //! changing voice; a voice is renamed without moving anything.
 //!
 //! This module owns the *inheritance table*: the one place that says what a

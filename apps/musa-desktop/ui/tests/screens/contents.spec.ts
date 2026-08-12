@@ -1,5 +1,5 @@
 /**
- * The volume (`docs/interface/07-the-volume.md`).
+ * The volume (`docs/rules/desktop/07-the-volume.md`).
  *
  * The claim under test is that a project is a bound book rather than a file
  * tree: it has a contents page with a running order, an editorial note listing

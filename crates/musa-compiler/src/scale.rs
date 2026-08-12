@@ -1,4 +1,4 @@
-//! Scales, degrees, and register frames (`docs/language/03-musical-domains.md`
+//! Scales, degrees, and register frames (`docs/rules/language/03-musical-domains.md`
 //! §2).
 //!
 //! Four things musical practice keeps apart, and which one type would

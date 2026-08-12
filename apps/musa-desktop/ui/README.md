@@ -5,9 +5,9 @@ runs standalone in a browser against the committed fixtures — that is how the 
 screenshot goldens are taken. The difference is one check: without a shell answering, the session renders whatever
 snapshot it was seeded with and every command is a no-op.
 
-**`docs/interface/` governs this directory.** It is the design document, not a summary of the code: `00-thesis.md` (leaf
-and margin, and what is rejected), `01-visual-language.md` (every token, the Compose layout), `02-engraving.md` (how
-Verovio is driven, themed, and re-rendered), `03-interaction.md` (selection, keyboard, the accessibility floor),
+**`docs/rules/desktop/` governs this directory.** It is the design document, not a summary of the code: `00-thesis.md`
+(leaf and margin, and what is rejected), `01-visual-language.md` (every token, the Compose layout), `02-engraving.md`
+(how Verovio is driven, themed, and re-rendered), `03-interaction.md` (selection, keyboard, the accessibility floor),
 `04-provenance.md` (Origin view), `05-states.md`, `06-performance.md`. If the code and those documents disagree, either
 the code is wrong or the document needs a deliberate repair — never let them drift silently.
 

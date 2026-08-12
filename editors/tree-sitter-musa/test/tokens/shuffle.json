@@ -1,7 +1,7 @@
 {
   "file": "shuffle.musa",
   "tokens": [
-    { "kind": "comment", "text": "// A twelve-bar blues, swung (docs/prompts/69)." },
+    { "kind": "comment", "text": "// A twelve-bar blues, swung (docs/plan/prompts/69)." },
     { "kind": "comment", "text": "//" },
     { "kind": "comment", "text": "// Every eighth on this page is written straight, because that is how a blues" },
     { "kind": "comment", "text": "// is written and how a reader wants to read it. What makes it a shuffle is" },

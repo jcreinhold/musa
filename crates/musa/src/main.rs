@@ -167,7 +167,7 @@ fn open(path: &str, realization: &Realization) -> Result<ProjectSession, ExitCod
 
 /// Take `--seed N` out of `args`, leaving the subcommand's own arguments.
 ///
-/// Which performance to compile (`docs/kernel/11-realization.md`). Absent, the
+/// Which performance to compile (`docs/rules/kernel/11-realization.md`). Absent, the
 /// realization is `deterministic()` — and a piece that leaves nothing open
 /// compiles to the same bytes under every seed, which is a test rather than a
 /// claim. It is removed here so no subcommand's parser has to know the flag
@@ -290,7 +290,7 @@ fn cmd_render(args: &[String], realization: &Realization) -> ExitCode {
 /// Reading only. The exit code says whether the *request* could be answered,
 /// never what the report contains: an analysis is not a check, and a piece
 /// with nothing in the window is a piece with nothing in the window
-/// (`docs/language/07-analysis.md` §1).
+/// (`docs/rules/language/07-analysis.md` §1).
 fn cmd_analyze(args: &[String], realization: &Realization) -> ExitCode {
     let mut path: Option<&str> = None;
     let mut kind = "facts";
@@ -916,7 +916,7 @@ impl Walked {
 
 /// Whether a walk should treat this file name as a musa document.
 ///
-/// Both alternatives (`docs/language/01-surface.md` §7), because both are
+/// Both alternatives (`docs/rules/language/01-surface.md` §7), because both are
 /// documents a bulk `musa format` is responsible for: a `.musa.kernel` file
 /// left out of the walk is a file `--check` calls clean and a later edit makes
 /// dirty without anything noticing.

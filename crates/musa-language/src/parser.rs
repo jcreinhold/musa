@@ -1624,7 +1624,7 @@ impl<'a> Parser<'a> {
     }
 
     /// `kernel Timeline[ScoreFact] { … }` — a quoted composition expression
-    /// (`docs/language/01-surface.md` §7).
+    /// (`docs/rules/language/01-surface.md` §7).
     ///
     /// **Recognized, not read.** The tokens between the braces spell the
     /// kernel's own grammar, and `musa-kernel` owns that grammar: a second

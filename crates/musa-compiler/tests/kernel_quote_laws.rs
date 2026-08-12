@@ -18,7 +18,7 @@
 //! believing a quote is safe, and the whole point of an escape hatch is that
 //! it is not.
 //!
-//! The locus law is a reference model rather than a golden: `docs/language`
+//! The locus law is a reference model rather than a golden: `docs/rules/language`
 //! §7 states the quotation locus compositionally — `seq` adds prefix extents,
 //! `over` preserves, `shift` translates, a positive `scale` scales the
 //! relative offset, `restrict` relocates nothing, and a `let` value begins at
@@ -139,7 +139,7 @@ fn spliced(term: &str) -> (Ratio<i64>, Ratio<i64>) {
 
 /// The clause-by-clause statement of the quotation locus.
 ///
-/// Each case is one line of `docs/language/01-surface.md` §7, and the value on
+/// Each case is one line of `docs/rules/language/01-surface.md` §7, and the value on
 /// the right is computed here rather than recorded: `subject` is four quarter
 /// notes, so its extent is 1 and its first note is at 0, and every number
 /// below follows from that by the rule the case is named after.
@@ -395,7 +395,7 @@ fn a_quote_agrees_with_the_term_written_in_the_surface() {
 /// This is the sharpest of the bypasses and the easiest to walk into, so it
 /// is written down rather than left to be discovered. `scale by 1/2` halves
 /// every span; it does not touch the payloads, because payloads are opaque to
-/// the kernel and arrive already transformed (`docs/kernel/01-grammar.md`).
+/// the kernel and arrive already transformed (`docs/rules/kernel/01-grammar.md`).
 /// The surface `stretch` is the operation that does both, which is why
 /// augmentation belongs in the host — `${stretch(1/2, subject)}` — and raw
 /// `scale` belongs to material whose written values already say what the

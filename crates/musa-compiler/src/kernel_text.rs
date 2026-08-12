@@ -9,7 +9,7 @@
 //! **A kernel file is a document, and it is not `.musa`.** Those are two
 //! statements and both hold. It is a document because the toolchain opens,
 //! checks, formats, and serves it like any other source file
-//! (`docs/language/01-surface.md` §7). It is not `.musa` because nothing
+//! (`docs/rules/language/01-surface.md` §7). It is not `.musa` because nothing
 //! rewrites it into surface syntax: a kernel file declares one composition,
 //! it compiles to one timeline, and the round trip through this module never
 //! produces a `piece` block. The source is still canonical (AGENTS.md) —
@@ -31,7 +31,7 @@ pub struct KernelCheck {
     /// The piece name the file declares.
     pub name: String,
     /// Which reading of the work this file projects, verbatim from its header
-    /// (`docs/kernel/11-realization.md`). `None` for a file written before
+    /// (`docs/rules/kernel/11-realization.md`). `None` for a file written before
     /// realizations existed, which is a file whose realization is unknown
     /// rather than a file that has none.
     pub realization: Option<String>,
@@ -59,7 +59,7 @@ pub fn kernel_text(source: &SourceDocument, realization: &crate::Realization) ->
 /// make a determinate piece's export depend on a seed it never read. Otherwise
 /// the seed — because a file that leaves a decision open and does not name its
 /// realization cannot be reproduced — and every decision taken
-/// (`docs/kernel/11-realization.md`, consumer obligation 1).
+/// (`docs/rules/kernel/11-realization.md`, consumer obligation 1).
 fn notes(realization: &crate::Realization, decisions: &[crate::DecisionRecord]) -> Vec<String> {
     if decisions.is_empty() {
         return Vec::new();
@@ -155,7 +155,7 @@ fn realization_note<A>(document: &musa_kernel::Document<A>) -> Option<String> {
         .map(str::to_owned)
 }
 
-/// Compile a kernel interchange document (`docs/language/01-surface.md` §7).
+/// Compile a kernel interchange document (`docs/rules/language/01-surface.md` §7).
 ///
 /// The other half of [`crate::compile`], reached when the document's first
 /// line is the kernel marker. There is no surface parse, no resolution, no

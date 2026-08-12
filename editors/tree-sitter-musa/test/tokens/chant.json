@@ -1,7 +1,7 @@
 {
   "file": "chant.musa",
   "tokens": [
-    { "kind": "comment", "text": "// A chant line, unmeasured from the first note (docs/prompts/74)." },
+    { "kind": "comment", "text": "// A chant line, unmeasured from the first note (docs/plan/prompts/74)." },
     { "kind": "comment", "text": "//" },
     { "kind": "comment", "text": "// `meter none;` is not the absence of a meter statement — a piece that writes" },
     { "kind": "comment", "text": "// no `meter` is in 4/4. It is a meter whose answer to \"where do the barlines" },

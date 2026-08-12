@@ -45,4 +45,4 @@ construct earns kernel status only when removing it makes an important class of 
 faithfully across independent consumers.
 
 The full specification — grammar, denotational semantics, algebraic laws, normalization, elaboration — lives in
-`docs/kernel/` in the repository.
+`docs/rules/kernel/` in the repository.

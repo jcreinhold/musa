@@ -100,7 +100,7 @@ pub enum ExpansionStep {
         claim: String,
     },
     /// This fact entered through a kernel quotation
-    /// (`docs/language/01-surface.md` §7), at this position in the quote's
+    /// (`docs/rules/language/01-surface.md` §7), at this position in the quote's
     /// own time.
     ///
     /// What the step records is the *quotation locus*: where the material
@@ -278,7 +278,7 @@ impl std::fmt::Display for Interval {
 /// A realization has to make the *same* decision again after the composer
 /// edits an unrelated bar; otherwise every keystroke re-rolls the performance
 /// and the page flickers with music nobody wrote. That rules out the two
-/// obvious names (`docs/kernel/11-realization.md`): a source span, because
+/// obvious names (`docs/rules/kernel/11-realization.md`): a source span, because
 /// reformatting would re-roll everything, and a [`DeclarationId`], because
 /// inserting a declaration renumbers everything after it.
 ///
@@ -390,7 +390,7 @@ impl ChoicePath {
 
     /// The path as a sentence: `the fill, first choice`.
     ///
-    /// `docs/interface/` §states and voice is the rule here — the interface
+    /// `docs/rules/desktop/` §states and voice is the rule here — the interface
     /// says what happened, not what the machine did, and a composer should be
     /// able to use open form without learning the word "realization". So no
     /// `#2`, no `Ordinal`, and no brackets. A path with no name above it is

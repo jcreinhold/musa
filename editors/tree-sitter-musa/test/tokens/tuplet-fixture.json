@@ -1,7 +1,7 @@
 {
   "file": "tuplet-fixture.musa",
   "tokens": [
-    { "kind": "comment", "text": "// The expressive notation layer, end to end (docs/prompts/27): tuplets," },
+    { "kind": "comment", "text": "// The expressive notation layer, end to end (docs/plan/prompts/27): tuplets," },
     { "kind": "comment", "text": "// ties across a barline, slurs, dynamics, and articulations, including" },
     { "kind": "comment", "text": "// articulations written inside a motif, so provenance carries them too." },
     { "kind": "piece", "text": "piece" },

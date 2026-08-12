@@ -1,4 +1,4 @@
-//! The temporal-kernel law suite (docs/kernel/04-algebraic-laws.md). Every
+//! The temporal-kernel law suite (docs/rules/kernel/04-algebraic-laws.md). Every
 //! test name matches the law name in the spec; the non-laws X1–X2 are tested
 //! as counterexamples. Equality is semantic equality (N4) throughout.
 
@@ -749,7 +749,7 @@ fn occurrence_at(start: i64, end: i64, payload: u8) -> Occurrence<u8> {
 /// `Progress` is indexed by normalized *local* time, so every kernel operation
 /// moves or stretches the span and leaves the payload bytes untouched. This is
 /// what makes a continuous shape a payload value rather than a kernel
-/// operation (docs/kernel/03 `Progress`, §32 Q4): if the curve were in
+/// operation (docs/rules/kernel/03 `Progress`, §32 Q4): if the curve were in
 /// absolute time, `scale` and `sequence` would have to rewrite it, and the
 /// kernel would be looking inside payloads (§12).
 ///

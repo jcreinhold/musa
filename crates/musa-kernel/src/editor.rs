@@ -1,4 +1,4 @@
-//! What an editor needs from kernel text (docs/kernel/01-grammar.md): how to
+//! What an editor needs from kernel text (docs/rules/kernel/01-grammar.md): how to
 //! colour it, and what to put in an outline.
 //!
 //! The grammar lives in this crate, so its lexis does too. An editor that
@@ -184,7 +184,7 @@ pub fn bindings(text: &str) -> Vec<(Range<usize>, String)> {
 /// What a kernel word means, for an editor to show under a caret.
 ///
 /// One sentence each, and no examples: the reference is
-/// `docs/kernel/01-grammar.md` and `10-term-calculus.md`, and a hover that
+/// `docs/rules/kernel/01-grammar.md` and `10-term-calculus.md`, and a hover that
 /// tried to be the reference would be a hover nobody finishes reading. The
 /// sentences say what the construct *denotes*, because that is the question a
 /// reader of interchange text actually has.

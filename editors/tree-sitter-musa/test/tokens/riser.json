@@ -1,7 +1,7 @@
 {
   "file": "riser.musa",
   "tokens": [
-    { "kind": "comment", "text": "// An eight-bar accelerando into a drop (docs/prompts/73)." },
+    { "kind": "comment", "text": "// An eight-bar accelerando into a drop (docs/plan/prompts/73)." },
     { "kind": "comment", "text": "//" },
     { "kind": "comment", "text": "// The same construct as `rubato.musa`, pointed the other way and used the way" },
     { "kind": "comment", "text": "// dance music uses it: a long build whose energy comes from the tempo itself," },
@@ -9,7 +9,7 @@
     { "kind": "comment", "text": "//" },
     { "kind": "comment", "text": "// Eight bars of 4/4 is eight whole notes, so `over 8/1` is the whole build." },
     { "kind": "comment", "text": "// The MIDI export writes this as a run of set-tempo events — thirty-two per" },
-    { "kind": "comment", "text": "// whole note, chosen by the exporter and not by the score (docs/kernel/07) —" },
+    { "kind": "comment", "text": "// whole note, chosen by the exporter and not by the score (docs/rules/kernel/07) —" },
     { "kind": "comment", "text": "// because SMF has no continuous tempo. The page gets a marking at each end," },
     { "kind": "comment", "text": "// for the same reason: no notation format can draw a ramp as a function, so" },
     { "kind": "comment", "text": "// every one of them prints where it starts and where it arrives." },

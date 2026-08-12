@@ -1,4 +1,4 @@
-//! The semantic hash (docs/kernel/05 N6): a digest of a timeline's exact,
+//! The semantic hash (docs/rules/kernel/05 N6): a digest of a timeline's exact,
 //! versioned, uniquely framed semantic bytes.
 //!
 //! The digest is **FNV-1a, 128-bit**, over exactly the private bytes N6
@@ -48,7 +48,7 @@ impl std::fmt::Display for SemanticHash {
 /// Same algorithm, same constants, same guarantee as [`SemanticHash`]: equal
 /// input, equal output, in every process and on every platform. It is exposed
 /// because a second consumer arrived — a realization derives each decision
-/// site's randomness from a seed and a path (`docs/kernel/11-realization.md`)
+/// site's randomness from a seed and a path (`docs/rules/kernel/11-realization.md`)
 /// — and a second digest function would be a second answer to "are these the
 /// same bytes".
 ///

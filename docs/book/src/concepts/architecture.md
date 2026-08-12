@@ -39,5 +39,5 @@ The audio callback never allocates, locks, does I/O, logs, or destroys large obj
 the control side and cross the boundary on lock-free queues. This is why the studio can compile a new graph while the
 old one keeps playing.
 
-The design documents in the repository — `docs/roadmap.md`, `docs/kernel/`, and `docs/governance/` — give the reasoning
-behind each boundary.
+The design documents in the repository — `docs/plan/roadmap.md`, `docs/rules/kernel/`, and `docs/rules/` — give the
+reasoning behind each boundary.

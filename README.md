@@ -106,24 +106,24 @@ exact rational arithmetic everywhere except the audio edge, and the audio callba
 The user-facing documentation is an mdbook in [`docs/book/`](docs/book/) — tutorials, how-to guides, explanation, and
 reference. `make docs` builds it; `make docs-serve` reads it live.
 
-The design documents govern this repository, and the code is expected to agree with them.
-[`docs/README.md`](docs/README.md) maps every one of them, says what each is for, and gives the precedence ladder that
-settles which one wins when two disagree. The short version:
+`docs/` has four directories, and which one a document is in says what force it has:
 
-- [`docs/governance/`](docs/governance/) — the constitutional commitments: what musa is, and what it may never become.
-- [`docs/kernel/`](docs/kernel/) — the finite temporal kernel that is the semantic core, and that the surface language
-  elaborates into.
-- [`docs/roadmap.md`](docs/roadmap.md) — the architecture: layers, crate ownership, language design, DSP rules, and what
-  is deliberately rejected or deferred.
-- [`docs/interface/`](docs/interface/) — the desktop app's design: its states, its performance budgets, and the
-  reasoning behind the score editor.
-- [`docs/prompts/`](docs/prompts/) — the work plan: numbered implementation prompts executed in dependency order, each
-  one commit with its own acceptance check.
+- [`docs/rules/`](docs/rules/) — **governing.** The constitution, the rules that cross stages, and one specification per
+  stage: the [temporal kernel](docs/rules/kernel/) that is the semantic core, the
+  [source language](docs/rules/language/) that elaborates into it, the [desktop app](docs/rules/desktop/), and the
+  `.musa` [style guide](docs/rules/style-guide.md). Code that disagrees with any of it is wrong.
+- [`docs/plan/`](docs/plan/) — **what to build.** The [roadmap](docs/plan/roadmap.md) (layers, crate ownership, DSP
+  rules, what is deliberately rejected), the numbered [prompts](docs/plan/prompts/) executed in dependency order, and a
+  [code map](docs/plan/code-map/) saying what is implemented, partial, or absent.
+- [`docs/book/`](docs/book/) — **teaching.** The mdbook above.
+- [`docs/notes/`](docs/notes/) — **governs nothing.** Decision records, refuted arguments, and toolchain traps.
+
+[`docs/README.md`](docs/README.md) gives the precedence ladder in full — which document wins when two disagree.
 
 ## Status
 
 Early, and honest about it. The language, compiler, kernel, notation and audio export, the studio, and the score editor
-are implemented and tested; 135 of the 155 planned prompts are done. What remains is listed in `docs/prompts/` with
+are implemented and tested; 135 of the 155 planned prompts are done. What remains is listed in `docs/plan/prompts/` with
 `status: pending` — effects and mixing, MusicXML export, MIDI entry, transforms, annotations and harmony, and imports
 with continuous curves.
 

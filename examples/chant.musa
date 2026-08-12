@@ -1,4 +1,4 @@
-// A chant line, unmeasured from the first note (docs/prompts/74).
+// A chant line, unmeasured from the first note (docs/plan/prompts/74).
 //
 // `meter none;` is not the absence of a meter statement — a piece that writes
 // no `meter` is in 4/4. It is a meter whose answer to "where do the barlines

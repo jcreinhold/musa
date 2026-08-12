@@ -3,7 +3,7 @@
 // on, until the sheet has been crossed three times. This file is that *shape* —
 // the fragments are written for musa, not transcribed — and it is here because
 // nineteen fragments have 19! orderings, which is the number that settled the
-// argument in `docs/kernel/11-realization.md`: a finite `choose` cannot hold
+// argument in `docs/rules/kernel/11-realization.md`: a finite `choose` cannot hold
 // them, and a permutation costs nineteen `u32`s.
 //
 //     musa kernel examples/mobile.musa --seed 7

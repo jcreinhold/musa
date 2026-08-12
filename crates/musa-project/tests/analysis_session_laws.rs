@@ -4,7 +4,7 @@
 //! level rather than as a compiler pass. It **reads**: no revision, no
 //! diagnostic, no edit. And it **resolves**: the report leaves the compiler as
 //! part ids and byte offsets, and reaches a caller as names, bars, beats,
-//! lines, and sentences, because `docs/interface/03-interaction.md` §7 does not
+//! lines, and sentences, because `docs/rules/desktop/03-interaction.md` §7 does not
 //! let a frontend compute any of those.
 
 // Test helpers use expect() on statically-valid inputs: a failure is a bug in

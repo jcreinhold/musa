@@ -117,7 +117,7 @@ pub enum ProjectCommand {
     /// *is* a state of the session, so it lands in the history and can be
     /// undone — a composer who draws a performance they liked less must be
     /// able to get the last one back, and that is what undo is
-    /// (`docs/kernel/11-realization.md`).
+    /// (`docs/rules/kernel/11-realization.md`).
     NewPerformance {
         /// The performance to draw. A number, because that is what a composer
         /// writes down and sends to somebody else.
@@ -188,7 +188,7 @@ pub enum TransportRequest {
 /// What a command changed.
 ///
 /// This exists so a frontend can decide what to redo without diffing
-/// snapshots: re-engraving a score is expensive (`docs/interface/06-performance.md`
+/// snapshots: re-engraving a score is expensive (`docs/rules/desktop/06-performance.md`
 /// B2), and most commands do not change it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ProjectUpdate {

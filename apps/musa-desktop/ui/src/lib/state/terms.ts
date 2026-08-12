@@ -1,6 +1,6 @@
 /**
  * Terms, as the source column asks about them
- * (`docs/interface/08-elaboration.md` §§1–2).
+ * (`docs/rules/desktop/08-elaboration.md` §§1–2).
  *
  * Pure lookups over facts the core computed: which name covers an offset,
  * which declaration that name reaches, where it is used. Nothing here parses

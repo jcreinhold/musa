@@ -2209,7 +2209,7 @@ impl MusicExpr {
 /// `kernel Timeline[ScoreFact] { ... }` — a quoted composition expression.
 ///
 /// The interior is the kernel's grammar and this crate does not read it
-/// (`docs/language/01-surface.md` §7). What it offers is what a *host* needs:
+/// (`docs/rules/language/01-surface.md` §7). What it offers is what a *host* needs:
 /// which payload type the quote claims, where its body is, and where the
 /// holes are — so the compiler can cut the body into text and typed
 /// antiquotations and hand the text to the one crate that owns the grammar.

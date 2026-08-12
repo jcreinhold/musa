@@ -74,7 +74,7 @@ impl Document {
     }
 
     /// Which language this document is written in
-    /// (`docs/language/01-surface.md` §7).
+    /// (`docs/rules/language/01-surface.md` §7).
     ///
     /// Asked of the text rather than of the URI, because a client may open an
     /// unsaved buffer, a renamed file, or a scratch pane, and what a document

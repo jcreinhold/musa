@@ -1,4 +1,4 @@
-//! The lint pass's laws (`docs/style-guide.md`).
+//! The lint pass's laws (`docs/rules/style-guide.md`).
 //!
 //! Each rule fires on a minimal fixture and stays silent where the guide
 //! says the spelling is honest; each waiver works where it is written and

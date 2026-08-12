@@ -24,7 +24,7 @@ pub enum ExportRequest {
     PerformanceDump,
     /// The notation plan, as a debug dump.
     NotationPlanDump,
-    /// The piece as kernel interchange text (docs/kernel/01).
+    /// The piece as kernel interchange text (docs/rules/kernel/01).
     ///
     /// Unlike every other target this is a projection of the *document*, not
     /// of the score snapshot: a term carries the provenance the snapshot has
@@ -120,7 +120,7 @@ impl ExportArtifact {
     /// A format with no element for a written freedom carries the realized
     /// music and a text direction instead — a reading of the work rather than
     /// the work — and whoever asked for the file is told so here rather than
-    /// finding out from a reader (`docs/kernel/07-backend-contract.md`).
+    /// finding out from a reader (`docs/rules/kernel/07-backend-contract.md`).
     pub fn warnings(&self) -> &[String] {
         &self.warnings
     }
@@ -137,7 +137,7 @@ pub struct KernelReport {
     /// The evaluated timeline's extent, as an exact rational.
     pub extent: String,
     /// Which reading of the work the file projects, verbatim from its header
-    /// (`docs/kernel/11-realization.md`). `None` when the file does not say —
+    /// (`docs/rules/kernel/11-realization.md`). `None` when the file does not say —
     /// which a reader reports rather than guesses at, because a realization it
     /// cannot reproduce is the one thing that design exists to make visible.
     pub realization: Option<String>,

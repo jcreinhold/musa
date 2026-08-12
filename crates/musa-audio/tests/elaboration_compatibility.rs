@@ -89,7 +89,7 @@ fn manifest() -> Result<String> {
     let (studio, events, frames, lanes) = scheduled()?;
     let mut out = String::from(
         "# musa audio-bridge compatibility manifest v1\n\
-         # Test oracle only; timing and allocation samples live in docs/language/06-performance.md.\n",
+         # Test oracle only; timing and allocation samples live in docs/rules/language/06-performance.md.\n",
     );
     out.push_str(&lanes);
     let _ = writeln!(out, "sample-rate={SAMPLE_RATE}");

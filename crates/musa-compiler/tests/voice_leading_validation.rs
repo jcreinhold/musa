@@ -1,6 +1,6 @@
 //! What the voice-leading and counterpoint readings may and may not say.
 //!
-//! `docs/language/07-analysis.md` §2 admits a kind only with an abstract
+//! `docs/rules/language/07-analysis.md` §2 admits a kind only with an abstract
 //! domain, an abstraction map, and a soundness claim. These are the
 //! claims, written as tests:
 //!
@@ -1303,7 +1303,7 @@ fn raising_a_passage_an_octave_changes_only_the_register_rules() {
 
 /// Reading a score twice gives the same report and leaves the score alone.
 ///
-/// `docs/language/07-analysis.md` §4 requires it of every kind: a report
+/// `docs/rules/language/07-analysis.md` §4 requires it of every kind: a report
 /// nobody can diff against yesterday's is a report nobody can act on. The two
 /// style kinds are tested here rather than beside the other four because they
 /// are the ones that need a profile, and the counterpoint profiles need a

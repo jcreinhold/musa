@@ -1,4 +1,4 @@
-//! R1 and the identity that makes it usable (`docs/kernel/11-realization.md`).
+//! R1 and the identity that makes it usable (`docs/rules/kernel/11-realization.md`).
 //!
 //! ```text
 //! R1.  Same source and same realization ⇒ same term, same normal form,

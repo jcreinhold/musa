@@ -16,7 +16,7 @@
 //! on the JavaScript side — a decoration two characters off, a caret in the
 //! middle of the wrong word, a lint underlining the wrong token.
 //!
-//! So the contract, fixed by `docs/interface/03-interaction.md` §7, is drawn
+//! So the contract, fixed by `docs/rules/desktop/03-interaction.md` §7, is drawn
 //! at the wire rather than inside Rust: **the serialized snapshot states
 //! every span in UTF-16 code units, and the Rust API states every span in
 //! bytes.** [`ProjectSnapshot::to_wire`](crate::ProjectSnapshot::to_wire) is

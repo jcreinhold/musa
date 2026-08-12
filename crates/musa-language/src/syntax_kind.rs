@@ -513,7 +513,7 @@ pub enum SyntaxKind {
     ///
     /// Its interior is *recognized, not read*: the tokens between the braces
     /// are the kernel's grammar, which `musa-kernel` owns
-    /// (`docs/language/01-surface.md` §7). This crate finds the holes and the
+    /// (`docs/rules/language/01-surface.md` §7). This crate finds the holes and the
     /// closing brace and hands the rest along as text.
     KernelQuote,
     /// `${ expr }` — one typed antiquotation. Its child expression is

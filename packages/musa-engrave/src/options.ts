@@ -1,5 +1,5 @@
 /**
- * Layout defaults — docs/interface/02-engraving.md §4. Fixed here so they are
+ * Layout defaults — docs/rules/desktop/02-engraving.md §4. Fixed here so they are
  * a decision rather than an accident.
  */
 

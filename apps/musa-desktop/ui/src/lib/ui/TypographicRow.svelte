@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
    * One inspector row: a `--t-micro` label over a value
-   * (docs/interface/01-visual-language.md §7).
+   * (docs/rules/desktop/01-visual-language.md §7).
    *
    * There are no field boxes. An editable value carries a hairline underline
    * in three weights — `--rule` at rest, `--ink-muted` under the pointer,

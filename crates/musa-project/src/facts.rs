@@ -1,6 +1,6 @@
 //! Everything the interface displays about a score, stated once, in words.
 //!
-//! `docs/interface/03-interaction.md` §7 is an exhaustive list of what the
+//! `docs/rules/desktop/03-interaction.md` §7 is an exhaustive list of what the
 //! frontend may compute, and it contains no musical facts at all: not bar
 //! numbers, not beats, not pitch names, not provenance. So they are computed
 //! here, once per successful compile, from the compiled score — and the
@@ -48,7 +48,7 @@ pub enum EventKind {
     Chord,
 }
 
-/// Where an event came from (`docs/interface/04-provenance.md` §3).
+/// Where an event came from (`docs/rules/desktop/04-provenance.md` §3).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OriginFacts {
@@ -139,7 +139,7 @@ pub enum StepKind {
 }
 
 /// One expansion, and everything it produced
-/// (`docs/interface/04-provenance.md` §2).
+/// (`docs/rules/desktop/04-provenance.md` §2).
 ///
 /// An occurrence is a single act of expansion: one `use` inside whatever
 /// transform blocks enclose it. Two `use sigh()` statements are two
@@ -290,7 +290,7 @@ pub struct ScoreFacts {
 
 /// One decision, as the Origin view and the Settings panel read it.
 ///
-/// The wording rules of `docs/interface/` are already applied: this carries
+/// The wording rules of `docs/rules/desktop/` are already applied: this carries
 /// sentences a musician reads, not the machine's names for things. `path` is
 /// the exception and is never shown — it is the key a pin is written against.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]

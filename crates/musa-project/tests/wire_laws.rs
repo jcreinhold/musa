@@ -7,7 +7,7 @@
 //! here — an object of that shape is always a span, and every span indexes the
 //! document the snapshot carries. The second is why a bundled declaration
 //! travels as a URI and an opaque range rather than as a span
-//! (`docs/interface/08-elaboration.md` §3).
+//! (`docs/rules/desktop/08-elaboration.md` §3).
 
 // A law that trips is a bug in the wire it protects; panicking is the report.
 #![allow(clippy::unwrap_used)]
@@ -166,7 +166,7 @@ fn a_bundled_declaration_travels_as_a_uri_and_never_as_a_span() {
 /// Two claims in one test because they are one property: the report crosses the
 /// wire the way the snapshot does. The revision is what lets a frontend say a
 /// reading is of an older score instead of showing it as though it were current
-/// (`docs/interface/08-elaboration.md` §8) — and it must come from this side,
+/// (`docs/rules/desktop/08-elaboration.md` §8) — and it must come from this side,
 /// because only this side knows which compile the analysis actually read.
 #[test]
 fn a_reading_arrives_in_code_units_and_names_the_compile_it_read() {

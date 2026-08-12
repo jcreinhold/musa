@@ -9,7 +9,7 @@
 //! contain a score, so material and repertoire are different kinds in the
 //! grammar before they are different rows on a page.
 //!
-//! Every string here is decided in Rust, because `docs/interface/03-interaction.md`
+//! Every string here is decided in Rust, because `docs/rules/desktop/03-interaction.md`
 //! §7 says the frontend spells no facts. A piece's `title` is what the piece
 //! calls itself; the file name is what the filesystem calls it; and the page
 //! sets the two in different faces precisely because they are two different

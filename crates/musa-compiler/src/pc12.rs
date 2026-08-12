@@ -1,5 +1,5 @@
 //! Unspelled pitch classes, pitch-class sets, and twelve-tone rows
-//! (`docs/language/03-musical-domains.md` §4).
+//! (`docs/rules/language/03-musical-domains.md` §4).
 //!
 //! This is the chromatic quotient and nothing else. `pc12` is `ℤ/12ℤ`, so
 //! `b#` and `c` are the same element here and the spelled domain of

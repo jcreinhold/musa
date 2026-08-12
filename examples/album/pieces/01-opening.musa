@@ -1,4 +1,4 @@
-// The album's first piece (docs/prompts/36): what it shares it imports, and
+// The album's first piece (docs/plan/prompts/36): what it shares it imports, and
 // what changes over its length — the tempo, the loudness — is written where
 // it changes rather than assumed constant.
 piece "Opening" {

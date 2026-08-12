@@ -1,7 +1,7 @@
 {
   "file": "drum-chart.musa",
   "tokens": [
-    { "kind": "comment", "text": "// A drum chart, which is mostly words (docs/prompts/70)." },
+    { "kind": "comment", "text": "// A drum chart, which is mostly words (docs/plan/prompts/70)." },
     { "kind": "comment", "text": "//" },
     { "kind": "comment", "text": "// The reason this piece is in the corpus is that almost everything a drum" },
     { "kind": "comment", "text": "// chart communicates is a printed direction rather than a note: which sample" },

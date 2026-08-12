@@ -1,6 +1,6 @@
 /**
  * Every command, its binding, and what it does — in one file
- * (`docs/interface/03-interaction.md` §3).
+ * (`docs/rules/desktop/03-interaction.md` §3).
  *
  * One list, three readers: the key handler, the command palette (§6), and the
  * keyboard sheet. Bindings and their documentation cannot drift because there

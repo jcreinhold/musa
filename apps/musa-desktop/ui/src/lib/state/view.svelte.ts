@@ -1,6 +1,6 @@
 /**
  * How a piece is laid out on the leaf, remembered per piece
- * (`docs/interface/02-engraving.md` §4).
+ * (`docs/rules/desktop/02-engraving.md` §4).
  *
  * Per piece rather than globally, because the choice belongs to the music: a
  * single-line sketch is written in continuous view and a four-part score is

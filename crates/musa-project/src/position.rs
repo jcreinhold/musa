@@ -4,7 +4,7 @@
 //! This module translates the *coordinate*: `184` is where the compiler found
 //! the problem, `12:5` is where the reader has to look, and turning one into
 //! the other is arithmetic over the source text that no frontend should be
-//! doing. `docs/interface/03-interaction.md` §7 lists what the frontend may
+//! doing. `docs/rules/desktop/03-interaction.md` §7 lists what the frontend may
 //! compute and line numbers are not on it, so they are computed here and
 //! travel with the diagnostic.
 //!

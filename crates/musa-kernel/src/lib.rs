@@ -1,4 +1,4 @@
-//! The finite temporal kernel (docs/kernel/): exact
+//! The finite temporal kernel (docs/rules/kernel/): exact
 //! ambient musical time, typed occurrences, `sequence`, `overlay`, ambient
 //! extension, restriction, payload mapping, time scaling, normalization, and
 //! semantic equality.
@@ -10,11 +10,11 @@
 //! for symbolic time (§4), silence/rest objects (§2), or a monadic `join`
 //! (§16).
 //!
-//! Facade (docs/kernel/03, §26): [`timeline`], [`sequence`], [`overlay`],
+//! Facade (docs/rules/kernel/03, §26): [`timeline`], [`sequence`], [`overlay`],
 //! [`Timeline::extend`], [`Timeline::restrict`], [`Timeline::map_payload`],
 //! [`Timeline::scale`], [`Timeline::normalize`], [`Timeline::semantic_eq`], [`Timeline::semantic_hash`].
 //! `Timeline` stores flat timelines directly — construction IS normalization
-//! (docs/kernel/05 N1); `normalize` re-canonicalizes occurrence order.
+//! (docs/rules/kernel/05 N1); `normalize` re-canonicalizes occurrence order.
 //!
 //! Invariants: occurrences form a multiset — equal occurrences never collapse
 //! (§6); time is ambient — uncovered regions are silent by absence, nothing

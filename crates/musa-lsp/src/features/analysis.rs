@@ -1,6 +1,6 @@
 //! Analysis on request: a lens to ask with, and a command that answers.
 //!
-//! An analysis is an *observation*, not a verdict. `docs/language/07-analysis.md`
+//! An analysis is an *observation*, not a verdict. `docs/rules/language/07-analysis.md`
 //! is emphatic about it: a cadence with two of its three kinds of evidence is a
 //! finding with an absence recorded, not a mistake, and a chord reading that
 //! two keys support is two candidates rather than one error. So the answer
