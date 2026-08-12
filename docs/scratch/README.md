@@ -26,6 +26,11 @@ needs, and erasure is staged per construct. The studio needs neither its own cal
 — it needs its description to survive, with an equality, as far as the render cache that R1 already presupposes. The
 motive question outlived the question that prompted it, which is the usual way of these things.
 
+**Reopened in [11](11-candidate-relational-presentation.md).** The erasure criterion still answers the cache question,
+but it does not answer how a score, performance profile, studio binding, signal graph, and sound can form one coherent
+artifact. E8's consumer-count argument threw away the links among realizations and then concluded that nothing remained.
+Files 11–17 retain that refutation and search for a compositional, non-identifying replacement.
+
 ## The question
 
 Grothendieck's motives are the conjectural universal object through which every cohomology theory factors: Betti, de
@@ -33,6 +38,10 @@ Rham, and ℓ-adic realizations all see the same underlying thing in different c
 asks is the same one for music, and it is not an analogy but a method — the method in
 `~/Code/papers/category-theory/50-examples-for-the-motive/text.md`, which asks for **the smallest description all
 realizations agree on. The information that survives every projection.**
+
+[11](11-candidate-relational-presentation.md) proves that this formulation is too forgetful: separate projections do not
+determine the relation among them. The revised question is therefore: **what smallest compositional presentation retains
+each realization's native structure and the coherent links among them without identifying their universes?**
 
 Musa's realizations are engraving (MEI, LilyPond, MusicXML), performance, sound, analysis, MIDI, and equational
 reasoning. What is the object they all factor through?
@@ -55,6 +64,15 @@ evidence.
 | [07-probe-log.md](07-probe-log.md) | Probes run against the codebase, with the claims they damaged — including the one that refuted T's own prediction |
 | [08-candidate-enriched.md](08-candidate-enriched.md) | Candidate E — SPJ's enriched core and staged erasure; not a motive, but the criterion that settles the studio question |
 | [09-the-proposal.md](09-the-proposal.md) | **The synthesis** — indexed call-by-push-value over two index domains: typing rules, operational semantics, how dependent it needs to be, and the work order |
+| [10-external-review.md](10-external-review.md) | External review of 00–09 — claims that failed, claims that survived, and the decision not to execute 09 step 1 |
+| [11-candidate-relational-presentation.md](11-candidate-relational-presentation.md) | Candidate R — reopens the common-residue premise; a useful relational coordination substrate which fails the emergence test on its own |
+| [12-candidate-process-worlds.md](12-candidate-process-worlds.md) | Candidate S — native worlds as symmetric monoidal process theories; chords and processor graphs from parallel and serial composition |
+| [13-candidate-modules.md](13-candidate-modules.md) | Candidate M — modules/profunctors as non-identifying inter-world links, with functors as the representable special case |
+| [14-candidate-temporal-locality.md](14-candidate-temporal-locality.md) | Candidate L — temporal worlds vary over observation regions; restriction, support, gluing, and multiple clocks replace equal active extents |
+| [15-candidate-frames.md](15-candidate-frames.md) | Candidate F₂ — context-indexed worlds; pitch collections, transposition, and conditional key families from free constructions and frame actions |
+| [16-candidate-fibred-equipment.md](16-candidate-fibred-equipment.md) | Candidate E₂ — synthesis as context-indexed monoidal process worlds joined by modules, with a small dependently sorted diagram language |
+| [17-sieve-and-prototype.md](17-sieve-and-prototype.md) | Comparative sieve, the smallest surviving conjecture, and a fixed-signature prototype plan designed to falsify it |
+| [18-minimal-recommendation.md](18-minimal-recommendation.md) | **Current recommendation** — begin with one multi-sorted compositional syntax; worlds, links, dependency, choice, and guarded computation must earn admission through failed examples |
 
 ## Standard of evidence
 
