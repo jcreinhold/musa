@@ -100,6 +100,10 @@ ship.
     modules, finite folds, bounded expansion, editing, lowering, evaluation, and deterministic charges.
 31. [30-stage-spec.md](30-stage-spec.md) defines `Music` as a finite closed recipe and states every boundary from source
     values through temporal terms, notation, gestures, prepared processes, and audio histories.
+32. [31-proof-prototype.md](31-proof-prototype.md) attacks the narrowed rules and selects the direct termination proof.
+33. [32-proof-outline.md](32-proof-outline.md) freezes the theorem statements, assumptions, and dependency order.
+34. [33-metatheory.md](33-metatheory.md) proves principal inference, type safety, termination, bounded expansion,
+    privacy, `Music` closure, and exact-anchor stage composition. It is the frozen target for independent review.
 
 Later numbered notes implement the remaining gate in order: two adapter trials, five complete musical programs, the
 formal specification, three proof documents, and at most two independent proof reviews. Only a passing design moves to

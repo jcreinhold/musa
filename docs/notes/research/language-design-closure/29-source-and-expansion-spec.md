@@ -825,8 +825,10 @@ Every reduction has a rule tag. Its logical cost is:
 ```
 
 `semantic_size` counts constructor and syntax nodes, Unicode scalar values, and the bit lengths of naturals and reduced
-rational numerators and denominators. It does not depend on an allocator, CPU instruction, hash table order, or cache
-warmth.
+rational numerators and denominators. A closure counts its core body nodes plus its fixed ordered capture vector and the
+semantic size of each captured value. Each compiler-owned opaque value type supplies a versioned structural size
+function in its operation descriptor. The count follows the value tree even when an implementation shares memory. It
+does not depend on an allocator, CPU instruction, pointer address, hash table order, or cache warmth.
 
 The compiler keeps separate counters for lexing, expansion, resolution, inference, source evaluation, temporal
 evaluation, and preparation. A pure step computes its candidate result and logical charge, then commits the result only

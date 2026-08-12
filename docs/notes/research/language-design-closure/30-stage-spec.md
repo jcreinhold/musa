@@ -255,15 +255,16 @@ staff transcription is lossless merely because its function returned successfull
 | Equality | no required decidable equality on `Music`; terms compare by the governed temporal semantics |
 | Record | recipe anchors map to term anchors; generated reuse records root and use site |
 
-`close_music` traverses the private recipe structurally:
+`close_music` first translates the private recipe at logical origin zero, then delays the whole term by
+`MusicalContext.placement`. It traverses the recipe structurally:
 
-- `Fact` fills the scope, shifts the relative span by `placement`, and starts the origin at `source_root` and the fact's
-  source anchor;
+- `Fact` fills the scope, keeps its relative span, and starts the origin at `source_root` and the fact's source anchor;
 - `Sequence` closes both children and builds temporal sequence;
 - `Overlay` closes both children and builds temporal overlay;
 - `MapPayload` inserts the admitted payload map and its derivation step;
 - `Share` closes its definition once as a marked temporal binding, then closes its body; and
-- `Use` emits a marked reference whose derivation records the bound root and generation site.
+- `Use` emits a marked reference whose derivation records the bound root and generation site; and
+- the final outer delay supplies the one ambient placement without changing internal sequence offsets.
 
 Lexical name checking happens during construction and closing checks it again as defense in depth. Structural traversal
 of a finite acyclic recipe terminates. `close_music` is deterministic on the same recipe value and context. Musa does
