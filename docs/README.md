@@ -37,8 +37,8 @@ Read top to bottom. A document is bound by everything above it and binds everyth
 - **The directory is the status.** `rules/` governs, `plan/` directs, `book/` teaches, `notes/` records. You do not have
   to open a document to learn which of those it is.
 - **Every index page leads with a `Status:` line** — the page this table links to, usually a `README.md`. If you are
-  holding a document and cannot tell whether it governs, its index page's status line is the answer, and a missing one is
-  a bug in the document.
+  holding a document and cannot tell whether it governs, its index page's status line is the answer, and a missing one
+  is a bug in the document.
 - **Nothing superseded is kept.** A design that has been replaced is deleted, and the argument that replaced it goes to
   [`notes/research/`](notes/research/README.md) as a decision record. There is no archive directory and no "historical,
   non-governing" tier — if a document is here and is not under `notes/`, it is live.

@@ -10,8 +10,8 @@ new contributor would lose an afternoon rediscovering it.
 
 | Page | What it answers |
 | --- | --- |
-| [generated-files.md](generated-files.md) | Why a currency test says a fixture is stale when nobody changed the generator, and the one conflict still unresolved |
-| [macos-gatekeeper.md](macos-gatekeeper.md) | Why the test suite appears to hang on macOS after any change to `musa-compiler`. Diagnosis and costs measured; how to work around it, and what is still unresolved |
+| [generated-files.md](generated-files.md) | Why a currency test says a fixture is stale when nobody changed the generator, and which formatter owns which files |
+| [slow-test-suite.md](slow-test-suite.md) | Why the test suite appears to hang on macOS at 0% CPU, and why `cargo clean` fixes it |
 
 What does *not* belong here: anything that decides semantics (that is `../../rules/constitution.md`,
 `../../rules/across-stages/`, and the per-stage specifications), anything about which crate implements what

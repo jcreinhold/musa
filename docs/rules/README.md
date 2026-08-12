@@ -1,7 +1,7 @@
 # The rules
 
-**Status: governing.** Everything in this directory decides what musa is. Where code and a page here disagree, either the
-code is wrong or the page needs a deliberate repair — never silent drift.
+**Status: governing.** Everything in this directory decides what musa is. Where code and a page here disagree, either
+the code is wrong or the page needs a deliberate repair — never silent drift.
 
 The order below is the precedence order: a page is bound by everything above it and binds everything below it.
 

@@ -109,6 +109,11 @@ breadth is deferred. A slow test without that note should have been made fast.
 **When a gate misbehaves rather than fails**, check [`docs/notes/toolchain/`](docs/notes/toolchain/README.md) before
 debugging the code — it collects the toolchain and environment traps that make a green change look broken.
 
+**If the suite seems to hang on macOS at 0% CPU**, check `ls -1 target/debug/deps | wc -l`. Object files accumulate
+without bound there, and past a few hundred thousand entries every process launch in that directory stalls for tens of
+seconds. `cargo clean` fixes it; see
+[`docs/notes/toolchain/slow-test-suite.md`](docs/notes/toolchain/slow-test-suite.md).
+
 ## Standards
 
 - **Deep modules.** Public facades are narrow (`parse`, `compile`, `render_notation`, `compile_graph`, `AudioEngine`,
