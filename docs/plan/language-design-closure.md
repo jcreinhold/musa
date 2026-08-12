@@ -1,11 +1,9 @@
 # Close the Musa language design
 
-**Status: final review pending.** Tasks 1–6 found a sound small-language direction. The breaking repair rejects partial
-compiler operations and non-prefix partial calls of ordinary functions. The first review of that repair accepted the new
-calculus but found that its migration theorem still claimed more old syntax than it translated. The exact translation
-and open-term proof are now repaired. Tasks 7–8 remain blocked until one final review passes. The governing rules remain
-unchanged. See
-[`../notes/research/language-design-closure/16-retained-translation-repair.md`](../notes/research/language-design-closure/16-retained-translation-repair.md).
+**Status: blocked after the final review.** Tasks 1–6 support a small call-by-value language, but the last permitted
+review found two false claims in the proof that retained programs keep their results. Tasks 7–8 were not done. The
+governing rules and implementation prompts remain unchanged. See
+[`../notes/research/language-design-closure/18-final-blocker.md`](../notes/research/language-design-closure/18-final-blocker.md).
 
 ## Purpose and limits
 

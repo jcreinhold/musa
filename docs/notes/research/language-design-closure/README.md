@@ -1,15 +1,15 @@
 # Language design closure
 
-**Status: repaired after the first review of the breaking target; final review pending. Governs nothing.** This
-directory carries out [`docs/plan/language-design-closure.md`](../../../plan/language-design-closure.md). Its purpose is
-to settle Musa's source language, not to invent another temporal kernel or a package cache.
+**Status: blocked after the final review. Governs nothing.** This directory carries out
+[`docs/plan/language-design-closure.md`](../../../plan/language-design-closure.md). Its purpose is to settle Musa's
+source language, not to invent another temporal kernel or a package cache.
 
-The five musical cases support the small call-by-value design. The second proof review found one High and one Medium
-flaw. The design was not promoted. The repository is still private and pre-release, so the repair now rejects partial
-calls of compiler-owned operations instead of adding foreign function values to the core. See
-[14-breaking-change-repair.md](14-breaking-change-repair.md). That target's first review found an overbroad migration
-theorem, not a flaw in the new calculus. [16-retained-translation-repair.md](16-retained-translation-repair.md) narrows
-and proves the exact translation. Tasks 7–8 remain blocked until the final independent review passes.
+The five musical cases support the small call-by-value design. The repository is private and pre-release, so the later
+repair rejects partial calls of compiler-owned operations instead of adding foreign function values to the core. The
+final review found two false claims in the proof for retained programs: partial calls do not handle intervening defaults
+correctly, and the proof does not relate a function's captured defaults to the surrounding declaration values. See
+[17-final-proof-review.md](17-final-proof-review.md) and [18-final-blocker.md](18-final-blocker.md). The design was not
+promoted.
 
 ## The question
 
@@ -63,3 +63,7 @@ ship.
     migration theorem.
 17. [16-retained-translation-repair.md](16-retained-translation-repair.md) defines the exact retained call shapes and
     repairs the open-term proof.
+18. [17-final-proof-review.md](17-final-proof-review.md) gives the final permitted review and finds two false proof
+    claims.
+19. [18-final-blocker.md](18-final-blocker.md) records why promotion stopped and the simplest design to test if the work
+    is reopened.
