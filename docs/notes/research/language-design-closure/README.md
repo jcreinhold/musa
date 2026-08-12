@@ -1,14 +1,15 @@
 # Language design closure
 
-**Status: reopened for a bounded breaking-change repair. Governs nothing.** This directory carries out
-[`docs/plan/language-design-closure.md`](../../../plan/language-design-closure.md). Its purpose is to settle Musa's
-source language, not to invent another temporal kernel or a package cache.
+**Status: repaired after the first review of the breaking target; final review pending. Governs nothing.** This
+directory carries out [`docs/plan/language-design-closure.md`](../../../plan/language-design-closure.md). Its purpose is
+to settle Musa's source language, not to invent another temporal kernel or a package cache.
 
 The five musical cases support the small call-by-value design. The second proof review found one High and one Medium
 flaw. The design was not promoted. The repository is still private and pre-release, so the repair now rejects partial
 calls of compiler-owned operations instead of adding foreign function values to the core. See
-[14-breaking-change-repair.md](14-breaking-change-repair.md). Tasks 7–8 remain blocked until the repaired proof passes
-an independent review.
+[14-breaking-change-repair.md](14-breaking-change-repair.md). That target's first review found an overbroad migration
+theorem, not a flaw in the new calculus. [16-retained-translation-repair.md](16-retained-translation-repair.md) narrows
+and proves the exact translation. Tasks 7–8 remain blocked until the final independent review passes.
 
 ## The question
 
@@ -58,3 +59,7 @@ ship.
 14. [13-final-blocker.md](13-final-blocker.md) records why promotion stopped and what survived.
 15. [14-breaking-change-repair.md](14-breaking-change-repair.md) reopens the work under the explicit pre-release
     compatibility decision.
+16. [15-proof-review-breaking-repair.md](15-proof-review-breaking-repair.md) attacks that decision and finds a false
+    migration theorem.
+17. [16-retained-translation-repair.md](16-retained-translation-repair.md) defines the exact retained call shapes and
+    repairs the open-term proof.

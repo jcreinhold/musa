@@ -71,10 +71,10 @@ type ::= base
 ```
 
 A `bridge-type` is a compiler-owned type used at one stage boundary, such as written `Pitch` or `NoteName`. During
-migration it also includes every musical base type accepted by the current compiler, so old checked programs still embed
-in the new core. Section 8 lists the ownership decision: most of those compatibility types then move behind ordinary
-theory packages. A theory package may not add a bridge type by asking the compiler for another special case. It must use
-ordinary user-defined data unless a stage boundary requires more.
+migration it also includes every musical base type used by the retained current fragment. Section 8 lists the ownership
+decision: most of those compatibility types then move behind ordinary theory packages. A theory package may not add a
+bridge type by asking the compiler for another special case. It must use ordinary user-defined data unless a stage
+boundary requires more.
 
 `Unit`, `Bool`, and `Nat` have their usual meanings. `Nat` contains the non-negative integers that fit the
 implementation's stated bound. Checked operations report overflow instead of wrapping.
@@ -165,6 +165,13 @@ term ::= variable
 Source syntax may offer named multi-argument functions. Elaboration turns them into nested one-argument core functions.
 Source programs do not contain anonymous functions; the compiler creates the needed core functions for named definitions
 and folds.
+
+An ordinary partial call may supply only a prefix of the parameter list. For example, if `f` has parameters `x`, `y`,
+and `z`, then `f(a)` and `f(a, b)` are valid partial calls. A call that supplies `y` while omitting `x` is an error.
+This rule makes parameter order the plain answer to which values a function captures. A direct complete call to a named
+function may use argument names and omit defaults; elaboration puts its arguments in parameter order and evaluates each
+one once. An indirect function value uses ordinary unary application, with no argument names or defaults. Compiler-owned
+operations are stricter: every call must supply every argument.
 
 Values are literals, products of values, closed functions, constructors whose fields are values, and the value forms of
 `Option`, `List`, and `Result`.
@@ -351,8 +358,8 @@ partly applied. Ordinary source functions remain values. A musician who needs an
 a function whose body makes the complete call:
 
 ```musa
-fn up_octave(music: Music) -> Music {
-    transpose(P8, music)
+fn up_octave(subject: Music) -> Music {
+    transpose(P8, subject)
 }
 ```
 

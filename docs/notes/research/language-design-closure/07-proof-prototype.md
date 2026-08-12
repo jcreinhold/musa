@@ -195,12 +195,12 @@ The remaining claims need less machinery:
   operations are deterministic.
 - **Unforgeability:** a client cannot resolve a private constructor, so no accepted client core term can contain that
   constructor except inside an imported compiled body.
-- **Retained-fragment preservation:** the exhaustive embedding table covers every current source form whose compiler
-  operations are complete calls. The proof compares checked types and final values. It does not preserve private old
-  evaluator states such as a temporary partial `BuiltinValue`.
-- **Rejected partial calls:** no general preservation theorem is claimed. The repository audit must replace each actual
-  use with a named source function that makes a complete call. A dynamic partial call would require an ordinary closure
-  feature or a changed interface; none of the five cases needs one.
+- **Retained-fragment preservation:** a syntax-directed translation defines the exact current source forms retained by
+  the new language. It accepts complete compiler calls and complete or prefix ordinary calls. The proof compares final
+  values under agreeing environments; it does not preserve private old evaluator states.
+- **Rejected partial calls:** compiler operations must be complete. Ordinary partial calls must supply a parameter
+  prefix. A named curried wrapper captures a run-time operation argument; another wrapper can put captured ordinary
+  parameters first. The migration gate must find every rejected call from resolved syntax rather than trust text search.
 - **`Music` closure:** source construction must first preserve the finite private recipe invariant. Instantiation and
   closing then prove the error-or-closed-term result from the smaller atom and transform contracts.
 - **Stage composition:** this follows only for passes whose derivation records satisfy the accepted cross-stage rules.

@@ -10,8 +10,8 @@ operation. The new language rejects `transpose(P8)` because one argument is miss
 Ordinary Musa functions remain values. A musician who wants an octave transform as a value writes a function:
 
 ```musa
-fn up_octave(music: Music) -> Music {
-    transpose(P8, music)
+fn up_octave(subject: Music) -> Music {
+    transpose(P8, subject)
 }
 
 let answer: Music -> Music = up_octave;
@@ -40,7 +40,8 @@ Three designs could repair partial compiler calls.
 The third design is smaller and easier to teach. It preserves the higher-order uses found in Musa's current examples:
 their supplied arguments are fixed values, so named wrappers make the same complete calls. It does not preserve every
 possible dynamic partial call. For example, a function that computes `transpose(interval)` from a run-time interval
-would need a source closure or a changed interface. No musical case in this study needs that behavior.
+needs a source closure. A named curried wrapper supplies that closure without adding anonymous functions or changing the
+compiler-operation boundary.
 
 Compiler operation signatures will use a distinct notation:
 
@@ -68,16 +69,17 @@ The following cases decide the rule.
 The old claim was too broad. It required every detail of the current private evaluator to survive in the new language.
 That is not a useful pre-release promise.
 
-The repair has one narrower theorem and one source audit.
+The repair has one narrower theorem and one source audit. The later review in `15-proof-review-breaking-repair.md` found
+that the first statement was still too broad; the corrected statement lives in `16-retained-translation-repair.md` and
+the metatheory.
 
-1. Current terms in which every compiler operation is fully applied keep their type and result.
+1. Current terms produced by the explicit retained-translation rules keep their type and result.
 2. Each partial compiler call in the current repository has a concrete rewrite to a named Musa function that makes one
    complete call.
 
 The second point is an implementation audit, not a universal theorem. The future compiler should report a clear error
-and show the wrapper shape when the supplied arguments are fixed. It need not accept the old shortcut. If two real
-musical cases later need dynamically created function values, Musa should consider ordinary anonymous functions rather
-than restore a special partial-operation value.
+and show the wrapper shape. A named curried wrapper can capture either a fixed or run-time operation argument. It need
+not accept the old shortcut.
 
 ## Repository migration audit
 
@@ -92,9 +94,10 @@ eight controlled operation names. The partial uses have only these shapes:
 | `invert(c4)` | `fn mirror(m: Music) -> Music { invert(c4, m) }` |
 
 These occur in the canon, standard-library, template, and higher-order music examples and their tests. Every supplied
-argument is fixed at the definition or call site. I found no partial controlled operation that captures a run-time
-value. The implementation prompt must repeat this audit before removing the old evaluator state, because the current
-source may change before then.
+argument is fixed at the definition or call site. The audit missed the governing schematic law
+`transpose(i): Music -> Music`; `16-retained-translation-repair.md` records the generic named wrapper that replaces it.
+The implementation prompt must repeat this audit from resolved syntax before removing the old evaluator state, because
+the current source may change before then.
 
 ## Formal counterexample check
 

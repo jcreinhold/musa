@@ -100,7 +100,7 @@ The final proof follows this order:
 11. source termination;
 12. sealing and unforgeability;
 13. metered evaluation refinement;
-14. retained-fragment comparison;
+14. retained-fragment translation and open-term comparison;
 15. `Music` closure under adapter contracts; and
 16. typed stage composition under the governing derivation contracts.
 
@@ -169,17 +169,18 @@ calculus.
 
 ### Theorem 8. Retained expressions keep their results
 
-Let `e` be accepted by the existing expression fragment before `Text`, `Result`, user data, and structures are added. If
-each compiler-owned operation in `e` receives every declared argument, embed `e` through the exhaustive table in
-`04a-formal-rules.md` §12. Then:
+Let `Gamma |- e_old translates_to e_new : A` have a derivation under the rules in `04a-formal-rules.md` §12. If old and
+new environments bind each name in `Gamma` to related values, then successful old evaluation ends at `v_old`, new
+evaluation ends at `v_new`, and the two values are related at `A`. Therefore, for a closed translated expression:
 
-1. `e` has the same type;
+1. `e_new` has the same type as `e_old`;
 2. if old evaluation succeeds, new evaluation reaches a related final value.
 
-This is a deliberate breaking change. The refined language rejects the old partial-call spelling and may offer the shape
-of a named wrapper as a diagnostic fix when the supplied arguments are fixed. Dynamic construction of an operation
-function is outside the retained fragment. The theorem does not promise that future surface syntax reserves no new
-keywords. It also does not cover the later task of moving built-in musical concepts into packages.
+The translation accepts complete compiler calls. It accepts an ordinary partial call only when the supplied arguments
+form a parameter prefix. It rejects compiler-operation values and non-prefix ordinary partial calls. Named curried
+wrappers retain both dynamic operation parameters and deliberately reordered ordinary parameters. The theorem does not
+promise that future surface syntax reserves no new keywords. It also does not cover the later task of moving built-in
+musical concepts into packages.
 
 The result does not compare individual old and new reduction steps or resource charges. Those details belong to two
 different language versions. In particular, the new proof does not recreate the old evaluator's private partial

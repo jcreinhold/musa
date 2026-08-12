@@ -44,7 +44,8 @@ checked exact rational arithmetic
 It keeps the current products, functions, `Option`, `List`, finite folds, structures, signatures, templates, abstract
 `Music`, and kernel quotation. It keeps one left-to-right call-by-value evaluation order and has no general recursion.
 Ordinary source functions are values. Compiler-owned operations are complete calls, not functions, and cannot be partly
-applied. A named source function can wrap a fixed operation call when a case needs a function value.
+applied. A named curried source function can capture either a fixed or run-time argument and make the complete operation
+call when a case needs a function value.
 
 ### How it serves the cases
 

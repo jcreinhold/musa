@@ -32,7 +32,8 @@ function, phrases, or ensemble tuning.
 Every code block uses the surface elaboration table in `04a-formal-rules.md` §4. In particular, an ordinary source call
 `f(a,b)` becomes `(f(a))(b)`, while an `op` call keeps its complete argument list. `[a,b]` becomes `a :: b :: []`, and
 `fold_list(items,initial,step)` becomes the core `list_fold(initial,step,items)`. These are the only conveniences used
-below.
+below. An ordinary partial call may supply only the first parameters in order; none of these programs uses a non-prefix
+partial call.
 
 The stage examples also name these ordinary records. They are not source-language types:
 

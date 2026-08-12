@@ -431,60 +431,114 @@ the corresponding unmetered transition. ∎
 Different starting budgets may yield success and exhaustion for the same term. These theorems do not compare those
 states. They also make no cache claim.
 
-## 10. Retained programs and rejected partial calls
+## 10. Retained programs and rejected call shapes
 
 This section compares source behavior, not private evaluator states. The current evaluator may create a partial
 `BuiltinValue` while processing even a complete source call. The refined language deliberately has no such value.
 
-Let `Old_complete` contain the current well-typed source expressions in which every compiler-owned operation receives
-all its declared arguments. The table in `04a-formal-rules.md` §12 maps these expressions to the refined core. The table
-covers every current source form, all seven structural operations, all complete controlled music calls, and typed kernel
-quotation. The migration bridge set contains every current base type.
+Use the syntax-directed judgment from `04a-formal-rules.md` §12:
+
+```text
+Gamma |- e_old translates_to e_new : A
+```
+
+Its derivation is the definition of `Old_retained`. It covers every retained source form, all seven structural
+operations, complete controlled music calls, and typed kernel quotation. For ordinary functions it accepts complete
+calls and calls that supply a parameter prefix. It has no rule for a partial compiler operation or for an ordinary call
+that supplies a later parameter while skipping an earlier one. The migration bridge set contains every base type used by
+the derivation.
 
 Assume one comparison contract: a complete old compiler operation and its refined operation return related results on
-related arguments. This is checked once for the finite operation table. It says nothing about either evaluator's private
-steps or charges.
+related arguments. For a `Music` result, “related” preserves every musical request, explicit source anchor, and
+derivation record; it ignores only a consistent renaming of private recipe-node identifiers. This contract is checked
+once for the finite operation table. It says nothing about either evaluator's private steps or charges.
 
 Define `v_old ~_A v_new`, read “the values agree at type `A`,” by induction on `A`. Base and bridge values are equal;
-products, options, lists, results, nominal values, and finite recipes agree component by component; and two functions
-agree when they send agreeing arguments to agreeing results. The function clause compares behavior, not closure layout.
+products, options, lists, results, and nominal values agree component by component. Finite recipes agree when a graph
+isomorphism preserves every recipe constructor, argument, musical request, explicit source anchor, and derivation
+record. It may consistently rename private recipe-node identifiers. Functions `f_old` and `f_new` agree at `A -> B`
+when, for every `a_old ~_A a_new`, successful old application to `a_old` ends at `b_old`, refined application to `a_new`
+ends at `b_new`, and `b_old ~_B b_new`. The function clause compares behavior, not closure layout.
 
-### Theorem 10.1. Retained programs keep their type and result
+Write `rho_old ~_Gamma rho_new` when both environments bind every name in `Gamma` and their bound values agree at the
+declared type. Names here are resolved binding identities. Thus the environments also contain the related declaration
+bindings used by a translated default, even when the caller has a local variable with the same spelling.
 
-Let `e` be a closed expression in `Old_complete`. If current checking gives `e` type `A`, its refined translation also
-has type `A`. If current evaluation succeeds with `v_old`, refined evaluation finishes with a unique value `v_new` such
-that `v_old ~_A v_new`.
+### Lemma 10.1. Translation preserves typing
 
-**Proof.** We prove the typing and result claims together by induction on the current source typing derivation.
+If `Gamma |- e_old translates_to e_new : A`, then the refined checker gives `e_new` type `A` under `Gamma`.
 
-Literals and structural constructors translate directly, so the induction hypotheses give agreeing fields. A current
-multi-argument source function becomes nested unary functions. Repeated function checking gives the same curried type,
-and the induction hypothesis for its body proves the function clause of `~`. Current named and default arguments are put
-in declared order before translation.
+**Proof.** Induct on the translation derivation. Direct forms rebuild the corresponding refined typing rule. A
+multi-argument function becomes nested unary functions in parameter order. A complete ordinary call uses fresh ordered
+`let` bindings for supplied arguments and defaults, followed by nested unary applications. Each default was checked
+under the earlier parameters, so repeated substitution and the `let` rule give its declared type. A prefix call uses the
+first `k` unary applications and therefore has the curried type of the remaining parameters. A complete compiler call
+uses the one operation-table rule. Structural operations, complete music calls, and quotation use their displayed rules.
+There is no case for either rejected partial-call shape. These are all translation rules. ∎
+
+### Lemma 10.2. Open translated terms return related values
+
+Suppose:
+
+```text
+Gamma |- e_old translates_to e_new : A
+rho_old ~_Gamma rho_new
+rho_old |- e_old evaluates_to v_old
+```
+
+Then refined evaluation of `e_new` closed by `rho_new` finishes at some `v_new` with `v_old ~_A v_new`.
+
+**Proof.** Induct on the translation derivation.
+
+Literals and structural constructors follow componentwise from the induction hypotheses. In the function case, take any
+related pair of arguments, extend `rho_old` and `rho_new` with them, and apply the body induction hypothesis. Repeat
+this step for a multi-argument function. This proves the function clause of `~` without applying a closed theorem to an
+open body.
+
+For a complete ordinary call, the ordered `let` bindings evaluate each supplied argument or default once. The induction
+hypotheses give related supplied values. Each default is covered by the same lemma under the environments already
+extended with related earlier parameters. Repeated use of the function relation gives related results. A prefix call is
+the same argument for its supplied prefix; the function relation itself relates the two remaining closures.
 
 Matches use the same first matching pattern. Folds use the same finite base and step equations. For `map` and `filter`,
-induct on the finite input list; related callbacks return related members or the same Boolean choice, so the refined
-private traversal builds the same result in source order. `range` and `repeat` build the same finite lists.
+induct on the finite input list; related callbacks return related members or the same Boolean choice. `range` and
+`repeat` build the same finite lists.
 
-A complete compiler call has the same argument types on both sides. The induction hypotheses give related argument
-values, and the finite operation-table comparison contract gives related results. This applies to complete music calls.
-`map_note_pitches` stores related callbacks and recipes without calling the callback. A checked quotation stores the
-same checked temporal term, exact loci, and related hole recipes.
+A complete compiler call receives related argument values, so the finite operation-table comparison contract gives
+related results. This includes complete music calls. `map_note_pitches` stores related callbacks and recipes without
+calling the callback. A checked quotation stores the same checked temporal term, exact loci, and related hole recipes.
+These cases exhaust the translation derivation. Refined termination and determinism give one final related value. ∎
 
-These cases cover the translation table. The refined term terminates by Theorem 6.4, and determinism gives its unique
-result. The proof never needs to translate a current private `BuiltinValue`. ∎
+### Theorem 10.3. Closed retained programs keep their type and result
+
+Let `empty |- e_old translates_to e_new : A`. Then `e_new` has type `A`. If current evaluation succeeds with `v_old`,
+refined evaluation finishes with a unique `v_new` such that `v_old ~_A v_new`.
+
+**Proof.** Lemma 10.1 gives the type. Empty environments agree at the empty context, so Lemma 10.2 gives a related
+result. Theorem 5.4 makes that result unique. The proof never translates a current private `BuiltinValue`. ∎
 
 ### 10.2 Rejected programs
 
-The refined checker rejects a compiler operation with missing arguments. This is an intentional source break, not a
-metatheory gap. The repository contains partial calls only with fixed supplied values: fixed intervals for `transpose`,
-a fixed ratio for `stretch`, a fixed pitch for `invert`, and bare `retrograde`. Named one-argument source functions can
-replace those uses and make complete operation calls.
+The refined checker rejects a compiler operation with missing arguments. Fixed partial uses of `transpose`, `stretch`,
+`invert`, and `retrograde` become named one-argument functions that make complete operation calls.
 
-There is no theorem for an arbitrary dynamic partial call. For example, `transpose(interval)` would create a function
-that remembers a run-time interval. Expressing that value without special compiler state would require an ordinary
-source closure. None of the five musical cases requires one, so anonymous functions remain deferred. A later proposal
-must justify them as a general language feature rather than smuggle them back through compiler operations.
+The governing rule `transpose(i): Music -> Music` also has a direct replacement for a run-time `i`:
+
+```musa
+fn transposer(interval: Interval, subject: Music) -> Music {
+    transpose(interval, subject)
+}
+
+let answer: Music -> Music = transposer(runtime_interval);
+```
+
+This accepted prefix call creates an ordinary closure. It needs neither an anonymous function nor a compiler-operation
+value.
+
+The refined checker also rejects an ordinary partial call that skips an earlier parameter, such as
+`choose(second: true)`. A named wrapper can put captured values first and then call `choose` completely. These are
+intentional source breaks, not metatheory gaps. Before implementation, an AST-based migration pass must list every such
+call in the then-current repository.
 
 A new language version also owns a new fixed resource schedule. No claim compares its charge trace with the old
 partial-operation evaluator. A later parser may reserve words, and a later library migration may replace built-in

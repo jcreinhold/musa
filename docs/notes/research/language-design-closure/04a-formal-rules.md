@@ -144,7 +144,9 @@ Surface forms use this exact elaboration table:
 | Surface form | Core form |
 | --- | --- |
 | `let f(x:A, y:B): C = body` | `f = lambda(x:A) => lambda(y:B) => body`, checked at `A -> B -> C` |
-| an ordinary user call `f(a, b)` | `(f(a))(b)` |
+| a complete direct call `f(a, b)` | fresh ordered argument `let`s followed by `(f(a_value))(b_value)` |
+| a prefix direct call `f(a)` when `f` has later parameters | `f(a)` with the curried type of the remaining parameters |
+| an indirect function call | unary application `function(argument)` |
 | a bare nullary constructor `C` | `C()` |
 | a saturated constructor call `C(a, b)` | `C(a, b)` |
 | `[a, b]` | `a :: b :: []` |
@@ -161,6 +163,12 @@ function, and compiler operation apart, so these rows do not rely on capitalizat
 not a term and is not entered in `Gamma`. A compiler operation must receive exactly its declared arguments in one call.
 It cannot be returned, passed, or partly applied. A musician can expose the same behavior as a value by writing an
 ordinary source function whose body makes the complete call. No derived form adds a reduction rule.
+
+A complete direct call may name arguments and omit declared defaults. Resolution puts the arguments in parameter order,
+inserts each default in its declaration scope, and binds each resulting expression once before applying the curried
+function. A direct partial call is valid only when it supplies exactly the first `k` parameters and no later one. It
+inserts no default after the first missing parameter. Supplying a later parameter while skipping an earlier one is an
+error. Section 12 gives the expansion with fresh names.
 
 ## 5. Patterns
 
@@ -699,20 +707,86 @@ but source terms cannot invoke that function. The stage boundary invokes it.
 
 The final metatheory proves that operational evaluation reaches the value given by this denotation.
 
-## 12. Retained fragment and breaking change
+## 12. Retained fragment and breaking changes
 
-Let `Old_complete` be the current checked source expressions restricted to programs in which each compiler-owned
-operation is called with all its declared arguments. This restriction excludes only partial operation values. It does
-not exclude ordinary source functions or higher-order functions written by musicians.
+The retained fragment is defined by the syntax-directed judgment:
 
-The translation table for `Old_complete` is:
+```text
+Gamma |- e_old translates_to e_new : A
+```
+
+The judgment says that current checking gives `e_old` type `A` and the displayed rule produces `e_new`. A term belongs
+to `Old_retained` exactly when this judgment has a derivation. Thus the domain contains no accepted old term for which
+the translation is undefined.
+
+`Gamma` uses resolved binding identities, not just written names. For a direct named call it includes the called
+function and every free binding used by one of that function's defaults. A caller's local spelling therefore cannot
+capture a name from the declaration scope.
+
+For a direct call to a named ordinary function with parameters `x_1:A_1, ..., x_n:A_n`, resolve argument names to
+parameter slots before translation. A call has one of two retained shapes.
+
+1. A complete call supplies every required slot. Put supplied arguments in parameter order and fill omitted defaults. A
+   default for `x_i` may refer only to `x_1, ..., x_(i-1)`. Fresh `let` bindings evaluate each supplied argument or
+   default once, in that order, before nested unary application.
+2. A prefix call supplies exactly slots 1 through `k`, where `k < n`, and no later slot. Apply the translated nested
+   unary function to those `k` arguments. Do not insert a default after the first missing slot.
+
+A call that supplies a later slot while skipping an earlier one has no translation rule. A compiler operation has only
+the complete-call rule. These are deliberate source errors in the refined language.
+
+Here is the exact expansion. `g_new` is the nested unary function made from the named declaration. For a complete call,
+let `b_i` be the supplied argument for slot `i`, or that parameter's checked default when the slot is omitted. Translate
+a supplied `b_i` in the caller's environment. Translate a default in its declaration environment plus the earlier
+parameters, then replace those parameters with `y_1, ..., y_(i-1)`. The expansion is:
+
+```text
+let y_1 = b_1_new;
+...
+let y_n = b_n_new;
+g_new(y_1)...(y_n)
+```
+
+All `y_i` are fresh. For a prefix call with supplied arguments `a_1, ..., a_k`, the expansion is just:
+
+```text
+g_new(a_1_new)...(a_k_new)
+```
+
+Both expansions are defined only when the named function declaration, every supplied argument, and every used default
+have translation derivations. The declaration translation keeps the lexical environment in which each default was
+checked. Thus `expand_complete` cannot hide an untranslated subterm or evaluate a default in the caller's scope.
+
+The translation judgment has the following two call rules, where `expand_complete` and `expand_prefix` are the
+deterministic expansions just defined:
+
+```text
+current_check(g(args)) = A    every required slot is supplied or has a default
+expand_complete(g(args)) = e_new
+------------------------------------------------------------------------ TranslateCompleteCall
+Gamma |- g(args) translates_to e_new : A
+
+current_check(g(args)) = A    supplied slots are exactly 1, ..., k    k < n
+expand_prefix(g(args)) = e_new
+-------------------------------------------------------------------------- TranslatePrefixCall
+Gamma |- g(args) translates_to e_new : A
+```
+
+An indirect function value uses the unary core application rule and has no argument names or defaults. Translation for
+the other term forms is homomorphic as listed below: each immediate old term must have a translation premise, and the
+new form is rebuilt from those translated terms. A compiler call uses a third rule whose checking premise requires all
+declared slots, with no inserted default, and whose result is one complete `primitive`, `music_operation`, or
+`map_note_pitches` node.
+
+The remaining translation rules are:
 
 | Current checked source form | New core form |
 | --- | --- |
 | literal, name, product, `Option`, list | the same corresponding form |
 | simultaneous multi-argument closure | nested unary closures in parameter order |
-| named/default call of an ordinary source function | arguments reordered and defaults inserted, then nested unary application |
-| named/default complete compiler call | arguments reordered and defaults inserted, then one `primitive` or `music_operation` node |
+| complete named/default call of an ordinary source function | fresh ordered `let` bindings for supplied arguments and defaults, then nested unary application |
+| prefix call of an ordinary source function | nested unary application of exactly the supplied prefix |
+| named complete compiler call | arguments reordered, then one `primitive` or `music_operation` node |
 | `PitchAction` | the total compatibility `pitch_move` entry selected by its checked `Pitch` or `NoteName` type |
 | `Step` | a checked deferred-pitch field inside the same `Music` atom; current checking already forbids it elsewhere |
 | first-order delta primitive | the same entry in `P` |
@@ -724,29 +798,40 @@ The translation table for `Old_complete` is:
 | `map_note_pitches` | the explicit higher-order recipe constructor in Sections 6.8 and 9 |
 | checked kernel quotation | `kernel_quote` with the same checked term, holes, loci, and embedded hole expressions |
 
-The table covers every current checked form after the stated restriction, every one of its seven structural eliminators,
-every complete controlled music call, and checked quotation. The migration bridge set covers every current base type.
-The compatibility meaning of written pitch and interval uses mathematical integer coordinates, so pitch movement is
-total. Every successful current machine-bounded movement embeds with the same result; a movement that currently
-overflows is outside the successful-program premise. New `Text`, `Result`, nominal data, and sealing forms have no old
-preimage.
+The judgment covers every retained current form, every one of its seven structural eliminators, every complete
+controlled music call, and checked quotation. It deliberately omits partial compiler calls and non-prefix partial calls
+of ordinary functions. The migration bridge set covers every base type in the retained fragment. The compatibility
+meaning of written pitch and interval uses mathematical integer coordinates, so pitch movement is total. Every
+successful current machine-bounded movement embeds with the same result; a movement that currently overflows is outside
+the successful-program premise. New `Text`, `Result`, nominal data, and sealing forms have no old preimage.
 
 The comparison is between accepted source programs and their final values. It does not relate each private step of the
 current evaluator. Even a complete current call may pass through a private partial `BuiltinValue`; preserving that state
 would defeat the reason for this repair. The theorem therefore proves equal checked types and related successful
 results, not a lockstep or finite-step simulation of current evaluator states.
 
-The repository audit found four rejected shapes: `transpose(fixed_interval)`, `stretch(fixed_ratio)`, bare `retrograde`,
-and `invert(fixed_pitch)`. Each use can be replaced by a named source function with the same declared arrow type. For
-example:
+The repository audit found four fixed rejected operation shapes: `transpose(fixed_interval)`, `stretch(fixed_ratio)`,
+bare `retrograde`, and `invert(fixed_pitch)`. Each use can be replaced by a named source function with the same declared
+arrow type. For example:
 
 ```musa
-fn up_octave(music: Music) -> Music {
-    transpose(P8, music)
+fn up_octave(subject: Music) -> Music {
+    transpose(P8, subject)
 }
 ```
 
-This is not a universal migration theorem. A dynamic term such as `transpose(interval)` would create a closure over a
-run-time value. The selected source language has no anonymous functions, and no case study needs this behavior. Such a
-program must change its interface, for example by passing both `interval` and `music`, or wait for a separately
-justified ordinary closure feature.
+The governing semantics also writes `transpose(i): Music -> Music` for an arbitrary `i`. An ordinary named function
+keeps that behavior without making the operation itself a value:
+
+```musa
+fn transposer(interval: Interval, subject: Music) -> Music {
+    transpose(interval, subject)
+}
+
+let answer: Music -> Music = transposer(runtime_interval);
+```
+
+The prefix call captures `runtime_interval` in an ordinary source closure. The refined language also rejects a current
+ordinary call such as `choose(second: true)` when it skips the first parameter. A wrapper can put the captured
+parameters first. The implementation migration gate must find both rejected call classes from the resolved syntax tree;
+this research audit is evidence, not a universal migration theorem.

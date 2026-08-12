@@ -1,10 +1,11 @@
 # Close the Musa language design
 
-**Status: reopened for one bounded breaking-change repair.** Tasks 1–6 found a sound small-language direction, but the
-second review found a false compatibility claim and two missing value premises. The repository is not yet public, so the
-repair may reject partial calls of compiler-owned operations instead of preserving an accidental calling convention.
-Tasks 7–8 remain blocked until the repaired proof passes. The governing rules remain unchanged. See
-[`../notes/research/language-design-closure/14-breaking-change-repair.md`](../notes/research/language-design-closure/14-breaking-change-repair.md).
+**Status: final review pending.** Tasks 1–6 found a sound small-language direction. The breaking repair rejects partial
+compiler operations and non-prefix partial calls of ordinary functions. The first review of that repair accepted the new
+calculus but found that its migration theorem still claimed more old syntax than it translated. The exact translation
+and open-term proof are now repaired. Tasks 7–8 remain blocked until one final review passes. The governing rules remain
+unchanged. See
+[`../notes/research/language-design-closure/16-retained-translation-repair.md`](../notes/research/language-design-closure/16-retained-translation-repair.md).
 
 ## Purpose and limits
 
@@ -110,8 +111,9 @@ belongs to the package rather than the core. Do not label a block as executable 
 Prepare a rapid proof draft, a proof outline, and the final metatheory. Prove decidable name resolution and checking,
 substitution, preservation, progress, deterministic evaluation, termination, constructor opacity, preservation of the
 retained current fragment, finite and typed `Music` closure, and composition of typed stage passes. Audit each rejected
-partial compiler call in the repository and give it a concrete named-wrapper rewrite; do not claim that every possible
-dynamic partial call has the same source type after migration.
+partial compiler call and non-prefix ordinary partial call in the repository and give it a concrete named-wrapper
+rewrite. Define the retained fragment by its translation rules rather than claim that every current checked term has a
+translation.
 
 Try both a direct termination proof and a translation into the existing proved core. Keep the proof with fewer special
 cases.
@@ -120,8 +122,9 @@ Freeze the proof and ask an independent proof-review subagent to attack it. Allo
 Promotion requires a verdict of correct under the stated contracts with no fatal, high, or medium issue. If the second
 review still finds such an issue, record the blocker and stop. Do not prove package-cache correctness.
 
-The first attempt spent those two reviews and stopped. The later breaking-change repair is a new frozen proof target; it
-does not alter either old review. It must pass a fresh independent review before Task 7 can start.
+The first attempt spent those two reviews and stopped. The later breaking-change repair is a new proof target; it does
+not alter either old review. Its first review found a false migration theorem but accepted the repaired source rules.
+One exact repair and one final independent review form the bounded gate for this new target.
 
 ## 7. Promote only a passing design
 
