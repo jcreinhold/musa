@@ -88,7 +88,7 @@ SHALLOW=$(rg -n 'pub\s+fn\s+\w+.*\{' "$SEARCH_PATH" --type rust -A 3 2>/dev/null
 
 if [ -n "$SHALLOW" ]; then
   echo "  Possible delegation-only methods (verify manually):"
-  echo "$SHALLOW" | sed 's/^/    /'
+  echo "    ${SHALLOW//$'\n'/$'\n'    }"
   ISSUES_FOUND=1
 else
   echo "  None detected."
@@ -141,7 +141,7 @@ TEMPORAL=$(rg -n 'assert!.*must\|assert!.*first\|assert!.*before\|assert!.*alrea
 
 if [ -n "$TEMPORAL" ]; then
   echo "  Runtime ordering assertions found (consider typestate):"
-  echo "$TEMPORAL" | sed 's/^/    /'
+  echo "    ${TEMPORAL//$'\n'/$'\n'    }"
   ISSUES_FOUND=1
 else
   echo "  No runtime ordering assertions detected."
