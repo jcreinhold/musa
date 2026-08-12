@@ -1,7 +1,10 @@
 # Musa Implementation Prompts
 
+**Status: the work plan.** A prompt that contradicts a governing document is repaired and committed before it is
+implemented, per execution rule 5.
+
 This directory is the executable work plan for building musa according to [`../roadmap.md`](../roadmap.md), with the
-temporal kernel governed by [`../kernel/`](../kernel/README.md) and the desktop interface by
+temporal kernel governed by [`../kernel/`](../kernel/00-purpose.md) and the desktop interface by
 [`../interface/`](../interface/README.md). Each numbered prompt delivers one feature and builds on the prompts it
 depends on. Work them in dependency order; when in doubt, work them in numeric order.
 

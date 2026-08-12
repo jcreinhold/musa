@@ -74,11 +74,12 @@ source for claims about `ff9dbcc`.
 ### 3.1 It contradicts the documents it claims to sit under
 
 **VERIFIED.** The core boundary's list of what the decision forbids (now `docs/governance/01-constitution.md` §7) says
-that reopening any forbid requires a joint amendment of that document and course-correction §36. Its forbid 5 is “No
+that reopening any forbid requires a joint amendment of that document and the corrective memo's §36. Its forbid 5 is “No
 dependent indices in the kernel.” Its forbid 1 fixes the kernel forms and says a new convenience must elaborate from
-them. [Course correction §36](../course-correction.md#36-amendment-prompt-126-what-the-core-is-a-calculus-of)
-independently says that the amendment “does not admit dependent types” and that no kernel form, operation, or law
-changes.
+them. §36 independently said that the amendment “does not admit dependent types” and that no kernel form, operation, or
+law changes; both statements now live in `docs/governance/01-constitution.md` §7 and §4, and
+[`62-course-correction-decision-record.md`](62-course-correction-decision-record.md) records where the rest of the memo
+went.
 
 Step 1 does two unambiguously prohibited things and proposes a third unless `pad` is only derived syntax:
 

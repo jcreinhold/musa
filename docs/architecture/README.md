@@ -1,5 +1,8 @@
 # How the Rust workspace implements the specification
 
+**Status: descriptive.** These pages report on code; they never decide semantics. Where one disagrees with `../spec/` or
+`../governance/`, the code is wrong or this page is stale — see [`../README.md`](../README.md).
+
 The formal specification says what Musa’s stages mean. These pages say which crate implements each stage, which details
 remain private, how data is stored, and where validation occurs.
 

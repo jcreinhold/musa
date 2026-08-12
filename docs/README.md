@@ -16,7 +16,7 @@ disagree.
 | [`style-guide.md`](style-guide.md) | `.musa` naming and spelling — what the formatter cannot say. Its machine-checkable subset is the lint pass | **Governing.** `crates/musa-compiler/src/lint.rs` cites its sections by number in diagnostics |
 | [`architecture/`](architecture/README.md) | Which crate implements which stage, and what is implemented, partial, or absent | **Descriptive.** Reports on code; never decides semantics |
 | [`prompts/`](prompts/README.md) | The numbered work plan, executed in dependency order, one prompt per commit | **The work plan.** A prompt that contradicts a governing document is repaired before it is implemented |
-| [`book/`](book/src/SUMMARY.md) | How to *use* musa: tutorials, how-to guides, explanation, reference. Built with `make docs` | **User-facing.** Teaches; does not decide |
+| [`book/`](book/src/introduction.md) | How to *use* musa: tutorials, how-to guides, explanation, reference. Built with `make docs` | **User-facing.** Teaches; does not decide |
 | [`scratch/`](scratch/README.md) | The research notebook: candidates, metatheory, proof reviews, and the arguments that failed | **Governs nothing.** Kept so a refuted claim stays visible next to its refutation |
 
 ## Which document wins
@@ -40,8 +40,9 @@ Read top to bottom. A document is bound by everything above it and binds everyth
 
 ## How to tell what is current
 
-- **Every directory README leads with a `Status:` line.** If you are holding a document and cannot tell whether it
-  governs, that line is the answer, and its absence is a bug in the document.
+- **Every index page above leads with a `Status:` line.** That is the page this table links to — usually the directory's
+  `README.md`, `kernel/00-purpose.md` for the kernel. If you are holding a document and cannot tell whether it governs,
+  its index page's status line is the answer, and a missing one is a bug in the document.
 - **Nothing superseded is kept.** A design that has been replaced is deleted, and the argument that replaced it goes to
   `scratch/` as a decision record. There is no archive directory and no "historical, non-governing" tier — if a document
   is here and is not in `scratch/`, it is live.

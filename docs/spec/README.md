@@ -1,5 +1,7 @@
 # Formal rules across Musa’s compiler stages
 
+**Status: governing.** Bound by `../governance/`; binds every per-stage specification at the boundaries between stages.
+
 Musa turns source text into several different results: an internal score, engraving, analysis, performance gestures, an
 audio plan, and sound. This directory defines the rules at the boundaries between those results.
 

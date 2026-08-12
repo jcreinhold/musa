@@ -106,18 +106,19 @@ exact rational arithmetic everywhere except the audio edge, and the audio callba
 The user-facing documentation is an mdbook in [`docs/book/`](docs/book/) — tutorials, how-to guides, explanation, and
 reference. `make docs` builds it; `make docs-serve` reads it live.
 
-Three documents govern this repository, and the code is expected to agree with them:
+The design documents govern this repository, and the code is expected to agree with them.
+[`docs/README.md`](docs/README.md) maps every one of them, says what each is for, and gives the precedence ladder that
+settles which one wins when two disagree. The short version:
 
+- [`docs/governance/`](docs/governance/) — the constitutional commitments: what musa is, and what it may never become.
+- [`docs/kernel/`](docs/kernel/) — the finite temporal kernel that is the semantic core, and that the surface language
+  elaborates into.
 - [`docs/roadmap.md`](docs/roadmap.md) — the architecture: layers, crate ownership, language design, DSP rules, and what
   is deliberately rejected or deferred.
-- [`docs/course-correction.md`](docs/course-correction.md) — the semantic correction that makes a small temporal kernel
-  the ontology and the surface language an elaboration into it. Its specification is [`docs/kernel/`](docs/kernel/).
-  Where it and the roadmap disagree, it wins.
+- [`docs/interface/`](docs/interface/) — the desktop app's design: its states, its performance budgets, and the
+  reasoning behind the score editor.
 - [`docs/prompts/`](docs/prompts/) — the work plan: numbered implementation prompts executed in dependency order, each
   one commit with its own acceptance check.
-
-[`docs/interface/`](docs/interface/) covers the desktop app's design: its states, its performance budgets, and the
-reasoning behind the score editor.
 
 ## Status
 

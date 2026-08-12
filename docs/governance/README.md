@@ -1,5 +1,8 @@
 # Musa’s core design decisions
 
+**Status: governing, and the top of the ladder.** Nothing in `docs/` overrides these. They change only through the
+amendment procedure below.
+
 These pages state the few decisions that every part of Musa must follow. They do not prescribe Rust types or source
 syntax. They answer seven questions:
 

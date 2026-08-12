@@ -14,8 +14,8 @@ specification of *appearance*. Read literally as a visual spec it produces a fou
 indistinguishable from every mediocre notation editor already on the market. This document is the design that sits
 between the roadmap's architecture and the code.
 
-`docs/interface/` is the third governing document of this repository, after the roadmap and the course correction. Where
-it and §14 disagree on *architecture*, §14 wins. Where §14 is silent — everything below — this document is the
+`docs/interface/` is a governing document of this repository; `docs/README.md` fixes its place in the precedence ladder.
+Where it and §14 disagree on *architecture*, §14 wins. Where §14 is silent — everything below — this document is the
 authority, and code that drifts from it is either wrong or requires a deliberate repair here first.
 
 ## 2. Who this is for and what the app is for

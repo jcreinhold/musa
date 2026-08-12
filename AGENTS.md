@@ -8,28 +8,27 @@ the semantic core is Rust, the UI is a replaceable projection.
 
 1. **`docs/governance/`** — the constitution and its derived obligations. Source authority, plural theory-owned
    presentations, exact ambient time, the finite-process/running-signal distinction, typed derivation coherence, and
-   versioned exact identity. Removing one changes what Musa is; amend deliberately.
-2. **`docs/course-correction.md`** — the semantic course correction: a small temporal kernel (ambient exact rational
-   time, typed occurrences, `timeline`/`sequence`/`overlay`) is the ontology; the surface language elaborates into it.
-   Where it and the roadmap disagree, the course correction wins. Its authoritative elaboration is **`docs/kernel/`**,
-   the governing kernel specification. §36 is its boundary amendment, refined by the cross-stage specification.
-3. **`docs/governance/01-constitution.md` §7 and §4** — what the core is a calculus *of*: occurrences of any canonical
-   payload over exact rational time, `ScoreFact` being one payload and the performance gesture another. Signals stay
-   outside the core because a signal is coinductive and a process graph has no musical extent. A complete semantic
-   preparation result crosses under exact `R1`; the private process IR has its own formal tick semantics. What these
-   forbid is hard to re-open — only through `docs/governance/README.md`'s amendment procedure.
-4. **`docs/spec/`** and **`docs/architecture/`** — the cross-stage formal specification and its Rust realization map.
+   versioned exact identity. Removing one changes what Musa is; amend deliberately. §7 and §4 say what the core is a
+   calculus *of*: occurrences of any canonical payload over exact rational time, `ScoreFact` being one payload and the
+   performance gesture another. Signals stay outside the core because a signal is coinductive and a process graph has no
+   musical extent. A complete semantic preparation result crosses under exact `R1`; the private process IR has its own
+   formal tick semantics. What these forbid is hard to re-open — only through `docs/governance/README.md`'s amendment
+   procedure.
+2. **`docs/kernel/`** — the governing kernel specification: a small temporal kernel (ambient exact rational time, typed
+   occurrences, `timeline`/`sequence`/`overlay`) is the ontology, and the surface language elaborates into it. Where it
+   and the roadmap disagree on semantic architecture, the kernel wins.
+3. **`docs/spec/`** and **`docs/architecture/`** — the cross-stage formal specification and its Rust realization map.
    The spec owns presentation/pass/process/identity semantics; architecture says what current code implements or lacks.
    They refine **`docs/roadmap.md`**, which still owns the broad crate/product plan.
-5. **`docs/interface/`** — the desktop interface specification: visual language, engraving quality bar, interaction and
+4. **`docs/interface/`** — the desktop interface specification: visual language, engraving quality bar, interaction and
    selection model, Origin view, states and voice, performance budgets. Roadmap §14 fixes the app's *architecture*;
    `docs/interface/` fixes everything §14 leaves open, and §14's wireframe is not a visual spec. Governing since prompt
    26.
-6. **`docs/language/`** — the elaboration-language specification: the musical domains are a *proved* conservative
+5. **`docs/language/`** — the elaboration-language specification: the musical domains are a *proved* conservative
    extension rather than an accumulating fragment, the standard library is a package with a real module tree, and
    `import` and `use` are two words because they were always two statements. Candidate until prompt 146 graduates it, so
    everything above it in `docs/README.md`'s precedence ladder wins where they differ.
-7. **`docs/prompts/`** — the numbered work plan, currently 155 prompts through rank 153, with its README defining prompt
+6. **`docs/prompts/`** — the numbered work plan, currently 155 prompts through rank 153, with its README defining prompt
    anatomy and execution rules. Implementation happens in dependency order (see the `prompt-stack` skill).
 
 If code and these documents disagree, either the code is wrong or the document needs a deliberate repair — never let

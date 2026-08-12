@@ -1,5 +1,8 @@
 # 00 — Purpose of the Temporal Kernel
 
+**Status: governing since prompt 12.** This file is the entry point to `docs/kernel/`; its document map is at the
+bottom. Bound by `../governance/` and `../spec/`.
+
 Musa maintains two pictures at once:
 
 1. **The surface language** — expressive, concise, musician-oriented, programmable. Composers write notes, rests,

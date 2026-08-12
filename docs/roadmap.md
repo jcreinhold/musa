@@ -1230,11 +1230,10 @@ pub fn compile(
 ) -> Compilation;
 ```
 
-> **Course correction (docs/course-correction.md):** the semantic core beneath this pipeline is now the finite temporal
-> kernel specified in `docs/kernel/` — the "high-level compositional representation" and "motif expansion" stages above
-> are the elaboration/HIR that evaluates into kernel timelines, and the normalized `ScoreSnapshot` is an adapter
-> projection of them. Where this roadmap and the course correction disagree on semantic architecture, the course
-> correction wins; everything else in this document stands.
+> **The temporal kernel (`docs/kernel/`):** the semantic core beneath this pipeline is the finite temporal kernel — the
+> "high-level compositional representation" and "motif expansion" stages above are the elaboration/HIR that evaluates
+> into kernel timelines, and the normalized `ScoreSnapshot` is an adapter projection of them. Where this roadmap and
+> `docs/kernel/` disagree on semantic architecture, the kernel wins; everything else in this document stands.
 
 > **Language candidate (prompt 92):** prompts 93–124 refine the private elaboration/HIR stages to a total value
 > calculus, contextual `music`, structural declaration templates, and typed kernel quotation. They still terminate in
