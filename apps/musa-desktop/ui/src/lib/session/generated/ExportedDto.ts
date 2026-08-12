@@ -3,4 +3,4 @@
 /**
  * Where an export landed, so the interface can say so by name.
  */
-export type ExportedDto = { path: string };
+export type ExportedDto = { path: string, };

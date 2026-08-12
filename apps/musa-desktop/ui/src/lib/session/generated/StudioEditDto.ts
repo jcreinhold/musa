@@ -5,14 +5,4 @@ import type { ContainerKindDto } from "./ContainerKindDto";
  * A structured studio edit from the webview — a knob, a fader, or a part
  * pointed at another patch (roadmap §11, §14.4).
  */
-export type StudioEditDto =
-  | { kind: "assignPatch"; part: string; patch: string }
-  | {
-      kind: "setParam";
-      container: ContainerKindDto;
-      name: string;
-      stage: number;
-      param: string;
-      value: number;
-    }
-  | { kind: "setSendLevel"; source: string; bus: string; decibels: number };
+export type StudioEditDto = { "kind": "assignPatch", part: string, patch: string, } | { "kind": "setParam", container: ContainerKindDto, name: string, stage: number, param: string, value: number, } | { "kind": "setSendLevel", source: string, bus: string, decibels: number, };

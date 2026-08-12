@@ -9,4 +9,4 @@ import type { ErrorKindDto } from "./ErrorKindDto";
  * message — a rejected edit belongs in the source column, an unreadable file
  * belongs in the top margin — without parsing the sentence.
  */
-export type ErrorDto = { kind: ErrorKindDto; message: string };
+export type ErrorDto = { kind: ErrorKindDto, message: string, };

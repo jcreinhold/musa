@@ -39,18 +39,20 @@ byte-identical content to the version before that commit, which is the confirmat
 This has happened: a formatting pass collapsed `spellings.json` from 450 lines to 114, and the two currency tests failed
 from then on. Regenerating reproduced the pre-pass file exactly.
 
-## The unresolved half: the `.ts` DTOs
+## The `.ts` DTOs, and why Prettier ignores them
 
-The `.ts` files in that directory have a standing conflict, and it is not fixed.
+The `.ts` files in that directory had a standing fight between two writers:
 
-- `ts-rs` writes them from Rust type definitions and emits `export type SpanDto = { start: number, end: number, };`
-- Prettier reformats that to `export type SpanDto = { start: number; end: number };`
-- `apps/musa-desktop/ui/.prettierignore` lists `dist`, `node_modules`, `test-results`, and `playwright-report` — **not**
-  `src/lib/session/generated/`.
+- `ts-rs` writes them from the Rust type definitions and emits `export type SpanDto = { start: number, end: number, };`
+- Prettier rewrites that to `export type SpanDto = { start: number; end: number };`
 
-So whichever ran last wins. Running the Rust suite dirties the working tree with a dozen reformatted DTOs that nobody
-edited; running the UI formatter puts them back. Neither is wrong on its own terms.
+Whichever ran last won. Running the Rust suite dirtied the working tree with a dozen reformatted DTOs that nobody had
+edited; running `pnpm run format` put them back.
 
-The likely fix is to add the generated directory to `.prettierignore`, but that has not been done or tested here, and
-whether the UI's own `check` script would then object is unverified. Until someone settles it, do not commit those `.ts`
-files as part of an unrelated change — the diff is noise and it reverses whichever side ran last.
+`ts-rs` wins, because its output is the fixture the currency test compares against and Prettier's is not.
+`apps/musa-desktop/ui/.prettierignore` now lists `src/lib/session/generated`, so the formatter skips the directory
+entirely. Verified afterwards: `pnpm run format:check` no longer names any file under `generated/`, and `make typecheck`
+— the gate that actually reads these types — is clean at 460 files, 0 errors.
+
+Note that `format:check` is in no build target; `pnpm run format` is a `--write` command someone runs by hand. That is
+how the directory got rewritten in the first place, and the ignore file is what stops it happening again.

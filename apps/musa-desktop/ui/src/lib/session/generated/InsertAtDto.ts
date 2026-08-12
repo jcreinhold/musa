@@ -3,7 +3,4 @@
 /**
  * Where a newly entered statement goes.
  */
-export type InsertAtDto =
-  | { kind: "before"; event: string }
-  | { kind: "after"; event: string }
-  | { kind: "endOfVoice"; part: string; voice: string };
+export type InsertAtDto = { "kind": "before", event: string, } | { "kind": "after", event: string, } | { "kind": "endOfVoice", part: string, voice: string, };

@@ -2,3 +2,7 @@ dist
 node_modules
 test-results
 playwright-report
+
+# Written by ts-rs from the Rust DTO definitions, and compared byte for byte by a
+# currency test. Formatting them makes that test fail; see docs/development/generated-files.md.
+src/lib/session/generated

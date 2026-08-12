@@ -3,9 +3,4 @@
 /**
  * A transport request from the webview.
  */
-export type TransportDto =
-  | { kind: "play" }
-  | { kind: "stop" }
-  | { kind: "seek"; frame: bigint }
-  | { kind: "setLoop"; start: bigint; end: bigint }
-  | { kind: "clearLoop" };
+export type TransportDto = { "kind": "play" } | { "kind": "stop" } | { "kind": "seek", frame: bigint, } | { "kind": "setLoop", start: bigint, end: bigint, } | { "kind": "clearLoop" };
