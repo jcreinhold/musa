@@ -1,7 +1,7 @@
 ---
 id: 129a
 slug: payload-admission-rule
-status: pending
+status: done
 depends_on: [126]
 phase: 3
 ---

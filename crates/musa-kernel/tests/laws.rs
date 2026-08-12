@@ -459,7 +459,7 @@ proptest! {
             m.extent().as_ratio() + n.extent().as_ratio()
         );
         prop_assert!(overlay(vec![overlay(vec![m.clone(), n.clone()]), p.clone()])
-            .semantic_eq(&overlay(vec![m.clone(), overlay(vec![n.clone(), p.clone()])] )));
+            .semantic_eq(&overlay(vec![m.clone(), overlay(vec![n.clone(), p])] )));
         prop_assert!(overlay(vec![m.clone(), n.clone()]).semantic_eq(&overlay(vec![n.clone(), m.clone()])));
         let empty = timeline(m.extent(), Vec::<Occurrence<AdmissionProbe>>::new()).expect("empty");
         prop_assert!(overlay(vec![m.clone(), empty]).semantic_eq(&m));
@@ -521,7 +521,7 @@ proptest! {
             m.occurrences().iter().rev().cloned().collect(),
         ).expect("same bounds");
         prop_assert!(m.semantic_eq(&reversed));
-        prop_assert!(overlay(vec![m.clone(), n.clone()]).semantic_eq(&overlay(vec![reversed.clone(), n.clone()])));
+        prop_assert!(overlay(vec![m.clone(), n.clone()]).semantic_eq(&overlay(vec![reversed.clone(), n])));
 
         // L20–L23.
         let at = quarters(at_quarters);

@@ -392,8 +392,8 @@ A later prompt may not quietly re-open any of these. Re-opening requires amendin
    positioned in it, it is a `Timeline<A>`. Writing a second one — a `Vec<(Beat, Beat, T)>` with its own ordering and
    its own equality — is the defect this decision exists to prevent. Prompt 145 audits for it.
 3. **No payload without an admission record.** A new payload requires a `Canonical` implementation and a row in the
-   admission table `docs/kernel/` gains at prompt 129a, stating what its key includes and what it deliberately quotients
-   away.
+   admission table in `docs/kernel/12-payload-admission.md` states what its key includes and what it deliberately
+   quotients away.
 4. **No signal in a payload**, and no coinductive value in a payload, and no absolute time (seconds, frames, samples) in
    a payload. Physical time appears at the prepared-plan boundary and nowhere earlier.
 5. **No dependent indices in the kernel.** Part, voice, meter, tuning, and transposition stay payload data and resolver
