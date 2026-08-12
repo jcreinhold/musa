@@ -10,6 +10,7 @@ new contributor would lose an afternoon rediscovering it.
 
 | Page | What it answers |
 | --- | --- |
+| [generated-files.md](generated-files.md) | Why a currency test says a fixture is stale when nobody changed the generator, and the one conflict still unresolved |
 | [macos-gatekeeper.md](macos-gatekeeper.md) | Why the test suite appears to hang on macOS after any change to `musa-compiler`. Diagnosis and costs measured; how to work around it, and what is still unresolved |
 
 What does *not* belong here: anything that decides semantics (that is `../governance/`, `../spec/`, and the per-stage
