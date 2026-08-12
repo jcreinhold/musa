@@ -1,22 +1,29 @@
-# Musa governance
+# Musa’s core design decisions
 
-These documents say what Musa is, independently of one compiler organization or one musical package.
+These pages state the few decisions that every part of Musa must follow. They do not prescribe Rust types or source
+syntax. They answer six questions:
 
-- [01-constitution.md](01-constitution.md) contains only commitments whose removal would change the identity of the
-  project.
-- [02-obligations.md](02-obligations.md) derives non-obvious constraints from those commitments.
+1. What can a user edit?
+2. Must all music use the same theory?
+3. How does Musa represent finite musical time?
+4. How does that representation connect to audio?
+5. How can notation, analysis, MIDI, and audio describe one project without being treated as the same thing?
+6. What does it mean for two stored results to be equal?
 
-The constitution governs the formal specifications in `docs/spec/`, the existing stage specifications in `docs/kernel/`
-and `docs/language/`, the implementation architecture, and the prompt stack. It does not make every candidate research
-note normative. `docs/scratch/` remains the audit trail in which failed candidates stay visible.
+Read [01-constitution.md](01-constitution.md) for the answers. Then read [02-obligations.md](02-obligations.md) for
+rules that follow from them.
 
-An amendment is deliberate work. It must:
+These decisions govern `docs/spec/`, `docs/kernel/`, `docs/language/`, the architecture documents, and the work plan in
+`docs/prompts/`. Research notes in `docs/scratch/` do not govern the project. They record how the decisions were
+reached, including ideas that failed.
 
-1. name the concrete musical or implementation counterexample;
-2. state which amendment and obligations change;
-3. repair the affected formal specification before or with implementation;
-4. identify migrations for stored identity and source compatibility; and
-5. add or repair the prompt which executes the change.
+## Changing a decision
 
-An implementation discrepancy does not amend the constitution by accident. Either the implementation is repaired, or the
-discrepancy becomes evidence in an explicit amendment.
+A core decision may change, but only in a change that does all of the following:
+
+1. gives a concrete musical or engineering reason;
+2. shows which current examples no longer work;
+3. states the replacement rule in plain language;
+4. updates the formal specification and architecture;
+5. explains how stored files and public APIs will migrate; and
+6. records the change in `docs/scratch/` so the old argument remains visible.

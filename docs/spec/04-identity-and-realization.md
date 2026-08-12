@@ -1,125 +1,137 @@
-# Identity, realization, and caches
+# Equality, hashes, audio preparation, and caches
 
-## 1. Payload admission
+This chapter answers one question: when may Musa safely reuse a result?
 
-An admitted temporal payload supplies:
+The short answer is that each type defines exact equality, a hash only finds candidates, and a cache checks the full
+arguments before returning a hit.
 
-```text
-PayloadSchema A = {
-  owner_type_id,
-  quotient_version,
-  key : A → ByteString,
-}.
-```
+## 1. Equality for timeline payloads
 
-`key` is total and deterministic and **defines** admitted payload equality:
+A timeline can carry any admitted finite payload type `A`. That type supplies:
 
 ```text
-a ≡_A b iff key(a)=key(b).
+PayloadSchema<A> = {
+    owner type id,
+    equality version,
+    key : A -> bytes,
+}
 ```
 
-It may quotient stored presentation detail. It is complete on equality classes, not necessarily injective on the raw
-implementation struct. Changing observed fields or their canonical encodings changes `quotient_version`.
-
-## 2. Structured temporal semantics
-
-For `M=(d,E)`, let
+The key is total and deterministic. It defines equality for this use:
 
 ```text
-Sem_A(M) = (d, sort_multiset { (s,e,key(a)) | (s,e,a)∈E }).
+a ≡_A b  exactly when  key(a) = key(b)
 ```
 
-Then `M≡_A N` exactly when `Sem_A(M)=Sem_A(N)`. Multiplicity is retained. Construction history and display formatting
-are absent.
+The key may ignore fields on purpose. For example, an event comparison may ignore fields used only to navigate back to
+source. The schema must list those omitted fields. If the chosen fields or their encoding changes, the equality version
+changes.
 
-## 3. Exact canonical encoding
+## 2. Equality for timelines
 
-The persisted identity encoding is parameterized by a timeline encoding version and a payload schema:
+For a timeline `M = (d, E)`, its semantic value contains:
+
+- exact length `d`; and
+- the multiset of triples `(start, end, payload key)`, sorted into a fixed order.
+
+Two timelines are equal when those values are equal. Construction order and human display formatting do not matter.
+Duplicate occurrences remain duplicated.
+
+## 3. Exact byte encoding
+
+Musa needs bytes that can be decoded in only one way. The timeline encoding contains:
+
+1. a fixed tag saying that these are timeline-semantic bytes;
+2. the timeline format version;
+3. the payload owner id and equality version;
+4. the exact rational timeline length;
+5. the number of occurrences; and
+6. each occurrence’s exact endpoints and payload key.
+
+Every string or variable-length field is preceded by its byte length. Rational numbers have a unique reduced form. Human
+display text is separate and may contain arbitrary newlines or words such as `from` and `occurrence`.
+
+**Theorem I1: the encoding preserves and reflects timeline equality.** Fix one valid payload schema and one timeline
+format version. Two timelines have equal encoded bytes if and only if they have equal semantic values.
+
+**Proof.** The fixed tags and field order identify each record field. Counts identify list boundaries, and byte lengths
+identify variable fields. Reduced rationals have one representation. The bytes can therefore be decoded into exactly one
+semantic value. Conversely, equal semantic values write the same fields in the same order. ∎
+
+## 4. Hashes are indexes
+
+Let `encode(M)` be the exact bytes above. Musa computes
 
 ```text
-encode_sem[TimelineVersion,PayloadSchema A](M).
+semantic_hash(M) = H(encode(M))
 ```
 
-It contains a domain tag, both versions, owner type id, exact reduced rational extent, occurrence count, and every
-canonically ordered occurrence's exact rational endpoints and payload-key bytes. Every variable-size field is
-length-framed. Display text is a separate operation and may contain arbitrary delimiters or newlines without changing
-the framing grammar.
+with a fixed hash function `H`. If two hashes differ, the encoded bytes differ. Equal hashes do not prove equal bytes,
+because every finite hash has collisions.
 
-### I1 — exact framing
+Correctness-sensitive code uses the hash to choose a small candidate set and then compares the exact encoded values.
+Display output is never used as the identity encoding.
 
-At one fixed well-formed schema, equal semantic encodings are equivalent to equality of `Sem_A`. Encodings with
-different domain/schema headers are unequal.
+## 5. Deterministic audio preparation
 
-*Proof.* The byte grammar is uniquely decodable. Induct over the fixed record and counted occurrence list. Each exact
-rational has a unique reduced representation and each variable child has one length. Conversely, equal semantic
-components emit equal bytes by determinism. ∎
-
-## 4. Digests
-
-`semantic_hash(M)=H(encode_sem(M))` for one versioned hash operation. It is an index, not semantic equality. An unequal
-digest proves unequal bytes for deterministic `H`; an equal digest requires exact encoded-byte confirmation whenever a
-false hit could change a result.
-
-Display output may have a stable golden format, but the semantic hash is not defined as “whatever `Display` writes.”
-
-## 5. Execution factorization
-
-Let `Sem_Gesture` be the complete structured semantic form under one admitted gesture schema. Define:
+Audio preparation is one pure operation:
 
 ```text
-prepare_execution :
-  Sem_Gesture × Bindings × Seed × Options
-  → Result PreparedExecution PrepareError.
-
-prepare_lineage :
-  Presentation_Gesture × PreparedExecution
-  → Lineage Gesture Process × List RealizationLoss.
+prepare_execution(gesture meaning, bindings, seed, options)
+    -> prepared execution or preparation error
 ```
 
-`Options` includes sample rate, channel contract, semantic tick/block policy, render bounds, deterministic quality
-policy, and every other acceptance/execution choice. Bindings, seed, options, and the complete result each have owned
-versioned equality. `prepare_lineage` cannot modify the execution result.
+`options` contains sample rate, channels, semantic step policy, render bounds, quality policy, and every other choice
+that can change acceptance or execution. Bindings, seed, options, and the complete result each have a versioned equality
+rule.
 
-### R1 — semantic execution factorization
+Origin data used only for editor navigation is handled by a separate operation:
 
-If semantic gesture values, bindings, seeds, and options are equal pairwise, the two `prepare_execution` calls return
-equal complete results.
+```text
+prepare_lineage(gesture representation, prepared execution)
+    -> origin paths and recorded losses
+```
 
-*Proof.* The operation is a pure deterministic function whose type exposes exactly those inputs. Substitute equal
-arguments. ∎
+It cannot change the prepared execution.
 
-### R1-frames — conditional observation equality
+**Theorem R1: equal preparation arguments give equal results.** If all four arguments to `prepare_execution` are equal,
+two calls return equal complete results.
 
-If the common result succeeds, allocation semantics agree, external input histories agree, initial state and parameters
-agree, and every processor satisfies the deterministic process contract, executions produce equal output ticks.
+**Proof.** `prepare_execution` is a pure deterministic function of exactly those arguments. Replacing any argument with
+an equal value cannot change the function result. ∎
 
-*Proof.* Equal prepared definitions allocate equal accepted process graphs/state under the premise. Apply process
-Theorem P1 tick by tick. Floating-point/device equality follows only to the extent processor conformance promises it. ∎
+**Theorem R1-frames: equal prepared plans need more premises to produce equal samples.** Suppose preparation succeeds,
+allocation follows the same rules, external input histories match, initial state and parameters match, and every
+processor obeys the deterministic process contract. Then both runs produce equal output steps.
 
-## 6. Collision-checked caches
+**Proof.** The runs begin with equal graphs and state. Apply process Theorem P1 to the first equal input step, then
+repeat on the equal next states. Device-level floating-point equality is only as strong as the processor contract. ∎
 
-For one named operation version define one canonical record:
+## 6. Correct cache lookup
+
+A preparation cache key contains every argument and version:
 
 ```text
 ExecArgs = {
-  operation_version,
-  timeline_encoding_version,
-  gesture_payload_schema,
-  Sem_Gesture,
-  bindings_schema, Bindings,
-  Seed,
-  options_schema, Options,
-}.
+    preparation operation version,
+    timeline and payload versions,
+    gesture meaning,
+    binding version and values,
+    seed,
+    option version and values,
+}
 ```
 
-The cache stores `(digest(encode(ExecArgs)),encode(ExecArgs),Result)` only after computing the named operation on those
-exact arguments. Lookup uses the digest to locate candidates and returns a hit only after exact complete
-encoded-argument equality.
+The cache stores:
 
-### C1 — cache correctness
+```text
+(hash(exact ExecArgs bytes), exact ExecArgs bytes, complete result)
+```
 
-A returned hit equals recomputation of the named preparation operation on the requested arguments.
+Lookup first uses the hash, then compares the exact `ExecArgs` bytes. Only an exact match returns a hit.
 
-*Proof.* Exact canonical equality gives equality of every argument and operation version. The insertion invariant
-identifies the stored result with the operation on stored arguments. Substitute. Digest collisions only add rejected
-candidates. ∎
+**Theorem C1: a returned cache hit equals recomputation.**
+
+**Proof.** Exact argument equality gives the same operation version and the same value for every argument. The cache
+stores only results produced by that operation on those stored arguments. Theorem R1 therefore makes the stored result
+equal to recomputation. A hash collision merely adds a candidate whose exact bytes fail the second check. ∎

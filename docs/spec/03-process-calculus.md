@@ -1,125 +1,132 @@
-# Finite typed process calculus
+# Rules for audio process graphs
 
-## 1. Purpose and boundary
+This chapter defines two things: when an audio graph is valid, and what happens during one audio step. The graph is a
+private compiler form. Composers do not need to write it.
 
-This calculus gives a finite studio/instrument description formation rules and a tick transition. It does not give a
-signal musical extent and is not a source-language requirement. `StudioSpec` may elaborate into this private IR.
+## 1. Fixed settings for one prepared graph
 
-Fix one execution contract `k` containing sample rate, channel/port schemas, tick size, numeric policy, and resource
-limits. A port type belongs to that contract; only equal compatible types may be wired.
+Before Musa builds a graph, it fixes an execution contract `k`. The contract includes:
 
-## 2. Graph syntax
+- sample rate;
+- input, output, and channel types;
+- the number of frames in one semantic step;
+- numeric rules, including non-finite values; and
+- memory and processor limits.
 
-```text
-G ::= graph k (I⇒O) { nodes; wires; registers; boundary }
+Only ports with the same compatible type may be connected. These settings are explicit inputs to audio preparation, not
+global values read later by the callback.
 
-node n : X_n ⇒ Y_n state S_n using op_n
-wire     n.out → m.in
-register n.out -[q₀]→ m.in
-input    I.p → n.in
-output   n.out → O.p
-```
+## 2. Nodes, wires, and stored delays
 
-A node operation is a first-order total transition supplied by the closed processor registry:
+A graph contains nodes, ordinary wires, and registers:
 
 ```text
-step_n : X_n × S_n → Y_n × S_n.
+node n : input type X -> output type Y, with state S, using processor op
+wire n.output -> m.input
+register n.output -[initial value]-> m.input
 ```
 
-It cannot receive or return a function. It has no allocation, lock, I/O, diagnostic, or ambient-state operation. A
-foreign processor enters only with a versioned port/state schema, a total transition contract for admitted finite
-blocks, and a resource bound.
+An ordinary wire carries a value made during the current step. A register carries a value from the previous step. At
+step zero it supplies its declared initial value. After each step, it stores its source node’s new output.
 
-A register carries a value of its edge type. `q₀` is its explicit initial value. At tick `j`, its target reads the value
-stored after tick `j-1`; the source output of tick `j` becomes its stored value for tick `j+1`.
+This distinction gives feedback a clear meaning. In a delay loop, the processor reads yesterday’s value while producing
+today’s. A loop made only of ordinary wires would need a value before the same value had been computed, so it is
+rejected.
 
-## 3. Formation
+Each processor supplies a finite deterministic function:
 
-Write `dep_G(n,m)` when a same-tick `wire` carries any output of node `n` to any input of node `m`. Registers do not
-create same-tick dependencies. Formation requires:
+```text
+step_n(current inputs, current state) -> (current outputs, next state)
+```
+
+The function is first-order: it does not receive or return another function. It does not allocate, lock, perform I/O, or
+read hidden global state.
+
+## 3. When a graph is valid
+
+Write `n -> m` when an ordinary wire carries any output of node `n` to any input of node `m`. Register edges do not
+count because they carry a value from the previous step.
+
+A graph is valid only if:
 
 1. node, port, and boundary names are unique;
-2. every edge endpoint exists and has equal compatible type;
-3. every required node input has exactly one source after fan-in operators are made explicit nodes;
-4. every boundary output has exactly one source;
-5. all register initial values have their edge types;
-6. the whole-node dependency graph `(nodes,dep_G)` is acyclic; and
-7. the admitted resource bound covers every node, edge, state value, and buffer before runtime allocation.
+2. every wire endpoint exists and its types match;
+3. every required node input has exactly one source, unless an explicit mixer node performs fan-in;
+4. every graph output has exactly one source;
+5. every register’s initial value has the correct type;
+6. the whole-node graph formed by ordinary wires has no cycle; and
+7. the resource bound includes every node, edge, state value, and buffer.
 
-The judgment is:
-
-```text
-Registry ⊢ G : Graph k I O.
-```
-
-A port-level graph being acyclic is insufficient. The schedule must execute the primitive whole-node API, which waits
-for all current inputs before producing any output.
-
-## 4. One-tick operational semantics
-
-Let `σ` map every node to state and every register to its stored value. Let `ι:I` be the current boundary input.
-
-1. Make boundary inputs and prior register values available.
-2. Choose the canonical topological order of `dep_G`.
-3. For each node `n` in that order, collect its complete input tuple `x_n`, then compute `(y_n,s_n')=step_n(x_n,s_n)`
-   once.
-4. Route `y_n` along same-tick wires and to boundary outputs.
-5. After every node has stepped, replace each register with its source output and every node state with `s_n'`.
-
-Write:
+The formal statement is:
 
 ```text
-G ⊢ (σ,ι) ↦ (σ',o).
+processor registry ⊢ G : Graph(k, inputs, outputs)
 ```
 
-The canonical order is an implementation-independent tie-break among topological schedules. Independently schedulable
-nodes cannot observe scheduling because processors are pure and communicate only through typed edges.
+The cycle check is over whole nodes. Checking ports alone is unsound because the processor API waits for all of a node’s
+inputs before it can produce any output.
 
-## 5. Denotational semantics
+## 4. One audio step
 
-For fixed initial state `σ₀`, the graph denotes the causal stream function obtained by iterating the tick transition:
+Let `σ` contain every node state and register value. Let `ι` be the current graph input. One step runs as follows:
+
+1. Make `ι` and the old register values available.
+2. Order the nodes so every ordinary-wire source comes before its target. Use a fixed tie-break when several orders are
+   possible.
+3. In that order, collect all inputs for each node and call its processor once.
+4. Send node outputs along ordinary wires and to graph outputs.
+5. After every node has run, commit all next node states and new register values.
+
+We write the result as:
 
 ```text
-⟦G,σ₀⟧ : I^ω → O^ω
-⟦G,σ₀⟧(ι₀ι₁…) = o₀o₁…
-where G⊢(σ_j,ι_j)↦(σ_{j+1},o_j).
+G ⊢ (σ, ι) -> (σ', o)
 ```
 
-Only finite prefixes are computed during finite/offline rendering. The denotation is coinductive; the graph and each
-prepared render request remain finite.
+Here `σ'` is the next state and `o` is the current output.
 
-## 6. Theorems
+## 5. The stream produced by a graph
 
-### P1 — accepted ticks are total and deterministic
+Start with initial state `σ₀` and an input sequence `ι₀, ι₁, ...`. Repeating the one-step rule produces `o₀, o₁, ...`:
 
-If `Registry⊢G:Graph k I O`, the registry transitions satisfy their contracts, `σ` is well typed, and `ι:I`, then one
-unique `(σ',o)` satisfies `G⊢(σ,ι)↦(σ',o)`.
+```text
+(σ₀, ι₀) -> (σ₁, o₀)
+(σ₁, ι₁) -> (σ₂, o₁)
+...
+```
 
-*Proof.* The finite dependency DAG has a canonical topological order. Formation makes every node's entire input tuple
-available when it is reached. Each total deterministic `step_n` returns one output/state pair. Finite induction over the
-order yields one complete next state and boundary output. ∎
+The graph and each offline render request are finite. The possible input and output histories may be unbounded.
 
-### P2 — execution is causal
+## 6. Basic theorems
 
-For fixed graph, parameters, seeds, and initial state, output through tick `j` depends only on input through tick `j`.
+The following results explain why the validity rules are necessary.
 
-*Proof.* Induct on `j`. The current transition reads current boundary inputs, current node states, same-tick predecessor
-outputs, and prior registered values only. The induction hypothesis bounds every state/register dependency by the prior
-input prefix. ∎
+**Theorem P1: one step has one result.** Suppose the graph is valid, every processor obeys its stated total
+deterministic contract, and the input and state have the right types. Then one audio step returns exactly one next state
+and output.
 
-### P3 — every feedback path crosses a register
+**Proof.** A finite acyclic node graph has a fixed topological order. When the scheduler reaches a node, every ordinary
+input has been made by an earlier node and every register input was available at the start. The node’s processor returns
+one result. Induction over the finite node order yields one complete next state and graph output. ∎
 
-Every directed graph cycle in the full connection graph contains a register edge.
+**Theorem P2: the graph is causal.** Output through step `j` depends only on input through step `j`.
 
-*Proof.* Removing register edges leaves the acyclic dependency graph required by formation. A cycle containing no
-register would remain there, contradiction. ∎
+**Proof.** At step `j`, a node reads the current graph input, outputs of earlier nodes in the same step, current node
+state, and register values from step `j - 1`. By induction, the stored state and register values depend only on earlier
+inputs. No rule reads a future input. ∎
 
-## 7. Host-block independence
+**Theorem P3: every feedback loop contains a register.**
 
-The semantic tick is fixed by `k`, not by the size of a caller's render request. Rendering `n+m` ticks at once and
-rendering `n` then `m` ticks from the returned state produce the same concatenated outputs by deterministic iteration.
-Vectorized or device-block execution must implement this law.
+**Proof.** Remove the register edges. The validity check says the remaining ordinary-wire graph has no cycle. Any cycle
+in the full graph must therefore use at least one removed register edge. ∎
 
-A processor whose feedback delay changes when a caller asks for `512` frames once instead of `128` frames four times
-does not implement this specification. Such behavior must be repaired or exposed as a different explicitly fixed tick
-contract; it cannot remain ambient.
+## 7. Caller buffer size must not change the result
+
+The execution contract fixes the semantic step size. It does not change when a device or offline caller asks for a
+larger buffer.
+
+Running `n + m` steps in one request must give the same samples and final state as running `n` steps, keeping the state,
+and then running `m` more. This follows by repeated use of Theorem P1.
+
+A feedback processor that behaves differently for one 512-frame request and four 128-frame requests does not satisfy
+this specification. The implementation must either fix it or declare a different fixed semantic step as part of `k`.

@@ -1,138 +1,90 @@
-# The Musa constitution
+# What Musa must preserve
 
-## What belongs here
+This document states the project’s basic design choices. A **representation** is any form in which Musa holds part of a
+project: source text, an internal timeline, an engraved score, an analysis, a MIDI file, an audio plan, or rendered
+sound.
 
-This document defines Musa at the level below syntax and above implementation. A claim belongs here only when removing
-it changes what the project is. The exact carrier types, inference algorithms, storage formats, and Rust modules are
-downstream.
+## 1. Musa source is the master record
 
-## Amendment 1: the source is the canonical editable presentation
+Users edit `.musa` source. Every other representation is made from that source and its locked package inputs.
 
-A Musa project has one editable authority: its source and locked package inputs. Engraving, analysis, performance
-gestures, prepared audio, waveforms, and interface state are derived presentations. A structured editor changes source;
-it does not maintain a second independently editable score model.
+For example, the score editor may look like a graphical notation program, but moving a note changes the source. The
+editor does not keep a second score database that can disagree with the file. Engraving, analysis, MIDI, and audio may
+be cached, but Musa must be able to rebuild them from the source and the recorded choices used for that build.
 
-### What follows
+This choice requires derived results to keep enough origin information for a user to move from a note, warning, or
+waveform back to the source that produced it. It does not require every result to be rebuilt eagerly or stored forever.
 
-- Every derived presentation must be reproducible from identified source/package inputs and explicit realization
-  choices.
-- Selection, diagnostics, and navigation from a derived presentation require a recorded route back to source.
-- A cache may accelerate derivation but cannot become an editable authority.
+## 2. Musa does not impose one theory of music
 
-### What this leaves open
+No single definition of pitch, metre, chord, key, phrase, or gesture fits all music. Musa will ship useful definitions
+for Western staff notation and common tonal practice, but those definitions are library code and compiler services, not
+the definition of music itself.
 
-- concrete source syntax and formatting;
-- which derived artifacts are persisted;
-- whether a derivation is eager, incremental, or cached.
+A theory package defines its own values, operations, and test for equality. One package might use spelled notes and
+keys. Another might use tuning ratios and characteristic melodic motion. Another might organize music by gesture,
+timbre, spoken cues, or cycles rather than by chords. A project may use more than one package, but it must call a named
+conversion when it moves between them.
 
-## Amendment 2: musical meanings are plural and representation-owned
+This choice leaves the first package system and the final standard-library contents open. It rules out making every
+piece declare a key, a 12-note pitch class, or a regular metre.
 
-Musa does not have one universal `Music`, `Pitch`, `Key`, `Chord`, `Meter`, or `Gesture` which every practice must use.
-A musical theory or realization stage owns its carriers, constructors, observations, and equality. Equal machine
-representations do not identify values owned by different theories or stages.
+## 3. A finite timeline records exact positions and durations
 
-The built-in Western launch domains are one package of useful definitions, not the ontology of music. A practice may
-instead be phrase-primary, gesture-primary, timbre-primary, cyclic, oral, notationally sparse, or use no global pitch or
-metrical coordinate.
+Musa represents a finite stretch of musical time with:
 
-### What follows
+- a nonnegative rational length, such as `7/2` beats; and
+- a finite collection of events, each with an exact start, end, and value.
 
-- Cross-theory and cross-stage movement is named and typed.
-- A package may hide representations behind nominal carriers and total operations.
-- No compiler quotient tower is presumed to extend to every repertoire.
+Putting two timelines one after the other adds their lengths and moves the second timeline forward. Playing two
+timelines together keeps every event and uses the longer length.
 
-### What this leaves open
+Suppose one part lasts eight beats and another enters at beat two and leaves at beat six. They may be overlaid directly.
+Musa does not insert four beats of rests to make their lengths equal. Empty time is simply time in which no event of the
+relevant kind occurs. A written rest is still a real notation event when the score calls for one.
 
-- the first source syntax for nominal ownership;
-- which packages ship in the standard library;
-- whether a later concrete caller earns dependent or generative types.
+This timeline contains musical positions, not seconds or sample frames. Tempo, swing, rubato, fermatas, and unmeasured
+passages are interpreted later by named performance rules.
 
-## Amendment 3: finite symbolic time is exact ambient placement
+## 4. An audio graph is a recipe, not a timeline
 
-The temporal kernel describes a finite value as an exact nonnegative rational extent together with a finite multiset of
-typed occurrences supported inside that extent. Temporal succession translates the later value. Simultaneous presence
-unions occurrence multisets and takes the maximum extent.
+A studio graph is a finite recipe: it names processors, typed connections, state, and delays. Running that recipe can
+produce an arbitrarily long stream of samples. The recipe, its changing state, and the sample stream are three different
+things.
 
-Extent is ambient space, not the sum of event durations. Uncovered space is silence by absence. A notated rest is a
-payload fact when notation needs one; it is not the kernel's unit and is never inserted merely to equalize extents.
+The audio graph therefore has its own rules. A processor runs only after all of its current inputs are ready. A feedback
+loop must pass through an explicit stored value or delay, so the loop reads an earlier result rather than asking for its
+own current result.
 
-### What follows
+Musical timelines do not contain sample streams. Preparing audio is the explicit step that chooses sample rate,
+channels, instruments, processor settings, and initial state.
 
-- Unequal-duration voices overlay directly.
-- Exact symbolic time contains no sample, frame, second, or floating-point quantity.
-- Multiplicity is retained: equal occurrences do not collapse.
-- The temporal kernel remains payload-opaque and musically neutral.
+## 5. Representations stay connected by recorded conversions
 
-### What this leaves open
+Notation, analysis, performance gestures, MIDI, and audio do not share one data model. They stay coherent because Musa
+records how one was made from another.
 
-- the payload theory;
-- tempo, groove, rubato, and tuning interpretations;
-- whether a later live-language extension has a separate coinductive semantics.
+For example, a source note may produce an internal score event, an MEI element, a performance gesture, and several MIDI
+events. The conversion record says which source and intermediate events led to each result. It also records losses: MIDI
+may preserve onset and approximate pitch while losing spelling, engraving, or tuning detail.
 
-## Amendment 4: finite process descriptions and running behavior are different stages
+The project-wide object is therefore a set of representations joined by named conversion records. Musa does not need a
+single “universal music object” that identifies all of them. A conversion may be reversible, but that must be proved for
+that conversion; it is never assumed.
 
-A studio or instrument graph is a finite typed description of a process. Its execution is state evolution over physical
-time. An audio history is a potentially unbounded observation of that execution. None of these is a temporal-kernel
-payload, and none is identified with the others.
+## 6. Each stored form states what “the same” means
 
-The finite process description has its own formation and operational semantics. Feedback is admitted only through an
-explicit state/register boundary. The existence of that process calculus does not give a graph musical extent or put a
-signal in the temporal kernel.
+Two values may count as equal for one job and different for another. Two score timelines can have the same musical
+events even if they were built by different source expressions. Two origin records may still differ because they came
+from different places. Two audio runs may use the same plan but receive different live input.
 
-### What follows
+Each stored format must state:
 
-- Preparation crosses from exact finite musical intent to a finite executable process definition.
-- Physical units and processor state begin at that boundary.
-- Process cycles require an explicit delay/register; a combinational dependency cycle is rejected.
+- which fields determine equality;
+- which fields are deliberately ignored;
+- how those fields are encoded; and
+- which version of that rule is in use.
 
-### What this leaves open
-
-- concrete processor vocabulary and buffer layout;
-- tick size and vectorization strategy, provided the specified transition is preserved;
-- live device and plug-in integrations.
-
-## Amendment 5: coherence is a typed derivation diagram, not a common quotient
-
-A project is coherent when its presentations are connected by recorded typed derivations. A derivation names its source
-and target presentation kinds, the pass which related them, anchor lineage, and any loss or approximation. It is not an
-equality proof between native presentations.
-
-There is no required universal musical object through which engraving, performance, sound, analysis, and MIDI factor.
-The finite diagram of presentations and passes is the common project artifact. Composition is path composition; it
-retains intermediate identities and evidence.
-
-### What follows
-
-- A tempting commuting square is a local theorem of named passes, never a global conversion rule.
-- Lossy transcription, tuning, MIDI, and rendering stay coherent by recording loss rather than pretending to be
-  isomorphisms.
-- The useful content of the inter-universal analogy is non-identification until a named bridge is supplied. It does not
-  introduce `world` or `theta_link` syntax.
-
-### What this leaves open
-
-- which passes persist full lineage;
-- compression of derivation data which can be proved information-preserving;
-- later higher categorical structure justified by actual pass laws.
-
-## Amendment 6: every presentation owns exact, versioned identity
-
-Semantic equality belongs to a presentation and an admitted schema. Its canonical encoding is complete for that equality
-and explicitly versioned. Display text is not identity. A finite digest locates candidate identity records; it does not
-replace exact equality.
-
-Presentation equality, derivation equality, execution equality, and observational audio equality are separate relations.
-A specification may relate them by a theorem with explicit premises, but no shared hash or field layout silently
-identifies them.
-
-### What follows
-
-- Changing what an equality observes changes its schema version.
-- Variable-size canonical data is uniquely framed.
-- Cache hits confirm exact complete arguments after digest lookup.
-
-### What this leaves open
-
-- digest algorithms used only as indexes;
-- migration policy between explicitly versioned equalities;
-- presentation-specific quotient choices.
+Human-readable display text is not a safe identity format. A hash is also not proof of equality: two different byte
+strings can have the same finite hash. Hashes may find likely matches, but code whose correctness depends on equality
+must compare the full recorded values after the lookup.

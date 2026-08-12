@@ -1,82 +1,91 @@
-# Stage pipeline and ownership
+# Compiler stages and crate ownership
 
-## 1. The pipeline
+This page answers two engineering questions: which crate owns each stage, and how much of that stage may cross a public
+API.
+
+## 1. Main flow
 
 ```text
 .musa source
-  │ parse / resolve / total elaborate
-  ▼
-contextual Music + closed Term<ScoreFact>
-  │ kernel evaluate
-  ▼
+    |
+    | parse, resolve names, check types, evaluate total expressions
+    v
+closed Term<ScoreFact>
+    |
+    | evaluate exact musical time
+    v
 Timeline<ScoreFact>
-  ├──────────────► NotationPlan ─► MEI/LilyPond/MusicXML
-  ├──────────────► Analysis_T + evidence
-  │ interpret profile / realization
-  ▼
+    |--------------------> NotationPlan ------> MEI / LilyPond / MusicXML
+    |--------------------> Analysis result + supporting evidence
+    |
+    | apply performance profile and realization choices
+    v
 Timeline<Gesture>
-  │ bind instruments, studio, seed, complete options
-  ▼
-PreparedExecution (private finite ProcessDefinition + state/resources)
-  │ allocate / tick
-  ▼
-observed audio history
+    |
+    | bind instruments and studio; fix sample rate, channels, seed, and options
+    v
+PreparedExecution
+    |
+    | allocate state and run fixed audio steps
+    v
+audio samples
 ```
 
-This is a family of typed passes, not one lowering IR. A practice may add another path—for example phrase intent
-directly to gestures—without pretending its values are `ScoreFact` or Western pitch.
+These stages use different data because they answer different questions. The compiler does not force them into one large
+intermediate representation. A practice may add another explicit route—for example, phrase instructions directly to
+gestures—without pretending those instructions are Western score facts.
 
-## 2. Crate ownership
+## 2. Which crate owns what
 
-| Stage | Owner | Public boundary |
+| Work | Owning crate | Public API should expose |
 | --- | --- | --- |
-| Tokens/CST/source edits | `musa-language` | `parse`, formatter/edit operations |
-| Resolution, total core, theory owners, score/gesture passes | `musa-compiler` | narrow `compile`/snapshot facts |
-| Exact finite temporal algebra | `musa-kernel` | `Term`, `Timeline`, constructors/queries/identity |
-| Notation planning/export | `musa-render` | `render_notation` and export results |
-| Studio checking, preparation, private process IR | `musa-audio` | `prepare_execution`, opaque prepared audio plan |
-| Device allocation/tick transport | `musa-engine` | `AudioEngine`, transport commands |
-| Source/revision authority and artifact coordination | `musa-project` | `ProjectSession` |
-| CLI/LSP/desktop/wasm | shells | caller-oriented commands/results only |
+| Tokens, concrete syntax tree, formatting, and text edits | `musa-language` | parsing and edit operations |
+| Name resolution, type checking, total evaluation, score and gesture compilation | `musa-compiler` | `compile` and caller-ready snapshot facts |
+| Exact finite timelines and their laws | `musa-kernel` | `Term`, `Timeline`, construction, queries, equality, and hash |
+| Engraving plan and file export | `musa-render` | `render_notation` and export results |
+| Studio checking, audio preparation, processor graph, and offline rendering | `musa-audio` | `prepare_execution` and an opaque prepared plan |
+| Audio-device negotiation, transport, and callback | `musa-engine` | `AudioEngine` and transport commands |
+| Source documents, revisions, commands, and derived-result coordination | `musa-project` | `ProjectSession` |
+| CLI, LSP, desktop, and web entry points | shell crates and apps | user-facing commands and results |
 
-No crate above `musa-audio` sees process nodes, buffer indices, processor states, or graph scheduler internals. The
-engine receives one opaque RT-safe plan interface. No audio/engine type points back into compiler score types.
+`musa-audio` keeps processor nodes, buffers, state layout, and schedules private. `musa-engine` receives a plan it can
+run; it does not inspect the graph. Audio crates do not depend on compiler score types.
 
-## 3. Pass ownership
+## 3. What each conversion must provide
 
-Each pass owner defines:
+The crate that converts one representation to another defines:
 
-- exact source and target presentation types;
-- the admitted semantic projection it may inspect;
-- operation/schema version;
-- complete finite options;
-- canonical diagnostics;
-- source/target anchor mapping;
-- losses or approximations; and
-- determinism/resource contracts.
+- the exact input and output types;
+- which part of the input it reads;
+- a version for the operation and its data formats;
+- every option that can change the result;
+- deterministic diagnostics;
+- origin links between input and output anchors;
+- a list of information lost or approximated; and
+- resource and determinism guarantees.
 
-Lineage storage does not require a public generic `Pass` trait. Current pass families are closed and concrete. Shared
-path/registry records remain private implementation data until two crate-level callers require a stable facade.
+There is no public generic `Pass` trait today. The passes are concrete and have different useful interfaces. Origin-path
+storage should remain private until at least two crate-level callers need one stable public API.
 
-## 4. Artifact coordination
+## 4. Project-level coordination
 
-`musa-project` is the natural owner of one session's versioned artifact registry because it already owns documents,
-revisions, commands, and last-valid artifacts. Pass-producing crates return caller-oriented artifacts plus private or
-crate-internal anchor facts. The project layer qualifies them with the versioned source/target presentation refs and
-validates registry merges.
+`musa-project` already owns source revisions and the latest valid derived results, so it should also coordinate the
+versioned registry of those results. Compiler, render, and audio crates return useful artifacts and origin facts. The
+project layer attaches source and target versions and rejects conflicting registry records.
 
-This coordination must remain deep:
+The public boundary stays small:
 
-- the UI sees stable selection/origin ids and queries, not path storage structs;
-- render/audio crates see only the source presentation slices their pass needs;
-- a derived artifact never becomes an editable AST; and
-- invalidation uses exact presentation/operation identity, not widget state.
+- the UI asks for selections, source locations, and diagnostics; it does not read origin-path storage structs;
+- render and audio receive only the input representation they need;
+- no derived result becomes a second editable syntax tree; and
+- cache invalidation uses exact input and operation identity, not widget state.
 
-## 5. Source theory ownership
+## 5. Future music-theory packages
 
-If the nominal theory-module candidate graduates, its parser and checker live in `musa-compiler`'s existing total core
-and static-module pass. Nominal stamps, constructor metadata, bidirectional checking, and sealed target definitions stay
-private. The public compiler facade does not export a general typechecker object or runtime structure value.
+If the proposed nominal type and module design passes review, its parser and checker belong in `musa-compiler` beside
+the existing total core. Nominal ids, constructor tables, package-version selection, and sealed implementations remain
+private.
 
-Static structures disappear before ordinary evaluation. Theory-owned values remain ordinary finite values. Cross-owner
-translation is an explicitly exported function/pass, not a Rust trait-object registry.
+Static structures disappear before ordinary evaluation. Their exported theory values are finite runtime values.
+Translation between two theory packages is an explicit source function or compiler pass, not a registry of Rust trait
+objects.

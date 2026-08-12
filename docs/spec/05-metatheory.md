@@ -1,57 +1,64 @@
-# Metatheory and proof boundary
+# What is proved, implemented, and still open
 
-## 1. What has been proved for the intended target
+This chapter keeps three claims separate:
 
-The following results have fixed statements and proof reviews:
+- a mathematical rule may be correct;
+- the Rust implementation may or may not implement it; and
+- a safe mechanism may still be a poor model of a musical practice.
 
-| Result | Status | Governing statement |
+## 1. Reviewed results
+
+| Result | Review status | Implementation status |
 | --- | --- | --- |
-| Total source core | Existing governing proof, conditional on resource/foreign contracts | `docs/language/02-core-calculus.md` |
-| Source-to-temporal closure | Existing governing proof | `docs/language/02-core-calculus.md` §5.7 |
-| Finite temporal algebra and unequal overlay | Existing governing laws | `docs/kernel/03`–`05`, `10` |
-| Exact versioned temporal framing | Correct mathematical target; implementation pending | `04-identity-and-realization.md` I1 |
-| Whole-node registered process totality/determinism/causality | Correct under registry contracts; implementation pending | `03-process-calculus.md` P1–P3 |
-| Typed lineage paths form a category | Correct under a fixed well-formed registry; implementation pending | `02-derivation-diagrams.md` |
-| Semantic execution factorization and cache correctness | Correct under displayed purity/version/conformance contracts | `04-identity-and-realization.md` R1/C1 |
+| Accepted source expressions terminate under the stated foreign-operation and resource limits | proved in `docs/language/02-core-calculus.md` | implemented for the current source core |
+| Source music closes to a finite kernel term | proved in `docs/language/02-core-calculus.md` §5.7 | implemented |
+| Timeline sequence, unequal-length overlay, scaling, restriction, and normalization obey the kernel laws | proved in `docs/kernel/03`–`05` and `10` | implemented and tested |
+| Versioned timeline bytes represent semantic equality exactly | Theorem I1 reviewed as part of K₃.3 | implemented by prompt 129a with delimiter and structured-payload tests |
+| A valid whole-node audio graph has deterministic causal steps and registered feedback | Theorems P1–P3 reviewed as part of K₃.3 | not yet implemented by the current audio graph |
+| Complete origin paths compose without losing intermediate anchors | theorem reviewed as part of K₃.3 | only partial provenance exists today |
+| Equal complete preparation arguments give equal results, and collision-checked cache hits are sound | Theorems R1 and C1 reviewed as part of K₃.3 | full preparation API and cache are not yet implemented |
 
-The independent proof record is retained in `docs/scratch/25`, `30`, `35`, `39`, `42`, and `45`. The failed reviews are
-part of the result: each exposed a premise now present in this spec.
+The proof-review record is in `docs/scratch/25`, `30`, `35`, `39`, `42`, and `45`. Those files include failed drafts.
+The failures matter because they exposed missing assumptions now stated in this specification.
 
-## 2. Theorems deliberately not claimed
+## 2. Claims this specification does not make
 
-This specification does not claim:
+Nothing here proves:
 
-- that every musical practice factors through one universal object;
-- that one global pitch, metre, key, chord, or function domain is adequate;
-- that a motif is a split idempotent;
-- that harmonic function is a tonic-translation orbit;
-- that hashes are collision-free;
-- that lineage equality follows from temporal semantic equality;
-- that preparation equality implies cross-device bit equality without processor conformance;
-- that current caller-block-sensitive feedback implements the process calculus; or
-- that nominal theory modules are already implemented or culturally adequate.
+- that one object captures every musical practice;
+- that one pitch, metre, chord, key, or function system fits all music;
+- that harmonic function is the same as scale degree;
+- that a musical motif is a split idempotent;
+- that hashes never collide;
+- that equal musical timelines have equal origin histories;
+- that equal audio plans produce bit-identical output on arbitrary devices; or
+- that today’s caller-buffer-based feedback obeys the fixed-step audio rules.
 
-## 3. Source representation ownership remains a separate proof gate
+## 3. The proposed source-language extension is not yet accepted
 
-The nominal theory-module candidate in `docs/scratch/47-t2b-minimal-source-closure.md` proposes finite non-recursive
-nominal data, private constructors, abstract ordinary-structure members, exact `Text`, and compiler-owned `Result`. Its
-metatheory and exact programs require independent closure before promotion into `docs/language/` and the prompt stack.
+The research notes propose finite user-defined data, private constructors, abstract type members in structures, `Text`,
+and `Result`. These features would let music-theory packages hide their representations while exposing total operations.
 
-Even after a safety proof, domain adequacy requires real package algorithms and practitioner review. Safety cannot prove
-that a ratio list represents gamaka, that a tonic is meaningful for every practice, or that a package's public
-vocabulary is respectful and useful.
+The safety proof has improved through several reviews, but review 54 still found missing rules for choosing one active
+version of a stable package and for treating existing `Music` types as stable public types. The proposal remains in
+`docs/scratch/`; it does not yet govern `docs/language/` or the prompt stack.
 
-## 4. Proof obligations for implementation
+Even a complete type-safety proof would not establish musical value. The next test must implement real algorithms in at
+least two differently framed theory packages. A proof can show that a ratio list is safe to store. It cannot show that
+the list captures rāga, gamaka, phrasing, or any other practice well.
 
-Every implementation milestone must convert its relevant mathematical premise into executable evidence:
+## 4. Evidence required from implementations
 
-- canonical encoders get delimiter/adversarial/property tests and schema migration tests;
-- artifact registries validate exact id/descriptor conflicts;
-- process graphs get whole-node schedule counterexamples, registered-feedback, causality, and block-partition tests;
-- caches inject digest collisions and confirm full arguments;
-- preparation differentials vary every option independently;
-- lineage tests retain generated roots/sites and intermediate anchors; and
-- source extensions get compile-fail tests plus evaluator equivalence/normalization tests.
+Each implementation step must test the premise on which its proof relies:
 
-Passing a current test suite is evidence about the implementation it exercises, not proof that an absent candidate
-representation exists.
+- byte encoders test empty strings, delimiters, newlines, multiplicity, version changes, and migration;
+- registries reject one id paired with two exact descriptors;
+- audio graphs test the known case where a port graph is acyclic but no whole-node schedule exists;
+- feedback tests every partition of the same requested frames;
+- caches inject a deliberate hash collision and compare complete arguments;
+- preparation tests vary each option independently;
+- origin tests retain generation roots, sites, and intermediate anchors; and
+- source-language extensions include compile-fail tests and evaluation/normalization tests.
+
+Passing tests for today’s code says nothing about a representation that has not been implemented. The implementation map
+records that distinction.

@@ -1,98 +1,97 @@
-# Typed derivation diagrams
+# Tracking where derived results came from
 
-## 1. Artifacts and registries
+When Musa turns source into a score, a score into gestures, or gestures into MIDI or audio, users need to know where
+each result came from. This chapter defines that origin record.
 
-A finite immutable artifact registry maps a versioned presentation reference to exactly one descriptor:
+## 1. Stored representations and anchors
 
-```text
-PresentationRef = (PresentationId,ArtifactVersion)
-
-PresentationDescriptor = {
-  kind,
-  schema,
-  root,
-  sites,
-  anchor_table,
-  canonical_manifest,
-}.
-```
-
-Anchor ids are local to one versioned presentation. A qualified anchor is `(PresentationRef,AnchorId)`. The root and
-every generation site occur in the descriptor's anchor table. Equal presentation references loaded from separate
-artifacts must have exact equal descriptors and manifests; otherwise registry merge rejects an identity conflict.
-
-A pass registry maps each `PassId` to one exact versioned descriptor containing its source kind, target kind, evidence
-schema, region schema, and operation version. Equal ids with unequal descriptors are rejected.
-
-## 2. Passes
-
-A primitive pass has the semantic shape
+Each stored representation has a stable reference for one version:
 
 ```text
-Pass S T E =
-  Presentation S
-  → Result {
-      target  : Presentation T,
-      lineage : Lineage S T,
-      losses  : List E,
-    }
-    Diagnostic.
+PresentationRef = (presentation id, version)
 ```
 
-This is metalanguage notation for a compiler or package operation, not a required first-class source type. `losses`
-records forgotten, approximated, selected, or externally supplied structure. Empty loss does not imply an isomorphism;
-an inverse and its laws must be provided separately.
-
-## 3. Primitive lineage hops
-
-A lineage path alternates qualified anchors and typed hops. Primitive hop forms are:
+Its descriptor records:
 
 ```text
-Preserved(pass,source,target,region,evidence)
-Generated(pass,source_root,generation_site,target,region,evidence)
-Combined(pass,sources,target,region,evidence)
+kind                  source, score, notation, MIDI, audio plan, ...
+schema                versioned format description
+root                  anchor for the whole representation
+generation sites      anchors that can create new material
+anchor table          every addressable item in this version
+manifest              exact bytes needed to identify the stored result
 ```
 
-Every displayed anchor resolves in the registry. The pass descriptor's source and target kinds must match. A generated
-hop retains the root and generation site which justify its lack of an ordinary source anchor. A combined hop retains all
-of its finite source anchors in canonical order.
+An **anchor** names one addressable item, such as a source expression, score event, MEI element, or process node. Anchor
+ids are local to one `PresentationRef`; the pair `(PresentationRef, anchor id)` is globally unambiguous within a
+project.
 
-## 4. Paths and lineages
+Loading two records with the same `PresentationRef` but different descriptors is an error. Musa never guesses which
+record is the intended one.
 
-A path is well formed when adjacent hops share the exact intermediate qualified anchor. Identity is the length-zero path
-at an anchor. Composition is concatenation at an equal endpoint:
+## 2. A conversion record
+
+A compiler pass from representation `S` to representation `T` returns three things:
 
 ```text
-p : a→b    q : b→c
-────────────────── Path-Compose
-q∘p : a→c.
+run_pass(input S)
+    -> output T
+     + origin paths from S to T
+     + a list of losses or approximations
 ```
 
-Composition does not erase `b` or either primitive hop. Associativity follows from list concatenation; zero-length paths
-are identities. Thus well-formed lineage paths form a category for one fixed well-formed registry.
+It may instead return a diagnostic. The loss list records facts such as “pitch spelling was dropped,” “this timing was
+rounded to MIDI ticks,” or “the user selected one alternative.” An empty list does not prove that the pass is
+reversible.
 
-A lineage artifact is a finite set of complete canonical paths. Canonical ordering and exact duplicate removal make
-insertion order irrelevant. If two operational derivations with otherwise equal fields must survive, their stable
-`DerivationId` fields differ; the representation is not simultaneously a bag and a set.
+Each pass id has one exact descriptor: source kind, target kind, version, and the schemas used for evidence and loss.
+Two different descriptors may not share one pass id.
 
-## 5. Pass composition
+## 3. One step in an origin path
 
-Given accepted passes `f:S→T` and `g:T→U`, their composite:
+Musa needs three forms of step:
 
-1. runs `f`;
-2. on success runs `g` on `f.target`;
-3. composes every compatible lineage path while retaining the intermediate `T` anchors;
-4. concatenates typed loss records in pass order; and
-5. returns the first canonical diagnostic on failure.
+```text
+Preserved(source, target, evidence)
+Generated(source root, generation site, target, evidence)
+Combined(source list, target, evidence)
+```
 
-The function and path identity/associativity laws hold under pure deterministic pass execution and one well-formed
-merged registry. They do not imply that separately developed passes commute.
+`Preserved` covers an ordinary relation such as one source note producing one score event. `Generated` covers material
+made at a repeat, template, or algorithmic generation site. It keeps both the source root and the generation site.
+`Combined` covers a result made from several inputs, such as a chord label inferred from several notes.
 
-## 6. The coherent project object
+Every anchor in a step must exist, and the pass descriptor must accept the source and target kinds.
 
-The coherent project artifact is the finite diagram containing its presentation descriptors, typed primitive pass edges,
-lineage paths, and loss evidence. Its modest universal property is the free category of recorded paths: an assignment of
-primitive edges to composable maps extends uniquely to paths.
+## 4. Joining paths
 
-This organizes provenance and comparison. It is not a universal musical object and proves no claim about harmony,
-phrase, timbre, or perception.
+An origin path alternates anchors and conversion steps. Two paths can be joined only when the first path ends at the
+exact anchor where the second begins:
+
+```text
+p goes from a to b    q goes from b to c
+────────────────────────────────────────
+q after p goes from a to c
+```
+
+Joining keeps the middle anchor `b` and both steps. It does not replace them with a summary label.
+
+**Theorem.** For one valid registry, path joining is associative, and the empty path at an anchor is an identity.
+
+**Proof.** A path is a finite list whose adjacent endpoints match. Joining paths is list concatenation at a shared
+endpoint. List concatenation is associative. Concatenating an empty list changes nothing. ∎
+
+## 5. A project’s origin record
+
+The project stores a finite set of complete origin paths in a fixed order. Exact duplicate paths are stored once. If two
+otherwise identical derivations must remain distinct, they receive different derivation ids.
+
+The resulting graph connects source, score, notation, analysis, MIDI, gestures, and audio preparation without declaring
+those representations equal. It supports questions such as:
+
+- Which source expression produced this engraved note?
+- Which score events support this analysis label?
+- Which tuning and rounding steps produced this MIDI event?
+- Which gesture and binding produced this process node?
+
+That is the whole purpose of the graph. It is an origin and loss record, not a universal definition of music.

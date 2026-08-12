@@ -1,93 +1,95 @@
-# Identity and storage architecture
+# Exact equality and stored data
 
-## 1. Four equalities
+This page explains how the implementation stores values that may be compared, cached, or loaded after a restart.
 
-The implementation must name rather than conflate:
+## 1. Do not use one equality for every job
 
-| Equality | Example owner | What it may forget |
+| Question | Example | Fields it may ignore |
 | --- | --- | --- |
-| Presentation semantic equality | `Timeline<A>`, a notation plan schema | construction/display history chosen by its schema |
-| Derivation equality | project artifact registry | insertion order, exact duplicate paths |
-| Execution equality | `musa-audio` prepared plan schema | presentation-only lineage fields |
-| Observation equality | renderer/engine conformance test | only what its explicit tolerance or bit contract states |
+| Do these values have the same meaning in this representation? | `Timeline<ScoreFact>` | construction order and fields excluded by the payload equality rule |
+| Did these results come through the same recorded conversions? | an origin path | insertion order and exact duplicate paths |
+| Are these the same prepared instructions for the audio engine? | `PreparedExecution` | source locations used only by the editor |
+| Did these two runs produce the same observable output? | sample or conformance comparison | only differences allowed by the named comparison rule |
 
-A type called `SemanticHash` is not enough to bridge rows. Each conversion theorem names both relations.
+A shared hash does not connect these rows. Any theorem that moves from one equality to another must name both equality
+rules and state its extra assumptions.
 
-## 2. Canonical-data pattern
+## 2. Encoding values for exact comparison
 
-Every persisted identity-bearing record implements one internal contract equivalent to:
+Every saved value that takes part in equality needs three private operations:
 
 ```text
-CanonicalData X = {
-  schema,
-  encode : X → bytes,
-  compare : X×X → Ordering,
-}
+schema version
+encode(value) -> unambiguous bytes
+compare(left, right) -> ordering
 ```
 
-Encoding equality and comparison equality coincide. Records use fixed domain/version tags and length-frame every
-variable child. Display/diagnostic formatting is separate. This pattern applies recursively to temporal payload schemas,
-nominal stamps, presentation refs, anchors, lineage paths, bindings, seeds, options, and prepared result schemas.
+Byte equality and value equality must agree. The encoding begins with a type tag and version. It records the length of
+every variable-size child before the child bytes. Human display and error messages use separate formatting.
 
-The concrete Rust API need not be one public trait. Prefer private writer functions and narrow owner methods; stabilize
-a shared facade only when multiple real owners need the same implementation.
+This rule applies to timeline payloads, future nominal type ids, stored-representation references, anchors, origin
+paths, instrument bindings, seeds, audio options, and prepared results.
 
-## 3. Temporal identity migration
+The code does not need one public `CanonicalData` trait. Private writer functions are better until several real callers
+need exactly the same API.
 
-The current `Canonical::canonical_key() -> String` remains the payload's admitted semantic key for now, but its contract
-changes from “injective on stored Rust values” to “complete for the declared equality class.” It gains owner type and
-quotient version metadata. `Timeline::semantic_hash` writes a versioned framed semantic record; it no longer hashes
-`Display` output.
+## 3. Timeline equality is now framed and versioned
 
-Migration steps:
+`Canonical::canonical_key()` defines equality for one timeline payload type. The trait also records the payload owner
+and equality version. A key may ignore stored fields if its documentation says so.
 
-1. add schema metadata to every current `Canonical` implementation;
-2. add the known newline/delimiter counterexample before changing the writer;
-3. implement one private framed semantic writer and hash it;
-4. retain stable display output only for human/golden consumers;
-5. change stored-cache versions so old N5 digests cannot be interpreted as new identity; and
-6. add property tests over arbitrary payload key strings and occurrence multiplicity.
+`Timeline::semantic_hash()` no longer hashes human `Display` output. It hashes a versioned byte record containing the
+payload schema, exact rational extent, occurrence count, endpoints, and length-framed payload keys.
 
-The compiler's `ScoreFact` key deliberately omits definition/declaration presentation fields. That quotient is recorded
-and versioned; it is not described as injective on the full struct.
+The implementation includes regression tests for:
+
+- the old newline and delimiter collision;
+- arbitrary string keys;
+- payload schema changes;
+- duplicate occurrences;
+- equal timelines built in different orders; and
+- the same timeline laws at a structured payload containing text, a rational, and a progress curve.
+
+Old unframed digests belong to the old format version and must not be read as new timeline identity.
 
 ## 4. Cache records
 
-A correctness-sensitive cache stores:
+A cache whose false hit could change a result stores:
 
 ```text
-(digest, exact_argument_bytes, exact_result)
+(hash, exact encoded arguments, exact result)
 ```
 
-The digest selects a bucket. Exact bytes confirm a candidate. The operation version, all argument schema versions,
-sample/channel/tick options, bindings, seed, and semantic gesture value occur in the argument record. Cache insertion
-happens only after the named pure operation returns.
+The hash selects a bucket. Exact argument comparison confirms the hit. The argument record includes the operation
+version, every data-schema version, gesture meaning, instrument and studio bindings, seed, sample rate, channel layout,
+semantic step, render bounds, and all other execution options.
 
-Lineage is cached separately when its inputs include presentation data which execution semantics quotient away. A
-lineage cache hit cannot replace an execution result, and an execution cache hit does not imply equal lineage.
+Origin data may need a separate cache because editor navigation can distinguish inputs that audio execution deliberately
+ignores. An audio-plan cache hit does not imply equal origin paths, and an origin-cache hit cannot stand in for an audio
+plan.
 
-## 5. Artifact registry storage
+## 5. Stored representations and origin paths
 
-One stored artifact contains or resolves:
+One stored representation contains or resolves:
 
-- its `(PresentationId,ArtifactVersion)`;
-- exact presentation descriptor and schema;
-- canonical anchor table/root/sites;
-- canonical manifest bytes;
-- pass descriptors used by lineage; and
-- normalized complete lineage paths and loss records.
+- its id and version;
+- its kind and schema;
+- its root, generation sites, and anchor table;
+- its exact manifest;
+- the descriptors of conversions used to make it; and
+- complete origin paths and loss records.
 
-Digests may index manifests. Loading/merging validates exact descriptors after lookup and rejects an id conflict. The
-registry is immutable while a derivation is checked; a source edit creates a new artifact version rather than mutating
-the meaning behind an existing reference.
+Hashes may help find a manifest. Loading or merging compares the exact descriptors and rejects one id paired with two
+different records. The registry does not change while a conversion is being checked. A source edit creates a new version
+instead of changing the meaning of an old id.
 
-## 6. Migration and compatibility
+## 6. Reading old data
 
-Schema changes are explicit. A reader either:
+When a schema changes, a reader has three honest choices:
 
-- reads the old version and applies a named checked migration which records loss;
-- recomputes from canonical source/package inputs; or
-- rejects the artifact with a version diagnostic.
+1. read the old version and run a named checked migration;
+2. rebuild the result from source and locked packages; or
+3. reject the value with a version error.
 
-It never reuses a version number for a new quotient, ignores an unknown field which affects equality, or accepts a
-digest because its length “looks right.”
+It must not reuse an old version number, ignore a new field that affects equality, or accept a record solely because its
+hash or byte length looks plausible.

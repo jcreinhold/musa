@@ -1,86 +1,104 @@
-# Process IR and runtime architecture
+# Preparing an audio graph for real-time use
 
-## 1. Ownership
+This page maps the audio-graph rules to `musa-audio` and `musa-engine`.
 
-`musa-audio` owns the finite process IR, formation checker, scheduler, processor registry, state schemas, and offline
-tick implementation. These types are private. `StudioGraphSpec`, instrument bodies, media voices, and gesture bindings
-compile into this IR during `prepare_execution`.
+## 1. Crate boundary
 
-`musa-engine` owns device negotiation, plan install/retirement, transport, and callback invocation. It does not inspect
-node topology. Offline rendering calls the same prepared transition without CPAL.
+`musa-audio` owns:
 
-## 2. Preparation phases
+- the private process-graph representation;
+- graph validation and whole-node scheduling;
+- the closed processor registry;
+- processor state formats;
+- audio preparation; and
+- the offline implementation of one semantic audio step.
 
-```text
-resolved gesture/studio/instrument intent
-  1. validate exact options and bindings
-  2. elaborate closed processor nodes and typed ports
-  3. insert only explicit semantic registers/delays
-  4. build whole-node dependency graph
-  5. reject combinational cycles/missing inputs/type mismatch
-  6. choose canonical node schedule
-  7. compute exact capacities and allocate control-side storage
-  8. return opaque PreparedExecution or canonical PrepareError
-```
+`musa-engine` owns:
 
-Preparation never depends on a callback. Every failure occurs before publication of a plan.
+- device negotiation;
+- installing and retiring prepared plans;
+- transport state; and
+- calling the prepared step from the audio callback.
 
-## 3. Whole-node schedule
+The engine does not inspect graph nodes or buffers. Offline rendering runs the same prepared step without CPAL.
 
-The scheduler stores node order, not an arbitrary port order. A node transition is called once per semantic tick only
-after every same-tick input is available. Boundary inputs and prior register values are available at tick start.
-Register outputs are committed after all nodes step.
+## 2. Preparation happens before the callback
 
-This representation directly implements `docs/spec/03-process-calculus.md`. An optimization may group independent nodes
-or vectorize ticks only after a differential law shows the same returned state/output.
+`prepare_execution` performs these steps:
 
-## 4. Fixed semantic tick
+1. Check every option and instrument or studio binding.
+2. Build closed processor nodes with typed ports.
+3. Add only the registers and delays that the source or processor contract requested.
+4. Build the ordinary-wire dependency graph over whole nodes.
+5. Reject missing inputs, type mismatches, duplicate drivers, and cycles without a register.
+6. Choose a fixed node order.
+7. Compute buffer and state sizes and allocate control-side storage.
+8. Return an opaque prepared plan or a stable preparation error.
 
-The prepared options choose the semantic tick independently of caller request size. The simplest conforming launch
-choice is one frame; a fixed multi-frame tick is allowed when its processor contracts and feedback delay say so
-explicitly. The engine may request any number of frames by iterating/slicing semantic ticks while retaining partial-tick
-state privately.
+Every recoverable failure occurs here. The callback never discovers that a port is missing or that more memory is
+needed.
 
-Tests compare rendering one request against every partition of the same request. Feedback, modulation, media playback,
-and envelopes must agree. Current caller-block-sensitive feedback is a known nonconformance, not the intended contract.
+## 3. Store a whole-node schedule
 
-## 5. Processor boundary
+The prepared plan stores node order, not port order. During one semantic step, a node runs once after all of its current
+inputs are available. Graph inputs and old register values are available at the start. New register values are committed
+after all nodes run.
 
-A registered processor supplies concrete closed operations:
+Grouping independent nodes or processing several steps with SIMD is allowed only when tests show the same output and
+next state as the simple step rule.
 
-- port and state schemas;
-- deterministic initialization from prepared parameters/seed;
-- a total finite tick transition;
-- resource/capacity bounds;
-- numeric/NaN behavior; and
-- canonical operation version.
+## 4. Fix the semantic step in the plan
 
-No processor receives a closure or arbitrary host callback. Later plug-in hosting requires an adapter process with an
-explicit failure/nondeterminism/conformance policy; it does not silently satisfy the native theorem.
+Caller buffer size must not define feedback delay. The prepared options choose one semantic step. One frame is the
+simplest initial choice. A larger fixed step is allowed only when every processor and delay contract names it.
 
-## 6. Real-time publication
+The engine can satisfy an arbitrary device request by repeating or slicing semantic steps and keeping any partial-step
+state private. Tests render the same duration under many caller-buffer partitions. Feedback, modulation, envelopes, and
+media playback must agree in every partition.
 
-All buffers, node states, schedule tables, media maps, and processor instances are created on the control side. A
-prepared plan crosses to the callback through the existing bounded lock-free queue. The callback:
+Today’s caller-buffer-sensitive feedback does not meet this rule. It remains a known implementation gap.
 
-- takes no allocation or lock;
-- performs no I/O or logging;
-- reads only prevalidated compact indices;
-- returns retired plans for control-side destruction; and
-- reports bounded counters through RT-safe channels.
+## 5. Processor contract
 
-Device sample-rate/channel negotiation is an input to preparation options. A mismatch requires re-preparation; it is not
-an ambient mutation of a running plan.
+Each registered processor provides:
 
-## 7. Verification
+- input, output, and state formats;
+- deterministic initialization from prepared parameters and seed;
+- a total finite step function;
+- memory and work bounds;
+- rules for clipping, NaN, and infinity; and
+- an operation version.
 
-The implementation gate includes:
+A native processor receives no arbitrary closure or host callback. A future plug-in adapter must state what happens on
+failure or nondeterminism. It does not automatically inherit the native processor theorem.
 
-- the exact whole-node/acyclic-port counterexample from the K₂ proof review;
-- missing/duplicate/incompatible port negative tests;
-- combinational-cycle rejection and registered-cycle acceptance;
-- tick totality/determinism properties over a small reference processor family;
-- causality prefix tests;
-- all caller-block partitions of feedback and stateful processors;
-- offline/live prepared-transition equality; and
-- callback allocation/lock/I/O/destruction instrumentation.
+## 6. Publishing a plan to the callback
+
+The control thread creates every buffer, state value, schedule table, media map, and processor instance. It sends the
+finished plan through the existing bounded lock-free queue.
+
+The callback:
+
+- allocates no memory;
+- takes no lock;
+- performs no file, network, or device-setup I/O;
+- writes no log;
+- reads only validated compact indices;
+- sends old plans back for destruction on the control thread; and
+- reports only bounded real-time-safe counters.
+
+Sample rate and channel layout are preparation inputs. A device change creates a new prepared plan; it does not mutate
+the current plan behind the callback’s back.
+
+## 7. Required tests
+
+The implementation is not complete until it passes:
+
+- the known graph whose ports look acyclic but whose whole nodes cannot be scheduled;
+- missing, duplicate, and mismatched port tests;
+- rejection of ordinary-wire cycles and acceptance of registered feedback;
+- totality and determinism tests over small reference processors;
+- causality tests on every input prefix;
+- all caller-buffer partitions for feedback and other stateful processors;
+- equality between offline and live use of the prepared step; and
+- instrumentation that detects allocation, locks, I/O, logging, or large destruction in the callback.

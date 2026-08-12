@@ -1,32 +1,35 @@
-# Specification-to-implementation map
+# What is implemented today
 
-This table is a status map, not a claim that green tests implement absent rows.
+This table distinguishes proved design targets from current Rust code. A green test suite cannot implement a row whose
+data type does not yet exist.
 
-| Specification object/judgment | Intended owner | Current implementation | Required next evidence |
+| Feature | Owner | Current state | Next evidence |
 | --- | --- | --- | --- |
-| Total monomorphic source core | `musa-compiler` | **Implemented** for governing value domains/functions/folds | Whole-language conformance |
-| Nominal user data/private constructors/abstract type members | `musa-compiler` | **Absent; candidate proof only** | T₂ closure, isolated spike, real package algorithms |
-| `instantiate_close` into kernel terms | compiler→kernel | **Implemented** | Existing differential and closure laws |
-| Finite `Timeline<A>` algebra, unequal overlay | `musa-kernel` | **Implemented** | 58 kernel tests/law suite; conformance audit |
-| Versioned framed temporal semantic bytes | `musa-kernel` | **Incorrect current writer**: hash is unframed display text | Known delimiter regression, arbitrary-key properties, schema migration |
-| Gesture temporal payload | `musa-compiler` | **Absent** | Prompts 129a/130 |
-| Notation-plan branch | `musa-render` | **Implemented** for current score facts | Language graduation matrix |
-| Evidence-bearing plural analysis owners | `musa-compiler` | **Partial** built-in analysis, no general nominal owner layer | Theory-module and analysis prompts |
-| Typed process graph formation over whole nodes | `musa-audio` | **Partial/nonconforming** current graph/runtime | Private IR, whole-node schedule counterexample |
-| Explicit registered feedback semantics | `musa-audio` | **Nonconforming** caller-block-sensitive feedback | Fixed semantic tick and partition laws |
-| `prepare_execution(Sem,Bindings,Seed,Options)` | `musa-audio` | **Absent as specified** | Instrument/preparation prompts |
-| Collision-confirmed execution cache | audio/project | **Absent** | Complete ExecArgs record and injected collision tests |
-| Versioned presentation registry | `musa-project` | **Absent** | Artifact descriptor/merge validator |
-| Typed complete lineage paths/loss records | compiler/render/audio/project | **Partial provenance only** | Generated-root and composition prototype |
-| Source-authoritative structured editing | project/interface | **Implemented architecture; incomplete feature surface** | Existing interface and graduation audits |
+| Total non-recursive source expressions | `musa-compiler` | implemented for the current value types and folds | whole-language conformance tests |
+| User-defined nominal data, private constructors, and abstract type members | `musa-compiler` | absent; research candidate still incomplete after review 54 | repair active package-version selection and `Music` stability, then review again |
+| Closing contextual music into kernel terms | compiler to kernel | implemented | existing differential and closure tests |
+| Finite `Timeline<A>` operations, including unequal-length overlay | `musa-kernel` | implemented | current 62 kernel tests and final conformance audit |
+| Versioned exact bytes for timeline equality | `musa-kernel` | implemented | migration test when a persisted reader is added |
+| Gesture timeline payload | `musa-compiler` | absent | prompts 130 and its admission tests |
+| Engraving plan and current exports | `musa-render` | implemented for current score facts | language graduation matrix |
+| Analysis packages with their own hidden value types and evidence | `musa-compiler` | partial built-in analyses; no general package mechanism | accepted source type design and real package examples |
+| Valid whole-node audio process graph | `musa-audio` | partial and not conforming to the new schedule rule | private graph, known schedule counterexample, process-law tests |
+| Feedback through a fixed stored delay | `musa-audio` | current behavior depends on caller buffer size | fixed semantic step and partition tests |
+| Complete `prepare_execution` operation | `musa-audio` | absent in the specified form | instrument and preparation prompts |
+| Cache that confirms complete audio arguments after hash lookup | audio/project | absent | exact `ExecArgs` record and forced-collision test |
+| Versioned registry of source and derived representations | `musa-project` | absent | exact descriptor and merge validation |
+| Complete origin paths with loss records | compiler/render/audio/project | partial source provenance only | generated-event and multi-pass path prototype |
+| Structured editing that changes source | project/interface | architectural boundary implemented; feature set incomplete | interface and language graduation audits |
 
-## Near-term order
+## Recommended implementation order
 
-1. Repair temporal semantic framing because it is a verified current correctness defect.
-2. Implement the exact nominal source fragment only after its independent proof closes, then test real algorithms.
-3. Introduce the gesture presentation and exact execution-preparation signature.
-4. Replace current graph execution with the private whole-node registered process IR before promising feedback laws.
-5. Add lineage registry/path storage as the first cross-presentation coherence prototype.
-6. Run the repaired audio and whole-language conformance prompts before graduation.
+1. Finish or reject the small source-language design for theory-owned data. Do not implement it while stable package
+   selection remains undefined.
+2. Add the gesture timeline using the now-implemented payload admission rule.
+3. Implement audio preparation with the complete argument list.
+4. Replace caller-buffer-based graph feedback with the private whole-node graph and fixed semantic step.
+5. Add the versioned representation registry and complete origin paths.
+6. Run the repaired audio and whole-language conformance prompts before public release.
 
-No step requires a universal `world`, CBPV term former, dependent timeline index, or common musical quotient.
+None of these steps requires call-by-push-value, dependent timeline types, first-class “worlds,” or one common musical
+data model.

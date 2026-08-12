@@ -1,131 +1,122 @@
-# Presentations and stage judgments
+# What exists at each compiler stage
 
-## 1. Presentation kinds
+This chapter lists Musa’s main representations and the operations that connect them. The list is not one chain that
+every project must follow. An analysis can branch from a score, and a gesture-based practice may reach performance
+without first producing Western notation.
 
-The minimum project diagram uses these distinct kinds:
+## 1. The main representations
 
-```text
-Source
-Core
-ContextualMusic
-Temporal A
-GesturePresentation
-NotationPlan
-Analysis T
-ProcessDefinition
-PreparedExecution
-AudioHistory
-```
+| Name used here | What it contains | Finite? |
+| --- | --- | --- |
+| `Source` | `.musa` text and locked package inputs | yes |
+| `Core` | checked total expressions after parsing and name resolution | yes |
+| `ContextualMusic` | music expressions that still need key, metre, voice, or other local context | yes |
+| `Timeline<A>` | exact rational positions carrying values of type `A` | yes |
+| `Gesture` | instrument-independent performance instructions | yes |
+| `NotationPlan` | the information an engraver needs | yes |
+| `Analysis<T>` | a result defined by analysis package `T`, with supporting evidence | yes |
+| `ProcessDefinition` | a checked graph of audio processors and stored state | yes |
+| `PreparedExecution` | a process definition plus fixed options, initial state, and allocated resources | yes |
+| `AudioHistory` | output samples observed while a prepared execution runs | not necessarily |
 
-`A` is an admitted temporal payload schema and `T` is a named analysis owner. `AudioHistory` is not finite canonical
-data; it is an observation of execution under an input/device history. A project need not contain every kind. A
-gesture-primary practice may construct `GesturePresentation` without first producing staff notation, while an analysis
-may branch from a temporal or source presentation without being rendered.
+`A` names the type carried by a timeline. `T` names the package that defines an analysis. An audio history may keep
+growing, so it is not stored inside the finite timeline kernel.
 
-## 2. Source and total elaboration
+## 2. Source expressions are total
 
-The source stage uses the judgments governed by `docs/language/`:
+The source language uses the typing and evaluation rules in `docs/language/`. In the usual notation,
 
 ```text
 Σ ; Γ ⊢ e : A
-ρ ⊢ e ⇓ v
-Σ ⊢ declarations ok
 ```
 
-Accepted core evaluation is pure, deterministic, and strongly normalizing under its deterministic resource-acceptance
-premise. It produces finite values and contextual `Music`; it does not observe a temporal `Timeline` or execute DSP.
+means that expression `e` has type `A` when `Σ` supplies declarations and `Γ` supplies local variables. Evaluation is
+pure, deterministic, and terminating for accepted programs, subject to the stated limits on foreign operations and
+resources.
 
-The compiler boundary is:
+Music expressions first produce `ContextualMusic`. The compiler then supplies the local context and closes the result:
 
 ```text
-Σ ; Γ ⊢ m : Music    ρ ⊨ Γ    κ context-valid
-──────────────────────────────────────────────── Instantiate-Close
-instantiate_close(m,ρ,κ) ⇓ t : Term[ScoreFact]
+m has type Music    ρ supplies its free values    κ is a valid musical context
+───────────────────────────────────────────────────────────────────────────
+instantiate_close(m,ρ,κ) returns a closed Term<ScoreFact>
 ```
 
-`t` is closed and well formed in the temporal term calculus. This is a compilation judgment, not a definitional equality
-between the source core and the temporal kernel.
+This is a compilation step. It does not claim that source syntax and a score timeline are the same data.
 
-## 3. Finite temporal presentation
+## 3. Finite timelines
 
-For an admitted payload `A`, a temporal value is
+A timeline is a pair `M = (d, E)` where:
+
+- `d` is a nonnegative rational length; and
+- `E` is a finite multiset of occurrences `(s, e, a)` with `0 ≤ s ≤ e ≤ d` and payload `a : A`.
+
+A multiset keeps duplicates. Two performers may therefore contribute identical events without one being deleted.
+
+The main operations are:
 
 ```text
-M = (d,E)
-d ∈ ℚ≥0
-E a finite multiset of (s,e,a)
-0 ≤ s ≤ e ≤ d, a:A.
+(d,E) ; (e,F) = (d + e, E together with F moved forward by d)
+
+(d,E) ⊕ (e,F) = (max(d,e), E together with F)
 ```
 
-The governing operations are:
+The first operation plays values in sequence. The second overlays them. Overlay does not require equal lengths and does
+not insert rests. Scaling and restriction are defined in `docs/kernel/03-denotational-semantics.md`.
+
+## 4. Notation, analysis, and performance are separate conversions
+
+A performance profile converts score meaning into gestures:
 
 ```text
-(d,E) ; (e,F) = (d+e, E ⊎ τ_d(F))
-(d,E) ⊕ (e,F) = (max(d,e), E ⊎ F)
-scale_r(d,E) = (rd, scale_r(E)), r>0
-restrict_I(d,E) = the observation defined by docs/kernel/03.
+interpret(score, profile, realization_seed)
+    -> gesture representation or interpretation error
 ```
 
-No equality-of-extents premise appears in overlay. No padding or rest occurrence is inserted. Term evaluation is the
-governing `docs/kernel/10-term-calculus.md` judgment `ρ⊢t⇓M`.
+The result may still contain written pitch, technique names, phrases, and exact control curves. Frequency and processor
+addresses need not be chosen yet.
 
-## 4. Interpretation and realization
-
-An interpretation profile is a named, versioned owner of a partial total function:
+Notation and analysis branch separately:
 
 ```text
-interpret :
-  Sem_Score × Profile × RealizationSeed
-  → Result GesturePresentation InterpretationError.
+engrave(timeline) -> notation plan or engraving error
+
+analyze_T(input) -> Analysis<T> or analysis error
 ```
 
-Partiality is in the result. A profile may preserve written pitch, symbolic technique, phrase grouping, and exact curves
-without choosing a frequency or DSP address. A practice may instead define another typed pass into its gesture
-presentation; the displayed score route is not mandatory ontology.
+The subscript `T` says which package defines the analysis and its evidence. These operations are compiler passes, not
+timeline reduction rules.
 
-Notation and analysis are separate branches:
+## 5. Preparing and running audio
+
+Audio preparation receives every choice that can affect the result:
 
 ```text
-engrave_T : Presentation(Temporal A) → Result NotationPlan EngravingError
-analyze_T : Presentation(P) → Result (Analysis T) AnalysisError_T.
+prepare_execution(gestures, bindings, seed, options)
+    -> prepared execution or preparation error
 ```
 
-The subscript names an owner. Neither judgment is a kernel reduction.
-
-## 5. Preparation and execution
-
-Execution preparation is fixed in Chapter 4:
+A successful result contains a checked process graph, initial state, resource plan, and fixed physical settings. The
+engine then allocates the plan and runs one audio step at a time:
 
 ```text
-prepare_execution :
-  Sem_Gesture × Bindings × Seed × Options
-  → Result PreparedExecution PrepareError.
+allocate(prepared execution) -> runtime state or allocation error
+
+(runtime state, input tick) -> (new runtime state, output tick)
 ```
 
-A successful prepared execution contains one accepted finite process definition, initial state, resource allocation
-description, and all fixed physical policies. It contains no source-editable authority.
+An audio history is the sequence of output ticks produced for a chosen input history.
 
-Allocation and execution are separate judgments:
+## 6. Values from different stages are not interchangeable
+
+The following pairs are different types:
 
 ```text
-allocate : PreparedExecution → Result RuntimeState AllocationError
-RuntimeState ; InputTick → RuntimeState' ; OutputTick.
+source text                    score timeline
+written pitch                 frequency
+gesture timeline              audio process graph
+prepared audio plan           audio sample history
+notation plan                 analysis result
 ```
 
-The second is Chapter 3's process transition. An audio history is the sequence of output ticks observed under a fixed
-input history and runtime conformance contract.
-
-## 6. Stage non-collapse laws
-
-The following are ill typed rather than false equations:
-
-```text
-Source = Temporal ScoreFact
-WrittenPitch = Frequency
-Timeline Gesture = ProcessDefinition
-PreparedExecution = AudioHistory
-NotationPlan = Analysis T.
-```
-
-A named pass may relate each relevant pair. Sharing source anchors or canonical field layouts never supplies such a pass
-automatically.
+A named conversion may connect a pair. Shared fields, identifiers, or hashes do not create an automatic conversion.

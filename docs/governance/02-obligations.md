@@ -1,146 +1,111 @@
-# Constitutional obligations
+# Rules that follow from the core design
 
-## What this document is
+These rules turn [01-constitution.md](01-constitution.md) into tests for new designs. Each rule gives a concrete mistake
+to avoid.
 
-These are non-obvious consequences of the constitution which constrain otherwise plausible designs. They do not choose
-surface spelling or Rust layout. Each obligation states what it rules out.
+## 1. Every conversion is named
 
-## 1. Cross-presentation conversion is never implicit
+A written note, a sounding frequency, and a MIDI note number are different values. Moving between them requires a named
+function or compiler pass with all needed inputs, such as tuning, register, and spelling policy.
 
-**Derives from:** Amendments 2 and 5.
+This forbids a compiler from silently choosing 12-tone equal temperament, a tonic, or a MIDI spelling because two types
+happen to contain the same integer.
 
-A written pitch, performed pitch trajectory, MIDI note, and oscillator frequency may be related only by a named pass
-whose inputs contain the required tuning, context, policy, or instrument data. A common integer or label is not a
-coercion.
+## 2. Built-in Western theory remains optional
 
-**Rules out:** structural type equivalence across owners, global conversion instances, and compiler operations which
-silently choose tonic, temperament, register, spelling, metre, or transcription policy.
+Keys, scale degrees, 12-note pitch classes, tonal chord functions, and regular bars are useful built-in tools. None may
+be required by the temporal kernel or by every music project.
 
-## 2. Launch repertoire does not become global ontology
+A new music-theory package must be able to reach notation, performance gestures, or audio through its own explicit
+conversions. It need not pretend that its values are Western keys or chords.
 
-**Derives from:** Amendment 2.
+## 3. Overlay accepts parts of different lengths
 
-Common-practice tonal, twelve-tone, and staff-notation domains may be excellent defaults and concrete test cases. They
-must remain named theory-owned definitions. A new practice can bypass them and still reach finite gesture and process
-presentations through its own typed passes.
+If `M` has length `d` and `N` has length `e`, their overlay has length `max(d, e)` and contains all events from both.
+The shorter part simply has no events after it ends.
 
-**Rules out:** requiring every music to have a key, scale degree, 12-TET pitch class, regular metre, chord, written
-score, or Western function label.
+This forbids an equal-length type check and automatic rest insertion. Authors write rests when the notation or analysis
+needs rests, not to satisfy the timeline implementation.
 
-## 3. Overlay does not manufacture padding
+## 4. Metre is not built into every timeline type
 
-**Derives from:** Amendment 3.
+Bars, pulse layers, tāla, swing, rubato, fermatas, gradual tempo changes, and unmeasured music need different models.
+They may guide a named conversion from written or structural time to performance time. They are not mandatory type
+parameters of every timeline.
 
-For timelines `M=(d,E)` and `N=(e,F)`, simultaneous presence is `(max(d,e),E⊎F)`. The shorter presentation is simply
-absent after its extent. An author writes a rest only when a notational or analytical presentation needs that fact.
+This forbids treating `senza misura` as a type error or choosing one piecewise-constant pulse model for all music.
 
-**Rules out:** equal-extent overlay side conditions, automatic rest insertion, and interpreting an entered/withdrawn
-voice as malformed temporal structure.
+## 5. An equality key must say what it ignores
 
-## 4. Metre and expressive timing are payload/context theories
+A type may deliberately treat two stored values as equal even when some fields differ. For example, a musical-event
+comparison may ignore source-layout fields. Its equality key must state which fields it reads, which it ignores, and its
+version.
 
-**Derives from:** Amendments 2 and 3.
+This forbids claiming both that a key distinguishes every stored value and that it omits fields. Changing the chosen
+fields requires a new version or a checked migration.
 
-Pulse layers, bars, tala/metric cycles, conducted plans, groove, rubato, fermatas, accelerandi, and unmeasured regions
-may relate to exact placement through named theory/profile passes. None is a mandatory index of every temporal value.
+## 6. A hash only narrows a search
 
-**Rules out:** a global piecewise-constant pulse-set base, a type error for senza misura, and kernel conversion rules
-which presume one metrical ontology.
+If two deterministic hashes differ, their input bytes differ. If the hashes match, the input bytes may still differ. A
+cache must compare the full encoded arguments before it returns a correctness-sensitive hit.
 
-## 5. Equality names its quotient
+This forbids hash-only cache hits and type identities based only on a digest.
 
-**Derives from:** Amendment 6.
+## 7. Audio preparation receives every choice as an argument
 
-An admitted payload key may deliberately forget stored presentation detail. It must state that quotient, owner type, and
-version. It must be total and deterministic and complete for equality classes; it need not be injective on the raw Rust
-struct it intentionally quotients.
-
-**Rules out:** simultaneously claiming that a key is injective on stored values and that it forgets fields, or changing
-omitted fields without an equality-schema decision.
-
-## 6. Hash equality is never proof of semantic equality
-
-**Derives from:** Amendment 6.
-
-A digest is a finite index. Unequal digests prove unequal canonical bytes for a deterministic hash computation; equal
-digests select candidates which require exact byte or structured equality confirmation whenever correctness depends on
-identity.
-
-**Rules out:** hash-only cache hits, digest-owned nominal stamps, and theorems whose converse holds merely “up to a
-collision probability.”
-
-## 7. Rendering factorizes through complete execution semantics
-
-**Derives from:** Amendments 4 and 6.
-
-Execution preparation has the conceptual type
+Audio preparation has this shape:
 
 ```text
-prepare_execution :
-  Sem_Gesture × Bindings × Seed × Options
-  → Result PreparedExecution PrepareError.
+prepare_execution(gestures, bindings, seed, options)
+    -> prepared audio plan or error
 ```
 
-`Options` contains every choice affecting acceptance or execution. Presentation-only fields reach a separate lineage
-pass and cannot affect `PreparedExecution`. Equal complete arguments to a pure deterministic implementation produce an
-equal complete result. Equal frames additionally require equal external input histories, initial state, allocation
-semantics, and conforming deterministic processors.
+`options` includes every choice that can change acceptance or execution, such as sample rate, channels, block policy,
+render bounds, and quality settings. Origin data used only for editor navigation is handled separately.
 
-**Rules out:** ambient sample-rate/block choices, preparation which observes omitted source spans, and an unconditional
-claim of cross-device bit identity.
+Equal arguments to a pure deterministic implementation give equal prepared results. Equal rendered samples also require
+equal external input, initial state, allocation rules, and conforming processors. This forbids claiming unconditional
+bit-for-bit audio equality across devices.
 
-## 8. Process scheduling is whole-node and feedback is registered
+## 8. Audio schedules whole processors
 
-**Derives from:** Amendment 4.
+A processor runs once per audio step after all of its current inputs are ready. The scheduler must therefore order whole
+processors, not individual ports. A connection cycle is legal only if at least one edge reads a stored value from an
+earlier step.
 
-A primitive process transition runs only after all of that node's current-tick inputs are available. The dependency DAG
-is therefore over whole nodes, not merely over ports. Every accepted same-tick edge respects a node schedule. A cycle is
-legal only when at least one edge reads prior registered state.
+This forbids a port graph that looks acyclic but cannot run the processor API, as well as zero-delay feedback whose
+meaning changes with the caller’s buffer size.
 
-**Rules out:** accepting an acyclic port graph which no whole-node API can execute, zero-delay feedback, and caller
-block partition as hidden feedback semantics.
+## 9. Origin paths keep their intermediate steps
 
-## 9. Lineage retains the witnesses needed to form it
+If source `A` produced score event `B`, which then produced MIDI event `C`, the recorded path keeps `B` and both
+conversions. A generated event also keeps the source root and generation site that explain where it came from.
 
-**Derives from:** Amendments 1 and 5.
+This forbids flattening the path to a list that can no longer be checked, or inventing a generated event with no source
+or generation site.
 
-A generated hop retains its generating site/root, qualified source and target anchors, pass identity, region/evidence,
-and versioned presentation references. Path composition retains intermediate vertices rather than flattening them into
-an uncheckable list of labels. Lineage is a finite set of complete paths; multiplicity belongs in a stable derivation id
-when distinct derivations must survive.
+## 10. New language features need real examples
 
-**Rules out:** source-less generated edges, composition which erases the root that justified a hop, and claiming both
-bag multiplicity and duplicate-edge normalization for one representation.
+Musa should add a type-system feature only when ordinary finite data, total functions, and modules make at least two
+real musical operations unclear or unsafe. Nominal data and private constructors have such examples: different theory
+packages need to hide their representations.
 
-## 10. Source-language power must have a concrete representation caller
+Dependent types, recursive data, first-class modules, “worlds,” and equality proofs do not enter the language merely
+because they fit an analogy. The failed examples must come first.
 
-**Derives from:** Amendments 1 and 2.
+## 11. A formal compiler stage need not be source syntax
 
-Nominal data and private constructors have direct callers: plural theory owners. A richer feature—dependent indices,
-recursive data, abstract-member functors, first-class worlds, equality proofs—enters only after two concrete operations
-cannot be expressed clearly with ordinary total functions, finite data, and typed passes.
+The timeline rules, audio-graph rules, and origin-path rules need precise definitions. That does not mean composers must
+write those internal terms. A compiler-owned form should remain private when exposing it would not make musical ideas
+easier to express.
 
-**Rules out:** adding CBPV, universes, refinements, or theta-link syntax because the analogy is attractive, and adding a
-feature whose only example already assumes the feature.
+This forbids adding one source operator for chords, phrases, timelines, and audio graphs just because each has some form
+of composition.
 
-## 11. Stage rules need not become source terms
+## 12. Real-time code must implement the same audio rules
 
-**Derives from:** Amendments 3–5.
+Preallocation, fixed buffers, queues, and vectorization may change how fast the engine runs. They may not change what a
+processor step means. The audio callback allocates no memory, takes no lock, performs no file or network I/O, writes no
+log, and destroys no large object.
 
-The temporal algebra, process transition system, and derivation category are all formal calculi. That does not imply one
-surface language should internalize all of them. A stage may remain a compiler-owned IR when exposing its terms would
-not make musician-facing ideas simpler.
-
-**Rules out:** one universal monoidal operator for chords, phrases, timelines, and DSP, and the inference that “has a
-calculus” means “must have source syntax.”
-
-## 12. Real-time execution refines, rather than weakens, the process semantics
-
-**Derives from:** Amendments 1, 4, and 6.
-
-Preallocation, fixed buffers, queueing, and processor specialization may change cost and representation only. They must
-implement the declared tick transition. The callback allocates no memory, takes no lock, performs no I/O, logs nothing,
-and destroys no large object.
-
-**Rules out:** a fast path with different feedback meaning, best-effort resource failure in the callback, and a cached
-plan whose identity omits an execution-affecting option.
+This forbids a fast path with different feedback timing or a cached plan that omits a setting which changes execution.

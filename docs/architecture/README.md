@@ -1,16 +1,15 @@
-# Implementation architecture
+# How the Rust workspace implements the specification
 
-These documents explain how the Rust workspace is intended to realize `docs/spec/`. The specification owns semantics;
-architecture owns crate boundaries, private representations, validation points, storage, and runtime strategy. If an
-architecture shortcut changes a specified judgment, the shortcut is wrong or the specification needs a deliberate
-amendment.
+The formal specification says what Musa’s stages mean. These pages say which crate implements each stage, which details
+remain private, how data is stored, and where validation occurs.
 
-Start with:
+Read them in this order:
 
-1. [stage-pipeline.md](stage-pipeline.md) — presentations, passes, and crate ownership;
-2. [identity-and-storage.md](identity-and-storage.md) — canonical data, caches, and artifact registries;
-3. [process-runtime.md](process-runtime.md) — private process IR and audio execution; and
-4. [spec-to-implementation-map.md](spec-to-implementation-map.md) — implemented versus missing target rows.
+1. [stage-pipeline.md](stage-pipeline.md) maps compiler stages to crates and public APIs.
+2. [identity-and-storage.md](identity-and-storage.md) explains exact encodings, hashes, caches, and saved origin data.
+3. [process-runtime.md](process-runtime.md) explains how `musa-audio` prepares a graph for the real-time engine.
+4. [spec-to-implementation-map.md](spec-to-implementation-map.md) marks each planned feature as implemented, partial, or
+   absent.
 
-`docs/initial-design-roadmap.md` remains the broad implementation roadmap. These documents refine the cross-stage
-architecture where the later formal specification is more precise.
+`docs/initial-design-roadmap.md` remains the broad roadmap. These pages give more precise boundaries where the later
+cross-stage specification changed or clarified that roadmap.

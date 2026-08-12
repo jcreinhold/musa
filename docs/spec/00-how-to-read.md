@@ -1,42 +1,56 @@
-# How to read the cross-stage specification
+# Terms and notation used in this specification
 
-## Scope
+This chapter gives the minimum background needed to read the later rules.
 
-Musa has several formal stages, not one universal kernel language. This specification fixes their boundaries and the
-objects which cross them. It answers:
+## What this specification covers
 
-- what sort of artifact exists at each stage;
-- which judgments construct one stage from another;
-- which equalities are meaningful;
-- how lineage and loss compose; and
-- what must be true for preparation, caching, and execution to be sound.
+A Musa project can have several **representations**. A representation is a form built for a particular job. Source text
+is one representation. A finite score timeline, an engraving plan, an analysis result, a prepared audio graph, and a
+recorded audio stream are others.
 
-It does not define a universal theory of music. Pitch, metre, harmony, form, phrase, gesture, timbre, and analytical
-function belong to named theory or realization owners. The built-in domains remain concrete launch definitions.
+The chapters that follow answer four questions:
 
-## Three distinct kinds of rule
+1. What data exists at each stage?
+2. When is that data valid?
+3. How does one stage produce the next?
+4. What does equality mean at each stage?
 
-1. **Formation and typing rules** decide whether a finite artifact is well formed.
-2. **Operational rules** say how an accepted term, pass, or process advances.
-3. **Denotational rules** identify the mathematical object an accepted artifact denotes.
+They do not define pitch, metre, harmony, or form for all music. Music-theory packages define those ideas for the music
+they serve.
 
-An implementation optimization is not a fourth kind. It must refine the displayed rules.
+## Three kinds of rule
+
+The specification uses three kinds of rule:
+
+- A **well-formedness rule** says whether a value is valid. For example, an event must end within its timeline.
+- An **evaluation rule** says how a valid term or audio graph runs.
+- A **meaning rule** gives the mathematical value represented by a valid term.
+
+An optimization must preserve these rules. Faster code does not get a different meaning.
 
 ## Notation
 
-- `A,B` range over payload or value types.
-- `P,Q` range over presentation kinds.
-- `M,N` range over finite temporal values.
-- `G` ranges over finite process graphs.
-- `x≡_P y` is the admitted semantic equality for presentation `P`.
-- `⟦x⟧_P` is the denotation of an accepted artifact in its native presentation.
-- `Result X E` is a total result with successful carrier `X` and finite error carrier `E`.
+- `A` and `B` stand for ordinary value types.
+- `M` and `N` stand for finite timelines.
+- `G` stands for an audio process graph.
+- `P` and `Q` stand for kinds of representation, such as source, notation, or MIDI.
+- `x ≡_P y` means that `x` and `y` are equal under the stated equality rule for representation `P`.
+- `⟦x⟧` means “the mathematical value represented by `x`.”
+- `Result X E` means that an operation returns either a value of type `X` or an error of type `E`.
 
-The same glyph never licenses equality between different presentations. A cross-presentation relationship is a pass
-judgment from Chapter 2.
+The symbol `≡_P` only compares values from the same representation. A written pitch and a frequency may be related by a
+tuning function, but they are not equal merely because they can both be stored as numbers.
 
-## Authority and proof status
+## How to read a rule
 
-Normative definitions are stated directly in these chapters. The proof record is summarized in Chapter 5. A theorem
-whose premises include an ownership, purity, resource, or processor-conformance contract is only as applicable as the
-implementation's evidence for that contract. The architecture map records that evidence separately.
+A line above a horizontal bar lists the facts that must already hold. The line below the bar gives the conclusion. For
+example:
+
+```text
+M is a valid timeline    N is a valid timeline
+────────────────────────────────────────────────
+overlay(M,N) is a valid timeline
+```
+
+The prose around each rule defines every symbol and explains why the rule exists. The proof-status chapter separates
+proved claims from intended behavior that still needs implementation evidence.
