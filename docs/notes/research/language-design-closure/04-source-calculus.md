@@ -339,8 +339,27 @@ representation, and export total operations.
 
 ## 8. Compiler operations
 
-A compiler operation has a closed type and an implementation supplied by one stage adapter. The adapter must satisfy
-this contract:
+A compiler operation has a fixed argument list, a result type, and an implementation supplied by one stage adapter. It
+is not a source function. Its signature uses `op` to make the difference visible:
+
+```text
+transpose : op(Interval, Music) => Music
+```
+
+An operation name may appear only in a call that supplies every declared argument. It cannot be passed, returned, or
+partly applied. Ordinary source functions remain values. A musician who needs an operation's behavior as a value writes
+a function whose body makes the complete call:
+
+```musa
+fn up_octave(music: Music) -> Music {
+    transpose(P8, music)
+}
+```
+
+This rule uses the function construct already present in the language. It avoids a second private kind of function that
+would have to store an operation name and a partly filled argument list.
+
+The operation's adapter must satisfy this contract:
 
 1. it is defined on every well-typed input;
 2. it is pure and deterministic;
@@ -351,11 +370,11 @@ this contract:
 Ordinary compiler operations are first order: their argument and result types contain no function type. `fold_list` and
 the other finite folds are language reduction rules, not foreign operations.
 
-The current language has one higher-order music transform, `map_note_pitches`. Source evaluation does not run its
-callback. It stores the total `Pitch -> Pitch` function in a finite `Music` recipe. When that recipe is instantiated,
-the adapter visits only the documented pitch positions in its finite occurrence bound and applies the function once at
-each position. No open registry may add another higher-order compiler operation. This narrow exception preserves the
-current language without letting an operation hide an unbounded callback loop.
+The design admits one complete operation with a function argument: `map_note_pitches`. Source evaluation does not run
+its callback. It stores the total `Pitch -> Pitch` source function in a finite `Music` recipe. When that recipe is
+instantiated, the adapter visits only the documented pitch positions in its finite occurrence bound and applies the
+function once at each position. No open registry may add another operation with a function argument. This narrow rule
+keeps a concrete musical need without letting a foreign operation hide an unbounded callback loop.
 
 Expected failures return `Result`. A compiler panic is an implementation bug, not a language outcome.
 
@@ -369,13 +388,13 @@ data ArithmeticError {
   OutOfRange;
 }
 
-ratio_add: Ratio -> Ratio -> Result<Ratio, ArithmeticError>
-ratio_sub: Ratio -> Ratio -> Result<Ratio, ArithmeticError>
-ratio_mul: Ratio -> Ratio -> Result<Ratio, ArithmeticError>
-ratio_div: Ratio -> Ratio -> Result<Ratio, ArithmeticError>
-ratio_neg: Ratio -> Result<Ratio, ArithmeticError>
-ratio_compare: Ratio -> Ratio -> Ordering
-nat_add: Nat -> Nat -> Result<Nat, ArithmeticError>
+ratio_add: op(Ratio, Ratio) => Result<Ratio, ArithmeticError>
+ratio_sub: op(Ratio, Ratio) => Result<Ratio, ArithmeticError>
+ratio_mul: op(Ratio, Ratio) => Result<Ratio, ArithmeticError>
+ratio_div: op(Ratio, Ratio) => Result<Ratio, ArithmeticError>
+ratio_neg: op(Ratio) => Result<Ratio, ArithmeticError>
+ratio_compare: op(Ratio, Ratio) => Ordering
+nat_add: op(Nat, Nat) => Result<Nat, ArithmeticError>
 ```
 
 An implementation may use wider integers while calculating, then reduce the fraction and check the public bound. It may
@@ -491,7 +510,8 @@ The proof must establish:
 - evaluation keeps types and does not get stuck;
 - evaluation is deterministic and ends;
 - sealing prevents clients from constructing an abstract value directly;
-- accepted old expressions keep their old meaning;
+- current expressions with complete compiler calls keep their old meaning;
+- each rejected partial compiler call now in the repository has a concrete named-wrapper rewrite;
 - closing `Music` either reports a stated error or yields a finite, typed temporal term; and
 - the recorded stage conversions compose.
 

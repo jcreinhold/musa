@@ -1,8 +1,10 @@
 # Close the Musa language design
 
-**Status: stopped at the final proof gate.** Tasks 1–6 are complete. The second review found High and Medium flaws, so
-the promotion and implementation-planning tasks did not run. The governing rules remain unchanged. See
-[`../notes/research/language-design-closure/13-final-blocker.md`](../notes/research/language-design-closure/13-final-blocker.md).
+**Status: reopened for one bounded breaking-change repair.** Tasks 1–6 found a sound small-language direction, but the
+second review found a false compatibility claim and two missing value premises. The repository is not yet public, so the
+repair may reject partial calls of compiler-owned operations instead of preserving an accidental calling convention.
+Tasks 7–8 remain blocked until the repaired proof passes. The governing rules remain unchanged. See
+[`../notes/research/language-design-closure/14-breaking-change-repair.md`](../notes/research/language-design-closure/14-breaking-change-repair.md).
 
 ## Purpose and limits
 
@@ -106,8 +108,10 @@ belongs to the package rather than the core. Do not label a block as executable 
 ## 6. Prove the design
 
 Prepare a rapid proof draft, a proof outline, and the final metatheory. Prove decidable name resolution and checking,
-substitution, preservation, progress, deterministic evaluation, termination, constructor opacity, conservative extension
-of the current expression fragment, finite and typed `Music` closure, and composition of typed stage passes.
+substitution, preservation, progress, deterministic evaluation, termination, constructor opacity, preservation of the
+retained current fragment, finite and typed `Music` closure, and composition of typed stage passes. Audit each rejected
+partial compiler call in the repository and give it a concrete named-wrapper rewrite; do not claim that every possible
+dynamic partial call has the same source type after migration.
 
 Try both a direct termination proof and a translation into the existing proved core. Keep the proof with fewer special
 cases.
@@ -115,6 +119,9 @@ cases.
 Freeze the proof and ask an independent proof-review subagent to attack it. Allow one repair and one second review.
 Promotion requires a verdict of correct under the stated contracts with no fatal, high, or medium issue. If the second
 review still finds such an issue, record the blocker and stop. Do not prove package-cache correctness.
+
+The first attempt spent those two reviews and stopped. The later breaking-change repair is a new frozen proof target; it
+does not alter either old review. It must pass a fresh independent review before Task 7 can start.
 
 ## 7. Promote only a passing design
 

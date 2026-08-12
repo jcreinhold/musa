@@ -52,6 +52,10 @@ Ordinary compiler operations satisfy all of these conditions:
 Expected failures appear inside `Option` or `Result`. A panic, hidden diagnostic, clock read, random read, or global
 musical context violates the contract.
 
+An operation signature has the form `op(A_1, ..., A_n) => B`. It is not a source function type. Operation names do not
+appear in `Gamma`, and the source checker accepts them only in calls with exactly the declared arguments. Ordinary
+source functions still have `A -> B` types and remain values.
+
 All seven structural operations are core rules: natural, list, and option folds, `map`, `filter`, `range`, and `repeat`.
 The existing `map_note_pitches` operation is the one admitted higher-order music transform. Source evaluation only
 stores its total function in a finite recipe. Instantiation later visits the documented pitch positions within the
@@ -199,9 +203,9 @@ then `Delta; Sigma; empty |- e' : A`.
 - A natural, list, or option fold either returns its initial value or applies its typed step function to one canonical
   field and a typed accumulator. Its result type is unchanged.
 - An ordinary compiler operation returns its declared type by the operation contract.
-- `map` and `filter` private states retain the types in their administrative typing rules. Each callback call preserves
-  its stated result type by the ordinary function application case. `range` and `repeat` construct lists with the
-  declared member type.
+- `map` and `filter` enter private states only with value arguments. Each callback call preserves its stated result type
+  by ordinary function application. A wait state records only a value of that type; the completed list therefore keeps
+  its member type. `range` and `repeat` construct lists with the declared member type.
 - Every controlled music operation returns a typed finite recipe. `map_note_pitches` stores a value of type
   `Pitch -> Pitch` and a `Music`; it does not run the callback at this stage. A checked quote stores its checked kernel
   term and typed `Music` holes.
@@ -228,10 +232,12 @@ bind an abstract value through a catch-all, but cannot write a constructor patte
 that can write constructor patterns retains the needed private entry in `Delta`.
 
 A fold first evaluates its arguments. Canonical natural, list, and option forms select one fold rule. `map` and `filter`
-enter typed private states; a state either finishes or evaluates one callback. `range` and `repeat` with value arguments
-produce their finite list values. An ordinary compiler call with value arguments steps by totality. A controlled music
-operation or checked quote with value arguments produces its finite recipe value. An annotation steps its subject or
-erases a value annotation. No closed, well-typed case is stuck. ∎
+first evaluate their arguments, then enter typed private states. A state with no input finishes. A state with input
+creates one callback expression. A wait state steps that expression until it is a value; it then records the result and
+continues. `filter_wait` instead chooses its unique rule from the canonical values `true` and `false`. `range` and
+`repeat` with value arguments produce their finite list values. An ordinary compiler call with value arguments steps by
+totality. A controlled music operation or checked quote with value arguments produces its finite recipe value. An
+annotation steps its subject or erases a value annotation. No closed, well-typed case is stuck. ∎
 
 ### Lemma 5.3. A non-value has one evaluation-context decomposition
 
@@ -240,16 +246,25 @@ be the empty context `hole`.
 
 **Proof.** Induct on the term shape. For a form with several fields, the first non-value field is unique. For an
 application the function position precedes the argument. For a match the subject is the only evaluated position before
-arm selection. Each remaining form has the one order stated by the semantics. ∎
+arm selection.
+
+The structural traversals are the only delicate cases. If either argument of `map` or `filter` is not a value, the
+leftmost such argument gives the unique context. The entry rule cannot apply because it requires both values. If both
+are values, the entry rule is the unique redex. A `map_wait` with a non-value pending expression has the unique wait
+context; its completion rule requires a value. With a value pending expression, only the completion rule applies. A
+`filter_wait` with a non-value decision has the unique wait context. With a value decision, canonical forms give exactly
+`true` or `false`, and those two rules are disjoint. State formation already requires values in every other field. The
+remaining term forms follow their one stated left-to-right order. ∎
 
 ### Theorem 5.4. Evaluation is deterministic
 
 If `Delta |- e --> e_1` and `Delta |- e --> e_2`, then `e_1 = e_2`.
 
-**Proof.** If `e` is a basic redex, its outer form selects one rule. A match chooses the first matching arm in source
-order, which is unique even when a later catch-all also matches. A compiler operation has one result by its contract. If
-`e` is not a basic redex, Lemma 5.3 selects one context and one inner redex. Apply the induction hypothesis to the inner
-step and rebuild the same context. ∎
+**Proof.** Lemma 5.3 gives one decomposition. Its basic redex has one rule. In particular, the value premises keep the
+`map` and `filter` entry and completion rules disjoint from their evaluation contexts, and `true` and `false` select
+different `filter_wait` rules. A match chooses the first matching arm in source order, which is unique even when a later
+catch-all also matches. A compiler operation has one result by its contract. Rebuilding the unique context therefore
+gives one next term. ∎
 
 Preservation and progress together give the usual safety result: a closed, well-typed source term never reaches an
 untyped or stuck term.
@@ -302,9 +317,9 @@ good arguments to a good finite result. Applying a controlled music operation to
 finite value. Induction on the result type shows that such a first-order value is good.
 
 For a natural, list, or option fold, use its finite canonical input. For `map`, induct on the remaining input list in
-`map_state`; goodness of the callback makes each `map_wait` expression end at a good output member. `filter` is the same
-argument with a good `Bool` decision. `range(n)` and `repeat(v,n)` construct exactly `n` good members after finite
-preflight.
+`map_state`; goodness of the callback makes each `map_wait` expression end at a good output value. The value premise
+then records that member. `filter` is the same argument with a canonical `Bool` decision. `range(n)` and `repeat(v,n)`
+construct exactly `n` good members after finite preflight.
 
 A controlled music operation constructs one finite recipe node from good values. In particular,
 `map_note_pitches(function,music)` stores the good function and recipe; it does not call the function now. A checked
@@ -331,9 +346,9 @@ type. The resulting closed term is reducible at `A`.
 - For a natural fold, induct on the finite natural value. For a list fold, induct on the finite list. For an option
   fold, inspect its one constructor. The initial value and step functions are good by their induction hypotheses, so
   every finite step yields a good accumulator.
-- For `map`, induct on the finite remaining input of its private state. Each good callback ends at a good result and the
-  remaining list shortens. `filter` is the same argument with a good `Bool` decision. `range(n)` and `repeat(v,n)` make
-  finite lists of exactly `n` good members.
+- For `map`, induct on the finite remaining input of its private state. Each good callback ends at a good value before
+  the wait rule records it, and the remaining list shortens. `filter` is the same argument with a canonical `Bool`
+  decision. `range(n)` and `repeat(v,n)` make finite lists of exactly `n` good members.
 - A controlled music operation or checked quote constructs a finite good recipe value from good arguments. It does not
   instantiate the recipe during source reduction.
 - Compiler operations follow from Lemma 6.2.
@@ -416,46 +431,64 @@ the corresponding unmetered transition. ∎
 Different starting budgets may yield success and exhaustion for the same term. These theorems do not compare those
 states. They also make no cache claim.
 
-## 10. The old expression fragment
+## 10. Retained programs and rejected partial calls
 
-Let `Old` be the complete current checked expression core. The embedding is the exhaustive table in
-`04a-formal-rules.md` §12. It covers every current `ExprKind`, all seven structural eliminators, all eight controlled
-music operations, and typed kernel quotation. The migration bridge set contains every current base type.
+This section compares source behavior, not private evaluator states. The current evaluator may create a partial
+`BuiltinValue` while processing even a complete source call. The refined language deliberately has no such value.
 
-Values are related by `v approximately embed w` as follows: base and bridge values agree exactly; products, options,
-lists, and recipes agree component by component; and functions are related when they send related arguments to related
-results. The function clause accounts for the target's unary currying of the old simultaneous parameter list.
+Let `Old_complete` contain the current well-typed source expressions in which every compiler-owned operation receives
+all its declared arguments. The table in `04a-formal-rules.md` §12 maps these expressions to the refined core. The table
+covers every current source form, all seven structural operations, all complete controlled music calls, and typed kernel
+quotation. The migration bridge set contains every current base type.
 
-### Theorem 10.1. The new calculus conservatively extends `Old`
+Assume one comparison contract: a complete old compiler operation and its refined operation return related results on
+related arguments. This is checked once for the finite operation table. It says nothing about either evaluator's private
+steps or charges.
 
-For every closed old term `e` whose old checking and evaluation succeed:
+Define `v_old ~_A v_new`, read “the values agree at type `A`,” by induction on `A`. Base and bridge values are equal;
+products, options, lists, results, nominal values, and finite recipes agree component by component; and two functions
+agree when they send agreeing arguments to agreeing results. The function clause compares behavior, not closure layout.
 
-1. if `Old` gives `e` type `A`, the new calculus gives the embedded term the embedded type `A`;
-2. if `e -->Old e'`, then `embed(e) -->* embed(e')`; and
-3. if old evaluation reaches `v`, new evaluation reaches a related value `w`.
+### Theorem 10.1. Retained programs keep their type and result
 
-**Proof.** Induct on the old typing derivation for the first claim. Literal, name, product, `Option`, list, match,
-bridge, and first-order primitive cases use the corresponding new rule. The three folds and four other structural
-operations use the rules in `04a` §6.7. Current controlled music operations use their closed table. `map_note_pitches`
-uses its separate typing rule. A checked quotation uses the same checked kernel term and the induction hypotheses for
-its finite hole list. An old multi-argument function becomes nested unary lambdas, and repeated `LambdaCheck` gives the
-curried type corresponding to the old parameter list. Named call arguments are put in parameter order and defaults
-inserted before repeated `Application` rules. This covers the table.
+Let `e` be a closed expression in `Old_complete`. If current checking gives `e` type `A`, its refined translation also
+has type `A`. If current evaluation succeeds with `v_old`, refined evaluation finishes with a unique value `v_new` such
+that `v_old ~_A v_new`.
 
-For the second claim, inspect the old reduction. Unchanged scalar and structural-value rules take the same step. One old
-simultaneous beta step becomes the finite sequence of unary beta steps in parameter order. The three folds use their
-displayed equations. One old aggregate `map` or `filter` step becomes the finite private-state traversal; `range` and
-`repeat` construct the same canonical list. Determinism of related callback applications gives the same list members. A
-current music operation becomes the same finite recipe node. `map_note_pitches` stores the same callback and source
-recipe without calling it. A quote stores the same checked term, loci, and related hole recipes. Thus every old step is
-matched by finitely many new steps.
+**Proof.** We prove the typing and result claims together by induction on the current source typing derivation.
 
-For the third claim, induct on the successful old evaluation, repeatedly using the simulation. The function case uses
-the definition of the value relation; every first-order value is structurally identical after erasing fresh nominal
-names and unary closure administration. New evaluation ends by Theorem 6.4 and determinism fixes the related result. ∎
+Literals and structural constructors translate directly, so the induction hypotheses give agreeing fields. A current
+multi-argument source function becomes nested unary functions. Repeated function checking gives the same curried type,
+and the induction hypothesis for its body proves the function clause of `~`. Current named and default arguments are put
+in declared order before translation.
 
-This is a core-language theorem. A later parser change may reserve new words, and a later library migration may replace
-built-in musical names with imports. Those source-compatibility questions need their own implementation plan.
+Matches use the same first matching pattern. Folds use the same finite base and step equations. For `map` and `filter`,
+induct on the finite input list; related callbacks return related members or the same Boolean choice, so the refined
+private traversal builds the same result in source order. `range` and `repeat` build the same finite lists.
+
+A complete compiler call has the same argument types on both sides. The induction hypotheses give related argument
+values, and the finite operation-table comparison contract gives related results. This applies to complete music calls.
+`map_note_pitches` stores related callbacks and recipes without calling the callback. A checked quotation stores the
+same checked temporal term, exact loci, and related hole recipes.
+
+These cases cover the translation table. The refined term terminates by Theorem 6.4, and determinism gives its unique
+result. The proof never needs to translate a current private `BuiltinValue`. ∎
+
+### 10.2 Rejected programs
+
+The refined checker rejects a compiler operation with missing arguments. This is an intentional source break, not a
+metatheory gap. The repository contains partial calls only with fixed supplied values: fixed intervals for `transpose`,
+a fixed ratio for `stretch`, a fixed pitch for `invert`, and bare `retrograde`. Named one-argument source functions can
+replace those uses and make complete operation calls.
+
+There is no theorem for an arbitrary dynamic partial call. For example, `transpose(interval)` would create a function
+that remembers a run-time interval. Expressing that value without special compiler state would require an ordinary
+source closure. None of the five musical cases requires one, so anonymous functions remain deferred. A later proposal
+must justify them as a general language feature rather than smuggle them back through compiler operations.
+
+A new language version also owns a new fixed resource schedule. No claim compares its charge trace with the old
+partial-operation evaluator. A later parser may reserve words, and a later library migration may replace built-in
+musical names with imports; those changes need their own implementation plan.
 
 ## 11. Closing `Music`
 
@@ -596,7 +629,7 @@ Under the stated contracts, the proposed language has the required properties:
 5. evaluation is deterministic;
 6. every source term terminates;
 7. sealed constructors cannot be forged by clients;
-8. the source core conservatively extends the existing expression fragment;
+8. retained current programs keep their type and result;
 9. closing `Music` yields a finite typed temporal term or a stated error; and
 10. valid typed stage passes compose.
 

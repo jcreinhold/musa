@@ -38,7 +38,7 @@ type ::= base
 `bridge` ranges over the finite compiler-owned types admitted for this language version. The migration version includes
 the current `Pitch`, `NoteName`, `Interval`, `Scale`, `Key`, `Degree`, `Frame`, `ChordClass`, `Triad`, `Roman`,
 `Voicing`, `Pc12`, `PcSet12`, and `Row12` types. Only notation boundary types remain after the theory-package migration.
-Keeping the migration set here lets the old core embed before that separate source migration occurs.
+Keeping this set lets retained current expressions translate before that separate source migration occurs.
 
 The well-formedness judgment is `Delta; Sigma |- A type`. It checks that every nominal name appears in `Delta` or as an
 abstract type in `Sigma` and recursively checks every component. Type equality is exact structural equality, with exact
@@ -152,13 +152,15 @@ Surface forms use this exact elaboration table:
 | `fold_nat(count, initial, step)` | `nat_fold(initial, step, count)` |
 | `fold_option(item, initial, step)` | `option_fold(initial, step, item)` |
 | `if condition then yes else no` | `match condition { true => yes; false => no; }` |
-| a saturated ordinary compiler call `p(a_1, ..., a_n)` | `primitive(p, a_1, ..., a_n)` |
-| a saturated controlled music call other than `map_note_pitches` | `music_operation(name, a_1, ..., a_n)` |
+| a complete ordinary compiler call `p(a_1, ..., a_n)` | `primitive(p, a_1, ..., a_n)` |
+| a complete controlled music call other than `map_note_pitches` | `music_operation(name, a_1, ..., a_n)` |
 | `map_note_pitches(function, music)` | the core form of the same name |
 
 A source function declaration provides all parameter and result types. Resolution tells a constructor, ordinary
-function, and compiler operation apart, so these rows do not rely on capitalization or spelling. A compiler operation
-must receive every argument; it cannot be partially applied. No derived form adds a reduction rule.
+function, and compiler operation apart, so these rows do not rely on capitalization or spelling. An operation name is
+not a term and is not entered in `Gamma`. A compiler operation must receive exactly its declared arguments in one call.
+It cannot be returned, passed, or partly applied. A musician can expose the same behavior as a value by writing an
+ordinary source function whose body makes the complete call. No derived form adds a reduction rule.
 
 ## 5. Patterns
 
@@ -411,10 +413,10 @@ and cannot be partially applied.
 ### 6.8 Compiler operations
 
 ```text
-P(name) = A_1 * ... * A_n -> B
+P(name) = op(A_1, ..., A_n) => B
 Gamma |- e_i <= A_i for every i
 -------------------------------- Primitive
-Gamma |- name(e_1, ..., e_n) => B
+Gamma |- primitive(name, e_1, ..., e_n) => B
 ```
 
 Ordinary entries satisfy the first-order contract. Structural folds and the named bounded music traversal use their
@@ -424,27 +426,23 @@ The current controlled music operations use this finite table:
 
 | Name | Type |
 | --- | --- |
-| `transpose` | `Interval -> Music -> Music` |
-| `stretch` | `Ratio -> Music -> Music` |
-| `retrograde` | `Music -> Music` |
-| `invert` | `Pitch -> Music -> Music` |
-| `shift` | `Duration -> Music -> Music` |
-| `overlay` | `Music -> Music -> Music` |
-| `map_note_pitches` | `(Pitch -> Pitch) -> Music -> Music` |
-| `play` | `Voicing -> Duration -> Music` |
+| `transpose` | `op(Interval, Music) => Music` |
+| `stretch` | `op(Ratio, Music) => Music` |
+| `retrograde` | `op(Music) => Music` |
+| `invert` | `op(Pitch, Music) => Music` |
+| `shift` | `op(Duration, Music) => Music` |
+| `overlay` | `op(Music, Music) => Music` |
+| `map_note_pitches` | `op(Pitch -> Pitch, Music) => Music` |
+| `play` | `op(Voicing, Duration) => Music` |
 
-The source operation always returns a finite recipe. An invalid stretch factor or held duration becomes a stated error
-when that recipe is instantiated. The compatibility theorem in Section 12 covers old programs whose old evaluation and
-instantiation succeed; existing failing diagnostics remain an implementation migration obligation, not a new source
-value.
+The `op` notation is not a source function type. It describes one complete compiler call. The source operation always
+returns a finite recipe. An invalid stretch factor or held duration becomes a stated error when that recipe is
+instantiated. Existing failing diagnostics remain an implementation migration obligation, not a new source value.
 
-Every operation except `map_note_pitches` checks by repeated use of `Application` against its table entry.
-`map_note_pitches` has the explicit rule:
-
-Equivalently, after surface applications have been collected, the compiler-owned recipe node checks by:
+Every controlled operation other than `map_note_pitches` uses this rule:
 
 ```text
-MusicOps(name) = A_1 * ... * A_n -> Music
+MusicOps(name) = op(A_1, ..., A_n) => Music
 Gamma |- e_i <= A_i for every i
 ------------------------------------------ MusicOperation
 Gamma |- music_operation(name, e_1, ..., e_n) => Music
@@ -564,88 +562,93 @@ The same rule covers products, literals, `Option`, lists, and `Result` with thei
 The structural equations are:
 
 ```text
-nat_fold(z, step, 0)       --> z
-nat_fold(z, step, n+1)     --> step(n, nat_fold(z, step, n))
+nat_fold(v_z, v_step, 0)       --> v_z
+nat_fold(v_z, v_step, n+1)     --> (v_step(n))(nat_fold(v_z, v_step, n))
 
-list_fold(z, step, [])     --> z
-list_fold(z, step, x::xs)  --> list_fold(step(x, z), step, xs)
+list_fold(v_z, v_step, [])          --> v_z
+list_fold(v_z, v_step, v_x::v_xs)  --> list_fold((v_step(v_x))(v_z), v_step, v_xs)
 
-option_fold(z, step, None)    --> z
-option_fold(z, step, Some(x)) --> step(x)
+option_fold(v_z, v_step, None)      --> v_z
+option_fold(v_z, v_step, Some(v_x)) --> v_step(v_x)
 ```
 
-These equations use finite canonical naturals and lists. The evaluation contexts reduce the new calls in their stated
-order.
+These equations use finite canonical naturals and lists. The `v_` prefixes require the initial value, step function, and
+structural input to be values before the equation applies. The evaluation contexts reduce them in their stated order.
 
-The remaining structural operations use private states. `completed` is kept in source order:
+The remaining structural operations use private states. A metavariable beginning with `v` ranges over values. `v_done`
+is a canonical list kept in source order:
 
 ```text
-map(function, items) --> map_state(function, items, [])
+map(v_function, v_items) --> map_state(v_function, v_items, [])
 
-map_state(function, [], completed)
-  --> completed
+map_state(v_function, [], v_done)
+  --> v_done
 
-map_state(function, x::xs, completed)
-  --> map_wait(function, xs, completed, function(x))
+map_state(v_function, v_x::v_xs, v_done)
+  --> map_wait(v_function, v_xs, v_done, v_function(v_x))
 
-map_wait(function, xs, completed, y)
-  --> map_state(function, xs, completed ++ [y])
+map_wait(v_function, v_xs, v_done, v_y)
+  --> map_state(v_function, v_xs, v_done ++ [v_y])
 
-filter(predicate, items)
-  --> filter_state(predicate, items, [])
+filter(v_predicate, v_items)
+  --> filter_state(v_predicate, v_items, [])
 
-filter_state(predicate, [], completed)
-  --> completed
+filter_state(v_predicate, [], v_done)
+  --> v_done
 
-filter_state(predicate, x::xs, completed)
-  --> filter_wait(predicate, x, xs, completed, predicate(x))
+filter_state(v_predicate, v_x::v_xs, v_done)
+  --> filter_wait(v_predicate, v_x, v_xs, v_done, v_predicate(v_x))
 
-filter_wait(predicate, x, xs, completed, true)
-  --> filter_state(predicate, xs, completed ++ [x])
+filter_wait(v_predicate, v_x, v_xs, v_done, true)
+  --> filter_state(v_predicate, v_xs, v_done ++ [v_x])
 
-filter_wait(predicate, x, xs, completed, false)
-  --> filter_state(predicate, xs, completed)
+filter_wait(v_predicate, v_x, v_xs, v_done, false)
+  --> filter_state(v_predicate, v_xs, v_done)
 
 range(n) --> [0, 1, ..., n-1]
 repeat(v, n) --> [v, v, ..., v] with exactly n copies
 ```
 
+The entry rules apply only after their arguments are values. The wait rule for `map` applies only after its callback
+result is a value. Until then, the evaluation context steps the pending expression. The two `filter_wait` rules apply
+only to the canonical Boolean values. These premises prevent an administrative rule from competing with a step inside an
+argument or callback.
+
 The last two right sides are meta-notation for one finite canonical list value. Their aggregate charge and result-node
 count are checked before construction. `map` and `filter` precharge their input count, then ordinary function
-application charges each callback in source order. The private states are well typed when the function, remaining input,
-and completed output have the types in Section 6.7; the wait expression has the callback result type.
+application charges each callback in source order.
 
 Their exact administrative typing rules are:
 
 ```text
-f:X->Y    remaining:List<X>    completed:List<Y>
-------------------------------------------------
-map_state(f, remaining, completed):List<Y>
+v_f:X->Y    v_remaining:List<X>    v_done:List<Y>
+-------------------------------------------------
+map_state(v_f, v_remaining, v_done):List<Y>
 
-f:X->Y    remaining:List<X>    completed:List<Y>    pending:Y
+v_f:X->Y    v_remaining:List<X>    v_done:List<Y>    pending:Y
 ----------------------------------------------------------------
-map_wait(f, remaining, completed, pending):List<Y>
+map_wait(v_f, v_remaining, v_done, pending):List<Y>
 
-p:X->Bool    remaining:List<X>    completed:List<X>
+v_p:X->Bool    v_remaining:List<X>    v_done:List<X>
 ---------------------------------------------------
-filter_state(p, remaining, completed):List<X>
+filter_state(v_p, v_remaining, v_done):List<X>
 
-p:X->Bool    current:X    remaining:List<X>    completed:List<X>    pending:Bool
+v_p:X->Bool    v_current:X    v_remaining:List<X>    v_done:List<X>    pending:Bool
 -----------------------------------------------------------------------------
-filter_wait(p, current, remaining, completed, pending):List<X>
+filter_wait(v_p, v_current, v_remaining, v_done, pending):List<X>
 ```
 
-These private forms may occur only in evaluator states produced by the structural rules. The source checker never
-accepts their spellings.
+The `v_` premises are part of state formation, not comments about an implementation. These private forms may occur only
+in evaluator states produced by the structural rules. The source checker never accepts their spellings.
 
 After all arguments are values, a controlled music operation reduces to one finite `Music` recipe node. In particular:
 
 ```text
-map_note_pitches(function, music)
-  --> MusicMapRecipe(function, music)
+map_note_pitches(v_function, v_music)
+  --> MusicMapRecipe(v_function, v_music)
 
-kernel_quote(q, [(h_i, locus_i, music_i)]_i)
-  --> MusicQuoteRecipe(q, [(h_i, locus_i, music_i)]_i)
+kernel_quote(q, [(h_i, locus_i, v_music_i)]_i)
+  --> MusicQuoteRecipe(q, [(h_i, locus_i, v_music_i)]_i)
 ```
 
 No pitch callback runs in either source reduction. The recipe adapter applies it during instantiation under the
@@ -696,15 +699,20 @@ but source terms cannot invoke that function. The stage boundary invokes it.
 
 The final metatheory proves that operational evaluation reaches the value given by this denotation.
 
-## 12. Exact embedding of the current core
+## 12. Retained fragment and breaking change
 
-The compatibility source `Old` is the current checked expression core, not an idealized subset. The embedding table is:
+Let `Old_complete` be the current checked source expressions restricted to programs in which each compiler-owned
+operation is called with all its declared arguments. This restriction excludes only partial operation values. It does
+not exclude ordinary source functions or higher-order functions written by musicians.
 
-| Current checked form | New core form |
+The translation table for `Old_complete` is:
+
+| Current checked source form | New core form |
 | --- | --- |
 | literal, name, product, `Option`, list | the same corresponding form |
 | simultaneous multi-argument closure | nested unary closures in parameter order |
-| named/default argument application | arguments reordered and defaults inserted, then nested unary application |
+| named/default call of an ordinary source function | arguments reordered and defaults inserted, then nested unary application |
+| named/default complete compiler call | arguments reordered and defaults inserted, then one `primitive` or `music_operation` node |
 | `PitchAction` | the total compatibility `pitch_move` entry selected by its checked `Pitch` or `NoteName` type |
 | `Step` | a checked deferred-pitch field inside the same `Music` atom; current checking already forbids it elsewhere |
 | first-order delta primitive | the same entry in `P` |
@@ -712,22 +720,33 @@ The compatibility source `Old` is the current checked expression core, not an id
 | `map`, `filter`, `range`, `repeat` | the explicit structural form in Sections 6.7 and 9 |
 | match with old patterns | the same match and pattern |
 | checked contextual `Music` expression | the same finite recipe form under the invariant in `09-metatheory.md` §11 |
-| `transpose`, `stretch`, `retrograde`, `invert`, `shift`, `overlay`, `play` | the matching controlled music operation |
+| complete calls of `transpose`, `stretch`, `retrograde`, `invert`, `shift`, `overlay`, `play` | the matching controlled music operation |
 | `map_note_pitches` | the explicit higher-order recipe constructor in Sections 6.8 and 9 |
 | checked kernel quotation | `kernel_quote` with the same checked term, holes, loci, and embedded hole expressions |
 
-The table covers every variant of the current compiler's `ExprKind`, every one of its seven structural eliminators,
-every current controlled music operation, and checked quotation. The migration bridge set covers every current base
-type. The compatibility meaning of written pitch and interval uses mathematical integer coordinates, so pitch movement
-is total. Every successful current machine-bounded movement embeds with the same result; a movement that currently
-overflows is outside the successful-program premise below. New `Text`, `Result`, nominal data, and sealing forms have no
-old preimage.
+The table covers every current checked form after the stated restriction, every one of its seven structural eliminators,
+every complete controlled music call, and checked quotation. The migration bridge set covers every current base type.
+The compatibility meaning of written pitch and interval uses mathematical integer coordinates, so pitch movement is
+total. Every successful current machine-bounded movement embeds with the same result; a movement that currently
+overflows is outside the successful-program premise. New `Text`, `Result`, nominal data, and sealing forms have no old
+preimage.
 
-Because old multi-argument beta reduction substitutes several arguments at once while the target is curried, one old
-step need not be one new step. The correct compatibility relation is a finite forward simulation:
+The comparison is between accepted source programs and their final values. It does not relate each private step of the
+current evaluator. Even a complete current call may pass through a private partial `BuiltinValue`; preserving that state
+would defeat the reason for this repair. The theorem therefore proves equal checked types and related successful
+results, not a lockstep or finite-step simulation of current evaluator states.
 
-```text
-e -->Old e'  implies  embed(e) -->* embed(e')
+The repository audit found four rejected shapes: `transpose(fixed_interval)`, `stretch(fixed_ratio)`, bare `retrograde`,
+and `invert(fixed_pitch)`. Each use can be replaced by a named source function with the same declared arrow type. For
+example:
+
+```musa
+fn up_octave(music: Music) -> Music {
+    transpose(P8, music)
+}
 ```
 
-The proof and its limits are in `09-metatheory.md` §10.
+This is not a universal migration theorem. A dynamic term such as `transpose(interval)` would create a closure over a
+run-time value. The selected source language has no anonymous functions, and no case study needs this behavior. Such a
+program must change its interface, for example by passing both `interval` and `music`, or wait for a separately
+justified ordinary closure feature.

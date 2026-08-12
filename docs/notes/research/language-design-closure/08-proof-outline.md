@@ -100,7 +100,7 @@ The final proof follows this order:
 11. source termination;
 12. sealing and unforgeability;
 13. metered evaluation refinement;
-14. old-fragment embedding;
+14. retained-fragment comparison;
 15. `Music` closure under adapter contracts; and
 16. typed stage composition under the governing derivation contracts.
 
@@ -167,17 +167,23 @@ Imported compiled bodies may construct or match `M.T` using the retained private
 that an untyped byte string cannot be maliciously passed to an unsafe runtime decoder; no such decoder is part of this
 calculus.
 
-### Theorem 8. Conservative expression extension
+### Theorem 8. Retained expressions keep their results
 
-Let `e` be accepted by the existing expression fragment before `Text`, `Result`, user data, and structures are added.
-Embed every current checked form through the exhaustive table in `04a-formal-rules.md` §12. Then:
+Let `e` be accepted by the existing expression fragment before `Text`, `Result`, user data, and structures are added. If
+each compiler-owned operation in `e` receives every declared argument, embed `e` through the exhaustive table in
+`04a-formal-rules.md` §12. Then:
 
 1. `e` has the same type;
-2. every old reduction step is simulated by finitely many new steps; and
-3. its final value is structurally the same, with curried function values related by application behavior.
+2. if old evaluation succeeds, new evaluation reaches a related final value.
 
-This theorem does not promise that future surface syntax reserves no new keywords. It also does not cover the separate
-later task of moving built-in musical concepts into packages.
+This is a deliberate breaking change. The refined language rejects the old partial-call spelling and may offer the shape
+of a named wrapper as a diagnostic fix when the supplied arguments are fixed. Dynamic construction of an operation
+function is outside the retained fragment. The theorem does not promise that future surface syntax reserves no new
+keywords. It also does not cover the later task of moving built-in musical concepts into packages.
+
+The result does not compare individual old and new reduction steps or resource charges. Those details belong to two
+different language versions. In particular, the new proof does not recreate the old evaluator's private partial
+`BuiltinValue` state.
 
 ### Theorem 9. Closing `Music`
 

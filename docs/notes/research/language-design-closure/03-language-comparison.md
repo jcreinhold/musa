@@ -43,6 +43,8 @@ checked exact rational arithmetic
 
 It keeps the current products, functions, `Option`, `List`, finite folds, structures, signatures, templates, abstract
 `Music`, and kernel quotation. It keeps one left-to-right call-by-value evaluation order and has no general recursion.
+Ordinary source functions are values. Compiler-owned operations are complete calls, not functions, and cannot be partly
+applied. A named source function can wrap a fixed operation call when a case needs a function value.
 
 ### How it serves the cases
 
@@ -148,7 +150,8 @@ It does not have:
 - recursive or mutually recursive user data;
 - anonymous functions, nested patterns, guards, or repeated pattern variables;
 - subtyping, coercions, dependent types, refinements, linear types, or graded modalities;
-- first-class modules, declarations, syntax, timelines, processes, or streams.
+- first-class modules, declarations, syntax, timelines, processes, or streams; and
+- compiler operations as function values or calls with missing arguments.
 
 `List`, `Option`, and `Result` remain compiler-owned type constructors with rank-1 operations. User code cannot define a
 generic container in this version.

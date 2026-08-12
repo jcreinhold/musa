@@ -11,14 +11,14 @@ The examples assume this small, fixed adapter surface:
 
 ```text
 notation_note:
-  Text -> Nat -> Duration -> Result<Music, Text>
+  op(Text, Nat, Duration) => Result<Music, Text>
 
 notation_chord:
-  List<(Text, Nat)> -> Duration -> Result<Music, Text>
+  op(List<(Text, Nat)>, Duration) => Result<Music, Text>
 
-music_empty: Unit -> Music
-music_then: Music -> Music -> Music
-music_over: Music -> Music -> Music
+music_empty: op(Unit) => Music
+music_then: op(Music, Music) => Music
+music_over: op(Music, Music) => Music
 
 quarter: Duration
 half: Duration
@@ -29,9 +29,10 @@ whole: Duration
 either returns a score recipe or explains why it cannot write the request. It knows nothing about keys, chords, harmonic
 function, phrases, or ensemble tuning.
 
-Every code block uses the surface elaboration table in `04a-formal-rules.md` §4. In particular, `f(a,b)` becomes
-`(f(a))(b)`, `[a,b]` becomes `a :: b :: []`, and `fold_list(items,initial,step)` becomes the core
-`list_fold(initial,step,items)`. These are the only conveniences used below.
+Every code block uses the surface elaboration table in `04a-formal-rules.md` §4. In particular, an ordinary source call
+`f(a,b)` becomes `(f(a))(b)`, while an `op` call keeps its complete argument list. `[a,b]` becomes `a :: b :: []`, and
+`fold_list(items,initial,step)` becomes the core `list_fold(initial,step,items)`. These are the only conveniences used
+below.
 
 The stage examples also name these ordinary records. They are not source-language types:
 

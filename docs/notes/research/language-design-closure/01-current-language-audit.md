@@ -66,6 +66,7 @@ These belong to the small language itself.
 | User polymorphism | defer | Built-in `List`, `Option`, and `Result` cover the repeated containers in the cases. No user package yet needs to define a generic one. |
 | Anonymous functions and nested patterns | defer | Named functions and flat exhaustive patterns express all five cases. |
 | Effects or hidden global context | reject | Live input belongs to a runtime boundary. Source evaluation remains pure. |
+| Partial compiler operations | remove | Current examples can use named source functions. A special partly filled operation value adds a second calling convention without serving a case study. |
 
 `Duration` is not a theory of metre. It is a checked nonnegative rational used at the temporal boundary. It remains a
 general stage type, while metre, groove, and tempo remain separate values and passes.
@@ -128,6 +129,7 @@ The following are not admitted by this design closure:
 - call-by-push-value as the source evaluation model;
 - `world`, `link`, or profunctor syntax;
 - a source term for an unbounded audio stream;
+- compiler operations used as values or called with missing arguments;
 - first-class source syntax, declarations, packages, or structures;
 - persistent private values or nominal type identities across builds; and
 - a compiled-artifact cache theorem.

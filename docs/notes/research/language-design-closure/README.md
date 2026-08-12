@@ -1,12 +1,14 @@
 # Language design closure
 
-**Status: blocked at the final proof gate. Governs nothing.** This directory carries out
+**Status: reopened for a bounded breaking-change repair. Governs nothing.** This directory carries out
 [`docs/plan/language-design-closure.md`](../../../plan/language-design-closure.md). Its purpose is to settle Musa's
 source language, not to invent another temporal kernel or a package cache.
 
-The five musical cases support the small call-by-value design, but the second proof review found one High and one Medium
-flaw in its formal rules. The design was not promoted. See [13-final-blocker.md](13-final-blocker.md) for the decision
-and the exact work needed to reopen it.
+The five musical cases support the small call-by-value design. The second proof review found one High and one Medium
+flaw. The design was not promoted. The repository is still private and pre-release, so the repair now rejects partial
+calls of compiler-owned operations instead of adding foreign function values to the core. See
+[14-breaking-change-repair.md](14-breaking-change-repair.md). Tasks 7–8 remain blocked until the repaired proof passes
+an independent review.
 
 ## The question
 
@@ -54,3 +56,5 @@ ship.
 12. [11-proof-repair.md](11-proof-repair.md) records the one permitted repair.
 13. [12-proof-review.md](12-proof-review.md) gives the second and final proof review.
 14. [13-final-blocker.md](13-final-blocker.md) records why promotion stopped and what survived.
+15. [14-breaking-change-repair.md](14-breaking-change-repair.md) reopens the work under the explicit pre-release
+    compatibility decision.
