@@ -104,6 +104,31 @@ one finite resolved package graph per build and fresh private type identities in
 solving, persistent compiled identities, and compiled-artifact caches are outside the current design closure. A measured
 need in a working package system may reopen them later.
 
+### Descriptions and music as played
+
+Later language work exposed a more basic problem: Musa's build order had been mistaken for a fact about music.
+[`descriptions-and-music/`](descriptions-and-music/README.md) starts again from three documented examples. Its first
+idea is that notation, studio setups, and audio references can all describe the same musical event. A performance is one
+event that matches those descriptions, with a record explaining the match.
+
+That idea remains useful for comparison, but it failed as an execution core: it does not build passages, schedule
+events, connect instruments, or run audio. The refutation remains in the next research line.
+
+### Core calculus
+
+[`core-calculus/`](core-calculus/README.md) asks the smaller execution question: what finite values must a total source
+program build so that written music and audio can meet without being called the same thing?
+
+It rejects one universal flow and selects three parts:
+
+- a small pure language with inferred types;
+- `EventTrack<C,A>` for finitely many events placed in a finite length; and
+- `Machine<K,A,B>` for a finite deterministic machine that may keep taking steps.
+
+The scheduler is the checked connection. It turns a finite event track into a machine that emits event batches one audio
+frame at a time. The line contains five audits and their repairs; the final review accepts the paper calculus under its
+stated primitive, scheduling, and batching contracts. It does not yet change Musa's rules or code.
+
 ## Standard of evidence
 
 Inherited unchanged from [`kernel-hypothesis/README.md`](kernel-hypothesis/README.md), because it is the right standard
