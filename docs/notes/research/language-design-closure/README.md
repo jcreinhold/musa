@@ -14,7 +14,10 @@ work rather than compiler tradition. [19-inference-course-correction.md](19-infe
 inference-first target. [20-compiler-pipeline.md](20-compiler-pipeline.md) gives its private compiler forms.
 [21-surface-syntax.md](21-surface-syntax.md) replaces the Rust-like surface target with an indentation-based functional
 candidate. [22-syntax-extension.md](22-syntax-extension.md) adds bounded package syntax adapters, and
-[23-values-not-types.md](23-values-not-types.md) keeps note values out of the type language. None of these notes changes
+[23-values-not-types.md](23-values-not-types.md) keeps note values out of the type language.
+[24-pipeline-and-syntax-review.md](24-pipeline-and-syntax-review.md) reviews those four notes and holds the
+paper-program target open on four High findings. [25-surface-and-elaboration.md](25-surface-and-elaboration.md) sets the
+canonical surface around machine authorship and gives packages a Lean-derived elaborator. None of these notes changes
 governing documents.
 
 ## The question
@@ -83,3 +86,7 @@ ship.
     expansion system for package-owned notation and studio syntax.
 24. [23-values-not-types.md](23-values-not-types.md) explains why pitch literals and transformations are ordinary values
     and functions rather than a reason to add dependent types.
+25. [24-pipeline-and-syntax-review.md](24-pipeline-and-syntax-review.md) reviews notes 20–23 against *Open Music Theory*
+    and Peyton Jones, and names what must be settled before the five paper programs are written.
+26. [25-surface-and-elaboration.md](25-surface-and-elaboration.md) makes the canonical surface locally checkable for
+    machine authorship, and moves the choice of notation to packages through a Lean-derived expansion and printing pair.
