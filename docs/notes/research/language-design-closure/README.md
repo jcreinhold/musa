@@ -96,6 +96,10 @@ ship.
     diagnostics, and source-preserving edits. Both pass without compiler privilege.
 29. [28-five-programs.md](28-five-programs.md) rewrites the tonal, flexible-time, phrase-led, ensemble-tuning, and live
     cases in the active language. The five programs pass without a rejected feature or a required local annotation.
+30. [29-source-and-expansion-spec.md](29-source-and-expansion-spec.md) defines the source types, principal inference,
+    modules, finite folds, bounded expansion, editing, lowering, evaluation, and deterministic charges.
+31. [30-stage-spec.md](30-stage-spec.md) defines `Music` as a finite closed recipe and states every boundary from source
+    values through temporal terms, notation, gestures, prepared processes, and audio histories.
 
 Later numbered notes implement the remaining gate in order: two adapter trials, five complete musical programs, the
 formal specification, three proof documents, and at most two independent proof reviews. Only a passing design moves to

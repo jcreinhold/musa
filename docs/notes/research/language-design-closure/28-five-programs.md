@@ -46,9 +46,11 @@ GestureTimeline
 CheckedStudio
 PreparedExecution
 
-staff.to_music: StaffDocument -> Music
 staff.sequence: List<StaffDocument> -> StaffDocument
 staff.overlay: List<StaffDocument> -> StaffDocument
+staff.realize:
+  StaffDocument × StaffRealization
+  -> Result<Music, StaffRealizationError>
 close_music: Music × MusicalContext -> Result<Term<ScoreFact>, MusicError>
 evaluate_temporal: Term<ScoreFact> -> Timeline<ScoreFact>
 engrave: Timeline<ScoreFact> × NotationOptions -> Result<NotationPlan, NotationError>
@@ -296,7 +298,7 @@ let page = staff.sequence([
   tonal.write(tonal.voice(tonal.OpenBass, tonic), staff.whole),
 ])
 
-let score = staff.to_music(page)
+let score = staff.realize(page, staff.literal_realization)
 ```
 
 No adapter region appears, so expansion is the identity: the resolved program receives these ordinary expressions
@@ -315,7 +317,7 @@ analyze: Key × Option<ChordSymbol> × Chord × Option<ChordSymbol>
 write: Voicing × WrittenDuration -> StaffDocument
 claim: Result<FunctionClaim, TonalError>
 page: StaffDocument
-score: Music
+score: Result<Music, StaffRealizationError>
 ```
 
 The key result evaluates to:
@@ -336,7 +338,7 @@ invent a function from pitch content.
 
 ### 2.4 The two routes
 
-The notation-led route is:
+After the caller handles `score`, the notation-led route is:
 
 ```text
 Chord -> Voicing -> StaffDocument -> Music -> Term<ScoreFact>
@@ -419,7 +421,12 @@ let performance = timing.plan([
   timing.performer_timed(staff_value.region(melody, "cadenza")),
 ])
 
-let score = staff_value.to_music(page)
+let logical_choices = timing.logical_choices([
+  timing.named_durations("feathered", [1/8, 1/12, 1/16, 1/32]),
+  timing.named_durations("cadenza", [1/4, 1/8, 1/8, 1/2]),
+])
+
+let score = timing.realize_staff(page, logical_choices)
 ```
 
 ### 3.2 Expansion
@@ -508,12 +515,13 @@ melody: StaffDocument
 ostinato: StaffDocument
 page: StaffDocument
 performance: TimingPlan
-score: Music
+logical_choices: StaffRealization
+score: Result<Music, StaffRealizationError>
 ```
 
-Evaluating `page` produces two finite staff layers. The melody has unresolved timing requests in `feathered` and
-`cadenza`; `score` is therefore a total recipe, not yet a closed timeline. Applying a `MusicalContext` that lacks those
-choices returns `MissingTimingChoice`. Applying a context with finite durations returns one finite temporal term.
+Evaluating `page` produces two finite staff layers. `timing.realize_staff` checks that `logical_choices` assigns one
+positive duration to each pitch in `feathered` and `cadenza`. It returns a finite `Music` recipe or a named error before
+the general `Music` boundary. Applying `MusicalContext` later supplies only placement, score scope, and source root.
 
 Overlay keeps the ostinato's length at `3/4`. It does not append a rest to make it as long as the melody.
 
@@ -584,7 +592,6 @@ pub record PhraseContext:
 pub type PhraseError:
   EmptyPhrase
   NonPositiveWeight
-  ArithmeticFailure
 
 pub type TranscriptionLoss:
   CurveReducedToMark(Svara)
@@ -627,35 +634,33 @@ fn svara_ratio(svara):
     Ni -> 9/5
 
 fn center_hz(context, svara):
-  let registered = checked_ratio_multiply(
+  let registered = ratio_multiply(
     context.tonic_hz,
     context.register_ratio,
   )
-  and_then(
+  ratio_multiply(
     registered,
-    fn(base): checked_ratio_multiply(base, svara_ratio(svara)),
+    svara_ratio(svara),
   )
 
 fn gesture_for(context, token):
-  match center_hz(context, token.svara):
-    Err(error) -> Err(ArithmeticFailure)
-    Ok(center) ->
-      match token.gesture:
-        Plain -> Ok(Hold(token.svara, center, token.weight))
-        Oscillate ->
-          Ok(OscillateAround(
-            token.svara,
-            center,
-            token.weight,
-            context.oscillation_width,
-          ))
-        SlideFromBelow ->
-          Ok(ApproachFromBelow(token.svara, center, token.weight))
+  let center = center_hz(context, token.svara)
+  match token.gesture:
+    Plain -> Hold(token.svara, center, token.weight)
+    Oscillate ->
+      OscillateAround(
+        token.svara,
+        center,
+        token.weight,
+        context.oscillation_width,
+      )
+    SlideFromBelow ->
+      ApproachFromBelow(token.svara, center, token.weight)
 
 pub fn perform(phrase, context):
   match phrase:
     PhraseValue(tokens) ->
-      traverse_result(tokens, fn(token): gesture_for(context, token))
+      list.map(tokens, fn(token): gesture_for(context, token))
 
 fn staff_pitch(svara):
   match svara:
@@ -734,7 +739,7 @@ let checked_phrase = phrase.make([
     weight = 1/2,
 ])
 
-let gesture_route = and_then(
+let gesture_route = result.map(
   checked_phrase,
   fn(value): phrase.perform(value, context),
 )
@@ -745,7 +750,7 @@ let notation_route = result.map(
     let transcription = phrase.transcribe(value, context)
     let page = first(transcription)
     let losses = second(transcription)
-    (staff.to_music(page), losses),
+    (page, losses),
 )
 ```
 
@@ -757,11 +762,11 @@ The compiler infers:
 
 ```text
 make: List<PhraseToken> -> Result<Phrase, PhraseError>
-perform: Phrase × PhraseContext -> Result<List<PhraseGesture>, PhraseError>
+perform: Phrase × PhraseContext -> List<PhraseGesture>
 transcribe: Phrase × PhraseContext -> StaffDocument × List<TranscriptionLoss>
 checked_phrase: Result<Phrase, PhraseError>
 gesture_route: Result<List<PhraseGesture>, PhraseError>
-notation_route: Result<Music × List<TranscriptionLoss>, PhraseError>
+notation_route: Result<StaffDocument × List<TranscriptionLoss>, PhraseError>
 ```
 
 `gesture_route` evaluates to:
@@ -850,7 +855,6 @@ pub record AcousticTarget:
 pub type TuningError:
   NonPositiveReference
   NonPositivePairRate
-  ArithmeticFailure
 
 pub type TuningLoss:
   ExactFrequencyNotShown(Ratio)
@@ -892,37 +896,30 @@ fn beat_target(register, low_rate, middle_rate, high_rate):
 pub fn realize(ensemble, request):
   match ensemble:
     EnsembleValue(reference_hz, low_rate, middle_rate, high_rate) ->
-      let degree_hz = checked_ratio_multiply(
+      let degree_hz = ratio_multiply(
         reference_hz,
         degree_ratio(request.degree),
       )
-      let registered_hz = and_then(
+      let lower = ratio_multiply(
         degree_hz,
-        fn(value): checked_ratio_multiply(value, register_ratio(request.register)),
+        register_ratio(request.register),
       )
-      match registered_hz:
-        Err(error) -> Err(ArithmeticFailure)
-        Ok(lower) ->
-          match request.pairing:
-            Single -> Ok(AcousticTarget:
-              lower_hz = lower
-              upper_hz = None
-              target_beats_per_second = 0/1
-            )
-            Paired ->
-              let target_rate = beat_target(
-                request.register,
-                low_rate,
-                middle_rate,
-                high_rate,
-              )
-              match checked_ratio_add(lower, target_rate):
-                Err(error) -> Err(ArithmeticFailure)
-                Ok(upper) -> Ok(AcousticTarget:
-                  lower_hz = lower
-                  upper_hz = Some(upper)
-                  target_beats_per_second = target_rate
-                )
+      match request.pairing:
+        Single -> AcousticTarget:
+          lower_hz = lower
+          upper_hz = None
+          target_beats_per_second = 0/1
+        Paired ->
+          let target_rate = beat_target(
+            request.register,
+            low_rate,
+            middle_rate,
+            high_rate,
+          )
+          AcousticTarget:
+            lower_hz = lower
+            upper_hz = Some(ratio_add(lower, target_rate))
+            target_beats_per_second = target_rate
 
 fn staff_degree(degree, register):
   match degree:
@@ -966,7 +963,7 @@ let request = tuning.TuneRequest:
   register = tuning.Middle
   pairing = tuning.Paired
 
-let target = and_then(
+let target = result.map(
   tuning.make(440/1, 4/1, 7/1, 11/1),
   fn(ensemble): tuning.realize(ensemble, request),
 )
@@ -984,7 +981,7 @@ let notation_route = result.map(
   target,
   fn(value):
     let transcription = tuning.transcribe(request, value)
-    (staff.to_music(first(transcription)), second(transcription)),
+    (first(transcription), second(transcription)),
 )
 ```
 
@@ -996,11 +993,11 @@ The compiler infers:
 
 ```text
 make: Ratio × Ratio × Ratio × Ratio -> Result<Ensemble, TuningError>
-realize: Ensemble × TuneRequest -> Result<AcousticTarget, TuningError>
+realize: Ensemble × TuneRequest -> AcousticTarget
 transcribe: TuneRequest × AcousticTarget -> StaffDocument × List<TuningLoss>
 target: Result<AcousticTarget, TuningError>
 performance_route: Result<GestureIntent, TuningError>
-notation_route: Result<Music × List<TuningLoss>, TuningError>
+notation_route: Result<StaffDocument × List<TuningLoss>, TuningError>
 ```
 
 The chosen example evaluates to:
@@ -1033,9 +1030,9 @@ pair relation, and the beating target as losses. Generic MIDI would lose still m
 | Compiler-owned musical surface forms | 0 |
 | Adapter regions | 0 |
 | Explicit context that hidden state would otherwise supply | ensemble reference and three register-specific rates |
-| Locally reportable errors | invalid ensemble; checked arithmetic; missing upper pair |
+| Locally reportable errors | invalid ensemble; gesture conversion; notation and preparation failure |
 
-Checked rational arithmetic serves both this case and flexible time. Ensemble, degree, register, and acoustic target
+Exact rational arithmetic serves both this case and flexible time. Ensemble, degree, register, and acoustic target
 remain package concepts.
 
 ## 6. Interactive performance
@@ -1072,7 +1069,6 @@ pub type Response:
 pub type ProtocolError:
   MotionBeforeBegin
   InputAfterEnd
-  TurnCounterFull
 
 pub type ProtocolLoss:
   ActualMovementMissing
@@ -1091,10 +1087,7 @@ pub fn step(state, movement):
     Active(turn) ->
       match movement:
         LeaderCue(Begin) -> Ok((Active(turn), Listen))
-        LeaderCue(Continue) ->
-          match checked_nat_add(turn, 1):
-            Ok(next) -> Ok((Active(next), Listen))
-            Err(error) -> Err(TurnCounterFull)
+        LeaderCue(Continue) -> Ok((Active(nat_add(turn, 1)), Listen))
         LeaderCue(Cut) -> Ok((Ended, Stop))
         Motion(name) -> Ok((Active(turn), DrumAnswer(name)))
         Stillness -> Ok((Active(turn), Listen))
@@ -1250,7 +1243,7 @@ audio history need not.
 | Compiler-owned musical surface forms | 0 |
 | Adapter regions | 1 studio block |
 | Explicit context that hidden state would otherwise supply | live input, current state, wall-clock time |
-| Locally reportable errors | invalid transition; counter overflow; graph validation; preparation failure |
+| Locally reportable errors | invalid transition; graph validation; preparation failure |
 
 The package owns the vocabulary and response rule. The host owns input, repetition, devices, and clocks.
 
@@ -1268,7 +1261,7 @@ The programs admit only features used in two different cases or required by a pr
 | Strictly positive recursive data and finite folds | staff form, syntax, lists | keep |
 | `Text` | evidence, labels, losses, processor and movement names | keep |
 | `Result` | construction, arithmetic, analysis, protocol, every stage error | keep |
-| Exact checked ratios | flexible time and ensemble tuning | keep |
+| Exact ratios | flexible time and ensemble tuning | keep |
 | Bounded syntax adapters | staff and studio | keep |
 | Explicit stage contexts and loss records | all five cases | keep |
 | Unequal-length overlay | flexible time and ordinary ensemble writing | keep in temporal kernel |

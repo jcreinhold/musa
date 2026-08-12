@@ -136,7 +136,7 @@ type StaffItem:
   Tuplet(Anchor, Nat, Nat, List<StaffItem>)
   Grace(Anchor, List<GraceNote>)
   MeterChange(Anchor, Nat, Nat)
-  Repeat(Anchor, Nat, List<StaffItem>, List<Ending>)
+  Repeat(Anchor, Nat, List<StaffItem>, List<Anchor × Nat × List<StaffItem>>)
 
 record StaffDocument:
   instrument: InstrumentName
@@ -181,7 +181,7 @@ std.notation.staff.make_document(
         Rest(a13, NoteValue(8, 0)),
       ]),
     ], [
-      Ending(a14, 1, [
+      (a14, 1, [
         Bar(a15, 1, [
           Slur(a16, [
             Tuplet(a17, 3, 2, [
@@ -195,7 +195,7 @@ std.notation.staff.make_document(
           Note(a24, F(5), NoteValue(2, 0), [], NoTie),
         ]),
       ]),
-      Ending(a25, 2, [
+      (a25, 2, [
         MeterChange(a26, 3, 4),
         Bar(a27, 3/4, [
           Note(a28, G(5), NoteValue(4, 0), [], NoTie),
@@ -253,15 +253,16 @@ Expansion records written facts. Later package functions make later choices:
 
 ```musa
 let page = clarinet_page
-let music = std.notation.staff.to_music(page)
+let music = std.notation.staff.realize(page, std.notation.staff.literal_realization)
 let notation = std.notation.staff.engrave(page, NotationOptions:
   exact_duration_policy: ShortestReadable
 )
 ```
 
-`to_music` preserves written and sounding pitch as distinct facts. Applying `Down(M2)` gives the sounding pitch needed
-by analysis and performance. `engrave` may display `Exact(3/8)` as a dotted quarter under `ShortestReadable`; its
-derivation records `ChosenWrittenDuration(Exact(3/8), NoteValue(4, 1))`. The source still says `c5(3/8)`.
+`realize` preserves written and sounding pitch as distinct facts and returns a stated error if a required choice is
+missing. Applying `Down(M2)` gives the sounding pitch needed by analysis and performance. `engrave` may display
+`Exact(3/8)` as a dotted quarter under `ShortestReadable`; its derivation records
+`ChosenWrittenDuration(Exact(3/8), NoteValue(4, 1))`. The source still says `c5(3/8)`.
 
 Grace timing is not chosen here. A performance profile later decides how much time a grace takes and whether it steals
 from the principal or the preceding note.
@@ -524,4 +525,3 @@ Both adapters pass the boundary test. The formal language may use the interface 
 
 No new core language feature was needed. Strictly positive finite data and generated folds already serve both musical
 form and syntax traversal, which meets the two-case admission rule.
-

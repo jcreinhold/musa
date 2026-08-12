@@ -112,8 +112,9 @@ numeric conversion, higher-rank type, refinement type, or value-dependent type.
 
 ### 2.2 Data and finite folds
 
-User data may refer to itself only in strictly positive positions. In plain terms, a value may contain smaller values of
-its own type, but it may not receive one as a function argument.
+One user data type may refer to itself through products, `List`, `Option`, and `Result`. It may not occur under a
+function arrow, and two nominal types may not refer to each other. In plain terms, a value may contain smaller values of
+its own type, but it cannot hide recursion inside a callback or a second type.
 
 This type is accepted:
 
@@ -218,8 +219,8 @@ modules, public definitions, records, ordinary functions, and abstract types cov
 rules.
 
 A public abstract type exposes its name and selected functions while hiding its constructors. The compiler rejects a
-cycle among value definitions. Mutually recursive type declarations are accepted only when their finite dependency group
-passes the positivity check and receives generated folds.
+cycle among value definitions or nominal type declarations. One nominal type may refer to itself through the finite
+forms in the formal specification and receives one generated fold.
 
 The package resolver supplies one finite resolved import graph for a build. Exact Git source packages remain in scope.
 Registries, version solving, stable compiled identities, and persistent compiled-value caches remain out of scope.
@@ -496,7 +497,8 @@ musical intermediate form, or LLVM-like target.
 
 ## 7. Music and the stage boundary
 
-`Music` is an abstract, total recipe. Its internal observation has the shape:
+`Music` is an abstract, finite recipe. Theory- and adapter-specific choices are supplied before a package constructs it.
+Closing it needs only ambient placement, score scope, and a source root:
 
 ```text
 close_music:
@@ -505,8 +507,9 @@ close_music:
   -> Result<Term<ScoreFact>, MusicError>
 ```
 
-The context is an explicit argument at the closing boundary. It is not mutable global state. A successful result is a
-finite, closed, well-typed temporal term. A failure names the missing or inconsistent context request.
+The context is an explicit argument at the closing boundary. It is not mutable global state and does not act as an
+open-ended package dictionary. A successful result is a finite, closed, well-typed temporal term. A failure names an
+invalid placement, scope, anchor, or payload.
 
 The complete path is:
 
