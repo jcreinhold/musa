@@ -53,7 +53,11 @@ export function spellDuration(denominator: number, dotted: boolean): string {
 }
 
 /** How the language spells a pitch: letter, accidental, octave. */
-export function spellPitch(letter: string, accidental: Accidental, octave: number): string {
+export function spellPitch(
+  letter: string,
+  accidental: Accidental,
+  octave: number,
+): string {
   return `${letter}${accidental}${octave}`;
 }
 
@@ -119,7 +123,10 @@ export class NoteEntry {
 
   /** `⌘↑` `⌘↓` — the octave the letters land in. */
   shiftOctave(by: number): void {
-    this.octave = Math.min(Math.max(this.octave + by, OCTAVE_RANGE.low), OCTAVE_RANGE.high);
+    this.octave = Math.min(
+      Math.max(this.octave + by, OCTAVE_RANGE.low),
+      OCTAVE_RANGE.high,
+    );
   }
 
   /**
@@ -132,6 +139,7 @@ export class NoteEntry {
   shiftAccidental(by: number): void {
     const ladder: Accidental[] = ["b", "", "#"];
     const at = ladder.indexOf(this.accidental);
-    this.accidental = ladder[Math.min(Math.max(at + by, 0), ladder.length - 1)] ?? "";
+    this.accidental =
+      ladder[Math.min(Math.max(at + by, 0), ladder.length - 1)] ?? "";
   }
 }

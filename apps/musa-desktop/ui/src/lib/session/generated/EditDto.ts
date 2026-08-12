@@ -7,4 +7,19 @@ import type { NoteSpecDto } from "./NoteSpecDto";
 /**
  * A structured score edit from the webview (roadmap §11).
  */
-export type EditDto = { "kind": "insertNote", at: InsertAtDto, note: NoteSpecDto, } | { "kind": "changePitch", event: string, pitch: string, mode: GeneratedEditModeDto, } | { "kind": "changeDuration", event: string, duration: string, mode: GeneratedEditModeDto, } | { "kind": "extractMotif", events: Array<string>, name: string, } | { "kind": "setHeader", field: HeaderFieldDto, value: string, };
+export type EditDto =
+  | { kind: "insertNote"; at: InsertAtDto; note: NoteSpecDto }
+  | {
+      kind: "changePitch";
+      event: string;
+      pitch: string;
+      mode: GeneratedEditModeDto;
+    }
+  | {
+      kind: "changeDuration";
+      event: string;
+      duration: string;
+      mode: GeneratedEditModeDto;
+    }
+  | { kind: "extractMotif"; events: Array<string>; name: string }
+  | { kind: "setHeader"; field: HeaderFieldDto; value: string };

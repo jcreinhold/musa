@@ -32,7 +32,9 @@ async function edits(page: Page): Promise<Record<string, unknown>[]> {
  * assertions that follow have to let the keystrokes land first.
  */
 async function settled(page: Page, count: number): Promise<void> {
-  await expect.poll(() => page.evaluate(() => window.__musaEdits.length)).toBe(count);
+  await expect
+    .poll(() => page.evaluate(() => window.__musaEdits.length))
+    .toBe(count);
 }
 
 test.beforeEach(async ({ page }) => {
@@ -87,10 +89,15 @@ test("the octave and the accidental follow the letters until they are changed", 
 
   await settled(page, 2);
   const asked = await edits(page);
-  expect(asked.map((edit) => (edit.note as { pitch: string }).pitch)).toEqual(["g#5", "a#5"]);
+  expect(asked.map((edit) => (edit.note as { pitch: string }).pitch)).toEqual([
+    "g#5",
+    "a#5",
+  ]);
 });
 
-test("editing a generated note asks first, and states what it would change", async ({ page }) => {
+test("editing a generated note asks first, and states what it would change", async ({
+  page,
+}) => {
   // `event-0` is the first note of the first `sigh()` — the case
   // `04-provenance.md` §4 is written about.
   await page.locator('.engraving [id="event-0"] use').click({ force: true });
@@ -111,7 +118,9 @@ test("editing a generated note asks first, and states what it would change", asy
   await expect(page.locator(".overlay rect.selection")).toHaveCount(2);
 
   // Both answers are live: this call runs once, so it can carry an override.
-  await expect(choice.getByRole("button", { name: /Just this occurrence/ })).toBeEnabled();
+  await expect(
+    choice.getByRole("button", { name: /Just this occurrence/ }),
+  ).toBeEnabled();
 
   await choice.getByRole("button", { name: /Edit the motif/ }).click();
   await expect(choice).toBeHidden();
@@ -128,7 +137,9 @@ test("editing a generated note asks first, and states what it would change", asy
   await expect(page.locator("p.notice")).toContainText("2 occurrences updated");
 });
 
-test("cancelling the choice changes nothing and puts the selection back", async ({ page }) => {
+test("cancelling the choice changes nothing and puts the selection back", async ({
+  page,
+}) => {
   await page.locator('.engraving [id="event-0"] use').click({ force: true });
   await inScore(page);
   await page.keyboard.press("n");
@@ -142,11 +153,15 @@ test("cancelling the choice changes nothing and puts the selection back", async 
   await expect(page.locator(".overlay rect.selection")).toHaveCount(1);
 });
 
-test("a range is lifted into a motif, named where the notes are", async ({ page }) => {
+test("a range is lifted into a motif, named where the notes are", async ({
+  page,
+}) => {
   // The cello's last three notes, which are authored: extraction is about
   // material a composer wrote twice, not about generated music.
   await page.locator('.engraving [id="event-e"] use').click({ force: true });
-  await page.locator('.engraving [id="event-10"] use').click({ force: true, modifiers: ["Shift"] });
+  await page
+    .locator('.engraving [id="event-10"] use')
+    .click({ force: true, modifiers: ["Shift"] });
   await inScore(page);
   await page.keyboard.press("m");
 
@@ -176,15 +191,21 @@ test("undo takes an entered note back", async ({ page }) => {
 
   await page.keyboard.press("n");
   await page.keyboard.press("c");
-  await expect.poll(() => page.evaluate(() => window.__musaRevision)).toBeGreaterThan(before);
+  await expect
+    .poll(() => page.evaluate(() => window.__musaRevision))
+    .toBeGreaterThan(before);
 
   // Undo is the ordinary one: an entered note is a document revision like any
   // other, not a special entry buffer that has to be committed.
   await page.keyboard.press("Meta+z");
-  await expect.poll(() => page.evaluate(() => window.__musaRevision)).toBe(before);
+  await expect
+    .poll(() => page.evaluate(() => window.__musaRevision))
+    .toBe(before);
 });
 
-test("a keyboard is named while entry is on, and its notes are written", async ({ page }) => {
+test("a keyboard is named while entry is on, and its notes are written", async ({
+  page,
+}) => {
   await inScore(page);
   await page.keyboard.press("n");
 
@@ -194,17 +215,25 @@ test("a keyboard is named while entry is on, and its notes are written", async (
   await expect(page.getByText("Stub Keyboard", { exact: true })).toBeVisible();
 
   await page.keyboard.press("8");
-  await page.evaluate(() => window.__musaEmit("musa://midi", { pitches: ["eb4"] }));
+  await page.evaluate(() =>
+    window.__musaEmit("musa://midi", { pitches: ["eb4"] }),
+  );
   await settled(page, 1);
   const [written] = await edits(page);
   expect(written?.kind).toBe("insertNote");
   // The pitch is the core's spelling — the interface never decides whether a
   // black key is a sharp or a flat — and the duration is the one entry is set
   // to, because a keyboard cannot say how long a note is notated for.
-  expect(written?.note).toEqual({ kind: "note", pitch: "eb4", duration: "1/8" });
+  expect(written?.note).toEqual({
+    kind: "note",
+    pitch: "eb4",
+    duration: "1/8",
+  });
 
   // Several keys held together arrive as one chord, already grouped.
-  await page.evaluate(() => window.__musaEmit("musa://midi", { pitches: ["c4", "e4", "g4"] }));
+  await page.evaluate(() =>
+    window.__musaEmit("musa://midi", { pitches: ["c4", "e4", "g4"] }),
+  );
   await settled(page, 2);
   const asked = await edits(page);
   expect(asked[1]?.note).toEqual({
@@ -220,15 +249,26 @@ test("a keyboard is named while entry is on, and its notes are written", async (
 
 test("notes played with entry off are not written", async ({ page }) => {
   await inScore(page);
-  await page.evaluate(() => window.__musaEmit("musa://midi", { pitches: ["c4"] }));
-  await expect.poll(() => page.evaluate(() => window.__musaEdits.length)).toBe(0);
+  await page.evaluate(() =>
+    window.__musaEmit("musa://midi", { pitches: ["c4"] }),
+  );
+  await expect
+    .poll(() => page.evaluate(() => window.__musaEdits.length))
+    .toBe(0);
 });
 
-test("work a crash left behind is offered, and taking it is one command", async ({ page }) => {
+test("work a crash left behind is offered, and taking it is one command", async ({
+  page,
+}) => {
   const recovered = 'piece "Glass Mountain" {\n}\n';
-  await page.evaluate((source) => window.__musaSet({ recovery: source }), recovered);
+  await page.evaluate(
+    (source) => window.__musaSet({ recovery: source }),
+    recovered,
+  );
 
-  const banner = page.getByRole("group", { name: "Unsaved work from the last session" });
+  const banner = page.getByRole("group", {
+    name: "Unsaved work from the last session",
+  });
   await expect(banner).toBeVisible();
 
   await banner.getByRole("button", { name: "Restore it" }).click();
@@ -242,27 +282,39 @@ test("work a crash left behind is offered, and taking it is one command", async 
 
 test("declining the offer keeps the file's own text", async ({ page }) => {
   await page.evaluate(() => window.__musaSet({ recovery: 'piece "Other" {}' }));
-  const banner = page.getByRole("group", { name: "Unsaved work from the last session" });
+  const banner = page.getByRole("group", {
+    name: "Unsaved work from the last session",
+  });
   await banner.getByRole("button", { name: "Discard it" }).click();
   await expect(banner).toHaveCount(0);
   // The frame's title, not the engraved one: the page now prints the piece's
   // name too, and the question here is which document the session is holding.
-  await expect(page.getByRole("heading", { name: "Glass Mountain" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Glass Mountain" }),
+  ).toBeVisible();
 });
 
-test("unsaved work says whether it is kept, and a saved piece says nothing", async ({ page }) => {
+test("unsaved work says whether it is kept, and a saved piece says nothing", async ({
+  page,
+}) => {
   // The fixture is a piece with unsaved edits and no recovery copy yet.
   await expect(page.getByText("Unsaved", { exact: true })).toBeVisible();
 
-  await page.evaluate(() => window.__musaSet({ unsaved: true, autosaved: true }));
+  await page.evaluate(() =>
+    window.__musaSet({ unsaved: true, autosaved: true }),
+  );
   await expect(page.getByText("Unsaved — recovery copy kept")).toBeVisible();
 
   // Saving is the only state that needs no words: the file has the work.
-  await page.evaluate(() => window.__musaSet({ unsaved: false, autosaved: false }));
+  await page.evaluate(() =>
+    window.__musaSet({ unsaved: false, autosaved: false }),
+  );
   await expect(page.getByText(/^Unsaved/)).toHaveCount(0);
 });
 
-test("the other answer changes this occurrence and says which", async ({ page }) => {
+test("the other answer changes this occurrence and says which", async ({
+  page,
+}) => {
   await page.locator('.engraving [id="event-0"] use').click({ force: true });
   await inScore(page);
   await page.keyboard.press("n");

@@ -11,10 +11,19 @@
 
 import { describe, expect, it } from "vitest";
 
-import { COMMANDS, REGISTERED, commandFor, matches, spell } from "../../src/lib/commands/map";
+import {
+  COMMANDS,
+  REGISTERED,
+  commandFor,
+  matches,
+  spell,
+} from "../../src/lib/commands/map";
 
 /** A keystroke, as the handler receives it. */
-function press(key: string, modifiers: Partial<KeyboardEvent> = {}): KeyboardEvent {
+function press(
+  key: string,
+  modifiers: Partial<KeyboardEvent> = {},
+): KeyboardEvent {
   return {
     key,
     metaKey: false,
@@ -28,7 +37,8 @@ function press(key: string, modifiers: Partial<KeyboardEvent> = {}): KeyboardEve
 describe("the map and the registry", () => {
   it("gives every available registered command an implementation", () => {
     const missing = REGISTERED.filter(
-      (entry) => entry.available && !COMMANDS.some((command) => command.id === entry.id),
+      (entry) =>
+        entry.available && !COMMANDS.some((command) => command.id === entry.id),
     );
     expect(missing.map((entry) => entry.id)).toEqual([]);
   });
@@ -52,7 +62,8 @@ describe("the map and the registry", () => {
     for (const entry of REGISTERED) {
       const command = COMMANDS.find((candidate) => candidate.id === entry.id);
       if (!command) continue;
-      const section = entry.section.charAt(0).toUpperCase() + entry.section.slice(1);
+      const section =
+        entry.section.charAt(0).toUpperCase() + entry.section.slice(1);
       expect(command.group, entry.id).toBe(section);
     }
   });
@@ -62,7 +73,10 @@ describe("the map and the registry", () => {
     const seen = new Map<string, string>();
     for (const command of bound) {
       const key = `${command.scope}:${command.accelerator ?? ""}`;
-      expect(seen.get(key), `${command.id} and ${seen.get(key) ?? ""}`).toBeUndefined();
+      expect(
+        seen.get(key),
+        `${command.id} and ${seen.get(key) ?? ""}`,
+      ).toBeUndefined();
       seen.set(key, command.id);
     }
   });
@@ -78,8 +92,12 @@ describe("matching a keystroke", () => {
   it("reads a chord in Tauri's spelling", () => {
     expect(matches("CmdOrCtrl+K", press("k", { metaKey: true }))).toBe(true);
     expect(matches("CmdOrCtrl+K", press("k"))).toBe(false);
-    expect(matches("Alt+ArrowLeft", press("ArrowLeft", { altKey: true }))).toBe(true);
-    expect(matches("ArrowLeft", press("ArrowLeft", { altKey: true }))).toBe(false);
+    expect(matches("Alt+ArrowLeft", press("ArrowLeft", { altKey: true }))).toBe(
+      true,
+    );
+    expect(matches("ArrowLeft", press("ArrowLeft", { altKey: true }))).toBe(
+      false,
+    );
   });
 
   it("treats a shifted character as the character it produces", () => {
@@ -89,12 +107,16 @@ describe("matching a keystroke", () => {
   it("keeps the unmodified keys inside the score", () => {
     expect(commandFor(press("ArrowRight"), "score")?.id).toBe("score.next");
     expect(commandFor(press("ArrowRight"), "global")).toBeUndefined();
-    expect(commandFor(press("k", { metaKey: true }), "global")?.id).toBe("view.palette");
+    expect(commandFor(press("k", { metaKey: true }), "global")?.id).toBe(
+      "view.palette",
+    );
   });
 
   it("distinguishes play from play-from-the-selection", () => {
     expect(commandFor(press(" "), "score")?.id).toBe("transport.play");
-    expect(commandFor(press(" ", { shiftKey: true }), "score")?.id).toBe("transport.play.selection");
+    expect(commandFor(press(" ", { shiftKey: true }), "score")?.id).toBe(
+      "transport.play.selection",
+    );
   });
 });
 
@@ -106,10 +128,22 @@ describe("matching a keystroke", () => {
 describe("the pointer gestures have keys", () => {
   const GESTURES = [
     { gesture: "drag a notehead up", key: press("ArrowUp", { altKey: true }) },
-    { gesture: "drag a notehead down", key: press("ArrowDown", { altKey: true }) },
-    { gesture: "⌥-drag up", key: press("ArrowUp", { altKey: true, shiftKey: true }) },
-    { gesture: "⌥-drag down", key: press("ArrowDown", { altKey: true, shiftKey: true }) },
-    { gesture: "drag sideways for a range", key: press("ArrowRight", { shiftKey: true }) },
+    {
+      gesture: "drag a notehead down",
+      key: press("ArrowDown", { altKey: true }),
+    },
+    {
+      gesture: "⌥-drag up",
+      key: press("ArrowUp", { altKey: true, shiftKey: true }),
+    },
+    {
+      gesture: "⌥-drag down",
+      key: press("ArrowDown", { altKey: true, shiftKey: true }),
+    },
+    {
+      gesture: "drag sideways for a range",
+      key: press("ArrowRight", { shiftKey: true }),
+    },
   ];
 
   for (const { gesture, key } of GESTURES) {

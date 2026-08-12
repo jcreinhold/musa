@@ -32,7 +32,10 @@ function shelf(): Storage {
 
 describe("the view mode", () => {
   beforeEach(() => {
-    Object.defineProperty(globalThis, "localStorage", { value: shelf(), configurable: true });
+    Object.defineProperty(globalThis, "localStorage", {
+      value: shelf(),
+      configurable: true,
+    });
   });
 
   it("is pages until a piece was last read another way", () => {
@@ -54,7 +57,10 @@ describe("the view mode", () => {
   });
 
   it("survives a store holding something that is not a mode", () => {
-    globalThis.localStorage?.setItem("musa:view-modes", '{"sketch.musa":"sideways"}');
+    globalThis.localStorage?.setItem(
+      "musa:view-modes",
+      '{"sketch.musa":"sideways"}',
+    );
     expect(new ViewPreferences().mode("sketch.musa")).toBe("page");
   });
 });

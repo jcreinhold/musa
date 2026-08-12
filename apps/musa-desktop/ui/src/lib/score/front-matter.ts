@@ -24,7 +24,9 @@ const FIELDS: Record<string, HeaderFieldDto> = {
 };
 
 /** The field a printed line's id names, or null if the id names none. */
-export function fieldForId(id: string | null | undefined): HeaderFieldDto | null {
+export function fieldForId(
+  id: string | null | undefined,
+): HeaderFieldDto | null {
   return (id && FIELDS[id]) || null;
 }
 
@@ -90,8 +92,11 @@ export function measureFront(
  */
 function renderedFontSize(element: Element, renderedWidth: number): number {
   const inner = element.querySelector("[font-size]") ?? element;
-  const declared = Number.parseFloat(globalThis.getComputedStyle(inner).fontSize);
+  const declared = Number.parseFloat(
+    globalThis.getComputedStyle(inner).fontSize,
+  );
   const measured = (element as SVGGraphicsElement).getBBox?.();
-  const scale = measured && measured.width > 0 ? renderedWidth / measured.width : 1;
+  const scale =
+    measured && measured.width > 0 ? renderedWidth / measured.width : 1;
   return Number.isFinite(declared) ? declared * scale : 16;
 }

@@ -221,9 +221,14 @@ export class Session {
       if (!opening) return;
       this.#adopt();
     }
-    if (current?.document === snapshot.document && snapshot.revision < current.revision) return;
+    if (
+      current?.document === snapshot.document &&
+      snapshot.revision < current.revision
+    )
+      return;
     this.snapshot = snapshot;
-    if (this.draft !== null && this.draft === snapshot.source) this.draft = null;
+    if (this.draft !== null && this.draft === snapshot.source)
+      this.draft = null;
     if (!snapshot.compiles && !this.#announcedProblems) {
       this.#announcedProblems = true;
       this.sourceOpen = true;
@@ -419,14 +424,20 @@ export class Session {
    * again whenever it moves: what a note is spelled as depends on the key in
    * force there, and a piece modulates.
    */
-  async listenToMidi(listening: boolean, caret: string | null = null): Promise<void> {
+  async listenToMidi(
+    listening: boolean,
+    caret: string | null = null,
+  ): Promise<void> {
     const link = this.#link;
     if (!link) return;
     try {
       const snapshot = await link.listenToMidi(listening, caret);
       this.receive(snapshot);
       if (listening && snapshot.midiPort) {
-        this.say({ tone: "result", message: `Playing in from ${snapshot.midiPort}.` });
+        this.say({
+          tone: "result",
+          message: `Playing in from ${snapshot.midiPort}.`,
+        });
       }
     } catch (thrown) {
       this.fail(thrown);
@@ -511,7 +522,11 @@ export class Session {
    * The handle is the snapshot's own: this side never measures another
    * document's text, and passes back exactly what it was given.
    */
-  async openLibrary(uri: string, start: number | null = null, end: number | null = null): Promise<void> {
+  async openLibrary(
+    uri: string,
+    start: number | null = null,
+    end: number | null = null,
+  ): Promise<void> {
     const link = this.#link;
     if (!link) return;
     try {
@@ -581,7 +596,9 @@ export class Session {
 
   /** `Space`: play, or stop if the transport is already running. */
   async toggle(): Promise<void> {
-    await (this.snapshot?.playback.playing === true ? this.stop() : this.play());
+    await (this.snapshot?.playback.playing === true
+      ? this.stop()
+      : this.play());
   }
 
   /** `⇧Space`: play from a point in the performance, in frames. */

@@ -29,7 +29,9 @@ export type TokenClass = (typeof classes)[number];
 export const TOKEN_CLASSES: readonly TokenClass[] = classes;
 
 /** The words and marks the composer types literally. */
-const SPELLED = new Map<string, TokenClass>(spellings as [string, TokenClass][]);
+const SPELLED = new Map<string, TokenClass>(
+  spellings as [string, TokenClass][],
+);
 
 /** The marks, longest first, so `->` is read before `-`. */
 const MARKS = [...SPELLED.keys()]
@@ -90,7 +92,9 @@ function word(source: string, from: number): Token {
   const sharps = /^(##|#)/.exec(rest);
   const afterSharps = sharps ? rest.slice(sharps[0].length) : rest;
   const octave = /^-?[0-9]+/.exec(afterSharps);
-  const spelled = sharps ? /^[a-g]$/.test(letters) : /^[a-g](bb|[bn])?$/.test(letters);
+  const spelled = sharps
+    ? /^[a-g]$/.test(letters)
+    : /^[a-g](bb|[bn])?$/.test(letters);
   if (octave && spelled) {
     return {
       class: "pitch",
@@ -108,12 +112,18 @@ function word(source: string, from: number): Token {
   // had their turn, because `c4` is a pitch and taking them earlier would
   // spell it as a chord symbol.
   while (end < source.length && WORD_TAIL.test(at(source, end))) end += 1;
-  return { class: SPELLED.get(source.slice(from, end)) ?? "name", start: from, end };
+  return {
+    class: SPELLED.get(source.slice(from, end)) ?? "name",
+    start: from,
+    end,
+  };
 }
 
 /** A number: a rational, a float, or an integer, in the lexer's order. */
 function number(source: string, from: number): Token {
-  const match = /^[0-9]+\/[0-9]+|^[0-9]+\.[0-9]+|^[0-9]+/.exec(source.slice(from));
+  const match = /^[0-9]+\/[0-9]+|^[0-9]+\.[0-9]+|^[0-9]+/.exec(
+    source.slice(from),
+  );
   const text = match?.[0] ?? at(source, from);
   return {
     class: text.includes("/") ? "duration" : "number",
@@ -139,7 +149,11 @@ function text(source: string, from: number): Token {
       break;
     }
   }
-  return { class: closed ? "text" : "invalid", start: from, end: Math.min(end, source.length) };
+  return {
+    class: closed ? "text" : "invalid",
+    start: from,
+    end: Math.min(end, source.length),
+  };
 }
 
 /** The rest of a block comment, from `from`, given that one is open. */
@@ -161,7 +175,11 @@ function comment(source: string, from: number, opening: boolean): Read {
  * Never returns without advancing: an unreadable byte is one invalid token,
  * which is what the lexer does with it too.
  */
-export function read(source: string, from: number, state: ReaderState = OPEN): Read {
+export function read(
+  source: string,
+  from: number,
+  state: ReaderState = OPEN,
+): Read {
   if (state.inComment) return comment(source, from, false);
 
   const here = at(source, from);
@@ -201,7 +219,11 @@ export function read(source: string, from: number, state: ReaderState = OPEN): R
     return { token, end: token.end, state };
   }
 
-  return { token: { class: "invalid", start: from, end: from + 1 }, end: from + 1, state };
+  return {
+    token: { class: "invalid", start: from, end: from + 1 },
+    end: from + 1,
+    state,
+  };
 }
 
 /** Every token in a piece of musa source, whitespace aside. */

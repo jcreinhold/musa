@@ -616,13 +616,18 @@ export type EvidenceFacts =
  * than in each screen so that "is this a volume" is asked one way everywhere
  * (`07-the-volume.md`).
  */
-export function volumeOf(snapshot: ProjectSnapshot | null | undefined): ContentsFacts | null {
+export function volumeOf(
+  snapshot: ProjectSnapshot | null | undefined,
+): ContentsFacts | null {
   const listing = snapshot?.contents ?? null;
   if (!listing) return null;
   return listing.pieces.length + listing.material.length > 1 ? listing : null;
 }
 
 /** The event with this id, or undefined. */
-export function eventById(snapshot: ProjectSnapshot, id: string): EventFacts | undefined {
+export function eventById(
+  snapshot: ProjectSnapshot,
+  id: string,
+): EventFacts | undefined {
   return snapshot.score?.events.find((event) => event.id === id);
 }

@@ -27,12 +27,17 @@ const GENERATED = "event-0";
 const SIBLING = "event-5";
 
 /** A line wide enough to hold this statement, as the editor would report it. */
-function line(span: { start: number; end: number }): { from: number; to: number } {
+function line(span: { start: number; end: number }): {
+  from: number;
+  to: number;
+} {
   return { from: span.start - 4, to: span.end };
 }
 
 function origin(id: string) {
-  const event = (snapshot.score?.events ?? []).find((candidate) => candidate.id === id);
+  const event = (snapshot.score?.events ?? []).find(
+    (candidate) => candidate.id === id,
+  );
   if (!event) throw new Error(`no ${id} in the fixture`);
   return event.origin;
 }

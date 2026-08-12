@@ -35,7 +35,9 @@ function edits(page: Page): Promise<Record<string, unknown>[]> {
   return page.evaluate(() => window.__musaEdits);
 }
 
-test("⌘2 shows the chosen part's patch as the chain the source spells", async ({ page }) => {
+test("⌘2 shows the chosen part's patch as the chain the source spells", async ({
+  page,
+}) => {
   await inSound(page);
 
   // Glass Mountain's `glass_pad`, in the order `|>` runs it. Not a canvas:
@@ -56,14 +58,20 @@ test("⌘2 shows the chosen part's patch as the chain the source spells", async 
 
   // And the one the `lfo` moves says so, rather than showing a control that
   // appears to disagree with what is heard (§13.7).
-  await expect(page.locator(".sound-workspace .modulated")).toContainText("modulated by lfo");
+  await expect(page.locator(".sound-workspace .modulated")).toContainText(
+    "modulated by lfo",
+  );
 });
 
-test("a part says which patch plays it, and can be pointed at another", async ({ page }) => {
+test("a part says which patch plays it, and can be pointed at another", async ({
+  page,
+}) => {
   await inSound(page);
 
   await expect(page.locator(".sound-workspace .parts")).toContainText("violin");
-  await expect(page.locator(".sound-workspace .parts")).toContainText("glass_pad");
+  await expect(page.locator(".sound-workspace .parts")).toContainText(
+    "glass_pad",
+  );
 
   // One patch is declared, so the picker offers it and nothing invented.
   const picker = page.locator(".sound-workspace .picker select");
@@ -82,7 +90,12 @@ test("moving a parameter issues an edit against the source, not against a copy",
 
   await expect
     .poll(async () => (await edits(page)).at(-1))
-    .toMatchObject({ kind: "setParam", container: "patch", name: "glass_pad", param: "cutoff" });
+    .toMatchObject({
+      kind: "setParam",
+      container: "patch",
+      name: "glass_pad",
+      param: "cutoff",
+    });
 });
 
 test("⌘3 shows every part with what it sends where", async ({ page }) => {
@@ -108,5 +121,10 @@ test("a send fader writes the level it was moved to", async ({ page }) => {
 
   await expect
     .poll(async () => (await edits(page)).at(-1))
-    .toMatchObject({ kind: "setSendLevel", source: "violin", bus: "hall", decibels: -6 });
+    .toMatchObject({
+      kind: "setSendLevel",
+      source: "violin",
+      bus: "hall",
+      decibels: -6,
+    });
 });

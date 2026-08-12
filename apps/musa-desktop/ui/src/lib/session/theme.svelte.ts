@@ -12,7 +12,9 @@ export type Theme = "light" | "dark";
 const KEY = "musa.theme";
 
 function systemTheme(): Theme {
-  return globalThis.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return globalThis.matchMedia?.("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
 }
 
 export class ThemeChoice {

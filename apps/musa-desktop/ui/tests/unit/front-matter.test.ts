@@ -41,7 +41,12 @@ describe("the engraved page", () => {
     const mei = snapshot.mei ?? "";
     // Glass Mountain names four of the five; it has no arranger, and an
     // unnamed role prints nothing rather than an empty line.
-    for (const id of ["front-title", "front-subtitle", "front-composer", "front-copyright"]) {
+    for (const id of [
+      "front-title",
+      "front-subtitle",
+      "front-composer",
+      "front-copyright",
+    ]) {
       expect(mei).toContain(`xml:id="${id}"`);
     }
     expect(mei).not.toContain("front-arranger");

@@ -7,7 +7,9 @@ import type { Page } from "@playwright/test";
  */
 export async function engraved(page: Page): Promise<void> {
   await page.waitForFunction(() => document.fonts.status === "loaded");
-  await page.waitForSelector(".engraving svg.definition-scale", { state: "attached" });
+  await page.waitForSelector(".engraving svg.definition-scale", {
+    state: "attached",
+  });
   await page.waitForFunction(() => {
     const svg = document.querySelector(".engraving svg");
     return svg !== null && svg.getBoundingClientRect().height > 1;

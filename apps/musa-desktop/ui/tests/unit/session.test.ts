@@ -9,14 +9,22 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { SETTLE_MS, Session, type Link } from "../../src/lib/session/session.svelte";
+import {
+  SETTLE_MS,
+  Session,
+  type Link,
+} from "../../src/lib/session/session.svelte";
 import fixture from "../../fixtures/glass-mountain.snapshot.json";
 import type { ProjectSnapshot } from "../../src/lib/state/snapshot";
 
 const VALID = fixture as unknown as ProjectSnapshot;
 
 /** A snapshot of `source` at `revision`, compiling or not, as the core would. */
-function snapshotOf(source: string, revision: number, compiles = true): ProjectSnapshot {
+function snapshotOf(
+  source: string,
+  revision: number,
+  compiles = true,
+): ProjectSnapshot {
   return {
     ...VALID,
     source,
@@ -57,7 +65,8 @@ function recorder(): Recorder {
     saveAll: vi.fn(async () => VALID),
     askToOpenProject: vi.fn(async () => null),
     apply: vi.fn(async (command) => {
-      const source = command.kind === "setSource" ? command.source : VALID.source;
+      const source =
+        command.kind === "setSource" ? command.source : VALID.source;
       link.applied.push(source);
       return link.answer(source);
     }),
@@ -167,10 +176,10 @@ describe("opening another piece", () => {
 
   it("takes the new piece, whose revisions start again at zero", async () => {
     const link = recorder();
-    const opened = other("piece \"Second\" {}");
+    const opened = other('piece "Second" {}');
     link.openProject = vi.fn(async () => opened);
     const session = new Session(link);
-    session.receive(snapshotOf("piece \"First\" {}", 12));
+    session.receive(snapshotOf('piece "First" {}', 12));
 
     await session.open("/tmp/second.musa");
     expect(session.snapshot?.source).toBe(opened.source);
@@ -178,7 +187,7 @@ describe("opening another piece", () => {
 
   it("leaves the previous piece's draft behind", async () => {
     const link = recorder();
-    link.openProject = vi.fn(async () => other("piece \"Second\" {}"));
+    link.openProject = vi.fn(async () => other('piece "Second" {}'));
     const session = new Session(link);
     session.receive(VALID);
     session.edit("half a thought");
@@ -186,19 +195,19 @@ describe("opening another piece", () => {
 
     await session.open("/tmp/second.musa");
     expect(session.draft).toBeNull();
-    expect(session.text).toBe("piece \"Second\" {}");
+    expect(session.text).toBe('piece "Second" {}');
   });
 
   it("ignores an answer about the piece that was closed", async () => {
     const link = recorder();
-    link.openProject = vi.fn(async () => other("piece \"Second\" {}"));
+    link.openProject = vi.fn(async () => other('piece "Second" {}'));
     const session = new Session(link);
     session.receive(VALID);
 
     await session.open("/tmp/second.musa");
     // A compile of the first piece, still in flight when the second opened.
-    session.receive(snapshotOf("piece \"First\" {}", VALID.revision + 9));
-    expect(session.snapshot?.source).toBe("piece \"Second\" {}");
+    session.receive(snapshotOf('piece "First" {}', VALID.revision + 9));
+    expect(session.snapshot?.source).toBe('piece "Second" {}');
   });
 
   it("shows the source again for a second piece that does not compile", async () => {
@@ -271,7 +280,10 @@ describe("asking the score a question", () => {
     });
     await session.analyze("tonal");
     expect(session.report?.kind).toBe("cadences");
-    expect(session.notice).toEqual({ tone: "failure", message: "no valid score" });
+    expect(session.notice).toEqual({
+      tone: "failure",
+      message: "no valid score",
+    });
   });
 
   /*
@@ -281,7 +293,11 @@ describe("asking the score a question", () => {
    */
   it("forgets a reading of the piece that was closed", async () => {
     const link = recorder();
-    link.openProject = vi.fn(async () => ({ ...VALID, document: VALID.document + 1, revision: 0 }));
+    link.openProject = vi.fn(async () => ({
+      ...VALID,
+      document: VALID.document + 1,
+      revision: 0,
+    }));
     const session = new Session(link);
     session.receive(VALID);
     await session.analyze("cadences");
@@ -304,7 +320,7 @@ describe("asking the score a question", () => {
     await session.analyze("cadences");
     const read = session.report?.revision;
 
-    session.receive(snapshotOf("piece \"Later\" {}", VALID.revision + 1));
+    session.receive(snapshotOf('piece "Later" {}', VALID.revision + 1));
     expect(session.report?.revision).toBe(read);
     expect(session.snapshot?.revision).toBeGreaterThan(read ?? 0);
   });
@@ -318,7 +334,11 @@ describe("opening a bundled module", () => {
 
     await session.openLibrary("musa-stdlib:/std/core.musa", 254, 266);
     expect(session.library?.name).toBe("core");
-    expect(link.libraryDocument).toHaveBeenCalledWith("musa-stdlib:/std/core.musa", 254, 266);
+    expect(link.libraryDocument).toHaveBeenCalledWith(
+      "musa-stdlib:/std/core.musa",
+      254,
+      266,
+    );
     // The piece is still open behind it: a module is not a document that
     // replaced the composer's own.
     expect(session.snapshot).toBe(VALID);
@@ -365,7 +385,10 @@ describe("results and failures", () => {
     session.receive(VALID);
 
     await session.exportTo("mei");
-    expect(session.notice).toEqual({ tone: "result", message: "Exported out.mei." });
+    expect(session.notice).toEqual({
+      tone: "result",
+      message: "Exported out.mei.",
+    });
 
     await vi.advanceTimersByTimeAsync(3000);
     expect(session.notice).toBeNull();
@@ -380,7 +403,10 @@ describe("results and failures", () => {
     session.receive(VALID);
 
     await session.undo();
-    expect(session.notice).toEqual({ tone: "failure", message: "nothing to undo" });
+    expect(session.notice).toEqual({
+      tone: "failure",
+      message: "nothing to undo",
+    });
 
     await vi.advanceTimersByTimeAsync(10_000);
     expect(session.notice?.tone).toBe("failure");

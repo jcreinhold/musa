@@ -97,7 +97,12 @@ async function pressOn(
  * engraving from a test rather than about the gesture, so it is retried in
  * one place instead of being waited for in seven.
  */
-async function dragOn(page: Page, selector: string, dx: number, dy: number): Promise<void> {
+async function dragOn(
+  page: Page,
+  selector: string,
+  dx: number,
+  dy: number,
+): Promise<void> {
   await expect(async () => {
     await page.mouse.up();
     await pressOn(page, selector, dx !== 0 && dy === 0);

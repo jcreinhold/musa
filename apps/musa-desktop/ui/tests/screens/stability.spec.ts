@@ -40,7 +40,9 @@ test("a re-engraving neither moves the page nor blinks", async ({ page }) => {
   // Marked so the test can prove the page really was replaced. A stability
   // test that passed because nothing re-rendered would be worse than none.
   await page.evaluate(() =>
-    document.querySelector(".engraving .ink > svg")?.setAttribute("data-before", ""),
+    document
+      .querySelector(".engraving .ink > svg")
+      ?.setAttribute("data-before", ""),
   );
 
   // Watch every frame from before the edit until well after the swap. The
@@ -48,9 +50,14 @@ test("a re-engraving neither moves the page nor blinks", async ({ page }) => {
   // it fell to zero, and the cross-fade exists precisely to prevent one.
   await page.evaluate(() => {
     const counts: number[] = [];
-    Object.defineProperty(window, "__musaFrames", { value: counts, configurable: true });
+    Object.defineProperty(window, "__musaFrames", {
+      value: counts,
+      configurable: true,
+    });
     const tick = () => {
-      counts.push(document.querySelectorAll('.engraving g[id^="event-"]').length);
+      counts.push(
+        document.querySelectorAll('.engraving g[id^="event-"]').length,
+      );
       window.requestAnimationFrame(tick);
     };
     window.requestAnimationFrame(tick);
@@ -60,13 +67,16 @@ test("a re-engraving neither moves the page nor blinks", async ({ page }) => {
   await expect(page.locator(".notice")).toHaveCount(0);
   await page.waitForTimeout(500);
 
-  await expect(page.locator(".engraving .ink > svg[data-before]")).toHaveCount(0);
+  await expect(page.locator(".engraving .ink > svg[data-before]")).toHaveCount(
+    0,
+  );
 
   const frames: number[] = await page.evaluate(() => [...window.__musaFrames]);
   expect(frames.length, "frames observed").toBeGreaterThan(5);
-  expect(Math.min(...frames), "engraved events on the leaf at the emptiest frame").toBeGreaterThan(
-    0,
-  );
+  expect(
+    Math.min(...frames),
+    "engraved events on the leaf at the emptiest frame",
+  ).toBeGreaterThan(0);
 
   const after = await page.locator(`[id="${id}"]`).first().boundingBox();
   expect(after, "the anchor is still engraved").not.toBeNull();

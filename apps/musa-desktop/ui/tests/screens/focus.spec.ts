@@ -186,7 +186,9 @@ test("the origin row says how many notes the line spelled, before anyone hovers"
   const generated = page.locator(GENERATED).first();
   await expect(async () => {
     await generated.click({ force: true });
-    await expect(page.locator(".inspector .kin")).toHaveText("2 notes", { timeout: 500 });
+    await expect(page.locator(".inspector .kin")).toHaveText("2 notes", {
+      timeout: 500,
+    });
   }).toPass({ timeout: 5000 });
 
   // An authored note's line spelled exactly one, and a count of one is not a

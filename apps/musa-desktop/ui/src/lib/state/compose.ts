@@ -41,7 +41,9 @@ export function anchorFor(workspace: Workspace): InsertAtDto | null {
   const last = ids[ids.length - 1];
   if (last !== undefined) return { kind: "after", event: last };
   const active = workspace.active;
-  return active ? { kind: "endOfVoice", part: active.part, voice: active.voice } : null;
+  return active
+    ? { kind: "endOfVoice", part: active.part, voice: active.voice }
+    : null;
 }
 
 /** The event the shortcuts change, as opposed to write after. */
@@ -50,8 +52,13 @@ function selectedEvent(workspace: Workspace) {
 }
 
 /** A write, or nothing at all when there is no voice to write into. */
-function insert(at: InsertAtDto | null, note: (EditDto & { kind: "insertNote" })["note"]): Stroke {
-  return at === null ? PASS : { kind: "edit", at, edit: { kind: "insertNote", at, note } };
+function insert(
+  at: InsertAtDto | null,
+  note: (EditDto & { kind: "insertNote" })["note"],
+): Stroke {
+  return at === null
+    ? PASS
+    : { kind: "edit", at, edit: { kind: "insertNote", at, note } };
 }
 
 /**
@@ -64,7 +71,11 @@ function insert(at: InsertAtDto | null, note: (EditDto & { kind: "insertNote" })
  * One key is a note and several held together are a chord, which is the
  * grouping the core made before this ever saw them.
  */
-export function played(pitches: string[], entry: NoteEntry, workspace: Workspace): Stroke {
+export function played(
+  pitches: string[],
+  entry: NoteEntry,
+  workspace: Workspace,
+): Stroke {
   const at = anchorFor(workspace);
   const [first, ...rest] = pitches;
   if (first === undefined) return PASS;
@@ -83,7 +94,11 @@ export function played(pitches: string[], entry: NoteEntry, workspace: Workspace
  * duration, the dot, the octave, the accidental — because those are settings,
  * not edits, and a composer expects them to persist across notes.
  */
-export function stroke(event: KeyboardEvent, entry: NoteEntry, workspace: Workspace): Stroke {
+export function stroke(
+  event: KeyboardEvent,
+  entry: NoteEntry,
+  workspace: Workspace,
+): Stroke {
   const key = event.key;
   const selected = selectedEvent(workspace);
 

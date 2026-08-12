@@ -29,8 +29,7 @@ import type { EventFacts, ProjectSnapshot, Span } from "./snapshot";
  * (`03-interaction.md` §7).
  */
 export type FocusTarget =
-  | { kind: "event"; id: string }
-  | { kind: "line"; from: number; to: number };
+  { kind: "event"; id: string } | { kind: "line"; from: number; to: number };
 
 /** What one focus marks, in both views at once. */
 export interface Marked {
@@ -50,7 +49,11 @@ export interface Marked {
 }
 
 /** Nothing focused — the shared empty value, allocated once. */
-const NOTHING: Marked = Object.freeze({ events: [], definition: null, place: null });
+const NOTHING: Marked = Object.freeze({
+  events: [],
+  definition: null,
+  place: null,
+});
 
 function keyOf(span: Span): string {
   return `${span.start}:${span.end}`;
@@ -126,7 +129,8 @@ class Index {
     for (let index = low - 1; index >= 0; index -= 1) {
       const interval = intervals[index];
       if (!interval || from - interval.start > this.#widest) break;
-      if (interval.end > from && !found.includes(interval.id)) found.push(interval.id);
+      if (interval.end > from && !found.includes(interval.id))
+        found.push(interval.id);
     }
     return found.reverse();
   }
@@ -173,7 +177,8 @@ export class Focus {
   /** The pointer moved over a line of the text, or off the text. */
   pointLine(line: { from: number; to: number } | null): void {
     this.pointing = true;
-    this.pointer = line === null ? null : { kind: "line", from: line.from, to: line.to };
+    this.pointer =
+      line === null ? null : { kind: "line", from: line.from, to: line.to };
   }
 
   /** The pointer left. The last focus does not linger. */
@@ -208,7 +213,9 @@ export class Focus {
     if (!target) return NOTHING;
     if (target.kind === "line") {
       const events = this.#spans.within(target.from, target.to);
-      return events.length === 0 ? NOTHING : { events, definition: null, place: null };
+      return events.length === 0
+        ? NOTHING
+        : { events, definition: null, place: null };
     }
     const event = (this.#read()?.score?.events ?? []).find(
       (candidate) => candidate.id === target.id,

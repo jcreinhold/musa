@@ -40,7 +40,10 @@ async function core(): Promise<typeof import("@tauri-apps/api/core")> {
   return import("@tauri-apps/api/core");
 }
 
-async function call<T>(command: string, args: Record<string, unknown>): Promise<T> {
+async function call<T>(
+  command: string,
+  args: Record<string, unknown>,
+): Promise<T> {
   const { invoke } = await core();
   return invoke<T>(command, args);
 }
@@ -48,12 +51,16 @@ async function call<T>(command: string, args: Record<string, unknown>): Promise<
 /** True when a rejected promise carries the shell's own failure shape. */
 export function isFailure(thrown: unknown): thrown is ErrorDto {
   return (
-    typeof thrown === "object" && thrown !== null && "kind" in thrown && "message" in thrown
+    typeof thrown === "object" &&
+    thrown !== null &&
+    "kind" in thrown &&
+    "message" in thrown
   );
 }
 
 export const bridge = {
-  openProject: (path: string) => call<ProjectSnapshot>("open_project", { path }),
+  openProject: (path: string) =>
+    call<ProjectSnapshot>("open_project", { path }),
   newProject: (template: TemplateDto, path: string | null) =>
     call<ProjectSnapshot>("new_project", { template, path }),
   /** Turn to another file of the project already open. */
@@ -63,7 +70,8 @@ export const bridge = {
   apply: (command: CommandDto) => call<ProjectSnapshot>("apply", { command }),
   /** What an edit would change, asked before it is made. */
   editImpact: (edit: EditDto) => call<EditImpact>("edit_impact", { edit }),
-  transport: (command: TransportDto) => call<ProjectSnapshot>("transport", { command }),
+  transport: (command: TransportDto) =>
+    call<ProjectSnapshot>("transport", { command }),
   exportTo: (target: ExportTargetDto, path: string | null) =>
     call<{ path: string }>("export", { request: { target, path } }),
   snapshot: () => call<ProjectSnapshot>("snapshot", {}),
@@ -113,6 +121,9 @@ export const bridge = {
   /** Ask the user where to write something. `null` when they cancel. */
   async askToSave(name: string, extension: string): Promise<string | null> {
     const { save } = await import("@tauri-apps/plugin-dialog");
-    return save({ defaultPath: name, filters: [{ name: extension, extensions: [extension] }] });
+    return save({
+      defaultPath: name,
+      filters: [{ name: extension, extensions: [extension] }],
+    });
   },
 };

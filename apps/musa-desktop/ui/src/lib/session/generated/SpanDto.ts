@@ -8,4 +8,4 @@
  * anything. [`crate::session`] restates it in bytes before the session
  * applies it; see [`crate::offsets`] for why the boundary is here.
  */
-export type SpanDto = { start: number, end: number, };
+export type SpanDto = { start: number; end: number };

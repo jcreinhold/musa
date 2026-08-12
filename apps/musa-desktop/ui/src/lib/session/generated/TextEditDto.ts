@@ -4,4 +4,4 @@ import type { SpanDto } from "./SpanDto";
 /**
  * One replacement against the current source.
  */
-export type TextEditDto = { span: SpanDto, replacement: string, };
+export type TextEditDto = { span: SpanDto; replacement: string };

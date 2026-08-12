@@ -12,7 +12,10 @@ import { describe, expect, it } from "vitest";
 
 import { fixture } from "../../src/lib/state/fixtures";
 import { Workspace } from "../../src/lib/state/selection.svelte";
-import type { OccurrenceFacts, ProjectSnapshot } from "../../src/lib/state/snapshot";
+import type {
+  OccurrenceFacts,
+  ProjectSnapshot,
+} from "../../src/lib/state/snapshot";
 
 const snapshot = fixture("glass-mountain").snapshot as ProjectSnapshot;
 
@@ -42,7 +45,9 @@ describe("occurrences", () => {
     const [first, second] = workspace().occurrences;
     expect(first?.events).toHaveLength(5);
     expect(second?.events).toHaveLength(5);
-    expect(new Set([...(first?.events ?? []), ...(second?.events ?? [])]).size).toBe(10);
+    expect(
+      new Set([...(first?.events ?? []), ...(second?.events ?? [])]).size,
+    ).toBe(10);
   });
 
   it("point at the source: the declaration, and the use that ran", () => {
@@ -50,10 +55,16 @@ describe("occurrences", () => {
     for (const occurrence of workspace().occurrences) {
       const declaration = occurrence.declaration;
       expect(declaration).not.toBeNull();
-      expect(source.slice(declaration?.start, declaration?.end)).toMatch(/^motif sigh/);
-      expect(source.slice(occurrence.useSite.start, occurrence.useSite.end)).toBe("use sigh();");
+      expect(source.slice(declaration?.start, declaration?.end)).toMatch(
+        /^motif sigh/,
+      );
+      expect(
+        source.slice(occurrence.useSite.start, occurrence.useSite.end),
+      ).toBe("use sigh();");
       // The line the interface prints is the line the use statement is on.
-      expect(source.slice(0, occurrence.useSite.start).split("\n")).toHaveLength(occurrence.line);
+      expect(
+        source.slice(0, occurrence.useSite.start).split("\n"),
+      ).toHaveLength(occurrence.line);
     }
   });
 });
@@ -86,8 +97,11 @@ describe("selecting an occurrence", () => {
   it("is reachable from any event of it, and from none other", () => {
     const space = workspace();
     const [first] = space.occurrences;
-    for (const id of first?.events ?? []) expect(space.occurrenceOf(id)?.id).toBe(first?.id);
-    const authored = (snapshot.score?.events ?? []).find((event) => !event.origin.generated);
+    for (const id of first?.events ?? [])
+      expect(space.occurrenceOf(id)?.id).toBe(first?.id);
+    const authored = (snapshot.score?.events ?? []).find(
+      (event) => !event.origin.generated,
+    );
     expect(space.occurrenceOf(authored?.id ?? null)).toBeUndefined();
   });
 });
@@ -96,7 +110,10 @@ describe("a diagnostic's place in the music", () => {
   it("is the events whose source text encloses it", () => {
     const space = workspace();
     const event = snapshot.score?.events[0];
-    const inside = { start: (event?.origin.span.start ?? 0) + 1, end: event?.origin.span.end ?? 0 };
+    const inside = {
+      start: (event?.origin.span.start ?? 0) + 1,
+      end: event?.origin.span.end ?? 0,
+    };
     expect(space.eventsForSpan(inside)).toContain(event?.id);
   });
 

@@ -13,7 +13,13 @@
  * (`03-interaction.md` §2).
  */
 
-import { renotate, rungsFor, shiftAccidental, shiftStep, stepsFor } from "../score/steps";
+import {
+  renotate,
+  rungsFor,
+  shiftAccidental,
+  shiftStep,
+  stepsFor,
+} from "../score/steps";
 
 /** Which question the gesture turned out to be asking. */
 export type Axis = "none" | "pitch" | "accidental" | "duration" | "range";
@@ -61,7 +67,11 @@ export class Gesture {
 
   /** Whether an edit is in flight — the state the overlay and the source draw. */
   get editing(): boolean {
-    return this.axis === "pitch" || this.axis === "accidental" || this.axis === "duration";
+    return (
+      this.axis === "pitch" ||
+      this.axis === "accidental" ||
+      this.axis === "duration"
+    );
   }
 
   /** The note the gesture started on, while it is running. */
@@ -125,18 +135,25 @@ export class Gesture {
     return press.alt ? "accidental" : "pitch";
   }
 
-  #snap(press: Press, dx: number, dy: number, staffSpace: number): Candidate | null {
+  #snap(
+    press: Press,
+    dx: number,
+    dy: number,
+    staffSpace: number,
+  ): Candidate | null {
     const pitch = press.pitch;
     switch (this.axis) {
       case "pitch": {
         const steps = stepsFor(dy, staffSpace);
-        const value = pitch === null || steps === 0 ? null : shiftStep(pitch, steps);
+        const value =
+          pitch === null || steps === 0 ? null : shiftStep(pitch, steps);
         if (value === null) return null;
         return { event: press.event, kind: "pitch", value, distance: steps };
       }
       case "accidental": {
         const by = stepsFor(dy, staffSpace);
-        const value = pitch === null || by === 0 ? null : shiftAccidental(pitch, by);
+        const value =
+          pitch === null || by === 0 ? null : shiftAccidental(pitch, by);
         // The ladder has ends, so a long drag stops writing rather than
         // pretending there is a triple sharp.
         return value === null || value === pitch

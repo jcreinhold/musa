@@ -13,20 +13,29 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { CLASS_TAGS } from "../../src/lib/lang-musa/highlight";
-import { TOKEN_CLASSES, tokenize, type Token } from "../../src/lib/lang-musa/tokenize";
+import {
+  TOKEN_CLASSES,
+  tokenize,
+  type Token,
+} from "../../src/lib/lang-musa/tokenize";
 
-const EXAMPLES = fileURLToPath(new URL("../../../../../examples/", import.meta.url));
+const EXAMPLES = fileURLToPath(
+  new URL("../../../../../examples/", import.meta.url),
+);
 const LEXED = fileURLToPath(new URL("../../fixtures/lexed/", import.meta.url));
 
 const pieces = readdirSync(LEXED)
   .filter((name) => name.endsWith(".json"))
   .map((name) => name.replace(/\.json$/, ""));
 
-const sourceOf = (piece: string) => readFileSync(`${EXAMPLES}${piece}.musa`, "utf8");
+const sourceOf = (piece: string) =>
+  readFileSync(`${EXAMPLES}${piece}.musa`, "utf8");
 
 describe.each(pieces)("%s", (piece) => {
   it("tokenizes exactly as the compiler's lexer does", () => {
-    const lexed = JSON.parse(readFileSync(`${LEXED}${piece}.json`, "utf8")) as Token[];
+    const lexed = JSON.parse(
+      readFileSync(`${LEXED}${piece}.json`, "utf8"),
+    ) as Token[];
     expect(tokenize(sourceOf(piece))).toEqual(lexed);
   });
 });
@@ -37,7 +46,9 @@ it("is checked against a source that is not ASCII", () => {
   // equal for every ASCII file and diverge for every other one
   // (`03-interaction.md` §7.1). If every example were ASCII, the suite would
   // pass whether or not the two sides agreed about the measure.
-  expect(pieces.some((piece) => /[^\u0000-\u007f]/.test(sourceOf(piece)))).toBe(true);
+  expect(pieces.some((piece) => /[^\u0000-\u007f]/.test(sourceOf(piece)))).toBe(
+    true,
+  );
 });
 
 describe("half-typed source", () => {
@@ -49,7 +60,9 @@ describe("half-typed source", () => {
       // read as code either.
       { class: "invalid", start: 6, end: 12 },
     ]);
-    expect(tokenize("/* still writing")).toEqual([{ class: "comment", start: 0, end: 16 }]);
+    expect(tokenize("/* still writing")).toEqual([
+      { class: "comment", start: 0, end: 16 },
+    ]);
     // A block comment outlives the line it opened on.
     expect(tokenize("/* two\nlines */ c4")).toEqual([
       { class: "comment", start: 0, end: 15 },

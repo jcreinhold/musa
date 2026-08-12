@@ -24,11 +24,15 @@ const LEAF = ".stage > div";
  * Deduplicated because a page mid-swap holds the outgoing engraving under the
  * incoming one for 90 ms, and both carry the same ids (§6).
  */
-async function engravedEvents(page: import("@playwright/test").Page): Promise<string> {
+async function engravedEvents(
+  page: import("@playwright/test").Page,
+): Promise<string> {
   return page.evaluate(() =>
     [
       ...new Set(
-        [...document.querySelectorAll('.engraving g[id^="event-"]')].map((element) => element.id),
+        [...document.querySelectorAll('.engraving g[id^="event-"]')].map(
+          (element) => element.id,
+        ),
       ),
     ]
       .sort()
@@ -42,7 +46,9 @@ test.beforeEach(async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
 });
 
-test("a piece opens engraved, with its source not yet shown", async ({ page }) => {
+test("a piece opens engraved, with its source not yet shown", async ({
+  page,
+}) => {
   await page.goto("/");
   await engraved(page);
 
@@ -50,7 +56,9 @@ test("a piece opens engraved, with its source not yet shown", async ({ page }) =
   await expect(page.getByRole("textbox", { name: "Source" })).toHaveCount(0);
 
   await toggleSource(page);
-  await expect(page.getByRole("textbox", { name: "Source" })).toContainText("piece");
+  await expect(page.getByRole("textbox", { name: "Source" })).toContainText(
+    "piece",
+  );
 });
 
 /**
@@ -62,7 +70,9 @@ test("a piece opens engraved, with its source not yet shown", async ({ page }) =
  * belong to concludes the new score is stale and shows the old one, which is
  * indistinguishable from Open being broken.
  */
-test("opening a piece replaces the one that has been edited", async ({ page }) => {
+test("opening a piece replaces the one that has been edited", async ({
+  page,
+}) => {
   await page.goto("/");
   await engraved(page);
   await toggleSource(page);
@@ -79,7 +89,9 @@ test("opening a piece replaces the one that has been edited", async ({ page }) =
   await expect(source(page)).toContainText("The annotation layer");
 });
 
-test("opening a piece drops the selection the old one left behind", async ({ page }) => {
+test("opening a piece drops the selection the old one left behind", async ({
+  page,
+}) => {
   await page.goto("/");
   await engraved(page);
 
@@ -91,7 +103,9 @@ test("opening a piece drops the selection the old one left behind", async ({ pag
   await expect(page.locator(".overlay rect.selection")).toHaveCount(0);
 });
 
-test("breaking the source keeps the score and says how far behind it is", async ({ page }) => {
+test("breaking the source keeps the score and says how far behind it is", async ({
+  page,
+}) => {
   await page.goto("/");
   await engraved(page);
 
@@ -100,7 +114,9 @@ test("breaking the source keeps the score and says how far behind it is", async 
   await toggleSource(page);
   await engraved(page);
   const before = await engravedEvents(page);
-  const edge = await page.locator(LEAF).evaluate((leaf) => getComputedStyle(leaf).borderTopColor);
+  const edge = await page
+    .locator(LEAF)
+    .evaluate((leaf) => getComputedStyle(leaf).borderTopColor);
 
   await rewrite(page, 'piece "Glass Mountain" {');
 
@@ -111,7 +127,9 @@ test("breaking the source keeps the score and says how far behind it is", async 
   expect(await engravedEvents(page)).toBe(before);
   expect(before).not.toBe("");
 
-  const stale = await page.locator(LEAF).evaluate((leaf) => getComputedStyle(leaf).borderTopColor);
+  const stale = await page
+    .locator(LEAF)
+    .evaluate((leaf) => getComputedStyle(leaf).borderTopColor);
   expect(stale).not.toBe(edge);
 
   // Diagnostics are in the source column, in the compiler's own words.
@@ -122,7 +140,9 @@ test("breaking the source keeps the score and says how far behind it is", async 
  * A diagnostic that knows its repair offers it, and applying it is an ordinary
  * edit — the source compiles again and the problem is gone.
  */
-test("a diagnostic with one certain fix offers it, and applying it works", async ({ page }) => {
+test("a diagnostic with one certain fix offers it, and applying it works", async ({
+  page,
+}) => {
   await page.goto("/");
   await engraved(page);
   await toggleSource(page);
@@ -139,7 +159,9 @@ test("a diagnostic with one certain fix offers it, and applying it works", async
   await expect(page.getByRole("status")).toHaveCount(0);
 });
 
-test("fixing the source removes the message without announcing it", async ({ page }) => {
+test("fixing the source removes the message without announcing it", async ({
+  page,
+}) => {
   await page.goto("/");
   await engraved(page);
 
@@ -161,7 +183,9 @@ test("play reaches the shell and the transport follows", async ({ page }) => {
   await expect(stop).toBeEnabled();
 });
 
-test("a menu selection runs the same command the interface does", async ({ page }) => {
+test("a menu selection runs the same command the interface does", async ({
+  page,
+}) => {
   await page.goto("/");
   await engraved(page);
 
@@ -170,7 +194,9 @@ test("a menu selection runs the same command the interface does", async ({ page 
   await expect(pane(page)).toHaveCount(1);
 });
 
-test("the position event moves the readout without a snapshot", async ({ page }) => {
+test("the position event moves the readout without a snapshot", async ({
+  page,
+}) => {
   await page.goto("/");
   await engraved(page);
 
@@ -193,10 +219,9 @@ test("the view mode is a choice the piece keeps", async ({ page }) => {
 
   await page.getByRole("button", { name: "Continuous" }).click();
   await expect(page.locator(".stage.continuous")).toHaveCount(1);
-  await expect(page.getByRole("button", { name: "Continuous" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await expect(
+    page.getByRole("button", { name: "Continuous" }),
+  ).toHaveAttribute("aria-pressed", "true");
 
   // Remembered per piece (§4): reopening the same score reopens the view it
   // was left in, and a preference that did not survive a reload would not be

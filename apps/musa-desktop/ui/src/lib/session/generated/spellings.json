@@ -1,450 +1,114 @@
 [
-  [
-    "piece",
-    "keyword"
-  ],
-  [
-    "tempo",
-    "keyword"
-  ],
-  [
-    "meter",
-    "keyword"
-  ],
-  [
-    "key",
-    "keyword"
-  ],
-  [
-    "subtitle",
-    "keyword"
-  ],
-  [
-    "composer",
-    "keyword"
-  ],
-  [
-    "arranger",
-    "keyword"
-  ],
-  [
-    "copyright",
-    "keyword"
-  ],
-  [
-    "motif",
-    "keyword"
-  ],
-  [
-    "score",
-    "keyword"
-  ],
-  [
-    "part",
-    "keyword"
-  ],
-  [
-    "voice",
-    "keyword"
-  ],
-  [
-    "clef",
-    "keyword"
-  ],
-  [
-    "use",
-    "use"
-  ],
-  [
-    "import",
-    "keyword"
-  ],
-  [
-    "transpose",
-    "keyword"
-  ],
-  [
-    "down",
-    "keyword"
-  ],
-  [
-    "up",
-    "keyword"
-  ],
-  [
-    "rest",
-    "keyword"
-  ],
-  [
-    "repeat",
-    "keyword"
-  ],
-  [
-    "bar",
-    "keyword"
-  ],
-  [
-    "assert",
-    "keyword"
-  ],
-  [
-    "senza",
-    "keyword"
-  ],
-  [
-    "ending",
-    "keyword"
-  ],
-  [
-    "fragment",
-    "keyword"
-  ],
-  [
-    "mobile",
-    "keyword"
-  ],
-  [
-    "improvise",
-    "keyword"
-  ],
-  [
-    "over",
-    "keyword"
-  ],
-  [
-    "slur",
-    "keyword"
-  ],
-  [
-    "dynamic",
-    "keyword"
-  ],
-  [
-    "tuplet",
-    "keyword"
-  ],
-  [
-    "performance",
-    "keyword"
-  ],
-  [
-    "profile",
-    "keyword"
-  ],
-  [
-    "mark",
-    "keyword"
-  ],
-  [
-    "groove",
-    "keyword"
-  ],
-  [
-    "grace",
-    "keyword"
-  ],
-  [
-    "studio",
-    "keyword"
-  ],
-  [
-    "patch",
-    "keyword"
-  ],
-  [
-    "modulate",
-    "keyword"
-  ],
-  [
-    "bus",
-    "keyword"
-  ],
-  [
-    "assign",
-    "keyword"
-  ],
-  [
-    "route",
-    "keyword"
-  ],
-  [
-    "send",
-    "keyword"
-  ],
-  [
-    "master",
-    "keyword"
-  ],
-  [
-    "at",
-    "keyword"
-  ],
-  [
-    "output",
-    "keyword"
-  ],
-  [
-    "pitch",
-    "keyword"
-  ],
-  [
-    "stretch",
-    "keyword"
-  ],
-  [
-    "retrograde",
-    "keyword"
-  ],
-  [
-    "invert",
-    "keyword"
-  ],
-  [
-    "around",
-    "keyword"
-  ],
-  [
-    "with",
-    "keyword"
-  ],
-  [
-    "note",
-    "keyword"
-  ],
-  [
-    "phrase",
-    "keyword"
-  ],
-  [
-    "section",
-    "keyword"
-  ],
-  [
-    "harmony",
-    "keyword"
-  ],
-  [
-    "library",
-    "keyword"
-  ],
-  [
-    "crescendo",
-    "keyword"
-  ],
-  [
-    "diminuendo",
-    "keyword"
-  ],
-  [
-    "to",
-    "keyword"
-  ],
-  [
-    "let",
-    "keyword"
-  ],
-  [
-    "fn",
-    "keyword"
-  ],
-  [
-    "music",
-    "keyword"
-  ],
-  [
-    "kernel",
-    "keyword"
-  ],
-  [
-    "Option",
-    "keyword"
-  ],
-  [
-    "List",
-    "keyword"
-  ],
-  [
-    "match",
-    "keyword"
-  ],
-  [
-    "Some",
-    "keyword"
-  ],
-  [
-    "None",
-    "keyword"
-  ],
-  [
-    "true",
-    "keyword"
-  ],
-  [
-    "false",
-    "keyword"
-  ],
-  [
-    "scale",
-    "keyword"
-  ],
-  [
-    "degree",
-    "keyword"
-  ],
-  [
-    "frame",
-    "keyword"
-  ],
-  [
-    "in",
-    "keyword"
-  ],
-  [
-    "step",
-    "keyword"
-  ],
-  [
-    "chord",
-    "keyword"
-  ],
-  [
-    "stack",
-    "keyword"
-  ],
-  [
-    "template",
-    "keyword"
-  ],
-  [
-    "signature",
-    "keyword"
-  ],
-  [
-    "structure",
-    "keyword"
-  ],
-  [
-    "module",
-    "keyword"
-  ],
-  [
-    "mod",
-    "keyword"
-  ],
-  [
-    "make",
-    "keyword"
-  ],
-  [
-    "as",
-    "keyword"
-  ],
-  [
-    "Hz",
-    "unit"
-  ],
-  [
-    "ms",
-    "unit"
-  ],
-  [
-    "s",
-    "unit"
-  ],
-  [
-    "dB",
-    "unit"
-  ],
-  [
-    "bpm",
-    "unit"
-  ],
-  [
-    "{",
-    "punctuation"
-  ],
-  [
-    "}",
-    "punctuation"
-  ],
-  [
-    "[",
-    "punctuation"
-  ],
-  [
-    "]",
-    "punctuation"
-  ],
-  [
-    "(",
-    "punctuation"
-  ],
-  [
-    ")",
-    "punctuation"
-  ],
-  [
-    ";",
-    "punctuation"
-  ],
-  [
-    ",",
-    "punctuation"
-  ],
-  [
-    ":",
-    "punctuation"
-  ],
-  [
-    "->",
-    "punctuation"
-  ],
-  [
-    "|>",
-    "punctuation"
-  ],
-  [
-    "=",
-    "punctuation"
-  ],
-  [
-    "-",
-    "punctuation"
-  ],
-  [
-    "~",
-    "punctuation"
-  ],
-  [
-    ".",
-    "punctuation"
-  ],
-  [
-    "/",
-    "punctuation"
-  ],
-  [
-    "|",
-    "punctuation"
-  ],
-  [
-    ">",
-    "punctuation"
-  ],
-  [
-    "<",
-    "punctuation"
-  ],
-  [
-    "^",
-    "punctuation"
-  ],
-  [
-    "#",
-    "punctuation"
-  ],
-  [
-    "$",
-    "punctuation"
-  ]
+  ["piece", "keyword"],
+  ["tempo", "keyword"],
+  ["meter", "keyword"],
+  ["key", "keyword"],
+  ["subtitle", "keyword"],
+  ["composer", "keyword"],
+  ["arranger", "keyword"],
+  ["copyright", "keyword"],
+  ["motif", "keyword"],
+  ["score", "keyword"],
+  ["part", "keyword"],
+  ["voice", "keyword"],
+  ["clef", "keyword"],
+  ["use", "use"],
+  ["import", "keyword"],
+  ["transpose", "keyword"],
+  ["down", "keyword"],
+  ["up", "keyword"],
+  ["rest", "keyword"],
+  ["repeat", "keyword"],
+  ["bar", "keyword"],
+  ["assert", "keyword"],
+  ["senza", "keyword"],
+  ["ending", "keyword"],
+  ["fragment", "keyword"],
+  ["mobile", "keyword"],
+  ["improvise", "keyword"],
+  ["over", "keyword"],
+  ["slur", "keyword"],
+  ["dynamic", "keyword"],
+  ["tuplet", "keyword"],
+  ["performance", "keyword"],
+  ["profile", "keyword"],
+  ["mark", "keyword"],
+  ["groove", "keyword"],
+  ["grace", "keyword"],
+  ["studio", "keyword"],
+  ["patch", "keyword"],
+  ["modulate", "keyword"],
+  ["bus", "keyword"],
+  ["assign", "keyword"],
+  ["route", "keyword"],
+  ["send", "keyword"],
+  ["master", "keyword"],
+  ["at", "keyword"],
+  ["output", "keyword"],
+  ["pitch", "keyword"],
+  ["stretch", "keyword"],
+  ["retrograde", "keyword"],
+  ["invert", "keyword"],
+  ["around", "keyword"],
+  ["with", "keyword"],
+  ["note", "keyword"],
+  ["phrase", "keyword"],
+  ["section", "keyword"],
+  ["harmony", "keyword"],
+  ["library", "keyword"],
+  ["crescendo", "keyword"],
+  ["diminuendo", "keyword"],
+  ["to", "keyword"],
+  ["let", "keyword"],
+  ["fn", "keyword"],
+  ["music", "keyword"],
+  ["kernel", "keyword"],
+  ["Option", "keyword"],
+  ["List", "keyword"],
+  ["match", "keyword"],
+  ["Some", "keyword"],
+  ["None", "keyword"],
+  ["true", "keyword"],
+  ["false", "keyword"],
+  ["scale", "keyword"],
+  ["degree", "keyword"],
+  ["frame", "keyword"],
+  ["in", "keyword"],
+  ["step", "keyword"],
+  ["chord", "keyword"],
+  ["stack", "keyword"],
+  ["template", "keyword"],
+  ["signature", "keyword"],
+  ["structure", "keyword"],
+  ["module", "keyword"],
+  ["mod", "keyword"],
+  ["make", "keyword"],
+  ["as", "keyword"],
+  ["Hz", "unit"],
+  ["ms", "unit"],
+  ["s", "unit"],
+  ["dB", "unit"],
+  ["bpm", "unit"],
+  ["{", "punctuation"],
+  ["}", "punctuation"],
+  ["[", "punctuation"],
+  ["]", "punctuation"],
+  ["(", "punctuation"],
+  [")", "punctuation"],
+  [";", "punctuation"],
+  [",", "punctuation"],
+  [":", "punctuation"],
+  ["->", "punctuation"],
+  ["|>", "punctuation"],
+  ["=", "punctuation"],
+  ["-", "punctuation"],
+  ["~", "punctuation"],
+  [".", "punctuation"],
+  ["/", "punctuation"],
+  ["|", "punctuation"],
+  [">", "punctuation"],
+  ["<", "punctuation"],
+  ["^", "punctuation"],
+  ["#", "punctuation"],
+  ["$", "punctuation"]
 ]

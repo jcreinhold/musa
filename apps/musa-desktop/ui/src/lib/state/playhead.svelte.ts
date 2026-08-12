@@ -80,10 +80,16 @@ export class Playhead {
  * Onsets and ends came from the core (`03-interaction.md` §7); this is a
  * lookup, not a computation about time.
  */
-export function soundingAt(events: readonly EventFacts[], frame: number): string[] {
+export function soundingAt(
+  events: readonly EventFacts[],
+  frame: number,
+): string[] {
   return events
     .filter(
-      (event) => event.kind !== "rest" && event.onsetFrames <= frame && frame < event.endFrames,
+      (event) =>
+        event.kind !== "rest" &&
+        event.onsetFrames <= frame &&
+        frame < event.endFrames,
     )
     .map((event) => event.id);
 }

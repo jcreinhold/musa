@@ -36,7 +36,10 @@ function covers(span: Span, offset: number): boolean {
  * asks the same question as hovering `sigh()` further down, and answering one
  * and not the other would be a distinction only the resolver can see.
  */
-export function nameAt(known: Vocabulary, offset: number): NameFacts | undefined {
+export function nameAt(
+  known: Vocabulary,
+  offset: number,
+): NameFacts | undefined {
   return known.names.find(
     (name) =>
       (name.declaration !== null && covers(name.declaration, offset)) ||
@@ -50,12 +53,20 @@ export function nameAt(known: Vocabulary, offset: number): NameFacts | undefined
  * Matched on name *and* kind: a part and a motif may share a word, and the
  * pair is the identity a reference carries.
  */
-export function termOf(known: Vocabulary, name: NameFacts): TermFacts | undefined {
-  return known.terms.find((term) => term.name === name.name && term.kind === name.kind);
+export function termOf(
+  known: Vocabulary,
+  name: NameFacts,
+): TermFacts | undefined {
+  return known.terms.find(
+    (term) => term.name === name.name && term.kind === name.kind,
+  );
 }
 
 /** The declaration written at `offset`, when the name there has one. */
-export function termAt(known: Vocabulary, offset: number): TermFacts | undefined {
+export function termAt(
+  known: Vocabulary,
+  offset: number,
+): TermFacts | undefined {
   const name = nameAt(known, offset);
   return name && termOf(known, name);
 }
@@ -68,7 +79,10 @@ export function termAt(known: Vocabulary, offset: number): TermFacts | undefined
  * when nothing is written there, or when the compiler never resolved it — a
  * guess would be the interface having a theory of the language.
  */
-export function definitionAt(known: Vocabulary, offset: number): TermSite | undefined {
+export function definitionAt(
+  known: Vocabulary,
+  offset: number,
+): TermSite | undefined {
   const name = nameAt(known, offset);
   if (!name) return undefined;
   if (name.declaration) return { where: "open", span: name.declaration };

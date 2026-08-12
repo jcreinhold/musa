@@ -36,7 +36,10 @@ export function durationGlyph(denominator: number, dotted: boolean): string {
  * glyph spells — in which case the caller sets the fraction as text rather
  * than approximating it with the wrong note.
  */
-export function tempoNote(numerator: number, denominator: number): string | undefined {
+export function tempoNote(
+  numerator: number,
+  denominator: number,
+): string | undefined {
   return numerator === 1 ? NOTE_BY_DENOMINATOR.get(denominator) : undefined;
 }
 

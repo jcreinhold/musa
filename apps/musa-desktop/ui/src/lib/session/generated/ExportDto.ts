@@ -4,8 +4,10 @@ import type { ExportTargetDto } from "./ExportTargetDto";
 /**
  * What to export, and where to put it.
  */
-export type ExportDto = { target: ExportTargetDto, 
-/**
- * Absent means ask the user where to put it.
- */
-path: string | null, };
+export type ExportDto = {
+  target: ExportTargetDto;
+  /**
+   * Absent means ask the user where to put it.
+   */
+  path: string | null;
+};

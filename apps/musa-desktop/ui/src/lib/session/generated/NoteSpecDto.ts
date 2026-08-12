@@ -3,4 +3,7 @@
 /**
  * What to write: pitches and durations as the language spells them.
  */
-export type NoteSpecDto = { "kind": "note", pitch: string, duration: string, } | { "kind": "rest", duration: string, } | { "kind": "chord", pitches: Array<string>, duration: string, };
+export type NoteSpecDto =
+  | { kind: "note"; pitch: string; duration: string }
+  | { kind: "rest"; duration: string }
+  | { kind: "chord"; pitches: Array<string>; duration: string };

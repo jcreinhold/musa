@@ -8,7 +8,11 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { Preferences, SOURCE_FLOOR, TEXT_SIZES } from "../../src/lib/session/preferences.svelte";
+import {
+  Preferences,
+  SOURCE_FLOOR,
+  TEXT_SIZES,
+} from "../../src/lib/session/preferences.svelte";
 
 /** The unit suite runs in node, which has no `localStorage`. */
 function shelf(): Storage {
@@ -26,7 +30,10 @@ function shelf(): Storage {
 }
 
 beforeEach(() => {
-  Object.defineProperty(globalThis, "localStorage", { value: shelf(), configurable: true });
+  Object.defineProperty(globalThis, "localStorage", {
+    value: shelf(),
+    configurable: true,
+  });
 });
 
 describe("the text size", () => {
@@ -46,7 +53,14 @@ describe("the text size", () => {
     }
     // Five steps up from Normal, and the ladder is three rungs long: it
     // stops at Larger rather than inventing a fifth size.
-    expect(walked).toEqual(["normal", "large", "larger", "larger", "larger", "larger"]);
+    expect(walked).toEqual([
+      "normal",
+      "large",
+      "larger",
+      "larger",
+      "larger",
+      "larger",
+    ]);
     expect(new Set(walked).size).toBeLessThanOrEqual(TEXT_SIZES.length);
   });
 

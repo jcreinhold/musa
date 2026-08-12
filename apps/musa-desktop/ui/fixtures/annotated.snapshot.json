@@ -39,12 +39,8 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "A4",
-        "pitches": [
-          "A4"
-        ],
-        "pitchSpellings": [
-          "a4"
-        ],
+        "pitches": ["A4"],
+        "pitchSpellings": ["a4"],
         "duration": {
           "numerator": 1,
           "denominator": 4
@@ -82,12 +78,8 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "C5",
-        "pitches": [
-          "C5"
-        ],
-        "pitchSpellings": [
-          "c5"
-        ],
+        "pitches": ["C5"],
+        "pitchSpellings": ["c5"],
         "duration": {
           "numerator": 1,
           "denominator": 4
@@ -125,12 +117,8 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "E5",
-        "pitches": [
-          "E5"
-        ],
-        "pitchSpellings": [
-          "e5"
-        ],
+        "pitches": ["E5"],
+        "pitchSpellings": ["e5"],
         "duration": {
           "numerator": 1,
           "denominator": 2
@@ -168,12 +156,8 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "F5",
-        "pitches": [
-          "F5"
-        ],
-        "pitchSpellings": [
-          "f5"
-        ],
+        "pitches": ["F5"],
+        "pitchSpellings": ["f5"],
         "duration": {
           "numerator": 1,
           "denominator": 2
@@ -211,12 +195,8 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "E5",
-        "pitches": [
-          "E5"
-        ],
-        "pitchSpellings": [
-          "e5"
-        ],
+        "pitches": ["E5"],
+        "pitchSpellings": ["e5"],
         "duration": {
           "numerator": 1,
           "denominator": 2
@@ -254,12 +234,8 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "B4",
-        "pitches": [
-          "B4"
-        ],
-        "pitchSpellings": [
-          "b4"
-        ],
+        "pitches": ["B4"],
+        "pitchSpellings": ["b4"],
         "duration": {
           "numerator": 1,
           "denominator": 4
@@ -297,12 +273,8 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "E5",
-        "pitches": [
-          "E5"
-        ],
-        "pitchSpellings": [
-          "e5"
-        ],
+        "pitches": ["E5"],
+        "pitchSpellings": ["e5"],
         "duration": {
           "numerator": 1,
           "denominator": 4
@@ -340,12 +312,8 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "G♯5",
-        "pitches": [
-          "G♯5"
-        ],
-        "pitchSpellings": [
-          "g#5"
-        ],
+        "pitches": ["G♯5"],
+        "pitchSpellings": ["g#5"],
         "duration": {
           "numerator": 1,
           "denominator": 2
@@ -383,12 +351,8 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "A5",
-        "pitches": [
-          "A5"
-        ],
-        "pitchSpellings": [
-          "a5"
-        ],
+        "pitches": ["A5"],
+        "pitchSpellings": ["a5"],
         "duration": {
           "numerator": 1,
           "denominator": 1

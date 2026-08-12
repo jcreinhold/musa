@@ -3,4 +3,12 @@
 /**
  * Which of the piece's own header statements a `SetHeader` edit is for.
  */
-export type HeaderFieldDto = "title" | "subtitle" | "composer" | "arranger" | "copyright" | "tempo" | "meter" | "key";
+export type HeaderFieldDto =
+  | "title"
+  | "subtitle"
+  | "composer"
+  | "arranger"
+  | "copyright"
+  | "tempo"
+  | "meter"
+  | "key";

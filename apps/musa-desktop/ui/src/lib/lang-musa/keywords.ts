@@ -21,7 +21,9 @@ export interface KeywordDoc {
   doc: string;
 }
 
-const DOCS = new Map<string, KeywordDoc>((docs as KeywordDoc[]).map((doc) => [doc.spelling, doc]));
+const DOCS = new Map<string, KeywordDoc>(
+  (docs as KeywordDoc[]).map((doc) => [doc.spelling, doc]),
+);
 
 /** The keyword's documentation, or undefined for a word that is not a keyword. */
 export function keywordDoc(word: string): KeywordDoc | undefined {
@@ -42,7 +44,10 @@ export function docParts(doc: string): DocParts {
   if (at === -1) return { prose: doc, example: null };
   const rest = doc.slice(at + FENCE.length);
   const end = rest.indexOf("\n```");
-  return { prose: doc.slice(0, at), example: end === -1 ? rest : rest.slice(0, end) };
+  return {
+    prose: doc.slice(0, at),
+    example: end === -1 ? rest : rest.slice(0, end),
+  };
 }
 
 /** One run of prose: plain text, or a code span from the doc's backticks. */

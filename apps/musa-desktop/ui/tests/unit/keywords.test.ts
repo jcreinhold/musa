@@ -9,7 +9,11 @@
 
 import { describe, expect, it } from "vitest";
 
-import { docParts, keywordDoc, proseRuns } from "../../src/lib/lang-musa/keywords";
+import {
+  docParts,
+  keywordDoc,
+  proseRuns,
+} from "../../src/lib/lang-musa/keywords";
 import docs from "../../src/lib/session/generated/keyword-docs.json";
 import spellings from "../../src/lib/session/generated/spellings.json";
 
@@ -39,7 +43,10 @@ describe("keyword documentation", () => {
   });
 
   it("reads prose with no example as all prose", () => {
-    expect(docParts("just prose")).toEqual({ prose: "just prose", example: null });
+    expect(docParts("just prose")).toEqual({
+      prose: "just prose",
+      example: null,
+    });
   });
 
   it("takes the doc's backticks as code spans", () => {
@@ -49,6 +56,8 @@ describe("keyword documentation", () => {
       { text: " here", code: false },
     ]);
     expect(proseRuns("no spans")).toEqual([{ text: "no spans", code: false }]);
-    expect(proseRuns("an unbalanced ` tick")).toEqual([{ text: "an unbalanced ` tick", code: false }]);
+    expect(proseRuns("an unbalanced ` tick")).toEqual([
+      { text: "an unbalanced ` tick", code: false },
+    ]);
   });
 });

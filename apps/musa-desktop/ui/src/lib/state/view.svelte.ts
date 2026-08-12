@@ -69,7 +69,9 @@ export function stepForPinch(step: number, factor: number): number {
   const wanted = from * factor;
   return ZOOM_STEPS.reduce(
     (best, level, index) =>
-      Math.abs(level - wanted) < Math.abs((ZOOM_STEPS[best] ?? 100) - wanted) ? index : best,
+      Math.abs(level - wanted) < Math.abs((ZOOM_STEPS[best] ?? 100) - wanted)
+        ? index
+        : best,
     step,
   );
 }

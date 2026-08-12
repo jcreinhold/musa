@@ -25,34 +25,46 @@ function scan(page: Page): AxeBuilder {
 }
 
 for (const theme of ["light", "dark"] as const) {
-  test(`the workspace has no accessibility violations in ${theme}`, async ({ page }) => {
+  test(`the workspace has no accessibility violations in ${theme}`, async ({
+    page,
+  }) => {
     await stubShell(page);
     await page.goto(`/?theme=${theme}`);
     await engraved(page);
 
     const { violations } = await scan(page).analyze();
-    expect(violations.map((violation) => `${violation.id}: ${violation.help}`)).toEqual([]);
+    expect(
+      violations.map((violation) => `${violation.id}: ${violation.help}`),
+    ).toEqual([]);
   });
 }
 
-test("the source column, the palette, and the sheet are clean too", async ({ page }) => {
+test("the source column, the palette, and the sheet are clean too", async ({
+  page,
+}) => {
   await stubShell(page);
   await page.goto("/");
   await engraved(page);
 
   await toggleSource(page);
   await expect(page.getByRole("textbox", { name: "Source" })).toBeVisible();
-  expect((await scan(page).analyze()).violations.map((violation) => violation.id)).toEqual([]);
+  expect(
+    (await scan(page).analyze()).violations.map((violation) => violation.id),
+  ).toEqual([]);
 
   await page.keyboard.press("Meta+k");
   await expect(page.getByRole("dialog", { name: "Commands" })).toBeVisible();
-  expect((await scan(page).analyze()).violations.map((violation) => violation.id)).toEqual([]);
+  expect(
+    (await scan(page).analyze()).violations.map((violation) => violation.id),
+  ).toEqual([]);
 
   await page.keyboard.press("Escape");
   await page.getByRole("application", { name: "Engraved score" }).focus();
   await page.keyboard.press("Shift+?");
   await expect(page.getByRole("dialog", { name: "Keyboard" })).toBeVisible();
-  expect((await scan(page).analyze()).violations.map((violation) => violation.id)).toEqual([]);
+  expect(
+    (await scan(page).analyze()).violations.map((violation) => violation.id),
+  ).toEqual([]);
 });
 
 /**

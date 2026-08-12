@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { applyFix, asControl, labelOf, onlyFix, placeOf } from "../../src/lib/state/fix";
+import {
+  applyFix,
+  asControl,
+  labelOf,
+  onlyFix,
+  placeOf,
+} from "../../src/lib/state/fix";
 import type { Diagnostic, Fix } from "../../src/lib/state/snapshot";
 
 function diagnostic(over: Partial<Diagnostic> = {}): Diagnostic {
@@ -28,7 +34,10 @@ describe("applyFix", () => {
   });
 
   it("replaces a range", () => {
-    const fix: Fix = { title: "write `1400 Hz`", edits: [{ span: { start: 8, end: 12 }, replacement: "1400 Hz" }] };
+    const fix: Fix = {
+      title: "write `1400 Hz`",
+      edits: [{ span: { start: 8, end: 12 }, replacement: "1400 Hz" }],
+    };
     expect(applyFix("cutoff: 1400", fix)).toBe("cutoff: 1400 Hz");
   });
 
@@ -52,11 +61,15 @@ describe("applyFix", () => {
 
 describe("onlyFix", () => {
   it("returns the one fix", () => {
-    expect(onlyFix(diagnostic({ fixes: [insert(0, ";")] }))?.title).toBe("add `;`");
+    expect(onlyFix(diagnostic({ fixes: [insert(0, ";")] }))?.title).toBe(
+      "add `;`",
+    );
   });
 
   it("refuses to choose between two", () => {
-    expect(onlyFix(diagnostic({ fixes: [insert(0, ";"), insert(1, "}")] }))).toBeNull();
+    expect(
+      onlyFix(diagnostic({ fixes: [insert(0, ";"), insert(1, "}")] })),
+    ).toBeNull();
   });
 
   it("is null with none", () => {
@@ -67,8 +80,18 @@ describe("onlyFix", () => {
 describe("placeOf and labelOf", () => {
   const labelled = diagnostic({
     labels: [
-      { span: { start: 4, end: 5 }, at: { line: 2, column: 9 }, text: "second", primary: false },
-      { span: { start: 0, end: 1 }, at: { line: 12, column: 5 }, text: "it goes here", primary: true },
+      {
+        span: { start: 4, end: 5 },
+        at: { line: 2, column: 9 },
+        text: "second",
+        primary: false,
+      },
+      {
+        span: { start: 0, end: 1 },
+        at: { line: 12, column: 5 },
+        text: "it goes here",
+        primary: true,
+      },
     ],
   });
 

@@ -39,12 +39,8 @@
         "voice": "duet",
         "kind": "note",
         "pitch": "C4",
-        "pitches": [
-          "C4"
-        ],
-        "pitchSpellings": [
-          "c4"
-        ],
+        "pitches": ["C4"],
+        "pitchSpellings": ["c4"],
         "duration": {
           "numerator": 1,
           "denominator": 4
@@ -91,12 +87,8 @@
         "voice": "duet",
         "kind": "note",
         "pitch": "D4",
-        "pitches": [
-          "D4"
-        ],
-        "pitchSpellings": [
-          "d4"
-        ],
+        "pitches": ["D4"],
+        "pitchSpellings": ["d4"],
         "duration": {
           "numerator": 1,
           "denominator": 4
@@ -143,12 +135,8 @@
         "voice": "duet",
         "kind": "note",
         "pitch": "D5",
-        "pitches": [
-          "D5"
-        ],
-        "pitchSpellings": [
-          "d5"
-        ],
+        "pitches": ["D5"],
+        "pitchSpellings": ["d5"],
         "duration": {
           "numerator": 1,
           "denominator": 4
@@ -205,12 +193,8 @@
         "voice": "duet",
         "kind": "note",
         "pitch": "C5",
-        "pitches": [
-          "C5"
-        ],
-        "pitchSpellings": [
-          "c5"
-        ],
+        "pitches": ["C5"],
+        "pitchSpellings": ["c5"],
         "duration": {
           "numerator": 1,
           "denominator": 4
@@ -267,12 +251,8 @@
         "voice": "duet",
         "kind": "note",
         "pitch": "C5",
-        "pitches": [
-          "C5"
-        ],
-        "pitchSpellings": [
-          "c5"
-        ],
+        "pitches": ["C5"],
+        "pitchSpellings": ["c5"],
         "duration": {
           "numerator": 1,
           "denominator": 2
@@ -365,10 +345,7 @@
           "end": 668
         },
         "line": 22,
-        "events": [
-          "event-0",
-          "event-1"
-        ]
+        "events": ["event-0", "event-1"]
       },
       {
         "id": "occurrence-1",
@@ -400,10 +377,7 @@
           "end": 668
         },
         "line": 22,
-        "events": [
-          "event-2",
-          "event-3"
-        ]
+        "events": ["event-2", "event-3"]
       }
     ],
     "outline": [],

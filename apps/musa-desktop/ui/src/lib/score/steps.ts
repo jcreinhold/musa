@@ -107,7 +107,9 @@ export function shiftAccidental(spelling: string, by: number): string | null {
   const written = readPitch(spelling);
   if (!written) return null;
   // `n` is an explicit natural, which sits where the bare letter sits.
-  const from = CYCLE.indexOf(written.accidental === "n" ? "" : written.accidental);
+  const from = CYCLE.indexOf(
+    written.accidental === "n" ? "" : written.accidental,
+  );
   const at = Math.min(Math.max(from + by, 0), CYCLE.length - 1);
   return writePitch({ ...written, accidental: CYCLE[at] ?? "" });
 }
@@ -148,5 +150,7 @@ export function rungOf(spelling: string): number {
 export function renotate(spelling: string, longerBy: number): string | null {
   const at = rungOf(spelling);
   if (at < 0) return null;
-  return LADDER[Math.min(Math.max(at - longerBy, 0), LADDER.length - 1)] ?? null;
+  return (
+    LADDER[Math.min(Math.max(at - longerBy, 0), LADDER.length - 1)] ?? null
+  );
 }

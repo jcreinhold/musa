@@ -13,7 +13,13 @@
 import { describe, expect, it } from "vitest";
 
 import fixture from "../../fixtures/stdlib-basics.snapshot.json";
-import { completions, definitionAt, nameAt, termAt, usesAt } from "../../src/lib/state/terms";
+import {
+  completions,
+  definitionAt,
+  nameAt,
+  termAt,
+  usesAt,
+} from "../../src/lib/state/terms";
 import type { ProjectSnapshot, Span } from "../../src/lib/state/snapshot";
 
 const SNAPSHOT = fixture as unknown as ProjectSnapshot;
@@ -74,7 +80,7 @@ describe("following a name", () => {
   });
 
   it("has nowhere to go from a word that is not a name", () => {
-    expect(definitionAt(KNOWN, inside("piece \"Standard"))).toBeUndefined();
+    expect(definitionAt(KNOWN, inside('piece "Standard'))).toBeUndefined();
   });
 });
 
@@ -92,7 +98,7 @@ describe("gathering the uses of a name", () => {
   });
 
   it("is empty where there is no name, rather than being every match of the word", () => {
-    expect(usesAt(KNOWN, inside("piece \"Standard"))).toEqual([]);
+    expect(usesAt(KNOWN, inside('piece "Standard'))).toEqual([]);
   });
 });
 
