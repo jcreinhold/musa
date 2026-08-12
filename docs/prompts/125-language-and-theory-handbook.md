@@ -57,8 +57,8 @@ errors and snapshot their plain-language diagnostic and repair. Test all interna
 - A musician tutorial and task cookbook under `docs/language/`, with compact complete pieces for tonal, modal,
   post-tonal/serial, contrapuntal, and generative-template use.
 - An implementor reference covering syntax-to-kernel elaboration, laws, extension points, and ownership boundaries.
-- Generated standard-library API pages and `scripts/check-language-docs.sh`, which proves them synchronized with bundled
-  source and validates the cited local chapters and internal links.
+- Generated standard-library API pages and `scripts/check-docs.sh`, which proves them synchronized with bundled source
+  and validates the cited local chapters and internal links.
 - An explicit citation map from each implemented music-theory domain to the relevant local OMT chapter or Musa proof.
 - Compiling positive examples and diagnostic goldens for negative examples in `examples/` or focused doc-test fixtures.
 - Reconciliation of the design essay: mark resolved choices as implemented, link to governing candidate
@@ -71,7 +71,7 @@ errors and snapshot their plain-language diagnostic and repair. Test all interna
 cargo nextest run -p musa-language -p musa-compiler -p musa-project -p musa-lsp
 cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
 cargo fmt --check
-./scripts/check-language-docs.sh
+./scripts/check-docs.sh
 find examples -name '*.musa' -print0 | xargs -0 -n1 cargo run -q -p musa -- check
 ```
 

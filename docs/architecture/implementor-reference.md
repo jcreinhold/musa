@@ -208,10 +208,10 @@ from, and a falsifying example. A row with no falsifier is a type that has not s
 a `Nat`.
 
 **Adding a standard-library operation.** Write it in `stdlib/src/` as ordinary Musa, with a comment block above it: the
-comment is what the editor shows on hover and what the generated reference publishes, and
-`scripts/check-language-docs.sh` fails if a published name has none. Add the module to `stdlib/src/lib.musa` if it is
-new. Nothing else is registered anywhere — a bundled module is compiled from its own `mod` declarations, so a file that
-is not declared is a fault rather than a hidden module.
+comment is what the editor shows on hover and what the generated reference publishes, and `scripts/check-docs.sh` fails
+if a published name has none. Add the module to `stdlib/src/lib.musa` if it is new. Nothing else is registered anywhere
+— a bundled module is compiled from its own `mod` declarations, so a file that is not declared is a fault rather than a
+hidden module.
 
 **Adding an analysis kind.** The admission rule is [`07-analysis.md`](../language/07-analysis.md) §2 and §6, and it is
 demanding on purpose: state the abstract domain, the abstraction map α, and what the concretization γ admits. Without a
@@ -233,7 +233,7 @@ the finding — report it, do not extend the kernel.
 cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
-./scripts/check-language-docs.sh
+./scripts/check-docs.sh
 ```
 
 The workspace lints are strict deliberately: fix the code rather than allow-listing the lint. Slow tests carry

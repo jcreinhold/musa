@@ -3,7 +3,7 @@
 #
 # This file is virtual — no `[project]` table — because nothing is built or
 # published from `scripts/`. Its only jobs are to configure ruff and ty for the
-# standalone scripts beside it (`check-language-docs.py`, `renumber-prompts.py`,
+# standalone scripts beside it (`check-docs.py`, `renumber-prompts.py`,
 # `build-wasm.sh`'s Python helpers, and whatever joins them). Unlike in proofs,
 # there is no uv workspace here: these scripts use the standard library alone,
 # so they are run with a bare `python3` rather than `uv run`.

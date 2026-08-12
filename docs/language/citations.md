@@ -8,11 +8,11 @@ The reason to keep the map is not scholarly manners. A convention that is built 
 convention: a musician who disagrees with it has nothing to disagree *with* unless the software can say where it got the
 idea. Naming the chapter makes the decision arguable again.
 
-**How the citations are checked.** OMT is cited by filename — `` `017-triads.md` `` — and
-`scripts/check-language-docs.sh` verifies that every filename cited anywhere in `docs/language/` exists in the local OMT
-checkout (`$OMT_ROOT`, default `~/Code/papers/music-theory/open-music-theory`). A chapter that is renamed upstream
-breaks the build rather than becoming a dead reference. The check skips with a notice when the checkout is absent, so
-the repository does not require it to build.
+**How the citations are checked.** OMT is cited by filename — `` `017-triads.md` `` — and `scripts/check-docs.sh`
+verifies that every filename cited anywhere in `docs/` exists in the local OMT checkout (`$OMT_ROOT`, default
+`~/Code/papers/music-theory/open-music-theory`). A chapter that is renamed upstream breaks the build rather than
+becoming a dead reference. The check skips with a notice when the checkout is absent, so the repository does not require
+it to build.
 
 ## 1. Notation
 

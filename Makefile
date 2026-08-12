@@ -136,6 +136,7 @@ verify: ## Everything CI would check, in the order that fails fastest
 	$(MAKE) test-rust
 	$(MAKE) typecheck
 	$(MAKE) test-ui
+	$(MAKE) docs-check
 	$(MAKE) deny
 
 ## ------------------------------------------------------------------ docs --
@@ -143,6 +144,10 @@ verify: ## Everything CI would check, in the order that fails fastest
 .PHONY: docs
 docs: ## Build the documentation book into target/mdbook
 	mdbook build docs/book
+
+.PHONY: docs-check
+docs-check: ## Check every link in docs/, the teaching examples, and that the book builds
+	bash scripts/check-docs.sh
 
 .PHONY: docs-serve
 docs-serve: ## Serve the documentation book locally, with live reload

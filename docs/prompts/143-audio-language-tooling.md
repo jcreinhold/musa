@@ -53,7 +53,7 @@ and generated table is checked.
 - LSP and editor-extension coverage plus protocol/token/navigation tests.
 - Generated sound-language reference and two-path handbook additions; no copied external specification text.
 - Executable positive/negative examples and plain-language diagnostic goldens.
-- `scripts/check-language-docs.sh` extended to validate audio catalogue/support matrices, local OMT citations, external
+- `scripts/check-docs.sh` extended to validate audio catalogue/support matrices, local OMT citations, external
   specification links, and all examples.
 
 ## Check
@@ -62,7 +62,7 @@ and generated table is checked.
 cargo nextest run -p musa-language -p musa-compiler -p musa-project -p musa-lsp
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
-./scripts/check-language-docs.sh
+./scripts/check-docs.sh
 cd editors/tree-sitter-musa && tree-sitter test
 git -C ../vscode-musa diff --check
 git -C ../zed-musa diff --check

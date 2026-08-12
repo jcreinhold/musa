@@ -123,7 +123,7 @@ settles which one wins when two disagree. The short version:
 ## Status
 
 Early, and honest about it. The language, compiler, kernel, notation and audio export, the studio, and the score editor
-are implemented and tested; 30 of the 36 planned prompts are done. What remains is listed in `docs/prompts/` with
+are implemented and tested; 135 of the 155 planned prompts are done. What remains is listed in `docs/prompts/` with
 `status: pending` — effects and mixing, MusicXML export, MIDI entry, transforms, annotations and harmony, and imports
 with continuous curves.
 

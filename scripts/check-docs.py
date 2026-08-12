@@ -1,27 +1,31 @@
 #!/usr/bin/env python3
-"""Hold the language handbook to the language.
+"""Hold `docs/` to itself, and the teaching pages to the language.
 
-Four questions, asked of every Markdown file under `docs/language/`:
+Four questions:
 
-1. Is every fenced Musa example in the handbook real? A block tagged ```musa
-   must appear, line for line, inside a file under `examples/` or
+1. Is every fenced Musa example in the teaching pages real? A block tagged
+   ```musa must appear, line for line, inside a file under `examples/` or
    `stdlib/src/`. Prose may teach from a fixture; it may not invent syntax the
-   shipped parser would refuse. The question is asked of `handbook/` and not of
-   the specification beside it: those documents illustrate rules with
-   deliberately compressed fragments, and several of them specify sound and
-   asset syntax that prompts 130-142 have not built yet. Holding the whole
-   candidate to its corpus is prompt 146's graduation audit
-   (`../05-verification.md` §7), not this checker's.
+   shipped parser would refuse. The question is asked of the book's teaching
+   pages and not of the specifications: those illustrate rules with
+   deliberately compressed fragments, and several specify sound and asset
+   syntax that prompts 130-142 have not built yet. Holding the whole candidate
+   to its corpus is prompt 146's graduation audit
+   (`docs/language/05-verification.md` §7), not this checker's.
 2. Does every internal link land? A relative path must exist, and an `#anchor`
-   must be a heading in the file it points at.
+   must be a heading in the file it points at. This is asked of **all** of
+   `docs/`, plus the two Markdown files at the repository root, because it is
+   what keeps a moved or deleted document from leaving a dangling citation
+   behind: `docs/README.md` promises that nothing superseded is kept, and a
+   dead link is the cheapest way to catch a broken promise.
 3. Does every Open Music Theory citation name a chapter that exists? Cited by
    filename, so a reader can open it and a checker can find it.
-4. Is every bundled module named in the handbook? Per-operation detail belongs
-   to the generated reference; what the handbook owes is a way in.
+4. Is every bundled module named in the teaching pages? Per-operation detail
+   belongs to the generated reference; what a guide owes is a way in.
 
-Run through `scripts/check-language-docs.sh`, which also proves the generated
-reference is current. Exits non-zero on the first category with a failure, and
-prints every failure it found rather than only the first.
+Run through `scripts/check-docs.sh`, which also proves the generated reference
+is current. Exits non-zero on the first category with a failure, and prints
+every failure it found rather than only the first.
 """
 
 from __future__ import annotations
@@ -32,8 +36,13 @@ import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-DOCS = ROOT / "docs" / "language"
-HANDBOOK = DOCS / "handbook"
+DOCS = ROOT / "docs"
+# The teaching pages: the book's guide chapters and the one explanation page
+# that came out of the same handbook. Everything here quotes fixtures.
+TEACHING = [DOCS / "book" / "src" / "guide", DOCS / "book" / "src" / "concepts" / "distinctions.md"]
+# Link checking also covers the two Markdown files that sit at the repository
+# root and cite `docs/` constantly.
+EXTRA = [ROOT / "README.md", ROOT / "AGENTS.md"]
 CORPUS = [ROOT / "examples", ROOT / "stdlib" / "src"]
 OMT = pathlib.Path(os.environ.get("OMT_ROOT", pathlib.Path.home() / "Code/papers/music-theory/open-music-theory"))
 
@@ -44,7 +53,14 @@ HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
 
 
 def markdown_files() -> list[pathlib.Path]:
-    return sorted(DOCS.rglob("*.md"))
+    return sorted(DOCS.rglob("*.md")) + EXTRA
+
+
+def teaching_files() -> list[pathlib.Path]:
+    out: list[pathlib.Path] = []
+    for entry in TEACHING:
+        out.extend(sorted(entry.rglob("*.md")) if entry.is_dir() else [entry])
+    return out
 
 
 def fences(path: pathlib.Path) -> list[tuple[int, str, list[str]]]:
@@ -127,7 +143,7 @@ def anchors(path: pathlib.Path) -> set[str]:
 def check_examples() -> list[str]:
     corpus = {path: path.read_text().splitlines() for directory in CORPUS for path in directory.rglob("*.musa")}
     problems = []
-    for path in sorted(HANDBOOK.rglob("*.md")):
+    for path in teaching_files():
         for line, tag, block in fences(path):
             if tag != "musa":
                 continue
@@ -138,11 +154,32 @@ def check_examples() -> list[str]:
     return problems
 
 
+CODE_SPAN = re.compile(r"`[^`]*`")
+
+
+def prose_lines(path: pathlib.Path):
+    """Every line outside a fenced block, with inline code spans removed.
+
+    Both exclusions earn their place. A grammar fence writes
+    `Timeline[M; d](A)` and a lint prompt writes the accidental regex
+    `[a-g](##|bb|[#bn])?`; neither is a link, and both match the link pattern
+    exactly. Stripping code first is what lets the link check be strict about
+    everything that is left.
+    """
+    fenced = False
+    for number, line in enumerate(path.read_text().splitlines(), start=1):
+        if FENCE.match(line):
+            fenced = not fenced
+            continue
+        if not fenced:
+            yield number, CODE_SPAN.sub("", line)
+
+
 def check_links() -> list[str]:
     problems = []
     cache: dict[pathlib.Path, set[str]] = {}
     for path in markdown_files():
-        for number, line in enumerate(path.read_text().splitlines(), start=1):
+        for number, line in prose_lines(path):
             for target in LINK.findall(line):
                 if target.startswith(("http://", "https://", "mailto:")):
                     continue
@@ -180,9 +217,10 @@ def check_citations() -> list[str]:
 
 
 def check_modules() -> list[str]:
-    if not HANDBOOK.is_dir():
-        return [f"{HANDBOOK.relative_to(ROOT)} does not exist"]
-    text = "\n".join(path.read_text() for path in HANDBOOK.rglob("*.md"))
+    missing = [entry for entry in TEACHING if not entry.exists()]
+    if missing:
+        return [f"{entry.relative_to(ROOT)} does not exist" for entry in missing]
+    text = "\n".join(path.read_text() for path in teaching_files())
     problems = []
     for path in sorted((ROOT / "stdlib" / "src").rglob("*.musa")):
         relative = path.relative_to(ROOT / "stdlib" / "src")
@@ -190,7 +228,7 @@ def check_modules() -> list[str]:
             continue
         module = str(relative.with_suffix("")).replace("/", "::")
         if f"std::{module}" not in text:
-            problems.append(f"the handbook never names `std::{module}`")
+            problems.append(f"the teaching pages never name `std::{module}`")
     return problems
 
 

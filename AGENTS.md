@@ -54,13 +54,17 @@ them drift silently.
 | `editors/tree-sitter-musa` | tree-sitter grammar + editor queries, held to the real lexer by the drift law |
 | `stdlib/` | the standard library as a real package (`musa.toml` + `src/`) |
 | `examples/` | `.musa` fixtures — executable specifications, not demos |
-| `docs/kernel/` | the temporal-kernel specification (governing) |
+| `docs/README.md` | the map of every document below, and the precedence ladder — read this first |
 | `docs/governance/` | constitutional commitments and derived obligations (governing) |
 | `docs/spec/` | cross-stage presentations, derivations, process semantics, identity (governing) |
-| `docs/architecture/` | implementation strategy and spec-to-code status map |
+| `docs/kernel/` | the temporal-kernel specification (governing) |
 | `docs/interface/` | the desktop interface specification (governing) |
 | `docs/language/` | the elaboration-language specification (candidate until prompt 146) |
+| `docs/roadmap.md` | the broad crate and product plan |
+| `docs/architecture/` | implementation strategy, spec-to-code status map, implementor's reference |
 | `docs/prompts/` | numbered implementation prompts + README |
+| `docs/book/` | the user-facing book: tutorials, guide, how-to, explanation, reference |
+| `docs/scratch/` | research and decision records; governs nothing |
 
 Dependency direction is one-way: language → compiler → {render, audio} → engine → project → {cli, lsp, desktop}, with
 `musa-kernel` a leaf that `musa-compiler` (and later consumers) depend on, and `musa-lsp` the one shell that also
@@ -78,6 +82,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 taplo fmt --check                         # TOML
 mdwright fmt-check                        # Markdown
+make docs-check                           # docs/ links, teaching examples, mdbook build
 cargo deny check                          # if cargo-deny installed
 ```
 
