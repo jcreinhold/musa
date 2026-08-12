@@ -1,9 +1,27 @@
 # Close the Musa language design
 
-**Status: blocked after the final review.** Tasks 1–6 support a small call-by-value language, but the last permitted
-review found two false claims in the proof that retained programs keep their results. Tasks 7–8 were not done. The
-governing rules and implementation prompts remain unchanged. See
-[`../notes/research/language-design-closure/18-final-blocker.md`](../notes/research/language-design-closure/18-final-blocker.md).
+**Status: restarted around type inference.** The first target stopped after its final review found two false claims in
+the proof for retained programs. It was not promoted. The new target keeps Rust-like syntax but replaces mandatory local
+annotations and special call rules with Hindley–Milner inference, explicit closures, and complete calls. Governing rules
+and implementation prompts remain unchanged until the new target passes its proof gate. See
+[`../notes/research/language-design-closure/19-inference-course-correction.md`](../notes/research/language-design-closure/19-inference-course-correction.md).
+
+## Course correction after the failed proof gate
+
+The original Tasks 1–6 remain evidence about the musical domain and stage boundaries. Their source calculus and proof
+are not the active candidate.
+
+The replacement is bounded to six steps:
+
+1. Rewrite the five paper programs with Rust-like syntax and inferred local types. Count every annotation that remains.
+2. Specify rank-1 Hindley–Milner inference, complete calls, explicit closures, nominal data, and module sealing.
+3. Specify elaboration into the accepted total core and saturated compiler operations.
+4. Prove principal types, type safety, termination, `Music` closure, and typed stage composition.
+5. Allow one hostile proof review, one repair, and one final review.
+6. Run Tasks 7–8 below only if the final review has no fatal, High, or Medium issue.
+
+This restart drops the old compatibility theorem. Partial, named, and default calls receive migration diagnostics and
+mechanical rewrites instead. It does not implement compiler changes.
 
 ## Purpose and limits
 
