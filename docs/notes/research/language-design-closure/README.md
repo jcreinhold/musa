@@ -40,7 +40,11 @@ ship.
 2. [02-five-musical-cases.md](02-five-musical-cases.md) tests the language against five different kinds of musical work.
 3. [03-language-comparison.md](03-language-comparison.md) tests three small language designs.
 4. [04-source-calculus.md](04-source-calculus.md) states the selected language.
-5. [05-stage-semantics.md](05-stage-semantics.md) states the path from source to notation, performance, and sound.
-6. [06-paper-programs.md](06-paper-programs.md) tests the rules with complete programs.
+5. [04a-formal-rules.md](04a-formal-rules.md) gives the complete typing, module, and evaluation rules.
+6. [05-stage-semantics.md](05-stage-semantics.md) states the path from source to notation, performance, and sound.
+7. [06-paper-programs.md](06-paper-programs.md) tests the rules with complete programs.
+8. [07-proof-prototype.md](07-proof-prototype.md) attacks the proof and compares two proof routes.
+9. [08-proof-outline.md](08-proof-outline.md) fixes the theorem statements and proof order.
+10. [09-metatheory.md](09-metatheory.md) gives the full proof under explicit compiler and stage contracts.
 
-Later files will prove the result and record the decision.
+Later files will give the proof outline, final proof, review, and decision.

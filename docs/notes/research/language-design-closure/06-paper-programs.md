@@ -362,8 +362,8 @@ The compiler assigns a fresh type name `mu_chord` to `Tonal.Chord` and `mu_voici
 3. Outside the structure, `Tonal.build` has the public type `ChordSymbol -> Tonal.Chord`. The constructor `ChordValue`
    is absent.
 4. `Some(GSeven)` checks against `Option<ChordSymbol>` because `analyze` supplies that expected type.
-5. `Ok(Claim(...))` checks against `Result<FunctionClaim, TonalError>` because the declared return type supplies both
-   type arguments.
+5. The `Ok` term that contains a `FunctionClaim` checks against `Result<FunctionClaim, TonalError>` because the declared
+   return type supplies both type arguments.
 6. Each data match lists every visible constructor, so coverage succeeds.
 
 ### 2.3 Evaluation trace
@@ -504,6 +504,27 @@ structure PhraseModel: PHRASE {
         };
     };
 
+  let prepend_loss(
+    loss: TranscriptionLoss,
+    output: List<TranscriptionLoss>
+  ): List<TranscriptionLoss> =
+    loss :: output;
+
+  let reverse_losses(input: List<TranscriptionLoss>): List<TranscriptionLoss> =
+    fold_list(input, [], prepend_loss);
+
+  let append_loss(
+    loss: TranscriptionLoss,
+    output: List<TranscriptionLoss>
+  ): List<TranscriptionLoss> =
+    loss :: output;
+
+  let append_losses(
+    left: List<TranscriptionLoss>,
+    right: List<TranscriptionLoss>
+  ): List<TranscriptionLoss> =
+    fold_list(reverse_losses(left), right, append_loss);
+
   let transcribe_step(
     token: PhraseToken,
     state: Result<(Music, List<TranscriptionLoss>), PhraseError>
@@ -517,7 +538,7 @@ structure PhraseModel: PHRASE {
               Token(svara, direction, gamaka, length) =>
                 match notation_note(svara_text(svara), 4, length) {
                   Err(error) => Err(NotationFailedFor(svara));
-                  Ok(note) => Ok((music_then(music, note), list_append(losses, losses_for(token))));
+                  Ok(note) => Ok((music_then(music, note), append_losses(losses, losses_for(token))));
                 };
             };
         };
@@ -538,8 +559,6 @@ let phrase_tokens: List<PhraseToken> = [
 
 let phrase_result: Result<PhraseModel.Phrase, PhraseError> = PhraseModel.make(phrase_tokens);
 ```
-
-`list_append` above is the standard finite-list operation derived from `fold_list`. It is not general recursion.
 
 ### 3.2 Type derivation
 

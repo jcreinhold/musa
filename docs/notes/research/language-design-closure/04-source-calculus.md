@@ -32,11 +32,22 @@ data Function {
 }
 
 let follows(left: Function, right: Function): Bool =
-  match (left, right) {
-    (Tonic, Predominant) => true;
-    (Predominant, Dominant) => true;
-    (Dominant, Tonic) => true;
-    _ => false;
+  match left {
+    Tonic =>
+      match right {
+        Predominant => true;
+        _ => false;
+      };
+    Predominant =>
+      match right {
+        Dominant => true;
+        _ => false;
+      };
+    Dominant =>
+      match right {
+        Tonic => true;
+        _ => false;
+      };
   };
 ```
 
@@ -264,6 +275,9 @@ A match first synthesizes or checks its subject. Each pattern extends `Gamma` wi
 an expected result type, every arm is checked against it. Otherwise the first arm synthesizes a type and every later arm
 is checked against that same type.
 
+The first matching arm in source order is chosen. A catch-all may therefore follow specific cases without making the
+step ambiguous.
+
 No subtype relation hides a mismatch. The only implicit conversion is the one already named by a compiler bridge and
 recorded by the stage pass that uses it.
 
@@ -323,6 +337,15 @@ this contract:
 4. it returns a value of its declared type; and
 5. its resource cost is charged by the evaluator.
 
+Ordinary compiler operations are first order: their argument and result types contain no function type. `fold_list` and
+the other finite folds are language reduction rules, not foreign operations.
+
+The current language has one higher-order music transform, `map_note_pitches`. It remains only under its existing
+stronger contract: the input `Music` recipe has a finite occurrence bound; the transform visits only its documented
+finite pitch positions; it applies the supplied total source function once at each visited position; and its proof shows
+that this traversal preserves good values and ends. No open registry may add another higher-order compiler operation.
+This narrow exception preserves the current language without letting an operation hide an unbounded callback loop.
+
 Expected failures return `Result`. A compiler panic is an implementation bug, not a language outcome.
 
 The small general numeric surface is:
@@ -341,6 +364,7 @@ ratio_mul: Ratio -> Ratio -> Result<Ratio, ArithmeticError>
 ratio_div: Ratio -> Ratio -> Result<Ratio, ArithmeticError>
 ratio_neg: Ratio -> Result<Ratio, ArithmeticError>
 ratio_compare: Ratio -> Ratio -> Ordering
+nat_add: Nat -> Nat -> Result<Nat, ArithmeticError>
 ```
 
 An implementation may use wider integers while calculating, then reduce the fraction and check the public bound. It may
@@ -351,7 +375,37 @@ directly. Key, scale, chord, scale degree, Roman numeral, voicing, pitch-class s
 concepts. If later work needs a faster representation, it may add a private library implementation without changing the
 language.
 
-## 9. What `Music` means
+## 9. Denotational meaning
+
+The operational rules say how a program runs. A denotation says what result the program stands for, without listing its
+reduction steps.
+
+Write `[[A]]` for the set described by type `A`:
+
+- `[[Unit]]` has one value;
+- `[[Bool]]`, `[[Nat]]`, `[[Ratio]]`, `[[Text]]`, and `[[Duration]]` are their finite canonical implementation values;
+- `[[A * B]]` is the set of pairs from `[[A]]` and `[[B]]`;
+- `[[Option<A>]]` contains `None` and `Some(a)` for `a` in `[[A]]`;
+- `[[List<A>]]` is the set of finite lists over `[[A]]`;
+- `[[Result<A, E>]]` contains `Ok(a)` and `Err(e)`;
+- `[[A -> B]]` is the set of total functions from `[[A]]` to `[[B]]`; and
+- a user-defined type is the tagged union of the products named by its constructors.
+
+The acyclic rank order defines user types one at a time, so this last clause does not refer to itself. Abstract types
+have the same private set inside their structure; clients can use the set only through exported functions.
+
+`[[Music]]` is the set of finite score recipes whose application behavior satisfies Section 10. A recipe denotes a total
+function from an explicit notation context to either a finite kernel fragment or a stated error. Source code cannot call
+that function directly; the stage boundary does.
+
+A well-typed term denotes a total function from the values of its free variables to the value of its result type.
+Products, constructors, matches, and folds have their usual set meanings. A compiler operation denotes the total
+function required by its contract. The proof later shows that evaluation reaches the value denoted by the term.
+
+This semantics does not claim that every mathematical function can be written in Musa, or that equality of two source
+functions is decidable.
+
+## 10. What `Music` means
 
 `Music` is a finite recipe for producing score facts. It is not a score, a performance, an analysis, an audio graph, or
 a universal model of music.
@@ -387,7 +441,7 @@ the unfilled request or invalid placement. No partial kernel term proceeds to re
 This definition makes `Music` contextual without adding dependent types or hidden state. It also leaves room for a
 performance-led package to produce a gesture without producing `Music` at all.
 
-## 10. Build-local type identity
+## 11. Build-local type identity
 
 One build begins with a finite, resolved package graph. Every resolved package node, logical module path, and data
 declaration path receives a fresh type name. Repeated imports of the same resolved package node share that name.
@@ -400,7 +454,7 @@ The language promises nothing about reusing a fresh name in another build. It al
 persisted function value, or compiled artifact cache. Exact Git source packages remain compatible with this rule: the
 resolver supplies one finite graph, then checking assigns fresh names.
 
-## 11. Resource charging
+## 12. Resource charging
 
 The mathematical reduction relation does not need a resource meter. The compiler evaluator does. Its state contains a
 remaining budget and an ordered diagnostic log.
@@ -415,7 +469,7 @@ its value is exactly the value from the unmetered semantics.
 This effort does not specify cache hits. A later cache design must replay the same logical charges and diagnostics as a
 miss; it may not change which programs the compiler accepts.
 
-## 12. What must be proved
+## 13. What must be proved
 
 The proof must establish:
 
