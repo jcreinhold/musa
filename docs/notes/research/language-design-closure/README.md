@@ -1,8 +1,12 @@
 # Language design closure
 
-**Status: research. Governs nothing.** This directory carries out
+**Status: blocked at the final proof gate. Governs nothing.** This directory carries out
 [`docs/plan/language-design-closure.md`](../../../plan/language-design-closure.md). Its purpose is to settle Musa's
 source language, not to invent another temporal kernel or a package cache.
+
+The five musical cases support the small call-by-value design, but the second proof review found one High and one Medium
+flaw in its formal rules. The design was not promoted. See [13-final-blocker.md](13-final-blocker.md) for the decision
+and the exact work needed to reopen it.
 
 ## The question
 
@@ -48,5 +52,5 @@ ship.
 10. [09-metatheory.md](09-metatheory.md) gives the full proof under explicit compiler and stage contracts.
 11. [10-proof-review.md](10-proof-review.md) records the failed first independent review.
 12. [11-proof-repair.md](11-proof-repair.md) records the one permitted repair.
-
-Later files will give the proof outline, final proof, review, and decision.
+13. [12-proof-review.md](12-proof-review.md) gives the second and final proof review.
+14. [13-final-blocker.md](13-final-blocker.md) records why promotion stopped and what survived.

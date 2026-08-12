@@ -1,7 +1,8 @@
 # Close the Musa language design
 
-**Status: directive.** This plan settles Musa's source language and its path to notation and sound. It does not change
-compiler code. The governing rules remain authoritative throughout.
+**Status: stopped at the final proof gate.** Tasks 1–6 are complete. The second review found High and Medium flaws, so
+the promotion and implementation-planning tasks did not run. The governing rules remain unchanged. See
+[`../notes/research/language-design-closure/13-final-blocker.md`](../notes/research/language-design-closure/13-final-blocker.md).
 
 ## Purpose and limits
 
