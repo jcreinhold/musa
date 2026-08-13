@@ -1,7 +1,7 @@
 ---
 id: 127b
 slug: inferred-source-core
-status: pending
+status: done
 depends_on: [127ad]
 phase: 3
 ---

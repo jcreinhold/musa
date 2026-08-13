@@ -11,7 +11,7 @@ use musa_language::ast::{AstNode as _, FnDecl, LetDecl, VoiceItem};
 use musa_language::{SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken};
 use num_rational::Ratio;
 
-use crate::core_budget::WorkMeter;
+use crate::core_budget::{Evaluation, Reduction, ResourceError, WorkMeter};
 use crate::data::{TypeScope, World};
 use crate::diagnose::{Code, Diagnostic};
 use crate::imports::Libraries;
@@ -966,9 +966,57 @@ impl Shape {
     const fn admits_absence(self) -> bool {
         matches!(self, Self::Option(_))
     }
+
+    /// Whether this shape denotes storable data (`02-core-calculus.md` §1.1).
+    ///
+    /// A registered primitive's arguments and result must be storable: it is
+    /// handed values that could equally have been written in a data field, and
+    /// it hands one back. That is what makes it *foreign* rather than a second
+    /// evaluator — it cannot receive a closure to call, a music value to walk,
+    /// or anything else whose meaning depends on the elaboration around it.
+    ///
+    /// Today this is true of every shape that can be spelled, because [`Base`]
+    /// names only storable domains and [`Shape`] has no arrow. It is written
+    /// out rather than assumed so that the day a base is added the question is
+    /// asked at the registration and answered in the build, not discovered at
+    /// a call.
+    const fn is_storable(self) -> bool {
+        match self {
+            Self::Base(base) => base.is_storable(),
+            Self::Option(member) | Self::List(member) => member.is_storable(),
+            Self::Product(members) => all_storable(members),
+            Self::Result(value, error) => value.is_storable() && error.is_storable(),
+        }
+    }
 }
 
 impl Base {
+    /// Every base a δ signature can name is storable data.
+    ///
+    /// Exhaustive rather than `true`, so that a base for a non-storable domain
+    /// — music, a running signal, anything holding a function — has to answer
+    /// this question before it can be registered.
+    const fn is_storable(self) -> bool {
+        match self {
+            Self::Bool
+            | Self::Nat
+            | Self::Pitch
+            | Self::PitchClass
+            | Self::Interval
+            | Self::Key
+            | Self::Scale
+            | Self::Degree
+            | Self::Frame
+            | Self::ChordClass
+            | Self::Triad
+            | Self::Roman
+            | Self::Voicing
+            | Self::Pc12
+            | Self::PcSet12
+            | Self::Row12 => true,
+        }
+    }
+
     fn ty(self) -> Type {
         match self {
             Self::Bool => Type::Bool,
@@ -988,6 +1036,17 @@ impl Base {
             Self::PcSet12 => Type::PcSet12,
             Self::Row12 => Type::Row12,
         }
+    }
+}
+
+/// Whether every shape in a signature position is storable data.
+///
+/// Written as a recursion over the slice rather than a loop over indices
+/// because it runs in a `const` context, where the registration is checked.
+const fn all_storable(shapes: &[Shape]) -> bool {
+    match shapes {
+        [] => true,
+        [first, rest @ ..] => first.is_storable() && all_storable(rest),
     }
 }
 
@@ -1173,8 +1232,34 @@ const MAYBE_VOICING: Shape = Shape::Option(&VOICING);
 const ROW_FAULT: Shape = Shape::Product(&[NATS, PC12S]);
 const ROW12_OR_FAULT: Shape = Shape::Result(&ROW12, &ROW_FAULT);
 
-/// A first-order signature, for the common case of writing one inline.
+/// Register a first-order signature, checking it as it is written.
+///
+/// Every δ entry is built here, so this is the registration site, and a
+/// violation is a build error rather than a call that fails once a composer
+/// finds it. Four conditions hold of a registered primitive
+/// (`docs/rules/language/02-core-calculus.md` §§1.1 and 5.8):
+///
+/// - **First-order**, and **no closure argument**: [`Shape`] has no arrow
+///   constructor, so a signature that wanted a function could not be spelled.
+///   An operation that needs one is an eliminator, checked by §5.6.
+/// - **Data-only**: every argument and the result is storable data, asserted
+///   here.
+/// - **Total**: the operation answers on every input its signature admits.
+///   Registration cannot see this, so it is the sampling law's D2, which reads
+///   [`Shape::admits_absence`] and rejects an evaluator that declined to
+///   answer where the shape promised a value.
+/// - **Failing by value**: a primitive with one way to fail says so with
+///   `Option`, and one with several says which with `Result`. Both injections
+///   of a `Result` are values, so answering with one is still total.
 const fn delta(arguments: &'static [Shape], result: Shape) -> Family {
+    assert!(
+        all_storable(arguments),
+        "a registered primitive takes storable data; one of these arguments is not"
+    );
+    assert!(
+        result.is_storable(),
+        "a registered primitive answers with storable data; this result does not"
+    );
     Family::Delta { arguments, result }
 }
 
@@ -2705,6 +2790,13 @@ fn check_definition(checker: &mut Checker<'_>, definition: &RawDefinition) -> Op
     }
 }
 
+/// Check and evaluate a document, under one budget and one meter.
+///
+/// The wrapper exists so that the meter has exactly one boundary. Anything
+/// inside may stop at any `?`, and a run that stopped because the budget
+/// stopped it must say so: a refusal that published no diagnostic and no score
+/// would be the partial result `02-core-calculus.md` §4 forbids, and would
+/// read to the composer as the compiler losing their piece.
 fn check_and_evaluate(
     resolver: &mut Resolver,
     declarations: impl Iterator<Item = SurfaceDefinition>,
@@ -2713,8 +2805,34 @@ fn check_and_evaluate(
     modules: &Modules,
     world: &World,
 ) -> Option<Program> {
-    let root_uses = root.map(root_uses).unwrap_or_default();
     let mut meter = WorkMeter::default();
+    let program = check_and_evaluate_metered(
+        resolver,
+        declarations,
+        root,
+        unknown_root_music,
+        modules,
+        world,
+        &mut meter,
+    );
+    if program.is_none()
+        && let Some(failure) = meter.failure()
+    {
+        report_resource_error(resolver, failure);
+    }
+    program
+}
+
+fn check_and_evaluate_metered(
+    resolver: &mut Resolver,
+    declarations: impl Iterator<Item = SurfaceDefinition>,
+    root: Option<&SyntaxNode>,
+    unknown_root_music: UnknownRootMusic,
+    modules: &Modules,
+    world: &World,
+    meter: &mut WorkMeter,
+) -> Option<Program> {
+    let root_uses = root.map(root_uses).unwrap_or_default();
     // One substitution for the whole piece. A variable minted for a
     // declaration that did not write its type is the same variable wherever
     // it is read, which is what makes the answer one answer.
@@ -2846,7 +2964,7 @@ fn check_and_evaluate(
             mentioned: Vec::new(),
             foreign: definition.foreign,
             failed: false,
-            meter: &mut meter,
+            meter: &mut *meter,
             music_role: definition.role.clone(),
             deferred_pitch: false,
             definition_span: definition.span,
@@ -2863,7 +2981,10 @@ fn check_and_evaluate(
             if let Some((span, undetermined)) = settle(&unifier, &mut kind) {
                 resolver.report(
                     Diagnostic::error(Code::TypeMismatch, "the program does not say what this holds")
-                        .at(span, format!("this has type `{undetermined}`"))
+                        .at(
+                            span,
+                            format!("this has type `{}`", crate::infer::plain_one(&undetermined)),
+                        )
                         .help("annotate the declaration, or write this where its type is already decided"),
                 );
                 type_errors = true;
@@ -2878,8 +2999,7 @@ fn check_and_evaluate(
             });
         }
     }
-    if meter.exhaustion().is_some() {
-        report_exhaustion(resolver, &meter);
+    if meter.failure().is_some() {
         return None;
     }
     if type_errors || checked.len() != raw.len() {
@@ -2887,7 +3007,7 @@ fn check_and_evaluate(
     }
 
     let order = dependency_order(resolver, &checked)?;
-    let values = evaluate(resolver, &checked, &order, &mut meter)?;
+    let values = evaluate(resolver, &checked, &order, &mut *meter)?;
     let mut uses = IndexMap::new();
     for statement in root_uses {
         let expression = child_of(&statement, is_expr_node)?;
@@ -2926,7 +3046,7 @@ fn check_and_evaluate(
             mentioned: Vec::new(),
             foreign: false,
             failed: false,
-            meter: &mut meter,
+            meter: &mut *meter,
             music_role: None,
             definition_span: span,
             deferred_pitch: false,
@@ -2935,7 +3055,7 @@ fn check_and_evaluate(
             world,
         };
         let checked_use = checker.check(&expression, Some(&Type::Music))?;
-        let Value::Music(music) = eval(&checked_use, &values, &mut meter)? else {
+        let Value::Music(music) = eval(&checked_use, &values, &mut *meter)? else {
             return None;
         };
         uses.insert(span_key(span), music);
@@ -2953,9 +3073,18 @@ fn check_and_evaluate(
                 continue;
             };
             let span = crate::resolve::trimmed_span(&statement);
-            let mut checker = root_checker(resolver, &raw, &symbols, &mut unifier, &mut meter, span, modules, world);
+            let mut checker = root_checker(
+                resolver,
+                &raw,
+                &symbols,
+                &mut unifier,
+                &mut *meter,
+                span,
+                modules,
+                world,
+            );
             let checked = checker.check(&expression, Some(&Type::Scale))?;
-            let Value::Scale(scale) = eval(&checked, &values, &mut meter)? else {
+            let Value::Scale(scale) = eval(&checked, &values, &mut *meter)? else {
                 return None;
             };
             scales.insert(span_key(span), scale);
@@ -2968,18 +3097,36 @@ fn check_and_evaluate(
                 continue;
             };
             let span = crate::resolve::trimmed_span(&statement);
-            let mut checker = root_checker(resolver, &raw, &symbols, &mut unifier, &mut meter, span, modules, world);
+            let mut checker = root_checker(
+                resolver,
+                &raw,
+                &symbols,
+                &mut unifier,
+                &mut *meter,
+                span,
+                modules,
+                world,
+            );
             let checked = checker.check(&expression, Some(&Type::Key))?;
-            let Value::Key(key) = eval(&checked, &values, &mut meter)? else {
+            let Value::Key(key) = eval(&checked, &values, &mut *meter)? else {
                 return None;
             };
             keys.insert(span_key(span), key);
         }
         for statement in root_nodes(root, SyntaxKind::AssertStmt) {
             let span = crate::resolve::trimmed_span(&statement);
-            let mut checker = root_checker(resolver, &raw, &symbols, &mut unifier, &mut meter, span, modules, world);
+            let mut checker = root_checker(
+                resolver,
+                &raw,
+                &symbols,
+                &mut unifier,
+                &mut *meter,
+                span,
+                modules,
+                world,
+            );
             let checked = checker.claim(&statement)?;
-            claims.insert(span_key(span), eval_claim(&checked, &values, &mut meter)?);
+            claims.insert(span_key(span), eval_claim(&checked, &values, &mut *meter)?);
         }
         for statement in root_nodes(root, SyntaxKind::NoteStmt) {
             let Some(expression) =
@@ -2988,13 +3135,21 @@ fn check_and_evaluate(
                 continue;
             };
             let span = crate::resolve::trimmed_span(&statement);
-            let mut checker = root_checker(resolver, &raw, &symbols, &mut unifier, &mut meter, span, modules, world);
+            let mut checker = root_checker(
+                resolver,
+                &raw,
+                &symbols,
+                &mut unifier,
+                &mut *meter,
+                span,
+                modules,
+                world,
+            );
             let checked = checker.deferring_pitch(|checker| checker.check(&expression, Some(&Type::Pitch)))?;
-            pitches.insert(span_key(span), pitch_term(&checked, &values, &mut meter)?);
+            pitches.insert(span_key(span), pitch_term(&checked, &values, &mut *meter)?);
         }
     }
-    if meter.exhaustion().is_some() {
-        report_exhaustion(resolver, &meter);
+    if meter.failure().is_some() {
         return None;
     }
     let named_music = values
@@ -3887,8 +4042,10 @@ impl Checker<'_> {
         let Err(mismatch) = self.unifier.unify(found, expected) else {
             return Some(());
         };
-        let expected = self.unifier.resolve(expected);
-        let found = self.unifier.resolve(found);
+        // Resolved, then renamed together: what the reader is shown is the
+        // shape the checker settled on, with one letter meaning one type
+        // across both sides.
+        let [expected, found] = crate::infer::plain([&self.unifier.resolve(expected), &self.unifier.resolve(found)]);
         let diagnostic = match mismatch {
             Mismatch::Shape => Diagnostic::error(Code::TypeMismatch, format!("expected `{expected}`, found `{found}`"))
                 .at(span, format!("this has type `{found}`"))
@@ -5061,7 +5218,10 @@ impl Checker<'_> {
             self.resolver.report(
                 Diagnostic::error(Code::NonExhaustiveMatch, "this match leaves a possible value uncovered")
                     .at(crate::resolve::trimmed_span(node), format!("add `{missing}`"))
-                    .note(format!("the matched value has type `{}`", scrutinee.ty)),
+                    .note(format!(
+                        "the matched value has type `{}`",
+                        crate::infer::plain_one(&scrutinee.ty)
+                    )),
             );
             self.failed = true;
             return None;
@@ -5271,9 +5431,10 @@ impl Checker<'_> {
     }
 
     fn pattern_type_error<T>(&mut self, span: SourceSpan, target: &Type, message: &str) -> Option<T> {
-        self.resolver.report(
-            Diagnostic::error(Code::TypeMismatch, message).at(span, format!("the matched value has type `{target}`")),
-        );
+        self.resolver.report(Diagnostic::error(Code::TypeMismatch, message).at(
+            span,
+            format!("the matched value has type `{}`", crate::infer::plain_one(target)),
+        ));
         self.failed = true;
         None
     }
@@ -5433,7 +5594,7 @@ impl Checker<'_> {
             self.failed = true;
             return None;
         }
-        if !self.meter.instantiate(primitive.name(), span) {
+        if self.meter.instantiate(primitive.name(), span).is_none() {
             self.failed = true;
             return None;
         }
@@ -5812,64 +5973,77 @@ fn visit(
     order.push(index);
 }
 
+/// Evaluate the declaration graph in dependency order, as one configuration.
+///
+/// `run` is where the two language outcomes are told apart from the third that
+/// is not one: `failed` is reported as the resource rejection it is, and
+/// `Broken` is a compiler invariant failure, because a closed well-typed term
+/// always steps (research `core-calculus/06-proof-outline.md` Theorem 2.3).
 fn evaluate(
     resolver: &mut Resolver,
     definitions: &[CheckedDefinition],
     order: &[usize],
     meter: &mut WorkMeter,
 ) -> Option<IndexMap<String, Value>> {
-    let mut values = IndexMap::new();
-    for index in order {
-        let definition = definitions.get(*index)?;
-        if !meter.output("scalar elaboration", 0, definition.span) {
-            report_exhaustion(resolver, meter);
-            return None;
-        }
-        let value = match &definition.kind {
-            CheckedDefinitionKind::Let { body } => eval(body, &values, meter),
-            CheckedDefinitionKind::Function { parameters, body } => {
-                let mut captures = IndexMap::new();
-                for dependency in definition.dependencies.keys() {
-                    captures.insert(dependency.clone(), values.get(dependency)?.clone());
+    let mut broken = None;
+    let outcome = meter.run(|meter| {
+        let mut values = IndexMap::new();
+        for index in order {
+            let definition = definitions.get(*index)?;
+            meter.output("scalar elaboration", 0, definition.span)?;
+            let value = match &definition.kind {
+                CheckedDefinitionKind::Let { body } => eval(body, &values, meter),
+                CheckedDefinitionKind::Function { parameters, body } => {
+                    let mut captures = IndexMap::new();
+                    for dependency in definition.dependencies.keys() {
+                        captures.insert(dependency.clone(), values.get(dependency)?.clone());
+                    }
+                    let result = function_result(&definition.ty)?.clone();
+                    Some(Value::Closure(Box::new(Closure {
+                        parameters: parameters.clone(),
+                        result,
+                        body: body.clone(),
+                        captures,
+                    })))
                 }
-                let result = function_result(&definition.ty)?.clone();
-                Some(Value::Closure(Box::new(Closure {
-                    parameters: parameters.clone(),
-                    result,
-                    body: body.clone(),
-                    captures,
-                })))
-            }
-        };
-        let Some(value) = value else {
-            if meter.exhaustion().is_some() {
-                report_exhaustion(resolver, meter);
+            }?;
+            // Preservation (Theorem 2.2), checked rather than assumed: a value
+            // whose type left its declaration's is a compiler fault, and the
+            // one thing this must not do is publish it.
+            if !crate::infer::admits(&definition.ty, &value.ty()) {
+                broken = Some((definition.span, "the preservation invariant failed here"));
                 return None;
             }
+            let _normalization_witness = value.normalization_witness();
+            values.insert(definition.name.clone(), value);
+        }
+        Some(values)
+    });
+    match outcome {
+        Evaluation::Done(values) => Some(values),
+        Evaluation::Failed(failure) => {
+            report_resource_error(resolver, failure);
+            None
+        }
+        Evaluation::Broken => {
+            let (span, label) = broken.unwrap_or_else(|| {
+                (
+                    definitions.first().map_or_else(SourceSpan::default, |first| first.span),
+                    "evaluation stopped here",
+                )
+            });
             resolver.report(
                 Diagnostic::error(Code::TypeMismatch, "this checked expression could not be evaluated")
-                    .at(definition.span, "evaluation stopped here")
+                    .at(span, label)
                     .note("this is a compiler invariant failure, not a recoverable language effect"),
             );
-            return None;
-        };
-        if !crate::infer::admits(&definition.ty, &value.ty()) {
-            resolver.report(
-                Diagnostic::error(Code::TypeMismatch, "evaluation changed this expression's type")
-                    .at(definition.span, "the preservation invariant failed here"),
-            );
-            return None;
+            None
         }
-        let _normalization_witness = value.normalization_witness();
-        values.insert(definition.name.clone(), value);
     }
-    Some(values)
 }
 
 fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut WorkMeter) -> Option<Value> {
-    if !meter.step("expression evaluation", 1, expression.span) {
-        return None;
-    }
+    meter.step(Reduction::Expression, 1, expression.span)?;
     let value = match &expression.kind {
         ExprKind::Literal(value) => Some(value.clone()),
         ExprKind::Name(name) => environment.get(name).cloned(),
@@ -6043,9 +6217,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
             let value = eval(scrutinee, environment, meter)?;
             let mut selected = None;
             for arm in arms {
-                if !meter.step("match arm", 1, expression.span) {
-                    return None;
-                }
+                meter.step(Reduction::MatchArm, 1, expression.span)?;
                 if let Some(bindings) = match_pattern(&arm.pattern, &value) {
                     selected = Some((arm, bindings));
                     break;
@@ -6163,11 +6335,10 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
     // A polymorphic function's body has the *declaration's* type, which is a
     // variable; the value flowing through it is whatever the caller chose.
     // `admits` is that distinction, and it is equality everywhere else.
-    if !crate::infer::admits(&expression.ty, &value.ty())
-        || !meter.construct("expression value", nodes, bytes, expression.span)
-    {
+    if !crate::infer::admits(&expression.ty, &value.ty()) {
         return None;
     }
+    meter.construct("expression value", nodes, bytes, expression.span)?;
     Some(value)
 }
 
@@ -6175,9 +6346,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
 fn pitch_term(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut WorkMeter) -> Option<PitchTerm> {
     match &expression.kind {
         ExprKind::Step { base, steps, down } => {
-            if !meter.step("scale step", 1, expression.span) {
-                return None;
-            }
+            meter.step(Reduction::ScaleStep, 1, expression.span)?;
             let base = pitch_term(base, environment, meter)?;
             let steps = i64::try_from(nat_value(&eval(steps, environment, meter)?)?).ok()?;
             let steps = if *down { steps.checked_neg()? } else { steps };
@@ -6245,9 +6414,7 @@ fn supplied(
 }
 
 fn apply_closure(closure: &Closure, provided: Vec<Value>, meter: &mut WorkMeter, span: SourceSpan) -> Option<Value> {
-    if !meter.step("function application", 1, span) {
-        return None;
-    }
+    meter.step(Reduction::Application, 1, span)?;
     if provided.len() != closure.parameters.len() {
         return None;
     }
@@ -6863,11 +7030,8 @@ fn eval_primitive(
             let count = nat_value(values.first()?)?;
             let nodes = count.saturating_add(1);
             let bytes = count.saturating_mul(8);
-            if !meter.step("range", count, expression.span)
-                || !meter.preflight_construct("range", nodes, bytes, expression.span)
-            {
-                return None;
-            }
+            meter.step(Reduction::Range, count, expression.span)?;
+            meter.preflight_construct("range", nodes, bytes, expression.span)?;
             let capacity = usize::try_from(count).ok()?;
             let values = (0..count).map(Value::Nat).collect::<Vec<_>>();
             if values.len() != capacity {
@@ -6884,11 +7048,8 @@ fn eval_primitive(
             let (value_nodes, value_bytes) = value_shape(&value);
             let nodes = value_nodes.saturating_mul(count).saturating_add(1);
             let bytes = value_bytes.saturating_mul(count);
-            if !meter.step("repeat", count, expression.span)
-                || !meter.preflight_construct("repeat", nodes, bytes, expression.span)
-            {
-                return None;
-            }
+            meter.step(Reduction::Repeat, count, expression.span)?;
+            meter.preflight_construct("repeat", nodes, bytes, expression.span)?;
             let count = usize::try_from(count).ok()?;
             Some(Value::List {
                 member: value.ty(),
@@ -6902,9 +7063,11 @@ fn eval_primitive(
             let Value::List { values: source, .. } = values.get(1)? else {
                 return None;
             };
-            if !meter.step("map", u64::try_from(source.len()).unwrap_or(u64::MAX), expression.span) {
-                return None;
-            }
+            meter.step(
+                Reduction::Map,
+                u64::try_from(source.len()).unwrap_or(u64::MAX),
+                expression.span,
+            )?;
             let mapped = source
                 .iter()
                 .cloned()
@@ -6923,13 +7086,11 @@ fn eval_primitive(
             let Value::List { member, values } = values.get(1)? else {
                 return None;
             };
-            if !meter.step(
-                "filter",
+            meter.step(
+                Reduction::Filter,
                 u64::try_from(values.len()).unwrap_or(u64::MAX),
                 expression.span,
-            ) {
-                return None;
-            }
+            )?;
             let mut kept = Vec::new();
             for value in values {
                 let decision = apply_closure(predicate, vec![value.clone()], meter, expression.span)?;
@@ -6951,9 +7112,7 @@ fn eval_primitive(
                 return None;
             };
             let count = nat_value(values.get(2)?)?;
-            if !meter.step("nat_fold", count, expression.span) {
-                return None;
-            }
+            meter.step(Reduction::NatFold, count, expression.span)?;
             for index in 0..count {
                 accumulator = apply_closure(step, vec![Value::Nat(index), accumulator], meter, expression.span)?;
             }
@@ -6967,13 +7126,11 @@ fn eval_primitive(
             let Value::List { values, .. } = values.get(2)? else {
                 return None;
             };
-            if !meter.step(
-                "list_fold",
+            meter.step(
+                Reduction::ListFold,
                 u64::try_from(values.len()).unwrap_or(u64::MAX),
                 expression.span,
-            ) {
-                return None;
-            }
+            )?;
             for value in values {
                 accumulator = apply_closure(step, vec![value.clone(), accumulator], meter, expression.span)?;
             }
@@ -6989,9 +7146,7 @@ fn eval_primitive(
             };
             match value {
                 Some(value) => {
-                    if !meter.step("option_fold", 1, expression.span) {
-                        return None;
-                    }
+                    meter.step(Reduction::OptionFold, 1, expression.span)?;
                     apply_closure(some_case, vec![value.as_ref().clone()], meter, expression.span)
                 }
                 None => Some(zero),
@@ -7068,9 +7223,7 @@ fn fold_value(
     else {
         return None;
     };
-    if !meter.step("fold", 1, span) {
-        return None;
-    }
+    meter.step(Reduction::DataFold, 1, span)?;
     let index = shape
         .iter()
         .position(|(member, constructor)| member == id && constructor == variant)?;
@@ -7302,23 +7455,36 @@ fn aggregate_shape<'a>(values: impl Iterator<Item = &'a Value>) -> (u64, u64) {
     })
 }
 
+/// Report the meter's failure, if it has one.
 pub(crate) fn report_exhaustion(resolver: &mut Resolver, meter: &WorkMeter) {
-    let Some(exhaustion) = meter.exhaustion() else {
-        return;
-    };
+    if let Some(failure) = meter.failure() {
+        report_resource_error(resolver, failure);
+    }
+}
+
+/// The one resource rejection, naming the operation, metric, attempted amount,
+/// and limit (`docs/rules/language/02-core-calculus.md` §4).
+///
+/// The cost table's version is stated because it is half the answer: the same
+/// source refused under version *n* is a claim about version *n*'s weights, and
+/// a reader comparing two compilers needs to know which table said no.
+pub(crate) fn report_resource_error(resolver: &mut Resolver, failure: ResourceError) {
     resolver.report(
         Diagnostic::error(
             Code::ResourceLimit,
-            format!("`{}` exceeds the compilation budget", exhaustion.operation),
+            format!("`{}` exceeds the compilation budget", failure.operation),
         )
         .at(
-            exhaustion.span,
+            failure.span,
             format!(
                 "attempted {} {}, limit {}",
-                exhaustion.attempted, exhaustion.metric, exhaustion.limit
+                failure.attempted, failure.metric, failure.limit
             ),
         )
-        .note("the expression is finite; Musa rejected its size before publishing a partial value")
+        .note(format!(
+            "the expression is finite; Musa rejected its size before publishing a partial value (cost table {})",
+            failure.cost_version
+        ))
         .help("reduce the bound or split the generated material into smaller declarations"),
     );
 }

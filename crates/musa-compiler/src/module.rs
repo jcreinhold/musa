@@ -618,7 +618,11 @@ impl Modules {
         {
             for (name, required) in &wanted.members {
                 let mismatch = match have.members.get(name) {
-                    Some(found) if found.ty == required.ty => continue,
+                    // The same relation the ascription check reads, rather
+                    // than plain equality: a member that left its annotation
+                    // out is still the member the signature named, and one
+                    // question decided two ways is two languages.
+                    Some(found) if crate::infer::admits(&found.ty, &required.ty) => continue,
                     Some(found) => format!("`{module}` gives it type {}", found.ty),
                     None => format!("`{module}` does not provide it"),
                 };

@@ -168,6 +168,32 @@ fn appearances(ty: &Type, order: &mut Vec<TypeVar>) {
     }
 }
 
+/// Types in plain form: their variables renamed `a`, `b`, … in the order they
+/// first appear, renamed *together* so that one letter means one type across
+/// every type in the list.
+///
+/// A diagnostic quotes what the checker settled on, and what it settled on is
+/// a term over the substitution's own counter — the fortieth variable a piece
+/// minted prints `n` for no reason a reader can see, and the two sides of a
+/// mismatch print unrelated letters that look related. Renaming by first
+/// appearance says the one thing a reader needs: which positions share a type.
+/// Hover already reads this through [`Scheme::renamed`]; this is the same
+/// spelling for the places that hold a bare type.
+pub(crate) fn plain(types: [&Type; 2]) -> [Type; 2] {
+    let mut order = Vec::new();
+    for ty in types {
+        appearances(ty, &mut order);
+    }
+    types.map(|ty| rename(ty, &order))
+}
+
+/// One type in plain form.
+pub(crate) fn plain_one(ty: &Type) -> Type {
+    let mut order = Vec::new();
+    appearances(ty, &mut order);
+    rename(ty, &order)
+}
+
 /// `ty` with each variable replaced by its position in `order`, so that
 /// printing reads `a`, `b`, … left to right.
 fn rename(ty: &Type, order: &[TypeVar]) -> Type {

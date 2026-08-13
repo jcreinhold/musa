@@ -24,6 +24,7 @@ mod groove;
 mod higher_order_music_laws;
 mod import_laws;
 mod inference_laws;
+mod inferred_core_laws;
 mod kernel_interop;
 mod kernel_quote_laws;
 mod kernel_subset_laws;

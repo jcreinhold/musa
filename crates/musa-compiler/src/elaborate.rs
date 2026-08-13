@@ -1414,11 +1414,11 @@ impl Share {
     }
 
     fn preflight_output(&mut self, operation: &'static str, amount: u64, span: SourceSpan) -> bool {
-        self.output_meter.preflight_output(operation, amount, span)
+        self.output_meter.preflight_output(operation, amount, span).is_some()
     }
 
     fn reserve_output(&mut self, operation: &'static str, amount: u64, span: SourceSpan) -> bool {
-        self.output_meter.output(operation, amount, span)
+        self.output_meter.output(operation, amount, span).is_some()
     }
 
     fn report_exhaustion(&self, resolver: &mut Resolver) {
