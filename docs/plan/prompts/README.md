@@ -250,6 +250,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 127ad | complete-calls | 3 | Delete partial calls and default parameters; add the anonymous function; migrate the corpus |
 | 127b | inferred-source-core | 3 | Close the core: typed evaluator configurations, versioned costs, privacy audit |
 | 127c | event-track-cutover | 3 | Replace timelines with coordinate-typed finite event tracks |
+| 127ca | builtin-ownership-registry | 3 | One name for compiler-owned operations, freeing `primitive` for registered units |
 | 127d | machine-values | 3 | Add finite typed machine descriptions as source values |
 | 127da | bounded-syntax-adapters | 3 | Close the adapter proof blockers with one finite type-blind phase |
 | 127e | source-language-clean-break | 3 | Delete contextual `Music` and migrate notation to ordinary values |
@@ -504,12 +505,14 @@ install one small, strict, total, HM-inferred language with complete calls and a
 steps that each leave the workspace green: inference and the two kinds of type variable (127aa), `text`, sums and
 `Result` (127ab), library-declared finite data (127ac), complete calls and the corpus migration (127ad), and the typed
 evaluator configurations, versioned cost table, and privacy audit that close it (127b). 127c renames the finite temporal
-value to `EventTrack<C,A>` and tags its coordinate. 127d adds finite `Machine<K,A,B>` values. 127da repairs the failed
-adapter boundary with path-aware finite syntax, one executable match target, and a real derivation graph. 127e then
-deletes contextual `Music`; notation becomes a source-mapped adapter into ordinary inferred terms. 127f gives each
-machine one exact next step. 127g makes the time-to-frame policy explicit. 127h makes one sample frame the reference
-meaning of audio and treats host blocks only as checked batching. 127i proves and audits the complete path before any
-later sound prompt may run. Old syntax, APIs, and serialized forms are removed, not kept behind aliases.
+value to `EventTrack<C,A>` and tags its coordinate. 127ca then gives compiler-owned operations their one name, so that
+*builtin* and *primitive* mean what the language specification says they mean before 127d needs the second word. 127d
+adds finite `Machine<K,A,B>` values. 127da repairs the failed adapter boundary with path-aware finite syntax, one
+executable match target, and a real derivation graph. 127e then deletes contextual `Music`; notation becomes a
+source-mapped adapter into ordinary inferred terms. 127f gives each machine one exact next step. 127g makes the
+time-to-frame policy explicit. 127h makes one sample frame the reference meaning of audio and treats host blocks only as
+checked batching. 127i proves and audits the complete path before any later sound prompt may run. Old syntax, APIs, and
+serialized forms are removed, not kept behind aliases.
 
 **128–134 build musical sound on that core.** 128 makes the primitive vocabulary discoverable from one catalogue; 129
 keeps written quantities exact; and 129a's payload rule is revised for the new storable-data boundary. 130 defines

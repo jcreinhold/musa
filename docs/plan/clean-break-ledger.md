@@ -52,7 +52,7 @@ best-effort translation.
 | `Length<C>` — both the name and its use for an instant as well as an amount | `Position<C>` for *when*, `Duration<C>` for *how much* | 127c |
 | `Timeline::length`, `Term::length`, `Measure::length`, `check_bar_length`, `ly.rs::measure_length`, `musicxml.rs::measure_length` | `duration` / `check_bar_duration` / `measure_duration` | 127c |
 | `SecondTime` as a coordinate tag | `PhysicalTime` | 127c |
-| `PrimitiveOwnership<Builtin>` and `primitive` naming a compiler-owned operation | `BuiltinOwnership<Builtin>`; compiler-owned operations are *builtins*, registered units are *primitives* | 127b |
+| `PrimitiveOwnership<Builtin>` and `primitive` naming a compiler-owned operation | `BuiltinOwnership<Builtin>`; compiler-owned operations are *builtins*, registered units are *primitives* | 127b, discharged by 127ca |
 | `Scheduled<A>` | `Schedule<A>`, matching the existing `ScheduleError` | 127g |
 | `musa_compiler::core::Music`, `MusicOperation`, `MusicRole` | ordinary values of ordinary types | 127e |
 | the private `close` and `instantiate_music` elaboration path, and the fragment type they close | building and closing over ordinary values | 127e |
