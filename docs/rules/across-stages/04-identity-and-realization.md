@@ -74,7 +74,7 @@ of `03-machine-calculus.md` §7 are stated in, and particular instances of it ar
 checker nor a cache may attempt to decide it.** Two structurally different machines may behave identically; a cache that
 assumed the converse would return a result built from a different description.
 
-Scheduled sources add a third, narrower relation: two are equal **up to handle renaming** when a consistent one-to-one
+A `Schedule<A>` adds a third, narrower relation: two are equal **up to handle renaming** when a consistent one-to-one
 renaming of their private handles makes every frame's batch equal. Every instrument primitive must respect it
 (`obligations.md` §15).
 

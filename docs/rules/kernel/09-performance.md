@@ -133,14 +133,14 @@ per iteration and are exact rather than sampled.
 Two things the baseline already says, recorded here rather than acted on (prompt 38 changes nothing it measures):
 
 - **Elaboration is the pipeline.** P2 is ~85% of P1 on the large workload; parsing 1560 notes is not what costs.
-- **Canonical form costs more than producing the score does.** P4 on the large workload exceeds P2, on a track that
-  is already materialized — the `String` keys `Canonical` produces are the obvious suspect, and confirming or refuting
-  that is prompt 43's job, with this row as its before.
+- **Canonical form costs more than producing the score does.** P4 on the large workload exceeds P2, on a track that is
+  already materialized — the `String` keys `Canonical` produces are the obvious suspect, and confirming or refuting that
+  is prompt 43's job, with this row as its before.
 
 Prompt 39's row, read against 38's: **P1 large +8%, P2 large +13%** — the latter over the block's 10% gate, and declared
-as the prompt requires. The large workload's track now holds 1572 occurrences rather than 1560, because slurs,
-tuplets, and hairpins are occurrences instead of tags copied onto notes, and elaboration additionally groups occurrences
-into statements to merge ties. P3 grew for the same reason with the opposite sign: work that used to happen during
+as the prompt requires. The large workload's track now holds 1572 occurrences rather than 1560, because slurs, tuplets,
+and hairpins are occurrences instead of tags copied onto notes, and elaboration additionally groups occurrences into
+statements to merge ties. P3 grew for the same reason with the opposite sign: work that used to happen during
 elaboration (rebuilding annotation spans from per-note tags) is now the projection's, which is where it belongs and
 where it can be measured. Allocation is where the cost shows, as prompt 38 predicted it would.
 
@@ -152,12 +152,12 @@ Prompt 40's row, read against 39's: **P1 large −6%, P2 large −8%, P3 large �
 the block's gate is not engaged; the numbers are recorded because the P4 movement is a real change rather than noise.
 
 The piece track gained two occurrences (a key and a meter) and the large workload's P1/P2 allocation counts moved by
-twelve — the cost of putting the context maps in the track is, as the core's stability promise predicted, nothing. **P4 is where the work
-went.** `Canonical::canonical_key` used to build its scope prefix with one `format!` and the whole key with another; it
-now writes into a single `String` sized up front. Allocation *count* is identical (30 934 either way, because P3 and P4
-measure the voice lanes only), but reallocation is not: `grow` fell from 24 478 per iteration to 310. That is the first
-of the two `Canonical` costs prompt 38 flagged; the `String` keys themselves are still there, and still prompt 43's to
-measure.
+twelve — the cost of putting the context maps in the track is, as the core's stability promise predicted, nothing. **P4
+is where the work went.** `Canonical::canonical_key` used to build its scope prefix with one `format!` and the whole key
+with another; it now writes into a single `String` sized up front. Allocation *count* is identical (30 934 either way,
+because P3 and P4 measure the voice lanes only), but reallocation is not: `grow` fell from 24 478 per iteration to 310.
+That is the first of the two `Canonical` costs prompt 38 flagged; the `String` keys themselves are still there, and
+still prompt 43's to measure.
 
 Prompt 41's row deleted code and measured nothing new: **every allocation count is identical to prompt 40's**, in all
 four phases and both workloads, which is exactly what deleting a path `compile` never took should do. The timings run
@@ -184,11 +184,11 @@ the canonical order it needs.
 Read the row in two halves.
 
 **The identity is not free, and P1 declares it.** P1 large moved 1.41 ms → 1.95 ms (**+38%**, over the block's 10% gate)
-and P2 large 1.32 ms → 1.75 ms (**+33%**), because `compile` now hashes the piece track before projecting it. The
-trade is stated rather than hidden: the whole point of the prompt is that the session can ask "did the meaning change"
-instead of "did the counter move", and nothing can answer that without reading the meaning once. In budget terms it is
-not close to a problem — `docs/rules/desktop/06-performance.md` B1 allows 120 ms from keystroke to diagnostics, and 1.95
-ms is 1.6% of it.
+and P2 large 1.32 ms → 1.75 ms (**+33%**), because `compile` now hashes the piece track before projecting it. The trade
+is stated rather than hidden: the whole point of the prompt is that the session can ask "did the meaning change" instead
+of "did the counter move", and nothing can answer that without reading the meaning once. In budget terms it is not close
+to a problem — `docs/rules/desktop/06-performance.md` B1 allows 120 ms from keystroke to diagnostics, and 1.95 ms is
+1.6% of it.
 
 **Canonicalization got much cheaper, and that is where the prompt's optimization went.** `canonical_occurrences` sorted
 with `sort_by_key`, which rebuilds the key on *every comparison* — n log n serializations of a `String` per occurrence.
@@ -246,11 +246,11 @@ No row, and this paragraph is why. The interchange printer and parser are reacha
 corpus test: compiling, projecting, planning notation, and lowering performance never construct a `Term`, print one, or
 parse one. P1–P5 exercise exactly those five, so a row would be five re-measurements of unchanged code.
 
-The one change on a measured path is `kernel_normal_form`, which now builds a `together` of literal terms and evaluates it
-instead of calling `together` directly. `evaluate` on a literal is a clone and `Form::Together` hands straight to `together`,
-so the work is identical up to one `Vec` of terms — and `kernel_normal_form` is itself a test-and-golden entry point,
-not a pipeline stage. Printing a piece is linear in its occurrences and allocates one string; that is the whole cost,
-and it is paid only by someone who asked for a file.
+The one change on a measured path is `kernel_normal_form`, which now builds a `together` of literal terms and evaluates
+it instead of calling `together` directly. `evaluate` on a literal is a clone and `Form::Together` hands straight to
+`together`, so the work is identical up to one `Vec` of terms — and `kernel_normal_form` is itself a test-and-golden
+entry point, not a pipeline stage. Printing a piece is linear in its occurrences and allocates one string; that is the
+whole cost, and it is paid only by someone who asked for a file.
 
 ### Prompt 49 — sharing, measured on material that shares
 
@@ -292,8 +292,8 @@ Both regressions were invisible on `small` and `shared` and obvious on `large`; 
 this would have shipped 29% heavier for every composer who types their notes out.
 
 **P3/P4/P5 are noise.** Allocation counts are identical to the digit on every one, and the code they exercise is not
-touched — P3 walks an evaluated track that is byte-identical to prompt 48's. P3 large's +8.4% (and P4 large's −8.0%)
-is drift between two builds in two worktrees, not a change; it is reported rather than smoothed because the table is a
+touched — P3 walks an evaluated track that is byte-identical to prompt 48's. P3 large's +8.4% (and P4 large's −8.0%) is
+drift between two builds in two worktrees, not a change; it is reported rather than smoothed because the table is a
 record.
 
 **P1/P2 small regress by 10–19%, and that is real.** `glass-mountain.musa` is 18 occurrences with two motif calls, so it
@@ -308,12 +308,12 @@ mean a second code path for small documents.
 `examples/kernel/canon.musa.kernel` is the visible payoff, and it is what the prompt asked to see: two `let` bindings
 and two marked references, where before it was every occurrence of both voices written out. The subject appears once.
 Five of the nine files are **byte-identical** to prompt 48's — `counterpoint`, `invention`, `profile-fixture`,
-`twinkle`, `tuplet-fixture` — because a run of adjacent literals is coalesced back into one `track` block. That was
-not free either: without coalescing, every note printed as its own nested `track` inside a `follow` and the corpus
-grew 30% across the board while saying nothing new. The four that changed are exactly the four with structure to show:
-`canon` and `glass-mountain` have motifs, `variation` has a motif and transformations, and `annotated` has slurs,
-phrases and hairpins, whose region facts now print as the `together` they always were. The rule the printer follows is
-the one the prompt wanted: **show the structure a composer wrote, and no structure they did not.**
+`twinkle`, `tuplet-fixture` — because a run of adjacent literals is coalesced back into one `track` block. That was not
+free either: without coalescing, every note printed as its own nested `track` inside a `follow` and the corpus grew 30%
+across the board while saying nothing new. The four that changed are exactly the four with structure to show: `canon`
+and `glass-mountain` have motifs, `variation` has a motif and transformations, and `annotated` has slurs, phrases and
+hairpins, whose region facts now print as the `together` they always were. The rule the printer follows is the one the
+prompt wanted: **show the structure a composer wrote, and no structure they did not.**
 
 ### Prompt 50 — the gate, measured, and closed
 

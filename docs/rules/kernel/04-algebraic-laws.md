@@ -32,12 +32,12 @@ behaviour changed: the laws described an operation nothing used.
 
 ## Payload-map laws
 
-- **L9 — identity.** `map_events(id) = id`. Test: `map_identity`.
-- **L10 — composition.** `map_events(g ∘ f) = map_events(g) ∘ map_events(f)`. Test: `map_composition`.
-- **L11 — preserves `follow`.** `map_events(f)(follow(M, N)) = follow(map_events(f)(M), map_events(f)(N))`. Test:
+- **L9 — identity.** `map_payloads(id) = id`. Test: `map_identity`.
+- **L10 — composition.** `map_payloads(g ∘ f) = map_payloads(g) ∘ map_payloads(f)`. Test: `map_composition`.
+- **L11 — preserves `follow`.** `map_payloads(f)(follow(M, N)) = follow(map_payloads(f)(M), map_payloads(f)(N))`. Test:
   `map_preserves_follow`.
-- **L12 — preserves `together`.** `map_events(f)(together(M, N)) = together(map_events(f)(M), map_events(f)(N))`. Test:
-  `map_preserves_together`.
+- **L12 — preserves `together`.** `map_payloads(f)(together(M, N)) = together(map_payloads(f)(M), map_payloads(f)(N))`.
+  Test: `map_preserves_together`.
 
 ## Time-scaling laws
 

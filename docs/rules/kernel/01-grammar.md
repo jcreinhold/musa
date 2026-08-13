@@ -55,7 +55,7 @@ composition-declaration
     ;
 
 coordinate-name
-    = "WrittenTime" | "PerformedTime" | "SecondTime"
+    = "WrittenTime" | "PerformedTime" | "PhysicalTime"
     ;
 
 composition-expression

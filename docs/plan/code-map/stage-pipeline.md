@@ -29,7 +29,7 @@ EventTrack<PerformedTime, Gesture>
     |
     | schedule(format, policy, time map, track)
     v
-Scheduled<Gesture> = machine + decisions
+Schedule<Gesture> = machine + decisions
     |
     | bind instruments and studio; fix sample rate, channels, seed, and options
     v
@@ -71,7 +71,7 @@ None of these intermediate types crosses a crate boundary. The CST is Rowan-back
 HIR and the evaluator's values stay inside `musa-compiler`. What crosses is the closed term and the event track.
 
 The event-track core in particular is not spread through the compiler. Its public interface is roughly: construct and
-check a track, `follow`, `together`, restrict, normalize, compare, `map_events`, and scale time. Its internal
+check a track, `follow`, `together`, restrict, normalize, compare, `map_payloads`, and scale time. Its internal
 representation choices stay hidden behind that. The machine is the second core value and lives on the sound side; a
 track and a machine meet only at `schedule`.
 

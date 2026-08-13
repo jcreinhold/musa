@@ -16,7 +16,7 @@ first producing Western notation, and a project may begin at a microphone and ne
 | `Analysis<T>` | a result defined by analysis package `T`, with supporting evidence | yes |
 | `Primitive<K,A,B>` | one registered unit: id, version, and storable configuration | yes |
 | `Machine<K,A,B>` | a finite description of a stepping unit built from primitives and fixed wiring | yes |
-| `Scheduled<A>` | a source machine emitting event batches, plus the record of every time decision | yes |
+| `Schedule<A>` | a source machine emitting event batches, plus the record of every time decision | yes |
 | `PreparedMachine` | a machine plus fixed format, checked resource contracts, and allocated state | yes |
 | `AudioHistory` | the frames observed while a prepared machine runs | not necessarily |
 
@@ -64,7 +64,7 @@ An event track is a pair `M = (d, E)` where:
 A multiset keeps duplicates. Two performers may therefore contribute identical occurrences without one being deleted. A
 positive span is half open, `[s, e)`; an occurrence with `s = e` is a point.
 
-The core operations are `empty`, `event`, `follow`, `together`, `map_events`, and `length`:
+The core operations are `empty`, `event`, `follow`, `together`, `map_payloads`, and `length`:
 
 ```text
 follow((d,E), (q,F))   = (d + q, E together with F moved forward by d)
@@ -105,7 +105,7 @@ Scheduling is the checked connection from a finite track to a running source:
 
 ```text
 schedule(format, policy, time map, track)
-    -> Scheduled<A> or schedule error
+    -> Schedule<A> or schedule error
 ```
 
 It is defined in `03-machine-calculus.md` §6. Preparation receives every choice that can affect the result:

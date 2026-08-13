@@ -160,9 +160,9 @@ determinism law.
 
 ```text
 schedule(format, policy, time_map, track)
-    -> Result<Scheduled<A>, ScheduleError>
+    -> Result<Schedule<A>, ScheduleError>
 
-Scheduled<A> = {
+Schedule<A> = {
     machine   : Machine<AudioFrameStep, Unit, EventBatch<A>>,
     decisions : List<TimeDecision<C>>,
 }

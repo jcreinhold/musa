@@ -462,8 +462,8 @@ universal “node” type.
 `docs/rules/across-stages/03-machine-calculus.md` makes the sound side precise: a `Machine<K,A,B>` is a finite
 description built from registered primitives, `identity`, `connect`, `beside`, initialized one-step `feedback`, `copy`,
 `drop`, and `swap`; every feedback path crosses explicit initialized state, and one audio step is one sample frame.
-Since prompt 127a the machine is a core value of the one source language, not a private IR below it — what stays
-outside is the audio history.
+Since prompt 127a the machine is a core value of the one source language, not a private IR below it — what stays outside
+is the audio history.
 
 ---
 
@@ -602,10 +602,10 @@ value.
 
 > **Candidate refinement:** the editable/interchange representation before physical scheduling is an exact
 > `EventTrack[PerformedTime, Gesture]` carrying a checked conformance witness to an instrument signature, not the
-> frame/`f32` event enum sketched above. A named profile interprets
-> marks into semantic controls such as expression, emphasis, separation, brightness, sustain, and phrase grouping.
-> Tempo, tuning, frame rounding, and instrument-private DSP conversion occur during one later preparation operation. See
-> `docs/rules/language/08-performance-and-sound.md`. Until implemented, the enum above describes the current boundary.
+> frame/`f32` event enum sketched above. A named profile interprets marks into semantic controls such as expression,
+> emphasis, separation, brightness, sustain, and phrase grouping. Tempo, tuning, frame rounding, and instrument-private
+> DSP conversion occur during one later preparation operation. See `docs/rules/language/08-performance-and-sound.md`.
+> Until implemented, the enum above describes the current boundary.
 
 ## 6.5 Studio representation
 
@@ -1245,10 +1245,10 @@ pub fn compile(
 > stands.
 
 > **Language candidate (prompt 92):** prompts 93–124 refine the private elaboration/HIR stages to a total value
-> calculus, structural declaration templates, and typed core quotation (prompt 127a deleted the contextual `music`
-> type this line used to name). They still terminate in
-> one closed `Term[ScoreFact]` before kernel evaluation. Prompts 125–143 refine the downstream path to exact gestures
-> and typed instrument preparation. No intermediate type named by that candidate is thereby a public crate API.
+> calculus, structural declaration templates, and typed core quotation (prompt 127a deleted the contextual `music` type
+> this line used to name). They still terminate in one closed `Term[ScoreFact]` before kernel evaluation. Prompts
+> 125–143 refine the downstream path to exact gestures and typed instrument preparation. No intermediate type named by
+> that candidate is thereby a public crate API.
 
 Intermediate pass types should remain private unless another crate has a real semantic need for them.
 
@@ -1500,12 +1500,11 @@ effects and routing graph
 master output
 ```
 
-The cross-stage specification refines the middle arrows as
-`EventTrack[WrittenTime, ScoreFact] → EventTrack[PerformedTime, Gesture] → schedule → Scheduled[Gesture] →
-PreparedMachine → observed audio history`; score marks remain symbolic, profiles choose their reading, and instruments
-implement typed controls privately. Preparation consumes complete semantic gestures, bindings, seed, and options and
-returns a complete result. Physical frames and DSP floats appear at that late boundary. This is not permission to put
-audio histories or seconds in an event track.
+The cross-stage specification refines the middle arrows as `EventTrack[WrittenTime, ScoreFact] →
+EventTrack[PerformedTime, Gesture] → schedule → Schedule[Gesture] → PreparedMachine → observed audio history`; score
+marks remain symbolic, profiles choose their reading, and instruments implement typed controls privately. Preparation
+consumes complete semantic gestures, bindings, seed, and options and returns a complete result. Physical frames and DSP
+floats appear at that late boundary. This is not permission to put audio histories or seconds in an event track.
 
 Use CPAL for cross-platform audio-device and stream access. It exposes device enumeration, supported configurations, and
 audio streams without dictating the synthesis architecture. citeturn797105search0
@@ -1570,8 +1569,8 @@ Do not use a general graph library as the public representation. A specialized c
 
 A cycle is allowed only if it passes through an explicit initialized `feedback` edge. The semantic step is one sample
 frame (`docs/rules/constitution.md` §4), not the caller's render-block size. This makes causality visible and makes
-block-partition independence a law to be proved or tested per machine (R1-batch) rather than arbitrary
-graph-evaluation behavior.
+block-partition independence a law to be proved or tested per machine (R1-batch) rather than arbitrary graph-evaluation
+behavior.
 
 ## 13.4 Typed ports
 

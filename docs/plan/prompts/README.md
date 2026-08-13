@@ -14,9 +14,9 @@ the temporal core and a separate studio calculus. Prompt 127a amends the rules f
 new design against stale rules.
 
 **Where the roadmap and the kernel specification disagree** — most importantly, on the rule that the surface grammar
-does not define the ontology and that a small event-track core (`empty`, `event`, `follow`, `together`, `map_events`,
-`length` over exact rational ambient time) is the semantic core — the kernel wins. Prompts 08–12 specify, implement, prove, and install it; prompts
-13+ proceed exactly as before on top of it.
+does not define the ontology and that a small event-track core (`empty`, `event`, `follow`, `together`, `map_payloads`,
+`length` over exact rational ambient time) is the semantic core — the kernel wins. Prompts 08–12 specify, implement,
+prove, and install it; prompts 13+ proceed exactly as before on top of it.
 
 **Where the roadmap is silent on the desktop interface** — its visual language, engraving quality, interaction model,
 states, and performance budgets — `docs/rules/desktop/` is the authority. Roadmap §14 still fixes the architecture.
@@ -343,12 +343,12 @@ on its own.
 **61–76 are the temporal block, and they start from an accusation the earlier prompts had earned.** Musa could not write
 a clef change, a modulation, a meter change, a fermata, a grace note, a *rit.*, a swung eighth, a cadenza, or any music
 that leaves a decision to its performer — which is most of what is played anywhere. The natural reading is that the
-temporal model is too small. It is not: the event track is generic in its payload, and a clef change is a `FactKind` with
-a span costing zero kernel lines. What blocked all of it was above the kernel — four separate mechanisms for "what is in
-force here" (a `KeyMap` scalar, a `MeterMap` scalar, `Part::clef`, a `TempoMap` singleton), a measure number computed by
-dividing by one of them, and a closed five-variant enum standing in for the whole vocabulary of notation. **Every prompt
-in this block adds nothing to the kernel** — no operation, no term form, no constructor. That is the block's own
-falsification test, and §34's, applied sixteen times.
+temporal model is too small. It is not: the event track is generic in its payload, and a clef change is a `FactKind`
+with a span costing zero kernel lines. What blocked all of it was above the kernel — four separate mechanisms for "what
+is in force here" (a `KeyMap` scalar, a `MeterMap` scalar, `Part::clef`, a `TempoMap` singleton), a measure number
+computed by dividing by one of them, and a closed five-variant enum standing in for the whole vocabulary of notation.
+**Every prompt in this block adds nothing to the kernel** — no operation, no term form, no constructor. That is the
+block's own falsification test, and §34's, applied sixteen times.
 
 **61–63 are three refactors that ship no feature**, and they run first because each is provable by the strongest check
 available: the rendered output — MEI, LilyPond, MusicXML, MIDI, audio — stays byte-identical, and any golden that does
@@ -503,13 +503,13 @@ pushed the machine description out of the language for the wrong reason.
 install one small, strict, total, HM-inferred language with complete calls and a checked storable-data boundary, in five
 steps that each leave the workspace green: inference and the two kinds of type variable (127aa), `text`, sums and
 `Result` (127ab), library-declared finite data (127ac), complete calls and the corpus migration (127ad), and the typed
-evaluator configurations, versioned cost table, and privacy audit that close it (127b). 127c renames the
-finite temporal value to `EventTrack<C,A>` and tags its coordinate. 127d adds finite `Machine<K,A,B>` values. 127da
-repairs the failed adapter boundary with path-aware finite syntax, one executable match target, and a real derivation
-graph. 127e then deletes contextual `Music`; notation becomes a source-mapped adapter into ordinary inferred terms. 127f
-gives each machine one exact next step. 127g makes the time-to-frame policy explicit. 127h makes one sample frame the
-reference meaning of audio and treats host blocks only as checked batching. 127i proves and audits the complete path
-before any later sound prompt may run. Old syntax, APIs, and serialized forms are removed, not kept behind aliases.
+evaluator configurations, versioned cost table, and privacy audit that close it (127b). 127c renames the finite temporal
+value to `EventTrack<C,A>` and tags its coordinate. 127d adds finite `Machine<K,A,B>` values. 127da repairs the failed
+adapter boundary with path-aware finite syntax, one executable match target, and a real derivation graph. 127e then
+deletes contextual `Music`; notation becomes a source-mapped adapter into ordinary inferred terms. 127f gives each
+machine one exact next step. 127g makes the time-to-frame policy explicit. 127h makes one sample frame the reference
+meaning of audio and treats host blocks only as checked batching. 127i proves and audits the complete path before any
+later sound prompt may run. Old syntax, APIs, and serialized forms are removed, not kept behind aliases.
 
 **128–134 build musical sound on that core.** 128 makes the primitive vocabulary discoverable from one catalogue; 129
 keeps written quantities exact; and 129a's payload rule is revised for the new storable-data boundary. 130 defines

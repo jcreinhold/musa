@@ -29,7 +29,7 @@ For every part `l`, preparation follows exactly:
 EventTrack[WrittenTime, ScoreFact]
     --profile-->                    EventTrack[PerformedTime, Gesture]  ⊨ Signature
     --schedule(format, policy, time map, track)-->
-                                    Scheduled[Gesture] = machine + decisions
+                                    Schedule[Gesture] = machine + decisions
     --instrument implementation-->  Machine[AudioFrameStep, _, Frame]
 part machines --mix graph-->        Machine[AudioFrameStep, _, StereoFrame]
 ```
@@ -38,7 +38,7 @@ More formally, after projecting the part facts `πₗ(T)`:
 
 ```text
 R(Pₗ, Sₗ, πₗ(T)) = Gₗ                    profile realization
-C(tempoₗ, grooveₗ, tuning, Gₗ) = Lₗ      scheduling; Lₗ is a Scheduled[Gesture]
+C(tempoₗ, grooveₗ, tuning, Gₗ) = Lₗ      scheduling; Lₗ is a Schedule[Gesture]
 I(implementationₗ, Lₗ) = xₗ              instrument transduction; xₗ is a machine
 M(mix, {PartIdₗ ↦ xₗ}) = (left,right)    routing and mixing; the result is a machine
 ```
@@ -180,9 +180,9 @@ Three identities must not collapse:
 - `PreparedInstrumentId = H(plan, PartId, InstrumentDeclId, instance ordinal)` identifies mutable render state inside
   one prepared plan.
 
-Each part's `Scheduled[Gesture]` retains `PartId` and is delivered only to its prepared instances. Sharing one
-instrument declaration does not share voices or state unless an explicit ensemble implementation says so. This removes
-the current shared-note-stream behavior. The mix graph connects labeled part machines; it does not inspect note events.
+Each part's `Schedule[Gesture]` retains `PartId` and is delivered only to its prepared instances. Sharing one instrument
+declaration does not share voices or state unless an explicit ensemble implementation says so. This removes the current
+shared-note-stream behavior. The mix graph connects labeled part machines; it does not inspect note events.
 
 Instrument replacement is accepted when the new signature is a behavioral super-signature of every gesture, technique,
 and control required by the selected profile and explicit source bindings. Standard normalized controls make common
@@ -275,7 +275,7 @@ machine containing feedback does not inherit a valid batch from its parts. Float
 tolerance where algebraic reassociation is unavoidable; deterministic offline export uses one documented summation
 order.
 
-Offline and live execution step the same prepared machine over the same `Scheduled[Gesture]`. Offline may choose block
+Offline and live execution step the same prepared machine over the same `Schedule[Gesture]`. Offline may choose block
 sizes and write files; it may not substitute a different synthesis algorithm. The law is:
 
 ```text

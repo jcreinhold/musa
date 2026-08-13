@@ -68,7 +68,7 @@ Three constraints make this narrow enough to be worth having, and they are the w
 
 1. **The mark is opaque.** It is a string; the kernel neither reads it nor gives it meaning. The layering rule is
    untouched — this is the same discipline payloads already live under (`01-grammar.md`).
-2. **It selects a payload map, and nothing else.** Evaluation applies `map_events(f)` (D7) to the instantiated value,
+2. **It selects a payload map, and nothing else.** Evaluation applies `map_payloads(f)` (D7) to the instantiated value,
    where `f` is chosen by the consumer from `m`. Spans, length, occurrence count and order are untouched, because D7
    already guarantees that (L9–L12). This is not a new operation: `map` is still not a term — no function is written
    down, and the consumer that owns the payload chooses the map, exactly as it chooses what the payload text means.
@@ -109,8 +109,8 @@ first-order and boring on purpose, and a function *over* payloads is the first t
 
 So: **the calculus is one of temporal structure.** Payload transformation happens above it, during elaboration, exactly
 as it does today — transposition applies eagerly and the track it produces already carries transposed payloads
-(`06-surface-elaboration.md`). Terms carry already-mapped payloads. `map_events(f)` remains available as a *function on
-values* (D7, L9–L12) for the code that has an `f` in hand; what does not exist is a way to write `f` down in a file.
+(`06-surface-elaboration.md`). Terms carry already-mapped payloads. `map_payloads(f)` remains available as a *function
+on values* (D7, L9–L12) for the code that has an `f` in hand; what does not exist is a way to write `f` down in a file.
 
 The cost is real and worth naming: an interchange file cannot say "this section is that section, transposed", only "this
 section is these notes". It can still say "this section *is* that section" (`let`), which is the sharing case that
@@ -173,7 +173,7 @@ where `ρ` maps names to values `(d, E)`. `ρ(x)` is the value bound to `x`; `ρ
 
                    x ∈ dom(ρ)        f = φ(m)
 (E-Mark)      ──────────────────────────────────
-              ρ ⊢ x @ m ⇓ map_events(f)(ρ(x))                            (D7)
+              ρ ⊢ x @ m ⇓ map_payloads(f)(ρ(x))                            (D7)
 ```
 
 E-Mark is parameterized by the consumer's `φ`, a function from marks to payload maps, fixed for one evaluation.

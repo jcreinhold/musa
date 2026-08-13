@@ -10,7 +10,7 @@ self-delimiting and do not take `;`. No added production is newline-sensitive.
 The normative schematic grammar is:
 
 ```ebnf
-type         := primitive | "Option" "<" type ">" | "List" "<" type ">"
+type         := base-type | "Option" "<" type ">" | "List" "<" type ">"
               | "(" type ")" | "(" type "," type ("," type)* ")" | type "->" type
 binding      := "let" IDENT ":" type "=" expr ";"
 function     := "fn" IDENT "(" params? ")" "->" type block
@@ -82,19 +82,19 @@ discards it. Prompt 96 defines exhaustiveness and rejects duplicate or unreachab
 meaning of `[head, ..tail]`; `..` is two adjacent `.` tokens, not a new general range operator.
 
 Structural folds do not add syntax. `nat_fold(zero, step, count)`, `list_fold(zero, step, values)`, and
-`option_fold(zero, some_case, value)` are ordinary calls to compiler-owned total primitives. Their step arguments are
+`option_fold(zero, some_case, value)` are ordinary calls to compiler-owned total builtins. Their step arguments are
 named functions because this candidate deliberately has no anonymous-lambda surface. This gives musicians one call
 notation to learn and leaves `repeat n { body }` as the notation-facing fold over musical material.
 
-The primitive value types added here are `Bool`, `Nat`, `Ratio`, `Duration`, `Pitch`, `Interval`, `NoteName`, `Pc12`,
-`Scale`, `Key`, `Degree`, `ChordClass`, `Triad`, `Roman`, `Voicing`, `Row12`, `Analysis<A>`, and `EventTrack[C, A]`.
-Products, options, lists, and arrows are the constructors described in `02-core-calculus.md`. Declaration kinds are not
-types. Every type is spelled with a capital and every music statement keyword is not, which is what lets `key c major;`
-set a key and `Key` name the type of what it set without either word looking the other up (prompt 113). Six of these
-words — `pitch`, `music`, `scale`, `key`, `degree`, `frame` — are *also* music statement keywords, and one word doing
-two jobs in two grammars is a collision a parser can only paper over; a capital settles it in the lexer. `NoteName` is
-the letter and accidental as written, with no octave: a pitch class is octave *and* enharmonic equivalence (Open Music
-Theory 99), so a type in which C♯ and D♭ differ is a name rather than a class, and `Pc12` is the class it names.
+The value types added here are `Bool`, `Nat`, `Ratio`, `Duration`, `Pitch`, `Interval`, `NoteName`, `Pc12`, `Scale`,
+`Key`, `Degree`, `ChordClass`, `Triad`, `Roman`, `Voicing`, `Row12`, `Analysis<A>`, and `EventTrack[C, A]`. Products,
+options, lists, and arrows are the constructors described in `02-core-calculus.md`. Declaration kinds are not types.
+Every type is spelled with a capital and every music statement keyword is not, which is what lets `key c major;` set a
+key and `Key` name the type of what it set without either word looking the other up (prompt 113). Six of these words —
+`pitch`, `music`, `scale`, `key`, `degree`, `frame` — are *also* music statement keywords, and one word doing two jobs
+in two grammars is a collision a parser can only paper over; a capital settles it in the lexer. `NoteName` is the letter
+and accidental as written, with no octave: a pitch class is octave *and* enharmonic equivalence (Open Music Theory 99),
+so a type in which C♯ and D♭ differ is a name rather than a class, and `Pc12` is the class it names.
 
 A type parameter is angle-bracketed, so `[` keeps exactly one job — the list literal `[c4, d4]` and the list pattern
 `[x, ..xs]`, which are one idea seen from two sides. The ambiguity that makes `<>` expensive elsewhere cannot arise

@@ -17,7 +17,7 @@ musa-language → musa-compiler → {musa-render, musa-audio} → musa-engine �
 | Crate | Owns | Never exposes |
 | --- | --- | --- |
 | `musa-language` | tokens, lexer, parser, lossless CST, formatter, text edits | Rowan types |
-| `musa-kernel` | exact time, coordinates, typed occurrences, `empty`/`event`/`follow`/`together`/`map_events`/`length`, normalization | anything musical |
+| `musa-kernel` | exact time, coordinates, typed occurrences, `empty`/`event`/`follow`/`together`/`map_payloads`/`length`, normalization | anything musical |
 | `musa-compiler` | resolution, typing, elaboration into the kernel, score and performance snapshots | pass types, `Type`, the resolver |
 | `musa-render` | `NotationPlan`, MEI, LilyPond, MusicXML, MIDI | intermediate plan internals |
 | `musa-project` | `ProjectSession`: documents, revisions, commands, exports, facts | compiler internals, byte offsets |
@@ -62,8 +62,8 @@ Judgments are in [`02-core-calculus.md`](../../rules/language/02-core-calculus.m
 
 - **Reusable material is an ordinary value.** Prompt 127a deleted the contextual `Music` type: a fragment is a value of
   type `EventTrack[WrittenTime, ScoreFact]`, a motif is a function returning one, and placement is applied by the
-  enclosing voice's left fold rather than read from an ambient context
-  (`../../rules/language/00-semantics.md` §3). The code still spells the old type; prompt 127e removes it.
+  enclosing voice's left fold rather than read from an ambient context (`../../rules/language/00-semantics.md` §3). The
+  code still spells the old type; prompt 127e removes it.
 - **A nullary `fn` is a function.** `fn f() -> T` has type `() -> T` and is called `f()`, and the record an editor shows
   says so rather than spelling it `let f: T`. There is one deliberate exception, and it is the motif affordance: a bare
   reference to a nullary `() -> EventTrack[WrittenTime, ScoreFact]` function *where a track is expected* is applied, so
@@ -123,8 +123,9 @@ kernel "Canon Functions" {
 
 Read what each part is doing.
 
-- **`overlay` and `shift by 1/2`** (`together` and `shift by 1/2` after 127c) are the `canon` function's body, elaborated. Nothing about the term remembers that a
-  function was involved; what it remembers is where the notes came from.
+- **`overlay` and `shift by 1/2`** (`together` and `shift by 1/2` after 127c) are the `canon` function's body,
+  elaborated. Nothing about the term remembers that a function was involved; what it remembers is where the notes came
+  from.
 - **`def 300:304`** is the byte span of the *declaration* the note came from — the `c4/4` inside `subject`. Both the
   original and the transposed copy carry the same `def`, because there is one declaration and two occurrences.
 - **`via transpose 7 12`** is an expansion step: the interval as a written pair, staff displacement and chromatic
@@ -132,8 +133,8 @@ Read what each part is doing.
 - **`shared0` and `@ "…"`** are sharing. `subject` is elaborated once and referenced; the `@` annotation records the
   locus each reference stands at, so two placements of one phrase are distinguishable without the material being
   elaborated twice.
-- **`piece meter 4/4`** is a context fact, occupying its own span. Meter is a fact about the passage, not a property
-  of a note.
+- **`piece meter 4/4`** is a context fact, occupying its own span. Meter is a fact about the passage, not a property of
+  a note.
 - The lengths are exact rationals throughout. `1/4` is a quarter, not 0.25.
 
 From the term, `musa-render` builds a `NotationPlan` and then MEI, LilyPond, MusicXML, or MIDI. Every rendered element

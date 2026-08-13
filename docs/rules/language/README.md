@@ -55,8 +55,8 @@ Prompt 146 may mark this specification governing only after all of the following
 2. every pre-candidate example either retains its meaning or has an explicit, tested migration diagnostic;
 3. the core law suite still passes unchanged and no surface convenience has entered `musa-kernel`;
 4. live and offline rendering agree, part routing is isolated, and builds are reproducible from the project closure;
-5. the roadmap, governance decisions, kernel and across-stage documents, style guide, implementation, and prompt
-   stack pass a final contradiction audit.
+5. the roadmap, governance decisions, kernel and across-stage documents, style guide, implementation, and prompt stack
+   pass a final contradiction audit.
 
 The reasoning that produced this candidate — the design essay it was split out of, and the corrections applied to it
 through prompt 113 — is in `docs/notes/research/` as a decision record. It is history, not an alternative specification.

@@ -21,8 +21,8 @@ machine reference semantics. Delete host-block-defined sound and the old public 
 
 ## Design
 
-Register each current DSP unit as a machine primitive with one-sample-frame start/step meaning. Typed channel and event
-ports remain explicit. A mixer is a primitive from a tuple of frames to one frame; `beside` never mixes. LFO,
+Register each current DSP unit as a registered primitive with one-sample-frame start/step meaning. Typed channel and
+event ports remain explicit. A mixer is a primitive from a tuple of frames to one frame; `beside` never mixes. LFO,
 modulation, envelopes, smoothing, delays, and feedback advance by frame, not callback.
 
 `prepare_audio(format,machine)` checks the complete primitive registry, format/layout, capacities, memory, worst-case
@@ -37,7 +37,7 @@ preparation. Private flattening may retain arrays and schedules but must preserv
 
 ## Target
 
-- Complete native processor migration to registered machine primitives and one-frame reference execution.
+- Complete native processor migration to registered primitives and one-frame reference execution.
 - One `prepare_audio`/prepared-machine facade shared by offline and live paths.
 - Clean deletion of caller-block feedback, block-rate modulation meaning, and obsolete public graph APIs.
 - Differential partition, feedback, envelope, modulation, random-seed, NaN, silence, allocation, lock, I/O, logging, and

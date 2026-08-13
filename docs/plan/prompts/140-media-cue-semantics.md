@@ -44,8 +44,8 @@ Define three disjoint constructs:
 
 A musical clip has written length, so it is an event-track occurrence and every track law applies. A fixed-media cue has
 physical duration but only a written onset, so its event-track support is a point. The decoded duration belongs to the
-machine primitive configuration created during preparation, not to the written occurrence. State and test this boundary
-directly.
+registered primitive configuration created during preparation, not to the written occurrence. State and test this
+boundary directly.
 
 Track transforms move, duplicate, or restrict occurrence support only. Stretching or repeating a fixed cue moves or
 duplicates its onset but does not stretch its media. Retrograde relocates the cue and does not reverse audio. A musical

@@ -62,6 +62,12 @@ Time is exact: positions form the abelian group `(ℚ, +, 0)` and lengths the or
 Floats never represent symbolic musical time. Physical seconds are a *different coordinate*, reached by a named
 conversion, and lengths in two coordinates do not add.
 
+Those are two structures, so they are two types: `Position<C>` for *when* and `Length<C>` for *how much*. A position
+plus a length is a position, two lengths add, two positions do not add at all, and their difference is a length only
+when it is nonnegative. `01-grammar.md` already lexes `position-literal` and `length-literal` apart for the same reason:
+one type for both would make beat 3 and three beats addable, which is the one arithmetic error a tagged rational exists
+to catch.
+
 The coordinate is the one type index the core carries, and `constitution.md` §8 says why it is the only one: every other
 candidate index — part, voice, metre, tuning — has a diagnostic elsewhere, and a written beat added to a physical second
 has none until the sound is wrong.
@@ -92,7 +98,7 @@ empty      : Length<C> -> EventTrack<C,A>
 event      : Length<C> -> A -> EventTrack<C,A>
 follow     : EventTrack<C,A> × EventTrack<C,A> -> EventTrack<C,A>
 together   : EventTrack<C,A> × EventTrack<C,A> -> EventTrack<C,A>
-map_events : (A -> B) × EventTrack<C,A> -> EventTrack<C,B>
+map_payloads : (A -> B) × EventTrack<C,A> -> EventTrack<C,B>
 length     : EventTrack<C,A> -> Length<C>
 ```
 
@@ -139,7 +145,7 @@ every term denotes something `03-denotational-semantics.md` already defines.
 It therefore stays under the "not a general-purpose programming language" line above rather than testing it. The
 calculus has a binder but no abstraction: `let x = t in u` names a *value*, and there is no way to write a function, an
 application, a conditional, or a recursion. That is why every closed well-formed term evaluates, deterministically and
-in finitely many steps. `map_events f` is deliberately not a term for exactly this reason — naming `f` would require a
+in finitely many steps. `map_payloads f` is deliberately not a term for exactly this reason — naming `f` would require a
 syntax for functions — so payload transformation stays above the core, where it already is.
 
 ## The pipeline
@@ -158,7 +164,7 @@ musician-facing Musa source
 │  exact time, tagged by coordinate     │
 │  typed occurrences over storable data │
 │  empty / event / follow / together    │
-│  map_events / length                  │
+│  map_payloads / length                  │
 │  scale / restrict / normalization     │
 └───────────────┬───────────────────────┘
                 │

@@ -25,7 +25,7 @@ Every occurrence `(s, e, a)` in an event track of length `d` must satisfy:
   of `together` at fixed length.
 - Scaling factors are **positive** rationals (`ℚ>0`); zero or negative scaling is a construction error
   (`03-denotational-semantics.md`, D5).
-- Every length and position belongs to one coordinate `C ∈ {WrittenTime, PerformedTime, SecondTime}`. Positions in two
+- Every length and position belongs to one coordinate `C ∈ {WrittenTime, PerformedTime, PhysicalTime}`. Positions in two
   coordinates never add and never compare; a value that has crossed between them did so through a named conversion above
   the kernel (`07-backend-contract.md`), which recorded the crossing.
 

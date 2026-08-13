@@ -34,14 +34,15 @@ Types are:
     | list τ
     | N[τ, …]                % nominal data declared by a library: finite, strictly positive, one generated fold
     | τ → τ                  % never storable data, at any depth (§1.1)
-    | Length[C]              % a nonnegative exact rational tagged by the time it measures
+    | Length[C]              % how much time: a nonnegative exact rational, in coordinate C
+    | Position[C]            % when: an exact rational instant, in coordinate C
     | EventTrack[C, δ]       % finite length + finite multiset of occurrences of δ, in coordinate C
     | Primitive[K, δ, δ]     % one registered stepping unit: name, version, storable configuration
     | Machine[K, δ, δ]       % a finite description of a stepping process — not the history it produces
 
 C ::= WrittenTime            % positions and lengths as the page counts them
     | PerformedTime          % after groove and repeats are folded, before tempo
-    | SecondTime             % physical seconds
+    | PhysicalTime             % physical seconds
 
 K ::= AudioFrameStep         % one step is one sample frame at the prepared rate (`../constitution.md` §4)
 ```
@@ -49,14 +50,22 @@ K ::= AudioFrameStep         % one step is one sample frame at the prepared rate
 `a` is a type variable (§1.1). `C` and `K` are ordinary nominal tags — for a time coordinate and for one kind of machine
 step — and are type parameters, not values inside types. `δ` ranges over **storable data** types (§1.1).
 
-Four of these are less obvious than they look, and each is a decision rather than a convenience:
+Five of these are less obvious than they look, and each is a decision rather than a convenience:
 
 - **`ratio`, not a float.** Musical time is exact. A float appears at the performance and DSP edge and nowhere earlier,
   so no source-language type can hold one.
 - **`Length[C]` rather than `ratio`.** A bare rational carries neither the coordinate nor the nonnegativity. Tagging is
-  the point: `Length[WrittenTime]` and `Length[SecondTime]` do not unify, so adding a written beat to a number of
+  the point: `Length[WrittenTime]` and `Length[PhysicalTime]` do not unify, so adding a written beat to a number of
   seconds is a type error rather than a number. Its constructors are where nonnegativity is checked, which is why they
   return `Result`.
+- **`Position[C]` separate from `Length[C]`.** *When* something happens and *how much time* it takes are different
+  quantities, and `../constitution.md` §3 names them separately — a track is "a nonnegative exact rational length" plus
+  occurrences "each with an exact start, end". They are also different algebras: `../kernel/00-purpose.md` states
+  positions as the abelian group `(ℚ, +, 0)` and lengths as the ordered monoid `(ℚ≥0, +, 0)`, and
+  `../kernel/01-grammar.md` already lexes `position-literal` and `length-literal` apart. A position plus a length is a
+  position; two lengths add; two positions do not add at all, and their difference is a length only when it is
+  nonnegative, so that difference returns `Result`. One type for both would let beat 3 and three beats be added, which
+  is the one arithmetic error a tagged rational exists to catch.
 - **`Primitive[K,δ,δ]` separate from `Machine[K,δ,δ]`.** A primitive is one registered unit whose private state and step
   function belong to its owner; a machine is the finite composite built from primitives and the structural forms. Source
   code can build the second and can neither inspect nor forge the first's state.
@@ -69,9 +78,17 @@ Four of these are less obvious than they look, and each is a decision rather tha
 transforms but no representation eliminator: there is no way to read a machine's private state, and no way to read a
 track's occurrence list as a list.
 
+**Two words, two meanings, and they are not interchangeable.** A **primitive** is a registered unit whose implementation
+this language does not own — a `Primitive[K,δ,δ]` supplying its own `State`, `start`, and `step`, or a foreign operation
+supplied by a host. A **builtin** is an operation the compiler owns and can reason about: the four families of §5.8,
+which is where their conditions are checked. The boundary is information, not privilege — the compiler proves things
+about builtins because it can see inside them, and states contracts for primitives because it cannot. Base types are
+called *base types*, never primitives; `../kernel/` uses "primitive" in its ordinary English sense of *irreducible*,
+where no registered unit is in scope.
+
 Terms are variables, literals, products/projections, sum injections, nominal constructors, exhaustive `match`, lambdas,
-application, non-recursive `let`, conditionals, finite primitive operations, and these eliminators — the generated fold
-of each nominal declaration, and:
+application, non-recursive `let`, conditionals, finite builtin operations, and these eliminators — the generated fold of
+each nominal declaration, and:
 
 ```text
 nat_fold  : A → (nat → A → A) → nat → A
@@ -80,9 +97,9 @@ option_fold : A → (X → A) → option X → A
 ```
 
 The surface provides `map`, `filter`, bounded `range`, `repeat`, and row/chord traversals only as typed definitions or
-compiler primitives reducible to these eliminators. A primitive must be total on its declared domain. A primitive that
-can fail returns an ordinary structural `Result`; it does not open a second hidden error channel. Partial musical
-operations return `option`, `Result`, or a diagnostic-bearing assertion witness.
+compiler builtins reducible to these eliminators. A builtin must be total on its declared domain. A builtin that can
+fail returns an ordinary structural `Result`; it does not open a second hidden error channel. Partial musical operations
+return `option`, `Result`, or a diagnostic-bearing assertion witness.
 
 There is no `fix`, recursive binding, while loop, exception, mutation, I/O, reflection, syntax value, dynamic cast, or
 effect handler. Functions may be higher-order. **A call must be complete**: an application supplies every declared
@@ -116,12 +133,12 @@ the number itself.
 
 Every type above is a **value type**. A value type is *also* **storable data** when it contains no source function at
 any depth and has a versioned finite exact encoding. Base types, `unit`, `bool`, `nat`, `ratio`, `text`, `Length[C]`,
-products, sums, `option`, and `list` of storable data, nominal constructors all of whose stored fields are storable
-data, and the admitted payload types of `../kernel/12-payload-admission.md` are storable data. `EventTrack[C,A]` is
-storable data when `A` is; `Primitive[K,A,B]` and `Machine[K,A,B]` are storable data when `A` and `B` are and every
-stored configuration value is. These conditions are also their well-formedness rules. An arrow type is never storable
-data, and neither is any container holding one — including at a depth the surface never writes out, which is why the
-check is structural rather than a surface-syntax rule.
+`Position[C]`, products, sums, `option`, and `list` of storable data, nominal constructors all of whose stored fields
+are storable data, and the admitted payload types of `../kernel/12-payload-admission.md` are storable data.
+`EventTrack[C,A]` is storable data when `A` is; `Primitive[K,A,B]` and `Machine[K,A,B]` are storable data when `A` and
+`B` are and every stored configuration value is. These conditions are also their well-formedness rules. An arrow type is
+never storable data, and neither is any container holding one — including at a depth the surface never writes out, which
+is why the check is structural rather than a surface-syntax rule.
 
 A nominal declaration group is checked once: mutually recursive types are grouped, a stored function field is rejected,
 and the group is accepted as storable data when every field leaving it is already storable data. So `Tree[nat]` may be
@@ -171,7 +188,7 @@ Literal constructors enforce refinements such as nonnegative `duration`, finite 
 These are constructor judgments returning a value or a located diagnostic; they do not introduce dependent types. Named
 predicates used by `assert` return finite evidence that the assertion layer can report.
 
-Only compiler-owned primitives may construct an `EventTrack` or a `Machine`. `map_note_pitches` accepts a total
+Only compiler-owned builtins may construct an `EventTrack` or a `Machine`. `map_note_pitches` accepts a total
 `pitch → pitch` and visits a documented subset of musical payload positions; it does not reveal them as a list. A kernel
 quote has a dedicated typing rule and cannot be encoded by string operations.
 
@@ -200,7 +217,7 @@ stop an evaluation; it cannot change an accepted one. Formally: if `run(b₁, e)
 then `v₁ = v₂`, for every pair of budgets. §4 states the meter this instantiates.
 
 Exact values remain integers or reduced rationals. There is no floating-point base type in the source language; floats
-appear only inside a machine primitive's private state and at the device edge. Ordering of maps, declarations,
+appear only inside a registered primitive's private state and at the device edge. Ordering of maps, declarations,
 diagnostic witnesses, and provenance steps is source-stable, never hash-iteration order.
 
 ## 4. Resource acceptance
@@ -228,7 +245,7 @@ accepted envelope deliberately.
 
 ## 5. Prompt-95 fragment and metatheory
 
-This section fixes the proof obligation already implemented by prompt 95. Options, lists, folds, primitive pitch
+This section fixes the proof obligation already implemented by prompt 95. Options, lists, folds, builtin pitch
 operations, track construction, and machine construction extend the calculus later and require their own compatibility
 cases; they are not smuggled into this theorem by an appeal to "standard STLC." §5.6 discharges finite data, §5.7
 discharges track construction, §5.8 discharges every musical base type and compiler-owned operation added after prompt
@@ -365,7 +382,7 @@ induction hypothesis there, and rebuild the same derivation. Exact constants do 
 *Proof.* Induct on typing. Literals and lambdas are values. For a product, select the leftmost non-value premise or
 conclude by the value grammar. For application, first advance the function, then the leftmost non-value argument; if all
 are values, canonical forms makes the function a lambda and `βᵥ` applies. A let advances its bound expression or uses
-`Letᵥ`. There are no stuck primitive operations in this fragment. ∎
+`Letᵥ`. There are no stuck builtin operations in this fragment. ∎
 
 **Theorem 3 — determinism.** If `e → e₁` and `e → e₂`, then `e₁=e₂`.
 
@@ -560,24 +577,24 @@ one of them: they are not covered by an appeal to standard STLC. They are covere
 whose premises are mechanically checked, so that a later domain costs a registry entry rather than a new induction. This
 section is the governing statement of that rule.
 
-Every compiler-owned primitive belongs to exactly one of four families, and that the families are disjoint and
-exhaustive is a checked law:
+Every compiler-owned builtin belongs to exactly one of four families, and that the families are disjoint and exhaustive
+is a checked law:
 
-- **δ-primitives** — every argument type and the result type is a base type or a finite constructor (`option`, `list`,
+- **δ-builtins** — every argument type and the result type is a base type or a finite constructor (`option`, `list`,
   product) over base types, with no arrow anywhere in the signature;
 - **structural eliminators** — `nat_fold`, `list_fold`, `option_fold`, `map`, `filter`, `range`, `repeat`, proved in
   §5.6;
-- **track primitives** — the constructors and controlled transforms of §5.7; and
-- **machine primitives** — the constructors of `../across-stages/03-machine-calculus.md` §2, whose registered
+- **track builtins** — the constructors and controlled transforms of §5.7; and
+- **machine builtins** — the constructors of `../across-stages/03-machine-calculus.md` §2, whose registered
   implementations are governed there.
 
-A δ-primitive must satisfy four conditions:
+A δ-builtin must satisfy four conditions:
 
 - **D1 inertness.** Its base types have no eliminator. A closed value of a musical base type is an opaque constant; no
   reduction rule inspects its structure, and the only pattern that may match it is a literal or a catch-all, which §5.6
   already requires to be followed by a catch-all arm.
-- **D2 totality.** For every tuple of closed values of the declared argument types the primitive yields a closed value
-  of the declared result type. Partiality is expressed *in the result type* as an `option` — never as a stuck term, a
+- **D2 totality.** For every tuple of closed values of the declared argument types the builtin yields a closed value of
+  the declared result type. Partiality is expressed *in the result type* as an `option` — never as a stuck term, a
   panic, or a diagnostic.
 - **D3 purity.** The result is a function of the argument values alone: no ambient context, no evaluation-order
   dependence, no hash-iteration order, no diagnostic emission.
@@ -585,21 +602,20 @@ A δ-primitive must satisfy four conditions:
   §4 meter before construction begins.
 
 **Theorem 5 — conservative extension.** Let `𝔅` be the base types of the proved fragment. Adding a base type `b ∉ 𝔅`
-with no eliminator, together with any finite set of δ-primitives over `𝔅 ∪ {b}` satisfying D1–D4, preserves Theorems
-1–4.
+with no eliminator, together with any finite set of δ-builtins over `𝔅 ∪ {b}` satisfying D1–D4, preserves Theorems 1–4.
 
 *Proof.* Take `R_b(t) ⟺ t : b ∧ t ∈ SN`, which is the clause §5.5 already assigns every base type, so candidate
 properties (i)–(iii) hold by the existing induction with one additional leaf and no new case shape. *Preservation*: by
-D2 the primitive's actual result type is its declared result type, so inverting its application rule goes through
+D2 the builtin's actual result type is its declared result type, so inverting its application rule goes through
 unchanged. *Progress*: an application whose arguments are all values steps by D2, one with a non-value argument steps by
 `Context`, and D1 removes the only other way a value of `b` could stand at a redex position; so no δ application is
-stuck. *Determinism*: D3 makes the primitive a function, and the leftmost-context decomposition of §5.4 is unchanged
+stuck. *Determinism*: D3 makes the builtin a function, and the leftmost-context decomposition of §5.4 is unchanged
 because no new context former is introduced. *Strong normalization*: by D2 a δ redex whose arguments are values
 contracts to a value in one step, and values are normal, so the fundamental lemma's new case is immediate. The arrow,
 product, option, list, and track cases of §5.5–§5.7 quantify over the base-type set without inspecting it and therefore
 carry over verbatim. ∎
 
-**Corollary.** A later musical domain needs no new proof — it needs a base type with no eliminator, primitive signatures
+**Corollary.** A later musical domain needs no new proof — it needs a base type with no eliminator, builtin signatures
 containing no arrow, and a discharge of D1–D4.
 
 The theorem concerns the type system only. That a German sixth spells its top note as an augmented sixth, that `ii` is
@@ -607,10 +623,10 @@ minor in a major collection, and that a harmonic-minor `III7` is honestly absent
 are claims about music, checked by the law suites in `crates/musa-compiler/tests/` and defined in
 `03-musical-domains.md`. Neither statement substitutes for the other.
 
-The implementation carries the premises rather than trusting them. The primitive-ownership registry records each
-operation's family and declared signature, and its law suite checks that every primitive is classified exactly once,
-that no δ-primitive signature contains an arrow, that every base type reachable from a δ signature is inert and admits
-no destructuring pattern, and that evaluating each δ-primitive over a finite sample of its argument domains — exhaustive
+The implementation carries the premises rather than trusting them. The builtin-ownership registry records each
+operation's family and declared signature, and its law suite checks that every builtin is classified exactly once, that
+no δ-builtin signature contains an arrow, that every base type reachable from a δ signature is inert and admits no
+destructuring pattern, and that evaluating each δ-builtin over a finite sample of its argument domains — exhaustive
 where the domain is finite, generated to a documented bound where it is not — returns a value of the declared type
 without panicking, diagnosing, or reporting a Rust-level absence at a non-`option` result type.
 
@@ -621,7 +637,7 @@ rules out.
 ## 6. Implementation boundary
 
 `Type`, `Value`, `Closure`, evaluator environments, theory representations, instantiation tables, and resource proofs
-remain private to `musa-compiler`. A machine primitive's `State`, `start`, and `step` are private to the crate that
+remain private to `musa-compiler`. A registered primitive's `State`, `start`, and `step` are private to the crate that
 registers it. Passes may expose narrow internal queries, but no single-implementor public trait or pass-through facade
 is added. The stable public result remains the compilation/snapshot contract.
 

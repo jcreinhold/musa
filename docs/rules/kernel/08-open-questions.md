@@ -220,13 +220,13 @@ Anything discovered while implementing prompts 09–12 is appended here with its
   object. **Q3 evidence:** voice identity as payload metadata reproduced every fixture's lanes exactly; no consumer
   needed a temporal voice primitive. **Q7 evidence:** (span, voice, origin) regrouping is correct on all fixtures
   because coincidental simultaneity from separate constructs carries separate origins. **Transpose** is applied eagerly
-  via the shared interval stack during elaboration rather than as a literal `map_events` pass; composition commutativity
-  (prompt 06's law) makes this observably equal, documented in `06` at graduation.
+  via the shared interval stack during elaboration rather than as a literal `map_payloads` pass; composition
+  commutativity (prompt 06's law) makes this observably equal, documented in `06` at graduation.
 - **Prompt 34 (variation transforms):** the three transformations added no kernel constructor, which is the evidence the
   governing design rule asks for on the "smallest complete basis" question. `stretch` is the existing scaling action
   (L13) applied during elaboration and then *renotated*, because augmentation is a notational act as well as a temporal
   one — the kernel scales the span, and the surface layer respells the written value. `invert` is an ordinary
-  `map_events`, with the unspellable mirror image (past a double accidental) surfacing as a diagnostic rather than a
+  `map_payloads`, with the unspellable mirror image (past a double accidental) surfacing as a diagnostic rather than a
   kernel-level failure. `retrograde` is the interesting one: it is a plain function over the finite occurrence list in
   `musa-compiler/src/elaborate.rs`, reflecting each span about the ambient length, and it needed **no** reversal
   primitive — the finite core's occurrences are already a materialized set, so reversal is a mapping over them rather
@@ -333,8 +333,8 @@ Anything discovered while implementing prompts 09–12 is appended here with its
 - **Prompt 127a (the event-track and machine core):** a governance amendment, not an implementation. Three effects on
   this file. **Q1 is narrowed**: a running source is a machine, so the unbounded-audio half of it is answered and only
   the notated half stays open. **Q5 is unchanged and now has a sharper reason**: the source language is total and has no
-  general recursion, so a recursive source program is refused at the language level rather than deferred to
-  elaboration. And every question here is now scoped to *one of two* core values — nothing in this file asks about
-  machines, because `../across-stages/03-machine-calculus.md` §8 keeps its own open list. The vocabulary changed
-  throughout (`timeline`→`track`, `extent`→`length`, `sequence`→`follow`, `overlay`→`together`); the history above is
-  reworded, not rewritten, because what was learned did not change.
+  general recursion, so a recursive source program is refused at the language level rather than deferred to elaboration.
+  And every question here is now scoped to *one of two* core values — nothing in this file asks about machines, because
+  `../across-stages/03-machine-calculus.md` §8 keeps its own open list. The vocabulary changed throughout
+  (`timeline`→`track`, `extent`→`length`, `sequence`→`follow`, `overlay`→`together`); the history above is reworded, not
+  rewritten, because what was learned did not change.

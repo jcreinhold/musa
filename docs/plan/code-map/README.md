@@ -8,7 +8,7 @@ The formal specification says what Musa’s stages mean. These pages say which c
 remain private, how data is stored, and where validation occurs.
 
 **Vocabulary note (prompt 127a).** These pages now use the governing names — event track, `follow`, `together`,
-`map_events`, length, machine, registered primitive, step, `schedule`, `PreparedMachine`. The Rust identifiers in the
+`map_payloads`, length, machine, registered primitive, step, `schedule`, `PreparedMachine`. The Rust identifiers in the
 workspace still carry their pre-127a spellings until prompts 127b–127i land, and every pair is listed in
 [`../clean-break-ledger.md`](../clean-break-ledger.md). Where a page quotes literal current output or a fixture, it says
 so.

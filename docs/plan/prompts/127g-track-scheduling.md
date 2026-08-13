@@ -25,7 +25,7 @@ Implement
 
 ```text
 schedule(format, policy, time_map, track)
-    -> Result<Scheduled<A>, ScheduleError>
+    -> Result<Schedule<A>, ScheduleError>
 ```
 
 for storable `A`. `TimeMap<C>` maps the finite queried boundary set to exact physical time. `SchedulePolicy` maps those

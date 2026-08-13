@@ -58,7 +58,7 @@ Decisions recorded against the open questions of `08-open-questions.md`:
 | `use e;` | Place the track `e` at the current voice cursor: `follow` it onto the voice under construction and advance by `length(e)`. A shared binding plus a marked reference preserves one body and distinct call-site `Origin`. |
 | `motif name(args) { … }` | A source function returning an event track. Its `use` follows the preceding rule; there is no motif-only evaluator. |
 | `repeat n { … }` | HIR-level `follow` of `n` evaluations; each iteration's occurrences gain the `RepeatIteration(i)` provenance step. |
-| `transpose up P5 { … }` | `map_events` with the transposition function on `pitch`; occurrences gain the `Transposition` provenance step. |
+| `transpose up P5 { … }` | `map_payloads` with the transposition function on `pitch`; occurrences gain the `Transposition` provenance step. |
 | `c4/4 ~` (tie) | **No core construct, and no fact.** A tie says two written noteheads spell *one* occurrence, so elaboration merges the tied statement with its continuation on the spot: one occurrence, span the sum, `NotatedDuration` the compound spelling. Merging happens at every nesting level, so a tie inside a `retrograde` is gone before the block is reversed and needs no repair. A tie onto a different pitch, or with nothing after it, is a diagnostic. |
 | `c4/4 accent staccato` | Articulations are a **field of the note fact**, not facts of their own: a staccato dot has no span and no identity apart from its note. The projection emits one `ArticulationMarking` per name, in written order, against the event's id. |
 | `dynamic mf;` | A **point** occurrence of `ScoreFact::Dynamic` at the cursor, with no cursor advance. The projection resolves it to the first event at or after it in the same voice; nothing after it is a diagnostic. |
@@ -68,7 +68,7 @@ Decisions recorded against the open questions of `08-open-questions.md`:
 | `profile v;` inside a part | **A binding, not an occurrence.** It names which profile realizes this part; naming an undeclared one is a diagnostic. Both semantic paths read it through the same `part_metadata`, so it cannot drift between them. |
 | `key c major;`, `meter 4/4;` | **Region occurrences** of `ScoreFact::Key`/`Meter`, scoped to the piece and spanning `[0, d]`. An unwritten meter still produces a fact — 4/4 governs a piece that never says so — while an unwritten key produces none, which is why the projection's `key` is an `Option` and its `meter` is not. |
 | `section "A" at 9:1;`, `harmony { at 1:1 c; }` | **Point occurrences** of `ScoreFact::Section`/`Harmony` at the time the coordinate names. The coordinate is resolved against the *meter occurrence* and the track's own length; naming a place the piece never reaches is a diagnostic. |
-| `tempo 1/4 = 60;`, `tempo 1/4 = 90 at 9:1;` | **Not a fact, ever**. Tempo is the performance layer's `WrittenTime → SecondTime` map; it stays on the snapshot's `TempoMap`. See "Tempo stays out" below. |
+| `tempo 1/4 = 60;`, `tempo 1/4 = 90 at 9:1;` | **Not a fact, ever**. Tempo is the performance layer's `WrittenTime → PhysicalTime` map; it stays on the snapshot's `TempoMap`. See "Tempo stays out" below. |
 | piece | The one track **projected** into `ScoreSnapshot` (`musa-compiler/src/project.rs`): voices, context maps, and annotations alike. |
 
 ## The payload, and the adapter contract
@@ -299,7 +299,7 @@ Two consequences worth stating, because a later reader will otherwise re-derive 
 ## Tempo stays out
 
 Tempo never elaborates into occurrences and never rescales written time. It is the performance layer's monotone map
-`WrittenTime → SecondTime` applied to symbolic positions at realization time (`07-backend-contract.md`). "Stretch the
+`WrittenTime → PhysicalTime` applied to symbolic positions at realization time (`07-backend-contract.md`). "Stretch the
 material" (payload/time action, D5) and "perform the same material more slowly" (tempo map) remain different operations,
 and the coordinate tag is what now makes confusing them a type error.
 

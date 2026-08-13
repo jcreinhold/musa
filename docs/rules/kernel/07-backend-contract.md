@@ -32,8 +32,8 @@ because the projections preserve the core's guarantees.
 
 ## What performance does
 
-Performance realization is a **coordinate conversion**. It supplies the monotone map `tempo : WrittenTime → SecondTime`
-and applies it to symbolic positions:
+Performance realization is a **coordinate conversion**. It supplies the monotone map
+`tempo : WrittenTime → PhysicalTime` and applies it to symbolic positions:
 
 ```text
 (s, e, a)  ↦  (tempo(s), tempo(e), a)

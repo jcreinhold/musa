@@ -108,13 +108,12 @@ for each canonical occurrence:
 
 Lengths/counts are unsigned 64-bit big-endian; versions are unsigned 32-bit big-endian; rational components are signed
 64-bit big-endian and denominators are positive. Rationals are reduced by the exact-time representation. The current
-track encoding version is **3**, which adds the coordinate tag. Version 1 was the unframed N5 display stream and
-version 2 the framed bytes that predated the coordinate; both are **refused**, not reinterpreted
+track encoding version is **3**, which adds the coordinate tag. Version 1 was the unframed N5 display stream and version
+2 the framed bytes that predated the coordinate; both are **refused**, not reinterpreted
 (`../../plan/clean-break-ledger.md`).
 
 The coordinate tag is framed rather than positional so that a reader refusing an unknown coordinate refuses it by name.
 
-This grammar is uniquely decodable. At a fixed schema its complete framed-byte equality is exactly N4 semantic
-equality.
+This grammar is uniquely decodable. At a fixed schema its complete framed-byte equality is exactly N4 semantic equality.
 `SemanticHash` is FNV-1a-128 over these bytes, but the digest is only an index: an equal digest does not prove byte
 equality. Correctness-sensitive caches retain and confirm the complete framed arguments after lookup.

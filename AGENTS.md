@@ -34,9 +34,8 @@ Read [`docs/README.md`](docs/README.md) first: it maps the four directories and 
 Under `docs/plan/`: **`prompts/`** is the numbered work plan, currently 169 prompts through rank 153, with its README
 defining prompt anatomy and execution rules — implementation happens in dependency order (see the `prompt-stack` skill).
 Prompts 127a–127i, including inserted prompts 127aa–127ad and 127da, are the clean-break core-calculus cutover; 127a
-amends the current
-governing boundary before any code implements the replacement. **`code-map/`** reports which crate implements which
-stage and what is implemented, partial, or absent; it describes code and decides nothing.
+amends the current governing boundary before any code implements the replacement. **`code-map/`** reports which crate
+implements which stage and what is implemented, partial, or absent; it describes code and decides nothing.
 
 If code and a governing document disagree, either the code is wrong or the document needs a deliberate repair — never
 let them drift silently.

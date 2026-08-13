@@ -78,8 +78,8 @@ Implementations must test the following at the equality named in `00-semantics.m
 4. **Context distribution:** `in_scale` distributes over `follow` and `together` under `≈material`.
 5. **Independent context commutation:** rebinding different permitted fields commutes; the initial candidate exposes
    only scale, so no additional surface operation is inferred from this law.
-6. **Chosen composition:** `follow` and `together` obey the equations in `00-semantics.md`; no nested-track
-    flatten law exists.
+6. **Chosen composition:** `follow` and `together` obey the equations in `00-semantics.md`; no nested-track flatten law
+   exists.
 7. **Pitch action:** identity, composition, and cancellation from `03-musical-domains.md`.
 8. **Scale round trip:** `locate(realize(...))` on members returns the canonical degree/register.
 9. **Chord/voicing projection:** every voiced pitch projects to a licensed member; projection is intentionally many-to-

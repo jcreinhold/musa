@@ -20,9 +20,9 @@ primitive, processor, MIDI controller, or render-plan parameter index.
 
 ## Read
 
-- `docs/rules/constitution.md` §8 (the decision and what it forbids, in particular: no bespoke temporal structure
-  above the core). `docs/rules/kernel/12-payload-admission.md` from prompt 129a — the rule this prompt's payload must
-  satisfy, written before the payload existed so that it could not be fitted to it.
+- `docs/rules/constitution.md` §8 (the decision and what it forbids, in particular: no bespoke temporal structure above
+  the core). `docs/rules/kernel/12-payload-admission.md` from prompt 129a — the rule this prompt's payload must satisfy,
+  written before the payload existed so that it could not be fitted to it.
 - `crates/musa-kernel/src/{term,timeline,occurrence}.rs` and `tests/laws.rs`, which already prove L1–L24 at a payload
   that is not `ScoreFact`.
 - `docs/rules/language/08-performance-and-sound.md`; kernel `Progress` semantics and backend contract; roadmap

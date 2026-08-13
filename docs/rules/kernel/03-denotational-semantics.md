@@ -134,7 +134,7 @@ window sitting at the length, where the rule above applies.
 Given `f : A → B`:
 
 ```text
-map_events(f) (d, E) = (d, { (s, e, f(a)) | (s, e, a) ∈ E })
+map_payloads(f) (d, E) = (d, { (s, e, f(a)) | (s, e, a) ∈ E })
 ```
 
 Payload mapping preserves temporal support exactly, is functorial (L9–L10), and preserves `follow` and `together`
@@ -142,8 +142,8 @@ Payload mapping preserves temporal support exactly, is functorial (L9–L10), an
 before normalization. **No generic opaque `Transform(...)` kernel node exists**; source provenance preserves how
 material was produced, the normalized track preserves what it means.
 
-`f` is a function of the source language, so `map_events` is applied by the language above the core and is not a term of
-`10-term-calculus.md`. That is the same line D12 draws for `join`, drawn on the other side.
+`f` is a function of the source language, so `map_payloads` is applied by the language above the core and is not a term
+of `10-term-calculus.md`. That is the same line D12 draws for `join`, drawn on the other side.
 
 ## D8 — Delay (derived)
 
@@ -179,12 +179,12 @@ map maps them to seconds. A dynamic marking is still not a decibel.
 ### The span-alone theorem
 
 > **A curve-bearing occurrence transforms by its span alone.** For every kernel operation `op ∈ {follow, together,
-> scale, restrict, map_events}`, the `Progress` in an occurrence's payload is byte-identical before and after, and
+> scale, restrict, map_payloads}`, the `Progress` in an occurrence's payload is byte-identical before and after, and
 > `p(u)` evaluated at corresponding absolute instants agrees before and after.
 
 This is why the design is safe, and it is a consequence of normalizing `u` rather than a property that had to be
 arranged. `scale r` multiplies the span; `u` is a fraction of the span, so it is unchanged. `follow` translates; same.
-`together` does not touch spans. `map_events` never inspects a payload at all.
+`together` does not touch spans. `map_payloads` never inspects a payload at all.
 
 An **absolute-time** curve would have to be rewritten by `scale` and by `follow` — which means the kernel would have to
 look inside payloads to transform them. That is precisely the layering violation the kernel exists to prevent, and it

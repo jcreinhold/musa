@@ -47,8 +47,12 @@ best-effort translation.
 | `musa_kernel::sequence` | `follow` | 127c |
 | `musa_kernel::overlay` | `together` | 127c |
 | `Timeline::extent`, `Term::extent` | `length` | 127c |
-| `Timeline::map_payload`, `Term::map_payloads` | `map_events` | 127c |
-| `Beat` as an untagged position type | `Length<C>` and positions tagged by coordinate `C` | 127c |
+| `Timeline::map_payload`, `Term::map_payloads` | `map_payloads` | 127c |
+| `Beat` as an untagged position type | `Position<C>`; a track's extent is the separate `Length<C>` | 127c |
+| `Length<C>` used for an instant as well as an amount | `Position<C>` for *when*, `Length<C>` for *how much* | 127c |
+| `SecondTime` as a coordinate tag | `PhysicalTime` | 127c |
+| `PrimitiveOwnership<Builtin>` and `primitive` naming a compiler-owned operation | `BuiltinOwnership<Builtin>`; compiler-owned operations are *builtins*, registered units are *primitives* | 127b |
+| `Scheduled<A>` | `Schedule<A>`, matching the existing `ScheduleError` | 127g |
 | `musa_compiler::core::Music`, `MusicOperation`, `MusicRole` | ordinary values of ordinary types | 127e |
 | the private `close` and `instantiate_music` elaboration path, and the fragment type they close | building and closing over ordinary values | 127e |
 | `musa_audio::compile_graph` and public `StudioGraphSpec` as a semantic alternative | machine construction and `prepare_audio(format, machine)` | 127h |

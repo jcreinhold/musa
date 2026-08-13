@@ -27,7 +27,7 @@ values ─────────────┬──────────�
                     │                                │
                     └── schedule(format, policy, time map, track) ──┐
                                                                     ▼
-                                              Scheduled<Gesture> = machine + decisions
+                                              Schedule<Gesture> = machine + decisions
                                                                     │ prepare_audio(format, machine)
                                                                     ▼
                                                              PreparedMachine
@@ -58,17 +58,17 @@ The value stage uses the ordinary static and evaluation judgments:
 Σ ⊢ D ⇓decl Δ                    declaration-template expansion
 ```
 
-`Σ` is the finite static environment of declarations and compiler primitives. `Γ` contains immutable value bindings. The
+`Σ` is the finite static environment of declarations and compiler builtins. `Γ` contains immutable value bindings. The
 declaration kinds are `library`, `piece`, `part`, `voice`, `performance`, `instrument`, `mix`, and `structure`; they are
 not value types.
 
 The budget can stop an evaluation but cannot change an accepted one: if two runs both reach `done`, they reach the same
 value (`02-core-calculus.md`).
 
-Compiler ownership is an information boundary, not a convenience category. An operation may be primitive only when it
-needs source-aware provenance, direct core construction, a registered machine primitive's private state, or the private
-finite representation and work budget needed to preserve total evaluation. Everything expressible through public values
-and those operations belongs in ordinary `.musa` source, including the bundled standard library. Adding a Rust
+Compiler ownership is an information boundary, not a convenience category. An operation may be a builtin only when it
+needs source-aware provenance, direct core construction, a registered primitive's private state, or the private finite
+representation and work budget needed to preserve total evaluation. Everything expressible through public values and
+those operations belongs in ordinary `.musa` source, including the bundled standard library. Adding a Rust
 implementation merely because a source function is familiar or potentially faster is not semantics-preserving evidence;
 an optimization requires measurement and an equivalence law.
 
@@ -129,7 +129,7 @@ simultaneous `Note` facts at this layer. In particular it does not map the tonic
 distinction is music-theoretic, not merely representational: a key signature and a Roman-numeral/chord analysis state a
 tonal reading, while a written note states a sounded pitch. Rewriting the latter does not prove the former has changed.
 
-The temporal-support law follows directly from `map_events` (`../kernel/03-denotational-semantics.md` D7, L9–L12): the
+The temporal-support law follows directly from `map_payloads` (`../kernel/03-denotational-semantics.md` D7, L9–L12): the
 traversal changes no occurrence span and no term constructor, hence the multiset of pairs `(onset, span)` and the
 enclosing track length are identical before and after mapping. Identity and composition follow by cases on the
 exhaustive `FactKind` table: on pitch-bearing facts they reduce to the corresponding function equations; on all other
