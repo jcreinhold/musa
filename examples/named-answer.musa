@@ -1,0 +1,49 @@
+// A canon whose answer interval is chosen by name.
+//
+// The interesting line is `answer_interval`: a `match` over `Text`, where the
+// arm that runs decides what the second voice sings. A text pattern that
+// silently fell through would not fail here — the piece would compile, the
+// score would be full, and the canon would be at the unison instead of at the
+// fifth. That is the failure this fixture exists to make loud.
+piece "Named Answer" {
+    subtitle "a text match decides the interval";
+
+    // The two imitations this piece knows how to write. A name is a name: the
+    // spelling is the whole of what chooses, which is why an unknown one
+    // answers at the unison rather than guessing at a fifth.
+    fn answer_interval(kind: Text) -> Interval {
+        match kind {
+            "at_the_fifth" -> P5,
+            "at_the_octave" -> P8,
+            _ -> P1,
+        }
+    }
+
+    let subject: Music = music {
+        c4/4
+        d4/4
+        e4/4
+        g4/4
+    };
+
+    let imitation: Text = "at_the_fifth";
+    let answer: Music = transpose(answer_interval(imitation), subject);
+
+    tempo 1/4 = 96;
+    meter 4/4;
+    key c major;
+
+    score {
+        part strings {
+            clef treble;
+
+            voice dux {
+                use subject;
+            }
+
+            voice comes {
+                use answer;
+            }
+        }
+    }
+}

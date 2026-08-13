@@ -8946,24 +8946,22 @@ fn match_pattern(pattern: &Pattern, value: &Value) -> Option<IndexMap<String, Va
     matched.then_some(bindings)
 }
 
+/// Whether a literal pattern's value and the matched value are the same value.
+///
+/// Answered through [`literal_key`], which is the same identity the checker
+/// already uses to tell two arms apart, so a pattern matches at run time
+/// exactly when the checker counted it as covering. Two notions of "the same
+/// literal" could disagree, and when they did the disagreement would be a file
+/// that compiles and means something else.
+///
+/// This is also why the comparison is not a list of pairs. A pair list has a
+/// last arm, that arm answers "not equal", and a value kind nobody remembered
+/// to add falls into it — which is precisely what happened to [`Value::Text`],
+/// where a text pattern never matched and the arm below it ran with nothing
+/// reported. [`literal_key`] is an exhaustive match, so a value kind added
+/// without a key is a compile error rather than a wrong answer.
 fn literal_values_equal(left: &Value, right: &Value) -> bool {
-    if let (Value::Bool(left), Value::Bool(right)) = (left, right) {
-        left == right
-    } else if let (Value::Nat(left), Value::Nat(right)) = (left, right) {
-        left == right
-    } else if let (Value::Ratio(left), Value::Ratio(right)) = (left, right) {
-        left == right
-    } else if let (Value::Duration(left), Value::Duration(right)) = (left, right) {
-        left == right
-    } else if let (Value::Pitch(left), Value::Pitch(right)) = (left, right) {
-        left == right
-    } else if let (Value::PitchClass(left), Value::PitchClass(right)) = (left, right) {
-        left == right
-    } else if let (Value::Interval(left), Value::Interval(right)) = (left, right) {
-        left == right
-    } else {
-        false
-    }
+    literal_key(left) == literal_key(right)
 }
 
 fn value_shape(value: &Value) -> (u64, u64) {

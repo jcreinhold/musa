@@ -1,7 +1,7 @@
 ---
 id: 127dca
 slug: text-patterns-match
-status: pending
+status: done
 depends_on: [127dc]
 phase: 3
 ---

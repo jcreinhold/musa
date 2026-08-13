@@ -56,6 +56,7 @@
     { "file": "mobile.musa", "kernel": false },
     { "file": "modulation.musa", "kernel": false },
     { "file": "module-functor-study.musa", "kernel": false },
+    { "file": "named-answer.musa", "kernel": false },
     { "file": "neo-riemannian.musa", "kernel": false },
     { "file": "ornaments.musa", "kernel": false },
     { "file": "pitch-arithmetic.musa", "kernel": false },
