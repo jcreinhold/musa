@@ -243,7 +243,11 @@ pub(crate) fn expand(source: &SourceDocument, options: &CompileOptions) -> Expan
         let (printed, record, charges) = match produced {
             Ok(answer) => answer,
             Err(complaint) => {
-                expansion.diagnostics.push(*complaint);
+                // Charged either way: a region that was read and refused cost
+                // what reading it cost, and only the ones refused before any
+                // adapter ran are free.
+                expansion.charges.add(complaint.charges);
+                expansion.diagnostics.push(*complaint.diagnostic);
                 continue;
             }
         };
@@ -281,6 +285,29 @@ struct Cached {
     charges: Charges,
 }
 
+/// A region that was not expanded, and what deciding that cost.
+///
+/// The charge travels with the refusal because a refusal is an answer: an
+/// adapter that reads a whole region and then will not have it has read a
+/// whole region, and a phase that charged nothing for that would let a file
+/// buy unbounded reading by arranging to be refused. Everything the phase
+/// refuses *before* running an adapter — a missing import, an adapter written
+/// with an adapter — costs nothing and says so, which is what the `From`
+/// below is for.
+struct Refused {
+    diagnostic: Box<Diagnostic>,
+    charges: Charges,
+}
+
+impl From<Box<Diagnostic>> for Refused {
+    fn from(diagnostic: Box<Diagnostic>) -> Self {
+        Self {
+            diagnostic,
+            charges: Charges::default(),
+        }
+    }
+}
+
 /// Expand one region, or say why it cannot be.
 #[expect(
     clippy::too_many_arguments,
@@ -295,7 +322,7 @@ fn expand_one(
     options: &CompileOptions,
     source: &SourceDocument,
     cache: &mut BTreeMap<(String, String), Cached>,
-) -> Result<(String, ExpansionRecord, Charges), Box<Diagnostic>> {
+) -> Result<(String, ExpansionRecord, Charges), Refused> {
     let name = region_name(region).ok_or_else(|| {
         Box::new(refusal(
             site,
@@ -311,11 +338,11 @@ fn expand_one(
         ))
     })?;
     if import.ends > site.start {
-        return Err(Box::new(refusal(
+        return Err(Refused::from(Box::new(refusal(
             site,
             format!("`{name}` is imported after the region that uses it"),
             "a syntax import stands in the fixed module header, before any definition that uses it",
-        )));
+        ))));
     }
     let uri = crate::imports::resolve_import(source.name(), &import.path);
     let adapter_source = options.imports.get(&uri).ok_or_else(|| {
@@ -355,25 +382,36 @@ fn expand_one(
     }
 
     let transformer = transformer_of(adapter_source, &import.path, site)?;
-    let (output, work) = crate::core::expand_syntax(&transformer, subject.clone())
-        .map_err(|failure| stopped_or_refused(&failure, &import.path, site))?;
+    let (answer, work) = crate::core::expand_syntax(&transformer, subject.clone());
+    // The run happened, so the run is charged, and everything below reports
+    // against the same charge whether the adapter answered or refused.
+    let charged = |generated_syntax_nodes| Charges {
+        expansion_steps: 1,
+        generated_syntax_nodes,
+        type_constraints: work.type_constraints,
+        evaluation_steps: work.evaluation_steps,
+    };
+    let output = match answer {
+        Ok(output) => output,
+        Err(failure) => {
+            return Err(Refused {
+                diagnostic: Box::new(stopped_or_refused(&failure, &import.path, site)),
+                charges: charged(0),
+            });
+        }
+    };
     let printed = crate::syntax::print(&output);
     ordinary_expression(&printed.text, site)?;
     for generated in &printed.generated_names {
         if written.contains(generated) {
-            return Err(Box::new(refusal(
+            return Err(Refused::from(Box::new(refusal(
                 site,
                 format!("the expansion's own name `{generated}` is also written in this file"),
                 "rename the file's binding: a name an adapter introduced must not be one the composer can reach",
-            )));
+            ))));
         }
     }
-    let charges = Charges {
-        expansion_steps: 1,
-        generated_syntax_nodes: printed.generated_nodes,
-        type_constraints: work.type_constraints,
-        evaluation_steps: work.evaluation_steps,
-    };
+    let charges = charged(printed.generated_nodes);
     cache.insert(
         key,
         Cached {
@@ -393,14 +431,33 @@ fn expand_one(
     Ok((printed.text, record, charges))
 }
 
-/// Why a transformer produced nothing, told apart from *what* it produced.
+/// Why a transformer produced no expression, told apart from *what* it
+/// produced.
 ///
-/// A run the meter stopped is a resource limit and says so, with the code the
-/// rest of the compiler uses for it. That distinction is the budget-independence
-/// law's (`docs/rules/language/00-semantics.md` §2): a smaller budget may stop a
-/// file, and if it reported the stop as an expansion fault instead, a narrowed
-/// run would look like a file that is not well-typed.
+/// Three different things wear one code and must not read alike. A run the
+/// meter stopped is a resource limit and says so, with the code the rest of
+/// the compiler uses for it — that distinction is the budget-independence
+/// law's (`docs/rules/language/00-semantics.md` §2): a smaller budget may stop
+/// a file, and if it reported the stop as an expansion fault instead, a
+/// narrowed run would look like a file that is not well-typed. An adapter that
+/// answered `Err` is not a fault at all: it read the region and would not have
+/// it, and what a musician needs to read is the adapter's own sentence about
+/// their own text. What is left is the adapter being broken.
 fn stopped_or_refused(failure: &crate::core::ExpansionFailure, path: &str, site: SourceSpan) -> Diagnostic {
+    if let crate::core::ExpansionFailure::Refused { message, at } = failure {
+        // The adapter pointed. Where it pointed at the composer's own text,
+        // that is where the caret goes; where it pointed at a node it built,
+        // there is nothing under it, and saying so is better than a caret that
+        // silently means less than it looks like it means.
+        return match *at {
+            Some(span) => Diagnostic::error(Code::Expansion, format!("`{path}`: {message}"))
+                .at(span, "this")
+                .help("the adapter read the region and refused it: this is the package's rule, not the compiler's"),
+            None => Diagnostic::error(Code::Expansion, format!("`{path}`: {message}"))
+                .at(site, "this region")
+                .help("the adapter pointed at a node it built rather than at one it was given, so the whole region is as close as the report can get"),
+        };
+    }
     if matches!(*failure, crate::core::ExpansionFailure::Stopped) {
         return Diagnostic::error(
             Code::ResourceLimit,
@@ -413,7 +470,7 @@ fn stopped_or_refused(failure: &crate::core::ExpansionFailure, path: &str, site:
         site,
         format!("`{path}` did not expand this region"),
         match *failure {
-            crate::core::ExpansionFailure::Stopped => "a compilation limit was crossed",
+            crate::core::ExpansionFailure::Stopped | crate::core::ExpansionFailure::Refused { .. } => "handled above",
             crate::core::ExpansionFailure::NotATransformer(_) => {
                 "the adapter's `expand` is not a transformer — it must take one region and answer with one"
             }
@@ -646,13 +703,13 @@ mod tests {
             .collect()
     }
 
-    /// A transformer that answers with `emitted`, whatever the region held.
+    /// A transformer that answers `Ok` with `emitted`, whatever the region held.
     fn answering(emitted: &str) -> String {
         format!(
-            "fn (region) {{ syntax_fold(fn (here) {{ syntax_token(syntax_built(here, 0, 0), \"Missing\", \"\") }}, \
+            "fn (region) {{ Ok(syntax_fold(fn (here) {{ syntax_token(syntax_built(here, 0, 0), \"Missing\", \"\") }}, \
              fn (here, kind, text) {{ syntax_token(syntax_built(here, 1, 0), kind, text) }}, \
              fn (here, name) {{ syntax_identifier(syntax_built(here, 2, 0), name) }}, \
-             fn (here, delimiter, children) {{ {emitted} }}, region) }}"
+             fn (here, delimiter, children) {{ {emitted} }}, region)) }}"
         )
     }
 
@@ -660,7 +717,9 @@ mod tests {
     fn answer(transformer: &str, region: &str) -> Result<crate::syntax::Printed, crate::core::ExpansionFailure> {
         let read = musa_language::parse(region);
         let subject = crate::syntax::read_region(&read.syntax(), crate::syntax::ExpansionPath::at(vec![0]));
-        crate::core::expand_syntax(transformer, subject).map(|(output, _)| crate::syntax::print(&output))
+        crate::core::expand_syntax(transformer, subject)
+            .0
+            .map(|output| crate::syntax::print(&output))
     }
 
     #[test]
@@ -885,6 +944,154 @@ mod tests {
         assert!(
             !expansion.document.text().contains("syntax doubled"),
             "one pass leaves nothing to expand"
+        );
+    }
+
+    /// A region the bundled fixture will not read, and the one token it
+    /// refuses. Written once because four laws below are about the same
+    /// refusal seen from four sides.
+    const REFUSED: &str = "c4 ; d4";
+
+    #[test]
+    fn a_refusal_lands_on_the_node_the_adapter_pointed_at() {
+        let source = piece(REFUSED);
+        let expansion = run(&source);
+        let complaint = expansion.diagnostics.first().expect("the adapter refused");
+        assert_eq!(complaint.code, Code::Expansion, "a refusal is not a compiler fault");
+        assert!(
+            complaint.message.starts_with("`std::adapters::doubled`:")
+                && complaint.message.contains("one expression's worth of tokens"),
+            "the adapter's own sentence, over the adapter's own name: {}",
+            complaint.message
+        );
+        let span = complaint.primary_span().expect("a place");
+        let at = source.get(span.start as usize..span.end as usize).unwrap_or_default();
+        assert_eq!(
+            at, ";",
+            "the caret is on the token the adapter handed back, not on the region"
+        );
+        // The distinction the law is about: pointing at a node is narrower
+        // than the region, and a report that fell back to the region would
+        // still have "looked right".
+        let region = expansion.records.first().map(|record| record.use_site);
+        assert_ne!(Some(span), region, "the refusal was widened to the whole region");
+    }
+
+    #[test]
+    fn a_refusal_that_points_at_a_generated_node_lands_on_the_region_and_says_so() {
+        // An adapter may only point with a node, and a node it *built* has no
+        // composer's text under it. That is not an error — it is a refusal
+        // whose caret cannot be as narrow as the sentence, and the report says
+        // which of the two cases it is rather than quietly degrading.
+        // Every step of this fold refuses with a node it just built, so
+        // whichever node reaches the top carries `Generated` and nothing else.
+        let refused = r#"Err((syntax_token(syntax_built(here, 9, 0), "Missing", ""), "nothing here is mine"))"#;
+        let refusing = format!(
+            "fn (region) {{ syntax_fold(fn (here) {{ {refused} }}, fn (here, kind, text) {{ {refused} }}, \
+             fn (here, name) {{ {refused} }}, fn (here, delimiter, children) {{ {refused} }}, region) }}"
+        );
+        let read = musa_language::parse("c4");
+        let subject = crate::syntax::read_region(&read.syntax(), crate::syntax::ExpansionPath::at(vec![0]));
+        let Err(generated) = crate::core::expand_syntax(&refusing, subject).0 else {
+            panic!("the adapter refuses");
+        };
+        assert_eq!(
+            generated,
+            crate::core::ExpansionFailure::Refused {
+                message: "nothing here is mine".to_owned(),
+                at: None,
+            },
+            "a node the adapter built has no composer's text under it, so there is no range to read"
+        );
+        let site = SourceSpan::new(11, 33);
+        let reported = stopped_or_refused(&generated, "std::adapters::doubled", site);
+        assert_eq!(reported.code, Code::Expansion);
+        assert_eq!(
+            reported.primary_span(),
+            Some(site),
+            "with nothing to point at, the region is as close as the report gets"
+        );
+        assert!(
+            reported
+                .help
+                .as_deref()
+                .is_some_and(|help| help.contains("pointed at a node it built")),
+            "the report does not say the caret is wider than the adapter meant: {:?}",
+            reported.help
+        );
+    }
+
+    #[test]
+    fn a_refusal_is_told_apart_from_a_broken_adapter_and_from_a_stop() {
+        // Three failures wear one phase and must not read alike. The refusal
+        // is the adapter working; `NotATransformer` is the adapter broken; a
+        // stop is neither, and reporting it as either would make a narrowed
+        // budget look like a file that is not well-typed.
+        let site = SourceSpan::new(0, 1);
+        let refused = stopped_or_refused(
+            &crate::core::ExpansionFailure::Refused {
+                message: "not mine to read".to_owned(),
+                at: Some(SourceSpan::new(4, 5)),
+            },
+            "std::adapters::doubled",
+            site,
+        );
+        let broken = stopped_or_refused(
+            &crate::core::ExpansionFailure::NotATransformer(Vec::new()),
+            "std::adapters::doubled",
+            site,
+        );
+        let stopped = stopped_or_refused(&crate::core::ExpansionFailure::Stopped, "std::adapters::doubled", site);
+        assert_eq!(refused.code, Code::Expansion);
+        assert_eq!(broken.code, Code::Expansion);
+        assert_eq!(stopped.code, Code::ResourceLimit, "a stop is a limit and says so");
+        assert!(
+            refused.message.contains("not mine to read") && !broken.message.contains("not mine to read"),
+            "a refusal carries the adapter's sentence and a broken adapter carries the compiler's"
+        );
+        assert_ne!(
+            refused.primary_span(),
+            broken.primary_span(),
+            "only the refusal was pointed, so only the refusal is narrower than the region"
+        );
+        // And end to end, under a budget small enough to stop the run: the
+        // same region that refuses at the language budget must not report the
+        // stop as the adapter's own sentence.
+        let source = piece(REFUSED);
+        let narrow =
+            crate::core_budget::under_budget(crate::core_budget::Budget::LANGUAGE.narrowed(512), || run(&source));
+        for diagnostic in &narrow.diagnostics {
+            assert_ne!(
+                diagnostic.code,
+                Code::Expansion,
+                "a narrowed budget reported a stop as the adapter refusing: {}",
+                diagnostic.message
+            );
+        }
+    }
+
+    #[test]
+    fn a_refusal_charges_what_the_run_that_refused_charged() {
+        // Refusing is an answer, not a stop: the adapter read the whole region
+        // to decide, and a phase that charged nothing for it would let a file
+        // buy unbounded reading by arranging to be refused.
+        let refused = run(&piece(REFUSED));
+        assert!(!refused.diagnostics.is_empty(), "the fixture was supposed to refuse");
+        assert_eq!(
+            refused.charges.expansion_steps, 1,
+            "one region was expanded, whatever it answered"
+        );
+        assert!(
+            refused.charges.evaluation_steps > 0 && refused.charges.type_constraints > 0,
+            "the run that refused was checked and evaluated, and is charged for both: {:?}",
+            refused.charges
+        );
+        let accepted = run(&piece("c4 d4"));
+        assert!(
+            refused.charges.evaluation_steps >= accepted.charges.evaluation_steps,
+            "reading a region and refusing it is at least as much work as reading it and not: {:?} vs {:?}",
+            refused.charges,
+            accepted.charges
         );
     }
 }

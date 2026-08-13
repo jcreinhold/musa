@@ -2,8 +2,9 @@
 //
 // A region `syntax doubled { c4 }` expands to `repeat(c4, 2)`: whatever the
 // region holds, twice. It is here to be run rather than to be useful — it
-// exercises resolution, expansion, the record, the source map, and the
-// charges, and it is deliberately not a draft of the staff or studio adapters.
+// exercises resolution, expansion, refusal, the record, the source map, and
+// the charges, and it is deliberately not a draft of the staff or studio
+// adapters.
 //
 // What it shows about the interface: the region arrives as a syntax value and
 // leaves as one, the fold is the only way in, `syntax_built` is the only way to
@@ -16,24 +17,61 @@
 // the same treatment applied at each group, which is well defined and is not
 // what anybody wants — the real adapters read their regions, and this one only
 // wraps them.
+//
+// A `;` is how a writer ends a statement, so a region holding one was written
+// against some other reader. That is the one thing this adapter refuses, and
+// refusing is what makes both halves of `Syntax -> Result<Syntax, (Syntax,
+// Text)>` reachable in a fixture rather than only one of them.
+//
+// It points with a node rather than with a place. `syntax_at` gives back the
+// *input* node at a path, its source information intact, and the compiler reads
+// the range off that node. An adapter has no operation for reading a range and
+// needs none in order to say which `;` it means.
+//
+// Two folds, then, rather than one carrying a pair: reading the region and
+// reading it for the thing it will not accept are two questions, and asking
+// them separately keeps each fold's step functions as simple as the original.
 
 library {
     let expand = fn (region) {
-        syntax_fold(
-            fn (here) { syntax_token(syntax_built(here, 0, 0), "Missing", "") },
-            fn (here, kind, text) { syntax_token(syntax_built(here, 1, 0), kind, text) },
-            fn (here, name) { syntax_identifier(syntax_built(here, 2, 0), name) },
+        match syntax_fold(
+            fn (here) { None },
+            // Where the refusal is found and where it is pointed are the same
+            // node: `syntax_at` hands back the composer's own `;` rather than
+            // the rebuilt one, and its source information is what the compiler
+            // reads the range from.
+            fn (here, kind, text) {
+                match kind {
+                    "Semicolon" -> syntax_at(region, here),
+                    _ -> None,
+                }
+            },
+            fn (here, name) { None },
+            // The first refusal among the children, in the order they are
+            // written: `list_fold` runs left to right, and an accumulator that
+            // already carries a node keeps it.
             fn (here, delimiter, children) {
-                syntax_group(syntax_built(here, 3, 0), "layout", [
-                    syntax_identifier(syntax_built(here, 4, 0), "repeat"),
-                    syntax_group(syntax_built(here, 5, 0), "parentheses", [
-                        syntax_group(syntax_built(here, 6, 0), "layout", children),
-                        syntax_token(syntax_built(here, 7, 0), "Comma", ","),
-                        syntax_token(syntax_built(here, 8, 0), "Integer", "2")
-                    ])
-                ])
+                list_fold(None, fn (child, found) { option_fold(child, fn (node) { Some(node) }, found) }, children)
             },
             region
-        )
+        ) {
+            Some(node) -> Err((node, "this region holds a `;`, and I read one expression's worth of tokens")),
+            None -> Ok(syntax_fold(
+                fn (here) { syntax_token(syntax_built(here, 0, 0), "Missing", "") },
+                fn (here, kind, text) { syntax_token(syntax_built(here, 1, 0), kind, text) },
+                fn (here, name) { syntax_identifier(syntax_built(here, 2, 0), name) },
+                fn (here, delimiter, children) {
+                    syntax_group(syntax_built(here, 3, 0), "layout", [
+                        syntax_identifier(syntax_built(here, 4, 0), "repeat"),
+                        syntax_group(syntax_built(here, 5, 0), "parentheses", [
+                            syntax_group(syntax_built(here, 6, 0), "layout", children),
+                            syntax_token(syntax_built(here, 7, 0), "Comma", ","),
+                            syntax_token(syntax_built(here, 8, 0), "Integer", "2")
+                        ])
+                    ])
+                },
+                region
+            )),
+        }
     };
 }

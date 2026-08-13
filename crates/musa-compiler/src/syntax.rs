@@ -780,10 +780,15 @@ mod tests {
 
     /// Write a transformer whose four cases are `missing`, `token`,
     /// `identifier`, and `group`, in that order.
+    ///
+    /// The fold's answer is wrapped in `Ok`, because a transformer answers
+    /// `Result<Syntax, (Syntax, Text)>` and every law here is about the half
+    /// that accepts. The refusing half is `crate::expand`'s to exercise, where
+    /// there is a diagnostic to read it out of.
     fn transformer(missing: &str, token: &str, identifier: &str, group: &str) -> String {
         format!(
-            "fn (region) {{ syntax_fold(fn (here) {{ {missing} }}, fn (here, kind, text) {{ {token} }}, \
-             fn (here, name) {{ {identifier} }}, fn (here, delimiter, children) {{ {group} }}, region) }}"
+            "fn (region) {{ Ok(syntax_fold(fn (here) {{ {missing} }}, fn (here, kind, text) {{ {token} }}, \
+             fn (here, name) {{ {identifier} }}, fn (here, delimiter, children) {{ {group} }}, region)) }}"
         )
     }
 

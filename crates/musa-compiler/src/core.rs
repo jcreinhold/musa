@@ -6198,7 +6198,15 @@ impl Checker<'_> {
             Some(Type::Sum(value, error)) => (value.as_ref().clone(), error.as_ref().clone()),
             _ => (self.unifier.fresh(Kind::Ordinary), self.unifier.fresh(Kind::Ordinary)),
         };
-        let error = significant_tokens(node).any(|token| token.kind() == SyntaxKind::ErrKw);
+        // The constructor is this node's *own* word, so only this node's own
+        // tokens are asked. A descendant's word belongs to the descendant:
+        // `Ok(match r { Ok(v) -> v, Err(m) -> … })` is an `Ok` whose value
+        // happens to mention `Err`, and reading it as an `Err` would check the
+        // value against the error half of a type nobody wrote it for.
+        let error = node
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .any(|token| token.kind() == SyntaxKind::ErrKw);
         let held_node = child_of(node, is_expr_node)?;
         let wanted = if error { &expected_error } else { &expected_value };
         let held = Box::new(self.check(&held_node, Some(wanted))?);
@@ -9459,6 +9467,21 @@ fn token_span(token: &SyntaxToken) -> SourceSpan {
 /// a `None`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum ExpansionFailure {
+    /// The adapter read the region and would not have it.
+    ///
+    /// Not a fault: a transformer that answers `Err` has *worked*, and what it
+    /// says is the adapter package's sentence about the composer's text. The
+    /// node is how it points — `26-language-design-decision.md` §3.4 gives a
+    /// transformer no way to read a source range, so it hands back a node it
+    /// was given and the range is read from that.
+    Refused {
+        /// The adapter's own sentence.
+        message: String,
+        /// Where it pointed, when it pointed at something the composer wrote.
+        /// `None` means the adapter pointed at a node it built itself, which
+        /// has no text under it.
+        at: Option<SourceSpan>,
+    },
     /// A compilation limit was crossed before the run finished.
     ///
     /// Not a fault in the adapter and not a fault in the region: a transformer
@@ -9487,7 +9510,8 @@ pub(crate) enum ExpansionFailure {
 /// type grammar and its "no syntax value" sentence true while a transformer can
 /// still be written rather than displayed.
 ///
-/// `transformer` is one expression of type `Syntax -> Syntax`. `region` is
+/// `transformer` is one expression of type `Syntax -> Result<Syntax, (Syntax,
+/// Text)>`; the error half is how an adapter refuses. `region` is
 /// source text, read by the fixed reader Musa already has: this driver does not
 /// extend the lexer or the grouper, and prompt 127dc owns the compiler order
 /// that will call it on a real adapter region.
@@ -9498,7 +9522,29 @@ pub(crate) fn expand_region(
     expansion: crate::syntax::ExpansionPath,
 ) -> Result<crate::syntax::Syntax, ExpansionFailure> {
     let subject = crate::syntax::read_region(&musa_language::parse(region).syntax(), expansion);
-    expand_syntax(transformer, subject).map(|(produced, _)| produced)
+    expand_syntax(transformer, subject).0
+}
+
+/// The refusal an `Err((node, message))` carries.
+///
+/// The span comes from the node the adapter handed back, never from anything
+/// the adapter computed: `SourceInfo` has no eliminator, so an adapter can
+/// point at a node it holds and cannot say where a node is.
+fn refusal_of(held: Value) -> Option<ExpansionFailure> {
+    let Value::Product(parts) = held else {
+        return None;
+    };
+    let [Value::Syntax(node), Value::Text(message)] = parts.as_slice() else {
+        return None;
+    };
+    let at = match node.info() {
+        crate::syntax::SourceInfo::Original { span, .. } => Some(*span),
+        crate::syntax::SourceInfo::Generated(_) => None,
+    };
+    Some(ExpansionFailure::Refused {
+        message: message.clone(),
+        at,
+    })
 }
 
 /// A stop when the meter stopped, and `otherwise` when it did not.
@@ -9524,15 +9570,45 @@ pub(crate) struct PhaseWork {
 }
 
 /// Run one transformer over one already-read region, in the phase environment.
+///
+/// The work is reported whichever way the run came out, because what a run
+/// cost does not depend on what it answered: an adapter that reads a whole
+/// region and then refuses it has read a whole region, and a phase that
+/// charged nothing for that would let a file buy unbounded reading by
+/// arranging to be refused.
 pub(crate) fn expand_syntax(
     transformer: &str,
     subject: crate::syntax::Syntax,
-) -> Result<(crate::syntax::Syntax, PhaseWork), ExpansionFailure> {
-    let parsed = musa_language::parse(&format!("piece \"expansion\" {{\n  let transform = {transformer}\n}}"));
-    let mut resolver = Resolver::new();
+) -> (Result<crate::syntax::Syntax, ExpansionFailure>, PhaseWork) {
     let mut unifier = Unifier::default();
     let mut meter = WorkMeter::default();
-    let wanted = Type::Function(vec![Type::Syntax], Box::new(Type::Syntax));
+    let answer = run_transformer(transformer, subject, &mut unifier, &mut meter);
+    let work = PhaseWork {
+        type_constraints: unifier.constraints(),
+        evaluation_steps: meter.steps(),
+    };
+    (answer, work)
+}
+
+fn run_transformer(
+    transformer: &str,
+    subject: crate::syntax::Syntax,
+    unifier: &mut Unifier,
+    meter: &mut WorkMeter,
+) -> Result<crate::syntax::Syntax, ExpansionFailure> {
+    let parsed = musa_language::parse(&format!("piece \"expansion\" {{\n  let transform = {transformer}\n}}"));
+    let mut resolver = Resolver::new();
+    // `expand : Syntax -> Result<Syntax, (Syntax, Text)>`, which is
+    // `26-language-design-decision.md` §3.4's operation with both halves. One
+    // shape and not two: a phase that took either would be two interfaces
+    // wearing one name.
+    let wanted = Type::Function(
+        vec![Type::Syntax],
+        Box::new(Type::Sum(
+            Box::new(Type::Syntax),
+            Box::new(Type::Product(vec![Type::Syntax, Type::Text])),
+        )),
+    );
     let body = root_nodes(&parsed.syntax(), SyntaxKind::LetDecl)
         .first()
         .and_then(|declaration| child_of(declaration, is_expr_node));
@@ -9543,12 +9619,12 @@ pub(crate) fn expand_syntax(
             definitions: &[],
             symbols: &IndexMap::new(),
             locals: IndexMap::new(),
-            unifier: &mut unifier,
+            unifier: &mut *unifier,
             dependencies: IndexMap::new(),
             mentioned: Vec::new(),
             reading: Reading::Expansion,
             failed: false,
-            meter: &mut meter,
+            meter: &mut *meter,
             music_role: None,
             definition_span: span,
             deferred_pitch: false,
@@ -9565,27 +9641,24 @@ pub(crate) fn expand_syntax(
         return Err(ExpansionFailure::NotATransformer(resolver.diagnostics));
     };
     let environment = IndexMap::new();
-    let Some(Value::Closure(function)) = eval(&checked, &environment, &mut meter) else {
-        return Err(stopped_or(&meter, ExpansionFailure::NoAnswer));
+    let Some(Value::Closure(function)) = eval(&checked, &environment, meter) else {
+        return Err(stopped_or(meter, ExpansionFailure::NoAnswer));
     };
-    let applied = apply_closure(
-        &function,
-        vec![Value::Syntax(Box::new(subject))],
-        &mut meter,
-        checked.span,
-    );
-    let Some(Value::Syntax(produced)) = applied else {
-        return Err(stopped_or(&meter, ExpansionFailure::NoAnswer));
+    let applied = apply_closure(&function, vec![Value::Syntax(Box::new(subject))], meter, checked.span);
+    let Some(Value::Sum { error, held, .. }) = applied else {
+        return Err(stopped_or(meter, ExpansionFailure::NoAnswer));
+    };
+    if error {
+        return Err(refusal_of(*held).unwrap_or(ExpansionFailure::NoAnswer));
+    }
+    let Value::Syntax(produced) = *held else {
+        return Err(stopped_or(meter, ExpansionFailure::NoAnswer));
     };
     // The gate again, here rather than only in `checked_expression`: a
     // transformer that never called the builtin has still produced output the
     // rest of the compiler will have to anchor diagnostics against.
     crate::syntax::check_expression(&produced).map_err(ExpansionFailure::NotAnExpression)?;
-    let work = PhaseWork {
-        type_constraints: unifier.constraints(),
-        evaluation_steps: meter.steps(),
-    };
-    Ok((*produced, work))
+    Ok(*produced)
 }
 
 #[cfg(test)]
