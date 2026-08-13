@@ -75,8 +75,8 @@ facts, offline package resolution, and editor protocol fixtures. Compare results
 identity where promised, otherwise documented semantic normal-form or observation equality. Review all diagnostic
 wording with both category-correct technical terminology and a musician-comprehensible first sentence.
 
-Search for and remove stale alternate paths: contextual `Music`, partial/default calls, `Timeline`, old kernel
-spellings, public HIR/evaluator types, `StudioGraphSpec`, `compile_graph`, global note streams, raw public DSP parameter
+Search for and remove stale alternate paths — `docs/plan/clean-break-ledger.md` is the list, and a row that still
+resolves in the workspace is a finding: contextual `Music`, partial/default calls, `Timeline`, old kernel spellings, public HIR/evaluator types, `StudioGraphSpec`, `compile_graph`, global note streams, raw public DSP parameter
 ids, block-defined feedback, unchecked asset paths, handwritten editor vocabularies, mutable expanded ASTs, and
 source-independent widget state. Removed forms stay removed; do not restore them for compatibility.
 

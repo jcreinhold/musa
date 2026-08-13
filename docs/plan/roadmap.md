@@ -99,8 +99,10 @@ The user gets one easy action. The core still receives three simple facts.
 | Dynamic marking | Literal decibel value |
 | Articulation | Fixed note-length multiplier |
 | Motif definition | Its expanded occurrences |
-| Score ordering | DSP evaluation ordering |
+| Score ordering | Machine step ordering |
 | Project source | GUI widget state |
+| Machine (a finite description) | Audio history (what stepping it produces) |
+| Written time, performed time, seconds | Each other; a track states which one it measures |
 | Audio graph | Visual graph layout |
 
 This separation is not ceremony. Each pair varies independently.
@@ -120,7 +122,7 @@ actual musical information.
 Position varies the same way. A repeated passage is written at one place and played at several, so measure 4 on the page
 and the fourth measure heard are different questions with different answers (§7.2). Every notated position musa computes
 — measure numbers, where a tempo mark or a barline goes — is counted on the page; every performed position is counted in
-the timeline; and the one place they meet is the fold in §12.1.
+the event track; and the one place they meet is the fold in §12.1.
 
 Duration varies the same way, and until prompt 69 nothing in musa used that row. A **groove** is its first
 implementation: a written pair of eighths that sounds long-short, a house bass a sixty-fourth ahead of the offbeat. The
@@ -130,7 +132,7 @@ no swung notation to draw. The asymmetry between `musa render --to midi --mode s
 row working: the same plan, read once as a page and once as a performance.
 
 The **grace note** (prompt 71) is where the row is not a refinement but the whole thing. A grace has *no* notated
-duration — it is a point in the timeline, start equal to end — so there is no written value for a performed value to
+duration — it is a point in the event track, start equal to end — so there is no written value for a performed value to
 differ from, and the performed one has to be taken out of a neighbour. Which neighbour is a question Baroque and
 Romantic practice answer differently: on the beat, delaying the principal, or ahead of it, leaving the principal where
 the bar puts it. Both are correct readings of one page.
@@ -329,7 +331,7 @@ a then empty = a
 (a then b) then c = a then (b then c)
 ```
 
-Its timeline semantics are:
+Its event-track semantics are:
 
 ```text
 span(a then b) = span(a) + span(b)
@@ -454,13 +456,14 @@ Faust’s block-diagram algebra uses sequential, parallel, split, merge, and fee
 signal-processing language. That is a better conceptual model for the studio layer than an arbitrary object graph.
 citeturn988595search0turn988595search1
 
-The score algebra and signal algebra are analogous, but they are not the same algebra. They should not share a universal
-“node” type.
+The track algebra and the machine algebra are analogous, but they are not the same algebra. They should not share a
+universal “node” type.
 
-`docs/rules/across-stages/03-process-calculus.md` makes the DSP side precise: same-tick dependencies form a whole-node
-DAG, a primitive node steps only after all of its inputs are available, and every feedback path crosses explicit
-initialized register state. The calculus is a private finite process IR, not a temporal kernel term or mandatory source
-language.
+`docs/rules/across-stages/03-machine-calculus.md` makes the sound side precise: a `Machine<K,A,B>` is a finite
+description built from registered primitives, `identity`, `connect`, `beside`, initialized one-step `feedback`, `copy`,
+`drop`, and `swap`; every feedback path crosses explicit initialized state, and one audio step is one sample frame.
+Since prompt 127a the machine is a core value of the one source language, not a private IR below it — what stays
+outside is the audio history.
 
 ---
 
@@ -504,9 +507,11 @@ transpose minor_third { use sigh; }
 still exists as a transformation rather than as five unrelated replacement notes.
 
 The prompt-92 candidate makes this a private compiler subsystem rather than a public representation: total value
-evaluation retains contextual `music`, then instantiation produces a closed kernel term. `Type`, `Value`, closures,
-modules, and `Music` stay private to `musa-compiler`; the candidate adds no public `musa-elaboration` crate. This
-paragraph is candidate guidance until prompt 144.
+evaluation produces ordinary values, and building and closing a fragment produces a closed core term. `Type`, `Value`,
+closures, and modules stay private to `musa-compiler`; the candidate adds no public `musa-elaboration` crate. Prompt
+127a deleted the contextual `Music` type this paragraph used to name — reusable material is an ordinary value of type
+`EventTrack[WrittenTime, ScoreFact]` (`docs/rules/language/00-semantics.md` §3). This paragraph is candidate guidance
+until prompt 144.
 
 ## 6.3 Expanded score representation
 
@@ -596,7 +601,8 @@ Likewise, `p` is a symbolic dynamic relationship. It is not globally equivalent 
 value.
 
 > **Candidate refinement:** the editable/interchange representation before physical scheduling is an exact
-> `GestureTimeline[InstrumentSignature]`, not the frame/`f32` event enum sketched above. A named profile interprets
+> `EventTrack[PerformedTime, Gesture]` carrying a checked conformance witness to an instrument signature, not the
+> frame/`f32` event enum sketched above. A named profile interprets
 > marks into semantic controls such as expression, emphasis, separation, brightness, sustain, and phrase grouping.
 > Tempo, tuning, frame rounding, and instrument-private DSP conversion occur during one later preparation operation. See
 > `docs/rules/language/08-performance-and-sound.md`. Until implemented, the enum above describes the current boundary.
@@ -841,8 +847,8 @@ repeat 2 {
 Pass *k* plays the body, then ending *k*. Endings come last, numbered from 1, and there may not be more of them than
 there are passes. Fewer is allowed: the last ending covers the rest, which is what `1.–3.` on a volta bracket means.
 
-The timeline holds every pass — nothing about playback, WAV export, or the semantic hash changes because a repeat is now
-engraved. Alongside the notes, the repeat states on the timeline that it is one, and §12.1 reads that statement to fold
+The event track holds every pass — nothing about playback, WAV export, or the semantic hash changes because a repeat is
+now engraved. Alongside the notes, the repeat states on the track that it is one, and §12.1 reads that statement to fold
 the page. Folding is where *notated position ≠ performed position* joins the layer table in §2: measure numbers,
 positioned marks, and barlines are all counted in the notated time the fold produces, and the fold is confined to §12.1
 so that nothing downstream has two clocks to reconcile.
@@ -1232,14 +1238,15 @@ pub fn compile(
 ) -> Compilation;
 ```
 
-> **The temporal kernel (`docs/rules/kernel/`):** the semantic core beneath this pipeline is the finite temporal kernel
-> — the "high-level compositional representation" and "motif expansion" stages above are the elaboration/HIR that
-> evaluates into kernel timelines, and the normalized `ScoreSnapshot` is an adapter projection of them. Where this
+> **The event-track core (`docs/rules/kernel/`):** the semantic core beneath this pipeline is the finite event-track
+> calculus — the "high-level compositional representation" and "motif expansion" stages above are the elaboration/HIR
+> that evaluates into core event tracks, and the normalized `ScoreSnapshot` is an adapter projection of them. Where this
 > roadmap and `docs/rules/kernel/` disagree on semantic architecture, the kernel wins; everything else in this document
 > stands.
 
 > **Language candidate (prompt 92):** prompts 93–124 refine the private elaboration/HIR stages to a total value
-> calculus, contextual `music`, structural declaration templates, and typed kernel quotation. They still terminate in
+> calculus, structural declaration templates, and typed core quotation (prompt 127a deleted the contextual `music`
+> type this line used to name). They still terminate in
 > one closed `Term[ScoreFact]` before kernel evaluation. Prompts 125–143 refine the downstream path to exact gestures
 > and typed instrument preparation. No intermediate type named by that candidate is thereby a public crate API.
 
@@ -1494,10 +1501,11 @@ master output
 ```
 
 The cross-stage specification refines the middle arrows as
-`Timeline[ScoreFact] → Timeline[Gesture] → PreparedExecution → observed audio history`; score marks remain symbolic,
-profiles choose their reading, and instruments implement typed controls privately. Preparation consumes complete
-semantic gestures, bindings, seed, and options and returns a complete result. Physical frames and DSP floats appear at
-that late boundary. This is not permission to put signals or seconds in the temporal kernel.
+`EventTrack[WrittenTime, ScoreFact] → EventTrack[PerformedTime, Gesture] → schedule → Scheduled[Gesture] →
+PreparedMachine → observed audio history`; score marks remain symbolic, profiles choose their reading, and instruments
+implement typed controls privately. Preparation consumes complete semantic gestures, bindings, seed, and options and
+returns a complete result. Physical frames and DSP floats appear at that late boundary. This is not permission to put
+audio histories or seconds in an event track.
 
 Use CPAL for cross-platform audio-device and stream access. It exposes device enumeration, supported configurations, and
 audio streams without dictating the synthesis architecture. citeturn797105search0
@@ -1515,8 +1523,8 @@ The audio callback must not:
 - write logs;
 - destroy large graph objects.
 
-The control side compiles a declarative graph into a preallocated `PreparedExecution` whose private process definition
-has a checked whole-node schedule and explicit register state. The audio side only executes that plan.
+The control side compiles a declarative graph into a preallocated `PreparedMachine` whose machine has a checked
+whole-machine step order and explicit initialized feedback state. The audio side only steps that machine.
 
 Use `rtrb`, a wait-free single-producer/single-consumer ring buffer, for control and transport commands crossing the
 real-time boundary. citeturn193176search1
@@ -1542,10 +1550,10 @@ pub struct RenderPlan {
 
 `StudioGraphSpec` is declarative and editable.
 
-`RenderPlan`/`PreparedExecution` contains:
+`RenderPlan`/`PreparedMachine` contains:
 
 - resolved ports;
-- whole-node topological order over same-tick dependencies;
+- whole-machine topological order over same-step dependencies;
 - preallocated buffers;
 - initialized DSP state;
 - parameter smoothing;
@@ -1560,9 +1568,10 @@ Do not use a general graph library as the public representation. A specialized c
 - illegal feedback;
 - unreachable processors.
 
-A cycle is allowed only if it passes through an explicit initialized register/delay edge. The semantic tick is fixed by
-preparation options, not caller render-block size. This makes causality visible and makes block-partition independence a
-testable law rather than arbitrary graph-evaluation behavior.
+A cycle is allowed only if it passes through an explicit initialized `feedback` edge. The semantic step is one sample
+frame (`docs/rules/constitution.md` §4), not the caller's render-block size. This makes causality visible and makes
+block-partition independence a law to be proved or tested per machine (R1-batch) rather than arbitrary
+graph-evaluation behavior.
 
 ## 13.4 Typed ports
 
@@ -2092,14 +2101,14 @@ pub fn render_midi(
 Owns:
 
 - declarative studio graph types;
-- graph validation;
-- graph compilation;
-- processor interface;
+- machine construction and validation;
+- machine compilation and the primitive registry;
+- registered-primitive interface;
 - oscillators;
 - envelopes;
 - filters;
 - effects;
-- block processing;
+- scheduling and checked batching over frame steps;
 - offline rendering;
 - built-in patch library.
 
@@ -2397,7 +2406,7 @@ stretch(1, x) = x
 span(seq(x, y)) = span(x) + span(y)
 
 lower(seq(x, y))
-  = sequence(lower(x), lower(y))
+  = follow(lower(x), lower(y))
 ```
 
 ## 17.3 Formatting laws
@@ -2610,22 +2619,22 @@ The final conceptual design is:
                               │
             ┌─────────────────┴─────────────────┐
             │                                   │
-  contextual musical values                StudioSpec
+    ordinary typed values                   StudioSpec
  theory-owned data, refs, transforms   patches, effects, routing
             │                                   │
      finite elaboration                         │
             │                                   │
- Timeline<ScoreFact>                            │
+EventTrack<WrittenTime, ScoreFact>              │
             │                                   │
-      ┌─────┴──────────────┐                    │
-      │                    │                    │
-NotationPlan        Timeline<Gesture>            │
-      │                    │                    │
- ┌────┼─────┐              └──────────┬─────────┘
- │    │     │                         │
-MEI  Lily  MusicXML             execution preparation
- │                                      │
-Verovio SVG                    PreparedExecution
+      ┌─────┴──────────────────────┐            │
+      │                            │            │
+NotationPlan   EventTrack<PerformedTime, Gesture>│
+      │                            │            │
+ ┌────┼─────┐                      └──────┬─────┘
+ │    │     │                             │
+MEI  Lily  MusicXML             schedule, then preparation
+ │                                        │
+Verovio SVG                      PreparedMachine
  │                                      │
 interactive score             CPAL live / Hound WAV
       \                                  /

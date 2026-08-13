@@ -169,7 +169,7 @@ Prompt 96 sets one internal deterministic meter with these language-version limi
 | reduction steps | 200,000 | admits the measured 50,000-step fold (about 150,000 charged reductions) below 8 ms while rejecting a stated 200,000-step fold before its loop |
 | constructed value nodes | 100,000 | admits useful finite collections but preflights `range(100001)` before allocation |
 | logical value bytes | 1,048,576 | separately bounds dense exact values; 65,536 repeated ratios crosses it while remaining below the node limit |
-| monomorphized prelude instances | 2,048 | far above ordinary declaration counts; a generated 2,049-call boundary fixture fixes the diagnostic |
+| instantiated prelude entries | 2,048 | far above ordinary declaration counts; a generated 2,049-call boundary fixture fixes the diagnostic |
 | estimated music occurrences | 1,000,000 | reserves substantial headroom over the 1,572-occurrence large fixture; prompt 97 activates the charge and prompt 127 retunes from music-producing curves |
 
 There is no public “make it bigger” compiler option: no current caller needs one, and exposing five implementation knobs

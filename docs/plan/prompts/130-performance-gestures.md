@@ -20,8 +20,8 @@ primitive, processor, MIDI controller, or render-plan parameter index.
 
 ## Read
 
-- `docs/rules/constitution.md` §7 (the decision and what it forbids, in particular rule 2: no bespoke temporal structure
-  above the kernel). `docs/rules/kernel/12-payload-admission.md` from prompt 129a — the rule this prompt's payload must
+- `docs/rules/constitution.md` §8 (the decision and what it forbids, in particular: no bespoke temporal structure
+  above the core). `docs/rules/kernel/12-payload-admission.md` from prompt 129a — the rule this prompt's payload must
   satisfy, written before the payload existed so that it could not be fitted to it.
 - `crates/musa-kernel/src/{term,timeline,occurrence}.rs` and `tests/laws.rs`, which already prove L1–L24 at a payload
   that is not `ScoreFact`.
@@ -88,6 +88,6 @@ Commit as `Interpret notation as performance gestures`.
 - No kernel operation, new term form, or physical-time value in any score or gesture occurrence. Exact physical time and
   frames appear in scheduling decisions, not in the event payload.
 - No second temporal structure. If `EventTrack<PerformedTime,Gesture>` will not carry something, that is a finding to
-  report against `docs/rules/constitution.md` §7, not a licence to write a parallel container.
+  report against `docs/rules/constitution.md` §8, not a licence to write a parallel container.
 - No universal ontology of expression; standard controls have documented Musa meanings and custom controls remain
   explicitly declared.

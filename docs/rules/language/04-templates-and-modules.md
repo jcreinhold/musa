@@ -1,8 +1,8 @@
 # Declaration templates and structures
 
-Value functions construct values, including contextual `music`. Declaration templates construct declarations before
-score contexts are built. Keeping those stages separate permits reusable pieces and voices without making source syntax
-or identity-bearing structures first-class.
+Value functions construct values, including event tracks. Declaration templates construct declarations before score
+contexts are built. Keeping those stages separate permits reusable pieces and voices without making source syntax or
+identity-bearing structures first-class.
 
 The source-library boundary is deliberately smaller than the structure system specified below, and the two are not
 alternatives: §4's signatures and structures are a checking-time abstraction layer, not a second import mechanism.
@@ -38,8 +38,8 @@ For `κ ∈ {library, piece, part, voice, performance, instrument, mix, structur
 
 `⇒declaration` belongs only to the static judgment; it is not the value arrow. Arguments are evaluated by the total
 core, substituted capture-avoidantly into typed declaration holes, and then ordinary declarations are checked. Expansion
-precedes context-track construction and contextual-music instantiation. A template cannot receive or return a
-declaration as a value, enumerate declarations, inspect source text, or emit a template dynamically.
+precedes context-track construction and track evaluation. A template cannot receive or return a declaration as a value,
+enumerate declarations, inspect source text, or emit a template dynamically.
 
 The static dependency graph over `make`, imports, and functor applications must be finite and acyclic. A cycle is a
 located static diagnostic even if value evaluation would never reach it.
@@ -70,11 +70,14 @@ result, not identity.
 The exact surface forms are those in `01-surface.md`:
 
 ```musa
-template voice answer(subject: Music, transform: Music -> Music) {
+template voice answer(
+    subject: EventTrack[WrittenTime, ScoreFact],
+    transform: EventTrack[WrittenTime, ScoreFact] -> EventTrack[WrittenTime, ScoreFact],
+) {
     use transform(subject);
 }
 
-template piece study(k: Key, subject: Music) "Study" {
+template piece study(k: Key, subject: EventTrack[WrittenTime, ScoreFact]) "Study" {
     key k;
     score {
         part piano {
@@ -91,8 +94,8 @@ An instance is placed by the kind it makes, because a document is still one piec
 stands at the file root and is that file's piece, and a voice instance stands among a part's voices.
 
 A template voice may contain key, meter, tempo, and clef declarations because expansion produces an ordinary identity-
-bearing voice before those structural contexts are computed. A `music` value may not contain those declarations. This is
-the semantic reason both constructs exist.
+bearing voice before those structural contexts are computed. A track value may not contain those declarations
+(`00-semantics.md` §3). This is the semantic reason both constructs exist.
 
 Score, performance, instrument, and mix templates may share value parameters but still expand to separate declarations.
 A piece template does not package mutable studio state into a piece value.
@@ -104,25 +107,25 @@ it; a `template structure` is a functor from structures to a structure. The impl
 
 ```musa
 signature CanonMaterial {
-    let subject: Music;
-    let answer: Music -> Music;
+    let subject: EventTrack[WrittenTime, ScoreFact];
+    let answer: EventTrack[WrittenTime, ScoreFact] -> EventTrack[WrittenTime, ScoreFact];
 }
 
 structure FifthMaterial: CanonMaterial {
-    let subject: Music = theme();
-    let answer: Music -> Music = transpose(P5);
+    let subject: EventTrack[WrittenTime, ScoreFact] = theme();
+    let answer: EventTrack[WrittenTime, ScoreFact] -> EventTrack[WrittenTime, ScoreFact] = transpose(P5);
 }
 
 template structure DelayedCanon(C: CanonMaterial, gap: Duration): CanonMaterial {
-    let subject: Music = canon(C.subject, C.answer, gap);
-    let answer: Music -> Music = C.answer;
+    let subject: EventTrack[WrittenTime, ScoreFact] = canon(C.subject, C.answer, gap);
+    let answer: EventTrack[WrittenTime, ScoreFact] -> EventTrack[WrittenTime, ScoreFact] = C.answer;
 }
 
 make DelayedCanon(FifthMaterial, 1/2) as FifthCanon;
 ```
 
-A signature member is a `let` without its definition: a name and the type. Values, functions, and `music` bindings are
-all `let` members, because a function is a value of arrow type. Member kinds that name an identity-bearing declaration —
+A signature member is a `let` without its definition: a name and the type. Values, functions, and track bindings are all
+`let` members, because a function is a value of arrow type. Member kinds that name an identity-bearing declaration —
 `instrument`, `profile`, `patch` — are not implemented; when they arrive they will be spelled by their own keyword in
 the same position, and matching for them will be nominal rather than transparent.
 
@@ -164,7 +167,7 @@ For a project build closure:
 4. evaluate template arguments and expand `make` sites in canonical source order;
 5. seal structures and assign declaration identities;
 6. build score context tracks;
-7. instantiate contextual `music`, close the kernel term, and project the score;
+7. build the fragment, close the core term, and project the score;
 8. independently resolve performance, instrument, and mix declarations, then prepare sound.
 
 Earlier stages cannot query results from later stages. In particular, a template cannot branch on an analysis result
@@ -175,7 +178,7 @@ write an assertion after construction.
 
 The following are static errors: a parameterized declaration without `template`; `make` without `as`; a template cycle;
 first-class `piece`, `voice`, `structure`, or source-syntax use; a structure member that fails its signature; two
-generated declarations with the same public address; and a structural declaration embedded in `music`.
+generated declarations with the same public address; and a structural declaration embedded in a track value.
 
 Prompts 103–104 implement this stage. Prompt 124 measures expansion and caching. Prompt 144 verifies that identity and
 Origin remain stable through the migration.

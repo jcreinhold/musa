@@ -28,11 +28,15 @@ Use exact rational `Length<C>` and positions tagged by a nominal coordinate `C`.
 positions. Meter, part, voice, pitch, tuning, and scale are payload data, not type indices.
 
 An event track contains a nonnegative length and a finite multiset of `(start,end,payload)` within it. Positive spans
-are half open; points have equal start and end. Expose only `empty`, `event`, `follow`, `together`, `map_events`,
-`length`, the existing observations, and exact normalization/encoding needed by real callers. `together` uses the longer
-length, keeps multiplicity, and inserts no rests.
+are half open; points have equal start and end. The basis is `empty`, `event`, `follow`, `together`, `map_events`, and
+`length`. Beyond the basis, retain exactly what has real callers: `scale`, `restrict`, `covering`, `prevailing`, the
+existing observations, and the exact normalization/encoding
+(`docs/rules/kernel/00-purpose.md`). Expose nothing else. `together` uses the longer length, keeps multiplicity, and
+inserts no rests.
 
-Rename rather than alias: remove `Timeline`, `extent`, `sequence`, `overlay`, and their old interchange spellings.
+Rename rather than alias: remove `Timeline`, `extent`, `sequence`, `overlay`, `map_payload`, and their old interchange
+spellings, and rename the law tests with them. `docs/plan/clean-break-ledger.md` §§2–5 is the checkable list this prompt
+discharges; the `% musa-kernel-1` header and encoding versions 1 and 2 become refusals, not migrations.
 Update the kernel text format and all goldens in the same prompt with an explicit format-version break. Hashes remain
 lookup helpers; exact framed bytes decide equality.
 

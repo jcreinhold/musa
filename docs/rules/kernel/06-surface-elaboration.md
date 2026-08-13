@@ -1,23 +1,26 @@
 # 06 — Surface Elaboration
 
-How the existing `.musa` surface language elaborates into the temporal kernel. This document describes elaboration of
-the grammar **as it exists today** (prompts 02–06); it is not a surface redesign. The implementation is prompt 11
-(`docs/plan/prompts/11-kernel-elaboration.md`).
+How the `.musa` surface language elaborates into event tracks. This document describes elaboration of the grammar **as
+it exists today** (prompts 02–06); it is not a surface redesign. The implementation is prompt 11
+(`docs/plan/prompts/11-kernel-elaboration.md`), and prompt 127a renames what it produces.
 
 ## The elaboration boundary
 
 ```text
 source / musical HIR  (motifs, repeats, transforms, chords, provenance — preserved)
         ↓  elaborate / observe
-finite temporal kernel  (flat timelines; the semantic quotient)
+finite event tracks  (flat EventTrack<WrittenTime, ScoreFact>; the semantic quotient)
         ↓  adapt
 ScoreSnapshot  (the score-specific projection backends already consume)
 ```
 
 Normalization is a **semantic boundary, not the internal representation of every compiler pass**. The HIR keeps
 `repeat`, `loop`, motif references, and transformations for efficiency, editing, provenance, diagnostics, and structural
-display; elaboration evaluates finite observations of them into kernel timelines. Nothing requires duplicating thousands
-of nodes merely to obey the normalized model.
+display; elaboration evaluates finite observations of them into event tracks. Nothing requires duplicating thousands of
+nodes merely to obey the normalized model.
+
+Everything on this page is in `WrittenTime`. Performed time is reached by a named conversion downstream
+(`07-backend-contract.md`), and nothing here may produce a value in another coordinate.
 
 ## Payload design (the central decision)
 
@@ -33,13 +36,13 @@ NotePayload {
 
 Decisions recorded against the open questions of `08-open-questions.md`:
 
-- **Voice identity rides in payload metadata** — it is not a temporal primitive. The candidate answer to the §32 open
-  question is "payload metadata + HIR structure"; prompt 11 gathers the evidence.
-- **Provenance rides in the payload**: the kernel quotient forgets production history, so history travels with each
-  occurrence as data the kernel is opaque to. `Origin` never participates in temporal semantics; it participates in
+- **Voice identity rides in payload metadata** — it is not a temporal primitive, and the coordinate remains the only
+  index the track type carries (`../constitution.md` §8).
+- **Provenance rides in the payload**: the core quotient forgets production history, so history travels with each
+  occurrence as data the core is opaque to. `Origin` never participates in temporal semantics; it participates in
   canonical payload serialization only as a stable, deterministic key (N3), so semantic equality can still distinguish
   occurrences a consumer must tell apart.
-- **No duration field in the payload** — duration is temporal support (D0).
+- **No duration field in the payload** — length is temporal support (D0).
 
 ## Elaboration rules, per surface construct
 
@@ -47,26 +50,26 @@ Decisions recorded against the open questions of `08-open-questions.md`:
 | --- | --- |
 | `c5/4` | One occurrence of `ScoreFact::Note` over the current position's span, carrying pitch, written duration, and any articulations; the voice cursor advances by `1/4`. |
 | `rest/2` | One occurrence of `ScoreFact::Rest` over the current position's span; the voice cursor advances by `1/2`. A *written* rest is notation an author asked for, and export and provenance both need it; what stays absent is unwritten silence. |
-| `[c5 e5 g5]/2` | `overlay` of one `Note` occurrence per pitch over the same span. The projection regroups same-span, same-scope, same-origin note occurrences into `ScoreEventKind::Chord`. |
-| voice body | `sequence` of its items in source order (cursor semantics = left-fold of successive extents). |
-| part | `overlay` of its voice timelines. Voice identity is the fact's `Scope`, not a timeline of its own. |
-| piece score | `overlay` of its part timelines: **one** `Timeline<ScoreFact>` per compilation. |
-| `let x: music = music { … };` | A private contextual value. It captures checked scalar bindings and nested music values, but no absolute beat, voice scope, or mutable key/meter/tempo/clef state. It emits no occurrence until `use`. |
-| `use e;` where `e : music` | Instantiate `e` at the current voice cursor and scope, sequence its fragment, and advance by its exact extent. A shared binding plus a marked reference preserves one body and distinct call-site Origin. Not a kernel concept. |
-| `motif name(args) { … }` | Desugars to `fn name(args) -> music { music { … } }` with a retained `Motif` role. Its `use` follows the preceding general rule; there is no motif-only evaluator. |
-| `repeat n { … }` | HIR-level `sequence` of `n` evaluations; each iteration's occurrences gain the `RepeatIteration(i)` provenance step. |
-| `transpose up P5 { … }` | `map_payload` with the transposition function on `pitch`; occurrences gain the `Transposition` provenance step. |
-| `c4/4 ~` (tie) | **No kernel construct, and no fact.** A tie says two written noteheads spell *one* occurrence, so elaboration merges the tied statement with its continuation on the spot: one occurrence, span the sum, `NotatedDuration` the compound spelling. Merging happens at every nesting level, so a tie inside a `retrograde` is gone before the block is reversed and needs no repair. A tie onto a different pitch, or with nothing after it, is a diagnostic. |
-| `c4/4 accent staccato` | Articulations are a **field of the note fact**, not facts of their own: a staccato dot has no extent and no identity apart from its note. The projection emits one `ArticulationMarking` per name, in written order, against the event's id. |
+| `[c5 e5 g5]/2` | `together` of one `Note` occurrence per pitch over the same span. The projection regroups same-span, same-scope, same-origin note occurrences into `ScoreEventKind::Chord`. |
+| voice body | `follow` of its items in source order (cursor semantics = left-fold of successive lengths). |
+| part | `together` of its voice tracks. Voice identity is the fact's `Scope`, not a track of its own. |
+| piece score | `together` of its part tracks: **one** `EventTrack<WrittenTime, ScoreFact>` per compilation. |
+| `let x = track_expression;` | An ordinary source binding of an ordinary event-track value. It emits nothing until it is placed. |
+| `use e;` | Place the track `e` at the current voice cursor: `follow` it onto the voice under construction and advance by `length(e)`. A shared binding plus a marked reference preserves one body and distinct call-site `Origin`. |
+| `motif name(args) { … }` | A source function returning an event track. Its `use` follows the preceding rule; there is no motif-only evaluator. |
+| `repeat n { … }` | HIR-level `follow` of `n` evaluations; each iteration's occurrences gain the `RepeatIteration(i)` provenance step. |
+| `transpose up P5 { … }` | `map_events` with the transposition function on `pitch`; occurrences gain the `Transposition` provenance step. |
+| `c4/4 ~` (tie) | **No core construct, and no fact.** A tie says two written noteheads spell *one* occurrence, so elaboration merges the tied statement with its continuation on the spot: one occurrence, span the sum, `NotatedDuration` the compound spelling. Merging happens at every nesting level, so a tie inside a `retrograde` is gone before the block is reversed and needs no repair. A tie onto a different pitch, or with nothing after it, is a diagnostic. |
+| `c4/4 accent staccato` | Articulations are a **field of the note fact**, not facts of their own: a staccato dot has no span and no identity apart from its note. The projection emits one `ArticulationMarking` per name, in written order, against the event's id. |
 | `dynamic mf;` | A **point** occurrence of `ScoreFact::Dynamic` at the cursor, with no cursor advance. The projection resolves it to the first event at or after it in the same voice; nothing after it is a diagnostic. |
-| `slur { … }` | The body elaborates unchanged, and one `ScoreFact::Slur` occurrence is **overlaid** over `[0, extent)` of it. Nothing is copied onto the notes. The projection emits a `SlurSpan` naming the first event at or after the region's start and the last ending at or before its end. `phrase` and `crescendo`/`diminuendo` work identically. |
-| `tuplet n/d { … }` | The body elaborates with the voice's duration scale multiplied by `d/n`, so written values become exact rationals (`3/2` of eighths gives `1/12`). A `ScoreFact::Tuplet` occurrence is overlaid over the body, and the projection emits a `TupletSpan` carrying the unreduced `n/d`, which is what the backends need to print the bracket. A tuplet that would cross a barline is a diagnostic. |
-| `performance { profile v { … } }` | **Nothing elaborates.** A profile is a reading of marks, not material: it produces no occurrence, occupies no time, and is carried on the snapshot beside the motif table for the performance layer to consult. Written marks stay written (§6.4). |
+| `slur { … }` | The body elaborates unchanged, and one `ScoreFact::Slur` occurrence is placed **together** with it over `[0, length)`. Nothing is copied onto the notes. The projection emits a `SlurSpan` naming the first event at or after the region's start and the last ending at or before its end. `phrase` and `crescendo`/`diminuendo` work identically. |
+| `tuplet n/d { … }` | The body elaborates with the voice's duration scale multiplied by `d/n`, so written values become exact rationals (`3/2` of eighths gives `1/12`). A `ScoreFact::Tuplet` occurrence is placed together with the body, and the projection emits a `TupletSpan` carrying the unreduced `n/d`, which is what the backends need to print the bracket. A tuplet that would cross a barline is a diagnostic. |
+| `performance { profile v { … } }` | **Nothing elaborates.** A profile is a reading of marks, not material: it produces no occurrence, occupies no time, and is carried on the snapshot beside the motif table for the performance layer to consult. Written marks stay written. |
 | `profile v;` inside a part | **A binding, not an occurrence.** It names which profile realizes this part; naming an undeclared one is a diagnostic. Both semantic paths read it through the same `part_metadata`, so it cannot drift between them. |
 | `key c major;`, `meter 4/4;` | **Region occurrences** of `ScoreFact::Key`/`Meter`, scoped to the piece and spanning `[0, d]`. An unwritten meter still produces a fact — 4/4 governs a piece that never says so — while an unwritten key produces none, which is why the projection's `key` is an `Option` and its `meter` is not. |
-| `section "A" at 9:1;`, `harmony { at 1:1 c; }` | **Point occurrences** of `ScoreFact::Section`/`Harmony` at the time the coordinate names. The coordinate is resolved against the *meter occurrence* and the timeline's own extent; naming a place the piece never reaches is a diagnostic. |
-| `tempo 1/4 = 60;`, `tempo 1/4 = 90 at 9:1;` | **Not a fact, ever**. Tempo is the performance layer's `Beat → Second` map; it stays on the snapshot's `TempoMap`. See "Tempo stays out" below. |
-| piece | The one timeline **projected** into `ScoreSnapshot` (`musa-compiler/src/project.rs`): voices, context maps, and annotations alike. |
+| `section "A" at 9:1;`, `harmony { at 1:1 c; }` | **Point occurrences** of `ScoreFact::Section`/`Harmony` at the time the coordinate names. The coordinate is resolved against the *meter occurrence* and the track's own length; naming a place the piece never reaches is a diagnostic. |
+| `tempo 1/4 = 60;`, `tempo 1/4 = 90 at 9:1;` | **Not a fact, ever**. Tempo is the performance layer's `WrittenTime → SecondTime` map; it stays on the snapshot's `TempoMap`. See "Tempo stays out" below. |
+| piece | The one track **projected** into `ScoreSnapshot` (`musa-compiler/src/project.rs`): voices, context maps, and annotations alike. |
 
 ## The payload, and the adapter contract
 
@@ -76,7 +79,7 @@ A `ScoreFact` has exactly three axes, and they vary independently:
   where it is in time.
 - **`kind`** — what is stated: a note, a rest, a slur, a phrase, a tuplet, a dynamic, a hairpin, a key, a meter, a
   section, a chord symbol.
-- **`origin`** — why it exists. Provenance stays above the kernel.
+- **`origin`** — why it exists. Provenance stays above the core.
 
 *Where it is in time is the occurrence's span*, and is never a field. Keeping the three apart is the point: a slur moves
 in time without changing voice, a voice is renamed without moving anything, a dynamic changes from `mf` to `f` in place.
@@ -84,7 +87,7 @@ in time without changing voice, a voice is renamed without moving anything, a dy
 The projection (`project.rs`) visits the canonically ordered occurrences **once**, buckets them by scope, assigns
 `EventId`s to note and rest facts in visit order, and resolves region facts to the event ids at their ends. It relies on
 one invariant, stated on the function and asserted in debug builds: **a region fact's boundaries coincide with event
-boundaries in its own scope**, because a region is built from the extent of the items it encloses. If that is ever
+boundaries in its own scope**, because a region is built from the length of the items it encloses. If that is ever
 violated, the elaboration that violated it is the bug.
 
 ## Sharing and provenance: how `repeat` and `use` elaborate (prompt 49)
@@ -103,7 +106,7 @@ reference**:
 > A reference carries a **mark** naming what distinguishes this use. Evaluation applies a payload map chosen from that
 > mark, rewriting each instantiated occurrence's `Origin` and nothing else.
 
-**The mark's text**, which is `ScoreFact`'s and not the kernel's — the kernel treats it as an opaque string
+**The mark's text**, which is `ScoreFact`'s and not the core's — the core treats it as an opaque string
 (`10-term-calculus.md` T6):
 
 ```text
@@ -146,47 +149,54 @@ a promise the project already made.
 
 **What does not share.** `transpose`, `invert` and `stretch` bodies are payload maps and time scaling applied during
 elaboration; `scale` has a term and the payload maps do not, and inventing one would breach the calculus's absent list.
-Voices become `over` and voice items `seq` — structural, and what makes a printed file legible.
+Voices become `together` and voice items `follow` — structural, and what makes a printed file legible.
 
-## Contextual music and the single path (prompt 97)
+## Reusable material is an ordinary value (amended at prompt 127a)
 
-The compiler now has one private construction interface:
+Earlier drafts of this section specified a **contextual `Music`** type: a value that read an ambient placement, voice
+scope, and duration scale supplied at each use, observed by a private `instantiate`/`close` pair. Prompt 127a deletes
+it. There is no contextual universal `Music` in Musa, and this section says what replaces it.
 
-```text
-instantiate : Music × ElabEnv × Beat × Scope → KernelFragment
-close       : KernelFragment → checked closed Term[ScoreFact]
-```
+Reusable material is an ordinary source value of an ordinary type:
 
-`KernelFragment` hides a term, an acyclic compatible binding environment, exact extent, and exact eventual occurrence
-count. Sequence adds extents; overlay takes their maximum; both add occurrence counts. Closing retains only reachable
-bindings, wraps them in dependency order, and checks the resulting term before the semantic boundary evaluates it. There
-is no `Timeline[Timeline[A]]`, flattening operation, public HIR, or public environment type.
+- a **fragment** is a value of type `EventTrack<WrittenTime, ScoreFact>`;
+- a **motif** is a source function returning one;
+- **placement is not captured, it is applied**: `use e;` is `follow(voice_so_far, e)`, and the cursor is elaboration's
+  own left fold, not something the value reads.
 
-The source forms are roles and assertions over that interface:
+Three things follow, and they are why the change is a simplification rather than a rename:
 
-| Written form | Checked desugaring | Retained role |
+- **Placement is an argument, so it cannot be ambient.** The old account had to say what a `music` value captured and
+  what it deliberately did not (no absolute beat, no voice scope, no mutable key/meter/tempo/clef state). A track value
+  captures nothing, so the list disappears rather than needing to be enforced.
+- **Call-site differences travel on the reference mark**, exactly as above. Scope and origin are rewritten by a payload
+  map chosen from the mark; the temporal facts are untouched, which is what makes sharing safe.
+- **Structural mutations stay in the piece/voice walk.** `key`, `meter`, `tempo`, and `clef` changes are rejected inside
+  reusable material for the same reason as before: "from here onward" has no unique meaning in a value usable at several
+  places. That reason never depended on `Music` being contextual.
+
+The source-level roles survive unchanged, because they were always roles rather than types:
+
+| Written form | Meaning | Retained role |
 | --- | --- | --- |
-| `let x: music = music { body };` | contextual music binding | ordinary value |
-| `fn f(p: T) -> music { music { body } }` | contextual music-producing closure | ordinary function |
-| `motif f(p: T) { body }` | `fn f(p: T) -> music { music { body } }` | `Motif` |
-| `fragment x { body }` | `let x: music = music { body };` | `Fragment` |
-| named `bar x { body }` | contextual binding used both at declaration and by `use x` | `Bar` |
-| `use e;` | check `e : music`, instantiate, then sequence | none |
+| `let x = track_expression;` | ordinary binding | ordinary value |
+| `fn f(p: T) -> EventTrack[WrittenTime, ScoreFact] { … }` | ordinary function | ordinary function |
+| `motif f(p: T) { body }` | the same function, written musically | `Motif` |
+| `fragment x { body }` | the same binding, written musically | `Fragment` |
+| named `bar x { body }` | a binding used at its declaration and by `use x` | `Bar` |
+| `use e;` | `follow` `e` onto the voice under construction | none |
 
 Roles preserve diagnostics, lints, mobile eligibility, editor identity, and Origin vocabulary; they do not select a
-second semantic implementation. General functions and bindings returning `music` and every legacy form enter the same
-checked `Music` representation and the same instantiator.
+second semantic implementation, and they are not types.
 
-Music is **context-reading and context-neutral**. Placement, duration scale, transformation stack, call scope, and
-Origin are supplied at each use. Structural mutations—key, meter, tempo, and clef changes—remain in the piece/voice walk
-and are rejected inside reusable material, because “from here onward” has no unique meaning in a value usable at several
-places. A call's reference mark changes only payload scope and provenance, so sharing preserves temporal facts. The
-proof that this construction is finite, closed, and well typed is `docs/rules/language/02-core-calculus.md` §5.7.
+`instantiate`, `close`, `KernelFragment`, and the `Music`/`ContextualMusic` types are on the clean-break ledger
+(`../../plan/clean-break-ledger.md`): prompt 127e deletes them rather than aliasing them. Until it does, the compiler
+still contains them, and `../across-stages/05-metatheory.md` §3 is where that gap is tracked.
 
 ## `ScoreFact`'s interchange text form (prompts 48, 86)
 
 A kernel file carries payloads as opaque quoted strings (`01-grammar.md`); this is what `ScoreFact` puts inside one. It
-is specified here, with the payload, rather than in the grammar, because the kernel neither writes it nor reads it.
+is specified here, with the payload, rather than in the grammar, because the core neither writes it nor reads it.
 
 A label is a **flat, whitespace-separated stream of words**. Flat is load-bearing: the first form nested five separators
 five deep and escaped each level again at the next, so one colon inside a motif call reached the file as eight
@@ -194,8 +204,8 @@ backslashes. Nothing here nests, so nothing is escaped twice.
 
 A word is either **bare** — no whitespace, no `'`, no `\`, no bracket — or **quoted**, `'…'` escaping `\` and `'`. Every
 free-text field is quoted *always*, even where quoting would not be needed: that is what keeps `mark text '8'` and
-`mark ottava 8` apart without case analysis, and it means a payload never contains `"`, so the kernel's own string
-escape has nothing to double.
+`mark ottava 8` apart without case analysis, and it means a payload never contains `"`, so the core's own string escape
+has nothing to double.
 
 ```text
 label       = <scope> <kind> <origin>
@@ -248,8 +258,8 @@ Five rules make it read back:
 - **A hairpin's shape is its `Progress` in canonical form** — the one place where N3's key and the interchange text
   coincide, because a `Progress` has no provenance to quotient away.
 - **`tied` is absent.** It is elaboration-only and false on every fact that leaves elaboration: a tie says two noteheads
-  spell one occurrence, which is resolved before a timeline exists. A file carrying it would describe a state no
-  timeline is ever in.
+  spell one occurrence, which is resolved before a track exists. A file carrying it would describe a state no track is
+  ever in.
 
 A reference's mark is the same word stream — `depth <n> [ "origin" <span> ] [ "scope" <scope> ] [ "via" <step>… ]` — so
 a file has one tokenization and one escape rule throughout.
@@ -260,7 +270,7 @@ quotient; interchange must reproduce. `05-normalization.md` N3 states the same r
 
 ## Key, meter, harmony: the present shape
 
-Key, meter, and harmony are **regions**: typed interval payloads in the kernel whenever their temporal extent matters —
+Key, meter, and harmony are **regions**: typed interval payloads in the core whenever their temporal extent matters —
 e.g. `modulate to C major { … }`. Prompt 40 put them there **before** the surface grew such a construct, and that order
 was deliberate: a region that happens to cover the whole piece is not a special case, but a piece-wide scalar called
 `MeterMap` is. Modelling meter as one region over `[0, d]` now means the later change adds *more occurrences* rather
@@ -273,28 +283,29 @@ So today:
 - `KeyMap`, `MeterMap`, and the section and harmony lanes of `AnnotationStore` are **projections** of those occurrences,
   reproducing byte for byte what the direct lowerer emits — which is what `fixtures_have_full_parity` checks.
 
-The promise of §21 — that these arrive "without any kernel change" — is therefore demonstrated rather than asserted:
-prompt 40 touched no file in `musa-kernel`. When `modulate` or a mid-piece `meter` arrives, the elaboration emits a
-region with a narrower span and nothing else changes; this document is extended, not repaired, at that prompt.
+The promise that these arrive "without any core change" is therefore demonstrated rather than asserted: prompt 40
+touched no file in `musa-kernel`. When `modulate` or a mid-piece `meter` arrives, the elaboration emits a region with a
+narrower span and nothing else changes; this document is extended, not repaired, at that prompt.
 
 Two consequences worth stating, because a later reader will otherwise re-derive them:
 
-- **Positions resolve against the meter *occurrence*, and against the timeline's own extent.** Neither is recomputed
-  from the snapshot. The extent is exact rather than a maximum over event ends, and the two agree only because a written
-  rest is an occurrence (prompt 39) — a piece that ends in silence ends where the silence ends, which
+- **Positions resolve against the meter *occurrence*, and against the track's own length.** Neither is recomputed from
+  the snapshot. The length is exact rather than a maximum over event ends, and the two agree only because a written rest
+  is an occurrence (prompt 39) — a piece that ends in silence ends where the silence ends, which
   `a_piece_that_ends_in_a_rest_ends_where_the_rest_ends` fixes as a fixture.
 - **Piece-scoped facts sort first at a shared instant.** Their canonical key begins `*|*`, and `*` sorts before any part
   number, so the normal form prints the context a reader meets first.
 
 ## Tempo stays out
 
-Tempo never elaborates into kernel occurrences and never rescales kernel time. It is the performance layer's monotone
-map `Beat → Second` applied to symbolic positions at realization time (`07-backend-contract.md`). "Stretch the material"
-(payload/time action, D5) and "perform the same material more slowly" (tempo map) remain different operations.
+Tempo never elaborates into occurrences and never rescales written time. It is the performance layer's monotone map
+`WrittenTime → SecondTime` applied to symbolic positions at realization time (`07-backend-contract.md`). "Stretch the
+material" (payload/time action, D5) and "perform the same material more slowly" (tempo map) remain different operations,
+and the coordinate tag is what now makes confusing them a type error.
 
 ## Adapter contract (ScoreSnapshot)
 
-The projection reads the piece's one `Timeline[ScoreFact]` back out as a `ScoreSnapshot`:
+The projection reads the piece's one `EventTrack<WrittenTime, ScoreFact>` back out as a `ScoreSnapshot`:
 
 - note and rest occurrences → `ScoreEvent`s (id assignment deterministic: visit order, part- and voice-major);
 - same-span/same-scope/same-origin groups → `Chord`; singletons → `Note`;
@@ -302,15 +313,15 @@ The projection reads the piece's one `Timeline[ScoreFact]` back out as a `ScoreS
 - region and point occurrences → the annotation lanes, resolved to the ids at their ends;
 - piece-scoped occurrences → `KeyMap` and `MeterMap`.
 
-**The regression net (was: the parity requirement, §30 Step 5).** Through prompt 40 this section required the adapter's
-snapshot to equal the frozen direct lowerer's on positions, durations, spelling, part/voice identity, multiplicity,
-ordering, and provenance. Prompt 41 deleted that lowerer — a frozen second implementation of a shrinking subset is a
-second answer to "what does this piece mean", not a safety net — and the net is now what it should always have been:
+**The regression net.** Through prompt 40 this section required the adapter's snapshot to equal the frozen direct
+lowerer's on positions, durations, spelling, part/voice identity, multiplicity, ordering, and provenance. Prompt 41
+deleted that lowerer — a frozen second implementation of a shrinking subset is a second answer to "what does this piece
+mean", not a safety net — and the net is now what it should always have been:
 
 - the `examples/*.musa` corpus with `insta` goldens at every backend (MEI, `LilyPond`, `MusicXML`, MIDI,
   `NotationPlan`);
 - the law suites (`transform_laws`, `notation_details_laws`, `annotation_laws`, `profile_laws`, `import_laws`);
-- the kernel's own property tests, and the kernel normal form of every fixture;
+- the core's own property tests, and the normal form of every fixture;
 - a generated corpus checked against **its own text** — one event per written statement, a voice as long as the
   durations written in it — which is strictly more direct than a comparison, since a bug both paths shared was invisible
   to the comparison.
@@ -323,32 +334,35 @@ it.
 
 - Introduce rest/silence occurrences to "fill" regions the author left empty — a `rest` the author wrote is material and
   elaborates to an occurrence; a gap is not.
-- Push production history into kernel semantics (e.g. making equality motif-aware).
-- Add kernel constructs because one surface feature is awkward — awkwardness is elaboration's problem.
+- Push production history into core semantics (e.g. making equality motif-aware).
+- Add core constructs because one surface feature is awkward — awkwardness is elaboration's problem.
 - Change the surface grammar to make elaboration easier.
+- Produce a value in a coordinate other than `WrittenTime`, or a machine. Elaboration builds one of the two core values
+  and never the other.
 
-## Prompt-92 language candidate
+## The candidate language, restated after prompt 127a
 
-The rules above remain the governing account of the implemented grammar. `docs/rules/language/` is the candidate
-contract for prompts 93–140 and becomes governing only after prompt 141. Its private elaboration subsystem adds a total
-value calculus and contextual, context-neutral `music`; neither is a kernel type. The candidate staging is:
+The rules above remain the governing account of the implemented grammar. `../language/` is the candidate contract for
+prompts 93–140 and becomes governing only after prompt 146. Its staging, after this amendment, has one fewer stage than
+it used to:
 
 ```text
-typed total expression → contextual Music → closed Term[ScoreFact] → Timeline[ScoreFact]
+typed total inferred expression → EventTrack<WrittenTime, ScoreFact>
 ```
 
-`instantiate(m, environment, placement)` is the sole semantic observation of `Music`. It lowers chosen `sequence` and
-`overlay` composition to the existing kernel forms, retains sharing in a private acyclic binding environment, and then
-closes the result. It does not define or assume `Timeline[Timeline[A]] → Timeline[A]`.
+There is no intermediate contextual `Music`, no `instantiate`, and no `close`. Elaboration builds track values directly,
+retains sharing in a private acyclic binding environment as `10-term-calculus.md` describes, and checks the resulting
+term before the semantic boundary evaluates it. It does not define or assume
+`EventTrack<C, EventTrack<C,A>> → EventTrack<C,A>` (D12).
 
-A local `kernel Timeline[ScoreFact] { ... }` quote uses typed antiquotation `${e}`. Each hole must have type `music`, is
-instantiated in the host context, and is substituted capture-avoidantly into the existing term grammar. The completed
-term must be closed and every payload must decode as `ScoreFact`. Standalone `.musa.kernel` documents remain exactly the
-closed calculus of `10-term-calculus.md`.
+A local `kernel EventTrack[WrittenTime, ScoreFact] { ... }` quote uses typed antiquotation `${e}`. Each hole must have
+type `EventTrack[WrittenTime, ScoreFact]` and is substituted capture-avoidantly into the existing term grammar. The
+completed term must be closed and every payload must decode as `ScoreFact`. Standalone `.musa.kernel` documents remain
+exactly the closed calculus of `10-term-calculus.md`.
 
 Parameterized pieces and voices use a static declaration template stage before context tracks are built. Templates do
-not make pieces, voices, modules, syntax, or kernel terms first-class value types. The candidate also leaves performance
-gestures, instrument signatures, raw or decoded assets, physical seconds, signals, and mix routing outside kernel
+not make pieces, voices, modules, syntax, or core terms first-class value types. The candidate also leaves performance
+gestures, instrument signatures, raw or decoded assets, physical seconds, machines, and mix routing outside this
 elaboration. A musical clip may elaborate to an interval `ScoreFact` and a fixed-media cue to a point `ScoreFact`; each
-contains only an opaque `AssetRef` and score-level settings. The kernel never receives sample data or a fixed media
-duration and remains musically/media opaque to both payloads.
+contains only an opaque `AssetRef` and score-level settings. The core never receives sample data or a fixed media
+duration and remains musically and media opaque to both payloads.

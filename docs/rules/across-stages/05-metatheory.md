@@ -6,20 +6,34 @@ This chapter keeps three claims separate:
 - the Rust implementation may or may not implement it; and
 - a safe mechanism may still be a poor model of a musical practice.
 
+The review status column below refers to the paper review of the core calculus
+(`docs/notes/research/core-calculus/17-final-review.md`), which found no fatal, high, or medium error in the frozen
+definitions or conditional theorems. That verdict is about the paper calculus. It says nothing about the compiler or the
+audio engine, and the implementation column is deliberately blunt about the gap.
+
 ## 1. Reviewed results
 
 | Result | Review status | Implementation status |
 | --- | --- | --- |
-| Accepted source expressions terminate under the stated foreign-operation and resource limits | proved in `docs/rules/language/02-core-calculus.md` | implemented for the current source core |
-| Source music closes to a finite kernel term | proved in `docs/rules/language/02-core-calculus.md` §5.7 | implemented |
-| Timeline sequence, unequal-length overlay, scaling, restriction, and normalization obey the kernel laws | proved in `docs/rules/kernel/03`–`05` and `10` | implemented and tested |
-| Versioned timeline bytes represent semantic equality exactly | Theorem I1 reviewed as part of K₃.3 | implemented by prompt 129a with delimiter and structured-payload tests |
-| A valid whole-node audio graph has deterministic causal steps and registered feedback | Theorems P1–P3 reviewed as part of K₃.3 | not yet implemented by the current audio graph |
-| Complete origin paths compose without losing intermediate anchors | theorem reviewed as part of K₃.3 | only partial provenance exists today |
-| Equal complete preparation arguments give equal results, and collision-checked cache hits are sound | Theorems R1 and C1 reviewed as part of K₃.3 | full preparation API and cache are not yet implemented |
+| Type inference terminates and returns a principal type in the two-class Hindley–Milner discipline | proved in outline, `06-proof-outline.md` §2 | absent; prompt 127b implements it |
+| Accepted source expressions terminate, and a resource failure cannot change an accepted value | proved in outline, `06-proof-outline.md` §2 | implemented for the current monomorphic core; the inferred core is prompt 127b |
+| Storable data excludes a source function at every depth, including inside containers | proved by the admission check, `docs/rules/language/02-core-calculus.md` | absent; prompt 127b |
+| `follow`, `together`, `map_events` preserve bounds and obey their laws, with unequal lengths and multiplicity kept | proved in `docs/rules/kernel/03`–`05` and `10` | implemented and tested at the untagged type; coordinate tags are prompt 127c |
+| Versioned exact bytes represent event-track semantic equality exactly (I1) | reviewed as part of K₃.3 | implemented by prompt 129a with delimiter and structured-payload tests |
+| Every machine has one total deterministic next step, and machines are causal (M1, M2) | proved in `03-machine-calculus.md` §7 | absent; the current audio graph does not implement these semantics |
+| Feedback has a first output and reads only stored data (M3) | proved | absent; the current delay path defers cycle inputs to the previous host block |
+| Chain and side-by-side laws (M4, M5) | proved | absent |
+| Scheduling emits every boundary exactly once and records every decision (M6) | proved | absent; prompt 127g |
+| Scheduling preserves simultaneous placement under an occurrence-local policy (M7, M8) | proved, conditionally | absent |
+| One audio frame is the reference step; a valid whole-machine batch changes nothing (R1-batch) | contract stated; the composition rule for feedback-free machines is proved | absent; current modulation runs once per host block |
+| Complete origin paths compose without losing intermediate anchors; stage composition grafts and is associative | theorem reviewed as part of K₃.3; the graft rule is stated by prompt 127a | only partial provenance exists today |
+| Equal complete preparation arguments give equal results, and collision-checked cache hits are sound (R1, C1) | reviewed as part of K₃.3 | full preparation API and cache are not yet implemented |
 
-The proof-review record is in `docs/notes/research/25`, `30`, `35`, `39`, `42`, and `45`. Those files include failed
-drafts. The failures matter because they exposed missing assumptions now stated in this specification.
+The proof-review record for the earlier kernel and identity results is in `docs/notes/research/25`, `30`, `35`, `39`,
+`42`, and `45`. The record for the current core calculus is
+[`docs/notes/research/core-calculus/`](../../notes/research/core-calculus/README.md), in order, ending at its final
+review. Both include failed drafts. The failures matter because they exposed missing assumptions now stated in this
+specification — most sharply the two feedback counterexamples that killed the single-`Flow` and port-scheduled designs.
 
 ## 2. Claims this specification does not make
 
@@ -30,35 +44,52 @@ Nothing here proves:
 - that harmonic function is the same as scale degree;
 - that a musical motif is a split idempotent;
 - that hashes never collide;
-- that equal musical timelines have equal origin histories;
-- that equal audio plans produce bit-identical output on arbitrary devices; or
-- that today’s caller-buffer-based feedback obeys the fixed-step audio rules.
+- that equal event tracks have equal origin histories;
+- that equal machines in the behavioural sense are decidable, or that structural equality implies behavioural equality;
+- that scheduling preserves succession under a nonlinear time map or non-additive rounding;
+- that any particular optimized batch method satisfies its contract — that is per-primitive evidence;
+- that totality implies a real-time deadline;
+- that equal prepared machines produce bit-identical output on arbitrary devices; or
+- that today’s caller-buffer-based feedback obeys the one-frame rule.
 
-## 3. The proposed source-language extension is not yet accepted
+## 3. The implementation is behind the specification, and by how much
 
-The research notes propose finite user-defined data, private constructors, abstract type members in structures, `Text`,
-and `Result`. These features would let music-theory packages hide their representations while exposing total operations.
+The core-calculus review audited the repository at the time it was written and found three things worth repeating,
+because they set the size of prompts 127b–127i:
 
-The safety proof has improved through several reviews, but review 54 still found missing rules for choosing one active
-version of a stable package and for treating existing `Music` types as stable public types. The proposal remains in
-`docs/notes/research/`; it does not yet govern `docs/rules/language/` or the prompt stack.
+- `crates/musa-kernel` already implements the untagged heart of the event track — exact rational length, finite
+  occurrences, succession by shifting, simultaneity by maximum and multiset union, payload mapping. What it lacks is the
+  coordinate tag and the renamed surface.
+- `crates/musa-audio`'s per-sample DSP units are close to registered machine primitives already; the gap is the registry
+  and the reference step, not the arithmetic.
+- `crates/musa-audio`'s plan does **not** implement the machine semantics. It defers cycle inputs at delay nodes to the
+  previous host block, and its modulation path runs once per block, so host block size can affect meaning. That is the
+  precise defect `constitution.md` §4 now forbids.
 
-Even a complete type-safety proof would not establish musical value. The next test must implement real algorithms in at
-least two differently framed theory packages. A proof can show that a ratio list is safe to store. It cannot show that
-the list captures rāga, gamaka, phrasing, or any other practice well.
+A green test suite for today's code says nothing about a representation that does not yet exist. The code map records
+that distinction row by row.
 
 ## 4. Evidence required from implementations
 
 Each implementation step must test the premise on which its proof relies:
 
-- byte encoders test empty strings, delimiters, newlines, multiplicity, version changes, and migration;
-- registries reject one id paired with two exact descriptors;
-- audio graphs test the known case where a port graph is acyclic but no whole-node schedule exists;
-- feedback tests every partition of the same requested frames;
+- byte encoders test empty strings, delimiters, newlines, multiplicity, coordinate tags, version changes, and migration;
+- registries reject one id and version paired with two exact descriptors;
+- inference tests principal types, and compile-fail tests cover a function hidden in a list, constructor, or abstract
+  value; an incomplete call; a recursive term; and a non-exhaustive match;
+- machines test every constructor, the first feedback output, Boolean negation through a stored delay, causality, and
+  the whole-node scheduling counterexample the old graph rules could not handle;
+- batching tests every partition of the same requested frames against a plain structural interpreter;
+- schedulers test exact-once boundaries, monotonicity, half-open spans, collapsed and point occurrences, handle
+  renaming, the occurrence-local `together` law, additive `follow`, and the fixed finished state;
 - caches inject a deliberate hash collision and compare complete arguments;
-- preparation tests vary each option independently;
-- origin tests retain generation roots, sites, and intermediate anchors; and
-- source-language extensions include compile-fail tests and evaluation/normalization tests.
+- preparation tests vary each option independently; and
+- origin tests retain generation roots, sites, and intermediate anchors, and check graft coverage and associativity.
 
-Passing tests for today’s code says nothing about a representation that has not been implemented. The implementation map
-records that distinction.
+## 5. What would reopen a decision
+
+The core calculus is closed to new forms. A proposal to add one must record the smallest failing term — a concrete
+program the current rules cannot express or cannot make safe — and must show the same need in two materially different
+musical uses. An analogy is not evidence, and neither is a feature list from another language.
+
+The two triggers that reopen `constitution.md` §4 are named there and nowhere else.

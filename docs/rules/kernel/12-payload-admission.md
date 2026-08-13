@@ -1,15 +1,19 @@
 # 12 — Payload Admission
 
-The temporal kernel is parametric in a payload `A`. This document fixes the evidence a type must supply before it is
-used with normalization, equality, or semantic identity. Admission does not add a temporal operation and does not teach
-the kernel the payload's musical meaning.
+The event-track core is parametric in a coordinate `C` and a payload `A`. This document fixes the evidence a payload
+type must supply before it is used with normalization, equality, or semantic identity. Admission does not add a temporal
+operation and does not teach the core the payload's musical meaning.
 
 ## A1 — A payload is opaque
 
-A payload is an ordinary finite value at the type parameter `A`. The kernel may move, copy, sort, and compare its
-canonical key; it never branches on the value or rewrites one of its fields. `timeline`, `sequence`, `overlay`, `scale`,
-and `restrict` act on occurrence support. L24 is the strongest instance: a locally normalized `Progress` keeps identical
-payload bytes while its containing span moves or stretches.
+A payload is **storable data** (`../constitution.md` §9): an ordinary finite value at the type parameter `A` that
+contains no source function at any depth and has a versioned finite exact encoding. The core may move, copy, sort, and
+compare its canonical key; it never branches on the value or rewrites one of its fields. `track`, `follow`, `together`,
+`scale`, and `restrict` act on occurrence support. L24 is the strongest instance: a locally normalized `Progress` keeps
+identical payload bytes while its containing span moves or stretches.
+
+A type carrying a function is refused here rather than diagnosed later: it has no bytes, so it has no key, so it has no
+equality the core could use.
 
 ## A2 — The `Canonical` obligation
 
@@ -41,13 +45,16 @@ is an equality design decision and requires reviewing and normally incrementing 
 
 An admission may not:
 
-- add a kernel operation or term form—`10-term-calculus.md`'s scope rule and the constitution's §7 apply;
-- require the kernel to inspect musical content—payload opacity and the constitution's §7 apply;
-- carry absolute seconds, frames, or samples—K2 and the constitution's §4 apply; or
-- carry a coinductive stream or process—a finite timeline is not a signal, under the constitution's §4–6.
+- add a core operation or term form—`10-term-calculus.md`'s scope rule and the constitution's §8 apply;
+- require the core to inspect musical content—payload opacity and the constitution's §8 apply;
+- carry an absolute position, in any coordinate—K2 and the constitution's §3 apply, because time lives in the
+  occurrence's span and in the track's coordinate, never in the payload;
+- carry a frame index or a sample—a frame is a machine's index, not a track position (`../constitution.md` §4); or
+- carry a coinductive stream, an audio history, or a machine's private state—a finite track is not a running source,
+  under the constitution's §3–§5.
 
 An exact rational control shape indexed by normalized local occurrence time is finite payload data. A sample stream is
-not.
+not. An opaque handle naming a scheduled source is finite payload data; the source it names is not.
 
 ## A4 — Law transport
 
@@ -61,10 +68,10 @@ same statements both at scalar `u8` and at `AdmissionProbe`, a record containing
 
 ## A5 — Equality projection is not interchange
 
-N3's key may drop presentation detail and therefore need not reconstruct the stored payload. A kernel interchange
-adapter owes the stronger round-trip law and uses `TextPayload`; it is a different function. Dropped fields and their
-cost are recorded below. A consumer needing a finer relation defines a separately named projection rather than silently
-strengthening kernel equality.
+N3's key may drop presentation detail and therefore need not reconstruct the stored payload. An interchange adapter owes
+the stronger round-trip law and uses `TextPayload`; it is a different function. Dropped fields and their cost are
+recorded below. A consumer needing a finer relation defines a separately named projection rather than silently
+strengthening core equality.
 
 ## A6 — Admission table
 
@@ -76,7 +83,7 @@ strengthening kernel equality.
 | `ScoreFact` | `musa-compiler` | scope; full fact kind; source span; expansion path | elaboration-only `tied`; `Origin.definition_span`; `Origin.declaration` | a cache, projection, or lineage consumer requires one omitted field to distinguish execution results |
 
 The `ScoreFact` row records the implementation as it exists. Its omitted origin fields remain available in the stored
-fact and its interchange form. Kernel semantic equality does not observe them. A future identity-sensitive preparation
+fact and its interchange form. Core semantic equality does not observe them. A future identity-sensitive preparation
 must use a complete presentation or a named semantic projection whose fields match its actual decisions; it may not
 pretend the coarser `ScoreFact` equality contains those fields.
 
@@ -87,10 +94,11 @@ versioned record with this field order:
 
 ```text
 length(domain tag), domain tag,
-timeline encoding version,
+track encoding version,
+length(coordinate tag), coordinate tag,
 length(payload owner id), payload owner id,
 payload quotient version,
-extent numerator, extent denominator,
+length numerator, length denominator,
 occurrence count,
 for each canonical occurrence:
   start numerator, start denominator,
@@ -100,8 +108,13 @@ for each canonical occurrence:
 
 Lengths/counts are unsigned 64-bit big-endian; versions are unsigned 32-bit big-endian; rational components are signed
 64-bit big-endian and denominators are positive. Rationals are reduced by the exact-time representation. The current
-timeline encoding version is 2; version 1 was the unframed N5 display stream and is not interpreted as version 2.
+track encoding version is **3**, which adds the coordinate tag. Version 1 was the unframed N5 display stream and
+version 2 the framed bytes that predated the coordinate; both are **refused**, not reinterpreted
+(`../../plan/clean-break-ledger.md`).
 
-This grammar is uniquely decodable. At a fixed schema its complete framed-byte equality is exactly N4 semantic equality.
+The coordinate tag is framed rather than positional so that a reader refusing an unknown coordinate refuses it by name.
+
+This grammar is uniquely decodable. At a fixed schema its complete framed-byte equality is exactly N4 semantic
+equality.
 `SemanticHash` is FNV-1a-128 over these bytes, but the digest is only an index: an equal digest does not prove byte
 equality. Correctness-sensitive caches retain and confirm the complete framed arguments after lookup.

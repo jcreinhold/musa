@@ -1,7 +1,7 @@
 # Tracking where derived results came from
 
-When Musa turns source into a score, a score into gestures, or gestures into MIDI or audio, users need to know where
-each result came from. This chapter defines that origin record.
+When Musa turns source into a score track, a score track into gestures, or gestures into MIDI or a prepared machine,
+users need to know where each result came from. This chapter defines that origin record.
 
 ## 1. Stored representations and anchors
 
@@ -14,7 +14,7 @@ PresentationRef = (presentation id, version)
 Its descriptor records:
 
 ```text
-kind                  source, score, notation, MIDI, audio plan, ...
+kind                  source, score track, notation, MIDI, machine, ...
 schema                versioned format description
 root                  anchor for the whole representation
 generation sites      anchors that can create new material
@@ -22,9 +22,9 @@ anchor table          every addressable item in this version
 manifest              exact bytes needed to identify the stored result
 ```
 
-An **anchor** names one addressable item, such as a source expression, score event, MEI element, or process node. Anchor
-ids are local to one `PresentationRef`; the pair `(PresentationRef, anchor id)` is globally unambiguous within a
-project.
+An **anchor** names one addressable item, such as a source expression, a track occurrence, an MEI element, or a
+primitive instance in a machine. Anchor ids are local to one `PresentationRef`; the pair `(PresentationRef, anchor id)`
+is globally unambiguous within a project.
 
 Loading two records with the same `PresentationRef` but different descriptors is an error. Musa never guesses which
 record is the intended one.
@@ -57,11 +57,16 @@ Generated(source root, generation site, target, evidence)
 Combined(source list, target, evidence)
 ```
 
-`Preserved` covers an ordinary relation such as one source note producing one score event. `Generated` covers material
-made at a repeat, template, or algorithmic generation site. It keeps both the source root and the generation site.
-`Combined` covers a result made from several inputs, such as a chord label inferred from several notes.
+`Preserved` covers an ordinary relation such as one source note producing one track occurrence. `Generated` covers
+material made at a repeat, a syntax-adapter expansion, or an algorithmic generation site. It keeps both the source root
+and the generation site. `Combined` covers a result made from several inputs, such as a chord label inferred from
+several notes.
 
 Every anchor in a step must exist, and the pass descriptor must accept the source and target kinds.
+
+A **reused** result is `Generated`, not `Preserved`: it records both the shared source it instantiates and the site that
+instantiated it. This is what makes one shared body usable at several places without the uses becoming
+indistinguishable.
 
 ## 4. Joining paths
 
@@ -90,8 +95,33 @@ The resulting graph connects source, score, notation, analysis, MIDI, gestures, 
 those representations equal. It supports questions such as:
 
 - Which source expression produced this engraved note?
-- Which score events support this analysis label?
+- Which track occurrences support this analysis label?
 - Which tuning and rounding steps produced this MIDI event?
-- Which gesture and binding produced this process node?
+- Which gesture and binding produced this primitive instance?
 
 That is the whole purpose of the graph. It is an origin and loss record, not a universal definition of music.
+
+## 6. Composing two stages grafts; it does not concatenate
+
+§4 is about **one path**, which is a list, so joining two paths is concatenation at a shared anchor. Composing two
+**stages** is a different operation and must not be confused with it.
+
+A stage's derivation is a finite directed graph whose leaves are the anchors of its input representation. Composing a
+later stage after an earlier one replaces each leaf of the later graph by the earlier graph rooted at the matching
+anchor. Where several results share one input, the grafted subgraph is shared rather than copied; where one result has
+several inputs, all of them survive as parents.
+
+Two obligations follow, and both are audited:
+
+- **Coverage.** Every anchor of the composed result has a path to at least one source anchor. A result with no
+  derivation is a defect in the pass that produced it, not an acceptable omission.
+- **Associativity.** Grafting three stages in either grouping gives the same graph, because grafting acts leaf-wise and
+  the leaves of a graft are the leaves of the grafted subgraph.
+
+Flattening this graph into a list of `(source, target)` pairs loses exactly the two things it exists to record: which
+intermediate produced which, and which of several inputs a combined result came from. That flattening is the mistake
+§4's "does not replace them with a summary label" already forbids, stated at the graph level.
+
+An adapter expansion record — adapter definition and version, use site, input syntax, output syntax, parent expansion —
+is a source of `Generated` steps and nothing more. Expansion provenance says how text became an expression; a derivation
+says how a musical result came from an input. They have different jobs, and neither proves the other.

@@ -14,8 +14,8 @@ the temporal core and a separate studio calculus. Prompt 127a amends the rules f
 new design against stale rules.
 
 **Where the roadmap and the kernel specification disagree** — most importantly, on the rule that the surface grammar
-does not define the ontology and that a small temporal kernel (`timeline` / `sequence` / `overlay` over exact rational
-ambient time) is the semantic core — the kernel wins. Prompts 08–12 specify, implement, prove, and install it; prompts
+does not define the ontology and that a small event-track core (`empty`, `event`, `follow`, `together`, `map_events`,
+`length` over exact rational ambient time) is the semantic core — the kernel wins. Prompts 08–12 specify, implement, prove, and install it; prompts
 13+ proceed exactly as before on top of it.
 
 **Where the roadmap is silent on the desktop interface** — its visual language, engraving quality, interaction model,
@@ -339,7 +339,7 @@ on its own.
 **61–76 are the temporal block, and they start from an accusation the earlier prompts had earned.** Musa could not write
 a clef change, a modulation, a meter change, a fermata, a grace note, a *rit.*, a swung eighth, a cadenza, or any music
 that leaves a decision to its performer — which is most of what is played anywhere. The natural reading is that the
-temporal model is too small. It is not: `Timeline<A>` is generic in its payload, and a clef change is a `FactKind` with
+temporal model is too small. It is not: the event track is generic in its payload, and a clef change is a `FactKind` with
 a span costing zero kernel lines. What blocked all of it was above the kernel — four separate mechanisms for "what is in
 force here" (a `KeyMap` scalar, a `MeterMap` scalar, `Part::clef`, a `TempoMap` singleton), a measure number computed by
 dividing by one of them, and a closed five-variant enum standing in for the whole vocabulary of notation. **Every prompt

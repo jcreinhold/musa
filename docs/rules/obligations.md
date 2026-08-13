@@ -1,6 +1,6 @@
 # Rules that follow from the core design
 
-These rules turn [01-constitution.md](constitution.md) into tests for new designs. Each rule gives a concrete mistake to
+These rules turn [constitution.md](constitution.md) into tests for new designs. Each rule gives a concrete mistake to
 avoid.
 
 ## 1. Every conversion is named
@@ -14,26 +14,29 @@ happen to contain the same integer.
 ## 2. Built-in Western theory remains optional
 
 Keys, scale degrees, 12-note pitch classes, tonal chord functions, and regular bars are useful built-in tools. None may
-be required by the temporal kernel or by every music project.
+be required by the event-track core or by every music project.
 
-A new music-theory package must be able to reach notation, performance gestures, or audio through its own explicit
+A new music-theory package must be able to reach notation, performance gestures, or sound through its own explicit
 conversions. It need not pretend that its values are Western keys or chords.
 
-## 3. Overlay accepts parts of different lengths
+## 3. Placing tracks together accepts different lengths
 
-If `M` has length `d` and `N` has length `e`, their overlay has length `max(d, e)` and contains all events from both.
-The shorter part simply has no events after it ends.
+If `M` has length `d` and `N` has length `e`, `together(M, N)` has length `max(d, e)` and contains every occurrence of
+both, with multiplicity preserved. The shorter part simply has no occurrences after it ends.
 
 This forbids an equal-length type check and automatic rest insertion. Authors write rests when the notation or analysis
-needs rests, not to satisfy the timeline implementation.
+needs rests, not to satisfy the event-track implementation.
 
-## 4. Metre is not built into every timeline type
+## 4. Metre is not built into every track type
 
 Bars, pulse layers, tāla, swing, rubato, fermatas, gradual tempo changes, and unmeasured music need different models.
-They may guide a named conversion from written or structural time to performance time. They are not mandatory type
-parameters of every timeline.
+They may guide a named conversion from written or structural time to performed or physical time. They are not mandatory
+type parameters of every event track.
 
 This forbids treating `senza misura` as a type error or choosing one piecewise-constant pulse model for all music.
+
+The one type parameter a track does carry beside its payload is its time coordinate, and it is carried for the reason in
+`constitution.md` §8: a written beat and a physical second are indistinguishable until the sound is wrong.
 
 ## 5. An equality key must say what it ignores
 
@@ -57,32 +60,42 @@ Audio preparation has this shape:
 
 ```text
 prepare_execution(gestures, bindings, seed, options)
-    -> prepared audio plan or error
+    -> prepared machine or error
 ```
 
-`options` includes every choice that can change acceptance or execution, such as sample rate, channels, block policy,
-render bounds, and quality settings. Origin data used only for editor navigation is handled separately.
+`options` includes every choice that can change acceptance or execution, such as sample rate, channel layout, batching
+policy, render bounds, and quality settings. Origin data used only for editor navigation is handled separately.
 
-Equal arguments to a pure deterministic implementation give equal prepared results. Equal rendered samples also require
-equal external input, initial state, allocation rules, and conforming processors. This forbids claiming unconditional
+Equal arguments to a pure deterministic implementation give equal prepared results. Equal rendered frames also require
+equal external input, initial state, allocation rules, and conforming primitives. This forbids claiming unconditional
 bit-for-bit audio equality across devices.
 
-## 8. Audio schedules whole processors
+Preparation is also where the core check happens: every primitive in the machine must accept the chosen format, every
+connected port layout must agree, and every stated memory and worst-case-step contract must be satisfied before anything
+is allocated. A machine may therefore be well typed and still fail preparation — an oscillator configured for 44.1 kHz
+in a 48 kHz render is a configuration error, and it is reported as one rather than avoided by making the type system
+depend on values.
 
-A processor runs once per audio step after all of its current inputs are ready. The scheduler must therefore order whole
-processors, not individual ports. A connection cycle is legal only if at least one edge reads a stored value from an
-earlier step.
+## 8. One audio step is one sample frame
 
-This forbids a port graph that looks acyclic but cannot run the processor API, as well as zero-delay feedback whose
-meaning changes with the caller’s buffer size.
+The reference meaning of an audio machine is its frame-by-frame step. A batch method over `n` frames may replace `n`
+repeated steps only when it produces the same next state and the same `n` outputs for every valid state and input block.
+
+A feedback-free machine may combine valid batch methods for its parts through chain and side-by-side connection. A
+feedback machine may not: its later feedback inputs are earlier outputs from the same block, so it runs frame by frame
+unless a separately checked batch method for the **whole** feedback machine exists. A unit that genuinely needs internal
+blocks, such as an FFT effect, buffers frames in its private state and states its latency.
+
+This forbids sound that changes with host callback size, and it forbids inheriting a batch method through feedback by
+analogy with the feedback-free case.
 
 ## 9. Origin paths keep their intermediate steps
 
-If source `A` produced score event `B`, which then produced MIDI event `C`, the recorded path keeps `B` and both
-conversions. A generated event also keeps the source root and generation site that explain where it came from.
+If source `A` produced occurrence `B`, which then produced MIDI event `C`, the recorded path keeps `B` and both
+conversions. A generated occurrence also keeps the source root and generation site that explain where it came from.
 
-This forbids flattening the path to a list that can no longer be checked, or inventing a generated event with no source
-or generation site.
+This forbids flattening the path to a list that can no longer be checked, or inventing a generated occurrence with no
+source or generation site.
 
 ## 10. New language features need real examples
 
@@ -90,22 +103,70 @@ Musa should add a type-system feature only when ordinary finite data, total func
 real musical operations unclear or unsafe. Nominal data and private constructors have such examples: different theory
 packages need to hide their representations.
 
-Dependent types, recursive data, first-class modules, “worlds,” and equality proofs do not enter the language merely
-because they fit an analogy. The failed examples must come first.
+Dependent types, general recursion, call-by-push-value, first-class signals, type-directed macros, “worlds,” and
+equality proofs do not enter the language merely because they fit an analogy. The failed examples must come first, and
+the smallest failing term must be recorded.
 
 ## 11. A formal compiler stage need not be source syntax
 
-The timeline rules, audio-graph rules, and origin-path rules need precise definitions. That does not mean composers must
+The event-track rules, machine rules, and origin-path rules need precise definitions. That does not mean composers must
 write those internal terms. A compiler-owned form should remain private when exposing it would not make musical ideas
 easier to express.
 
-This forbids adding one source operator for chords, phrases, timelines, and audio graphs just because each has some form
-of composition.
+This forbids adding one source operator for chords, phrases, tracks, and machines just because each has some form of
+composition.
 
-## 12. Real-time code must implement the same audio rules
+## 12. Real-time code must implement the same step rules
 
-Preallocation, fixed buffers, queues, and vectorization may change how fast the engine runs. They may not change what a
-processor step means. The audio callback allocates no memory, takes no lock, performs no file or network I/O, writes no
-log, and destroys no large object.
+Preallocation, fixed buffers, queues, flattening a machine tree into arrays, and vectorization may change how fast the
+engine runs. They may not change what a step means. The audio callback allocates no memory, takes no lock, performs no
+file or network I/O, writes no log, and destroys no large object.
 
-This forbids a fast path with different feedback timing or a cached plan that omits a setting which changes execution.
+This forbids a fast path with different feedback timing, and it forbids a private flattening whose execution order
+differs from the structural step equations.
+
+## 13. Storable data contains no source function
+
+Only storable data may be an occurrence payload, a machine port or feedback value, a primitive configuration, or an
+argument or result of a foreign primitive. A type is storable data when it contains no source function at any depth and
+has a versioned, finite, exact encoding.
+
+The check is recursive and covers containers: a list of functions, a constructor with a function field, and an abstract
+type whose hidden representation holds a closure are all rejected. An abstract compiler-owned type counts as storable
+data only when its owner guarantees the absence of a closure and supplies the exact encoding.
+
+This forbids smuggling a looping or non-total closure into a value that must be finite, exactly comparable, or runnable
+under a real-time deadline.
+
+## 14. Scheduling records every decision it makes
+
+The operation from an event track to a running event source either succeeds with a complete record of its conversions,
+or fails with a stated error. The record names, for each occurrence boundary, the exact source position, the exact
+physical time, the assigned frame, the rounding or collision choice, and the policy version.
+
+Success additionally requires that the assignment be nonnegative, representable, and order-preserving on the finite set
+of source boundaries, with each end no earlier than its start.
+
+This forbids a hidden default policy, a silently dropped or shifted occurrence, an unbounded counter in the running
+source, and any claim that a rounded time and its exact original are the same value.
+
+## 15. Private identity stays private
+
+An event handle created by scheduling is opaque. A primitive may compare two handles for equality and may use them to
+pair one occurrence's start with its end. It may not read their numeric spelling, derive randomness from them, or order
+messages by them.
+
+Merging two scheduled sources relabels their handles into disjoint sets before applying the policy's fixed message
+order, so a handle from one source can never collide with an equal-looking handle from the other.
+
+This forbids an instrument whose output changes when handles are consistently renamed, which is the premise every
+overlay-preservation result rests on.
+
+## 16. Seeds are explicit configuration
+
+A unit that uses chance stores its seed in its own primitive configuration. Preparation may split one render seed into
+named per-unit seeds, but that split is part of the finite machine description.
+
+This forbids a hidden root seed, and it forbids regrouping a machine tree from reseeding a unit:
+`connect(connect(m,n),p)` and `connect(m,connect(n,p))` contain the same leaves with the same configurations, so they
+run the same.

@@ -22,7 +22,7 @@ Failure creates no value and is an error at the smallest source range that falsi
 ## 2. Explicit assertions
 
 `assert predicate(args) { body }` is used for optional, decidable compositional requirements. The predicate observes a
-finite typed value or the controlled view of a finite `music` value and returns either evidence or counterexamples. The
+finite typed value or the controlled view of a finite event track and returns either evidence or counterexamples. The
 successful result is the unchanged body; assertions never repair or respell music.
 
 Predicate names carry practice and assumptions: `species.first_above(cantus)` is honest; `valid_counterpoint(cantus)` is
@@ -73,19 +73,19 @@ shape Peyton Jones (1987) §22.1 gives a program analysis. It governs the analys
 Implementations must test the following at the equality named in `00-semantics.md`.
 
 1. **Core type safety and normalization:** the theorems of `02-core-calculus.md`.
-2. **Context identity:** `in_scale(s,m) ≈music m` when `m` does not read scale.
-3. **Context shadowing:** `in_scale(s,in_scale(t,m)) ≈music in_scale(t,m)`.
-4. **Context distribution:** `in_scale` distributes over sequence and overlay under `≈music`.
+2. **Context identity:** `in_scale(s,m) ≈material m` when `m` does not read scale.
+3. **Context shadowing:** `in_scale(s,in_scale(t,m)) ≈material in_scale(t,m)`.
+4. **Context distribution:** `in_scale` distributes over `follow` and `together` under `≈material`.
 5. **Independent context commutation:** rebinding different permitted fields commutes; the initial candidate exposes
    only scale, so no additional surface operation is inferred from this law.
-6. **Chosen composition:** instantiation of sequence and overlay obeys the equations in `00-semantics.md`; no nested-
-   timeline flatten law exists.
+6. **Chosen composition:** `follow` and `together` obey the equations in `00-semantics.md`; no nested-track
+    flatten law exists.
 7. **Pitch action:** identity, composition, and cancellation from `03-musical-domains.md`.
 8. **Scale round trip:** `locate(realize(...))` on members returns the canonical degree/register.
 9. **Chord/voicing projection:** every voiced pitch projects to a licensed member; projection is intentionally many-to-
    one.
 10. **Row closure:** every row form remains a bijection; distinct-form count is not fixed at 48.
-11. **Quotation hygiene:** alpha-renaming a quote binder does not change `≡kernel`; antiquotation cannot capture or be
+11. **Quotation hygiene:** alpha-renaming a quote binder does not change `≡core`; antiquotation cannot capture or be
    captured.
 12. **Template determinism:** unchanged closure and source sites generate byte-identical declarations and IDs.
 13. **Provenance erasure:** changing only Origin may change full equality but not `≈facts`.
@@ -102,8 +102,8 @@ Each rejected shortcut has a fixture that would fail if the shortcut returned:
 
 | Shortcut to reject | Counterexample |
 | --- | --- |
-| `music = Timeline[ScoreFact]` | bind one `step` phrase and use it in C major and C Dorian |
-| implicit timeline join | overlay two sequences whose unequal extents make flattening choices disagree |
+| a track value freezing its scale | bind one `step` phrase and use it in C major and C Dorian |
+| implicit track join | place together two successions whose unequal lengths make flattening choices disagree |
 | key equals scale | ask for degree 6 in a minor key without natural/harmonic/melodic policy or register |
 | pitch class equals `pc12` | spell C-sharp and D-flat in a notation-preserving transform |
 | chord equals voicing | realize one Cmaj7 class in close and drop-2 voicings |

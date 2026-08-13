@@ -5,82 +5,97 @@ are in `04-algebraic-laws.md`; how they are normalized and compared is in `05-no
 
 ## D0 — The denotation
 
-For a payload type `A`, the denotation of a finite kernel composition is:
+For a coordinate `C` and a payload type `A`, the denotation of a finite kernel composition is:
 
 ```text
 ⟦ composition ⟧ = (d, E)
 ```
 
-where `d ∈ ℚ≥0` is the extent of the ambient musical-time interval `[0, d]`, and `E` is a **finite multiset** of
-occurrences `(s, e, a)` with `0 ≤ s ≤ e ≤ d` and `a : A`.
+where `d ∈ ℚ≥0` is the **length** of the ambient time interval `[0, d]` in coordinate `C`, and `E` is a **finite
+multiset** of occurrences `(s, e, a)` with `0 ≤ s ≤ e ≤ d` and `a : A`. A positive span `s < e` denotes the half-open
+interval `[s, e)`; `s = e` denotes a point.
 
-Two consequences, both load-bearing:
+Three consequences, all load-bearing:
 
 - **Time is ambient**. `E` may be empty; `[0, d]` exists regardless. There is no `Silence(d)` or `Rest(d)` object: an
   uncovered region *is* silence with respect to that payload type, by absence.
-- **Duration is temporal support, not a payload field**. A `Note` payload describes *what* is sounding; the occurrence's
-  `[s, e]` describes *when* it sounds. Payloads that smuggle their own duration field invite inconsistency and are
-  rejected at the payload-schema layer (`02-static-semantics.md`, K5, by convention of the score adapter).
+- **Length is temporal support, not a payload field**. A `Note` payload describes *what* is sounding; the occurrence's
+  span describes *when* it sounds. Payloads that smuggle their own duration field invite inconsistency and are rejected
+  at the payload-schema layer (`02-static-semantics.md`, K5, by convention of the score adapter).
+- **The coordinate is part of the type, not part of the value.** `(d, E)` says nothing about whose time it measures;
+  `EventTrack<C,A>` does. Two tracks in different coordinates are different types and never combine
+  (`02-static-semantics.md`, K2, K4).
 
-## D1 — `timeline`
+## D1 — `event` and the track literal
 
 ```text
-⟦ timeline d { occurrence a₁ from s₁ to e₁; … occurrence aₙ from sₙ to eₙ; } ⟧
+⟦ track d { occurrence a₁ from s₁ to e₁; … occurrence aₙ from sₙ to eₙ; } ⟧
     = (d, { (sᵢ, eᵢ, aᵢ) | 1 ≤ i ≤ n })      provided ∀i. 0 ≤ sᵢ ≤ eᵢ ≤ d
 ```
 
-Multiple equal occurrences are allowed (multiset, §6). The extent may exceed every `eᵢ`: the tail is simply uncovered —
+Multiple equal occurrences are allowed (multiset, K6). The length may exceed every `eᵢ`: the tail is simply uncovered —
 ambient time, not padding.
 
-## D2 — `sequence` (temporal succession)
+Two literals are named, because they are the basis constructors:
+
+```text
+empty(d)    = (d, ∅)
+event(d, a) = (d, { (0, d, a) })
+```
+
+`event(d, a)` is one occurrence filling its own track. Every other literal is a `together` of shifted `event`s, which is
+why the basis needs exactly these two.
+
+## D2 — `follow` (temporal succession)
 
 For `M = (d, E)` and `N = (e, F)`:
 
 ```text
-M ; N = (d + e, E ⊎ τ_d(F))    where τ_d(s, t, a) = (d + s, d + t, a)
+follow(M, N) = (d + e, E ⊎ τ_d(F))    where τ_d(s, t, a) = (d + s, d + t, a)
 ```
 
-The second timeline is translated by the duration of the first. `;` generalizes pointwise to `n` arguments by left- or
+The second track is translated by the length of the first. `follow` generalizes pointwise to `n` arguments by left- or
 right-fold — associativity (L1) makes the choice immaterial.
 
-The empty timeline `0 = (0, ∅)` is the two-sided identity (L2). Note the difference from `(d, ∅)` for `d > 0`:
-sequencing after `(d, ∅)` *does* shift what follows — empty timelines have extent, and extent is real.
+The empty track `(0, ∅)` is the two-sided identity (L2). Note the difference from `(d, ∅)` for `d > 0`: following
+`(d, ∅)` *does* shift what comes after — empty tracks have length, and length is real.
 
-## D3 — `overlay` (simultaneous presence)
+## D3 — `together` (simultaneous presence)
 
 ```text
-M ⊕ N = (max(d, e), E ⊎ F)
+together(M, N) = (max(d, e), E ⊎ F)
 ```
 
 Both occurrence multisets live in the union's ambient region. **Nothing is inserted into the uncovered portion of the
-shorter timeline** — it simply lives inside a larger ambient region.
+shorter track** — it simply lives inside a larger ambient region.
 
 - Commutative (L5) and associative (L4).
-- **Not idempotent**: `M ⊕ M ≠ M` whenever `E ≠ ∅` — multiplicity doubles. `overlay` is a union of multisets, never a
-  union of sets.
-- At any fixed extent `d`, overlay forms a commutative monoid with identity `(d, ∅)` (L6).
+- **Not idempotent**: `together(M, M) ≠ M` whenever `E ≠ ∅` — multiplicity doubles. `together` is a union of multisets,
+  never a union of sets.
+- At any fixed length `d`, `together` forms a commutative monoid with identity `(d, ∅)` (L6).
 
 ## D4 — Ambient extension *(struck: prompt 37)*
 
-`extend_{d,e} (d, E) = (e, E)` was a standalone operation. It is removed: nothing called it. `sequence` and `overlay`
-compute their extents themselves, and no surface construct asks a timeline to grow without adding material, so under §34
+`extend_{d,e} (d, E) = (e, E)` was a standalone operation. It is removed: nothing called it. `follow` and `together`
+compute their lengths themselves, and no surface construct asks a track to grow without adding material, so under §34
 the basis shrinks. Re-adding it needs new evidence, not taste.
 
-Ambient extension as a *concept* stays, and is exactly what it always was: `(d, ∅)` is silence by absence, and `overlay`
-of unequal extents takes the maximum without padding the shorter argument. What went is the operation that only ever
-restated that.
+Ambient extension as a *concept* stays, and is exactly what it always was: `(d, ∅)` is silence by absence, and
+`together` of unequal lengths takes the maximum without padding the shorter argument. What went is the operation that
+only ever restated that.
 
 ## D5 — Time scaling (an external action)
 
-Positive rational scaling `r ∈ ℚ>0` acts on timelines:
+Positive rational scaling `r ∈ ℚ>0` acts on tracks:
 
 ```text
 scale_r (d, E) = (r·d, { (r·s, r·e, a) | (s, e, a) ∈ E })
 ```
 
-Scaling is exact and preserves both `sequence` and `overlay` (L13–L15). Augmentation and diminution in the surface
-language **evaluate into** ordinary kernel timelines through this action; no permanent `Stretch` node exists in the
-normalized representation.
+Scaling is exact and preserves both `follow` and `together` (L13–L15). Augmentation and diminution in the surface
+language **evaluate into** ordinary event tracks through this action; no permanent `Stretch` node exists in the
+normalized representation. `scale_r` is retained beyond the six-operation basis because `stretch` is its caller and
+cannot be written above the core: it moves spans, and nothing above the core may move a span.
 
 ## D6 — Restriction (observation, not mutation)
 
@@ -95,52 +110,55 @@ payload       = a
 
 An occurrence is visible through `[i, j)` when:
 
-- it has positive duration and `[s, e) ∩ [i, j) ≠ ∅`; or
+- it has a positive span and `[s, e) ∩ [i, j) ≠ ∅`; or
 - it is a **point** (`s = e`) and `s ∈ [i, j)`; a point occurrence is otherwise unobservable through every window, which
   the interval-intersection phrasing does not intend; or
-- **the final instant of a timeline is observable**: it is a point at `s = j = d`. A window that ends at the observed
-  timeline's extent is closed at its right end. L16 follows from this rule — without it, observing at the full extent
+- **the final instant of a track is observable**: it is a point at `s = j = d`. A window that ends at the observed
+  track's length is closed at its right end. L16 follows from this rule — without it, observing at the full length
   `[0, d)` would drop an occurrence at `d` and so would not be the identity.
 
-The third rule is a fact about the timeline being observed, not about the window: an observation therefore carries the
-extent it was taken from, and narrowing it cannot silently drop an occurrence the wider observation reported (L17).
+The third rule is a fact about the track being observed, not about the window: an observation therefore carries the
+length it was taken from, and narrowing it cannot silently drop an occurrence the wider observation reported (L17).
 
 The observation knows both spans: an occurrence over `[3, 6)` observed through `[5, 8)` has whole support `[3, 6)` and
 visible support `[5, 6)` — cropping never claims the occurrence began at 5. The visible span is a *function* of the
-whole span and the window, so it is computed on demand rather than stored beside it; the normalized serialized kernel
+whole span and the window, so it is computed on demand rather than stored beside it; the normalized serialized track
 stores whole spans only.
 
 Restriction is total and composes: narrowing an observation to `K` intersects the windows, so there is no containment
 precondition and no error (L17). Windows that do not meet observe nothing — which is *not* the same as a degenerate
-window sitting at the extent, where the rule above applies.
+window sitting at the length, where the rule above applies.
 
 ## D7 — Payload mapping (functorial, not a temporal primitive)
 
 Given `f : A → B`:
 
 ```text
-Timeline(f) (d, E) = (d, { (s, e, f(a)) | (s, e, a) ∈ E })
+map_events(f) (d, E) = (d, { (s, e, f(a)) | (s, e, a) ∈ E })
 ```
 
-Payload mapping preserves temporal support exactly, is functorial (L9–L10), and preserves `sequence` and `overlay`
+Payload mapping preserves temporal support exactly, is functorial (L9–L10), and preserves `follow` and `together`
 (L11–L12). Transformations such as transposition — which touch payload information only — are payload maps evaluated
 before normalization. **No generic opaque `Transform(...)` kernel node exists**; source provenance preserves how
-material was produced, the normalized kernel preserves what it means.
+material was produced, the normalized track preserves what it means.
+
+`f` is a function of the source language, so `map_events` is applied by the language above the core and is not a term of
+`10-term-calculus.md`. That is the same line D12 draws for `join`, drawn on the other side.
 
 ## D8 — Delay (derived)
 
-A delayed timeline is ambient extent before its occurrences:
+A delayed track is ambient length before its occurrences:
 
 ```text
-delay_b(M) = (b, ∅) ; M
+delay_b(M) = follow((b, ∅), M)
 ```
 
-No silence object is involved — `(b, ∅)` is an empty ambient region, sequenced before `M`. Delay therefore needs no
-primitive constructor.
+No silence object is involved — `(b, ∅)` is an empty ambient region, followed by `M`. Delay therefore needs no primitive
+constructor.
 
 ## Progress — continuous shape as a payload value (`08-open-questions.md` Q4)
 
-A hairpin is the one musical fact the kernel could not say. The timeline recorded *that* a crescendo spans a region;
+A hairpin is the one musical fact the kernel could not say. The track recorded *that* a crescendo spans a region;
 **how** it grows existed only inside the performance lowerer, invented there and thrown away — so an interchange file
 could not carry it, and every future continuous control (`gliss`, *rit.*, a filter sweep, a fader move) would have
 arrived with nowhere to live.
@@ -160,24 +178,24 @@ map maps them to seconds. A dynamic marking is still not a decibel.
 
 ### The span-alone theorem
 
-> **A curve-bearing occurrence transforms by its span alone.** For every kernel operation `op ∈ {sequence, overlay,
-> scale, restrict, map_payload}`, the `Progress` in an occurrence's payload is byte-identical before and after, and
+> **A curve-bearing occurrence transforms by its span alone.** For every kernel operation `op ∈ {follow, together,
+> scale, restrict, map_events}`, the `Progress` in an occurrence's payload is byte-identical before and after, and
 > `p(u)` evaluated at corresponding absolute instants agrees before and after.
 
 This is why the design is safe, and it is a consequence of normalizing `u` rather than a property that had to be
-arranged. `scale r` multiplies the span; `u` is a fraction of the span, so it is unchanged. `sequence` translates; same.
-`overlay` does not touch spans. `map_payload` never inspects a payload at all.
+arranged. `scale r` multiplies the span; `u` is a fraction of the span, so it is unchanged. `follow` translates; same.
+`together` does not touch spans. `map_events` never inspects a payload at all.
 
-An **absolute-time** curve would have to be rewritten by `scale` and by `sequence` — which means the kernel would have
-to look inside payloads to transform them. That is precisely the §12 violation the kernel exists to prevent, and it
+An **absolute-time** curve would have to be rewritten by `scale` and by `follow` — which means the kernel would have to
+look inside payloads to transform them. That is precisely the layering violation the kernel exists to prevent, and it
 would break the functor laws L11–L15. The theorem is tested as **L24**.
 
 So Q4's answer is that the kernel needed a value, not an operation. That is the third piece of §34 evidence — alongside
-prompt 39's total timeline and prompt 44's queries — that the operation set is complete.
+prompt 39's total restriction and prompt 44's queries — that the operation set is complete.
 
 ### Shape is normative; sampling policy is not
 
-- The **shape** — "linear from 0 to 1 across this hairpin" — is a fact about the piece. It lives in the timeline, it
+- The **shape** — "linear from 0 to 1 across this hairpin" — is a fact about the piece. It lives in the track, it
   serializes, it contributes to the semantic hash, and two implementations must agree on it.
 - The **sampling policy** — evaluate once per notated event at `u = index / (count − 1)`, or once per onset at
   `u = (onset − start) / width` — is the consuming layer's interpretation, and consumers may differ. See
@@ -185,12 +203,13 @@ prompt 39's total timeline and prompt 44's queries — that the operation set is
 
 ### What `Progress` deliberately cannot express
 
-- **Steps.** Piecewise-*linear* only; no jump discontinuities. A sudden change is a fact at a point, the timeline
-  already has one, and D11 already answers what is in force there. Saying one thing two ways is the complecting this
-  block exists to remove.
+- **Steps.** Piecewise-*linear* only; no jump discontinuities. A sudden change is a fact at a point, the track already
+  has one, and D11 already answers what is in force there. Saying one thing two ways is the complecting this block
+  exists to remove.
 - **Units.** Unit-free fractions in `[0, 1]`. A curve "in decibels" is a consumer's mapping of the endpoints.
-- **Non-monotone shapes.** Vibrato and an LFO are periodic, not progress. A different construct, with its own name and
-  its own evidence, if one is ever wanted.
+- **Non-monotone shapes.** Vibrato and an LFO are periodic, not progress. They are a *machine's* business, not a track's
+  (`../across-stages/03-machine-calculus.md`), and that is the sharpest available example of where the line between the
+  two core values falls.
 - **An easing catalogue.** No `ease_in`, no exponential, no Bézier: breakpoints approximate any of them, and a catalogue
   is a vocabulary two implementations would then have to agree on.
 
@@ -229,7 +248,7 @@ prevailing(M, t, σ) = σ(a) for the canonically last (s, e, a) ∈ E with s ≤
 ```
 
 The selector, rather than a payload trait, is what keeps the musical knowledge out of the kernel: the *caller* says "the
-key facts", and the kernel never learns what a key is. One timeline therefore supports as many independent prevailing
+key facts", and the kernel never learns what a key is. One track therefore supports as many independent prevailing
 values as a consumer has questions — key, meter, clef, dynamic — without a type per kind.
 
 Note what is *not* in the definition: the occurrence's end. A prevailing value is anchored by where it was stated, not
@@ -243,9 +262,9 @@ tested (L20–L23).
 
 | Question | Ruling | Why |
 | --- | --- | --- |
-| Is a fact covering at its end instant? | No — support is `[s, e)` | Consistent with D6 and with `sequence`: the next fact's start is the previous one's end, and one instant must not belong to both |
+| Is a fact covering at its end instant? | No — support is `[s, e)` | Consistent with D6 and with `follow`: the next fact's start is the previous one's end, and one instant must not belong to both |
 | Is a point occurrence covered at its own instant? | Yes | Otherwise a point fact is unobservable — the same defect prompt 37 repaired in D6 |
-| Two prevailing candidates at the same instant? | The canonically later wins | Canonical order is total and includes the payload key (N2), so the answer is deterministic and does not depend on how the timeline was built |
+| Two prevailing candidates at the same instant? | The canonically later wins | Canonical order is total and includes the payload key (N2), so the answer is deterministic and does not depend on how the track was built |
 | Does a fact starting exactly at `t` prevail at `t`? | Yes | `dynamic mf;` on a note applies to *that* note; anything else surprises a composer |
 
 ### The performance rule
@@ -261,10 +280,11 @@ this: no caller wants one, and the sweep belongs where the score's ordering live
 
 ## D12 — Explicitly not defined
 
-- **No `join`.** `Timeline[Timeline[A]]` has no canonical flattening: begin-at-onset, stretch-to-fit, crop, repeat, and
-  preserve-inner-duration are genuinely different musical operations. Specific higher-level abstractions may define
-  their own; the universal kernel does not.
-- **No distributivity.** `M ; (N ⊕ P) ≠ (M ; N) ⊕ (M ; P)` in general — the left side has one copy of `M`, the right
-  side two. The kernel is not a semiring, and no law is claimed that would make it one.
-- **No infinity.** Every denotation is finite in extent and in occurrence count. Patterns and loops produce coherent
-  finite observations; they are not kernel values.
+- **No `join`.** `EventTrack<C, EventTrack<C,A>>` has no canonical flattening: begin-at-onset, stretch-to-fit, crop,
+  repeat, and preserve-inner-length are genuinely different musical operations. Specific higher-level abstractions may
+  define their own; the universal core does not.
+- **No distributivity.** `follow(M, together(N, P)) ≠ together(follow(M, N), follow(M, P))` in general — the left side
+  has one copy of `M`, the right side two. The core is not a semiring, and no law is claimed that would make it one.
+- **No infinity.** Every denotation is finite in length and in occurrence count. Patterns and loops produce coherent
+  finite observations; they are not track values. A genuinely unbounded source is a machine, and it is denoted somewhere
+  else entirely (`../across-stages/03-machine-calculus.md`).

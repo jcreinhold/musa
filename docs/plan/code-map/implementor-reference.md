@@ -17,7 +17,7 @@ musa-language → musa-compiler → {musa-render, musa-audio} → musa-engine �
 | Crate | Owns | Never exposes |
 | --- | --- | --- |
 | `musa-language` | tokens, lexer, parser, lossless CST, formatter, text edits | Rowan types |
-| `musa-kernel` | exact time, typed occurrences, `timeline`/`sequence`/`overlay`, normalization | anything musical |
+| `musa-kernel` | exact time, coordinates, typed occurrences, `empty`/`event`/`follow`/`together`/`map_events`/`length`, normalization | anything musical |
 | `musa-compiler` | resolution, typing, elaboration into the kernel, score and performance snapshots | pass types, `Type`, the resolver |
 | `musa-render` | `NotationPlan`, MEI, LilyPond, MusicXML, MIDI | intermediate plan internals |
 | `musa-project` | `ProjectSession`: documents, revisions, commands, exports, facts | compiler internals, byte offsets |
@@ -45,27 +45,29 @@ The shape to hold in mind:
    `ItemDoc` per checked declaration, `NameReference` per use.
 3. **Check** the value calculus. Total, strongly normalizing, monomorphized. Types are `musa-compiler`'s own; they do
    not cross the crate boundary.
-4. **Elaborate** into a kernel term: a `Timeline[ScoreFact]` built from `timeline`, `sequence`, `overlay`, `shift`,
-   `scale`, and `restrict`, with `let` for sharing.
+4. **Elaborate** into a core term: an `EventTrack[WrittenTime, ScoreFact]` built from `track`, `follow`, `together`,
+   `shift`, `scale`, and `restrict`, with `let` for sharing.
 5. **Normalize** the term (`../../rules/kernel/05-normalization.md`), which fixes occurrence order, payload
    serialization, semantic equality, and the semantic hash.
 6. **Project** into a `ScoreSnapshot` and a performance snapshot, which is what `musa-render` and `musa-audio` consume.
 
-The kernel is a leaf and stays one. A surface convenience must never become a fourth combinator: if a construct cannot
-be elaborated from the three that exist, the specification is what changes, not `musa-kernel`.
+The kernel is a leaf and stays one. A surface convenience must never become a seventh basis operation: if a construct
+cannot be elaborated from the six that exist (`../../rules/kernel/00-purpose.md`), the specification is what changes,
+not `musa-kernel`.
 
 ### Typing, briefly
 
 Judgments are in [`02-core-calculus.md`](../../rules/language/02-core-calculus.md) §2 and the staging judgments in
 [`00-semantics.md`](../../rules/language/00-semantics.md) §2. Two things surprise newcomers:
 
-- **`Music` is contextual.** A music value carries no key and no scale. It elaborates under whatever context is in force
-  at its *use* site, which is why one saved phrase can mean two things at two sites and why elaboration is not a pure
-  function of the declaration alone (`../00-semantics.md` §3).
+- **Reusable material is an ordinary value.** Prompt 127a deleted the contextual `Music` type: a fragment is a value of
+  type `EventTrack[WrittenTime, ScoreFact]`, a motif is a function returning one, and placement is applied by the
+  enclosing voice's left fold rather than read from an ambient context
+  (`../../rules/language/00-semantics.md` §3). The code still spells the old type; prompt 127e removes it.
 - **A nullary `fn` is a function.** `fn f() -> T` has type `() -> T` and is called `f()`, and the record an editor shows
   says so rather than spelling it `let f: T`. There is one deliberate exception, and it is the motif affordance: a bare
-  reference to a nullary `() -> Music` function *where `Music` is expected* is applied, so `use subject;` and
-  `use subject();` mean the same thing. It is one case in the checker, not a general coercion.
+  reference to a nullary `() -> EventTrack[WrittenTime, ScoreFact]` function *where a track is expected* is applied, so
+  `use subject;` and `use subject();` mean the same thing. It is one case in the checker, not a general coercion.
 
 ### Context requirements
 
@@ -76,6 +78,11 @@ default. `examples/broken/no-scale-in-force.musa` is the shape of that failure.
 ## 3. A worked trace
 
 `examples/canon-functions.musa` is two notes and a transformation, and it exercises the whole path.
+
+**This trace is the pre-127a output, reproduced verbatim.** The fixture and the binary still use the old spellings —
+`Music`, `timeline`, `overlay`, `% musa-kernel-1` — and prompts 127b–127e replace them with `EventTrack`, `track`,
+`together`, and `% musa-kernel-2`. The pairs are in [`../clean-break-ledger.md`](../clean-break-ledger.md). What the
+trace *shows* about provenance, sharing, and exact time is unchanged by the rename.
 
 The source:
 
@@ -116,7 +123,7 @@ kernel "Canon Functions" {
 
 Read what each part is doing.
 
-- **`overlay` and `shift by 1/2`** are the `canon` function's body, elaborated. Nothing about the term remembers that a
+- **`overlay` and `shift by 1/2`** (`together` and `shift by 1/2` after 127c) are the `canon` function's body, elaborated. Nothing about the term remembers that a
   function was involved; what it remembers is where the notes came from.
 - **`def 300:304`** is the byte span of the *declaration* the note came from — the `c4/4` inside `subject`. Both the
   original and the transposed copy carry the same `def`, because there is one declaration and two occurrences.
@@ -125,9 +132,9 @@ Read what each part is doing.
 - **`shared0` and `@ "…"`** are sharing. `subject` is elaborated once and referenced; the `@` annotation records the
   locus each reference stands at, so two placements of one phrase are distinguishable without the material being
   elaborated twice.
-- **`piece meter 4/4`** is a context fact, occupying its own extent. Meter is a fact about the passage, not a property
+- **`piece meter 4/4`** is a context fact, occupying its own span. Meter is a fact about the passage, not a property
   of a note.
-- The extents are exact rationals throughout. `1/4` is a quarter, not 0.25.
+- The lengths are exact rationals throughout. `1/4` is a quarter, not 0.25.
 
 From the term, `musa-render` builds a `NotationPlan` and then MEI, LilyPond, MusicXML, or MIDI. Every rendered element
 can name the occurrence it came from, and every occurrence can name the source span, which is what makes clicking a note

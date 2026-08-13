@@ -133,25 +133,25 @@ end(harbor)   = θ(b₀) + L
 
 A later tempo edit may move the onset in seconds but cannot stretch the recording or manufacture a musical end beat. The
 cue elaborates to a point `ScoreFact::FixedMediaCue` containing Origin, an opaque `AssetRef`, and playback settings.
-Kernel transforms may move, copy, or restrict that point; they do not stretch or reverse audio. Physical seconds, raw or
-decoded samples, and fixed-media extent never enter `Term[ScoreFact]` or `Timeline[ScoreFact]`. The asset table beside
-the score snapshot supplies `L` to performance preparation. This is the honest exception to “everything has a beat
-duration,” useful for field recording and fixed-media/timeline practice (OMT
+Core transforms may move, copy, or restrict that point; they do not stretch or reverse audio. Physical seconds, raw or
+decoded samples, and fixed-media length never enter `Term[ScoreFact]` or `EventTrack[WrittenTime, ScoreFact]`. The asset
+table beside the score snapshot supplies `L` to performance preparation. This is the honest exception to “everything has
+a beat duration,” useful for field recording and fixed-media/timeline practice (OMT
 `098-twentieth-century-rhythmic-techniques.md`).
 
 ### Temporal action table
 
-Kernel operations act only on occurrence support; the media reader remains forward unless source explicitly chooses a
+Core operations act only on occurrence support; the media reader remains forward unless source explicitly chooses a
 playback-rate sign in a later specification.
 
 | Operation | Note-driven sample | Musical clip | Fixed-media cue |
 | --- | --- | --- | --- |
-| sequence/shift | note gesture moves with its note | beat interval translates; source phase anchor translates | point onset translates; `L` unchanged |
-| overlay | independent note voices | both media signals coexist | both media signals coexist |
+| follow/shift | note gesture moves with its note | beat interval translates; source phase anchor translates | point onset translates; `L` unchanged |
+| together | independent note voices | both media machines coexist | both media machines coexist |
 | repeat | notes and deterministic realization choices duplicate with Origin | interval and phase mapping duplicate per iteration | point duplicates; each copy lasts `L` seconds |
 | stretch by `r>0` | note support and gesture timing scale; pitch is unchanged | beat support scales by `r`; policy is reapplied to the new support | onset scales; physical duration and playback rate are unchanged |
 | restrict `[i,j)` | ordinary note restriction policy | support intersects the window while retaining the original source phase, so a middle restriction does not restart | point survives iff its onset is in the window; a surviving recording is not cropped |
-| retrograde in extent `d` | note supports relocate by the score law | interval relocates and source still plays forward | point moves from `b` to `d-b`; audio is not reversed |
+| retrograde in length `d` | note supports relocate by the score law | interval relocates and source still plays forward | point moves from `b` to `d-b`; audio is not reversed |
 | pitch transpose/invert | written note pitch changes before sample selection | no effect | no effect |
 
 For fixed media, every listed temporal operation can change only `b₀`; substituting the new onset into `end=θ(b₀)+L`
@@ -162,8 +162,8 @@ remained inside the window.
 
 ## 5. Routing recorded media
 
-Sampled instruments produce their assigned part signal. Beat-fitted and fixed-media declarations produce named media
-signals. They enter only the mix graph:
+Sampled instruments produce their assigned part machine. Beat-fitted and fixed-media declarations produce named media
+machines. They enter only the mix graph:
 
 ```musa
 studio {
@@ -175,7 +175,7 @@ studio {
 }
 ```
 
-A media signal has no `PartId` unless it is a note-driven instrument. The mix cannot send it note gestures, retune it,
+A media machine has no `PartId` unless it is a note-driven instrument. The mix cannot send it note gestures, retune it,
 or expose its waveform as score data. Editing, trimming, denoising, and comping remain external; Musa may select an
 immutable region by exact sample bounds declared in the asset adapter.
 

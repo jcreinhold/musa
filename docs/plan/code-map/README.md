@@ -7,11 +7,17 @@
 The formal specification says what Musa’s stages mean. These pages say which crate implements each stage, which details
 remain private, how data is stored, and where validation occurs.
 
+**Vocabulary note (prompt 127a).** These pages now use the governing names — event track, `follow`, `together`,
+`map_events`, length, machine, registered primitive, step, `schedule`, `PreparedMachine`. The Rust identifiers in the
+workspace still carry their pre-127a spellings until prompts 127b–127i land, and every pair is listed in
+[`../clean-break-ledger.md`](../clean-break-ledger.md). Where a page quotes literal current output or a fixture, it says
+so.
+
 Read them in this order:
 
 1. [stage-pipeline.md](stage-pipeline.md) maps compiler stages to crates and public APIs.
 2. [identity-and-storage.md](identity-and-storage.md) explains exact encodings, hashes, caches, and saved origin data.
-3. [process-runtime.md](process-runtime.md) explains how `musa-audio` prepares a graph for the real-time engine.
+3. [process-runtime.md](process-runtime.md) explains how `musa-audio` prepares a machine for the real-time engine.
 4. [spec-to-implementation-map.md](spec-to-implementation-map.md) marks each planned feature as implemented, partial, or
    absent.
 5. [implementor-reference.md](implementor-reference.md) is the orientation for someone changing the compiler: grammar to

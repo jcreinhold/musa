@@ -20,7 +20,7 @@ before any clip player is written.
 
 ## Read
 
-- `docs/rules/constitution.md` §4 and §7 — the boundary this prompt draws at the surface is the same one the core
+- `docs/rules/constitution.md` §4 and §8 — the boundary this prompt draws at the surface is the same one the core
   boundary draws in the type system, and rule 4 is the constraint the cue payload has to satisfy.
   `docs/rules/kernel/12-payload-admission.md` from prompt 129a for what a media payload owes.
 - `docs/rules/language/08-performance-and-sound.md` and `09-assets-and-packages.md`; kernel occurrence/transform laws;

@@ -10,22 +10,24 @@ The order below is the precedence order: a page is bound by everything above it 
 | [`constitution.md`](constitution.md) | The few decisions every part of musa must follow |
 | [`obligations.md`](obligations.md) | The rules that fall out of those decisions |
 | [`across-stages/`](across-stages/README.md) | The rules no single stage owns: what data exists, when it is valid, how one stage produces the next, what equality means |
-| [`kernel/`](kernel/00-purpose.md) | The finite temporal kernel — exact time, typed occurrences, `timeline`/`sequence`/`overlay`, normalization, the backend contract |
+| [`kernel/`](kernel/00-purpose.md) | The finite event-track core — exact tagged time, typed occurrences, `empty`/`event`/`follow`/`together`/`map_events`/`length`, normalization, the backend contract |
 | [`desktop/`](desktop/README.md) | The desktop interface: visual language, engraving quality, interaction, states, performance budgets |
 | [`style-guide.md`](style-guide.md) | `.musa` naming and spelling. Its machine-checkable subset is the lint pass, which cites this file by section number in its diagnostics |
-| [`language/`](language/README.md) | The source language above the kernel and the sound pipeline after it. **Candidate**, not yet binding |
+| [`language/`](language/README.md) | The one total source language that builds both core values. **Candidate**, not yet binding |
 
 ## The core decisions
 
-`constitution.md` answers seven questions. They do not prescribe Rust types or source syntax:
+`constitution.md` answers nine questions. They do not prescribe Rust types or source syntax:
 
 1. What can a user edit?
 2. Must all music use the same theory?
 3. How does musa represent finite musical time?
-4. How does that representation connect to audio?
-5. How can notation, analysis, MIDI, and audio describe one project without being treated as the same thing?
-6. What does it mean for two stored results to be equal?
-7. Does each kind of musical event get its own structure, or do they share one?
+4. What is the thing that produces sound, and what is *not* that thing?
+5. How do those two meet?
+6. How can notation, analysis, MIDI, and audio describe one project without being treated as the same thing?
+7. What does it mean for two stored results to be equal?
+8. Does each kind of musical event get its own structure, or do they share one?
+9. How many source languages are there, and what may they not do?
 
 Read [`constitution.md`](constitution.md) for the answers, then [`obligations.md`](obligations.md) for what follows.
 
@@ -39,5 +41,10 @@ Read [`constitution.md`](constitution.md) for the answers, then [`obligations.md
 4. updates the formal specification and the code map;
 5. explains how stored files and public APIs will migrate; and
 6. records the change in [`../notes/research/`](../notes/research/README.md) so the old argument stays visible.
+
+The most recent such amendment is prompt 127a, which replaced the account of a contextual `Music` value above a temporal
+kernel with a separate process graph below it. Its reason, refuted alternatives, and proof outline are in
+[`../notes/research/core-calculus/`](../notes/research/core-calculus/README.md); what it obliges later prompts to delete
+rather than alias is [`../plan/clean-break-ledger.md`](../plan/clean-break-ledger.md).
 
 The other pages here are amendable in the ordinary way — a prompt that repairs them, committed before the code changes.

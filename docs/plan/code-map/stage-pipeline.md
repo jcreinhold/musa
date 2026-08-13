@@ -3,6 +3,11 @@
 This page answers two engineering questions: which crate owns each stage, and how much of that stage may cross a public
 API.
 
+The stage names below are the governing ones installed by prompt 127a. The Rust identifiers in the workspace still carry
+their pre-127a spellings until prompts 127b–127i land; the pairs are listed in
+[`../clean-break-ledger.md`](../clean-break-ledger.md), and this page is stale wherever it uses one as if it were the
+other.
+
 ## 1. Main flow
 
 ```text
@@ -14,21 +19,25 @@ closed Term<ScoreFact>
     |
     | evaluate exact musical time
     v
-Timeline<ScoreFact>
+EventTrack<WrittenTime, ScoreFact>
     |--------------------> NotationPlan ------> MEI / LilyPond / MusicXML
     |--------------------> Analysis result + supporting evidence
     |
     | apply performance profile and realization choices
     v
-Timeline<Gesture>
+EventTrack<PerformedTime, Gesture>
+    |
+    | schedule(format, policy, time map, track)
+    v
+Scheduled<Gesture> = machine + decisions
     |
     | bind instruments and studio; fix sample rate, channels, seed, and options
     v
-PreparedExecution
+PreparedMachine
     |
-    | allocate state and run fixed audio steps
+    | allocate state and step one sample frame at a time
     v
-audio samples
+audio history
 ```
 
 These stages use different data because they answer different questions. The compiler does not force them into one large
@@ -55,15 +64,16 @@ closed Term<ScoreFact>            <- kernel documents and typed quotation read t
     |
     | evaluate exact musical time
     v
-Timeline<ScoreFact>
+EventTrack<WrittenTime, ScoreFact>
 ```
 
 None of these intermediate types crosses a crate boundary. The CST is Rowan-backed and stays inside `musa-language`; the
-HIR and the evaluator's values stay inside `musa-compiler`. What crosses is the closed term and the timeline.
+HIR and the evaluator's values stay inside `musa-compiler`. What crosses is the closed term and the event track.
 
-The temporal kernel in particular is not spread through the compiler. Its public interface is roughly: construct and
-check a timeline, sequence, overlay, restrict, normalize, compare, map payloads, and scale time. Its internal
-representation choices stay hidden behind that.
+The event-track core in particular is not spread through the compiler. Its public interface is roughly: construct and
+check a track, `follow`, `together`, restrict, normalize, compare, `map_events`, and scale time. Its internal
+representation choices stay hidden behind that. The machine is the second core value and lives on the sound side; a
+track and a machine meet only at `schedule`.
 
 ## 2. Which crate owns what
 
@@ -71,15 +81,15 @@ representation choices stay hidden behind that.
 | --- | --- | --- |
 | Tokens, concrete syntax tree, formatting, and text edits | `musa-language` | parsing and edit operations |
 | Name resolution, type checking, total evaluation, score and gesture compilation | `musa-compiler` | `compile` and caller-ready snapshot facts |
-| Exact finite timelines and their laws | `musa-kernel` | `Term`, `Timeline`, construction, queries, equality, and hash |
+| Exact finite event tracks and their laws | `musa-kernel` | `Term`, the track type, construction, queries, equality, and hash |
 | Engraving plan and file export | `musa-render` | `render_notation` and export results |
-| Studio checking, audio preparation, processor graph, and offline rendering | `musa-audio` | `prepare_execution` and an opaque prepared plan |
+| Studio checking, machine construction and scheduling, audio preparation, and offline rendering | `musa-audio` | `prepare_execution` and an opaque prepared machine |
 | Audio-device negotiation, transport, and callback | `musa-engine` | `AudioEngine` and transport commands |
 | Source documents, revisions, commands, and derived-result coordination | `musa-project` | `ProjectSession` |
 | CLI, LSP, desktop, and web entry points | shell crates and apps | user-facing commands and results |
 
-`musa-audio` keeps processor nodes, buffers, state layout, and schedules private. `musa-engine` receives a plan it can
-run; it does not inspect the graph. Audio crates do not depend on compiler score types.
+`musa-audio` keeps registered primitives, buffers, state layout, and step orders private. `musa-engine` receives a
+prepared machine it can step; it does not inspect the machine. Audio crates do not depend on compiler score types.
 
 ## 3. What each conversion must provide
 

@@ -1,8 +1,13 @@
 # Performance and sound
 
-> **`docs/rules/constitution.md` §7 governs where this document differs.** The `GestureTimeline` named below is the
-> temporal kernel at a gesture payload — `Timeline<Gesture>` — not a structure with its own ordering, equality, or hash.
-> Signals stay outside the core; the prepared render plan is what crosses, under the law `R1`.
+> **`docs/rules/constitution.md` §8 governs where this document differs.** The gesture track named below is the one
+> event-track structure at a gesture payload — `EventTrack[PerformedTime, Gesture]` — not a structure with its own
+> ordering, equality, or hash.
+>
+> The machine is **not** outside the core language (`../constitution.md` §4).
+> `schedule(format, policy, time map, track)` is the named, checked operation that connects a track to one
+> (`../constitution.md` §5), and `prepare_audio` fixes the format under the law `R1`. What stays outside is the audio
+> *history*, because a history is coinductive and no source value is. Rewritten at prompt 127a.
 
 Sound belongs in Musa because a canonical source should be capable of naming the intended performance, instrument, and
 room. It remains downstream of score semantics because a written mark is not a waveform. The studio describes the
@@ -21,25 +26,27 @@ score facts rather than changing their meaning.
 For every part `l`, preparation follows exactly:
 
 ```text
-Timeline[ScoreFact] --profile--> GestureTimeline[Signature]
-                    --tempo-->   ScheduledGestureLane
-                    --instrument implementation--> Signal
-part Signals        --mix graph--> stereo Signal
+EventTrack[WrittenTime, ScoreFact]
+    --profile-->                    EventTrack[PerformedTime, Gesture]  ⊨ Signature
+    --schedule(format, policy, time map, track)-->
+                                    Scheduled[Gesture] = machine + decisions
+    --instrument implementation-->  Machine[AudioFrameStep, _, Frame]
+part machines --mix graph-->        Machine[AudioFrameStep, _, StereoFrame]
 ```
 
 More formally, after projecting the part facts `πₗ(T)`:
 
 ```text
 R(Pₗ, Sₗ, πₗ(T)) = Gₗ                    profile realization
-C(tempoₗ, grooveₗ, tuning, Gₗ) = Lₗ      physical scheduling
-I(implementationₗ, Lₗ) = xₗ              instrument transduction
-M(mix, {PartIdₗ ↦ xₗ}) = (left,right)    routing and mixing
+C(tempoₗ, grooveₗ, tuning, Gₗ) = Lₗ      scheduling; Lₗ is a Scheduled[Gesture]
+I(implementationₗ, Lₗ) = xₗ              instrument transduction; xₗ is a machine
+M(mix, {PartIdₗ ↦ xₗ}) = (left,right)    routing and mixing; the result is a machine
 ```
 
-`R` and the musical inputs to `C` are exact and deterministic. `I` and `M` are causal signal operations. Score,
-performance profile, instrument, and mix declarations remain independently editable source. One deep `prepare_audio`
-operation validates and binds them into an immutable plan; neither ordinary callers nor the real-time callback assemble
-these stages piecemeal.
+`R` and the musical inputs to `C` are exact and deterministic. `I` and `M` build machines, and a machine is a finite
+description; the audio history is what stepping one produces, and is never a value here. Score, performance profile,
+instrument, and mix declarations remain independently editable source. One deep `prepare_audio` operation validates and
+binds them into an immutable plan; neither ordinary callers nor the real-time callback assemble these stages piecemeal.
 
 The present independent `PerformancePlan`/`StudioSpec` handoff has the right ownership but an insufficient contract: it
 turns profiles into a few floats before knowing the instrument, discards part identity at graph input, declares but
@@ -49,7 +56,8 @@ independent export, caching, and UI projections.
 
 ## 2. Performance gestures
 
-`GestureTimeline[S]` is a finite exact timeline indexed by an instrument signature `S`. Its payload vocabulary is:
+A gesture track is an `EventTrack[PerformedTime, Gesture]` carrying a checked conformance witness to an instrument
+signature `S`, written `EventTrack[PerformedTime, Gesture] ⊨ S`. Its payload vocabulary is:
 
 ```text
 NoteGesture {
@@ -65,8 +73,9 @@ PhraseGroup { members: nonempty list GestureId, connection: detached | ordinary 
 ReleaseGesture { instance: GestureId, at: Beat }
 ```
 
-The bracket is specification notation for a timeline plus a checked conformance witness `G ⊨ S`; it does not add
-dependent types to the source calculus or require a public Rust generic over user declarations.
+The witness is specification notation for a track plus a checked conformance judgment `G ⊨ S`; it is not a second type
+index. The core carries exactly one type index, the coordinate (`../kernel/02-static-semantics.md` K2), so conformance
+is a pass result rather than a dependent type in the source calculus or a public Rust generic over user declarations.
 
 The exact support is still notated time; profiles may produce a distinct exact release beat and connection intent. A
 note's sounding tail remains an instrument behavior and may extend after release. Continuous curves use the kernel's
@@ -91,7 +100,7 @@ union of the hairpin's exact shape points and explicit control changes, sorted b
 ordering. Instrument mapping occurs later and cannot change this gesture-level curve.
 
 Groove maps exact written beat to exact performed beat before tempo. Tempo then maps performed beat to physical time.
-Thus swing survives a tempo change, and tempo never stretches the symbolic score timeline.
+Thus swing survives a tempo change, and tempo never stretches the written event track.
 
 ## 3. Instrument signatures
 
@@ -171,9 +180,9 @@ Three identities must not collapse:
 - `PreparedInstrumentId = H(plan, PartId, InstrumentDeclId, instance ordinal)` identifies mutable render state inside
   one prepared plan.
 
-Each `ScheduledGestureLane` retains `PartId` and is delivered only to its prepared instances. Sharing one instrument
-declaration does not share voices or state unless an explicit ensemble implementation says so. This removes the current
-shared-note-stream behavior. The mix graph receives labeled part signals; it does not inspect note events.
+Each part's `Scheduled[Gesture]` retains `PartId` and is delivered only to its prepared instances. Sharing one
+instrument declaration does not share voices or state unless an explicit ensemble implementation says so. This removes
+the current shared-note-stream behavior. The mix graph connects labeled part machines; it does not inspect note events.
 
 Instrument replacement is accepted when the new signature is a behavioral super-signature of every gesture, technique,
 and control required by the selected profile and explicit source bindings. Standard normalized controls make common
@@ -196,7 +205,7 @@ part violin {
 `assign`, and `route`, and can add sends. A part may instead carry defaults, but after resolution there is exactly one
 selected instrument and profile. The formatter and hover explain `sound`, `assign`, `send`, `room`, `bus`, `route`, and
 every built-in processor. A `room` is a named shared ambience path. A `bus` is the advanced general form: a named
-signal-summing path with an effect chain. `send part -> room at level` copies a part signal to it; `route x -> master`
+summing path with an effect chain. `send part -> room at level` copies a part's output to it; `route x -> master`
 selects what reaches stereo output. Voice is not mixer track, and part is not synthesizer.
 
 `studio { ... }` is a source grouping retained for compatibility and readability. Elaboration separates its assignments,
@@ -234,7 +243,7 @@ Unsupported realization is explicit:
 ## 7. Exact-to-physical boundary
 
 Source numbers, profile mappings, gesture positions, normalized controls, units, and curves remain integers/rationals or
-dimensioned exact quantities through `GestureTimeline`. Tempo integration uses the canonical exact map already specified
+dimensioned exact quantities through the gesture track. Tempo integration uses the canonical exact map already specified
 by the backend contract: seconds per beat is piecewise linear along exact `Progress`, so each segment has an exact
 rational trapezoidal integral. Unsupported shapes are rejected rather than sampled early.
 
@@ -250,27 +259,32 @@ rational trapezoidal integral. Unsupported shapes are rejected rather than sampl
 No eager `f64` is stored in editable `StudioSpec` intent. Diagnostics show the written exact value and, when relevant,
 the prepared approximation.
 
-## 8. Signal and mix laws
+## 8. Machine and mix laws
 
-A prepared implementation is causal: output sample `n` depends only on scheduled inputs through `n` and prior private
-state. It allocates, locks, performs I/O, logs, or destroys no large object in the audio callback. All capacity failures
-are handled during preparation or by a documented bounded real-time policy.
+A prepared machine is causal: output frame `n` depends only on scheduled inputs through `n` and prior private state
+(machine Theorem M2, `../across-stages/03-machine-calculus.md`). It allocates, locks, performs I/O, logs, or destroys no
+large object in the audio callback. All capacity failures are handled during preparation or by a documented bounded
+real-time policy.
 
-Processors define state transitions per sample, not per callback block. Smoothing and automation are functions of
-absolute frame index. Therefore splitting a frame interval into legal callback blocks preserves output. Floating-point
-tests use a processor-specific tolerance where algebraic reassociation is unavoidable; deterministic offline export uses
-one documented summation order.
+**One audio step is one sample frame** (`../constitution.md` §4, `../obligations.md` rule 8). Registered primitives
+define state transitions per frame, and smoothing and automation are functions of absolute frame index. A host block is
+therefore an optimization, never the semantics: replacing `n` repeated steps by one `batch(n)` call is legal only where
+that primitive or machine has a `batch` implementation satisfying the contract in
+`../across-stages/03-machine-calculus.md` §4, and R1-batch is what then makes the caller's partition unobservable. A
+machine containing feedback does not inherit a valid batch from its parts. Floating-point tests use a processor-specific
+tolerance where algebraic reassociation is unavoidable; deterministic offline export uses one documented summation
+order.
 
-Offline and live execution call the same `RenderPlan::render` over the same scheduled lane representation. Offline may
-choose block sizes and write files; it may not substitute a different synthesis algorithm. The law is:
+Offline and live execution step the same prepared machine over the same `Scheduled[Gesture]`. Offline may choose block
+sizes and write files; it may not substitute a different synthesis algorithm. The law is:
 
 ```text
-concat(render(plan, partition₁, inputs)) ≈samples concat(render(plan, partition₂, inputs))
-offline(plan, inputs) = render(plan, canonical offline partition, inputs)
+concat(run(prepared, partition₁, inputs)) ≈samples concat(run(prepared, partition₂, inputs))    where every block is a valid batch
+offline(prepared, inputs) = run(prepared, canonical offline partition, inputs)
 ```
 
-Part isolation is observable: with all lanes except `l` silent, only the signal paths reachable from `PartId(l)` and
-explicit sends may be nonzero. A mix route never causes another instrument to receive `l`'s gestures.
+Part isolation is observable: with all parts except `l` silent, only the machine paths reachable from `PartId(l)` and
+explicit sends may produce a nonzero frame. A mix route never causes another instrument to receive `l`'s gestures.
 
 ## 9. Scope rule
 

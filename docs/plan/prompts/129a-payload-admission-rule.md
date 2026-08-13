@@ -18,7 +18,7 @@ prompt repairs the governing rule and implementation together; it adds no tempor
 
 ## Read
 
-- `docs/rules/constitution.md` §7 and §4 — the decision, its boundary, and its list of what is forbidden.
+- `docs/rules/constitution.md` §8 and §4 — the decision, its boundary, and its list of what is forbidden.
 - `docs/rules/kernel/00-purpose.md` §12 (payload opacity), `03-denotational-semantics.md` D1–D12, `04-algebraic-laws.md`
   L1–L24 and X1–X3, `05-normalization.md` N1–N7, `07-backend-contract.md`, `10-term-calculus.md` T1–T6 and the scope
   rule.
@@ -44,7 +44,7 @@ A new document, `docs/rules/kernel/12-payload-admission.md`, stating in this ord
    changes the quotient version.
 3. **What a payload may not do.** Add an operation to the kernel; require the kernel to inspect it; carry absolute time
    (seconds, frames, samples); carry a coinductive value. Each with the law or boundary that forbids it, citing
-   `docs/rules/constitution.md` §7.
+   `docs/rules/constitution.md` §8.
 4. **Law transport.** L1–L23, X1–X3, and T1–T6 hold at every admitted payload **unchanged**, by genericity of the
    statements over `A` — not by a new proof per payload. L24 holds conditionally: at a payload carrying a `Progress`.
    N1–N7 hold given `Canonical`. Say which laws are transported and which are conditional, and say that the law suite's
@@ -63,11 +63,12 @@ containing:
 
 - a domain tag and timeline encoding version;
 - payload owner id and quotient version;
-- exact reduced rational extent;
+- the coordinate tag;
+- exact reduced rational length;
 - occurrence count; and
 - canonical occurrences with exact rational endpoints and **byte-length-framed** payload keys.
 
-Every variable child is length/count framed. `Timeline::semantic_hash` hashes these bytes, not `Display`. A digest is an
+Every variable child is length/count framed. The event track's semantic hash hashes these bytes, not `Display`. A digest is an
 index only; equal digests do not prove semantic equality. Update N3–N6, T3, and backend text accordingly. Retain display
 format only for human/golden consumers.
 

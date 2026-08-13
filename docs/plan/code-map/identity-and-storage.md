@@ -1,15 +1,18 @@
 # Exact equality and stored data
 
-This page explains how the implementation stores values that may be compared, cached, or loaded after a restart.
+This page explains how the implementation stores values that may be compared, cached, or loaded after a restart. The
+Rust identifiers still carry their pre-127a spellings; the pairs are in
+[`../clean-break-ledger.md`](../clean-break-ledger.md).
 
 ## 1. Do not use one equality for every job
 
 | Question | Example | Fields it may ignore |
 | --- | --- | --- |
-| Do these values have the same meaning in this representation? | `Timeline<ScoreFact>` | construction order and fields excluded by the payload equality rule |
+| Do these values have the same meaning in this representation? | `EventTrack<WrittenTime, ScoreFact>` | construction order and fields excluded by the payload equality rule |
 | Did these results come through the same recorded conversions? | an origin path | insertion order and exact duplicate paths |
-| Are these the same prepared instructions for the audio engine? | `PreparedExecution` | source locations used only by the editor |
-| Did these two runs produce the same observable output? | sample or conformance comparison | only differences allowed by the named comparison rule |
+| Are these the same prepared instructions for the audio engine? | `PreparedMachine` | source locations used only by the editor |
+| Did these two runs produce the same observable output? | audio-history or conformance comparison | only differences allowed by the named comparison rule |
+| Are these the same machine? | `≡struct`, within one registry | nothing; behavioural equality is not decidable and no cache key may use it |
 
 A shared hash does not connect these rows. Any theorem that moves from one equality to another must name both equality
 rules and state its extra assumptions.
@@ -27,19 +30,21 @@ compare(left, right) -> ordering
 Byte equality and value equality must agree. The encoding begins with a type tag and version. It records the length of
 every variable-size child before the child bytes. Human display and error messages use separate formatting.
 
-This rule applies to timeline payloads, future nominal type ids, stored-representation references, anchors, origin
+This rule applies to event-track payloads, future nominal type ids, stored-representation references, anchors, origin
 paths, instrument bindings, seeds, audio options, and prepared results.
 
 The code does not need one public `CanonicalData` trait. Private writer functions are better until several real callers
 need exactly the same API.
 
-## 3. Timeline equality is now framed and versioned
+## 3. Event-track equality is now framed and versioned
 
-`Canonical::canonical_key()` defines equality for one timeline payload type. The trait also records the payload owner
-and equality version. A key may ignore stored fields if its documentation says so.
+`Canonical::canonical_key()` defines equality for one track payload type. The trait also records the payload owner and
+equality version. A key may ignore stored fields if its documentation says so.
 
-`Timeline::semantic_hash()` no longer hashes human `Display` output. It hashes a versioned byte record containing the
-payload schema, exact rational extent, occurrence count, endpoints, and length-framed payload keys.
+The track's semantic hash no longer hashes human `Display` output. It hashes a versioned byte record containing the
+payload schema, the coordinate tag, the exact rational length, occurrence count, endpoints, and length-framed payload
+keys. Prompt 127a's addition is the coordinate tag: a written-time track and a performed-time track with the same
+occurrences are different values (`../../rules/kernel/12-payload-admission.md` A7).
 
 The implementation includes regression tests for:
 
@@ -47,10 +52,11 @@ The implementation includes regression tests for:
 - arbitrary string keys;
 - payload schema changes;
 - duplicate occurrences;
-- equal timelines built in different orders; and
-- the same timeline laws at a structured payload containing text, a rational, and a progress curve.
+- equal tracks built in different orders; and
+- the same track laws at a structured payload containing text, a rational, and a progress curve.
 
-Old unframed digests belong to the old format version and must not be read as new timeline identity.
+Old unframed digests belong to an old format version and must not be read as new track identity; so do the two refused
+encoding versions listed in [`../clean-break-ledger.md`](../clean-break-ledger.md).
 
 ## 4. Cache records
 
@@ -62,11 +68,12 @@ A cache whose false hit could change a result stores:
 
 The hash selects a bucket. Exact argument comparison confirms the hit. The argument record includes the operation
 version, every data-schema version, gesture meaning, instrument and studio bindings, seed, sample rate, channel layout,
-semantic step, render bounds, and all other execution options.
+render bounds, and all other execution options. It does not record a "semantic step": the step is one sample frame by
+constitution §4 and is not a caller option.
 
 Origin data may need a separate cache because editor navigation can distinguish inputs that audio execution deliberately
-ignores. An audio-plan cache hit does not imply equal origin paths, and an origin-cache hit cannot stand in for an audio
-plan.
+ignores. A prepared-machine cache hit does not imply equal origin paths, and an origin-cache hit cannot stand in for a
+prepared machine.
 
 ## 5. Stored representations and origin paths
 

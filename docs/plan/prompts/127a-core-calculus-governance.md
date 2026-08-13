@@ -1,7 +1,7 @@
 ---
 id: 127a
 slug: core-calculus-governance
-status: pending
+status: done
 depends_on: [126, 127]
 phase: 3
 ---

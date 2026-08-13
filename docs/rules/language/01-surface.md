@@ -32,7 +32,7 @@ music-use    := "use" expr ";"
 scale-local  := "in" "scale" expr "{" music-statement* "}"
 assertion    := "assert" IDENT "(" args? ")" "{" music-statement* "}"
 analysis     := "analysis" IDENT "=" expr ";"
-kernel-quote := "kernel" "Timeline" "[" "ScoreFact" "]" "{" kernel-item* "}"
+kernel-quote := "kernel" "EventTrack" "[" "WrittenTime" "," "ScoreFact" "]" "{" kernel-item* "}"
 antiquote    := "${" expr "}"
 document     := (import | binding | function | signature | structure | template | instance)*
                 (piece | library | instance)
@@ -84,17 +84,17 @@ meaning of `[head, ..tail]`; `..` is two adjacent `.` tokens, not a new general 
 Structural folds do not add syntax. `nat_fold(zero, step, count)`, `list_fold(zero, step, values)`, and
 `option_fold(zero, some_case, value)` are ordinary calls to compiler-owned total primitives. Their step arguments are
 named functions because this candidate deliberately has no anonymous-lambda surface. This gives musicians one call
-notation to learn and leaves `repeat n { body }` as the notation-facing fold over `Music`.
+notation to learn and leaves `repeat n { body }` as the notation-facing fold over musical material.
 
 The primitive value types added here are `Bool`, `Nat`, `Ratio`, `Duration`, `Pitch`, `Interval`, `NoteName`, `Pc12`,
-`Scale`, `Key`, `Degree`, `ChordClass`, `Triad`, `Roman`, `Voicing`, `Row12`, `Analysis<A>`, and `Music`. Products,
-options, lists, and arrows are the constructors described in `02-core-calculus.md`. Declaration kinds are not types.
-Every type is spelled with a capital and every music statement keyword is not, which is what lets `key c major;` set a
-key and `Key` name the type of what it set without either word looking the other up (prompt 113). Six of these words —
-`pitch`, `music`, `scale`, `key`, `degree`, `frame` — are *also* music statement keywords, and one word doing two jobs
-in two grammars is a collision a parser can only paper over; a capital settles it in the lexer. `NoteName` is the letter
-and accidental as written, with no octave: a pitch class is octave *and* enharmonic equivalence (Open Music Theory 99),
-so a type in which C♯ and D♭ differ is a name rather than a class, and `Pc12` is the class it names.
+`Scale`, `Key`, `Degree`, `ChordClass`, `Triad`, `Roman`, `Voicing`, `Row12`, `Analysis<A>`, and `EventTrack[C, A]`.
+Products, options, lists, and arrows are the constructors described in `02-core-calculus.md`. Declaration kinds are not
+types. Every type is spelled with a capital and every music statement keyword is not, which is what lets `key c major;`
+set a key and `Key` name the type of what it set without either word looking the other up (prompt 113). Six of these
+words — `pitch`, `music`, `scale`, `key`, `degree`, `frame` — are *also* music statement keywords, and one word doing
+two jobs in two grammars is a collision a parser can only paper over; a capital settles it in the lexer. `NoteName` is
+the letter and accidental as written, with no octave: a pitch class is octave *and* enharmonic equivalence (Open Music
+Theory 99), so a type in which C♯ and D♭ differ is a name rather than a class, and `Pc12` is the class it names.
 
 A type parameter is angle-bracketed, so `[` keeps exactly one job — the list literal `[c4, d4]` and the list pattern
 `[x, ..xs]`, which are one idea seen from two sides. The ambiguity that makes `<>` expensive elsewhere cannot arise
@@ -160,7 +160,7 @@ reader meets it in place as well as in the editor's strike-through.
 
 ```musa
 // deprecated: write `subject` instead.
-let theme: Music = music { c4/1 };
+let theme = music { c4/1 };
 ```
 
 Nothing about this changes what compiles. A deprecated name resolves, elaborates, and sounds exactly as it did; what
@@ -174,7 +174,7 @@ let fifth: Interval = P5;
 
 fn third(root: Pitch) -> Pitch { root up M3 }
 
-fn transpose_answer(subject: Music, by: Interval) -> Music { transpose(by, subject) }
+fn transpose_answer(subject: EventTrack[WrittenTime, ScoreFact], by: Interval) -> EventTrack[WrittenTime, ScoreFact] { transpose(by, subject) }
 
 motif turn(root: Pitch = c5) {
     root/8
@@ -184,45 +184,58 @@ motif turn(root: Pitch = c5) {
 }
 ```
 
-`motif turn(...) { body }` desugars to a named `fn turn(...) -> music { music { body } }` with a `Motif` role retained
-for lints, extraction, editing, and Origin. `fragment name { body }` desugars to `let name: music = music { body };`
-with a `Fragment` role. `use e;` checks `e : music`, instantiates it at the current cursor, and sequences it. Existing
-`use name(args);` is the same rule, not a second invocation mechanism.
+`motif turn(...) { body }` desugars to a named `fn turn(...) -> EventTrack[WrittenTime, ScoreFact] { music { body } }`
+with a `Motif` role retained for lints, extraction, editing, and Origin. `fragment name { body }` desugars to
+`let name = music { body };` with a `Fragment` role. `use e;` checks that `e` is a written-time score track, `follow`s
+it onto the voice at the current cursor, and advances by `length(e)`. Existing `use name(args);` is the same rule, not a
+second invocation mechanism.
 
-`Music` values are contextual rather than captured timelines:
+The type is written out rather than abbreviated. Prompt 127a deleted the type name `Music`, because a name that short
+for a type that specific is how the deleted contextual-`Music` design read as ordinary in the first place; a shorter
+spelling needs its own prompt and its own evidence.
+
+A track value is an ordinary value, and `in scale` is lexical rather than captured:
 
 ```musa
-fn figure() -> Music { music {
+fn figure() -> EventTrack[WrittenTime, ScoreFact] { music {
     c5/8
     (c5 step 1)/8
     (c5 step 2)/4
 } }
 
-let subject: Music = figure();
+let subject = figure();
 in scale c major { use subject; }
 in scale c dorian { use subject; }
 ```
 
-The two uses differ under `≈facts`; saving `subject` does not freeze the scale. `in scale` is lexical and emits no key
-fact. An absent scale makes `step` a type-context diagnostic, not an implicit C-major choice.
+The two uses differ under `≈facts`, because `in scale` is resolved where the pitches are resolved; saving `subject` does
+not freeze the scale. `in scale` is lexical and emits no key fact. An absent scale makes `step` a type-context
+diagnostic, not an implicit C-major choice.
 
 ## 3. Higher-order construction with controlled traversal
 
 ```musa
-fn canon(subject: Music, answer: Music -> Music, gap: Duration) -> Music { music {
-    use overlay(subject, shift(gap, answer(subject)));
+fn canon(
+    subject: EventTrack[WrittenTime, ScoreFact],
+    answer: EventTrack[WrittenTime, ScoreFact] -> EventTrack[WrittenTime, ScoreFact],
+    gap: Duration,
+) -> EventTrack[WrittenTime, ScoreFact] { music {
+    use together(subject, shift(gap, answer(subject)));
 } }
 
-fn harmonize(subject: Music, answer_pitch: Pitch -> Pitch) -> Music { music {
-    use overlay(subject, map_note_pitches(answer_pitch, subject));
+fn harmonize(
+    subject: EventTrack[WrittenTime, ScoreFact],
+    answer_pitch: Pitch -> Pitch,
+) -> EventTrack[WrittenTime, ScoreFact] { music {
+    use together(subject, map_note_pitches(answer_pitch, subject));
 } }
 
 use canon(theme(), transpose(P5), 1/2);
 ```
 
-`map_note_pitches` is the sole initial user-facing traversal of `Music`. It changes pitches in note and sounded-chord
-events; it preserves time, annotations, marks, scope, and Origin; it does not traverse key signatures or chord-symbol
-analysis. No iterator exposes a `ScoreFact` or kernel occurrence.
+`map_note_pitches` is the sole initial user-facing traversal of a score track. It changes pitches in note and
+sounded-chord events; it preserves time, annotations, marks, scope, and Origin; it does not traverse key signatures or
+chord-symbol analysis. No iterator exposes a `ScoreFact` or a core occurrence.
 
 ## 4. Assertions and analyses
 
@@ -260,10 +273,10 @@ let sonority: ChordClass = chord c major7;
 let close: Option<Voicing> = close_position(sonority, c4);
 let open: Option<Voicing> = drop_position(sonority, c3, 2);
 
-fn sound(chosen: Voicing) -> Music { play(chosen, 1/2) }
-fn sounded(chosen: Option<Voicing>) -> Music { option_fold(music { rest/2 }, sound, chosen) }
-let close_bar: Music = sounded(close);
-let open_bar: Music = sounded(open);
+fn sound(chosen: Voicing) -> EventTrack[WrittenTime, ScoreFact] { play(chosen, 1/2) }
+fn sounded(chosen: Option<Voicing>) -> EventTrack[WrittenTime, ScoreFact] { option_fold(music { rest/2 }, sound, chosen) }
+let close_bar = sounded(close);
+let open_bar = sounded(open);
 
 use close_bar;
 use open_bar;
@@ -286,16 +299,16 @@ Row-form naming always states a convention.
 ## 6. Declaration templates
 
 ```musa
-fn theme() -> Music { music {
+fn theme() -> EventTrack[WrittenTime, ScoreFact] { music {
     c4/4
     d4/4
 } }
 
-template voice answer(subject: Music, transform: Music -> Music) {
+template voice answer(subject: EventTrack[WrittenTime, ScoreFact], transform: EventTrack[WrittenTime, ScoreFact] -> EventTrack[WrittenTime, ScoreFact]) {
     use transform(subject);
 }
 
-template piece study(k: Key, mode: Scale, subject: Music) "Study" {
+template piece study(k: Key, mode: Scale, subject: EventTrack[WrittenTime, ScoreFact]) "Study" {
     key k;
     score {
         part piano {
@@ -360,10 +373,10 @@ A standalone `.musa.kernel` file contains exactly one closed term in the grammar
 `docs/rules/kernel/10-term-calculus.md`:
 
 ```text
-% musa-kernel-1
+% musa-kernel-2
 kernel "example" {
-  composition main : Timeline[ScoreFact] =
-    timeline 1/2 {
+  composition main : EventTrack[WrittenTime, ScoreFact] =
+    track 1/2 {
       occurrence "voice 0 0 note c4 1/2 [0:4]" from 0 to 1/2;
     };
 }
@@ -374,15 +387,17 @@ It has no imports, functions, surface pitch operations, or free variables. Its p
 A local quote is host syntax containing kernel syntax and typed antiquotation:
 
 ```musa
-fn delayed_double(subject: Music) -> Music { kernel Timeline[ScoreFact] {
+fn delayed_double(
+    subject: EventTrack[WrittenTime, ScoreFact],
+) -> EventTrack[WrittenTime, ScoreFact] { kernel EventTrack[WrittenTime, ScoreFact] {
         let s = ${subject} in
-        overlay { s; shift by 1/2 s; }
+        together { s; shift by 1/2 s; }
     } }
 ```
 
-`${subject}` is one `Music` antiquotation. It is instantiated in the quote's host environment and inserted as a typed
+`${subject}` is one track antiquotation. It is instantiated in the quote's host environment and inserted as a typed
 kernel-term hole. Kernel identifiers never capture host identifiers; alpha-renaming prevents capture among inserted
-terms. The completed quote must close and type-check before it becomes `Music`. No raw payload escape exists.
+terms. The completed quote must close and type-check before it becomes a track. No raw payload escape exists.
 
 Four rules a writer of quotes needs, and each one is the same rule the rest of the language already keeps:
 
@@ -391,8 +406,9 @@ Four rules a writer of quotes needs, and each one is the same rule the rest of t
   `.musa.kernel` documents, which are not written inside a piece.
 - **A raw payload says what the material is, and nothing about where it goes.** It states no scope and no origin; both
   are supplied by the use, exactly as they are for any shared body, and a quote that spells either is refused. A key,
-  meter, clef or tempo payload is refused for the same reason at one remove — a `music` value may read the context
-  supplied at each use and may not settle it.
+  meter, clef or tempo payload is refused for the same reason at one remove — those are structural declarations with
+  scope authority, and "from here onward" has no unique meaning in a value used at several places (`00-semantics.md`
+  §3).
 - **The quotation locus is where a hole is *instantiated*, not where its facts land.** The two differ under `let`: a
   hole in a `let` value is instantiated once, at the `let`'s own locus, and each reference then places the finished
   facts wherever the term writes it. Every fact leaving a quote records that locus.
@@ -485,7 +501,7 @@ cue harbor at 17:1;
 ```
 
 The clip is beat-fitted and follows tempo. The fixed-media cue is only a kernel point at the score position; its
-recorded duration remains seconds and is never manufactured into a musical extent.
+recorded duration remains seconds and is never manufactured into a written-time length.
 
 ## 9. Corpus correctness relation
 
@@ -493,7 +509,7 @@ recorded duration remains seconds and is never manufactured into a musical exten
 | --- | --- | --- |
 | root-dependent turn | motif-role function plus interval action | `≈music` |
 | major/dorian rebinding | Reader-style `in_scale` | `≈music` per environment; uses differ under `≈facts` |
-| canon | `overlay(subject, shift(gap, answer(subject)))` | `≈music` |
+| canon | `together(subject, shift(gap, answer(subject)))` | `≈material` |
 | harmonizer | controlled pitch traversal | `≈music` |
 | key-parameterized piece / parameterized voice | declaration-template expansion | full facts retain distinct instance Origin; `≈facts` after erasure |
 | one chord class, two voicings | `play(voice(...))` | intentionally unequal under `≈facts` |
@@ -503,7 +519,7 @@ recorded duration remains seconds and is never manufactured into a musical exten
 | quote with antiquotation | typed substitution then closure | `≡kernel` after instantiation |
 | swappable instruments/profiles | signature checking and profile realization | equal gesture type; sound equality not promised |
 | expression hairpin | profile-generated `ControlKey::expression` curve | exact gesture equality |
-| shared room | explicit mix-graph sends | signal equality modulo documented deterministic summation order |
+| shared room | explicit mix-graph sends | frame equality modulo documented deterministic summation order |
 | sampled instrument | sample-map implementation of signature | behavioral conformance, not waveform equality |
 | beat-fitted loop | tempo-scheduled clip gesture | scheduled-lane equality |
 | fixed-duration cue | onset conversion plus immutable seconds duration | scheduled-media equality |

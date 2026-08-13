@@ -5,25 +5,29 @@ musical — the kernel never inspects payload *meaning*; it checks shapes and bo
 
 ## K1 — Occurrence bounds
 
-Every occurrence `(s, e, a)` in a timeline of extent `d` must satisfy:
+Every occurrence `(s, e, a)` in an event track of length `d` must satisfy:
 
 ```text
 0 ≤ s ≤ e ≤ d
 ```
 
 - `s`, `e`, `d` are exact rationals (`ℚ`), with `d ∈ ℚ≥0` by construction.
-- Zero-length occurrences (`s = e`) are **well-formed**. Their meaning is a payload-type question (a percussive hit
-  might be modeled as a point), not a kernel question.
+- Zero-length occurrences (`s = e`) are **well-formed**. They are points; a positive span `s < e` is half-open `[s, e)`
+  (`03-denotational-semantics.md`). Whether a point is the right model of a percussive hit is a payload-type question,
+  not a kernel question.
 - Violations are construction-time errors (`KernelError`), never silently clamped: clamping would rewrite where an
   occurrence began, which is exactly the lie restriction is designed to avoid.
 
 ## K2 — Time domain
 
-- Positions and durations are exact rationals. No floating-point value may enter the kernel.
-- Timeline extents are non-negative. The empty timeline at extent `d` is `(d, ∅)` — a perfectly good value, and the
-  identity of `overlay` at fixed duration.
+- Positions and lengths are exact rationals. No floating-point value may enter the kernel.
+- Track lengths are non-negative. The empty track at length `d` is `(d, ∅)` — a perfectly good value, and the identity
+  of `together` at fixed length.
 - Scaling factors are **positive** rationals (`ℚ>0`); zero or negative scaling is a construction error
   (`03-denotational-semantics.md`, D5).
+- Every length and position belongs to one coordinate `C ∈ {WrittenTime, PerformedTime, SecondTime}`. Positions in two
+  coordinates never add and never compare; a value that has crossed between them did so through a named conversion above
+  the kernel (`07-backend-contract.md`), which recorded the crossing.
 
 ## K3 — Ambient extension *(struck: prompt 37)*
 
@@ -31,21 +35,26 @@ There was a rule here about `extend(d, E)` refusing to shrink. The operation was
 it), and with it the error. Cropping was never extension anyway: it is `restrict` — an observation, not a mutation
 (`03-denotational-semantics.md`, D6).
 
-## K4 — Reference resolution and acyclicity
+## K4 — Reference resolution, acyclicity, and uniformity
 
 In a kernel file (or any HIR that names compositions):
 
 - Every `composition-name` referenced in a `composition-expression` must be declared in the same file/scope.
 - The reference graph must be **acyclic**. There is no recursion in the kernel; a cycle is rejected, not lazily
   tolerated.
-- All composition expressions in one `sequence` or `overlay` must share the same payload type. The kernel is parametric
-  in `A`, not polymorphic per composition.
+- All composition expressions in one `follow` or `together` must share the same payload type **and the same
+  coordinate**. The kernel is parametric in `C` and `A`, not polymorphic per composition. In Rust the coordinate is a
+  type parameter, so this rule is discharged by the type checker rather than by a kernel error; in the interchange
+  syntax the coordinate is declared once per file, so it is discharged by the grammar.
 
 ## K5 — Payload schemas
 
 Payload declarations are checked by their own modules (the score payload lives with the score adapter), but the
 kernel-side contract is:
 
+- A payload type must be **storable data** (`../constitution.md` §9): it contains no source function at any depth and
+  has a versioned finite exact encoding. A type carrying a function has no bytes and therefore no equality the kernel
+  can use.
 - Field names are unique within a payload declaration.
 - Field types resolve (`text`, `rational`, `integer`, `bool`, or a previously-declared payload type — no forward
   references, hence no recursion).
@@ -71,14 +80,15 @@ alone, without evaluating it.
 - **No shadowing.** `let x = t in (let x = u in v)` is rejected. Nothing needs it, alpha-renaming is not a burden a file
   format should impose on its readers, and forbidding it makes substitution textual, which is what lets T2 be stated
   without a capture-avoidance apparatus.
-- **Payload uniformity.** All arguments of one `seq` or `over` share a payload type, as K4 already requires of
-  composition expressions. `let` binds a term of one payload type; a name's type is its bound term's.
-- **Arity.** `seq` and `over` take at least one argument. Zero arguments would need a unit, and the two units differ
-  (`(0, ∅)` for `seq`, `(d, ∅)` at a fixed `d` for `over`, L2/L6) — so the empty case is written as the literal it is,
-  not inferred.
+- **Payload uniformity.** All arguments of one `follow` or `together` share a payload type and a coordinate, as K4
+  already requires of composition expressions. `let` binds a term of one payload type; a name's type is its bound
+  term's.
+- **Arity.** `follow` and `together` take at least one argument. Zero arguments would need a unit, and the two units
+  differ (`(0, ∅)` for `follow`, `(d, ∅)` at a fixed `d` for `together`, L2/L6) — so the empty case is written as the
+  literal it is, not inferred.
 - **Windows and factors.** `restrict [i, j)` requires `i ≤ j`; `scale r` requires `r ∈ ℚ>0` (K2). A window is *not*
-  required to lie inside the extent: restriction is total (D6, L17), and a window past the end observes nothing.
-- **Literals.** Every `timeline` literal satisfies K1.
+  required to lie inside the length: restriction is total (D6, L17), and a window past the end observes nothing.
+- **Literals.** Every `track` literal satisfies K1.
 - **Acyclicity comes free.** `let` scopes over its body only, so a name cannot refer to itself and the reference graph
   is a tree by construction. K4's acyclicity rule is what this replaces for terms.
 
@@ -86,13 +96,13 @@ A term satisfying these rules and containing no free names is **closed and well-
 every theorem in `10-term-calculus.md`.
 
 **Only two of these rules are ever checked.** Prompt 47's implementation makes the rest unrepresentable: `Term` is
-opaque and built through constructors, so a non-positive `scale` factor, a negative `shift`, an empty `seq` or `over`,
-and a disordered window are rejected where they are written and never become terms. Payload uniformity is the type
-parameter. Acyclicity is free, as above. What is left is the two rules that are **not local to one node** — a free name
-and a shadowed one — because a reference is built before the binder that encloses it. Those are what `Term::check`
-answers, and a term that passes it evaluates (T4).
+opaque and built through constructors, so a non-positive `scale` factor, a negative `shift`, an empty `follow` or
+`together`, and a disordered window are rejected where they are written and never become terms. Payload uniformity and
+coordinate agreement are the type parameters. Acyclicity is free, as above. What is left is the two rules that are **not
+local to one node** — a free name and a shadowed one — because a reference is built before the binder that encloses it.
+Those are what `Term::check` answers, and a term that passes it evaluates (T4).
 
 ## Error surface
 
-All static violations are reported as `KernelError` values naming the rule and the offending data (extent, span, or
+All static violations are reported as `KernelError` values naming the rule and the offending data (length, span, or
 reference). The kernel has no warnings: a construct is either well-formed or rejected.

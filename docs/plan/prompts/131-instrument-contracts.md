@@ -77,8 +77,8 @@ that produces it is part of the core language. Preparation is one operation rath
 - Instrument replacement law: two implementations of one signature accept the same gesture/control lanes without
   changing their schedule.
 - One preparation operation pure in all complete arguments, plus separate presentation lineage. Test equal semantic
-  timelines with unequal presentation-only data, every execution-affecting option independently, the whole-node
-  scheduling counterexample, registered cycles, and caller-block partitions.
+  event tracks with unequal presentation-only data, every execution-affecting option independently, the whole-machine
+  ordering counterexample, `feedback` cycles, and caller-block partitions.
 - Module-design audit and caller comparison; delete pass-through surface made obsolete by the deep boundary.
 
 ## Check

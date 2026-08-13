@@ -4,8 +4,8 @@
 
 This document answers **Q2** — aleatory semantics — by the trigger Q2 itself named: the first aleatory surface feature
 is now being designed. The answer is the working stance Q2 already held, confirmed by design rather than reversed:
-**each realized performance of an aleatory construct produces an ordinary finite kernel timeline, and the choice
-mechanism lives above the kernel.**
+**each realized performance of an aleatory construct produces an ordinary finite event track, and the choice mechanism
+lives above the kernel.**
 
 The kernel gains no operation, no term form, and no constructor. `10-term-calculus.md`'s T1–T5 and
 `05-normalization.md`'s N1–N6 are untouched, and that is not a happy accident — it is the criterion the design was
@@ -37,11 +37,11 @@ the four reasons are recorded here because this is a design that will be propose
    narrowest subcase — "one of these three endings" — and leaves out every piece that motivated the feature. A form that
    fails its own examples is not a kernel form.
 
-2. **It breaks T2 (`let` transparency).** In `let x = choose { a | b } in over x x`, does sharing share the *decision*?
-   Both readings are musically real: one performer's choice heard twice, or two performers choosing independently.
-   Neither is canonical, which is §16's "no canonical `join`" wearing a new costume. T2 is not a decoration — it is what
-   prompt 49's measured −36% elaboration time and −60% allocations rest on, because it is what makes it safe to evaluate
-   a shared body once.
+2. **It breaks T2 (`let` transparency).** In `let x = choose { a | b } in together x x`, does sharing share the
+   *decision*? Both readings are musically real: one performer's choice heard twice, or two performers choosing
+   independently. Neither is canonical, which is D12's "no canonical `join`" wearing a new costume. T2 is not a
+   decoration — it is what prompt 49's measured −36% elaboration time and −60% allocations rest on, because it is what
+   makes it safe to evaluate a shared body once.
 
 3. **It breaks T3, T4 and N6 together.** Evaluation stops being deterministic and stops being unique, so there is no
    normal form, so there is no semantic hash. Prompt 43 keyed the session's recompilation on that hash: editing an
@@ -53,16 +53,17 @@ the four reasons are recorded here because this is a design that will be propose
    *realization* corpus after all, at the cost of every theorem above. The argument for `choose` is self-defeating: it
    buys nothing the refused design does not already give, and it pays for it in four places.
 
-Applying §34's rule literally: removing `choose` makes nothing impossible, and adding it makes two consumers — the
-engraver and the interchange format — strictly worse. It stays out. **§35 item 11 is upheld, not amended**: it forbids
-aleatory choice *in the finite kernel*, which is exactly what this document does.
+Applying the governing design rule literally: removing `choose` makes nothing impossible, and adding it makes two
+consumers — the engraver and the interchange format — strictly worse. It stays out. **the constitution's plural-theory
+rule is upheld, not amended**: it forbids aleatory choice *in the finite kernel*, which is exactly what this document
+does.
 
 ## What goes in instead
 
 **A realization is a compile parameter. The freedom is a payload value. The kernel does not change.**
 
 ```text
-source ──elaborate(realization)──▶ Term<ScoreFact> ──evaluate──▶ Timeline ──▶ page, performance, .musa.kernel
+source ──elaborate(realization)──▶ Term<ScoreFact> ──evaluate──▶ EventTrack ──▶ page, performance, .musa.kernel
   │                                                                  ▲
   └── states the freedom as ordinary facts ──────────────────────────┘
       (a fragment, an open repeat, a free duration, an improvised region:
@@ -71,10 +72,10 @@ source ──elaborate(realization)──▶ Term<ScoreFact> ──evaluate─�
 
 Two halves, and the split is the whole design:
 
-- **The freedom is written in the source and survives into the timeline as ordinary occurrences.** The page can
-  therefore print *ad lib.*, "repeat as many times as you like", a boxed fragment, or a proportional duration — because
-  the instruction is a fact like any other fact, not a hole where a fact would be. This is prompt 58's rule exactly:
-  *the timeline holds every pass; the page prints the instruction once.*
+- **The freedom is written in the source and survives into the track as ordinary occurrences.** The page can therefore
+  print *ad lib.*, "repeat as many times as you like", a boxed fragment, or a proportional duration — because the
+  instruction is a fact like any other fact, not a hole where a fact would be. This is prompt 58's rule exactly: *the
+  track holds every pass; the page prints the instruction once.*
 
 - **The decision is a `Realization`: a seed plus a set of explicit overrides.** It is an input to elaboration, not a
   thing the kernel knows about. By the time a `Term` exists, every choice is made — so evaluation is still total, still
@@ -87,7 +88,7 @@ it with the later execution-boundary R1 in `07-backend-contract.md`):
 > same semantic hash, and byte-identical output from a deterministic exporter.
 
 This is a source-to-finite-presentation law. It makes no unconditional audio-frame claim; R1 and R1-frames state the
-additional preparation, input, state, allocation, and processor premises.
+additional preparation, input, state, allocation, and primitive premises.
 
 ## Identity: a choice must be nameable across an edit
 
@@ -160,7 +161,7 @@ Adding to `07-backend-contract.md`'s list, and changing none of it:
 ## What this does not settle
 
 - **Q1 (infinite/live patterns)** and **Q5 (recursion)** stay open. An unbounded repeat count resembles both and is
-  neither: the count is chosen at compile time and the result is an ordinary finite timeline.
+  neither: the count is chosen at compile time and the result is an ordinary finite event track.
 - **No probability distributions, no weighted choice, no Markov models.** A seed and an override set is the whole
   mechanism. Generative composition is a different product, and one that would want the kernel to be a different thing.
 - **No surface syntax.** Prompt 68 writes it, against this document.
