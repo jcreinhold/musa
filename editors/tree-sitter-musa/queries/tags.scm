@@ -37,6 +37,12 @@
 (structure_declaration
   signature: (identifier) @name) @reference.type
 
+(data_declaration
+  name: (identifier) @name) @definition.type
+
+(data_member
+  name: (identifier) @name) @definition.type
+
 (patch_declaration
   name: (identifier) @name) @definition.type
 

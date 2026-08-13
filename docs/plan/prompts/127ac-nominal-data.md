@@ -1,7 +1,7 @@
 ---
 id: 127ac
 slug: nominal-data
-status: pending
+status: done
 depends_on: [127ab]
 phase: 3
 ---

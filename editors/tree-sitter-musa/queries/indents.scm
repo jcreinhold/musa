@@ -5,6 +5,7 @@
   (template_declaration)
   (signature_declaration)
   (structure_declaration)
+  (data_declaration)
   (score_declaration)
   (part_declaration)
   (voice_declaration)

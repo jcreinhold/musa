@@ -86,6 +86,7 @@
   "senza"
   "let"
   "fn"
+  "data"
   "music"
   "kernel"
   "import"
@@ -232,6 +233,12 @@
 (structure_declaration name: (identifier) @type)
 (structure_declaration signature: (identifier) @type)
 
+; A declaration names a type, in the body and in the signature that withholds
+; it; the parameters it abstracts over are types the same way.
+(data_declaration name: (identifier) @type)
+(data_member name: (identifier) @type)
+(type_parameter (identifier) @type)
+
 (assign_statement source: (identifier) @type)
 (assign_statement destination: (identifier) @type)
 (route_statement source: (identifier) @type)
@@ -270,6 +277,7 @@
 
 (setting_statement name: (identifier) @property)
 (signature_member name: (identifier) @property)
+(data_field name: (identifier) @property)
 (expression_argument name: (identifier) @property)
 
 ; Parameters are the declaration side of an argument.
@@ -285,6 +293,12 @@
 (mark_rule name: (identifier) @constant)
 (dynamic_statement mark: (identifier) @constant)
 (clef_statement name: (identifier) @constant)
+
+; A declared constructor is a variant of an enum in the literal sense: it is
+; one of the finitely many ways its type is written, in the declaration and
+; in the pattern that takes it apart.
+(data_variant name: (identifier) @constant)
+(pattern constructor: (identifier) @constant)
 
 ; A bar's name is a target, not a value.
 (bar_statement name: (identifier) @label)

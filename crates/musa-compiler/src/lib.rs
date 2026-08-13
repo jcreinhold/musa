@@ -35,6 +35,7 @@ mod compile;
 mod context;
 mod core;
 mod core_budget;
+mod data;
 mod diagnose;
 mod docs;
 mod elaborate;

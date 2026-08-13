@@ -47,6 +47,32 @@
     }
   },
   {
+    "type": "applied_type",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "type_name",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "type_expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "argument",
     "named": true,
     "fields": {
@@ -558,6 +584,114 @@
     "named": true,
     "extra": true,
     "fields": {}
+  },
+  {
+    "type": "data_declaration",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "data_variant",
+          "named": true
+        },
+        {
+          "type": "type_parameter_list",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "data_field",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "type": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "type_expression",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "data_member",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "type_parameter_list",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "data_variant",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "data_field",
+          "named": true
+        }
+      ]
+    }
   },
   {
     "type": "duration",
@@ -1384,6 +1518,10 @@
       "multiple": true,
       "required": false,
       "types": [
+        {
+          "type": "data_declaration",
+          "named": true
+        },
         {
           "type": "fragment_declaration",
           "named": true
@@ -2250,7 +2388,18 @@
   {
     "type": "pattern",
     "named": true,
-    "fields": {},
+    "fields": {
+      "constructor": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
     "children": {
       "multiple": true,
       "required": false,
@@ -2352,6 +2501,10 @@
       "multiple": true,
       "required": false,
       "types": [
+        {
+          "type": "data_declaration",
+          "named": true
+        },
         {
           "type": "fragment_declaration",
           "named": true
@@ -2994,6 +3147,10 @@
       "required": false,
       "types": [
         {
+          "type": "data_member",
+          "named": true
+        },
+        {
           "type": "signature_member",
           "named": true
         }
@@ -3051,6 +3208,10 @@
       "multiple": true,
       "required": true,
       "types": [
+        {
+          "type": "data_declaration",
+          "named": true
+        },
         {
           "type": "function_declaration",
           "named": true
@@ -3289,6 +3450,10 @@
       "required": false,
       "types": [
         {
+          "type": "data_declaration",
+          "named": true
+        },
+        {
           "type": "function_declaration",
           "named": true
         },
@@ -3516,6 +3681,10 @@
       "required": true,
       "types": [
         {
+          "type": "applied_type",
+          "named": true
+        },
+        {
           "type": "list_type",
           "named": true
         },
@@ -3552,6 +3721,36 @@
       "types": [
         {
           "type": "identifier",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "type_parameter",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "identifier",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "type_parameter_list",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "type_parameter",
           "named": true
         }
       ]
@@ -3924,6 +4123,10 @@
   },
   {
     "type": "crescendo",
+    "named": false
+  },
+  {
+    "type": "data",
     "named": false
   },
   {

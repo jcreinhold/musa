@@ -1,0 +1,153 @@
+==================
+data declarations, folds, and records
+==================
+
+library {
+  data Shape {
+    Silence,
+    Sounded(sounded: Pitch, held: Duration),
+    Then(first: Shape, second: Shape),
+  }
+
+  data Pair<A, B> {
+    Both(left: A, right: B),
+  }
+
+  signature Voicing {
+    data Spacing;
+    let close: Spacing;
+  }
+
+  fn describe(shape: Shape) -> Nat {
+    match shape {
+      Silence -> 0,
+      Sounded(heard, lasting) -> 1,
+      Then(before, after) -> 2,
+    }
+  }
+
+  fn left_of(both: Pair<Nat, Nat>) -> Nat { both.left }
+}
+
+---
+
+(source_file
+  (library_declaration
+    (data_declaration
+      (identifier)
+      (data_variant
+        (identifier))
+      (data_variant
+        (identifier)
+        (data_field
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier))))
+        (data_field
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier)))))
+      (data_variant
+        (identifier)
+        (data_field
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier))))
+        (data_field
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier))))))
+    (data_declaration
+      (identifier)
+      (type_parameter_list
+        (type_parameter
+          (identifier))
+        (type_parameter
+          (identifier)))
+      (data_variant
+        (identifier)
+        (data_field
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier))))
+        (data_field
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier))))))
+    (signature_declaration
+      (identifier)
+      (data_member
+        (identifier))
+      (signature_member
+        (identifier)
+        (type_expression
+          (type_name
+            (identifier)))))
+    (function_declaration
+      (identifier)
+      (parameter_list
+        (parameter
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier)))))
+      (type_expression
+        (type_name
+          (identifier)))
+      (block_expression
+        (expression
+          (match_expression
+            (expression
+              (name_expression
+                (identifier)))
+            (match_arm
+              (pattern
+                (identifier))
+              (expression
+                (literal_expression
+                  (integer))))
+            (match_arm
+              (pattern
+                (identifier)
+                (identifier)
+                (identifier))
+              (expression
+                (literal_expression
+                  (integer))))
+            (match_arm
+              (pattern
+                (identifier)
+                (identifier)
+                (identifier))
+              (expression
+                (literal_expression
+                  (integer))))))))
+    (function_declaration
+      (identifier)
+      (parameter_list
+        (parameter
+          (identifier)
+          (type_expression
+            (applied_type
+              (type_name
+                (identifier))
+              (type_expression
+                (type_name
+                  (identifier)))
+              (type_expression
+                (type_name
+                  (identifier)))))))
+      (type_expression
+        (type_name
+          (identifier)))
+      (block_expression
+        (expression
+          (name_expression
+            (identifier)
+            (identifier)))))))

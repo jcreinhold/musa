@@ -84,9 +84,13 @@ impl std::fmt::Display for Scheme {
 /// these two are the only places the shape of a type is written down. Both
 /// matches are exhaustive on purpose: a type added later — `Result`, an event
 /// track — cannot quietly be taken for a leaf whose members no one visits.
-fn members(ty: &Type) -> Vec<&Type> {
+///
+/// [`crate::data`] walks types too, for the group check, and walks them
+/// through here for exactly that reason.
+pub(crate) fn member_types(ty: &Type) -> Vec<&Type> {
     match ty {
         Type::Product(members) => members.iter().collect(),
+        Type::Nominal(_, arguments) => arguments.iter().collect(),
         Type::Sum(value, error) => vec![value, error],
         Type::Option(member) | Type::List(member) => vec![member],
         Type::Function(parameters, result) => parameters.iter().chain(std::iter::once(result.as_ref())).collect(),
@@ -117,9 +121,10 @@ fn members(ty: &Type) -> Vec<&Type> {
 
 /// A type rebuilt with `member` applied to each of its immediate members. A
 /// leaf has none and rebuilds as itself.
-fn rebuilt(ty: &Type, mut member: impl FnMut(&Type) -> Type) -> Type {
+pub(crate) fn rebuilt(ty: &Type, mut member: impl FnMut(&Type) -> Type) -> Type {
     match ty {
         Type::Product(members) => Type::Product(members.iter().map(member).collect()),
+        Type::Nominal(id, arguments) => Type::Nominal(id.clone(), arguments.iter().map(member).collect()),
         Type::Sum(value, error) => Type::Sum(Box::new(member(value)), Box::new(member(error))),
         Type::Option(inner) => Type::Option(Box::new(member(inner))),
         Type::List(inner) => Type::List(Box::new(member(inner))),
@@ -158,7 +163,7 @@ fn appearances(ty: &Type, order: &mut Vec<TypeVar>) {
     {
         order.push(*variable);
     }
-    for member in members(ty) {
+    for member in member_types(ty) {
         appearances(member, order);
     }
 }
@@ -265,6 +270,21 @@ impl Unifier {
             }
             (Type::Option(ours), Type::Option(theirs)) | (Type::List(ours), Type::List(theirs)) => {
                 self.unify(ours, theirs)
+            }
+            // Nominal identity first, arguments after: two declarations that
+            // happen to have the same shape are still two types, which is
+            // what nominal means.
+            (Type::Nominal(ours, our_arguments), Type::Nominal(theirs, their_arguments))
+                if ours == theirs && our_arguments.len() == their_arguments.len() =>
+            {
+                for (ours, theirs) in our_arguments.iter().zip(their_arguments) {
+                    self.unify(ours, theirs)?;
+                }
+                Ok(())
+            }
+            (Type::Sum(our_value, our_error), Type::Sum(their_value, their_error)) => {
+                self.unify(our_value, their_value)?;
+                self.unify(our_error, their_error)
             }
             (Type::Function(ours, our_result), Type::Function(theirs, their_result)) if ours.len() == theirs.len() => {
                 for (ours, theirs) in ours.iter().zip(theirs) {
@@ -382,7 +402,7 @@ impl Unifier {
             }
             return Ok(());
         }
-        for member in members(&ty) {
+        for member in member_types(&ty) {
             self.demand_data(&member.clone())?;
         }
         Ok(())
@@ -409,6 +429,14 @@ pub(crate) fn admits(declared: &Type, found: &Type) -> bool {
         (Type::Option(ours), Type::Option(theirs)) | (Type::List(ours), Type::List(theirs)) => admits(ours, theirs),
         (Type::Sum(our_value, our_error), Type::Sum(their_value, their_error)) => {
             admits(our_value, their_value) && admits(our_error, their_error)
+        }
+        (Type::Nominal(ours, our_arguments), Type::Nominal(theirs, their_arguments)) => {
+            ours == theirs
+                && our_arguments.len() == their_arguments.len()
+                && our_arguments
+                    .iter()
+                    .zip(their_arguments)
+                    .all(|(ours, theirs)| admits(ours, theirs))
         }
         (Type::Function(ours, our_result), Type::Function(theirs, their_result)) => {
             ours.len() == theirs.len()
@@ -605,7 +633,7 @@ mod tests {
         #[test]
         fn a_data_variable_takes_exactly_the_types_holding_no_arrow(ty in any_type()) {
             fn holds_an_arrow(ty: &Type) -> bool {
-                matches!(ty, Type::Function(_, _)) || super::members(ty).into_iter().any(holds_an_arrow)
+                matches!(ty, Type::Function(_, _)) || super::member_types(ty).into_iter().any(holds_an_arrow)
             }
             let mut unifier = Unifier::default();
             // The two variables the generator can name, minted first so that

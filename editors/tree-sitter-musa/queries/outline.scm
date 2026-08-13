@@ -16,6 +16,9 @@
 (structure_declaration
   name: (identifier) @name) @item
 
+(data_declaration
+  name: (identifier) @name) @item
+
 ; A module file has no piece to outline, so its children are the outline. The
 ; name is matched by position, since `mod list;` names a module with a word
 ; the lexer writes as a type keyword.

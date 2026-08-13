@@ -1,0 +1,67 @@
+// A piece may declare its own finite data and fold over it. Nothing here is
+// built in: `Gesture` is three constructors this file names, and
+// `gesture_fold` is the one structural fold the declaration generates — a case
+// per constructor, and the recursive fields already folded
+// (docs/rules/language/02-core-calculus.md §1).
+//
+// What it buys is that the *plan* is a value. A gesture can be built, passed,
+// and matched before any music exists, and the same plan reads two ways: as
+// notation, by folding it into `Music`, and as a count, by folding it into a
+// number. A `Music -> Music` function could do neither.
+piece "Gesture Study" {
+    meter 4/4;
+
+    // The one gesture that is not made of others.
+    data Gesture {
+        Plain,
+        Higher(by: Interval, inner: Gesture),
+        Against(first: Gesture, second: Gesture),
+    }
+
+    let subject: Music = music {
+        c4/4
+        d4/4
+    };
+
+    // The three cases, written as ordinary functions. `Plain` takes no
+    // fields, so its case is a `Music` rather than a function of one.
+    fn raised(by: Interval, inner: Music) -> Music { transpose(by, inner) }
+
+    fn stacked(first: Music, second: Music) -> Music { overlay(first, shift(1/2, second)) }
+
+    // The plan: the subject against its own octave. Fields are named at the
+    // constructor the way parameters are named at a call.
+    let shape: Gesture = Against(first: Plain, second: Higher(by: P8, inner: Plain));
+
+    let realized: Music = gesture_fold(subject, raised, stacked, shape);
+
+    // The same plan, read a second way: the entries where they were, and the
+    // octave flattened away. One declaration, one fold, two readings — which
+    // is what having the plan as a value is for.
+    fn unraised(by: Interval, inner: Music) -> Music { inner }
+
+    let flattened: Music = gesture_fold(subject, unraised, stacked, shape);
+
+    // `match` is the eliminator a reader uses; the fold is what a total
+    // traversal is written with.
+    fn outermost(gesture: Gesture) -> Nat {
+        match gesture {
+            Plain -> 0,
+            Higher(interval, within) -> 1,
+            Against(left, right) -> 2,
+        }
+    }
+
+    let branching: Nat = outermost(shape);
+
+    score {
+        part strings {
+            voice duet {
+                use realized;
+            }
+            voice flat {
+                use flattened;
+            }
+        }
+    }
+}

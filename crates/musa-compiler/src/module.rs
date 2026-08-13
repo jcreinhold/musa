@@ -23,7 +23,9 @@
 //! the *site*, so two instances with equal arguments are two modules, always.
 
 use indexmap::{IndexMap, IndexSet};
-use musa_language::ast::{AstNode as _, FnDecl, LetDecl, MakeStmt, SignatureDecl, StructureDecl, TemplateDecl};
+use musa_language::ast::{
+    AstNode as _, DataMember, FnDecl, LetDecl, MakeStmt, SignatureDecl, StructureDecl, TemplateDecl,
+};
 use musa_language::{SyntaxKind, SyntaxNode};
 
 use crate::core::Type;
@@ -95,6 +97,12 @@ pub(crate) struct NameScope {
 }
 
 impl NameScope {
+    /// The structure whose members read in this scope, when it is one. A
+    /// constructor declared inside a structure is nameable exactly here.
+    pub(crate) fn owner(&self) -> Option<&str> {
+        self.owner.as_deref()
+    }
+
     /// The scope everything outside a module reads in.
     ///
     /// One shared value rather than a fresh default per checker: an empty
@@ -130,6 +138,10 @@ pub(crate) struct Reading {
 struct Signature {
     span: SourceSpan,
     members: IndexMap<String, Required>,
+    /// The types the signature requires without saying what they are: a
+    /// `data Name;` member. What matches one is a `data Name { … }` in the
+    /// structure, and the constructors stay the structure's own.
+    types: IndexMap<String, SourceSpan>,
 }
 
 struct Required {
@@ -173,25 +185,26 @@ impl Modules {
     /// with the document it belongs to when that is not this one.
     pub(crate) fn read<'a>(
         resolver: &mut Resolver,
+        world: &crate::data::World,
         owners: impl Iterator<Item = (Option<&'a str>, SyntaxNode)>,
     ) -> Self {
         let mut modules = Self::default();
         let owners: Vec<_> = owners.collect();
         for (source, owner) in &owners {
-            modules.read_signatures(resolver, *source, owner);
+            modules.read_signatures(resolver, world, *source, owner);
         }
         for (source, owner) in &owners {
             Self::read_templates(resolver, *source, owner);
         }
         for (source, owner) in &owners {
-            modules.read_modules(resolver, *source, owner);
+            modules.read_modules(resolver, world, *source, owner);
         }
         let mut sites = Vec::new();
         for (source, owner) in &owners {
             sites.extend(instance_sites(*source, owner));
         }
         for site in order(resolver, sites) {
-            modules.read_instance(resolver, &site);
+            modules.read_instance(resolver, world, &site);
         }
         modules
     }
@@ -265,15 +278,30 @@ impl Modules {
         Some((signature.to_owned(), ascription.unwrap_or(declared.span)))
     }
 
-    fn read_signatures(&mut self, resolver: &mut Resolver, source: Option<&str>, owner: &SyntaxNode) {
+    fn read_signatures(
+        &mut self,
+        resolver: &mut Resolver,
+        world: &crate::data::World,
+        source: Option<&str>,
+        owner: &SyntaxNode,
+    ) {
         for declaration in SignatureDecl::all_at_root(owner) {
             let Some(name) = declaration.name() else { continue };
             let span = name_span(declaration.syntax());
             let mut members: IndexMap<String, Required> = IndexMap::new();
+            let mut types: IndexMap<String, SourceSpan> = IndexMap::new();
+            for member in declaration.syntax().children().filter_map(DataMember::cast) {
+                if let Some(name) = member.name() {
+                    types.insert(name, name_span(member.syntax()));
+                }
+            }
             for member in declaration.members() {
                 let Some(member_name) = member.name() else { continue };
                 let member_span = name_span(member.syntax());
-                let Some(ty) = member.ty().and_then(|ty| crate::core::signature_type(resolver, &ty)) else {
+                let Some(ty) = member
+                    .ty()
+                    .and_then(|ty| crate::core::signature_type(resolver, &world.scope(), &ty))
+                else {
                     continue;
                 };
                 if let Some(first) = members.get(&member_name) {
@@ -322,7 +350,7 @@ impl Modules {
                 source,
                 declaration.syntax(),
             ));
-            self.signatures.insert(name, Signature { span, members });
+            self.signatures.insert(name, Signature { span, members, types });
         }
     }
 
@@ -362,7 +390,13 @@ impl Modules {
         }
     }
 
-    fn read_modules(&mut self, resolver: &mut Resolver, source: Option<&str>, owner: &SyntaxNode) {
+    fn read_modules(
+        &mut self,
+        resolver: &mut Resolver,
+        world: &crate::data::World,
+        source: Option<&str>,
+        owner: &SyntaxNode,
+    ) {
         for declaration in StructureDecl::all_at_root(owner) {
             let Some(name) = declaration.name() else { continue };
             let span = name_span(declaration.syntax());
@@ -370,12 +404,13 @@ impl Modules {
                 owner: Some(name.clone()),
                 heads: IndexMap::new(),
             };
-            let provided = self.flatten(resolver, &name, &declaration, &scope, source);
+            let provided = self.flatten(resolver, world, &name, &declaration, &scope, source);
             let Some(signature) = declaration.signature() else {
                 continue;
             };
             let ascription = ascription_span(declaration.syntax());
             self.match_signature(resolver, &signature, ascription, &name, span, &provided);
+            self.match_abstract_types(resolver, world, &signature, &name, span);
             if source.is_none() {
                 resolver.references.declare(NameKind::Module, &name, span);
                 resolver.references.record_use(NameKind::Module, &signature, ascription);
@@ -393,12 +428,49 @@ impl Modules {
         }
     }
 
-    fn read_instance(&mut self, resolver: &mut Resolver, site: &Site) {
+    /// Every `data Name;` a signature requires must be a `data Name { … }` in
+    /// the structure ascribed to it.
+    ///
+    /// A structure that declared no such type would export a name with
+    /// nothing behind it, which is exactly the hole a signature exists to
+    /// close.
+    fn match_abstract_types(
+        &self,
+        resolver: &mut Resolver,
+        world: &crate::data::World,
+        signature: &str,
+        module: &str,
+        span: SourceSpan,
+    ) {
+        let Some(declared) = self.signatures.get(signature) else {
+            return;
+        };
+        for (name, required) in &declared.types {
+            if world.declared_by(module, name) {
+                continue;
+            }
+            resolver.report(
+                Diagnostic::error(Code::UnknownName, format!("`{module}` does not declare `{name}`"))
+                    .at(*required, format!("required as a type by `{signature}`"))
+                    .also(span, format!("`{signature}` is not satisfied here"))
+                    .help(format!("write `data {name} {{ … }}` in `{module}`")),
+            );
+        }
+    }
+
+    fn read_instance(&mut self, resolver: &mut Resolver, world: &crate::data::World, site: &Site) {
         let span = trimmed_span(site.stmt.syntax());
         let Some(scope) = self.apply(resolver, site, span) else {
             return;
         };
-        let provided = self.flatten(resolver, &site.alias, &site.functor, &scope, site.source.as_deref());
+        let provided = self.flatten(
+            resolver,
+            world,
+            &site.alias,
+            &site.functor,
+            &scope,
+            site.source.as_deref(),
+        );
         let Some(signature) = site.functor.signature() else {
             return;
         };
@@ -567,6 +639,7 @@ impl Modules {
     fn flatten(
         &mut self,
         resolver: &mut Resolver,
+        world: &crate::data::World,
         qualifier: &str,
         declaration: &StructureDecl,
         scope: &NameScope,
@@ -580,12 +653,12 @@ impl Modules {
                 .syntax()
                 .children()
                 .find(|node| is_type(node.kind()))
-                .and_then(|node| crate::core::declared_type(&node));
+                .and_then(|node| crate::core::declared_type(&world.scope(), &node));
             items.push((name, name_span(binding.syntax()), MemberItem::Let(binding), ty));
         }
         for function in declaration.fns() {
             let Some(name) = function.name() else { continue };
-            let ty = crate::core::function_type(&function);
+            let ty = crate::core::function_type(&world.scope(), &function);
             items.push((name, name_span(function.syntax()), MemberItem::Function(function), ty));
         }
         for (name, span, item, ty) in items {

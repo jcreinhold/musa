@@ -108,6 +108,7 @@ module.exports = grammar({
               $.import_statement,
               $.let_declaration,
               $.function_declaration,
+              $.data_declaration,
               $.template_declaration,
               $.signature_declaration,
               $.structure_declaration,
@@ -152,9 +153,16 @@ module.exports = grammar({
     // `let` with its definition left out, because a function is a value of
     // arrow type and one member form covers all of them.
     signature_declaration: ($) =>
-      seq('signature', field('name', $.identifier), '{', repeat($.signature_member), '}'),
+      seq('signature', field('name', $.identifier), '{', repeat(choice($.signature_member, $.data_member)), '}'),
 
     signature_member: ($) => seq('let', field('name', $.identifier), ':', field('type', $.type_expression), ';'),
+
+    // Parser::data_member — a signature names a type and withholds its
+    // constructors. That withholding is what seals a structure's
+    // representation, so the member is a declaration with its body left out
+    // in the same way a `let` member is a `let` with its value left out.
+    data_member: ($) =>
+      seq('data', field('name', $.identifier), optional($.type_parameter_list), ';'),
 
     // Parser::structure_decl — a named group of declarations, reached from
     // outside as `M.member`. The parameter list is what a
@@ -167,9 +175,43 @@ module.exports = grammar({
         ':',
         field('signature', $.identifier),
         '{',
-        repeat(choice($.let_declaration, $.function_declaration)),
+        repeat(choice($.let_declaration, $.function_declaration, $.data_declaration)),
         '}',
       ),
+
+    // Parser::data_decl — one finite nominal declaration: a name, whatever
+    // types it abstracts over, and its constructors. A constructor with no
+    // fields writes no parentheses, because there are none to name; one with
+    // fields names every one of them, since a field a reader cannot name is a
+    // field the record case could not project.
+    data_declaration: ($) =>
+      seq(
+        'data',
+        field('name', $.identifier),
+        optional($.type_parameter_list),
+        '{',
+        optional(seq($.data_variant, repeat(seq(',', $.data_variant)), optional(','))),
+        '}',
+      ),
+
+    data_variant: ($) =>
+      seq(
+        field('name', $.identifier),
+        optional(
+          seq('(', optional(seq($.data_field, repeat(seq(',', $.data_field)), optional(','))), ')'),
+        ),
+      ),
+
+    data_field: ($) => seq(field('name', $.identifier), ':', field('type', $.type_expression)),
+
+    // Parser::type_params — the types a declaration abstracts over. A
+    // parameter is a name and nothing else: it has no kind to write, because
+    // the only kind a declaration's parameter can have is the one every
+    // storable type has.
+    type_parameter_list: ($) =>
+      seq('<', optional(seq($.type_parameter, repeat(seq(',', $.type_parameter)), optional(','))), '>'),
+
+    type_parameter: ($) => $.identifier,
 
     // Parser::make_stmt — one instance site.
     make_statement: ($) =>
@@ -203,6 +245,7 @@ module.exports = grammar({
             $.fragment_declaration,
             $.let_declaration,
             $.function_declaration,
+            $.data_declaration,
             $.score_declaration,
             $.performance_declaration,
             $.studio_declaration,
@@ -223,6 +266,7 @@ module.exports = grammar({
             $.fragment_declaration,
             $.let_declaration,
             $.function_declaration,
+            $.data_declaration,
             $.performance_declaration,
             $.studio_declaration,
             $.signature_declaration,
@@ -395,6 +439,7 @@ module.exports = grammar({
     _type_atom: ($) =>
       choice(
         $.type_name,
+        $.applied_type,
         $.option_type,
         $.list_type,
         $.result_type,
@@ -406,6 +451,12 @@ module.exports = grammar({
     // keyword stands here: `key` is a statement and `Key` is a type
     // (Parser::type_atom).
     type_name: ($) => $.identifier,
+    // `Tree<Nat>` — a declared type applied to its arguments. Which names are
+    // declarations is a fact about the program, not about this file, so the
+    // shape is what decides the node here exactly as it does in the hand
+    // parser (Parser::type_atom).
+    applied_type: ($) =>
+      seq(field('name', $.type_name), '<', $.type_expression, repeat(seq(',', $.type_expression)), '>'),
     option_type: ($) => seq('Option', '<', $.type_expression, '>'),
     list_type: ($) => seq('List', '<', $.type_expression, '>'),
     // The binary sum, in its one surface spelling (Parser::type_atom).
@@ -550,6 +601,16 @@ module.exports = grammar({
         seq('Some', '(', $.identifier, ')'),
         seq('Ok', '(', $.identifier, ')'),
         seq('Err', '(', $.identifier, ')'),
+        // `Sounded(heard, lasting)` — a declared constructor, taking one
+        // binding per field. Whether a bare name is a constructor or a
+        // binding is a question about what the program declares, so only the
+        // parenthesized form is a shape this file can see (Parser::pattern).
+        seq(
+          field('constructor', $.identifier),
+          '(',
+          optional(seq($.identifier, repeat(seq(',', $.identifier)))),
+          ')',
+        ),
         seq('[', ']'),
         seq('[', $.identifier, ',', '.', '.', $.identifier, ']'),
         seq('(', $.identifier, ',', $.identifier, repeat(seq(',', $.identifier)), ')'),

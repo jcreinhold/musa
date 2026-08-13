@@ -515,6 +515,53 @@ fn a_music_body_stacks_however_short_it_is() {
     assert_eq!(fmt(&formatted), formatted, "idempotent");
 }
 
+/// A declaration is a list of cases read downwards, the way a `match` is, so
+/// each constructor takes a line and the brace that closes the declaration
+/// takes its own — including when the last constructor was written without a
+/// trailing comma. The commas *inside* a constructor separate its fields,
+/// which are one word's worth of a line each, and stay horizontal.
+#[test]
+fn a_declaration_writes_one_constructor_to_a_line() {
+    let source = "library {\ndata Shape { Silence, Sounded(sounded: Pitch, held: Duration), Then(first: Shape, second: Shape) }\n}\n";
+    let formatted = fmt(source);
+    assert_eq!(
+        formatted,
+        concat!(
+            "library {\n",
+            "    data Shape {\n",
+            "        Silence,\n",
+            "        Sounded(sounded: Pitch, held: Duration),\n",
+            "        Then(first: Shape, second: Shape)\n",
+            "    }\n",
+            "}\n",
+        ),
+        "{formatted}"
+    );
+    assert_eq!(fmt(&formatted), formatted, "idempotent");
+    assert_semantics_preserved(source, &formatted);
+}
+
+/// A parameter list binds to the name it abstracts — `Pair<A, B>`, never
+/// `Pair <A, B>` — and a declaration with one constructor is still a list.
+#[test]
+fn a_parameterized_declaration_keeps_its_parameters_on_its_name() {
+    let source = "library {\ndata Pair < A , B > { Both ( left : A , right : B ) , }\n}\n";
+    let formatted = fmt(source);
+    assert_eq!(
+        formatted,
+        concat!(
+            "library {\n",
+            "    data Pair<A, B> {\n",
+            "        Both(left: A, right: B),\n",
+            "    }\n",
+            "}\n",
+        ),
+        "{formatted}"
+    );
+    assert_eq!(fmt(&formatted), formatted, "idempotent");
+    assert_semantics_preserved(source, &formatted);
+}
+
 #[test]
 fn apply_edits_replaces_ranges_in_order() {
     use musa_language::{TextEdit, apply_edits};

@@ -410,6 +410,8 @@ enum RawToken {
     SignatureKw,
     #[token("structure", priority = 3)]
     StructureKw,
+    #[token("data", priority = 3)]
+    DataKw,
     #[token("module", priority = 3)]
     ModuleKw,
     #[token("mod", priority = 3)]
@@ -546,6 +548,7 @@ impl RawToken {
             | Self::AsKw
             | Self::SignatureKw
             | Self::StructureKw
+            | Self::DataKw
             | Self::ModuleKw
             | Self::ModKw => None,
         }
@@ -677,6 +680,7 @@ impl RawToken {
             Self::AsKw => SyntaxKind::AsKw,
             Self::SignatureKw => SyntaxKind::SignatureKw,
             Self::StructureKw => SyntaxKind::StructureKw,
+            Self::DataKw => SyntaxKind::DataKw,
             Self::ModuleKw => SyntaxKind::ModuleKw,
             Self::ModKw => SyntaxKind::ModKw,
         }

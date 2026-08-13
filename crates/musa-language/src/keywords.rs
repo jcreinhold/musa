@@ -712,6 +712,18 @@ static AS: KeywordDoc = doc!(
      ```musa\nmake study(key g major) as study_in_g;\n```"
 );
 
+static DATA: KeywordDoc = doc!(
+    "data",
+    "declare a finite type of your own",
+    "A `data` declaration is a finite, strictly positive type with named constructors and named fields. It is how a \
+     package owns its own data instead of asking the compiler for another built-in type: the constructors are the \
+     only way in, `match` is how a reader takes one apart, and the generated fold — `motive_fold` for `data Motive` \
+     — is how a total traversal is written.\n\n\
+     A field may not be a function, at any depth, and the declared type may not appear to the left of an arrow in \
+     its own group. Those two rules are what make the type finite and its fold terminating.\n\n\
+     ```musa\ndata Motive {\n    Silence,\n    Sounded(pitch: Pitch, held: Duration),\n}\n```"
+);
+
 /// The keyword's documentation, or `None` for anything that is not a
 /// keyword.
 ///
@@ -731,6 +743,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         SyntaxKind::TemplateKw => &TEMPLATE,
         SyntaxKind::SignatureKw => &SIGNATURE,
         SyntaxKind::StructureKw => &STRUCTURE,
+        SyntaxKind::DataKw => &DATA,
         SyntaxKind::ModuleKw => &MODULE,
         SyntaxKind::ModKw => &MOD,
         SyntaxKind::MakeKw => &MAKE,
@@ -962,7 +975,14 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::SignatureDecl
         | SyntaxKind::SignatureMember
         | SyntaxKind::StructureDecl
-        | SyntaxKind::ModDecl => return None,
+        | SyntaxKind::ModDecl
+        | SyntaxKind::DataDecl
+        | SyntaxKind::TypeParams
+        | SyntaxKind::TypeParam
+        | SyntaxKind::DataVariant
+        | SyntaxKind::DataField
+        | SyntaxKind::AppliedType
+        | SyntaxKind::DataMember => return None,
     };
     Some(doc)
 }
@@ -1000,6 +1020,7 @@ mod tests {
             SyntaxKind::ImportKw,
             SyntaxKind::ModKw,
             SyntaxKind::StructureKw,
+            SyntaxKind::DataKw,
             SyntaxKind::ModuleKw,
             SyntaxKind::TransposeKw,
             SyntaxKind::UpKw,

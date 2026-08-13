@@ -2151,6 +2151,130 @@ wrapper!(ListType, SyntaxKind::ListType);
 pub struct ResultType(SyntaxNode);
 wrapper!(ResultType, SyntaxKind::ResultType);
 
+/// `Tree<Nat>` — a declared type applied to its arguments.
+pub struct AppliedType(SyntaxNode);
+wrapper!(AppliedType, SyntaxKind::AppliedType);
+
+impl AppliedType {
+    /// The declaration's name.
+    pub fn name(&self) -> Option<String> {
+        child::<TypeName>(&self.0).map(|name| name.syntax().to_string().trim().to_owned())
+    }
+
+    /// The types it is applied to, in source order.
+    pub fn arguments(&self) -> Vec<SyntaxNode> {
+        self.0.children().skip(1).filter(|node| is_type(node.kind())).collect()
+    }
+}
+
+/// Whether a node kind is one a written type can be.
+///
+/// A type is several node kinds rather than one wrapper, so every reader of an
+/// annotation asks this rather than casting.
+#[must_use]
+pub fn is_type(kind: SyntaxKind) -> bool {
+    matches!(
+        kind,
+        SyntaxKind::TypeExpr
+            | SyntaxKind::TypeName
+            | SyntaxKind::FunctionType
+            | SyntaxKind::ProductType
+            | SyntaxKind::OptionType
+            | SyntaxKind::ListType
+            | SyntaxKind::ResultType
+            | SyntaxKind::AppliedType
+    )
+}
+
+/// `data Motive { Silence, Sounded(pitch: Pitch) }` — one nominal declaration.
+pub struct DataDecl(SyntaxNode);
+wrapper!(DataDecl, SyntaxKind::DataDecl);
+
+impl DataDecl {
+    /// Every `data` declaration among this node's children, in source order.
+    pub fn all_at_root(node: &SyntaxNode) -> Vec<Self> {
+        children(node)
+    }
+
+    /// The type's name.
+    pub fn name(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
+    }
+
+    /// The names of its type parameters, in source order.
+    pub fn parameters(&self) -> Vec<String> {
+        type_parameters(&self.0)
+    }
+
+    /// Its constructors, in source order.
+    pub fn variants(&self) -> Vec<DataVariant> {
+        children(&self.0)
+    }
+}
+
+/// `data Motive;` — a signature member naming a type without its
+/// constructors.
+pub struct DataMember(SyntaxNode);
+wrapper!(DataMember, SyntaxKind::DataMember);
+
+impl DataMember {
+    /// The type's name.
+    pub fn name(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
+    }
+
+    /// The names of its type parameters, in source order.
+    pub fn parameters(&self) -> Vec<String> {
+        type_parameters(&self.0)
+    }
+}
+
+/// The type parameters written on a declaration or a signature member.
+fn type_parameters(node: &SyntaxNode) -> Vec<String> {
+    node.children()
+        .find(|child| child.kind() == SyntaxKind::TypeParams)
+        .map(|params| {
+            params
+                .children()
+                .filter(|child| child.kind() == SyntaxKind::TypeParam)
+                .filter_map(|param| token_text(&param, SyntaxKind::Identifier))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// `Sounded(pitch: Pitch, held: Duration)` — one constructor.
+pub struct DataVariant(SyntaxNode);
+wrapper!(DataVariant, SyntaxKind::DataVariant);
+
+impl DataVariant {
+    /// The constructor's name.
+    pub fn name(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
+    }
+
+    /// Its fields, in source order. A constructor with no fields has none.
+    pub fn fields(&self) -> Vec<DataField> {
+        children(&self.0)
+    }
+}
+
+/// `pitch: Pitch` — one named field.
+pub struct DataField(SyntaxNode);
+wrapper!(DataField, SyntaxKind::DataField);
+
+impl DataField {
+    /// The field's name.
+    pub fn name(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
+    }
+
+    /// The type it stores.
+    pub fn ty(&self) -> Option<SyntaxNode> {
+        self.0.children().find(|node| is_type(node.kind()))
+    }
+}
+
 /// A value reference.
 pub struct NameExpr(SyntaxNode);
 wrapper!(NameExpr, SyntaxKind::NameExpr);

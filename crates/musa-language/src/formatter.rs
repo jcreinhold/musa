@@ -258,8 +258,10 @@ fn format_token(parent: SyntaxKind, kind: SyntaxKind, text: &str, writer: &mut W
     } else if kind == SyntaxKind::RBrace {
         writer.indent_less();
         // A block's one expression ends with no `;` to end its line, so the
-        // brace that closes it asks for the line itself.
-        if parent == SyntaxKind::BlockExpr {
+        // brace that closes it asks for the line itself. A declaration's last
+        // variant may be written without its trailing comma, which leaves the
+        // same brace stranded after it.
+        if parent == SyntaxKind::BlockExpr || parent == SyntaxKind::DataDecl {
             writer.break_before_close();
         }
         // On its own line the `}` needs no space in front of it, and
@@ -278,7 +280,11 @@ fn format_token(parent: SyntaxKind, kind: SyntaxKind, text: &str, writer: &mut W
         writer.end_line();
     } else if kind == SyntaxKind::Comma {
         writer.write(",");
-        if parent == SyntaxKind::MatchExpr {
+        // A match arm and a constructor are both a case of the same thing, and
+        // both read as a list read downwards. A comma *inside* a constructor
+        // separates its fields, which are one word's worth of a line, and that
+        // comma belongs to the `DataVariant`, not to the declaration.
+        if parent == SyntaxKind::MatchExpr || parent == SyntaxKind::DataDecl {
             writer.end_line();
         } else {
             writer.space();

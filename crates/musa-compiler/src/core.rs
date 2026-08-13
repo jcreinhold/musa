@@ -12,6 +12,7 @@ use musa_language::{SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken};
 use num_rational::Ratio;
 
 use crate::core_budget::WorkMeter;
+use crate::data::{TypeScope, World};
 use crate::diagnose::{Code, Diagnostic};
 use crate::imports::Libraries;
 use crate::infer::{Kind, Mismatch, Scheme, Unifier};
@@ -31,7 +32,11 @@ pub(crate) fn check_piece(
     if !validate_imports(resolver, libraries) {
         return None;
     }
-    let modules = Modules::read(resolver, module_owners(libraries, root));
+    // The data world is built first, because a declaration is what a written
+    // type *means*: a signature member or a `let` naming `Motive` cannot be
+    // lowered until this says what `Motive` is.
+    let world = World::read(resolver, &data_owners(libraries, root, Some(piece.syntax())));
+    let modules = Modules::read(resolver, &world, module_owners(libraries, root));
     check_and_evaluate(
         resolver,
         libraries
@@ -43,6 +48,7 @@ pub(crate) fn check_piece(
         Some(piece.syntax()),
         UnknownRootMusic::Defer,
         &modules,
+        &world,
     )
 }
 
@@ -60,7 +66,8 @@ pub(crate) fn check_arguments(
     if !validate_imports(resolver, libraries) {
         return None;
     }
-    let modules = Modules::read(resolver, module_owners(libraries, root));
+    let world = World::read(resolver, &data_owners(libraries, root, None));
+    let modules = Modules::read(resolver, &world, module_owners(libraries, root));
     check_and_evaluate(
         resolver,
         libraries
@@ -71,6 +78,7 @@ pub(crate) fn check_arguments(
         None,
         UnknownRootMusic::Reject,
         &modules,
+        &world,
     )
 }
 
@@ -88,7 +96,8 @@ pub(crate) fn check_template_voice(
     voice: &musa_language::ast::VoiceDecl,
     bindings: Vec<Binding>,
 ) -> Option<Program> {
-    let modules = Modules::read(resolver, module_owners(libraries, root));
+    let world = World::read(resolver, &data_owners(libraries, root, Some(voice.syntax())));
+    let modules = Modules::read(resolver, &world, module_owners(libraries, root));
     check_and_evaluate(
         resolver,
         libraries
@@ -100,6 +109,7 @@ pub(crate) fn check_template_voice(
         Some(voice.syntax()),
         UnknownRootMusic::Defer,
         &modules,
+        &world,
     )
 }
 
@@ -113,6 +123,22 @@ fn module_owners<'a>(
         .each()
         .map(|(from, library)| (Some(from.path), library.syntax().clone()))
         .chain(std::iter::once((None, root.clone())))
+}
+
+/// Every place a `data` declaration may be written for this pass: what its
+/// imports declare, its own lexical root, and the piece or voice being
+/// checked when there is one.
+///
+/// A wider list than [`module_owners`] by exactly that last node, because a
+/// piece may declare data of its own while a signature or a structure written
+/// inside one is not a thing the grammar admits.
+fn data_owners(libraries: &Libraries, root: &SyntaxNode, inner: Option<&SyntaxNode>) -> Vec<SyntaxNode> {
+    libraries
+        .each()
+        .map(|(_, library)| library.syntax().clone())
+        .chain(std::iter::once(root.clone()))
+        .chain(inner.cloned())
+        .collect()
 }
 
 /// The definitions written at a document's lexical root, before its piece or
@@ -147,8 +173,17 @@ pub(crate) fn check_material(
     if !validate_imports(resolver, libraries) {
         return false;
     }
+    let world = World::read(
+        resolver,
+        &libraries
+            .each()
+            .map(|(_, imported)| imported.syntax().clone())
+            .chain(std::iter::once(library.syntax().clone()))
+            .collect::<Vec<_>>(),
+    );
     let modules = Modules::read(
         resolver,
+        &world,
         libraries
             .each()
             .map(|(from, imported)| (Some(from.path), imported.syntax().clone()))
@@ -163,6 +198,7 @@ pub(crate) fn check_material(
         None,
         UnknownRootMusic::Reject,
         &modules,
+        &world,
     )
     .is_some()
 }
@@ -186,13 +222,16 @@ fn validate_imports(resolver: &mut Resolver, libraries: &Libraries) -> bool {
         prefix.extend(declarations(library.syntax(), unqualified(path)));
         owners.push((Some(path), library.syntax().clone()));
         let mut foreign_resolver = Resolver::new();
-        let modules = Modules::read(&mut foreign_resolver, owners.iter().cloned());
+        let data_owners: Vec<_> = owners.iter().map(|(_, node)| node.clone()).collect();
+        let world = World::read(&mut foreign_resolver, &data_owners);
+        let modules = Modules::read(&mut foreign_resolver, &world, owners.iter().cloned());
         let evaluated = check_and_evaluate(
             &mut foreign_resolver,
             prefix.clone().into_iter(),
             None,
             UnknownRootMusic::Reject,
             &modules,
+            &world,
         )
         .is_some();
         let first_error = foreign_resolver
@@ -429,6 +468,12 @@ pub(crate) enum Type {
     Sum(Box<Self>, Box<Self>),
     Option(Box<Self>),
     List(Box<Self>),
+    /// A type a library declared, applied to its arguments — §1's `N[τ, …]`.
+    ///
+    /// The identity is the declaration, not the name: two packages that both
+    /// declare `Motive` declare two types, and this holds which one
+    /// ([`crate::data::NominalId`]).
+    Nominal(crate::data::NominalId, Vec<Self>),
     Music,
     Function(Vec<Self>, Box<Self>),
 }
@@ -476,6 +521,18 @@ impl std::fmt::Display for Type {
             Self::Sum(value, error) => write!(out, "Result<{value}, {error}>"),
             Self::Option(member) => write!(out, "Option<{member}>"),
             Self::List(member) => write!(out, "List<{member}>"),
+            Self::Nominal(id, arguments) => {
+                write!(out, "{id}")?;
+                for (index, argument) in arguments.iter().enumerate() {
+                    out.write_str(if index == 0 { "<" } else { ", " })?;
+                    write!(out, "{argument}")?;
+                }
+                if arguments.is_empty() {
+                    Ok(())
+                } else {
+                    out.write_str(">")
+                }
+            }
             Self::Music => out.write_str("Music"),
             Self::Function(parameters, result) => {
                 if parameters.len() == 1 {
@@ -697,6 +754,29 @@ enum ExprKind {
     Match {
         scrutinee: Box<Expr>,
         arms: Vec<CheckedArm>,
+    },
+    /// One saturated use of a library-declared constructor.
+    ///
+    /// Saturated, because a constructor is not a first-class function here:
+    /// a partial one would be an arrow whose type the declaration never wrote
+    /// down, and the language already answers "apply it directly" for its own
+    /// polymorphic operations.
+    Construct {
+        id: crate::data::NominalId,
+        variant: usize,
+        /// The type arguments this use makes the declaration at, kept for the
+        /// same reason a list keeps its member: the value is one variant, and
+        /// the type is the whole declaration.
+        arguments: Vec<Type>,
+        fields: Vec<Expr>,
+    },
+    /// One saturated use of a declaration's generated fold: one case per
+    /// constructor of the group, in the order [`crate::data::Folding`] gives
+    /// them, and then the value.
+    Fold {
+        cases: Vec<Expr>,
+        shape: Vec<(crate::data::NominalId, usize)>,
+        value: Box<Expr>,
     },
     Step {
         base: Box<Expr>,
@@ -1634,8 +1714,17 @@ enum Pattern {
     Ok(String),
     Err(String),
     EmptyList,
-    Cons { head: String, tail: String },
+    Cons {
+        head: String,
+        tail: String,
+    },
     Product(Vec<String>),
+    /// One constructor of a library-declared type, binding its fields in the
+    /// order the declaration wrote them.
+    Constructor {
+        variant: usize,
+        fields: Vec<String>,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -1650,6 +1739,10 @@ enum Coverage {
     EmptyList,
     Cons,
     Literal(String),
+    /// One constructor of a library-declared type, by its index in the
+    /// declaration — the name would be ambiguous across declarations, and the
+    /// index is what the exhaustiveness check counts.
+    Constructor(usize),
 }
 
 #[derive(Clone)]
@@ -1724,6 +1817,19 @@ enum Value {
     List {
         member: Type,
         values: Vec<Self>,
+    },
+    /// One value of a library-declared type: which declaration, which
+    /// constructor, what it was made at, and what it holds.
+    ///
+    /// The arguments are here for the same reason a list keeps its member
+    /// type: a value that dropped them could not say what it is, and
+    /// `Leaf(3)` of `Tree<Nat>` and `Leaf(3)` of `Tree<Duration>` are values
+    /// of two types.
+    Data {
+        id: crate::data::NominalId,
+        arguments: Vec<Type>,
+        variant: usize,
+        fields: Vec<Self>,
     },
     Music(Music),
     Closure(Box<Closure>),
@@ -2142,6 +2248,7 @@ impl Value {
             } => Type::Sum(Box::new(value_type.clone()), Box::new(error_type.clone())),
             Self::Option { member, .. } => Type::Option(Box::new(member.clone())),
             Self::List { member, .. } => Type::List(Box::new(member.clone())),
+            Self::Data { id, arguments, .. } => Type::Nominal(id.clone(), arguments.clone()),
             Self::Music(_) => Type::Music,
             Self::Closure(closure) => Type::Function(
                 closure
@@ -2224,6 +2331,13 @@ impl Value {
             Self::List { values, .. } => values.iter().fold(0u64, |witness, value| {
                 witness.rotate_left(5) ^ value.normalization_witness()
             }),
+            // The variant number joins the fields, because two constructors
+            // holding nothing are two values and a witness that could not
+            // tell them apart would not be a witness.
+            Self::Data { variant, fields, .. } => fields.iter().fold(
+                u64::try_from(*variant).unwrap_or(u64::MAX).rotate_left(3),
+                |witness, field| witness.rotate_left(5) ^ field.normalization_witness(),
+            ),
             Self::Music(music) => music_witness(music),
             Self::Closure(closure) => closure.captures.values().fold(
                 u64::try_from(closure.parameters.len()).unwrap_or(u64::MAX),
@@ -2354,6 +2468,16 @@ fn settle_expr(unifier: &Unifier, expr: &mut Expr) -> Option<(SourceSpan, Type)>
         }
         ExprKind::Match { scrutinee, arms } => settle_expr(unifier, scrutinee)
             .or_else(|| arms.iter_mut().find_map(|arm| settle_expr(unifier, &mut arm.body))),
+        ExprKind::Construct { arguments, fields, .. } => {
+            for argument in arguments.iter_mut() {
+                *argument = unifier.resolve(argument);
+            }
+            fields.iter_mut().find_map(|field| settle_expr(unifier, field))
+        }
+        ExprKind::Fold { cases, value, .. } => cases
+            .iter_mut()
+            .find_map(|case| settle_expr(unifier, case))
+            .or_else(|| settle_expr(unifier, value)),
         ExprKind::Step { base, steps, .. } => settle_expr(unifier, base).or_else(|| settle_expr(unifier, steps)),
     };
     // A collection records its member type *inside the value it builds*, so
@@ -2362,7 +2486,7 @@ fn settle_expr(unifier: &Unifier, expr: &mut Expr) -> Option<(SourceSpan, Type)>
     // type is polymorphism, and the caller decides it.
     let ambiguous = matches!(
         expr.kind,
-        ExprKind::Option(_) | ExprKind::List(_) | ExprKind::Injection { .. }
+        ExprKind::Option(_) | ExprKind::List(_) | ExprKind::Injection { .. } | ExprKind::Construct { .. }
     ) && unifier.residue(&expr.ty).is_some();
     under.or_else(|| ambiguous.then(|| (expr.span, expr.ty.clone())))
 }
@@ -2385,6 +2509,7 @@ fn infer_open_declarations(
     symbols: &mut IndexMap<String, Symbol>,
     unifier: &mut Unifier,
     modules: &Modules,
+    world: &World,
 ) {
     let open: Vec<usize> = raw
         .iter()
@@ -2417,6 +2542,7 @@ fn infer_open_declarations(
                 definition_span: definition.span,
                 scope: &definition.scope,
                 modules,
+                world,
             };
             check_definition(&mut checker, definition);
         }
@@ -2602,6 +2728,7 @@ fn check_and_evaluate(
     root: Option<&SyntaxNode>,
     unknown_root_music: UnknownRootMusic,
     modules: &Modules,
+    world: &World,
 ) -> Option<Program> {
     let root_uses = root.map(root_uses).unwrap_or_default();
     let mut meter = WorkMeter::default();
@@ -2668,7 +2795,16 @@ fn check_and_evaluate(
             continue;
         }
         names.insert(name.clone(), (name_span, source.clone(), is_legacy));
-        if let Some(definition) = lower_signature(resolver, &mut unifier, declaration, name, name_span, span, source) {
+        if let Some(definition) = lower_signature(
+            resolver,
+            &world.scope(),
+            &mut unifier,
+            declaration,
+            name,
+            name_span,
+            span,
+            source,
+        ) {
             raw.push(definition);
         }
     }
@@ -2699,7 +2835,7 @@ fn check_and_evaluate(
     // principal type rather than whatever the first use happened to need.
     // Nothing runs here when every declaration wrote its type, which is the
     // case this pass costs nothing in.
-    infer_open_declarations(&raw, &mut symbols, &mut unifier, modules);
+    infer_open_declarations(&raw, &mut symbols, &mut unifier, modules, world);
 
     // Documentation is written from the type each declaration ended up with,
     // which for an annotated one is what it wrote and for an inferred one is
@@ -2732,6 +2868,7 @@ fn check_and_evaluate(
             definition_span: definition.span,
             scope: &definition.scope,
             modules,
+            world,
         };
         let kind = check_definition(&mut checker, definition);
         let failed = checker.failed;
@@ -2810,6 +2947,7 @@ fn check_and_evaluate(
             deferred_pitch: false,
             scope: crate::module::NameScope::empty(),
             modules,
+            world,
         };
         let checked_use = checker.check(&expression, Some(&Type::Music))?;
         let Value::Music(music) = eval(&checked_use, &values, &mut meter)? else {
@@ -2830,7 +2968,7 @@ fn check_and_evaluate(
                 continue;
             };
             let span = crate::resolve::trimmed_span(&statement);
-            let mut checker = root_checker(resolver, &raw, &symbols, &mut unifier, &mut meter, span, modules);
+            let mut checker = root_checker(resolver, &raw, &symbols, &mut unifier, &mut meter, span, modules, world);
             let checked = checker.check(&expression, Some(&Type::Scale))?;
             let Value::Scale(scale) = eval(&checked, &values, &mut meter)? else {
                 return None;
@@ -2845,7 +2983,7 @@ fn check_and_evaluate(
                 continue;
             };
             let span = crate::resolve::trimmed_span(&statement);
-            let mut checker = root_checker(resolver, &raw, &symbols, &mut unifier, &mut meter, span, modules);
+            let mut checker = root_checker(resolver, &raw, &symbols, &mut unifier, &mut meter, span, modules, world);
             let checked = checker.check(&expression, Some(&Type::Key))?;
             let Value::Key(key) = eval(&checked, &values, &mut meter)? else {
                 return None;
@@ -2854,7 +2992,7 @@ fn check_and_evaluate(
         }
         for statement in root_nodes(root, SyntaxKind::AssertStmt) {
             let span = crate::resolve::trimmed_span(&statement);
-            let mut checker = root_checker(resolver, &raw, &symbols, &mut unifier, &mut meter, span, modules);
+            let mut checker = root_checker(resolver, &raw, &symbols, &mut unifier, &mut meter, span, modules, world);
             let checked = checker.claim(&statement)?;
             claims.insert(span_key(span), eval_claim(&checked, &values, &mut meter)?);
         }
@@ -2865,7 +3003,7 @@ fn check_and_evaluate(
                 continue;
             };
             let span = crate::resolve::trimmed_span(&statement);
-            let mut checker = root_checker(resolver, &raw, &symbols, &mut unifier, &mut meter, span, modules);
+            let mut checker = root_checker(resolver, &raw, &symbols, &mut unifier, &mut meter, span, modules, world);
             let checked = checker.deferring_pitch(|checker| checker.check(&expression, Some(&Type::Pitch)))?;
             pitches.insert(span_key(span), pitch_term(&checked, &values, &mut meter)?);
         }
@@ -2901,6 +3039,7 @@ fn check_and_evaluate(
             | Value::Sum { .. }
             | Value::Option { .. }
             | Value::List { .. }
+            | Value::Data { .. }
             | Value::Closure(_)
             | Value::Builtin(_) => None,
         })
@@ -2925,6 +3064,7 @@ fn root_checker<'a>(
     meter: &'a mut WorkMeter,
     span: SourceSpan,
     modules: &'a Modules,
+    world: &'a World,
 ) -> Checker<'a> {
     Checker {
         resolver,
@@ -2941,6 +3081,7 @@ fn root_checker<'a>(
         deferred_pitch: false,
         scope: crate::module::NameScope::empty(),
         modules,
+        world,
     }
 }
 
@@ -2965,7 +3106,12 @@ pub(crate) fn check_for_kernel(
     scope: Option<&SyntaxNode>,
     bindings: Vec<Binding>,
 ) -> Option<Program> {
-    let modules = Modules::read(resolver, std::iter::once((None, root.clone())));
+    // The document's root *and* the piece or voice being elaborated: a `data`
+    // declaration is written where the values that use it are, so a path that
+    // read only the root would elaborate a piece whose own types are unknown.
+    let owners: Vec<SyntaxNode> = std::iter::once(root.clone()).chain(scope.cloned()).collect();
+    let world = World::read(resolver, &owners);
+    let modules = Modules::read(resolver, &world, std::iter::once((None, root.clone())));
     check_and_evaluate(
         resolver,
         root_preamble(root)
@@ -2975,6 +3121,7 @@ pub(crate) fn check_for_kernel(
         scope,
         UnknownRootMusic::Silent,
         &modules,
+        &world,
     )
 }
 
@@ -3162,6 +3309,7 @@ fn document(definition: &RawDefinition, scheme: &Scheme) -> crate::docs::ItemDoc
 /// only some of it is written down.
 fn lower_signature(
     resolver: &mut Resolver,
+    scope: &TypeScope<'_>,
     unifier: &mut Unifier,
     definition: SurfaceDefinition,
     name: String,
@@ -3174,7 +3322,7 @@ fn lower_signature(
         SurfaceDefinition::Let { declaration, .. } => {
             let body = child_of(declaration.syntax(), is_expr_node)?;
             let ty = match child_of(declaration.syntax(), is_type_node) {
-                Some(node) => parse_type(resolver, &node)?,
+                Some(node) => parse_type(resolver, scope, &node)?,
                 None => unifier.fresh(Kind::Ordinary),
             };
             let summary = crate::docs::summary_above(declaration.syntax());
@@ -3197,7 +3345,7 @@ fn lower_signature(
             for parameter in declaration.params() {
                 let parameter_ty = match child_of(parameter.syntax(), is_type_node) {
                     Some(ty_node) => {
-                        let Some(parsed) = parse_type(resolver, &ty_node) else {
+                        let Some(parsed) = parse_type(resolver, scope, &ty_node) else {
                             continue;
                         };
                         parsed
@@ -3219,7 +3367,7 @@ fn lower_signature(
             // A parameter's type sits inside the parameter list, so the one
             // type node a `fn` has as a direct child is its result.
             let result = match declaration.syntax().children().find(|node| is_type_node(node.kind())) {
-                Some(node) => parse_type(resolver, &node)?,
+                Some(node) => parse_type(resolver, scope, &node)?,
                 None => unifier.fresh(Kind::Ordinary),
             };
             let body = child_of(declaration.syntax(), is_expr_node)?;
@@ -3326,12 +3474,12 @@ fn lower_signature(
                     qualifier: None,
                 },
             };
-            let mut lowered = lower_signature(resolver, unifier, inner, name, name_span, span, source)?;
+            let mut lowered = lower_signature(resolver, scope, unifier, inner, name, name_span, span, source)?;
             lowered.scope = member;
             Some(lowered)
         }
         SurfaceDefinition::Bound(binding) => {
-            let ty = parse_type(resolver, &binding.ty)?;
+            let ty = parse_type(resolver, scope, &binding.ty)?;
             let kind = match binding.stands_for {
                 StandsFor::Argument(argument) => RawDefinitionKind::Let { body: argument },
                 StandsFor::Value(value) => {
@@ -3399,6 +3547,7 @@ fn legacy_default(ty: &Type, written: &str) -> Option<Value> {
         | Type::Sum(_, _)
         | Type::Option(_)
         | Type::List(_)
+        | Type::Nominal(_, _)
         | Type::Music
         | Type::Function(_, _) => None,
     }
@@ -3432,12 +3581,13 @@ fn function_result(ty: &Type) -> Option<&Type> {
         | Type::Product(_)
         | Type::Sum(_, _)
         | Type::Option(_)
+        | Type::Nominal(_, _)
         | Type::List(_) => None,
     }
 }
 
-fn parse_type(resolver: &mut Resolver, node: &SyntaxNode) -> Option<Type> {
-    lower_type(Some(resolver), node)
+fn parse_type(resolver: &mut Resolver, scope: &TypeScope<'_>, node: &SyntaxNode) -> Option<Type> {
+    lower_type(Some(resolver), scope, node)
 }
 
 /// The type a node declares, read without reporting what it is not.
@@ -3446,8 +3596,8 @@ fn parse_type(resolver: &mut Resolver, node: &SyntaxNode) -> Option<Type> {
 /// against a signature; whether the type exists at all is a question the core
 /// answers once, where the declaration is lowered, so asking here would
 /// report the same mistake twice.
-pub(crate) fn declared_type(node: &SyntaxNode) -> Option<Type> {
-    lower_type(None, node)
+pub(crate) fn declared_type(scope: &TypeScope<'_>, node: &SyntaxNode) -> Option<Type> {
+    lower_type(None, scope, node)
 }
 
 /// The type a signature member declares.
@@ -3455,8 +3605,23 @@ pub(crate) fn declared_type(node: &SyntaxNode) -> Option<Type> {
 /// Reporting, unlike [`declared_type`]: a signature member's type is read
 /// exactly once, here, so this is the only place that can say it is not a
 /// type at all.
-pub(crate) fn signature_type(resolver: &mut Resolver, node: &SyntaxNode) -> Option<Type> {
-    lower_type(Some(resolver), node)
+pub(crate) fn signature_type(resolver: &mut Resolver, scope: &TypeScope<'_>, node: &SyntaxNode) -> Option<Type> {
+    lower_type(Some(resolver), scope, node)
+}
+
+/// The type a `data` declaration's field writes, read in the scope of that
+/// declaration's own type parameters.
+///
+/// This is [`crate::data`]'s way in, and the only caller that passes a scope
+/// with parameters in it.
+pub(crate) fn scoped_type(resolver: &mut Resolver, scope: &TypeScope<'_>, node: &SyntaxNode) -> Option<Type> {
+    lower_type(Some(resolver), scope, node)
+}
+
+/// Whether `name` is one of the types the compiler owns, so a library cannot
+/// declare a second thing by that name and leave two readings of one word.
+pub(crate) fn is_builtin_type_name(name: &str) -> bool {
+    named_type(name).is_some() || matches!(name, "Option" | "List" | "Result")
 }
 
 /// The arrow type a `fn` declares, which is the type a signature member of
@@ -3473,10 +3638,10 @@ pub(crate) fn signature_type(resolver: &mut Resolver, node: &SyntaxNode) -> Opti
 /// The holes are numbered per declaration and belong to no [`Unifier`]. They
 /// are never unified — only compared, by a relation in which any variable
 /// matches — so there is nothing for them to be numbered against.
-pub(crate) fn function_type(declaration: &FnDecl) -> Option<Type> {
+pub(crate) fn function_type(scope: &TypeScope<'_>, declaration: &FnDecl) -> Option<Type> {
     let mut hole = 0u32;
     let mut open = |node: Option<SyntaxNode>| match node {
-        Some(node) => declared_type(&node),
+        Some(node) => declared_type(scope, &node),
         None => {
             let variable = Type::Var(hole);
             hole = hole.saturating_add(1);
@@ -3525,16 +3690,35 @@ fn named_type(text: &str) -> Option<Type> {
     }
 }
 
-fn lower_type(mut resolver: Option<&mut Resolver>, node: &SyntaxNode) -> Option<Type> {
+fn lower_type(mut resolver: Option<&mut Resolver>, scope: &TypeScope<'_>, node: &SyntaxNode) -> Option<Type> {
     let kind = node.kind();
     if kind == SyntaxKind::TypeExpr {
-        return child_of(node, is_type_node).and_then(|child| lower_type(resolver, &child));
+        return child_of(node, is_type_node).and_then(|child| lower_type(resolver, scope, &child));
     }
     if kind == SyntaxKind::TypeName {
         let text = node.to_string();
         let text = text.trim();
         if let Some(named) = named_type(text) {
             return Some(named);
+        }
+        // A library-declared type, or one of the declaration's own
+        // parameters. The compiler's own names are asked first, so no
+        // declaration can quietly become a second reading of `Pitch`;
+        // `crate::data` refuses such a declaration where it is written.
+        if let Some(declared) = scope.named(text, Vec::new()) {
+            return Some(declared);
+        }
+        if let Some(wanted) = scope.arity(text)
+            && wanted > 0
+        {
+            if let Some(resolver) = resolver.as_deref_mut() {
+                resolver.report(
+                    Diagnostic::error(Code::WrongArity, format!("`{text}` takes {wanted} type arguments"))
+                        .at(crate::resolve::trimmed_span(node), "written with none")
+                        .help(format!("write `{text}<…>`")),
+                );
+            }
+            return None;
         }
         // A removed spelling has already been reported at the word, with the
         // capital that replaces it, by the parser. Reading it as the type it
@@ -3559,11 +3743,45 @@ fn lower_type(mut resolver: Option<&mut Resolver>, node: &SyntaxNode) -> Option<
         }
         return None;
     }
+    if kind == SyntaxKind::AppliedType {
+        // The name is the first type child and the arguments are the rest:
+        // an argument may itself be a bare `TypeName`, so telling them apart
+        // by kind would take `Pair<Nat>` for a `Pair` of nothing.
+        let mut parts = node.children().filter(|child| is_type_node(child.kind()));
+        let name = parts.next()?;
+        let written = name.to_string();
+        let written = written.trim();
+        let arguments: Option<Vec<_>> = parts
+            .collect::<Vec<_>>()
+            .iter()
+            .map(|child| lower_type(resolver.as_deref_mut(), scope, child))
+            .collect();
+        let arguments = arguments?;
+        // Arity is checked here rather than at unification, because a
+        // declaration written at the wrong size names no type at all: there is
+        // nothing for a later pass to be wrong about.
+        let wanted = scope.arity(written);
+        if wanted != Some(arguments.len()) {
+            if let Some(resolver) = resolver.as_deref_mut() {
+                let complaint = match wanted {
+                    Some(wanted) => format!("`{written}` takes {wanted} type arguments, not {}", arguments.len()),
+                    None => format!("`{written}` is not a type that takes arguments"),
+                };
+                resolver.report(
+                    Diagnostic::error(Code::WrongArity, complaint)
+                        .at(crate::resolve::trimmed_span(node), "written here")
+                        .help("`Option<τ>` and `List<τ>` are spelled the same way, and take one"),
+                );
+            }
+            return None;
+        }
+        return scope.named(written, arguments);
+    }
     if kind == SyntaxKind::ProductType {
         let members: Option<Vec<_>> = node
             .children()
             .filter(|child| is_type_node(child.kind()))
-            .map(|child| lower_type(resolver.as_deref_mut(), &child))
+            .map(|child| lower_type(resolver.as_deref_mut(), scope, &child))
             .collect();
         return members.map(Type::Product);
     }
@@ -3571,20 +3789,20 @@ fn lower_type(mut resolver: Option<&mut Resolver>, node: &SyntaxNode) -> Option<
         let mut parts = node.children().filter(|child| is_type_node(child.kind()));
         let parameter = parts
             .next()
-            .and_then(|part| lower_type(resolver.as_deref_mut(), &part))?;
-        let result = parts.next().and_then(|part| lower_type(resolver, &part))?;
+            .and_then(|part| lower_type(resolver.as_deref_mut(), scope, &part))?;
+        let result = parts.next().and_then(|part| lower_type(resolver, scope, &part))?;
         return Some(Type::Function(vec![parameter], Box::new(result)));
     }
     if kind == SyntaxKind::ResultType {
         let mut parts = node.children().filter(|child| is_type_node(child.kind()));
         let value = parts
             .next()
-            .and_then(|part| lower_type(resolver.as_deref_mut(), &part))?;
-        let error = parts.next().and_then(|part| lower_type(resolver, &part))?;
+            .and_then(|part| lower_type(resolver.as_deref_mut(), scope, &part))?;
+        let error = parts.next().and_then(|part| lower_type(resolver, scope, &part))?;
         return Some(Type::Sum(Box::new(value), Box::new(error)));
     }
     if matches!(kind, SyntaxKind::OptionType | SyntaxKind::ListType) {
-        let member = child_of(node, is_type_node).and_then(|child| lower_type(resolver, &child))?;
+        let member = child_of(node, is_type_node).and_then(|child| lower_type(resolver, scope, &child))?;
         return if kind == SyntaxKind::OptionType {
             Some(Type::Option(Box::new(member)))
         } else {
@@ -3592,6 +3810,22 @@ fn lower_type(mut resolver: Option<&mut Resolver>, node: &SyntaxNode) -> Option<
         };
     }
     None
+}
+
+/// What a dotted name turned out to be, once a record projection is one of the
+/// things it could have been.
+///
+/// Three answers, because "not a projection" and "a projection that was wrong"
+/// are different facts: the first sends the name back to the ordinary lookup —
+/// `M.member` reaches a structure this way — and the second has already been
+/// reported and must not be looked up again.
+enum Projected {
+    /// Not a projection. The name reads the way it always did.
+    Elsewhere,
+    /// A projection, and wrong; the diagnostic is already reported.
+    Rejected,
+    /// The one-arm `match` the projection stands for.
+    Made(Box<Expr>),
 }
 
 struct Checker<'a> {
@@ -3618,6 +3852,9 @@ struct Checker<'a> {
     /// How names read here: empty everywhere but inside a module's members.
     scope: &'a crate::module::NameScope,
     modules: &'a Modules,
+    /// Every `data` declaration in scope: what a constructor, a fold, and a
+    /// nominal type name mean here.
+    world: &'a World,
 }
 
 impl Checker<'_> {
@@ -4386,6 +4623,25 @@ impl Checker<'_> {
         })?;
         let written = qualified_name(node, &token);
         let span = crate::resolve::trimmed_span(node);
+        // A constructor and a generated fold are named before anything else
+        // is looked up, because neither is a definition: they exist because a
+        // `data` declaration does, and no `let` can shadow one.
+        if self.world.is_constructor(&written) {
+            return self.construct(&written, node, &[], span);
+        }
+        if self.world.is_fold(&written) {
+            self.resolver.report(
+                Diagnostic::error(Code::TypeMismatch, format!("`{written}` is a fold"))
+                    .at(span, "apply it to a case per constructor and a value"),
+            );
+            self.failed = true;
+            return None;
+        }
+        match self.projection(&written, span) {
+            Projected::Made(expr) => return Some(*expr),
+            Projected::Rejected => return None,
+            Projected::Elsewhere => {}
+        }
         if let Some(scheme) = self.locals.get(&written).cloned() {
             return Some(Expr {
                 kind: ExprKind::Name(written),
@@ -4452,6 +4708,247 @@ impl Checker<'_> {
             ty: self.unifier.instantiate(&scheme),
             span,
         })
+    }
+
+    /// Check one use of a library-declared constructor.
+    ///
+    /// `arguments` is what the call wrote, empty for a bare name. A
+    /// constructor is saturated or it is not a value: partial application
+    /// would be an arrow the declaration never wrote down, and the language
+    /// already answers "apply it directly" for its own polymorphic
+    /// operations.
+    fn construct(&mut self, name: &str, node: &SyntaxNode, arguments: &[SyntaxNode], span: SourceSpan) -> Option<Expr> {
+        let owner = self.scope.owner().map(str::to_owned);
+        let reading = self.world.constructor(name, owner.as_deref(), self.unifier)?;
+        let (id, variant, declared, type_arguments, result) = match reading {
+            crate::data::Constructing::Found {
+                id,
+                variant,
+                fields,
+                arguments,
+                result,
+            } => (id, variant, fields, arguments, result),
+            crate::data::Constructing::Sealed {
+                declared_in,
+                ty,
+                declared_at,
+            } => {
+                self.resolver.report(
+                    Diagnostic::error(Code::UnknownName, format!("`{name}` is private"))
+                        .at(span, "named from outside the structure that declares it")
+                        .also(declared_at, format!("`{declared_in}` declares `{ty}` here"))
+                        .help(format!(
+                            "a structure's constructors are its own; `{declared_in}` has to expose a way to make a \
+                             `{ty}`"
+                        )),
+                );
+                self.failed = true;
+                return None;
+            }
+        };
+        if arguments.len() != declared.len() {
+            self.resolver.report(
+                Diagnostic::error(
+                    Code::WrongArity,
+                    format!(
+                        "`{name}` takes {} field{}, not {}",
+                        declared.len(),
+                        if declared.len() == 1 { "" } else { "s" },
+                        arguments.len()
+                    ),
+                )
+                .at(span, "written here")
+                .help("a constructor is written with every field it declares"),
+            );
+            self.failed = true;
+            return None;
+        }
+        // A field may be named, exactly as a parameter may: `Sounded(held: 1)`
+        // says which field it is, so the reading does not depend on order.
+        let mut occupied = IndexSet::new();
+        let mut positional = 0usize;
+        let mut placed: Vec<Option<Expr>> = (0..declared.len()).map(|_| None).collect();
+        for argument in arguments {
+            let index = if let Some(named) = argument_name(argument) {
+                let Some(index) = declared.iter().position(|(field, _)| field == &named) else {
+                    self.resolver.report(
+                        Diagnostic::error(Code::WrongArity, format!("`{name}` has no field `{named}`"))
+                            .at(crate::resolve::trimmed_span(argument), "unknown field"),
+                    );
+                    self.failed = true;
+                    return None;
+                };
+                index
+            } else {
+                while occupied.contains(&positional) {
+                    positional = positional.saturating_add(1);
+                }
+                let index = positional;
+                positional = positional.saturating_add(1);
+                index
+            };
+            if index >= declared.len() || !occupied.insert(index) {
+                self.resolver.report(
+                    Diagnostic::error(Code::WrongArity, "this field is written twice")
+                        .at(crate::resolve::trimmed_span(argument), "already given"),
+                );
+                self.failed = true;
+                return None;
+            }
+            let value_node = child_of(argument, is_expr_node)?;
+            let checked = self.check(&value_node, declared.get(index).map(|(_, ty)| ty))?;
+            let (_, wanted) = declared.get(index)?;
+            self.reconcile(wanted, &checked.ty, checked.span)?;
+            *placed.get_mut(index)? = Some(checked);
+        }
+        let fields = placed.into_iter().collect::<Option<Vec<_>>>()?;
+        Some(Expr {
+            kind: ExprKind::Construct {
+                id,
+                variant,
+                arguments: type_arguments,
+                fields,
+            },
+            ty: result,
+            span: crate::resolve::trimmed_span(node),
+        })
+    }
+
+    /// Check one use of a declaration's generated fold: a case per
+    /// constructor of the group, in declaration order, and then the value.
+    fn fold_application(&mut self, name: &str, node: &SyntaxNode, expected: Option<&Type>) -> Option<Expr> {
+        let folding = self.world.fold(name, self.unifier)?;
+        let span = crate::resolve::trimmed_span(node);
+        let Type::Function(parameters, result) = folding.ty.clone() else {
+            return None;
+        };
+        let written = raw_arguments(node);
+        if written.len() != parameters.len() {
+            self.resolver.report(
+                Diagnostic::error(
+                    Code::WrongArity,
+                    format!("`{name}` takes {} arguments, not {}", parameters.len(), written.len()),
+                )
+                .at(span, "written here")
+                .note("a fold takes one case per constructor of its group, and then the value"),
+            );
+            self.failed = true;
+            return None;
+        }
+        let mut checked = Vec::with_capacity(written.len());
+        for (argument, wanted) in written.iter().zip(&parameters) {
+            let value_node = child_of(argument, is_expr_node)?;
+            let value = self.check(&value_node, Some(wanted))?;
+            self.reconcile(wanted, &value.ty, value.span)?;
+            checked.push(value);
+        }
+        let value = checked.pop()?;
+        if let Some(expected) = expected {
+            self.reconcile(expected, &result, span)?;
+        }
+        Some(Expr {
+            kind: ExprKind::Fold {
+                cases: checked,
+                shape: folding.cases,
+                value: Box::new(value),
+            },
+            ty: result.as_ref().clone(),
+            span,
+        })
+    }
+
+    /// Read `value.field` as a projection, when `value` names a record — a
+    /// declaration with one constructor. See [`Projected`].
+    ///
+    /// Only one constructor, because with two there is no field every value
+    /// has, and a projection that could fail is not a projection. It is
+    /// checked as the `match` a reader would otherwise write, so the one
+    /// eliminator stays the one eliminator.
+    ///
+    /// [`Projected::Elsewhere`] means this is not a projection at all and the
+    /// name reads the way it always did.
+    fn projection(&mut self, written: &str, span: SourceSpan) -> Projected {
+        let Some((head, field)) = written.rsplit_once(crate::module::DOT) else {
+            return Projected::Elsewhere;
+        };
+        // A record is projected wherever it is bound: a parameter, a `let` in
+        // a body, or a declaration of the document. The declaration case has
+        // to be recorded as a use, the way naming it plainly would be, or the
+        // evaluation order would not know this expression needs it first.
+        let declared = !self.locals.contains_key(head);
+        let scheme = match self
+            .locals
+            .get(head)
+            .or_else(|| self.symbols.get(head).map(|symbol| &symbol.scheme))
+        {
+            Some(scheme) => scheme.clone(),
+            None => return Projected::Elsewhere,
+        };
+        let ty = self.unifier.instantiate(&scheme);
+        let Type::Nominal(id, arguments) = self.unifier.resolve(&ty) else {
+            return Projected::Elsewhere;
+        };
+        if declared {
+            self.dependencies.entry(head.to_owned()).or_insert(span);
+        }
+        let variants = self.world.variants(&id);
+        if variants.len() != 1 {
+            self.resolver.report(
+                Diagnostic::error(Code::TypeMismatch, format!("`{id}` has more than one constructor"))
+                    .at(span, "so there is no field every value of it has")
+                    .help("match on it instead, which answers for each constructor"),
+            );
+            self.failed = true;
+            return Projected::Rejected;
+        }
+        let fields = self.world.fields(&id, 0, &arguments);
+        let Some((index, (_, member))) = fields
+            .iter()
+            .enumerate()
+            .find(|(_, (name, _))| name == field)
+            .map(|(index, member)| (index, member.clone()))
+        else {
+            self.resolver.report(
+                Diagnostic::error(Code::UnknownName, format!("`{id}` has no field `{field}`"))
+                    .at(span, "not a field of this record")
+                    .help(format!(
+                        "it has {}",
+                        fields
+                            .iter()
+                            .map(|(name, _)| format!("`{name}`"))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    )),
+            );
+            self.failed = true;
+            return Projected::Rejected;
+        };
+        // Names no source can write, so a field called `value` cannot capture
+        // the record it was projected out of.
+        let bindings: Vec<String> = (0..fields.len()).map(|slot| format!("#field.{slot}")).collect();
+        let body = Expr {
+            kind: ExprKind::Name(format!("#field.{index}")),
+            ty: member.clone(),
+            span,
+        };
+        Projected::Made(Box::new(Expr {
+            kind: ExprKind::Match {
+                scrutinee: Box::new(Expr {
+                    kind: ExprKind::Name(head.to_owned()),
+                    ty,
+                    span,
+                }),
+                arms: vec![CheckedArm {
+                    pattern: Pattern::Constructor {
+                        variant: 0,
+                        fields: bindings,
+                    },
+                    body,
+                }],
+            },
+            ty: member,
+            span,
+        }))
     }
 
     fn product(&mut self, node: &SyntaxNode, expected: Option<&Type>) -> Option<Expr> {
@@ -4584,7 +5081,10 @@ impl Checker<'_> {
         for arm in node.children().filter(|child| child.kind() == SyntaxKind::MatchArm) {
             let pattern_node = arm.children().find(|child| child.kind() == SyntaxKind::Pattern)?;
             let (pattern, covered, bindings) = self.check_pattern(&pattern_node, &scrutinee.ty)?;
-            if catch_all || uncovered(&scrutinee.ty, &coverage).is_none() || !coverage.insert(covered.clone()) {
+            if catch_all
+                || uncovered(self.world, &scrutinee.ty, &coverage).is_none()
+                || !coverage.insert(covered.clone())
+            {
                 self.resolver.report(
                     Diagnostic::error(Code::UnreachablePattern, "this match arm can never be selected")
                         .at(crate::resolve::trimmed_span(&pattern_node), "already covered above"),
@@ -4603,7 +5103,7 @@ impl Checker<'_> {
             }
             arms.push(CheckedArm { pattern, body });
         }
-        if let Some(missing) = uncovered(&scrutinee.ty, &coverage) {
+        if let Some(missing) = uncovered(self.world, &scrutinee.ty, &coverage) {
             self.resolver.report(
                 Diagnostic::error(Code::NonExhaustiveMatch, "this match leaves a possible value uncovered")
                     .at(crate::resolve::trimmed_span(node), format!("add `{missing}`"))
@@ -4634,6 +5134,48 @@ impl Checker<'_> {
         if first.kind() == SyntaxKind::Identifier {
             if first.text() == "_" {
                 return Some((Pattern::Wildcard, Coverage::CatchAll, bindings));
+            }
+            // A constructor is asked about before a plain binding, because a
+            // pattern that names one means that constructor: reading
+            // `Silence` as a name that matches anything would silently make
+            // the arm below it unreachable.
+            if let Type::Nominal(id, arguments) = target
+                && let Some(variant) = self.world.constructor_of(id, first.text())
+            {
+                let declared = self.world.fields(id, variant, arguments);
+                let names: Vec<String> = tokens
+                    .iter()
+                    .skip(1)
+                    .filter(|token| token.kind() == SyntaxKind::Identifier)
+                    .map(|token| token.text().to_owned())
+                    .collect();
+                if names.len() != declared.len() {
+                    return self.pattern_type_error(
+                        span,
+                        target,
+                        &format!(
+                            "`{}` binds {} field{}",
+                            first.text(),
+                            declared.len(),
+                            if declared.len() == 1 { "" } else { "s" }
+                        ),
+                    );
+                }
+                for (name, (_, ty)) in names.iter().zip(&declared) {
+                    if bindings.insert(name.clone(), ty.clone()).is_some() {
+                        self.resolver.report(
+                            Diagnostic::error(Code::DuplicateName, format!("pattern binding `{name}` is repeated"))
+                                .at(span, "bind each field once"),
+                        );
+                        self.failed = true;
+                        return None;
+                    }
+                }
+                return Some((
+                    Pattern::Constructor { variant, fields: names },
+                    Coverage::Constructor(variant),
+                    bindings,
+                ));
             }
             bindings.insert(first.text().to_owned(), target.clone());
             return Some((Pattern::Bind(first.text().to_owned()), Coverage::CatchAll, bindings));
@@ -4748,6 +5290,7 @@ impl Checker<'_> {
             | Value::Sum { .. }
             | Value::Option { .. }
             | Value::List { .. }
+            | Value::Data { .. }
             | Value::Music(_)
             | Value::Closure(_)
             | Value::Builtin(_) => Coverage::Literal(literal_key(&value)),
@@ -4786,6 +5329,14 @@ impl Checker<'_> {
         let function_node = children.find(|child| is_expr_node(child.kind()))?;
         if let Some(primitive) = name_of(&function_node).as_deref().and_then(primitive_named) {
             return self.primitive_application(node, primitive, expected);
+        }
+        if let Some(name) = name_of(&function_node) {
+            if self.world.is_constructor(&name) {
+                return self.construct(&name, node, &raw_arguments(node), crate::resolve::trimmed_span(node));
+            }
+            if self.world.is_fold(&name) {
+                return self.fold_application(&name, node, expected);
+            }
         }
         let function = self.check(&function_node, None)?;
         let raw_arguments = raw_arguments(node);
@@ -5060,9 +5611,9 @@ fn raw_arguments(node: &SyntaxNode) -> Vec<SyntaxNode> {
 /// pitch, a text — cannot be covered by naming them all
 /// (`docs/rules/language/02-core-calculus.md` §5.6), so what is missing
 /// there is the fallback itself.
-fn uncovered(target: &Type, coverage: &IndexSet<Coverage>) -> Option<&'static str> {
-    fn missing(coverage: &IndexSet<Coverage>, case: &Coverage, spelling: &'static str) -> Option<&'static str> {
-        (!coverage.contains(case)).then_some(spelling)
+fn uncovered(world: &World, target: &Type, coverage: &IndexSet<Coverage>) -> Option<String> {
+    fn missing(coverage: &IndexSet<Coverage>, case: &Coverage, spelling: &str) -> Option<String> {
+        (!coverage.contains(case)).then(|| spelling.to_owned())
     }
     if coverage.contains(&Coverage::CatchAll) {
         return Option::None;
@@ -5077,6 +5628,26 @@ fn uncovered(target: &Type, coverage: &IndexSet<Coverage>) -> Option<&'static st
         Type::Sum(_, _) => {
             missing(coverage, &Coverage::Ok, "Ok(value)").or_else(|| missing(coverage, &Coverage::Err, "Err(reason)"))
         }
+        // A declaration's constructors are what the declaration wrote, so what
+        // is missing is named the way the arm would have to be written — with
+        // one binding per field, since a constructor pattern binds by
+        // position.
+        Type::Nominal(id, _) => world
+            .variants(id)
+            .into_iter()
+            .enumerate()
+            .find_map(|(index, (name, fields))| {
+                let bindings = (0..fields)
+                    .map(|field| format!("field{}", field.saturating_add(1)))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let spelling = if fields == 0 {
+                    name
+                } else {
+                    format!("{name}({bindings})")
+                };
+                missing(coverage, &Coverage::Constructor(index), &spelling)
+            }),
         Type::List(_) => missing(coverage, &Coverage::EmptyList, "[]")
             .or_else(|| missing(coverage, &Coverage::Cons, "[head, ..tail]")),
         Type::Var(_)
@@ -5101,7 +5672,7 @@ fn uncovered(target: &Type, coverage: &IndexSet<Coverage>) -> Option<&'static st
         | Type::Row12
         | Type::Music
         | Type::Product(_)
-        | Type::Function(_, _) => Some("_"),
+        | Type::Function(_, _) => Some("_".to_owned()),
     }
 }
 
@@ -5133,6 +5704,7 @@ fn literal_key(value: &Value) -> String {
         | Value::Sum { .. }
         | Value::Option { .. }
         | Value::List { .. }
+        | Value::Data { .. }
         | Value::Music(_)
         | Value::Closure(_)
         | Value::Builtin(_) => "constructor".to_owned(),
@@ -5334,6 +5906,36 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 .collect::<Option<Vec<_>>>()?;
             Some(Value::List { member, values })
         }
+        ExprKind::Construct {
+            id,
+            variant,
+            arguments,
+            fields,
+        } => {
+            let fields = fields
+                .iter()
+                .map(|field| eval(field, environment, meter))
+                .collect::<Option<Vec<_>>>()?;
+            Some(Value::Data {
+                id: id.clone(),
+                arguments: arguments.clone(),
+                variant: *variant,
+                fields,
+            })
+        }
+        // A fold is structural recursion over a finite value, so it is
+        // written as recursion here: each field that is itself a group member
+        // is folded first, and the case is applied to what came back. The
+        // value is finite, so this terminates — which is the whole reason a
+        // declaration has to be finite.
+        ExprKind::Fold { cases, shape, value } => {
+            let cases = cases
+                .iter()
+                .map(|case| eval(case, environment, meter))
+                .collect::<Option<Vec<_>>>()?;
+            let value = eval(value, environment, meter)?;
+            fold_value(&cases, shape, &value, meter, expression.span)
+        }
         ExprKind::Apply { function, arguments } => {
             let function = eval(function, environment, meter)?;
             match function {
@@ -5379,6 +5981,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 | Value::Sum { .. }
                 | Value::Option { .. }
                 | Value::List { .. }
+                | Value::Data { .. }
                 | Value::Music(_) => None,
             }
         }
@@ -5414,6 +6017,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 | Value::Sum { .. }
                 | Value::Option { .. }
                 | Value::List { .. }
+                | Value::Data { .. }
                 | Value::Music(_)
                 | Value::Closure(_)
                 | Value::Builtin(_) => None,
@@ -5497,6 +6101,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                     | Value::Sum { .. }
                     | Value::Option { .. }
                     | Value::List { .. }
+                    | Value::Data { .. }
                     | Value::Music(_)
                     | Value::Closure(_)
                     | Value::Builtin(_) => return None,
@@ -5593,6 +6198,8 @@ fn pitch_term(expression: &Expr, environment: &IndexMap<String, Value>, meter: &
         | ExprKind::Apply { .. }
         | ExprKind::Primitive { .. }
         | ExprKind::Match { .. }
+        | ExprKind::Construct { .. }
+        | ExprKind::Fold { .. }
         | ExprKind::Music(_)
         | ExprKind::KernelQuote(_) => {
             let Value::Pitch(pitch) = eval(expression, environment, meter)? else {
@@ -6155,6 +6762,7 @@ fn eval_primitive(
                     | Value::Sum { .. }
                     | Value::Option { .. }
                     | Value::List { .. }
+                    | Value::Data { .. }
                     | Value::Music(_)
                     | Value::Closure(_)
                     | Value::Builtin(_) => None,
@@ -6435,6 +7043,85 @@ const fn span_key(span: SourceSpan) -> u64 {
     (span.start as u64) << 32 | span.end as u64
 }
 
+/// Apply a fold's cases to one value, folding the fields that are themselves
+/// group members before the case sees them.
+///
+/// `shape` says which constructor of which declaration each case answers for,
+/// in the order [`crate::data::Folding`] laid them out, so this and the type
+/// the checker gave the fold read the same list.
+fn fold_value(
+    cases: &[Value],
+    shape: &[(crate::data::NominalId, usize)],
+    value: &Value,
+    meter: &mut WorkMeter,
+    span: SourceSpan,
+) -> Option<Value> {
+    let Value::Data {
+        id, variant, fields, ..
+    } = value
+    else {
+        return None;
+    };
+    if !meter.step("fold", 1, span) {
+        return None;
+    }
+    let index = shape
+        .iter()
+        .position(|(member, constructor)| member == id && constructor == variant)?;
+    let arguments = fields
+        .iter()
+        .map(|field| {
+            // A field of a group member is what the fold made of it; anything
+            // else arrives as itself, because a fold replaces one constructor
+            // layer and not what sits under a `List` or an `Option`.
+            if let Value::Data { id, .. } = field
+                && shape.iter().any(|(member, _)| member == id)
+            {
+                return fold_value(cases, shape, field, meter, span);
+            }
+            Some(field.clone())
+        })
+        .map(|argument| argument.map(Some))
+        .collect::<Option<Vec<_>>>()?;
+    let case = cases.get(index)?;
+    // A case that takes nothing is a value, not a function: a constructor with
+    // no fields has nothing to hand one.
+    if arguments.is_empty() {
+        return Some(case.clone());
+    }
+    match case {
+        Value::Closure(closure) => apply_closure(closure, arguments, meter, span),
+        Value::Builtin(builtin) => apply_builtin(builtin, arguments, span),
+        // Every other value is not a function, and the checker has already
+        // said so: a case of a constructor with fields has an arrow type.
+        Value::Bool(_)
+        | Value::Nat(_)
+        | Value::Ratio(_)
+        | Value::Text(_)
+        | Value::Duration(_)
+        | Value::Pitch(_)
+        | Value::PitchClass(_)
+        | Value::Interval(_)
+        | Value::Scale(_)
+        | Value::Key(_)
+        | Value::Degree(_)
+        | Value::Frame(_)
+        | Value::ChordClass(_)
+        | Value::Triad(_)
+        | Value::Roman(_)
+        | Value::Voicing(_)
+        | Value::Pc12(_)
+        | Value::PcSet12(_)
+        | Value::Row12(_)
+        | Value::Product(_)
+        | Value::Sum { .. }
+        | Value::Option { .. }
+        | Value::List { .. }
+        | Value::Data { .. }
+        | Value::Music(_) => None,
+    }
+}
+
 fn match_pattern(pattern: &Pattern, value: &Value) -> Option<IndexMap<String, Value>> {
     let mut bindings = IndexMap::new();
     let matched = match pattern {
@@ -6462,6 +7149,21 @@ fn match_pattern(pattern: &Pattern, value: &Value) -> Option<IndexMap<String, Va
                 && *error == wanted
             {
                 bindings.insert(name.clone(), held.as_ref().clone());
+                true
+            } else {
+                false
+            }
+        }
+        Pattern::Constructor { variant, fields: names } => {
+            if let Value::Data {
+                variant: found, fields, ..
+            } = value
+                && found == variant
+                && fields.len() == names.len()
+            {
+                for (name, field) in names.iter().zip(fields) {
+                    bindings.insert(name.clone(), field.clone());
+                }
                 true
             } else {
                 false
@@ -6546,6 +7248,10 @@ fn value_shape(value: &Value) -> (u64, u64) {
             (nodes.saturating_add(1), bytes.saturating_add(1))
         }),
         Value::List { values, .. } => aggregate_shape(values.iter()),
+        Value::Data { fields, .. } => {
+            let (nodes, bytes) = aggregate_shape(fields.iter());
+            (nodes.saturating_add(1), bytes.saturating_add(1))
+        }
         Value::Music(music) => music_shape(music),
         Value::Closure(closure) => aggregate_shape(closure.captures.values()),
         Value::Builtin(value) => aggregate_shape(value.bound.iter().flatten()),
@@ -6888,16 +7594,7 @@ fn child_of(node: &SyntaxNode, predicate: fn(SyntaxKind) -> bool) -> Option<Synt
 }
 
 fn is_type_node(kind: SyntaxKind) -> bool {
-    matches!(
-        kind,
-        SyntaxKind::TypeExpr
-            | SyntaxKind::TypeName
-            | SyntaxKind::FunctionType
-            | SyntaxKind::ProductType
-            | SyntaxKind::OptionType
-            | SyntaxKind::ResultType
-            | SyntaxKind::ListType
-    )
+    musa_language::ast::is_type(kind)
 }
 
 /// Every collection spelling, for the diagnostic that lists them.
@@ -7083,6 +7780,7 @@ mod tests {
             Some(piece.syntax()),
             UnknownRootMusic::Reject,
             &Modules::default(),
+            &World::default(),
         )
         .map(|program| program.values)
     }
@@ -7189,7 +7887,10 @@ mod tests {
             } => Type::Sum(Box::new(value.clone()), Box::new(error.clone())),
             Value::List { member, .. } => Type::List(Box::new(member.clone())),
             Value::Product(members) => Type::Product(members.iter().map(value_type).collect::<Option<Vec<_>>>()?),
-            Value::Music(_) | Value::Closure(_) | Value::Builtin(_) => return None,
+            // A declared value has no place in the primitive registry's
+            // sample pool: no δ-primitive's signature can name one, because a
+            // library declares it and the registry is the compiler's own.
+            Value::Data { .. } | Value::Music(_) | Value::Closure(_) | Value::Builtin(_) => return None,
         })
     }
 
@@ -7424,6 +8125,9 @@ mod tests {
             | Type::PcSet12
             | Type::Row12
             | Type::Text
+            // A declared type holds only what its fields hold, and a field
+            // holding an arrow is refused where the declaration is written.
+            | Type::Nominal(_, _)
             | Type::Music => false,
         }
     }
@@ -7471,6 +8175,7 @@ mod tests {
             Some(piece.syntax()),
             UnknownRootMusic::Reject,
             &Modules::default(),
+            &World::default(),
         );
         resolver.diagnostics
     }

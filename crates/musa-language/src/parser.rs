@@ -138,6 +138,7 @@ const PIECE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::StudioKw,
     SyntaxKind::LetKw,
     SyntaxKind::FnKw,
+    SyntaxKind::DataKw,
 ];
 /// What ends a broken declaration at the file's lexical root.
 const ROOT_RECOVERY: &[SyntaxKind] = &[
@@ -146,6 +147,7 @@ const ROOT_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::MakeKw,
     SyntaxKind::SignatureKw,
     SyntaxKind::StructureKw,
+    SyntaxKind::DataKw,
     SyntaxKind::PieceKw,
     SyntaxKind::LibraryKw,
 ];
@@ -619,6 +621,8 @@ impl<'a> Parser<'a> {
                 self.template_decl();
             } else if self.at(SyntaxKind::SignatureKw) {
                 self.signature_decl();
+            } else if self.at(SyntaxKind::DataKw) {
+                self.data_decl();
             } else if self.at_any(&[SyntaxKind::StructureKw, SyntaxKind::ModuleKw]) {
                 self.structure_decl();
             } else if self.at(SyntaxKind::MakeKw) {
@@ -663,12 +667,106 @@ impl<'a> Parser<'a> {
         while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
             if self.at(SyntaxKind::LetKw) {
                 self.signature_member();
+            } else if self.at(SyntaxKind::DataKw) {
+                self.data_member();
             } else {
-                self.expected("`let`, or `}`");
-                self.recover(&[SyntaxKind::LetKw, SyntaxKind::RBrace]);
+                self.expected("`let`, `data`, or `}`");
+                self.recover(&[SyntaxKind::LetKw, SyntaxKind::DataKw, SyntaxKind::RBrace]);
             }
         }
         self.expect(SyntaxKind::RBrace, "`}`");
+        self.finish();
+    }
+
+    /// `data Motive { Silence, Sounded(pitch: Pitch, held: Duration), }` —
+    /// one finite nominal declaration.
+    ///
+    /// A variant with no fields writes no parentheses, because there are no
+    /// fields to name; a variant with fields names every one of them, because
+    /// a field a reader cannot name is a field the record case could not
+    /// project.
+    fn data_decl(&mut self) {
+        self.start(SyntaxKind::DataDecl);
+        self.bump(); // data
+        self.expect(SyntaxKind::Identifier, "a type name");
+        if self.at(SyntaxKind::Less) {
+            self.type_params();
+        }
+        self.expect(SyntaxKind::LBrace, "`{`");
+        while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
+            if self.at(SyntaxKind::Identifier) {
+                self.data_variant();
+                if self.at(SyntaxKind::Comma) {
+                    self.bump();
+                }
+            } else {
+                self.expected("a constructor name, or `}`");
+                self.recover(&[SyntaxKind::Identifier, SyntaxKind::RBrace]);
+            }
+        }
+        self.expect(SyntaxKind::RBrace, "`}`");
+        self.finish();
+    }
+
+    /// `<A, B>` — the type parameters a declaration abstracts over.
+    fn type_params(&mut self) {
+        self.start(SyntaxKind::TypeParams);
+        self.bump(); // `<`
+        while !self.at(SyntaxKind::Greater) && self.current().is_some() {
+            if self.at(SyntaxKind::Identifier) {
+                self.start(SyntaxKind::TypeParam);
+                self.bump();
+                self.finish();
+                if self.at(SyntaxKind::Comma) {
+                    self.bump();
+                }
+            } else {
+                self.expected("a type parameter name, or `>`");
+                self.recover(&[SyntaxKind::Identifier, SyntaxKind::Greater, SyntaxKind::LBrace]);
+                break;
+            }
+        }
+        self.expect(SyntaxKind::Greater, "`>`");
+        self.finish();
+    }
+
+    /// `Sounded(pitch: Pitch, held: Duration)` — one constructor.
+    fn data_variant(&mut self) {
+        self.start(SyntaxKind::DataVariant);
+        self.bump(); // the constructor's name
+        if self.at(SyntaxKind::LParen) {
+            self.bump();
+            while !self.at(SyntaxKind::RParen) && self.current().is_some() {
+                if self.at(SyntaxKind::Identifier) {
+                    self.start(SyntaxKind::DataField);
+                    self.bump();
+                    self.expect(SyntaxKind::Colon, "`:`");
+                    self.type_expr();
+                    self.finish();
+                    if self.at(SyntaxKind::Comma) {
+                        self.bump();
+                    }
+                } else {
+                    self.expected("a field name, or `)`");
+                    self.recover(&[SyntaxKind::Identifier, SyntaxKind::RParen]);
+                    break;
+                }
+            }
+            self.expect(SyntaxKind::RParen, "`)`");
+        }
+        self.finish();
+    }
+
+    /// `data Motive;` — one signature member naming a type and not its
+    /// constructors.
+    fn data_member(&mut self) {
+        self.start(SyntaxKind::DataMember);
+        self.bump(); // data
+        self.expect(SyntaxKind::Identifier, "a type name");
+        if self.at(SyntaxKind::Less) {
+            self.type_params();
+        }
+        self.expect(SyntaxKind::Semicolon, "`;`");
         self.finish();
     }
 
@@ -703,9 +801,16 @@ impl<'a> Parser<'a> {
                 self.let_decl();
             } else if self.at(SyntaxKind::FnKw) {
                 self.fn_decl();
+            } else if self.at(SyntaxKind::DataKw) {
+                self.data_decl();
             } else {
-                self.expected("`let`, `fn`, or `}`");
-                self.recover(&[SyntaxKind::LetKw, SyntaxKind::FnKw, SyntaxKind::RBrace]);
+                self.expected("`let`, `fn`, `data`, or `}`");
+                self.recover(&[
+                    SyntaxKind::LetKw,
+                    SyntaxKind::FnKw,
+                    SyntaxKind::DataKw,
+                    SyntaxKind::RBrace,
+                ]);
             }
         }
         self.expect(SyntaxKind::RBrace, "`}`");
@@ -797,6 +902,8 @@ impl<'a> Parser<'a> {
                 self.let_decl();
             } else if self.at(SyntaxKind::FnKw) {
                 self.fn_decl();
+            } else if self.at(SyntaxKind::DataKw) {
+                self.data_decl();
             } else if self.at(SyntaxKind::ScoreKw) {
                 self.score_decl();
             } else if self.at(SyntaxKind::PerformanceKw) {
@@ -903,6 +1010,8 @@ impl<'a> Parser<'a> {
                 self.studio_decl();
             } else if self.at(SyntaxKind::SignatureKw) {
                 self.signature_decl();
+            } else if self.at(SyntaxKind::DataKw) {
+                self.data_decl();
             } else if self.at_any(&[SyntaxKind::StructureKw, SyntaxKind::ModuleKw]) {
                 self.structure_decl();
             } else if self.at(SyntaxKind::TemplateKw)
@@ -1220,6 +1329,25 @@ impl<'a> Parser<'a> {
             return;
         }
         self.eat_trivia();
+        // `Tree<Nat>` — a declared type applied to its arguments. Only a
+        // parameterized `data` declaration can be written this way, and which
+        // names are declarations is not a question the parser can answer, so
+        // the shape is what decides the node.
+        if self.at(SyntaxKind::Identifier) && self.nth_significant(1) == Some(SyntaxKind::Less) {
+            self.start(SyntaxKind::AppliedType);
+            self.start(SyntaxKind::TypeName);
+            self.bump();
+            self.finish();
+            self.bump(); // `<`
+            self.type_expr();
+            while self.at(SyntaxKind::Comma) {
+                self.bump();
+                self.type_expr();
+            }
+            self.expect(SyntaxKind::Greater, "`>`");
+            self.finish();
+            return;
+        }
         self.start(SyntaxKind::TypeName);
         if self.at(SyntaxKind::Identifier) || self.at_any(MOVED_TYPE_KEYWORDS) {
             self.respelled_type();
@@ -1613,6 +1741,24 @@ impl<'a> Parser<'a> {
                 self.bump();
                 self.expect(SyntaxKind::LParen, "`(`");
                 self.expect(SyntaxKind::Identifier, "a binding name");
+                self.expect(SyntaxKind::RParen, "`)`");
+            }
+            // `Sounded(pitch, held)` — a declared constructor, taking one
+            // binding per field. A bare name is still one token here, because
+            // whether `Silence` is a constructor or a binding is a question
+            // about what is declared, which the checker answers against the
+            // type being matched.
+            Some(SyntaxKind::Identifier) if self.nth_significant(1) == Some(SyntaxKind::LParen) => {
+                self.bump();
+                self.bump(); // `(`
+                while !self.at(SyntaxKind::RParen) && self.current().is_some() {
+                    self.expect(SyntaxKind::Identifier, "a binding name");
+                    if self.at(SyntaxKind::Comma) {
+                        self.bump();
+                    } else {
+                        break;
+                    }
+                }
                 self.expect(SyntaxKind::RParen, "`)`");
             }
             Some(

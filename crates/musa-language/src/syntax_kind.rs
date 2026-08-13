@@ -279,6 +279,8 @@ pub enum SyntaxKind {
     SignatureKw,
     /// `structure`
     StructureKw,
+    /// `data`
+    DataKw,
     /// `module`, which no longer declares one. Lexed so the migration
     /// diagnostic can point at the word and carry the word that replaces it.
     ModuleKw,
@@ -561,6 +563,27 @@ pub enum SyntaxKind {
     StructureDecl,
     /// `mod tonal;` — one child of a package's module tree.
     ModDecl,
+    /// `data Motive { Silence, Sounded(pitch: Pitch), }` — one finite,
+    /// strictly positive nominal declaration. A library declares its own data
+    /// here rather than asking the compiler for another built-in type.
+    DataDecl,
+    /// `<A, B>` on a declaration — the type parameters it abstracts over.
+    TypeParams,
+    /// One type parameter: a name, standing for a type inside the declaration.
+    TypeParam,
+    /// `Sounded(pitch: Pitch, held: Duration)` — one constructor of a `data`
+    /// declaration, with its fields.
+    DataVariant,
+    /// `pitch: Pitch` — one named field of one constructor.
+    DataField,
+    /// `Tree<Nat>` — a declared type, applied to its arguments. A bare
+    /// `Motive` is a [`SyntaxKind::TypeName`]; this is the applied form, which
+    /// only a parameterized declaration can be written in.
+    AppliedType,
+    /// `data Motive;` — one member of a signature naming a type without its
+    /// constructors, which is what makes the constructors private to the
+    /// structure that declares them.
+    DataMember,
 }
 
 impl SyntaxKind {
