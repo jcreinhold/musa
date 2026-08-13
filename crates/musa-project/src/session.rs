@@ -884,6 +884,14 @@ impl ProjectSession {
         } else {
             compilation.decisions().to_vec()
         };
+        // Where the score came from, borrowed for the same reason the
+        // references are: `into_parts` consumes, and the Origin row needs the
+        // record after it.
+        let derivation: Option<musa_compiler::Derivation> = if compilation.has_errors() {
+            None
+        } else {
+            compilation.derivation().cloned()
+        };
         let (score, studio) = if compilation.has_errors() {
             (None, musa_compiler::StudioSpec::default())
         } else {
@@ -913,7 +921,7 @@ impl ProjectSession {
                 Ok(rendered) => {
                     let mei = rendered.as_text().unwrap_or_default().to_owned();
                     score_changed = self.valid.as_ref().is_none_or(|valid| valid.mei != mei);
-                    let facts = crate::facts::ScoreFacts::derive(&score, &self.source, &decisions);
+                    let facts = crate::facts::ScoreFacts::derive(&score, &self.source, &decisions, derivation.as_ref());
                     let parts: Vec<String> = facts.parts.iter().map(|part| part.name.clone()).collect();
                     let studio_facts = crate::studio::StudioFacts::derive(&studio, &parts);
                     let names = names.iter().map(crate::facts::NameFact::from_compiler).collect();

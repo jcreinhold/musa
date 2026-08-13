@@ -108,6 +108,30 @@ impl PortShape {
         }
     }
 
+    /// Whether a value of this shape is one this language can write.
+    ///
+    /// `Unit` is not, and deliberately so: no source expression produces one
+    /// (`core.rs`'s `unit_is_the_one_offered_type_no_written_expression_produces`,
+    /// argued in `docs/notes/research/core-calculus/19-unit-has-no-surface-value.md`).
+    /// A *port* typed `Unit` says nothing flows there, which is something a
+    /// machine can mean and `count` and `drop` do mean. A *configuration*
+    /// typed `Unit` would say nothing is written there, and nothing written is
+    /// not a thing a composer can write.
+    ///
+    /// A product is writable at two members or more, because `(e)` is a
+    /// parenthesized expression and `()` is not an expression at all: the
+    /// surface's product literal starts at the comma.
+    const fn is_writable(self) -> bool {
+        match self {
+            Self::Unit => false,
+            Self::Bool | Self::Nat | Self::Ratio => true,
+            Self::Product(members) => match members {
+                [] | [_] => false,
+                _ => all_writable(members),
+            },
+        }
+    }
+
     /// Whether two declared shapes are the same shape.
     ///
     /// Written out rather than derived because the conflict check below runs
@@ -121,6 +145,14 @@ impl PortShape {
             (Self::Product(ours), Self::Product(theirs)) => all_same(ours, theirs),
             _ => false,
         }
+    }
+}
+
+/// Whether every shape in a list is one this language can write.
+const fn all_writable(members: &[PortShape]) -> bool {
+    match members {
+        [] => true,
+        [first, rest @ ..] => first.is_writable() && all_writable(rest),
     }
 }
 
@@ -277,6 +309,28 @@ const _: () = assert!(
     registry_is_consistent(REGISTERED),
     "one primitive id and version must select one step tag, one port pair, and one configuration shape"
 );
+
+/// Registration rejects an unwritable configuration, at build time.
+///
+/// The paragraph above `COUNT` says every configuration is a value this
+/// language can write, because a unit whose configuration could not be spelled
+/// could not be instantiated. That was a promise; this makes it a rule. A port
+/// may be `Unit` — `count` consumes nothing and `drop` produces nothing — and a
+/// configuration may not, because a configuration is written at the call site
+/// and `Unit` has no written form.
+const _: () = assert!(
+    every_configuration_is_writable(REGISTERED),
+    "a registered unit's configuration is written where the unit is instantiated, so it must be a shape this \
+     language can write; `Unit` and a product under two members are not"
+);
+
+/// Whether every entry declares a configuration a composer could write.
+const fn every_configuration_is_writable(entries: &[PrimitiveDescriptor]) -> bool {
+    match entries {
+        [] => true,
+        [first, rest @ ..] => first.configuration.is_writable() && every_configuration_is_writable(rest),
+    }
+}
 
 /// Whether no two entries share an id and version while disagreeing.
 const fn registry_is_consistent(entries: &[PrimitiveDescriptor]) -> bool {

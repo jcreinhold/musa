@@ -36,6 +36,7 @@ mod context;
 mod core;
 mod core_budget;
 mod data;
+mod derivation;
 mod diagnose;
 mod docs;
 mod elaborate;
@@ -78,6 +79,7 @@ pub use crate::bars::{BarBeat, BarLines, Measure};
 pub use crate::chord::chord_types;
 pub use crate::compile::{Compilation, CompileOptions, DocumentKind, SourceDocument, compile, format_document};
 pub use crate::context::ContextTrack;
+pub use crate::derivation::Derivation;
 pub use crate::diagnose::{Code, Diagnostic, Fix, FixEdit, Label, Severity};
 pub use crate::docs::{ItemDoc, ItemSource, ParameterDoc, TypeNote};
 #[doc(hidden)]

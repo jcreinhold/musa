@@ -14,6 +14,7 @@ mod complete_call_laws;
 mod core_laws;
 mod core_validation;
 mod curve_laws;
+mod derivation_laws;
 mod elaboration;
 mod elaboration_compatibility;
 mod elaboration_fixture_generators;

@@ -95,6 +95,16 @@
             "start": 229,
             "end": 235
           },
+          "supportedBy": [
+            {
+              "start": 229,
+              "end": 235
+            },
+            {
+              "start": 398,
+              "end": 411
+            }
+          ],
           "decision": null
         }
       },
@@ -143,6 +153,16 @@
             "start": 244,
             "end": 250
           },
+          "supportedBy": [
+            {
+              "start": 244,
+              "end": 250
+            },
+            {
+              "start": 398,
+              "end": 411
+            }
+          ],
           "decision": null
         }
       },
@@ -195,6 +215,16 @@
             "start": 259,
             "end": 263
           },
+          "supportedBy": [
+            {
+              "start": 259,
+              "end": 263
+            },
+            {
+              "start": 398,
+              "end": 411
+            }
+          ],
           "decision": null
         }
       },
@@ -247,6 +277,16 @@
             "start": 272,
             "end": 276
           },
+          "supportedBy": [
+            {
+              "start": 272,
+              "end": 276
+            },
+            {
+              "start": 398,
+              "end": 411
+            }
+          ],
           "decision": null
         }
       },
@@ -299,6 +339,16 @@
             "start": 285,
             "end": 289
           },
+          "supportedBy": [
+            {
+              "start": 285,
+              "end": 289
+            },
+            {
+              "start": 398,
+              "end": 411
+            }
+          ],
           "decision": null
         }
       },
@@ -356,6 +406,16 @@
             "start": 229,
             "end": 235
           },
+          "supportedBy": [
+            {
+              "start": 229,
+              "end": 235
+            },
+            {
+              "start": 469,
+              "end": 482
+            }
+          ],
           "decision": null
         }
       },
@@ -409,6 +469,16 @@
             "start": 244,
             "end": 250
           },
+          "supportedBy": [
+            {
+              "start": 244,
+              "end": 250
+            },
+            {
+              "start": 469,
+              "end": 482
+            }
+          ],
           "decision": null
         }
       },
@@ -466,6 +536,16 @@
             "start": 259,
             "end": 263
           },
+          "supportedBy": [
+            {
+              "start": 259,
+              "end": 263
+            },
+            {
+              "start": 469,
+              "end": 482
+            }
+          ],
           "decision": null
         }
       },
@@ -523,6 +603,16 @@
             "start": 272,
             "end": 276
           },
+          "supportedBy": [
+            {
+              "start": 272,
+              "end": 276
+            },
+            {
+              "start": 469,
+              "end": 482
+            }
+          ],
           "decision": null
         }
       },
@@ -580,6 +670,16 @@
             "start": 285,
             "end": 289
           },
+          "supportedBy": [
+            {
+              "start": 285,
+              "end": 289
+            },
+            {
+              "start": 469,
+              "end": 482
+            }
+          ],
           "decision": null
         }
       },
@@ -623,6 +723,12 @@
             "start": 591,
             "end": 595
           },
+          "supportedBy": [
+            {
+              "start": 591,
+              "end": 595
+            }
+          ],
           "decision": null
         }
       },
@@ -666,6 +772,12 @@
             "start": 612,
             "end": 616
           },
+          "supportedBy": [
+            {
+              "start": 612,
+              "end": 616
+            }
+          ],
           "decision": null
         }
       },
@@ -709,6 +821,12 @@
             "start": 633,
             "end": 637
           },
+          "supportedBy": [
+            {
+              "start": 633,
+              "end": 637
+            }
+          ],
           "decision": null
         }
       },
@@ -752,6 +870,12 @@
             "start": 654,
             "end": 659
           },
+          "supportedBy": [
+            {
+              "start": 654,
+              "end": 659
+            }
+          ],
           "decision": null
         }
       },
@@ -795,6 +919,12 @@
             "start": 940,
             "end": 944
           },
+          "supportedBy": [
+            {
+              "start": 940,
+              "end": 944
+            }
+          ],
           "decision": null
         }
       },
@@ -838,6 +968,12 @@
             "start": 965,
             "end": 969
           },
+          "supportedBy": [
+            {
+              "start": 965,
+              "end": 969
+            }
+          ],
           "decision": null
         }
       },
@@ -881,6 +1017,12 @@
             "start": 990,
             "end": 994
           },
+          "supportedBy": [
+            {
+              "start": 990,
+              "end": 994
+            }
+          ],
           "decision": null
         }
       },
@@ -924,6 +1066,12 @@
             "start": 1015,
             "end": 1019
           },
+          "supportedBy": [
+            {
+              "start": 1015,
+              "end": 1019
+            }
+          ],
           "decision": null
         }
       }

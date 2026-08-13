@@ -9580,6 +9580,110 @@ mod tests {
         }
     }
 
+    /// The literal forms of the offered vocabulary, one per type that has one.
+    ///
+    /// Written as source and compiled rather than listed as [`Type`]s, so that
+    /// "this type has a written form" is checked against the parser and the
+    /// checker instead of asserted here. Everything absent — `NoteName`,
+    /// `Degree`, `Frame`, `Triad`, `Roman`, `Voicing`, and the twelve-tone
+    /// domains — is reached by applying a δ-builtin, which is the other half
+    /// of the law below.
+    const WRITTEN_LITERALS: &[(&str, &str)] = &[
+        ("Bool", "true"),
+        ("Nat", "3"),
+        ("Ratio", "3/2"),
+        ("Text", "\"a title\""),
+        ("Duration", "1/2"),
+        ("Pitch", "c4"),
+        ("Interval", "P5"),
+        ("Scale", "scale c major"),
+        ("Key", "key c major"),
+        ("ChordClass", "chord c major"),
+        ("Music", "music { c4/4 }"),
+    ];
+
+    /// Every base type some δ-builtin answers with, at any depth of its result.
+    ///
+    /// A domain reached only inside an `Option` or a `Result` still counts as
+    /// produced: `pitch_frame` is the only way to make a `Frame`, and it says
+    /// *whether* it made one, so a `Frame` is a value a `match` arm holds even
+    /// though no closed expression is annotated with it.
+    fn produced_by_a_builtin(shape: Shape, found: &mut IndexSet<String>) {
+        match shape {
+            Shape::Base(base) => {
+                found.insert(base.ty().to_string());
+            }
+            Shape::Option(inner) | Shape::List(inner) => produced_by_a_builtin(*inner, found),
+            Shape::Result(value, error) => {
+                produced_by_a_builtin(*value, found);
+                produced_by_a_builtin(*error, found);
+            }
+            Shape::Product(members) => {
+                for member in members {
+                    produced_by_a_builtin(*member, found);
+                }
+            }
+        }
+    }
+
+    /// `Unit` is the one type this language offers that nothing written
+    /// produces, and that is a decision rather than an omission.
+    ///
+    /// `Unit` is offered because the compiler *prints* it: `drop`'s output port
+    /// and `count`'s input port are typed `Unit`, so a composer reading a
+    /// machine's type meets the word and must be able to write it in an
+    /// annotation — which is what the round-trip law above is for. What a port
+    /// type says is what flows, and `Unit` says nothing flows. It is not a
+    /// value a composer ever holds, so the surface has no literal for it and
+    /// [`crate::machine::PortShape::is_writable`] keeps it out of the one
+    /// place a registered unit's type would demand one.
+    ///
+    /// The argument, and the two spellings refused, are in
+    /// `docs/notes/research/core-calculus/19-unit-has-no-surface-value.md`. If
+    /// a later prompt introduces the constructor
+    /// `docs/rules/language/02-core-calculus.md` §5.3 leaves open, this law is
+    /// where that reversal is stated.
+    #[test]
+    fn unit_is_the_one_offered_type_no_written_expression_produces() {
+        use std::fmt::Write as _;
+
+        let mut source = String::from("piece \"law\" { ");
+        for (index, (ty, literal)) in WRITTEN_LITERALS.iter().enumerate() {
+            write!(source, "let witness{index}: {ty} = {literal}; ").expect("a string accepts what is written to it");
+        }
+        source.push('}');
+        let complaints = refusals(&source);
+        assert!(
+            complaints.is_empty(),
+            "a literal this law calls written did not compile at the type it claims: {}",
+            complaints
+                .iter()
+                .map(|complaint| complaint.message.clone())
+                .collect::<Vec<_>>()
+                .join("; ")
+        );
+
+        let mut produced: IndexSet<String> = WRITTEN_LITERALS.iter().map(|(ty, _)| (*ty).to_string()).collect();
+        for entry in &BUILTIN_OWNERSHIP {
+            if let Family::Delta { result, .. } = entry.family {
+                produced_by_a_builtin(result, &mut produced);
+            }
+        }
+
+        let unproduced: Vec<&str> = musa_language::BASE_TYPES
+            .iter()
+            .map(|(name, _)| *name)
+            .filter(|name| !produced.contains(*name))
+            .collect();
+        assert_eq!(
+            unproduced,
+            ["Unit"],
+            "a type the language offers must be one a composer can obtain a value of, by a literal or by a \
+             builtin that answers with it; `Unit` is the one deliberate exception, and a second one is a \
+             vocabulary entry nobody can use"
+        );
+    }
+
     /// Advice is for crossing a distinction, not for every mismatch. A slip
     /// between two unrelated types has nothing to say beyond the two names,
     /// and a help line there would be noise on the common case; a category

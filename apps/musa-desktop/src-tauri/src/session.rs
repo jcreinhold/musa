@@ -434,7 +434,7 @@ mod session_laws {
         let snapshot: Value = apply(&mut session, PIECE)?;
         let mut found = Vec::new();
         start_end_objects(&snapshot, "", &mut found);
-        let spans = ["declaration", "definitionSpan", "span", "useSite"];
+        let spans = ["declaration", "definitionSpan", "span", "supportedBy", "useSite"];
         assert!(!found.is_empty(), "the piece serialized to no spans at all");
         for (name, _) in found {
             assert!(

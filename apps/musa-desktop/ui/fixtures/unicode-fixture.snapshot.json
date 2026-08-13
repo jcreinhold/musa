@@ -73,6 +73,12 @@
             "start": 1228,
             "end": 1232
           },
+          "supportedBy": [
+            {
+              "start": 1228,
+              "end": 1232
+            }
+          ],
           "decision": null
         }
       },
@@ -116,6 +122,12 @@
             "start": 1253,
             "end": 1257
           },
+          "supportedBy": [
+            {
+              "start": 1253,
+              "end": 1257
+            }
+          ],
           "decision": null
         }
       },
@@ -159,6 +171,12 @@
             "start": 1278,
             "end": 1282
           },
+          "supportedBy": [
+            {
+              "start": 1278,
+              "end": 1282
+            }
+          ],
           "decision": null
         }
       },
@@ -211,6 +229,16 @@
             "start": 963,
             "end": 969
           },
+          "supportedBy": [
+            {
+              "start": 963,
+              "end": 969
+            },
+            {
+              "start": 1317,
+              "end": 1330
+            }
+          ],
           "decision": null
         }
       },
@@ -263,6 +291,16 @@
             "start": 978,
             "end": 982
           },
+          "supportedBy": [
+            {
+              "start": 978,
+              "end": 982
+            },
+            {
+              "start": 1317,
+              "end": 1330
+            }
+          ],
           "decision": null
         }
       },
@@ -315,6 +353,16 @@
             "start": 991,
             "end": 995
           },
+          "supportedBy": [
+            {
+              "start": 991,
+              "end": 995
+            },
+            {
+              "start": 1317,
+              "end": 1330
+            }
+          ],
           "decision": null
         }
       },
@@ -367,6 +415,16 @@
             "start": 963,
             "end": 969
           },
+          "supportedBy": [
+            {
+              "start": 963,
+              "end": 969
+            },
+            {
+              "start": 1347,
+              "end": 1360
+            }
+          ],
           "decision": null
         }
       },
@@ -419,6 +477,16 @@
             "start": 978,
             "end": 982
           },
+          "supportedBy": [
+            {
+              "start": 978,
+              "end": 982
+            },
+            {
+              "start": 1347,
+              "end": 1360
+            }
+          ],
           "decision": null
         }
       },
@@ -471,6 +539,16 @@
             "start": 991,
             "end": 995
           },
+          "supportedBy": [
+            {
+              "start": 991,
+              "end": 995
+            },
+            {
+              "start": 1347,
+              "end": 1360
+            }
+          ],
           "decision": null
         }
       },
@@ -514,6 +592,12 @@
             "start": 1423,
             "end": 1427
           },
+          "supportedBy": [
+            {
+              "start": 1423,
+              "end": 1427
+            }
+          ],
           "decision": null
         }
       },
@@ -557,6 +641,12 @@
             "start": 1448,
             "end": 1452
           },
+          "supportedBy": [
+            {
+              "start": 1448,
+              "end": 1452
+            }
+          ],
           "decision": null
         }
       },
@@ -600,6 +690,12 @@
             "start": 1473,
             "end": 1477
           },
+          "supportedBy": [
+            {
+              "start": 1473,
+              "end": 1477
+            }
+          ],
           "decision": null
         }
       }

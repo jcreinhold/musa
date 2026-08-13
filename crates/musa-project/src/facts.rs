@@ -72,6 +72,15 @@ pub struct OriginFacts {
     /// body when generated, the same as `span` when authored. This is what
     /// an edit-definition edit rewrites (`04-provenance.md` §4).
     pub definition_span: crate::diagnostic::Span,
+    /// Every place in the source this event's derivation reaches, in the
+    /// order it reaches them (`02-derivation-diagrams.md` §6).
+    ///
+    /// The expansion path above says what happened; this says where. A note
+    /// instantiated from a shared body reaches two places at each use — the
+    /// body it instantiates and the site that instantiated it — and two uses
+    /// of one body reach the same body and different sites, which is exactly
+    /// what a list-shaped path could not tell apart.
+    pub supported_by: Vec<crate::diagnostic::Span>,
     /// The decision this event was played under, as an index into
     /// [`ScoreFacts::decisions`] — the fourth step of the Origin chain.
     ///
@@ -395,7 +404,12 @@ impl ScoreFacts {
     ///
     /// `source` is needed only to turn byte offsets into line numbers — the
     /// interface shows a composer a line, not an offset.
-    pub(crate) fn derive(score: &ScoreSnapshot, source: &str, taken: &[musa_compiler::DecisionRecord]) -> Self {
+    pub(crate) fn derive(
+        score: &ScoreSnapshot,
+        source: &str,
+        taken: &[musa_compiler::DecisionRecord],
+        derivation: Option<&musa_compiler::Derivation>,
+    ) -> Self {
         let lines = LineIndex::new(source);
         let decisions: Vec<DecisionFact> = taken
             .iter()
@@ -443,6 +457,16 @@ impl ScoreFacts {
                 for event in voice.events() {
                     let id = format!("event-{:x}", event.id.0);
                     let mut origin = origin_facts(&event.origin, &lines, source);
+                    origin.supported_by = derivation.map_or_else(Vec::new, |graph| {
+                        graph
+                            .sources_of(event.id)
+                            .into_iter()
+                            .map(|span| crate::diagnostic::Span {
+                                start: span.start,
+                                end: span.end,
+                            })
+                            .collect()
+                    });
                     origin.decision = decided_under(taken, event.origin.source_span);
                     if origin.generated {
                         let at = match paths.iter().position(|known| *known == event.origin.expansion_path) {
@@ -767,6 +791,7 @@ pub(crate) fn mode(mode: Mode) -> &'static str {
 fn origin_facts(origin: &Origin, lines: &LineIndex, source: &str) -> OriginFacts {
     OriginFacts {
         decision: None,
+        supported_by: Vec::new(),
         generated: !origin.expansion_path.is_empty(),
         path: origin.expansion_path.iter().map(|it| step(it, source)).collect(),
         note_index: None,

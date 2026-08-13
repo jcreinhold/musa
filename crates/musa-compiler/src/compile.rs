@@ -91,10 +91,15 @@ pub struct Compilation {
     identity: musa_kernel::SemanticHash,
     decisions: Vec<crate::DecisionRecord>,
     references: crate::resolve::ReferenceIndex,
+    derivation: Option<crate::derivation::Derivation>,
 }
 
 impl Compilation {
     pub(crate) fn new(snapshot: Option<ScoreSnapshot>, diagnostics: Vec<Diagnostic>) -> Self {
+        // Read off the snapshot here rather than threaded through
+        // elaboration, so that a score and the record of where it came from
+        // cannot be built from two different pictures of the same piece.
+        let derivation = snapshot.as_ref().map(crate::derivation::of_score);
         Self {
             kind: DocumentKind::Piece,
             snapshot,
@@ -104,6 +109,7 @@ impl Compilation {
             identity: musa_kernel::SemanticHash::default(),
             decisions: Vec::new(),
             references: crate::resolve::ReferenceIndex::new(),
+            derivation,
         }
     }
 
@@ -218,6 +224,21 @@ impl Compilation {
             .iter()
             .find(|(named, _)| named == name)
             .map(|(_, machine)| machine)
+    }
+
+    /// Where this compilation's score came from
+    /// (`docs/rules/across-stages/02-derivation-diagrams.md`).
+    ///
+    /// A finite acyclic graph, not a list of pairs: a note instantiated from
+    /// a shared body reaches both the body and the site that instantiated it,
+    /// and a passage assembled from several inputs keeps all of them. `None`
+    /// for a document that compiled to no score, which is the same answer
+    /// [`Self::snapshot`] gives and for the same reason.
+    ///
+    /// Its named consumer is `musa-project`, which fills the Origin row's
+    /// list of supporting places from it.
+    pub fn derivation(&self) -> Option<&crate::derivation::Derivation> {
+        self.derivation.as_ref()
     }
 
     /// Every machine this document names, in the order it declares them.

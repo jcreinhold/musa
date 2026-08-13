@@ -21,8 +21,21 @@
 /// `Option` and `List` are absent because they are keywords and carry their
 /// own documentation (`keywords.rs`); everything here is an ordinary
 /// identifier the lexer cannot tell from any other.
+///
+/// This is the vocabulary a composer may *write a type in*, which is not the
+/// same as the vocabulary they may write a *value* in. `Unit` is here because
+/// the compiler prints it — `drop`'s output port and `count`'s input port are
+/// typed `Unit` — and a word the compiler prints must be a word an annotation
+/// can repeat; nothing writes a value of it, deliberately. It is the only such
+/// entry, which is a law rather than an observation: `musa-compiler`'s
+/// `unit_is_the_one_offered_type_no_written_expression_produces` fails if a
+/// second one is added, and the argument is in
+/// `docs/notes/research/core-calculus/19-unit-has-no-surface-value.md`.
 pub const BASE_TYPES: &[(&str, &str)] = &[
-    ("Unit", "the type with exactly one value"),
+    (
+        "Unit",
+        "a port that carries nothing: the type has one value, and no expression in this language writes it",
+    ),
     ("Bool", "`true` or `false`"),
     ("Nat", "a whole number, zero or more"),
     ("Ratio", "an exact rational number"),

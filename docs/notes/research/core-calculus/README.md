@@ -45,5 +45,9 @@ enough.
 19. [The vocabulary amendment](18-vocabulary-amendment.md) records the rename that followed: position split from
     duration, primitive split from builtin, and three smaller name repairs. It changes no decision, and files 1–18 are
     deliberately left in the old vocabulary, so read its §5 mapping before taking a name here as current.
+20. [`Unit` has no surface value](19-unit-has-no-surface-value.md) records what prompt 127d's machine ports made
+    explicit: `Unit` stays in the offered type vocabulary, because the compiler prints it, and stays valueless in the
+    surface, because a port says what flows and nothing consumes the value. It refuses both a unit literal and dropping
+    the name.
 
 Each rejected claim stays beside its refutation. No file here authorizes a compiler change or a change to `docs/rules/`.

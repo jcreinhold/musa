@@ -73,6 +73,12 @@
             "start": 878,
             "end": 882
           },
+          "supportedBy": [
+            {
+              "start": 878,
+              "end": 882
+            }
+          ],
           "decision": null
         }
       },
@@ -116,6 +122,12 @@
             "start": 903,
             "end": 907
           },
+          "supportedBy": [
+            {
+              "start": 903,
+              "end": 907
+            }
+          ],
           "decision": null
         }
       },
@@ -159,6 +171,12 @@
             "start": 928,
             "end": 932
           },
+          "supportedBy": [
+            {
+              "start": 928,
+              "end": 932
+            }
+          ],
           "decision": null
         }
       },
@@ -202,6 +220,12 @@
             "start": 953,
             "end": 957
           },
+          "supportedBy": [
+            {
+              "start": 953,
+              "end": 957
+            }
+          ],
           "decision": null
         }
       },
@@ -245,6 +269,12 @@
             "start": 978,
             "end": 982
           },
+          "supportedBy": [
+            {
+              "start": 978,
+              "end": 982
+            }
+          ],
           "decision": null
         }
       },
@@ -288,6 +318,12 @@
             "start": 1059,
             "end": 1063
           },
+          "supportedBy": [
+            {
+              "start": 1059,
+              "end": 1063
+            }
+          ],
           "decision": null
         }
       },
@@ -331,6 +367,12 @@
             "start": 1084,
             "end": 1088
           },
+          "supportedBy": [
+            {
+              "start": 1084,
+              "end": 1088
+            }
+          ],
           "decision": null
         }
       },
@@ -374,6 +416,12 @@
             "start": 1109,
             "end": 1114
           },
+          "supportedBy": [
+            {
+              "start": 1109,
+              "end": 1114
+            }
+          ],
           "decision": null
         }
       },
@@ -417,6 +465,12 @@
             "start": 1135,
             "end": 1139
           },
+          "supportedBy": [
+            {
+              "start": 1135,
+              "end": 1139
+            }
+          ],
           "decision": null
         }
       }
