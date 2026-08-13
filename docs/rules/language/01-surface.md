@@ -176,7 +176,7 @@ fn third(root: Pitch) -> Pitch { root up M3 }
 
 fn transpose_answer(subject: EventTrack[WrittenTime, ScoreFact], by: Interval) -> EventTrack[WrittenTime, ScoreFact] { transpose(by, subject) }
 
-motif turn(root: Pitch = c5) {
+motif turn(root: Pitch) {
     root/8
     (root up M2)/8
     ((root up M2) down m2)/8
@@ -230,8 +230,19 @@ fn harmonize(
     use together(subject, map_note_pitches(answer_pitch, subject));
 } }
 
-use canon(theme(), transpose(P5), 1/2);
+use canon(
+    theme(),
+    fn (line: EventTrack[WrittenTime, ScoreFact]) -> EventTrack[WrittenTime, ScoreFact] { transpose(P5, line) },
+    1/2,
+);
 ```
+
+`fn (…) -> τ { e }` is the **anonymous function**: a declaration's own words without its name, with the parameter and
+result types omissible exactly where a declaration may omit them. It is how a higher-order call is specialized by a
+value the caller supplied, because a call supplies every parameter (`docs/rules/constitution.md` §9) and a named `fn` is
+declared where the declarations are, so it cannot close over an argument its caller just wrote. It captures lexically,
+by value; it has no name and so cannot apply itself; and by §1.1 of `02-core-calculus.md` it may be applied and passed
+and may not be stored.
 
 `map_note_pitches` is the sole initial user-facing traversal of a score track. It changes pitches in note and
 sounded-chord events; it preserves time, annotations, marks, scope, and Origin; it does not traverse key signatures or
@@ -313,7 +324,7 @@ template piece study(k: Key, mode: Scale, subject: EventTrack[WrittenTime, Score
     score {
         part piano {
             voice right { in scale mode { use subject; } }
-            make answer(subject, transpose(P8)) as follower;
+            make answer(subject, fn (line: EventTrack[WrittenTime, ScoreFact]) -> EventTrack[WrittenTime, ScoreFact] { transpose(P8, line) }) as follower;
         }
     }
 }

@@ -82,7 +82,7 @@ template piece study(k: Key, subject: EventTrack[WrittenTime, ScoreFact]) "Study
     score {
         part piano {
             voice right { use subject; }
-            make answer(subject, transpose(P8)) as follower;
+            make answer(subject, fn (line: EventTrack[WrittenTime, ScoreFact]) -> EventTrack[WrittenTime, ScoreFact] { transpose(P8, line) }) as follower;
         }
     }
 }
@@ -113,7 +113,8 @@ signature CanonMaterial {
 
 structure FifthMaterial: CanonMaterial {
     let subject: EventTrack[WrittenTime, ScoreFact] = theme();
-    let answer: EventTrack[WrittenTime, ScoreFact] -> EventTrack[WrittenTime, ScoreFact] = transpose(P5);
+    let answer: EventTrack[WrittenTime, ScoreFact] -> EventTrack[WrittenTime, ScoreFact] =
+        fn (line: EventTrack[WrittenTime, ScoreFact]) -> EventTrack[WrittenTime, ScoreFact] { transpose(P5, line) };
 }
 
 template structure DelayedCanon(C: CanonMaterial, gap: Duration): CanonMaterial {
