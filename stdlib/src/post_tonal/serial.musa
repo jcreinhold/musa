@@ -6,9 +6,10 @@ library {
     //
     // A row is a bijection from the twelve order positions onto the twelve
     // pitch classes. An arbitrary sequence of pitch classes is a
-    // `list[pc12]` and stays one: `row` is the only way in, and it answers
-    // nothing when the sequence is not a row. Because the invariant is
-    // checked once there, every operation below is total — composing a row
+    // `list[pc12]` and stays one: `row` is the only way in, and when the
+    // sequence is not a row it says which way it failed. Because the
+    // invariant is checked once there, every operation below is total —
+    // composing a row
     // with a permutation of order positions and a bijection of pitch
     // classes is again a row, so none of them can fail.
     //
@@ -19,16 +20,20 @@ library {
     // distinct rows those 48 labels produce depends on the row, so
     // `distinct_forms` counts rather than assumes.
 
-    // The row a sequence spells, or nothing when the sequence is not one.
-    fn row(pcs: List<Pc12>) -> Option<Row12> { row12_of(pcs) }
+    // The row a sequence spells, or both exact reasons it is not one: the
+    // order positions that repeat an earlier pitch class, and the pitch
+    // classes the sequence never names. Both, rather than a choice between
+    // them, because a sequence of the wrong length can have either without
+    // the other.
+    fn row(pcs: List<Pc12>) -> Result<Row12, (List<Nat>, List<Pc12>)> { row12_of(pcs) }
 
-    // The order positions whose pitch class already appeared earlier — the
-    // exact reason a sequence failed to be a row. The first occurrence is
-    // not among them, because that is where the pitch class belongs.
+    // The order positions whose pitch class already appeared earlier, asked
+    // on their own. The first occurrence is not among them, because that is
+    // where the pitch class belongs.
     fn repeated_positions(pcs: List<Pc12>) -> List<Nat> { row12_repeats(pcs) }
 
-    // The pitch classes a sequence never names, ascending — the other exact
-    // reason. A sequence of the right length has one of these lists empty
+    // The pitch classes a sequence never names, ascending, asked on their
+    // own. A sequence of the right length has one of these lists empty
     // exactly when it has the other empty.
     fn missing_classes(pcs: List<Pc12>) -> List<Pc12> { row12_missing(pcs) }
 

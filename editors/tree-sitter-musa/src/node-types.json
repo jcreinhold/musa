@@ -38,6 +38,10 @@
         {
           "type": "product_expression",
           "named": true
+        },
+        {
+          "type": "result_expression",
+          "named": true
         }
       ]
     }
@@ -708,6 +712,10 @@
         },
         {
           "type": "product_expression",
+          "named": true
+        },
+        {
+          "type": "result_expression",
           "named": true
         },
         {
@@ -1475,6 +1483,10 @@
         },
         {
           "type": "rational",
+          "named": true
+        },
+        {
+          "type": "string",
           "named": true
         }
       ]
@@ -2262,6 +2274,10 @@
         {
           "type": "rational",
           "named": true
+        },
+        {
+          "type": "string",
+          "named": true
         }
       ]
     }
@@ -2638,6 +2654,36 @@
       "types": [
         {
           "type": "duration",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "result_expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "result_type",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "type_expression",
           "named": true
         }
       ]
@@ -3482,6 +3528,10 @@
           "named": true
         },
         {
+          "type": "result_type",
+          "named": true
+        },
+        {
           "type": "type_expression",
           "named": true
         },
@@ -3785,6 +3835,10 @@
     "named": false
   },
   {
+    "type": "Err",
+    "named": false
+  },
+  {
     "type": "List",
     "named": false
   },
@@ -3793,7 +3847,15 @@
     "named": false
   },
   {
+    "type": "Ok",
+    "named": false
+  },
+  {
     "type": "Option",
+    "named": false
+  },
+  {
+    "type": "Result",
     "named": false
   },
   {

@@ -4,8 +4,9 @@
 //! A row is a bijection from twelve order positions onto twelve pitch
 //! classes, and `row` is the only way in. Because that invariant is checked
 //! once, every operation on a row is total; because it is checked, a sequence
-//! that is not a row is refused — and the two exact reasons, a repeated pitch
-//! class and a missing one, are separate questions with separate answers.
+//! that is not a row is refused — and the refusal carries both exact reasons,
+//! the repeated pitch class and the missing one, so a caller holding it never
+//! has to ask the question again to learn why.
 //!
 //! The four labels P, I, R, and RI are the 24 affine pitch-class operations
 //! times one reversal of order positions, so there are 48 labelled forms and
@@ -51,8 +52,8 @@ const PRELUDE: &str = r"
     let chromatic_pcs: List<Pc12> = pcs([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
     let flawed_pcs: List<Pc12> = pcs([0, 1, 2, 0, 4, 5, 6, 7, 8, 9, 10, 3]);
 
-    let generic: Option<Row12> = row(generic_pcs);
-    let chromatic: Option<Row12> = row(chromatic_pcs);
+    let generic: Result<Row12, (List<Nat>, List<Pc12>)> = row(generic_pcs);
+    let chromatic: Result<Row12, (List<Nat>, List<Pc12>)> = row(chromatic_pcs);
 ";
 
 /// A piece whose one voice sounds `expression`.
@@ -100,12 +101,15 @@ fn counted(bindings: &str, expression: &str) -> usize {
         .sum()
 }
 
-/// One note when the option holds a row, none when it does not.
+/// One note when the result holds a row, none when it holds a reason.
 fn admitted(sequence: &str) -> usize {
     counted(
         &format!(
             "    fn one(series: Row12) -> Music {{ beat() }}
-    let admitted: Music = option_fold(music {{ rest/1 }}, one, row({sequence}));"
+    let admitted: Music = match row({sequence}) {{
+        Ok(series) -> one(series),
+        Err(reason) -> music {{ rest/1 }},
+    }};"
         ),
         "admitted",
     )
@@ -168,10 +172,49 @@ fn a_refusal_says_which_position_repeated_and_which_class_never_came() {
 }
 
 #[test]
+fn the_refusal_itself_carries_both_reasons() {
+    // The same two facts as the test above, but read out of the value `row`
+    // returned rather than asked of the sequence a second time. That is what
+    // the sum buys: the reason travels with the failure.
+    let bindings = "
+    let flawed: Result<Row12, (List<Nat>, List<Pc12>)> = row(flawed_pcs);
+    fn repeats_of(reason: (List<Nat>, List<Pc12>)) -> List<Nat> {
+        match reason { (repeats, missing) -> repeats }
+    }
+    fn missing_of(reason: (List<Nat>, List<Pc12>)) -> List<Pc12> {
+        match reason { (repeats, missing) -> missing }
+    }
+    let carried_repeats: List<Nat> = match flawed { Ok(series) -> [], Err(reason) -> repeats_of(reason) };
+    let carried_missing: List<Pc12> = match flawed { Ok(series) -> [], Err(reason) -> missing_of(reason) };
+";
+    assert_eq!(
+        counted(bindings, "chorus(map(tally, carried_repeats))"),
+        3,
+        "position three, carried by the failure"
+    );
+    assert_eq!(
+        counted(bindings, "chorus(map(tally, map(number_of, carried_missing)))"),
+        11,
+        "and pitch class eleven, carried by the same failure"
+    );
+    assert_eq!(
+        counted(
+            "
+    let intact: Result<Row12, (List<Nat>, List<Pc12>)> = row(generic_pcs);
+    let is_row: Nat = match intact { Ok(series) -> 1, Err(reason) -> 0 };
+",
+            "tally(is_row)"
+        ),
+        1,
+        "and a row arrives on the other side of the sum, with no reason to carry"
+    );
+}
+
+#[test]
 fn a_row_has_twelve_order_positions() {
     let bindings = "
     fn spread(series: Row12) -> Music { chorus(map(beat_for_pc, pcs_of(series))) }
-    let positions: Music = option_fold(music { rest/1 }, spread, generic);
+    let positions: Music = match generic { Ok(series) -> spread(series), Err(reason) -> music { rest/1 } };
 ";
     assert_eq!(
         counted(bindings, "positions"),
@@ -185,10 +228,10 @@ fn the_forty_eight_labels_are_not_forty_eight_rows() {
     let bindings = "
     fn form_count(series: Row12) -> Nat { distinct_forms(series) }
     fn symmetry_count(series: Row12) -> Nat { symmetries(series) }
-    let generic_forms: Nat = option_fold(0, form_count, generic);
-    let generic_symmetries: Nat = option_fold(0, symmetry_count, generic);
-    let chromatic_forms: Nat = option_fold(0, form_count, chromatic);
-    let chromatic_symmetries: Nat = option_fold(0, symmetry_count, chromatic);
+    let generic_forms: Nat = match generic { Ok(series) -> form_count(series), Err(reason) -> 0 };
+    let generic_symmetries: Nat = match generic { Ok(series) -> symmetry_count(series), Err(reason) -> 0 };
+    let chromatic_forms: Nat = match chromatic { Ok(series) -> form_count(series), Err(reason) -> 0 };
+    let chromatic_symmetries: Nat = match chromatic { Ok(series) -> symmetry_count(series), Err(reason) -> 0 };
 ";
     assert_eq!(
         counted(bindings, "tally(generic_forms)"),
@@ -216,7 +259,7 @@ fn the_forty_eight_labels_are_not_forty_eight_rows() {
 fn every_row_stands_in_a_twelve_by_twelve_matrix() {
     let bindings = "
     fn matrix_of(series: Row12) -> List<Row12> { matrix(series) }
-    let rows: List<Row12> = option_fold([], matrix_of, generic);
+    let rows: List<Row12> = match generic { Ok(series) -> matrix_of(series), Err(reason) -> [] };
 ";
     assert_eq!(counted(bindings, "chorus(map(beat_for_row, rows))"), 12, "twelve rows");
     assert_eq!(
@@ -224,7 +267,7 @@ fn every_row_stands_in_a_twelve_by_twelve_matrix() {
             "
     fn matrix_of(series: Row12) -> List<Row12> { matrix(series) }
     fn spread(series: Row12) -> Music { chorus(map(beat_for_pc, pcs_of(series))) }
-    let rows: List<Row12> = option_fold([], matrix_of, generic);
+    let rows: List<Row12> = match generic { Ok(series) -> matrix_of(series), Err(reason) -> [] };
 ",
             "chorus(map(spread, rows))"
         ),
@@ -243,22 +286,34 @@ fn a_form_is_numbered_only_once_a_convention_is_named() {
     fn moveable_of_moved(series: Row12) -> Nat { moveable_zero_index(series, up_three(series)) }
 ";
     assert_eq!(
-        counted(bindings, "tally(option_fold(0, fixed, generic))"),
+        counted(
+            bindings,
+            "tally(match generic { Ok(series) -> fixed(series), Err(reason) -> 0 })"
+        ),
         0,
         "this row begins on pitch class zero, so fixed-zero calls it P0"
     );
     assert_eq!(
-        counted(bindings, "tally(option_fold(0, fixed_of_moved, generic))"),
+        counted(
+            bindings,
+            "tally(match generic { Ok(series) -> fixed_of_moved(series), Err(reason) -> 0 })"
+        ),
         3,
         "and calls its transposition by three P3"
     );
     assert_eq!(
-        counted(bindings, "tally(option_fold(0, moveable_from, generic))"),
+        counted(
+            bindings,
+            "tally(match generic { Ok(series) -> moveable_from(series), Err(reason) -> 0 })"
+        ),
         0,
         "moveable-zero calls the row as written P0, whatever it begins on"
     );
     assert_eq!(
-        counted(bindings, "tally(option_fold(0, moveable_of_moved, generic))"),
+        counted(
+            bindings,
+            "tally(match generic { Ok(series) -> moveable_of_moved(series), Err(reason) -> 0 })"
+        ),
         3,
         "and measures every other form from there"
     );
@@ -269,8 +324,11 @@ fn spelling_a_row_loses_the_notes_the_collection_cannot_write() {
     let bindings = "
     fn in_c_major(series: Row12) -> List<Option<NoteName>> { row_spelled_in(series, scale c major) }
     fn in_octatonic(series: Row12) -> List<Option<NoteName>> { row_spelled_in(series, scale c octatonic_half_whole) }
-    let spelled_in_c: List<Option<NoteName>> = option_fold([], in_c_major, generic);
-    let spelled_octatonically: List<Option<NoteName>> = option_fold([], in_octatonic, generic);
+    let spelled_in_c: List<Option<NoteName>> = match generic { Ok(series) -> in_c_major(series), Err(reason) -> [] };
+    let spelled_octatonically: List<Option<NoteName>> = match generic {
+        Ok(series) -> in_octatonic(series),
+        Err(reason) -> [],
+    };
 ";
     assert_eq!(
         counted(bindings, "chorus(map(sounded, spelled_in_c))"),

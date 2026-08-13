@@ -191,9 +191,12 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         SyntaxKind::KernelKw => "kernel",
         SyntaxKind::OptionKw => "Option",
         SyntaxKind::ListKw => "List",
+        SyntaxKind::ResultKw => "Result",
         SyntaxKind::MatchKw => "match",
         SyntaxKind::SomeKw => "Some",
         SyntaxKind::NoneKw => "None",
+        SyntaxKind::OkKw => "Ok",
+        SyntaxKind::ErrKw => "Err",
         SyntaxKind::TrueKw => "true",
         SyntaxKind::FalseKw => "false",
         SyntaxKind::ScaleKw => "scale",
@@ -293,12 +296,14 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::ProductType
         | SyntaxKind::OptionType
         | SyntaxKind::ListType
+        | SyntaxKind::ResultType
         | SyntaxKind::NameExpr
         | SyntaxKind::LiteralExpr
         | SyntaxKind::ParenExpr
         | SyntaxKind::ProductExpr
         | SyntaxKind::ListExpr
         | SyntaxKind::OptionExpr
+        | SyntaxKind::ResultExpr
         | SyntaxKind::ApplyExpr
         | SyntaxKind::ExprArgList
         | SyntaxKind::ExprArg

@@ -1,7 +1,7 @@
 ---
 id: 127ab
 slug: text-and-sums
-status: pending
+status: done
 depends_on: [127aa]
 phase: 3
 ---

@@ -264,6 +264,10 @@
     "keyword"
   ],
   [
+    "Result",
+    "keyword"
+  ],
+  [
     "match",
     "keyword"
   ],
@@ -273,6 +277,14 @@
   ],
   [
     "None",
+    "keyword"
+  ],
+  [
+    "Ok",
+    "keyword"
+  ],
+  [
+    "Err",
     "keyword"
   ],
   [

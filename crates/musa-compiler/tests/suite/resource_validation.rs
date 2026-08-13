@@ -110,3 +110,51 @@ fn matches_reject_missing_and_unreachable_cases_separately() {
             .any(|diagnostic| diagnostic.code == Code::UnreachablePattern)
     );
 }
+
+/// A `match` over a sum has to answer for both injections, and the refusal
+/// says which one is missing and at what type. A sum whose second case can be
+/// forgotten silently is a second error channel wearing a value's clothes —
+/// which is the whole reason `Result` is a sum here rather than a convention.
+#[test]
+fn a_match_over_a_sum_must_answer_for_both_injections() {
+    for (declarations, missing) in [
+        (
+            "fn taken(outcome: Result<Nat, Text>) -> Nat { match outcome { Ok(found) -> found } }",
+            "Err(reason)",
+        ),
+        (
+            "fn taken(outcome: Result<Nat, Text>) -> Nat { match outcome { Err(said) -> 0 } }",
+            "Ok(value)",
+        ),
+    ] {
+        let compilation = compile_declarations(declarations);
+        let diagnostic = compilation
+            .diagnostics()
+            .iter()
+            .find(|diagnostic| diagnostic.code == Code::NonExhaustiveMatch);
+        assert!(
+            diagnostic.is_some(),
+            "accepted a partial match: {:?}",
+            compilation.diagnostics()
+        );
+        let Some(found) = diagnostic else { continue };
+        assert!(
+            found.labels.iter().any(|label| label.text.contains(missing)),
+            "the refusal must name `{missing}`: {:?}",
+            found.labels
+        );
+        assert!(
+            found
+                .note
+                .as_ref()
+                .is_some_and(|note| note.contains("Result<Nat, Text>")),
+            "and say at what type: {:?}",
+            found.note
+        );
+    }
+
+    let both = compile_declarations(
+        "fn taken(outcome: Result<Nat, Text>) -> Nat { match outcome { Ok(found) -> found, Err(said) -> 0 } }",
+    );
+    assert!(!both.has_errors(), "{:?}", both.diagnostics());
+}

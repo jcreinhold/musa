@@ -330,6 +330,11 @@
     "doc": "`List<T>` is a finite ordered collection used by total folds and music-theory libraries. Square brackets construct its values.\n\n```musa\nlet tones: List<Pitch> = [c4, e4, g4];\n```"
   },
   {
+    "spelling": "Result",
+    "summary": "a value, or the reason there is none",
+    "doc": "`Result<T, E>` is the binary sum, in the one shape this language has a use for: either `Ok(value)` or `Err(reason)`. Unlike `Option<T>` it says *which* way an operation failed, so an operation with two distinct failures returns one rather than asking the caller to re-derive the reason.\n\n```musa\nlet series: Result<Row12, (List<Nat>, List<Pc12>)> = row12_of(sketch);\n```"
+  },
+  {
     "spelling": "match",
     "summary": "handle every form of a finite value",
     "doc": "A `match` expression names each possible case of an option, list, product, boolean, or other finite value. The checker requires complete, non-overlapping arms.\n\n```musa\nfn keep(x: Option<Pitch>) -> Option<Pitch> { match x { None -> None, Some(p) -> Some(p), } }\n```"
@@ -343,6 +348,16 @@
     "spelling": "None",
     "summary": "an option containing no value",
     "doc": "`None` is the absent case of an `Option`. It makes partial musical operations explicit instead of hiding failure. `meter none;` is a different word: a meter that says there are no barlines.\n\n```musa\nlet absent: Option<Pitch> = None;\n```"
+  },
+  {
+    "spelling": "Ok",
+    "summary": "a result carrying the value that was wanted",
+    "doc": "`Ok(value)` constructs the left injection of `Result<T, E>`. It carries its type's capital because it is one of that type's two constructors.\n\n```musa\nlet found: Result<Pitch, Text> = Ok(c4);\n```"
+  },
+  {
+    "spelling": "Err",
+    "summary": "a result carrying the reason there is no value",
+    "doc": "`Err(reason)` constructs the right injection of `Result<T, E>`. The reason is an ordinary value of the error type, not a second channel beside the returned one, so a `match` reads it the way it reads any other case.\n\n```musa\nlet found: Result<Pitch, Text> = Err(\"no pitch spells that class here\");\n```"
   },
   {
     "spelling": "true",

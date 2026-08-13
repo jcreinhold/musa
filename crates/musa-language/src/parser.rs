@@ -1188,6 +1188,20 @@ impl<'a> Parser<'a> {
             self.finish();
             return;
         }
+        if self.at(SyntaxKind::ResultKw) || (self.at(SyntaxKind::Identifier) && self.at_word("result")) {
+            self.start(SyntaxKind::ResultType);
+            self.respelled_type();
+            self.bump();
+            // Two parameters, and no bracketed legacy form: `Result` is new,
+            // so there is no `Result[τ]` anybody could have written.
+            self.expect(SyntaxKind::Less, "`<`");
+            self.type_expr();
+            self.expect(SyntaxKind::Comma, "`,`");
+            self.type_expr();
+            self.expect(SyntaxKind::Greater, "`>`");
+            self.finish();
+            return;
+        }
         if self.at(SyntaxKind::LParen) {
             let checkpoint = self.events.len();
             self.bump();
@@ -1422,13 +1436,15 @@ impl<'a> Parser<'a> {
                 | SyntaxKind::PitchLiteral
                 | SyntaxKind::IntervalLiteral
                 | SyntaxKind::TrueKw
-                | SyntaxKind::FalseKw,
+                | SyntaxKind::FalseKw
+                | SyntaxKind::String,
             ) => {
                 self.start(SyntaxKind::LiteralExpr);
                 self.bump();
                 self.finish();
             }
             Some(SyntaxKind::NoneKw | SyntaxKind::SomeKw) => self.option_expr(),
+            Some(SyntaxKind::OkKw | SyntaxKind::ErrKw) => self.result_expr(),
             Some(SyntaxKind::LBracket) => self.list_expr(),
             Some(SyntaxKind::LBrace) => self.block_expr(),
             Some(SyntaxKind::LParen) => self.paren_or_product_expr(),
@@ -1548,6 +1564,20 @@ impl<'a> Parser<'a> {
         self.finish();
     }
 
+    /// `Ok(value)` or `Err(reason)` — one injection into the binary sum.
+    ///
+    /// Both carry a value, unlike `None`, because a sum has no empty side:
+    /// the shape is the same either way, and which side it is is the whole
+    /// information the constructor adds.
+    fn result_expr(&mut self) {
+        self.start(SyntaxKind::ResultExpr);
+        self.bump();
+        self.expect(SyntaxKind::LParen, "`(`");
+        self.expr();
+        self.expect(SyntaxKind::RParen, "`)`");
+        self.finish();
+    }
+
     fn match_expr(&mut self) {
         self.start(SyntaxKind::MatchExpr);
         self.bump();
@@ -1593,9 +1623,10 @@ impl<'a> Parser<'a> {
                 | SyntaxKind::IntervalLiteral
                 | SyntaxKind::TrueKw
                 | SyntaxKind::FalseKw
+                | SyntaxKind::String
                 | SyntaxKind::NoneKw,
             ) => self.bump(),
-            Some(SyntaxKind::SomeKw) => {
+            Some(SyntaxKind::SomeKw | SyntaxKind::OkKw | SyntaxKind::ErrKw) => {
                 self.bump();
                 self.expect(SyntaxKind::LParen, "`(`");
                 self.expect(SyntaxKind::Identifier, "a binding name");

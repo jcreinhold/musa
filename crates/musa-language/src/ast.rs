@@ -57,7 +57,13 @@ fn span_of(token: &SyntaxToken) -> (u32, u32) {
 /// identity, which is exactly what an editable title field does on every
 /// keystroke. An unknown escape keeps its character rather than its
 /// backslash: this resolves what the lexer accepts and invents nothing.
-pub(crate) fn unquote(literal: &str) -> String {
+///
+/// With [`quote`] this pair is `Text`'s exact encoding
+/// (`docs/rules/language/02-core-calculus.md` §1.1): `unquote(quote(t))` is
+/// `t` for every text the lexer can read, so a text value written into source
+/// and read back is the same value.
+#[must_use]
+pub fn unquote(literal: &str) -> String {
     let body = literal
         .strip_prefix('"')
         .map_or(literal, |rest| rest.strip_suffix('"').unwrap_or(rest));
@@ -976,6 +982,7 @@ impl SignatureMember {
                     | SyntaxKind::ProductType
                     | SyntaxKind::OptionType
                     | SyntaxKind::ListType
+                    | SyntaxKind::ResultType
             )
         })
     }
@@ -2140,6 +2147,10 @@ wrapper!(OptionType, SyntaxKind::OptionType);
 pub struct ListType(SyntaxNode);
 wrapper!(ListType, SyntaxKind::ListType);
 
+/// `Result<value, error>` — the binary sum.
+pub struct ResultType(SyntaxNode);
+wrapper!(ResultType, SyntaxKind::ResultType);
+
 /// A value reference.
 pub struct NameExpr(SyntaxNode);
 wrapper!(NameExpr, SyntaxKind::NameExpr);
@@ -2163,6 +2174,10 @@ wrapper!(ListExpr, SyntaxKind::ListExpr);
 /// `some(value)` or `none`.
 pub struct OptionExpr(SyntaxNode);
 wrapper!(OptionExpr, SyntaxKind::OptionExpr);
+
+/// `Ok(value)` or `Err(reason)`.
+pub struct ResultExpr(SyntaxNode);
+wrapper!(ResultExpr, SyntaxKind::ResultExpr);
 
 /// Ordinary function application.
 pub struct ApplyExpr(SyntaxNode);

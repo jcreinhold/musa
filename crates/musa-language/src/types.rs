@@ -21,6 +21,10 @@ pub const PRIMITIVE_TYPES: &[(&str, &str)] = &[
     ("Bool", "`true` or `false`"),
     ("Nat", "a whole number, zero or more"),
     ("Ratio", "an exact rational number"),
+    (
+        "Text",
+        "opaque printable text: a title, a mark's words, the reason a value could not be made",
+    ),
     ("Duration", "a notated duration, as an exact rational"),
     ("Pitch", "a written pitch: letter, accidental, and octave"),
     (
@@ -47,11 +51,19 @@ pub const PRIMITIVE_TYPES: &[(&str, &str)] = &[
 /// The table is finite and closed: it exists so a file written against the
 /// old vocabulary gets one complaint carrying the rewrite, and nothing is
 /// ever added to it except by another deliberate respelling.
+///
+/// A type added *after* the respelling still belongs here in its lowercase
+/// form, because the rule the table teaches is not "this word was removed"
+/// but "every type the compiler owns is spelled with a capital". The
+/// governing calculus writes its types in lowercase — `text`, `τ + τ` — so a
+/// reader arriving from it types `text`, and gets the capital rule rather
+/// than `unknown type`.
 pub const RESPELLED_TYPES: &[(&str, &str)] = &[
     ("unit", "Unit"),
     ("bool", "Bool"),
     ("nat", "Nat"),
     ("ratio", "Ratio"),
+    ("text", "Text"),
     ("duration", "Duration"),
     ("pitch", "Pitch"),
     ("pitchclass", "NoteName"),
@@ -70,6 +82,7 @@ pub const RESPELLED_TYPES: &[(&str, &str)] = &[
     ("music", "Music"),
     ("option", "Option"),
     ("list", "List"),
+    ("result", "Result"),
 ];
 
 /// The spelling that replaced `name`, when `name` is one this language

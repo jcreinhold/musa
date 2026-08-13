@@ -370,12 +370,18 @@ enum RawToken {
     OptionKw,
     #[token("List", priority = 3)]
     ListKw,
+    #[token("Result", priority = 3)]
+    ResultKw,
     #[token("match", priority = 3)]
     MatchKw,
     #[token("Some", priority = 3)]
     SomeKw,
     #[token("None", priority = 3)]
     NoneKw,
+    #[token("Ok", priority = 3)]
+    OkKw,
+    #[token("Err", priority = 3)]
+    ErrKw,
     #[token("true", priority = 3)]
     TrueKw,
     #[token("false", priority = 3)]
@@ -520,9 +526,12 @@ impl RawToken {
             | Self::KernelKw
             | Self::OptionKw
             | Self::ListKw
+            | Self::ResultKw
             | Self::MatchKw
             | Self::SomeKw
             | Self::NoneKw
+            | Self::OkKw
+            | Self::ErrKw
             | Self::TrueKw
             | Self::FalseKw
             | Self::ScaleKw
@@ -648,9 +657,12 @@ impl RawToken {
             Self::KernelKw => SyntaxKind::KernelKw,
             Self::OptionKw => SyntaxKind::OptionKw,
             Self::ListKw => SyntaxKind::ListKw,
+            Self::ResultKw => SyntaxKind::ResultKw,
             Self::MatchKw => SyntaxKind::MatchKw,
             Self::SomeKw => SyntaxKind::SomeKw,
             Self::NoneKw => SyntaxKind::NoneKw,
+            Self::OkKw => SyntaxKind::OkKw,
+            Self::ErrKw => SyntaxKind::ErrKw,
             Self::TrueKw => SyntaxKind::TrueKw,
             Self::FalseKw => SyntaxKind::FalseKw,
             Self::ScaleKw => SyntaxKind::ScaleKw,

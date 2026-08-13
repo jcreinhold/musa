@@ -397,6 +397,7 @@ module.exports = grammar({
         $.type_name,
         $.option_type,
         $.list_type,
+        $.result_type,
         seq('(', $.type_expression, ')'),
         $.product_type,
       ),
@@ -407,6 +408,8 @@ module.exports = grammar({
     type_name: ($) => $.identifier,
     option_type: ($) => seq('Option', '<', $.type_expression, '>'),
     list_type: ($) => seq('List', '<', $.type_expression, '>'),
+    // The binary sum, in its one surface spelling (Parser::type_atom).
+    result_type: ($) => seq('Result', '<', $.type_expression, ',', $.type_expression, '>'),
     product_type: ($) =>
       seq('(', $.type_expression, ',', $.type_expression, repeat(seq(',', $.type_expression)), ')'),
 
@@ -484,6 +487,7 @@ module.exports = grammar({
         $.name_expression,
         $.literal_expression,
         $.option_expression,
+        $.result_expression,
         $.list_expression,
         $.product_expression,
         $.block_expression,
@@ -509,8 +513,12 @@ module.exports = grammar({
         'retrograde',
         'invert',
       ),
-    literal_expression: ($) => choice($.integer, $.rational, $.pitch_literal, $.interval_literal, 'true', 'false'),
+    literal_expression: ($) =>
+      choice($.integer, $.rational, $.pitch_literal, $.interval_literal, $.string, 'true', 'false'),
     option_expression: ($) => choice('None', seq('Some', '(', $.expression, ')')),
+    // Both injections carry a value: a sum has no empty side.
+    result_expression: ($) =>
+      choice(seq('Ok', '(', $.expression, ')'), seq('Err', '(', $.expression, ')')),
     list_expression: ($) => seq('[', optional(seq($.expression, repeat(seq(',', $.expression)))), ']'),
     product_expression: ($) =>
       seq('(', $.expression, ',', $.expression, repeat(seq(',', $.expression)), ')'),
@@ -535,10 +543,13 @@ module.exports = grammar({
         $.rational,
         $.pitch_literal,
         $.interval_literal,
+        $.string,
         'true',
         'false',
         'None',
         seq('Some', '(', $.identifier, ')'),
+        seq('Ok', '(', $.identifier, ')'),
+        seq('Err', '(', $.identifier, ')'),
         seq('[', ']'),
         seq('[', $.identifier, ',', '.', '.', $.identifier, ']'),
         seq('(', $.identifier, ',', $.identifier, repeat(seq(',', $.identifier)), ')'),

@@ -86,9 +86,12 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("kernel", SyntaxKind::KernelKw),
     ("Option", SyntaxKind::OptionKw),
     ("List", SyntaxKind::ListKw),
+    ("Result", SyntaxKind::ResultKw),
     ("match", SyntaxKind::MatchKw),
     ("Some", SyntaxKind::SomeKw),
     ("None", SyntaxKind::NoneKw),
+    ("Ok", SyntaxKind::OkKw),
+    ("Err", SyntaxKind::ErrKw),
     ("true", SyntaxKind::TrueKw),
     ("false", SyntaxKind::FalseKw),
     ("scale", SyntaxKind::ScaleKw),
@@ -304,9 +307,12 @@ impl TokenClass {
             | SyntaxKind::KernelKw
             | SyntaxKind::OptionKw
             | SyntaxKind::ListKw
+            | SyntaxKind::ResultKw
             | SyntaxKind::MatchKw
             | SyntaxKind::SomeKw
             | SyntaxKind::NoneKw
+            | SyntaxKind::OkKw
+            | SyntaxKind::ErrKw
             | SyntaxKind::TrueKw
             | SyntaxKind::FalseKw
             | SyntaxKind::ScaleKw
@@ -401,6 +407,7 @@ impl TokenClass {
             | SyntaxKind::ProductType
             | SyntaxKind::OptionType
             | SyntaxKind::ListType
+            | SyntaxKind::ResultType
             | SyntaxKind::NameExpr
             | SyntaxKind::LiteralExpr
             | SyntaxKind::ParenExpr
@@ -408,6 +415,7 @@ impl TokenClass {
             | SyntaxKind::ProductExpr
             | SyntaxKind::ListExpr
             | SyntaxKind::OptionExpr
+            | SyntaxKind::ResultExpr
             | SyntaxKind::ApplyExpr
             | SyntaxKind::PitchExpr
             | SyntaxKind::ExprArgList

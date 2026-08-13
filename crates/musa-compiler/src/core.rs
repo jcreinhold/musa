@@ -400,6 +400,10 @@ pub(crate) enum Type {
     Bool,
     Nat,
     Ratio,
+    /// Opaque printable text. Storable data, and not a way in: nothing
+    /// reads structure out of it, so it cannot carry what a type would
+    /// otherwise have to say.
+    Text,
     Duration,
     Pitch,
     PitchClass,
@@ -416,6 +420,13 @@ pub(crate) enum Type {
     PcSet12,
     Row12,
     Product(Vec<Self>),
+    /// The binary sum `τ + τ`, written `Result<T, E>`.
+    ///
+    /// There is no `Type::Result`, and that is the point of the spelling:
+    /// `Result` is what a sum is *used for* here, not a second kind of
+    /// thing the compiler privileges
+    /// (`docs/rules/language/02-core-calculus.md` §1).
+    Sum(Box<Self>, Box<Self>),
     Option(Box<Self>),
     List(Box<Self>),
     Music,
@@ -436,6 +447,7 @@ impl std::fmt::Display for Type {
             Self::Bool => out.write_str("Bool"),
             Self::Nat => out.write_str("Nat"),
             Self::Ratio => out.write_str("Ratio"),
+            Self::Text => out.write_str("Text"),
             Self::Duration => out.write_str("Duration"),
             Self::Pitch => out.write_str("Pitch"),
             Self::PitchClass => out.write_str("NoteName"),
@@ -461,6 +473,7 @@ impl std::fmt::Display for Type {
                 }
                 out.write_str(")")
             }
+            Self::Sum(value, error) => write!(out, "Result<{value}, {error}>"),
             Self::Option(member) => write!(out, "Option<{member}>"),
             Self::List(member) => write!(out, "List<{member}>"),
             Self::Music => out.write_str("Music"),
@@ -659,6 +672,14 @@ enum ExprKind {
     Name(String),
     Product(Vec<Expr>),
     Option(Option<Box<Expr>>),
+    /// One injection into a binary sum. Both halves of the type are kept
+    /// because the value is one side and the type is both.
+    Injection {
+        error: bool,
+        held: Box<Expr>,
+        value_type: Type,
+        error_type: Type,
+    },
     List(Vec<Expr>),
     Apply {
         function: Box<Expr>,
@@ -833,6 +854,10 @@ enum Shape {
     Base(Base),
     Option(&'static Self),
     List(&'static Self),
+    Product(&'static [Self]),
+    /// `Result<value, error>` — how a primitive with more than one way to
+    /// fail says which one happened. `Option` says only *that* it did.
+    Result(&'static Self, &'static Self),
 }
 
 impl Shape {
@@ -842,6 +867,8 @@ impl Shape {
             Self::Base(base) => base.ty(),
             Self::Option(member) => Type::Option(Box::new(member.ty())),
             Self::List(member) => Type::List(Box::new(member.ty())),
+            Self::Product(members) => Type::Product(members.iter().map(|member| member.ty()).collect()),
+            Self::Result(value, error) => Type::Sum(Box::new(value.ty()), Box::new(error.ty())),
         }
     }
 
@@ -849,6 +876,10 @@ impl Shape {
     ///
     /// D2 lets a primitive be partial only by saying so in its result type, so this is what the
     /// sampling law consults before it accepts a `None` from an evaluator.
+    ///
+    /// A `Result` is *not* absence: both of its injections are values, so a primitive that
+    /// returns one owes the law a value on every input. Saying which way it failed is a
+    /// stronger promise than saying that it did, and this is where the law reads it.
     #[cfg(test)]
     const fn admits_absence(self) -> bool {
         matches!(self, Self::Option(_))
@@ -1051,7 +1082,14 @@ const MAYBE_CHORD: Shape = Shape::Option(&CHORD);
 const MAYBE_TRIAD: Shape = Shape::Option(&TRIAD);
 const MAYBE_ROMAN: Shape = Shape::Option(&ROMAN);
 const MAYBE_VOICING: Shape = Shape::Option(&VOICING);
-const MAYBE_ROW12: Shape = Shape::Option(&ROW12);
+
+/// A row, or the two exact reasons a sequence is not one: the order positions
+/// whose pitch class already appeared, and the pitch classes it never names
+/// (*Open Music Theory*, `108-basics-of-twelve-tone-theory.md`). Both, rather
+/// than a choice between them, because a sequence of the wrong length can have
+/// either without the other.
+const ROW_FAULT: Shape = Shape::Product(&[NATS, PC12S]);
+const ROW12_OR_FAULT: Shape = Shape::Result(&ROW12, &ROW_FAULT);
 
 /// A first-order signature, for the common case of writing one inline.
 const fn delta(arguments: &'static [Shape], result: Shape) -> Family {
@@ -1411,7 +1449,7 @@ const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 69] = [
         operation: Primitive::Row12Of,
         spelling: "row12_of",
         hidden_information: "the permutation invariant: twelve order positions and each pitch class once",
-        family: delta(&[PC12S], MAYBE_ROW12),
+        family: delta(&[PC12S], ROW12_OR_FAULT),
     },
     PrimitiveOwnership {
         operation: Primitive::Row12Pcs,
@@ -1593,6 +1631,8 @@ enum Pattern {
     Literal(Value),
     None,
     Some(String),
+    Ok(String),
+    Err(String),
     EmptyList,
     Cons { head: String, tail: String },
     Product(Vec<String>),
@@ -1605,6 +1645,8 @@ enum Coverage {
     False,
     None,
     Some,
+    Ok,
+    Err,
     EmptyList,
     Cons,
     Literal(String),
@@ -1647,6 +1689,7 @@ enum Value {
     Bool(bool),
     Nat(u64),
     Ratio(Ratio<i64>),
+    Text(String),
     Duration(Ratio<i64>),
     Pitch(WrittenPitch),
     PitchClass(PitchClass),
@@ -1663,8 +1706,25 @@ enum Value {
     PcSet12(crate::pc12::PcSet12),
     Row12(crate::pc12::Row12),
     Product(Vec<Self>),
-    Option { member: Type, value: Option<Box<Self>> },
-    List { member: Type, values: Vec<Self> },
+    /// One injection into a binary sum, carrying both halves of its type.
+    ///
+    /// Both are kept for the same reason `Option` keeps its member: the
+    /// value is one side, and the type is both, so a value that dropped the
+    /// other half could not say what it is.
+    Sum {
+        value_type: Type,
+        error_type: Type,
+        error: bool,
+        held: Box<Self>,
+    },
+    Option {
+        member: Type,
+        value: Option<Box<Self>>,
+    },
+    List {
+        member: Type,
+        values: Vec<Self>,
+    },
     Music(Music),
     Closure(Box<Closure>),
     Builtin(Box<BuiltinValue>),
@@ -2060,6 +2120,7 @@ impl Value {
             Self::Bool(_) => Type::Bool,
             Self::Nat(_) => Type::Nat,
             Self::Ratio(_) => Type::Ratio,
+            Self::Text(_) => Type::Text,
             Self::Duration(_) => Type::Duration,
             Self::Pitch(_) => Type::Pitch,
             Self::PitchClass(_) => Type::PitchClass,
@@ -2076,6 +2137,9 @@ impl Value {
             Self::PcSet12(_) => Type::PcSet12,
             Self::Row12(_) => Type::Row12,
             Self::Product(members) => Type::Product(members.iter().map(Self::ty).collect()),
+            Self::Sum {
+                value_type, error_type, ..
+            } => Type::Sum(Box::new(value_type.clone()), Box::new(error_type.clone())),
             Self::Option { member, .. } => Type::Option(Box::new(member.clone())),
             Self::List { member, .. } => Type::List(Box::new(member.clone())),
             Self::Music(_) => Type::Music,
@@ -2149,9 +2213,13 @@ impl Value {
             Self::Voicing(value) => value.pitches().fold(chord_witness(value.class()), |witness, pitch| {
                 witness.rotate_left(5) ^ Self::Pitch(pitch).normalization_witness()
             }),
+            Self::Text(value) => value
+                .bytes()
+                .fold(0u64, |witness, byte| witness.rotate_left(5) ^ u64::from(byte)),
             Self::Product(members) => members.iter().fold(0u64, |witness, member| {
                 witness.rotate_left(5) ^ member.normalization_witness()
             }),
+            Self::Sum { error, held, .. } => held.normalization_witness().rotate_left(3) ^ u64::from(*error),
             Self::Option { value, .. } => value.as_deref().map_or(0, Self::normalization_witness).rotate_left(1),
             Self::List { values, .. } => values.iter().fold(0u64, |witness, value| {
                 witness.rotate_left(5) ^ value.normalization_witness()
@@ -2263,6 +2331,16 @@ fn settle_expr(unifier: &Unifier, expr: &mut Expr) -> Option<(SourceSpan, Type)>
             members.iter_mut().find_map(|member| settle_expr(unifier, member))
         }
         ExprKind::Option(member) => member.as_mut().and_then(|member| settle_expr(unifier, member)),
+        ExprKind::Injection {
+            held,
+            value_type,
+            error_type,
+            ..
+        } => {
+            *value_type = unifier.resolve(value_type);
+            *error_type = unifier.resolve(error_type);
+            settle_expr(unifier, held)
+        }
         ExprKind::Apply { function, arguments } => settle_expr(unifier, function).or_else(|| {
             arguments
                 .iter_mut()
@@ -2282,7 +2360,10 @@ fn settle_expr(unifier: &Unifier, expr: &mut Expr) -> Option<(SourceSpan, Type)>
     // it is the one place a type nothing decided cannot simply be carried:
     // there is no member type to write down. Everywhere else an undecided
     // type is polymorphism, and the caller decides it.
-    let ambiguous = matches!(expr.kind, ExprKind::Option(_) | ExprKind::List(_)) && unifier.residue(&expr.ty).is_some();
+    let ambiguous = matches!(
+        expr.kind,
+        ExprKind::Option(_) | ExprKind::List(_) | ExprKind::Injection { .. }
+    ) && unifier.residue(&expr.ty).is_some();
     under.or_else(|| ambiguous.then(|| (expr.span, expr.ty.clone())))
 }
 
@@ -2800,6 +2881,7 @@ fn check_and_evaluate(
             Value::Bool(_)
             | Value::Nat(_)
             | Value::Ratio(_)
+            | Value::Text(_)
             | Value::Duration(_)
             | Value::Pitch(_)
             | Value::PitchClass(_)
@@ -2816,6 +2898,7 @@ fn check_and_evaluate(
             | Value::PcSet12(_)
             | Value::Row12(_)
             | Value::Product(_)
+            | Value::Sum { .. }
             | Value::Option { .. }
             | Value::List { .. }
             | Value::Closure(_)
@@ -3298,6 +3381,7 @@ fn legacy_default(ty: &Type, written: &str) -> Option<Value> {
         | Type::Bool
         | Type::Nat
         | Type::Ratio
+        | Type::Text
         | Type::PitchClass
         | Type::Interval
         | Type::Scale
@@ -3312,6 +3396,7 @@ fn legacy_default(ty: &Type, written: &str) -> Option<Value> {
         | Type::PcSet12
         | Type::Row12
         | Type::Product(_)
+        | Type::Sum(_, _)
         | Type::Option(_)
         | Type::List(_)
         | Type::Music
@@ -3327,6 +3412,7 @@ fn function_result(ty: &Type) -> Option<&Type> {
         | Type::Bool
         | Type::Nat
         | Type::Ratio
+        | Type::Text
         | Type::Duration
         | Type::Pitch
         | Type::PitchClass
@@ -3344,6 +3430,7 @@ fn function_result(ty: &Type) -> Option<&Type> {
         | Type::Row12
         | Type::Music
         | Type::Product(_)
+        | Type::Sum(_, _)
         | Type::Option(_)
         | Type::List(_) => None,
     }
@@ -3417,6 +3504,7 @@ fn named_type(text: &str) -> Option<Type> {
         "Bool" => Some(Type::Bool),
         "Nat" => Some(Type::Nat),
         "Ratio" => Some(Type::Ratio),
+        "Text" => Some(Type::Text),
         "Duration" => Some(Type::Duration),
         "Pitch" => Some(Type::Pitch),
         "NoteName" => Some(Type::PitchClass),
@@ -3486,6 +3574,14 @@ fn lower_type(mut resolver: Option<&mut Resolver>, node: &SyntaxNode) -> Option<
             .and_then(|part| lower_type(resolver.as_deref_mut(), &part))?;
         let result = parts.next().and_then(|part| lower_type(resolver, &part))?;
         return Some(Type::Function(vec![parameter], Box::new(result)));
+    }
+    if kind == SyntaxKind::ResultType {
+        let mut parts = node.children().filter(|child| is_type_node(child.kind()));
+        let value = parts
+            .next()
+            .and_then(|part| lower_type(resolver.as_deref_mut(), &part))?;
+        let error = parts.next().and_then(|part| lower_type(resolver, &part))?;
+        return Some(Type::Sum(Box::new(value), Box::new(error)));
     }
     if matches!(kind, SyntaxKind::OptionType | SyntaxKind::ListType) {
         let member = child_of(node, is_type_node).and_then(|child| lower_type(resolver, &child))?;
@@ -3565,6 +3661,8 @@ impl Checker<'_> {
             self.list(node, expected)
         } else if kind == SyntaxKind::OptionExpr {
             self.option(node, expected)
+        } else if kind == SyntaxKind::ResultExpr {
+            self.result(node, expected)
         } else if kind == SyntaxKind::ApplyExpr {
             self.application(node, expected)
         } else if kind == SyntaxKind::PitchExpr {
@@ -4254,6 +4352,8 @@ impl Checker<'_> {
                 );
                 None
             })?)
+        } else if kind == SyntaxKind::String {
+            Value::Text(musa_language::ast::unquote(token.text()))
         } else if kind == SyntaxKind::IntervalLiteral {
             Value::Interval(Interval::parse(token.text(), false).or_else(|| {
                 self.resolver.report(
@@ -4408,6 +4508,35 @@ impl Checker<'_> {
         })
     }
 
+    /// `Ok(value)` or `Err(reason)` — one injection into the binary sum.
+    ///
+    /// The written side decides one half of the type and inference decides
+    /// the other, so a constructor alone never determines a `Result`: the
+    /// side not written is a fresh variable, which the annotation, the use,
+    /// or the other arm of a `match` settles. Where nothing does, `settle`
+    /// reports it at the declaration, which is the same treatment `None`
+    /// already gets and for the same reason.
+    fn result(&mut self, node: &SyntaxNode, expected: Option<&Type>) -> Option<Expr> {
+        let (expected_value, expected_error) = match expected {
+            Some(Type::Sum(value, error)) => (value.as_ref().clone(), error.as_ref().clone()),
+            _ => (self.unifier.fresh(Kind::Ordinary), self.unifier.fresh(Kind::Ordinary)),
+        };
+        let error = significant_tokens(node).any(|token| token.kind() == SyntaxKind::ErrKw);
+        let held_node = child_of(node, is_expr_node)?;
+        let wanted = if error { &expected_error } else { &expected_value };
+        let held = Box::new(self.check(&held_node, Some(wanted))?);
+        Some(Expr {
+            kind: ExprKind::Injection {
+                error,
+                held,
+                value_type: expected_value.clone(),
+                error_type: expected_error.clone(),
+            },
+            ty: Type::Sum(Box::new(expected_value), Box::new(expected_error)),
+            span: crate::resolve::trimmed_span(node),
+        })
+    }
+
     fn option(&mut self, node: &SyntaxNode, expected: Option<&Type>) -> Option<Expr> {
         // An expected type that is still a variable says only "something
         // goes here": the member is a fresh variable, which whatever is
@@ -4455,7 +4584,7 @@ impl Checker<'_> {
         for arm in node.children().filter(|child| child.kind() == SyntaxKind::MatchArm) {
             let pattern_node = arm.children().find(|child| child.kind() == SyntaxKind::Pattern)?;
             let (pattern, covered, bindings) = self.check_pattern(&pattern_node, &scrutinee.ty)?;
-            if catch_all || is_exhaustive(&scrutinee.ty, &coverage) || !coverage.insert(covered.clone()) {
+            if catch_all || uncovered(&scrutinee.ty, &coverage).is_none() || !coverage.insert(covered.clone()) {
                 self.resolver.report(
                     Diagnostic::error(Code::UnreachablePattern, "this match arm can never be selected")
                         .at(crate::resolve::trimmed_span(&pattern_node), "already covered above"),
@@ -4474,13 +4603,10 @@ impl Checker<'_> {
             }
             arms.push(CheckedArm { pattern, body });
         }
-        if !is_exhaustive(&scrutinee.ty, &coverage) {
+        if let Some(missing) = uncovered(&scrutinee.ty, &coverage) {
             self.resolver.report(
                 Diagnostic::error(Code::NonExhaustiveMatch, "this match leaves a possible value uncovered")
-                    .at(
-                        crate::resolve::trimmed_span(node),
-                        "add the missing constructor or a `_` fallback",
-                    )
+                    .at(crate::resolve::trimmed_span(node), format!("add `{missing}`"))
                     .note(format!("the matched value has type `{}`", scrutinee.ty)),
             );
             self.failed = true;
@@ -4528,6 +4654,23 @@ impl Checker<'_> {
                 .map(|token| token.text().to_owned())?;
             bindings.insert(name.clone(), member.as_ref().clone());
             return Some((Pattern::Some(name), Coverage::Some, bindings));
+        }
+        if matches!(first.kind(), SyntaxKind::OkKw | SyntaxKind::ErrKw) {
+            let Type::Sum(value, error) = target else {
+                return self.pattern_type_error(span, target, "`Ok` and `Err` need a result");
+            };
+            let wanted = first.kind() == SyntaxKind::ErrKw;
+            let name = tokens
+                .iter()
+                .find(|token| token.kind() == SyntaxKind::Identifier)
+                .map(|token| token.text().to_owned())?;
+            let held = if wanted { error } else { value };
+            bindings.insert(name.clone(), held.as_ref().clone());
+            return Some(if wanted {
+                (Pattern::Err(name), Coverage::Err, bindings)
+            } else {
+                (Pattern::Ok(name), Coverage::Ok, bindings)
+            });
         }
         if first.kind() == SyntaxKind::LBracket {
             let Type::List(member) = target else {
@@ -4585,6 +4728,7 @@ impl Checker<'_> {
             Value::Bool(false) => Coverage::False,
             Value::Nat(_)
             | Value::Ratio(_)
+            | Value::Text(_)
             | Value::Duration(_)
             | Value::Pitch(_)
             | Value::PitchClass(_)
@@ -4601,6 +4745,7 @@ impl Checker<'_> {
             | Value::PcSet12(_)
             | Value::Row12(_)
             | Value::Product(_)
+            | Value::Sum { .. }
             | Value::Option { .. }
             | Value::List { .. }
             | Value::Music(_)
@@ -4618,6 +4763,7 @@ impl Checker<'_> {
             (SyntaxKind::Integer, Type::Duration) => {
                 Value::Duration(Ratio::from_integer(parse_i64(self.resolver, token)?))
             }
+            (SyntaxKind::String, Type::Text) => Value::Text(musa_language::ast::unquote(token.text())),
             (SyntaxKind::Rational, Type::Ratio) => Value::Ratio(parse_ratio(self.resolver, token)?),
             (SyntaxKind::Rational, Type::Duration) => Value::Duration(parse_ratio(self.resolver, token)?),
             (SyntaxKind::PitchLiteral, Type::Pitch) => Value::Pitch(WrittenPitch::parse(token.text())?),
@@ -4903,35 +5049,60 @@ fn raw_arguments(node: &SyntaxNode) -> Vec<SyntaxNode> {
         })
 }
 
-fn is_exhaustive(target: &Type, coverage: &IndexSet<Coverage>) -> bool {
-    coverage.contains(&Coverage::CatchAll)
-        || match target {
-            Type::Bool => coverage.contains(&Coverage::True) && coverage.contains(&Coverage::False),
-            Type::Option(_) => coverage.contains(&Coverage::None) && coverage.contains(&Coverage::Some),
-            Type::List(_) => coverage.contains(&Coverage::EmptyList) && coverage.contains(&Coverage::Cons),
-            Type::Var(_)
-            | Type::Unit
-            | Type::Nat
-            | Type::Ratio
-            | Type::Duration
-            | Type::Pitch
-            | Type::PitchClass
-            | Type::Interval
-            | Type::Scale
-            | Type::Key
-            | Type::Degree
-            | Type::Frame
-            | Type::ChordClass
-            | Type::Triad
-            | Type::Roman
-            | Type::Voicing
-            | Type::Pc12
-            | Type::PcSet12
-            | Type::Row12
-            | Type::Music
-            | Type::Product(_)
-            | Type::Function(_, _) => false,
+/// The case a match has not covered, spelled the way an arm would spell it.
+///
+/// `None` means the match is exhaustive, so this is what both the
+/// unreachable-arm check and the non-exhaustiveness diagnostic read: one
+/// place decides what "covered" means, and the diagnostic can name what is
+/// missing instead of asking the writer to work it out.
+///
+/// A type whose values are literals rather than constructors — a natural, a
+/// pitch, a text — cannot be covered by naming them all
+/// (`docs/rules/language/02-core-calculus.md` §5.6), so what is missing
+/// there is the fallback itself.
+fn uncovered(target: &Type, coverage: &IndexSet<Coverage>) -> Option<&'static str> {
+    fn missing(coverage: &IndexSet<Coverage>, case: &Coverage, spelling: &'static str) -> Option<&'static str> {
+        (!coverage.contains(case)).then_some(spelling)
+    }
+    if coverage.contains(&Coverage::CatchAll) {
+        return Option::None;
+    }
+    match target {
+        Type::Bool => {
+            missing(coverage, &Coverage::True, "true").or_else(|| missing(coverage, &Coverage::False, "false"))
         }
+        Type::Option(_) => {
+            missing(coverage, &Coverage::None, "None").or_else(|| missing(coverage, &Coverage::Some, "Some(value)"))
+        }
+        Type::Sum(_, _) => {
+            missing(coverage, &Coverage::Ok, "Ok(value)").or_else(|| missing(coverage, &Coverage::Err, "Err(reason)"))
+        }
+        Type::List(_) => missing(coverage, &Coverage::EmptyList, "[]")
+            .or_else(|| missing(coverage, &Coverage::Cons, "[head, ..tail]")),
+        Type::Var(_)
+        | Type::Unit
+        | Type::Nat
+        | Type::Ratio
+        | Type::Text
+        | Type::Duration
+        | Type::Pitch
+        | Type::PitchClass
+        | Type::Interval
+        | Type::Scale
+        | Type::Key
+        | Type::Degree
+        | Type::Frame
+        | Type::ChordClass
+        | Type::Triad
+        | Type::Roman
+        | Type::Voicing
+        | Type::Pc12
+        | Type::PcSet12
+        | Type::Row12
+        | Type::Music
+        | Type::Product(_)
+        | Type::Function(_, _) => Some("_"),
+    }
 }
 
 fn literal_key(value: &Value) -> String {
@@ -4939,6 +5110,10 @@ fn literal_key(value: &Value) -> String {
         Value::Bool(value) => format!("bool:{value}"),
         Value::Nat(value) => format!("nat:{value}"),
         Value::Ratio(value) => format!("ratio:{}/{}", value.numer(), value.denom()),
+        // The quoted form, not the raw text: `quote` is text's exact
+        // encoding, so two texts have one key exactly when they are one
+        // text, and no text can spell another value's key.
+        Value::Text(value) => format!("text:{}", musa_language::ast::quote(value)),
         Value::Duration(value) => format!("duration:{}/{}", value.numer(), value.denom()),
         Value::Pitch(value) => format!("pitch:{}:{}:{}", value.letter.steps(), value.accidental.0, value.octave),
         Value::PitchClass(value) => format!("pitchclass:{}:{}", value.letter.steps(), value.accidental.0),
@@ -4955,6 +5130,7 @@ fn literal_key(value: &Value) -> String {
         Value::PcSet12(value) => format!("pcset12:{value}"),
         Value::Row12(value) => format!("row12:{value}"),
         Value::Product(_)
+        | Value::Sum { .. }
         | Value::Option { .. }
         | Value::List { .. }
         | Value::Music(_)
@@ -5136,6 +5312,17 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
             };
             Some(Value::Option { member, value })
         }
+        ExprKind::Injection {
+            error,
+            held,
+            value_type,
+            error_type,
+        } => Some(Value::Sum {
+            value_type: value_type.clone(),
+            error_type: error_type.clone(),
+            error: *error,
+            held: Box::new(eval(held, environment, meter)?),
+        }),
         ExprKind::List(values) => {
             let Type::List(member) = &expression.ty else {
                 return None;
@@ -5172,6 +5359,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 Value::Bool(_)
                 | Value::Nat(_)
                 | Value::Ratio(_)
+                | Value::Text(_)
                 | Value::Duration(_)
                 | Value::Pitch(_)
                 | Value::PitchClass(_)
@@ -5188,6 +5376,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 | Value::PcSet12(_)
                 | Value::Row12(_)
                 | Value::Product(_)
+                | Value::Sum { .. }
                 | Value::Option { .. }
                 | Value::List { .. }
                 | Value::Music(_) => None,
@@ -5207,6 +5396,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 Value::Bool(_)
                 | Value::Nat(_)
                 | Value::Ratio(_)
+                | Value::Text(_)
                 | Value::Duration(_)
                 | Value::Interval(_)
                 | Value::Scale(_)
@@ -5221,6 +5411,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 | Value::PcSet12(_)
                 | Value::Row12(_)
                 | Value::Product(_)
+                | Value::Sum { .. }
                 | Value::Option { .. }
                 | Value::List { .. }
                 | Value::Music(_)
@@ -5288,6 +5479,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                     Value::Bool(_)
                     | Value::Nat(_)
                     | Value::Ratio(_)
+                    | Value::Text(_)
                     | Value::PitchClass(_)
                     | Value::Interval(_)
                     | Value::Scale(_)
@@ -5302,6 +5494,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                     | Value::PcSet12(_)
                     | Value::Row12(_)
                     | Value::Product(_)
+                    | Value::Sum { .. }
                     | Value::Option { .. }
                     | Value::List { .. }
                     | Value::Music(_)
@@ -5392,6 +5585,7 @@ fn pitch_term(expression: &Expr, environment: &IndexMap<String, Value>, meter: &
             moved.resolve(None).ok().map(PitchTerm::Written)
         }
         ExprKind::Literal(_)
+        | ExprKind::Injection { .. }
         | ExprKind::Name(_)
         | ExprKind::Product(_)
         | ExprKind::Option(_)
@@ -5636,12 +5830,30 @@ fn eval_primitive(
                     .collect(),
             })
         }
+        // The one primitive that says *which* way it failed. A caller used to
+        // learn that from `row12_repeats` and `row12_missing`, run again on
+        // the same input; the reason now comes back with the refusal.
         Primitive::Row12Of => {
             let pcs = pc12_list(values.first()?)?;
-            Some(optional(
-                Type::Row12,
-                crate::pc12::Row12::checked(&pcs).map(Value::Row12),
-            ))
+            let held = match crate::pc12::Row12::checked(&pcs) {
+                Some(row) => Value::Row12(row),
+                None => Value::Product(vec![
+                    Value::List {
+                        member: Type::Nat,
+                        values: crate::pc12::repeated_positions(&pcs)
+                            .into_iter()
+                            .map(Value::Nat)
+                            .collect(),
+                    },
+                    pc12_values(crate::pc12::missing_classes(&pcs)),
+                ]),
+            };
+            Some(Value::Sum {
+                value_type: Type::Row12,
+                error_type: ROW_FAULT.ty(),
+                error: !matches!(held, Value::Row12(_)),
+                held: Box::new(held),
+            })
         }
         Primitive::Row12Pcs => {
             let Value::Row12(row) = values.first()? else {
@@ -5924,6 +6136,7 @@ fn eval_primitive(
                     Value::Bool(_)
                     | Value::Nat(_)
                     | Value::Ratio(_)
+                    | Value::Text(_)
                     | Value::Duration(_)
                     | Value::PitchClass(_)
                     | Value::Interval(_)
@@ -5939,6 +6152,7 @@ fn eval_primitive(
                     | Value::PcSet12(_)
                     | Value::Row12(_)
                     | Value::Product(_)
+                    | Value::Sum { .. }
                     | Value::Option { .. }
                     | Value::List { .. }
                     | Value::Music(_)
@@ -6242,6 +6456,17 @@ fn match_pattern(pattern: &Pattern, value: &Value) -> Option<IndexMap<String, Va
                 false
             }
         }
+        Pattern::Ok(name) | Pattern::Err(name) => {
+            let wanted = matches!(pattern, Pattern::Err(_));
+            if let Value::Sum { error, held, .. } = value
+                && *error == wanted
+            {
+                bindings.insert(name.clone(), held.as_ref().clone());
+                true
+            } else {
+                false
+            }
+        }
         Pattern::EmptyList => matches!(value, Value::List { values, .. } if values.is_empty()),
         Pattern::Cons { head, tail } => {
             if let Value::List { member, values } = value
@@ -6310,7 +6535,12 @@ fn value_shape(value: &Value) -> (u64, u64) {
         Value::PcSet12(_) => (1, 2),
         Value::Row12(_) => (1, 12),
         Value::Voicing(value) => (1, u64::try_from(value.size()).unwrap_or(u64::MAX).saturating_mul(12)),
+        Value::Text(value) => (1, u64::try_from(value.len()).unwrap_or(u64::MAX)),
         Value::Product(members) => aggregate_shape(members.iter()),
+        Value::Sum { held, .. } => {
+            let (nodes, bytes) = value_shape(held);
+            (nodes.saturating_add(1), bytes.saturating_add(1))
+        }
         Value::Option { value, .. } => value.as_deref().map_or((1, 1), |value| {
             let (nodes, bytes) = value_shape(value);
             (nodes.saturating_add(1), bytes.saturating_add(1))
@@ -6665,6 +6895,7 @@ fn is_type_node(kind: SyntaxKind) -> bool {
             | SyntaxKind::FunctionType
             | SyntaxKind::ProductType
             | SyntaxKind::OptionType
+            | SyntaxKind::ResultType
             | SyntaxKind::ListType
     )
 }
@@ -6703,6 +6934,7 @@ fn is_expr_node(kind: SyntaxKind) -> bool {
             | SyntaxKind::ProductExpr
             | SyntaxKind::ListExpr
             | SyntaxKind::OptionExpr
+            | SyntaxKind::ResultExpr
             | SyntaxKind::ApplyExpr
             | SyntaxKind::PitchExpr
             | SyntaxKind::ChordExpr
@@ -6810,7 +7042,7 @@ mod tests {
     #[test]
     fn every_removed_type_name_still_reaches_its_type() {
         for (was, now) in musa_language::RESPELLED_TYPES {
-            if matches!(*now, "Option" | "List") {
+            if matches!(*now, "Option" | "List" | "Result") {
                 continue; // Parameterized: a node kind, not a name.
             }
             assert!(
@@ -6948,7 +7180,13 @@ mod tests {
             Value::Pc12(_) => Type::Pc12,
             Value::PcSet12(_) => Type::PcSet12,
             Value::Row12(_) => Type::Row12,
+            Value::Text(_) => Type::Text,
             Value::Option { member, .. } => Type::Option(Box::new(member.clone())),
+            Value::Sum {
+                value_type: value,
+                error_type: error,
+                ..
+            } => Type::Sum(Box::new(value.clone()), Box::new(error.clone())),
             Value::List { member, .. } => Type::List(Box::new(member.clone())),
             Value::Product(members) => Type::Product(members.iter().map(value_type).collect::<Option<Vec<_>>>()?),
             Value::Music(_) | Value::Closure(_) | Value::Builtin(_) => return None,
@@ -6999,7 +7237,10 @@ mod tests {
             let Some(member) = members.first().and_then(value_type) else {
                 continue;
             };
-            if matches!(member, Type::Option(_) | Type::List(_) | Type::Product(_)) {
+            if matches!(
+                member,
+                Type::Option(_) | Type::List(_) | Type::Sum(_, _) | Type::Product(_)
+            ) {
                 continue;
             }
             let ty = Type::List(Box::new(member.clone())).to_string();
@@ -7076,10 +7317,13 @@ mod tests {
                     let answer = apply(entry.operation, &typed);
                     if let Some(value) = &answer {
                         discovered.push(value.clone());
-                        // An option's or list's members are themselves samples, which is how the
-                        // pool reaches domains no seed can spell.
+                        // An option's, sum's, or list's members are themselves samples, which is
+                        // how the pool reaches domains no seed can spell — `Row12` among them,
+                        // since `row12_of` is the only way to make one and it answers with a sum.
                         if let Value::Option { value: Some(inner), .. } = value {
                             discovered.push(inner.as_ref().clone());
+                        } else if let Value::Sum { held, .. } = value {
+                            discovered.push(held.as_ref().clone());
                         } else if let Value::List { values, .. } = value {
                             discovered.extend(values.iter().cloned());
                         }
@@ -7153,6 +7397,7 @@ mod tests {
         match ty {
             Type::Function(..) => true,
             Type::Option(member) | Type::List(member) => mentions_function(member),
+            Type::Sum(value, error) => mentions_function(value) || mentions_function(error),
             Type::Product(members) => members.iter().any(mentions_function),
             // Listed rather than wildcarded: a new *type former* would otherwise be assumed
             // arrow-free, and this law is the only thing standing between that assumption and
@@ -7178,6 +7423,7 @@ mod tests {
             | Type::Pc12
             | Type::PcSet12
             | Type::Row12
+            | Type::Text
             | Type::Music => false,
         }
     }

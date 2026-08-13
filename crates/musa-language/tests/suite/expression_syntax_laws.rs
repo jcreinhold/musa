@@ -11,6 +11,14 @@ const EXPRESSIONS: &str = r#"piece "Expressions" {
 
     fn transform(f: Pitch -> Pitch, root: Pitch) -> Pitch { f(root) }
 
+    fn reason(outcome: Result<Pitch, Text>) -> Text { match outcome {
+        Ok(found) -> "",
+        Err(said) -> said,
+    } }
+
+    let attempted: Result<Pitch, Text> = Ok(c4);
+    let refused: Result<Pitch, Text> = Err("no such note");
+
     fn melody(root: Pitch) -> Music { music {
         root/4
         use answer(root);
@@ -44,9 +52,11 @@ fn expression_cst_has_one_role_for_each_surface_form() {
         SyntaxKind::ProductType,
         SyntaxKind::ListType,
         SyntaxKind::OptionType,
+        SyntaxKind::ResultType,
         SyntaxKind::ProductExpr,
         SyntaxKind::ListExpr,
         SyntaxKind::OptionExpr,
+        SyntaxKind::ResultExpr,
         SyntaxKind::ApplyExpr,
         SyntaxKind::MatchExpr,
         SyntaxKind::MatchArm,
@@ -69,9 +79,11 @@ fn expression_cst_has_one_role_for_each_surface_form() {
                         | SyntaxKind::ProductType
                         | SyntaxKind::ListType
                         | SyntaxKind::OptionType
+                        | SyntaxKind::ResultType
                         | SyntaxKind::ProductExpr
                         | SyntaxKind::ListExpr
                         | SyntaxKind::OptionExpr
+                        | SyntaxKind::ResultExpr
                         | SyntaxKind::ApplyExpr
                         | SyntaxKind::MatchExpr
                         | SyntaxKind::MatchArm

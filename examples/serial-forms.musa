@@ -17,20 +17,24 @@ piece "Serial Forms" {
     let generic_pcs: List<Pc12> = pcs([0, 1, 4, 9, 5, 8, 3, 10, 2, 11, 6, 7]);
 
     // The only way into `row12`, and it can fail: twelve entries, each pitch
-    // class once. Absence is the whole answer here, so the exact reason is
-    // asked for separately, below.
-    let generic: Option<Row12> = row(generic_pcs);
+    // class once. The failure carries its own reason, so a caller that has
+    // the failure never has to ask the question again to learn why.
+    let generic: Result<Row12, (List<Nat>, List<Pc12>)> = row(generic_pcs);
 
     // The ascending chromatic row, which is a row and is also symmetric: the
     // retrograde inversion about eleven sends it to itself.
     let chromatic_pcs: List<Pc12> = pcs([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
-    let chromatic: Option<Row12> = row(chromatic_pcs);
+    let chromatic: Result<Row12, (List<Nat>, List<Pc12>)> = row(chromatic_pcs);
 
-    // Not a row, and the constructor says only that. Which position repeated
-    // and which pitch class never arrived are exact questions with exact
-    // answers, and they are these — `[3]` and `[11]`.
+    // Not a row, and the `Err` says which two ways: the position that
+    // repeated and the pitch class that never arrived — `[3]` and `[11]`.
+    // Asked separately here, because a pattern binds the reason whole.
     let flawed_pcs: List<Pc12> = pcs([0, 1, 2, 0, 4, 5, 6, 7, 8, 9, 10, 3]);
-    let flawed: Option<Row12> = row(flawed_pcs);
+    let flawed: Result<Row12, (List<Nat>, List<Pc12>)> = row(flawed_pcs);
+    let flawed_is_row: Bool = match flawed {
+        Ok(series) -> true,
+        Err(reason) -> false,
+    };
     let flawed_repeats: List<Nat> = repeated_positions(flawed_pcs);
     let flawed_missing: List<Pc12> = missing_classes(flawed_pcs);
 
@@ -40,19 +44,37 @@ piece "Serial Forms" {
     fn form_count(series: Row12) -> Nat { distinct_forms(series) }
     fn symmetry_count(series: Row12) -> Nat { symmetries(series) }
 
-    let generic_forms: Nat = option_fold(0, form_count, generic);
-    let generic_symmetries: Nat = option_fold(0, symmetry_count, generic);
-    let chromatic_forms: Nat = option_fold(0, form_count, chromatic);
-    let chromatic_symmetries: Nat = option_fold(0, symmetry_count, chromatic);
+    let generic_forms: Nat = match generic {
+        Ok(series) -> form_count(series),
+        Err(reason) -> 0,
+    };
+    let generic_symmetries: Nat = match generic {
+        Ok(series) -> symmetry_count(series),
+        Err(reason) -> 0,
+    };
+    let chromatic_forms: Nat = match chromatic {
+        Ok(series) -> form_count(series),
+        Err(reason) -> 0,
+    };
+    let chromatic_symmetries: Nat = match chromatic {
+        Ok(series) -> symmetry_count(series),
+        Err(reason) -> 0,
+    };
 
     // The matrix: twelve rows, row zero the row as written, each column read
     // downward an inversion. The construction names no convention, so the
     // index a form is *called* is asked for separately and by name.
     fn matrix_of(series: Row12) -> List<Row12> { matrix(series) }
-    let generic_matrix: List<Row12> = option_fold([], matrix_of, generic);
+    let generic_matrix: List<Row12> = match generic {
+        Ok(series) -> matrix_of(series),
+        Err(reason) -> [],
+    };
 
     fn fixed_zero(series: Row12) -> Nat { fixed_zero_index(series) }
-    let generic_fixed_zero: Nat = option_fold(0, fixed_zero, generic);
+    let generic_fixed_zero: Nat = match generic {
+        Ok(series) -> fixed_zero(series),
+        Err(reason) -> 0,
+    };
 
     // The spelling projection, and it is not a coercion. C major spells seven
     // of the twelve classes and nothing else, so five positions come back
@@ -60,7 +82,10 @@ piece "Serial Forms" {
     fn in_c_major(series: Row12) -> List<Option<NoteName>> {
         row_spelled_in(series, scale c major)
     }
-    let generic_in_c_major: List<Option<NoteName>> = option_fold([], in_c_major, generic);
+    let generic_in_c_major: List<Option<NoteName>> = match generic {
+        Ok(series) -> in_c_major(series),
+        Err(reason) -> [],
+    };
 
     // Sets forget order as well as spelling. This is the row's first
     // tetrachord as a set: its normal order, its prime form, and its

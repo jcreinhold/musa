@@ -239,12 +239,18 @@ pub enum SyntaxKind {
     OptionKw,
     /// `list`
     ListKw,
+    /// `Result`
+    ResultKw,
     /// `match`
     MatchKw,
     /// `some`
     SomeKw,
     /// `none`
     NoneKw,
+    /// `Ok`
+    OkKw,
+    /// `Err`
+    ErrKw,
     /// `true`
     TrueKw,
     /// `false`
@@ -474,6 +480,8 @@ pub enum SyntaxKind {
     OptionType,
     /// `list[type]`.
     ListType,
+    /// `Result<value, error>` — the binary sum, in its one surface spelling.
+    ResultType,
     /// A reference to a value by name.
     NameExpr,
     /// A core scalar literal.
@@ -492,6 +500,8 @@ pub enum SyntaxKind {
     ListExpr,
     /// `some(expression)` or `none`.
     OptionExpr,
+    /// `Ok(value)` or `Err(reason)` — an injection into the binary sum.
+    ResultExpr,
     /// Ordinary function application.
     ApplyExpr,
     /// Spelling-preserving written-pitch translation: `pitch up M2`.

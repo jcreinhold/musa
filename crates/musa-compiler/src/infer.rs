@@ -87,6 +87,7 @@ impl std::fmt::Display for Scheme {
 fn members(ty: &Type) -> Vec<&Type> {
     match ty {
         Type::Product(members) => members.iter().collect(),
+        Type::Sum(value, error) => vec![value, error],
         Type::Option(member) | Type::List(member) => vec![member],
         Type::Function(parameters, result) => parameters.iter().chain(std::iter::once(result.as_ref())).collect(),
         Type::Var(_)
@@ -94,6 +95,7 @@ fn members(ty: &Type) -> Vec<&Type> {
         | Type::Bool
         | Type::Nat
         | Type::Ratio
+        | Type::Text
         | Type::Duration
         | Type::Pitch
         | Type::PitchClass
@@ -118,6 +120,7 @@ fn members(ty: &Type) -> Vec<&Type> {
 fn rebuilt(ty: &Type, mut member: impl FnMut(&Type) -> Type) -> Type {
     match ty {
         Type::Product(members) => Type::Product(members.iter().map(member).collect()),
+        Type::Sum(value, error) => Type::Sum(Box::new(member(value)), Box::new(member(error))),
         Type::Option(inner) => Type::Option(Box::new(member(inner))),
         Type::List(inner) => Type::List(Box::new(member(inner))),
         Type::Function(parameters, result) => {
@@ -128,6 +131,7 @@ fn rebuilt(ty: &Type, mut member: impl FnMut(&Type) -> Type) -> Type {
         | Type::Bool
         | Type::Nat
         | Type::Ratio
+        | Type::Text
         | Type::Duration
         | Type::Pitch
         | Type::PitchClass
@@ -403,6 +407,9 @@ pub(crate) fn admits(declared: &Type, found: &Type) -> bool {
             ours.len() == theirs.len() && ours.iter().zip(theirs).all(|(ours, theirs)| admits(ours, theirs))
         }
         (Type::Option(ours), Type::Option(theirs)) | (Type::List(ours), Type::List(theirs)) => admits(ours, theirs),
+        (Type::Sum(our_value, our_error), Type::Sum(their_value, their_error)) => {
+            admits(our_value, their_value) && admits(our_error, their_error)
+        }
         (Type::Function(ours, our_result), Type::Function(theirs, their_result)) => {
             ours.len() == theirs.len()
                 && ours.iter().zip(theirs).all(|(ours, theirs)| admits(ours, theirs))
@@ -440,7 +447,12 @@ mod tests {
             Type::Nat,
             arrow.clone(),
         ])))));
-        for refused in [arrow, buried] {
+        // A sum holding a function on either side, which is where a `Result`
+        // would smuggle one in: the failure side is as storable as the
+        // success side, and neither may be an arrow.
+        let returned = Type::Sum(Box::new(Type::Row12), Box::new(arrow.clone()));
+        let carried = Type::Sum(Box::new(arrow.clone()), Box::new(Type::Nat));
+        for refused in [arrow, buried, returned, carried] {
             let mut unifier = Unifier::default();
             let data = unifier.fresh(Kind::Data);
             assert_eq!(
@@ -537,6 +549,7 @@ mod tests {
         let leaf = prop_oneof![
             Just(Type::Nat),
             Just(Type::Pitch),
+            Just(Type::Text),
             Just(Type::Var(0)),
             Just(Type::Var(1)),
         ];
@@ -544,6 +557,7 @@ mod tests {
             prop_oneof![
                 inner.clone().prop_map(|member| Type::List(Box::new(member))),
                 inner.clone().prop_map(|member| Type::Option(Box::new(member))),
+                (inner.clone(), inner.clone()).prop_map(|(value, error)| Type::Sum(Box::new(value), Box::new(error))),
                 prop::collection::vec(inner.clone(), 1..3).prop_map(Type::Product),
                 (prop::collection::vec(inner.clone(), 1..3), inner)
                     .prop_map(|(parameters, result)| Type::Function(parameters, Box::new(result))),
@@ -580,6 +594,31 @@ mod tests {
                 prop_assert_eq!(unifier.unify(&left, &right), Ok(()));
                 prop_assert_eq!(unifier.resolve(&left), settled);
             }
+        }
+
+        /// §1.1's storable-data rule, over every type the generator can build:
+        /// a data variable takes a type exactly when no arrow appears anywhere
+        /// inside it. Stating it as a property rather than a list of shapes is
+        /// what makes it a rule about *structure* — a sum, and so a `Result`,
+        /// is storable data exactly when both its members are, and it earns
+        /// that from the same clause every other container earns it from.
+        #[test]
+        fn a_data_variable_takes_exactly_the_types_holding_no_arrow(ty in any_type()) {
+            fn holds_an_arrow(ty: &Type) -> bool {
+                matches!(ty, Type::Function(_, _)) || super::members(ty).into_iter().any(holds_an_arrow)
+            }
+            let mut unifier = Unifier::default();
+            // The two variables the generator can name, minted first so that
+            // `Var(0)` and `Var(1)` mean what the generated type says they do.
+            let (first, second) = (unifier.fresh(Kind::Ordinary), unifier.fresh(Kind::Ordinary));
+            prop_assert_eq!((first, second), (Type::Var(0), Type::Var(1)));
+            let data = unifier.fresh(Kind::Data);
+            prop_assert_eq!(
+                unifier.unify(&data, &ty).is_err(),
+                holds_an_arrow(&ty),
+                "`{}` was classified against §1.1's structural rule",
+                ty
+            );
         }
 
         /// Principality, as the unifier can state it: the solution binds only

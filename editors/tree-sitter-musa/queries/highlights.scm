@@ -106,6 +106,7 @@
 (harmony_declaration "harmony" @keyword)
 (option_type "Option" @keyword)
 (list_type "List" @keyword)
+(result_type "Result" @keyword)
 (scale_expression "scale" @keyword)
 (in_scale_statement "scale" @keyword)
 
@@ -119,6 +120,8 @@
 [
   "Some"
   "None"
+  "Ok"
+  "Err"
 ] @constant.builtin
 
 ; --- The music itself ------------------------------------------------------

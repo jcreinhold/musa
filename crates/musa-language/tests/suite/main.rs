@@ -9,4 +9,5 @@ mod expression_syntax_laws;
 mod formatter;
 mod highlight_laws;
 mod parser;
+mod text_encoding_laws;
 mod tree_sitter_fixtures;

@@ -541,6 +541,28 @@ static LIST: KeywordDoc = doc!(
     "`List<T>` is a finite ordered collection used by total folds and music-theory libraries. Square brackets construct its values.\n\n\
      ```musa\nlet tones: List<Pitch> = [c4, e4, g4];\n```"
 );
+static RESULT: KeywordDoc = doc!(
+    "Result",
+    "a value, or the reason there is none",
+    "`Result<T, E>` is the binary sum, in the one shape this language has a use for: either `Ok(value)` or `Err(reason)`. \
+     Unlike `Option<T>` it says *which* way an operation failed, so an operation with two distinct failures returns one \
+     rather than asking the caller to re-derive the reason.\n\n\
+     ```musa\nlet series: Result<Row12, (List<Nat>, List<Pc12>)> = row12_of(sketch);\n```"
+);
+static OK: KeywordDoc = doc!(
+    "Ok",
+    "a result carrying the value that was wanted",
+    "`Ok(value)` constructs the left injection of `Result<T, E>`. It carries its type's capital because it is one of that \
+     type's two constructors.\n\n\
+     ```musa\nlet found: Result<Pitch, Text> = Ok(c4);\n```"
+);
+static ERR: KeywordDoc = doc!(
+    "Err",
+    "a result carrying the reason there is no value",
+    "`Err(reason)` constructs the right injection of `Result<T, E>`. The reason is an ordinary value of the error type, not \
+     a second channel beside the returned one, so a `match` reads it the way it reads any other case.\n\n\
+     ```musa\nlet found: Result<Pitch, Text> = Err(\"no pitch spells that class here\");\n```"
+);
 static MATCH: KeywordDoc = doc!(
     "match",
     "handle every form of a finite value",
@@ -779,9 +801,12 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         SyntaxKind::KernelKw => &KERNEL,
         SyntaxKind::OptionKw => &OPTION,
         SyntaxKind::ListKw => &LIST,
+        SyntaxKind::ResultKw => &RESULT,
         SyntaxKind::MatchKw => &MATCH,
         SyntaxKind::SomeKw => &SOME,
         SyntaxKind::NoneKw => &NONE,
+        SyntaxKind::OkKw => &OK,
+        SyntaxKind::ErrKw => &ERR,
         SyntaxKind::TrueKw => &TRUE,
         SyntaxKind::FalseKw => &FALSE,
 
@@ -907,6 +932,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::ProductType
         | SyntaxKind::OptionType
         | SyntaxKind::ListType
+        | SyntaxKind::ResultType
         | SyntaxKind::NameExpr
         | SyntaxKind::LiteralExpr
         | SyntaxKind::ParenExpr
@@ -914,6 +940,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::ProductExpr
         | SyntaxKind::ListExpr
         | SyntaxKind::OptionExpr
+        | SyntaxKind::ResultExpr
         | SyntaxKind::ApplyExpr
         | SyntaxKind::PitchExpr
         | SyntaxKind::ExprArgList

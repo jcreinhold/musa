@@ -1421,6 +1421,10 @@
           "name": "list_type"
         },
         {
+          "type": "SYMBOL",
+          "name": "result_type"
+        },
+        {
           "type": "SEQ",
           "members": [
             {
@@ -1478,6 +1482,35 @@
         {
           "type": "STRING",
           "value": "<"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "type_expression"
+        },
+        {
+          "type": "STRING",
+          "value": ">"
+        }
+      ]
+    },
+    "result_type": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "Result"
+        },
+        {
+          "type": "STRING",
+          "value": "<"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "type_expression"
+        },
+        {
+          "type": "STRING",
+          "value": ","
         },
         {
           "type": "SYMBOL",
@@ -1931,6 +1964,10 @@
         },
         {
           "type": "SYMBOL",
+          "name": "result_expression"
+        },
+        {
+          "type": "SYMBOL",
           "name": "list_expression"
         },
         {
@@ -2056,6 +2093,10 @@
           "name": "interval_literal"
         },
         {
+          "type": "SYMBOL",
+          "name": "string"
+        },
+        {
           "type": "STRING",
           "value": "true"
         },
@@ -2078,6 +2119,53 @@
             {
               "type": "STRING",
               "value": "Some"
+            },
+            {
+              "type": "STRING",
+              "value": "("
+            },
+            {
+              "type": "SYMBOL",
+              "name": "expression"
+            },
+            {
+              "type": "STRING",
+              "value": ")"
+            }
+          ]
+        }
+      ]
+    },
+    "result_expression": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "STRING",
+              "value": "Ok"
+            },
+            {
+              "type": "STRING",
+              "value": "("
+            },
+            {
+              "type": "SYMBOL",
+              "name": "expression"
+            },
+            {
+              "type": "STRING",
+              "value": ")"
+            }
+          ]
+        },
+        {
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "STRING",
+              "value": "Err"
             },
             {
               "type": "STRING",
@@ -2288,6 +2376,10 @@
           "name": "interval_literal"
         },
         {
+          "type": "SYMBOL",
+          "name": "string"
+        },
+        {
           "type": "STRING",
           "value": "true"
         },
@@ -2305,6 +2397,48 @@
             {
               "type": "STRING",
               "value": "Some"
+            },
+            {
+              "type": "STRING",
+              "value": "("
+            },
+            {
+              "type": "SYMBOL",
+              "name": "identifier"
+            },
+            {
+              "type": "STRING",
+              "value": ")"
+            }
+          ]
+        },
+        {
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "STRING",
+              "value": "Ok"
+            },
+            {
+              "type": "STRING",
+              "value": "("
+            },
+            {
+              "type": "SYMBOL",
+              "name": "identifier"
+            },
+            {
+              "type": "STRING",
+              "value": ")"
+            }
+          ]
+        },
+        {
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "STRING",
+              "value": "Err"
             },
             {
               "type": "STRING",

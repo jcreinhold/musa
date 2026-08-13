@@ -940,6 +940,7 @@ fn is_type(kind: SyntaxKind) -> bool {
             | SyntaxKind::ProductType
             | SyntaxKind::OptionType
             | SyntaxKind::ListType
+            | SyntaxKind::ResultType
     )
 }
 

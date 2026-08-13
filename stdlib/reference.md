@@ -108,9 +108,9 @@ private to it.
 
 ## `std::post_tonal::serial`
 
-- `fn row(pcs: List<Pc12>) -> Option<Row12>` — The row a sequence spells, or nothing when the sequence is not one.
-- `fn repeated_positions(pcs: List<Pc12>) -> List<Nat>` — The order positions whose pitch class already appeared earlier — the exact reason a sequence failed to be a row. The first occurrence is not among them, because that is where the pitch class belongs.
-- `fn missing_classes(pcs: List<Pc12>) -> List<Pc12>` — The pitch classes a sequence never names, ascending — the other exact reason. A sequence of the right length has one of these lists empty exactly when it has the other empty.
+- `fn row(pcs: List<Pc12>) -> Result<Row12, (List<Nat>, List<Pc12>)>` — The row a sequence spells, or both exact reasons it is not one: the order positions that repeat an earlier pitch class, and the pitch classes the sequence never names. Both, rather than a choice between them, because a sequence of the wrong length can have either without the other.
+- `fn repeated_positions(pcs: List<Pc12>) -> List<Nat>` — The order positions whose pitch class already appeared earlier, asked on their own. The first occurrence is not among them, because that is where the pitch class belongs.
+- `fn missing_classes(pcs: List<Pc12>) -> List<Pc12>` — The pitch classes a sequence never names, ascending, asked on their own. A sequence of the right length has one of these lists empty exactly when it has the other empty.
 - `fn pcs_of(series: Row12) -> List<Pc12>` — The row's pitch classes, in order position order.
 - `fn transposed(series: Row12, index: Nat) -> Row12` — P: transposition by n semitones, order positions untouched.
 - `fn inverted(series: Row12, index: Nat) -> Row12` — I: inversion about n, order positions untouched.
