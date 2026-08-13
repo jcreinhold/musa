@@ -9774,6 +9774,193 @@ fn edit_stopped_or(meter: &WorkMeter, otherwise: EditFailure) -> EditFailure {
     }
 }
 
+/// Why an adapter's `print` produced no source text.
+///
+/// [`Self::Loss`] is `26-language-design-decision.md` §4's `PrintLoss`, and it
+/// is the one of these that is not a fault at all: the printer was handed a
+/// value carrying something it cannot write down, and said so. A printer that
+/// quietly dropped that detail would make the round-trip law true by making the
+/// value smaller, which is why the operation answers with a `Result` rather
+/// than with text.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum PrintFailure {
+    /// The adapter read the value and could not spell it — its own sentence.
+    Loss(String),
+    /// A compilation limit was crossed before the run finished.
+    Stopped,
+    /// The `print` did not check against the value it was handed.
+    NotAPrinter(Vec<Diagnostic>),
+    /// It checked and then did not answer.
+    NoAnswer,
+}
+
+/// Run one adapter's `print` over one ordinary value.
+///
+/// The third of `26-language-design-decision.md` §4's declared operations, and
+/// the only one that does **not** run in the phase environment: its input is an
+/// ordinary evaluated value rather than syntax, so it is an ordinary total
+/// package function and is read under the ordinary reading. A printer that
+/// could reach [`SYNTAX_OWNERSHIP`] would be a second way to build syntax, from
+/// a value, outside the one place expansion happens.
+///
+/// `value` is the value as an ordinary expression, because that is the one
+/// spelling of a value this crate shares with anything outside it. The printer
+/// and the value are checked as one application, so `A` is settled by
+/// unification rather than declared: the phase never learns the package's type
+/// and does not need to.
+pub(crate) fn print_value(printer: &str, value: &str) -> Result<String, PrintFailure> {
+    let mut unifier = Unifier::default();
+    let mut meter = WorkMeter::default();
+    run_printer(printer, value, &mut unifier, &mut meter)
+}
+
+fn run_printer(
+    printer: &str,
+    value: &str,
+    unifier: &mut Unifier,
+    meter: &mut WorkMeter,
+) -> Result<String, PrintFailure> {
+    let parsed = musa_language::parse(&format!(
+        "piece \"print\" {{\n  let subject = {value};\n  let printer = {printer};\n}}"
+    ));
+    let mut resolver = Resolver::new();
+    let declarations = root_nodes(&parsed.syntax(), SyntaxKind::LetDecl);
+    let bodies: Vec<SyntaxNode> = declarations
+        .iter()
+        .filter_map(|declaration| child_of(declaration, is_expr_node))
+        .collect();
+    let [subject, printer] = bodies.as_slice() else {
+        return Err(PrintFailure::NotAPrinter(resolver.diagnostics));
+    };
+    // The value first, and the printer against the type it turned out to have.
+    // `A` is settled by unification rather than declared: what a package's
+    // regions produce is the package's business, and a phase that had to be
+    // told it would be a phase that knows a type.
+    let Some(subject) = check_ordinary(subject, None, &mut resolver, unifier, meter) else {
+        return Err(print_failure(meter, &resolver));
+    };
+    let wanted = Type::Function(
+        vec![unifier.resolve(&subject.ty)],
+        Box::new(Type::Sum(Box::new(Type::Text), Box::new(Type::Text))),
+    );
+    let Some(printer) = check_ordinary(printer, Some(&wanted), &mut resolver, unifier, meter) else {
+        return Err(print_failure(meter, &resolver));
+    };
+    let environment = IndexMap::new();
+    let Some(argument) = eval(&subject, &environment, meter) else {
+        return Err(print_stopped_or(meter, PrintFailure::NoAnswer));
+    };
+    let Some(Value::Closure(function)) = eval(&printer, &environment, meter) else {
+        return Err(print_stopped_or(meter, PrintFailure::NoAnswer));
+    };
+    let applied = apply_closure(&function, vec![argument], meter, printer.span);
+    let Some(Value::Sum { error, held, .. }) = applied else {
+        return Err(print_stopped_or(meter, PrintFailure::NoAnswer));
+    };
+    let Value::Text(text) = *held else {
+        return Err(print_stopped_or(meter, PrintFailure::NoAnswer));
+    };
+    if error { Err(PrintFailure::Loss(text)) } else { Ok(text) }
+}
+
+/// Check one expression under the ordinary reading, with nothing else in scope.
+///
+/// The environment a printer and the value it is handed are both read in: no
+/// definitions, no module scope, and — the part that matters —
+/// [`Reading::Foreign`] rather than [`Reading::Expansion`], so
+/// [`SYNTAX_OWNERSHIP`] is not in scope. A printer that could build syntax
+/// would be a second way to make an expansion, out of a value, away from the
+/// one place expansion happens.
+fn check_ordinary(
+    node: &SyntaxNode,
+    wanted: Option<&Type>,
+    resolver: &mut Resolver,
+    unifier: &mut Unifier,
+    meter: &mut WorkMeter,
+) -> Option<Expr> {
+    let span = crate::resolve::trimmed_span(node);
+    let mut checker = Checker {
+        resolver,
+        definitions: &[],
+        symbols: &IndexMap::new(),
+        locals: IndexMap::new(),
+        unifier,
+        dependencies: IndexMap::new(),
+        mentioned: Vec::new(),
+        reading: Reading::Foreign,
+        failed: false,
+        meter,
+        music_role: None,
+        definition_span: span,
+        deferred_pitch: false,
+        scope: crate::module::NameScope::empty(),
+        modules: &Modules::default(),
+        world: &World::default(),
+    };
+    checker.check(node, wanted)
+}
+
+/// A stop when the meter stopped, and the checker's complaints when it did not.
+fn print_failure(meter: &WorkMeter, resolver: &Resolver) -> PrintFailure {
+    if meter.failure().is_some() {
+        PrintFailure::Stopped
+    } else {
+        PrintFailure::NotAPrinter(resolver.diagnostics.clone())
+    }
+}
+
+/// A stop when the meter stopped, and `otherwise` when it did not.
+fn print_stopped_or(meter: &WorkMeter, otherwise: PrintFailure) -> PrintFailure {
+    if meter.failure().is_some() {
+        PrintFailure::Stopped
+    } else {
+        otherwise
+    }
+}
+
+/// The text an ordinary expression evaluates to, for a law that compares two
+/// values rather than two spellings of one.
+///
+/// The round-trip law of §4 is about *values*, and the fixture that carries it
+/// states its equality as text equality — which is the fixture's own equality
+/// function, not a structural comparison of the printed source, because
+/// printing is allowed to normalize.
+#[cfg(test)]
+pub(crate) fn evaluate_text(expression: &str) -> Option<String> {
+    let parsed = musa_language::parse(&format!("piece \"value\" {{\n  let it = {expression}\n}}"));
+    let mut unifier = Unifier::default();
+    let mut meter = WorkMeter::default();
+    let mut resolver = Resolver::new();
+    let body = root_nodes(&parsed.syntax(), SyntaxKind::LetDecl)
+        .first()
+        .and_then(|declaration| child_of(declaration, is_expr_node))?;
+    let span = crate::resolve::trimmed_span(&body);
+    let mut checker = Checker {
+        resolver: &mut resolver,
+        definitions: &[],
+        symbols: &IndexMap::new(),
+        locals: IndexMap::new(),
+        unifier: &mut unifier,
+        dependencies: IndexMap::new(),
+        mentioned: Vec::new(),
+        reading: Reading::Foreign,
+        failed: false,
+        meter: &mut meter,
+        music_role: None,
+        definition_span: span,
+        deferred_pitch: false,
+        scope: crate::module::NameScope::empty(),
+        modules: &Modules::default(),
+        world: &World::default(),
+    };
+    let checked = checker.check(&body, Some(&Type::Text))?;
+    let environment = IndexMap::new();
+    let Value::Text(text) = eval(&checked, &environment, &mut meter)? else {
+        return None;
+    };
+    Some(text)
+}
+
 /// Run one transformer over one already-read region, in the phase environment.
 ///
 /// The work is reported whichever way the run came out, because what a run

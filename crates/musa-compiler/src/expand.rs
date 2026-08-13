@@ -246,6 +246,104 @@ struct SyntaxImport {
     /// Where the statement ends, which is what "before any definition that
     /// uses it" is checked against.
     ends: u32,
+    /// The whole statement, which is where an adapter that promises more than
+    /// it offers is refused.
+    at: SourceSpan,
+}
+
+/// What an adapter promises, in `26-language-design-decision.md` §4's words.
+///
+/// Three levels and an order on them, because each one is the one below it plus
+/// an operation: *readable* expands, *editable* also edits under the edit law,
+/// *generative* also prints under the round-trip law. A level is what a
+/// musician is told about a region — whether a control is greyed, whether an
+/// interface may offer to make one — so it is declared by the adapter and
+/// checked against what the module actually holds, rather than inferred from
+/// which `let`s happen to be there. Inferring it would make adding a
+/// half-finished `edit` silently promise the edit law.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum Level {
+    /// Expansion only: structured views of its regions are read-only.
+    Readable,
+    /// Expansion and `edit`, under the edit law.
+    Editable,
+    /// Editable, and `print` for new regions, under the round-trip law.
+    Generative,
+}
+
+impl Level {
+    /// The level a module declares, as it spells it.
+    fn named(word: &str) -> Option<Self> {
+        match word {
+            "readable" => Some(Self::Readable),
+            "editable" => Some(Self::Editable),
+            "generative" => Some(Self::Generative),
+            _ => None,
+        }
+    }
+
+    /// The word for it, for a sentence a reader gets.
+    fn word(self) -> &'static str {
+        match self {
+            Self::Readable => "readable",
+            Self::Editable => "editable",
+            Self::Generative => "generative",
+        }
+    }
+
+    /// Everything a module at this level must declare.
+    fn operations(self) -> &'static [&'static str] {
+        match self {
+            Self::Readable => &["expand"],
+            Self::Editable => &["expand", "edit"],
+            Self::Generative => &["expand", "edit", "print"],
+        }
+    }
+}
+
+/// Why a module could not be read as an adapter at the level it claims.
+///
+/// A message and a help, and no span: the same fault is reported at the import
+/// that names the module and at a region the module reads, and which of those
+/// the caret belongs on is the caller's question rather than this one's.
+struct LevelFault {
+    message: String,
+    help: &'static str,
+}
+
+/// The level `adapter_source` declares, checked against what it offers.
+///
+/// The check `26-language-design-decision.md` §4 asks for: a declared level is
+/// a promise, and a module that promises `generative` while declaring no
+/// `print` has promised something no musician can rely on. Under-promising is
+/// allowed and over-promising is not — a module may hold an `edit` it does not
+/// advertise, and what governs is the word it wrote.
+///
+/// A module that declares no level at all is refused rather than defaulted.
+/// "Declared and checked, not inferred" is the whole point: a default would be
+/// the compiler deciding what a package promises.
+fn level_of(adapter_source: &str, path: &str) -> Result<Level, LevelFault> {
+    let declared = declaration_of(adapter_source, "level").ok_or_else(|| LevelFault {
+        message: format!("`{path}` declares no conformance level"),
+        help: "an adapter module declares `let level = \"readable\";`, `\"editable\"`, or `\"generative\"`",
+    })?;
+    let word = declared
+        .strip_prefix('"')
+        .and_then(|rest| rest.strip_suffix('"'))
+        .unwrap_or(&declared);
+    let level = Level::named(word).ok_or_else(|| LevelFault {
+        message: format!("`{path}` declares the level `{word}`, which is not one of the three"),
+        help: "the levels are `readable`, `editable`, and `generative`, and each is the one before it plus an operation",
+    })?;
+    for operation in level.operations() {
+        if declaration_of(adapter_source, operation).is_none() {
+            return Err(LevelFault {
+                message: format!("`{path}` declares the {} level and no `{operation}`", level.word()),
+                help: "a level is a promise: declare the level the module reaches, or write the operation it names",
+            });
+        }
+    }
+    Ok(level)
 }
 
 /// Run step 4 of the fixed order over `source`.
@@ -256,13 +354,35 @@ pub(crate) fn expand(source: &SourceDocument, options: &CompileOptions) -> Expan
         .descendants()
         .filter(|node| node.kind() == SyntaxKind::SyntaxRegion)
         .collect();
-    if regions.is_empty() {
+    let imports = syntax_imports(&root);
+    if regions.is_empty() && imports.is_empty() {
         return Expansion::unchanged(source);
     }
-    let imports = syntax_imports(&root);
+    let mut expansion = Expansion::unchanged(source);
+    // The declared level, checked where the module is imported rather than
+    // where one of its regions stands. A promise is made by importing the
+    // package, so a file that overstates one is wrong whether or not it went on
+    // to write a region.
+    for import in &imports {
+        let uri = crate::imports::resolve_import(source.name(), &import.path);
+        let Some(adapter_source) = options.imports.get(&uri) else {
+            // Reported at the region that needed it, where a reader can see
+            // what the missing module was for.
+            continue;
+        };
+        if let Err(fault) = level_of(adapter_source, &import.path) {
+            expansion.diagnostics.push(
+                Diagnostic::error(Code::Expansion, fault.message)
+                    .at(import.at, "this import")
+                    .help(fault.help),
+            );
+        }
+    }
+    if regions.is_empty() {
+        return expansion;
+    }
     let written = names_written(source.text());
     let mut cache: BTreeMap<(String, String), Cached> = BTreeMap::new();
-    let mut expansion = Expansion::unchanged(source);
     let mut text = String::with_capacity(source.text().len());
     let mut copied = 0usize;
     for (ordinal, region) in regions.iter().enumerate() {
@@ -433,6 +553,16 @@ pub fn adapter_edits(
             "check the package path, or provide the file the import names",
         )))
     })?;
+    // The level decides, not the presence of an `edit`. A module that declares
+    // *readable* has said its regions are read-only, and an `edit` it did not
+    // advertise does not quietly make them writable.
+    let level = level_of(adapter_source, &import.path)
+        .map_err(|fault| AdapterEditError::Broken(Box::new(refusal(site, fault.message, fault.help))))?;
+    if level < Level::Editable {
+        return Err(AdapterEditError::ReadOnly {
+            adapter: import.path.clone(),
+        });
+    }
     let editor = match editor_of(adapter_source, &import.path, site) {
         Ok(editor) => editor,
         Err(None) => {
@@ -512,6 +642,134 @@ pub fn adapter_edits(
             })
         })
         .collect()
+}
+
+/// Why an adapter wrote no region for a value.
+///
+/// Three situations and a musician reading one needs to be told which. Only the
+/// last is a fault: an adapter below *generative* was never going to write one,
+/// and a stated loss is the printer working.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum AdapterPrintError {
+    /// The adapter does not declare the *generative* level.
+    ///
+    /// `26-language-design-decision.md` §4: a printer is what creates a region
+    /// where none exists, and an adapter that declares no printer offers no way
+    /// to start one — which is a level rather than a failure.
+    NotGenerative {
+        /// The adapter package, as the header names it.
+        adapter: String,
+        /// What it declares instead.
+        level: String,
+    },
+    /// The adapter read the value and could not write all of it down.
+    ///
+    /// §4's `PrintLoss`, in the adapter's own words. A printer that silently
+    /// dropped what it could not spell would satisfy the round-trip law by
+    /// making the value smaller, so a loss is an answer and never a discard.
+    Loss {
+        /// The adapter package, as the header names it.
+        adapter: String,
+        /// What it said it could not write.
+        message: String,
+    },
+    /// The adapter, or the value it was handed, is broken.
+    Broken(Box<Diagnostic>),
+}
+
+impl std::fmt::Display for AdapterPrintError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match *self {
+            Self::NotGenerative { ref adapter, ref level } => {
+                write!(formatter, "`{adapter}` is {level}, so it writes no new region")
+            }
+            Self::Loss {
+                ref adapter,
+                ref message,
+            } => write!(formatter, "`{adapter}`: {message}"),
+            Self::Broken(ref diagnostic) => formatter.write_str(&diagnostic.message),
+        }
+    }
+}
+
+impl std::error::Error for AdapterPrintError {}
+
+/// Ask a *generative* adapter to write a region for one value.
+///
+/// The third of `26-language-design-decision.md` §4's declared operations. The
+/// answer is the region's **contents** — what goes between the braces of
+/// `syntax <name> { … }` — because the region's name is the importing file's
+/// word for the package and not the package's word for itself.
+///
+/// `value` is the value as an ordinary expression, and `at` is the document the
+/// region will be written into, which is what the module path is resolved
+/// against. Unlike expansion and editing this reaches no region: a printer runs
+/// where none exists yet, which is the whole of what it is for.
+///
+/// **The round-trip law.** For a value the printer accepts, expanding the
+/// printed region and evaluating it gives an adapter-equal value. Equality is
+/// the package's to state. The law claims nothing about source, comments,
+/// layout, or origin — a printed region is new text, and §4 is explicit that a
+/// printer does not thereby make an existing region safely editable. That is
+/// [`adapter_edits`]' job and stays there.
+///
+/// # Errors
+/// [`AdapterPrintError`], which tells a level below *generative* and a stated
+/// loss apart from an adapter that is broken.
+pub fn adapter_print(
+    at: &SourceDocument,
+    options: &CompileOptions,
+    adapter: &str,
+    value: &str,
+) -> Result<String, AdapterPrintError> {
+    // Spanless, and every fault below with it: there is no region to point at
+    // yet, and a caret over the file's first byte would be a place the reader
+    // would go and find nothing.
+    let broken = |message: String, help: &'static str| {
+        AdapterPrintError::Broken(Box::new(Diagnostic::error(Code::Expansion, message).help(help)))
+    };
+    let uri = crate::imports::resolve_import(at.name(), adapter);
+    let adapter_source = options.imports.get(&uri).ok_or_else(|| {
+        broken(
+            format!("`{adapter}` is not a module this compilation can read"),
+            "check the package path, or provide the file the import names",
+        )
+    })?;
+    let level = level_of(adapter_source, adapter).map_err(|fault| broken(fault.message, fault.help))?;
+    if level < Level::Generative {
+        return Err(AdapterPrintError::NotGenerative {
+            adapter: adapter.to_owned(),
+            level: level.word().to_owned(),
+        });
+    }
+    let printer = declaration_of(adapter_source, "print").ok_or_else(|| {
+        broken(
+            format!("`{adapter}` declares no `print`"),
+            "an adapter module declares `let print = fn (value) { … };` to be generative",
+        )
+    })?;
+    crate::core::print_value(&printer, value).map_err(|failure| match failure {
+        crate::core::PrintFailure::Loss(message) => AdapterPrintError::Loss {
+            adapter: adapter.to_owned(),
+            message,
+        },
+        crate::core::PrintFailure::Stopped => AdapterPrintError::Broken(Box::new(
+            Diagnostic::error(
+                Code::ResourceLimit,
+                format!("writing a region with `{adapter}` crossed a compilation limit"),
+            )
+            .help("the adapter is total, so this is a limit rather than a loop"),
+        )),
+        crate::core::PrintFailure::NotAPrinter(_) => broken(
+            format!("`{adapter}`'s `print` does not read this value"),
+            "a printer is `fn (value) { … }` answering `Ok(text)` or `Err(loss)`, over the value its regions produce",
+        ),
+        crate::core::PrintFailure::NoAnswer => broken(
+            format!("`{adapter}` did not answer for this value"),
+            "the adapter checked and then produced nothing, which is a fault in the adapter",
+        ),
+    })
 }
 
 /// The `edit` an adapter module declares, as the text of one expression.
@@ -810,6 +1068,21 @@ fn transformer_of(adapter_source: &str, path: &str, site: SourceSpan) -> Result<
         })
 }
 
+/// The text of the module's `let <name> = …;`, whatever it declares.
+///
+/// The one way this phase reads an adapter module. An adapter's operations are
+/// its declarations and nothing else — there is no descriptor, no attribute,
+/// and no registration — so "does it offer `print`" and "what is its `print`"
+/// are the same question asked twice.
+fn declaration_of(adapter_source: &str, name: &str) -> Option<String> {
+    musa_language::parse(adapter_source)
+        .syntax()
+        .descendants()
+        .filter(|node| node.kind() == SyntaxKind::LetDecl)
+        .find(|declaration| declared_name(declaration).as_deref() == Some(name))
+        .and_then(|declaration| declared_body(&declaration, adapter_source))
+}
+
 /// The text of `let <name> = <this>;`.
 fn declared_body(declaration: &SyntaxNode, source: &str) -> Option<String> {
     let mut equals = None;
@@ -895,6 +1168,7 @@ fn syntax_imports(root: &SyntaxNode) -> Vec<SyntaxImport> {
                 alias: alias?,
                 path,
                 ends: u32::from(node.text_range().end()),
+                at: crate::resolve::trimmed_span(&node),
             })
         })
         .collect()
@@ -1588,10 +1862,10 @@ mod tests {
     }
 
     #[test]
-    fn an_adapter_with_no_edit_is_read_only_rather_than_broken() {
-        // The *readable* level of §4. A region whose adapter declares no `edit`
-        // is not a failure to report; it is a structured view that cannot be
-        // written through, and an interface has to be able to tell the two
+    fn a_readable_adapters_region_is_read_only_rather_than_broken() {
+        // The *readable* level of §4. A region whose adapter declares that
+        // level is not a failure to report; it is a structured view that cannot
+        // be written through, and an interface has to be able to tell the two
         // apart to know whether to grey a control or show a complaint.
         let source = piece("c4");
         let mut options = CompileOptions::default();
@@ -1602,7 +1876,7 @@ mod tests {
             .expect("the fixture is bundled")
             .split("    let edit =")
             .next()
-            .map(|kept| format!("{kept}}}\n"))
+            .map(|kept| format!("{}}}\n", kept.replace("\"editable\"", "\"readable\"")))
             .expect("the fixture declares `edit` last");
         options.imports.insert(uri, readable);
         let answer = adapter_edits(
@@ -1619,6 +1893,169 @@ mod tests {
                 adapter: "std::adapters::doubled".to_owned()
             }),
             "an adapter that declares no `edit` reports its level, not a fault"
+        );
+    }
+
+    /// A whole generative adapter, for the laws a printer carries.
+    ///
+    /// Here rather than in `stdlib/` for the reason `doubled`'s own comment
+    /// gives: a printer writes a value back as *source*, and the source
+    /// language has no text operations, so a printer can only spell what it
+    /// already holds the words for. This one holds two words, which is enough
+    /// for a round trip and honest about everything else being a loss. Its
+    /// regions hold one text literal and its value is that text.
+    const MOTTO: &str = r#"library {
+    let level = "generative";
+
+    let expand = fn (region) {
+        Ok(syntax_fold(
+            fn (here) { syntax_token(syntax_built(here, 0, 0), "Missing", "") },
+            fn (here, kind, text) { syntax_token(syntax_built(here, 1, 0), kind, text) },
+            fn (here, name) { syntax_identifier(syntax_built(here, 2, 0), name) },
+            fn (here, delimiter, children) { syntax_group(syntax_built(here, 3, 0), "layout", children) },
+            region
+        ))
+    };
+
+    let edit = fn (region, command, anchor, argument) {
+        match command {
+            "replace" -> Ok([(anchor, argument)]),
+            _ -> Err("`motto` serves one command, `replace`"),
+        }
+    };
+
+    let print = fn (value) {
+        match value {
+            "hello" -> Ok("\"hello\""),
+            "goodbye" -> Ok("\"goodbye\""),
+            _ -> Err("`motto` writes `hello` and `goodbye`, and this is neither"),
+        }
+    };
+}
+"#;
+
+    /// The URI the generative fixture is imported by.
+    fn motto() -> String {
+        crate::imports::resolve_import("laws.musa", "std::adapters::motto")
+    }
+
+    /// A compilation that can read `module` as `std::adapters::motto`.
+    fn reading(module: &str) -> CompileOptions {
+        let mut options = CompileOptions::default();
+        options.imports.insert(motto(), module.to_owned());
+        options
+    }
+
+    /// A piece that imports the generative fixture, with `body` after the
+    /// header.
+    fn importing(body: &str) -> String {
+        format!(
+            "piece \"laws\" {{\n    import syntax std::adapters::motto as motto;\n\n{body}\n    score {{ part p {{ voice v {{ c4/1 }} }} }}\n}}\n"
+        )
+    }
+
+    #[test]
+    fn expanding_a_printed_region_gives_back_the_value_it_was_printed_from() {
+        // The round-trip law of §4, through the real compiler: print the value,
+        // splice the answer into a region, expand it, evaluate it, compare.
+        // Compared as *values* and not as text, because printing is allowed to
+        // normalize — and by the fixture's own equality, which for a fixture
+        // whose value is a text is text equality.
+        let options = reading(MOTTO);
+        let printed = adapter_print(
+            &SourceDocument::new("", "laws.musa"),
+            &options,
+            "std::adapters::motto",
+            "\"hello\"",
+        )
+        .expect("the printer writes the words it knows");
+        let source = importing(&format!("    let it = syntax motto {{ {printed} }};\n"));
+        let expansion = expand(&SourceDocument::new(&source, "laws.musa"), &options);
+        assert!(messages(&expansion).is_empty(), "{:?}", messages(&expansion));
+        let record = expansion.records.first().expect("one record");
+        let expression = crate::syntax::print(&record.output).text;
+        let round_tripped = crate::core::evaluate_text(&expression);
+        assert_eq!(
+            round_tripped,
+            crate::core::evaluate_text("\"hello\""),
+            "the printed region evaluates to the value it was printed from: {expression}"
+        );
+        assert_eq!(round_tripped.as_deref(), Some("hello"), "and the law is not vacuous");
+    }
+
+    #[test]
+    fn a_value_the_printer_cannot_spell_is_a_stated_loss_and_not_a_smaller_value() {
+        // `PrintLoss` is an answer. A printer that wrote down what it could and
+        // dropped the rest would satisfy the round-trip law by making the value
+        // smaller, which is the one way of satisfying it that is worthless.
+        let refused = adapter_print(
+            &SourceDocument::new("", "laws.musa"),
+            &reading(MOTTO),
+            "std::adapters::motto",
+            "\"farewell\"",
+        );
+        let Err(AdapterPrintError::Loss { adapter, message }) = refused else {
+            panic!("a value the printer will not write is its own sentence: {refused:?}");
+        };
+        assert_eq!(adapter, "std::adapters::motto");
+        assert!(message.contains("neither"), "the adapter's own sentence: {message}");
+    }
+
+    #[test]
+    fn an_adapter_below_generative_writes_no_region_and_says_which_level_it_is() {
+        // The bundled fixture is *editable* and says so. Asking it to write a
+        // region is not a fault and not a loss: it is a level, and an interface
+        // that offers "new region" needs to be told which.
+        let answer = adapter_print(
+            &SourceDocument::new("", "laws.musa"),
+            &CompileOptions::default(),
+            "std::adapters::doubled",
+            "(c4, 0)",
+        );
+        assert_eq!(
+            answer,
+            Err(AdapterPrintError::NotGenerative {
+                adapter: "std::adapters::doubled".to_owned(),
+                level: "editable".to_owned(),
+            })
+        );
+    }
+
+    #[test]
+    fn a_module_that_declares_more_than_it_offers_is_refused_at_its_import() {
+        // Where the level stops being a label. The module below promises the
+        // round-trip law and holds nothing that could satisfy it, and the
+        // refusal names the operation it is missing rather than saying the
+        // adapter is broken.
+        let overstated = MOTTO
+            .split("    let print =")
+            .next()
+            .map(|kept| format!("{kept}}}\n"))
+            .expect("the fixture declares `print` last");
+        // No region at all: importing the package is where the promise is made,
+        // so that is where it is checked.
+        let source = importing("");
+        let expansion = expand(&SourceDocument::new(&source, "laws.musa"), &reading(&overstated));
+        let complaint = expansion.diagnostics.first().expect("the promise is checked");
+        assert!(
+            complaint.message.contains("generative") && complaint.message.contains("`print`"),
+            "the refusal names the level and the operation: {}",
+            complaint.message
+        );
+        let span = complaint.primary_span().expect("a place");
+        let at = source.get(span.start as usize..span.end as usize).unwrap_or_default();
+        assert!(
+            at.starts_with("import syntax"),
+            "and it is reported where the promise was made: {at}"
+        );
+        // A module that declares only what it holds is not refused, so the
+        // check is about the promise rather than about the missing operation.
+        let honest = overstated.replace("\"generative\"", "\"editable\"");
+        assert!(
+            expand(&SourceDocument::new(&source, "laws.musa"), &reading(&honest))
+                .diagnostics
+                .is_empty(),
+            "under-promising is allowed: a level is a floor, not a description"
         );
     }
 

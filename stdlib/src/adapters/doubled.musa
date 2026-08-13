@@ -42,6 +42,20 @@
 // them separately keeps each fold's step functions as simple as the original.
 
 library {
+    // What this adapter promises, of `26-language-design-decision.md` §4's
+    // three levels. It is checked where the module is imported: a level is a
+    // promise a musician relies on, so a module that declared `generative` and
+    // held no printer would be refused there rather than found out later.
+    //
+    // Editable and not generative, and the reason is worth writing down. A
+    // region of this adapter produces `(Music, Nat)`, and a printer would have
+    // to write a musical value back as source text — which the source language
+    // gives it no way to do. There are no text operations: a printer can write
+    // the literals it holds and can pass along a text it was handed, and that
+    // is all. Spelling a value it did not already have the words for is the
+    // staff adapter's problem, and prompt 127dcf is where it is solved.
+    let level = "editable";
+
     let expand = fn (region) {
         match syntax_fold(
             fn (here) { None },

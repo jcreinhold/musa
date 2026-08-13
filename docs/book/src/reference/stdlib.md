@@ -44,6 +44,12 @@ never extends them. What is inside is the adapter's language, which is why the f
 still say which part of the region it came from. It exists to be run rather than to be used — it is the phase's fixture,
 and the adapters worth writing music with are their own modules.
 
+Every adapter declares what it promises, and the compiler checks the promise where the module is imported. A *readable*
+adapter expands, and its regions are read-only; an *editable* one also answers structured commands with edits into its
+own region; a *generative* one also writes a new region for a value it is handed. `doubled` is editable and says so —
+writing a region back would mean spelling a musical value as source text, and the source language has no operation that
+does it.
+
 The reference below is generated from the source comments in the bundled modules.
 
 {{#include ../../../../stdlib/reference.md:3:}}

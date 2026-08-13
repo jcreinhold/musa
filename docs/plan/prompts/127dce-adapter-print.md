@@ -1,7 +1,7 @@
 ---
 id: 127dce
 slug: adapter-print
-status: pending
+status: done
 depends_on: [127dcd]
 phase: 3
 ---
@@ -41,6 +41,12 @@ the adapter's own sentence about what it was handed and could not write down. `P
 convenience. A printer that silently dropped what it could not spell would make the round-trip law true by making the
 value smaller.
 
+**How the value arrives.** As an ordinary expression, because that is the one spelling of a value the compiler shares
+with anything outside it. The value is checked first and the printer against the type it turned out to have, so `A` is
+settled by unification and the phase still never learns a package's type. There is no desktop or session door yet and
+this prompt does not build one: the caller that has a real `A` to hand a printer is a trial, and prompts 127dcf and
+127dcg are where a printed region first arrives in a document.
+
 **The round-trip law.** For a value the printer accepts, expanding the printed region and evaluating it gives an
 adapter-equal value. Equality is the package's to state, and the test states it as the fixture's own equality function
 rather than as structural equality of the printed text, because printing is allowed to normalize.
@@ -52,7 +58,10 @@ rather than as structural equality of the printed text, because printing is allo
 - **generative** — editable, and `print`, and the round-trip law holds.
 
 An adapter that declares a level it does not reach is refused where it is imported, with the operation it is missing
-named. This is what makes a level a promise a musician can rely on rather than a label.
+named. This is what makes a level a promise a musician can rely on rather than a label. A module that declares *no*
+level is refused too: a default would be the compiler deciding what a package promises, which is the thing "declared,
+not inferred" rules out. Under-promising is allowed, and the declared level is what governs — an `edit` a module holds
+and does not advertise leaves its regions read-only.
 
 ## Target
 
@@ -60,11 +69,16 @@ named. This is what makes a level a promise a musician can rely on rather than a
   expand, evaluate, compare.
 - The declared conformance level in an adapter module, read at import, and refused when it overstates what the module
   offers.
-- `stdlib/src/adapters/doubled.musa` declares generative and satisfies all three laws, or declares what it actually is
-  and says why in its own comment.
+- `stdlib/src/adapters/doubled.musa` declares **editable** and says why in its own comment: its regions produce
+  `(Music, Nat)`, and a printer would have to spell a musical value as source text, which the source language gives it
+  no operation for. A printer can write the literals it holds and pass along a text it was handed, and that is all —
+  which is why the generative fixture that carries the round-trip law is a whole adapter written in the test, over a
+  value type it can spell. Writing a second bundled adapter to make the point would be the staff adapter early, and
+  prompt 127dcf owns that.
 - Tests: round-trip on a value the printer accepts; a stated loss on one it does not; a module that declares generative
-  and offers no printer is refused at its import and names `print`; a readable adapter's region is read-only and its
-  edit command says so.
+  and offers no printer is refused at its import and names `print`, while one that declares only what it holds is not; a
+  readable adapter's region is read-only and its edit command says so; an adapter below generative writes no region and
+  says which level it is.
 
 ## Check
 

@@ -85,7 +85,7 @@ pub use crate::diagnose::{Code, Diagnostic, Fix, FixEdit, Label, Severity};
 pub use crate::docs::{ItemDoc, ItemSource, ParameterDoc, TypeNote};
 #[doc(hidden)]
 pub use crate::elaborate::kernel_normal_form;
-pub use crate::expand::{AdapterEdit, AdapterEditError, adapter_edits};
+pub use crate::expand::{AdapterEdit, AdapterEditError, AdapterPrintError, adapter_edits, adapter_print};
 pub use crate::groove::Groove;
 pub use crate::harmony::{ChordQuality, ChordSymbol, Seventh};
 pub use crate::imports::{
