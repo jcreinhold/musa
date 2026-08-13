@@ -237,6 +237,13 @@ impl WorkMeter {
         }
     }
 
+    /// How many reduction steps this meter has charged.
+    ///
+    /// The `evaluation_steps` charge of `26-language-design-decision.md` §3.5.
+    pub(crate) const fn steps(&self) -> u64 {
+        self.steps
+    }
+
     /// Drive one evaluation to its typed configuration.
     ///
     /// Charging returns `Option` so that `?` is the only way to spend it: a

@@ -88,6 +88,9 @@ pub enum Code {
     /// A well-formed kernel document whose payload type this build has no
     /// implementation for. The file is right; the reader is short.
     UnsupportedPayload,
+    /// An adapter region that cannot be resolved, expanded, or whose answer is
+    /// not one ordinary expression.
+    Expansion,
 }
 
 impl Code {
@@ -118,6 +121,7 @@ impl Code {
             Self::CopiedBars => "copied-bars",
             Self::UnmetClaim => "unmet-claim",
             Self::UnsupportedPayload => "unsupported-payload",
+            Self::Expansion => "expansion",
         }
     }
 
@@ -243,6 +247,23 @@ pub struct Diagnostic {
 }
 
 impl Diagnostic {
+    /// Move every place this points at back into the composer's own text.
+    ///
+    /// A fix is moved with the labels: an edit offered against generated text
+    /// would silently rewrite a file the composer cannot see, which is worse
+    /// than offering no fix at all. A fix that lands on a whole region says
+    /// "replace this region", which is at least a place they can act on.
+    pub(crate) fn remap_spans(&mut self, map: &crate::expand::SourceMap) {
+        for label in &mut self.labels {
+            label.span = map.span(label.span);
+        }
+        for fix in &mut self.fixes {
+            for edit in &mut fix.edits {
+                edit.span = map.span(edit.span);
+            }
+        }
+    }
+
     /// A diagnostic that stops compilation of its construct.
     pub(crate) fn error(code: Code, message: impl Into<String>) -> Self {
         Self::new(Severity::Error, code, message)

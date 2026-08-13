@@ -162,6 +162,21 @@ pub(crate) struct ReferenceIndex {
 }
 
 impl ReferenceIndex {
+    /// Move every place this index points at back into the composer's own text
+    /// (`crate::expand`).
+    ///
+    /// A declaration in *another* document is left alone: its span is a
+    /// position in that file's own coordinates, and this map describes only
+    /// the document the phase rewrote.
+    pub(crate) fn remap_spans(&mut self, map: &crate::expand::SourceMap) {
+        for entry in &mut self.entries {
+            entry.declaration = map.maybe(entry.declaration);
+            for span in &mut entry.uses {
+                *span = map.span(*span);
+            }
+        }
+    }
+
     pub(crate) fn new() -> Self {
         Self::default()
     }

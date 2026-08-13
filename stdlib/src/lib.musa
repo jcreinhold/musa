@@ -16,3 +16,6 @@ mod context;
 mod transformational;
 mod tonal;
 mod post_tonal;
+
+// The package's phase modules, which only a syntax import reaches.
+mod adapters;

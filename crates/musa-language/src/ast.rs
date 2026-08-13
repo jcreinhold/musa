@@ -524,6 +524,20 @@ impl ImportStmt {
         children(node)
     }
 
+    /// Whether this is `import syntax …` — the header statement that names
+    /// which package reads an adapter region.
+    ///
+    /// A different statement from an ordinary import, not a modifier on one:
+    /// an ordinary import brings a module's declarations into this file, and
+    /// this one brings a *reader* into the compiler's expansion phase. The two
+    /// are told apart by the word, which is why the word is there.
+    pub fn changes_syntax(&self) -> bool {
+        self.0
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .any(|token| token.kind() == SyntaxKind::SyntaxKw)
+    }
+
     /// The path as written, without quotes for a relative import.
     pub fn path(&self) -> Option<String> {
         if let Some(text) = token_text(&self.0, SyntaxKind::String) {

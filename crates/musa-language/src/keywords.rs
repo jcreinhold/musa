@@ -171,6 +171,15 @@ static IMPORT: KeywordDoc = doc!(
      under a different name. Bundled modules are ordinary Musa source and add no hidden prelude.\n\n\
      ```musa\nimport std::core;\n```"
 );
+static SYNTAX: KeywordDoc = doc!(
+    "syntax",
+    "the region a package reads, and the import that names its reader",
+    "`syntax` writes two things, and both name an adapter: `import syntax std::adapters::doubled as doubled;` \
+     in the header says which package reads a region, and `syntax doubled { ... }` is the region it reads. \
+     The contents are not ordinary Musa — the adapter turns them into an expression, and everything after \
+     that is ordinary resolution and type checking.\n\n\
+     ```musa\nimport syntax std::adapters::doubled as doubled;\nlet total = syntax doubled { 3 };\n```"
+);
 static TRANSPOSE: KeywordDoc = doc!(
     "transpose",
     "the same music, moved in pitch",
@@ -767,6 +776,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         SyntaxKind::PerformanceKw => &PERFORMANCE,
         SyntaxKind::UseKw => &USE,
         SyntaxKind::ImportKw => &IMPORT,
+        SyntaxKind::SyntaxKw => &SYNTAX,
         SyntaxKind::TransposeKw => &TRANSPOSE,
         SyntaxKind::UpKw => &UP,
         SyntaxKind::DownKw => &DOWN,
@@ -900,6 +910,8 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::ChordSymbol
         | SyntaxKind::LibraryDecl
         | SyntaxKind::ImportStmt
+        | SyntaxKind::SyntaxRegion
+        | SyntaxKind::SyntaxGroup
         | SyntaxKind::HairpinStmt
         | SyntaxKind::Duration
         | SyntaxKind::ArticulationList

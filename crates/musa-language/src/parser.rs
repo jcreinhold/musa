@@ -1052,6 +1052,15 @@ impl<'a> Parser<'a> {
             self.moved_to_import();
         }
         self.bump(); // `import`, or the `use` that should have been one
+        // `import syntax <package path> as <name>;` — the header form that
+        // says which package reads a region. It is a *different statement*
+        // from an ordinary import and not a modifier on one: an ordinary
+        // import cannot change syntax, and the word is here so that reading
+        // the header tells you whether it can.
+        let syntax = self.at(SyntaxKind::SyntaxKw);
+        if syntax {
+            self.bump();
+        }
         if self.at(SyntaxKind::String) {
             self.bump();
         } else {
@@ -1079,8 +1088,61 @@ impl<'a> Parser<'a> {
         if self.at(SyntaxKind::AsKw) {
             self.bump();
             self.expect(SyntaxKind::Identifier, "a name for the imported module");
+        } else if syntax {
+            // A region is written by name, so a syntax import that names
+            // nothing has nothing a region could say.
+            self.expected("`as <name>` — a region names its adapter by this name");
         }
         self.expect(SyntaxKind::Semicolon, "`;`");
+        self.finish();
+    }
+
+    /// `syntax staff { ... }` — one named, delimited adapter region.
+    ///
+    /// What is inside is read by the fixed lexer and grouper and by nothing
+    /// else: the parser forms a node per matched delimiter pair and takes
+    /// every other token as it comes. It assigns no meaning, because the
+    /// meaning is whatever the adapter the header named answers with.
+    fn syntax_region(&mut self) {
+        self.start(SyntaxKind::SyntaxRegion);
+        self.bump(); // syntax
+        self.expect(SyntaxKind::Identifier, "the name a syntax import gave the adapter");
+        if self.at(SyntaxKind::LBrace) {
+            self.raw_group();
+        } else {
+            self.expected("`{` — a region is delimited");
+        }
+        self.finish();
+    }
+
+    /// The fixed grouper: one node per matched delimiter pair, and no other
+    /// rule at all.
+    fn raw_group(&mut self) {
+        let close = match self.current() {
+            Some(SyntaxKind::LBracket) => SyntaxKind::RBracket,
+            Some(SyntaxKind::LParen) => SyntaxKind::RParen,
+            _ => SyntaxKind::RBrace,
+        };
+        // Trivia before the opening delimiter belongs to whatever came before,
+        // not to the group: a group whose first token is a space is a group the
+        // reader cannot tell is delimited.
+        self.eat_trivia();
+        self.start(SyntaxKind::SyntaxGroup);
+        self.bump();
+        loop {
+            match self.current() {
+                None => {
+                    self.expected("the delimiter that closes this region");
+                    break;
+                }
+                Some(kind) if kind == close => {
+                    self.bump();
+                    break;
+                }
+                Some(SyntaxKind::LBrace | SyntaxKind::LBracket | SyntaxKind::LParen) => self.raw_group(),
+                Some(_) => self.bump(),
+            }
+        }
         self.finish();
     }
 
@@ -1566,6 +1628,7 @@ impl<'a> Parser<'a> {
 
     fn expr_atom(&mut self) {
         match self.current() {
+            Some(SyntaxKind::SyntaxKw) => self.syntax_region(),
             Some(SyntaxKind::Identifier) if self.at_constructor() => self.option_expr(),
             Some(
                 SyntaxKind::Identifier

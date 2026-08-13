@@ -70,6 +70,30 @@ const VOICE_ITEMS = ($) => [
   $.stack_statement,
 ];
 
+// The words and marks a region may hold, which is every token the lexer
+// writes but the six delimiters. `_syntax_atom` reads them one at a time;
+// the drift law in `crates/musa-language/tests/suite/tree_sitter_fixtures.rs`
+// is what keeps this list honest.
+const SYNTAX_WORDS = [
+  'template', 'signature', 'structure', 'data', 'module', 'make', 'as', 'piece',
+  'tempo', 'meter', 'key', 'subtitle', 'composer', 'arranger', 'copyright', 'motif',
+  'score', 'part', 'voice', 'clef', 'use', 'import', 'syntax', 'mod',
+  'transpose', 'down', 'up', 'rest', 'repeat', 'slur', 'dynamic', 'tuplet',
+  'performance', 'profile', 'mark', 'groove', 'grace', 'studio', 'patch', 'modulate',
+  'bus', 'assign', 'route', 'send', 'master', 'at', 'output', 'pitch',
+  'stretch', 'retrograde', 'invert', 'around', 'with', 'note', 'phrase', 'section',
+  'harmony', 'library', 'crescendo', 'diminuendo', 'to', 'bar', 'assert', 'senza',
+  'ending', 'fragment', 'mobile', 'improvise', 'over', 'let', 'fn', 'music',
+  'kernel', 'Option', 'List', 'Result', 'match', 'Some', 'None', 'Ok',
+  'Err', 'true', 'false', 'scale', 'degree', 'frame', 'in', 'step',
+  'chord', 'stack',
+];
+
+const SYNTAX_MARKS = [
+  ';', ',', ':', '->', '|>', '=', '-', '~',
+  '.', '/', '|', '>', '<', '^', '#', '$',
+];
+
 module.exports = grammar({
   name: 'musa',
 
@@ -284,6 +308,11 @@ module.exports = grammar({
     import_statement: ($) =>
       seq(
         'import',
+        // `import syntax std::adapters::doubled as doubled;` — the header
+        // form that says which package reads a region. A different
+        // statement, not a modifier: an ordinary import cannot change
+        // syntax, so the word is here to be read off the header.
+        optional('syntax'),
         field('path', choice($.string, seq($.identifier, repeat1(seq(':', ':', $._module_name))))),
         optional(seq('as', field('alias', $.identifier))),
         ';',
@@ -525,8 +554,43 @@ module.exports = grammar({
     expression_argument: ($) =>
       seq(optional(seq(field('name', $.identifier), ':')), $.expression),
 
+    // Parser::syntax_region — `syntax doubled { … }`. The interior is the
+    // adapter's language, not this one, so the grammar does to it exactly
+    // what the hand parser does: match delimiter pairs and read every other
+    // token as itself. Naming a rule for what is inside would be this
+    // reader claiming a vocabulary that belongs to a package.
+    syntax_region: ($) => seq('syntax', field('adapter', $.identifier), $._syntax_group),
+
+    _syntax_group: ($) =>
+      choice(
+        seq('{', repeat($._syntax_piece), '}'),
+        seq('[', repeat($._syntax_piece), ']'),
+        seq('(', repeat($._syntax_piece), ')'),
+      ),
+
+    _syntax_piece: ($) => choice($._syntax_group, $._syntax_atom),
+
+    // Every token the lexer can write except the six delimiters, which the
+    // group rule owns. The list is long because the language's words are
+    // many, and it is exhaustive because a word missing from it would be a
+    // region an editor paints red and the compiler expands happily.
+    _syntax_atom: ($) =>
+      choice(
+        $.identifier,
+        $.integer,
+        $.float,
+        $.rational,
+        $.string,
+        $.pitch_literal,
+        $.interval_literal,
+        $.unit,
+        ...SYNTAX_WORDS,
+        ...SYNTAX_MARKS,
+      ),
+
     _primary_expression: ($) =>
       choice(
+        $.syntax_region,
         $.name_expression,
         $.literal_expression,
         $.option_expression,

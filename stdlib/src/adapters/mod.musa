@@ -1,0 +1,9 @@
+// The package's phase modules: the adapters a `import syntax` may name.
+//
+// A module here is not written in the language ordinary source is written in.
+// It is checked and evaluated in the expansion phase, where the syntax types
+// are in scope, and it is reached only through a syntax import — an ordinary
+// `import` cannot change syntax, and an ordinary reader of one of these
+// modules would be reading names that ordinary source has no way to spell.
+
+mod doubled;

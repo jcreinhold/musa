@@ -9460,14 +9460,15 @@ fn token_span(token: &SyntaxToken) -> SourceSpan {
 /// one should be told which they made, which is why this is a type rather than
 /// a `None`.
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the phase driver is proved by the syntax module's law suite; prompt 127dc gives it its product caller in the compiler order"
-    )
-)]
 pub(crate) enum ExpansionFailure {
+    /// A compilation limit was crossed before the run finished.
+    ///
+    /// Not a fault in the adapter and not a fault in the region: a transformer
+    /// is total, so this is the meter stopping a run rather than a run that
+    /// would not have stopped. It is its own case because
+    /// `docs/rules/language/00-semantics.md` §2 makes the difference matter —
+    /// a stop must not read as a file that is not well-typed.
+    Stopped,
     /// The transformer did not check as `Syntax -> Syntax`.
     NotATransformer(Vec<Diagnostic>),
     /// It checked and then did not answer — a budget crossed, or the evaluator
@@ -9492,19 +9493,43 @@ pub(crate) enum ExpansionFailure {
 /// source text, read by the fixed reader Musa already has: this driver does not
 /// extend the lexer or the grouper, and prompt 127dc owns the compiler order
 /// that will call it on a real adapter region.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the phase driver is proved by the syntax module's law suite; prompt 127dc gives it its product caller in the compiler order"
-    )
-)]
+#[cfg(test)]
 pub(crate) fn expand_region(
     transformer: &str,
     region: &str,
     expansion: crate::syntax::ExpansionPath,
 ) -> Result<crate::syntax::Syntax, ExpansionFailure> {
     let subject = crate::syntax::read_region(&musa_language::parse(region).syntax(), expansion);
+    expand_syntax(transformer, subject).map(|(produced, _)| produced)
+}
+
+/// A stop when the meter stopped, and `otherwise` when it did not.
+fn stopped_or(meter: &WorkMeter, otherwise: ExpansionFailure) -> ExpansionFailure {
+    if meter.failure().is_some() {
+        ExpansionFailure::Stopped
+    } else {
+        otherwise
+    }
+}
+
+/// What one expansion charged the phases it used.
+///
+/// Two of `CompilerLimits`' four counters (`26-language-design-decision.md`
+/// §3.5); the other two are the phase's own and are counted by
+/// [`crate::expand`]. Read off the ordinary meter and the ordinary unifier,
+/// because a transformer is checked and evaluated by the ordinary machinery
+/// and a separate accounting of the same work would be a second opinion about
+/// it.
+pub(crate) struct PhaseWork {
+    pub(crate) type_constraints: u64,
+    pub(crate) evaluation_steps: u64,
+}
+
+/// Run one transformer over one already-read region, in the phase environment.
+pub(crate) fn expand_syntax(
+    transformer: &str,
+    subject: crate::syntax::Syntax,
+) -> Result<(crate::syntax::Syntax, PhaseWork), ExpansionFailure> {
     let parsed = musa_language::parse(&format!("piece \"expansion\" {{\n  let transform = {transformer}\n}}"));
     let mut resolver = Resolver::new();
     let mut unifier = Unifier::default();
@@ -9536,11 +9561,14 @@ pub(crate) fn expand_region(
         checker.check(&body, Some(&wanted))
     });
     let Some(checked) = checked else {
+        if meter.failure().is_some() {
+            return Err(ExpansionFailure::Stopped);
+        }
         return Err(ExpansionFailure::NotATransformer(resolver.diagnostics));
     };
     let environment = IndexMap::new();
     let Some(Value::Closure(function)) = eval(&checked, &environment, &mut meter) else {
-        return Err(ExpansionFailure::NoAnswer);
+        return Err(stopped_or(&meter, ExpansionFailure::NoAnswer));
     };
     let applied = apply_closure(
         &function,
@@ -9549,13 +9577,17 @@ pub(crate) fn expand_region(
         checked.span,
     );
     let Some(Value::Syntax(produced)) = applied else {
-        return Err(ExpansionFailure::NoAnswer);
+        return Err(stopped_or(&meter, ExpansionFailure::NoAnswer));
     };
     // The gate again, here rather than only in `checked_expression`: a
     // transformer that never called the builtin has still produced output the
     // rest of the compiler will have to anchor diagnostics against.
     crate::syntax::check_expression(&produced).map_err(ExpansionFailure::NotAnExpression)?;
-    Ok(*produced)
+    let work = PhaseWork {
+        type_constraints: unifier.constraints(),
+        evaluation_steps: meter.steps(),
+    };
+    Ok((*produced, work))
 }
 
 #[cfg(test)]

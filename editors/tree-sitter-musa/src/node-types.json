@@ -46,6 +46,10 @@
         {
           "type": "result_expression",
           "named": true
+        },
+        {
+          "type": "syntax_region",
+          "named": true
         }
       ]
     }
@@ -866,6 +870,10 @@
         },
         {
           "type": "step_expression",
+          "named": true
+        },
+        {
+          "type": "syntax_region",
           "named": true
         }
       ]
@@ -3534,6 +3542,60 @@
     }
   },
   {
+    "type": "syntax_region",
+    "named": true,
+    "fields": {
+      "adapter": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "float",
+          "named": true
+        },
+        {
+          "type": "identifier",
+          "named": true
+        },
+        {
+          "type": "integer",
+          "named": true
+        },
+        {
+          "type": "interval_literal",
+          "named": true
+        },
+        {
+          "type": "pitch_literal",
+          "named": true
+        },
+        {
+          "type": "rational",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        },
+        {
+          "type": "unit",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "template_declaration",
     "named": true,
     "fields": {},
@@ -4156,6 +4218,10 @@
     "named": false
   },
   {
+    "type": "degree",
+    "named": false
+  },
+  {
     "type": "diminuendo",
     "named": false
   },
@@ -4185,6 +4251,10 @@
   },
   {
     "type": "fragment",
+    "named": false
+  },
+  {
+    "type": "frame",
     "named": false
   },
   {
@@ -4281,6 +4351,10 @@
   },
   {
     "type": "modulate",
+    "named": false
+  },
+  {
+    "type": "module",
     "named": false
   },
   {
@@ -4409,6 +4483,10 @@
   },
   {
     "type": "subtitle",
+    "named": false
+  },
+  {
+    "type": "syntax",
     "named": false
   },
   {

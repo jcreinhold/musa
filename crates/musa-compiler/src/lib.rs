@@ -40,6 +40,7 @@ mod derivation;
 mod diagnose;
 mod docs;
 mod elaborate;
+mod expand;
 mod factext;
 mod groove;
 mod harmony;

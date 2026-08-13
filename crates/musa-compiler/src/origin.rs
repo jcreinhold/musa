@@ -44,6 +44,34 @@ pub struct Origin {
     pub expansion_path: Vec<ExpansionStep>,
 }
 
+impl Origin {
+    /// Move every place this points at back into the composer's own text.
+    ///
+    /// Exhaustive over [`ExpansionStep`] on purpose: the workspace forbids
+    /// wildcard match arms, so a step that carries a new span arrives here as
+    /// a compile error rather than as a position in text nobody wrote.
+    pub(crate) fn remap_spans(&mut self, map: &crate::expand::SourceMap) {
+        self.source_span = map.span(self.source_span);
+        self.definition_span = map.span(self.definition_span);
+        for step in &mut self.expansion_path {
+            match step {
+                ExpansionStep::MotifApplication { call_site } => *call_site = map.span(*call_site),
+                ExpansionStep::TemplateInstance { site, .. } => *site = map.span(*site),
+                ExpansionStep::Specialization { override_site } => *override_site = map.span(*override_site),
+                ExpansionStep::RepeatIteration(_)
+                | ExpansionStep::Transposition(_)
+                | ExpansionStep::Stretch(_)
+                | ExpansionStep::Retrograde
+                | ExpansionStep::Inversion { .. }
+                | ExpansionStep::MapNotePitches
+                | ExpansionStep::ScaleContext { .. }
+                | ExpansionStep::Assertion { .. }
+                | ExpansionStep::KernelSplice { .. } => {}
+            }
+        }
+    }
+}
+
 /// One step in an expansion path.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ExpansionStep {

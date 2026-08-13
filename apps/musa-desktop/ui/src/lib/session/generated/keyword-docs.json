@@ -75,6 +75,11 @@
     "doc": "`import` reads a relative library file or a bundled module and binds its declarations as if they were written here: `import \"../library/motifs.musa\";` or `import std::core;`. Add `as name` to bring it in under a different name. Bundled modules are ordinary Musa source and add no hidden prelude.\n\n```musa\nimport std::core;\n```"
   },
   {
+    "spelling": "syntax",
+    "summary": "the region a package reads, and the import that names its reader",
+    "doc": "`syntax` writes two things, and both name an adapter: `import syntax std::adapters::doubled as doubled;` in the header says which package reads a region, and `syntax doubled { ... }` is the region it reads. The contents are not ordinary Musa — the adapter turns them into an expression, and everything after that is ordinary resolution and type checking.\n\n```musa\nimport syntax std::adapters::doubled as doubled;\nlet total = syntax doubled { 3 };\n```"
+  },
+  {
     "spelling": "transpose",
     "summary": "the same music, moved in pitch",
     "doc": "Transpose plays music moved by a written interval such as `P5` or `M3`; the block and function forms have the same musical meaning. Supplying only the interval makes a reusable answer function.\n\n```musa\nlet answer: Music -> Music = transpose(P5);\n```"

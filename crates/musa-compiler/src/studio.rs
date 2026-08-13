@@ -389,6 +389,31 @@ pub struct StudioSpec {
 }
 
 impl StudioSpec {
+    /// Move every place this spec points at back into the composer's own text
+    /// (`crate::expand`).
+    pub(crate) fn remap_spans(&mut self, map: &crate::expand::SourceMap) {
+        self.span = map.maybe(self.span);
+        for patch in self
+            .patches
+            .values_mut()
+            .chain(self.buses.values_mut())
+            .chain(self.signals.values_mut())
+        {
+            for node in &mut patch.nodes {
+                node.span = map.maybe(node.span);
+                for span in &mut node.param_spans {
+                    *span = map.maybe(*span);
+                }
+            }
+        }
+        for assignment in self.assignments.values_mut() {
+            assignment.patch_span = map.maybe(assignment.patch_span);
+        }
+        for send in &mut self.sends {
+            send.level_span = map.maybe(send.level_span);
+        }
+    }
+
     /// Whether the piece declared no studio at all, in which case the default
     /// instrument graph applies to everything (§14.8).
     pub fn is_empty(&self) -> bool {

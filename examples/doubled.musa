@@ -1,0 +1,25 @@
+// One adapter region, expanded by the package the header names.
+//
+// `syntax doubled { c4 }` is not ordinary Musa: the region's contents are read
+// by the fixed lexer and grouper and handed to `std::adapters::doubled`, which
+// answers with `repeat(c4, 2)`. Everything after that is ordinary — the
+// expression is resolved, checked, and evaluated exactly as if it had been
+// written here, which is what makes an adapter a reader rather than a second
+// language.
+
+piece "Doubled" {
+    import syntax std::adapters::doubled as doubled;
+
+    let pair = syntax doubled { c4 };
+
+    tempo 1/4 = 84;
+    meter 4/4;
+
+    score {
+        part piano {
+            voice one {
+                c4/1
+            }
+        }
+    }
+}

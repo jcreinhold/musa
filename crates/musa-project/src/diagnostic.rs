@@ -380,6 +380,27 @@ pub fn explain(code: &str) -> Option<&'static str> {
              payloads as something else would be inventing music the file does \
              not contain."
         }
+        musa_compiler::Code::Expansion => {
+            "A region was not expanded, and the fault is in the region or in \
+             what reads it.\n\n\
+             `syntax <name> { … }` hands its interior to the adapter a \
+             `import syntax … as <name>;` header named. Three things go wrong \
+             at that handoff and this code covers all of them: no header \
+             names that adapter, or the header comes after the region that \
+             uses it, and the phase has nothing to call; the adapter refuses \
+             the region, because the interior is not what it reads; or the \
+             adapter answers with something a region may not stand for.\n\n\
+             What a region may become is one ordinary expression. It may not \
+             become an import, a module, a type declaration, a value \
+             declaration, or another region — that is what keeps the set of \
+             declarations in a file known before any expansion runs, and it \
+             is why an adapter cannot grow the language sideways. The report \
+             names the region, not a position inside text nobody wrote.\n\n\
+             A limit crossed during expansion reports as `resource-limit` \
+             instead. An adapter is total, so a run that stops is a run that \
+             was given too much to read, not a run that would not have \
+             stopped."
+        }
     })
 }
 

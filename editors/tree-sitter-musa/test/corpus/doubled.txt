@@ -1,0 +1,57 @@
+================================================================================
+doubled: a syntax import, and the region it names
+================================================================================
+
+// The interior of a region is the adapter's language, so this reader matches
+// delimiters and reads every other token as itself — no rule here claims to
+// know what `c4` means to `doubled`.
+piece "Doubled" {
+    import syntax std::adapters::doubled as doubled;
+
+    let pair = syntax doubled { c4 };
+
+    tempo 1/4 = 84;
+    meter 4/4;
+
+    score {
+        part piano {
+            voice one {
+                c4/1
+            }
+        }
+    }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (comment)
+  (comment)
+  (comment)
+  (piece_declaration
+    (string)
+    (import_statement
+      (identifier)
+      (identifier)
+      (identifier)
+      (identifier))
+    (let_declaration
+      (identifier)
+      (expression
+        (syntax_region
+          (identifier)
+          (pitch_literal))))
+    (tempo_statement
+      (rational)
+      (integer))
+    (meter_statement
+      (rational))
+    (score_declaration
+      (part_declaration
+        (identifier)
+        (voice_declaration
+          (identifier)
+          (note_statement
+            (pitch_literal)
+            (duration
+              (integer))))))))

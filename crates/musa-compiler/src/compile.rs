@@ -99,7 +99,9 @@ impl Compilation {
         // Read off the snapshot here rather than threaded through
         // elaboration, so that a score and the record of where it came from
         // cannot be built from two different pictures of the same piece.
-        let derivation = snapshot.as_ref().map(crate::derivation::of_score);
+        let derivation = snapshot
+            .as_ref()
+            .map(|snapshot| crate::derivation::of_score(snapshot, &[]));
         Self {
             kind: DocumentKind::Piece,
             snapshot,
@@ -111,6 +113,37 @@ impl Compilation {
             references: crate::resolve::ReferenceIndex::new(),
             derivation,
         }
+    }
+
+    /// Say everything this compilation learned about the text the *composer*
+    /// wrote, rather than about the text the compiler read.
+    ///
+    /// The one seam adapter expansion creates, closed in one place. A document
+    /// with no region has an identity map and nothing here runs; a document
+    /// with one has every span translated and the derivation rebuilt, so that a
+    /// note an adapter produced is a `Generated` step anchored at its region
+    /// rather than a note apparently written in text that does not exist.
+    pub(crate) fn restore(&mut self, expansion: &crate::expand::Expansion) {
+        self.diagnostics.extend(expansion.diagnostics.iter().cloned());
+        if expansion.map.is_identity() {
+            return;
+        }
+        for diagnostic in &mut self.diagnostics {
+            diagnostic.remap_spans(&expansion.map);
+        }
+        if let Some(snapshot) = self.snapshot.as_mut() {
+            snapshot.remap_spans(&expansion.map);
+        }
+        self.studio.remap_spans(&expansion.map);
+        for decision in &mut self.decisions {
+            decision.remap_spans(&expansion.map);
+        }
+        self.references.remap_spans(&expansion.map);
+        let anchors = expansion.anchors();
+        self.derivation = self
+            .snapshot
+            .as_ref()
+            .map(|snapshot| crate::derivation::of_score(snapshot, &anchors));
     }
 
     pub(crate) fn into_material(mut self) -> Self {
@@ -298,7 +331,16 @@ pub fn compile(source: &SourceDocument, options: &CompileOptions) -> Compilation
     let alternative = musa_language::alternative(source.text());
     let compilation = match alternative {
         musa_language::DocumentAlternative::Kernel => crate::kernel_text::compile_kernel(source),
-        musa_language::DocumentAlternative::Surface => crate::elaborate::elaborate(source, options),
+        musa_language::DocumentAlternative::Surface => {
+            // Step 4 of the fixed order, and the only place it happens. What
+            // `elaborate` then reads is a text with every adapter region
+            // replaced by the expression its adapter answered with; what the
+            // caller is told about is the text they wrote.
+            let expansion = crate::expand::expand(source, options);
+            let mut compilation = crate::elaborate::elaborate(&expansion.document, options);
+            compilation.restore(&expansion);
+            compilation
+        }
     };
     // Which alternative a text was read as is decided from its first line and
     // is invisible afterwards, so a piece that is silently treated as kernel

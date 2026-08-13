@@ -179,3 +179,25 @@ simply in scope.
 
 Follow a name to its declaration in the editor and you get the bundled module's own source, read-only, because there is
 no file on disk to edit. Every published name is listed in [`stdlib/reference.md`](../../../../stdlib/reference.md).
+
+## 5. The other import
+
+There is a second word, and it is a second statement rather than a modifier on the first:
+
+```musa
+    import syntax std::adapters::doubled as doubled;
+
+    let pair = syntax doubled { c4 };
+```
+
+An ordinary `import` brings values into scope and cannot change how anything is read. `import syntax` names a package
+that reads a *region* — a piece of the file written in that package's language rather than in Musa's — and it stands in
+the header, before the first definition that writes one. Reading the top of a file therefore tells you whether anything
+in it can be read unusually, which is the whole reason the word is there.
+
+A region is named and delimited: named by whatever the import called the adapter, delimited by braces the grouper
+already knows. Packages do not add tokens and do not move the boundary. Inside the braces the words belong to the
+adapter, so the formatter writes them back exactly as you typed them and complains about nothing.
+
+`std::adapters::doubled` is a fixture rather than a tool — it expands a region to its contents twice, which is enough to
+watch the machinery run and no use at all in a piece.

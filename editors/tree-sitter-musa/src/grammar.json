@@ -844,6 +844,18 @@
           "value": "import"
         },
         {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "STRING",
+              "value": "syntax"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
           "type": "FIELD",
           "name": "path",
           "content": {
@@ -2235,9 +2247,573 @@
         }
       ]
     },
+    "syntax_region": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "syntax"
+        },
+        {
+          "type": "FIELD",
+          "name": "adapter",
+          "content": {
+            "type": "SYMBOL",
+            "name": "identifier"
+          }
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_syntax_group"
+        }
+      ]
+    },
+    "_syntax_group": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "STRING",
+              "value": "{"
+            },
+            {
+              "type": "REPEAT",
+              "content": {
+                "type": "SYMBOL",
+                "name": "_syntax_piece"
+              }
+            },
+            {
+              "type": "STRING",
+              "value": "}"
+            }
+          ]
+        },
+        {
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "STRING",
+              "value": "["
+            },
+            {
+              "type": "REPEAT",
+              "content": {
+                "type": "SYMBOL",
+                "name": "_syntax_piece"
+              }
+            },
+            {
+              "type": "STRING",
+              "value": "]"
+            }
+          ]
+        },
+        {
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "STRING",
+              "value": "("
+            },
+            {
+              "type": "REPEAT",
+              "content": {
+                "type": "SYMBOL",
+                "name": "_syntax_piece"
+              }
+            },
+            {
+              "type": "STRING",
+              "value": ")"
+            }
+          ]
+        }
+      ]
+    },
+    "_syntax_piece": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "_syntax_group"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_syntax_atom"
+        }
+      ]
+    },
+    "_syntax_atom": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "identifier"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "integer"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "float"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "rational"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "string"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "pitch_literal"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "interval_literal"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "unit"
+        },
+        {
+          "type": "STRING",
+          "value": "template"
+        },
+        {
+          "type": "STRING",
+          "value": "signature"
+        },
+        {
+          "type": "STRING",
+          "value": "structure"
+        },
+        {
+          "type": "STRING",
+          "value": "data"
+        },
+        {
+          "type": "STRING",
+          "value": "module"
+        },
+        {
+          "type": "STRING",
+          "value": "make"
+        },
+        {
+          "type": "STRING",
+          "value": "as"
+        },
+        {
+          "type": "STRING",
+          "value": "piece"
+        },
+        {
+          "type": "STRING",
+          "value": "tempo"
+        },
+        {
+          "type": "STRING",
+          "value": "meter"
+        },
+        {
+          "type": "STRING",
+          "value": "key"
+        },
+        {
+          "type": "STRING",
+          "value": "subtitle"
+        },
+        {
+          "type": "STRING",
+          "value": "composer"
+        },
+        {
+          "type": "STRING",
+          "value": "arranger"
+        },
+        {
+          "type": "STRING",
+          "value": "copyright"
+        },
+        {
+          "type": "STRING",
+          "value": "motif"
+        },
+        {
+          "type": "STRING",
+          "value": "score"
+        },
+        {
+          "type": "STRING",
+          "value": "part"
+        },
+        {
+          "type": "STRING",
+          "value": "voice"
+        },
+        {
+          "type": "STRING",
+          "value": "clef"
+        },
+        {
+          "type": "STRING",
+          "value": "use"
+        },
+        {
+          "type": "STRING",
+          "value": "import"
+        },
+        {
+          "type": "STRING",
+          "value": "syntax"
+        },
+        {
+          "type": "STRING",
+          "value": "mod"
+        },
+        {
+          "type": "STRING",
+          "value": "transpose"
+        },
+        {
+          "type": "STRING",
+          "value": "down"
+        },
+        {
+          "type": "STRING",
+          "value": "up"
+        },
+        {
+          "type": "STRING",
+          "value": "rest"
+        },
+        {
+          "type": "STRING",
+          "value": "repeat"
+        },
+        {
+          "type": "STRING",
+          "value": "slur"
+        },
+        {
+          "type": "STRING",
+          "value": "dynamic"
+        },
+        {
+          "type": "STRING",
+          "value": "tuplet"
+        },
+        {
+          "type": "STRING",
+          "value": "performance"
+        },
+        {
+          "type": "STRING",
+          "value": "profile"
+        },
+        {
+          "type": "STRING",
+          "value": "mark"
+        },
+        {
+          "type": "STRING",
+          "value": "groove"
+        },
+        {
+          "type": "STRING",
+          "value": "grace"
+        },
+        {
+          "type": "STRING",
+          "value": "studio"
+        },
+        {
+          "type": "STRING",
+          "value": "patch"
+        },
+        {
+          "type": "STRING",
+          "value": "modulate"
+        },
+        {
+          "type": "STRING",
+          "value": "bus"
+        },
+        {
+          "type": "STRING",
+          "value": "assign"
+        },
+        {
+          "type": "STRING",
+          "value": "route"
+        },
+        {
+          "type": "STRING",
+          "value": "send"
+        },
+        {
+          "type": "STRING",
+          "value": "master"
+        },
+        {
+          "type": "STRING",
+          "value": "at"
+        },
+        {
+          "type": "STRING",
+          "value": "output"
+        },
+        {
+          "type": "STRING",
+          "value": "pitch"
+        },
+        {
+          "type": "STRING",
+          "value": "stretch"
+        },
+        {
+          "type": "STRING",
+          "value": "retrograde"
+        },
+        {
+          "type": "STRING",
+          "value": "invert"
+        },
+        {
+          "type": "STRING",
+          "value": "around"
+        },
+        {
+          "type": "STRING",
+          "value": "with"
+        },
+        {
+          "type": "STRING",
+          "value": "note"
+        },
+        {
+          "type": "STRING",
+          "value": "phrase"
+        },
+        {
+          "type": "STRING",
+          "value": "section"
+        },
+        {
+          "type": "STRING",
+          "value": "harmony"
+        },
+        {
+          "type": "STRING",
+          "value": "library"
+        },
+        {
+          "type": "STRING",
+          "value": "crescendo"
+        },
+        {
+          "type": "STRING",
+          "value": "diminuendo"
+        },
+        {
+          "type": "STRING",
+          "value": "to"
+        },
+        {
+          "type": "STRING",
+          "value": "bar"
+        },
+        {
+          "type": "STRING",
+          "value": "assert"
+        },
+        {
+          "type": "STRING",
+          "value": "senza"
+        },
+        {
+          "type": "STRING",
+          "value": "ending"
+        },
+        {
+          "type": "STRING",
+          "value": "fragment"
+        },
+        {
+          "type": "STRING",
+          "value": "mobile"
+        },
+        {
+          "type": "STRING",
+          "value": "improvise"
+        },
+        {
+          "type": "STRING",
+          "value": "over"
+        },
+        {
+          "type": "STRING",
+          "value": "let"
+        },
+        {
+          "type": "STRING",
+          "value": "fn"
+        },
+        {
+          "type": "STRING",
+          "value": "music"
+        },
+        {
+          "type": "STRING",
+          "value": "kernel"
+        },
+        {
+          "type": "STRING",
+          "value": "Option"
+        },
+        {
+          "type": "STRING",
+          "value": "List"
+        },
+        {
+          "type": "STRING",
+          "value": "Result"
+        },
+        {
+          "type": "STRING",
+          "value": "match"
+        },
+        {
+          "type": "STRING",
+          "value": "Some"
+        },
+        {
+          "type": "STRING",
+          "value": "None"
+        },
+        {
+          "type": "STRING",
+          "value": "Ok"
+        },
+        {
+          "type": "STRING",
+          "value": "Err"
+        },
+        {
+          "type": "STRING",
+          "value": "true"
+        },
+        {
+          "type": "STRING",
+          "value": "false"
+        },
+        {
+          "type": "STRING",
+          "value": "scale"
+        },
+        {
+          "type": "STRING",
+          "value": "degree"
+        },
+        {
+          "type": "STRING",
+          "value": "frame"
+        },
+        {
+          "type": "STRING",
+          "value": "in"
+        },
+        {
+          "type": "STRING",
+          "value": "step"
+        },
+        {
+          "type": "STRING",
+          "value": "chord"
+        },
+        {
+          "type": "STRING",
+          "value": "stack"
+        },
+        {
+          "type": "STRING",
+          "value": ";"
+        },
+        {
+          "type": "STRING",
+          "value": ","
+        },
+        {
+          "type": "STRING",
+          "value": ":"
+        },
+        {
+          "type": "STRING",
+          "value": "->"
+        },
+        {
+          "type": "STRING",
+          "value": "|>"
+        },
+        {
+          "type": "STRING",
+          "value": "="
+        },
+        {
+          "type": "STRING",
+          "value": "-"
+        },
+        {
+          "type": "STRING",
+          "value": "~"
+        },
+        {
+          "type": "STRING",
+          "value": "."
+        },
+        {
+          "type": "STRING",
+          "value": "/"
+        },
+        {
+          "type": "STRING",
+          "value": "|"
+        },
+        {
+          "type": "STRING",
+          "value": ">"
+        },
+        {
+          "type": "STRING",
+          "value": "<"
+        },
+        {
+          "type": "STRING",
+          "value": "^"
+        },
+        {
+          "type": "STRING",
+          "value": "#"
+        },
+        {
+          "type": "STRING",
+          "value": "$"
+        }
+      ]
+    },
     "_primary_expression": {
       "type": "CHOICE",
       "members": [
+        {
+          "type": "SYMBOL",
+          "name": "syntax_region"
+        },
         {
           "type": "SYMBOL",
           "name": "name_expression"

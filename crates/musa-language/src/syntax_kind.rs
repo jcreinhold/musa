@@ -135,6 +135,8 @@ pub enum SyntaxKind {
     UseKw,
     /// `import`
     ImportKw,
+    /// `syntax`
+    SyntaxKw,
     /// `mod`
     ModKw,
     /// `transpose`
@@ -590,6 +592,18 @@ pub enum SyntaxKind {
     /// constructors, which is what makes the constructors private to the
     /// structure that declares them.
     DataMember,
+    /// `syntax staff { ... }` — one named, delimited adapter region.
+    ///
+    /// Its contents are *not* ordinary expression syntax: they are read by the
+    /// fixed lexer and grouper and handed to the adapter the header named, and
+    /// the expression they stand for is whatever the adapter answers with.
+    SyntaxRegion,
+    /// One matched delimiter pair inside a [`SyntaxKind::SyntaxRegion`].
+    ///
+    /// The grouper forms a node for each pair and nothing else forms one:
+    /// packages do not extend the lexer, so this is the whole of the structure
+    /// an adapter sees above the token stream.
+    SyntaxGroup,
 }
 
 impl SyntaxKind {

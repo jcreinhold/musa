@@ -263,6 +263,14 @@ pub struct DecisionRecord {
 }
 
 impl DecisionRecord {
+    /// Move every place this record points at back into the composer's own
+    /// text (`crate::expand`).
+    pub(crate) fn remap_spans(&mut self, map: &crate::expand::SourceMap) {
+        for site in &mut self.sites {
+            *site = map.span(*site);
+        }
+    }
+
     /// Which site this is — the name a pin is written against.
     #[must_use]
     pub fn path(&self) -> &ChoicePath {

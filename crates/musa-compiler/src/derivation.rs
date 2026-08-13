@@ -690,7 +690,23 @@ fn push_text(out: &mut Vec<u8>, text: &str) {
 /// Prefixes are interned, so two notes of one motif body share the nodes they
 /// have in common instead of each carrying a private copy of the body's
 /// history.
-pub(crate) fn of_score(score: &crate::score::ScoreSnapshot) -> Derivation {
+/// One adapter region, as the derivation graph sees it.
+///
+/// `02-derivation-diagrams.md` §6's closing paragraph, made concrete: an
+/// expansion record is a source of `Generated` steps and nothing more. An event
+/// written inside a region was *produced* at that region by that adapter rather
+/// than written there, and the region is the only place in this document a
+/// reader can go — so root and site are the same anchor, and what the step adds
+/// over a leaf is the name of what produced it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct ExpansionAnchor {
+    /// The region, in the composer's own text.
+    pub(crate) site: SourceSpan,
+    /// The module path that read it.
+    pub(crate) adapter: String,
+}
+
+pub(crate) fn of_score(score: &crate::score::ScoreSnapshot, expansions: &[ExpansionAnchor]) -> Derivation {
     let mut graph = Derivation::new(ELABORATION);
     let mut sources: Vec<SourceSpan> = Vec::new();
     let mut targets: Vec<Vec<u8>> = Vec::new();
@@ -701,7 +717,7 @@ pub(crate) fn of_score(score: &crate::score::ScoreSnapshot) -> Derivation {
             let mut events = Vec::new();
             let mut reached = Vec::new();
             for event in voice.events() {
-                if let Some(id) = of_event(&mut graph, &mut sources, &mut targets, &event.origin) {
+                if let Some(id) = of_event(&mut graph, &mut sources, &mut targets, &event.origin, expansions) {
                     events.push(id);
                     reached.push((event.id, id));
                 }
@@ -748,10 +764,26 @@ fn of_event(
     sources: &mut Vec<SourceSpan>,
     targets: &mut Vec<Vec<u8>>,
     origin: &crate::origin::Origin,
+    expansions: &[ExpansionAnchor],
 ) -> Option<NodeId> {
     let written = intern_source(sources, origin.definition_span);
     let mut node = graph.leaf(written, Some(origin.definition_span));
     let mut key = format!("{}:{}", origin.definition_span.start, origin.definition_span.end);
+    // An adapter region is where the innermost step starts when there is one:
+    // the note was produced there, not written there, and every later step
+    // grafts onto that rather than onto a leaf.
+    if let Some(expansion) = expansions
+        .iter()
+        .find(|expansion| covers(expansion.site, origin.definition_span))
+    {
+        {
+            use std::fmt::Write as _;
+            let _ = write!(key, "/expand({})", expansion.adapter);
+        }
+        let anchor = intern_target(targets, key.as_bytes());
+        let evidence = Evidence::of(format!("expansion:{}", expansion.adapter));
+        node = graph.generated(anchor, None, node, node, evidence)?;
+    }
     for step in origin.expansion_path.iter().rev() {
         let spelled = step_key(step);
         key.push('/');
@@ -768,6 +800,11 @@ fn of_event(
         };
     }
     Some(node)
+}
+
+/// Whether `span` lies inside `region`.
+const fn covers(region: SourceSpan, span: SourceSpan) -> bool {
+    span.start >= region.start && span.end <= region.end
 }
 
 /// Where a step instantiated material, when it is a generation site at all.

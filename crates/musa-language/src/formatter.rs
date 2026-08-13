@@ -132,6 +132,14 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer, layout: &Layout) {
                     write_quote(&child.text().to_string(), writer);
                     continue;
                 }
+                // An adapter region, for the same reason: what is inside it is
+                // the adapter's language, not this one's, and a formatter that
+                // re-spaced it would be deciding a shape this crate cannot
+                // read. Written as it stands, anchored at the host's indent.
+                if child.kind() == SyntaxKind::SyntaxRegion {
+                    write_quote(&child.text().to_string(), writer);
+                    continue;
+                }
                 if writer.starts_a_beat_group(&child) {
                     writer.widen_next_gap();
                 }

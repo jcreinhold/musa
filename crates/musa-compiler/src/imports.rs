@@ -306,7 +306,11 @@ pub(crate) fn load(
         stack: Vec::new(),
     };
     let mut reported_package_faults = false;
-    for import in imports {
+    // A syntax import is not an ordinary import and does not bring a module's
+    // declarations into this file. It named a reader, the expansion phase has
+    // already used it (`crate::expand`), and loading its module here would ask
+    // the ordinary checker to read a phase module.
+    for import in imports.iter().filter(|import| !import.changes_syntax()) {
         let span = crate::resolve::trimmed_span(import.syntax());
         let Some(written) = import.path() else { continue };
         // A piece that reads the bundled library is told what is wrong with
@@ -413,6 +417,7 @@ impl Loader<'_> {
             .map(|library| library.imports())
             .unwrap_or_default()
             .iter()
+            .filter(|import| !import.changes_syntax())
             .filter_map(musa_language::ast::ImportStmt::path)
             .collect();
         let mut depends_on = Vec::with_capacity(nested.len());

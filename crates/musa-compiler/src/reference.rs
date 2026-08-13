@@ -39,6 +39,14 @@ fn probe() -> String {
             .strip_prefix("musa-stdlib:/std/")
             .and_then(|rest| rest.strip_suffix(".musa"))
         {
+            // A phase module is not written in the language ordinary source is
+            // written in, and an ordinary import cannot change syntax
+            // (`crate::expand`). Importing one here would ask the checker to
+            // read names that ordinary source has no way to spell, so the
+            // reference documents what an importing *document* may name.
+            if path.starts_with("adapters/") {
+                continue;
+            }
             let _ = writeln!(source, "    import std::{};", path.replace('/', "::"));
         }
     }

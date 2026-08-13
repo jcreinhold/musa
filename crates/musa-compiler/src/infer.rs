@@ -266,9 +266,19 @@ struct Variable {
 #[derive(Default)]
 pub(crate) struct Unifier {
     variables: Vec<Variable>,
+    constraints: u64,
 }
 
 impl Unifier {
+    /// How many equations this unifier has been asked to solve.
+    ///
+    /// The `type_constraints` charge of `26-language-design-decision.md` §3.5,
+    /// counted where the constraints are actually made rather than estimated
+    /// from the shape of the term.
+    pub(crate) const fn constraints(&self) -> u64 {
+        self.constraints
+    }
+
     /// A variable nothing has said anything about yet.
     pub(crate) fn fresh(&mut self, kind: Kind) -> Type {
         let variable = u32::try_from(self.variables.len()).unwrap_or(u32::MAX);
@@ -307,6 +317,7 @@ impl Unifier {
     /// diagnostic and stops checking that expression, so a half-solved
     /// substitution is never read as an answer.
     pub(crate) fn unify(&mut self, left: &Type, right: &Type) -> Result<(), Mismatch> {
+        self.constraints = self.constraints.saturating_add(1);
         let left = self.shallow(left);
         let right = self.shallow(right);
         match (&left, &right) {

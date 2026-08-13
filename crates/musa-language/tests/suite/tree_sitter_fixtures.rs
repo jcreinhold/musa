@@ -140,6 +140,7 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         SyntaxKind::ClefKw => "clef",
         SyntaxKind::UseKw => "use",
         SyntaxKind::ImportKw => "import",
+        SyntaxKind::SyntaxKw => "syntax",
         SyntaxKind::ModKw => "mod",
         SyntaxKind::TransposeKw => "transpose",
         SyntaxKind::DownKw => "down",
@@ -335,7 +336,9 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::DataMember
         | SyntaxKind::PitchExpr
         | SyntaxKind::KernelQuote
-        | SyntaxKind::KernelHole => panic!("`{kind:?}` is a node, not a token"),
+        | SyntaxKind::KernelHole
+        | SyntaxKind::SyntaxRegion
+        | SyntaxKind::SyntaxGroup => panic!("`{kind:?}` is a node, not a token"),
     }
 }
 

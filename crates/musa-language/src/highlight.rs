@@ -35,6 +35,7 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("clef", SyntaxKind::ClefKw),
     ("use", SyntaxKind::UseKw),
     ("import", SyntaxKind::ImportKw),
+    ("syntax", SyntaxKind::SyntaxKw),
     ("transpose", SyntaxKind::TransposeKw),
     ("down", SyntaxKind::DownKw),
     ("up", SyntaxKind::UpKw),
@@ -237,6 +238,7 @@ impl TokenClass {
             SyntaxKind::UseKw => Self::Use,
 
             SyntaxKind::ImportKw
+            | SyntaxKind::SyntaxKw
             | SyntaxKind::PieceKw
             | SyntaxKind::TempoKw
             | SyntaxKind::MeterKw
@@ -364,6 +366,8 @@ impl TokenClass {
             | SyntaxKind::ChordSymbol
             | SyntaxKind::LibraryDecl
             | SyntaxKind::ImportStmt
+            | SyntaxKind::SyntaxRegion
+            | SyntaxKind::SyntaxGroup
             | SyntaxKind::HairpinStmt
             | SyntaxKind::Duration
             | SyntaxKind::ArticulationList

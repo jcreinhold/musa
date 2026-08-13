@@ -38,20 +38,13 @@ use crate::origin::SourceSpan;
 /// A structural coordinate rather than an allocated id — the build node, the
 /// file, the region's ordinal within it, and so on down through parent
 /// expansions — so that two runs of one compiler over one input agree on it
-/// exactly. Prompt 127dc derives it by a fixed traversal; here the driver
-/// supplies a root.
+/// exactly. The expansion phase derives it by a fixed traversal; here the
+/// driver supplies a root.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct ExpansionPath(Vec<u32>);
 
 impl ExpansionPath {
     /// The expansion at `ordinals`, counted from the outermost coordinate in.
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "the reader and its driver are proved by this module's law suite; prompt 127dc gives them their product caller"
-        )
-    )]
     pub(crate) fn at(ordinals: Vec<u32>) -> Self {
         Self(ordinals)
     }
@@ -73,13 +66,6 @@ impl ExpansionPath {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum PathStep {
     /// The nth child of a group, as the region was read.
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "the reader and its driver are proved by this module's law suite; prompt 127dc gives them their product caller"
-        )
-    )]
     Child(u32),
     /// What a builder made at `role`, `child` steps along.
     Built { role: u32, child: u32 },
@@ -99,13 +85,6 @@ pub(crate) struct NodePath {
 impl NodePath {
     /// The root of one expansion — the only path not derived from another, and
     /// the compiler's to make.
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "the reader and its driver are proved by this module's law suite; prompt 127dc gives them their product caller"
-        )
-    )]
     pub(crate) const fn root(expansion: ExpansionPath) -> Self {
         Self {
             expansion,
@@ -117,13 +96,6 @@ impl NodePath {
     ///
     /// Private, because descending is the fold's job: a transformer that could
     /// walk to a child itself could walk to one that is not there.
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "the reader and its driver are proved by this module's law suite; prompt 127dc gives them their product caller"
-        )
-    )]
     fn child(&self, index: u32) -> Self {
         let mut steps = self.steps.clone();
         steps.push(PathStep::Child(index));
@@ -219,6 +191,15 @@ impl BindingPath {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct Scope(NodePath);
 
+impl Scope {
+    /// This scope's exact bytes, which the printer interns to a mark.
+    fn key(&self) -> Vec<u8> {
+        let mut out = Vec::new();
+        self.0.write_into(&mut out);
+        out
+    }
+}
+
 /// Where a node came from.
 ///
 /// It has no eliminator on purpose. A transformer holds a node in order to
@@ -227,13 +208,6 @@ pub(crate) struct Scope(NodePath);
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum SourceInfo {
     /// Text the composer wrote, at the structural path the reader gave it.
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "the reader and its driver are proved by this module's law suite; prompt 127dc gives them their product caller"
-        )
-    )]
     Original { span: SourceSpan, path: NodePath },
     /// Something an expansion made, at the path it made it.
     Generated(NodePath),
@@ -293,13 +267,6 @@ pub(crate) enum Syntax {
     /// A node the reader expected and did not find. Kept rather than dropped,
     /// so that a transformer over a half-written region still has a shape to
     /// fold and a node to point a diagnostic at.
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "the reader and its driver are proved by this module's law suite; prompt 127dc gives them their product caller"
-        )
-    )]
     Missing(SourceInfo),
     /// A token, by the kind the reader gave it and its exact text.
     Token {
@@ -424,24 +391,10 @@ impl Syntax {
 /// its children. A node whose first and last tokens are a matched delimiter
 /// pair becomes a group of that delimiter; every other node is a layout group,
 /// which is what the fixed grouper does with a line that opens a block.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the reader and its driver are proved by this module's law suite; prompt 127dc gives them their product caller"
-    )
-)]
 pub(crate) fn read_region(node: &musa_language::SyntaxNode, expansion: ExpansionPath) -> Syntax {
     read_node(node, &NodePath::root(expansion))
 }
 
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the reader and its driver are proved by this module's law suite; prompt 127dc gives them their product caller"
-    )
-)]
 fn read_node(node: &musa_language::SyntaxNode, path: &NodePath) -> Syntax {
     let span = crate::resolve::trimmed_span(node);
     // Where the parser gave up, the reader reports a hole rather than a shape
@@ -489,13 +442,6 @@ fn read_node(node: &musa_language::SyntaxNode, path: &NodePath) -> Syntax {
     }
 }
 
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the reader and its driver are proved by this module's law suite; prompt 127dc gives them their product caller"
-    )
-)]
 fn read_token(token: &musa_language::SyntaxToken, path: NodePath) -> Syntax {
     let info = SourceInfo::Original {
         span: SourceSpan::new(
@@ -519,13 +465,6 @@ fn read_token(token: &musa_language::SyntaxToken, path: NodePath) -> Syntax {
     }
 }
 
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the reader and its driver are proved by this module's law suite; prompt 127dc gives them their product caller"
-    )
-)]
 fn token_text(piece: &musa_language::SyntaxElement) -> Option<&str> {
     match piece {
         musa_language::SyntaxElement::Token(token) => Some(token.text()),
@@ -678,6 +617,97 @@ pub(crate) fn reference(at: NodePath, binding: &BindingPath, name: String) -> Sy
         info: SourceInfo::Generated(at),
         name,
         scopes: vec![binding.scope()],
+    }
+}
+
+/// One expansion, written back as source text for the ordinary parser.
+pub(crate) struct Printed {
+    /// The text step 5 of the fixed order parses as one ordinary expression.
+    pub(crate) text: String,
+    /// Every name the printer wrote for a generated binding, in the spelling
+    /// it wrote them.
+    pub(crate) generated_names: std::collections::BTreeSet<String>,
+    /// How many of the output's nodes the transformer built rather than
+    /// received — the phase's `generated_syntax_nodes` charge.
+    pub(crate) generated_nodes: u64,
+}
+
+/// Write `node` back as source text, for the ordinary parser to read.
+///
+/// This is step 5 of the fixed order — "parse each expansion as one ordinary
+/// expression" — and the reason it is a *printer* rather than a splice is that
+/// the ordinary parser is the only thing in the compiler that decides what an
+/// expression is. An adapter's answer becomes text and then goes through the
+/// same reader the composer's own source does; nothing skips a check by having
+/// been generated.
+///
+/// The spacing is uniform, one space between siblings, because nothing reads
+/// this text for its shape: a diagnostic that would have landed in it is moved
+/// to the region's use site by the source map instead.
+///
+/// **Hygiene crosses here by renaming.** A generated binder and its references
+/// carry a [`Scope`], which the ordinary flat namespace has no notion of, so
+/// each distinct scope is interned to an ordinal in first-appearance order and
+/// written as a suffix on the name. Interning rather than hashing is what makes
+/// it exact: one binding is one name and two bindings are two names, with no
+/// collision to argue about. What the printer cannot decide alone is whether a
+/// name it wrote is also a name the *composer* wrote, so it reports the names
+/// in [`Printed::generated_names`] and the phase refuses an expansion that
+/// would shadow one.
+pub(crate) fn print(node: &Syntax) -> Printed {
+    let mut printed = Printed {
+        text: String::new(),
+        generated_names: std::collections::BTreeSet::new(),
+        generated_nodes: 0,
+    };
+    let mut marks: Vec<Vec<u8>> = Vec::new();
+    write_syntax(node, &mut marks, &mut printed);
+    printed
+}
+
+fn write_syntax(node: &Syntax, marks: &mut Vec<Vec<u8>>, out: &mut Printed) {
+    if matches!(node.info(), SourceInfo::Generated(_)) {
+        out.generated_nodes = out.generated_nodes.saturating_add(1);
+    }
+    match node {
+        // A hole has no text: where it was missing is the composer's own
+        // source, and the diagnostic for it is anchored there.
+        Syntax::Missing(_) => {}
+        Syntax::Token { text, .. } => out.text.push_str(text),
+        Syntax::Identifier { name, scopes, .. } => {
+            let mut written = name.clone();
+            for scope in scopes {
+                let key = scope.key();
+                let mark = marks.iter().position(|seen| *seen == key).unwrap_or_else(|| {
+                    marks.push(key);
+                    marks.len().saturating_sub(1)
+                });
+                {
+                    use std::fmt::Write as _;
+                    let _ = write!(written, "_g{mark}");
+                }
+            }
+            if !scopes.is_empty() {
+                out.generated_names.insert(written.clone());
+            }
+            out.text.push_str(&written);
+        }
+        Syntax::Group {
+            delimiter, children, ..
+        } => {
+            let pair = DELIMITERS
+                .iter()
+                .find(|(name, _, _)| name == delimiter)
+                .map_or(("layout", "", ""), |entry| *entry);
+            out.text.push_str(pair.1);
+            for (index, child) in children.iter().enumerate() {
+                if index > 0 {
+                    out.text.push(' ');
+                }
+                write_syntax(child, marks, out);
+            }
+            out.text.push_str(pair.2);
+        }
     }
 }
 

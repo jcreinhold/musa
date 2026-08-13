@@ -90,6 +90,10 @@
   "music"
   "kernel"
   "import"
+  ; `syntax`, in both places it is written: the header statement that names
+  ; which package reads a region, and the region itself. The word is the one
+  ; thing about a region this reader is entitled to an opinion about.
+  "syntax"
   "match"
   ; `use` alone, as TokenClass::Use says: it is where material comes from.
   ; Zed has no keyword subcategories, so it takes the keyword color.

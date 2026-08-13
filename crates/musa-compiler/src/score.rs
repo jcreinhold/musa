@@ -977,6 +977,51 @@ pub struct AnnotationStore {
 }
 
 impl AnnotationStore {
+    /// Move every annotation's origin back into the composer's own text.
+    ///
+    /// One line per store, rather than a loop over a trait: a store added
+    /// without a line here is a store whose origins would keep positions in
+    /// generated text, and the shortest way to make that visible is for this
+    /// list and the field list above to be read together.
+    pub(crate) fn remap_spans(&mut self, map: &crate::expand::SourceMap) {
+        for it in &mut self.slurs {
+            it.origin.remap_spans(map);
+        }
+        for it in &mut self.tuplets {
+            it.origin.remap_spans(map);
+        }
+        for it in &mut self.dynamics {
+            it.origin.remap_spans(map);
+        }
+        for it in &mut self.articulations {
+            it.origin.remap_spans(map);
+        }
+        for it in &mut self.graces {
+            it.origin.remap_spans(map);
+        }
+        for it in &mut self.phrases {
+            it.origin.remap_spans(map);
+        }
+        for it in &mut self.hairpins {
+            it.origin.remap_spans(map);
+        }
+        for it in &mut self.sections {
+            it.origin.remap_spans(map);
+        }
+        for it in &mut self.harmony {
+            it.origin.remap_spans(map);
+        }
+        for it in &mut self.repeats {
+            it.origin.remap_spans(map);
+        }
+        for it in &mut self.open {
+            it.origin.remap_spans(map);
+        }
+        for it in &mut self.points {
+            it.origin.remap_spans(map);
+        }
+    }
+
     /// Slurs, in source order.
     pub fn slurs(&self) -> &[SlurSpan] {
         &self.slurs
@@ -1176,6 +1221,28 @@ impl Default for Contexts {
 }
 
 impl ScoreSnapshot {
+    /// Move every place this snapshot points at back into the composer's own
+    /// text (`crate::expand`).
+    ///
+    /// Called once, and only for a document that had an adapter region in it:
+    /// a piece with no region has an identity map and is not walked at all.
+    /// What this crosses is the one boundary the phase creates — the compiler
+    /// read a second text, and everything it says has to be said about the
+    /// first.
+    pub(crate) fn remap_spans(&mut self, map: &crate::expand::SourceMap) {
+        for part in self.parts.parts.values_mut() {
+            for voice in part.voices.values_mut() {
+                for event in &mut voice.events {
+                    event.origin.remap_spans(map);
+                }
+            }
+        }
+        for motif in &mut self.motifs {
+            motif.span = map.span(motif.span);
+        }
+        self.annotations.remap_spans(map);
+    }
+
     /// The piece's title, as written in its `piece` declaration.
     pub fn title(&self) -> &str {
         &self.title

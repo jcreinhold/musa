@@ -1,7 +1,7 @@
 ---
 id: 127dc
 slug: adapter-expansion
-status: pending
+status: done
 depends_on: [127da, 127db]
 phase: 3
 ---

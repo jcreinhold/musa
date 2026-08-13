@@ -4,6 +4,7 @@
 //! build, and one more set of object files that cargo never reclaims from
 //! `target/debug/deps`. See `docs/notes/toolchain/slow-test-suite.md`.
 
+mod adapter_region_laws;
 mod editing_laws;
 mod expression_syntax_laws;
 mod formatter;
