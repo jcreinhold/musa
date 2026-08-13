@@ -42,12 +42,12 @@ asserting rather than assuming:
 - `BarStmt::name()` reads only **direct** identifier tokens, and a `|`-bar's direct tokens are the pipe and trivia —
   every identifier is inside a `NoteStmt` or an `ArticulationList`. So a `|`-bar is anonymous **by tree shape**, not by
   a check that could be forgotten.
-- `content_end()`, `lint::copied_bars` and `elaborate_bar`'s bar-length check all keep working unchanged, which means
+- `content_end()`, `lint::copied_bars` and `elaborate_bar`'s bar-duration check all keep working unchanged, which means
   `|` inherits the assertion the brace was there for.
 - `voice_items` gains `Pipe` to its exit condition **and** its dispatch, exit checked first, so `| a | b` closes one bar
   before opening the next and never trips `nested_bar`. What else closes it is below.
 
-`bulgarian.musa` has no bars today and so has never been length-checked. Giving it barlines subjects it to
+`bulgarian.musa` has no bars today and so has never been duration-checked. Giving it barlines subjects it to
 `check_bar_length` for the first time. It passes — eight bars of 7/8 and seven of 4/4 both come to 7 — but it is a
 behaviour change and it belongs in the commit message.
 
@@ -95,7 +95,7 @@ under a `|` would otherwise be swallowed by the bar above it, and the bar would 
 Stated as a whitelist of what *continues* a bar — the events, and the things written among them: `use`, `dynamic`,
 `clef`, `meter`, `key`, `tempo`, `mark`, `crescendo`, `diminuendo`, `tuplet`, `slur`, `grace`. A statement kind added
 next year therefore ends the bar, which is wrong where the composer can see it, rather than lengthening the bar, which
-is wrong where only the length check notices.
+is wrong where only the duration check notices.
 
 A brace resets it: a `tuplet` inside a `|` bar reads its own block, so `block()` clears the flag and restores it.
 
@@ -191,7 +191,7 @@ fact; a stray `;` after a note produces the removal fix and applying it yields a
 `grace { c5 staccato d5 }` parses as two grace notes, the first carrying the mark.
 
 Rendered output must not change except where the source's own spelling appears — this is a surface change, and
-`bulgarian.musa` newly passing a bar-length check it was never subject to is the one intended difference.
+`bulgarian.musa` newly passing a bar-duration check it was never subject to is the one intended difference.
 
 ## Stop
 

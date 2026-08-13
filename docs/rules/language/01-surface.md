@@ -187,8 +187,8 @@ motif turn(root: Pitch = c5) {
 `motif turn(...) { body }` desugars to a named `fn turn(...) -> EventTrack[WrittenTime, ScoreFact] { music { body } }`
 with a `Motif` role retained for lints, extraction, editing, and Origin. `fragment name { body }` desugars to
 `let name = music { body };` with a `Fragment` role. `use e;` checks that `e` is a written-time score track, `follow`s
-it onto the voice at the current cursor, and advances by `length(e)`. Existing `use name(args);` is the same rule, not a
-second invocation mechanism.
+it onto the voice at the current cursor, and advances by `duration(e)`. Existing `use name(args);` is the same rule, not
+a second invocation mechanism.
 
 The type is written out rather than abbreviated. Prompt 127a deleted the type name `Music`, because a name that short
 for a type that specific is how the deleted contextual-`Music` design read as ordinary in the first place; a shorter
@@ -501,7 +501,7 @@ cue harbor at 17:1;
 ```
 
 The clip is beat-fitted and follows tempo. The fixed-media cue is only a kernel point at the score position; its
-recorded duration remains seconds and is never manufactured into a written-time length.
+recorded duration remains seconds and is never manufactured into a written-time duration.
 
 ## 9. Corpus correctness relation
 

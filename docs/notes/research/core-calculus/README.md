@@ -42,5 +42,8 @@ enough.
     contract.
 18. [Final review](17-final-review.md) checks the frozen calculus against its proofs, musical cases, old
     counterexamples, and current code. Its verdict is correct under the stated contracts.
+19. [The vocabulary amendment](18-vocabulary-amendment.md) records the rename that followed: position split from
+    duration, primitive split from builtin, and three smaller name repairs. It changes no decision, and files 1–18 are
+    deliberately left in the old vocabulary, so read its §5 mapping before taking a name here as current.
 
 Each rejected claim stays beside its refutation. No file here authorizes a compiler change or a change to `docs/rules/`.

@@ -10,7 +10,7 @@ first producing Western notation, and a project may begin at a microphone and ne
 | --- | --- | --- |
 | `Source` | `.musa` text and locked package inputs | yes |
 | `Core` | checked total expressions after parsing, adapter expansion, name resolution, and inference | yes |
-| `EventTrack<C,A>` | a length and a finite multiset of occurrences carrying `A`, in coordinate `C` | yes |
+| `EventTrack<C,A>` | a duration and a finite multiset of occurrences carrying `A`, in coordinate `C` | yes |
 | `Gesture` | instrument-independent performance instructions, carried as `EventTrack<PerformedTime,Gesture>` | yes |
 | `NotationPlan` | the information an engraver needs | yes |
 | `Analysis<T>` | a result defined by analysis package `T`, with supporting evidence | yes |
@@ -58,20 +58,20 @@ occurrence payload, a machine port, a feedback value, a primitive configuration,
 
 An event track is a pair `M = (d, E)` where:
 
-- `d` is a nonnegative exact rational length in coordinate `C`; and
+- `d` is a nonnegative exact rational duration in coordinate `C`; and
 - `E` is a finite multiset of occurrences `(s, e, a)` with `0 ≤ s ≤ e ≤ d` and payload `a : A`.
 
 A multiset keeps duplicates. Two performers may therefore contribute identical occurrences without one being deleted. A
 positive span is half open, `[s, e)`; an occurrence with `s = e` is a point.
 
-The core operations are `empty`, `event`, `follow`, `together`, `map_payloads`, and `length`:
+The core operations are `empty`, `event`, `follow`, `together`, `map_payloads`, and `duration`:
 
 ```text
 follow((d,E), (q,F))   = (d + q, E together with F moved forward by d)
 together((d,E), (q,F)) = (max(d,q), E together with F)
 ```
 
-`follow` places one passage after another. `together` places both in one region: it does not require equal lengths and
+`follow` places one passage after another. `together` places both in one region: it does not require equal durations and
 does not insert rests. Scaling, restriction, and the coverage queries are defined in
 `docs/rules/kernel/03-denotational-semantics.md`; they are retained operations with named callers rather than part of
 the six-operation basis.
@@ -137,7 +137,7 @@ written pitch                      frequency
 gesture track                      machine
 prepared machine                   audio history
 notation plan                      analysis result
-length in written beats            length in seconds
+duration in written beats            duration in seconds
 ```
 
 A named conversion may connect a pair. Shared fields, identifiers, or hashes do not create an automatic conversion.

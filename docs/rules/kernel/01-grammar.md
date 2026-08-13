@@ -29,7 +29,7 @@ misreading.
 - `string-literal` — double-quoted, backslash escapes for `"`, `\`, and `\n`.
 - `name` — `[A-Za-z_][A-Za-z0-9_-]*` (composition names, coordinate names, payload type names).
 - `rational-literal` — `integer-literal | integer-literal "/" positive-integer-literal`; always reduced on reading.
-- `length-literal`, `position-literal` — `rational-literal`, interpreted in the file's coordinate (exact rationals;
+- `duration-literal`, `position-literal` — `rational-literal`, interpreted in the file's coordinate (exact rationals;
   never floats).
 - `positive-rational-literal` — a `rational-literal` denoting a value in `ℚ>0`; scaling by zero or a negative factor is
   a static error (`02-static-semantics.md` K2).
@@ -75,7 +75,7 @@ composition-reference
     ;
 
 track-expression
-    = "track", length-literal, "{",
+    = "track", duration-literal, "{",
           { occurrence-statement },
       "}"
     ;
@@ -116,7 +116,7 @@ restrict-expression
     ;
 
 shift-expression
-    = "shift", "by", length-literal, composition-expression
+    = "shift", "by", duration-literal, composition-expression
     ;
 
 let-expression
@@ -174,7 +174,7 @@ kernel "example" {
 ## Design rules
 
 - **Clear names, no unexplained shorthand**: `follow`/`together`/`occurrence`, never `par`/`seq`/`atom`.
-- Lengths and positions are exact rationals in the declared coordinate. `0` and `3/2` are legal; `0.75` is not. This
+- Durations and positions are exact rationals in the declared coordinate. `0` and `3/2` are legal; `0.75` is not. This
   holds inside payload text too — a hairpin shape crosses as rational breakpoints, and a consumer that rounds it
   produces different sound from the same file (`07-backend-contract.md`).
 - A `composition` reference denotes the value of its declaration; references must be acyclic (`02-static-semantics.md`

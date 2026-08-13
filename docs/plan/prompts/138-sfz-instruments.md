@@ -32,8 +32,9 @@ is diagnosed by name, and the runtime remains the deterministic sampler built by
 Implement the exact support matrix approved in `docs/rules/language/09-assets-and-packages.md`. The minimum useful core
 covers global/group/region inheritance; sample path; key/range/root pitch; velocity ranges; tune/transpose; gain/pan;
 sample offset/end; loop points/modes; amplitude envelope; trigger/release behavior; exclusive groups; sequence
-position/length; and the standard sustain-pedal conditions needed by the native map. Map MIDI-shaped SFZ selectors into
-Musa gesture and control semantics only at this adapter; MIDI controller numbers do not become the instrument contract.
+position/duration; and the standard sustain-pedal conditions needed by the native map. Map MIDI-shaped SFZ selectors
+into Musa gesture and control semantics only at this adapter; MIDI controller numbers do not become the instrument
+contract.
 
 Resolve samples and any supported includes within the SFZ asset/package root with prompt 135's traversal/digest rules.
 If includes/macros cannot be implemented without weakening the resolver, reject them in this version and say so. Parse

@@ -87,7 +87,7 @@ core offered exactly one fix.
 ### Suggestions come from what the composer wrote
 
 Every "not found" diagnostic searches the names actually in scope and offers the nearest, by Damerau-Levenshtein, within
-a third of the written name's length and never fewer than one edit or more than three. A tie offers nothing: two
+a third of the written name's duration and never fewer than one edit or more than three. A tie offers nothing: two
 candidates at the same distance means the suggester does not know, and saying so by staying quiet is the honest answer.
 No dependency: it is a page, private to the compiler, tested against the corpus. The same routine serves motifs, parts,
 voices, patches, buses, and studio parameters.

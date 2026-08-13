@@ -69,7 +69,7 @@ Three constraints make this narrow enough to be worth having, and they are the w
 1. **The mark is opaque.** It is a string; the kernel neither reads it nor gives it meaning. The layering rule is
    untouched — this is the same discipline payloads already live under (`01-grammar.md`).
 2. **It selects a payload map, and nothing else.** Evaluation applies `map_payloads(f)` (D7) to the instantiated value,
-   where `f` is chosen by the consumer from `m`. Spans, length, occurrence count and order are untouched, because D7
+   where `f` is chosen by the consumer from `m`. Spans, duration, occurrence count and order are untouched, because D7
    already guarantees that (L9–L12). This is not a new operation: `map` is still not a term — no function is written
    down, and the consumer that owns the payload chooses the map, exactly as it chooses what the payload text means.
 3. **An unmarked reference is the identity case.** `x` is `x @ m` with the identity map, so E-Var stays as it was and a

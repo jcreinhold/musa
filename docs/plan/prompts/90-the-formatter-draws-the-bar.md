@@ -44,7 +44,7 @@ guess:
 
 Per bar, not per file: one unmeasurable bar does not silence its neighbours. What falls back, and why each is right:
 
-- a bar containing `use foo()` — the material's length is a compiler fact and `musa-language` does not have it;
+- a bar containing `use foo()` — the material's duration is a compiler fact and `musa-language` does not have it;
 - a duration that is a parameter reference — same reason;
 - `improvise` — it frames unnotated music, and drawing its interior to scale would claim something false;
 - a `tuplet`, `grace`, `slur`, `repeat`, `ending`, hairpin, or any other nested block;
@@ -91,7 +91,7 @@ visible without the comment that used to explain it.
 ## Stop
 
 - **No proportional spacing.** That is prompt 91, and it is optional; this prompt's spacing is the one every file gets.
-- **No line-length configuration.** `MEASURE` is already decided, in writing, at length.
+- **No line-duration configuration.** `MEASURE` is already decided, in writing, at duration.
 - **No token rewriting.** The formatter rewrites whitespace.
 - **No asking `musa-render` anything.** The dependency points the other way, and `beat_groups` is why it does not need
   to.

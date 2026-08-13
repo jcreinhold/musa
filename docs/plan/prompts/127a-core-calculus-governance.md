@@ -28,8 +28,8 @@ scheduler the explicit connection.
 
 State the new foundation in plain English before notation:
 
-- `EventTrack<C,A>` is a finite exact length and a finite multiset of half-open or point occurrences. It owns `empty`,
-  `event`, `follow`, `together`, `map_payloads`, and `length`.
+- `EventTrack<C,A>` is a finite exact duration and a finite multiset of half-open or point occurrences. It owns `empty`,
+  `event`, `follow`, `together`, `map_payloads`, and `duration`.
 - `Machine<K,A,B>` is a finite description built from registered primitives, identity, chain connection, side-by-side
   connection, initialized one-step feedback, copy, drop, and swap.
 - One audio step is one sample frame. A host block is only a proven or tested batching optimization over frame steps.
@@ -41,7 +41,7 @@ State the new foundation in plain English before notation:
 
 Amend, do not layer. Remove governing claims that the studio has a separate calculus or that audio is outside the core
 language. Keep the true part: an audio history is not a finite event track or source value. Preserve source authority,
-named conversions, exact identity, derivation records, optional musical theories, unequal-length overlay, and the
+named conversions, exact identity, derivation records, optional musical theories, unequal-duration overlay, and the
 real-time rules.
 
 Rewrite the language, kernel, across-stage, roadmap, and code-map documents to use the same names and stage boundaries.

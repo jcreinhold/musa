@@ -67,5 +67,5 @@ Commit as `Add pitch-class set and row algebra`.
 
 - No implicit conversion from `pc12` to spelled pitch/pitch class.
 - No claim that P/I/R/RI alone is one order-48 `D12`; name the reversal factor.
-- No arbitrary-length sequence accepted as `row12`, and no matrix convention left implicit.
+- No arbitrary-duration sequence accepted as `row12`, and no matrix convention left implicit.
 - No compiler primitive for algorithms expressible with finite lists/folds.

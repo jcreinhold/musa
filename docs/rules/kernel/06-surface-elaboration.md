@@ -42,7 +42,7 @@ Decisions recorded against the open questions of `08-open-questions.md`:
   occurrence as data the core is opaque to. `Origin` never participates in temporal semantics; it participates in
   canonical payload serialization only as a stable, deterministic key (N3), so semantic equality can still distinguish
   occurrences a consumer must tell apart.
-- **No duration field in the payload** — length is temporal support (D0).
+- **No duration field in the payload** — duration is temporal support (D0).
 
 ## Elaboration rules, per surface construct
 
@@ -51,23 +51,23 @@ Decisions recorded against the open questions of `08-open-questions.md`:
 | `c5/4` | One occurrence of `ScoreFact::Note` over the current position's span, carrying pitch, written duration, and any articulations; the voice cursor advances by `1/4`. |
 | `rest/2` | One occurrence of `ScoreFact::Rest` over the current position's span; the voice cursor advances by `1/2`. A *written* rest is notation an author asked for, and export and provenance both need it; what stays absent is unwritten silence. |
 | `[c5 e5 g5]/2` | `together` of one `Note` occurrence per pitch over the same span. The projection regroups same-span, same-scope, same-origin note occurrences into `ScoreEventKind::Chord`. |
-| voice body | `follow` of its items in source order (cursor semantics = left-fold of successive lengths). |
+| voice body | `follow` of its items in source order (cursor semantics = left-fold of successive durations). |
 | part | `together` of its voice tracks. Voice identity is the fact's `Scope`, not a track of its own. |
 | piece score | `together` of its part tracks: **one** `EventTrack<WrittenTime, ScoreFact>` per compilation. |
 | `let x = track_expression;` | An ordinary source binding of an ordinary event-track value. It emits nothing until it is placed. |
-| `use e;` | Place the track `e` at the current voice cursor: `follow` it onto the voice under construction and advance by `length(e)`. A shared binding plus a marked reference preserves one body and distinct call-site `Origin`. |
+| `use e;` | Place the track `e` at the current voice cursor: `follow` it onto the voice under construction and advance by `duration(e)`. A shared binding plus a marked reference preserves one body and distinct call-site `Origin`. |
 | `motif name(args) { … }` | A source function returning an event track. Its `use` follows the preceding rule; there is no motif-only evaluator. |
 | `repeat n { … }` | HIR-level `follow` of `n` evaluations; each iteration's occurrences gain the `RepeatIteration(i)` provenance step. |
 | `transpose up P5 { … }` | `map_payloads` with the transposition function on `pitch`; occurrences gain the `Transposition` provenance step. |
 | `c4/4 ~` (tie) | **No core construct, and no fact.** A tie says two written noteheads spell *one* occurrence, so elaboration merges the tied statement with its continuation on the spot: one occurrence, span the sum, `NotatedDuration` the compound spelling. Merging happens at every nesting level, so a tie inside a `retrograde` is gone before the block is reversed and needs no repair. A tie onto a different pitch, or with nothing after it, is a diagnostic. |
 | `c4/4 accent staccato` | Articulations are a **field of the note fact**, not facts of their own: a staccato dot has no span and no identity apart from its note. The projection emits one `ArticulationMarking` per name, in written order, against the event's id. |
 | `dynamic mf;` | A **point** occurrence of `ScoreFact::Dynamic` at the cursor, with no cursor advance. The projection resolves it to the first event at or after it in the same voice; nothing after it is a diagnostic. |
-| `slur { … }` | The body elaborates unchanged, and one `ScoreFact::Slur` occurrence is placed **together** with it over `[0, length)`. Nothing is copied onto the notes. The projection emits a `SlurSpan` naming the first event at or after the region's start and the last ending at or before its end. `phrase` and `crescendo`/`diminuendo` work identically. |
+| `slur { … }` | The body elaborates unchanged, and one `ScoreFact::Slur` occurrence is placed **together** with it over `[0, duration)`. Nothing is copied onto the notes. The projection emits a `SlurSpan` naming the first event at or after the region's start and the last ending at or before its end. `phrase` and `crescendo`/`diminuendo` work identically. |
 | `tuplet n/d { … }` | The body elaborates with the voice's duration scale multiplied by `d/n`, so written values become exact rationals (`3/2` of eighths gives `1/12`). A `ScoreFact::Tuplet` occurrence is placed together with the body, and the projection emits a `TupletSpan` carrying the unreduced `n/d`, which is what the backends need to print the bracket. A tuplet that would cross a barline is a diagnostic. |
 | `performance { profile v { … } }` | **Nothing elaborates.** A profile is a reading of marks, not material: it produces no occurrence, occupies no time, and is carried on the snapshot beside the motif table for the performance layer to consult. Written marks stay written. |
 | `profile v;` inside a part | **A binding, not an occurrence.** It names which profile realizes this part; naming an undeclared one is a diagnostic. Both semantic paths read it through the same `part_metadata`, so it cannot drift between them. |
 | `key c major;`, `meter 4/4;` | **Region occurrences** of `ScoreFact::Key`/`Meter`, scoped to the piece and spanning `[0, d]`. An unwritten meter still produces a fact — 4/4 governs a piece that never says so — while an unwritten key produces none, which is why the projection's `key` is an `Option` and its `meter` is not. |
-| `section "A" at 9:1;`, `harmony { at 1:1 c; }` | **Point occurrences** of `ScoreFact::Section`/`Harmony` at the time the coordinate names. The coordinate is resolved against the *meter occurrence* and the track's own length; naming a place the piece never reaches is a diagnostic. |
+| `section "A" at 9:1;`, `harmony { at 1:1 c; }` | **Point occurrences** of `ScoreFact::Section`/`Harmony` at the time the coordinate names. The coordinate is resolved against the *meter occurrence* and the track's own duration; naming a place the piece never reaches is a diagnostic. |
 | `tempo 1/4 = 60;`, `tempo 1/4 = 90 at 9:1;` | **Not a fact, ever**. Tempo is the performance layer's `WrittenTime → PhysicalTime` map; it stays on the snapshot's `TempoMap`. See "Tempo stays out" below. |
 | piece | The one track **projected** into `ScoreSnapshot` (`musa-compiler/src/project.rs`): voices, context maps, and annotations alike. |
 
@@ -87,7 +87,7 @@ in time without changing voice, a voice is renamed without moving anything, a dy
 The projection (`project.rs`) visits the canonically ordered occurrences **once**, buckets them by scope, assigns
 `EventId`s to note and rest facts in visit order, and resolves region facts to the event ids at their ends. It relies on
 one invariant, stated on the function and asserted in debug builds: **a region fact's boundaries coincide with event
-boundaries in its own scope**, because a region is built from the length of the items it encloses. If that is ever
+boundaries in its own scope**, because a region is built from the duration of the items it encloses. If that is ever
 violated, the elaboration that violated it is the bug.
 
 ## Sharing and provenance: how `repeat` and `use` elaborate (prompt 49)
@@ -289,9 +289,9 @@ narrower span and nothing else changes; this document is extended, not repaired,
 
 Two consequences worth stating, because a later reader will otherwise re-derive them:
 
-- **Positions resolve against the meter *occurrence*, and against the track's own length.** Neither is recomputed from
-  the snapshot. The length is exact rather than a maximum over event ends, and the two agree only because a written rest
-  is an occurrence (prompt 39) — a piece that ends in silence ends where the silence ends, which
+- **Positions resolve against the meter *occurrence*, and against the track's own duration.** Neither is recomputed from
+  the snapshot. The duration is exact rather than a maximum over event ends, and the two agree only because a written
+  rest is an occurrence (prompt 39) — a piece that ends in silence ends where the silence ends, which
   `a_piece_that_ends_in_a_rest_ends_where_the_rest_ends` fixes as a fixture.
 - **Piece-scoped facts sort first at a shared instant.** Their canonical key begins `*|*`, and `*` sorts before any part
   number, so the normal form prints the context a reader meets first.

@@ -23,9 +23,9 @@ rather than argued.
 ## Read
 
 - `crates/musa-compiler/src/score.rs` — `MeterMap` (a scalar named like a map) and `measure_len()`. Read what it
-  actually is before designing on top of it; prompt 57 §"Irregular lengths are deferred" already wrote down why it
+  actually is before designing on top of it; prompt 57 §"Irregular durations are deferred" already wrote down why it
   blocks mid-piece meter.
-- Every site that divides by it: `elaborate.rs::resolve_position` (:781), the bar-length check (:1680),
+- Every site that divides by it: `elaborate.rs::resolve_position` (:781), the bar-duration check (:1680),
   `check_tuplets` (:2296), `resolve.rs::check_measure_sanity` (:927), `musa-project/src/facts.rs` (:290, :546), and
   `musa-render/src/plan.rs` — `plan_notation` (:516), `Fold::marks` (:660), `measure_of`/`last_measure_of` (:691,
   :700), `positioned` (:796), `plan_staff` (:820), `plan_lane` (:901), `assign_beams` (:1056).
@@ -59,7 +59,7 @@ pub struct BarLines { /* ascending, contiguous, non-empty stretches */ }
 /// being the downbeat of the first measure.
 pub struct BarBeat { pub measure: u32, pub beat: Ratio<i64> }
 
-/// One measure: its number, its bounds, and the meter that gave it its length.
+/// One measure: its number, its bounds, and the meter that gave it its duration.
 pub struct Measure { pub number: u32, pub start: MusicalTime, pub end: MusicalTime, pub meter: MeterMap }
 
 impl BarLines {
@@ -85,9 +85,9 @@ impl BarLines {
 
 ### Three things a naive version gets wrong
 
-**Zero-length measures.** `measure_len` can be `0` — `plan.rs` guards it in five places with an early return of `1` or
+**Zero-duration measures.** `measure_len` can be `0` — `plan.rs` guards it in five places with an early return of `1` or
 `0`, and those guards are the only reason a degenerate meter does not divide by zero. Pull that guard into the
-constructor: `BarLines::uniform` with a non-positive measure length produces a **single unbounded stretch**, so
+constructor: `BarLines::uniform` with a non-positive measure duration produces a **single unbounded stretch**, so
 everything is measure 1 and `at` never divides. The five scattered guards then delete, and the error is defined out of
 existence rather than handled five times (PoSD ch. 10).
 
@@ -96,10 +96,10 @@ twice. Notation therefore needs `BarLines` over **folded** time, and performance
 **unfolded** time. Two instances, constructed deliberately at the two call sites, with the reason in the module
 documentation — not one instance with a flag, which would put the choice in the hands of whoever calls last.
 
-**`Share` reuses a body.** A body elaborated once and referenced twice sits at two absolute times, so a bar-length check
-that consults `BarLines` inside a shared body would get one of the two answers. Today this cannot bite, because there is
-one meter. Prompt 64 makes it real; this prompt writes the invariant down in `bars.rs`'s module documentation so 64 has
-something to break rather than something to discover.
+**`Share` reuses a body.** A body elaborated once and referenced twice sits at two absolute times, so a bar-duration
+check that consults `BarLines` inside a shared body would get one of the two answers. Today this cannot bite, because
+there is one meter. Prompt 64 makes it real; this prompt writes the invariant down in `bars.rs`'s module documentation
+so 64 has something to break rather than something to discover.
 
 ### Who owns it
 
@@ -172,11 +172,11 @@ division.
 
 **Two `measure_len` sites survive on purpose, and the Check above is narrowed to say so.**
 
-- `plan_lane` and `assign_beams` take the length of *the measure being planned*, which is now `Measure::length()` and is
-  per-measure rather than per-piece. That parameter is correct in the general case; only its provenance changed.
-- `ly.rs::measure_length` and `musicxml.rs::measure_length` derive a length from the **plan**, downstream of every
+- `plan_lane` and `assign_beams` take the duration of *the measure being planned*, which is now `Measure::length()` and
+  is per-measure rather than per-piece. That parameter is correct in the general case; only its provenance changed.
+- `ly.rs::measure_length` and `musicxml.rs::measure_length` derive a duration from the **plan**, downstream of every
   compiler-side change, and rewriting them would have been an exporter change in a prompt that promised none. They are
-  what prompt 64 has to reach when a plan stops having one measure length; noted here rather than discovered there.
+  what prompt 64 has to reach when a plan stops having one measure duration; noted here rather than discovered there.
 
 **The non-empty invariant is structural, not defended.** `BarLines` holds `first: Stretch` and `rest: Vec<Stretch>`
 rather than one `Vec`, so the two lookups have no fallback to get wrong. Clippy's `unwrap_or`-with-a-constructor warning

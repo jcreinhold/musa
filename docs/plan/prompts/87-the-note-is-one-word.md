@@ -49,7 +49,7 @@ in `musa-language`, and `beam_unit` calls it:
 ```rust
 /// How a bar of `numerator/denominator` divides into the groups a player
 /// hears — the fact a beam draws and a beat group is spaced by. Each group is
-/// its length counted in `1/denominator` units, so the groups sum to the
+/// its duration counted in `1/denominator` units, so the groups sum to the
 /// numerator and `7/8` answers `[2, 2, 3]`.
 pub fn beat_groups(numerator: u32, denominator: u32) -> Vec<u32>
 ```
@@ -67,7 +67,7 @@ lost.
 
 `Slash` `/`, `Pipe` `|`, `Greater` `>`, `Caret` `^`, `Hash` `#`. Four are for prompts 88 and 89 and are added here
 because a new `SyntaxKind` is a compile error in five exhaustive matches, and doing that once is cheaper than four
-times. None needs a `priority`: none collides with another pattern at equal length, and maximal munch keeps every
+times. None needs a `priority`: none collides with another pattern at equal duration, and maximal munch keeps every
 existing spelling. That claim is a test, not a comment — `//x`, `/*…*/`, an unterminated `/*`, `1/4`, `->`, `|>`, `a-1`
 and `0.55` each get a case.
 

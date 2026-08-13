@@ -134,9 +134,9 @@ end(harbor)   = θ(b₀) + L
 A later tempo edit may move the onset in seconds but cannot stretch the recording or manufacture a musical end beat. The
 cue elaborates to a point `ScoreFact::FixedMediaCue` containing Origin, an opaque `AssetRef`, and playback settings.
 Core transforms may move, copy, or restrict that point; they do not stretch or reverse audio. Physical seconds, raw or
-decoded samples, and fixed-media length never enter `Term[ScoreFact]` or `EventTrack[WrittenTime, ScoreFact]`. The asset
-table beside the score snapshot supplies `L` to performance preparation. This is the honest exception to “everything has
-a beat duration,” useful for field recording and fixed-media/timeline practice (OMT
+decoded samples, and fixed-media duration never enter `Term[ScoreFact]` or `EventTrack[WrittenTime, ScoreFact]`. The
+asset table beside the score snapshot supplies `L` to performance preparation. This is the honest exception to
+“everything has a beat duration,” useful for field recording and fixed-media/timeline practice (OMT
 `098-twentieth-century-rhythmic-techniques.md`).
 
 ### Temporal action table
@@ -151,7 +151,7 @@ playback-rate sign in a later specification.
 | repeat | notes and deterministic realization choices duplicate with Origin | interval and phase mapping duplicate per iteration | point duplicates; each copy lasts `L` seconds |
 | stretch by `r>0` | note support and gesture timing scale; pitch is unchanged | beat support scales by `r`; policy is reapplied to the new support | onset scales; physical duration and playback rate are unchanged |
 | restrict `[i,j)` | ordinary note restriction policy | support intersects the window while retaining the original source phase, so a middle restriction does not restart | point survives iff its onset is in the window; a surviving recording is not cropped |
-| retrograde in length `d` | note supports relocate by the score law | interval relocates and source still plays forward | point moves from `b` to `d-b`; audio is not reversed |
+| retrograde in duration `d` | note supports relocate by the score law | interval relocates and source still plays forward | point moves from `b` to `d-b`; audio is not reversed |
 | pitch transpose/invert | written note pitch changes before sample selection | no effect | no effect |
 
 For fixed media, every listed temporal operation can change only `b₀`; substituting the new onset into `end=θ(b₀)+L`

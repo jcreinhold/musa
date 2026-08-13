@@ -11,7 +11,7 @@ because a history is coinductive and no value here is.
 Prompt 127a amended this document in four places: inference replaced the monomorphic discipline (§1), storable data
 replaced the ad-hoc payload rule (§1.1), machines became value types (§1), and the contextual `music` type was deleted
 (§5.7). The repair before prompt 127aa restored the rest of the reviewed type grammar that 127a's §1 had dropped — type
-variables, `text`, sums, nominal data, and `Length[C]` — so that the implementation prompts are not asked to build
+variables, `text`, sums, nominal data, and `Duration[C]` — so that the implementation prompts are not asked to build
 against a narrower rule than the calculus they implement.
 
 ## 1. Syntax
@@ -34,15 +34,15 @@ Types are:
     | list τ
     | N[τ, …]                % nominal data declared by a library: finite, strictly positive, one generated fold
     | τ → τ                  % never storable data, at any depth (§1.1)
-    | Length[C]              % how much time: a nonnegative exact rational, in coordinate C
+    | Duration[C]            % how much time: a nonnegative exact rational, in coordinate C
     | Position[C]            % when: an exact rational instant, in coordinate C
-    | EventTrack[C, δ]       % finite length + finite multiset of occurrences of δ, in coordinate C
+    | EventTrack[C, δ]       % finite duration + finite multiset of occurrences of δ, in coordinate C
     | Primitive[K, δ, δ]     % one registered stepping unit: name, version, storable configuration
     | Machine[K, δ, δ]       % a finite description of a stepping process — not the history it produces
 
-C ::= WrittenTime            % positions and lengths as the page counts them
+C ::= WrittenTime            % positions and durations as the page counts them
     | PerformedTime          % after groove and repeats are folded, before tempo
-    | PhysicalTime             % physical seconds
+    | PhysicalTime           % physical seconds
 
 K ::= AudioFrameStep         % one step is one sample frame at the prepared rate (`../constitution.md` §4)
 ```
@@ -54,16 +54,16 @@ Five of these are less obvious than they look, and each is a decision rather tha
 
 - **`ratio`, not a float.** Musical time is exact. A float appears at the performance and DSP edge and nowhere earlier,
   so no source-language type can hold one.
-- **`Length[C]` rather than `ratio`.** A bare rational carries neither the coordinate nor the nonnegativity. Tagging is
-  the point: `Length[WrittenTime]` and `Length[PhysicalTime]` do not unify, so adding a written beat to a number of
-  seconds is a type error rather than a number. Its constructors are where nonnegativity is checked, which is why they
-  return `Result`.
-- **`Position[C]` separate from `Length[C]`.** *When* something happens and *how much time* it takes are different
-  quantities, and `../constitution.md` §3 names them separately — a track is "a nonnegative exact rational length" plus
-  occurrences "each with an exact start, end". They are also different algebras: `../kernel/00-purpose.md` states
-  positions as the abelian group `(ℚ, +, 0)` and lengths as the ordered monoid `(ℚ≥0, +, 0)`, and
-  `../kernel/01-grammar.md` already lexes `position-literal` and `length-literal` apart. A position plus a length is a
-  position; two lengths add; two positions do not add at all, and their difference is a length only when it is
+- **`Duration[C]` rather than `ratio`.** A bare rational carries neither the coordinate nor the nonnegativity. Tagging
+  is the point: `Duration[WrittenTime]` and `Duration[PhysicalTime]` do not unify, so adding a written beat to a number
+  of seconds is a type error rather than a number. Its constructors are where nonnegativity is checked, which is why
+  they return `Result`.
+- **`Position[C]` separate from `Duration[C]`.** *When* something happens and *how much time* it takes are different
+  quantities, and `../constitution.md` §3 names them separately — a track is "a nonnegative exact rational duration"
+  plus occurrences "each with an exact start, end". They are also different algebras: `../kernel/00-purpose.md` states
+  positions as the abelian group `(ℚ, +, 0)` and durations as the ordered monoid `(ℚ≥0, +, 0)`, and
+  `../kernel/01-grammar.md` already lexes `position-literal` and `duration-literal` apart. A position plus a duration is
+  a position; two durations add; two positions do not add at all, and their difference is a duration only when it is
   nonnegative, so that difference returns `Result`. One type for both would let beat 3 and three beats be added, which
   is the one arithmetic error a tagged rational exists to catch.
 - **`Primitive[K,δ,δ]` separate from `Machine[K,δ,δ]`.** A primitive is one registered unit whose private state and step
@@ -117,7 +117,7 @@ nothing impossible.
 
 Nothing musical is left unsayable by that, because the language already has better types for both halves of what an
 `int` would be asked to do. Ordinary signed arithmetic is `ratio`, which is signed, with the refinements at its
-constructors — nonnegative `duration`, strictly positive scale factors, nonnegative `Length[C]`. The signed *musical*
+constructors — nonnegative `duration`, strictly positive scale factors, nonnegative `Duration[C]`. The signed *musical*
 quantities are domains: an `Interval` is a signed pair of written diatonic steps and semitones (`00-semantics.md` §3,
 after *Open Music Theory* `016-intervals.md`), and a `Degree` is a signed ordinal relative to a scale
 (`03-musical-domains.md` §2). Everything the language counts with `nat` — repeat and occurrence counts, list lengths,
@@ -132,7 +132,7 @@ the number itself.
 ### 1.1 Two classes of type, and one inference discipline
 
 Every type above is a **value type**. A value type is *also* **storable data** when it contains no source function at
-any depth and has a versioned finite exact encoding. Base types, `unit`, `bool`, `nat`, `ratio`, `text`, `Length[C]`,
+any depth and has a versioned finite exact encoding. Base types, `unit`, `bool`, `nat`, `ratio`, `text`, `Duration[C]`,
 `Position[C]`, products, sums, `option`, and `list` of storable data, nominal constructors all of whose stored fields
 are storable data, and the admitted payload types of `../kernel/12-payload-admission.md` are storable data.
 `EventTrack[C,A]` is storable data when `A` is; `Primitive[K,A,B]` and `Machine[K,A,B]` are storable data when `A` and
@@ -513,7 +513,7 @@ placement rather than instantiated at one, so there is no environment to quantif
 side-condition to maintain.
 
 A track value is not built directly by user code; it is built by a private fragment. Write a fragment as `F = (t,B,d,n)`
-where `t : Term[ScoreFact]`, `B` is a finite acyclic environment of term bindings, `d ∈ ℚ≥0` is the exact length in
+where `t : Term[ScoreFact]`, `B` is a finite acyclic environment of term bindings, `d ∈ ℚ≥0` is the exact duration in
 `WrittenTime`, and `n ∈ ℕ` is the exact occurrence count. Its well-formedness judgment requires:
 
 1. every free term name of `t` is in `dom(B)`;
@@ -523,20 +523,20 @@ where `t : Term[ScoreFact]`, `B` is a finite acyclic environment of term binding
 5. all facts have the requested scope, exact nonnegative placement, and a complete `Origin`.
 
 **Lemma 1 — compatible composition.** If `F₁,…,Fₖ` are well formed, their `follow` and `together` compositions are well
-formed. `follow` has length `Σᵢdᵢ` and count `Σᵢnᵢ`; `together` has length `maxᵢdᵢ` and the same count sum.
+formed. `follow` has duration `Σᵢdᵢ` and count `Σᵢnᵢ`; `together` has duration `maxᵢdᵢ` and the same count sum.
 
 *Proof.* The core constructors validate nonempty finite operands and preserve literal well-formedness. Musa's shared
 binding table interns equal fragment instances by a conservative key. A new binding is appended only after every binding
 its body references has completed; a reused binding names that same completed body. Thus union is compatible, finite,
-and acyclic. `follow` shifts the `i`-th operand by `Σ_{j<i}dⱼ`, while `together` shifts none, giving the stated length
+and acyclic. `follow` shifts the `i`-th operand by `Σ_{j<i}dⱼ`, while `together` shifts none, giving the stated duration
 equations (D2, D3). Neither operation deletes or duplicates an occurrence, giving the count equation. ∎
 
 **Lemma 2 — marked reference.** Replacing a well-formed fragment by a reference to its completed binding, marked with a
-call scope, call span, and finite Origin path, preserves its length and occurrence count and yields valid facts when
+call scope, call span, and finite Origin path, preserves its duration and occurrence count and yields valid facts when
 evaluated.
 
 *Proof.* Marked evaluation instantiates the bound term and applies Musa's mark only to payloads (T6). The mark changes
-`Scope` and `Origin`; it does not change spans, multiplicity, ordering, or length. Its operation is total because the
+`Scope` and `Origin`; it does not change spans, multiplicity, ordering, or duration. Its operation is total because the
 checker constructs the mark rather than accepting arbitrary mark text at this boundary. ∎
 
 **Theorem 4 — construction and closure.** If `Γ ⊢ m : EventTrack[WrittenTime, ScoreFact]`, `ρ ⊨ Γ`, `p` is a valid exact

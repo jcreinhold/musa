@@ -5,29 +5,29 @@ musical — the kernel never inspects payload *meaning*; it checks shapes and bo
 
 ## K1 — Occurrence bounds
 
-Every occurrence `(s, e, a)` in an event track of length `d` must satisfy:
+Every occurrence `(s, e, a)` in an event track of duration `d` must satisfy:
 
 ```text
 0 ≤ s ≤ e ≤ d
 ```
 
 - `s`, `e`, `d` are exact rationals (`ℚ`), with `d ∈ ℚ≥0` by construction.
-- Zero-length occurrences (`s = e`) are **well-formed**. They are points; a positive span `s < e` is half-open `[s, e)`
-  (`03-denotational-semantics.md`). Whether a point is the right model of a percussive hit is a payload-type question,
-  not a kernel question.
+- Zero-duration occurrences (`s = e`) are **well-formed**. They are points; a positive span `s < e` is half-open
+  `[s, e)` (`03-denotational-semantics.md`). Whether a point is the right model of a percussive hit is a payload-type
+  question, not a kernel question.
 - Violations are construction-time errors (`KernelError`), never silently clamped: clamping would rewrite where an
   occurrence began, which is exactly the lie restriction is designed to avoid.
 
 ## K2 — Time domain
 
-- Positions and lengths are exact rationals. No floating-point value may enter the kernel.
-- Track lengths are non-negative. The empty track at length `d` is `(d, ∅)` — a perfectly good value, and the identity
-  of `together` at fixed length.
+- Positions and durations are exact rationals. No floating-point value may enter the kernel.
+- Track durations are non-negative. The empty track at duration `d` is `(d, ∅)` — a perfectly good value, and the
+  identity of `together` at fixed duration.
 - Scaling factors are **positive** rationals (`ℚ>0`); zero or negative scaling is a construction error
   (`03-denotational-semantics.md`, D5).
-- Every length and position belongs to one coordinate `C ∈ {WrittenTime, PerformedTime, PhysicalTime}`. Positions in two
-  coordinates never add and never compare; a value that has crossed between them did so through a named conversion above
-  the kernel (`07-backend-contract.md`), which recorded the crossing.
+- Every duration and position belongs to one coordinate `C ∈ {WrittenTime, PerformedTime, PhysicalTime}`. Positions in
+  two coordinates never add and never compare; a value that has crossed between them did so through a named conversion
+  above the kernel (`07-backend-contract.md`), which recorded the crossing.
 
 ## K3 — Ambient extension *(struck: prompt 37)*
 
@@ -87,7 +87,7 @@ alone, without evaluating it.
   differ (`(0, ∅)` for `follow`, `(d, ∅)` at a fixed `d` for `together`, L2/L6) — so the empty case is written as the
   literal it is, not inferred.
 - **Windows and factors.** `restrict [i, j)` requires `i ≤ j`; `scale r` requires `r ∈ ℚ>0` (K2). A window is *not*
-  required to lie inside the length: restriction is total (D6, L17), and a window past the end observes nothing.
+  required to lie inside the duration: restriction is total (D6, L17), and a window past the end observes nothing.
 - **Literals.** Every `track` literal satisfies K1.
 - **Acyclicity comes free.** `let` scopes over its body only, so a name cannot refer to itself and the reference graph
   is a tree by construction. K4's acyclicity rule is what this replaces for terms.
@@ -104,5 +104,5 @@ Those are what `Term::check` answers, and a term that passes it evaluates (T4).
 
 ## Error surface
 
-All static violations are reported as `KernelError` values naming the rule and the offending data (length, span, or
+All static violations are reported as `KernelError` values naming the rule and the offending data (duration, span, or
 reference). The kernel has no warnings: a construct is either well-formed or rejected.

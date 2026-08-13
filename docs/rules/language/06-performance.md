@@ -323,7 +323,7 @@ cache-key obligations above do not apply.
 
 **The full-laziness gap is recorded as immaterial and left alone.** With the call-site gap closed, the residual
 duplication of a parameterized body is bounded by its number of *distinct arguments* — 35 in a workload of 512 calls,
-because the written pitch vocabulary is finite — rather than by the length of the piece. Hoisting the
+because the written pitch vocabulary is finite — rather than by the duration of the piece. Hoisting the
 argument-independent tail by hand buys 18% of the term's bytes at 512 calls (94,850 against 115,606) and costs 21% more
 elaboration time, because it doubles the call sites. Automatic hoisting would add a term-rewriting pass, an Origin step,
 and a new way for two compilers to disagree, to recover a fraction of a term that is already an order of magnitude
@@ -415,7 +415,7 @@ large case — the fixture B1 and B2 are stated on — spends 3.7% of it.
 
 **L4 is the stage whose cost is not read off the note count.** Per occurrence it ranges from 13 µs on `open-shape` to 47
 µs on `higher-order-shape` across the committed corpus — a factor of 3.6 between two fixtures that denote 134 and 130
-events. The spread is harmonic density, not length: every slice is fitted against every chord in the vocabulary rooted
+events. The spread is harmonic density, not duration: every slice is fitted against every chord in the vocabulary rooted
 on every sounding class, and then against every degree of every surviving key, so a piece with more notes sounding at
 once costs more per note. `analysis-pressure` exists to hold that constant still at 18 µs per occurrence for ordinary
 four-part harmony; a vocabulary that grows shows up here and nowhere else.

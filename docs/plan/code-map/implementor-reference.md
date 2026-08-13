@@ -17,7 +17,7 @@ musa-language → musa-compiler → {musa-render, musa-audio} → musa-engine �
 | Crate | Owns | Never exposes |
 | --- | --- | --- |
 | `musa-language` | tokens, lexer, parser, lossless CST, formatter, text edits | Rowan types |
-| `musa-kernel` | exact time, coordinates, typed occurrences, `empty`/`event`/`follow`/`together`/`map_payloads`/`length`, normalization | anything musical |
+| `musa-kernel` | exact time, coordinates, typed occurrences, `empty`/`event`/`follow`/`together`/`map_payloads`/`duration`, normalization | anything musical |
 | `musa-compiler` | resolution, typing, elaboration into the kernel, score and performance snapshots | pass types, `Type`, the resolver |
 | `musa-render` | `NotationPlan`, MEI, LilyPond, MusicXML, MIDI | intermediate plan internals |
 | `musa-project` | `ProjectSession`: documents, revisions, commands, exports, facts | compiler internals, byte offsets |
@@ -135,7 +135,7 @@ Read what each part is doing.
   elaborated twice.
 - **`piece meter 4/4`** is a context fact, occupying its own span. Meter is a fact about the passage, not a property of
   a note.
-- The lengths are exact rationals throughout. `1/4` is a quarter, not 0.25.
+- The durations are exact rationals throughout. `1/4` is a quarter, not 0.25.
 
 From the term, `musa-render` builds a `NotationPlan` and then MEI, LilyPond, MusicXML, or MIDI. Every rendered element
 can name the occurrence it came from, and every occurrence can name the source span, which is what makes clicking a note

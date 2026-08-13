@@ -48,7 +48,7 @@ named after a musical culture as adequate without review by a qualified practiti
 
 Create `docs/notes/research/language-design-closure/` and state the following starting decisions.
 
-- Keep the finite temporal kernel: exact rational time, typed occurrences, sequence, and unequal-length overlay.
+- Keep the finite temporal kernel: exact rational time, typed occurrences, sequence, and unequal-duration overlay.
 - Keep running signals outside that kernel. Audio process graphs have step semantics, not musical extent.
 - Treat the derivation diagram as the link between representations. Do not seek one value that is at once source, score,
   analysis, gesture, and sound.

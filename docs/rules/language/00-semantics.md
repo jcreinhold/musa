@@ -79,8 +79,8 @@ The two staging judgments are therefore:
 Σ ⊢piece Δ ⇓ t : Term[ScoreFact] expand declarations, build, close
 ```
 
-where `K` is a private fragment holding a term, an acyclic binding environment, an exact length, and an exact
-eventual-occurrence count; `follow` adds lengths and counts, `together` takes the maximum length and adds counts.
+where `K` is a private fragment holding a term, an acyclic binding environment, an exact duration, and an exact
+eventual-occurrence count; `follow` adds durations and counts, `together` takes the maximum duration and adds counts.
 Closing retains only reachable bindings, wraps them in dependency order, and checks the term.
 
 The core alone evaluates `t ⇓k T : EventTrack[WrittenTime, ScoreFact]`. Source evaluation never evaluates a track term,
@@ -98,8 +98,8 @@ scale — and had one private semantic observation, `instantiate`. That type is 
 Composition is therefore the core's own operations, with no separate equation set to maintain:
 
 ```text
-use m; use n;      ⇒  follow(m, n)          lengths add
-voices m and n     ⇒  together(m, n)        the longer length wins
+use m; use n;      ⇒  follow(m, n)          durations add
+voices m and n     ⇒  together(m, n)        the longer duration wins
 ```
 
 A block may still contain notes, sounded chords, rests, local annotations, and lexically scoped `in scale`. It may
@@ -131,7 +131,7 @@ tonal reading, while a written note states a sounded pitch. Rewriting the latter
 
 The temporal-support law follows directly from `map_payloads` (`../kernel/03-denotational-semantics.md` D7, L9–L12): the
 traversal changes no occurrence span and no term constructor, hence the multiset of pairs `(onset, span)` and the
-enclosing track length are identical before and after mapping. Identity and composition follow by cases on the
+enclosing track duration are identical before and after mapping. Identity and composition follow by cases on the
 exhaustive `FactKind` table: on pitch-bearing facts they reduce to the corresponding function equations; on all other
 facts both sides are the identity. Origin is deliberately finer: one `MapNotePitches` step is retained, so equality
 holds under `≈facts`, not byte-for-byte payload equality.
@@ -169,7 +169,7 @@ Four relations serve different questions, and none of them is behavioural machin
 - `t ≡core u`: alpha-equivalent closed terms normalize to the same canonical core term, including payload bytes.
 - `T ≈facts U`: their tracks are equal after the explicit projection that erases Origin and non-sounding stable
   identities, but preserves every musical fact, every exact span, and the coordinate.
-- `m ≈material n`: for every placement where both are used, their results are `≈facts` and have equal lengths.
+- `m ≈material n`: for every placement where both are used, their results are `≈facts` and have equal durations.
 - `M ≡struct N`: two machines have the same primitive ids, versions, and configurations at the leaves and the same
   wiring tree, within one registry. This is what a cache key may use, and nothing weaker.
 

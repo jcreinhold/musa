@@ -25,7 +25,7 @@ Not a gesture at "experimental music". Six concrete pieces, and every one of the
 | A DJ edit or a dance cue | loop this bar until the cue lands | unbounded |
 
 Two more the same mechanism covers without being about indeterminacy at all: a folk tune whose verse count depends on
-how many verses there are, and a game or installation whose length is set at run time.
+how many verses there are, and a game or installation whose duration is set at run time.
 
 ## The candidate that is refused, and why
 

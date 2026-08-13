@@ -19,13 +19,13 @@ be required by the event-track core or by every music project.
 A new music-theory package must be able to reach notation, performance gestures, or sound through its own explicit
 conversions. It need not pretend that its values are Western keys or chords.
 
-## 3. Placing tracks together accepts different lengths
+## 3. Placing tracks together accepts different durations
 
-If `M` has length `d` and `N` has length `e`, `together(M, N)` has length `max(d, e)` and contains every occurrence of
-both, with multiplicity preserved. The shorter part simply has no occurrences after it ends.
+If `M` has duration `d` and `N` has duration `e`, `together(M, N)` has duration `max(d, e)` and contains every
+occurrence of both, with multiplicity preserved. The shorter part simply has no occurrences after it ends.
 
-This forbids an equal-length type check and automatic rest insertion. Authors write rests when the notation or analysis
-needs rests, not to satisfy the event-track implementation.
+This forbids an equal-duration type check and automatic rest insertion. Authors write rests when the notation or
+analysis needs rests, not to satisfy the event-track implementation.
 
 ## 4. Metre is not built into every track type
 

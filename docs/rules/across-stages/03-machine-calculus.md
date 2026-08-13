@@ -186,7 +186,7 @@ The algorithm is finite:
 
 A non-point occurrence normally emits `Begin(handle, payload)` at its start frame and `End(handle)` at its end frame; a
 point emits `Point(handle, payload)`. A collapse policy may instead reject the occurrence, expand it to a minimum
-length, or place an ordered `Begin` and `End` in one batch — and the decision record says which happened.
+duration, or place an ordered `Begin` and `End` in one batch — and the decision record says which happened.
 
 At frame `j` a connected machine reads the batch **before** producing output frame `j`. A `Begin` therefore affects its
 start frame and an `End` prevents the occurrence from sounding on its end frame, which is the audio meaning of the
@@ -273,7 +273,7 @@ then connecting either construction of M7 to the same instrument produces the sa
 or a non-additive rounding rule may send `d + s` to a frame other than the sum of the separately converted `d` and `s`.
 Scheduling the combined track is authoritative and its decision record exposes the difference. Under an additive time
 map and an additive frame conversion, `follow` is preserved by delaying the second scheduled source by the scheduled
-length of the first.
+duration of the first.
 
 ## 8. What the private runtime may and may not do
 

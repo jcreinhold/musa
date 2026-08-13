@@ -18,7 +18,7 @@ audio engine, and the implementation column is deliberately blunt about the gap.
 | Type inference terminates and returns a principal type in the two-class Hindley–Milner discipline | proved in outline, `06-proof-outline.md` §2 | absent; prompt 127b implements it |
 | Accepted source expressions terminate, and a resource failure cannot change an accepted value | proved in outline, `06-proof-outline.md` §2 | implemented for the current monomorphic core; the inferred core is prompt 127b |
 | Storable data excludes a source function at every depth, including inside containers | proved by the admission check, `docs/rules/language/02-core-calculus.md` | absent; prompt 127b |
-| `follow`, `together`, `map_payloads` preserve bounds and obey their laws, with unequal lengths and multiplicity kept | proved in `docs/rules/kernel/03`–`05` and `10` | implemented and tested at the untagged type; coordinate tags are prompt 127c |
+| `follow`, `together`, `map_payloads` preserve bounds and obey their laws, with unequal durations and multiplicity kept | proved in `docs/rules/kernel/03`–`05` and `10` | implemented and tested at the untagged type; coordinate tags are prompt 127c |
 | Versioned exact bytes represent event-track semantic equality exactly (I1) | reviewed as part of K₃.3 | implemented by prompt 129a with delimiter and structured-payload tests |
 | Every machine has one total deterministic next step, and machines are causal (M1, M2) | proved in `03-machine-calculus.md` §7 | absent; the current audio graph does not implement these semantics |
 | Feedback has a first output and reads only stored data (M3) | proved | absent; the current delay path defers cycle inputs to the previous host block |
@@ -57,7 +57,7 @@ Nothing here proves:
 The core-calculus review audited the repository at the time it was written and found three things worth repeating,
 because they set the size of prompts 127b–127i:
 
-- `crates/musa-kernel` already implements the untagged heart of the event track — exact rational length, finite
+- `crates/musa-kernel` already implements the untagged heart of the event track — exact rational duration, finite
   occurrences, succession by shifting, simultaneity by maximum and multiset union, payload mapping. What it lacks is the
   coordinate tag and the renamed surface.
 - `crates/musa-audio`'s per-sample DSP units are close to registered primitives already; the gap is the registry and the

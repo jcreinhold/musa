@@ -56,7 +56,7 @@ it costs — a measure number that does not advance across a cadenza — is *cor
 That is the deciding argument, and it is a musical one rather than an implementation one. B would have been chosen on
 implementation grounds and would have numbered the cadenza wrong.
 
-### What the bar-length check does
+### What the bar-duration check does
 
 Nothing. A bar inside an unmeasured stretch is an error — `bar { … }` asserts one measure, and there is no measure to be
 one of. Prompt 56's machinery, with a help line pointing at `senza`.
@@ -127,12 +127,12 @@ Commit as `Add unmeasured music`.
 3. **The cadenza is measure 5, not measure 42.** Forty-one bars of filler to reach the Design's number would be noise in
    a fixture that exists to show one thing. The Check's grep is repaired to match.
 4. **`plan.rs` gains no spacing mode.** The Design asks for one, and `docs/rules/desktop/` §1 is the reason it cannot
-   have one: Rust owns MEI and the engraver owns spacing. The plan instead carries each measure's real *length* (an
+   have one: Rust owns MEI and the engraver owns spacing. The plan instead carries each measure's real *duration* (an
    unmeasured stretch runs until the next meter or until the music stops, which only the barlines know), and the
    backends say "not controlled by the meter" in each format's own vocabulary. The agreed rule is written into
    `docs/rules/desktop/02-engraving.md` §10, including the one thing the interface does owe such a passage: it must not
    be drawn as though it were a mistake.
-5. **The bar-length check became the diagnostic rather than an early return.** It used to skip an unmeasured piece
+5. **The bar-duration check became the diagnostic rather than an early return.** It used to skip an unmeasured piece
    entirely; now a `bar` inside unmeasured music is refused, which is the prompt's intent and the thing prompt 56 exists
    to prevent — an assertion nobody checks.
 6. **The tuplet check needed no unmeasured clause.** It compares the measure a group opens in with the measure it

@@ -70,7 +70,7 @@ cargo run -p musa -- render examples/counterpoint.musa --to musicxml -o /tmp/cp.
   the asymmetry is deliberate and documented on both backends.
 - **Divisions are computed for the whole document, not per part.** One `<divisions>` value means one grid, and a
   `<backup>` from a voice in 3-space to a voice in 2-space cannot land between two ticks. The value is the least common
-  multiple of what every measure length, onset, and sounding duration demands; past `MAX_DIVISIONS` the export fails
+  multiple of what every measure duration, onset, and sounding duration demands; past `MAX_DIVISIONS` the export fails
   with `RenderError::Divisions` rather than rounding a duration that was exact when it was written.
 - **`<duration>` is the sound, `<type>` is the symbol.** They differ exactly inside a tuplet, which is why a triplet
   eighth is `<type>eighth</type>` with a `<time-modification>` and a duration two thirds of one.

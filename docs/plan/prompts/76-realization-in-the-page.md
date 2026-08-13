@@ -122,7 +122,7 @@ Commit as `Show the realization in the page`.
    *instruction*: a bar that engraved `4×` where the composer wrote `2 to 6` would have replaced the piece with one
    performance of it. It is an `OpenShape::Passes` so all three backends print it through the one text-direction emitter
    they already had, and `losses()` gained one honest line. Only ranged repeats change the interchange encoding, so
-   exactly two goldens moved: `examples/kernel/{loop-lengths,in-c}.kernel`.
+   exactly two goldens moved: `examples/kernel/{loop-durations,in-c}.kernel`.
 
 4. **A decision has *sites*, plural.** `repeat 2 to 6` written once in each of three voices is one question — that is
    prompt 67's rule — so `DecisionRecord` carries every span that asked, and an event finds its decision by the
@@ -139,7 +139,7 @@ Commit as `Show the realization in the page`.
    the 180 ms typing debounce, and a click never pays it, so folding the two together would hide a slow redraw behind a
    wait it does not do. Measured at **p95 21 ms** from the snapshot to the ink.
 
-7. **`loop-lengths.musa` is the interface's open-form fixture, at performances 4 and 8** (two passes and six), rather
+7. **`loop-durations.musa` is the interface's open-form fixture, at performances 4 and 8** (two passes and six), rather
    than `in-c.musa`. One question in three voices is the case that catches a decision coming apart per voice; In C's 53
    sites would have made a 4000-line fixture prove less.
 

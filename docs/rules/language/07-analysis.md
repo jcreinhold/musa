@@ -198,7 +198,7 @@ offers — three conditions that fail constantly, which is the honest result.
 
 **Tonicization versus modulation.** Every boundary produces *both* candidates, with the OMT `051` criteria attached as
 grounds: a pivot chord prepares the change; the new key holds to the end of the passage; a cadence confirms it. **No
-criterion is about duration**, and nothing in the implementation compares a region's length to a threshold. Where the
+criterion is about duration**, and nothing in the implementation compares a region's duration to a threshold. Where the
 criteria underdetermine the reading — which is the normal case — both readings stay in the report and the musician
 decides.
 

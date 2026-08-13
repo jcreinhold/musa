@@ -29,7 +29,7 @@ second semantic core.
 
 Keep the common staff spelling already selected: `c4/4`, `c4/4.`, `[c4 e4 g4]/2`, and `rest/8`. Use `c4(3/8)` when the
 source gives an exact duration without claiming a conventional written note value. Written rhythm and exact temporal
-length remain different data even when they cover the same span. Do not add sticky duration, relative octave, or
+duration remain different data even when they cover the same span. Do not add sticky duration, relative octave, or
 type-directed note literals.
 
 Written pitch is explicit data. Meter, key, clef, and other contextual facts are explicit inputs or track payloads.

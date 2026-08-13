@@ -58,7 +58,7 @@ instruction and the playback must sound something:
 | --- | --- | --- |
 | `mobile` | the fragments, in the chosen order | `FactKind::Mobile { fragments }` over the whole span |
 | `x to y` | one duration | `FactKind::FreeDuration { min, max }` on the note |
-| `improvise` | silence of the frame's length | `FactKind::Improvise { over }` over the span |
+| `improvise` | silence of the frame's duration | `FactKind::Improvise { over }` over the span |
 
 That is prompt 58's shape applied three times: the realized music is what the timeline holds, the fact is what the
 engraver reads to draw a box, a bracket, or an *ad lib.*

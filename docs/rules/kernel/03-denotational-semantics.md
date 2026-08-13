@@ -11,7 +11,7 @@ For a coordinate `C` and a payload type `A`, the denotation of a finite kernel c
 ⟦ composition ⟧ = (d, E)
 ```
 
-where `d ∈ ℚ≥0` is the **length** of the ambient time interval `[0, d]` in coordinate `C`, and `E` is a **finite
+where `d ∈ ℚ≥0` is the **duration** of the ambient time interval `[0, d]` in coordinate `C`, and `E` is a **finite
 multiset** of occurrences `(s, e, a)` with `0 ≤ s ≤ e ≤ d` and `a : A`. A positive span `s < e` denotes the half-open
 interval `[s, e)`; `s = e` denotes a point.
 
@@ -19,7 +19,7 @@ Three consequences, all load-bearing:
 
 - **Time is ambient**. `E` may be empty; `[0, d]` exists regardless. There is no `Silence(d)` or `Rest(d)` object: an
   uncovered region *is* silence with respect to that payload type, by absence.
-- **Length is temporal support, not a payload field**. A `Note` payload describes *what* is sounding; the occurrence's
+- **Duration is temporal support, not a payload field**. A `Note` payload describes *what* is sounding; the occurrence's
   span describes *when* it sounds. Payloads that smuggle their own duration field invite inconsistency and are rejected
   at the payload-schema layer (`02-static-semantics.md`, K5, by convention of the score adapter).
 - **The coordinate is part of the type, not part of the value.** `(d, E)` says nothing about whose time it measures;
@@ -33,8 +33,8 @@ Three consequences, all load-bearing:
     = (d, { (sᵢ, eᵢ, aᵢ) | 1 ≤ i ≤ n })      provided ∀i. 0 ≤ sᵢ ≤ eᵢ ≤ d
 ```
 
-Multiple equal occurrences are allowed (multiset, K6). The length may exceed every `eᵢ`: the tail is simply uncovered —
-ambient time, not padding.
+Multiple equal occurrences are allowed (multiset, K6). The duration may exceed every `eᵢ`: the tail is simply uncovered
+— ambient time, not padding.
 
 Two literals are named, because they are the basis constructors:
 
@@ -54,11 +54,11 @@ For `M = (d, E)` and `N = (e, F)`:
 follow(M, N) = (d + e, E ⊎ τ_d(F))    where τ_d(s, t, a) = (d + s, d + t, a)
 ```
 
-The second track is translated by the length of the first. `follow` generalizes pointwise to `n` arguments by left- or
+The second track is translated by the duration of the first. `follow` generalizes pointwise to `n` arguments by left- or
 right-fold — associativity (L1) makes the choice immaterial.
 
 The empty track `(0, ∅)` is the two-sided identity (L2). Note the difference from `(d, ∅)` for `d > 0`: following
-`(d, ∅)` *does* shift what comes after — empty tracks have length, and length is real.
+`(d, ∅)` *does* shift what comes after — empty tracks have duration, and duration is real.
 
 ## D3 — `together` (simultaneous presence)
 
@@ -72,16 +72,16 @@ shorter track** — it simply lives inside a larger ambient region.
 - Commutative (L5) and associative (L4).
 - **Not idempotent**: `together(M, M) ≠ M` whenever `E ≠ ∅` — multiplicity doubles. `together` is a union of multisets,
   never a union of sets.
-- At any fixed length `d`, `together` forms a commutative monoid with identity `(d, ∅)` (L6).
+- At any fixed duration `d`, `together` forms a commutative monoid with identity `(d, ∅)` (L6).
 
 ## D4 — Ambient extension *(struck: prompt 37)*
 
 `extend_{d,e} (d, E) = (e, E)` was a standalone operation. It is removed: nothing called it. `follow` and `together`
-compute their lengths themselves, and no surface construct asks a track to grow without adding material, so under §34
+compute their durations themselves, and no surface construct asks a track to grow without adding material, so under §34
 the basis shrinks. Re-adding it needs new evidence, not taste.
 
 Ambient extension as a *concept* stays, and is exactly what it always was: `(d, ∅)` is silence by absence, and
-`together` of unequal lengths takes the maximum without padding the shorter argument. What went is the operation that
+`together` of unequal durations takes the maximum without padding the shorter argument. What went is the operation that
 only ever restated that.
 
 ## D5 — Time scaling (an external action)
@@ -114,11 +114,11 @@ An occurrence is visible through `[i, j)` when:
 - it is a **point** (`s = e`) and `s ∈ [i, j)`; a point occurrence is otherwise unobservable through every window, which
   the interval-intersection phrasing does not intend; or
 - **the final instant of a track is observable**: it is a point at `s = j = d`. A window that ends at the observed
-  track's length is closed at its right end. L16 follows from this rule — without it, observing at the full length
+  track's duration is closed at its right end. L16 follows from this rule — without it, observing at the full duration
   `[0, d)` would drop an occurrence at `d` and so would not be the identity.
 
 The third rule is a fact about the track being observed, not about the window: an observation therefore carries the
-length it was taken from, and narrowing it cannot silently drop an occurrence the wider observation reported (L17).
+duration it was taken from, and narrowing it cannot silently drop an occurrence the wider observation reported (L17).
 
 The observation knows both spans: an occurrence over `[3, 6)` observed through `[5, 8)` has whole support `[3, 6)` and
 visible support `[5, 6)` — cropping never claims the occurrence began at 5. The visible span is a *function* of the
@@ -127,7 +127,7 @@ stores whole spans only.
 
 Restriction is total and composes: narrowing an observation to `K` intersects the windows, so there is no containment
 precondition and no error (L17). Windows that do not meet observe nothing — which is *not* the same as a degenerate
-window sitting at the length, where the rule above applies.
+window sitting at the duration, where the rule above applies.
 
 ## D7 — Payload mapping (functorial, not a temporal primitive)
 
@@ -147,7 +147,7 @@ of `10-term-calculus.md`. That is the same line D12 draws for `join`, drawn on t
 
 ## D8 — Delay (derived)
 
-A delayed track is ambient length before its occurrences:
+A delayed track is ambient duration before its occurrences:
 
 ```text
 delay_b(M) = follow((b, ∅), M)
@@ -281,10 +281,10 @@ this: no caller wants one, and the sweep belongs where the score's ordering live
 ## D12 — Explicitly not defined
 
 - **No `join`.** `EventTrack<C, EventTrack<C,A>>` has no canonical flattening: begin-at-onset, stretch-to-fit, crop,
-  repeat, and preserve-inner-length are genuinely different musical operations. Specific higher-level abstractions may
+  repeat, and preserve-inner-duration are genuinely different musical operations. Specific higher-level abstractions may
   define their own; the universal core does not.
 - **No distributivity.** `follow(M, together(N, P)) ≠ together(follow(M, N), follow(M, P))` in general — the left side
   has one copy of `M`, the right side two. The core is not a semiring, and no law is claimed that would make it one.
-- **No infinity.** Every denotation is finite in length and in occurrence count. Patterns and loops produce coherent
+- **No infinity.** Every denotation is finite in duration and in occurrence count. Patterns and loops produce coherent
   finite observations; they are not track values. A genuinely unbounded source is a machine, and it is denoted somewhere
   else entirely (`../across-stages/03-machine-calculus.md`).

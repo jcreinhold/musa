@@ -27,7 +27,7 @@ encode(value) -> unambiguous bytes
 compare(left, right) -> ordering
 ```
 
-Byte equality and value equality must agree. The encoding begins with a type tag and version. It records the length of
+Byte equality and value equality must agree. The encoding begins with a type tag and version. It records the duration of
 every variable-size child before the child bytes. Human display and error messages use separate formatting.
 
 This rule applies to event-track payloads, future nominal type ids, stored-representation references, anchors, origin
@@ -42,9 +42,9 @@ need exactly the same API.
 equality version. A key may ignore stored fields if its documentation says so.
 
 The track's semantic hash no longer hashes human `Display` output. It hashes a versioned byte record containing the
-payload schema, the coordinate tag, the exact rational length, occurrence count, endpoints, and length-framed payload
-keys. Prompt 127a's addition is the coordinate tag: a written-time track and a performed-time track with the same
-occurrences are different values (`../../rules/kernel/12-payload-admission.md` A7).
+payload schema, the coordinate tag, the exact rational duration, occurrence count, endpoints, and duration-framed
+payload keys. Prompt 127a's addition is the coordinate tag: a written-time track and a performed-time track with the
+same occurrences are different values (`../../rules/kernel/12-payload-admission.md` A7).
 
 The implementation includes regression tests for:
 

@@ -32,7 +32,7 @@ version changes.
 For a track `M = (d, E)` in coordinate `C`, its semantic value contains:
 
 - the coordinate tag `C`;
-- the exact length `d`; and
+- the exact duration `d`; and
 - the multiset of triples `(start, end, payload key)`, sorted into a fixed order.
 
 Two tracks are equal when those values are equal. Construction order and human display formatting do not matter.
@@ -47,7 +47,7 @@ Musa needs bytes that can be decoded in only one way. The track encoding contain
 2. the track format version;
 3. the coordinate tag;
 4. the payload owner id and equality version;
-5. the exact rational length;
+5. the exact rational duration;
 6. the number of occurrences; and
 7. each occurrence’s exact endpoints and payload key.
 

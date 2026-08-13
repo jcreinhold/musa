@@ -14,7 +14,7 @@ because the projections preserve the core's guarantees.
   number is a written beat or a second, and never adds one to the other.
 - **Multiset multiplicity.** Identical occurrences are distinct facts. A consumer that merges equal occurrences is
   destroying musical information (two performers, one note).
-- **Ambient length.** A track's length may exceed every occurrence's end; the tail is real temporal extent, not an
+- **Ambient duration.** A track's duration may exceed every occurrence's end; the tail is real temporal extent, not an
   error.
 - **Semantic equality.** Comparison, caching, and golden testing use the canonical form (N4–N6) and nothing else.
 - **Opacity.** Payloads are typed and serializable storable data, but their musical meaning belongs to their own theory
@@ -221,7 +221,7 @@ three things and nothing more:
 
 1. **Refuse a version you do not know.** The first line is `% musa-kernel-2`. A file without it is not a kernel file,
    and a `musa-kernel-1` file is refused rather than migrated (`01-grammar.md`).
-2. **Honour the shape, choose your own sampling.** Every rational in a file — a span, a scale factor, a length, a
+2. **Honour the shape, choose your own sampling.** Every rational in a file — a span, a scale factor, a duration, a
    hairpin's breakpoints — is exact and must stay exact. A consumer that reads a shape through `f64` and writes it back
    has produced a different piece, and the semantic hash will say so. Where to sample is still free, exactly as above.
 3. **Agree on the meaning, not the spelling.** Two consumers conform when they evaluate a file to tracks with the same
@@ -231,7 +231,7 @@ three things and nothing more:
 
 What a consumer does **not** owe: understanding the payload. A file's payloads are opaque strings typed by
 `EventTrack[<Coordinate>, <PayloadType>]`, and a consumer that does not own that payload type may still check the file's
-structure, report its length, and compare two files' shapes. It simply cannot say what the music is — which is the
+structure, report its duration, and compare two files' shapes. It simply cannot say what the music is — which is the
 correct division, and the reason the core never learned music theory.
 
 ## A file is one realization of the work (prompt 66)
@@ -274,8 +274,8 @@ where the fragments, their chosen order, and the bounds of a held note all survi
 
 A grace note is a **point occurrence**: start equal to end, standing at the onset of the note it leans on, carrying a
 written pitch, its own marks, and an `index` giving its place in the group. It has no written duration, and that is the
-fact rather than an omission — so a consumer cannot read a length off the page, and must not invent one and call it the
-piece.
+fact rather than an omission — so a consumer cannot read a duration off the page, and must not invent one and call it
+the piece.
 
 How long it sounds and whose time it takes are the **profile's** (`musa_compiler::GracePolicy`: `steal` and `from`). Two
 profiles read the same page as an appoggiatura on the beat and an acciaccatura ahead of it, and the engraving is
@@ -291,8 +291,8 @@ Every notation format offers to settle this for you, and a conforming backend de
 
 `LilyPond` is the one worth naming, because its vocabulary complects the two layers hardest: its only *neutral* command
 is `\grace`, and the two named ones each add a slash, a slur, and a reading. musa writes `\grace` and lets the house
-style do what a performer does. The written durations inside it (`c8`) are stem flags, not lengths — MEI's `dur="8"` and
-`MusicXML`'s `<type>eighth</type>` are the same instruction, and no consumer may read any of the three as time.
+style do what a performer does. The written durations inside it (`c8`) are stem flags, not durations — MEI's `dur="8"`
+and `MusicXML`'s `<type>eighth</type>` are the same instruction, and no consumer may read any of the three as time.
 
 The order within a group is normative. Normalization (05, N2) sorts occurrences by span and then by payload key, and
 every grace in a group shares a span — so the order lives in the payload's `index`, and a consumer that prints or plays

@@ -50,7 +50,7 @@ Musical time is ambient: it exists independently of what occurs within it (`docs
 event track is:
 
 1. a **coordinate** `C` saying whose time this is — written time, performed time, or physical seconds;
-2. an ambient region of exact time `[0, d]`, `d ∈ ℚ≥0`, the track's **length**; and
+2. an ambient region of exact time `[0, d]`, `d ∈ ℚ≥0`, the track's **duration**; and
 3. zero or more typed occurrences `(s, e, a)` supported within that region, `0 ≤ s ≤ e ≤ d`, payload `a : A`, where `A`
    is storable data.
 
@@ -58,15 +58,15 @@ If a region contains no note occurrence, that region is silent with respect to n
 needs to exist.** A rest glyph is a notation decision a backend makes about an uncovered region of a notated voice — it
 is not core ontology (`07-backend-contract.md`).
 
-Time is exact: positions form the abelian group `(ℚ, +, 0)` and lengths the ordered commutative monoid `(ℚ≥0, +, 0)`.
+Time is exact: positions form the abelian group `(ℚ, +, 0)` and durations the ordered commutative monoid `(ℚ≥0, +, 0)`.
 Floats never represent symbolic musical time. Physical seconds are a *different coordinate*, reached by a named
-conversion, and lengths in two coordinates do not add.
+conversion, and durations in two coordinates do not add.
 
-Those are two structures, so they are two types: `Position<C>` for *when* and `Length<C>` for *how much*. A position
-plus a length is a position, two lengths add, two positions do not add at all, and their difference is a length only
-when it is nonnegative. `01-grammar.md` already lexes `position-literal` and `length-literal` apart for the same reason:
-one type for both would make beat 3 and three beats addable, which is the one arithmetic error a tagged rational exists
-to catch.
+Those are two structures, so they are two types: `Position<C>` for *when* and `Duration<C>` for *how much*. A position
+plus a duration is a position, two durations add, two positions do not add at all, and their difference is a duration
+only when it is nonnegative. `01-grammar.md` already lexes `position-literal` and `duration-literal` apart for the same
+reason: one type for both would make beat 3 and three beats addable, which is the one arithmetic error a tagged rational
+exists to catch.
 
 The coordinate is the one type index the core carries, and `constitution.md` §8 says why it is the only one: every other
 candidate index — part, voice, metre, tuning — has a diagnostic elsewhere, and a written beat added to a physical second
@@ -94,16 +94,16 @@ This rule is the acceptance test for every future proposal, and for every deviat
 Six operations form the basis:
 
 ```text
-empty      : Length<C> -> EventTrack<C,A>
-event      : Length<C> -> A -> EventTrack<C,A>
-follow     : EventTrack<C,A> × EventTrack<C,A> -> EventTrack<C,A>
-together   : EventTrack<C,A> × EventTrack<C,A> -> EventTrack<C,A>
+empty        : Duration<C> -> EventTrack<C,A>
+event        : Duration<C> -> A -> EventTrack<C,A>
+follow       : EventTrack<C,A> × EventTrack<C,A> -> EventTrack<C,A>
+together     : EventTrack<C,A> × EventTrack<C,A> -> EventTrack<C,A>
 map_payloads : (A -> B) × EventTrack<C,A> -> EventTrack<C,B>
-length     : EventTrack<C,A> -> Length<C>
+duration     : EventTrack<C,A> -> Duration<C>
 ```
 
-`follow` is temporal succession (associative concatenation, lengths add). `together` is simultaneous presence in a
-common ambient region (commutative, associative, **not** idempotent, longer length wins).
+`follow` is temporal succession (associative concatenation, durations add). `together` is simultaneous presence in a
+common ambient region (commutative, associative, **not** idempotent, longer duration wins).
 
 Three further operations are **retained beyond the basis because they have named callers**, not because the basis needs
 them, and each is stated in `03-denotational-semantics.md` with its laws:
@@ -164,7 +164,7 @@ musician-facing Musa source
 │  exact time, tagged by coordinate     │
 │  typed occurrences over storable data │
 │  empty / event / follow / together    │
-│  map_payloads / length                  │
+│  map_payloads / duration              │
 │  scale / restrict / normalization     │
 └───────────────┬───────────────────────┘
                 │

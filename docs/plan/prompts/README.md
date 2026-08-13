@@ -15,7 +15,7 @@ new design against stale rules.
 
 **Where the roadmap and the kernel specification disagree** — most importantly, on the rule that the surface grammar
 does not define the ontology and that a small event-track core (`empty`, `event`, `follow`, `together`, `map_payloads`,
-`length` over exact rational ambient time) is the semantic core — the kernel wins. Prompts 08–12 specify, implement,
+`duration` over exact rational ambient time) is the semantic core — the kernel wins. Prompts 08–12 specify, implement,
 prove, and install it; prompts 13+ proceed exactly as before on top of it.
 
 **Where the roadmap is silent on the desktop interface** — its visual language, engraving quality, interaction model,
@@ -326,7 +326,7 @@ delimiter you can copy, a name you can reuse, and, because a bar declares what i
 can catch a composer disagreeing with. **58** stops `repeat` from printing its own expansion; it is the layer table's
 own example, and the page has been wrong about it since prompt 06.
 
-They run in that order because each is the last one's payoff. The bar-length error is unreadable without secondary
+They run in that order because each is the last one's payoff. The bar-duration error is unreadable without secondary
 labels, and the ending rules are unreadable without both.
 
 **59 is the frame rather than the music.** Every prompt above it adds something the application can do; this one is

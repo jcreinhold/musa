@@ -17,7 +17,7 @@ normalize(C) = track d {
 
 with no remaining `follow`, `together`, or composition references, where `(d, E) = ⟦C⟧` per
 `03-denotational-semantics.md`. Normalization is total and finite: the only operations are translation (τ), multiset
-union, and `max` on lengths, all closed over finite tracks.
+union, and `max` on durations, all closed over finite tracks.
 
 Implementation note: prompt 09's flat track value stores occurrences directly — construction **is** normalization.
 `normalize` therefore re-canonicalizes occurrence order; it never needs to flatten a tree, because the tree never
@@ -68,7 +68,7 @@ identity (N6).
 ## N4 — Semantic equality
 
 ```text
-M ≡ N   ⟺   length(M) = length(N)  ∧  canonical-occurrences(M) = canonical-occurrences(N)
+M ≡ N   ⟺   duration(M) = duration(N)  ∧  canonical-occurrences(M) = canonical-occurrences(N)
 ```
 
 with occurrences compared as exact triples `(s, e, payload-serialization)`. Tracks in different coordinates are
@@ -113,8 +113,8 @@ the normal form, which is quoted and parseable.
 ## N6 — Semantic hashing
 
 N6 defines the private exact semantic encoding in `12-payload-admission.md` A7. It contains a domain tag, track encoding
-version, coordinate tag, payload owner and quotient version, exact rational length, occurrence count, and every
-canonical occurrence with length-framed payload-key bytes. It is separate from N5 display, and its field order is the
+version, coordinate tag, payload owner and quotient version, exact rational duration, occurrence count, and every
+canonical occurrence with duration-framed payload-key bytes. It is separate from N5 display, and its field order is the
 one `../across-stages/04-identity-and-realization.md` §3 states.
 
 `semantic_hash` computes FNV-1a-128 over exactly those bytes. Earlier encoding versions are refused, not reinterpreted:

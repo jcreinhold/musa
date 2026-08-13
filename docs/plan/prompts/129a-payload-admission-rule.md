@@ -64,13 +64,13 @@ containing:
 - a domain tag and timeline encoding version;
 - payload owner id and quotient version;
 - the coordinate tag;
-- exact reduced rational length;
+- exact reduced rational duration;
 - occurrence count; and
-- canonical occurrences with exact rational endpoints and **byte-length-framed** payload keys.
+- canonical occurrences with exact rational endpoints and **byte-duration-framed** payload keys.
 
-Every variable child is length/count framed. The event track's semantic hash hashes these bytes, not `Display`. A digest
-is an index only; equal digests do not prove semantic equality. Update N3–N6, T3, and backend text accordingly. Retain
-display format only for human/golden consumers.
+Every variable child is duration/count framed. The event track's semantic hash hashes these bytes, not `Display`. A
+digest is an index only; equal digests do not prove semantic equality. Update N3–N6, T3, and backend text accordingly.
+Retain display format only for human/golden consumers.
 
 Add the exact regression:
 

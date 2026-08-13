@@ -15,14 +15,15 @@ restriction windows; `f : A → B`, `g : B → C` over payload functions.
 
 - **L1 — associativity.** `follow(follow(M, N), P) = follow(M, follow(N, P))`. Test: `follow_associativity`.
 - **L2 — zero identity.** `follow((0, ∅), M) = M = follow(M, (0, ∅))`. Test: `follow_zero_identity`.
-- **L3 — length additivity.** `length(follow(M, N)) = length(M) + length(N)`. Test: `follow_length_additivity`.
+- **L3 — duration additivity.** `duration(follow(M, N)) = duration(M) + duration(N)`. Test:
+  `follow_duration_additivity`.
 
 ## `together` laws
 
 - **L4 — associativity.** `together(together(M, N), P) = together(M, together(N, P))`. Test: `together_associativity`.
 - **L5 — commutativity.** `together(M, N) = together(N, M)`. Test: `together_commutativity`.
-- **L6 — fixed-length identity.** For `M` of length `d`: `together(M, (d, ∅)) = M = together((d, ∅), M)`. `together` at
-  fixed length is a commutative monoid with identity `(d, ∅)`. Test: `together_fixed_length_identity`.
+- **L6 — fixed-duration identity.** For `M` of duration `d`: `together(M, (d, ∅)) = M = together((d, ∅), M)`. `together`
+  at fixed duration is a commutative monoid with identity `(d, ∅)`. Test: `together_fixed_duration_identity`.
 
 ## Ambient-extension laws *(struck: prompt 37)*
 
@@ -50,7 +51,7 @@ behaviour changed: the laws described an operation nothing used.
 
 ## Restriction laws
 
-- **L16 — identity.** `restrict_I = id` when `I` is the whole length: every occurrence's visible span equals its whole
+- **L16 — identity.** `restrict_I = id` when `I` is the whole duration: every occurrence's visible span equals its whole
   span, and no occurrence is dropped. Test: `restrict_identity`.
 - **L17 — composition.** For **any** windows `J` and `K` that meet: `restrict_K(restrict_J(M)) = restrict_{J ∩ K}(M)`;
   windows that do not meet observe nothing. Narrowing an observation intersects the windows, so the law holds without a
@@ -64,7 +65,7 @@ behaviour changed: the laws described an operation nothing used.
   whose whole support contains `t` are exactly `covering(M, t)`, in the same canonical order. The two ways of asking
   what is in force cannot disagree. Test: `coverage_agrees_with_observation`.
 - **L21 — coverage is stable under time transformation.** `covering(scale_r(M), r·t)` corresponds to `covering(M, t)`,
-  and `covering(follow(M, N), d + t)` corresponds to `covering(N, t)` for `d = length(M)` and `t` strictly past the
+  and `covering(follow(M, N), d + t)` corresponds to `covering(N, t)` for `d = duration(M)` and `t` strictly past the
   seam. The queries commute with the algebra; the seam itself is excluded because `[s, e)` gives that instant to `N`
   alone, which is the first convention of D11. Test: `coverage_is_stable_under_time_transformation`.
 - **L22 — prevailing is the last selected start.** For every `t`, `prevailing(M, t, σ)` equals `σ` applied to the
@@ -83,7 +84,7 @@ behaviour changed: the laws described an operation nothing used.
 
 ## The synchronized interchange law
 
-- **L18 — synchronized interchange.** If `length(M) = length(N)` and `length(P) = length(Q)`, then
+- **L18 — synchronized interchange.** If `duration(M) = duration(N)` and `duration(P) = duration(Q)`, then
 
   ```text
   follow(together(M, N), together(P, Q)) = together(follow(M, P), follow(N, Q))
@@ -92,8 +93,8 @@ behaviour changed: the laws described an operation nothing used.
  . Musically: two voices across two synchronized sections can be built section-wise then followed, or voice-wise then
   placed together; the temporal facts are identical. Test: `synchronized_interchange`.
 
-  **The synchronization conditions matter.** When `length(M) ≠ length(N)`, the equation fails in general. Counterexample
-  test: `interchange_fails_without_synchronization` — exhibit `M, N, P, Q` with unequal section lengths where the two
+  **The synchronization conditions matter.** When `duration(M) ≠ duration(N)`, the equation fails in general. Counterexample
+  test: `interchange_fails_without_synchronization` — exhibit `M, N, P, Q` with unequal section durations where the two
   sides differ (the shorter section's voice B material starts under voice A's still-sounding section on one side, and
   after it on the other).
 

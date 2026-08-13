@@ -42,9 +42,9 @@ Define three disjoint constructs:
    physical start is `tempo(b)` and its physical end is `tempo(b)+L`; its asset duration `L` is never stored as a kernel
    extent.
 
-A musical clip has written length, so it is an event-track occurrence and every track law applies. A fixed-media cue has
-physical duration but only a written onset, so its event-track support is a point. The decoded duration belongs to the
-registered primitive configuration created during preparation, not to the written occurrence. State and test this
+A musical clip has written duration, so it is an event-track occurrence and every track law applies. A fixed-media cue
+has physical duration but only a written onset, so its event-track support is a point. The decoded duration belongs to
+the registered primitive configuration created during preparation, not to the written occurrence. State and test this
 boundary directly.
 
 Track transforms move, duplicate, or restrict occurrence support only. Stretching or repeating a fixed cue moves or

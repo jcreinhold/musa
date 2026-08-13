@@ -181,14 +181,14 @@ what it is a test *of*, not just a piece.
 | --- | --- | --- | --- |
 | 1 | Twinkle Twinkle | ordinary sequential pitched material and rests | **proven** (prompt 11): `examples/twinkle.musa`, parity + normal form |
 | 2 | A four-part chorale | multiple synchronized voices, harmonic simultaneity | **proven at two parts** (prompt 11): `counterpoint.musa` parity + normal form; extend to four parts with prompt 27-era fixtures |
-| 3 | A canon | reuse, delay, transformation, simultaneity | **proven** (prompt 11): `examples/canon.musa` — motif reuse, delay by ambient length, transposition, `together` |
+| 3 | A canon | reuse, delay, transformation, simultaneity | **proven** (prompt 11): `examples/canon.musa` — motif reuse, delay by ambient duration, transposition, `together` |
 | 4 | Tuplets and polyrhythm | exact rational temporal relationships | blocked on surface syntax (prompt 27) |
 | 5 | Changing meter and key | contextual temporal information with no semantic special case | **proven** (prompts 63–64, pushed to its edge at 74): `meter none` is a *value* of the meter context, not a mechanism beside it, so music with no barlines needed no kernel form, no second time coordinate, and no new special case. `examples/changing-meter.musa`, `modulation.musa`, `cadenza.musa`, `chant.musa` |
 | 6 | Accelerando and ritardando | symbolic beat structure distinguished from physical-time realization | **proven** (prompt 73): a gradual change is a `Progress` in the tempo marking's payload, integrated exactly at realization and printed at both ends. The symbolic track does not move — no notehead changes place, which is the distinction the test states. `examples/rubato.musa`, `riser.musa` |
 | 7 | Glissando and crescendo | where continuous temporal behaviour belongs | **proven** (prompt 44): a shape is a `Progress` in the payload, not a term form. `examples/annotated.musa` |
-| 8 | Loop-based electronic music | surface iteration producing finite observations | **proven** (prompt 67): a ranged repeat is decided once at compile time and everything below it is an ordinary exact repeat. `examples/loop-lengths.musa` |
+| 8 | Loop-based electronic music | surface iteration producing finite observations | **proven** (prompt 67): a ranged repeat is decided once at compile time and everything below it is an ordinary exact repeat. `examples/loop-durations.musa` |
 | 9 | Controlled aleatory | multiple realizations, each an ordinary finite event track | **proven** (settled 66, implemented 67, surfaced 68; `11-realization.md`): `examples/mobile.musa` — nineteen fragments, 19! orderings, one permutation in the payload — and `examples/in-c.musa`, fifty-three decision sites that survive an edit to each other |
-| 10 | An improvisational / live process | the finite core still useful when the producer is reactive | **proven as far as it can be, and no further** (prompt 68): `examples/changes.musa` writes the improvised chorus as a frame of the right length with the changes on it, so the interchange file holds a complete, finite, exactly timed piece plus the instruction a player needs. A *reactive producer* is refused rather than deferred — musa compiles a reading of the work, it does not follow one. See prompt 68's Stop list |
+| 10 | An improvisational / live process | the finite core still useful when the producer is reactive | **proven as far as it can be, and no further** (prompt 68): `examples/changes.musa` writes the improvised chorus as a frame of the right duration with the changes on it, so the interchange file holds a complete, finite, exactly timed piece plus the instruction a player needs. A *reactive producer* is refused rather than deferred — musa compiles a reading of the work, it does not follow one. See prompt 68's Stop list |
 | 11 | Polymeter and polytempo | parts counted and paced independently of the score around them | **proven** (prompt 75), and worth reading for how little it cost: `Meter` and `Tempo` were already inherited by `Override`, and `BarLines` was already built on an arbitrary sequence of meters, so both are a **scope argument** — `bars(scope)`, `IntegratedTempoMap::new(score, scope, …)` — and neither is a kernel form, a term, or a second algorithm. `examples/bulgarian.musa` (7/8 against 4/4, barlines that diverge), `hemiola.musa` (6/8 against 3/4, one grid beamed two ways), `canon-x.musa` (Nancarrow's shape: one part accelerating while the other decelerates) |
 
 The rule: if several of these require awkward or lossy lowering, reconsider the kernel as a whole. Do not patch examples
@@ -208,8 +208,8 @@ Anything discovered while implementing prompts 09–12 is appended here with its
 - *(empty at specification time — prompt 08)*
 - **Prompt 09 (kernel implementation):** D6's phrasing `[s, e] ∩ [i, j] ≠ ∅` makes degenerate (point) occurrences
   unobservable — a half-open empty intersection is always empty. Refined: point occurrences at `s` are visible through
-  `[i, j)` when `s ∈ [i, j)`, plus (prompt 10) a point exactly at the ambient length's end is visible through a window
-  ending at the length — without it, `restrict` at the full length is not the identity (L16). Spec D6 is updated to
+  `[i, j)` when `s ∈ [i, j)`, plus (prompt 10) a point exactly at the ambient duration's end is visible through a window
+  ending at the duration — without it, `restrict` at the full duration is not the identity (L16). Spec D6 is updated to
   match when the candidate banner comes off (prompt 12).
 - **Prompt 10 (law suite):** the L17 property caught that an empty window `[i, i)` observed non-degenerate spans
   containing `i` (half-open intersection is empty, but the naive `s < j && e > i` test passes). Fixed:
@@ -228,7 +228,7 @@ Anything discovered while implementing prompts 09–12 is appended here with its
   one — the kernel scales the span, and the surface layer respells the written value. `invert` is an ordinary
   `map_payloads`, with the unspellable mirror image (past a double accidental) surfacing as a diagnostic rather than a
   kernel-level failure. `retrograde` is the interesting one: it is a plain function over the finite occurrence list in
-  `musa-compiler/src/elaborate.rs`, reflecting each span about the ambient length, and it needed **no** reversal
+  `musa-compiler/src/elaborate.rs`, reflecting each span about the ambient duration, and it needed **no** reversal
   primitive — the finite core's occurrences are already a materialized set, so reversal is a mapping over them rather
   than a construct they must be built with. Its laws (involution; anti-homomorphism for `follow`) are proven at the
   elaboration level in `musa-compiler/tests/transform_laws.rs`. Tie marks are the one thing reversal must repair: a tie
@@ -250,12 +250,12 @@ Anything discovered while implementing prompts 09–12 is appended here with its
   (`import_laws.rs` asserts the two produce the same events). A **tempo change** is a change to the map from beats to
   seconds, not to the track — every note keeps its symbolic position and the performance layer integrates the segments,
   which is why `a_hairpin_moves_no_note` and the tempo laws can both be stated as "the score is unchanged". A
-  **hairpin** is an annotation with length, like prompt 35's phrase, anchored to events; it is read at the performance
+  **hairpin** is an annotation with duration, like prompt 35's phrase, anchored to events; it is read at the performance
   boundary and nowhere else. falsification-corpus item 6 is therefore partly answered: stepwise tempo is exact, and a
   continuous ramp remains a surface-syntax question rather than a kernel one — the piecewise map already has the shape a
   ramp would lower into.
 - **Prompt 37 (observation and the end of `extend`):** two repairs, both of them removals. `extend` was deleted because
-  no caller ever appeared: `follow` and `together` compute lengths themselves, and the surface has no construct that
+  no caller ever appeared: `follow` and `together` compute durations themselves, and the surface has no construct that
   asks a track to grow without adding material. Under the governing design rule that is the evidence the basis is one
   operation too large, so K3, D4, and L7–L8 are struck; ambient extension as a *concept* — `(d, ∅)`, and `together`
   taking the maximum without padding — is untouched, since it was never the operation. Re-adding `extend` requires a
@@ -263,10 +263,10 @@ Anything discovered while implementing prompts 09–12 is appended here with its
   two facts that must agree, kept in two places. `Observation<'a, A>` computes the visible span on the way out instead,
   and *narrowing an observation intersects the windows* — which makes L17 hold for arbitrary windows rather than for
   nested ones under a precondition the caller had to respect, and deletes the error that precondition would otherwise
-  have needed. The observation carries the length it was taken from, because "the final instant of a track is
-  observable" is a fact about the track and not about the window; without it, narrowing a full-length observation would
-  drop the point occurrence the wider one reported (`the_final_instant_survives_narrowing`). D6 now states that rule
-  positively, and L16 is derived from it. `06-surface-elaboration.md`'s rest row, which prompt 11 had already
+  have needed. The observation carries the duration it was taken from, because "the final instant of a track is
+  observable" is a fact about the track and not about the window; without it, narrowing a full-duration observation
+  would drop the point occurrence the wider one reported (`the_final_instant_survives_narrowing`). D6 now states that
+  rule positively, and L16 is derived from it. `06-surface-elaboration.md`'s rest row, which prompt 11 had already
   contradicted, is repaired to match the code.
 - **Prompt 39 (every notated fact is an occurrence):** slurs, phrases, tuplets, dynamics, and hairpins became
   occurrences with their own spans, and the kernel gained **nothing** — no constructor, no variant, no change of any
@@ -281,19 +281,19 @@ Anything discovered while implementing prompts 09–12 is appended here with its
   deletes the relation instead of repairing it, and prompt 34's double-reversal law now passes for a simpler reason than
   it used to.
 - **Prompt 40 (key, meter, and score annotations as occurrences):** **Q8 is answered, and deleted from this file.** The
-  working stance was "context maps until the surface gives them length"; the prompt gave them kernel length *without*
-  waiting for the surface, and that order turned out to be the right one. A region covering `[0, d]` is not a special
-  case, but a piece-wide scalar named `MeterMap` is: had the region shape waited for `modulate`, the type would have
-  grown a second representation and every consumer would have learned two ways to ask one question. The kernel again
-  gained nothing — no file in `musa-kernel` was touched — which is the core's stability promise demonstrated instead of
-  asserted. Two smaller findings. First, deleting `piece_extent` (a maximum over event ends) in favour of the track's
-  own length is only sound because a written rest is an occurrence, so a piece ending in silence still ends where the
-  silence ends; that is now a fixture rather than an argument. Second, `resolve_position` used to read the snapshot it
-  was helping to build — the last place where a temporal fact was computed from the adapter's output rather than from
-  the track — and it now reads the meter occurrence. **Tempo did not move and will not**: it is the map from symbolic to
-  physical time, and a place where `stretch` and *ritardando* could be confused is exactly what the kernel must not
-  offer. `TempoMap` now carries that reasoning as a comment, because the next reader will otherwise ask why tempo was
-  left behind and answer the question wrong.
+  working stance was "context maps until the surface gives them duration"; the prompt gave them kernel duration
+  *without* waiting for the surface, and that order turned out to be the right one. A region covering `[0, d]` is not a
+  special case, but a piece-wide scalar named `MeterMap` is: had the region shape waited for `modulate`, the type would
+  have grown a second representation and every consumer would have learned two ways to ask one question. The kernel
+  again gained nothing — no file in `musa-kernel` was touched — which is the core's stability promise demonstrated
+  instead of asserted. Two smaller findings. First, deleting `piece_extent` (a maximum over event ends) in favour of the
+  track's own duration is only sound because a written rest is an occurrence, so a piece ending in silence still ends
+  where the silence ends; that is now a fixture rather than an argument. Second, `resolve_position` used to read the
+  snapshot it was helping to build — the last place where a temporal fact was computed from the adapter's output rather
+  than from the track — and it now reads the meter occurrence. **Tempo did not move and will not**: it is the map from
+  symbolic to physical time, and a place where `stretch` and *ritardando* could be confused is exactly what the kernel
+  must not offer. `TempoMap` now carries that reasoning as a comment, because the next reader will otherwise ask why
+  tempo was left behind and answer the question wrong.
 - **Prompt 44 (coverage and prevailing-value queries):** the kernel gained an *interface*, not an ontology — two
   queries, no constructor, no stored state, no payload requirement. The finding that justified them is that four
   consumers were answering "what is in force here" privately and **disagreeing**: two keyed the answer on
@@ -336,5 +336,5 @@ Anything discovered while implementing prompts 09–12 is appended here with its
   general recursion, so a recursive source program is refused at the language level rather than deferred to elaboration.
   And every question here is now scoped to *one of two* core values — nothing in this file asks about machines, because
   `../across-stages/03-machine-calculus.md` §8 keeps its own open list. The vocabulary changed throughout
-  (`timeline`→`track`, `extent`→`length`, `sequence`→`follow`, `overlay`→`together`); the history above is reworded, not
-  rewritten, because what was learned did not change.
+  (`timeline`→`track`, `extent`→`duration`, `sequence`→`follow`, `overlay`→`together`); the history above is reworded,
+  not rewritten, because what was learned did not change.

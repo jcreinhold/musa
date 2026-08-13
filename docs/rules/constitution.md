@@ -29,22 +29,22 @@ conversion when it moves between them.
 This choice leaves the first package system and the final standard-library contents open. It rules out making every
 piece declare a key, a 12-note pitch class, or a regular metre.
 
-## 3. An event track records exact positions and lengths
+## 3. An event track records exact positions and durations
 
 Musa represents a finite stretch of musical time with an **event track**:
 
-- a nonnegative exact rational length, such as `7/2` beats; and
+- a nonnegative exact rational duration, such as `7/2` beats; and
 - a finite multiset of occurrences, each with an exact start, end, and payload value.
 
 An occurrence with a positive span occupies `[start, end)`: it includes its start instant and excludes its end. An
 occurrence whose start equals its end is a point at that instant.
 
-Putting one track after another adds their lengths and moves the second forward. That operation is called **follow**.
-Placing two tracks in the same region keeps every occurrence of both and takes the longer length. That operation is
+Putting one track after another adds their durations and moves the second forward. That operation is called **follow**.
+Placing two tracks in the same region keeps every occurrence of both and takes the longer duration. That operation is
 called **together**.
 
 Suppose one part lasts eight beats and another enters at beat two and leaves at beat six. They may be placed together
-directly. Musa does not insert four beats of rests to make their lengths equal. Empty time is simply time in which no
+directly. Musa does not insert four beats of rests to make their durations equal. Empty time is simply time in which no
 occurrence of the relevant kind exists. A written rest is still a real notation event when the score calls for one.
 
 **Every track states whose time it measures.** A track's positions are tagged by a **coordinate**: written time,
@@ -74,14 +74,14 @@ Two reasons keep the machine and its history apart, and both are worth stating b
 to read as mere tidiness.
 
 The first is about how each is defined. An output history is defined by what it produces at each step and has no last
-element; an event track is a length plus a *finite* multiset of occurrences, and the guarantee that processing it
+element; an event track is a duration plus a *finite* multiset of occurrences, and the guarantee that processing it
 terminates is derived from that finiteness. Putting a history inside an event track would require either that the
 history be finite, in which case it is not a history, or that the track give up finiteness, in which case every rule
 that depends on processing terminating is gone.
 
-The second is musical. A machine has no length. It names units and connections; asking how long it lasts is the same
-kind of question as asking how long a mixing desk lasts. Every event-track rule is stated over a length, so something
-with no length cannot be the payload of an occurrence.
+The second is musical. A machine has no duration. It names units and connections; asking how long it lasts is the same
+kind of question as asking how long a mixing desk lasts. Every event-track rule is stated over a duration, so something
+with no duration cannot be the payload of an occurrence.
 
 What this decision no longer says, and deliberately: the machine is **not** outside the core language. A machine value
 is built, typed, and checked by the same source language that builds event tracks, and the two meet through the checked
@@ -89,7 +89,7 @@ scheduler of §5. Treating the studio as a second calculus with its own semantic
 prevent.
 
 This decision reopens on either of two events and nothing else. **One:** someone proposes a written musa construct whose
-meaning is genuinely an open-ended history *with* a notated length — something that sounds continuously and that other
+meaning is genuinely an open-ended history *with* a notated duration — something that sounds continuously and that other
 music is positioned against. Live coding and reactive input are the likely sources. **Two:** the rule in §"Audio
 preparation receives every choice as an argument" of the obligations is measured false — equal complete arguments
 produce different prepared results, meaning the preparation step is reading state nobody passed it. Deferring without
@@ -155,14 +155,14 @@ relation and prove particular instances of it, but no type check and no cache ma
 ## 8. One event-track structure serves every payload
 
 The event track of §3 does not know what kind of thing its occurrences hold. Notation facts are one payload. Performance
-gestures are another. Both are the same structure at a different payload, and both get the same lengths, the same
+gestures are another. Both are the same structure at a different payload, and both get the same durations, the same
 combination rules, and the same notion of equality without any of it being proved twice.
 
 This is a decision about what the structure is a calculus *of*, and it has three consequences that a later change may
 not quietly undo.
 
-**A second temporal container is a defect.** If something has a length and finitely many things positioned inside it, it
-is an event track. Writing a second one — a list of start/end/value triples with its own ordering and its own idea of
+**A second temporal container is a defect.** If something has a duration and finitely many things positioned inside it,
+it is an event track. Writing a second one — a list of start/end/value triples with its own ordering and its own idea of
 equality — is exactly the drift this decision exists to prevent, and it is audited for.
 
 **The structure knows nothing musical.** A pitch, a part, a voice, and a gesture are defined by the layers above and

@@ -9,7 +9,7 @@ carry their pre-127a spellings, and the pairs are in [`../clean-break-ledger.md`
 | Total non-recursive source expressions | `musa-compiler` | implemented for the current value types and folds | whole-language conformance tests |
 | User-defined nominal data, private constructors, and abstract type members | `musa-compiler` | absent; research candidate still incomplete after review 54 | repair active package-version selection, then review again |
 | Building and closing a fragment into a core term | compiler to kernel | implemented, but over the deleted contextual `music` type | prompt 127e rebuilds it over ordinary values; differential and closure tests |
-| Finite `EventTrack<C,A>` operations, including unequal-length `together` | `musa-kernel` | implemented at the old names and without the coordinate index | prompts 127b–127c; current 62 kernel tests and final conformance audit |
+| Finite `EventTrack<C,A>` operations, including unequal-duration `together` | `musa-kernel` | implemented at the old names and without the coordinate index | prompts 127b–127c; current 62 kernel tests and final conformance audit |
 | Versioned exact bytes for event-track equality | `musa-kernel` | implemented; the coordinate tag is not yet in the encoding | prompt 127c, then a migration test when a persisted reader is added |
 | `Machine<K,A,B>` as a core value of the source language | `musa-compiler`/`musa-audio` | absent | prompts 127f–127h |
 | `schedule(format, policy, time map, track)` with a recorded decision list | `musa-audio` | absent | prompt 127h |

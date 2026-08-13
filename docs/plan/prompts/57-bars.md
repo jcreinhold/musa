@@ -22,9 +22,9 @@ musa that can be *wrong* in a way musa can point at.
 - Prompt 07 (`NotationPlan`) — measures are **already** computed from the meter. This prompt must not create a second
   measure representation; AGENTS.md's layer table forbids exactly that collapse.
 - Prompt 40 and `MeterMap` — read what meter actually is today before designing on top of it. It is one meter for the
-  piece, not a map, and that is what defers irregular lengths (see Design).
+  piece, not a map, and that is what defers irregular durations (see Design).
 - Prompt 49 — `repeat` and motifs elaborate to kernel `let`. A named bar is a `let`, bound where it is written.
-- Prompt 56 — the secondary-label and help machinery. The bar-length diagnostic is unreadable without it.
+- Prompt 56 — the secondary-label and help machinery. The bar-duration diagnostic is unreadable without it.
 - `crates/musa-language/src/{lexer,parser,ast,formatter}.rs`; `crates/musa-compiler/src/elaborate.rs`.
 
 ## Design
@@ -89,14 +89,14 @@ cannot answer for the general case and does not pretend to. Checking the total i
 correct total is exactly the condition under which the barline the engraver draws lands where the composer put the
 brace.
 
-### Irregular lengths are deferred, and the reason is honest
+### Irregular durations are deferred, and the reason is honest
 
 *(Paid by prompt 64. `MeterMap` is a `ContextTrack<Meter>`, the meter changes where the music changes, and all four
 exporters write the change. An irregular bar is written as the two meter statements it is; the `bar 5/4 { … }` sugar and
 the pickup stayed out, for the reasons prompt 64 records.)*
 
-This prompt was designed with `bar 5/4 { … }` and a `bar 1/4 { … }` pickup, on the argument that an irregular length is
-a meter occurrence and goes where prompt 40 put meter. Prompt 40 did not put it there. `MeterMap` holds **one** meter
+This prompt was designed with `bar 5/4 { … }` and a `bar 1/4 { … }` pickup, on the argument that an irregular duration
+is a meter occurrence and goes where prompt 40 put meter. Prompt 40 did not put it there. `MeterMap` holds **one** meter
 for the piece, and `plan.rs`, MEI, LilyPond, and MusicXML all read it as one — no exporter can emit a meter change
 mid-piece. Accepting `bar 5/4 { … }` today would produce a page that disagrees with the source, which is worse than not
 accepting it. Mid-piece meter needs its own prompt: `MeterMap` becomes a map, and every exporter learns to write the
@@ -158,8 +158,8 @@ is now the narrower claim; widening the column is an interface change and is not
 - `crates/musa-language`: `BarKw`; the `BarStmt` syntax kind and AST wrapper; parsing with recovery and the
   bars-do-not-nest error; `use name;` without parentheses; the formatter's inline-bar rule and its `proptest`
   idempotence check. No `BarRef` kind — a bar is played by the `use` that already exists.
-- `crates/musa-compiler`: bar-length checking against the prevailing meter with the diagnostic above, under prompt 56's
-  `does-not-add-up`; named bars registered into the motif namespace as zero-parameter material, distinguished by a
+- `crates/musa-compiler`: bar-duration checking against the prevailing meter with the diagnostic above, under prompt
+  56's `does-not-add-up`; named bars registered into the motif namespace as zero-parameter material, distinguished by a
   `Material` tag so a diagnostic can say "bar" or "motif"; forward reference and self-quotation as one span comparison;
   warnings suppressed once an error is reported.
 - `examples/`: `twinkle.musa`, `invention.musa`, and `counterpoint.musa` rewritten in bars — they are executable
@@ -191,5 +191,5 @@ kernel goldens' diff is the evidence. A bar that changes the music is a bug in t
 - No multi-bar named runs. A name binds one bar; a run of bars is what `repeat` and motifs are for.
 - No automatic barring of existing files, and no lint that asks for bars. Adopting them is per-bar and voluntary.
 - No bar numbers in the surface. `bar 12 { … }` would be a position, and positions are computed, never written.
-- No irregular bar lengths and no pickups — they need mid-piece meter, which needs its own prompt (see above).
+- No irregular bar durations and no pickups — they need mid-piece meter, which needs its own prompt (see above).
 - No barline-alignment check. Only the bar's own total is checked.

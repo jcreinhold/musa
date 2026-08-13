@@ -23,7 +23,7 @@ they serve.
 The specification uses three kinds of rule:
 
 - A **well-formedness rule** says whether a value is valid. For example, an occurrence must end within its track's
-  length.
+  duration.
 - An **evaluation rule** says how a valid term is evaluated or how a valid machine takes one step.
 - A **meaning rule** gives the mathematical value represented by a valid term.
 
@@ -43,7 +43,7 @@ An optimization must preserve these rules. Faster code does not get a different 
 
 The symbol `≡_P` only compares values from the same representation. A written pitch and a frequency may be related by a
 tuning function, but they are not equal merely because they can both be stored as numbers. The same holds of the
-coordinate tag: a length in written beats and a length in seconds are different types, and no rule below silently
+coordinate tag: a duration in written beats and a duration in seconds are different types, and no rule below silently
 converts one to the other.
 
 ## How to read a rule

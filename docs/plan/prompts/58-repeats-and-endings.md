@@ -90,7 +90,7 @@ that it does not have them. A fact survives evaluation, which is what facts are 
 Printing the body once means the page is shorter than the performance, and everything downstream of the plan — measure
 numbers, tempo and section marks, barlines — is positioned by absolute time. So the plan computes a **fold**: the sorted
 list of performed intervals the page drops (each pass after the first, minus the endings that print), and one function
-that maps a performed moment to its notated one by subtracting the dropped length before it. The kept intervals in
+that maps a performed moment to its notated one by subtracting the dropped duration before it. The kept intervals in
 performed order turn out to be exactly print order, so the fold reorders nothing.
 
 The fold lives in `plan.rs` and nowhere else. This is the point: two clocks are tolerable in one function and

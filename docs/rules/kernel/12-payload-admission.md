@@ -98,7 +98,7 @@ track encoding version,
 length(coordinate tag), coordinate tag,
 length(payload owner id), payload owner id,
 payload quotient version,
-length numerator, length denominator,
+duration numerator, duration denominator,
 occurrence count,
 for each canonical occurrence:
   start numerator, start denominator,

@@ -84,10 +84,10 @@ meter sequence precisely so this would be a change of *argument*, not of algorit
 
 Two shapes, and both must work:
 
-- **Same bar length, different grouping** — 3+2+2 against 4/4. One barline grid, different beaming. This is most Balkan
-  music and it is nearly free.
-- **Different bar lengths** — 7/8 against 4/4, where barlines genuinely diverge and only realign every 56 eighths. This
-  is the one that needs per-scope `BarLines`, and it is what `plan_staff` must learn.
+- **Same bar duration, different grouping** — 3+2+2 against 4/4. One barline grid, different beaming. This is most
+  Balkan music and it is nearly free.
+- **Different bar durations** — 7/8 against 4/4, where barlines genuinely diverge and only realign every 56 eighths.
+  This is the one that needs per-scope `BarLines`, and it is what `plan_staff` must learn.
 
 The engraver draws each staff its own barlines. `docs/rules/desktop/` must agree that a system may have staves whose
 barlines do not align, because today's visual language assumes they do — a repair to that document, in this commit.
@@ -182,9 +182,9 @@ Commit as `Add polymeter` — or `Add polymeter and polytempo`, per the gate.
    `ProjectSession::export` passes them on like every other target's.
 
 9. **`examples/phase.musa` became `examples/hemiola.musa`.** The prompt asked for "Reich's shape" for the
-   same-bar-length case. *Piano Phase* is continuous phasing and is not notated music, and *Clapping Music* is one
-   pattern against itself in one meter, so neither is a polymeter fixture. 6/8 against 3/4 is the same-bar-length shape
-   as it actually appears — *America*, and every sesquiáltera — and is what the fixture writes.
+   same-bar-duration case. *Piano Phase* is continuous phasing and is not notated music, and *Clapping Music* is one
+   pattern against itself in one meter, so neither is a polymeter fixture. 6/8 against 3/4 is the same-bar-duration
+   shape as it actually appears — *America*, and every sesquiáltera — and is what the fixture writes.
 
 10. **`render --to musicxml` writes a file, so the Check line needed `-o /dev/stdout`.** Without it the command writes
     `examples/bulgarian.musicxml` beside the source and pipes nothing — the same repair prompt 73 made for `-o` and the

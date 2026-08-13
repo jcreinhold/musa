@@ -97,7 +97,7 @@ The user gets one easy action. The core still receives three simple facts.
 | Voice | Mixer track |
 | Part | Synthesizer instance |
 | Dynamic marking | Literal decibel value |
-| Articulation | Fixed note-length multiplier |
+| Articulation | Fixed note-duration multiplier |
 | Motif definition | Its expanded occurrences |
 | Score ordering | Machine step ordering |
 | Project source | GUI widget state |
@@ -797,7 +797,7 @@ different feature with a different inheritance rule.
 
 Two rules keep the coordinate system well-formed, and both are refusals rather than repairs:
 
-- **A change must land on a barline.** Otherwise the measure it starts is neither length, `BarLines::at` and
+- **A change must land on a barline.** Otherwise the measure it starts is neither duration, `BarLines::at` and
   `BarLines::time_of` stop being inverses, and the engraver would have to invent a bar nobody wrote.
 - **A change may not be written inside material.** A motif body is elaborated once and can stand at several places, so a
   meter written inside one would be in force at places that have nothing to do with each other (§2: motif definition ≠
@@ -806,11 +806,11 @@ Two rules keep the coordinate system well-formed, and both are refusals rather t
   own items is not material: it is played once, at one place, so a context change inside it is at that place. A named
   bar can be answered from another voice, which makes it material like a motif.
 
-Irregular bar lengths follow from this — `meter 5/4; bar { … } meter 4/4;` is a 5/4 bar — and the sugar `bar 5/4 { … }`
-is not accepted, because it would be sugar for the two statements above and nothing else. Pickups are still not
-accepted, and the reason is no longer the meter: a pickup is an **uncounted** measure, so it is a question about measure
-*numbering* — `\partial`, `<measure implicit="yes">`, `@metcon="false"` — and musa has no way to say a measure is not
-counted. Writing one as a short first bar would number it 1 and every measure after it one too high.
+Irregular bar durations follow from this — `meter 5/4; bar { … } meter 4/4;` is a 5/4 bar — and the sugar
+`bar 5/4 { … }` is not accepted, because it would be sugar for the two statements above and nothing else. Pickups are
+still not accepted, and the reason is no longer the meter: a pickup is an **uncounted** measure, so it is a question
+about measure *numbering* — `\partial`, `<measure implicit="yes">`, `@metcon="false"` — and musa has no way to say a
+measure is not counted. Writing one as a short first bar would number it 1 and every measure after it one too high.
 
 ### The key and the clef change the same way, and only one of them at a barline
 

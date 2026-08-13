@@ -44,8 +44,8 @@ and observed result. At minimum cover:
 - offline/live equality, deterministic outputs, NaN/silence laws, callback/retirement instrumentation, and prompt 144
   budgets;
 - **the core boundary itself** — executable evidence for every integration risk:
-  - no type outside `musa-kernel` pairs a finite rational length with positioned events and defines its own ordering or
-    equality;
+  - no type outside `musa-kernel` pairs a finite rational duration with positioned events and defines its own ordering
+    or equality;
   - every event payload and machine port/configuration is storable data with versioned injective encoding; no source
     closure appears at any depth and no hash-only comparison is exact equality;
   - no public `lift`, uninitialized feedback, zero-delay loop, or alternate machine interpreter exists;
