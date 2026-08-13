@@ -244,7 +244,11 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 126 | core-boundary-decision | 3 | What the core is a calculus of, decided and costed before the sound block |
 | 127 | elaboration-performance-closure | 3 | Profiled latency, allocation, memory, caching, and budget closure |
 | 127a | core-calculus-governance | 3 | Amend the rules for one inferred language of event tracks and machines |
-| 127b | inferred-source-core | 3 | Replace the evaluator with the small total HM-inferred core |
+| 127aa | kinded-inference | 3 | Infer source types, with ordinary and storable-data type variables |
+| 127ab | text-and-sums | 3 | Add text, binary sums, and one structural `Result` |
+| 127ac | nominal-data | 3 | Let a library declare finite strictly positive data with one generated fold |
+| 127ad | complete-calls | 3 | Delete partial calls and default parameters; migrate the corpus |
+| 127b | inferred-source-core | 3 | Close the core: typed evaluator configurations, versioned costs, privacy audit |
 | 127c | event-track-cutover | 3 | Replace timelines with coordinate-typed finite event tracks |
 | 127d | machine-values | 3 | Add finite typed machine descriptions as source values |
 | 127da | bounded-syntax-adapters | 3 | Close the adapter proof blockers with one finite type-blind phase |
@@ -495,8 +499,11 @@ running signals do not. 127 measures that implementation. Later research found t
 is open-ended, but the typed machine that produces its next frame is finite data. Treating the two as the same thing had
 pushed the machine description out of the language for the wrong reason.
 
-**127a–127i make the clean correction.** 127a amends the governing documents before code changes. 127b installs one
-small, strict, total, HM-inferred language with complete calls and a checked storable-data boundary. 127c renames the
+**127a–127i make the clean correction.** 127a amends the governing documents before code changes. 127aa–127b then
+install one small, strict, total, HM-inferred language with complete calls and a checked storable-data boundary, in five
+steps that each leave the workspace green: inference and the two kinds of type variable (127aa), `text`, sums and
+`Result` (127ab), library-declared finite data (127ac), complete calls and the corpus migration (127ad), and the typed
+evaluator configurations, versioned cost table, and privacy audit that close it (127b). 127c renames the
 finite temporal value to `EventTrack<C,A>` and tags its coordinate. 127d adds finite `Machine<K,A,B>` values. 127da
 repairs the failed adapter boundary with path-aware finite syntax, one executable match target, and a real derivation
 graph. 127e then deletes contextual `Music`; notation becomes a source-mapped adapter into ordinary inferred terms. 127f

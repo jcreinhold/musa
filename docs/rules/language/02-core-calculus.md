@@ -10,7 +10,9 @@ because a history is coinductive and no value here is.
 
 Prompt 127a amended this document in four places: inference replaced the monomorphic discipline (§1), storable data
 replaced the ad-hoc payload rule (§1.1), machines became value types (§1), and the contextual `music` type was deleted
-(§5.7).
+(§5.7). The repair before prompt 127aa restored the rest of the reviewed type grammar that 127a's §1 had dropped — type
+variables, `text`, sums, nominal data, and `Length[C]` — so that the implementation prompts are not asked to build
+against a narrower rule than the calculus they implement.
 
 ## 1. Syntax
 
@@ -19,18 +21,24 @@ prompt-95 fragment enters through §5.8's conservative-extension theorem and its
 Types are:
 
 ```text
-τ ::= b | unit | bool | nat | ratio | τ × τ | option τ | list τ | τ → τ
-    | EventTrack[C, δ] | Machine[K, δ, δ]
+τ ::= a | b | unit | bool | nat | ratio | text
+    | τ × τ | τ + τ | option τ | list τ | N[τ, …] | τ → τ
+    | Length[C] | EventTrack[C, δ] | Primitive[K, δ, δ] | Machine[K, δ, δ]
 C ::= WrittenTime | PerformedTime | SecondTime
 ```
 
-where `δ` ranges over **storable data** types (§1.1). `declaration κ`, `structure`, `piece`, `part`, `voice`, and
-`Term[A]` are not value types; nor is an audio history. `EventTrack` and `Machine` are abstract in the sense that user
-code has constructors and controlled transforms but no representation eliminator: there is no way to read a machine's
-private state, and no way to read a track's occurrence list as a list.
+`a` is a type variable (§1.1). `N` is a nominal data type declared by a library: finite, strictly positive, checked
+once, and generating one structural fold. `C` and `K` are ordinary nominal tags — for a time coordinate and for one kind
+of machine step — and are type parameters, not values inside types. `δ` ranges over **storable data** types (§1.1).
 
-Terms are variables, literals, products/projections, constructors, lambdas, application, non-recursive `let`,
-conditionals, finite primitive operations, and these eliminators:
+`declaration κ`, `structure`, `piece`, `part`, `voice`, and `Term[A]` are not value types; nor is an audio history.
+`EventTrack`, `Primitive`, and `Machine` are abstract in the sense that user code has constructors and controlled
+transforms but no representation eliminator: there is no way to read a machine's private state, and no way to read a
+track's occurrence list as a list.
+
+Terms are variables, literals, products/projections, sum injections, nominal constructors, exhaustive `match`, lambdas,
+application, non-recursive `let`, conditionals, finite primitive operations, and these eliminators — the generated fold
+of each nominal declaration, and:
 
 ```text
 nat_fold  : A → (nat → A → A) → nat → A
@@ -39,8 +47,9 @@ option_fold : A → (X → A) → option X → A
 ```
 
 The surface provides `map`, `filter`, bounded `range`, `repeat`, and row/chord traversals only as typed definitions or
-compiler primitives reducible to these eliminators. A primitive must be total on its declared domain. Partial musical
-operations return `option` or a diagnostic-bearing assertion witness.
+compiler primitives reducible to these eliminators. A primitive must be total on its declared domain. A primitive that
+can fail returns an ordinary structural `Result`; it does not open a second hidden error channel. Partial musical
+operations return `option`, `Result`, or a diagnostic-bearing assertion witness.
 
 There is no `fix`, recursive binding, while loop, exception, mutation, I/O, reflection, syntax value, dynamic cast, or
 effect handler. Functions may be higher-order. **A call must be complete**: an application supplies every declared
@@ -51,10 +60,19 @@ not be stored (§1.1).
 ### 1.1 Two classes of type, and one inference discipline
 
 Every type above is a **value type**. A value type is *also* **storable data** when it contains no source function at
-any depth and has a versioned finite exact encoding. Base types, `unit`, `bool`, `nat`, `ratio`, products of storable
-data, `option` and `list` of storable data, and the admitted payload types of `../kernel/12-payload-admission.md` are
-storable data. An arrow type is not, and neither is any container holding one — including at a depth the surface never
-writes out, which is why the check is structural rather than a surface-syntax rule.
+any depth and has a versioned finite exact encoding. Base types, `unit`, `bool`, `nat`, `ratio`, `text`, `Length[C]`,
+products, sums, `option`, and `list` of storable data, nominal constructors all of whose stored fields are storable
+data, and the admitted payload types of `../kernel/12-payload-admission.md` are storable data. `EventTrack[C,A]` is
+storable data when `A` is; `Primitive[K,A,B]` and `Machine[K,A,B]` are storable data when `A` and `B` are and every
+stored configuration value is. These conditions are also their well-formedness rules. An arrow type is never storable
+data, and neither is any container holding one — including at a depth the surface never writes out, which is why the
+check is structural rather than a surface-syntax rule.
+
+A nominal declaration group is checked once: mutually recursive types are grouped, a stored function field is rejected,
+and the group is accepted as storable data when every field leaving it is already storable data. So `Tree[nat]` may be
+storable data while a type with a `unit → unit` field is not. The check terminates because the declaration graph is
+finite. An abstract compiler-owned type counts as storable data only when its owner guarantees that its hidden
+representation contains no source closure and supplies the exact encoding.
 
 Only storable data may be:
 
@@ -64,8 +82,10 @@ Only storable data may be:
 - a registered primitive's configuration; or
 - an argument to a foreign primitive.
 
-Inference is **rank-1 Hindley–Milner** with two classes of type variable: one ranging over any value type, one ranging
-over storable data only. Generalization is at `let` and at a declaration; instantiation is at a use. A principal type
+Inference is **rank-1 Hindley–Milner** with two classes of type variable: an ordinary variable `a` ranging over any
+value type, and a data variable `d` ranging over storable data only. Unification never replaces `d` with a function or a
+container holding one. This is a small side condition on ordinary inference — not subtyping, overloading, or a
+source-visible type class. Generalization is at `let` and at a declaration; instantiation is at a use. A principal type
 exists and is computed (`../across-stages/05-metatheory.md` §1). Rank-1 is a boundary, not an accident: rank-2 and above
 make inference undecidable in general, and nothing musical has asked for it.
 

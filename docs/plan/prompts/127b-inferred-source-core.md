@@ -2,58 +2,68 @@
 id: 127b
 slug: inferred-source-core
 status: pending
-depends_on: [127a]
+depends_on: [127ad]
 phase: 3
 ---
 
-# Replace the Source Evaluator with the Small Inferred Core
+# Close the Inferred Source Core
+
+> **Governed by the event-track and machine core installed by prompts 127a–127i.** Last of the five prompts that replace
+> the source checker and evaluator; the chain is 127aa, 127ab, 127ac, 127ad, 127b. Prompts 127c and 127d depend on this
+> one, so it is the point at which the source language is a single, closed, checkable thing again.
 
 ## Task
 
-Implement the reviewed pure total source calculus as the one checker and evaluator in `musa-compiler`. Remove partial
-calls, default arguments, and compatibility paths that make a call's meaning depend on missing parameters. Infer types
-wherever the program determines them.
+Give the evaluator its typed configurations and versioned resource semantics, close the foreign-primitive and privacy
+boundaries, and audit the four preceding prompts as one language: the small inferred core is now the only checker and
+evaluator in `musa-compiler`.
 
 ## Read
 
-- The governing core-calculus specification produced by prompt 127a and research `05-selected-calculus.md` §2.
-- Current `crates/musa-compiler/src/{core,typecheck,eval}.rs`, prompts 94–96 and 108, and all higher-order call tests.
-- Peyton Jones, *The Implementation of Functional Programming Languages*, chapters 3 and 6, as cited by the research.
+- `docs/rules/language/02-core-calculus.md` §§1–4 — the type grammar, the storable-data rule, the typing rules, and the
+  resource meter.
+- `docs/rules/language/00-semantics.md` §2, which states the evaluation judgments this prompt implements:
+  `run(budget, e) ⇓ done(v) | failed(ResourceError)`, and the rule that a budget may stop an evaluation but never change
+  an accepted one.
+- Research `05-selected-calculus.md` §2 and `06-proof-outline.md` §2.
+- `crates/musa-compiler/src/core_budget.rs` — the existing deterministic `WorkMeter`, its five limits, and `Exhaustion`.
+- The completion notes of prompts 127aa, 127ab, 127ac, and 127ad.
 
 ## Design
 
-The language has `Unit`, `Bool`, `Nat`, `Ratio`, `Text`, products, sums, `Option`, `List`, structural `Result`,
-functions, and finite strictly positive nominal data. It has non-recursive `let`, exhaustive matching, generated
-structural folds, and rank-1 Hindley–Milner inference. Top-level and local annotations remain optional except where
-separate checking or an abstract public signature needs one.
+Replace the ad-hoc meter calls with typed evaluator configurations: `run(budget, e)` reduces to `done(v)` or
+`failed(ResourceError)`. Charge a fixed versioned integer cost for the unique next reduction. Never read wall time,
+allocator behaviour, or any other machine-dependent quantity — the same source and compiler version fail at the same
+operation on every machine, which is what makes acceptance a property of the language rather than of the host.
 
-Keep file modules, qualified imports, records, signatures, abstract data members, and private constructors in the rich
-source form. Resolve and seal them before lowering. Keep `let`, constructors, exhaustive `match`, and folds in the
-private evaluation core because they preserve sharing and have direct total rules. Do not invent join points or a second
-decision-tree evaluator merely to remove a form the small core already handles.
+The cost table is versioned data, not scattered constants. Changing a cost is a version bump with a stated reason, and
+the version is part of what a cache key records.
 
-Every type is a value type. A transitively function-free type with a versioned injective finite encoding is also
-storable data. Type variables retain whether they range over any value or only data. Reject a source function hidden in
-any list, constructor, abstract value, track payload, primitive argument, or stored configuration.
+A budget can stop an evaluation but cannot change an accepted one: if two runs both reach `done`, they reach the same
+value. State this as a law and test it by running the corpus at several budgets and comparing every accepted result.
 
-Calls are complete. A multi-argument function receives one product argument and evaluates it left to right. Delete
-partial built-in values, named hole filling, default parameters, and old closure states that represent missing
-arguments. Rewrite the repository corpus to explicit functions and complete calls; do not accept the old forms with a
-warning.
+Foreign source primitives are first-order, data-only, and total, with ordinary `Result` failures. A foreign primitive
+receives no function argument and no closure, and its arguments and result are storable data. Reject a registration that
+violates this at build time, not at the call.
 
-Use typed evaluator configurations `run`, `done`, and `failed(ResourceError)`. Charge a fixed versioned integer cost for
-the unique next reduction; never read wall time or allocator behavior. Foreign source primitives are first-order,
-data-only, total trusted operations with ordinary `Result` failures.
+Audit the privacy boundary: core terms, environments, inferred schemes, nominal ids, and evaluator values stay private
+to `musa-compiler`. Expose only the compiler facts an actual caller needs. Delete any public item this chain left
+without a caller.
 
-Keep core terms, environments, inferred schemes, nominal ids, and evaluator values private. Expose only compiler facts
-required by actual callers.
+Then audit the chain as one language: one checker, one evaluator, no surviving second path. A remaining alternate path
+is a finding to report and remove here, not to carry into 127c.
 
 ## Target
 
-- One kinded-HM checker and strict total evaluator with the stated data boundary and resource semantics.
-- Clean deletion of partial/default-call machinery and migration of stdlib, examples, tests, and generated docs.
-- Compile-fail tests for hidden functions, incomplete calls, recursive terms, non-exhaustive matches, and bad data
-  instantiations; principal-type and termination law tests for the accepted fragment.
+- Typed evaluator configurations `run`, `done`, `failed(ResourceError)` replacing the ad-hoc meter calls, over a
+  versioned integer cost table.
+- The budget-independence law, stated and tested across several budgets over the whole corpus.
+- Foreign primitives constrained to first-order, data-only, total operations with `Result` failures, checked at
+  registration.
+- A privacy audit removing any public mirror of the private core AST, environment, scheme, nominal id, or evaluator
+  value.
+- Principal-type and termination law tests for the accepted fragment, and the compile-fail suite covering hidden
+  functions, incomplete calls, recursive terms, non-exhaustive matches, and bad data instantiations.
 - Updated language facts, hover text, and diagnostics with inferred types shown in plain form.
 
 ## Check
@@ -74,3 +84,4 @@ Commit as `Replace the source evaluator with the inferred core`.
   subtyping, higher-rank type, or dependent type.
 - No compatibility mode for partial calls or default parameters.
 - No public Rust mirror of the private core AST or evaluator value.
+- No interrupt, timeout, or partial-result mechanism: resource accounting is an acceptance rule, not a scheduler.
