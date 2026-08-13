@@ -257,7 +257,12 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 127dc | adapter-expansion | 3 | Expand named delimited adapter regions at one fixed place in the compiler order |
 | 127dca | text-patterns-match | 3 | Make a text literal pattern match the text it spells, instead of falling through |
 | 127dcb | adapter-refusal | 3 | Let an adapter refuse a region and point at the node its complaint is about |
-| 127dd | adapter-trials | 3 | Prove the adapter boundary with complete unprivileged staff and studio adapters |
+| 127dcc | adapter-anchors | 3 | Let an adapter carry a source anchor into the value it produces |
+| 127dcd | adapter-edit | 3 | Give an adapter the edit operation and prove its locality, agreement, and preservation |
+| 127dce | adapter-print | 3 | Give an adapter the print operation and name the three conformance levels |
+| 127dcf | staff-trial | 3 | Write the staff adapter as an unprivileged package |
+| 127dcg | studio-trial | 3 | Write the studio adapter as an unprivileged package |
+| 127dd | adapter-trials | 3 | Freeze the adapter rules and carry them through hostile review |
 | 127e | source-language-clean-break | 3 | Delete contextual `Music` and migrate notation to ordinary values |
 | 127f | machine-runtime | 3 | Give each prepared machine one deterministic next step |
 | 127g | track-scheduling | 3 | Connect exact event tracks to frame machines with checked decisions |
@@ -516,13 +521,17 @@ adds finite `Machine<K,A,B>` values. 127da–127dd then repair the failed adapte
 values whose paths are derived rather than invented (127da), a grafted derivation graph that keeps every reuse site and
 every combined parent (127db), the expansion phase itself at one fixed place in the compiler order (127dc), a text
 literal pattern that matches the text it spells so that an adapter can tell one token from another at all (127dca), the
-error half of an adapter's answer so that it can refuse a region and point at what is wrong with it (127dcb), and two
-complete unprivileged adapters that carry the proof (127dd). The second blocker — a lowered match with no executable
-meaning — closes by *not* adding a decision-tree target: source `match` remains the one evaluator. 127e then deletes
-contextual `Music`; notation becomes a source-mapped adapter into ordinary inferred terms. 127f gives each machine one
-exact next step. 127g makes the time-to-frame policy explicit. 127h makes one sample frame the reference meaning of
-audio and treats host blocks only as checked batching. 127i proves and audits the complete path before any later sound
-prompt may run. Old syntax, APIs, and serialized forms are removed, not kept behind aliases.
+error half of an adapter's answer so that it can refuse a region and point at what is wrong with it (127dcb), an anchor
+it can put into the value it produces so that a later package function's complaint still names the composer's own text
+(127dcc), the two remaining declared operations — `edit` with its locality, agreement, and preservation law (127dcd) and
+`print` with its round trip and the three conformance levels (127dce) — the staff trial (127dcf) and the studio trial
+(127dcg) that carry real musical load without privilege, and the freeze and hostile review that turn them into a proved
+claim (127dd). The second blocker — a lowered match with no executable meaning — closes by *not* adding a decision-tree
+target: source `match` remains the one evaluator. 127e then deletes contextual `Music`; notation becomes a source-mapped
+adapter into ordinary inferred terms. 127f gives each machine one exact next step. 127g makes the time-to-frame policy
+explicit. 127h makes one sample frame the reference meaning of audio and treats host blocks only as checked batching.
+127i proves and audits the complete path before any later sound prompt may run. Old syntax, APIs, and serialized forms
+are removed, not kept behind aliases.
 
 **128–134 build musical sound on that core.** 128 makes the primitive vocabulary discoverable from one catalogue; 129
 keeps written quantities exact; and 129a's payload rule is revised for the new storable-data boundary. 130 defines

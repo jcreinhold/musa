@@ -2,82 +2,67 @@
 id: 127dd
 slug: adapter-trials
 status: pending
-depends_on: [127dc]
+depends_on: [127dcg]
 phase: 3
 ---
 
-# Prove the Adapter Boundary with Two Complete Trials
+# Freeze the Adapter Rules and Carry Them Through Hostile Review
 
 ## Task
 
-Write the complete staff and studio adapters as unprivileged packages, give them the three declared operations, and
-freeze the adapter rules and their proofs for hostile review. The phase is not proved by its own machinery; it is proved
-by two adapters that carry real musical load without compiler privilege.
+The two trials are built. Freeze the exact rules the adapter boundary now stands on, prove them, and carry the proof
+through hostile review, repair, and re-review until the final verdict is correct under the stated contracts with no
+fatal, high, or medium finding. The phase is not proved by its own machinery; it is proved by two adapters that carry
+real musical load without compiler privilege, and this prompt is where that evidence becomes a frozen claim.
 
 ## Read
 
-- `docs/notes/research/language-design-closure/27-adapter-trials.md` and `26-language-design-decision.md` §§4, 9, 10 —
-  the three operations, the edit law, the print law, the conformance levels, the required coverage, and the promotion
-  gate.
+- `docs/notes/research/language-design-closure/26-language-design-decision.md` §§9, 10 — the admission conditions the
+  trials had to meet, the nine proof obligations, and the promotion gate. §10's list is this prompt's outline.
+- `docs/notes/research/language-design-closure/27-adapter-trials.md` §§4–6 — what the trials claimed to answer, and the
+  five findings from review 24 they were required to close.
 - `34-proof-review.md`, `35-proof-repair.md`, `36-final-proof-review.md`, and `37-final-blocker.md` — what the previous
-  freeze got wrong, so this one does not repeat it.
-- Prompts 127da, 127db, and 127dc, and their delivered modules.
-- `crates/musa-project/src/` structured edit commands and `crates/musa-lsp` — an adapter edit reaches a musician through
-  these, or it is a claim with no user.
-- Open Music Theory `001`–`012` for the staff distinctions the trial must be able to make (spelling versus pitch class,
-  written value versus exact span, meter versus hypermeter), and `docs/rules/style-guide.md` for spellings.
+  freeze got wrong, so this one does not repeat it. `37`'s blocker is the one to read twice: an operation that could not
+  be both fresh and deterministic, found only at the last gate.
+- `docs/rules/language/02-core-calculus.md` §5 and §5.8 — the closed type grammar, the "no syntax value" sentence, and
+  the four builtin families. The freeze must state, and prove, that the phase-local transformer calculus is
+  *conservative* over these: they are unchanged facts about ordinary source.
+- Prompts 127da–127dcg and everything they delivered — the freeze describes what was built, not what was hoped for.
 
 ## Design
 
-Separate three adapter operations and do not let one stand in for another:
+Freeze the exact rules, and prove each of these:
 
-- `expand` returns ordinary expression syntax or an error;
-- `edit` returns focused text edits for a structured command; and
-- optional `print` creates new source, or states what it cannot preserve.
+- expansion termination, determinism, and hygiene;
+- unique path formation;
+- source attribution, including anchors;
+- edit locality and the edit law;
+- the print round-trip where a level claims it;
+- match execution by the one evaluator;
+- derivation coverage; and
+- associative derivation composition.
 
-The edit law is locality plus agreement: if `edit` returns a patch, applying it changes only ranges inside the region,
-and expanding, checking, and evaluating the patched region gives the same adapter value that applying the command to the
-original value gives, under the adapter's stated semantic equality. Bytes outside the returned ranges are unchanged —
-comments, layout, names, and neighbouring definitions are not regenerated. **Reprinting an expanded value is not a safe
-edit**, and a printer alone does not make a region editable.
+The freeze covers the phase-local transformer calculus prompt 127da introduced, which `docs/rules/` does not yet
+describe — that is what a freeze is for. It must also establish conservativity over the source core. **If the proof
+cannot establish that, the finding is an amendment request under `docs/rules/README.md`, not a repair to make in
+passing**: stop, publish the blocker beside the note, and hand the decision back.
 
-The three conformance levels are readable, editable, and generative. The standard staff and studio adapters must be
-generative; a third-party adapter may be read-only.
+Every frozen rule maps to executable evidence. A rule whose evidence is a paragraph is not frozen; it is asserted.
+`scripts/check-syntax-adapter-conformance.sh` is that map, and it runs the evidence rather than describing it.
 
-The staff trial covers notes, rests, chords, dots, exact durations, ties across bars, slurs, tuplets, grace notes,
-pickups, repeats, alternate endings, meter changes, transposing instruments, diagnostics, and at least one structured
-edit. Written rhythm and exact time stay different data even when they cover the same span: `c4/4.` asks for a dotted
-quarter, `c4(3/8)` gives an exact duration and leaves the spelling to a named notation policy. No note inherits register
-or duration from an earlier note.
-
-The studio trial covers processors, named ports, connections, parameters, instrument bindings, graph inputs and outputs,
-diagnostics, and at least one structured edit.
-
-Neither adapter may call a private parser, receive an inferred type, or hold compiler state. Both use the public syntax
-data, the path-aware fold, the builder facade, the expansion record, and the derivation graph the earlier prompts
-deliver. If either trial needs a privilege, that is evidence against the boundary and repairs prompt 127da or 127dc
-rather than being granted.
-
-Then freeze the exact rules and prove: expansion termination, determinism, and hygiene; unique path formation; source
-attribution; edit locality; print round-trip where it is claimed; match execution by the one evaluator; derivation
-coverage; and associative derivation composition. The freeze covers the phase-local transformer calculus prompt 127da
-introduced, which `docs/rules/` does not yet describe — that is what a freeze is for. It must also state, and prove,
-that the calculus is conservative over the source core: `02-core-calculus.md` §5's closed type grammar, its "no syntax
-value" sentence, and §5.8's four families are unchanged facts about ordinary source. If the proof cannot establish that,
-the finding is an amendment request under `docs/rules/README.md`, not a repair to make in passing. Run hostile proof
-review, repair, and re-review as many times as needed. This prompt completes only when the final review says correct
-under the stated contracts with no fatal, high, or medium finding. Record the freeze, each review, and each repair under
-`docs/notes/research/`, beside the notes that failed the last gate.
+Run hostile proof review, repair, and re-review as many times as needed. This prompt completes only when the final
+review says correct under the stated contracts with no fatal, high, or medium finding. Record the freeze, each review,
+and each repair under `docs/notes/research/`, beside the notes that failed the last gate.
 
 ## Target
 
-- The complete staff and studio adapters as unprivileged packages under `stdlib/`, both generative.
-- All three operations for both, with the edit law and the print law stated and tested, and structured edits reaching a
-  user through `musa-project` and `musa-lsp`.
-- `scripts/check-syntax-adapter-conformance.sh`, mapping each frozen rule to its executable evidence.
-- Frozen rules, proofs, hostile review, repairs, and a final correct-under-contracts verdict with no unresolved fatal,
-  high, or medium finding.
-- `examples/` fixtures for both trials, and the coverage lists above discharged item by item.
+- The frozen rules, under `docs/notes/research/`, one file, each rule numbered and each naming its evidence.
+- The proofs of the eight obligations above, and the conservativity argument.
+- `scripts/check-syntax-adapter-conformance.sh`, mapping each frozen rule to its executable evidence and running it.
+- Hostile review, repairs, and a final correct-under-contracts verdict with no unresolved fatal, high, or medium
+  finding, each recorded as its own note.
+- The five musical cases of §9 rewritten with no ellipses, showing inferred types, expansion, evaluation, stage
+  transitions, losses, added choices, and both notation-led and performance-led routes.
 
 ## Check
 
@@ -91,14 +76,15 @@ cd editors/tree-sitter-musa && tree-sitter test
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 ```
 
-Commit as `Prove the adapter boundary with two complete trials`.
+Commit as `Freeze the adapter rules and carry them through hostile review`.
 
 ## Stop
 
-- No compiler privilege for either adapter, and no private parser or checker access.
+- No new adapter operation, no new privilege, and no repair that grants one — a trial that needed a privilege was
+  evidence against the boundary, and prompts 127da–127dcg have already closed or reported each.
 - No general macro system, type-directed expansion, adapter-generated declarations, or adapter recursion.
 - No deletion of contextual `Music`, no notation migration of the corpus, and no surface cutover — prompt 127e owns all
   three.
 - No decision-tree or join-point target without a measured need and its own complete semantics and simulation proof.
 - No claim that expansion provenance alone proves musical derivation; the two records have different jobs.
-- No green verdict while a fatal, high, or medium finding stands.
+- No green verdict while a fatal, high, or medium finding stands, and no amendment to `docs/rules/` made in passing.
