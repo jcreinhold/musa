@@ -247,7 +247,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 127aa | kinded-inference | 3 | Infer source types, with ordinary and storable-data type variables |
 | 127ab | text-and-sums | 3 | Add text, binary sums, and one structural `Result` |
 | 127ac | nominal-data | 3 | Let a library declare finite strictly positive data with one generated fold |
-| 127ad | complete-calls | 3 | Delete partial calls and default parameters; migrate the corpus |
+| 127ad | complete-calls | 3 | Delete partial calls and default parameters; add the anonymous function; migrate the corpus |
 | 127b | inferred-source-core | 3 | Close the core: typed evaluator configurations, versioned costs, privacy audit |
 | 127c | event-track-cutover | 3 | Replace timelines with coordinate-typed finite event tracks |
 | 127d | machine-values | 3 | Add finite typed machine descriptions as source values |

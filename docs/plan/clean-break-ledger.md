@@ -33,7 +33,7 @@ best-effort translation.
 | `sequence(a, b)` / the `;` sequencing spelling in kernel documents | `follow(a, b)` | 127c |
 | `timeline d { … }` in kernel documents | `track d { … }` | 127c |
 | the `extent` keyword and the `extent` spelling in diagnostics | `duration` | 127c |
-| partial application, default parameters, and named hole filling | complete calls | 127ad |
+| partial application, default parameters, and named hole filling | complete calls, and `fn (…) -> τ { e }` where a specialization has to be written down | 127ad |
 | a public `lift` from a source function into a machine | registered primitives only | 127d |
 
 `instantiate`, `close`, and `KernelFragment` are private compiler concepts rather than source syntax; they are listed in

@@ -259,17 +259,25 @@ e   ::= x | c | (e₁,…,eₙ) | λ(x₁:τ₁,…,xₙ:τₙ).e
 v   ::= c | (v₁,…,vₙ) | λ(x₁:τ₁,…,xₙ:τₙ).e
 ```
 
-There is no anonymous-function surface syntax. A checked named `fn` supplies the lambda, and an acyclic named `let`
-graph supplies the lexical lets. A `fn` body is written `{ e }` (prompt 112), and the braces are a **derived form**
-erased by the elaboration `⟦{ e }⟧ = ⟦e⟧`: a block holds exactly one expression, so `⟦·⟧` is defined on it by that one
-equation and is total. The erasure is applied where the surface is read, before any core term exists, so the set of core
-terms above is unchanged and every theorem in §§5.2–5.5 quantifies over exactly the same set it did before the form was
-added. There is no new value form, no new reduction rule, and hence no new case in preservation, progress, determinism,
-or strong normalization — not because a block resembles a parenthesis, but because after `⟦·⟧` there is no block left
-for a proof to be about. Multi-argument arrows and applications are notation for the corresponding curried STLC terms. A
-surface call with named arguments is permuted into parameter order, and by §1 that call already supplies every
-parameter, so nothing is inserted at the site. Thus argument names add no core reduction rule. Products currently have
-introduction but no surface projection, which is a conservative sublanguage of the product calculus.
+The surface has an anonymous function, written `fn (x₁: τ₁, …) -> τ { e }` — a declaration's own words without its name
+— and an acyclic named `let` graph supplies the lexical lets. It is not a new form: `λ(x₁:τ₁,…,xₙ:τₙ).e` is already a
+term and a value above, so `⟦·⟧` carries the surface form onto the abstraction the core already had. There is no new
+core term, no new value form, and no new reduction rule, and every theorem in §§5.2–5.5 quantifies over exactly the set
+it did before. What the surface withheld until prompt 127ad was never the abstraction, only a way to write one, and
+while partial application supplied that need the omission cost nothing; deleting partial application (§1) leaves it the
+only way to specialize a higher-order call by a value known at run time. An anonymous function has no name and so cannot
+apply itself, which is why the termination argument is untouched, and it is subject to §1.1 like any other function
+value: it may be applied and passed, and it may not be stored. A `fn` body is written `{ e }` (prompt 112), and the
+braces are a **derived form** erased by the elaboration `⟦{ e }⟧ = ⟦e⟧`: a block holds exactly one expression, so `⟦·⟧`
+is defined on it by that one equation and is total. The erasure is applied where the surface is read, before any core
+term exists, so the set of core terms above is unchanged and every theorem in §§5.2–5.5 quantifies over exactly the same
+set it did before the form was added. There is no new value form, no new reduction rule, and hence no new case in
+preservation, progress, determinism, or strong normalization — not because a block resembles a parenthesis, but because
+after `⟦·⟧` there is no block left for a proof to be about. Multi-argument arrows and applications are notation for the
+corresponding curried STLC terms. A surface call with named arguments is permuted into parameter order, and by §1 that
+call already supplies every parameter, so nothing is inserted at the site. Thus argument names add no core reduction
+rule. Products currently have introduction but no surface projection, which is a conservative sublanguage of the product
+calculus.
 
 ### 5.1 Static judgments
 
