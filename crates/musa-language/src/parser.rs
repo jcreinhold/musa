@@ -1042,32 +1042,44 @@ impl<'a> Parser<'a> {
         self.finish();
     }
 
-    /// `let name: type = expression;`
+    /// `let name = expression;`, with an optional `: type` before the `=`.
+    ///
+    /// The annotation is written when it says something the expression does
+    /// not — a public signature, a narrower type than the value's own — and
+    /// omitted when it would only repeat what is already there. Which of the
+    /// two a file chose is a fact about the file, so the colon and the type
+    /// stay in the tree exactly where they were written.
     fn let_decl(&mut self) {
         self.start(SyntaxKind::LetDecl);
         self.bump();
         self.expect(SyntaxKind::Identifier, "a binding name");
-        self.expect(SyntaxKind::Colon, "`:`");
-        self.type_expr();
+        if self.at(SyntaxKind::Colon) {
+            self.bump();
+            self.type_expr();
+        }
         self.expect(SyntaxKind::Equals, "`=`");
         self.expr();
         self.expect(SyntaxKind::Semicolon, "`;`");
         self.finish();
     }
 
-    /// `fn name(parameters) -> result { expression }`
+    /// `fn name(parameters) { expression }`, with an optional `-> result`.
     ///
-    /// The body is a [`Self::block_expr`], which every other body in this
-    /// language is delimited by. The old `= expression;` is read here too,
-    /// so that a file written against it gets one complaint carrying the
-    /// rewrite rather than a cascade about a missing `{`.
+    /// A parameter's `: type` is optional for the same reason a `let`'s is,
+    /// and both are read here in the same way: present if written, absent if
+    /// not, never invented. The body is a [`Self::block_expr`], which every
+    /// other body in this language is delimited by. The old `= expression;`
+    /// is read here too, so that a file written against it gets one complaint
+    /// carrying the rewrite rather than a cascade about a missing `{`.
     fn fn_decl(&mut self) {
         self.start(SyntaxKind::FnDecl);
         self.bump();
         self.expect(SyntaxKind::Identifier, "a function name");
         self.param_list();
-        self.expect(SyntaxKind::Arrow, "`->`");
-        self.type_expr();
+        if self.at(SyntaxKind::Arrow) {
+            self.bump();
+            self.type_expr();
+        }
         if self.at(SyntaxKind::Equals) {
             self.old_function_body();
         } else {
@@ -1116,8 +1128,10 @@ impl<'a> Parser<'a> {
         while !self.at(SyntaxKind::RParen) && self.current().is_some() {
             self.start(SyntaxKind::Param);
             self.expect(SyntaxKind::Identifier, "a parameter name");
-            self.expect(SyntaxKind::Colon, "`:`");
-            self.type_expr();
+            if self.at(SyntaxKind::Colon) {
+                self.bump();
+                self.type_expr();
+            }
             if self.at(SyntaxKind::Equals) {
                 self.bump();
                 self.expr();

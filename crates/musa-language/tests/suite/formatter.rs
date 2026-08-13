@@ -692,3 +692,18 @@ fn the_grid_reserves_the_beat_group_gap() {
         );
     }
 }
+
+/// An omitted annotation is printed back omitted. The formatter writes the
+/// tokens a file has, so the two spellings stay two spellings: nothing here
+/// invents a type for `let held = c4;`, and nothing drops the one `halve`
+/// wrote.
+#[test]
+fn an_omitted_annotation_is_printed_back_omitted() {
+    let source = "piece \"Inferred\" { let held = c4; fn double(x) { add(x, x) } \
+                  fn halve(x: Nat) -> Nat { div(x, 2) } }";
+    let once = fmt(source);
+    assert!(once.contains("let held = c4;"), "{once}");
+    assert!(once.contains("fn double(x) {"), "{once}");
+    assert!(once.contains("fn halve(x: Nat) -> Nat {"), "{once}");
+    assert_eq!(fmt(&once), once, "format is idempotent on an inferred declaration");
+}

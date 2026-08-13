@@ -1061,3 +1061,53 @@ piece \"Study\" {
         "a structure instance is not the document's piece"
     );
 }
+
+/// A type annotation is written where it says something the expression does
+/// not, and omitted where it would only repeat it. Both spellings parse into
+/// the same shape of tree, differing only in whether the type node is there —
+/// which is what lets the checker infer one and read the other, and what lets
+/// the formatter print back what the file actually said.
+#[test]
+fn a_declaration_may_omit_the_types_the_program_determines() {
+    let doc = parse(
+        "piece \"Inferred\" { let held = c4; \
+         fn double(x) { add(x, x) } \
+         fn halve(x: Nat) -> Nat { div(x, 2) } }",
+    );
+    assert_eq!(print_errors(&doc), "", "an omitted annotation is not an error");
+
+    let typed = |kind: SyntaxKind| {
+        doc.syntax()
+            .descendants()
+            .filter(|node| node.kind() == kind)
+            .map(|node| {
+                node.children()
+                    .any(|child| matches!(child.kind(), SyntaxKind::TypeName | SyntaxKind::FunctionType))
+            })
+            .collect::<Vec<_>>()
+    };
+
+    assert_eq!(
+        typed(SyntaxKind::LetDecl),
+        vec![false],
+        "`let held = c4;` writes no type"
+    );
+    assert_eq!(
+        typed(SyntaxKind::Param),
+        vec![false, true],
+        "`double`'s parameter is unannotated, `halve`'s is not"
+    );
+    assert_eq!(
+        typed(SyntaxKind::FnDecl),
+        vec![false, true],
+        "`double` writes no result type, `halve` does"
+    );
+    assert_eq!(
+        doc.syntax()
+            .descendants()
+            .filter(|node| node.kind() == SyntaxKind::Param)
+            .count(),
+        2,
+        "an unannotated parameter is still a parameter"
+    );
+}

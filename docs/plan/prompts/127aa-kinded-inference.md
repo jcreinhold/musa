@@ -1,7 +1,7 @@
 ---
 id: 127aa
 slug: kinded-inference
-status: in-progress
+status: done
 depends_on: [127a]
 phase: 3
 ---
@@ -38,8 +38,8 @@ variable only for storable data. Unification never binds a data variable to a fu
 one at any depth. The check is structural over the type, not a surface-syntax rule, and it is a side condition on
 ordinary unification — not subtyping, overloading, or a source-visible type class.
 
-No source position in *this* type set mints a data variable, and that is not an oversight. §1.1 requires storable data in
-five places — an event-track payload, a machine's two port types, its feedback value, a registered primitive's
+No source position in *this* type set mints a data variable, and that is not an oversight. §1.1 requires storable data
+in five places — an event-track payload, a machine's two port types, its feedback value, a registered primitive's
 configuration, a foreign primitive's argument — and the only one this compiler already has is a quotation's payload,
 which is a written name rather than an inferred type. §1.1 says when a `list` *is* storable data, not what a `list` may
 hold: `std/transformational.musa`'s `chain` folds over a `List<Triad -> Triad>`, so a list member is an ordinary

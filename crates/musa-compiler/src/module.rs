@@ -636,7 +636,9 @@ impl Modules {
         };
         for (name, required) in &declared.members {
             match provided.get(name) {
-                Some(found) if found.ty == required.ty => {}
+                // Exact type, part for part — except where the member left an
+                // annotation out, which the signature is entitled to supply.
+                Some(found) if crate::infer::admits(&found.ty, &required.ty) => {}
                 Some(found) => resolver.report(
                     Diagnostic::error(Code::TypeMismatch, format!("`{module}` gives `{name}` the wrong type"))
                         .at(found.span, format!("this is a {}", found.ty))

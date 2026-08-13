@@ -2074,7 +2074,7 @@ impl EndingStmt {
 
 // --- Elaboration expressions ------------------------------------------------
 
-/// `let name: type = expression;`
+/// `let name = expression;`, with an optional `: type` before the `=`.
 pub struct LetDecl(SyntaxNode);
 wrapper!(LetDecl, SyntaxKind::LetDecl);
 
@@ -2085,7 +2085,7 @@ impl LetDecl {
     }
 }
 
-/// `fn name(parameters) -> type { expression }`
+/// `fn name(parameters) { expression }`, with an optional `-> type`.
 pub struct FnDecl(SyntaxNode);
 wrapper!(FnDecl, SyntaxKind::FnDecl);
 
@@ -2095,13 +2095,13 @@ impl FnDecl {
         token_text(&self.0, SyntaxKind::Identifier)
     }
 
-    /// Its annotated parameters in source order.
+    /// Its parameters in source order, annotated or not.
     pub fn params(&self) -> Vec<FnParam> {
         params_of(&self.0)
     }
 }
 
-/// One annotated function parameter.
+/// One function parameter, with or without its `: type`.
 pub struct FnParam(SyntaxNode);
 wrapper!(FnParam, SyntaxKind::Param);
 

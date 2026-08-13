@@ -349,8 +349,18 @@ module.exports = grammar({
 
     // Parser::let_decl / fn_decl — declarations evaluate only at the
     // elaboration stage; the temporal kernel never sees these nodes.
+    // The `: type` is optional, as in the hand parser: it is written when it
+    // says something the expression does not, and omitted when inference
+    // determines it.
     let_declaration: ($) =>
-      seq('let', field('name', $.identifier), ':', field('type', $.type_expression), '=', field('value', $.expression), ';'),
+      seq(
+        'let',
+        field('name', $.identifier),
+        optional(seq(':', field('type', $.type_expression))),
+        '=',
+        field('value', $.expression),
+        ';',
+      ),
 
     // Parser::fn_decl — the body is a block, like every other body in the
     // language: `fn f(x: nat) -> nat { g(x) }`. The `= expression;` form is
@@ -360,8 +370,7 @@ module.exports = grammar({
         'fn',
         field('name', $.identifier),
         $.parameter_list,
-        '->',
-        field('result', $.type_expression),
+        optional(seq('->', field('result', $.type_expression))),
         field('body', $.block_expression),
       ),
 
@@ -371,8 +380,7 @@ module.exports = grammar({
     parameter: ($) =>
       seq(
         field('name', $.identifier),
-        ':',
-        field('type', $.type_expression),
+        optional(seq(':', field('type', $.type_expression))),
         optional(seq('=', field('default', $.expression))),
       ),
 

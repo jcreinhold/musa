@@ -42,6 +42,7 @@ mod factext;
 mod groove;
 mod harmony;
 mod imports;
+mod infer;
 mod kernel_text;
 mod lint;
 mod marks;

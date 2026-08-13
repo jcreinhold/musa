@@ -14,6 +14,7 @@ use num_rational::Ratio;
 use crate::core_budget::WorkMeter;
 use crate::diagnose::{Code, Diagnostic};
 use crate::imports::Libraries;
+use crate::infer::{Kind, Mismatch, Scheme, Unifier};
 use crate::module::Modules;
 use crate::origin::{Interval, SourceSpan};
 use crate::pitch::{PitchClass, WrittenPitch};
@@ -390,6 +391,11 @@ impl Binding {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Type {
+    /// A type inference has not decided yet, named by the
+    /// [`crate::infer::Unifier`] that made it. It exists only while one
+    /// declaration is being checked: every type that leaves the checker has
+    /// been resolved, and a variable that survives that is a diagnostic.
+    Var(crate::infer::TypeVar),
     Unit,
     Bool,
     Nat,
@@ -419,6 +425,13 @@ pub(crate) enum Type {
 impl std::fmt::Display for Type {
     fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            // A variable prints as a lowercase name, the way a signature
+            // would write it if the file had written one: `a`, `b`, … and
+            // `a26` onwards once the letters run out.
+            Self::Var(variable) => match u8::try_from(*variable) {
+                Ok(index) if index < 26 => write!(out, "{}", char::from(b'a'.saturating_add(index))),
+                _ => write!(out, "a{variable}"),
+            },
             Self::Unit => out.write_str("Unit"),
             Self::Bool => out.write_str("Bool"),
             Self::Nat => out.write_str("Nat"),
@@ -624,7 +637,10 @@ impl RawDefinition {
 
 #[derive(Clone)]
 struct Symbol {
-    ty: Type,
+    /// What the name means at a use: an annotated declaration's own type, or
+    /// the principal type inferred for it, with everything the declaration
+    /// left open quantified. A use instantiates it.
+    scheme: Scheme,
     kind: NameKind,
     definition: usize,
     external_declaration: Option<crate::resolve::SourceLocation>,
@@ -903,6 +919,95 @@ impl Eliminator {
             Self::NatFold | Self::ListFold | Self::OptionFold => 3,
             Self::Map | Self::Filter | Self::Repeat => 2,
             Self::Range => 1,
+        }
+    }
+
+    /// This eliminator's type, as a rank-1 scheme, instantiated fresh.
+    ///
+    /// All seven of them *are* rank-1 schemes, which is why none is checked
+    /// by hand any more. What the old arms tested one `if` at a time — that
+    /// `map`'s first argument is a one-argument function, that a `filter`
+    /// predicate returns `bool`, that a `list_fold` step takes the member and
+    /// the accumulator and gives the accumulator back — is what unifying an
+    /// application against these types says once, in the same words, with the
+    /// same diagnostic every other type error gets. Nothing was kept: there
+    /// is no eliminator here whose type needs a rank the source language does
+    /// not have.
+    ///
+    /// Every variable here is **ordinary**.
+    /// `docs/rules/language/02-core-calculus.md` §1.1 says when a `list`
+    /// *is* storable data, not what a `list` may hold: a `List<Triad ->
+    /// Triad>` is a perfectly good value type that simply cannot be stored,
+    /// and `std/transformational.musa`'s `chain` folds over exactly that.
+    /// A data variable belongs where §1.1 says storable data is *required* —
+    /// an event-track payload, a machine port, a registered primitive's
+    /// configuration — and the only such position this type set has is a
+    /// quotation's payload, which is a written name rather than an inferred
+    /// type. `EventTrack[C, δ]` at prompt 127c is what first puts a variable
+    /// in one.
+    fn instantiate(self, unifier: &mut Unifier) -> Type {
+        match self {
+            Self::Range => Type::Function(vec![Type::Nat], Box::new(Type::List(Box::new(Type::Nat)))),
+            Self::Repeat => {
+                let member = unifier.fresh(Kind::Ordinary);
+                Type::Function(vec![member.clone(), Type::Nat], Box::new(Type::List(Box::new(member))))
+            }
+            Self::Map => {
+                let from = unifier.fresh(Kind::Ordinary);
+                let to = unifier.fresh(Kind::Ordinary);
+                Type::Function(
+                    vec![
+                        Type::Function(vec![from.clone()], Box::new(to.clone())),
+                        Type::List(Box::new(from)),
+                    ],
+                    Box::new(Type::List(Box::new(to))),
+                )
+            }
+            Self::Filter => {
+                let member = unifier.fresh(Kind::Ordinary);
+                Type::Function(
+                    vec![
+                        Type::Function(vec![member.clone()], Box::new(Type::Bool)),
+                        Type::List(Box::new(member.clone())),
+                    ],
+                    Box::new(Type::List(Box::new(member))),
+                )
+            }
+            Self::NatFold => {
+                let accumulator = unifier.fresh(Kind::Ordinary);
+                Type::Function(
+                    vec![
+                        accumulator.clone(),
+                        Type::Function(vec![Type::Nat, accumulator.clone()], Box::new(accumulator.clone())),
+                        Type::Nat,
+                    ],
+                    Box::new(accumulator),
+                )
+            }
+            Self::ListFold => {
+                let member = unifier.fresh(Kind::Ordinary);
+                let accumulator = unifier.fresh(Kind::Ordinary);
+                Type::Function(
+                    vec![
+                        accumulator.clone(),
+                        Type::Function(vec![member.clone(), accumulator.clone()], Box::new(accumulator.clone())),
+                        Type::List(Box::new(member)),
+                    ],
+                    Box::new(accumulator),
+                )
+            }
+            Self::OptionFold => {
+                let member = unifier.fresh(Kind::Ordinary);
+                let accumulator = unifier.fresh(Kind::Ordinary);
+                Type::Function(
+                    vec![
+                        accumulator.clone(),
+                        Type::Function(vec![member.clone()], Box::new(accumulator.clone())),
+                        Type::Option(Box::new(member)),
+                    ],
+                    Box::new(accumulator),
+                )
+            }
         }
     }
 }
@@ -2113,6 +2218,303 @@ fn music_witness(music: &Music) -> u64 {
     base.rotate_left(3) ^ operation
 }
 
+/// Replace every type variable in a checked declaration by what the
+/// substitution decided it was.
+///
+/// An expression is checked before the rest of its declaration constrains it,
+/// so the type it was given at the time is not always the type it ends up
+/// with: in `fn identity(value) { value }` the parameter and the result are
+/// two variables until the body makes them one. This pass runs once the
+/// declaration is finished, which is the first moment every constraint on it
+/// exists, and it is what lets everything downstream — evaluation, the
+/// preservation check, the closure a function becomes — read a plain type
+/// rather than a promise of one.
+///
+/// It also answers the other question that moment settles: whether the
+/// program determined every type it had to. What comes back is the first
+/// expression that has to *build* a value out of a type nothing decided —
+/// `docs/rules/language/02-core-calculus.md` §1.1's located error, rather
+/// than a silent default.
+fn settle(unifier: &Unifier, kind: &mut CheckedDefinitionKind) -> Option<(SourceSpan, Type)> {
+    match kind {
+        CheckedDefinitionKind::Let { body } => settle_expr(unifier, body),
+        CheckedDefinitionKind::Function { parameters, body } => {
+            let mut undetermined = None;
+            for parameter in parameters.iter_mut() {
+                parameter.ty = unifier.resolve(&parameter.ty);
+                if let Some(default) = parameter.default.as_mut() {
+                    undetermined = undetermined.or_else(|| settle_expr(unifier, default));
+                }
+            }
+            undetermined.or_else(|| settle_expr(unifier, body))
+        }
+    }
+}
+
+/// [`settle`], for one expression and everything under it.
+///
+/// `Music` and a kernel quotation are left alone: their types are `Music` and
+/// their contents are placed material, neither of which a variable can reach.
+fn settle_expr(unifier: &Unifier, expr: &mut Expr) -> Option<(SourceSpan, Type)> {
+    expr.ty = unifier.resolve(&expr.ty);
+    let under = match &mut expr.kind {
+        ExprKind::Literal(_) | ExprKind::Name(_) | ExprKind::Music(_) | ExprKind::KernelQuote(_) => None,
+        ExprKind::Product(members) | ExprKind::List(members) => {
+            members.iter_mut().find_map(|member| settle_expr(unifier, member))
+        }
+        ExprKind::Option(member) => member.as_mut().and_then(|member| settle_expr(unifier, member)),
+        ExprKind::Apply { function, arguments } => settle_expr(unifier, function).or_else(|| {
+            arguments
+                .iter_mut()
+                .find_map(|argument| settle_expr(unifier, &mut argument.value))
+        }),
+        ExprKind::PitchAction { pitch, interval, .. } => {
+            settle_expr(unifier, pitch).or_else(|| settle_expr(unifier, interval))
+        }
+        ExprKind::Primitive { arguments, .. } => {
+            arguments.iter_mut().find_map(|argument| settle_expr(unifier, argument))
+        }
+        ExprKind::Match { scrutinee, arms } => settle_expr(unifier, scrutinee)
+            .or_else(|| arms.iter_mut().find_map(|arm| settle_expr(unifier, &mut arm.body))),
+        ExprKind::Step { base, steps, .. } => settle_expr(unifier, base).or_else(|| settle_expr(unifier, steps)),
+    };
+    // A collection records its member type *inside the value it builds*, so
+    // it is the one place a type nothing decided cannot simply be carried:
+    // there is no member type to write down. Everywhere else an undecided
+    // type is polymorphism, and the caller decides it.
+    let ambiguous = matches!(expr.kind, ExprKind::Option(_) | ExprKind::List(_)) && unifier.residue(&expr.ty).is_some();
+    under.or_else(|| ambiguous.then(|| (expr.span, expr.ty.clone())))
+}
+
+/// Infer the declarations whose type the file did not write in full.
+///
+/// A declaration that wrote every annotation already has its type, and the
+/// ordinary checking loop below is the only pass it needs. One that did not
+/// is checked here first, with a scratch resolver whose diagnostics are
+/// discarded, so that the name means its *principal* type by the time
+/// anything reads it — rather than whatever the first use happened to need.
+/// The loop below then checks it again, for real, against the types this
+/// pass decided; unification is idempotent, so the second pass adds nothing
+/// but the diagnostics.
+///
+/// Nothing happens here when every declaration wrote its type, which is what
+/// keeps the second pass off the path files that do not need it.
+fn infer_open_declarations(
+    raw: &[RawDefinition],
+    symbols: &mut IndexMap<String, Symbol>,
+    unifier: &mut Unifier,
+    modules: &Modules,
+) {
+    let open: Vec<usize> = raw
+        .iter()
+        .enumerate()
+        .filter(|(_, definition)| unifier.residue(&definition.ty).is_some())
+        .map(|(index, _)| index)
+        .collect();
+    if open.is_empty() {
+        return;
+    }
+    for index in dependency_first(raw, &open) {
+        let Some(definition) = raw.get(index) else {
+            continue;
+        };
+        let mut scratch = Resolver::new();
+        let mut meter = WorkMeter::default();
+        {
+            let mut checker = Checker {
+                resolver: &mut scratch,
+                definitions: raw,
+                symbols,
+                locals: IndexMap::new(),
+                unifier,
+                dependencies: IndexMap::new(),
+                foreign: definition.foreign,
+                failed: false,
+                meter: &mut meter,
+                music_role: definition.role.clone(),
+                deferred_pitch: false,
+                definition_span: definition.span,
+                scope: &definition.scope,
+                modules,
+            };
+            check_definition(&mut checker, definition);
+        }
+        let scheme = unifier.generalize(&definition.ty);
+        if let Some(symbol) = symbols.get_mut(&definition.name) {
+            symbol.scheme = scheme;
+        }
+    }
+}
+
+/// The open declarations, each ordered after the open declarations it names.
+///
+/// The scan is syntactic and deliberately generous: an extra edge only orders
+/// two declarations that did not need ordering, while a missing one would let
+/// a use decide a type its own declaration should have decided. The language
+/// has no recursion, so this graph is acyclic; if a malformed program manages
+/// a cycle anyway, the remaining declarations keep declaration order rather
+/// than looping.
+fn dependency_first(raw: &[RawDefinition], open: &[usize]) -> Vec<usize> {
+    let mut named: IndexMap<&str, usize> = IndexMap::new();
+    for index in open {
+        let Some(definition) = raw.get(*index) else {
+            continue;
+        };
+        named.insert(definition.name.as_str(), *index);
+        // A module member is filed under `Module.member` and written as
+        // `member` inside its own module, so both spellings find it.
+        if let Some((_, member)) = definition.name.rsplit_once('.') {
+            named.entry(member).or_insert(*index);
+        }
+    }
+    let mut ordered = Vec::with_capacity(open.len());
+    let mut placed = IndexSet::new();
+    while ordered.len() < open.len() {
+        let ready = open.iter().copied().find(|index| {
+            !placed.contains(index)
+                && raw.get(*index).is_some_and(|definition| {
+                    mentions(definition, &named)
+                        .into_iter()
+                        .all(|dependency| dependency == *index || placed.contains(&dependency))
+                })
+        });
+        let Some(next) = ready.or_else(|| open.iter().copied().find(|index| !placed.contains(index))) else {
+            break;
+        };
+        placed.insert(next);
+        ordered.push(next);
+    }
+    ordered
+}
+
+/// Which of `named` this declaration's body writes.
+fn mentions(definition: &RawDefinition, named: &IndexMap<&str, usize>) -> Vec<usize> {
+    let mut found = Vec::new();
+    let mut scan = |node: &SyntaxNode| {
+        for token in node.descendants_with_tokens().filter_map(SyntaxElement::into_token) {
+            if token.kind() == SyntaxKind::Identifier
+                && let Some(index) = named.get(token.text())
+            {
+                found.push(*index);
+            }
+        }
+    };
+    match &definition.kind {
+        RawDefinitionKind::Bound { .. } => {}
+        RawDefinitionKind::Let { body } => scan(body),
+        RawDefinitionKind::Function { parameters, body } | RawDefinitionKind::Music { parameters, body, .. } => {
+            scan(body);
+            for parameter in parameters {
+                if let Some(RawDefault::Expression(default)) = &parameter.default {
+                    scan(default);
+                }
+            }
+        }
+    }
+    found
+}
+
+/// Check one declaration's body, whatever kind of declaration it is.
+///
+/// Factored out because it runs twice for a declaration that did not write
+/// its type: once with a scratch resolver, to infer and generalize before
+/// anything reads the name, and once for real. For an annotated declaration
+/// it runs exactly once, from the loop in [`check_and_evaluate`].
+fn check_definition(checker: &mut Checker<'_>, definition: &RawDefinition) -> Option<CheckedDefinitionKind> {
+    match &definition.kind {
+        RawDefinitionKind::Bound { value } => Some(CheckedDefinitionKind::Let {
+            body: Expr {
+                kind: ExprKind::Literal(value.as_ref().clone()),
+                ty: definition.ty.clone(),
+                span: definition.span,
+            },
+        }),
+        RawDefinitionKind::Let { body } => checker
+            .check(body, Some(&definition.ty))
+            .map(|body| CheckedDefinitionKind::Let { body }),
+        RawDefinitionKind::Function { parameters, body } => {
+            let mut checked_parameters = Vec::with_capacity(parameters.len());
+            let mut duplicate_parameters = IndexMap::<String, SourceSpan>::new();
+            for parameter in parameters {
+                if let Some(first) = duplicate_parameters.get(&parameter.name).copied() {
+                    checker.resolver.report(
+                        Diagnostic::error(
+                            Code::DuplicateName,
+                            format!("parameter `{}` is bound twice", parameter.name),
+                        )
+                        .at(parameter.span, "bound again here")
+                        .also(first, "first bound here"),
+                    );
+                    checker.failed = true;
+                    continue;
+                }
+                duplicate_parameters.insert(parameter.name.clone(), parameter.span);
+                let default = parameter.default.as_ref().and_then(|default| match default {
+                    RawDefault::Expression(expression) => checker.check(expression, Some(&parameter.ty)),
+                    RawDefault::Value(value) if crate::infer::admits(&parameter.ty, &value.ty()) => Some(Expr {
+                        kind: ExprKind::Literal(value.as_ref().clone()),
+                        ty: parameter.ty.clone(),
+                        span: parameter.span,
+                    }),
+                    RawDefault::Value(_) => None,
+                });
+                checker
+                    .locals
+                    .insert(parameter.name.clone(), Scheme::monomorphic(parameter.ty.clone()));
+                checked_parameters.push(CheckedParameter {
+                    name: parameter.name.clone(),
+                    ty: parameter.ty.clone(),
+                    default,
+                });
+            }
+            checker
+                .check(body, function_result(&definition.ty))
+                .map(|body| CheckedDefinitionKind::Function {
+                    parameters: checked_parameters,
+                    body,
+                })
+        }
+        RawDefinitionKind::Music {
+            parameters,
+            body,
+            callable,
+        } => {
+            if *callable {
+                let mut checked_parameters = Vec::with_capacity(parameters.len());
+                for parameter in parameters {
+                    let default = parameter.default.as_ref().and_then(|default| match default {
+                        RawDefault::Expression(expression) => checker.check(expression, Some(&parameter.ty)),
+                        RawDefault::Value(value) if crate::infer::admits(&parameter.ty, &value.ty()) => Some(Expr {
+                            kind: ExprKind::Literal(value.as_ref().clone()),
+                            ty: parameter.ty.clone(),
+                            span: parameter.span,
+                        }),
+                        RawDefault::Value(_) => None,
+                    });
+                    checker
+                        .locals
+                        .insert(parameter.name.clone(), Scheme::monomorphic(parameter.ty.clone()));
+                    checked_parameters.push(CheckedParameter {
+                        name: parameter.name.clone(),
+                        ty: parameter.ty.clone(),
+                        default,
+                    });
+                }
+                checker
+                    .music_expression(body)
+                    .map(|body| CheckedDefinitionKind::Function {
+                        parameters: checked_parameters,
+                        body,
+                    })
+            } else {
+                checker
+                    .music_expression(body)
+                    .map(|body| CheckedDefinitionKind::Let { body })
+            }
+        }
+    }
+}
+
 fn check_and_evaluate(
     resolver: &mut Resolver,
     declarations: impl Iterator<Item = SurfaceDefinition>,
@@ -2122,6 +2524,10 @@ fn check_and_evaluate(
 ) -> Option<Program> {
     let root_uses = root.map(root_uses).unwrap_or_default();
     let mut meter = WorkMeter::default();
+    // One substitution for the whole piece. A variable minted for a
+    // declaration that did not write its type is the same variable wherever
+    // it is read, which is what makes the answer one answer.
+    let mut unifier = Unifier::default();
     let mut raw = Vec::new();
     // Per bound name: where it was bound, which library it came from if it
     // came from one, and whether it was a legacy material declaration.
@@ -2181,7 +2587,7 @@ fn check_and_evaluate(
             continue;
         }
         names.insert(name.clone(), (name_span, source.clone(), is_legacy));
-        if let Some(definition) = lower_signature(resolver, declaration, name, name_span, span, source) {
+        if let Some(definition) = lower_signature(resolver, &mut unifier, declaration, name, name_span, span, source) {
             raw.push(definition);
         }
     }
@@ -2191,7 +2597,7 @@ fn check_and_evaluate(
         symbols.insert(
             definition.name.clone(),
             Symbol {
-                ty: definition.ty.clone(),
+                scheme: Scheme::monomorphic(definition.ty.clone()),
                 kind: definition.name_kind(),
                 definition: index,
                 external_declaration: definition.source.as_ref().map(|uri| crate::resolve::SourceLocation {
@@ -2205,8 +2611,25 @@ fn check_and_evaluate(
                 .references
                 .declare(definition.name_kind(), &definition.name, definition.name_span);
         }
+    }
+
+    // A declaration whose type the file did not write in full is inferred
+    // before anything reads it, so that a use meets the declaration's
+    // principal type rather than whatever the first use happened to need.
+    // Nothing runs here when every declaration wrote its type, which is the
+    // case this pass costs nothing in.
+    infer_open_declarations(&raw, &mut symbols, &mut unifier, modules);
+
+    // Documentation is written from the type each declaration ended up with,
+    // which for an annotated one is what it wrote and for an inferred one is
+    // what was inferred. That is why it is written here and not above.
+    for definition in &raw {
         if !definition.hidden {
-            resolver.references.document(document(definition));
+            let scheme = symbols.get(&definition.name).map_or_else(
+                || Scheme::monomorphic(definition.ty.clone()),
+                |symbol| symbol.scheme.clone(),
+            );
+            resolver.references.document(document(definition, &scheme));
         }
     }
 
@@ -2218,6 +2641,7 @@ fn check_and_evaluate(
             definitions: &raw,
             symbols: &symbols,
             locals: IndexMap::new(),
+            unifier: &mut unifier,
             dependencies: IndexMap::new(),
             foreign: definition.foreign,
             failed: false,
@@ -2228,101 +2652,25 @@ fn check_and_evaluate(
             scope: &definition.scope,
             modules,
         };
-        let kind = match &definition.kind {
-            RawDefinitionKind::Bound { value } => Some(CheckedDefinitionKind::Let {
-                body: Expr {
-                    kind: ExprKind::Literal(value.as_ref().clone()),
-                    ty: definition.ty.clone(),
-                    span: definition.span,
-                },
-            }),
-            RawDefinitionKind::Let { body } => checker
-                .check(body, Some(&definition.ty))
-                .map(|body| CheckedDefinitionKind::Let { body }),
-            RawDefinitionKind::Function { parameters, body } => {
-                let mut checked_parameters = Vec::with_capacity(parameters.len());
-                let mut duplicate_parameters = IndexMap::<String, SourceSpan>::new();
-                for parameter in parameters {
-                    if let Some(first) = duplicate_parameters.get(&parameter.name).copied() {
-                        checker.resolver.report(
-                            Diagnostic::error(
-                                Code::DuplicateName,
-                                format!("parameter `{}` is bound twice", parameter.name),
-                            )
-                            .at(parameter.span, "bound again here")
-                            .also(first, "first bound here"),
-                        );
-                        checker.failed = true;
-                        continue;
-                    }
-                    duplicate_parameters.insert(parameter.name.clone(), parameter.span);
-                    let default = parameter.default.as_ref().and_then(|default| match default {
-                        RawDefault::Expression(expression) => checker.check(expression, Some(&parameter.ty)),
-                        RawDefault::Value(value) if value.ty() == parameter.ty => Some(Expr {
-                            kind: ExprKind::Literal(value.as_ref().clone()),
-                            ty: parameter.ty.clone(),
-                            span: parameter.span,
-                        }),
-                        RawDefault::Value(_) => None,
-                    });
-                    checker.locals.insert(parameter.name.clone(), parameter.ty.clone());
-                    checked_parameters.push(CheckedParameter {
-                        name: parameter.name.clone(),
-                        ty: parameter.ty.clone(),
-                        default,
-                    });
-                }
-                checker
-                    .check(body, function_result(&definition.ty))
-                    .map(|body| CheckedDefinitionKind::Function {
-                        parameters: checked_parameters,
-                        body,
-                    })
+        let kind = check_definition(&mut checker, definition);
+        let failed = checker.failed;
+        let dependencies = checker.dependencies;
+        type_errors |= failed || kind.is_none();
+        let ty = unifier.resolve(&definition.ty);
+        if let Some(mut kind) = kind {
+            if let Some((span, undetermined)) = settle(&unifier, &mut kind) {
+                resolver.report(
+                    Diagnostic::error(Code::TypeMismatch, "the program does not say what this holds")
+                        .at(span, format!("this has type `{undetermined}`"))
+                        .help("annotate the declaration, or write this where its type is already decided"),
+                );
+                type_errors = true;
             }
-            RawDefinitionKind::Music {
-                parameters,
-                body,
-                callable,
-            } => {
-                if *callable {
-                    let mut checked_parameters = Vec::with_capacity(parameters.len());
-                    for parameter in parameters {
-                        let default = parameter.default.as_ref().and_then(|default| match default {
-                            RawDefault::Expression(expression) => checker.check(expression, Some(&parameter.ty)),
-                            RawDefault::Value(value) if value.ty() == parameter.ty => Some(Expr {
-                                kind: ExprKind::Literal(value.as_ref().clone()),
-                                ty: parameter.ty.clone(),
-                                span: parameter.span,
-                            }),
-                            RawDefault::Value(_) => None,
-                        });
-                        checker.locals.insert(parameter.name.clone(), parameter.ty.clone());
-                        checked_parameters.push(CheckedParameter {
-                            name: parameter.name.clone(),
-                            ty: parameter.ty.clone(),
-                            default,
-                        });
-                    }
-                    checker
-                        .music_expression(body)
-                        .map(|body| CheckedDefinitionKind::Function {
-                            parameters: checked_parameters,
-                            body,
-                        })
-                } else {
-                    checker
-                        .music_expression(body)
-                        .map(|body| CheckedDefinitionKind::Let { body })
-                }
-            }
-        };
-        type_errors |= checker.failed || kind.is_none();
-        if let Some(kind) = kind {
             checked.push(CheckedDefinition {
                 name: definition.name.clone(),
-                ty: definition.ty.clone(),
+                ty,
                 kind,
-                dependencies: checker.dependencies,
+                dependencies,
                 span: definition.span,
                 foreign: definition.foreign,
             });
@@ -2371,6 +2719,7 @@ fn check_and_evaluate(
             definitions: &raw,
             symbols: &symbols,
             locals: IndexMap::new(),
+            unifier: &mut unifier,
             dependencies: IndexMap::new(),
             foreign: false,
             failed: false,
@@ -2400,7 +2749,7 @@ fn check_and_evaluate(
                 continue;
             };
             let span = crate::resolve::trimmed_span(&statement);
-            let mut checker = root_checker(resolver, &raw, &symbols, &mut meter, span, modules);
+            let mut checker = root_checker(resolver, &raw, &symbols, &mut unifier, &mut meter, span, modules);
             let checked = checker.check(&expression, Some(&Type::Scale))?;
             let Value::Scale(scale) = eval(&checked, &values, &mut meter)? else {
                 return None;
@@ -2415,7 +2764,7 @@ fn check_and_evaluate(
                 continue;
             };
             let span = crate::resolve::trimmed_span(&statement);
-            let mut checker = root_checker(resolver, &raw, &symbols, &mut meter, span, modules);
+            let mut checker = root_checker(resolver, &raw, &symbols, &mut unifier, &mut meter, span, modules);
             let checked = checker.check(&expression, Some(&Type::Key))?;
             let Value::Key(key) = eval(&checked, &values, &mut meter)? else {
                 return None;
@@ -2424,7 +2773,7 @@ fn check_and_evaluate(
         }
         for statement in root_nodes(root, SyntaxKind::AssertStmt) {
             let span = crate::resolve::trimmed_span(&statement);
-            let mut checker = root_checker(resolver, &raw, &symbols, &mut meter, span, modules);
+            let mut checker = root_checker(resolver, &raw, &symbols, &mut unifier, &mut meter, span, modules);
             let checked = checker.claim(&statement)?;
             claims.insert(span_key(span), eval_claim(&checked, &values, &mut meter)?);
         }
@@ -2435,7 +2784,7 @@ fn check_and_evaluate(
                 continue;
             };
             let span = crate::resolve::trimmed_span(&statement);
-            let mut checker = root_checker(resolver, &raw, &symbols, &mut meter, span, modules);
+            let mut checker = root_checker(resolver, &raw, &symbols, &mut unifier, &mut meter, span, modules);
             let checked = checker.deferring_pitch(|checker| checker.check(&expression, Some(&Type::Pitch)))?;
             pitches.insert(span_key(span), pitch_term(&checked, &values, &mut meter)?);
         }
@@ -2489,6 +2838,7 @@ fn root_checker<'a>(
     resolver: &'a mut Resolver,
     definitions: &'a [RawDefinition],
     symbols: &'a IndexMap<String, Symbol>,
+    unifier: &'a mut Unifier,
     meter: &'a mut WorkMeter,
     span: SourceSpan,
     modules: &'a Modules,
@@ -2498,6 +2848,7 @@ fn root_checker<'a>(
         definitions,
         symbols,
         locals: IndexMap::new(),
+        unifier,
         dependencies: IndexMap::new(),
         foreign: false,
         failed: false,
@@ -2611,13 +2962,24 @@ fn surface_identity(definition: &SurfaceDefinition) -> Option<(String, SourceSpa
 /// the type the checker settled on, so an editor cannot show a reader a
 /// signature the compiler disagrees with. The declaring word is chosen from
 /// the kind, so a motif reads as a motif and a `let` as a `let`.
-fn document(definition: &RawDefinition) -> crate::docs::ItemDoc {
+///
+/// `scheme` is what the declaration ended up meaning: what it wrote, or what
+/// was inferred for it. A reader hovering an unannotated declaration is shown
+/// the type it has, spelled the way an annotation would spell it.
+fn document(definition: &RawDefinition, scheme: &Scheme) -> crate::docs::ItemDoc {
     let kind = definition.name_kind();
+    let declared = scheme.renamed();
+    let written: &[Type] = if let Type::Function(parameters, _) = &declared {
+        parameters
+    } else {
+        &[]
+    };
     let parameters = match &definition.kind {
         RawDefinitionKind::Function { parameters, .. } | RawDefinitionKind::Music { parameters, .. } => parameters
             .iter()
-            .map(|parameter| {
-                let ty = crate::docs::TypeNote::new(parameter.ty.to_string());
+            .enumerate()
+            .map(|(index, parameter)| {
+                let ty = crate::docs::TypeNote::new(written.get(index).unwrap_or(&parameter.ty).to_string());
                 let label = match &parameter.written_default {
                     Some(default) => format!("{}: {} = {default}", parameter.name, ty.name),
                     None => format!("{}: {}", parameter.name, ty.name),
@@ -2633,10 +2995,10 @@ fn document(definition: &RawDefinition) -> crate::docs::ItemDoc {
         RawDefinitionKind::Let { .. } | RawDefinitionKind::Bound { .. } => Vec::new(),
     };
     // A callable evaluates to its result; everything else evaluates to itself.
-    let result = crate::docs::TypeNote::new(if let Type::Function(_, result) = &definition.ty {
+    let result = crate::docs::TypeNote::new(if let Type::Function(_, result) = &declared {
         result.to_string()
     } else {
-        definition.ty.to_string()
+        declared.to_string()
     });
     // Every declaration the core lowers names a value; static structure is
     // documented where it is declared, in `crate::module`.
@@ -2708,8 +3070,16 @@ fn document(definition: &RawDefinition) -> crate::docs::ItemDoc {
     }
 }
 
+/// The type a declaration *declares*, before its body is read.
+///
+/// Where the file wrote a type, that is the type. Where it did not, a fresh
+/// variable stands in — one the body will decide, or, if the body does not,
+/// one the checker reports rather than guesses. That is the whole of what
+/// "optional annotation" means here: the signature is still a signature, and
+/// only some of it is written down.
 fn lower_signature(
     resolver: &mut Resolver,
+    unifier: &mut Unifier,
     definition: SurfaceDefinition,
     name: String,
     name_span: SourceSpan,
@@ -2719,9 +3089,11 @@ fn lower_signature(
     let foreign = source.is_some();
     match definition {
         SurfaceDefinition::Let { declaration, .. } => {
-            let ty_node = child_of(declaration.syntax(), is_type_node)?;
             let body = child_of(declaration.syntax(), is_expr_node)?;
-            let ty = parse_type(resolver, &ty_node)?;
+            let ty = match child_of(declaration.syntax(), is_type_node) {
+                Some(node) => parse_type(resolver, &node)?,
+                None => unifier.fresh(Kind::Ordinary),
+            };
             let summary = crate::docs::summary_above(declaration.syntax());
             Some(RawDefinition {
                 name,
@@ -2740,11 +3112,14 @@ fn lower_signature(
         SurfaceDefinition::Function { declaration, .. } => {
             let mut parameters = Vec::new();
             for parameter in declaration.params() {
-                let Some(ty_node) = child_of(parameter.syntax(), is_type_node) else {
-                    continue;
-                };
-                let Some(parameter_ty) = parse_type(resolver, &ty_node) else {
-                    continue;
+                let parameter_ty = match child_of(parameter.syntax(), is_type_node) {
+                    Some(ty_node) => {
+                        let Some(parsed) = parse_type(resolver, &ty_node) else {
+                            continue;
+                        };
+                        parsed
+                    }
+                    None => unifier.fresh(Kind::Ordinary),
                 };
                 let parameter_name = parameter.name().unwrap_or_default();
                 let parameter_span = crate::resolve::token_span(parameter.syntax(), SyntaxKind::Identifier)
@@ -2758,12 +3133,12 @@ fn lower_signature(
                     span: parameter_span,
                 });
             }
-            let result_node = declaration
-                .syntax()
-                .children()
-                .filter(|node| is_type_node(node.kind()))
-                .last()?;
-            let result = parse_type(resolver, &result_node)?;
+            // A parameter's type sits inside the parameter list, so the one
+            // type node a `fn` has as a direct child is its result.
+            let result = match declaration.syntax().children().find(|node| is_type_node(node.kind())) {
+                Some(node) => parse_type(resolver, &node)?,
+                None => unifier.fresh(Kind::Ordinary),
+            };
             let body = child_of(declaration.syntax(), is_expr_node)?;
             let ty = Type::Function(
                 parameters.iter().map(|parameter| parameter.ty.clone()).collect(),
@@ -2868,7 +3243,7 @@ fn lower_signature(
                     qualifier: None,
                 },
             };
-            let mut lowered = lower_signature(resolver, inner, name, name_span, span, source)?;
+            let mut lowered = lower_signature(resolver, unifier, inner, name, name_span, span, source)?;
             lowered.scope = member;
             Some(lowered)
         }
@@ -2918,7 +3293,8 @@ fn legacy_default(ty: &Type, written: &str) -> Option<Value> {
         Type::Duration => crate::resolve::parse_ratio(written)
             .or_else(|| written.parse::<i64>().ok().map(Ratio::from_integer))
             .map(Value::Duration),
-        Type::Unit
+        Type::Var(_)
+        | Type::Unit
         | Type::Bool
         | Type::Nat
         | Type::Ratio
@@ -2946,7 +3322,8 @@ fn legacy_default(ty: &Type, written: &str) -> Option<Value> {
 fn function_result(ty: &Type) -> Option<&Type> {
     match ty {
         Type::Function(_, result) => Some(result),
-        Type::Unit
+        Type::Var(_)
+        | Type::Unit
         | Type::Bool
         | Type::Nat
         | Type::Ratio
@@ -2997,18 +3374,36 @@ pub(crate) fn signature_type(resolver: &mut Resolver, node: &SyntaxNode) -> Opti
 
 /// The arrow type a `fn` declares, which is the type a signature member of
 /// arrow type must match.
+///
+/// A declaration that omitted an annotation still declares an arrow — it just
+/// leaves part of it open. Each omission is a hole here, and
+/// [`crate::infer::admits`] is how a signature reads one: the signature says
+/// what goes there, and matching by name and exact type is unchanged for
+/// every part the declaration did write. Returning `None` for an omission
+/// would instead have made a member the signature fully describes look like
+/// a member the module never defined.
+///
+/// The holes are numbered per declaration and belong to no [`Unifier`]. They
+/// are never unified — only compared, by a relation in which any variable
+/// matches — so there is nothing for them to be numbered against.
 pub(crate) fn function_type(declaration: &FnDecl) -> Option<Type> {
+    let mut hole = 0u32;
+    let mut open = |node: Option<SyntaxNode>| match node {
+        Some(node) => declared_type(&node),
+        None => {
+            let variable = Type::Var(hole);
+            hole = hole.saturating_add(1);
+            Some(variable)
+        }
+    };
     let mut parameters = Vec::new();
     for parameter in declaration.params() {
-        let ty_node = child_of(parameter.syntax(), is_type_node)?;
-        parameters.push(declared_type(&ty_node)?);
+        parameters.push(open(child_of(parameter.syntax(), is_type_node))?);
     }
-    let result = declaration
-        .syntax()
-        .children()
-        .filter(|node| is_type_node(node.kind()))
-        .last()?;
-    Some(Type::Function(parameters, Box::new(declared_type(&result)?)))
+    // A parameter's type is written inside the parameter list, so the one
+    // type node a `fn` has as a direct child is its result.
+    let result = open(declaration.syntax().children().find(|node| is_type_node(node.kind())))?;
+    Some(Type::Function(parameters, Box::new(result)))
 }
 
 /// The type a written name denotes, for the names the compiler owns.
@@ -3107,7 +3502,14 @@ struct Checker<'a> {
     resolver: &'a mut Resolver,
     definitions: &'a [RawDefinition],
     symbols: &'a IndexMap<String, Symbol>,
-    locals: IndexMap<String, Type>,
+    /// Parameters and other names bound inside this definition. A parameter
+    /// is monomorphic while its function's body is checked — rank 1 says the
+    /// quantifiers are outside — so most of these quantify nothing.
+    locals: IndexMap<String, Scheme>,
+    /// The substitution every type in this definition is read through. It is
+    /// shared across the whole piece, so a variable minted for one
+    /// declaration's missing annotation is the same variable there and here.
+    unifier: &'a mut Unifier,
     dependencies: IndexMap<String, SourceSpan>,
     foreign: bool,
     failed: bool,
@@ -3126,6 +3528,13 @@ impl Checker<'_> {
     fn check(&mut self, node: &SyntaxNode, expected: Option<&Type>) -> Option<Expr> {
         let span = crate::resolve::trimmed_span(node);
         let kind = node.kind();
+        // Read the expected type through the substitution once, here, so that
+        // every case below may take it apart. A position whose type is
+        // *known* through a variable — a list member decided two arguments
+        // ago — is a known position, and matching on the variable rather
+        // than on what it stands for would lose that.
+        let expected = expected.map(|ty| self.unifier.resolve(ty));
+        let expected = expected.as_ref();
         let checked = if kind == SyntaxKind::ParenExpr || kind == SyntaxKind::BlockExpr {
             // `⟦{ e }⟧ = ⟦e⟧`, exactly as for parentheses. A block delimits
             // one expression and holds no sequence, so it adds a shape to the
@@ -3135,8 +3544,9 @@ impl Checker<'_> {
             self.literal(node, expected)
         } else if kind == SyntaxKind::NameExpr {
             let named = self.name(node)?;
+            let shape = self.unifier.resolve(&named.ty);
             if expected == Some(&Type::Music)
-                && matches!(&named.ty, Type::Function(parameters, result) if parameters.is_empty() && result.as_ref() == &Type::Music)
+                && matches!(&shape, Type::Function(parameters, result) if parameters.is_empty() && result.as_ref() == &Type::Music)
             {
                 Some(Expr {
                     kind: ExprKind::Apply {
@@ -3176,21 +3586,50 @@ impl Checker<'_> {
         } else {
             None
         }?;
-        if let Some(expected) = expected
-            && checked.ty != *expected
-        {
-            self.resolver.report(
-                Diagnostic::error(
-                    Code::TypeMismatch,
-                    format!("expected `{expected}`, found `{}`", checked.ty),
-                )
-                .at(span, format!("this has type `{}`", checked.ty))
-                .maybe_help(crossing_help(expected, &checked.ty)),
-            );
-            self.failed = true;
-            return None;
+        if let Some(expected) = expected {
+            self.reconcile(expected, &checked.ty, span)?;
         }
-        Some(checked)
+        Some(Expr {
+            ty: self.unifier.resolve(&checked.ty),
+            ..checked
+        })
+    }
+
+    /// Make an expression's type the type its position asks for.
+    ///
+    /// This is the only place the checker compares two types, and it compares
+    /// them by unifying: an expression whose type is not yet decided is
+    /// decided *here*, by where it was written, which is what makes a
+    /// missing annotation an inference problem rather than an error.
+    ///
+    /// Both types are resolved before they are quoted, so a diagnostic names
+    /// what the substitution knows rather than the variable that stood in
+    /// for it.
+    fn reconcile(&mut self, expected: &Type, found: &Type, span: SourceSpan) -> Option<()> {
+        let Err(mismatch) = self.unifier.unify(found, expected) else {
+            return Some(());
+        };
+        let expected = self.unifier.resolve(expected);
+        let found = self.unifier.resolve(found);
+        let diagnostic = match mismatch {
+            Mismatch::Shape => Diagnostic::error(Code::TypeMismatch, format!("expected `{expected}`, found `{found}`"))
+                .at(span, format!("this has type `{found}`"))
+                .maybe_help(crossing_help(&expected, &found)),
+            Mismatch::Recursive => {
+                Diagnostic::error(Code::TypeMismatch, format!("`{expected}` would have to contain itself"))
+                    .at(span, format!("this has type `{found}`"))
+                    .help("a type is finite; annotate this so the two sides say different things")
+            }
+            Mismatch::NotStorable => Diagnostic::error(Code::TypeMismatch, "a function cannot be stored here")
+                .at(span, format!("this has type `{found}`"))
+                .help(
+                    "`Option<τ>` and `List<τ>` hold storable data — a type with no function at any depth; \
+                     return the function from a call instead of putting it in a collection",
+                ),
+        };
+        self.resolver.report(diagnostic);
+        self.failed = true;
+        None
     }
 
     /// Check `kernel Timeline[ScoreFact] { … }` — a quotation.
@@ -3760,8 +4199,8 @@ impl Checker<'_> {
         span: SourceSpan,
         bindings: &mut IndexSet<String>,
     ) -> Option<()> {
-        let found = if let Some(ty) = self.locals.get(name) {
-            Some(ty.clone())
+        let found = if let Some(scheme) = self.locals.get(name).cloned() {
+            Some(self.unifier.instantiate(&scheme))
         } else if let Some(symbol) = self.symbols.get(name) {
             self.dependencies.entry(name.to_owned()).or_insert(span);
             if !self.foreign {
@@ -3769,11 +4208,15 @@ impl Checker<'_> {
                     .references
                     .record_use_from(symbol.kind, name, span, symbol.external_declaration.clone());
             }
-            Some(symbol.ty.clone())
+            let scheme = symbol.scheme.clone();
+            Some(self.unifier.instantiate(&scheme))
         } else {
             None
         };
-        if found.as_ref() != Some(expected) {
+        if found
+            .as_ref()
+            .is_none_or(|found| self.unifier.unify(found, expected).is_err())
+        {
             self.resolver.report(
                 Diagnostic::error(Code::TypeMismatch, format!("`{name}` is not a `{expected}` value"))
                     .at(span, format!("this position needs `{expected}`")),
@@ -3843,10 +4286,10 @@ impl Checker<'_> {
         })?;
         let written = qualified_name(node, &token);
         let span = crate::resolve::trimmed_span(node);
-        if let Some(ty) = self.locals.get(&written) {
+        if let Some(scheme) = self.locals.get(&written).cloned() {
             return Some(Expr {
                 kind: ExprKind::Name(written),
-                ty: ty.clone(),
+                ty: self.unifier.instantiate(&scheme),
                 span,
             });
         }
@@ -3903,9 +4346,10 @@ impl Checker<'_> {
                 .references
                 .record_use_from(symbol.kind, &name, span, symbol.external_declaration.clone());
         }
+        let scheme = symbol.scheme.clone();
         Some(Expr {
             kind: ExprKind::Name(name),
-            ty: symbol.ty.clone(),
+            ty: self.unifier.instantiate(&scheme),
             span,
         })
     }
@@ -3930,10 +4374,14 @@ impl Checker<'_> {
     }
 
     fn list(&mut self, node: &SyntaxNode, expected: Option<&Type>) -> Option<Expr> {
+        // As in `option`: a variable expected type names a member the
+        // elements decide, and `settle` reports one nothing decided.
         let expected_member = match expected {
-            Some(Type::List(member)) => Some(member.as_ref()),
+            Some(Type::List(member)) => Some(member.as_ref().clone()),
+            Some(Type::Var(_)) => Some(self.unifier.fresh(Kind::Ordinary)),
             _ => None,
         };
+        let expected_member = expected_member.as_ref();
         let children: Vec<_> = node.children().filter(|child| is_expr_node(child.kind())).collect();
         if children.is_empty() && expected_member.is_none() {
             self.resolver.report(
@@ -3961,10 +4409,15 @@ impl Checker<'_> {
     }
 
     fn option(&mut self, node: &SyntaxNode, expected: Option<&Type>) -> Option<Expr> {
+        // An expected type that is still a variable says only "something
+        // goes here": the member is a fresh variable, which whatever is
+        // written decides, and which `settle` reports if nothing does.
         let expected_member = match expected {
-            Some(Type::Option(member)) => Some(member.as_ref()),
+            Some(Type::Option(member)) => Some(member.as_ref().clone()),
+            Some(Type::Var(_)) => Some(self.unifier.fresh(Kind::Ordinary)),
             _ => None,
         };
+        let expected_member = expected_member.as_ref();
         let some = significant_tokens(node).any(|token| token.kind() == SyntaxKind::SomeKw);
         let value = child_of(node, is_expr_node);
         if !some && expected_member.is_none() {
@@ -4011,7 +4464,8 @@ impl Checker<'_> {
             }
             catch_all |= covered == Coverage::CatchAll;
             let saved = self.locals.clone();
-            self.locals.extend(bindings);
+            self.locals
+                .extend(bindings.into_iter().map(|(name, ty)| (name, Scheme::monomorphic(ty))));
             let body_node = child_of(&arm, is_expr_node)?;
             let body = self.check(&body_node, result.as_ref())?;
             self.locals = saved;
@@ -4188,15 +4642,30 @@ impl Checker<'_> {
             return self.primitive_application(node, primitive, expected);
         }
         let function = self.check(&function_node, None)?;
-        let Type::Function(parameter_types, result) = function.ty.clone() else {
+        let raw_arguments = raw_arguments(node);
+        let mut callee = self.unifier.resolve(&function.ty);
+        // The thing being called may not have been decided yet: a parameter
+        // used as a function, or a declaration whose own type this call helps
+        // settle. What the call knows is the arity, so that is what it says —
+        // one fresh variable per argument, and one for the result.
+        if matches!(callee, Type::Var(_)) {
+            let parameters: Vec<Type> = raw_arguments
+                .iter()
+                .map(|_| self.unifier.fresh(Kind::Ordinary))
+                .collect();
+            let result = self.unifier.fresh(Kind::Ordinary);
+            let callable = Type::Function(parameters, Box::new(result));
+            self.reconcile(&callable, &function.ty, function.span)?;
+            callee = self.unifier.resolve(&function.ty);
+        }
+        let Type::Function(parameter_types, result) = callee.clone() else {
             self.resolver.report(
-                Diagnostic::error(Code::TypeMismatch, format!("`{}` is not callable", function.ty))
+                Diagnostic::error(Code::TypeMismatch, format!("`{callee}` is not callable"))
                     .at(function.span, "this is a value, not a function"),
             );
             self.failed = true;
             return None;
         };
-        let raw_arguments = raw_arguments(node);
         let parameter_shape = self.parameter_shape(&function_node, &parameter_types);
         let mut occupied = IndexSet::new();
         let mut positional = 0usize;
@@ -4350,111 +4819,27 @@ impl Checker<'_> {
         let Family::Eliminator(eliminator) = family else {
             return None;
         };
-        let (arguments, ty) = match eliminator {
-            Eliminator::Range => {
-                let count = self.check(nodes.first()?, Some(&Type::Nat))?;
-                (vec![count], Type::List(Box::new(Type::Nat)))
-            }
-            Eliminator::Repeat => {
-                let value = self.check(nodes.first()?, None)?;
-                let count = self.check(nodes.get(1)?, Some(&Type::Nat))?;
-                let result = Type::List(Box::new(value.ty.clone()));
-                (vec![value, count], result)
-            }
-            Eliminator::Map => {
-                let function = self.check(nodes.first()?, None)?;
-                let Type::Function(parameters, result) = function.ty.clone() else {
-                    return self.primitive_type_error(span, "`map` first needs a one-argument function");
-                };
-                let Some(parameter) = unary_parameter(&parameters) else {
-                    return self.primitive_type_error(span, "`map` first needs a one-argument function");
-                };
-                let values = self.check(nodes.get(1)?, Some(&Type::List(Box::new(parameter.clone()))))?;
-                (vec![function, values], Type::List(result))
-            }
-            Eliminator::Filter => {
-                let function = self.check(nodes.first()?, None)?;
-                let Type::Function(parameters, result) = function.ty.clone() else {
-                    return self.primitive_type_error(span, "`filter` first needs a predicate");
-                };
-                let Some(parameter) = unary_parameter(&parameters) else {
-                    return self.primitive_type_error(span, "`filter` first needs a one-argument predicate");
-                };
-                if result.as_ref() != &Type::Bool {
-                    return self.primitive_type_error(span, "a `filter` predicate must return `bool`");
-                }
-                let values = self.check(nodes.get(1)?, Some(&Type::List(Box::new(parameter.clone()))))?;
-                (vec![function, values], Type::List(Box::new(parameter.clone())))
-            }
-            Eliminator::NatFold => {
-                let zero = self.check(nodes.first()?, expected)?;
-                let step = self.check(nodes.get(1)?, None)?;
-                let wanted = Type::Function(vec![Type::Nat, zero.ty.clone()], Box::new(zero.ty.clone()));
-                if step.ty != wanted {
-                    return self.primitive_type_error(
-                        step.span,
-                        "a `nat_fold` step must accept the index and accumulator and return the accumulator type",
-                    );
-                }
-                let count = self.check(nodes.get(2)?, Some(&Type::Nat))?;
-                let result = zero.ty.clone();
-                (vec![zero, step, count], result)
-            }
-            Eliminator::ListFold => {
-                let zero = self.check(nodes.first()?, expected)?;
-                let step = self.check(nodes.get(1)?, None)?;
-                let Type::Function(parameters, result) = step.ty.clone() else {
-                    return self.primitive_type_error(step.span, "a `list_fold` step must be a two-argument function");
-                };
-                let Some((member, accumulator)) = binary_parameters(&parameters) else {
-                    return self.primitive_type_error(step.span, "a `list_fold` step must be a two-argument function");
-                };
-                if accumulator != &zero.ty || result.as_ref() != &zero.ty {
-                    return self
-                        .primitive_type_error(step.span, "a `list_fold` step must preserve the accumulator type");
-                }
-                let values = self.check(nodes.get(2)?, Some(&Type::List(Box::new(member.clone()))))?;
-                let result = zero.ty.clone();
-                (vec![zero, step, values], result)
-            }
-            Eliminator::OptionFold => {
-                let zero = self.check(nodes.first()?, expected)?;
-                let some_case = self.check(nodes.get(1)?, None)?;
-                let Type::Function(parameters, result) = some_case.ty.clone() else {
-                    return self.primitive_type_error(
-                        some_case.span,
-                        "an `option_fold` some-case must be a one-argument function",
-                    );
-                };
-                let Some(member) = unary_parameter(&parameters) else {
-                    return self.primitive_type_error(
-                        some_case.span,
-                        "an `option_fold` some-case must be a one-argument function",
-                    );
-                };
-                if result.as_ref() != &zero.ty {
-                    return self.primitive_type_error(
-                        some_case.span,
-                        "an `option_fold` some-case must return the zero value's type",
-                    );
-                }
-                let value = self.check(nodes.get(2)?, Some(&Type::Option(Box::new(member.clone()))))?;
-                let result = zero.ty.clone();
-                (vec![zero, some_case, value], result)
-            }
+        // One unification against a declared scheme, in place of seven
+        // hand-written checks. The result is unified with what the position
+        // wants *before* the arguments are read, so that `nat_fold(0, step,
+        // n)` in a `List<Nat>` position complains about the zero rather than
+        // about the whole call.
+        let Type::Function(parameters, result) = eliminator.instantiate(self.unifier) else {
+            return None;
         };
+        if let Some(expected) = expected {
+            self.reconcile(expected, &result, span)?;
+        }
+        let mut arguments = Vec::with_capacity(parameters.len());
+        for (index, parameter) in parameters.iter().enumerate() {
+            arguments.push(self.check(nodes.get(index)?, Some(parameter))?);
+        }
+        let ty = self.unifier.resolve(&result);
         Some(Expr {
             kind: ExprKind::Primitive { primitive, arguments },
             ty,
             span,
         })
-    }
-
-    fn primitive_type_error<T>(&mut self, span: SourceSpan, message: &str) -> Option<T> {
-        self.resolver
-            .report(Diagnostic::error(Code::TypeMismatch, message).at(span, "invalid prelude arguments"));
-        self.failed = true;
-        None
     }
 
     fn parameter_shape(&self, function: &SyntaxNode, types: &[Type]) -> Vec<ParameterShape> {
@@ -4508,20 +4893,6 @@ impl Primitive {
     }
 }
 
-fn unary_parameter(parameters: &[Type]) -> Option<&Type> {
-    match parameters {
-        [parameter] => Some(parameter),
-        _ => None,
-    }
-}
-
-fn binary_parameters(parameters: &[Type]) -> Option<(&Type, &Type)> {
-    match parameters {
-        [first, second] => Some((first, second)),
-        _ => None,
-    }
-}
-
 fn raw_arguments(node: &SyntaxNode) -> Vec<SyntaxNode> {
     node.children()
         .find(|child| child.kind() == SyntaxKind::ExprArgList)
@@ -4538,7 +4909,8 @@ fn is_exhaustive(target: &Type, coverage: &IndexSet<Coverage>) -> bool {
             Type::Bool => coverage.contains(&Coverage::True) && coverage.contains(&Coverage::False),
             Type::Option(_) => coverage.contains(&Coverage::None) && coverage.contains(&Coverage::Some),
             Type::List(_) => coverage.contains(&Coverage::EmptyList) && coverage.contains(&Coverage::Cons),
-            Type::Unit
+            Type::Var(_)
+            | Type::Unit
             | Type::Nat
             | Type::Ratio
             | Type::Duration
@@ -4727,7 +5099,7 @@ fn evaluate(
             );
             return None;
         };
-        if value.ty() != definition.ty {
+        if !crate::infer::admits(&definition.ty, &value.ty()) {
             resolver.report(
                 Diagnostic::error(Code::TypeMismatch, "evaluation changed this expression's type")
                     .at(definition.span, "the preservation invariant failed here"),
@@ -4977,7 +5349,12 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
         }
     }?;
     let (nodes, bytes) = value_shape(&value);
-    if value.ty() != expression.ty || !meter.construct("expression value", nodes, bytes, expression.span) {
+    // A polymorphic function's body has the *declaration's* type, which is a
+    // variable; the value flowing through it is whatever the caller chose.
+    // `admits` is that distinction, and it is equality everywhere else.
+    if !crate::infer::admits(&expression.ty, &value.ty())
+        || !meter.construct("expression value", nodes, bytes, expression.span)
+    {
         return None;
     }
     Some(value)
@@ -5051,7 +5428,7 @@ fn apply_closure(
                 .and_then(|default| eval(default, &local, meter))
         });
         if let Some(value) = value {
-            if value.ty() != parameter.ty {
+            if !crate::infer::admits(&parameter.ty, &value.ty()) {
                 return None;
             }
             local.insert(parameter.name.clone(), value);
@@ -6779,8 +7156,10 @@ mod tests {
             Type::Product(members) => members.iter().any(mentions_function),
             // Listed rather than wildcarded: a new *type former* would otherwise be assumed
             // arrow-free, and this law is the only thing standing between that assumption and
-            // §5.8's no-arrow premise.
-            Type::Unit
+            // §5.8's no-arrow premise. A registry signature is written, not inferred, so a
+            // variable never reaches here — and if one did, it is not an arrow.
+            Type::Var(_)
+            | Type::Unit
             | Type::Bool
             | Type::Nat
             | Type::Ratio
