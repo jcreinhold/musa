@@ -21,15 +21,48 @@ prompt-95 fragment enters through §5.8's conservative-extension theorem and its
 Types are:
 
 ```text
-τ ::= a | b | unit | bool | nat | ratio | text
-    | τ × τ | τ + τ | option τ | list τ | N[τ, …] | τ → τ
-    | Length[C] | EventTrack[C, δ] | Primitive[K, δ, δ] | Machine[K, δ, δ]
-C ::= WrittenTime | PerformedTime | SecondTime
+τ ::= a                      % type variable; ordinary, or data-only (§1.1)
+    | b                      % a musical domain: Pitch, Interval, Scale, Key, Degree, ChordClass, Roman, Voicing, …
+    | unit
+    | bool
+    | nat
+    | ratio                  % an exact rational; never a float, at any stage of the source language
+    | text                   % opaque printable text: a title, a mark's words, a diagnostic string
+    | τ × τ                  % product; also how a multi-argument function takes its one argument
+    | τ + τ                  % sum; `Result` is this, not a privileged compiler type
+    | option τ
+    | list τ
+    | N[τ, …]                % nominal data declared by a library: finite, strictly positive, one generated fold
+    | τ → τ                  % never storable data, at any depth (§1.1)
+    | Length[C]              % a nonnegative exact rational tagged by the time it measures
+    | EventTrack[C, δ]       % finite length + finite multiset of occurrences of δ, in coordinate C
+    | Primitive[K, δ, δ]     % one registered stepping unit: name, version, storable configuration
+    | Machine[K, δ, δ]       % a finite description of a stepping process — not the history it produces
+
+C ::= WrittenTime            % positions and lengths as the page counts them
+    | PerformedTime          % after groove and repeats are folded, before tempo
+    | SecondTime             % physical seconds
+
+K ::= AudioFrameStep         % one step is one sample frame at the prepared rate (`../constitution.md` §4)
 ```
 
-`a` is a type variable (§1.1). `N` is a nominal data type declared by a library: finite, strictly positive, checked
-once, and generating one structural fold. `C` and `K` are ordinary nominal tags — for a time coordinate and for one kind
-of machine step — and are type parameters, not values inside types. `δ` ranges over **storable data** types (§1.1).
+`a` is a type variable (§1.1). `C` and `K` are ordinary nominal tags — for a time coordinate and for one kind of machine
+step — and are type parameters, not values inside types. `δ` ranges over **storable data** types (§1.1).
+
+Four of these are less obvious than they look, and each is a decision rather than a convenience:
+
+- **`ratio`, not a float.** Musical time is exact. A float appears at the performance and DSP edge and nowhere earlier,
+  so no source-language type can hold one.
+- **`Length[C]` rather than `ratio`.** A bare rational carries neither the coordinate nor the nonnegativity. Tagging is
+  the point: `Length[WrittenTime]` and `Length[SecondTime]` do not unify, so adding a written beat to a number of
+  seconds is a type error rather than a number. Its constructors are where nonnegativity is checked, which is why they
+  return `Result`.
+- **`Primitive[K,δ,δ]` separate from `Machine[K,δ,δ]`.** A primitive is one registered unit whose private state and step
+  function belong to its owner; a machine is the finite composite built from primitives and the structural forms. Source
+  code can build the second and can neither inspect nor forge the first's state.
+- **`Machine[K,δ,δ]` is a description.** The audio history it produces is coinductive and is not a value at all
+  (`../constitution.md` §4). Every `K` names what one step means, which is what stops a host block from becoming the
+  unit of meaning.
 
 `declaration κ`, `structure`, `piece`, `part`, `voice`, and `Term[A]` are not value types; nor is an audio history.
 `EventTrack`, `Primitive`, and `Machine` are abstract in the sense that user code has constructors and controlled
