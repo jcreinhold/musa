@@ -2,7 +2,7 @@
 id: 127e
 slug: source-language-clean-break
 status: pending
-depends_on: [127da]
+depends_on: [127dd]
 phase: 3
 ---
 
@@ -15,17 +15,21 @@ universal contextual `Music` value and every compiler path whose only purpose is
 
 ## Read
 
-- The prompt-127a language specification, prompt 127da's proved adapter contract, research `05-selected-calculus.md`
-  §§7–10, and `17-final-review.md`.
+- The prompt-127a language specification, the adapter contract proved by prompts 127da–127dd, research
+  `05-selected-calculus.md` §§7–10, and `17-final-review.md`.
 - Current contextual `Music`, closure, binding-table, controlled-operation, note/block elaboration, quotation, template,
   stdlib, example, and handbook code.
 - Open Music Theory files cited by each retained notation or theory adapter.
 
 ## Design
 
-Keep the fixed reader, indentation-based file structure, compiler order, syntax data, path-aware fold, source maps, and
-adapter contracts proved by prompt 127da. The notation surface is an adapter into ordinary inferred expressions, not a
+Keep the fixed reader, compiler order, syntax data, path-aware fold, derivation graph, source maps, and adapter
+contracts proved by prompts 127da–127dd. The notation surface is an adapter into ordinary inferred expressions, not a
 second semantic core.
+
+If the surface moves to an indentation-based file structure, it moves here, in one break, with the grammar, tree-sitter
+grammar, formatter, corpus, and book changing together. The adapter series deliberately left that alone: a half-indented
+grammar is not a language anyone can write.
 
 Keep the common staff spelling already selected: `c4/4`, `c4/4.`, `[c4 e4 g4]/2`, and `rest/8`. Use `c4(3/8)` when the
 source gives an exact duration without claiming a conventional written note value. Written rhythm and exact temporal
@@ -45,7 +49,7 @@ but it never compiles.
 Preserve source spans and derivation records through adapter expansion and track construction. Notation and audio-first
 programs are equal citizens; a project need not export a score.
 
-Use prompt 127da's complete staff and studio trials as migration tests. Neither adapter receives compiler privilege.
+Use prompt 127dd's complete staff and studio trials as migration tests. Neither adapter receives compiler privilege.
 
 ## Target
 

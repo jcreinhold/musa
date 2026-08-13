@@ -252,7 +252,10 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 127c | event-track-cutover | 3 | Replace timelines with coordinate-typed finite event tracks |
 | 127ca | builtin-ownership-registry | 3 | One name for compiler-owned operations, freeing `primitive` for registered units |
 | 127d | machine-values | 3 | Add finite typed machine descriptions as source values |
-| 127da | bounded-syntax-adapters | 3 | Close the adapter proof blockers with one finite type-blind phase |
+| 127da | path-aware-syntax | 3 | Give syntax values derivable paths, a path-aware fold, and pure builders |
+| 127db | derivation-graph | 3 | Record origins as a grafted finite graph that keeps reuse and combined ancestry |
+| 127dc | adapter-expansion | 3 | Expand named delimited adapter regions at one fixed place in the compiler order |
+| 127dd | adapter-trials | 3 | Prove the adapter boundary with complete unprivileged staff and studio adapters |
 | 127e | source-language-clean-break | 3 | Delete contextual `Music` and migrate notation to ordinary values |
 | 127f | machine-runtime | 3 | Give each prepared machine one deterministic next step |
 | 127g | track-scheduling | 3 | Connect exact event tracks to frame machines with checked decisions |
@@ -507,12 +510,15 @@ steps that each leave the workspace green: inference and the two kinds of type v
 evaluator configurations, versioned cost table, and privacy audit that close it (127b). 127c renames the finite temporal
 value to `EventTrack<C,A>` and tags its coordinate. 127ca then gives compiler-owned operations their one name, so that
 *builtin* and *primitive* mean what the language specification says they mean before 127d needs the second word. 127d
-adds finite `Machine<K,A,B>` values. 127da repairs the failed adapter boundary with path-aware finite syntax, one
-executable match target, and a real derivation graph. 127e then deletes contextual `Music`; notation becomes a
-source-mapped adapter into ordinary inferred terms. 127f gives each machine one exact next step. 127g makes the
-time-to-frame policy explicit. 127h makes one sample frame the reference meaning of audio and treats host blocks only as
-checked batching. 127i proves and audits the complete path before any later sound prompt may run. Old syntax, APIs, and
-serialized forms are removed, not kept behind aliases.
+adds finite `Machine<K,A,B>` values. 127da–127dd then repair the failed adapter boundary one blocker at a time: syntax
+values whose paths are derived rather than invented (127da), a grafted derivation graph that keeps every reuse site and
+every combined parent (127db), the expansion phase itself at one fixed place in the compiler order (127dc), and two
+complete unprivileged adapters that carry the proof (127dd). The second blocker — a lowered match with no executable
+meaning — closes by *not* adding a decision-tree target: source `match` remains the one evaluator. 127e then deletes
+contextual `Music`; notation becomes a source-mapped adapter into ordinary inferred terms. 127f gives each machine one
+exact next step. 127g makes the time-to-frame policy explicit. 127h makes one sample frame the reference meaning of
+audio and treats host blocks only as checked batching. 127i proves and audits the complete path before any later sound
+prompt may run. Old syntax, APIs, and serialized forms are removed, not kept behind aliases.
 
 **128–134 build musical sound on that core.** 128 makes the primitive vocabulary discoverable from one catalogue; 129
 keeps written quantities exact; and 129a's payload rule is revised for the new storable-data boundary. 130 defines
