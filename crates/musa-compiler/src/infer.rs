@@ -94,42 +94,10 @@ pub(crate) fn member_types(ty: &Type) -> Vec<&Type> {
         Type::Sum(value, error) => vec![value, error],
         Type::Option(member) | Type::List(member) => vec![member],
         Type::Function(parameters, result) => parameters.iter().chain(std::iter::once(result.as_ref())).collect(),
-        Type::Var(_)
-        | Type::Unit
-        | Type::Bool
-        | Type::Nat
-        | Type::Ratio
-        | Type::Text
-        | Type::Duration
-        | Type::Pitch
-        | Type::PitchClass
-        | Type::Interval
-        | Type::Scale
-        | Type::Key
-        | Type::Degree
-        | Type::Frame
-        | Type::ChordClass
-        | Type::Triad
-        | Type::Roman
-        | Type::Voicing
-        | Type::Pc12
-        | Type::PcSet12
-        | Type::Row12
-        | Type::Music => Vec::new(),
-    }
-}
-
-/// A type rebuilt with `member` applied to each of its immediate members. A
-/// leaf has none and rebuilds as itself.
-pub(crate) fn rebuilt(ty: &Type, mut member: impl FnMut(&Type) -> Type) -> Type {
-    match ty {
-        Type::Product(members) => Type::Product(members.iter().map(member).collect()),
-        Type::Nominal(id, arguments) => Type::Nominal(id.clone(), arguments.iter().map(member).collect()),
-        Type::Sum(value, error) => Type::Sum(Box::new(member(value)), Box::new(member(error))),
-        Type::Option(inner) => Type::Option(Box::new(member(inner))),
-        Type::List(inner) => Type::List(Box::new(member(inner))),
-        Type::Function(parameters, result) => {
-            Type::Function(parameters.iter().map(&mut member).collect(), Box::new(member(result)))
+        // A machine's step, input, and output are ordinary members: the ports
+        // are types that unify, and the step tag unifies like any other index.
+        Type::Primitive { step, input, output } | Type::Machine { step, input, output } => {
+            vec![step, input, output]
         }
         Type::Var(_)
         | Type::Unit
@@ -152,6 +120,55 @@ pub(crate) fn rebuilt(ty: &Type, mut member: impl FnMut(&Type) -> Type) -> Type 
         | Type::Pc12
         | Type::PcSet12
         | Type::Row12
+        | Type::Step(_)
+        | Type::Music => Vec::new(),
+    }
+}
+
+/// A type rebuilt with `member` applied to each of its immediate members. A
+/// leaf has none and rebuilds as itself.
+pub(crate) fn rebuilt(ty: &Type, mut member: impl FnMut(&Type) -> Type) -> Type {
+    match ty {
+        Type::Product(members) => Type::Product(members.iter().map(member).collect()),
+        Type::Nominal(id, arguments) => Type::Nominal(id.clone(), arguments.iter().map(member).collect()),
+        Type::Sum(value, error) => Type::Sum(Box::new(member(value)), Box::new(member(error))),
+        Type::Option(inner) => Type::Option(Box::new(member(inner))),
+        Type::List(inner) => Type::List(Box::new(member(inner))),
+        Type::Function(parameters, result) => {
+            Type::Function(parameters.iter().map(&mut member).collect(), Box::new(member(result)))
+        }
+        Type::Primitive { step, input, output } => Type::Primitive {
+            step: Box::new(member(step)),
+            input: Box::new(member(input)),
+            output: Box::new(member(output)),
+        },
+        Type::Machine { step, input, output } => Type::Machine {
+            step: Box::new(member(step)),
+            input: Box::new(member(input)),
+            output: Box::new(member(output)),
+        },
+        Type::Var(_)
+        | Type::Unit
+        | Type::Bool
+        | Type::Nat
+        | Type::Ratio
+        | Type::Text
+        | Type::Duration
+        | Type::Pitch
+        | Type::PitchClass
+        | Type::Interval
+        | Type::Scale
+        | Type::Key
+        | Type::Degree
+        | Type::Frame
+        | Type::ChordClass
+        | Type::Triad
+        | Type::Roman
+        | Type::Voicing
+        | Type::Pc12
+        | Type::PcSet12
+        | Type::Row12
+        | Type::Step(_)
         | Type::Music => ty.clone(),
     }
 }
@@ -317,6 +334,40 @@ impl Unifier {
                     self.unify(ours, theirs)?;
                 }
                 self.unify(our_result, their_result)
+            }
+            // A machine and a registered unit are two type formers, not one:
+            // `connect` takes machines, and a primitive reaches it through
+            // `machine(p)`. Unifying the step first is deliberate, so that
+            // wiring two unlike steps together is reported as the step
+            // disagreeing rather than as the port that happened to be read
+            // first (`../rules/across-stages/03-machine-calculus.md` §2).
+            (
+                Type::Primitive {
+                    step: our_step,
+                    input: our_input,
+                    output: our_output,
+                },
+                Type::Primitive {
+                    step: their_step,
+                    input: their_input,
+                    output: their_output,
+                },
+            )
+            | (
+                Type::Machine {
+                    step: our_step,
+                    input: our_input,
+                    output: our_output,
+                },
+                Type::Machine {
+                    step: their_step,
+                    input: their_input,
+                    output: their_output,
+                },
+            ) => {
+                self.unify(our_step, their_step)?;
+                self.unify(our_input, their_input)?;
+                self.unify(our_output, their_output)
             }
             _ if left == right => Ok(()),
             _ => Err(Mismatch::Shape),

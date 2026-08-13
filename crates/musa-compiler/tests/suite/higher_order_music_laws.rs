@@ -64,14 +64,14 @@ fn a_delayed_canon_accepts_a_partially_applied_answer_and_has_maximum_extent() {
 #[test]
 fn function_identity_and_composition_hold_for_contextual_music() {
     let score = snapshot(
-        "piece \"identity\" {
+        "piece \"unchanged\" {
             let subject: Music = music { c4/4 d4/4 };
-            fn identity(value: Music) -> Music { value }
+            fn unchanged(value: Music) -> Music { value }
             fn compose(f: Music -> Music, g: Music -> Music, value: Music) -> Music { f(g(value)) }
             score { part p {
                 voice direct { use subject; }
-                voice identity { use identity(subject); }
-                voice composed { use compose(identity, identity, subject); }
+                voice unchanged { use unchanged(subject); }
+                voice composed { use compose(unchanged, unchanged, subject); }
             } }
         }",
     );
@@ -89,17 +89,17 @@ fn pitch_mapping_preserves_support_and_non_pitch_fields() {
                 c4/4 staccato
                 rest/4
             };
-            fn identity(p: Pitch) -> Pitch { p }
+            fn unchanged(p: Pitch) -> Pitch { p }
             fn pedal(_: Pitch) -> Pitch { g3 }
             score { part p {
                 voice original { use subject; }
-                voice same { use map_note_pitches(identity, subject); }
+                voice same { use map_note_pitches(unchanged, subject); }
                 voice pedal { use map_note_pitches(pedal, subject); }
             } }
         }",
     );
     let lanes = voices(&score);
-    assert_eq!(shape(&lanes[0]), shape(&lanes[1]), "identity changes no musical fact");
+    assert_eq!(shape(&lanes[0]), shape(&lanes[1]), "unchanged changes no musical fact");
     assert_eq!(
         lanes[2]
             .iter()

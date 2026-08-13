@@ -653,6 +653,7 @@ pub(crate) fn elaborate_parsed(
     }
     Compilation::new(Some(snapshot), std::mem::take(&mut resolver.diagnostics))
         .with_studio(studio)
+        .with_machines(core.machines())
         .with_identity(identity)
         .with_decisions(std::mem::take(&mut resolver.decisions))
         .with_references(references)

@@ -41,17 +41,17 @@ fn errors(compilation: &musa_compiler::Compilation) -> Vec<Code> {
 /// returned some arbitrary sound typing, a declaration written without types
 /// would silently commit its callers to whichever type the first use happened
 /// to force, and the second use would fail for a reason nothing in the source
-/// explains. So the test is not that `identity` type-checks: it is that every
+/// explains. So the test is not that `unchanged` type-checks: it is that every
 /// instance a caller can ask for is admitted from the one declaration.
 #[test]
 fn an_inferred_scheme_admits_every_instance_a_caller_asks_for() {
     let compilation = compile_core(
-        "fn identity(value) { value } \
-         fn pair_up(left, right) { identity(left) } \
-         let counted: Nat = identity(3); \
-         let sounded: Pitch = identity(c4); \
-         let listed: List<Nat> = identity(range(3)); \
-         let deeper: List<List<Nat>> = identity(map(fn (index) { range(index) }, range(2))); \
+        "fn unchanged(value) { value } \
+         fn pair_up(left, right) { unchanged(left) } \
+         let counted: Nat = unchanged(3); \
+         let sounded: Pitch = unchanged(c4); \
+         let listed: List<Nat> = unchanged(range(3)); \
+         let deeper: List<List<Nat>> = unchanged(map(fn (index) { range(index) }, range(2))); \
          let chosen: Nat = pair_up(1, c4);",
     );
     assert!(
@@ -68,13 +68,13 @@ fn an_inferred_scheme_admits_every_instance_a_caller_asks_for() {
 /// type would be advice rather than a decision.
 #[test]
 fn an_annotation_specializes_the_principal_type_and_cannot_widen_it() {
-    let specialized = compile_core("fn identity(value: Nat) -> Nat { value } let counted: Nat = identity(3);");
+    let specialized = compile_core("fn unchanged(value: Nat) -> Nat { value } let counted: Nat = unchanged(3);");
     assert!(
         !specialized.has_errors(),
         "an annotation that specializes was refused: {:?}",
         errors(&specialized)
     );
-    let widened = compile_core("fn identity(value: Nat) -> Nat { value } let sounded: Pitch = identity(c4);");
+    let widened = compile_core("fn unchanged(value: Nat) -> Nat { value } let sounded: Pitch = unchanged(c4);");
     assert!(
         errors(&widened).contains(&Code::TypeMismatch),
         "an annotated declaration was used at a type it does not have: {:?}",

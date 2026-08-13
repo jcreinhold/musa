@@ -475,6 +475,31 @@ pub(crate) enum Type {
     /// ([`crate::data::NominalId`]).
     Nominal(crate::data::NominalId, Vec<Self>),
     Music,
+    /// One kind of machine step — §1's `K`, as a type so that it unifies.
+    ///
+    /// A tag has no values: it appears only as the first argument of
+    /// [`Type::Primitive`] and [`Type::Machine`], where it says what one step
+    /// of that machine counts. Making it an ordinary type is what lets
+    /// `identity` be polymorphic in its step the way it is polymorphic in its
+    /// ports — one inference discipline, not a second one for indices.
+    Step(crate::machine::StepTag),
+    /// `Primitive[K, δ, δ]` — one registered stepping unit whose private state
+    /// and step function belong to its owner (§1's fourth decision).
+    ///
+    /// Source can hold one and hand it to `machine`; it can neither inspect
+    /// nor forge the state behind it.
+    Primitive {
+        step: Box<Self>,
+        input: Box<Self>,
+        output: Box<Self>,
+    },
+    /// `Machine[K, δ, δ]` — a finite description of a stepping process, never
+    /// the history it produces (`../constitution.md` §4).
+    Machine {
+        step: Box<Self>,
+        input: Box<Self>,
+        output: Box<Self>,
+    },
     Function(Vec<Self>, Box<Self>),
 }
 
@@ -534,6 +559,9 @@ impl std::fmt::Display for Type {
                 }
             }
             Self::Music => out.write_str("Music"),
+            Self::Step(tag) => write!(out, "{tag}"),
+            Self::Primitive { step, input, output } => write!(out, "Primitive<{step}, {input}, {output}>"),
+            Self::Machine { step, input, output } => write!(out, "Machine<{step}, {input}, {output}>"),
             Self::Function(parameters, result) => {
                 if parameters.len() == 1 {
                     let parameter = parameters.first().unwrap_or(&Self::Unit);
@@ -905,6 +933,166 @@ enum Builtin {
     Together,
     MapNotePitches,
     Play,
+    Primitive,
+    Machine,
+    Identity,
+    Connect,
+    Beside,
+    Feedback,
+    Copy,
+    Drop,
+    Swap,
+}
+
+impl MachineTree {
+    /// How much of the evaluator's budget this description occupies: one node
+    /// per node, and its stored bytes as its size.
+    fn shape(&self) -> (u64, u64) {
+        let stored = |bytes: &[u8]| u64::try_from(bytes.len()).unwrap_or(u64::MAX);
+        match self {
+            Self::Identity | Self::Copy | Self::Drop | Self::Swap => (1, 0),
+            Self::Primitive { configuration, .. } => (1, stored(configuration)),
+            Self::Connect(first, second) | Self::Beside(first, second) => {
+                let ((our_nodes, our_bytes), (their_nodes, their_bytes)) = (first.shape(), second.shape());
+                (
+                    our_nodes.saturating_add(their_nodes).saturating_add(1),
+                    our_bytes.saturating_add(their_bytes),
+                )
+            }
+            Self::Feedback { initial, inner } => {
+                let (nodes, bytes) = inner.shape();
+                (nodes.saturating_add(1), bytes.saturating_add(stored(initial)))
+            }
+        }
+    }
+
+    /// Append this description's nodes to `nodes`, children first, and answer
+    /// where its own node landed.
+    ///
+    /// Children before parents is the order [`crate::MachineSpec`] promises,
+    /// and it is what lets a consumer walk the array once, forwards, with
+    /// every index it reads already filled in.
+    fn flatten(&self, nodes: &mut Vec<crate::machine::SpecNode>) -> usize {
+        use crate::machine::{SpecForm, SpecNode};
+        let node = match self {
+            Self::Primitive {
+                descriptor,
+                configuration,
+            } => SpecNode::primitive(descriptor, configuration.clone()),
+            Self::Identity => SpecNode::wiring(SpecForm::Identity, Vec::new()),
+            Self::Copy => SpecNode::wiring(SpecForm::Copy, Vec::new()),
+            Self::Drop => SpecNode::wiring(SpecForm::Drop, Vec::new()),
+            Self::Swap => SpecNode::wiring(SpecForm::Swap, Vec::new()),
+            Self::Connect(first, second) | Self::Beside(first, second) => {
+                let children = vec![first.flatten(nodes), second.flatten(nodes)];
+                let form = if matches!(self, Self::Connect(_, _)) {
+                    SpecForm::Connect
+                } else {
+                    SpecForm::Beside
+                };
+                SpecNode::wiring(form, children)
+            }
+            Self::Feedback { initial, inner } => {
+                let children = vec![inner.flatten(nodes)];
+                SpecNode::initialized(SpecForm::Feedback, children, initial.clone())
+            }
+        };
+        nodes.push(node);
+        nodes.len().saturating_sub(1)
+    }
+}
+
+/// Write `value`'s exact bytes, or answer `None` where it has none.
+///
+/// This is §1.1's storable data, encoded: every form that can be a machine
+/// port, a registered unit's configuration, or a feedback value has a case
+/// here, and the forms that cannot — a spelled pitch and its relatives, a
+/// closure, contextual music — have none. A value with no encoding is not one
+/// this language could have put in a configuration position, so answering
+/// `None` is a statement about the caller rather than a gap.
+///
+/// Each case writes a distinguishing tag and frames every variable-length
+/// part, so two different values cannot encode to one byte string.
+fn encode_exactly(value: &Value, bytes: &mut Vec<u8>) -> Option<()> {
+    fn framed(bytes: &mut Vec<u8>, part: &[u8]) {
+        bytes.extend_from_slice(&u64::try_from(part.len()).unwrap_or(u64::MAX).to_be_bytes());
+        bytes.extend_from_slice(part);
+    }
+    fn counted(bytes: &mut Vec<u8>, count: usize) {
+        bytes.extend_from_slice(&u64::try_from(count).unwrap_or(u64::MAX).to_be_bytes());
+    }
+    fn exact(bytes: &mut Vec<u8>, value: Ratio<i64>) {
+        bytes.extend_from_slice(&value.numer().to_be_bytes());
+        bytes.extend_from_slice(&value.denom().to_be_bytes());
+    }
+    match value {
+        Value::Bool(held) => {
+            bytes.push(0);
+            bytes.push(u8::from(*held));
+        }
+        Value::Nat(held) => {
+            bytes.push(1);
+            bytes.extend_from_slice(&held.to_be_bytes());
+        }
+        Value::Ratio(held) => {
+            bytes.push(2);
+            exact(bytes, *held);
+        }
+        Value::Duration(held) => {
+            bytes.push(3);
+            exact(bytes, *held);
+        }
+        Value::Text(held) => {
+            bytes.push(4);
+            framed(bytes, held.as_bytes());
+        }
+        Value::Product(members) => {
+            bytes.push(5);
+            counted(bytes, members.len());
+            for member in members {
+                encode_exactly(member, bytes)?;
+            }
+        }
+        Value::Option { value, .. } => {
+            bytes.push(6);
+            match value {
+                Some(held) => {
+                    bytes.push(1);
+                    encode_exactly(held, bytes)?;
+                }
+                None => bytes.push(0),
+            }
+        }
+        Value::List { values, .. } => {
+            bytes.push(7);
+            counted(bytes, values.len());
+            for member in values {
+                encode_exactly(member, bytes)?;
+            }
+        }
+        Value::Pitch(_)
+        | Value::PitchClass(_)
+        | Value::Interval(_)
+        | Value::Scale(_)
+        | Value::Key(_)
+        | Value::Degree(_)
+        | Value::Frame(_)
+        | Value::ChordClass(_)
+        | Value::Triad(_)
+        | Value::Roman(_)
+        | Value::Voicing(_)
+        | Value::Pc12(_)
+        | Value::PcSet12(_)
+        | Value::Row12(_)
+        | Value::Sum { .. }
+        | Value::Data { .. }
+        | Value::Music(_)
+        | Value::Primitive { .. }
+        | Value::Machine { .. }
+        | Value::Closure(_)
+        | Value::Builtin(_) => return None,
+    }
+    Some(())
 }
 
 /// A base type as a builtin signature names it.
@@ -1064,9 +1252,7 @@ const fn all_storable(shapes: &[Shape]) -> bool {
 /// once per musical domain. A new domain is admissible when its operations can be declared here as
 /// `Delta` and discharge D1–D4; it does not get a new induction.
 ///
-/// Three of §5.8's four are spelled here. The fourth, machine builtins, arrives with the
-/// operations that populate it (`../across-stages/03-machine-calculus.md` §2) rather than as an
-/// empty variant waiting for them.
+/// All four of §5.8's families are spelled here.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Family {
     /// §5.8's **δ-builtins**: first-order and arrow-free. Covered by Theorem 5 once D1–D4 hold,
@@ -1078,6 +1264,132 @@ enum Family {
     Eliminator(Eliminator),
     /// §5.8's **track builtins**: constructs or transforms an event track. Covered by §5.7.
     Track,
+    /// §5.8's **machine builtins**: the nine forms that build a finite machine description
+    /// (`../across-stages/03-machine-calculus.md` §2). Each carries a rank-1 scheme, the way the
+    /// eliminators do, except `primitive`, whose type the build-local registry supplies.
+    Machine(MachineOp),
+}
+
+/// The nine machine builtins of `../across-stages/03-machine-calculus.md` §2.
+///
+/// A closed set, for the same reason [`Eliminator`] is one: §2's admissible forms are exactly
+/// these, and a tenth would be a change to the calculus rather than an addition to a library.
+/// Seven of them are pure wiring and say nothing about what is being wired; `primitive` names a
+/// registered unit, and `machine` is how one becomes a machine.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum MachineOp {
+    /// `primitive(name, version, configuration)` — one instance of a registered unit.
+    Primitive,
+    /// `machine(p)` — §2's lifting of a registered unit into a machine.
+    Machine,
+    Identity,
+    Connect,
+    Beside,
+    Feedback,
+    Copy,
+    Drop,
+    Swap,
+}
+
+impl MachineOp {
+    /// How many arguments this form is written with. Four of them take none: `identity`, `copy`,
+    /// `drop`, and `swap` *are* machines, not functions to one, so they are named rather than
+    /// applied.
+    const fn arity(self) -> usize {
+        match self {
+            Self::Identity | Self::Copy | Self::Drop | Self::Swap => 0,
+            Self::Machine => 1,
+            Self::Connect | Self::Beside | Self::Feedback => 2,
+            Self::Primitive => 3,
+        }
+    }
+
+    /// This form's type, as a rank-1 scheme, instantiated fresh.
+    ///
+    /// Every port is a **data** variable, which is §1.1's storable-data rule doing the whole of
+    /// the work: a machine whose port held a function would need that variable bound to an arrow,
+    /// and [`crate::infer::Unifier::bind`] refuses one at any depth. There is no second check for
+    /// a hidden closure because there is no way to write one down.
+    ///
+    /// The step is an **ordinary** variable, so `connect` is polymorphic in what a step counts
+    /// while still forcing its two arguments to agree. What stops a step position from being
+    /// filled by something that is not a step at all is [`machine_type`], at the one place a step
+    /// can be written: the first argument of `Machine<…>` or `Primitive<…>`.
+    ///
+    /// `primitive` has no scheme. Its result is the unit the literal name and version select from
+    /// the build-local registry, so it is checked by a rule of its own rather than by unification
+    /// against a type written here.
+    fn instantiate(self, unifier: &mut Unifier) -> Option<Type> {
+        let step = unifier.fresh(Kind::Ordinary);
+        let mut port = || unifier.fresh(Kind::Data);
+        let (input, output) = (port(), port());
+        let machine = |step: &Type, input: Type, output: Type| Type::Machine {
+            step: Box::new(step.clone()),
+            input: Box::new(input),
+            output: Box::new(output),
+        };
+        Some(match self {
+            Self::Primitive => return None,
+            Self::Machine => Type::Function(
+                vec![Type::Primitive {
+                    step: Box::new(step.clone()),
+                    input: Box::new(input.clone()),
+                    output: Box::new(output.clone()),
+                }],
+                Box::new(machine(&step, input, output)),
+            ),
+            Self::Identity => machine(&step, input.clone(), input),
+            Self::Connect => {
+                let last = port();
+                Type::Function(
+                    vec![
+                        machine(&step, input.clone(), output.clone()),
+                        machine(&step, output, last.clone()),
+                    ],
+                    Box::new(machine(&step, input, last)),
+                )
+            }
+            Self::Beside => {
+                let (other_input, other_output) = (port(), port());
+                Type::Function(
+                    vec![
+                        machine(&step, input.clone(), output.clone()),
+                        machine(&step, other_input.clone(), other_output.clone()),
+                    ],
+                    Box::new(machine(
+                        &step,
+                        Type::Product(vec![input, other_input]),
+                        Type::Product(vec![output, other_output]),
+                    )),
+                )
+            }
+            // The stored value is a port of the inner machine on both sides: it goes in as the
+            // state this step began with and comes out as the state the next step begins with.
+            // That is what makes the loop initialized rather than instantaneous — there is no
+            // way to write `feedback` without saying what the first step reads.
+            Self::Feedback => {
+                let stored = port();
+                Type::Function(
+                    vec![
+                        stored.clone(),
+                        machine(
+                            &step,
+                            Type::Product(vec![input.clone(), stored.clone()]),
+                            Type::Product(vec![output.clone(), stored]),
+                        ),
+                    ],
+                    Box::new(machine(&step, input, output)),
+                )
+            }
+            Self::Copy => machine(&step, input.clone(), Type::Product(vec![input.clone(), input])),
+            Self::Drop => machine(&step, input, Type::Unit),
+            Self::Swap => machine(
+                &step,
+                Type::Product(vec![input.clone(), output.clone()]),
+                Type::Product(vec![output, input]),
+            ),
+        })
+    }
 }
 
 /// The seven structural eliminators of `02-core-calculus.md` §5.6.
@@ -1275,7 +1587,7 @@ const fn delta(arguments: &'static [Shape], result: Shape) -> Family {
     Family::Delta { arguments, result }
 }
 
-const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 79] = [
+const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 88] = [
     BuiltinOwnership {
         operation: Builtin::NatFold,
         spelling: "nat_fold",
@@ -1750,6 +2062,60 @@ const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 79] = [
         hidden_information: "contextual music construction: the voicing's private pitches become sounded occurrences with provenance",
         family: Family::Track,
     },
+    BuiltinOwnership {
+        operation: Builtin::Primitive,
+        spelling: "primitive",
+        hidden_information: "the build-local registry: which unit a name and version select, and that unit's private state layout, start, and step",
+        family: Family::Machine(MachineOp::Primitive),
+    },
+    BuiltinOwnership {
+        operation: Builtin::Machine,
+        spelling: "machine",
+        hidden_information: "the exact configuration encoding a registered unit is instantiated with",
+        family: Family::Machine(MachineOp::Machine),
+    },
+    BuiltinOwnership {
+        operation: Builtin::Identity,
+        spelling: "identity",
+        hidden_information: "the machine description's node representation",
+        family: Family::Machine(MachineOp::Identity),
+    },
+    BuiltinOwnership {
+        operation: Builtin::Connect,
+        spelling: "connect",
+        hidden_information: "the machine description's node representation and the order its children are stored in",
+        family: Family::Machine(MachineOp::Connect),
+    },
+    BuiltinOwnership {
+        operation: Builtin::Beside,
+        spelling: "beside",
+        hidden_information: "the machine description's node representation and the order its children are stored in",
+        family: Family::Machine(MachineOp::Beside),
+    },
+    BuiltinOwnership {
+        operation: Builtin::Feedback,
+        spelling: "feedback",
+        hidden_information: "the exact encoding of the stored value the first step reads",
+        family: Family::Machine(MachineOp::Feedback),
+    },
+    BuiltinOwnership {
+        operation: Builtin::Copy,
+        spelling: "copy",
+        hidden_information: "the machine description's node representation",
+        family: Family::Machine(MachineOp::Copy),
+    },
+    BuiltinOwnership {
+        operation: Builtin::Drop,
+        spelling: "drop",
+        hidden_information: "the machine description's node representation",
+        family: Family::Machine(MachineOp::Drop),
+    },
+    BuiltinOwnership {
+        operation: Builtin::Swap,
+        spelling: "swap",
+        hidden_information: "the machine description's node representation",
+        family: Family::Machine(MachineOp::Swap),
+    },
 ];
 
 impl Builtin {
@@ -1834,6 +2200,15 @@ impl Builtin {
             Self::Together => "together",
             Self::MapNotePitches => "map_note_pitches",
             Self::Play => "play",
+            Self::Primitive => "primitive",
+            Self::Machine => "machine",
+            Self::Identity => "identity",
+            Self::Connect => "connect",
+            Self::Beside => "beside",
+            Self::Feedback => "feedback",
+            Self::Copy => "copy",
+            Self::Drop => "drop",
+            Self::Swap => "swap",
         }
     }
 
@@ -1960,7 +2335,16 @@ impl Builtin {
             | Self::Row12Forms
             | Self::Row12Symmetries
             | Self::Row12Repeats
-            | Self::Row12Missing => None,
+            | Self::Row12Missing
+            | Self::Primitive
+            | Self::Machine
+            | Self::Identity
+            | Self::Connect
+            | Self::Beside
+            | Self::Feedback
+            | Self::Copy
+            | Self::Drop
+            | Self::Swap => None,
         }
     }
 }
@@ -2127,8 +2511,58 @@ enum Value {
         fields: Vec<Self>,
     },
     Music(Music),
+    /// One instance of a registered stepping unit — §2's `p`.
+    ///
+    /// The configuration is kept as the value it was written as rather than as
+    /// bytes, so that a diagnostic can print it; the bytes are taken once, at
+    /// projection, where a machine's exact identity is settled.
+    Primitive {
+        descriptor: &'static crate::machine::PrimitiveDescriptor,
+        configuration: Box<Self>,
+    },
+    /// A finite machine *description* — never the history it produces
+    /// (`docs/rules/constitution.md` §4).
+    ///
+    /// The type is carried for the reason a list carries its member type: a
+    /// machine that dropped it could not say what it is, and the projection
+    /// needs the step and the two ports that only the type holds.
+    Machine {
+        ty: Type,
+        tree: Box<MachineTree>,
+    },
     Closure(Box<Closure>),
     Builtin(Builtin),
+}
+
+/// A machine description, as §2's forms build one.
+///
+/// A tree rather than the flat array [`crate::MachineSpec`] publishes, because
+/// this is what evaluation produces and evaluation is compositional: `connect`
+/// holds the two machines it was applied to. Flattening happens once, at the
+/// projection, where the order a consumer wants — children before parents — is
+/// what matters.
+///
+/// It holds no source closure, no environment, and no state. What a step *does*
+/// is the registered unit's, and prompt 127f is where that arrives.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum MachineTree {
+    Primitive {
+        descriptor: &'static crate::machine::PrimitiveDescriptor,
+        configuration: Vec<u8>,
+    },
+    Identity,
+    Connect(Box<Self>, Box<Self>),
+    Beside(Box<Self>, Box<Self>),
+    /// The stored value the first step reads, and the machine it is fed back
+    /// through. There is no uninitialized form: `feedback` takes the initial
+    /// value as an argument, so a loop with no delay cannot be written.
+    Feedback {
+        initial: Vec<u8>,
+        inner: Box<Self>,
+    },
+    Copy,
+    Drop,
+    Swap,
 }
 
 /// A notation-first value retained until a voice supplies scope and onset.
@@ -2365,6 +2799,48 @@ pub(crate) struct Program {
 }
 
 impl Program {
+    /// Every machine this program names, with its exact projection, in the
+    /// order the source declares them.
+    ///
+    /// This is the whole of how a machine leaves the compiler. The evaluator's
+    /// value stays private: a consumer that could see it could also see the
+    /// source types, environments, and provenance that built it, none of which
+    /// is part of what a machine means.
+    ///
+    /// A machine whose type is still open — `identity` names one at every step
+    /// and every port — is skipped rather than guessed at. It is a perfectly
+    /// good polymorphic value and simply not yet *a* machine: the step and the
+    /// two ports are what a projection is for, and a consumer cannot prepare a
+    /// port whose type has not been decided.
+    pub(crate) fn machines(&self) -> Vec<(String, crate::MachineSpec)> {
+        fn decided(ty: &Type) -> bool {
+            !matches!(ty, Type::Var(_)) && crate::infer::member_types(ty).into_iter().all(decided)
+        }
+        self.values
+            .iter()
+            .filter_map(|(name, value)| {
+                let Value::Machine { ty, tree } = value else {
+                    return None;
+                };
+                let Type::Machine { step, input, output } = ty else {
+                    return None;
+                };
+                let Type::Step(tag) = **step else {
+                    return None;
+                };
+                if !decided(input) || !decided(output) {
+                    return None;
+                }
+                let mut nodes = Vec::new();
+                tree.flatten(&mut nodes);
+                Some((
+                    name.clone(),
+                    crate::MachineSpec::new(tag, input.to_string(), output.to_string(), nodes),
+                ))
+            })
+            .collect()
+    }
+
     pub(crate) fn root_music(&self) -> Music {
         Music {
             items: Vec::new(),
@@ -2455,6 +2931,12 @@ impl Value {
             Self::List { member, .. } => Type::List(Box::new(member.clone())),
             Self::Data { id, arguments, .. } => Type::Nominal(id.clone(), arguments.clone()),
             Self::Music(_) => Type::Music,
+            Self::Primitive { descriptor, .. } => Type::Primitive {
+                step: Box::new(Type::Step(descriptor.step())),
+                input: Box::new(descriptor.input().ty()),
+                output: Box::new(descriptor.output().ty()),
+            },
+            Self::Machine { ty, .. } => ty.clone(),
             Self::Closure(closure) => Type::Function(
                 closure
                     .parameters
@@ -2545,6 +3027,22 @@ impl Value {
             // the operation itself, and either way there is no argument of
             // its own to read.
             Self::Builtin(_) => 0,
+            // A description is traversed the way every other finite value is:
+            // through the bytes its identity is taken over, which is the whole
+            // of what it holds.
+            Self::Primitive {
+                descriptor,
+                configuration,
+            } => u64::from(descriptor.version()).rotate_left(9) ^ configuration.normalization_witness(),
+            Self::Machine { tree, .. } => {
+                let mut nodes = Vec::new();
+                tree.flatten(&mut nodes);
+                nodes.iter().fold(0u64, |witness, node| {
+                    node.stored()
+                        .iter()
+                        .fold(witness.rotate_left(5), |witness, byte| witness ^ u64::from(*byte))
+                })
+            }
         }
     }
 }
@@ -3296,6 +3794,8 @@ fn check_and_evaluate_metered(
             | Value::List { .. }
             | Value::Data { .. }
             | Value::Closure(_)
+            | Value::Primitive { .. }
+            | Value::Machine { .. }
             | Value::Builtin(_) => None,
         })
         .collect();
@@ -3784,6 +4284,9 @@ fn function_result(ty: &Type) -> Option<&Type> {
         | Type::PcSet12
         | Type::Row12
         | Type::Music
+        | Type::Step(_)
+        | Type::Primitive { .. }
+        | Type::Machine { .. }
         | Type::Product(_)
         | Type::Sum(_, _)
         | Type::Option(_)
@@ -3827,7 +4330,9 @@ pub(crate) fn scoped_type(resolver: &mut Resolver, scope: &TypeScope<'_>, node: 
 /// Whether `name` is one of the types the compiler owns, so a library cannot
 /// declare a second thing by that name and leave two readings of one word.
 pub(crate) fn is_builtin_type_name(name: &str) -> bool {
-    named_type(name).is_some() || matches!(name, "Option" | "List" | "Result")
+    named_type(name).is_some()
+        || crate::machine::StepTag::named(name).is_some()
+        || matches!(name, "Option" | "List" | "Result" | "Machine" | "Primitive")
 }
 
 /// The arrow type a `fn` declares, which is the type a signature member of
@@ -3907,6 +4412,13 @@ fn lower_type(mut resolver: Option<&mut Resolver>, scope: &TypeScope<'_>, node: 
         if let Some(named) = named_type(text) {
             return Some(named);
         }
+        // A step tag is a type so that `K` unifies like any other index, but
+        // it is not a *value* type: nothing inhabits it, and the only place it
+        // can be written is the first argument of `Machine<…>` or
+        // `Primitive<…>`, which is checked where those are read.
+        if let Some(tag) = crate::machine::StepTag::named(text) {
+            return Some(Type::Step(tag));
+        }
         // A library-declared type, or one of the declaration's own
         // parameters. The compiler's own names are asked first, so no
         // declaration can quietly become a second reading of `Pitch`;
@@ -3963,6 +4475,9 @@ fn lower_type(mut resolver: Option<&mut Resolver>, scope: &TypeScope<'_>, node: 
             .map(|child| lower_type(resolver.as_deref_mut(), scope, child))
             .collect();
         let arguments = arguments?;
+        if matches!(written, "Machine" | "Primitive") {
+            return machine_type(resolver.as_deref_mut(), node, written, arguments);
+        }
         // Arity is checked here rather than at unification, because a
         // declaration written at the wrong size names no type at all: there is
         // nothing for a later pass to be wrong about.
@@ -4016,6 +4531,74 @@ fn lower_type(mut resolver: Option<&mut Resolver>, scope: &TypeScope<'_>, node: 
         };
     }
     None
+}
+
+/// `Machine<K, A, B>` or `Primitive<K, A, B>`, read from what was written.
+///
+/// Both are checked here rather than at unification because a written type is
+/// the one place `K` can be got wrong by writing something that is not a step
+/// tag at all, and because a port holding an arrow names no machine: §1.1 says
+/// a machine's ports are storable data, and a type that could not be stored has
+/// nothing for the unifier to be wrong about later.
+fn machine_type(
+    resolver: Option<&mut Resolver>,
+    node: &SyntaxNode,
+    written: &str,
+    arguments: Vec<Type>,
+) -> Option<Type> {
+    let mut resolver = resolver;
+    let mut complain = |complaint: String, label: &str, help: String| {
+        if let Some(resolver) = resolver.as_deref_mut() {
+            resolver.report(
+                Diagnostic::error(Code::WrongArity, complaint)
+                    .at(crate::resolve::trimmed_span(node), label.to_owned())
+                    .help(help),
+            );
+        }
+    };
+    let [step, input, output] = <[Type; 3]>::try_from(arguments).ok().or_else(|| {
+        complain(
+            format!("`{written}` takes 3 type arguments: a step, an input port, and an output port"),
+            "written here",
+            format!("write `{written}<AudioFrameStep, τ, τ>`"),
+        );
+        None
+    })?;
+    if !matches!(step, Type::Step(_)) {
+        complain(
+            format!("`{step}` is not a step"),
+            "written where a step belongs",
+            "a step says what one step of the machine counts; `AudioFrameStep` is one".to_owned(),
+        );
+        return None;
+    }
+    for port in [&input, &output] {
+        if holds_an_arrow(port) {
+            complain(
+                format!("`{port}` is not storable data, so it cannot be a port"),
+                "written as a port",
+                "a machine's ports carry values between steps, and a function is not a value that can be stored"
+                    .to_owned(),
+            );
+            return None;
+        }
+    }
+    let (step, input, output) = (Box::new(step), Box::new(input), Box::new(output));
+    Some(if written == "Machine" {
+        Type::Machine { step, input, output }
+    } else {
+        Type::Primitive { step, input, output }
+    })
+}
+
+/// Whether an arrow appears anywhere in `ty` — §1.1's storable-data rule, read
+/// on a written type rather than on an inferred one.
+///
+/// The inferred side of the same rule is `Kind::Data`, which refuses an arrow
+/// structurally at unification; this is the same question asked of a type the
+/// file wrote out, where there is no variable to constrain.
+fn holds_an_arrow(ty: &Type) -> bool {
+    matches!(ty, Type::Function(_, _)) || crate::infer::member_types(ty).into_iter().any(holds_an_arrow)
 }
 
 /// What a dotted name turned out to be, once a record projection is one of the
@@ -4902,6 +5485,23 @@ impl Checker<'_> {
             return None;
         }
         let name = reading.name;
+        // `identity`, `copy`, `drop`, and `swap` are machines, not functions to
+        // one. A name is the whole of how they are written, which is why they
+        // are read here rather than at an application.
+        if let Some(builtin) = Builtin::named(&name)
+            && let Some(Family::Machine(operation)) = builtin.family()
+            && operation.arity() == 0
+        {
+            let ty = operation.instantiate(self.unifier)?;
+            return Some(Expr {
+                kind: ExprKind::Builtin {
+                    builtin,
+                    arguments: Vec::new(),
+                },
+                ty,
+                span,
+            });
+        }
         if let Some(builtin) = Builtin::named(&name)
             && builtin.is_track()
         {
@@ -5544,6 +6144,8 @@ impl Checker<'_> {
             | Value::Data { .. }
             | Value::Music(_)
             | Value::Closure(_)
+            | Value::Primitive { .. }
+            | Value::Machine { .. }
             | Value::Builtin(_) => Coverage::Literal(literal_key(&value)),
         };
         Some((Pattern::Literal(value), covered, bindings))
@@ -5718,6 +6320,7 @@ impl Checker<'_> {
             // Unreached: the caller routes a track builtin to the general application path, where
             // its arrow type is what the arguments are checked against.
             Family::Track => builtin.parameters()?.len(),
+            Family::Machine(operation) => operation.arity(),
         };
         if raw.len() != wanted {
             self.resolver.report(
@@ -5753,16 +6356,29 @@ impl Checker<'_> {
                 span,
             });
         }
-        let Family::Eliminator(eliminator) = family else {
-            return None;
+        // The one machine builtin whose type is not written down: which unit
+        // `primitive` makes is decided by the name and version it is applied
+        // to, so the registry answers where a scheme would otherwise be.
+        if family == Family::Machine(MachineOp::Primitive) {
+            return self.registered_instance(&nodes, span, expected);
+        }
+        let scheme = match family {
+            Family::Eliminator(eliminator) => eliminator.instantiate(self.unifier),
+            Family::Machine(operation) => operation.instantiate(self.unifier)?,
+            Family::Delta { .. } | Family::Track => return None,
         };
         // One unification against a declared scheme, in place of seven
         // hand-written checks. The result is unified with what the position
         // wants *before* the arguments are read, so that `nat_fold(0, step,
         // n)` in a `List<Nat>` position complains about the zero rather than
         // about the whole call.
-        let Type::Function(parameters, result) = eliminator.instantiate(self.unifier) else {
-            return None;
+        let (parameters, result) = if let Type::Function(parameters, result) = scheme {
+            (parameters, *result)
+        } else {
+            // A machine constant written with an empty argument list. `identity`
+            // *is* a machine rather than a function to one, so `identity()` is
+            // it, applied to nothing.
+            (Vec::new(), scheme)
         };
         if let Some(expected) = expected {
             self.reconcile(expected, &result, span)?;
@@ -5774,6 +6390,86 @@ impl Checker<'_> {
         let ty = self.unifier.resolve(&result);
         Some(Expr {
             kind: ExprKind::Builtin { builtin, arguments },
+            ty,
+            span,
+        })
+    }
+
+    /// `primitive(name, version, configuration)` — one instance of a registered
+    /// unit (`../across-stages/03-machine-calculus.md` §1).
+    ///
+    /// The name and version have to be *written*, not computed. A pair
+    /// `(name, version)` selects exactly one state layout, configuration
+    /// codec, start function, and step function, and a compiler that could not
+    /// say which unit an expression named could not check its ports either —
+    /// so this is the one place a builtin's argument is read as a literal
+    /// rather than as a value of the right type.
+    fn registered_instance(&mut self, nodes: &[SyntaxNode], span: SourceSpan, expected: Option<&Type>) -> Option<Expr> {
+        let name = self.check(nodes.first()?, Some(&Type::Text))?;
+        let version = self.check(nodes.get(1)?, Some(&Type::Nat))?;
+        let (ExprKind::Literal(Value::Text(id)), ExprKind::Literal(Value::Nat(number))) = (&name.kind, &version.kind)
+        else {
+            self.resolver.report(
+                Diagnostic::error(
+                    Code::TypeMismatch,
+                    "a registered unit is named by a written name and version",
+                )
+                .at(span, "the name or the version is computed here")
+                .help("write both out: which unit this is decides its ports, and that has to be known while the piece is being checked"),
+            );
+            self.failed = true;
+            return None;
+        };
+        let Some(descriptor) = u32::try_from(*number)
+            .ok()
+            .and_then(|number| crate::machine::descriptor(id, number))
+        else {
+            let versions = crate::machine::versions_of(id);
+            let help = if versions.is_empty() {
+                let registered = crate::machine::registered_ids();
+                if registered.is_empty() {
+                    "this build registers no units at all".to_owned()
+                } else {
+                    format!(
+                        "this build registers {}",
+                        registered
+                            .iter()
+                            .map(|name| format!("`{name}`"))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    )
+                }
+            } else {
+                format!(
+                    "`{id}` is registered at version {}",
+                    versions.iter().map(u32::to_string).collect::<Vec<_>>().join(", ")
+                )
+            };
+            self.resolver.report(
+                Diagnostic::error(
+                    Code::UnknownName,
+                    format!("no registered unit `{id}` at version {number}"),
+                )
+                .at(span, "named here")
+                .help(help),
+            );
+            self.failed = true;
+            return None;
+        };
+        let configuration = self.check(nodes.get(2)?, Some(&descriptor.configuration().ty()))?;
+        let ty = Type::Primitive {
+            step: Box::new(Type::Step(descriptor.step())),
+            input: Box::new(descriptor.input().ty()),
+            output: Box::new(descriptor.output().ty()),
+        };
+        if let Some(expected) = expected {
+            self.reconcile(expected, &ty, span)?;
+        }
+        Some(Expr {
+            kind: ExprKind::Builtin {
+                builtin: Builtin::Primitive,
+                arguments: vec![name, version, configuration],
+            },
             ty,
             span,
         })
@@ -5953,6 +6649,9 @@ fn uncovered(world: &World, target: &Type, coverage: &IndexSet<Coverage>) -> Opt
         | Type::PcSet12
         | Type::Row12
         | Type::Music
+        | Type::Step(_)
+        | Type::Primitive { .. }
+        | Type::Machine { .. }
         | Type::Product(_)
         | Type::Function(_, _) => Some("_".to_owned()),
     }
@@ -5989,6 +6688,8 @@ fn literal_key(value: &Value) -> String {
         | Value::Data { .. }
         | Value::Music(_)
         | Value::Closure(_)
+        | Value::Primitive { .. }
+        | Value::Machine { .. }
         | Value::Builtin(_) => "constructor".to_owned(),
     }
 }
@@ -6260,7 +6961,9 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                     let provided = supplied(builtin.parameters()?.len(), arguments, environment, meter)?;
                     apply_builtin(builtin, provided, expression.span)
                 }
-                Value::Bool(_)
+                Value::Primitive { .. }
+                | Value::Machine { .. }
+                | Value::Bool(_)
                 | Value::Nat(_)
                 | Value::Ratio(_)
                 | Value::Text(_)
@@ -6322,6 +7025,8 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 | Value::Data { .. }
                 | Value::Music(_)
                 | Value::Closure(_)
+                | Value::Primitive { .. }
+                | Value::Machine { .. }
                 | Value::Builtin(_) => None,
             }
         }
@@ -6402,6 +7107,8 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                     | Value::Data { .. }
                     | Value::Music(_)
                     | Value::Closure(_)
+                    | Value::Primitive { .. }
+                    | Value::Machine { .. }
                     | Value::Builtin(_) => return None,
                 };
                 bindings.insert(name.clone(), bound);
@@ -6678,7 +7385,16 @@ fn apply_builtin(builtin: Builtin, provided: Vec<Value>, span: SourceSpan) -> Op
         | Builtin::Row12Forms
         | Builtin::Row12Symmetries
         | Builtin::Row12Repeats
-        | Builtin::Row12Missing => return None,
+        | Builtin::Row12Missing
+        | Builtin::Primitive
+        | Builtin::Machine
+        | Builtin::Identity
+        | Builtin::Connect
+        | Builtin::Beside
+        | Builtin::Feedback
+        | Builtin::Copy
+        | Builtin::Drop
+        | Builtin::Swap => return None,
     };
     Some(Value::Music(Music {
         items: Vec::new(),
@@ -7134,6 +7850,8 @@ fn eval_builtin(
                     | Value::Data { .. }
                     | Value::Music(_)
                     | Value::Closure(_)
+                    | Value::Primitive { .. }
+                    | Value::Machine { .. }
                     | Value::Builtin(_) => None,
                 })
                 .collect();
@@ -7338,6 +8056,79 @@ fn eval_builtin(
                 None => Some(zero),
             }
         }
+        // §2's forms, each building a description rather than running one. Evaluation is where a
+        // configuration and a feedback value become exact bytes: the checker has already said
+        // they are storable data, and this is the last moment a value can be read as the value it
+        // was written as.
+        Builtin::Primitive => {
+            let (Value::Text(id), Value::Nat(number)) = (values.first()?, values.get(1)?) else {
+                return None;
+            };
+            let descriptor = u32::try_from(*number)
+                .ok()
+                .and_then(|number| crate::machine::descriptor(id, number))?;
+            let configuration = values.get(2)?.clone();
+            let (nodes, bytes) = value_shape(&configuration);
+            meter.preflight_construct(builtin.name(), nodes.saturating_add(1), bytes, expression.span)?;
+            Some(Value::Primitive {
+                descriptor,
+                configuration: Box::new(configuration),
+            })
+        }
+        Builtin::Machine => {
+            let Value::Primitive {
+                descriptor,
+                configuration,
+            } = values.first()?
+            else {
+                return None;
+            };
+            let mut encoded = Vec::new();
+            encode_exactly(configuration, &mut encoded)?;
+            machine_value(
+                builtin,
+                MachineTree::Primitive {
+                    descriptor,
+                    configuration: encoded,
+                },
+                meter,
+                expression,
+            )
+        }
+        Builtin::Identity => machine_value(builtin, MachineTree::Identity, meter, expression),
+        Builtin::Copy => machine_value(builtin, MachineTree::Copy, meter, expression),
+        Builtin::Drop => machine_value(builtin, MachineTree::Drop, meter, expression),
+        Builtin::Swap => machine_value(builtin, MachineTree::Swap, meter, expression),
+        Builtin::Connect | Builtin::Beside => {
+            let (Value::Machine { tree: first, .. }, Value::Machine { tree: second, .. }) =
+                (values.first()?, values.get(1)?)
+            else {
+                return None;
+            };
+            let (first, second) = (first.clone(), second.clone());
+            let tree = if builtin == Builtin::Connect {
+                MachineTree::Connect(first, second)
+            } else {
+                MachineTree::Beside(first, second)
+            };
+            machine_value(builtin, tree, meter, expression)
+        }
+        Builtin::Feedback => {
+            let Value::Machine { tree: inner, .. } = values.get(1)? else {
+                return None;
+            };
+            let mut initial = Vec::new();
+            encode_exactly(values.first()?, &mut initial)?;
+            machine_value(
+                builtin,
+                MachineTree::Feedback {
+                    initial,
+                    inner: inner.clone(),
+                },
+                meter,
+                expression,
+            )
+        }
         // The track builtins are values with arrow types, performed by `apply_builtin` once
         // an application supplies their arguments. Elaboration never builds an
         // `ExprKind::Builtin` around one.
@@ -7350,6 +8141,21 @@ fn eval_builtin(
         | Builtin::MapNotePitches
         | Builtin::Play => None,
     }
+}
+
+/// A finished description as a value, charged for what it holds.
+///
+/// The type comes from the expression rather than from the tree because the
+/// tree says how the machine is wired and the type says what it is wired *for*:
+/// the step and the two ports live only in the type, and the projection needs
+/// all three.
+fn machine_value(builtin: Builtin, tree: MachineTree, meter: &mut WorkMeter, expression: &Expr) -> Option<Value> {
+    let (nodes, bytes) = tree.shape();
+    meter.preflight_construct(builtin.name(), nodes, bytes, expression.span)?;
+    Some(Value::Machine {
+        ty: expression.ty.clone(),
+        tree: Box::new(tree),
+    })
 }
 
 /// Wrap a partial answer as this evaluator's option value.
@@ -7449,7 +8255,9 @@ fn fold_value(
         Value::Builtin(builtin) => apply_builtin(*builtin, arguments, span),
         // Every other value is not a function, and the checker has already
         // said so: a case of a constructor with fields has an arrow type.
-        Value::Bool(_)
+        Value::Primitive { .. }
+        | Value::Machine { .. }
+        | Value::Bool(_)
         | Value::Nat(_)
         | Value::Ratio(_)
         | Value::Text(_)
@@ -7610,6 +8418,13 @@ fn value_shape(value: &Value) -> (u64, u64) {
         Value::Music(music) => music_shape(music),
         Value::Closure(closure) => aggregate_shape(closure.captures.values()),
         Value::Builtin(_) => (1, 1),
+        // One node per description node, and its stored bytes as its size: a
+        // configuration is what a machine value actually holds.
+        Value::Primitive { configuration, .. } => {
+            let (nodes, bytes) = value_shape(configuration);
+            (nodes.saturating_add(1), bytes)
+        }
+        Value::Machine { tree, .. } => tree.shape(),
     }
 }
 
@@ -8162,7 +8977,7 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(
             entries.len(),
-            79,
+            88,
             "new compiler operations must enter the ownership registry"
         );
         let unique = entries.iter().map(|(spelling, _)| *spelling).collect::<IndexSet<_>>();
@@ -8254,7 +9069,12 @@ mod tests {
             // A declared value has no place in the builtin registry's
             // sample pool: no δ-builtin's signature can name one, because a
             // library declares it and the registry is the compiler's own.
-            Value::Data { .. } | Value::Music(_) | Value::Closure(_) | Value::Builtin(_) => return None,
+            Value::Data { .. }
+            | Value::Music(_)
+            | Value::Closure(_)
+            | Value::Primitive { .. }
+            | Value::Machine { .. }
+            | Value::Builtin(_) => return None,
         })
     }
 
@@ -8422,12 +9242,13 @@ mod tests {
         // One table, one fold: "classified exactly once" is the statement that every entry falls
         // into one of these arms, and a match is what makes that true rather than checked.
         let families = BUILTIN_OWNERSHIP.iter().map(|entry| entry.family);
-        let (delta, eliminator, track) = families.fold((0, 0, 0), |(d, e, t), family| match family {
-            Family::Delta { .. } => (d + 1, e, t),
-            Family::Eliminator(_) => (d, e + 1, t),
-            Family::Track => (d, e, t + 1),
+        let (delta, eliminator, track, machine) = families.fold((0, 0, 0, 0), |(d, e, t, m), family| match family {
+            Family::Delta { .. } => (d + 1, e, t, m),
+            Family::Eliminator(_) => (d, e + 1, t, m),
+            Family::Track => (d, e, t + 1, m),
+            Family::Machine(_) => (d, e, t, m + 1),
         });
-        assert_eq!(delta + eliminator + track, BUILTIN_OWNERSHIP.len());
+        assert_eq!(delta + eliminator + track + machine, BUILTIN_OWNERSHIP.len());
         assert_eq!(
             eliminator, 7,
             "the structural eliminators of §5.6 are nat_fold, list_fold, option_fold, map, filter, range, and repeat"
@@ -8438,8 +9259,13 @@ mod tests {
              map_note_pitches, and play"
         );
         assert_eq!(
-            delta + eliminator + track,
-            79,
+            machine, 9,
+            "the machine builtins of §2 are primitive, machine, identity, connect, beside, feedback, copy, \
+             drop, and swap"
+        );
+        assert_eq!(
+            delta + eliminator + track + machine,
+            88,
             "a new compiler operation must be classified before it is admitted"
         );
     }
@@ -8466,6 +9292,11 @@ mod tests {
             Type::Option(member) | Type::List(member) => mentions_function(member),
             Type::Sum(value, error) => mentions_function(value) || mentions_function(error),
             Type::Product(members) => members.iter().any(mentions_function),
+            // A machine's ports are refused an arrow where the machine is built, but this law
+            // reads a written signature rather than an inferred one, so it looks for itself.
+            Type::Primitive { step, input, output } | Type::Machine { step, input, output } => {
+                mentions_function(step) || mentions_function(input) || mentions_function(output)
+            }
             // Listed rather than wildcarded: a new *type former* would otherwise be assumed
             // arrow-free, and this law is the only thing standing between that assumption and
             // §5.8's no-arrow premise. A registry signature is written, not inferred, so a
@@ -8494,6 +9325,7 @@ mod tests {
             // A declared type holds only what its fields hold, and a field
             // holding an arrow is refused where the declaration is written.
             | Type::Nominal(_, _)
+            | Type::Step(_)
             | Type::Music => false,
         }
     }
@@ -8526,6 +9358,32 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// Two machines whose steps count different things do not connect
+    /// (`docs/rules/across-stages/03-machine-calculus.md` §2).
+    ///
+    /// This law is stated here rather than beside the rest of them in
+    /// `tests/suite/machine_laws.rs` because it needs two step tags and the
+    /// governing grammar names one. A second tag exists only under `cfg(test)`,
+    /// and an integration test links the ordinary build, where every registered
+    /// unit counts frames and the law would pass without ever being asked.
+    #[test]
+    fn machines_that_count_different_things_do_not_connect() {
+        let joined = refusals(
+            "piece \"law\" { let m = connect(machine(primitive(\"scale\", 1, 3/2)), \
+             machine(primitive(\"other_step\", 1, 3/2))); }",
+        );
+        assert!(
+            joined.iter().any(|diagnostic| diagnostic.code == Code::TypeMismatch),
+            "two machines with unlike steps were connected: {joined:?}"
+        );
+
+        let alone = refusals("piece \"law\" { let m = machine(primitive(\"other_step\", 1, 3/2)); }");
+        assert!(
+            alone.is_empty(),
+            "the unit itself is well-formed; only the joining is refused: {alone:?}"
+        );
     }
 
     /// Why a piece was refused.

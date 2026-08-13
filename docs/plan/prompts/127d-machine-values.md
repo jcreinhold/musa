@@ -1,7 +1,7 @@
 ---
 id: 127d
 slug: machine-values
-status: pending
+status: done
 depends_on: [127b, 127ca]
 phase: 3
 ---

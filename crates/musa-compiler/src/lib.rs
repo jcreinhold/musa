@@ -46,6 +46,7 @@ mod imports;
 mod infer;
 mod kernel_text;
 mod lint;
+mod machine;
 mod marks;
 mod module;
 mod origin;
@@ -101,6 +102,7 @@ pub use musa_kernel::{
     keyword_doc as kernel_keyword_doc,
 };
 
+pub use crate::machine::{MACHINE_SPEC_VERSION, MachineSpec, SpecForm, SpecNode};
 pub use crate::marks::{Anchor, Argument, Mark, MarkArgument, MarkDef, Slot, VOCABULARY, lookup_mark};
 pub use crate::origin::{ChoicePath, ChoiceStep, DeclarationId, ExpansionStep, Interval, Origin, SourceSpan};
 pub use crate::performance::{

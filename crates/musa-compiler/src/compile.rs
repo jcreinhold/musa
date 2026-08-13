@@ -86,6 +86,7 @@ pub struct Compilation {
     kind: DocumentKind,
     snapshot: Option<ScoreSnapshot>,
     studio: crate::studio::StudioSpec,
+    machines: Vec<(String, crate::MachineSpec)>,
     diagnostics: Vec<Diagnostic>,
     identity: musa_kernel::SemanticHash,
     decisions: Vec<crate::DecisionRecord>,
@@ -98,6 +99,7 @@ impl Compilation {
             kind: DocumentKind::Piece,
             snapshot,
             studio: crate::studio::StudioSpec::default(),
+            machines: Vec::new(),
             diagnostics,
             identity: musa_kernel::SemanticHash::default(),
             decisions: Vec::new(),
@@ -126,6 +128,11 @@ impl Compilation {
 
     pub(crate) fn with_studio(mut self, studio: crate::studio::StudioSpec) -> Self {
         self.studio = studio;
+        self
+    }
+
+    pub(crate) fn with_machines(mut self, machines: Vec<(String, crate::MachineSpec)>) -> Self {
+        self.machines = machines;
         self
     }
 
@@ -198,6 +205,24 @@ impl Compilation {
     /// (§14.8).
     pub fn studio(&self) -> &crate::studio::StudioSpec {
         &self.studio
+    }
+
+    /// The machine a name denotes, if this document names one
+    /// (`docs/rules/across-stages/03-machine-calculus.md` §2).
+    ///
+    /// A [`crate::MachineSpec`] is immutable, flat, and exact, and it is the
+    /// only form a machine leaves the compiler in. Its named consumer is
+    /// `musa-audio`, which prepares one into something that can be stepped.
+    pub fn machine(&self, name: &str) -> Option<&crate::MachineSpec> {
+        self.machines
+            .iter()
+            .find(|(named, _)| named == name)
+            .map(|(_, machine)| machine)
+    }
+
+    /// Every machine this document names, in the order it declares them.
+    pub fn machine_names(&self) -> Vec<&str> {
+        self.machines.iter().map(|(name, _)| name.as_str()).collect()
     }
 
     /// The score and the studio together, consuming the compilation. They are

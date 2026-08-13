@@ -41,7 +41,7 @@ fn voices(score: &ScoreSnapshot) -> Vec<Vec<ScoreEvent>> {
         .collect()
 }
 
-/// The principal type, stated as a writer meets it: one unannotated `identity`
+/// The principal type, stated as a writer meets it: one unannotated `unchanged`
 /// serves a use at `Music -> Music` and a use at `Pitch -> Pitch` in the same
 /// piece. A checker that inferred *a* type rather than the *principal* one
 /// would fix the first use's type onto the declaration and reject the second.
@@ -50,11 +50,11 @@ fn one_unannotated_declaration_serves_two_types() {
     let score = snapshot(
         "piece \"principal\" {
             let subject: Music = music { c4/4 d4/4 };
-            fn identity(value) { value }
+            fn unchanged(value) { value }
             score { part p {
                 voice direct { use subject; }
-                voice music_use { use identity(subject); }
-                voice pitch_use { use map_note_pitches(identity, subject); }
+                voice music_use { use unchanged(subject); }
+                voice pitch_use { use map_note_pitches(unchanged, subject); }
             } }
         }",
     );
@@ -62,12 +62,12 @@ fn one_unannotated_declaration_serves_two_types() {
     assert_eq!(
         shape(&lanes[0]),
         shape(&lanes[1]),
-        "identity at `Music` changes nothing"
+        "unchanged at `Music` changes nothing"
     );
     assert_eq!(
         shape(&lanes[0]),
         shape(&lanes[2]),
-        "identity at `Pitch` changes nothing"
+        "unchanged at `Pitch` changes nothing"
     );
 }
 
@@ -80,10 +80,10 @@ fn a_higher_order_parameter_needs_no_annotation() {
         "piece \"higher order\" {
             let subject: Music = music { c4/4 d4/4 };
             fn twice(f, value) { f(f(value)) }
-            fn identity(value) { value }
+            fn unchanged(value) { value }
             score { part p {
                 voice direct { use subject; }
-                voice twice_over { use twice(identity, subject); }
+                voice twice_over { use twice(unchanged, subject); }
             } }
         }",
     );
@@ -92,14 +92,14 @@ fn a_higher_order_parameter_needs_no_annotation() {
 }
 
 /// Inference reaches through a chain of unannotated declarations: `held` is a
-/// `Pitch` because `identity` returns what it is given, and nothing in either
+/// `Pitch` because `unchanged` returns what it is given, and nothing in either
 /// declaration says the word.
 #[test]
 fn an_inferred_type_travels_between_declarations() {
     let compilation = compile_text(
         "piece \"chained\" {
-            fn identity(value) { value }
-            let held = identity(c4);
+            fn unchanged(value) { value }
+            let held = unchanged(c4);
             score { part p { voice v { c4/4 } } }
         }",
     );
@@ -119,8 +119,8 @@ fn an_inferred_type_travels_between_declarations() {
 fn hover_shows_an_inferred_signature_in_written_spelling() {
     let compilation = compile_text(
         "piece \"hover\" {
-            fn identity(value) { value }
-            let held: Pitch = identity(c4);
+            fn unchanged(value) { value }
+            let held: Pitch = unchanged(c4);
             score { part p { voice v { c4/4 } } }
         }",
     );
@@ -128,9 +128,9 @@ fn hover_shows_an_inferred_signature_in_written_spelling() {
     let item = compilation
         .items()
         .iter()
-        .find(|item| item.name == "identity")
+        .find(|item| item.name == "unchanged")
         .expect("the piece documents its `fn`");
-    assert_eq!(item.signature, "fn identity(value: a) -> a");
+    assert_eq!(item.signature, "fn unchanged(value: a) -> a");
     assert_eq!(item.result.as_ref().map(|result| result.name.as_str()), Some("a"));
     assert_eq!(item.parameters[0].ty.name, "a");
 }
@@ -172,8 +172,8 @@ fn an_undetermined_type_is_a_located_error() {
 fn an_annotation_still_decides_against_inference() {
     let compilation = compile_text(
         "piece \"annotated\" {
-            fn identity(value) { value }
-            let held: Nat = identity(c4);
+            fn unchanged(value) { value }
+            let held: Nat = unchanged(c4);
             score { part p { voice v { c4/4 } } }
         }",
     );

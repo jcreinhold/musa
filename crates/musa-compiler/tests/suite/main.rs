@@ -30,6 +30,7 @@ mod kernel_quote_laws;
 mod kernel_subset_laws;
 mod key_and_clef_changes;
 mod lint_laws;
+mod machine_laws;
 mod marks;
 mod meter_changes;
 mod module_laws;
