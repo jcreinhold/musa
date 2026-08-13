@@ -2,21 +2,21 @@
 id: 143
 slug: audio-language-tooling
 status: pending
-depends_on: [125, 128, 134, 136, 138, 139, 140, 142]
+depends_on: [125, 127i, 128, 134, 136, 138, 139, 140, 142]
 phase: 4
 ---
 
 # The Sound Language Explains Itself
 
-> **Governed by `docs/rules/constitution.md` §7 and §4.** Prompt 126 decided that the core is a calculus of occurrences
-> of any canonical payload, that signals stay outside it, and what that forbids. Read them before this prompt's Design.
+> **Governed by the event-track and machine core installed by prompts 127a–127i.** Tooling explains inferred values,
+> event tracks, machine types, scheduling, and private primitive boundaries from compiler facts.
 
 ## Task
 
 Complete editor tooling and the handbook for performance profiles, gestures, instruments, exposed controls, private
-graphs, mix routing, assets, exact packages, sampled formats, and recorded media. Musicians learn by sound-making task;
-language developers can recover the types, staging, lowering, ownership, real-time laws, format support, and extension
-boundaries from generated facts and tested examples.
+machine bodies, mix routing, assets, exact packages, sampled formats, and recorded media. Musicians learn by
+sound-making task; language developers can recover the types, staging, lowering, ownership, real-time laws, format
+support, and extension boundaries from generated facts and tested examples.
 
 ## Read
 
@@ -31,7 +31,7 @@ Hover/signature/completion/definition/references cover:
 
 - profiles and the standard gesture/control meaning produced by each rule;
 - instruments, signatures, supported techniques/fallbacks, exposed controls, units/defaults/ranges, and origin;
-- private-node access diagnostics and navigation from an exposed mapping to its implementation;
+- private-primitive access diagnostics and navigation from an exposed mapping to its implementation;
 - buses/rooms/sends/routes/main with identity and channel information;
 - asset/package identity, locked origin, offline/missing/digest state, and certain fetch/fix commands;
 - SFZ/SoundFont support summaries and named unsupported opcodes/generators;
@@ -43,7 +43,7 @@ resolves packages, or interprets control curves independently.
 
 Extend the handbook's musician path with choosing/swapping sounds, expression/articulation, rooms/sends, sample banks,
 field recordings, and online libraries. Extend the implementor path with the exact semantic equations and laws, deep
-module boundary, preparation lifecycle, RT rules, assets/lockfile, compatibility matrices, and how to add one built-in
+module boundary, machine preparation lifecycle, RT rules, assets/lockfile, support matrices, and how to add one built-in
 processor or import adapter without widening public internals. Every fenced Musa example compiles; every source/citation
 and generated table is checked.
 
@@ -75,4 +75,4 @@ Commit each affected repository intentionally and record cross-repository commit
 
 - No handwritten duplicate processor/format tables, second compiler in an editor, or unsupported-feature marketing.
 - No long quotation from OMT or external format specifications; cite and state Musa's own rule.
-- No plug-in hosting, waveform editing, or feature added only to complete a documentation example.
+- No plug-in hosting, waveform editing, compatibility alias, or feature added only to complete a documentation example.

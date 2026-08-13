@@ -2,14 +2,14 @@
 id: 144
 slug: audio-performance-closure
 status: pending
-depends_on: [93, 127, 132, 133, 137, 138, 139, 141, 142, 143]
+depends_on: [93, 127i, 132, 133, 137, 138, 139, 141, 142, 143]
 phase: 4
 ---
 
 # Close Audio Preparation and Rendering Against Measurement
 
-> **Governed by `docs/rules/constitution.md` §7 and §4.** Prompt 126 decided that the core is a calculus of occurrences
-> of any canonical payload, that signals stay outside it, and what that forbids. Read them before this prompt's Design.
+> **Governed by the event-track and machine core installed by prompts 127a–127i.** Measure the implemented one-frame
+> semantics; do not reopen it because an old block path is faster.
 
 ## Task
 
@@ -20,14 +20,12 @@ no-allocation/no-lock/no-I/O contract.
 
 ## Read
 
-- `docs/rules/constitution.md` §4, whose deferral of the signal question names *this prompt's measurement* as one of the
-  two events that reopens it. `R1` in `docs/rules/kernel/07-backend-contract.md`.
-- Prompt 93 baseline/expected-change ledger, prompt 127 score-elaboration report,
-  `docs/rules/desktop/06-performance.md`, roadmap §§13.2/17.5, and all completion notes from prompts 130–143.
+- The revised audio constitution and `R1` in the revised backend contract.
+- Prompt 93 baseline/expected-change ledger, prompt 127i core-calculus report, `docs/rules/desktop/06-performance.md`,
+  roadmap §§13.2/17.5, and all completion notes from prompts 130–143.
 - Audio/compiler/project benchmarks, callback instrumentation, offline/live render code, prepared-plan queues and
   retirement, decoded-asset store, sampler/media voices, UI Sound/Mix performance tests.
-- `docs/rules/across-stages/03-process-calculus.md` and `04-identity-and-realization.md`; prompt 131's process/identity
-  completion notes.
+- The revised machine and identity specifications; prompts 127f–127h and 131 completion notes.
 
 ## Design
 
@@ -46,23 +44,24 @@ memory, prepared-plan size, callback max/p95 time and deadline misses, voices pr
 offline throughput, UI response, and cache behavior. Record machine/toolchain, sample rate, block size, corpus digests,
 method, uncertainty, and raw results.
 
-**Measure `R1`, and report the result whether or not it is convenient.** Construct presentation pairs with equal
-`Sem_Gesture` and unequal presentation-only fields; under equal bindings, seed, and complete options they must return
+**Measure `R1`, and report the result whether or not it is convenient.** Construct presentation pairs with equal exact
+gesture tracks and unequal presentation-only fields; under equal bindings, seed, and complete options they must return
 the same complete preparation `Result`. Then vary each option, binding, and seed independently to prove it is in the
 exact argument record rather than ambient. Lineage may differ and is measured separately. A preparation difference under
 equal complete inputs means the boundary is wrong and is reported against `docs/rules/constitution.md` §4.
 
-Frame comparison is a second conditional experiment: hold allocation/initial node and register state, external input
-history, parameters, and processor conformance fixed, then compare output. Report whether the promise is exact bits or a
-named numeric tolerance per processor/target. Do not attribute a failed runtime premise to temporal semantic equality.
+Frame comparison is a second conditional experiment: hold allocation and initial primitive/feedback state, external
+input history, parameters, and processor conformance fixed, then compare output. Report whether the promise is exact
+bits or a named numeric tolerance per processor/target. Do not attribute a failed runtime premise to temporal semantic
+equality.
 
 Rendering must be independent of host block partition wherever the specification promises it. Test all partitions of the
 same frame count, especially registered feedback, envelopes, modulation, and media. Caches key on one canonical complete
-`ExecArgs` record covering the operation version, exact gesture semantic bytes/schema, instrument/studio bindings,
-locked asset/package identities, seed, sample rate/channel/tick policy, bounds, and render options. A digest selects
-candidates; exact complete argument bytes confirm a hit. Inject deliberate digest collisions. Eviction changes cost
-only. Streaming is admitted only if measured preloading misses a stated workload; its control-side producer, bounded
-queue, underrun semantics, and offline determinism must then be specified and tested.
+`ExecArgs` record covering the operation version, exact gesture-track bytes/schema, machine and instrument bindings,
+locked asset/package identities, seed, sample rate/channels, batching policy, bounds, and render options. A digest
+selects candidates; exact complete argument bytes confirm a hit. Inject deliberate digest collisions. Eviction changes
+cost only. Streaming is admitted only if measured preloading misses a stated workload; its control-side producer,
+bounded queue, underrun semantics, and offline determinism must then be specified and tested.
 
 ## Target
 
@@ -94,5 +93,5 @@ Commit as `Close audio performance against measured works`.
 ## Stop
 
 - No intuition-driven optimization, unbounded cache, callback best effort, benchmark-only branch, or relaxed semantics.
-- No graph/decoder/buffer type exposed to improve a benchmark harness.
+- No machine-state, decoder, or buffer type exposed to improve a benchmark harness.
 - No plugin hosting or pitch-preserving time stretch smuggled in as an optimization.

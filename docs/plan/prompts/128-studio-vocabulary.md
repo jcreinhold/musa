@@ -2,14 +2,14 @@
 id: 128
 slug: studio-vocabulary
 status: pending
-depends_on: [92, 122, 126]
+depends_on: [122, 127i]
 phase: 3
 ---
 
 # One Discoverable Studio Vocabulary
 
-> **Governed by `docs/rules/constitution.md` §7 and §4.** Prompt 126 decided that the core is a calculus of occurrences
-> of any canonical payload, that signals stay outside it, and what that forbids. Read them before this prompt's Design.
+> **Governed by the event-track and machine core installed by prompts 127a–127i.** Read the revised rules and the
+> core-calculus conformance report before this prompt's Design.
 
 ## Task
 
@@ -24,8 +24,8 @@ desktop, and generated reference material consume the same facts.
 - `crates/musa-compiler/src/studio.rs`, especially `Processor::params`/`ParamSpec`; `musa-audio` parameter descriptors;
   keyword docs and `musa-lsp/src/features/hover.rs::at_studio`.
 - Existing Sound/Mix facts and all hard-coded processor/parameter name matches. Count them before choosing an owner.
-- `docs/rules/across-stages/03-process-calculus.md` and `docs/plan/code-map/process-runtime.md`; the catalogue's stable
-  processor/port descriptors become the closed registry used by the private process IR at prompt 131.
+- The revised machine and audio specifications and `docs/plan/code-map/process-runtime.md`; the catalogue's stable
+  processor/port descriptors join the build-local primitive registry established by prompts 127f–127h.
 
 ## Design
 
@@ -35,14 +35,14 @@ post-conversion DSP range, smoothing, and combination policy. Join them by a che
 different questions into one descriptor and do not introduce a new crate for a table.
 
 The catalogue entry also fixes the versioned processor identity and public port/parameter schema which preparation will
-validate. It does not expose the private node state or implement the process calculus in this prompt. A built-in which
-cannot supply a first-order total-transition/resource contract is marked unavailable to the native process registry
-rather than admitted through a callback-shaped escape hatch.
+validate. It does not expose private machine state in this prompt. A built-in which cannot supply a first-order
+total-transition/resource contract is marked unavailable to the native process registry rather than admitted through a
+callback-shaped escape hatch.
 
-Canonicalize filter `resonance`; accept `q` as a source-compatible deprecated alias with a certain code action. Hover
-explains that resonance is conventionally represented by quality factor Q. Existing source and audio remain unchanged
-until explicitly edited. Terms such as `bus`, `send`, `patch`, `room`, and `main` are documented as studio concepts, not
-presumed prior knowledge.
+Canonicalize filter `resonance`. The removed `q` spelling is a hard error with a certain code action; it is not accepted
+as an alias. Hover explains that resonance is conventionally represented by quality factor Q. Rewrite repository
+fixtures to the one canonical spelling. Terms such as `bus`, `send`, `instrument`, `room`, and `main` are documented as
+studio concepts, not presumed prior knowledge.
 
 Plain identifiers used as processor calls receive hover/signature/completion just as keywords do. Imported declarations
 show their defining source; built-ins say `builtin`. Generate reference tables and UI labels from the catalogue. Add an
@@ -51,10 +51,10 @@ entry and compatible audio descriptor.
 
 ## Target
 
-- Authoritative compiler catalogue and compatibility checks against `musa-audio` descriptors.
+- Authoritative compiler catalogue and schema-agreement checks against `musa-audio` descriptors.
 - LSP hover/signature/completion for processors and parameters, including invalid/half-typed studio source.
 - Sound/Mix labels, descriptions, accessible names, and generated reference page from the same facts.
-- `q` deprecation diagnostic/fix and migrated canonical examples without breaking old fixtures.
+- Hard-error `q` diagnostic/fix and migrated canonical examples, with no alias in the checker or runtime.
 
 ## Check
 

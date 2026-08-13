@@ -8,10 +8,10 @@ temporal kernel governed by [`../../rules/kernel/`](../../rules/kernel/00-purpos
 [`../../rules/desktop/`](../../rules/desktop/README.md). Each numbered prompt delivers one feature and builds on the
 prompts it depends on. Work them in dependency order; when in doubt, work them in numeric order.
 
-`docs/rules/` now owns identity-level commitments. `docs/rules/across-stages/` owns cross-stage formal semantics,
-including the private process calculus and exact preparation/cache laws; `docs/plan/code-map/` maps those rules to
-current code. A pending prompt which contradicts them is repaired and committed before implementation, per execution
-rule 5.
+`docs/rules/` owns identity-level commitments. `docs/rules/across-stages/` owns the current cross-stage semantics, and
+`docs/plan/code-map/` maps those rules to current code. Prompts 127a–127i deliberately replace the current split between
+the temporal core and a separate studio calculus. Prompt 127a amends the rules first; no code prompt may implement the
+new design against stale rules.
 
 **Where the roadmap and the kernel specification disagree** — most importantly, on the rule that the surface grammar
 does not define the ontology and that a small temporal kernel (`timeline` / `sequence` / `overlay` over exact rational
@@ -23,11 +23,12 @@ states, and performance budgets — `docs/rules/desktop/` is the authority. Road
 Prompts 20–26 implement `docs/rules/desktop/`; prompt 26 graduated it from candidate to governing, as prompt 12 did for
 the kernel.
 
-**The elaboration-language direction is a candidate until it earns graduation.** Prompt 92 writes the precise candidate
-specification under `docs/rules/language/`; prompts 93–145 implement, measure, and audit its score, performance, sound,
-asset, and package semantics; prompt 146 makes it governing only if the complete conformance matrix is green. Until
-then, everything above `docs/rules/language/` in [the precedence ladder](../../README.md#which-document-wins) remains
-authoritative where the candidate differs.
+**The elaboration-language direction is a candidate until it earns graduation.** Prompt 92 wrote the first candidate.
+Prompts 127a–127i replace its contextual `Music` core with the reviewed event-track and machine calculus in one clean
+break. Prompts 128–145 then implement, measure, and audit performance, sound, assets, and packages on that base. Prompt
+146 makes the resulting language governing only if the complete conformance matrix is green. Until then, everything
+above `docs/rules/language/` in [the precedence ladder](../../README.md#which-document-wins) remains authoritative where
+the candidate differs.
 
 ## Prompt anatomy
 
@@ -71,7 +72,7 @@ Body sections (a prompt omits a section when it has nothing to add):
    - `cargo fmt --check`;
    - the prompt's behavior checks on `examples/*.musa` fixtures.
 5. If a prompt turns out to be mis-scoped (two independent features, or a missing prerequisite), repair the prompt files
-   first, commit that repair, then implement.
+   first, run `python3 scripts/renumber-prompts.py audit`, commit that repair, then implement.
 
 ## Conventions every prompt follows
 
@@ -242,6 +243,16 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 125 | language-and-theory-handbook | 3 | Tested musician and implementor paths with theory citations |
 | 126 | core-boundary-decision | 3 | What the core is a calculus of, decided and costed before the sound block |
 | 127 | elaboration-performance-closure | 3 | Profiled latency, allocation, memory, caching, and budget closure |
+| 127a | core-calculus-governance | 3 | Amend the rules for one inferred language of event tracks and machines |
+| 127b | inferred-source-core | 3 | Replace the evaluator with the small total HM-inferred core |
+| 127c | event-track-cutover | 3 | Replace timelines with coordinate-typed finite event tracks |
+| 127d | machine-values | 3 | Add finite typed machine descriptions as source values |
+| 127da | bounded-syntax-adapters | 3 | Close the adapter proof blockers with one finite type-blind phase |
+| 127e | source-language-clean-break | 3 | Delete contextual `Music` and migrate notation to ordinary values |
+| 127f | machine-runtime | 3 | Give each prepared machine one deterministic next step |
+| 127g | track-scheduling | 3 | Connect exact event tracks to frame machines with checked decisions |
+| 127h | one-frame-audio | 3 | Make one audio frame the reference meaning for every DSP unit |
+| 127i | core-calculus-conformance | 3 | Prove and audit the clean cutover before sound-language work resumes |
 | 128 | studio-vocabulary | 3 | One generated processor/parameter vocabulary, hover, terminology |
 | 129 | exact-studio-values | 3 | Exact written quantities through audio preparation |
 | 129a | payload-admission-rule | 3 | What a kernel payload owes, and the rendering law, before the first second payload |
@@ -478,32 +489,35 @@ direction: the pipeline had a voice — nine `tracing::warn!` calls — and no s
 gives each public facade one span, fixes `MUSA_LOG` as the filter, keeps every log line off stdout, and keeps every log
 line out of the audio callback.
 
-**125–127 close the score-elaboration implementation without prematurely graduating the language.** 125 tests two
-documentation paths — one by musical task and one by language implementation — and generates standard-library signatures
-from source. 126 stops before the sound block and answers the question nineteen prompts were about to assume: what the
-core is a calculus of. It takes a census of every surface construct against the kernel term it elaborates to, costs
-three answers against that census, settles whether signals join an inductive calculus at all, and is allowed to repair,
-delete, and create prompts — the sound block is contingent on it. Its answer, now `docs/rules/constitution.md` §7: the
-core is a calculus of occurrences of any canonical payload, which is what `musa-kernel` was always generic over; signals
-stay outside it because a signal is coinductive and a signal graph has no extent; and the prepared render plan is what
-crosses. 127 compares score elaboration to 93's baseline and permits caching or incrementality only when semantic keys
-and measured need are demonstrated. Audio retains its frozen baseline and receives its own measured closure at 142.
+**125–127 close the first score-elaboration attempt without graduating it.** 125 tests the musician and implementor
+documentation paths. 126 records the earlier boundary decision: finite temporal values belong in the kernel while
+running signals do not. 127 measures that implementation. Later research found the missing distinction. An audio history
+is open-ended, but the typed machine that produces its next frame is finite data. Treating the two as the same thing had
+pushed the machine description out of the language for the wrong reason.
 
-**128–134 replace the accidental score↔DSP wire with a typed instrument boundary.** 128 makes the studio vocabulary
-discoverable from one catalogue; 129 restores exact written quantities; 129a states what a kernel payload owes before
-any second payload exists, so the rule cannot be fitted to the payload it will admit; 130 names the missing object — an
-exact instrument-independent gesture/control timeline, which after 126 is `Timeline<Gesture>` rather than a new
-structure; 131 makes an instrument a deep contract over a private implementation; 132 preserves part identity through
-prepared routing; and 133 binds musical controls to private parameters only at audio preparation. 134 then spends that
-simplicity at the surface: choosing a sound/profile is one musical action, while expert graph and mix declarations
-remain available and source-compatible.
+**127a–127i make the clean correction.** 127a amends the governing documents before code changes. 127b installs one
+small, strict, total, HM-inferred language with complete calls and a checked storable-data boundary. 127c renames the
+finite temporal value to `EventTrack<C,A>` and tags its coordinate. 127d adds finite `Machine<K,A,B>` values. 127da
+repairs the failed adapter boundary with path-aware finite syntax, one executable match target, and a real derivation
+graph. 127e then deletes contextual `Music`; notation becomes a source-mapped adapter into ordinary inferred terms. 127f
+gives each machine one exact next step. 127g makes the time-to-frame policy explicit. 127h makes one sample frame the
+reference meaning of audio and treats host blocks only as checked batching. 127i proves and audits the complete path
+before any later sound prompt may run. Old syntax, APIs, and serialized forms are removed, not kept behind aliases.
 
-**135–141 add external sound without making builds or time semantics implicit.** 135 defines verified content-addressed
-assets before a decoder exists. 136 adds exact-pinned fetch/lock/offline packages while retaining the roadmap's
-rejection of a registry and version solver. 137 builds one deterministic sampler runtime; 138 and 139 translate SFZ and
-SoundFont into it through explicit compatibility matrices rather than adopting either format as Musa's ontology. 140
-distinguishes a beat-fitted clip from a point cue whose asset keeps its physical duration; 141 renders both through the
-same prepared offline/live plan.
+**128–134 build musical sound on that core.** 128 makes the primitive vocabulary discoverable from one catalogue; 129
+keeps written quantities exact; and 129a's payload rule is revised for the new storable-data boundary. 130 defines
+instrument-independent gestures as `EventTrack<PerformedTime,Gesture>`. 131 makes an instrument a typed machine contract
+over private primitives. 132 preserves part identity through prepared routing, and 133 maps musical controls to private
+parameters only during preparation. 134 gives the surface one clear sound/profile choice while keeping expert machine
+and mix declarations available. Removed patch syntax is a hard error with a certain fix, not a compatibility path.
+
+**135–141 add external sound without making builds or time implicit.** 135 defines verified content-addressed assets
+before a decoder exists. 136 adds exact-pinned fetch/lock/offline packages while keeping package edges separate from
+module imports; exact source bytes establish equality and hashes only locate candidates. It promises no stable compiled
+identity or persistent compiled-value cache. 137 builds one deterministic sampler runtime; 138 and 139 translate SFZ and
+SoundFont into it through explicit support matrices rather than adopting either format as Musa's ontology. 140
+distinguishes a beat-fitted clip from a point cue whose asset keeps its physical duration; 141 implements both as
+machines under the same prepared offline/live step semantics.
 
 **142–146 make the sound language usable and make graduation expensive.** 142 repairs Sound/Mix around instruments,
 exposed controls, part outputs, assets, and media without creating GUI-owned state. 143 extends generated editor facts

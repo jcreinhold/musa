@@ -341,7 +341,7 @@ def audit(stack: list[Prompt]) -> int:
 def main(argv: list[str] | None = None) -> int:
     root = repo_root()
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--dir", type=Path, default=root / "docs" / "prompts", help="prompt directory")
+    parser.add_argument("--dir", type=Path, default=root / "docs" / "plan" / "prompts", help="prompt directory")
     parser.add_argument("--apply", action="store_true", help="write the plan instead of printing it")
     parser.add_argument(
         "--bare-in",

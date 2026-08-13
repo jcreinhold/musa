@@ -2,14 +2,14 @@
 id: 141
 slug: audio-clips
 status: pending
-depends_on: [132, 135, 137, 140]
+depends_on: [127h, 132, 135, 137, 140]
 phase: 4
 ---
 
 # Recorded Media Reaches the Mix
 
-> **Governed by `docs/rules/constitution.md` §7 and §4.** Prompt 126 decided that the core is a calculus of occurrences
-> of any canonical payload, that signals stay outside it, and what that forbids. Read them before this prompt's Design.
+> **Governed by the event-track and machine core installed by prompts 127a–127i.** Clips and cues become registered
+> source machines connected to explicit mix machines.
 
 ## Task
 
@@ -26,7 +26,7 @@ behavior.
 
 ## Design
 
-Media is a separate prepared source lane, not a score part, voice, mixer track, or instrument instance. Preparation
+Media is a separate prepared source machine, not a score part, voice, mixer track, or instrument instance. Preparation
 resolves each semantic cue/clip identity to immutable decoded audio and compact routing indices. A fixed cue schedules
 start at `tempo(b)` and retains natural physical duration. A musical clip uses its transformed beat span and explicit
 fit policy. Specify channel conversion, sample-rate conversion, bounds, fades, gain/pan, overlap, retrigger, same-frame
@@ -43,7 +43,7 @@ shipping it. Do not perform best-effort file I/O in the callback.
 
 ## Target
 
-- Prepared media lanes/sources, routing, render execution, seek/loop/reinstall state, and export-tail calculation.
+- Prepared media source machines, routing, render execution, seek/loop/reinstall state, and export-tail calculation.
 - CLI offline rendering and desktop playback of local and locked-package recordings.
 - Fixtures for overlapping cues, tempo change, repeated fixed cue, loop/crop/rate clip, routing/sends, missing asset,
   seek, and project end.

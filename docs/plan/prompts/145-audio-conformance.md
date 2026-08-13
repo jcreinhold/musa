@@ -2,29 +2,27 @@
 id: 145
 slug: audio-conformance
 status: pending
-depends_on: [128, 129, 129a, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144]
+depends_on: [127i, 128, 129, 129a, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144]
 phase: 4
 ---
 
 # Audit the Performance and Sound Language
 
-> **Governed by `docs/rules/constitution.md` §7 and §4.** Prompt 126 decided that the core is a calculus of occurrences
-> of any canonical payload, that signals stay outside it, and what that forbids. Read them before this prompt's Design.
+> **Governed by the event-track and machine core installed by prompts 127a–127i.** This audit must catch any sound
+> prompt that quietly restored a second event container, another machine semantics, or block-defined audio path.
 
 ## Task
 
-Audit prompts 130–144 as one coherent performance/sound implementation. Trace every rule and compatibility claim in
+Audit prompts 128–144 as one coherent performance/sound implementation. Trace every rule and canonical-source claim in
 `docs/rules/language/08-performance-and-sound.md` and `09-assets-and-packages.md` to an owner and executable evidence;
 close every routing, exactness, control, instrument, asset, package, sample-format, media, UI, tooling, determinism, and
 real-time row before the whole-language graduation prompt may run. This prompt adds no feature.
 
 ## Read
 
-- `docs/rules/constitution.md` §7 and §4 in full — the things the decision forbids are audit rows here, and this is the
-  prompt that catches a later prompt having quietly re-opened one. `docs/rules/kernel/12-payload-admission.md`'s
-  admission table.
-- `docs/rules/across-stages/03-process-calculus.md`, `04-identity-and-realization.md`, and the architecture
-  spec-to-implementation map.
+- The revised constitution and obligations in full; the event-track payload-admission table.
+- The revised machine, scheduling, identity, and audio-step specifications and architecture map.
+- Prompt 127i's core conformance matrix and every completion/repair note from prompts 127a–127i.
 - Prompt 93 baseline and expected-change ledger; all prompt 128–142 completion/repair notes and benchmark artifacts.
 - The candidate sound/assets specs, roadmap/kernel boundaries, interface specification, handbook, SFZ support matrix,
   SoundFont support matrix, package/asset schemas, and public crate facades.
@@ -45,33 +43,29 @@ and observed result. At minimum cover:
 - source-edit authority, Origin/navigation, generated docs, editor drift, accessibility, stale/error states;
 - offline/live equality, deterministic outputs, NaN/silence laws, callback/retirement instrumentation, and prompt 144
   budgets;
-- **the core boundary itself** — one row per rule forbidden by `docs/rules/constitution.md` §7 and §4, each with
-  executable evidence rather than a reading:
-  - no fourth combinator, and no addition to `musa-kernel`'s public surface since prompt 126 (`git diff` on the facade
-    is the evidence);
-  - **no bespoke temporal structure above the kernel** — no type outside `musa-kernel` pairs a rational extent with a
-    positioned collection and defines its own ordering or equality. This is the rule most likely to have been broken by
-    convenience, and finding one is a repair of the owning prompt, not an exception here;
-  - every payload instantiated anywhere has a row in the admission table; owner/quotient versions match its key, framed
-    semantic encoding survives adversarial delimiters, and no hash-only comparison is treated as exact equality;
-  - no signal, stream, or other coinductive value in a payload, and no absolute time (seconds, frames, samples) in one —
-    including a fixed cue's asset duration;
-  - no dependent indices in the kernel; part, voice, meter, tuning, and transposition remain payload data;
-  - no `join` over `Timeline[Timeline[A]]` at any payload;
-  - `StudioSpec` is still a finite dataflow description with no extent, and its prepared private process IR satisfies
-    whole-node scheduling, registered-feedback, fixed-semantic-tick, causality, and host-block-partition laws;
-  - `musa-kernel` still depends on no musical type.
+- **the core boundary itself** — executable evidence for every integration risk:
+  - no type outside `musa-kernel` pairs a finite rational length with positioned events and defines its own ordering or
+    equality;
+  - every event payload and machine port/configuration is storable data with versioned injective encoding; no source
+    closure appears at any depth and no hash-only comparison is exact equality;
+  - no public `lift`, uninitialized feedback, zero-delay loop, or alternate machine interpreter exists;
+  - every audio primitive has one functional build-local registration, bounded state/work, deterministic frame step, and
+    explicit seed where it uses chance;
+  - scheduling records every time/frame decision, keeps handles distinct under merging, reaches a fixed finished state,
+    and preserves `together` only under its stated success and locality premises;
+  - one sample frame remains the reference meaning; every optimized batch is checked against repeated frame steps,
+    including feedback, modulation, envelopes, media, and seek;
+  - notation, gestures, event tracks, machine descriptions, private machine state, and audio history remain distinct;
+  - part, voice, meter, tuning, and transposition remain payload data rather than dependent core indices; and
+  - `musa-kernel` still depends on no musical or audio type.
 
-The prompt 93 expected-change ledger must be empty. Test unsupported SFZ/SoundFont behavior rather than counting rows in
-a support table. Run fault injection for missing/corrupt assets, digest drift, offline package cache, plan preparation
-failure, reinstall, and callback underrun if streaming was admitted. Audit dependency direction and public surfaces;
-remove dead compatibility internals but retain accepted source aliases according to their deprecation policy.
+The clean-break and prompt-93 expected-change ledgers must be empty. Test unsupported SFZ/SoundFont behavior rather than
+counting rows in a support table. Run fault injection for missing/corrupt assets, digest drift, offline package cache,
+plan preparation failure, reinstall, and callback underrun if streaming was admitted. Audit dependency direction and
+public surfaces; remove dead migration code and verify that removed source aliases are hard errors with certain fixes.
 
-A red row in the core-boundary group is repaired at the owning prompt, or — if the rule itself turns out to be wrong —
-by amending `docs/rules/constitution.md` §7, by its README's amendment procedure, which is a decision and therefore not
-this prompt's to make alone. If any row is red or unowned, repair the smallest responsible prompt/design and stop this
-prompt. Do not weaken a law, support claim, golden, or budget to make the matrix green. This audit does not yet graduate
-`docs/rules/language/`; prompt 146 does so only after combining it with the score/elaboration audit.
+A red core row is repaired at its owning prompt. If implementation evidence refutes a governing rule, stop and use the
+amendment procedure; this audit may not weaken the rule. This prompt does not yet graduate the language.
 
 ## Target
 

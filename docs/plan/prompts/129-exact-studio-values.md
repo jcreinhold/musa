@@ -2,14 +2,14 @@
 id: 129
 slug: exact-studio-values
 status: pending
-depends_on: [93, 128]
+depends_on: [93, 127i, 128]
 phase: 3
 ---
 
 # Written Sound Values Stay Exact
 
-> **Governed by `docs/rules/constitution.md` §7 and §4.** Prompt 126 decided that the core is a calculus of occurrences
-> of any canonical payload, that signals stay outside it, and what that forbids. Read them before this prompt's Design.
+> **Governed by the event-track and machine core installed by prompts 127a–127i.** Read its exact storable-data and
+> audio preparation rules before this prompt's Design.
 
 ## Task
 
@@ -43,8 +43,8 @@ conversion and differential parity for previously accepted values.
 
 - Exact written quantity in `musa-compiler`; migrated `StudioSpec`, processor arguments, sends, and compiler facts.
 - One audited conversion module in `musa-audio`, private to plan preparation.
-- Laws for decimal/ratio equality, unit conversion, edit spelling preservation, range diagnostics, and old-source audio
-  parity within the previously documented floating tolerance.
+- Laws for decimal/ratio equality, unit conversion, edit spelling preservation, range diagnostics, and migrated-corpus
+  audio behavior within the documented floating tolerance.
 - Remove prompt 93's eager-float ledger entry.
 
 ## Check

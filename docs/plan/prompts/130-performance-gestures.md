@@ -2,21 +2,21 @@
 id: 130
 slug: performance-gestures
 status: pending
-depends_on: [93, 119, 129, 129a]
+depends_on: [119, 127i, 129, 129a]
 phase: 3
 ---
 
 # Performance Produces Gestures, Not Knob Addresses
 
-> **Governed by `docs/rules/constitution.md` §7 and §4.** Prompt 126 decided that the core is a calculus of occurrences
-> of any canonical payload, that signals stay outside it, and what that forbids. Read them before this prompt's Design.
+> **Governed by the event-track and machine core installed by prompts 127a–127i.** Gestures use the same `EventTrack`
+> structure as written facts and reach sound through the checked scheduler.
 
 ## Task
 
-Introduce the missing instrument-independent performance object between `Timeline<ScoreFact>` and scheduled DSP events.
-Profiles interpret notation into exact note gestures, technique/grouping information, and typed musical control curves;
-tempo/groove/tuning then schedule those gestures. No gesture names a graph node, processor, MIDI controller, or
-render-plan parameter index.
+Introduce the missing instrument-independent performance object between `EventTrack<WrittenTime,ScoreFact>` and a
+scheduled event-source machine. Profiles interpret notation into exact note gestures, technique/grouping information,
+and typed musical control curves; tempo/groove/tuning then schedule those gestures. No gesture names a machine
+primitive, processor, MIDI controller, or render-plan parameter index.
 
 ## Read
 
@@ -34,18 +34,15 @@ render-plan parameter index.
 
 ## Design
 
-**`GestureTimeline` is `Timeline<Gesture>` — the kernel at a second payload, not a new structure.** This is prompt 126's
-decision applied: the object between `Timeline<ScoreFact>` and scheduled DSP events has a rational extent and finitely
-many things positioned in it, so it is a kernel timeline, and its ordering (N2), payload serialization (N3), semantic
-equality (N4), and semantic hash (N6) come from `musa-kernel` rather than being specified again here. Define `Gesture`,
-implement `Canonical` for it against prompt 129a's rule, and add its row to that document's admission table — stating
-what the key includes and what it deliberately quotients away. Writing a `Vec<(Beat, Beat, Gesture)>` with its own
-ordering and its own equality is the defect this repair exists to prevent (`docs/rules/constitution.md` §7d §6 rule 2),
-and prompt 145 audits for it.
+The gesture object is `EventTrack<PerformedTime,Gesture>`, not a new structure. It receives the event-track ordering,
+payload serialization, exact equality, and exact encoding rather than specifying them again. Define `Gesture`, implement
+the revised storable-data contract for it, and add its payload-admission row. State what the exact encoding includes and
+what any separate musical comparison deliberately ignores. Writing a private `Vec<(Ratio,Ratio,Gesture)>` with its own
+ordering or equality is a defect, and prompt 145 audits for it.
 
-Nothing is added to `musa-kernel`: no term form, no operation, no public-surface change. `sequence`, `overlay`, `scale`,
-and `restrict` on a gesture timeline mean what L1–L24 already say they mean, and L24 is what keeps a control curve a
-payload *value* — a `Progress` transforms by its span alone.
+Nothing is added to `musa-kernel`: no term form, operation, or public-surface change. `follow`, `together`, and retained
+observations on a gesture track keep their existing laws. A control curve remains payload data; frame sampling stays in
+the scheduler or instrument machine.
 
 A note gesture carries stable event/part identity, written pitch until tuning, onset/extent, separation/hold/emphasis
 intent, symbolic technique tags, legato/phrase grouping, and per-note controls. A lane also carries piecewise exact
@@ -65,8 +62,8 @@ minimum immutable lane/control information required by MIDI and `musa-audio`. `P
 
 ## Target
 
-- Private exact gesture construction as `Timeline<Gesture>`, with `Canonical for Gesture` and its admission-table row,
-  and revised scheduled performance lanes/events.
+- Private exact gesture construction as `EventTrack<PerformedTime,Gesture>`, its exact encoding and admission-table row,
+  and revised caller-facing performance facts.
 - Profile-to-gesture interpretation for all existing marks with byte/semantic parity where the old model was expressive
   enough; explicit retained/fallback information where it was not.
 - Algebraic/property tests for curve endpoints, monotonic hairpins, grouping, exactness, context changes, and
@@ -87,10 +84,10 @@ Commit as `Interpret notation as performance gestures`.
 
 ## Stop
 
-- No instrument graph, sample selection, part routing, or DSP parameter resolution.
-- No kernel operation, no new term form, no change to `musa-kernel`'s public surface, and no physical-time value in any
-  occurrence — score or gesture. Seconds and frames appear at the prepared-plan boundary (prompt 131), not before.
-- No second temporal structure. If `Timeline<Gesture>` will not carry something, that is a finding to report against
-  `docs/rules/constitution.md` §7, not a licence to write a parallel container.
+- No instrument implementation, sample selection, part routing, or DSP parameter resolution.
+- No kernel operation, new term form, or physical-time value in any score or gesture occurrence. Exact physical time and
+  frames appear in scheduling decisions, not in the event payload.
+- No second temporal structure. If `EventTrack<PerformedTime,Gesture>` will not carry something, that is a finding to
+  report against `docs/rules/constitution.md` §7, not a licence to write a parallel container.
 - No universal ontology of expression; standard controls have documented Musa meanings and custom controls remain
   explicitly declared.

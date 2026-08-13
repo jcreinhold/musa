@@ -2,20 +2,20 @@
 id: 142
 slug: sound-mix-workbench
 status: pending
-depends_on: [124, 134, 136, 138, 139, 141]
+depends_on: [124, 127i, 134, 136, 138, 139, 141]
 phase: 4
 ---
 
 # Sound and Mix Show Musical Objects First
 
-> **Governed by `docs/rules/constitution.md` §7 and §4.** Prompt 126 decided that the core is a calculus of occurrences
-> of any canonical payload, that signals stay outside it, and what that forbids. Read them before this prompt's Design.
+> **Governed by the event-track and machine core installed by prompts 127a–127i.** The workbench edits source that
+> constructs instruments and machine wiring; it owns no second graph.
 
 ## Task
 
 Rebuild the existing Sound and Mix workspaces around instruments, exposed musical controls, part outputs, rooms/buses,
-assets, and media lanes. An ordinary musician chooses a sound and shapes expression without seeing private graph nodes;
-an instrument author can deliberately disclose the native graph and physical parameters. Every interaction edits Musa
+assets, and media lanes. An ordinary musician chooses a sound and shapes expression without seeing private primitives;
+an instrument author can deliberately open the machine source and physical parameters. Every interaction edits Musa
 source and consumes immutable project/compiler facts.
 
 ## Read
@@ -38,7 +38,7 @@ Write the interaction/spec repair before UI code. Progressive disclosure has thr
 Imported/built-in instruments navigate to read-only source/support facts. Asset failures and offline packages have
 loading/error/remediation states. Parameter/control gestures replace source tokens and commit once; playback may use a
 separate prepared-plan update only if source has already become authoritative and prompt 144 measurement requires it.
-Private graph topology is not editable from a generic property grid or free-form canvas.
+Private machine wiring is not editable from a generic property grid or free-form canvas.
 
 All terms use prompt 128's authoritative catalogue and the compiler/project facts from prompts 136–141; prompt 143
 carries those same facts into editors and the handbook. Include keyboard navigation, screen-reader grouping, focus
@@ -47,11 +47,11 @@ preservation on recompile, narrow layouts, stale/last-valid plan indication, and
 ## Target
 
 - Governing interface additions for instrument selection, exposed controls, assets/media, part-output identity, and
-  progressive graph disclosure.
+  deliberate access to machine source.
 - Desktop Compose/Sound/Mix interactions using project edit commands and immutable facts.
 - Unit, Playwright, accessibility, and screenshot tests with native, SFZ, SoundFont, room/send, custom control, missing
   asset, offline package, fixed cue, and musical clip fixtures.
-- No second audio graph, mutable preset state, or TypeScript semantic computation.
+- No second machine model, mutable preset state, or TypeScript semantic computation.
 
 ## Check
 

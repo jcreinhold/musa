@@ -2,29 +2,26 @@
 id: 131
 slug: instrument-contracts
 status: pending
-depends_on: [128, 129, 130]
+depends_on: [127i, 128, 129, 130]
 phase: 3
 ---
 
 # Instruments Expose Contracts and Hide Implementations
 
-> **Governed by `docs/rules/constitution.md` §7 and §4.** Prompt 126 decided that the core is a calculus of occurrences
-> of any canonical payload, that signals stay outside it, and what that forbids. Read them before this prompt's Design.
+> **Governed by the event-track and machine core installed by prompts 127a–127i.** An instrument is a typed machine
+> contract over private registered primitives, not a separate graph semantics.
 
 ## Task
 
-Make `instrument` the deep score-to-sound abstraction. An instrument exposes a typed gesture/control signature and hides
-whether it is implemented by oscillators, samples, or later adapters. Replace the shallow public patch topology boundary
-with one audio preparation operation that binds scheduled performance lanes, instrument declarations, and mix intent
-into an opaque prepared plan.
+Make `instrument` the deep gesture-to-audio abstraction. An instrument exposes a typed gesture/control signature and
+hides whether it is implemented by oscillators, samples, or later adapters. Its implementation constructs a
+`Machine<AudioFrameStep,EventBatch<Gesture>,AudioFrame>` from registered primitives and fixed wiring.
 
 ## Read
 
-- `docs/rules/constitution.md` §4 — the signal question, and why the prepared plan is the object that crosses. `R1` in
-  `docs/rules/kernel/07-backend-contract.md`, which this prompt's preparation operation must satisfy.
-- `docs/rules/across-stages/03-process-calculus.md`, `04-identity-and-realization.md`, and
-  `docs/plan/code-map/process-runtime.md`; these fix the private IR, whole-node scheduling, exact preparation signature,
-  and factorization/cache premises.
+- The revised machine, scheduling, and audio rules; `R1` in the revised backend contract.
+- Prompts 127f–127h and `docs/plan/code-map/process-runtime.md`; these fix private runtime state, exact preparation,
+  one-frame semantics, and batching premises.
 - `docs/rules/language/08-performance-and-sound.md`; roadmap §§2, 6.5, 10.6, 13, 15.
 - Current `StudioSpec`, `StudioGraphSpec`, `RenderPlan`, project/CLI/offline/engine callers, and prompts 29–31 repairs.
 - Module-design audit of `musa-compiler`, `musa-audio`, and `musa-engine`; compare recent history for their facades.
@@ -32,41 +29,38 @@ into an opaque prepared plan.
 ## Design
 
 Implement a source/compiler `InstrumentSpec` with stable identity, `ControlSignature`, defaults, documented technique
-support/fallbacks, output channel shape, and a private implementation body. Native graph bodies may name and modulate
-their own stages. Outside the body, only exposed controls are addressable. An exposed control has stable key, type/unit,
-default/range, documentation, and an explicit mapping to one or more private parameters.
+support/fallbacks, output channel shape, and a private implementation body. Native machine bodies may name and modulate
+their own primitives. Outside the body, only exposed controls are addressable. An exposed control has stable key,
+type/unit, default/range, documentation, and an explicit mapping to one or more private parameters.
 
-Existing `patch` declarations remain source-compatible by desugaring to native instruments. Record a deprecation or
-expert-surface policy from the candidate spec; do not make old graph paths the new contract. A library may export an
-instrument and its signature but not its private nodes.
+Delete the old `patch` declaration. Its former spelling is a hard error with a source fix to the new instrument form,
+not an accepted desugaring. A library may export an instrument and its signature but not its private primitives or
+state.
 
 Compare two real module boundaries in completion notes:
 
-1. project/compiler separately hand a `PerformancePlan` and graph-shaped `StudioSpec` through callers; or
-2. `musa-audio` exposes one preparation operation over caller-oriented performance/studio intent and returns an opaque
-   prepared audio plan consumed by offline rendering and the engine.
+1. project/compiler pass separate gesture, machine, and routing internals through every caller; or
+2. `musa-audio` exposes one preparation operation over caller-oriented event tracks, machine values, bindings, and
+   options and returns an opaque prepared machine consumed by offline rendering and the engine.
 
-Choose the second unless caller inspection proves otherwise. Graph compiler, node addresses, resolved parameter indices,
-buffers, sample voices, and DSP processor instances remain private to `musa-audio`. The engine receives only a prepared,
-RT-safe plan and transport commands.
+Choose the second unless caller inspection proves otherwise. Primitive state, resolved parameter indices, buffers,
+sample voices, and DSP instances remain private to `musa-audio`. The engine receives only a prepared, RT-safe machine
+and transport commands.
 
-**The prepared execution is the object that crosses the signal boundary.** `docs/rules/constitution.md` §4 settled that
-signals stay outside the core: a signal is coinductive where a timeline is inductive and finite, and a signal graph has
-no extent. The consequence for this prompt is precise, and it is the reason preparation is one operation rather than
-several:
+**The prepared machine is the runnable result.** An audio history is not a finite source value, but the finite machine
+that produces it is part of the core language. Preparation is one operation rather than several:
 
 - Implement the conceptual signature
-  `prepare_execution(Sem_Gesture, Bindings, Seed, Options) -> Result<PreparedExecution, PrepareError>`. `Options`
-  includes sample rate, channel contract, fixed semantic tick/block policy, render bounds, and every deterministic
-  quality/acceptance choice. No option remains ambient. This is **the one place a rational becomes a float**; nothing
-  upstream holds seconds/frames/samples and nothing downstream holds a `Beat`.
-- `Sem_Gesture` is the structured admitted semantic projection, not a full presentation and not merely a finite digest.
-  Presentation-only origin fields feed a separate `prepare_lineage(Presentation_Gesture, PreparedExecution)` operation
-  and cannot modify the execution result.
-- The successful result owns a private finite process definition implementing
-  `docs/rules/across-stages/03-process-calculus.md`: first-order total node transitions, a whole-node dependency DAG,
-  and feedback only through explicit initialized registers. A port-level DAG is not sufficient. The semantic tick is
-  fixed in options and independent of caller render partition.
+  `prepare_execution(Gestures, Bindings, Seed, Options) -> Result<PreparedMachine, PrepareError>`. `Options` includes
+  sample rate, channel contract, batching policy, render bounds, and every deterministic quality/acceptance choice. No
+  option remains ambient. This is **the one place a rational becomes a float**; nothing upstream holds sample frames and
+  nothing downstream holds a written-time coordinate.
+- `Gestures` is the exact event-track projection, not a full presentation and not merely a finite digest.
+  Presentation-only origin fields feed a separate `prepare_lineage(GesturePresentation, PreparedMachine)` operation and
+  cannot modify the execution result.
+- The successful result owns the machine built by `schedule`, instrument implementations, routing, and effects. Feedback
+  comes only from the initialized core constructor. One sample frame is the semantic step, independent of caller render
+  partition.
 - **R1** is equality of the complete preparation `Result` under equal complete arguments. Frame equality is conditional
   on equal allocation/initial state, external inputs, and conforming deterministic processors. Do not strengthen R1 to
   lineage equality or unconditional cross-device bit equality.
@@ -75,10 +69,9 @@ several:
 
 ## Target
 
-- Instrument/signature declarations in language/compiler and migration of patches as specified.
-- Native graph implementation hidden behind `musa-audio` preparation; curated facade and documented invariants.
-- Private typed process IR, formation checker, canonical whole-node schedule, explicit register state, and reference
-  tick evaluator in `musa-audio`; current caller-block-sensitive feedback is migrated to the fixed semantic tick.
+- Instrument/signature declarations in language/compiler and hard-error migration fixes for removed patches.
+- Native machine implementation hidden behind `musa-audio` preparation; curated facade and documented invariants.
+- Instrument-body checking against the machine constructors and registered primitive catalogue from prompts 127f–128.
 - Static checking for duplicate/missing controls, incompatible mappings, private-node access, technique support, and
   channel shape.
 - Instrument replacement law: two implementations of one signature accept the same gesture/control lanes without
@@ -103,9 +96,9 @@ Commit as `Give instruments typed sound contracts`.
 
 ## Stop
 
-- No trait or plug-in registry for hypothetical implementations; use the concrete closed implementation family with
-  native graph as the one current case and add sample bodies at prompt 137.
-- No part routing yet, no sample decoding, and no GUI graph canvas.
+- No trait or plug-in registry for hypothetical implementations; use the concrete closed implementation family with a
+  native machine as the current case and add sample bodies at prompt 137.
+- No part routing yet, no sample decoding, and no GUI node canvas.
 - No score, context, measure, or notation type crosses into `musa-audio`.
-- No signal, stream, or other coinductive value in a kernel payload, and no `Beat` past the preparation boundary. The
-  execution boundary is one function in one direction; the separate lineage query cannot mutate it.
+- No signal or audio history as a finite source value, and no written-time coordinate past scheduling. The separate
+  lineage query cannot mutate execution.

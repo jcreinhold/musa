@@ -2,14 +2,14 @@
 id: 132
 slug: part-instrument-routing
 status: pending
-depends_on: [31, 93, 130, 131]
+depends_on: [31, 127i, 130, 131]
 phase: 3
 ---
 
 # A Part Sounds Only Through Its Instrument Instance
 
-> **Governed by `docs/rules/constitution.md` §7 and §4.** Prompt 126 decided that the core is a calculus of occurrences
-> of any canonical payload, that signals stay outside it, and what that forbids. Read them before this prompt's Design.
+> **Governed by the event-track and machine core installed by prompts 127a–127i.** Routing must lower to typed machine
+> wiring without identifying a part, instrument declaration, or prepared instance.
 
 ## Task
 
@@ -21,13 +21,13 @@ instrument output. Two parts selecting the same instrument declaration remain tw
 
 - Roadmap §§6.5 narrow bridge; `docs/rules/language/08-performance-and-sound.md` routing-isolation and identity laws.
 - `PerformanceLane`, `lower_studio`/`distinct_patches`, event-window delivery in `plan.rs`, source-output/send lowering,
-  default studio, offline renderer, engine prepared plan, and prompt 93's shared-stream ledger entry.
+  default studio, offline renderer, engine prepared machine, and prompt 93's shared-stream ledger entry.
 
 ## Design
 
 Carry three different identities: stable part, selected instrument declaration, and prepared instrument instance. Do not
 encode one as another or infer routing by display name. Lane-scoped scheduled events bind to one instance during
-preparation and become compact private indices only inside the prepared plan. Note-on/off identity is instance-safe;
+preparation and become compact private indices only inside the prepared machine. Note-on/off identity is instance-safe;
 voice stealing in one part cannot end another part's voice.
 
 The default instrument is instantiated once per otherwise-unassigned part. A route/send whose source is a part uses that

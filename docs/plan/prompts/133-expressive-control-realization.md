@@ -2,14 +2,14 @@
 id: 133
 slug: expressive-control-realization
 status: pending
-depends_on: [130, 131, 132]
+depends_on: [127i, 130, 131, 132]
 phase: 3
 ---
 
 # A Mark Moves a Musical Control
 
-> **Governed by `docs/rules/constitution.md` §7 and §4.** Prompt 126 decided that the core is a calculus of occurrences
-> of any canonical payload, that signals stay outside it, and what that forbids. Read them before this prompt's Design.
+> **Governed by the event-track and machine core installed by prompts 127a–127i.** Controls remain gesture payload data
+> until scheduling and instrument-machine binding.
 
 ## Task
 

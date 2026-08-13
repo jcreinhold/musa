@@ -2,21 +2,21 @@
 id: 134
 slug: ergonomic-sound-bindings
 status: pending
-depends_on: [125, 131, 132, 133]
+depends_on: [125, 127i, 131, 132, 133]
 phase: 3
 ---
 
 # Choosing a Sound Is One Musical Action
 
-> **Governed by `docs/rules/constitution.md` §7 and §4.** Prompt 126 decided that the core is a calculus of occurrences
-> of any canonical payload, that signals stay outside it, and what that forbids. Read them before this prompt's Design.
+> **Governed by the event-track and machine core installed by prompts 127a–127i.** Surface conveniences must elaborate
+> to ordinary values, event tracks, and machines.
 
 ## Task
 
 Implement the candidate's musician-facing sound-selection and room/mix surface over the independent declarations now
 supported by the compiler. A part can choose an instrument and performance profile in one readable action, hear a stable
-default when it says nothing, and graduate to exposed controls or the private instrument-authoring language without
-learning graph topology first.
+default when it says nothing, and graduate to exposed controls or the instrument-authoring language without first
+learning its private wiring.
 
 ## Read
 
@@ -30,14 +30,14 @@ learning graph topology first.
 Implement exactly the surface forms settled by prompt 92; do not reopen punctuation here. The simple form desugars to
 three independent facts: performance-profile selection, part→instrument binding, and part-output→main route. A room
 convenience desugars to an ordinary named bus/effect/send. The expert surface retains explicit instruments, exposed
-controls, buses, sends, routes, and private native graph bodies.
+controls, buses, sends, routes, and private native machine bodies.
 
 Provide a small versioned built-in instrument library and one stable edition-specific default. Absence of an explicit
 studio therefore remains audible and deterministic, with the effective default visible in hover/inspector and a source
 action to make it explicit. Presets are ordinary read-only Musa declarations, never opaque UI blobs.
 
-Maintain source compatibility for `patch`, `assign`, existing `route`/`send`, and `q` according to the candidate's
-deprecation table. Formatting chooses only the canonical new spelling for newly inserted source. Diagnostics lead with
+Keep only the chosen canonical expert forms. Removed `patch`, `q`, or other old spellings are hard errors with certain
+source fixes and are absent from the evaluator and runtime. Rewrite all repository source. Diagnostics lead with
 musician language: missing sound, unsupported technique, incompatible control, or unconnected output; technical
 identity/signature detail follows.
 
@@ -47,7 +47,7 @@ identity/signature detail follows.
 - Built-in default/basic instrument library as ordinary inspectable source or generated declarations with stable
   versioning and provenance.
 - Project edit commands for choosing/replacing an instrument/profile and making defaults explicit.
-- Migration fixtures proving old studio source keeps its meaning and new source is substantially shorter for ordinary
+- Negative fixtures for removed studio syntax and positive fixtures showing the canonical source is concise for ordinary
   selection, room, and send tasks.
 
 ## Check
@@ -66,5 +66,5 @@ Commit as `Make sound selection a musical action`.
 ## Stop
 
 - No second editable sound assignment in project/UI state.
-- No automatic rewriting of existing expert graphs into presets.
+- No automatic rewriting of existing expert machine definitions into presets.
 - No claim that a part is a mixer track or an instrument declaration is an instrument instance.

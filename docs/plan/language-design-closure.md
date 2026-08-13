@@ -1,14 +1,19 @@
 # Close the Musa language design
 
-**Status: stopped at the final proof gate; not governing.** The replacement candidate was consolidated in
-[`26-language-design-decision.md`](../notes/research/language-design-closure/26-language-design-decision.md). It uses
-rank-1 Hindley–Milner inference, explicit closures, complete positional calls, an indentation-based surface, and bounded
-package syntax adapters. The first review found four High-severity faults, and the one permitted repair closed several
-of them. The final review found four more.
-[The final blocker](../notes/research/language-design-closure/37-final-blocker.md) records the result. Per §6, governing
-rules, architecture, and implementation prompts remain unchanged.
+**Status: superseded; retained as the record of a failed bounded attempt.** The candidate in
+[`26-language-design-decision.md`](../notes/research/language-design-closure/26-language-design-decision.md) stopped at
+its proof gate. [The final blocker](../notes/research/language-design-closure/37-final-blocker.md) records why.
 
-## Course correction after the failed proof gate
+Later work asked the broader source-to-audio question and passed its final paper review. That work lives in
+[`../notes/research/core-calculus/`](../notes/research/core-calculus/README.md). Prompts 127a–127i, including inserted
+prompt 127da, now form the active clean-break implementation path. They amend the rules first, repair the old adapter
+proof blockers, replace contextual `Music` with ordinary inferred values, make finite event tracks and finite machine
+descriptions part of one total source language, give machines one-frame step semantics, connect tracks to machines
+through a checked scheduler, and audit the result before later sound work.
+
+The numbered sections below preserve the original plan. They no longer direct implementation.
+
+## Historical course correction after the failed proof gate
 
 The original Tasks 1–6 remain evidence about the musical domain and stage boundaries. Their source calculus and proof
 are not the active candidate.

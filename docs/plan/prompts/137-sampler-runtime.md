@@ -2,14 +2,14 @@
 id: 137
 slug: sampler-runtime
 status: pending
-depends_on: [130, 131, 132, 133, 135]
+depends_on: [127i, 130, 131, 132, 133, 135]
 phase: 4
 ---
 
 # A Sample Map Is an Instrument Implementation
 
-> **Governed by `docs/rules/constitution.md` §7 and §4.** Prompt 126 decided that the core is a calculus of occurrences
-> of any canonical payload, that signals stay outside it, and what that forbids. Read them before this prompt's Design.
+> **Governed by the event-track and machine core installed by prompts 127a–127i.** The sampler is a registered machine
+> primitive family behind an instrument contract.
 
 ## Task
 

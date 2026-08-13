@@ -2,14 +2,14 @@
 id: 135
 slug: reproducible-assets
 status: pending
-depends_on: [85, 92, 129, 131]
+depends_on: [85, 127i, 129, 131]
 phase: 4
 ---
 
 # Assets Are Immutable Build Inputs
 
-> **Governed by `docs/rules/constitution.md` §7 and §4.** Prompt 126 decided that the core is a calculus of occurrences
-> of any canonical payload, that signals stay outside it, and what that forbids. Read them before this prompt's Design.
+> **Governed by the event-track and machine core installed by prompts 127a–127i.** Assets are exact finite preparation
+> inputs; decoded audio remains private runtime state.
 
 ## Task
 

@@ -2,7 +2,7 @@
 id: 153
 slug: snippet-playback
 status: pending
-depends_on: [152, 141]
+depends_on: [127h, 141, 152]
 phase: 5
 ---
 
@@ -25,9 +25,10 @@ with the playhead's position mapped back onto the engraved score via the provena
 ## Design
 
 To be written when this prompt is scheduled. The shape it must take, fixed now so earlier prompts do not foreclose it:
-`musa-audio`'s offline renderer crosses to wasm behind a feature flag (CPAL and the engine stay native); the web package
-gains `playback?: boolean` per score; playback state (playhead time → covering events) is computed from the
-`PerformancePlan`, not by parsing SVG. Determinism and exact rational time are inherited, not re-derived.
+`musa-audio`'s prepared machine and offline renderer cross to wasm behind a feature flag (CPAL and the engine stay
+native); the web package gains `playback?: boolean` per score; playback state (playhead time → covering events) is
+computed from the scheduled event decisions, not by parsing SVG. Determinism and exact rational time are inherited, not
+re-derived.
 
 ## Target
 
