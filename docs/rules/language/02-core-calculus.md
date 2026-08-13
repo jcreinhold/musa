@@ -90,6 +90,28 @@ parameter, and an under-applied call is a type error rather than a value. Partia
 argument list a place where a function silently becomes a function-valued result, which is exactly the value that may
 not be stored (§1.1).
 
+**There is also no signed integer type**, and the reason is the eliminators above rather than a preference about
+numbers. `nat` is in the language to be the *inductive* numeric type: `zero | succ` is well founded, so `nat_fold`
+terminates by construction, exactly as `list_fold` and `option_fold` do over `nil | cons` and `none | some`. ℤ has no
+such structure and no least element to descend to, so an `int_fold` would either be a `nat_fold` on the magnitude with a
+sign carried alongside — `nat` plus bookkeeping — or an unbounded loop, which totality forbids. An `int` could therefore
+only be an extra base type with no eliminator of its own, and the governing design rule then applies: removing it makes
+nothing impossible.
+
+Nothing musical is left unsayable by that, because the language already has better types for both halves of what an
+`int` would be asked to do. Ordinary signed arithmetic is `ratio`, which is signed, with the refinements at its
+constructors — nonnegative `duration`, strictly positive scale factors, nonnegative `Length[C]`. The signed *musical*
+quantities are domains: an `Interval` is a signed pair of written diatonic steps and semitones (`00-semantics.md` §3,
+after *Open Music Theory* `016-intervals.md`), and a `Degree` is a signed ordinal relative to a scale
+(`03-musical-domains.md` §2). Everything the language counts with `nat` — repeat and occurrence counts, list lengths,
+`range` and `repeat` bounds, the cost table of §4 — is nonnegative.
+
+The musical falsifier is what settles it. Admitting `int` would make `transpose(-3)` the obvious spelling, and that
+number cannot say whether the composer wrote a descending minor third or a descending augmented second. The two are
+different notes on the page and different chords underneath. Keeping the general signed integer out is what keeps
+`Interval` load-bearing rather than decorative — roadmap §2's separation of written pitch from MIDI number, applied to
+the number itself.
+
 ### 1.1 Two classes of type, and one inference discipline
 
 Every type above is a **value type**. A value type is *also* **storable data** when it contains no source function at
@@ -671,5 +693,12 @@ standard system, and the design's decisions are mostly *refusals* that the liter
   (§1.1) is musa's own addition and has no counterpart in that chapter.
 - **Chapter 2.4** is the provenance for `Y` and the fixed-point combinator that §1's "there is no `fix`" refuses.
   Refusing it is what buys §5.5.
+- **The structured-data chapters above** are also the provenance for §1's refusal of a signed integer. An eliminator is
+  determined by a type's constructors; `nat` has two and ℤ has none, so an `int` would enter as a base type with no fold
+  of its own — extending the language without extending what it can express. That is a formal observation, and on its
+  own it would only be a preference. What makes the refusal a *musical* decision is the falsifier in §1: admitting `int`
+  makes `transpose(-3)` the obvious spelling, and that number cannot distinguish a descending minor third from a
+  descending augmented second. The distinction it would destroy is generic interval size against specific quality —
+  *Open Music Theory*, "Intervals" (`016-intervals.md`) — which is the same distinction `Interval` exists to carry.
 - **Chapters 10, 12, and 15** are the provenance for the sharing discipline in `docs/rules/kernel/10-term-calculus.md`
   §7.
