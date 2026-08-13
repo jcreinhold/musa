@@ -45,19 +45,27 @@ absence the package's `realize` refuses later, which is what §2.4 is about. No 
 grace timing appears in the emitted expression; those are the package's answers, and an adapter that pre-computed them
 would be deciding at read time what §2.4 defers.
 
-**Only one of §2.5's two diagnostics is expansion's, and the other one is the trial's first real finding.** A tie whose
-two ends spell different pitches is a comparison of two token texts, so the adapter refuses it and points at the second
-note. A bar that does not fill the meter it states is arithmetic on the numbers those tokens spell, and **an adapter
-reads spellings, never numbers**: `syntax_fold` hands a token its kind and its text, and no operation turns `Text` into
-a `Nat` or a `Ratio`. §2.3's "closing a bar adds exact spans and checks the stated length" assumed a privilege the phase
-does not grant. A finite table from `"4"` to `1/4` would cover the note values and still not cover `c5(3/8)` — the very
-bar §2.5 reports on — because an exact span is an arbitrary rational the composer wrote.
+**Neither of §2.5's two diagnostics is expansion's, and why is the trial's first real finding.** `syntax_fold` hands a
+token its kind and its text, and the phase environment is the ordinary builtin registry plus the ten syntax operations.
+That registry has no operation from `Text` to `Nat` or `Ratio`, no text equality, and the language has no `==`. So an
+adapter can test a token's text **against a literal it wrote itself**, by `match`, and it can do nothing else with one.
+It reads spellings, and it cannot compare two of them or count with either.
 
-Nor can the package refuse it in expansion's place. The package computes spans and holds each bar's stated meter, so it
-could find the fault; what it could not do is say *where*. A refusal there is a `Text`, an anchor is a `Nat`, and the
-same missing conversion keeps the two apart — only `Err((node, text))` carries a node, and only the adapter holds nodes.
-So this prompt lands the tie diagnostic and records the bar-length one under Target's last bullet, which is what that
-bullet is for. Closing it needs a refusal that can carry an anchor, and deciding that is not this trial's to make.
+Both of §2.5's diagnostics need exactly what is missing. "Bar at a8 has length 7/8" is arithmetic on what the tokens
+spell; a finite table from `"4"` to `1/4` would cover the note values and still miss `c5(3/8)`, the very bar it reports
+on, because an exact span is an arbitrary rational the composer wrote. "Staff tie changes pitch" compares `f5` against
+`f#5`, two texts the adapter did not write, and a table over pitch spellings is not finite. §2.3 assumed both
+privileges; the phase grants neither.
+
+Nor can the package stand in. It computes spans and holds each bar's stated meter, so it could find the length fault;
+what it could not do is say *where*. Its refusal is a `Text`, an anchor is a `Nat`, and the same missing conversion
+keeps them apart — only `Err((node, text))` carries a node, and only the adapter holds nodes.
+
+What survives is every check that tests one text against a literal, and §2.3's list is mostly those: an unknown word, a
+note that states no written value, a note that states two, an empty chord, a zero tuplet number, a duplicate header, and
+a tie with nothing sounding after it anywhere in the region. Those are the diagnostics this prompt lands, each on the
+composer's own node. The two that do not survive go under Target's last bullet with what closing them would take, which
+is what that bullet is for.
 
 **The block is locally readable.** No note inherits register or duration from an earlier note, and a test asserts it by
 reading each event in isolation. This is the spelling prompt 127e keeps, so getting it wrong here is expensive later.
@@ -70,10 +78,10 @@ transposing instruments.
 
 - `stdlib/src/adapters/staff.musa` — the adapter, declared readable, with `expand`.
 - `examples/staff-page.musa` — the trial block, covering all fourteen items, compiling and rendering.
-- Tests: one per coverage item, each asserting the expansion's value against the package's own data; §2.5's tie
-  diagnostic landing on the composer's own text; and the local-readability test.
-- A statement, in the adapter's own comments, of any privilege it wanted and did not get — including §2.5's bar-length
-  diagnostic, which is one of them, with what it would take to close.
+- Tests: one per coverage item, each asserting the expansion's value against the package's own data; the surviving
+  diagnostics of **Design**, each landing on the composer's own node; and the local-readability test.
+- A statement, in the adapter's own comments, of any privilege it wanted and did not get — including both of §2.5's
+  diagnostics, with what closing each would take.
 
 ## Check
 
