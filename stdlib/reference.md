@@ -276,4 +276,4 @@ private to it.
 - `fn inversion_of(chosen: Voicing) -> Option<Nat>` — Which member is in the bass, counted from zero, when the bass is a member at all. Absent for a slash bass, which is not an inversion.
 - `fn omitting(chosen: Voicing, position: Nat) -> Option<Voicing>` — Drop one numbered member from a voicing, keeping the class it voices. The chord class is unchanged: an omission is a choice about what sounds, not a claim that the chord is a different chord.
 - `fn rootless(chosen: Voicing) -> Option<Voicing>` — The rootless voicing a pianist plays under a bass player: the root, in position zero, is the note removed, and it is named here rather than left implicit.
-- `fn sound_for(chosen: Voicing, held: Duration) -> Music` — Sound a chosen voicing for a written length. This is the only way a chord class becomes notes.
+- `fn sound_for(chosen: Voicing, held: Duration<WrittenTime>) -> Music` — Sound a chosen voicing for a written length. This is the only way a chord class becomes notes.

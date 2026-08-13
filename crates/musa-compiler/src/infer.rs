@@ -105,7 +105,8 @@ pub(crate) fn member_types(ty: &Type) -> Vec<&Type> {
         | Type::Nat
         | Type::Ratio
         | Type::Text
-        | Type::Duration
+        | Type::Duration(_)
+        | Type::Position(_)
         | Type::Pitch
         | Type::PitchClass
         | Type::Interval
@@ -158,7 +159,8 @@ pub(crate) fn rebuilt(ty: &Type, mut member: impl FnMut(&Type) -> Type) -> Type 
         | Type::Nat
         | Type::Ratio
         | Type::Text
-        | Type::Duration
+        | Type::Duration(_)
+        | Type::Position(_)
         | Type::Pitch
         | Type::PitchClass
         | Type::Interval

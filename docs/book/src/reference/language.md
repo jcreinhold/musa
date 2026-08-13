@@ -140,10 +140,51 @@ fn transpose_answer(subject: Music, by: Interval) -> Music {
 }
 ```
 
-The primitive types include `bool`, `nat`, `ratio`, `duration`, `pitch`, `interval`, `scale`, `key`, `chord_class`,
-`voicing`, `row12`, and `music`, with `option[...]`, `list[...]`, products, and arrows as constructors. `match` is the
-case-analysis spelling. A multi-statement musical body is explicitly `music { ... }`; `use e;` instantiates a `music`
-value at the current cursor.
+The base types include `Bool`, `Nat`, `Ratio`, `Text`, `Pitch`, `Interval`, `Scale`, `Key`, `ChordClass`, `Voicing`,
+`Row12`, and `Music`, with `Option<...>`, `List<...>`, `Result<..., ...>`, products, and arrows as constructors. `match`
+is the case-analysis spelling. A multi-statement musical body is explicitly `music { ... }`; `use e;` instantiates a
+`Music` value at the current cursor.
+
+### Exact time
+
+Time has two types, and they are not the same type. `Duration<C>` is *how much* time — a nonnegative exact rational —
+and `Position<C>` is *when*, an exact rational instant that may be negative. `C` is the coordinate: `WrittenTime` is the
+page's clock and `PhysicalTime` is a real one, and the two do not mix, so a written beat can never be added to a number
+of seconds. Both take their coordinate; `Duration` written alone names no type.
+
+```musa
+let one_eighth: Duration<WrittenTime> = 1/8;
+let downbeat: Position<WrittenTime> = position_of(0);
+```
+
+A position plus a duration is a position, two durations add, and two positions do not add at all — there is no name for
+it. Their *difference* is a duration, and only when the second is not before the first, which is why `position_between`
+answers with a `Result`:
+
+| Operation | Answers |
+| --- | --- |
+| `ratio_add`, `ratio_sub`, `ratio_mul`, `ratio_div` | `Result<Ratio, Text>` |
+| `ratio_less`, `ratio_equal` | `Bool` |
+| `nat_add`, `nat_mul` | `Result<Nat, Text>` |
+| `nat_sub` | `Option<Nat>` |
+| `duration_of` | `Result<Duration<C>, Text>` |
+| `duration_ratio` | `Ratio` |
+| `duration_add`, `duration_scale` | `Result<Duration<C>, Text>` |
+| `duration_less`, `duration_equal` | `Bool` |
+| `position_of` | `Position<C>` |
+| `position_ratio` | `Ratio` |
+| `position_shift` | `Result<Position<C>, Text>` |
+| `position_between` | `Result<Duration<C>, Text>` |
+| `position_less`, `position_equal` | `Bool` |
+
+The `Result`s are not caution. Exact arithmetic is exact: two representable rationals can have a sum that is not
+representable, a duration is nonnegative by definition, and dividing by zero is not a number. Each of those is a
+different answer, and the error half is the operation's own sentence saying which one happened — never a diagnostic and
+never a silently wrong value. `nat_sub` is the one that uses `Option`, because going below zero is the only way it can
+fail and there is nothing to distinguish it from.
+
+There are no arithmetic operators. `a + b` is not written in this language; the operations above are named because the
+grammar has no binary-expression form, and `-` and `/` already spell durations and pitches.
 
 ## Chords and voicings
 

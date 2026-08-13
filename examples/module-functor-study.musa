@@ -23,7 +23,7 @@ signature CanonMaterial {
 // Expansion is binding, not rewriting: this body is checked once per
 // instance with `C` naming the structure the site passed, so no syntax is
 // copied and every span an editor points at is the one written here.
-template structure Canon(C: TonalContext, gap: Duration): CanonMaterial {
+template structure Canon(C: TonalContext, gap: Duration<WrittenTime>): CanonMaterial {
     // The subject steps through whatever collection the context named.
     let subject: Music = music {
         in scale C.collection {

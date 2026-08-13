@@ -428,6 +428,49 @@ impl Binding {
     }
 }
 
+/// Which clock a duration or a position is measured against
+/// (`docs/rules/language/02-core-calculus.md` §1's `C`).
+///
+/// A closed pair, and deliberately not a kind: `C` ranges over exactly these
+/// two, so a coordinate-polymorphic builtin would be machinery for a
+/// two-element domain. Theorem 5 applies to a finite family of inert leaves
+/// without it, and promoting the index to a kind later is additive because the
+/// tags are already written down.
+///
+/// The point of carrying it is that `Duration<WrittenTime>` and
+/// `Duration<PhysicalTime>` do not unify, so adding a written beat to a number
+/// of seconds is not a mistake this language can express.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub(crate) enum Coordinate {
+    /// Positions and durations as the page counts them.
+    WrittenTime,
+    /// Positions and durations as a clock counts them, after a time map has
+    /// been applied. Nothing in the source language constructs one yet; the
+    /// tag exists so that the day one arrives it cannot be quietly mixed with
+    /// written time.
+    PhysicalTime,
+}
+
+impl Coordinate {
+    /// The word this coordinate is written with, in a type and in a
+    /// diagnostic.
+    pub(crate) const fn spelling(self) -> &'static str {
+        match self {
+            Self::WrittenTime => "WrittenTime",
+            Self::PhysicalTime => "PhysicalTime",
+        }
+    }
+
+    /// The coordinate a written word names.
+    fn named(text: &str) -> Option<Self> {
+        match text {
+            "WrittenTime" => Some(Self::WrittenTime),
+            "PhysicalTime" => Some(Self::PhysicalTime),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Type {
     /// A type inference has not decided yet, named by the
@@ -443,7 +486,21 @@ pub(crate) enum Type {
     /// reads structure out of it, so it cannot carry what a type would
     /// otherwise have to say.
     Text,
-    Duration,
+    /// *How much* time, in coordinate `C`: a nonnegative exact rational.
+    ///
+    /// The ordered monoid `(ℚ≥0, +, 0)` of §1's commentary. Two durations add;
+    /// the nonnegativity is checked at every constructor, which is why
+    /// `duration_of` and `duration_scale` return `Result`.
+    Duration(Coordinate),
+    /// *When*, in coordinate `C`: an exact rational instant.
+    ///
+    /// The abelian group `(ℚ, +, 0)`, and a different type from
+    /// [`Type::Duration`] on purpose. A position plus a duration is a
+    /// position, two positions do not add at all, and their difference is a
+    /// duration only when it is nonnegative. One type for both would let beat
+    /// 3 and three beats be added, which is the one arithmetic error a tagged
+    /// rational exists to catch.
+    Position(Coordinate),
     Pitch,
     PitchClass,
     Interval,
@@ -530,7 +587,8 @@ impl std::fmt::Display for Type {
             Self::Nat => out.write_str("Nat"),
             Self::Ratio => out.write_str("Ratio"),
             Self::Text => out.write_str("Text"),
-            Self::Duration => out.write_str("Duration"),
+            Self::Duration(coordinate) => write!(out, "Duration<{}>", coordinate.spelling()),
+            Self::Position(coordinate) => write!(out, "Position<{}>", coordinate.spelling()),
             Self::Pitch => out.write_str("Pitch"),
             Self::PitchClass => out.write_str("NoteName"),
             Self::Interval => out.write_str("Interval"),
@@ -878,6 +936,27 @@ enum Builtin {
     Filter,
     Range,
     Repeat,
+    RatioAdd,
+    RatioSub,
+    RatioMul,
+    RatioDiv,
+    RatioLess,
+    RatioEqual,
+    NatAdd,
+    NatMul,
+    NatSub,
+    DurationOf,
+    DurationRatio,
+    DurationAdd,
+    DurationScale,
+    DurationLess,
+    DurationEqual,
+    PositionOf,
+    PositionRatio,
+    PositionShift,
+    PositionBetween,
+    PositionLess,
+    PositionEqual,
     IntervalAdd,
     IntervalInverse,
     PitchClassOf,
@@ -1039,6 +1118,14 @@ impl MachineTree {
 ///
 /// Each case writes a distinguishing tag and frames every variable-length
 /// part, so two different values cannot encode to one byte string.
+/// The byte a coordinate encodes as, for [`encode_exactly`].
+const fn coordinate_tag(coordinate: Coordinate) -> u8 {
+    match coordinate {
+        Coordinate::WrittenTime => 0,
+        Coordinate::PhysicalTime => 1,
+    }
+}
+
 fn encode_exactly(value: &Value, bytes: &mut Vec<u8>) -> Option<()> {
     fn framed(bytes: &mut Vec<u8>, part: &[u8]) {
         bytes.extend_from_slice(&u64::try_from(part.len()).unwrap_or(u64::MAX).to_be_bytes());
@@ -1064,8 +1151,17 @@ fn encode_exactly(value: &Value, bytes: &mut Vec<u8>) -> Option<()> {
             bytes.push(2);
             exact(bytes, *held);
         }
-        Value::Duration(held) => {
+        // The coordinate is part of the value, not decoration: a written
+        // beat and the same number of seconds are two values, and an encoding
+        // that dropped the tag would make them one.
+        Value::Duration(coordinate, held) => {
             bytes.push(3);
+            bytes.push(coordinate_tag(*coordinate));
+            exact(bytes, *held);
+        }
+        Value::Position(coordinate, held) => {
+            bytes.push(11);
+            bytes.push(coordinate_tag(*coordinate));
             exact(bytes, *held);
         }
         Value::Text(held) => {
@@ -1153,6 +1249,16 @@ fn encode_exactly(value: &Value, bytes: &mut Vec<u8>) -> Option<()> {
 enum Base {
     Bool,
     Nat,
+    /// An exact rational. Signed, and the ordinary arithmetic base: §1's
+    /// commentary says the refinements live at the constructors of the tagged
+    /// types rather than in a second numeric type.
+    Ratio,
+    /// Opaque printable text. Inert in D1's sense — nothing reads structure
+    /// out of it — which is what lets it be the error half of a `Result`
+    /// without giving a builtin a second way to say what went wrong.
+    Text,
+    Duration(Coordinate),
+    Position(Coordinate),
     Pitch,
     PitchClass,
     Interval,
@@ -1244,6 +1350,10 @@ impl Base {
         match self {
             Self::Bool
             | Self::Nat
+            | Self::Ratio
+            | Self::Text
+            | Self::Duration(_)
+            | Self::Position(_)
             | Self::Pitch
             | Self::PitchClass
             | Self::Interval
@@ -1265,6 +1375,10 @@ impl Base {
         match self {
             Self::Bool => Type::Bool,
             Self::Nat => Type::Nat,
+            Self::Ratio => Type::Ratio,
+            Self::Text => Type::Text,
+            Self::Duration(coordinate) => Type::Duration(coordinate),
+            Self::Position(coordinate) => Type::Position(coordinate),
             Self::Pitch => Type::Pitch,
             Self::PitchClass => Type::PitchClass,
             Self::Interval => Type::Interval,
@@ -1799,6 +1913,17 @@ const SYNTAX_OWNERSHIP: [BuiltinOwnership<SyntaxOp, PhaseFamily>; 11] = [
 
 const BOOL: Shape = Shape::Base(Base::Bool);
 const NAT: Shape = Shape::Base(Base::Nat);
+const RATIO: Shape = Shape::Base(Base::Ratio);
+const TEXT: Shape = Shape::Base(Base::Text);
+/// Every time operation is registered at written time, because written time is
+/// the only coordinate the source language constructs a value of
+/// (`02-core-calculus.md` §5.7 fixes it as the score side's). `PhysicalTime`
+/// exists in [`Coordinate`] so that the day a physical duration reaches the
+/// source it arrives as a *different type* rather than as the same one with a
+/// different meaning; registering operations for it before anything can make
+/// one would be names nothing could call.
+const DURATION: Shape = Shape::Base(Base::Duration(Coordinate::WrittenTime));
+const POSITION: Shape = Shape::Base(Base::Position(Coordinate::WrittenTime));
 const PITCH: Shape = Shape::Base(Base::Pitch);
 const CLASS: Shape = Shape::Base(Base::PitchClass);
 const INTERVAL: Shape = Shape::Base(Base::Interval);
@@ -1819,6 +1944,11 @@ const PITCHES: Shape = Shape::List(&PITCH);
 const INTERVALS: Shape = Shape::List(&INTERVAL);
 const PC12S: Shape = Shape::List(&PC12);
 const ROW12S: Shape = Shape::List(&ROW12);
+
+const RATIO_OR_TEXT: Shape = Shape::Result(&RATIO, &TEXT);
+const NAT_OR_TEXT: Shape = Shape::Result(&NAT, &TEXT);
+const DURATION_OR_TEXT: Shape = Shape::Result(&DURATION, &TEXT);
+const POSITION_OR_TEXT: Shape = Shape::Result(&POSITION, &TEXT);
 
 const MAYBE_NAT: Shape = Shape::Option(&NAT);
 const MAYBE_CLASS: Shape = Shape::Option(&CLASS);
@@ -1868,7 +1998,7 @@ const fn delta(arguments: &'static [Shape], result: Shape) -> Family {
     Family::Delta { arguments, result }
 }
 
-const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 88] = [
+const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 109] = [
     BuiltinOwnership {
         operation: Builtin::NatFold,
         spelling: "nat_fold",
@@ -1910,6 +2040,132 @@ const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 88] = [
         spelling: "repeat",
         hidden_information: "rank-1 finite-list construction governed by the structural work budget",
         family: Family::Eliminator(Eliminator::Repeat),
+    },
+    BuiltinOwnership {
+        operation: Builtin::RatioAdd,
+        spelling: "ratio_add",
+        hidden_information: "exact rational reduction, and whether the reduced result is representable at all",
+        family: delta(&[RATIO, RATIO], RATIO_OR_TEXT),
+    },
+    BuiltinOwnership {
+        operation: Builtin::RatioSub,
+        spelling: "ratio_sub",
+        hidden_information: "exact rational reduction, and whether the reduced result is representable at all",
+        family: delta(&[RATIO, RATIO], RATIO_OR_TEXT),
+    },
+    BuiltinOwnership {
+        operation: Builtin::RatioMul,
+        spelling: "ratio_mul",
+        hidden_information: "exact rational reduction, and whether the reduced result is representable at all",
+        family: delta(&[RATIO, RATIO], RATIO_OR_TEXT),
+    },
+    BuiltinOwnership {
+        operation: Builtin::RatioDiv,
+        spelling: "ratio_div",
+        hidden_information: "exact rational reduction, and whether the reduced result is representable at all",
+        family: delta(&[RATIO, RATIO], RATIO_OR_TEXT),
+    },
+    BuiltinOwnership {
+        operation: Builtin::RatioLess,
+        spelling: "ratio_less",
+        hidden_information: "the reduced form two exact rationals share, which no source expression can inspect",
+        family: delta(&[RATIO, RATIO], BOOL),
+    },
+    BuiltinOwnership {
+        operation: Builtin::RatioEqual,
+        spelling: "ratio_equal",
+        hidden_information: "the reduced form two exact rationals share, which no source expression can inspect",
+        family: delta(&[RATIO, RATIO], BOOL),
+    },
+    BuiltinOwnership {
+        operation: Builtin::NatAdd,
+        spelling: "nat_add",
+        hidden_information: "the representable range a whole number must stay inside",
+        family: delta(&[NAT, NAT], NAT_OR_TEXT),
+    },
+    BuiltinOwnership {
+        operation: Builtin::NatMul,
+        spelling: "nat_mul",
+        hidden_information: "the representable range a whole number must stay inside",
+        family: delta(&[NAT, NAT], NAT_OR_TEXT),
+    },
+    BuiltinOwnership {
+        operation: Builtin::NatSub,
+        spelling: "nat_sub",
+        hidden_information: "the representable range a whole number must stay inside",
+        family: delta(&[NAT, NAT], MAYBE_NAT),
+    },
+    BuiltinOwnership {
+        operation: Builtin::DurationOf,
+        spelling: "duration_of",
+        hidden_information: "the nonnegativity every duration constructor checks",
+        family: delta(&[RATIO], DURATION_OR_TEXT),
+    },
+    BuiltinOwnership {
+        operation: Builtin::DurationRatio,
+        spelling: "duration_ratio",
+        hidden_information: "the exact rational a duration is measured by, and its coordinate tag",
+        family: delta(&[DURATION], RATIO),
+    },
+    BuiltinOwnership {
+        operation: Builtin::DurationAdd,
+        spelling: "duration_add",
+        hidden_information: "exact rational reduction, and whether the reduced result is representable at all",
+        family: delta(&[DURATION, DURATION], DURATION_OR_TEXT),
+    },
+    BuiltinOwnership {
+        operation: Builtin::DurationScale,
+        spelling: "duration_scale",
+        hidden_information: "the nonnegativity every duration constructor checks",
+        family: delta(&[DURATION, RATIO], DURATION_OR_TEXT),
+    },
+    BuiltinOwnership {
+        operation: Builtin::DurationLess,
+        spelling: "duration_less",
+        hidden_information: "the reduced form two exact rationals share, which no source expression can inspect",
+        family: delta(&[DURATION, DURATION], BOOL),
+    },
+    BuiltinOwnership {
+        operation: Builtin::DurationEqual,
+        spelling: "duration_equal",
+        hidden_information: "the reduced form two exact rationals share, which no source expression can inspect",
+        family: delta(&[DURATION, DURATION], BOOL),
+    },
+    BuiltinOwnership {
+        operation: Builtin::PositionOf,
+        spelling: "position_of",
+        hidden_information: "the origin an instant is measured from, and its coordinate tag",
+        family: delta(&[RATIO], POSITION),
+    },
+    BuiltinOwnership {
+        operation: Builtin::PositionRatio,
+        spelling: "position_ratio",
+        hidden_information: "the origin an instant is measured from, and its coordinate tag",
+        family: delta(&[POSITION], RATIO),
+    },
+    BuiltinOwnership {
+        operation: Builtin::PositionShift,
+        spelling: "position_shift",
+        hidden_information: "exact rational reduction, and whether the reduced result is representable at all",
+        family: delta(&[POSITION, DURATION], POSITION_OR_TEXT),
+    },
+    BuiltinOwnership {
+        operation: Builtin::PositionBetween,
+        spelling: "position_between",
+        hidden_information: "the nonnegativity every duration constructor checks",
+        family: delta(&[POSITION, POSITION], DURATION_OR_TEXT),
+    },
+    BuiltinOwnership {
+        operation: Builtin::PositionLess,
+        spelling: "position_less",
+        hidden_information: "the reduced form two exact rationals share, which no source expression can inspect",
+        family: delta(&[POSITION, POSITION], BOOL),
+    },
+    BuiltinOwnership {
+        operation: Builtin::PositionEqual,
+        spelling: "position_equal",
+        hidden_information: "the reduced form two exact rationals share, which no source expression can inspect",
+        family: delta(&[POSITION, POSITION], BOOL),
     },
     BuiltinOwnership {
         operation: Builtin::IntervalAdd,
@@ -2409,6 +2665,27 @@ impl Builtin {
             Self::Filter => "filter",
             Self::Range => "range",
             Self::Repeat => "repeat",
+            Self::RatioAdd => "ratio_add",
+            Self::RatioSub => "ratio_sub",
+            Self::RatioMul => "ratio_mul",
+            Self::RatioDiv => "ratio_div",
+            Self::RatioLess => "ratio_less",
+            Self::RatioEqual => "ratio_equal",
+            Self::NatAdd => "nat_add",
+            Self::NatMul => "nat_mul",
+            Self::NatSub => "nat_sub",
+            Self::DurationOf => "duration_of",
+            Self::DurationRatio => "duration_ratio",
+            Self::DurationAdd => "duration_add",
+            Self::DurationScale => "duration_scale",
+            Self::DurationLess => "duration_less",
+            Self::DurationEqual => "duration_equal",
+            Self::PositionOf => "position_of",
+            Self::PositionRatio => "position_ratio",
+            Self::PositionShift => "position_shift",
+            Self::PositionBetween => "position_between",
+            Self::PositionLess => "position_less",
+            Self::PositionEqual => "position_equal",
             Self::IntervalAdd => "interval_add",
             Self::IntervalInverse => "interval_inverse",
             Self::PitchClassOf => "pitchclass_of",
@@ -2540,13 +2817,13 @@ impl Builtin {
             Self::Stretch => Some(vec![Type::Ratio, Type::Music]),
             Self::Retrograde => Some(vec![Type::Music]),
             Self::Invert => Some(vec![Type::Pitch, Type::Music]),
-            Self::Shift => Some(vec![Type::Duration, Type::Music]),
+            Self::Shift => Some(vec![Type::Duration(Coordinate::WrittenTime), Type::Music]),
             Self::Together => Some(vec![Type::Music, Type::Music]),
             Self::MapNotePitches => Some(vec![
                 Type::Function(vec![Type::Pitch], Box::new(Type::Pitch)),
                 Type::Music,
             ]),
-            Self::Play => Some(vec![Type::Voicing, Type::Duration]),
+            Self::Play => Some(vec![Type::Voicing, Type::Duration(Coordinate::WrittenTime)]),
             Self::NatFold
             | Self::ListFold
             | Self::OptionFold
@@ -2554,6 +2831,27 @@ impl Builtin {
             | Self::Filter
             | Self::Range
             | Self::Repeat
+            | Self::RatioAdd
+            | Self::RatioSub
+            | Self::RatioMul
+            | Self::RatioDiv
+            | Self::RatioLess
+            | Self::RatioEqual
+            | Self::NatAdd
+            | Self::NatMul
+            | Self::NatSub
+            | Self::DurationOf
+            | Self::DurationRatio
+            | Self::DurationAdd
+            | Self::DurationScale
+            | Self::DurationLess
+            | Self::DurationEqual
+            | Self::PositionOf
+            | Self::PositionRatio
+            | Self::PositionShift
+            | Self::PositionBetween
+            | Self::PositionLess
+            | Self::PositionEqual
             | Self::IntervalAdd
             | Self::IntervalInverse
             | Self::PitchClassOf
@@ -2748,7 +3046,15 @@ enum Value {
     Nat(u64),
     Ratio(Ratio<i64>),
     Text(String),
-    Duration(Ratio<i64>),
+    /// A nonnegative exact rational in its coordinate. The coordinate travels
+    /// with the value because the evaluator has to hand back a value of the
+    /// declared result type, and `duration_add` is only well typed when both
+    /// operands agree.
+    Duration(Coordinate, Ratio<i64>),
+    /// An exact rational instant in its coordinate. Signed, unlike a duration:
+    /// nothing forbids a position before the origin, and the nonnegativity
+    /// lives on the difference instead.
+    Position(Coordinate, Ratio<i64>),
     Pitch(WrittenPitch),
     PitchClass(PitchClass),
     Interval(Interval),
@@ -3201,7 +3507,8 @@ impl Value {
             Self::Nat(_) => Type::Nat,
             Self::Ratio(_) => Type::Ratio,
             Self::Text(_) => Type::Text,
-            Self::Duration(_) => Type::Duration,
+            Self::Duration(coordinate, _) => Type::Duration(*coordinate),
+            Self::Position(coordinate, _) => Type::Position(*coordinate),
             Self::Pitch(_) => Type::Pitch,
             Self::PitchClass(_) => Type::PitchClass,
             Self::Interval(_) => Type::Interval,
@@ -3255,8 +3562,11 @@ impl Value {
         match self {
             Self::Bool(value) => u64::from(*value),
             Self::Nat(value) => *value,
-            Self::Ratio(value) | Self::Duration(value) => {
-                value.numer().unsigned_abs().rotate_left(7) ^ value.denom().unsigned_abs()
+            Self::Ratio(value) => value.numer().unsigned_abs().rotate_left(7) ^ value.denom().unsigned_abs(),
+            Self::Duration(coordinate, value) | Self::Position(coordinate, value) => {
+                u64::from(coordinate_tag(*coordinate)).rotate_left(3)
+                    ^ value.numer().unsigned_abs().rotate_left(7)
+                    ^ value.denom().unsigned_abs()
             }
             Self::Pitch(value) => {
                 u64::from(value.letter.steps().unsigned_abs()).rotate_left(8)
@@ -3404,7 +3714,7 @@ fn music_witness(music: &Music) -> u64 {
         Some(MusicOperation::Together { left, right }) => music_witness(left).rotate_left(7) ^ music_witness(right),
         Some(MusicOperation::Play { voicing, held }) => {
             Value::Voicing(voicing.clone()).normalization_witness().rotate_left(11)
-                ^ Value::Duration(*held).normalization_witness()
+                ^ Value::Duration(Coordinate::WrittenTime, *held).normalization_witness()
         }
         Some(MusicOperation::KernelQuote { term, holes }) => {
             holes
@@ -4101,7 +4411,8 @@ fn check_and_evaluate_metered(
             | Value::Nat(_)
             | Value::Ratio(_)
             | Value::Text(_)
-            | Value::Duration(_)
+            | Value::Duration(..)
+            | Value::Position(..)
             | Value::Pitch(_)
             | Value::PitchClass(_)
             | Value::Interval(_)
@@ -4479,7 +4790,8 @@ fn lower_signature(
             for parameter in parameters {
                 let ty = match parameter.kind.as_str() {
                     "Pitch" => Type::Pitch,
-                    "Duration" => Type::Duration,
+                    "Duration" => Type::Duration(Coordinate::WrittenTime),
+                    "Position" => Type::Position(Coordinate::WrittenTime),
                     other => {
                         resolver.report(
                             Diagnostic::error(Code::UnknownName, format!("unknown type `{other}`"))
@@ -4599,7 +4911,8 @@ fn function_result(ty: &Type) -> Option<&Type> {
         | Type::Nat
         | Type::Ratio
         | Type::Text
-        | Type::Duration
+        | Type::Duration(_)
+        | Type::Position(_)
         | Type::Pitch
         | Type::PitchClass
         | Type::Interval
@@ -4715,7 +5028,13 @@ fn named_type(text: &str) -> Option<Type> {
         "Nat" => Some(Type::Nat),
         "Ratio" => Some(Type::Ratio),
         "Text" => Some(Type::Text),
-        "Duration" => Some(Type::Duration),
+        // `Duration` and `Position` are deliberately absent: they take a
+        // coordinate, so the bare word names no type. Admitting it as an
+        // alias for written time would make the vocabulary offered, the
+        // vocabulary read, and the vocabulary printed three vocabularies —
+        // a composer would write `Duration` and be answered about
+        // `Duration<WrittenTime>`. [`coordinate_type`] reads the written
+        // form, and the bare word is refused with it.
         "Pitch" => Some(Type::Pitch),
         "NoteName" => Some(Type::PitchClass),
         "Interval" => Some(Type::Interval),
@@ -4779,6 +5098,18 @@ fn lower_type(mut resolver: Option<&mut Resolver>, scope: &TypeScope<'_>, node: 
         if let Some(now) = musa_language::respelled_type(text) {
             return named_type(now);
         }
+        if matches!(text, "Duration" | "Position") {
+            if let Some(resolver) = resolver.as_deref_mut() {
+                resolver.report(
+                    Diagnostic::error(Code::WrongArity, format!("`{text}` takes a coordinate"))
+                        .at(crate::resolve::trimmed_span(node), "written with none")
+                        .help(format!(
+                            "write `{text}<WrittenTime>`, or `<PhysicalTime>` for clock time"
+                        )),
+                );
+            }
+            return None;
+        }
         if let Some(resolver) = resolver.as_deref_mut() {
             let vocabulary = musa_language::BASE_TYPES
                 .iter()
@@ -4789,7 +5120,7 @@ fn lower_type(mut resolver: Option<&mut Resolver>, scope: &TypeScope<'_>, node: 
                 Diagnostic::error(Code::UnknownName, format!("unknown type `{text}`"))
                     .at(crate::resolve::trimmed_span(node), "not a value type")
                     .help(format!(
-                        "use {vocabulary}, `Option<τ>`, `List<τ>`, a product, or a function type"
+                        "use {vocabulary}, `Duration<C>`, `Position<C>`, `Option<τ>`, `List<τ>`, a product, or a function type"
                     )),
             );
         }
@@ -4803,6 +5134,16 @@ fn lower_type(mut resolver: Option<&mut Resolver>, scope: &TypeScope<'_>, node: 
         let name = parts.next()?;
         let written = name.to_string();
         let written = written.trim();
+        // `Duration<C>` and `Position<C>` take a *coordinate*, which is a tag
+        // rather than a type: nothing inhabits `WrittenTime`, and the only
+        // place the word can be written is here. Reading it from the argument
+        // node's own text — before the arguments are lowered — is what keeps
+        // it out of [`Type`] entirely, so there is no non-value type to carry
+        // through unification and no way to write `List<WrittenTime>`.
+        if matches!(written, "Duration" | "Position") {
+            let arguments: Vec<SyntaxNode> = parts.collect();
+            return coordinate_type(resolver.as_deref_mut(), node, written, &arguments);
+        }
         let arguments: Option<Vec<_>> = parts
             .collect::<Vec<_>>()
             .iter()
@@ -4865,6 +5206,51 @@ fn lower_type(mut resolver: Option<&mut Resolver>, scope: &TypeScope<'_>, node: 
         };
     }
     None
+}
+
+/// `Duration<C>` or `Position<C>`, read from what was written.
+///
+/// The argument is a coordinate word rather than a type, so it is read from
+/// the node's own text: `WrittenTime` and `PhysicalTime` are the two, they
+/// inhabit nothing, and no other type takes one. Getting it wrong is an error
+/// here rather than an unsolvable constraint later, because a type written at
+/// the wrong coordinate names no type at all.
+fn coordinate_type(
+    mut resolver: Option<&mut Resolver>,
+    node: &SyntaxNode,
+    written: &str,
+    arguments: &[SyntaxNode],
+) -> Option<Type> {
+    let complain = |resolver: Option<&mut Resolver>, message: String, help: &str| {
+        if let Some(resolver) = resolver {
+            resolver.report(
+                Diagnostic::error(Code::WrongArity, message)
+                    .at(crate::resolve::trimmed_span(node), "written here")
+                    .help(help.to_owned()),
+            );
+        }
+    };
+    let [argument] = arguments else {
+        complain(
+            resolver.as_deref_mut(),
+            format!("`{written}` takes one coordinate, not {}", arguments.len()),
+            "write `WrittenTime` or `PhysicalTime`, or write the name alone for written time",
+        );
+        return None;
+    };
+    let text = argument.to_string();
+    let Some(coordinate) = Coordinate::named(text.trim()) else {
+        complain(
+            resolver,
+            format!("`{}` is not a coordinate", text.trim()),
+            "the coordinates are `WrittenTime` and `PhysicalTime`",
+        );
+        return None;
+    };
+    Some(match written {
+        "Position" => Type::Position(coordinate),
+        _ => Type::Duration(coordinate),
+    })
 }
 
 /// `Machine<K, A, B>` or `Primitive<K, A, B>`, read from what was written.
@@ -5366,7 +5752,7 @@ impl Checker<'_> {
             if let Some(name) = musa_language::ast::Duration::of(&statement).and_then(|duration| duration.parameter()) {
                 self.music_binding(
                     &name,
-                    &Type::Duration,
+                    &Type::Duration(Coordinate::WrittenTime),
                     crate::resolve::trimmed_span(&statement),
                     &mut bindings,
                 )?;
@@ -5379,7 +5765,7 @@ impl Checker<'_> {
             if let Some(name) = musa_language::ast::Duration::of(&statement).and_then(|duration| duration.parameter()) {
                 self.music_binding(
                     &name,
-                    &Type::Duration,
+                    &Type::Duration(Coordinate::WrittenTime),
                     crate::resolve::trimmed_span(&statement),
                     &mut bindings,
                 )?;
@@ -5748,12 +6134,15 @@ impl Checker<'_> {
             Value::Bool(true)
         } else if kind == SyntaxKind::FalseKw {
             Value::Bool(false)
-        } else if kind == SyntaxKind::Integer && expected == Some(&Type::Duration) {
-            Value::Duration(Ratio::from_integer(parse_i64(self.resolver, &token)?))
+        } else if kind == SyntaxKind::Integer && matches!(expected, Some(&Type::Duration(_))) {
+            Value::Duration(
+                Coordinate::WrittenTime,
+                Ratio::from_integer(parse_i64(self.resolver, &token)?),
+            )
         } else if kind == SyntaxKind::Integer && expected == Some(&Type::Ratio) {
             Value::Ratio(Ratio::from_integer(parse_i64(self.resolver, &token)?))
-        } else if kind == SyntaxKind::Rational && expected == Some(&Type::Duration) {
-            Value::Duration(parse_ratio(self.resolver, &token)?)
+        } else if kind == SyntaxKind::Rational && matches!(expected, Some(&Type::Duration(_))) {
+            Value::Duration(Coordinate::WrittenTime, parse_ratio(self.resolver, &token)?)
         } else if kind == SyntaxKind::Integer {
             Value::Nat(parse_u64(self.resolver, &token)?)
         } else if kind == SyntaxKind::Rational {
@@ -6489,7 +6878,8 @@ impl Checker<'_> {
             Value::Nat(_)
             | Value::Ratio(_)
             | Value::Text(_)
-            | Value::Duration(_)
+            | Value::Duration(..)
+            | Value::Position(..)
             | Value::Pitch(_)
             | Value::PitchClass(_)
             | Value::Interval(_)
@@ -6526,12 +6916,14 @@ impl Checker<'_> {
             (SyntaxKind::TrueKw, Type::Bool) => Value::Bool(true),
             (SyntaxKind::FalseKw, Type::Bool) => Value::Bool(false),
             (SyntaxKind::Integer, Type::Nat) => Value::Nat(parse_u64(self.resolver, token)?),
-            (SyntaxKind::Integer, Type::Duration) => {
-                Value::Duration(Ratio::from_integer(parse_i64(self.resolver, token)?))
+            (SyntaxKind::Integer, Type::Duration(coordinate)) => {
+                Value::Duration(*coordinate, Ratio::from_integer(parse_i64(self.resolver, token)?))
             }
             (SyntaxKind::String, Type::Text) => Value::Text(musa_language::ast::unquote(token.text())),
             (SyntaxKind::Rational, Type::Ratio) => Value::Ratio(parse_ratio(self.resolver, token)?),
-            (SyntaxKind::Rational, Type::Duration) => Value::Duration(parse_ratio(self.resolver, token)?),
+            (SyntaxKind::Rational, Type::Duration(coordinate)) => {
+                Value::Duration(*coordinate, parse_ratio(self.resolver, token)?)
+            }
             (SyntaxKind::PitchLiteral, Type::Pitch) => Value::Pitch(WrittenPitch::parse(token.text())?),
             (SyntaxKind::IntervalLiteral, Type::Interval) => Value::Interval(Interval::parse(token.text(), false)?),
             _ => return self.pattern_type_error(span, target, "this literal cannot match that value type"),
@@ -7068,7 +7460,8 @@ fn uncovered(world: &World, target: &Type, coverage: &IndexSet<Coverage>) -> Opt
         | Type::Nat
         | Type::Ratio
         | Type::Text
-        | Type::Duration
+        | Type::Duration(_)
+        | Type::Position(_)
         | Type::Pitch
         | Type::PitchClass
         | Type::Interval
@@ -7104,7 +7497,12 @@ fn literal_key(value: &Value) -> String {
         // encoding, so two texts have one key exactly when they are one
         // text, and no text can spell another value's key.
         Value::Text(value) => format!("text:{}", musa_language::ast::quote(value)),
-        Value::Duration(value) => format!("duration:{}/{}", value.numer(), value.denom()),
+        Value::Duration(coordinate, value) => {
+            format!("duration:{}:{}/{}", coordinate.spelling(), value.numer(), value.denom())
+        }
+        Value::Position(coordinate, value) => {
+            format!("position:{}:{}/{}", coordinate.spelling(), value.numer(), value.denom())
+        }
         Value::Pitch(value) => format!("pitch:{}:{}:{}", value.letter.steps(), value.accidental.0, value.octave),
         Value::PitchClass(value) => format!("pitchclass:{}:{}", value.letter.steps(), value.accidental.0),
         Value::Interval(value) => format!("interval:{}:{}", value.diatonic_steps, value.semitones),
@@ -7408,7 +7806,8 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 | Value::Nat(_)
                 | Value::Ratio(_)
                 | Value::Text(_)
-                | Value::Duration(_)
+                | Value::Duration(..)
+                | Value::Position(..)
                 | Value::Pitch(_)
                 | Value::PitchClass(_)
                 | Value::Interval(_)
@@ -7449,7 +7848,8 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 | Value::Nat(_)
                 | Value::Ratio(_)
                 | Value::Text(_)
-                | Value::Duration(_)
+                | Value::Duration(..)
+                | Value::Position(..)
                 | Value::Interval(_)
                 | Value::Scale(_)
                 | Value::Key(_)
@@ -7527,12 +7927,13 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
             for name in &music.bindings {
                 let bound = match environment.get(name)? {
                     Value::Pitch(pitch) => crate::resolve::BoundValue::Pitch(*pitch),
-                    Value::Duration(duration) => {
+                    Value::Duration(_, duration) => {
                         crate::resolve::BoundValue::Duration(crate::score::NotatedDuration::spelled(*duration))
                     }
                     Value::Bool(_)
                     | Value::Nat(_)
                     | Value::Ratio(_)
+                    | Value::Position(..)
                     | Value::Text(_)
                     | Value::PitchClass(_)
                     | Value::Interval(_)
@@ -7772,6 +8173,27 @@ fn apply_builtin(builtin: Builtin, provided: Vec<Value>, span: SourceSpan) -> Op
         | Builtin::Filter
         | Builtin::Range
         | Builtin::Repeat
+        | Builtin::RatioAdd
+        | Builtin::RatioSub
+        | Builtin::RatioMul
+        | Builtin::RatioDiv
+        | Builtin::RatioLess
+        | Builtin::RatioEqual
+        | Builtin::NatAdd
+        | Builtin::NatMul
+        | Builtin::NatSub
+        | Builtin::DurationOf
+        | Builtin::DurationRatio
+        | Builtin::DurationAdd
+        | Builtin::DurationScale
+        | Builtin::DurationLess
+        | Builtin::DurationEqual
+        | Builtin::PositionOf
+        | Builtin::PositionRatio
+        | Builtin::PositionShift
+        | Builtin::PositionBetween
+        | Builtin::PositionLess
+        | Builtin::PositionEqual
         | Builtin::IntervalAdd
         | Builtin::IntervalInverse
         | Builtin::PitchClassOf
@@ -7882,8 +8304,131 @@ fn ratio_value(value: &Value) -> Option<Ratio<i64>> {
 }
 
 fn duration_value(value: &Value) -> Option<Ratio<i64>> {
-    let Value::Duration(value) = value else { return None };
+    let Value::Duration(_, value) = value else { return None };
     Some(*value)
+}
+
+fn position_value(value: &Value) -> Option<Ratio<i64>> {
+    let Value::Position(_, value) = value else { return None };
+    Some(*value)
+}
+
+/// The greatest common divisor of two magnitudes, by Euclid.
+///
+/// Written out because reduction happens in `i128` here: a sum of two
+/// representable rationals need not be representable, so the arithmetic is
+/// done wide, reduced, and only then asked whether it fits.
+fn greatest_common_divisor(mut left: u128, mut right: u128) -> u128 {
+    while right != 0 {
+        let remainder = left.checked_rem(right).unwrap_or(0);
+        left = right;
+        right = remainder;
+    }
+    left
+}
+
+/// A wide numerator and denominator as an exact `Ratio<i64>`, or nothing.
+///
+/// Nothing means the reduced value does not fit, which every caller turns into
+/// a stated failure rather than a stuck term: D2 forbids partiality anywhere
+/// but the result type.
+fn exact_ratio(numerator: i128, denominator: i128) -> Option<Ratio<i64>> {
+    if denominator == 0 {
+        return None;
+    }
+    let divisor = i128::try_from(greatest_common_divisor(
+        numerator.unsigned_abs(),
+        denominator.unsigned_abs(),
+    ))
+    .ok()?;
+    let divisor = if divisor == 0 { 1 } else { divisor };
+    let (numerator, denominator) = (numerator.checked_div(divisor)?, denominator.checked_div(divisor)?);
+    let (numerator, denominator) = if denominator < 0 {
+        (numerator.checked_neg()?, denominator.checked_neg()?)
+    } else {
+        (numerator, denominator)
+    };
+    Some(Ratio::new(
+        i64::try_from(numerator).ok()?,
+        i64::try_from(denominator).ok()?,
+    ))
+}
+
+/// The four exact operations, named apart from the builtins that offer them.
+///
+/// Separate because the same four are reached from six builtins — a duration
+/// sum is a rational sum, a position shift is one too — and because a match on
+/// [`Builtin`] here would have to name every operation that is *not* one of
+/// these four.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Exact {
+    Add,
+    Sub,
+    Mul,
+    Div,
+}
+
+/// `left · right`, computed wide and reduced before it is asked whether it
+/// fits.
+fn exact_arithmetic(left: Ratio<i64>, right: Ratio<i64>, operation: Exact) -> Option<Ratio<i64>> {
+    let (a, b) = (i128::from(*left.numer()), i128::from(*left.denom()));
+    let (c, d) = (i128::from(*right.numer()), i128::from(*right.denom()));
+    match operation {
+        Exact::Add => exact_ratio(a.checked_mul(d)?.checked_add(c.checked_mul(b)?)?, b.checked_mul(d)?),
+        Exact::Sub => exact_ratio(a.checked_mul(d)?.checked_sub(c.checked_mul(b)?)?, b.checked_mul(d)?),
+        Exact::Mul => exact_ratio(a.checked_mul(c)?, b.checked_mul(d)?),
+        Exact::Div => exact_ratio(a.checked_mul(d)?, b.checked_mul(c)?),
+    }
+}
+
+/// One injection of a `Result<τ, Text>`, which is how every arithmetic builtin
+/// that can refuse says so.
+fn answered(value_type: Type, held: Value) -> Value {
+    Value::Sum {
+        value_type,
+        error_type: Type::Text,
+        error: false,
+        held: Box::new(held),
+    }
+}
+
+/// The other injection, carrying the operation's own sentence about what it
+/// was handed and could not answer for.
+fn refused(value_type: Type, because: &str) -> Value {
+    Value::Sum {
+        value_type,
+        error_type: Type::Text,
+        error: true,
+        held: Box::new(Value::Text(because.to_owned())),
+    }
+}
+
+/// The written-time duration a nonnegative exact rational names.
+fn written_duration(value: Ratio<i64>) -> Value {
+    let ty = Type::Duration(Coordinate::WrittenTime);
+    if value < Ratio::ZERO {
+        return refused(ty, "a duration is nonnegative, and this exact rational is below zero");
+    }
+    answered(ty, Value::Duration(Coordinate::WrittenTime, value))
+}
+
+/// One of the four exact rational operations, on already-evaluated arguments.
+///
+/// Division by zero and an unrepresentable reduced result are two different
+/// refusals, and the point of `Result` over `Option` is that the composer is
+/// told which one happened.
+fn ratio_arithmetic(operation: Exact, values: &[Value]) -> Option<Value> {
+    let (left, right) = (ratio_value(values.first()?)?, ratio_value(values.get(1)?)?);
+    if operation == Exact::Div && right == Ratio::ZERO {
+        return Some(refused(Type::Ratio, "an exact rational is not divided by zero"));
+    }
+    Some(match exact_arithmetic(left, right, operation) {
+        Some(value) => answered(Type::Ratio, Value::Ratio(value)),
+        None => refused(
+            Type::Ratio,
+            "these exact rationals have no result this language can represent",
+        ),
+    })
 }
 
 fn eval_builtin(
@@ -8059,6 +8604,111 @@ fn eval_builtin(
             })
         }
         Builtin::Row12Missing => Some(pc12_values(crate::pc12::missing_classes(&pc12_list(values.first()?)?))),
+        Builtin::RatioAdd => ratio_arithmetic(Exact::Add, &values),
+        Builtin::RatioSub => ratio_arithmetic(Exact::Sub, &values),
+        Builtin::RatioMul => ratio_arithmetic(Exact::Mul, &values),
+        Builtin::RatioDiv => ratio_arithmetic(Exact::Div, &values),
+        Builtin::RatioLess => Some(Value::Bool(
+            ratio_value(values.first()?)? < ratio_value(values.get(1)?)?,
+        )),
+        Builtin::RatioEqual => Some(Value::Bool(
+            ratio_value(values.first()?)? == ratio_value(values.get(1)?)?,
+        )),
+        Builtin::NatAdd | Builtin::NatMul => {
+            let (left, right) = (nat_value(values.first()?)?, nat_value(values.get(1)?)?);
+            let held = if builtin == Builtin::NatAdd {
+                left.checked_add(right)
+            } else {
+                left.checked_mul(right)
+            };
+            Some(match held {
+                Some(value) => answered(Type::Nat, Value::Nat(value)),
+                None => refused(
+                    Type::Nat,
+                    "these whole numbers have no result this language can represent",
+                ),
+            })
+        }
+        // Below zero is the *only* way this fails, so `Option` says everything
+        // a `Result` would: there is no second reason to distinguish it from.
+        Builtin::NatSub => {
+            let (left, right) = (nat_value(values.first()?)?, nat_value(values.get(1)?)?);
+            Some(Value::Option {
+                member: Type::Nat,
+                value: left.checked_sub(right).map(|held| Box::new(Value::Nat(held))),
+            })
+        }
+        Builtin::DurationOf => Some(written_duration(ratio_value(values.first()?)?)),
+        Builtin::DurationRatio => Some(Value::Ratio(duration_value(values.first()?)?)),
+        Builtin::DurationAdd => {
+            let (left, right) = (duration_value(values.first()?)?, duration_value(values.get(1)?)?);
+            Some(match exact_arithmetic(left, right, Exact::Add) {
+                // Two nonnegative durations sum to a nonnegative one, so the
+                // only thing left to fail is representability. The
+                // constructor is still asked, because the law that durations
+                // are nonnegative is stated in one place.
+                Some(value) => written_duration(value),
+                None => refused(
+                    Type::Duration(Coordinate::WrittenTime),
+                    "these durations have no sum this language can represent",
+                ),
+            })
+        }
+        Builtin::DurationScale => {
+            let (held, factor) = (duration_value(values.first()?)?, ratio_value(values.get(1)?)?);
+            Some(match exact_arithmetic(held, factor, Exact::Mul) {
+                Some(value) => written_duration(value),
+                None => refused(
+                    Type::Duration(Coordinate::WrittenTime),
+                    "this duration and factor have no product this language can represent",
+                ),
+            })
+        }
+        Builtin::DurationLess => Some(Value::Bool(
+            duration_value(values.first()?)? < duration_value(values.get(1)?)?,
+        )),
+        Builtin::DurationEqual => Some(Value::Bool(
+            duration_value(values.first()?)? == duration_value(values.get(1)?)?,
+        )),
+        // Total, and that is the difference between a position and a
+        // duration: an instant before the origin is an ordinary position, so
+        // there is no refinement here to check.
+        Builtin::PositionOf => Some(Value::Position(Coordinate::WrittenTime, ratio_value(values.first()?)?)),
+        Builtin::PositionRatio => Some(Value::Ratio(position_value(values.first()?)?)),
+        Builtin::PositionShift => {
+            let (from, by) = (position_value(values.first()?)?, duration_value(values.get(1)?)?);
+            let ty = Type::Position(Coordinate::WrittenTime);
+            Some(match exact_arithmetic(from, by, Exact::Add) {
+                Some(value) => answered(ty, Value::Position(Coordinate::WrittenTime, value)),
+                None => refused(
+                    ty,
+                    "this position and duration have no result this language can represent",
+                ),
+            })
+        }
+        // The one operation the whole tagging exists for. Two positions do
+        // not add — there is no name for that — and their difference is a
+        // duration only when the second is not before the first.
+        Builtin::PositionBetween => {
+            let (from, to) = (position_value(values.first()?)?, position_value(values.get(1)?)?);
+            let ty = Type::Duration(Coordinate::WrittenTime);
+            if to < from {
+                return Some(refused(
+                    ty,
+                    "the second position is before the first, and a duration is nonnegative",
+                ));
+            }
+            Some(match exact_arithmetic(to, from, Exact::Sub) {
+                Some(value) => written_duration(value),
+                None => refused(ty, "these positions have no difference this language can represent"),
+            })
+        }
+        Builtin::PositionLess => Some(Value::Bool(
+            position_value(values.first()?)? < position_value(values.get(1)?)?,
+        )),
+        Builtin::PositionEqual => Some(Value::Bool(
+            position_value(values.first()?)? == position_value(values.get(1)?)?,
+        )),
         Builtin::IntervalAdd => {
             let Value::Interval(first) = values.first()? else {
                 return None;
@@ -8281,7 +8931,8 @@ fn eval_builtin(
                     | Value::Nat(_)
                     | Value::Ratio(_)
                     | Value::Text(_)
-                    | Value::Duration(_)
+                    | Value::Duration(..)
+                    | Value::Position(..)
                     | Value::PitchClass(_)
                     | Value::Interval(_)
                     | Value::Scale(_)
@@ -8891,7 +9542,8 @@ fn fold_value(
         | Value::Nat(_)
         | Value::Ratio(_)
         | Value::Text(_)
-        | Value::Duration(_)
+        | Value::Duration(..)
+        | Value::Position(..)
         | Value::Pitch(_)
         | Value::PitchClass(_)
         | Value::Interval(_)
@@ -9021,7 +9673,7 @@ fn value_shape(value: &Value) -> (u64, u64) {
     match value {
         Value::Bool(_) => (1, 1),
         Value::Nat(_) => (1, 8),
-        Value::Ratio(_) | Value::Duration(_) => (1, 16),
+        Value::Ratio(_) | Value::Duration(..) | Value::Position(..) => (1, 16),
         Value::Pitch(_) | Value::PitchClass(_) | Value::Interval(_) | Value::Key(_) | Value::Degree(_) => (1, 12),
         Value::Scale(_) => (1, 24),
         Value::Frame(_) => (1, 36),
@@ -10060,6 +10712,241 @@ fn run_transformer(
 mod tests {
     use super::*;
 
+    /// One binding's value, from a piece that declares only that binding.
+    fn only(declarations: &str, name: &str) -> Value {
+        let source = format!("piece \"law\" {{ {declarations} }}");
+        let bindings = values(&source).unwrap_or_else(|| panic!("well-typed source was rejected: {source}"));
+        bindings
+            .get(name)
+            .unwrap_or_else(|| panic!("`{name}` was not bound by: {source}"))
+            .clone()
+    }
+
+    /// The value half of a `Result`, or a panic naming the refusal.
+    fn accepted(value: &Value) -> Value {
+        let Value::Sum { error, held, .. } = value else {
+            panic!("not a `Result`")
+        };
+        assert!(!*error, "refused: {}", literal_key(held));
+        held.as_ref().clone()
+    }
+
+    /// The error half's sentence, or a panic if the operation answered.
+    fn refusal(value: &Value) -> String {
+        let Value::Sum { error, held, .. } = value else {
+            panic!("not a `Result`")
+        };
+        assert!(
+            *error,
+            "answered where the law expects a refusal: {}",
+            literal_key(held)
+        );
+        let Value::Text(because) = held.as_ref() else {
+            panic!("a refusal that is not a sentence")
+        };
+        because.clone()
+    }
+
+    /// A negative exact rational, written the only way this language can
+    /// write one: no literal carries a sign, so `0 - 1/4` is subtraction, and
+    /// its `Result` is opened by the ordinary match every `Result` is opened
+    /// by. That the language has no negative *literal* is a separate question
+    /// from whether it has negative values, and it has them.
+    const NEGATIVE: &str = "let before: Ratio = match ratio_sub(0, 1/4) { Ok(found) -> found, Err(why) -> 0 };";
+
+    /// The exact rational a source expression evaluates to, through
+    /// whichever projection its type needs.
+    fn exact(declarations: &str, name: &str) -> Ratio<i64> {
+        let held = only(declarations, name);
+        let (Value::Ratio(value) | Value::Duration(_, value) | Value::Position(_, value)) = held else {
+            panic!("not an exact value: {}", literal_key(&held))
+        };
+        value
+    }
+
+    /// The exact arithmetic answers what the arithmetic says it answers.
+    ///
+    /// Stated as source rather than as calls to [`eval_builtin`], because the
+    /// operation a composer can reach is the one under test: a builtin that
+    /// evaluated correctly and could not be written down would pass a law
+    /// written the other way.
+    #[test]
+    fn exact_arithmetic_answers_what_the_arithmetic_says() {
+        for (expression, expected) in [
+            ("ratio_add(3/4, 1/4)", Ratio::new(1, 1)),
+            ("ratio_sub(3/4, 1/4)", Ratio::new(1, 2)),
+            ("ratio_mul(3/4, 2/3)", Ratio::new(1, 2)),
+            ("ratio_div(3/4, 3/2)", Ratio::new(1, 2)),
+            ("duration_of(3/8)", Ratio::new(3, 8)),
+            ("duration_add(one_eighth, one_eighth)", Ratio::new(1, 4)),
+            ("duration_scale(one_eighth, 3)", Ratio::new(3, 8)),
+            ("position_shift(here, one_eighth)", Ratio::new(9, 8)),
+            ("position_between(here, later)", Ratio::new(3, 4)),
+        ] {
+            let source = format!(
+                "let one_eighth: Duration<WrittenTime> = 1/8; \
+                 let here: Position<WrittenTime> = position_of(1); \
+                 let later: Position<WrittenTime> = position_of(7/4); \
+                 let answer = {expression};"
+            );
+            let held = accepted(&only(&source, "answer"));
+            let (Value::Ratio(actual) | Value::Duration(_, actual) | Value::Position(_, actual)) = held else {
+                panic!("`{expression}` answered with {}", literal_key(&held))
+            };
+            assert_eq!(actual, expected, "`{expression}`");
+        }
+        assert_eq!(
+            exact("let answer: Ratio = duration_ratio(3/8);", "answer"),
+            Ratio::new(3, 8)
+        );
+        assert_eq!(
+            exact(
+                &format!("{NEGATIVE} let answer: Ratio = position_ratio(position_of(before));"),
+                "answer"
+            ),
+            Ratio::new(-1, 4),
+            "a position is signed: an instant before the origin is an ordinary position"
+        );
+    }
+
+    /// Whole-number arithmetic, and the one way subtraction fails.
+    #[test]
+    fn whole_number_arithmetic_says_when_it_would_go_below_zero() {
+        assert!(matches!(
+            accepted(&only("let answer = nat_add(2, 3);", "answer")),
+            Value::Nat(5)
+        ));
+        assert!(matches!(
+            accepted(&only("let answer = nat_mul(2, 3);", "answer")),
+            Value::Nat(6)
+        ));
+        assert!(matches!(
+            only("let answer = nat_sub(5, 3);", "answer"),
+            Value::Option {
+                value: Some(held),
+                ..
+            } if matches!(*held, Value::Nat(2))
+        ));
+        assert!(
+            matches!(
+                only("let answer = nat_sub(3, 5);", "answer"),
+                Value::Option { value: None, .. }
+            ),
+            "below zero is not a whole number, and the absence says so"
+        );
+    }
+
+    /// Comparison, which is where an ordering that would otherwise have to be
+    /// reconstructed from subtraction comes from.
+    #[test]
+    fn exact_values_compare_without_being_subtracted() {
+        for (expression, expected) in [
+            ("ratio_less(1/3, 1/2)", true),
+            ("ratio_less(1/2, 1/3)", false),
+            ("ratio_equal(2/4, 1/2)", true),
+            ("duration_less(1/8, 1/4)", true),
+            ("duration_equal(2/8, 1/4)", true),
+            ("position_less(position_of(before), position_of(0))", true),
+            ("position_equal(position_of(3/2), position_of(6/4))", true),
+        ] {
+            let source = format!("{NEGATIVE} let answer: Bool = {expression};");
+            assert!(
+                matches!(only(&source, "answer"), Value::Bool(found) if found == expected),
+                "`{expression}`"
+            );
+        }
+    }
+
+    /// Every partial operation says which way it failed, in its own sentence.
+    ///
+    /// D2 puts partiality in the result type, so each of these is a value
+    /// rather than a diagnostic — and a `Result` rather than an `Option`
+    /// wherever there is more than one way to fail, because "it did not work"
+    /// is not what a composer needs to read.
+    #[test]
+    fn every_partial_time_operation_states_its_own_refusal() {
+        for (expression, expected) in [
+            ("ratio_div(3/4, 0)", "an exact rational is not divided by zero"),
+            (
+                "duration_of(before)",
+                "a duration is nonnegative, and this exact rational is below zero",
+            ),
+            (
+                "duration_scale(1/4, before)",
+                "a duration is nonnegative, and this exact rational is below zero",
+            ),
+            (
+                "position_between(position_of(2), position_of(1))",
+                "the second position is before the first, and a duration is nonnegative",
+            ),
+        ] {
+            let source = format!("{NEGATIVE} let answer = {expression};");
+            assert_eq!(refusal(&only(&source, "answer")), expected, "`{expression}`");
+        }
+    }
+
+    /// The whole reason the coordinate is carried.
+    ///
+    /// A written beat and a number of seconds are different types, so no
+    /// program can add one to the other — and the refusal is a type error at
+    /// the site rather than a wrong answer later.
+    #[test]
+    fn a_written_duration_and_a_physical_one_are_not_the_same_type() {
+        let mut unifier = Unifier::default();
+        assert!(
+            unifier
+                .unify(
+                    &Type::Duration(Coordinate::WrittenTime),
+                    &Type::Duration(Coordinate::PhysicalTime)
+                )
+                .is_err(),
+            "two coordinates unified, so the tag distinguishes nothing"
+        );
+        assert!(
+            unifier
+                .unify(
+                    &Type::Duration(Coordinate::WrittenTime),
+                    &Type::Position(Coordinate::WrittenTime)
+                )
+                .is_err(),
+            "a duration unified with a position, which is the distinction §1 exists to draw"
+        );
+        assert!(
+            !refusals("piece \"law\" { let d: Duration<PhysicalTime> = 1/4; let sum = duration_add(d, 1/4); }")
+                .is_empty(),
+            "a written duration was added to a physical one"
+        );
+    }
+
+    /// There is no name for adding two positions, and that is the point.
+    ///
+    /// Beat 3 plus three beats is a position; beat 3 plus beat 5 is nothing.
+    /// The way to forbid the second is to register no operation with that
+    /// signature, so the law reads the registry rather than trying the
+    /// spelling — a spelling test would pass the day someone added
+    /// `position_plus`.
+    #[test]
+    fn no_compiler_owned_operation_adds_two_positions() {
+        let position = Shape::Base(Base::Position(Coordinate::WrittenTime)).ty();
+        for entry in &BUILTIN_OWNERSHIP {
+            let Family::Delta { arguments, result } = entry.family else {
+                continue;
+            };
+            let positions = arguments.iter().filter(|shape| shape.ty() == position).count();
+            if positions < 2 {
+                continue;
+            }
+            let answers_a_position = result.ty() == position
+                || matches!(result, Shape::Result(value, _) if value.ty() == position)
+                || matches!(result, Shape::Option(value) if value.ty() == position);
+            assert!(
+                !answers_a_position,
+                "`{}` takes two positions and answers with one, which is addition on an affine space",
+                entry.spelling
+            );
+        }
+    }
+
     /// The vocabulary the language offers, the types this module reads, and
     /// the spellings it writes back are one vocabulary or they are three.
     #[test]
@@ -10088,7 +10975,7 @@ mod tests {
         ("Nat", "3"),
         ("Ratio", "3/2"),
         ("Text", "\"a title\""),
-        ("Duration", "1/2"),
+        ("Duration<WrittenTime>", "1/2"),
         ("Pitch", "c4"),
         ("Interval", "P5"),
         ("Scale", "scale c major"),
@@ -10185,7 +11072,10 @@ mod tests {
     /// error names the operation that crosses, one layer of container deep.
     #[test]
     fn only_a_kept_distinction_earns_a_help_line() {
-        assert_eq!(crossing_help(&Type::Nat, &Type::Duration), None);
+        assert_eq!(
+            crossing_help(&Type::Nat, &Type::Duration(Coordinate::WrittenTime)),
+            None
+        );
         assert_eq!(crossing_help(&Type::Music, &Type::Music), None);
         assert!(crossing_help(&Type::Scale, &Type::Key).is_some());
         assert!(crossing_help(&Type::Pitch, &Type::Degree).is_some());
@@ -10263,7 +11153,7 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(
             entries.len(),
-            88,
+            109,
             "new compiler operations must enter the ownership registry"
         );
         let unique = entries.iter().map(|(spelling, _)| *spelling).collect::<IndexSet<_>>();
@@ -10295,6 +11185,9 @@ mod tests {
     /// How many times the sample pool is closed under the δ-builtins. Three rounds is what it
     /// takes to reach every constructed domain from the seeds: degrees and pitch classes appear in
     /// the first, frames, chords, rows and sets in the second, triads and voicings in the third.
+    /// Durations and positions arrive in the first too, out of the exact rationals the seed piece
+    /// writes: `duration_of` and `position_of` are the only ways to make one, and both answer from
+    /// a `Ratio`.
     const SAMPLE_ROUNDS: usize = 3;
 
     /// How many applications each δ-builtin is sampled at. The pool is deliberately not
@@ -10328,7 +11221,8 @@ mod tests {
             Value::Bool(_) => Type::Bool,
             Value::Nat(_) => Type::Nat,
             Value::Ratio(_) => Type::Ratio,
-            Value::Duration(_) => Type::Duration,
+            Value::Duration(coordinate, _) => Type::Duration(*coordinate),
+            Value::Position(coordinate, _) => Type::Position(*coordinate),
             Value::Pitch(_) => Type::Pitch,
             Value::PitchClass(_) => Type::PitchClass,
             Value::Interval(_) => Type::Interval,
@@ -10390,6 +11284,10 @@ mod tests {
              let b_key: Key = key f# minor; \
              let a_chord: ChordClass = chord c major; \
              let b_chord: ChordClass = chord ab dominant7; \
+             let a_ratio: Ratio = 3/2; \
+             let b_ratio: Ratio = 1/3; \
+             let c_ratio: Ratio = 0; \
+             let d_ratio: Ratio = 4; \
          }";
         let mut pool: Vec<Value> = (0..SAMPLED_NATS).map(Value::Nat).collect();
         pool.push(Value::Bool(true));
@@ -10558,7 +11456,7 @@ mod tests {
         );
         assert_eq!(
             delta + eliminator + track + machine,
-            88,
+            109,
             "a new compiler operation must be classified before it is admitted"
         );
     }
@@ -10736,7 +11634,8 @@ mod tests {
             | Type::Bool
             | Type::Nat
             | Type::Ratio
-            | Type::Duration
+            | Type::Duration(_)
+            | Type::Position(_)
             | Type::Pitch
             | Type::PitchClass
             | Type::Interval

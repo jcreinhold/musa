@@ -16,7 +16,7 @@ A function takes values and returns one. `Music` is an ordinary value, so a func
 From `examples/canon-functions.musa`:
 
 ```musa
-fn canon(subject: Music, answer: Music -> Music, gap: Duration) -> Music {
+fn canon(subject: Music, answer: Music -> Music, gap: Duration<WrittenTime>) -> Music {
     together(subject, shift(gap, answer(subject)))
 }
 ```
@@ -126,7 +126,7 @@ A `structure` provides one. `std::context` ships `CMajor` and `ANaturalMinor`, a
 A `template structure` is a function from structures to a structure. From `examples/module-functor-study.musa`:
 
 ```musa
-template structure Canon(C: TonalContext, gap: Duration): CanonMaterial {
+template structure Canon(C: TonalContext, gap: Duration<WrittenTime>): CanonMaterial {
     // The subject steps through whatever collection the context named.
     let subject: Music = music {
         in scale C.collection {

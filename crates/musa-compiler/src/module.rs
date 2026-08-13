@@ -1008,17 +1008,14 @@ fn identifier_spans(node: &SyntaxNode) -> impl Iterator<Item = SourceSpan> + '_ 
         })
 }
 
+/// Whether a node is a written type.
+///
+/// Delegated rather than matched here: a second hand-written list drifts, and
+/// this one had — it predated `AppliedType`, so a template parameter written
+/// `Duration<WrittenTime>` or `Pair<Nat, Bool>` was not seen as a value
+/// parameter at all, and the body's use of it could not find its name.
 fn is_type(kind: SyntaxKind) -> bool {
-    matches!(
-        kind,
-        SyntaxKind::TypeExpr
-            | SyntaxKind::TypeName
-            | SyntaxKind::FunctionType
-            | SyntaxKind::ProductType
-            | SyntaxKind::OptionType
-            | SyntaxKind::ListType
-            | SyntaxKind::ResultType
-    )
+    musa_language::ast::is_type(kind)
 }
 
 #[cfg(test)]

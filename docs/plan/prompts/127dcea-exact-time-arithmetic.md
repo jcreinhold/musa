@@ -1,7 +1,7 @@
 ---
 id: 127dcea
 slug: exact-time-arithmetic
-status: pending
+status: done
 depends_on: [127dce]
 phase: 3
 ---
@@ -57,37 +57,48 @@ being unquantifiable.
 to prompt 127e's one break, where the grammar, tree-sitter grammar, formatter, corpus, and book move together. A named
 δ-builtin needs none of that and is what §5.8 is written about.
 
-The operations, each a δ-builtin whose signature contains no arrow:
+The operations, each a δ-builtin whose signature contains no arrow. The coordinate `C` is written `<WrittenTime>` or
+`<PhysicalTime>` in source, because the surface applies a type with angle brackets — `Option<τ>`, `Machine<K, A, B>` —
+and §1's `[C]` is the paper's notation, not this language's.
 
 ```text
-ratio_add, ratio_sub, ratio_mul     : ratio, ratio -> ratio
-ratio_div                           : ratio, ratio -> Result<ratio, text>
-ratio_compare                       : ratio, ratio -> Ordering
-nat_add, nat_mul                    : nat, nat -> nat
-nat_sub                             : nat, nat -> option<nat>
-duration_add                        : Duration[C], Duration[C] -> Duration[C]
-duration_scale                      : Duration[C], ratio -> Result<Duration[C], text>
-duration_compare                    : Duration[C], Duration[C] -> Ordering
-duration_ratio                      : Duration[C] -> ratio
-duration_of                         : ratio -> Result<Duration[C], text>
-position_start                      : Position[C]
-position_shift                      : Position[C], Duration[C] -> Position[C]
-position_between                    : Position[C], Position[C] -> Result<Duration[C], text>
-position_compare                    : Position[C], Position[C] -> Ordering
+ratio_add, ratio_sub, ratio_mul, ratio_div : Ratio, Ratio -> Result<Ratio, Text>
+ratio_less, ratio_equal                    : Ratio, Ratio -> Bool
+nat_add, nat_mul                           : Nat, Nat -> Result<Nat, Text>
+nat_sub                                    : Nat, Nat -> Option<Nat>
+duration_of                                : Ratio -> Result<Duration<C>, Text>
+duration_ratio                             : Duration<C> -> Ratio
+duration_add                               : Duration<C>, Duration<C> -> Result<Duration<C>, Text>
+duration_scale                             : Duration<C>, Ratio -> Result<Duration<C>, Text>
+duration_less, duration_equal              : Duration<C>, Duration<C> -> Bool
+position_of                                : Ratio -> Position<C>
+position_ratio                             : Position<C> -> Ratio
+position_shift                             : Position<C>, Duration<C> -> Result<Position<C>, Text>
+position_between                           : Position<C>, Position<C> -> Result<Duration<C>, Text>
+position_less, position_equal              : Position<C>, Position<C> -> Bool
 ```
 
 There is deliberately no `position_add`. Adding two positions is the one arithmetic error a tagged rational exists to
-catch, and the way to forbid it is to have no name for it — not a refinement checked at a constructor.
+catch, and the way to forbid it is to have no name for it — not a refinement checked at a constructor. The law that says
+so reads the registry rather than trying the spelling, because a spelling test would pass the day someone added the
+operation under another name.
 
-Partiality is in the result type in every case, which is D2: `ratio_div` by zero, a negative `duration_of`, a negative
-`duration_scale`, a `position_between` whose second argument precedes its first, and a `nat_sub` that would go below
-zero all return `Result` or `option`. None of them is a diagnostic, a stuck term, or a panic. `Ordering` is the existing
-three-way spelling if the compiler has one and a sum of units if it does not; do not add a fourth comparison convention.
+**Every arithmetic operation answers with a `Result`, and that is D2 rather than caution.** Exact values are reduced
+`i64` rationals, so two representable operands can have an unrepresentable sum: making addition total would mean a panic
+or a stuck term, which D2 forbids outright. So representability joins the refinements — a nonnegative duration, a
+nonzero divisor, a difference whose second operand is not earlier — and each is a *different* answer, which is why the
+error half is `Text` carrying the operation's own sentence rather than a bare absence. `nat_sub` is the one exception
+and uses `Option`: going below zero is the only way it can fail, so there is nothing to distinguish it from.
+`position_of` and the projections are total, because a position is signed and a projection loses nothing.
 
-**Two track operations, and no more.** `follow(a, b)` and `track_duration(t)`, both already proved by §5.7 Lemma 1. They
-exist because line 191 reserves track construction to builtins, so a package that lays items end to end has no other way
-to do it. Everything above them — bar offsets, tie spans, tuplet scaling, pickups — is ordinary package code folding
-over ordinary data with the operations above, which is what keeps a staff concept out of the compiler.
+**Comparison is `_less` and `_equal`, not a three-way `Ordering`.** There is no three-way type in the language, and
+adding one would mean a new inert base with literals nobody can write and a `match` that cannot name its cases. Two
+Boolean answers are total, need no new type, and every other ordering question derives from them.
+
+**No track operation.** `follow` and `track_duration` would have to be built on the contextual `Music` value that prompt
+127e deletes, and the packages this prompt unblocks do not need them: a staff or studio package folds over its *own*
+recursive data with the operations above, and whether the result becomes a `Music` or an `EventTrack` is the cutover's
+question. Track construction stays with prompts 127c and 127e, where the track type is settled.
 
 **The premises are carried, not asserted.** Each new operation gets its `BUILTIN_OWNERSHIP` entry naming its family and
 signature, and the existing law suite is extended so that the D1–D4 checks §5.8's last paragraph describes actually run
@@ -95,22 +106,35 @@ over them: classified exactly once, no arrow in a δ signature, every base type 
 undestructurable, and evaluation over a documented sample returning a value of the declared type without panicking or
 reporting a Rust-level absence at a non-`option` result.
 
-**Migrating today's untagged `Duration`.** It becomes `Duration[WrittenTime]` at every existing use — note literals,
+**Migrating today's untagged `Duration`.** It becomes `Duration<WrittenTime>` at every existing use — note literals,
 `stretch`, `shift`, the elaborator, the kernel text. This is the part with reach, and it is why the trials do not do it
 in passing. A written duration that turns out to be physical is a bug this tagging exists to find; if the migration
 surfaces one, fix it and say so in the commit rather than widening a type to make it go away.
 
+**The bare word names no type.** `Duration` written without a coordinate is refused, with the spelling that works in the
+help line. Admitting it as an alias for written time would make the vocabulary offered, the vocabulary read, and the
+vocabulary printed three vocabularies — a composer would write `Duration` and be answered about `Duration<WrittenTime>`
+— and `musa-compiler`'s `every_offered_type_name_is_read_and_written_the_same_way` is the law that says so. The one
+exception is the legacy `motif` parameter list, whose types are a fixed word list rather than the type grammar, and
+which prompt 127e deletes.
+
+**Only written time is registered.** Every operation is registered at `WrittenTime`, because that is the only coordinate
+the source language can construct a value of; §5.7 fixes it as the score side's. `PhysicalTime` exists in the type so
+that the day a physical duration reaches the source it arrives as a *different type* rather than as the same one with a
+different meaning. Registering operations for a coordinate nothing can make would be names nothing could call.
+
 ## Target
 
-- `Duration[C]` coordinate-tagged and `Position[C]` added in `crates/musa-compiler/src/core.rs`, with every existing
-  duration use migrated to `WrittenTime`.
-- The fourteen δ-builtins above and the two track builtins, each with its `BUILTIN_OWNERSHIP` entry.
-- The D1–D4 law suite extended to cover them, including a test that no name spells position-plus-position.
-- Tests: each operation's value law; each partial operation's refusal (`ratio_div` by zero, negative `duration_of`,
-  reversed `position_between`, `nat_sub` below zero); that `Duration[WrittenTime]` and `Duration[PhysicalTime]` do not
-  unify; that `follow` gives `Σᵢdᵢ` and `together` gives `maxᵢdᵢ` on the same operands; and `track_duration` agreeing
-  with both.
-- `docs/book/src/reference/` naming the operations, and `stdlib/reference.md` regenerated if the generator covers them.
+- `Duration<C>` coordinate-tagged and `Position<C>` added in `crates/musa-compiler/src/core.rs`, with every existing
+  duration use migrated to `WrittenTime`, and the coordinate carried in the exact encoding.
+- The twenty-one δ-builtins above, each with its `BUILTIN_OWNERSHIP` entry.
+- The D1–D4 law suite extended to cover them — the sampling law reaching every one of them from the seeds — and a law
+  that no compiler-owned operation takes two positions and answers with one.
+- Tests: each operation's value law; each partial operation's refusal (`ratio_div` by zero, negative `duration_of` and
+  `duration_scale`, reversed `position_between`, `nat_sub` below zero); comparison without subtraction; and that
+  `Duration<WrittenTime>`, `Duration<PhysicalTime>`, and `Position<WrittenTime>` are three types that do not unify.
+- `docs/book/src/reference/language.md` naming the operations and the two time types, and the generated fixtures
+  regenerated where a signature moved.
 
 ## Check
 
@@ -127,8 +151,8 @@ Commit as `Give the source language exact time and the arithmetic to compute wit
 ## Stop
 
 - No infix operators and no binary-expression node; prompt 127e owns surface changes.
-- No `EventTrack` type in the source language and no track constructor beyond `follow` and `track_duration`; prompt 127c
-  owns tracks and prompt 127e owns the cutover.
+- No `EventTrack` type in the source language and no track constructor at all; prompt 127c owns tracks and prompt 127e
+  owns the cutover.
 - No deletion of contextual `Music` and no corpus migration.
 - No coordinate kind, no coordinate variables, and no third coordinate.
 - No staff or studio package; prompts 127dcf–127dcg carry those.

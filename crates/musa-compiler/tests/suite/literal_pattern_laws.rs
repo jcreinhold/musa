@@ -65,10 +65,10 @@ fn answer(annotation: &str, subject: &str, pattern: &str) -> String {
 const ADMITTED: [(&str, &str, &str, &str); 8] = [
     ("Bool", "true", "false", "true"),
     ("Nat", "7", "8", "7"),
-    ("Duration", "2", "3", "2"),
+    ("Duration<WrittenTime>", "2", "3", "2"),
     ("Text", "\"staff\"", "\"studio\"", "\"staff\""),
     ("Ratio", "3/8", "5/8", "3/8"),
-    ("Duration", "3/8", "5/8", "3/8"),
+    ("Duration<WrittenTime>", "3/8", "5/8", "3/8"),
     ("Pitch", "e5", "f5", "e5"),
     ("Interval", "M3", "m3", "M3"),
 ];

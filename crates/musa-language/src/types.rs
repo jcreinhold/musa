@@ -20,7 +20,10 @@
 ///
 /// `Option` and `List` are absent because they are keywords and carry their
 /// own documentation (`keywords.rs`); everything here is an ordinary
-/// identifier the lexer cannot tell from any other.
+/// identifier the lexer cannot tell from any other. `Duration` and `Position`
+/// are absent for the other reason in the sentence above: they take a
+/// coordinate, so the bare word names no type, and `musa-compiler` refuses it
+/// with the spelling that does.
 ///
 /// This is the vocabulary a composer may *write a type in*, which is not the
 /// same as the vocabulary they may write a *value* in. `Unit` is here because
@@ -43,7 +46,6 @@ pub const BASE_TYPES: &[(&str, &str)] = &[
         "Text",
         "opaque printable text: a title, a mark's words, the reason a value could not be made",
     ),
-    ("Duration", "a notated duration, as an exact rational"),
     ("Pitch", "a written pitch: letter, accidental, and octave"),
     (
         "NoteName",
@@ -82,7 +84,6 @@ pub const RESPELLED_TYPES: &[(&str, &str)] = &[
     ("nat", "Nat"),
     ("ratio", "Ratio"),
     ("text", "Text"),
-    ("duration", "Duration"),
     ("pitch", "Pitch"),
     ("pitchclass", "NoteName"),
     ("interval", "Interval"),

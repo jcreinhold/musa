@@ -53,12 +53,12 @@ fn errors(compilation: &musa_compiler::Compilation) -> String {
 #[test]
 fn a_declaration_names_a_type_its_constructors_and_one_fold() {
     let compilation = compile_data(
-        "data Shape { Silence, Sounded(held: Duration), Then(first: Shape, second: Shape) } \
+        "data Shape { Silence, Sounded(held: Duration<WrittenTime>), Then(first: Shape, second: Shape) } \
          data Pair<A, B> { Both(left: A, right: B) } \
          let quiet: Shape = Silence; \
          let held: Shape = Sounded(held: 1/4); \
          let sequenced: Shape = Then(quiet, held); \
-         fn one(held: Duration) -> Nat { 1 } \
+         fn one(held: Duration<WrittenTime>) -> Nat { 1 } \
          fn joined(first: Nat, second: Nat) -> Nat { first } \
          let counted: Nat = shape_fold(0, one, joined, sequenced); \
          let both: Pair<Nat, Bool> = Both(left: counted, right: true); \
