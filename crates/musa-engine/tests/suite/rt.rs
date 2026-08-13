@@ -1,7 +1,14 @@
 //! The real-time contract enforced: the callback
 //! path (`CallbackCore::process` with install/transport churn) must not
-//! allocate. Own test binary so no other test's allocations pollute the
-//! measurement window.
+//! allocate.
+//!
+//! A `#[global_allocator]` is process-wide, and this file shares its binary
+//! with every other `musa-engine` integration test (one test target per crate
+//! — see `docs/notes/toolchain/slow-test-suite.md`), so a global counter would
+//! also count whatever the tests running beside it allocate. The count is kept
+//! per thread instead: libtest gives every test its own thread, so a thread's
+//! own tally measures only the code under test, whether the suite runs one
+//! test per process (`cargo nextest`) or all of them at once (`cargo test`).
 
 // The allocation-counting harness implements `GlobalAlloc` (an unsafe
 // trait); it delegates straight to `System` and exists only here.
@@ -9,19 +16,35 @@
 #![allow(clippy::expect_used)]
 
 use std::alloc::{GlobalAlloc, System};
+use std::cell::Cell;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use musa_engine::testing::{CallbackCore, Message};
 use musa_engine::{PreparedPlaybackPlan, TransportCommand};
 
-static ALLOCS: AtomicU64 = AtomicU64::new(0);
+thread_local! {
+    /// Allocations made by the current thread since it started.
+    ///
+    /// `const`-initialised and `Drop`-free, so reading it is a plain
+    /// thread-local access: no lazy initialisation and no destructor to
+    /// register, and hence nothing inside the allocator that could allocate
+    /// and recurse.
+    static ALLOCS: Cell<u64> = const { Cell::new(0) };
+}
+
+/// This thread's allocation count.
+fn allocs() -> u64 {
+    ALLOCS.with(Cell::get)
+}
 
 struct CountingAllocator;
 
 unsafe impl GlobalAlloc for CountingAllocator {
     unsafe fn alloc(&self, layout: std::alloc::Layout) -> *mut u8 {
-        ALLOCS.fetch_add(1, Ordering::SeqCst);
+        // `try_with` rather than `with`: an allocation during thread teardown,
+        // after the local is gone, must not panic out of the allocator.
+        let _ = ALLOCS.try_with(|count| count.set(count.get().wrapping_add(1)));
         unsafe { System.alloc(layout) }
     }
 
@@ -71,17 +94,61 @@ fn the_callback_path_allocates_nothing() {
         .push(Message::Transport(TransportCommand::Seek { frame: 100 }))
         .expect("queue");
 
-    let before = ALLOCS.load(Ordering::SeqCst);
+    let before = allocs();
     for _ in 0..8 {
         core.process(&mut output);
     }
-    let after = ALLOCS.load(Ordering::SeqCst);
+    let after = allocs();
     // Drain retired plans on the control side.
     while retired.pop().is_ok() {}
     assert_eq!(
         before,
         after,
         "callback path allocated {} times",
+        after.saturating_sub(before)
+    );
+}
+
+/// The measurement is the current thread's, not the process's.
+///
+/// Without this the contract above is only as strong as the test binary is
+/// empty: the allocator is installed process-wide, so a sibling test
+/// allocating on another thread used to land inside the window and fail
+/// `the_callback_path_allocates_nothing` for reasons having nothing to do with
+/// the callback.
+#[test]
+fn the_counter_ignores_other_threads() {
+    let stop = Arc::new(AtomicBool::new(false));
+    let progress = Arc::new(AtomicU64::new(0));
+    let allocating = {
+        let stop = Arc::clone(&stop);
+        let progress = Arc::clone(&progress);
+        std::thread::spawn(move || {
+            while !stop.load(Ordering::SeqCst) {
+                drop(std::hint::black_box(Box::new(0_u8)));
+                progress.fetch_add(1, Ordering::SeqCst);
+            }
+        })
+    };
+
+    // Open the window only once the other thread is allocating, and hold it
+    // open until it has allocated far more than a stray count would need.
+    while progress.load(Ordering::SeqCst) == 0 {
+        std::thread::yield_now();
+    }
+    let before = allocs();
+    let start = progress.load(Ordering::SeqCst);
+    while progress.load(Ordering::SeqCst) < start.saturating_add(10_000) {
+        std::thread::yield_now();
+    }
+    let after = allocs();
+
+    stop.store(true, Ordering::SeqCst);
+    allocating.join().expect("the allocating thread finishes");
+    assert_eq!(
+        before,
+        after,
+        "counted {} of another thread's allocations",
         after.saturating_sub(before)
     );
 }
