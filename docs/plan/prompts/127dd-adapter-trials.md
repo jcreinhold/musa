@@ -60,10 +60,14 @@ rather than being granted.
 
 Then freeze the exact rules and prove: expansion termination, determinism, and hygiene; unique path formation; source
 attribution; edit locality; print round-trip where it is claimed; match execution by the one evaluator; derivation
-coverage; and associative derivation composition. Run hostile proof review, repair, and re-review as many times as
-needed. This prompt completes only when the final review says correct under the stated contracts with no fatal, high, or
-medium finding. Record the freeze, each review, and each repair under `docs/notes/research/`, beside the notes that
-failed the last gate.
+coverage; and associative derivation composition. The freeze covers the phase-local transformer calculus prompt 127da
+introduced, which `docs/rules/` does not yet describe — that is what a freeze is for. It must also state, and prove,
+that the calculus is conservative over the source core: `02-core-calculus.md` §5's closed type grammar, its "no syntax
+value" sentence, and §5.8's four families are unchanged facts about ordinary source. If the proof cannot establish that,
+the finding is an amendment request under `docs/rules/README.md`, not a repair to make in passing. Run hostile proof
+review, repair, and re-review as many times as needed. This prompt completes only when the final review says correct
+under the stated contracts with no fatal, high, or medium finding. Record the freeze, each review, and each repair under
+`docs/notes/research/`, beside the notes that failed the last gate.
 
 ## Target
 

@@ -46,6 +46,10 @@ a region. An ordinary import cannot change syntax. A region is **named and delim
 packages do not extend the lexer, and the grouper's boundary is fixed. Whether the surface later moves to an
 indentation-based file structure is prompt 127e's single clean break, not a half-step taken here.
 
+An adapter definition is checked and evaluated in prompt 127da's phase environment, where the syntax types are in scope;
+ordinary source is checked in the environment it has now, where they are not. One checker, one evaluator, two
+environments.
+
 Package adapters may emit an expression and the contents of an expression block. They may not emit imports, modules,
 type declarations, value declarations, or another adapter region. That is what makes the set of module declarations
 known before expansion and breaks the expansion-resolution cycle. Adapter definitions themselves contain no adapter
