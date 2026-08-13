@@ -2,7 +2,7 @@
 id: 127dcf
 slug: staff-trial
 status: pending
-depends_on: [127dce]
+depends_on: [127dcea]
 phase: 3
 ---
 

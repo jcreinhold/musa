@@ -260,6 +260,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 127dcc | adapter-anchors | 3 | Let an adapter carry a source anchor into the value it produces |
 | 127dcd | adapter-edit | 3 | Give an adapter the edit operation and prove its locality, agreement, and preservation |
 | 127dce | adapter-print | 3 | Give an adapter the print operation and name the three conformance levels |
+| 127dcea | exact-time-arithmetic | 3 | Give the source language exact time and the arithmetic to compute with it |
 | 127dcf | staff-trial | 3 | Write the staff adapter as an unprivileged package |
 | 127dcg | studio-trial | 3 | Write the studio adapter as an unprivileged package |
 | 127dd | adapter-trials | 3 | Freeze the adapter rules and carry them through hostile review |
@@ -524,14 +525,15 @@ literal pattern that matches the text it spells so that an adapter can tell one 
 error half of an adapter's answer so that it can refuse a region and point at what is wrong with it (127dcb), an anchor
 it can put into the value it produces so that a later package function's complaint still names the composer's own text
 (127dcc), the two remaining declared operations — `edit` with its locality, agreement, and preservation law (127dcd) and
-`print` with its round trip and the three conformance levels (127dce) — the staff trial (127dcf) and the studio trial
-(127dcg) that carry real musical load without privilege, and the freeze and hostile review that turn them into a proved
-claim (127dd). The second blocker — a lowered match with no executable meaning — closes by *not* adding a decision-tree
-target: source `match` remains the one evaluator. 127e then deletes contextual `Music`; notation becomes a source-mapped
-adapter into ordinary inferred terms. 127f gives each machine one exact next step. 127g makes the time-to-frame policy
-explicit. 127h makes one sample frame the reference meaning of audio and treats host blocks only as checked batching.
-127i proves and audits the complete path before any later sound prompt may run. Old syntax, APIs, and serialized forms
-are removed, not kept behind aliases.
+`print` with its round trip and the three conformance levels (127dce) — the exact-time algebra the trials have to
+compute with, which the governing calculus already fixed and no prompt had yet implemented (127dcea), the staff trial
+(127dcf) and the studio trial (127dcg) that carry real musical load without privilege, and the freeze and hostile review
+that turn them into a proved claim (127dd). The second blocker — a lowered match with no executable meaning — closes by
+*not* adding a decision-tree target: source `match` remains the one evaluator. 127e then deletes contextual `Music`;
+notation becomes a source-mapped adapter into ordinary inferred terms. 127f gives each machine one exact next step. 127g
+makes the time-to-frame policy explicit. 127h makes one sample frame the reference meaning of audio and treats host
+blocks only as checked batching. 127i proves and audits the complete path before any later sound prompt may run. Old
+syntax, APIs, and serialized forms are removed, not kept behind aliases.
 
 **128–134 build musical sound on that core.** 128 makes the primitive vocabulary discoverable from one catalogue; 129
 keeps written quantities exact; and 129a's payload rule is revised for the new storable-data boundary. 130 defines
