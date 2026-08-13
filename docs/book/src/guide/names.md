@@ -25,8 +25,13 @@ fn canon(subject: Music, answer: Music -> Music, gap: Duration) -> Music {
 picked:
 
 ```musa
-let octave_answer: Music -> Music = transpose(P8);
+let octave_answer: Music -> Music = fn (line: Music) -> Music { transpose(P8, line) };
 ```
+
+That right-hand side is an **anonymous function**: a declaration's own words without its name. It is here because
+`transpose` takes an interval *and* a passage, and a call supplies every parameter — so the interval is written down in
+a function of the passage alone, rather than left out of the call. Its parameter and result types may be omitted
+wherever a declaration may omit them.
 
 and the site reads:
 
@@ -83,8 +88,8 @@ template piece study(k: Key, mode: Scale, subject: Music) "Study" {
 A template is instantiated with `make ... as ...`:
 
 ```musa
-make answer(subject, transpose(P8)) as upper;
-make answer(subject, transpose(P15)) as higher;
+make answer(subject, fn (line: Music) -> Music { transpose(P8, line) }) as upper;
+make answer(subject, fn (line: Music) -> Music { transpose(P15, line) }) as higher;
 ```
 
 Two rules make instances predictable.

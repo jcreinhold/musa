@@ -11,7 +11,7 @@ piece "Canon Functions" {
         overlay(subject, shift(gap, answer(subject)))
     }
 
-    let octave_answer: Music -> Music = transpose(P8);
+    let octave_answer: Music -> Music = fn (line: Music) -> Music { transpose(P8, line) };
 
     score {
         part strings {

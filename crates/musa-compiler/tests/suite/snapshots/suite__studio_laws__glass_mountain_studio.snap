@@ -27,8 +27,8 @@ StudioSpec {
                     ],
                     span: Some(
                         SourceSpan {
-                            start: 1372,
-                            end: 1389,
+                            start: 1371,
+                            end: 1388,
                         },
                     ),
                     inputs: [],
@@ -50,15 +50,15 @@ StudioSpec {
                         None,
                         Some(
                             SourceSpan {
-                                start: 1437,
-                                end: 1438,
+                                start: 1436,
+                                end: 1437,
                             },
                         ),
                     ],
                     span: Some(
                         SourceSpan {
-                            start: 1412,
-                            end: 1439,
+                            start: 1411,
+                            end: 1438,
                         },
                     ),
                     inputs: [],
@@ -77,15 +77,15 @@ StudioSpec {
                     param_spans: [
                         Some(
                             SourceSpan {
-                                start: 1448,
-                                end: 1454,
+                                start: 1447,
+                                end: 1453,
                             },
                         ),
                     ],
                     span: Some(
                         SourceSpan {
-                            start: 1442,
-                            end: 1455,
+                            start: 1441,
+                            end: 1454,
                         },
                     ),
                     inputs: [
@@ -99,8 +99,8 @@ StudioSpec {
                     param_spans: [],
                     span: Some(
                         SourceSpan {
-                            start: 1456,
-                            end: 1491,
+                            start: 1455,
+                            end: 1490,
                         },
                     ),
                     inputs: [
@@ -132,33 +132,33 @@ StudioSpec {
                     param_spans: [
                         Some(
                             SourceSpan {
-                                start: 1533,
-                                end: 1538,
+                                start: 1532,
+                                end: 1537,
                             },
                         ),
                         Some(
                             SourceSpan {
-                                start: 1547,
-                                end: 1552,
+                                start: 1546,
+                                end: 1551,
                             },
                         ),
                         Some(
                             SourceSpan {
-                                start: 1563,
-                                end: 1567,
+                                start: 1562,
+                                end: 1566,
                             },
                         ),
                         Some(
                             SourceSpan {
-                                start: 1578,
-                                end: 1583,
+                                start: 1577,
+                                end: 1582,
                             },
                         ),
                     ],
                     span: Some(
                         SourceSpan {
-                            start: 1510,
-                            end: 1585,
+                            start: 1509,
+                            end: 1584,
                         },
                     ),
                     inputs: [
@@ -181,21 +181,21 @@ StudioSpec {
                     param_spans: [
                         Some(
                             SourceSpan {
-                                start: 1621,
-                                end: 1628,
+                                start: 1620,
+                                end: 1627,
                             },
                         ),
                         Some(
                             SourceSpan {
-                                start: 1633,
-                                end: 1636,
+                                start: 1632,
+                                end: 1635,
                             },
                         ),
                     ],
                     span: Some(
                         SourceSpan {
-                            start: 1604,
-                            end: 1637,
+                            start: 1603,
+                            end: 1636,
                         },
                     ),
                     inputs: [
@@ -231,22 +231,22 @@ StudioSpec {
                     param_spans: [
                         Some(
                             SourceSpan {
-                                start: 1882,
-                                end: 1886,
+                                start: 1881,
+                                end: 1885,
                             },
                         ),
                         Some(
                             SourceSpan {
-                                start: 1897,
-                                end: 1901,
+                                start: 1896,
+                                end: 1900,
                             },
                         ),
                         None,
                     ],
                     span: Some(
                         SourceSpan {
-                            start: 1856,
-                            end: 1902,
+                            start: 1855,
+                            end: 1901,
                         },
                     ),
                     inputs: [],
@@ -276,16 +276,16 @@ StudioSpec {
                     param_spans: [
                         Some(
                             SourceSpan {
-                                start: 1718,
-                                end: 1725,
+                                start: 1717,
+                                end: 1724,
                             },
                         ),
                         None,
                     ],
                     span: Some(
                         SourceSpan {
-                            start: 1689,
-                            end: 1726,
+                            start: 1688,
+                            end: 1725,
                         },
                     ),
                     inputs: [],
@@ -302,15 +302,15 @@ StudioSpec {
                     param_spans: [
                         Some(
                             SourceSpan {
-                                start: 1748,
-                                end: 1754,
+                                start: 1747,
+                                end: 1753,
                             },
                         ),
                     ],
                     span: Some(
                         SourceSpan {
-                            start: 1741,
-                            end: 1755,
+                            start: 1740,
+                            end: 1754,
                         },
                     ),
                     inputs: [
@@ -329,15 +329,15 @@ StudioSpec {
                     param_spans: [
                         Some(
                             SourceSpan {
-                                start: 1776,
-                                end: 1783,
+                                start: 1775,
+                                end: 1782,
                             },
                         ),
                     ],
                     span: Some(
                         SourceSpan {
-                            start: 1770,
-                            end: 1784,
+                            start: 1769,
+                            end: 1783,
                         },
                     ),
                     inputs: [
@@ -355,8 +355,8 @@ StudioSpec {
             patch: "glass_pad",
             patch_span: Some(
                 SourceSpan {
-                    start: 1940,
-                    end: 1949,
+                    start: 1939,
+                    end: 1948,
                 },
             ),
         },
@@ -364,8 +364,8 @@ StudioSpec {
             patch: "glass_pad",
             patch_span: Some(
                 SourceSpan {
-                    start: 1977,
-                    end: 1986,
+                    start: 1976,
+                    end: 1985,
                 },
             ),
         },
@@ -394,8 +394,8 @@ StudioSpec {
             },
             level_span: Some(
                 SourceSpan {
-                    start: 2086,
-                    end: 2092,
+                    start: 2085,
+                    end: 2091,
                 },
             ),
         },
@@ -408,8 +408,8 @@ StudioSpec {
             },
             level_span: Some(
                 SourceSpan {
-                    start: 2126,
-                    end: 2132,
+                    start: 2125,
+                    end: 2131,
                 },
             ),
         },
@@ -424,8 +424,8 @@ StudioSpec {
     ],
     span: Some(
         SourceSpan {
-            start: 1069,
-            end: 2169,
+            start: 1068,
+            end: 2168,
         },
     ),
 }

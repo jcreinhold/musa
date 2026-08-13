@@ -38,8 +38,9 @@ piece "Neo-Riemannian" {
         chain([parallel, leading_tone, parallel, leading_tone, parallel, leading_tone], start)
     }
 
-    // Two voicing policies, each a function the caller supplies a bass to.
-    // Partial application is what makes them `triad -> music`.
+    // Two voicing policies. Each takes its bass and its triad together; the
+    // `triad -> music` a fold wants is written where it is wanted, with the
+    // bass of that chord closed over.
     fn whole(chosen: Voicing) -> Music { sound_for(chosen, 1) }
 
     fn close_on(bass: Pitch, refined: Triad) -> Music {
@@ -59,43 +60,43 @@ piece "Neo-Riemannian" {
     // the F flat ones — because a voicing is spelled or it does not exist.
     let close_one: Music = option_fold(music {
         rest/1
-    }, close_on(c4), tonic);
+    }, fn (refined: Triad) -> Music { close_on(c4, refined) }, tonic);
     let close_two: Music = option_fold(music {
         rest/1
-    }, compose_close(c4, at_p), tonic);
+    }, fn (start: Triad) -> Music { compose_close(c4, at_p, start) }, tonic);
     let close_three: Music = option_fold(music {
         rest/1
-    }, compose_close(ab3, at_pl), tonic);
+    }, fn (start: Triad) -> Music { compose_close(ab3, at_pl, start) }, tonic);
     let close_four: Music = option_fold(music {
         rest/1
-    }, compose_close(ab3, at_plp), tonic);
+    }, fn (start: Triad) -> Music { compose_close(ab3, at_plp, start) }, tonic);
     let close_five: Music = option_fold(music {
         rest/1
-    }, compose_close(fb3, at_plpl), tonic);
+    }, fn (start: Triad) -> Music { compose_close(fb3, at_plpl, start) }, tonic);
     let close_six: Music = option_fold(music {
         rest/1
-    }, compose_close(fb3, at_plplp), tonic);
+    }, fn (start: Triad) -> Music { compose_close(fb3, at_plplp, start) }, tonic);
 
     // The same six under drop-2, which is the same chord classes and a
     // different sound: the policy is the caller's, never the library's.
     let drop_one: Music = option_fold(music {
         rest/1
-    }, drop_on(c4), tonic);
+    }, fn (refined: Triad) -> Music { drop_on(c4, refined) }, tonic);
     let drop_two: Music = option_fold(music {
         rest/1
-    }, compose_drop(c4, at_p), tonic);
+    }, fn (start: Triad) -> Music { compose_drop(c4, at_p, start) }, tonic);
     let drop_three: Music = option_fold(music {
         rest/1
-    }, compose_drop(ab3, at_pl), tonic);
+    }, fn (start: Triad) -> Music { compose_drop(ab3, at_pl, start) }, tonic);
     let drop_four: Music = option_fold(music {
         rest/1
-    }, compose_drop(ab3, at_plp), tonic);
+    }, fn (start: Triad) -> Music { compose_drop(ab3, at_plp, start) }, tonic);
     let drop_five: Music = option_fold(music {
         rest/1
-    }, compose_drop(fb3, at_plpl), tonic);
+    }, fn (start: Triad) -> Music { compose_drop(fb3, at_plpl, start) }, tonic);
     let drop_six: Music = option_fold(music {
         rest/1
-    }, compose_drop(fb3, at_plplp), tonic);
+    }, fn (start: Triad) -> Music { compose_drop(fb3, at_plplp, start) }, tonic);
 
     // Reach a waypoint, then voice it. Written out because a composition of
     // two functions is a function and this language has no operator for it.

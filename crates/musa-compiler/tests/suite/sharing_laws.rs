@@ -102,10 +102,7 @@ fn a_parameterized_body_is_one_binding_per_distinct_argument() {
             calls
         });
     assert_eq!(
-        bodies(&piece(
-            "    motif cell(root: Pitch = c5) { root/4 g5/4 a5/4 b5/4 }",
-            &calls
-        )),
+        bodies(&piece("    motif cell(root: Pitch) { root/4 g5/4 a5/4 b5/4 }", &calls)),
         2
     );
 }

@@ -1242,8 +1242,10 @@ impl<'a> Parser<'a> {
                 self.type_expr();
             }
             if self.at(SyntaxKind::Equals) {
+                let equals = self.significant().map(|token| token.range.start());
                 self.bump();
                 self.expr();
+                self.parameter_default(equals);
             }
             self.finish();
             if !self.at(SyntaxKind::Comma) {
@@ -1253,6 +1255,32 @@ impl<'a> Parser<'a> {
         }
         self.expect(SyntaxKind::RParen, "`)`");
         self.finish();
+    }
+
+    /// The one complaint a file written against `f(x: τ = e)` gets.
+    ///
+    /// The default is read, so the tree is the tree the file describes and the
+    /// error spans exactly the text the fix deletes. A default is not a
+    /// convenience the language withdrew: a call supplies every declared
+    /// parameter, and a default is a second opinion about what an argument
+    /// list means (`docs/rules/constitution.md` §9).
+    fn parameter_default(&mut self, equals: Option<TextSize>) {
+        let end = self.previous_end();
+        if self.cascading() {
+            return;
+        }
+        let Some(equals) = equals else {
+            return;
+        };
+        self.errors.push(
+            SyntaxError::new(
+                TextRange::new(equals, end),
+                "a parameter may not have a default",
+                "this default would stand in for an argument",
+            )
+            .with_help("a call supplies every declared parameter — write the value at each call site instead")
+            .with_fix("delete the default", String::new()),
+        );
     }
 
     /// Right-associative arrow types; product/list/option types are atoms.
@@ -1576,6 +1604,7 @@ impl<'a> Parser<'a> {
             Some(SyntaxKind::LBracket) => self.list_expr(),
             Some(SyntaxKind::LBrace) => self.block_expr(),
             Some(SyntaxKind::LParen) => self.paren_or_product_expr(),
+            Some(SyntaxKind::FnKw) => self.lambda_expr(),
             Some(SyntaxKind::MatchKw) => self.match_expr(),
             Some(SyntaxKind::MusicKw) => self.music_expr(),
             Some(SyntaxKind::KernelKw) => self.kernel_quote(),
@@ -1584,6 +1613,25 @@ impl<'a> Parser<'a> {
             Some(SyntaxKind::ChordKw) => self.chord_expr(),
             _ => self.expected("an expression"),
         }
+    }
+
+    /// `fn (x: τ, …) -> τ { e }` — an anonymous function.
+    ///
+    /// A declaration's own words without its name, so the parts are the parts
+    /// a declaration already has: the parameter list, an optional result
+    /// type, and a braced body holding one expression. Nothing here is
+    /// declared, which is why it may stand wherever an expression may: the
+    /// value it makes is what a higher-order call is specialized with.
+    fn lambda_expr(&mut self) {
+        self.start(SyntaxKind::LambdaExpr);
+        self.bump(); // fn
+        self.param_list();
+        if self.at(SyntaxKind::Arrow) {
+            self.bump();
+            self.type_expr();
+        }
+        self.block_expr();
+        self.finish();
     }
 
     /// `{ expression }` — a block, which is a delimiter and not a sequence.
@@ -1903,7 +1951,7 @@ impl<'a> Parser<'a> {
         self.finish();
     }
 
-    /// `motif name(param: type = default, ...) { ... }`
+    /// `motif name(param: type, ...) { ... }`
     fn motif_decl(&mut self) {
         self.start(SyntaxKind::MotifDecl);
         self.bump(); // motif
@@ -1925,12 +1973,14 @@ impl<'a> Parser<'a> {
             }
             self.finish();
             if self.at(SyntaxKind::Equals) {
+                let equals = self.significant().map(|token| token.range.start());
                 self.bump();
                 if self.at_any(&[SyntaxKind::PitchLiteral, SyntaxKind::Rational, SyntaxKind::Integer]) {
-                    self.bump(); // default value (pitch or duration)
+                    self.bump(); // the default a motif may no longer declare
                 } else {
-                    self.expected("a default value");
+                    self.expected("a value");
                 }
+                self.parameter_default(equals);
             }
             if self.at(SyntaxKind::Comma) {
                 self.bump();

@@ -11,7 +11,7 @@ piece "Glass Mountain" {
     meter 4/4;
     key a minor;
 
-    motif sigh(root: Pitch = e5) {
+    motif sigh(root: Pitch) {
         root/2
         rest/4
         c5/2
@@ -24,10 +24,10 @@ piece "Glass Mountain" {
             clef treble;
 
             voice lead {
-                use sigh();
+                use sigh(e5);
 
                 transpose down P5 {
-                    use sigh();
+                    use sigh(e5);
                 }
             }
         }
@@ -116,8 +116,7 @@ piece "Glass Mountain" {
       (motif_parameter
         (identifier)
         (type_name
-          (identifier))
-        (pitch_literal))
+          (identifier)))
       (block
         (note_statement
           (identifier)
@@ -150,7 +149,11 @@ piece "Glass Mountain" {
               (application_expression
                 (name_expression
                   (identifier))
-                (expression_argument_list))))
+                (expression_argument_list
+                  (expression_argument
+                    (expression
+                      (literal_expression
+                        (pitch_literal))))))))
           (transpose_statement
             (interval_literal)
             (block
@@ -159,7 +162,11 @@ piece "Glass Mountain" {
                   (application_expression
                     (name_expression
                       (identifier))
-                    (expression_argument_list))))))))
+                    (expression_argument_list
+                      (expression_argument
+                        (expression
+                          (literal_expression
+                            (pitch_literal))))))))))))
       (part_declaration
         (identifier)
         (voice_declaration

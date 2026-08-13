@@ -306,6 +306,7 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::OptionExpr
         | SyntaxKind::ResultExpr
         | SyntaxKind::ApplyExpr
+        | SyntaxKind::LambdaExpr
         | SyntaxKind::ExprArgList
         | SyntaxKind::ExprArg
         | SyntaxKind::MatchExpr

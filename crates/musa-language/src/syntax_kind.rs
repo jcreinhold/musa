@@ -506,6 +506,12 @@ pub enum SyntaxKind {
     ResultExpr,
     /// Ordinary function application.
     ApplyExpr,
+    /// `fn (x: τ, …) -> τ { e }` — an anonymous function.
+    ///
+    /// A declaration's own words without its name, and a value of arrow type.
+    /// It is what a higher-order call is specialized with now that an
+    /// under-applied call is an error rather than a value.
+    LambdaExpr,
     /// Spelling-preserving written-pitch translation: `pitch up M2`.
     PitchExpr,
     /// The comma-separated arguments of an ordinary application.

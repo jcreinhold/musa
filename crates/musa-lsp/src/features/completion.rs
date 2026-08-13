@@ -191,21 +191,17 @@ fn at_site(document: &Document, position: Position, items: &mut BTreeMap<String,
         return;
     }
     // An ordinary call: the parameters it has left to be given, offered as
-    // the named arguments they are written as. A default is shown, because
-    // "may be omitted" is the reason to know the name at all.
+    // the named arguments they are written as. Every one of them will be
+    // written, since a call supplies them all.
     let Some(item) = super::items::named(&snapshot, &call.name) else {
         return;
     };
     for parameter in &item.parameters {
-        let detail = match &parameter.default {
-            Some(default) => format!("{} = {default}", parameter.ty.name),
-            None => parameter.ty.name.clone(),
-        };
         site(
             items,
             &format!("{}:", parameter.name),
             CompletionItemKind::FIELD,
-            detail,
+            parameter.ty.name.clone(),
         );
     }
 }

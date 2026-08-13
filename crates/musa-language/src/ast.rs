@@ -719,13 +719,15 @@ impl MotifDecl {
             // `:` then the type keyword/identifier.
             drop(tokens.next());
             let kind = tokens.next().map_or_else(String::new, |kind| kind.text().to_string());
-            let default = if tokens.peek().is_some_and(|next| next.kind() == SyntaxKind::Equals) {
+            // A default is a spelling the parser rejects, but the tokens are
+            // still in the tree so the error can span them. Step over them
+            // here: a `Param` describes a parameter the language has, and a
+            // parameter has no default.
+            if tokens.peek().is_some_and(|next| next.kind() == SyntaxKind::Equals) {
                 drop(tokens.next());
-                tokens.next().map(|value| value.text().to_string())
-            } else {
-                None
-            };
-            params.push(Param { name, kind, default });
+                drop(tokens.next());
+            }
+            params.push(Param { name, kind });
         }
         params
     }
@@ -736,15 +738,13 @@ impl MotifDecl {
     }
 }
 
-/// A declared motif parameter: `name: kind = default`.
+/// A declared motif parameter: `name: kind`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Param {
     /// The parameter name (`root`).
     pub name: String,
     /// The declared kind (`pitch` or `duration`).
     pub kind: String,
-    /// The default value text, when declared (`e5`, `1/8`).
-    pub default: Option<String>,
 }
 
 /// `score { ... }`
@@ -2102,6 +2102,20 @@ impl FnDecl {
         token_text(&self.0, SyntaxKind::Identifier)
     }
 
+    /// Its parameters in source order, annotated or not.
+    pub fn params(&self) -> Vec<FnParam> {
+        params_of(&self.0)
+    }
+}
+
+/// `fn (x: τ, …) -> τ { e }` — an anonymous function in a value position.
+///
+/// It reads the same way `FnDecl` does, minus the name: the parts a reader
+/// already knows from a declaration, standing where a value stands.
+pub struct LambdaExpr(SyntaxNode);
+wrapper!(LambdaExpr, SyntaxKind::LambdaExpr);
+
+impl LambdaExpr {
     /// Its parameters in source order, annotated or not.
     pub fn params(&self) -> Vec<FnParam> {
         params_of(&self.0)

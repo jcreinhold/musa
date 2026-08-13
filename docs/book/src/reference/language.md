@@ -85,7 +85,7 @@ from 1. A repeat folds on the page only when every voice sounding under it write
 ## Material and transforms
 
 ```musa
-motif sigh(root: Pitch = e5) {
+motif sigh(root: Pitch) {
     root/2
     rest/4
     c5/2
@@ -94,8 +94,8 @@ motif sigh(root: Pitch = e5) {
 fragment turn { c5/8 d5/8 c5/8 }
 
 voice lead {
-    use sigh();
-    transpose down P5 { use sigh(); }
+    use sigh(e5);
+    transpose down P5 { use sigh(e5); }
 }
 ```
 

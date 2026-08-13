@@ -343,7 +343,7 @@ fn source_strategy() -> impl Strategy<Value = (String, GeneratedVoice, Generated
 fn motif_source_strategy() -> impl Strategy<Value = (String, GeneratedVoice)> {
     (pitch_strategy(), pitch_strategy(), duration_strategy()).prop_map(|(root, other, (text, value))| {
         let source = format!(
-            "piece \"gen\" {{ meter 4/4; motif m(root: Pitch = c4) {{ root {text} {other} {text} }} score {{ part p {{ voice v {{ use m({root}); repeat 2 {{ transpose down P5 {{ use m(); }} }} }} }} }} }}"
+            "piece \"gen\" {{ meter 4/4; motif m(root: Pitch) {{ root {text} {other} {text} }} score {{ part p {{ voice v {{ use m({root}); repeat 2 {{ transpose down P5 {{ use m(c4); }} }} }} }} }} }}"
         );
         let expected = GeneratedVoice {
             body: String::new(),
@@ -389,8 +389,8 @@ proptest! {
         prop_assert_eq!(measured(&snapshot, 1), (lower.statements, lower.duration));
     }
 
-    /// The same, through motifs with positional arguments, defaults, and
-    /// nesting: expansion adds events, never time out of nowhere.
+    /// The same, through motifs with positional arguments and nesting:
+    /// expansion adds events, never time out of nowhere.
     #[test]
     fn motif_expansion_produces_what_the_uses_spell((source, expected) in motif_source_strategy()) {
         prop_assert!(errors_of(&source).is_empty(), "{source}");

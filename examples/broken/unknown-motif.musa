@@ -2,7 +2,7 @@ piece "Unknown Motif" {
     meter 4/4;
     tempo 1/4 = 96;
 
-    motif sigh(root: Pitch = e5) {
+    motif sigh(root: Pitch) {
         root/8 root/8
     }
 

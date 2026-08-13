@@ -58,8 +58,9 @@ const PRELUDE: &str = r"
         Some(located) -> frame_pitch(located, written),
     } }
 
-    fn fixed(written: Degree, ignored: Pitch) -> Pitch { placed(written) }
-    fn degree_note(written: Degree) -> Music { map_note_pitches(fixed(written), music { c0/1 }) }
+    fn degree_note(written: Degree) -> Music {
+        map_note_pitches(fn (ignored: Pitch) -> Pitch { placed(written) }, music { c0/1 })
+    }
 
     fn after(one: Music, carried: Music) -> Music { overlay(one, shift(1, carried)) }
     fn laid_out(values: List<Music>) -> Music { list_fold(music { rest/1 }, after, values) }

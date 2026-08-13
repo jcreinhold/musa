@@ -2,7 +2,7 @@
   "document": 0,
   "name": "unicode-fixture.musa",
   "kind": "piece",
-  "source": "// Text above U+007F, in every place a piece can carry it — the title, a\n// section name, a phrase name, and these comments.\n//\n// It is here because the two sides of the desktop app measure the source\n// differently: Rust counts bytes, JavaScript and CodeMirror count UTF-16\n// code units, and the two agree only while the text is ASCII. The em dash on\n// the line above is three bytes and one code unit; the flat sign below is\n// three and one; the treble clef is four and two. Every span the interface\n// receives from a piece like this one is wrong by the accumulated difference\n// unless the shell restates it — see docs/rules/desktop/03-interaction.md §7.\n//\n// Nothing here is about notation. The notes are the plainest possible, so\n// that when a linking or highlighting test fails it is the measure that is\n// wrong and not the music.\npiece \"Étude en sol — 𝄞\" {\n    tempo 1/4 = 88;\n    meter 3/4;\n    key g major;\n\n    motif sigh(root: Pitch = d5) {\n        root/4\n        c5/4\n        b4/4\n    }\n\n    score {\n        section \"Ouverture\" at 1:1;\n        section \"Réponse — variée\" at 3:1;\n\n        part piano {\n            clef treble;\n\n            voice lead {\n                phrase \"première idée\" {\n                    g4/4\n                    b4/4\n                    d5/4\n                }\n                use sigh();\n                use sigh(g5);\n                phrase \"cadence — ♭VII\" {\n                    f5/4\n                    d5/4\n                    g4/4\n                }\n            }\n        }\n    }\n}\n",
+  "source": "// Text above U+007F, in every place a piece can carry it — the title, a\n// section name, a phrase name, and these comments.\n//\n// It is here because the two sides of the desktop app measure the source\n// differently: Rust counts bytes, JavaScript and CodeMirror count UTF-16\n// code units, and the two agree only while the text is ASCII. The em dash on\n// the line above is three bytes and one code unit; the flat sign below is\n// three and one; the treble clef is four and two. Every span the interface\n// receives from a piece like this one is wrong by the accumulated difference\n// unless the shell restates it — see docs/rules/desktop/03-interaction.md §7.\n//\n// Nothing here is about notation. The notes are the plainest possible, so\n// that when a linking or highlighting test fails it is the measure that is\n// wrong and not the music.\npiece \"Étude en sol — 𝄞\" {\n    tempo 1/4 = 88;\n    meter 3/4;\n    key g major;\n\n    motif sigh(root: Pitch) {\n        root/4\n        c5/4\n        b4/4\n    }\n\n    score {\n        section \"Ouverture\" at 1:1;\n        section \"Réponse — variée\" at 3:1;\n\n        part piano {\n            clef treble;\n\n            voice lead {\n                phrase \"première idée\" {\n                    g4/4\n                    b4/4\n                    d5/4\n                }\n                use sigh(d5);\n                use sigh(g5);\n                phrase \"cadence — ♭VII\" {\n                    f5/4\n                    d5/4\n                    g4/4\n                }\n            }\n        }\n    }\n}\n",
   "revision": 0,
   "compiles": true,
   "unsaved": true,
@@ -66,12 +66,12 @@
           "occurrence": null,
           "line": 35,
           "span": {
-            "start": 1233,
-            "end": 1237
+            "start": 1228,
+            "end": 1232
           },
           "definitionSpan": {
-            "start": 1233,
-            "end": 1237
+            "start": 1228,
+            "end": 1232
           },
           "decision": null
         }
@@ -109,12 +109,12 @@
           "occurrence": null,
           "line": 36,
           "span": {
-            "start": 1258,
-            "end": 1262
+            "start": 1253,
+            "end": 1257
           },
           "definitionSpan": {
-            "start": 1258,
-            "end": 1262
+            "start": 1253,
+            "end": 1257
           },
           "decision": null
         }
@@ -152,12 +152,12 @@
           "occurrence": null,
           "line": 37,
           "span": {
-            "start": 1283,
-            "end": 1287
+            "start": 1278,
+            "end": 1282
           },
           "definitionSpan": {
-            "start": 1283,
-            "end": 1287
+            "start": 1278,
+            "end": 1282
           },
           "decision": null
         }
@@ -192,11 +192,11 @@
           "generated": true,
           "path": [
             {
-              "label": "sigh()",
+              "label": "sigh(d5)",
               "kind": "occurrence",
               "span": {
-                "start": 1322,
-                "end": 1333
+                "start": 1317,
+                "end": 1330
               }
             }
           ],
@@ -204,12 +204,12 @@
           "occurrence": "occurrence-0",
           "line": 39,
           "span": {
-            "start": 1322,
-            "end": 1333
+            "start": 1317,
+            "end": 1330
           },
           "definitionSpan": {
-            "start": 968,
-            "end": 974
+            "start": 963,
+            "end": 969
           },
           "decision": null
         }
@@ -244,11 +244,11 @@
           "generated": true,
           "path": [
             {
-              "label": "sigh()",
+              "label": "sigh(d5)",
               "kind": "occurrence",
               "span": {
-                "start": 1322,
-                "end": 1333
+                "start": 1317,
+                "end": 1330
               }
             }
           ],
@@ -256,12 +256,12 @@
           "occurrence": "occurrence-0",
           "line": 39,
           "span": {
-            "start": 1322,
-            "end": 1333
+            "start": 1317,
+            "end": 1330
           },
           "definitionSpan": {
-            "start": 983,
-            "end": 987
+            "start": 978,
+            "end": 982
           },
           "decision": null
         }
@@ -296,11 +296,11 @@
           "generated": true,
           "path": [
             {
-              "label": "sigh()",
+              "label": "sigh(d5)",
               "kind": "occurrence",
               "span": {
-                "start": 1322,
-                "end": 1333
+                "start": 1317,
+                "end": 1330
               }
             }
           ],
@@ -308,12 +308,12 @@
           "occurrence": "occurrence-0",
           "line": 39,
           "span": {
-            "start": 1322,
-            "end": 1333
+            "start": 1317,
+            "end": 1330
           },
           "definitionSpan": {
-            "start": 996,
-            "end": 1000
+            "start": 991,
+            "end": 995
           },
           "decision": null
         }
@@ -351,8 +351,8 @@
               "label": "sigh(g5)",
               "kind": "occurrence",
               "span": {
-                "start": 1350,
-                "end": 1363
+                "start": 1347,
+                "end": 1360
               }
             }
           ],
@@ -360,12 +360,12 @@
           "occurrence": "occurrence-1",
           "line": 40,
           "span": {
-            "start": 1350,
-            "end": 1363
+            "start": 1347,
+            "end": 1360
           },
           "definitionSpan": {
-            "start": 968,
-            "end": 974
+            "start": 963,
+            "end": 969
           },
           "decision": null
         }
@@ -403,8 +403,8 @@
               "label": "sigh(g5)",
               "kind": "occurrence",
               "span": {
-                "start": 1350,
-                "end": 1363
+                "start": 1347,
+                "end": 1360
               }
             }
           ],
@@ -412,12 +412,12 @@
           "occurrence": "occurrence-1",
           "line": 40,
           "span": {
-            "start": 1350,
-            "end": 1363
+            "start": 1347,
+            "end": 1360
           },
           "definitionSpan": {
-            "start": 983,
-            "end": 987
+            "start": 978,
+            "end": 982
           },
           "decision": null
         }
@@ -455,8 +455,8 @@
               "label": "sigh(g5)",
               "kind": "occurrence",
               "span": {
-                "start": 1350,
-                "end": 1363
+                "start": 1347,
+                "end": 1360
               }
             }
           ],
@@ -464,12 +464,12 @@
           "occurrence": "occurrence-1",
           "line": 40,
           "span": {
-            "start": 1350,
-            "end": 1363
+            "start": 1347,
+            "end": 1360
           },
           "definitionSpan": {
-            "start": 996,
-            "end": 1000
+            "start": 991,
+            "end": 995
           },
           "decision": null
         }
@@ -507,12 +507,12 @@
           "occurrence": null,
           "line": 42,
           "span": {
-            "start": 1426,
-            "end": 1430
+            "start": 1423,
+            "end": 1427
           },
           "definitionSpan": {
-            "start": 1426,
-            "end": 1430
+            "start": 1423,
+            "end": 1427
           },
           "decision": null
         }
@@ -550,12 +550,12 @@
           "occurrence": null,
           "line": 43,
           "span": {
-            "start": 1451,
-            "end": 1455
+            "start": 1448,
+            "end": 1452
           },
           "definitionSpan": {
-            "start": 1451,
-            "end": 1455
+            "start": 1448,
+            "end": 1452
           },
           "decision": null
         }
@@ -593,12 +593,12 @@
           "occurrence": null,
           "line": 44,
           "span": {
-            "start": 1476,
-            "end": 1480
+            "start": 1473,
+            "end": 1477
           },
           "definitionSpan": {
-            "start": 1476,
-            "end": 1480
+            "start": 1473,
+            "end": 1477
           },
           "decision": null
         }
@@ -609,23 +609,23 @@
         "id": "occurrence-0",
         "path": [
           {
-            "label": "sigh()",
+            "label": "sigh(d5)",
             "kind": "occurrence",
             "span": {
-              "start": 1322,
-              "end": 1333
+              "start": 1317,
+              "end": 1330
             }
           }
         ],
-        "label": "sigh()",
+        "label": "sigh(d5)",
         "motif": "sigh",
         "declaration": {
           "start": 929,
-          "end": 1006
+          "end": 1001
         },
         "useSite": {
-          "start": 1322,
-          "end": 1333
+          "start": 1317,
+          "end": 1330
         },
         "line": 39,
         "events": [
@@ -641,8 +641,8 @@
             "label": "sigh(g5)",
             "kind": "occurrence",
             "span": {
-              "start": 1350,
-              "end": 1363
+              "start": 1347,
+              "end": 1360
             }
           }
         ],
@@ -650,11 +650,11 @@
         "motif": "sigh",
         "declaration": {
           "start": 929,
-          "end": 1006
+          "end": 1001
         },
         "useSite": {
-          "start": 1350,
-          "end": 1363
+          "start": 1347,
+          "end": 1360
         },
         "line": 40,
         "events": [
@@ -678,8 +678,8 @@
         "endFrames": 196364,
         "line": 27,
         "span": {
-          "start": 1028,
-          "end": 1055
+          "start": 1023,
+          "end": 1050
         }
       },
       {
@@ -695,8 +695,8 @@
         "endFrames": 98182,
         "line": 34,
         "span": {
-          "start": 1188,
-          "end": 1305
+          "start": 1183,
+          "end": 1300
         }
       },
       {
@@ -712,8 +712,8 @@
         "endFrames": 392727,
         "line": 28,
         "span": {
-          "start": 1064,
-          "end": 1098
+          "start": 1059,
+          "end": 1093
         }
       },
       {
@@ -729,8 +729,8 @@
         "endFrames": 392727,
         "line": 41,
         "span": {
-          "start": 1380,
-          "end": 1498
+          "start": 1377,
+          "end": 1495
         }
       }
     ],
@@ -798,7 +798,7 @@
     {
       "name": "sigh",
       "kind": "motif",
-      "signature": "motif sigh(root: Pitch = d5)",
+      "signature": "motif sigh(root: Pitch)",
       "summary": null,
       "result": {
         "name": "Music",
@@ -807,12 +807,11 @@
       "parameters": [
         {
           "name": "root",
-          "label": "root: Pitch = d5",
+          "label": "root: Pitch",
           "ty": {
             "name": "Pitch",
             "distinction": "a written pitch: letter, accidental, and octave"
-          },
-          "default": "d5"
+          }
         }
       ],
       "deprecation": null,
@@ -837,12 +836,12 @@
       "external": null,
       "uses": [
         {
-          "start": 1326,
-          "end": 1330
+          "start": 1321,
+          "end": 1325
         },
         {
-          "start": 1354,
-          "end": 1358
+          "start": 1351,
+          "end": 1355
         }
       ]
     },
@@ -850,8 +849,8 @@
       "name": "piano",
       "kind": "part",
       "declaration": {
-        "start": 1113,
-        "end": 1118
+        "start": 1108,
+        "end": 1113
       },
       "external": null,
       "uses": []
@@ -860,8 +859,8 @@
       "name": "lead",
       "kind": "voice",
       "declaration": {
-        "start": 1165,
-        "end": 1169
+        "start": 1160,
+        "end": 1164
       },
       "external": null,
       "uses": []

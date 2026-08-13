@@ -2,7 +2,7 @@
   "document": 0,
   "name": "glass-mountain.musa",
   "kind": "piece",
-  "source": "piece \"Glass Mountain\" {\n    subtitle \"for violin and strings\";\n    composer \"musa\";\n    copyright \"© 2026. Licensed CC BY-SA 4.0.\";\n\n    tempo quarter = 72;\n    meter 4/4;\n    key a minor;\n\n    motif sigh(root: Pitch = e5) {\n        root/2\n        rest/4\n        c5/2\n        b4/4\n        a4/2\n    }\n\n    score {\n        part violin {\n            clef treble;\n\n            voice lead {\n                use sigh();\n\n                transpose down P5 {\n                    use sigh();\n                }\n            }\n        }\n\n        part strings {\n            voice upper {\n                c5/1\n                c5/1\n                a4/1\n                g#4/1\n            }\n\n            voice bass {\n                // Under the pedal for the whole descent: the harmony is a\n                // wash rather than four separate chords, and the pedal is\n                // where a page says so.\n                mark pedal {\n                    a2/1\n                    f2/1\n                    d2/1\n                    e2/1\n                }\n            }\n        }\n    }\n\n    // The sound side (roadmap 7.1). Every stage here runs real DSP: the\n    // oscillators and envelope are the voice, the filter and its modulation\n    // shape it, and the hall is a send to a reverb bus that returns to the\n    // master.\n    studio {\n        patch glass_pad {\n            carrier = oscillator(sine);\n            shimmer = oscillator(sine, ratio: 2) |> gain(-15 dB);\n\n            mix(carrier, shimmer)\n                |> envelope(adsr(attack: 30 ms, decay: 1.8 s, sustain: 0.65, release: 3.5 s))\n                |> lowpass(cutoff: 1400 Hz, q: 0.7)\n                |> output;\n        }\n\n        lfo = oscillator(sine, frequency: 0.08 Hz)\n            |> scale(250 Hz)\n            |> bias(1400 Hz);\n\n        modulate lfo -> glass_pad.lowpass.cutoff;\n\n        bus hall {\n            reverb(room: 0.82, damping: 0.55);\n        }\n\n        assign violin -> glass_pad;\n        assign strings -> glass_pad;\n\n        route violin -> master;\n        route strings -> master;\n\n        send violin -> hall at -18 dB;\n        send strings -> hall at -14 dB;\n        route hall -> master;\n    }\n}\n",
+  "source": "piece \"Glass Mountain\" {\n    subtitle \"for violin and strings\";\n    composer \"musa\";\n    copyright \"© 2026. Licensed CC BY-SA 4.0.\";\n\n    tempo quarter = 72;\n    meter 4/4;\n    key a minor;\n\n    motif sigh(root: Pitch) {\n        root/2\n        rest/4\n        c5/2\n        b4/4\n        a4/2\n    }\n\n    score {\n        part violin {\n            clef treble;\n\n            voice lead {\n                use sigh(e5);\n\n                transpose down P5 {\n                    use sigh(e5);\n                }\n            }\n        }\n\n        part strings {\n            voice upper {\n                c5/1\n                c5/1\n                a4/1\n                g#4/1\n            }\n\n            voice bass {\n                // Under the pedal for the whole descent: the harmony is a\n                // wash rather than four separate chords, and the pedal is\n                // where a page says so.\n                mark pedal {\n                    a2/1\n                    f2/1\n                    d2/1\n                    e2/1\n                }\n            }\n        }\n    }\n\n    // The sound side (roadmap 7.1). Every stage here runs real DSP: the\n    // oscillators and envelope are the voice, the filter and its modulation\n    // shape it, and the hall is a send to a reverb bus that returns to the\n    // master.\n    studio {\n        patch glass_pad {\n            carrier = oscillator(sine);\n            shimmer = oscillator(sine, ratio: 2) |> gain(-15 dB);\n\n            mix(carrier, shimmer)\n                |> envelope(adsr(attack: 30 ms, decay: 1.8 s, sustain: 0.65, release: 3.5 s))\n                |> lowpass(cutoff: 1400 Hz, q: 0.7)\n                |> output;\n        }\n\n        lfo = oscillator(sine, frequency: 0.08 Hz)\n            |> scale(250 Hz)\n            |> bias(1400 Hz);\n\n        modulate lfo -> glass_pad.lowpass.cutoff;\n\n        bus hall {\n            reverb(room: 0.82, damping: 0.55);\n        }\n\n        assign violin -> glass_pad;\n        assign strings -> glass_pad;\n\n        route violin -> master;\n        route strings -> master;\n\n        send violin -> hall at -18 dB;\n        send strings -> hall at -14 dB;\n        route hall -> master;\n    }\n}\n",
   "revision": 0,
   "compiles": true,
   "unsaved": true,
@@ -76,11 +76,11 @@
           "generated": true,
           "path": [
             {
-              "label": "sigh()",
+              "label": "sigh(e5)",
               "kind": "occurrence",
               "span": {
-                "start": 403,
-                "end": 414
+                "start": 398,
+                "end": 411
               }
             }
           ],
@@ -88,12 +88,12 @@
           "occurrence": "occurrence-0",
           "line": 23,
           "span": {
-            "start": 403,
-            "end": 414
+            "start": 398,
+            "end": 411
           },
           "definitionSpan": {
-            "start": 234,
-            "end": 240
+            "start": 229,
+            "end": 235
           },
           "decision": null
         }
@@ -124,11 +124,11 @@
           "generated": true,
           "path": [
             {
-              "label": "sigh()",
+              "label": "sigh(e5)",
               "kind": "occurrence",
               "span": {
-                "start": 403,
-                "end": 414
+                "start": 398,
+                "end": 411
               }
             }
           ],
@@ -136,12 +136,12 @@
           "occurrence": "occurrence-0",
           "line": 23,
           "span": {
-            "start": 403,
-            "end": 414
+            "start": 398,
+            "end": 411
           },
           "definitionSpan": {
-            "start": 249,
-            "end": 255
+            "start": 244,
+            "end": 250
           },
           "decision": null
         }
@@ -176,11 +176,11 @@
           "generated": true,
           "path": [
             {
-              "label": "sigh()",
+              "label": "sigh(e5)",
               "kind": "occurrence",
               "span": {
-                "start": 403,
-                "end": 414
+                "start": 398,
+                "end": 411
               }
             }
           ],
@@ -188,12 +188,12 @@
           "occurrence": "occurrence-0",
           "line": 23,
           "span": {
-            "start": 403,
-            "end": 414
+            "start": 398,
+            "end": 411
           },
           "definitionSpan": {
-            "start": 264,
-            "end": 268
+            "start": 259,
+            "end": 263
           },
           "decision": null
         }
@@ -228,11 +228,11 @@
           "generated": true,
           "path": [
             {
-              "label": "sigh()",
+              "label": "sigh(e5)",
               "kind": "occurrence",
               "span": {
-                "start": 403,
-                "end": 414
+                "start": 398,
+                "end": 411
               }
             }
           ],
@@ -240,12 +240,12 @@
           "occurrence": "occurrence-0",
           "line": 23,
           "span": {
-            "start": 403,
-            "end": 414
+            "start": 398,
+            "end": 411
           },
           "definitionSpan": {
-            "start": 277,
-            "end": 281
+            "start": 272,
+            "end": 276
           },
           "decision": null
         }
@@ -280,11 +280,11 @@
           "generated": true,
           "path": [
             {
-              "label": "sigh()",
+              "label": "sigh(e5)",
               "kind": "occurrence",
               "span": {
-                "start": 403,
-                "end": 414
+                "start": 398,
+                "end": 411
               }
             }
           ],
@@ -292,12 +292,12 @@
           "occurrence": "occurrence-0",
           "line": 23,
           "span": {
-            "start": 403,
-            "end": 414
+            "start": 398,
+            "end": 411
           },
           "definitionSpan": {
-            "start": 290,
-            "end": 294
+            "start": 285,
+            "end": 289
           },
           "decision": null
         }
@@ -337,11 +337,11 @@
               "span": null
             },
             {
-              "label": "sigh()",
+              "label": "sigh(e5)",
               "kind": "occurrence",
               "span": {
-                "start": 472,
-                "end": 483
+                "start": 469,
+                "end": 482
               }
             }
           ],
@@ -349,12 +349,12 @@
           "occurrence": "occurrence-1",
           "line": 26,
           "span": {
-            "start": 472,
-            "end": 483
+            "start": 469,
+            "end": 482
           },
           "definitionSpan": {
-            "start": 234,
-            "end": 240
+            "start": 229,
+            "end": 235
           },
           "decision": null
         }
@@ -390,11 +390,11 @@
               "span": null
             },
             {
-              "label": "sigh()",
+              "label": "sigh(e5)",
               "kind": "occurrence",
               "span": {
-                "start": 472,
-                "end": 483
+                "start": 469,
+                "end": 482
               }
             }
           ],
@@ -402,12 +402,12 @@
           "occurrence": "occurrence-1",
           "line": 26,
           "span": {
-            "start": 472,
-            "end": 483
+            "start": 469,
+            "end": 482
           },
           "definitionSpan": {
-            "start": 249,
-            "end": 255
+            "start": 244,
+            "end": 250
           },
           "decision": null
         }
@@ -447,11 +447,11 @@
               "span": null
             },
             {
-              "label": "sigh()",
+              "label": "sigh(e5)",
               "kind": "occurrence",
               "span": {
-                "start": 472,
-                "end": 483
+                "start": 469,
+                "end": 482
               }
             }
           ],
@@ -459,12 +459,12 @@
           "occurrence": "occurrence-1",
           "line": 26,
           "span": {
-            "start": 472,
-            "end": 483
+            "start": 469,
+            "end": 482
           },
           "definitionSpan": {
-            "start": 264,
-            "end": 268
+            "start": 259,
+            "end": 263
           },
           "decision": null
         }
@@ -504,11 +504,11 @@
               "span": null
             },
             {
-              "label": "sigh()",
+              "label": "sigh(e5)",
               "kind": "occurrence",
               "span": {
-                "start": 472,
-                "end": 483
+                "start": 469,
+                "end": 482
               }
             }
           ],
@@ -516,12 +516,12 @@
           "occurrence": "occurrence-1",
           "line": 26,
           "span": {
-            "start": 472,
-            "end": 483
+            "start": 469,
+            "end": 482
           },
           "definitionSpan": {
-            "start": 277,
-            "end": 281
+            "start": 272,
+            "end": 276
           },
           "decision": null
         }
@@ -561,11 +561,11 @@
               "span": null
             },
             {
-              "label": "sigh()",
+              "label": "sigh(e5)",
               "kind": "occurrence",
               "span": {
-                "start": 472,
-                "end": 483
+                "start": 469,
+                "end": 482
               }
             }
           ],
@@ -573,12 +573,12 @@
           "occurrence": "occurrence-1",
           "line": 26,
           "span": {
-            "start": 472,
-            "end": 483
+            "start": 469,
+            "end": 482
           },
           "definitionSpan": {
-            "start": 290,
-            "end": 294
+            "start": 285,
+            "end": 289
           },
           "decision": null
         }
@@ -616,12 +616,12 @@
           "occurrence": null,
           "line": 33,
           "span": {
-            "start": 592,
-            "end": 596
+            "start": 591,
+            "end": 595
           },
           "definitionSpan": {
-            "start": 592,
-            "end": 596
+            "start": 591,
+            "end": 595
           },
           "decision": null
         }
@@ -659,12 +659,12 @@
           "occurrence": null,
           "line": 34,
           "span": {
-            "start": 613,
-            "end": 617
+            "start": 612,
+            "end": 616
           },
           "definitionSpan": {
-            "start": 613,
-            "end": 617
+            "start": 612,
+            "end": 616
           },
           "decision": null
         }
@@ -702,12 +702,12 @@
           "occurrence": null,
           "line": 35,
           "span": {
-            "start": 634,
-            "end": 638
+            "start": 633,
+            "end": 637
           },
           "definitionSpan": {
-            "start": 634,
-            "end": 638
+            "start": 633,
+            "end": 637
           },
           "decision": null
         }
@@ -745,12 +745,12 @@
           "occurrence": null,
           "line": 36,
           "span": {
-            "start": 655,
-            "end": 660
+            "start": 654,
+            "end": 659
           },
           "definitionSpan": {
-            "start": 655,
-            "end": 660
+            "start": 654,
+            "end": 659
           },
           "decision": null
         }
@@ -788,12 +788,12 @@
           "occurrence": null,
           "line": 44,
           "span": {
-            "start": 941,
-            "end": 945
+            "start": 940,
+            "end": 944
           },
           "definitionSpan": {
-            "start": 941,
-            "end": 945
+            "start": 940,
+            "end": 944
           },
           "decision": null
         }
@@ -831,12 +831,12 @@
           "occurrence": null,
           "line": 45,
           "span": {
-            "start": 966,
-            "end": 970
+            "start": 965,
+            "end": 969
           },
           "definitionSpan": {
-            "start": 966,
-            "end": 970
+            "start": 965,
+            "end": 969
           },
           "decision": null
         }
@@ -874,12 +874,12 @@
           "occurrence": null,
           "line": 46,
           "span": {
-            "start": 991,
-            "end": 995
+            "start": 990,
+            "end": 994
           },
           "definitionSpan": {
-            "start": 991,
-            "end": 995
+            "start": 990,
+            "end": 994
           },
           "decision": null
         }
@@ -917,12 +917,12 @@
           "occurrence": null,
           "line": 47,
           "span": {
-            "start": 1016,
-            "end": 1020
+            "start": 1015,
+            "end": 1019
           },
           "definitionSpan": {
-            "start": 1016,
-            "end": 1020
+            "start": 1015,
+            "end": 1019
           },
           "decision": null
         }
@@ -933,23 +933,23 @@
         "id": "occurrence-0",
         "path": [
           {
-            "label": "sigh()",
+            "label": "sigh(e5)",
             "kind": "occurrence",
             "span": {
-              "start": 403,
-              "end": 414
+              "start": 398,
+              "end": 411
             }
           }
         ],
-        "label": "sigh()",
+        "label": "sigh(e5)",
         "motif": "sigh",
         "declaration": {
           "start": 195,
-          "end": 300
+          "end": 295
         },
         "useSite": {
-          "start": 403,
-          "end": 414
+          "start": 398,
+          "end": 411
         },
         "line": 23,
         "events": [
@@ -969,23 +969,23 @@
             "span": null
           },
           {
-            "label": "sigh()",
+            "label": "sigh(e5)",
             "kind": "occurrence",
             "span": {
-              "start": 472,
-              "end": 483
+              "start": 469,
+              "end": 482
             }
           }
         ],
-        "label": "transpose down P5 ▸ sigh()",
+        "label": "transpose down P5 ▸ sigh(e5)",
         "motif": "sigh",
         "declaration": {
           "start": 195,
-          "end": 300
+          "end": 295
         },
         "useSite": {
-          "start": 472,
-          "end": 483
+          "start": 469,
+          "end": 482
         },
         "line": 26,
         "events": [
@@ -1092,8 +1092,8 @@
                 "maximum": 16.0,
                 "written": true,
                 "span": {
-                  "start": 1436,
-                  "end": 1437
+                  "start": 1435,
+                  "end": 1436
                 },
                 "modulatedBy": null
               }
@@ -1112,8 +1112,8 @@
                 "maximum": 12.0,
                 "written": true,
                 "span": {
-                  "start": 1447,
-                  "end": 1453
+                  "start": 1446,
+                  "end": 1452
                 },
                 "modulatedBy": null
               }
@@ -1138,8 +1138,8 @@
                 "maximum": 5.0,
                 "written": true,
                 "span": {
-                  "start": 1532,
-                  "end": 1537
+                  "start": 1531,
+                  "end": 1536
                 },
                 "modulatedBy": null
               },
@@ -1151,8 +1151,8 @@
                 "maximum": 10.0,
                 "written": true,
                 "span": {
-                  "start": 1546,
-                  "end": 1551
+                  "start": 1545,
+                  "end": 1550
                 },
                 "modulatedBy": null
               },
@@ -1164,8 +1164,8 @@
                 "maximum": 1.0,
                 "written": true,
                 "span": {
-                  "start": 1562,
-                  "end": 1566
+                  "start": 1561,
+                  "end": 1565
                 },
                 "modulatedBy": null
               },
@@ -1177,8 +1177,8 @@
                 "maximum": 10.0,
                 "written": true,
                 "span": {
-                  "start": 1577,
-                  "end": 1582
+                  "start": 1576,
+                  "end": 1581
                 },
                 "modulatedBy": null
               }
@@ -1197,8 +1197,8 @@
                 "maximum": 20000.0,
                 "written": true,
                 "span": {
-                  "start": 1620,
-                  "end": 1627
+                  "start": 1619,
+                  "end": 1626
                 },
                 "modulatedBy": "lfo"
               },
@@ -1210,8 +1210,8 @@
                 "maximum": 20.0,
                 "written": true,
                 "span": {
-                  "start": 1632,
-                  "end": 1635
+                  "start": 1631,
+                  "end": 1634
                 },
                 "modulatedBy": null
               }
@@ -1238,8 +1238,8 @@
                 "maximum": 1.0,
                 "written": true,
                 "span": {
-                  "start": 1881,
-                  "end": 1885
+                  "start": 1880,
+                  "end": 1884
                 },
                 "modulatedBy": null
               },
@@ -1251,8 +1251,8 @@
                 "maximum": 1.0,
                 "written": true,
                 "span": {
-                  "start": 1896,
-                  "end": 1900
+                  "start": 1895,
+                  "end": 1899
                 },
                 "modulatedBy": null
               },
@@ -1289,8 +1289,8 @@
                 "maximum": 20000.0,
                 "written": true,
                 "span": {
-                  "start": 1717,
-                  "end": 1724
+                  "start": 1716,
+                  "end": 1723
                 },
                 "modulatedBy": null
               },
@@ -1319,8 +1319,8 @@
                 "maximum": 20000.0,
                 "written": true,
                 "span": {
-                  "start": 1747,
-                  "end": 1753
+                  "start": 1746,
+                  "end": 1752
                 },
                 "modulatedBy": null
               }
@@ -1339,8 +1339,8 @@
                 "maximum": 20000.0,
                 "written": true,
                 "span": {
-                  "start": 1775,
-                  "end": 1782
+                  "start": 1774,
+                  "end": 1781
                 },
                 "modulatedBy": null
               }
@@ -1365,8 +1365,8 @@
         "bus": "hall",
         "decibels": -18.0,
         "span": {
-          "start": 2085,
-          "end": 2091
+          "start": 2084,
+          "end": 2090
         }
       },
       {
@@ -1374,8 +1374,8 @@
         "bus": "hall",
         "decibels": -14.0,
         "span": {
-          "start": 2125,
-          "end": 2131
+          "start": 2124,
+          "end": 2130
         }
       }
     ],
@@ -1407,7 +1407,7 @@
     {
       "name": "sigh",
       "kind": "motif",
-      "signature": "motif sigh(root: Pitch = e5)",
+      "signature": "motif sigh(root: Pitch)",
       "summary": null,
       "result": {
         "name": "Music",
@@ -1416,12 +1416,11 @@
       "parameters": [
         {
           "name": "root",
-          "label": "root: Pitch = e5",
+          "label": "root: Pitch",
           "ty": {
             "name": "Pitch",
             "distinction": "a written pitch: letter, accidental, and octave"
-          },
-          "default": "e5"
+          }
         }
       ],
       "deprecation": null,
@@ -1446,12 +1445,12 @@
       "external": null,
       "uses": [
         {
-          "start": 407,
-          "end": 411
+          "start": 402,
+          "end": 406
         },
         {
-          "start": 476,
-          "end": 480
+          "start": 473,
+          "end": 477
         }
       ]
     },
@@ -1459,22 +1458,22 @@
       "name": "violin",
       "kind": "part",
       "declaration": {
-        "start": 327,
-        "end": 333
+        "start": 322,
+        "end": 328
       },
       "external": null,
       "uses": [
         {
-          "start": 1929,
-          "end": 1935
+          "start": 1928,
+          "end": 1934
         },
         {
-          "start": 2002,
-          "end": 2008
+          "start": 2001,
+          "end": 2007
         },
         {
-          "start": 2067,
-          "end": 2073
+          "start": 2066,
+          "end": 2072
         }
       ]
     },
@@ -1482,8 +1481,8 @@
       "name": "lead",
       "kind": "voice",
       "declaration": {
-        "start": 380,
-        "end": 384
+        "start": 375,
+        "end": 379
       },
       "external": null,
       "uses": []
@@ -1492,22 +1491,22 @@
       "name": "strings",
       "kind": "part",
       "declaration": {
-        "start": 540,
-        "end": 547
+        "start": 539,
+        "end": 546
       },
       "external": null,
       "uses": [
         {
-          "start": 1965,
-          "end": 1972
+          "start": 1964,
+          "end": 1971
         },
         {
-          "start": 2034,
-          "end": 2041
+          "start": 2033,
+          "end": 2040
         },
         {
-          "start": 2106,
-          "end": 2113
+          "start": 2105,
+          "end": 2112
         }
       ]
     },
@@ -1515,8 +1514,8 @@
       "name": "upper",
       "kind": "voice",
       "declaration": {
-        "start": 568,
-        "end": 573
+        "start": 567,
+        "end": 572
       },
       "external": null,
       "uses": []
@@ -1525,8 +1524,8 @@
       "name": "bass",
       "kind": "voice",
       "declaration": {
-        "start": 694,
-        "end": 698
+        "start": 693,
+        "end": 697
       },
       "external": null,
       "uses": []
@@ -1535,18 +1534,18 @@
       "name": "glass_pad",
       "kind": "patch",
       "declaration": {
-        "start": 1338,
-        "end": 1347
+        "start": 1337,
+        "end": 1346
       },
       "external": null,
       "uses": [
         {
-          "start": 1939,
-          "end": 1948
+          "start": 1938,
+          "end": 1947
         },
         {
-          "start": 1976,
-          "end": 1985
+          "start": 1975,
+          "end": 1984
         }
       ]
     }

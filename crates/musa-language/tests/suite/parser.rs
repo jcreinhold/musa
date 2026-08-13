@@ -233,8 +233,8 @@ fn tuplet_fixture_parses_cleanly() {
 /// tree has to keep them apart without counting tokens.
 #[test]
 fn articulations_do_not_shadow_the_pitch_or_the_duration() {
-    let source = "piece \"x\" { motif m(root: Pitch = c4, len: Duration = 1/4) { root len accent staccato } \
-                  score { part p { voice v { use m(); } } } }";
+    let source = "piece \"x\" { motif m(root: Pitch, len: Duration) { root len accent staccato } \
+                  score { part p { voice v { use m(c4, 1/4); } } } }";
     let doc = parse(source);
     assert_eq!(print_errors(&doc), "");
     let piece = PieceDecl::from_root(&doc.syntax()).expect("piece");

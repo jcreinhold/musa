@@ -94,7 +94,10 @@ library {
     // the collection cannot spell is absent, and the row keeps its length,
     // so a projection that lost notes is visible as the gaps it left.
     fn row_spelled_in(series: Row12, collection: Scale) -> List<Option<NoteName>> {
-        map(spelling_in(collection), row12_pcs(series))
+        map(
+            fn (member: Pc12) -> Option<NoteName> { spelling_in(collection, member) },
+            row12_pcs(series),
+        )
     }
 
     // The spelling policy of one collection, as a function a row can be

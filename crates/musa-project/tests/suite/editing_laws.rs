@@ -136,7 +136,7 @@ fn a_generated_note_states_its_consequence_in_counts() {
     let session = session("glass-mountain.musa");
     let facts = score_facts(&session);
     // The violin's third note: `c5/2` in the motif body, reached through
-    // the first `use sigh()`.
+    // the first `use sigh(e5)`.
     let id = nth_event(&facts, "lead", 2);
 
     let impact = session
@@ -149,8 +149,8 @@ fn a_generated_note_states_its_consequence_in_counts() {
 
     assert!(impact.generated);
     assert_eq!(impact.motif.as_deref(), Some("sigh"));
-    assert_eq!(impact.occurrence.as_deref(), Some("sigh()"));
-    // `sigh()` is used twice, so one statement of its body spells two notes.
+    assert_eq!(impact.occurrence.as_deref(), Some("sigh(e5)"));
+    // `sigh(e5)` is used twice, so one statement of its body spells two notes.
     // Two, not ten: the count is what changes, not the size of the
     // expansions (`04-provenance.md` §4).
     assert_eq!(impact.occurrences, 2);
@@ -222,7 +222,7 @@ fn specializing_a_note_changes_that_occurrence_and_no_other() {
 
     let text = source(&session);
     assert!(
-        text.contains("use sigh() with { note 3 = d5; }"),
+        text.contains("use sigh(e5) with { note 3 = d5; }"),
         "the occurrence carries its own override:\n{text}"
     );
     assert!(text.contains("        c5/2"), "and the motif is untouched");
@@ -358,7 +358,7 @@ fn insertion_after_a_generated_event_writes_after_the_use_it_came_from() {
 
     // Not inside the motif: the statement the composer can see at that place
     // in the score is the `use`, so that is what the new note follows.
-    assert!(source(&session).contains("                use sigh();\n                rest/4"));
+    assert!(source(&session).contains("                use sigh(e5);\n                rest/4"));
 }
 
 #[test]

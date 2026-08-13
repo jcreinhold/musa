@@ -145,8 +145,18 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer, layout: &Layout) {
                     writer.indent
                 };
                 if let Some(lines) = inline_run(&child, start, layout) {
-                    for line in lines {
-                        writer.write_line(&line);
+                    // A lambda's body is the last thing in an expression, not
+                    // the last thing on a line: `map(fn (x) { f(x) }, xs)`
+                    // continues with a comma. Every other block ends what it
+                    // was written after.
+                    let inline = node.kind() == SyntaxKind::LambdaExpr;
+                    let last = lines.len().saturating_sub(1);
+                    for (index, line) in lines.iter().enumerate() {
+                        if inline && index == last {
+                            writer.write_run(line);
+                        } else {
+                            writer.write_line(line);
+                        }
                     }
                     continue;
                 }
@@ -198,7 +208,7 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer, layout: &Layout) {
                     tight = true;
                     continue;
                 }
-                format_token(node.kind(), kind, token.text(), writer);
+                format_token(node, kind, token.text(), writer);
             }
         }
     }
@@ -244,7 +254,14 @@ fn write_quote(text: &str, writer: &mut Writer) {
     writer.after_significant(SyntaxKind::RBrace);
 }
 
-fn format_token(parent: SyntaxKind, kind: SyntaxKind, text: &str, writer: &mut Writer) {
+fn format_token(node: &SyntaxNode, kind: SyntaxKind, text: &str, writer: &mut Writer) {
+    let parent = node.kind();
+    // A lambda's braces close an expression that has more after it, so its
+    // `}` does not end the line the way a declaration's body does.
+    let held = parent == SyntaxKind::BlockExpr
+        && node
+            .parent()
+            .is_some_and(|owner| owner.kind() == SyntaxKind::LambdaExpr);
     if kind == SyntaxKind::LineComment || kind == SyntaxKind::BlockComment {
         writer.comment(text);
         return;
@@ -272,7 +289,7 @@ fn format_token(parent: SyntaxKind, kind: SyntaxKind, text: &str, writer: &mut W
             writer.space();
         }
         writer.write("}");
-        if !matches!(parent, SyntaxKind::MusicExpr | SyntaxKind::MatchExpr) {
+        if !held && !matches!(parent, SyntaxKind::MusicExpr | SyntaxKind::MatchExpr) {
             writer.end_line();
         }
     } else if kind == SyntaxKind::Semicolon {
@@ -318,6 +335,11 @@ fn format_token(parent: SyntaxKind, kind: SyntaxKind, text: &str, writer: &mut W
         }
         writer.write(text);
     } else if kind == SyntaxKind::LParen || kind == SyntaxKind::RBracket || kind == SyntaxKind::RParen {
+        // `use sigh(` closes up; `fn (line: Music)` does not, because there is
+        // no name between the word and the list and `fn(` reads as a call.
+        if kind == SyntaxKind::LParen && writer.prev == Some(SyntaxKind::FnKw) {
+            writer.space();
+        }
         writer.write(text);
     } else if matches!(
         kind,
@@ -959,6 +981,16 @@ impl Writer {
     }
 
     /// Write a whole construct that was rendered elsewhere, as its own line.
+    /// A run written where the line goes on afterwards.
+    fn write_run(&mut self, text: &str) {
+        self.prep_line();
+        if self.needs_word_space() {
+            self.space();
+        }
+        self.write(text);
+        self.after_significant(SyntaxKind::RBrace);
+    }
+
     fn write_line(&mut self, text: &str) {
         self.prep_line();
         if self.needs_word_space() {

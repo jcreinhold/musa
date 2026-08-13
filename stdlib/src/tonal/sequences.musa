@@ -24,7 +24,7 @@ library {
     // steps. Index zero is the start, which is what makes a count of one mean
     // "the pattern, stated once".
     fn rising_degree(start: Degree, steps: Nat, index: Nat) -> Degree {
-        nat_fold(start, risen_by(steps), index)
+        nat_fold(start, fn (nth: Nat, from: Degree) -> Degree { risen_by(steps, nth, from) }, index)
     }
 
     // The rise itself, as the `nat_fold` step it is applied by. The index is
@@ -37,7 +37,7 @@ library {
     // a `nat` has no sign and a direction that could be forgotten is a
     // direction that will be.
     fn falling_degree(start: Degree, steps: Nat, index: Nat) -> Degree {
-        nat_fold(start, fallen_by(steps), index)
+        nat_fold(start, fn (nth: Nat, from: Degree) -> Degree { fallen_by(steps, nth, from) }, index)
     }
 
     // The fall, as the `nat_fold` step it is applied by.
@@ -47,12 +47,12 @@ library {
     // count of zero is the empty walk and a count of one is the start alone,
     // which are the ordinary meanings and are asserted as laws.
     fn rising_degrees(start: Degree, steps: Nat, count: Nat) -> List<Degree> {
-        map(rising_degree(start, steps), range(count))
+        map(fn (index: Nat) -> Degree { rising_degree(start, steps, index) }, range(count))
     }
 
     // The whole finite walk downward.
     fn falling_degrees(start: Degree, steps: Nat, count: Nat) -> List<Degree> {
-        map(falling_degree(start, steps), range(count))
+        map(fn (index: Nat) -> Degree { falling_degree(start, steps, index) }, range(count))
     }
 
     // Harmonize one degree of a walk with the collection's own stack. Absent
@@ -67,7 +67,10 @@ library {
     // so a sequence in minor is a different succession of qualities from the
     // same sequence in major without either being written twice.
     fn harmonized(collection: Scale, members: Nat, walk: List<Degree>) -> List<Option<ChordClass>> {
-        map(stacked_on(collection, members), walk)
+        map(
+            fn (written: Degree) -> Option<ChordClass> { stacked_on(collection, members, written) },
+            walk,
+        )
     }
 
     // The descending-fifths sequence, one index at a time: roots fall four

@@ -31,8 +31,8 @@ template piece study(k: Key, mode: Scale, subject: Music) "Study" {
                     use subject;
                 }
             }
-            make answer(subject, transpose(P8)) as upper;
-            make answer(subject, transpose(P15)) as higher;
+            make answer(subject, fn (line: Music) -> Music { transpose(P8, line) }) as upper;
+            make answer(subject, fn (line: Music) -> Music { transpose(P15, line) }) as higher;
         }
     }
 }

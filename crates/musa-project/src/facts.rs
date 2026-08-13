@@ -1044,8 +1044,6 @@ pub struct ParameterFact {
     pub label: String,
     /// Its type.
     pub ty: TypeFact,
-    /// The default as written, when the caller may omit it.
-    pub default: Option<String>,
 }
 
 /// What an editor says about one declaration.
@@ -1124,7 +1122,6 @@ impl ItemFact {
                     name: parameter.name.clone(),
                     label: parameter.label.clone(),
                     ty: ty(&parameter.ty),
-                    default: parameter.default.clone(),
                 })
                 .collect(),
             deprecation: item.deprecation.clone(),

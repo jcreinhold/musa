@@ -10,6 +10,7 @@
 (music_expression) @local.scope
 (kernel_quote) @local.scope
 (match_expression) @local.scope
+(lambda_expression) @local.scope
 
 (motif_declaration name: (identifier) @local.definition)
 (fragment_declaration name: (identifier) @local.definition)

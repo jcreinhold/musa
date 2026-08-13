@@ -54,24 +54,24 @@ fn glass_mountain_has_two_occurrences_of_one_motif() {
     assert_eq!(
         score.occurrences.len(),
         2,
-        "two `use sigh()` statements, two occurrences"
+        "two `use sigh(e5)` statements, two occurrences"
     );
 
     let plain = score.occurrences.first().expect("a first occurrence");
     let transposed = score.occurrences.get(1).expect("a second occurrence");
 
-    assert_eq!(labels(plain), vec!["sigh()"]);
+    assert_eq!(labels(plain), vec!["sigh(e5)"]);
     assert_eq!(
         labels(transposed),
-        vec!["transpose down P5", "sigh()"],
+        vec!["transpose down P5", "sigh(e5)"],
         "the path reads outside in: the `use` sits inside the transform block"
     );
-    assert_eq!(transposed.label, "transpose down P5 \u{25b8} sigh()");
+    assert_eq!(transposed.label, "transpose down P5 \u{25b8} sigh(e5)");
 
     for entry in [plain, transposed] {
         assert_eq!(entry.motif.as_deref(), Some("sigh"));
         assert_eq!(entry.events.len(), 5, "the motif is five notes");
-        assert_eq!(quoted(&source, entry.use_site).trim(), "use sigh();");
+        assert_eq!(quoted(&source, entry.use_site).trim(), "use sigh(e5);");
         let declaration = entry.declaration.expect("the motif's declaration");
         assert!(
             quoted(&source, declaration).starts_with("motif sigh"),

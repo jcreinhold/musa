@@ -26,6 +26,7 @@
     { "file": "kernel/twinkle.musa.kernel", "kernel": true },
     { "file": "kernel/variation.musa.kernel", "kernel": true },
     { "file": "annotated.musa", "kernel": false },
+    { "file": "anonymous-functions.musa", "kernel": false },
     { "file": "bulgarian.musa", "kernel": false },
     { "file": "cadenza.musa", "kernel": false },
     { "file": "canon-functions.musa", "kernel": false },

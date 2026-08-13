@@ -11,7 +11,7 @@ piece "Contextual Music" {
 
     let subject: Music = figure(c4);
 
-    motif answer(root: Pitch = e4) {
+    motif answer(root: Pitch) {
         root/4
         f4/4
     }
@@ -21,7 +21,7 @@ piece "Contextual Music" {
             voice line {
                 use subject;
                 use figure(d4);
-                use answer();
+                use answer(e4);
                 rest/2
             }
         }

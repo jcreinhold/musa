@@ -16,8 +16,8 @@ piece "Tooling" {
     // The subject, stated once and read everywhere.
     let subject: Music = music { c4/4 e4/4 g4/4 e4/4 };
 
-    // Raise a passage, by a fifth unless told otherwise.
-    fn lifted(what: Music, by: Interval = P5) -> Music {
+    // Raise a passage by the interval the caller names.
+    fn lifted(what: Music, by: Interval) -> Music {
         transpose(by, what)
     }
 

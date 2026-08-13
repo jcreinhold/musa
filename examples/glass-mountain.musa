@@ -7,7 +7,7 @@ piece "Glass Mountain" {
     meter 4/4;
     key a minor;
 
-    motif sigh(root: Pitch = e5) {
+    motif sigh(root: Pitch) {
         root/2
         rest/4
         c5/2
@@ -20,10 +20,10 @@ piece "Glass Mountain" {
             clef treble;
 
             voice lead {
-                use sigh();
+                use sigh(e5);
 
                 transpose down P5 {
-                    use sigh();
+                    use sigh(e5);
                 }
             }
         }

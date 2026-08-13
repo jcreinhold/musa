@@ -379,14 +379,9 @@ module.exports = grammar({
         field('body', $.block),
       ),
 
-    // One `name: type (= default)?` of Parser::motif_decl's loop.
-    motif_parameter: ($) =>
-      seq(
-        field('name', $.identifier),
-        ':',
-        field('type', $.type_name),
-        optional(seq('=', field('default', choice($.pitch_literal, $.rational, $.integer)))),
-      ),
+    // One `name: type` of Parser::motif_decl's loop. No default: a call
+    // supplies every declared parameter, so `= e` is a syntax error there.
+    motif_parameter: ($) => seq(field('name', $.identifier), ':', field('type', $.type_name)),
 
     // Parser::fragment_decl — a motif without parameters, tagged differently.
     fragment_declaration: ($) => seq('fragment', field('name', $.identifier), field('body', $.block)),
@@ -421,12 +416,9 @@ module.exports = grammar({
     parameter_list: ($) =>
       seq('(', optional(seq($.parameter, repeat(seq(',', $.parameter)), optional(','))), ')'),
 
-    parameter: ($) =>
-      seq(
-        field('name', $.identifier),
-        optional(seq(':', field('type', $.type_expression))),
-        optional(seq('=', field('default', $.expression))),
-      ),
+    // No default: `x: τ = e` is a syntax error in the hand parser, so it is
+    // not a clean parse here either.
+    parameter: ($) => seq(field('name', $.identifier), optional(seq(':', field('type', $.type_expression)))),
 
     // Function arrows associate right. Parentheses group a single type and
     // a comma makes a product; option/list are the only type constructors.
@@ -542,7 +534,19 @@ module.exports = grammar({
         $.list_expression,
         $.product_expression,
         $.block_expression,
+        $.lambda_expression,
         seq('(', $.expression, ')'),
+      ),
+
+    // Parser::lambda_expr — `fn (x: τ, …) -> τ { e }`, a declaration's own
+    // words without its name. It is a value of arrow type, so it stands
+    // wherever a value stands.
+    lambda_expression: ($) =>
+      seq(
+        'fn',
+        $.parameter_list,
+        optional(seq('->', field('result', $.type_expression))),
+        field('body', $.block_expression),
       ),
 
     // Parser::block_expr — `{ expression }`. A block is a

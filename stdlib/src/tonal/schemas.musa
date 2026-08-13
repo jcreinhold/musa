@@ -258,7 +258,7 @@ library {
     // raised degrees on purpose, and a caller who wants those chords supplies
     // them, from `std::tonal::harmony`, where applied chords live.
     fn schema_triads(collection: Scale, roots: List<Degree>) -> List<Option<ChordClass>> {
-        map(schema_triad(collection), roots)
+        map(fn (root: Degree) -> Option<ChordClass> { schema_triad(collection, root) }, roots)
     }
 
     // One root, harmonized as the collection's triad.
@@ -269,7 +269,7 @@ library {
     // The same as seventh chords, for the figures OMT prints with a 7 or a
     // 6/5 in them.
     fn schema_sevenths(collection: Scale, roots: List<Degree>) -> List<Option<ChordClass>> {
-        map(schema_seventh(collection), roots)
+        map(fn (root: Degree) -> Option<ChordClass> { schema_seventh(collection, root) }, roots)
     }
 
     // One root, harmonized as the collection's seventh chord.
@@ -402,11 +402,17 @@ library {
 
     // The whole ascending Rule: eight chords over the ascending bass scale.
     fn rule_of_the_octave_ascending(collection: Scale) -> List<Option<ChordClass>> {
-        map(rule_ascending_chord(collection), rule_ascending_basses())
+        map(
+            fn (bass: Nat) -> Option<ChordClass> { rule_ascending_chord(collection, bass) },
+            rule_ascending_basses(),
+        )
     }
 
     // The whole descending Rule.
     fn rule_of_the_octave_descending(collection: Scale) -> List<Option<ChordClass>> {
-        map(rule_descending_chord(collection), rule_descending_basses())
+        map(
+            fn (bass: Nat) -> Option<ChordClass> { rule_descending_chord(collection, bass) },
+            rule_descending_basses(),
+        )
     }
 }

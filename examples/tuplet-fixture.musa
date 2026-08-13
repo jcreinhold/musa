@@ -6,7 +6,7 @@ piece "Tuplet Fixture" {
     meter 4/4;
     key c major;
 
-    motif turn(root: Pitch = c5) {
+    motif turn(root: Pitch) {
         root/8 tenuto
         d5/8
     }

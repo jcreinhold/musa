@@ -90,7 +90,7 @@ voice bass {
 A `motif` is a phrase you name so you can use it more than once. From `examples/glass-mountain.musa`:
 
 ```musa
-motif sigh(root: Pitch = e5) {
+motif sigh(root: Pitch) {
     root/2
     rest/4
     c5/2
@@ -103,22 +103,23 @@ and then, in a voice:
 
 ```musa
 voice lead {
-    use sigh();
+    use sigh(e5);
 
     transpose down P5 {
-        use sigh();
+        use sigh(e5);
     }
 }
 ```
 
 Three things are happening, and they are worth separating.
 
-`use sigh();` places the motif. The motif is a *declaration*; each `use` is an *occurrence*. They are not the same
+`use sigh(e5);` places the motif. The motif is a *declaration*; each `use` is an *occurrence*. They are not the same
 object, which is why the editor can show you both the phrase you wrote and every place it landed, and why editing the
 declaration changes every occurrence at once.
 
-`root: Pitch = e5` is a parameter with a default. `use sigh();` takes the default; `use sigh(g5);` would not. The motif
-is written once and is not fixed to one pitch.
+`root: Pitch` is a parameter, and every use supplies it: `use sigh(e5);` and `use sigh(g5);` are the same phrase from
+two starting notes. There is no default to leave out, because a call that omitted one would be ambiguous about what it
+meant — so the motif is written once and is not fixed to one pitch.
 
 `transpose down P5 { ... }` moves what is inside it by a written perfect fifth. `P5` is an interval, spelled: a perfect
 fifth, not seven semitones. Transposing `c5` down a `P5` gives `f4`, and transposing it down an augmented fourth would

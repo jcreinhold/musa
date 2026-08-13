@@ -955,6 +955,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::OptionExpr
         | SyntaxKind::ResultExpr
         | SyntaxKind::ApplyExpr
+        | SyntaxKind::LambdaExpr
         | SyntaxKind::PitchExpr
         | SyntaxKind::ExprArgList
         | SyntaxKind::ExprArg

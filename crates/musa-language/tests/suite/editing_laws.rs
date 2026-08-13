@@ -15,7 +15,7 @@ use musa_language::{Anchor, EditError, EditIntent, Statement, apply_edits, compu
 const PIECE: &str = r#"piece "Etude" {
     tempo quarter = 72;
 
-    motif sigh(root: Pitch = e5) {
+    motif sigh(root: Pitch) {
         root/2
         c5/2
     }

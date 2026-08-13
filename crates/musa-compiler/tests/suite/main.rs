@@ -10,6 +10,7 @@ mod assertion_laws;
 mod bars;
 mod chord_construction_laws;
 mod compiler;
+mod complete_call_laws;
 mod core_laws;
 mod core_validation;
 mod curve_laws;

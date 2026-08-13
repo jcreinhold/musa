@@ -1,6 +1,6 @@
 ---
 source: crates/musa-language/tests/suite/expression_syntax_laws.rs
-expression: "kinds.into_iter().filter(|kind|\n{\n    matches!(kind, SyntaxKind::LetDecl | SyntaxKind::FnDecl |\n    SyntaxKind::FunctionType | SyntaxKind::ProductType | SyntaxKind::ListType\n    | SyntaxKind::OptionType | SyntaxKind::ResultType |\n    SyntaxKind::ProductExpr | SyntaxKind::ListExpr | SyntaxKind::OptionExpr |\n    SyntaxKind::ResultExpr | SyntaxKind::ApplyExpr | SyntaxKind::MatchExpr |\n    SyntaxKind::MatchArm | SyntaxKind::MusicExpr | SyntaxKind::UseStmt |\n    SyntaxKind::NoteStmt)\n}).collect::<Vec<_>>()"
+expression: "kinds.into_iter().filter(|kind|\n{\n    matches!(kind, SyntaxKind::LetDecl | SyntaxKind::FnDecl |\n    SyntaxKind::FunctionType | SyntaxKind::ProductType | SyntaxKind::ListType\n    | SyntaxKind::OptionType | SyntaxKind::ResultType |\n    SyntaxKind::ProductExpr | SyntaxKind::ListExpr | SyntaxKind::OptionExpr |\n    SyntaxKind::ResultExpr | SyntaxKind::ApplyExpr | SyntaxKind::LambdaExpr |\n    SyntaxKind::MatchExpr | SyntaxKind::MatchArm | SyntaxKind::MusicExpr |\n    SyntaxKind::UseStmt | SyntaxKind::NoteStmt)\n}).collect::<Vec<_>>()"
 ---
 [
     LetDecl,
@@ -21,6 +21,11 @@ expression: "kinds.into_iter().filter(|kind|\n{\n    matches!(kind, SyntaxKind::
     FnDecl,
     FunctionType,
     ApplyExpr,
+    LetDecl,
+    ApplyExpr,
+    LambdaExpr,
+    ApplyExpr,
+    OptionExpr,
     FnDecl,
     ResultType,
     MatchExpr,

@@ -184,9 +184,9 @@ fn every_existing_transform_has_one_block_and_function_meaning() {
     let score = snapshot(
         "piece \"transform functions\" {
             let subject: Music = music { c4/4 e4/4 };
-            let broader: Music -> Music = stretch(2);
+            let broader: Music -> Music = fn (line: Music) -> Music { stretch(2, line) };
             let backwards: Music -> Music = retrograde;
-            let mirror: Music -> Music = invert(c4);
+            let mirror: Music -> Music = fn (line: Music) -> Music { invert(c4, line) };
             score { part p {
                 voice stretch_block { stretch 2 { use subject; } }
                 voice stretch_function { use broader(subject); }

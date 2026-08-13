@@ -633,19 +633,7 @@ fn crossing_help(expected: &Type, found: &Type) -> Option<&'static str> {
 struct RawParameter {
     name: String,
     ty: Type,
-    default: Option<RawDefault>,
-    /// The default as the source spells it, kept for the signature an editor
-    /// shows. The lowered `default` is what the checker applies; this is what
-    /// the writer wrote, and rendering one from the other would be a second
-    /// opinion about their own text.
-    written_default: Option<String>,
     span: SourceSpan,
-}
-
-#[derive(Clone)]
-enum RawDefault {
-    Expression(SyntaxNode),
-    Value(Box<Value>),
 }
 
 struct RawDefinition {
@@ -741,6 +729,18 @@ enum ExprKind {
     Apply {
         function: Box<Expr>,
         arguments: Vec<CallArgument>,
+    },
+    /// An anonymous function, and the names its body reads from around it.
+    ///
+    /// `captures` is what makes it a closure rather than a term: the value it
+    /// evaluates to holds those names as they stood *here*, so applying it
+    /// later cannot see a different `steps` than the one it was written
+    /// beside.
+    Lambda {
+        parameters: Vec<CheckedParameter>,
+        result: Type,
+        captures: Vec<String>,
+        body: Box<Expr>,
     },
     PitchAction {
         pitch: Box<Expr>,
@@ -881,6 +881,8 @@ enum Primitive {
     Pc12Spelled,
     PcSet12Of,
     PcSet12Members,
+    PcSet12Transposed,
+    PcSet12Inverted,
     PcSet12Normal,
     PcSet12Prime,
     PcSet12Vector,
@@ -1176,7 +1178,7 @@ const fn delta(arguments: &'static [Shape], result: Shape) -> Family {
     Family::Delta { arguments, result }
 }
 
-const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 69] = [
+const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 71] = [
     PrimitiveOwnership {
         operation: Primitive::NatFold,
         spelling: "nat_fold",
@@ -1508,6 +1510,18 @@ const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 69] = [
         family: delta(&[PCSET12], PC12S),
     },
     PrimitiveOwnership {
+        operation: Primitive::PcSet12Transposed,
+        spelling: "pcset12_transposed",
+        hidden_information: "the membership word, rotated by the index without unpacking it",
+        family: delta(&[PCSET12, NAT], PCSET12),
+    },
+    PrimitiveOwnership {
+        operation: Primitive::PcSet12Inverted,
+        spelling: "pcset12_inverted",
+        hidden_information: "the membership word, reflected about the index without unpacking it",
+        family: delta(&[PCSET12, NAT], PCSET12),
+    },
+    PrimitiveOwnership {
         operation: Primitive::PcSet12Normal,
         spelling: "pcset12_normal",
         hidden_information: "every rotation of the set and the compactness order that chooses between them",
@@ -1651,6 +1665,8 @@ impl Primitive {
             Self::Pc12Spelled => "pc12_spelled",
             Self::PcSet12Of => "pcset12_of",
             Self::PcSet12Members => "pcset12_members",
+            Self::PcSet12Transposed => "pcset12_transposed",
+            Self::PcSet12Inverted => "pcset12_inverted",
             Self::PcSet12Normal => "pcset12_normal",
             Self::PcSet12Prime => "pcset12_prime",
             Self::PcSet12Vector => "pcset12_vector",
@@ -1774,7 +1790,6 @@ enum CheckedDefinitionKind {
 struct CheckedParameter {
     name: String,
     ty: Type,
-    default: Option<Expr>,
 }
 
 #[derive(Clone)]
@@ -1833,7 +1848,7 @@ enum Value {
     },
     Music(Music),
     Closure(Box<Closure>),
-    Builtin(Box<BuiltinValue>),
+    Builtin(Builtin),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1898,12 +1913,6 @@ const BUILTIN_OWNERSHIP: [PrimitiveOwnership<Builtin>; 8] = [
         family: Family::Music,
     },
 ];
-
-#[derive(Clone)]
-struct BuiltinValue {
-    builtin: Builtin,
-    bound: Vec<Option<Value>>,
-}
 
 impl Builtin {
     fn named(name: &str) -> Option<Self> {
@@ -2098,7 +2107,7 @@ pub(crate) fn apply_pitch_function(function: &PitchFunction, pitch: WrittenPitch
     let mut meter = WorkMeter::default();
     let value = apply_closure(
         &function.0,
-        vec![Some(Value::Pitch(pitch))],
+        vec![Value::Pitch(pitch)],
         &mut meter,
         SourceSpan::default(),
     )?;
@@ -2258,16 +2267,7 @@ impl Value {
                     .collect(),
                 Box::new(closure.result.clone()),
             ),
-            Self::Builtin(value) => {
-                let parameters = value
-                    .builtin
-                    .parameters()
-                    .into_iter()
-                    .enumerate()
-                    .filter_map(|(index, ty)| value.bound.get(index).is_none_or(Option::is_none).then_some(ty))
-                    .collect();
-                Type::Function(parameters, Box::new(Type::Music))
-            }
+            Self::Builtin(builtin) => Type::Function(builtin.parameters(), Box::new(Type::Music)),
         }
     }
 
@@ -2343,9 +2343,10 @@ impl Value {
                 u64::try_from(closure.parameters.len()).unwrap_or(u64::MAX),
                 |witness, captured| witness.rotate_left(5) ^ captured.normalization_witness(),
             ),
-            Self::Builtin(value) => value.bound.iter().flatten().fold(0, |witness, value| {
-                witness.rotate_left(5) ^ value.normalization_witness()
-            }),
+            // A builtin carries nothing: it is applied completely or it is
+            // the operation itself, and either way there is no argument of
+            // its own to read.
+            Self::Builtin(_) => 0,
         }
     }
 }
@@ -2421,14 +2422,10 @@ fn settle(unifier: &Unifier, kind: &mut CheckedDefinitionKind) -> Option<(Source
     match kind {
         CheckedDefinitionKind::Let { body } => settle_expr(unifier, body),
         CheckedDefinitionKind::Function { parameters, body } => {
-            let mut undetermined = None;
             for parameter in parameters.iter_mut() {
                 parameter.ty = unifier.resolve(&parameter.ty);
-                if let Some(default) = parameter.default.as_mut() {
-                    undetermined = undetermined.or_else(|| settle_expr(unifier, default));
-                }
             }
-            undetermined.or_else(|| settle_expr(unifier, body))
+            settle_expr(unifier, body)
         }
     }
 }
@@ -2445,6 +2442,18 @@ fn settle_expr(unifier: &Unifier, expr: &mut Expr) -> Option<(SourceSpan, Type)>
             members.iter_mut().find_map(|member| settle_expr(unifier, member))
         }
         ExprKind::Option(member) => member.as_mut().and_then(|member| settle_expr(unifier, member)),
+        ExprKind::Lambda {
+            parameters,
+            result,
+            body,
+            ..
+        } => {
+            for parameter in parameters.iter_mut() {
+                parameter.ty = unifier.resolve(&parameter.ty);
+            }
+            *result = unifier.resolve(result);
+            settle_expr(unifier, body)
+        }
         ExprKind::Injection {
             held,
             value_type,
@@ -2534,6 +2543,7 @@ fn infer_open_declarations(
                 locals: IndexMap::new(),
                 unifier,
                 dependencies: IndexMap::new(),
+                mentioned: Vec::new(),
                 foreign: definition.foreign,
                 failed: false,
                 meter: &mut meter,
@@ -2609,14 +2619,7 @@ fn mentions(definition: &RawDefinition, named: &IndexMap<&str, usize>) -> Vec<us
     match &definition.kind {
         RawDefinitionKind::Bound { .. } => {}
         RawDefinitionKind::Let { body } => scan(body),
-        RawDefinitionKind::Function { parameters, body } | RawDefinitionKind::Music { parameters, body, .. } => {
-            scan(body);
-            for parameter in parameters {
-                if let Some(RawDefault::Expression(default)) = &parameter.default {
-                    scan(default);
-                }
-            }
-        }
+        RawDefinitionKind::Function { body, .. } | RawDefinitionKind::Music { body, .. } => scan(body),
     }
     found
 }
@@ -2656,22 +2659,12 @@ fn check_definition(checker: &mut Checker<'_>, definition: &RawDefinition) -> Op
                     continue;
                 }
                 duplicate_parameters.insert(parameter.name.clone(), parameter.span);
-                let default = parameter.default.as_ref().and_then(|default| match default {
-                    RawDefault::Expression(expression) => checker.check(expression, Some(&parameter.ty)),
-                    RawDefault::Value(value) if crate::infer::admits(&parameter.ty, &value.ty()) => Some(Expr {
-                        kind: ExprKind::Literal(value.as_ref().clone()),
-                        ty: parameter.ty.clone(),
-                        span: parameter.span,
-                    }),
-                    RawDefault::Value(_) => None,
-                });
                 checker
                     .locals
                     .insert(parameter.name.clone(), Scheme::monomorphic(parameter.ty.clone()));
                 checked_parameters.push(CheckedParameter {
                     name: parameter.name.clone(),
                     ty: parameter.ty.clone(),
-                    default,
                 });
             }
             checker
@@ -2689,22 +2682,12 @@ fn check_definition(checker: &mut Checker<'_>, definition: &RawDefinition) -> Op
             if *callable {
                 let mut checked_parameters = Vec::with_capacity(parameters.len());
                 for parameter in parameters {
-                    let default = parameter.default.as_ref().and_then(|default| match default {
-                        RawDefault::Expression(expression) => checker.check(expression, Some(&parameter.ty)),
-                        RawDefault::Value(value) if crate::infer::admits(&parameter.ty, &value.ty()) => Some(Expr {
-                            kind: ExprKind::Literal(value.as_ref().clone()),
-                            ty: parameter.ty.clone(),
-                            span: parameter.span,
-                        }),
-                        RawDefault::Value(_) => None,
-                    });
                     checker
                         .locals
                         .insert(parameter.name.clone(), Scheme::monomorphic(parameter.ty.clone()));
                     checked_parameters.push(CheckedParameter {
                         name: parameter.name.clone(),
                         ty: parameter.ty.clone(),
-                        default,
                     });
                 }
                 checker
@@ -2860,6 +2843,7 @@ fn check_and_evaluate(
             locals: IndexMap::new(),
             unifier: &mut unifier,
             dependencies: IndexMap::new(),
+            mentioned: Vec::new(),
             foreign: definition.foreign,
             failed: false,
             meter: &mut meter,
@@ -2939,6 +2923,7 @@ fn check_and_evaluate(
             locals: IndexMap::new(),
             unifier: &mut unifier,
             dependencies: IndexMap::new(),
+            mentioned: Vec::new(),
             foreign: false,
             failed: false,
             meter: &mut meter,
@@ -3073,6 +3058,7 @@ fn root_checker<'a>(
         locals: IndexMap::new(),
         unifier,
         dependencies: IndexMap::new(),
+        mentioned: Vec::new(),
         foreign: false,
         failed: false,
         meter,
@@ -3210,15 +3196,10 @@ fn document(definition: &RawDefinition, scheme: &Scheme) -> crate::docs::ItemDoc
             .enumerate()
             .map(|(index, parameter)| {
                 let ty = crate::docs::TypeNote::new(written.get(index).unwrap_or(&parameter.ty).to_string());
-                let label = match &parameter.written_default {
-                    Some(default) => format!("{}: {} = {default}", parameter.name, ty.name),
-                    None => format!("{}: {}", parameter.name, ty.name),
-                };
                 crate::docs::ParameterDoc {
+                    label: format!("{}: {}", parameter.name, ty.name),
                     name: parameter.name.clone(),
-                    label,
                     ty,
-                    default: parameter.written_default.clone(),
                 }
             })
             .collect(),
@@ -3355,12 +3336,9 @@ fn lower_signature(
                 let parameter_name = parameter.name().unwrap_or_default();
                 let parameter_span = crate::resolve::token_span(parameter.syntax(), SyntaxKind::Identifier)
                     .unwrap_or_else(|| crate::resolve::trimmed_span(parameter.syntax()));
-                let written = child_of(parameter.syntax(), is_expr_node);
                 parameters.push(RawParameter {
                     name: parameter_name,
                     ty: parameter_ty,
-                    written_default: written.as_ref().map(|node| node.text().to_string().trim().to_owned()),
-                    default: written.map(RawDefault::Expression),
                     span: parameter_span,
                 });
             }
@@ -3409,16 +3387,9 @@ fn lower_signature(
                         return None;
                     }
                 };
-                let default = parameter
-                    .default
-                    .as_deref()
-                    .and_then(|written| legacy_default(&ty, written))
-                    .map(|value| RawDefault::Value(Box::new(value)));
                 raw_parameters.push(RawParameter {
                     name: parameter.name,
                     ty,
-                    written_default: parameter.default,
-                    default,
                     span,
                 });
             }
@@ -3515,41 +3486,6 @@ fn lower_signature(
                 summary: None,
             })
         }
-    }
-}
-
-fn legacy_default(ty: &Type, written: &str) -> Option<Value> {
-    match ty {
-        Type::Pitch => WrittenPitch::parse(written).map(Value::Pitch),
-        Type::Duration => crate::resolve::parse_ratio(written)
-            .or_else(|| written.parse::<i64>().ok().map(Ratio::from_integer))
-            .map(Value::Duration),
-        Type::Var(_)
-        | Type::Unit
-        | Type::Bool
-        | Type::Nat
-        | Type::Ratio
-        | Type::Text
-        | Type::PitchClass
-        | Type::Interval
-        | Type::Scale
-        | Type::Key
-        | Type::Degree
-        | Type::Frame
-        | Type::ChordClass
-        | Type::Triad
-        | Type::Roman
-        | Type::Voicing
-        | Type::Pc12
-        | Type::PcSet12
-        | Type::Row12
-        | Type::Product(_)
-        | Type::Sum(_, _)
-        | Type::Option(_)
-        | Type::List(_)
-        | Type::Nominal(_, _)
-        | Type::Music
-        | Type::Function(_, _) => None,
     }
 }
 
@@ -3841,6 +3777,11 @@ struct Checker<'a> {
     /// declaration's missing annotation is the same variable there and here.
     unifier: &'a mut Unifier,
     dependencies: IndexMap<String, SourceSpan>,
+    /// One frame per anonymous function being checked, holding every name its
+    /// body mentioned. A lambda captures by value, and this is how it learns
+    /// what to capture: the names it read, less its own parameters. Empty
+    /// while nothing anonymous is open, which is most of the time.
+    mentioned: Vec<IndexSet<String>>,
     foreign: bool,
     failed: bool,
     meter: &'a mut WorkMeter,
@@ -3902,6 +3843,8 @@ impl Checker<'_> {
             self.result(node, expected)
         } else if kind == SyntaxKind::ApplyExpr {
             self.application(node, expected)
+        } else if kind == SyntaxKind::LambdaExpr {
+            self.lambda(node, expected)
         } else if kind == SyntaxKind::PitchExpr {
             self.pitch_action(node)
         } else if kind == SyntaxKind::ChordExpr {
@@ -4643,6 +4586,7 @@ impl Checker<'_> {
             Projected::Elsewhere => {}
         }
         if let Some(scheme) = self.locals.get(&written).cloned() {
+            self.mention(&written);
             return Some(Expr {
                 kind: ExprKind::Name(written),
                 ty: self.unifier.instantiate(&scheme),
@@ -4667,10 +4611,7 @@ impl Checker<'_> {
         }
         let name = reading.name;
         if let Some(builtin) = Builtin::named(&name) {
-            let value = Value::Builtin(Box::new(BuiltinValue {
-                builtin,
-                bound: vec![None; builtin.parameters().len()],
-            }));
+            let value = Value::Builtin(builtin);
             return Some(Expr {
                 ty: value.ty(),
                 kind: ExprKind::Literal(value),
@@ -4703,11 +4644,23 @@ impl Checker<'_> {
                 .record_use_from(symbol.kind, &name, span, symbol.external_declaration.clone());
         }
         let scheme = symbol.scheme.clone();
+        self.mention(&name);
         Some(Expr {
             kind: ExprKind::Name(name),
             ty: self.unifier.instantiate(&scheme),
             span,
         })
+    }
+
+    /// Note that a name was read, for whichever anonymous functions are open.
+    ///
+    /// Every open frame hears it, not just the innermost: a name a nested
+    /// lambda reads through two of them has to be carried into both, or the
+    /// outer closure would not have it to hand the inner one.
+    fn mention(&mut self, name: &str) {
+        for frame in &mut self.mentioned {
+            frame.insert(name.to_owned());
+        }
     }
 
     /// Check one use of a library-declared constructor.
@@ -4891,6 +4844,7 @@ impl Checker<'_> {
         if declared {
             self.dependencies.entry(head.to_owned()).or_insert(span);
         }
+        self.mention(head);
         let variants = self.world.variants(&id);
         if variants.len() != 1 {
             self.resolver.report(
@@ -5363,16 +5317,16 @@ impl Checker<'_> {
             self.failed = true;
             return None;
         };
-        let parameter_shape = self.parameter_shape(&function_node, &parameter_types);
+        let parameter_names = self.parameter_names(&function_node, &parameter_types);
         let mut occupied = IndexSet::new();
         let mut positional = 0usize;
         let mut arguments = Vec::with_capacity(raw_arguments.len());
         for argument in &raw_arguments {
             let named = argument_name(argument);
             let parameter = if let Some(named) = named {
-                let Some(index) = parameter_shape
+                let Some(index) = parameter_names
                     .iter()
-                    .position(|parameter| parameter.name.as_deref() == Some(&named))
+                    .position(|parameter| parameter.as_deref() == Some(&named))
                 else {
                     self.resolver.report(
                         Diagnostic::error(Code::WrongArity, format!("this function has no parameter `{named}`"))
@@ -5402,55 +5356,44 @@ impl Checker<'_> {
             let value = self.check(&value_node, parameter_types.get(parameter))?;
             arguments.push(CallArgument { parameter, value });
         }
-        let missing: Vec<_> = parameter_shape
+        // A call supplies every parameter. What an under-applied call would
+        // otherwise mean is a function of the ones left out, and that is the
+        // one value the language will not let an argument list produce by
+        // accident (`docs/rules/constitution.md` §9).
+        let missing: Vec<String> = parameter_names
             .iter()
             .enumerate()
-            .filter(|(index, parameter)| !occupied.contains(index) && !parameter.has_default)
+            .filter(|(index, _)| !occupied.contains(index))
+            .map(|(index, name)| {
+                name.clone()
+                    .unwrap_or_else(|| format!("argument {}", index.saturating_add(1)))
+            })
             .collect();
         if !missing.is_empty() {
-            let names = missing
-                .iter()
-                .map(|(index, parameter)| {
-                    parameter
-                        .name
-                        .clone()
-                        .unwrap_or_else(|| format!("argument {}", index.saturating_add(1)))
-                })
-                .collect::<Vec<_>>()
-                .join(", ");
+            let names = missing.join(", ");
             let legacy = name_of(&function_node)
                 .and_then(|name| self.symbols.get(&name))
                 .and_then(|symbol| self.definitions.get(symbol.definition))
                 .and_then(|definition| definition.role.as_ref());
-            if let Some(role) = legacy {
-                self.resolver.report(
-                    Diagnostic::error(
-                        Code::NotAValue,
-                        format!("{} `{}` needs a value for `{names}`", role.material.word(), role.name),
-                    )
-                    .at(crate::resolve::trimmed_span(node), "not enough arguments"),
-                );
-                self.failed = true;
-                return None;
-            }
+            let message = match legacy {
+                Some(role) => format!("{} `{}` needs a value for `{names}`", role.material.word(), role.name),
+                None => format!("this call supplies no value for `{names}`"),
+            };
+            self.resolver.report(
+                Diagnostic::error(Code::WrongArity, message)
+                    .at(crate::resolve::trimmed_span(node), "not enough arguments")
+                    .note("a call supplies every declared parameter, so there is no value a call with one missing could have")
+                    .help("write the argument here, or declare a function that takes the ones you have"),
+            );
+            self.failed = true;
+            return None;
         }
-        let result_ty = if missing.is_empty() {
-            result.as_ref().clone()
-        } else {
-            Type::Function(
-                missing
-                    .iter()
-                    .filter_map(|(index, _)| parameter_types.get(*index).cloned())
-                    .collect(),
-                result,
-            )
-        };
         Some(Expr {
             kind: ExprKind::Apply {
                 function: Box::new(function),
                 arguments,
             },
-            ty: result_ty,
+            ty: result.as_ref().clone(),
             span: crate::resolve::trimmed_span(node),
         })
     }
@@ -5539,7 +5482,84 @@ impl Checker<'_> {
         })
     }
 
-    fn parameter_shape(&self, function: &SyntaxNode, types: &[Type]) -> Vec<ParameterShape> {
+    /// Check one anonymous function.
+    ///
+    /// A declaration would have been checked by the same three steps —
+    /// parameters into scope, body against the result, arrow out — and the
+    /// only thing this adds is the capture list, because a declaration is
+    /// written where its free names are declarations and a lambda is written
+    /// where they may be someone's parameter.
+    ///
+    /// The expected type is read for the parameters and the result before the
+    /// body is checked, so `map(fn (root) { schema_triad(collection, root) },
+    /// roots)` needs no annotation: the position already says what `root` is.
+    fn lambda(&mut self, node: &SyntaxNode, expected: Option<&Type>) -> Option<Expr> {
+        let span = crate::resolve::trimmed_span(node);
+        let (wanted_parameters, wanted_result) = match expected {
+            Some(Type::Function(parameters, result)) => (parameters.clone(), Some(result.as_ref().clone())),
+            _ => (Vec::new(), None),
+        };
+        let scope = self.world.scope();
+        let written = musa_language::ast::LambdaExpr::cast(node.clone())?;
+        let mut parameters = Vec::new();
+        for (index, parameter) in written.params().iter().enumerate() {
+            let ty = match child_of(parameter.syntax(), is_type_node) {
+                Some(node) => parse_type(self.resolver, &scope, &node)?,
+                None => wanted_parameters
+                    .get(index)
+                    .cloned()
+                    .unwrap_or_else(|| self.unifier.fresh(Kind::Ordinary)),
+            };
+            parameters.push(CheckedParameter {
+                name: parameter.name().unwrap_or_default(),
+                ty,
+            });
+        }
+        // A parameter's type sits inside the parameter list, so the one type
+        // node written as a direct child is the result — the same reading a
+        // declaration gets.
+        let result = match node.children().find(|child| is_type_node(child.kind())) {
+            Some(node) => parse_type(self.resolver, &scope, &node)?,
+            None => wanted_result.unwrap_or_else(|| self.unifier.fresh(Kind::Ordinary)),
+        };
+        let body_node = child_of(node, is_expr_node)?;
+        let saved = self.locals.clone();
+        for parameter in &parameters {
+            self.locals
+                .insert(parameter.name.clone(), Scheme::monomorphic(parameter.ty.clone()));
+        }
+        self.mentioned.push(IndexSet::new());
+        let body = self.check(&body_node, Some(&result));
+        let read = self.mentioned.pop().unwrap_or_default();
+        self.locals = saved;
+        let body = body?;
+        let captures = read
+            .into_iter()
+            .filter(|name| !parameters.iter().any(|parameter| &parameter.name == name))
+            .collect();
+        let ty = Type::Function(
+            parameters.iter().map(|parameter| parameter.ty.clone()).collect(),
+            Box::new(result.clone()),
+        );
+        Some(Expr {
+            kind: ExprKind::Lambda {
+                parameters,
+                result,
+                captures,
+                body: Box::new(body),
+            },
+            ty,
+            span,
+        })
+    }
+
+    /// The name of each parameter, where the call can see one.
+    ///
+    /// A declaration lends its parameter names, which is what makes a named
+    /// argument and a missing-argument diagnostic possible. Anything else —
+    /// a parameter used as a function, a value of arrow type — has arity and
+    /// no names, so the positions answer `None` and are reported by number.
+    fn parameter_names(&self, function: &SyntaxNode, types: &[Type]) -> Vec<Option<String>> {
         let global = name_of(function)
             .and_then(|name| self.symbols.get(&name))
             .and_then(|symbol| self.definitions.get(symbol.definition));
@@ -5547,26 +5567,12 @@ impl Checker<'_> {
             Some(RawDefinitionKind::Function { parameters, .. } | RawDefinitionKind::Music { parameters, .. }) => {
                 parameters
                     .iter()
-                    .map(|parameter| ParameterShape {
-                        name: Some(parameter.name.clone()),
-                        has_default: parameter.default.is_some(),
-                    })
+                    .map(|parameter| Some(parameter.name.clone()))
                     .collect()
             }
-            _ => types
-                .iter()
-                .map(|_| ParameterShape {
-                    name: None,
-                    has_default: false,
-                })
-                .collect(),
+            _ => types.iter().map(|_| None).collect(),
         }
     }
-}
-
-struct ParameterShape {
-    name: Option<String>,
-    has_default: bool,
 }
 
 fn primitive_named(name: &str) -> Option<Primitive> {
@@ -5867,6 +5873,24 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
     let value = match &expression.kind {
         ExprKind::Literal(value) => Some(value.clone()),
         ExprKind::Name(name) => environment.get(name).cloned(),
+        // The closure a named `fn` becomes, built here instead of at the
+        // declaration loop: what it closes over is whatever those names stand
+        // for *at this point*, which is the whole difference between a
+        // function written beside a value and one written beside a parameter.
+        ExprKind::Lambda {
+            parameters,
+            result,
+            captures,
+            body,
+        } => Some(Value::Closure(Box::new(Closure {
+            parameters: parameters.clone(),
+            result: result.clone(),
+            body: body.as_ref().clone(),
+            captures: captures
+                .iter()
+                .filter_map(|name| Some((name.clone(), environment.get(name)?.clone())))
+                .collect(),
+        }))),
         ExprKind::Product(members) => members
             .iter()
             .map(|member| eval(member, environment, meter))
@@ -5940,23 +5964,12 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
             let function = eval(function, environment, meter)?;
             match function {
                 Value::Closure(closure) => {
-                    let mut provided = vec![None; closure.parameters.len()];
-                    for argument in arguments {
-                        let slot = provided.get_mut(argument.parameter)?;
-                        *slot = Some(eval(&argument.value, environment, meter)?);
-                    }
+                    let provided = supplied(closure.parameters.len(), arguments, environment, meter)?;
                     apply_closure(&closure, provided, meter, expression.span)
                 }
-                Value::Builtin(value) => {
-                    let Type::Function(parameters, _) = Value::Builtin(value.clone()).ty() else {
-                        return None;
-                    };
-                    let mut provided = vec![None; parameters.len()];
-                    for argument in arguments {
-                        let slot = provided.get_mut(argument.parameter)?;
-                        *slot = Some(eval(&argument.value, environment, meter)?);
-                    }
-                    apply_builtin(&value, provided, expression.span)
+                Value::Builtin(builtin) => {
+                    let provided = supplied(builtin.parameters().len(), arguments, environment, meter)?;
+                    apply_builtin(builtin, provided, expression.span)
                 }
                 Value::Bool(_)
                 | Value::Nat(_)
@@ -6196,6 +6209,7 @@ fn pitch_term(expression: &Expr, environment: &IndexMap<String, Value>, meter: &
         | ExprKind::Option(_)
         | ExprKind::List(_)
         | ExprKind::Apply { .. }
+        | ExprKind::Lambda { .. }
         | ExprKind::Primitive { .. }
         | ExprKind::Match { .. }
         | ExprKind::Construct { .. }
@@ -6210,63 +6224,54 @@ fn pitch_term(expression: &Expr, environment: &IndexMap<String, Value>, meter: &
     }
 }
 
-fn apply_closure(
-    closure: &Closure,
-    mut provided: Vec<Option<Value>>,
+/// One call's arguments, evaluated in the order they are written and read
+/// back in parameter order.
+///
+/// A call supplies every parameter, so an empty slot here is not a partial
+/// application waiting for the rest — it is a checker invariant that failed,
+/// and the caller has no value to return.
+fn supplied(
+    parameters: usize,
+    arguments: &[CallArgument],
+    environment: &IndexMap<String, Value>,
     meter: &mut WorkMeter,
-    span: SourceSpan,
-) -> Option<Value> {
+) -> Option<Vec<Value>> {
+    let mut provided: Vec<Option<Value>> = vec![None; parameters];
+    for argument in arguments {
+        let slot = provided.get_mut(argument.parameter)?;
+        *slot = Some(eval(&argument.value, environment, meter)?);
+    }
+    provided.into_iter().collect()
+}
+
+fn apply_closure(closure: &Closure, provided: Vec<Value>, meter: &mut WorkMeter, span: SourceSpan) -> Option<Value> {
     if !meter.step("function application", 1, span) {
         return None;
     }
+    if provided.len() != closure.parameters.len() {
+        return None;
+    }
     let mut local = closure.captures.clone();
-    let mut remaining = Vec::new();
-    for (index, parameter) in closure.parameters.iter().enumerate() {
-        let value = provided.get_mut(index).and_then(Option::take).or_else(|| {
-            parameter
-                .default
-                .as_ref()
-                .and_then(|default| eval(default, &local, meter))
-        });
-        if let Some(value) = value {
-            if !crate::infer::admits(&parameter.ty, &value.ty()) {
-                return None;
-            }
-            local.insert(parameter.name.clone(), value);
-        } else {
-            remaining.push(parameter.clone());
+    for (parameter, value) in closure.parameters.iter().zip(provided) {
+        if !crate::infer::admits(&parameter.ty, &value.ty()) {
+            return None;
         }
+        local.insert(parameter.name.clone(), value);
     }
-    if remaining.is_empty() {
-        eval(&closure.body, &local, meter)
-    } else {
-        Some(Value::Closure(Box::new(Closure {
-            parameters: remaining,
-            result: closure.result.clone(),
-            body: closure.body.clone(),
-            captures: local,
-        })))
-    }
+    eval(&closure.body, &local, meter)
 }
 
-fn apply_builtin(builtin: &BuiltinValue, provided: Vec<Option<Value>>, span: SourceSpan) -> Option<Value> {
-    let mut value = builtin.clone();
-    let remaining = value
-        .bound
-        .iter()
-        .enumerate()
-        .filter_map(|(index, slot)| slot.is_none().then_some(index))
-        .collect::<Vec<_>>();
-    for (argument, target) in provided.into_iter().zip(remaining) {
-        if let Some(argument) = argument {
-            *value.bound.get_mut(target)? = Some(argument);
-        }
+/// Apply a builtin, which happens once and completely.
+///
+/// There is no partly-applied builtin to return: `transpose` names the
+/// operation and `transpose(P8, line)` names its result, and there is no
+/// third thing in between.
+fn apply_builtin(builtin: Builtin, provided: Vec<Value>, span: SourceSpan) -> Option<Value> {
+    if provided.len() != builtin.parameters().len() {
+        return None;
     }
-    if value.bound.iter().any(Option::is_none) {
-        return Some(Value::Builtin(Box::new(value)));
-    }
-    let mut arguments = value.bound.into_iter().collect::<Option<Vec<_>>>()?.into_iter();
-    let operation = match value.builtin {
+    let mut arguments = provided.into_iter();
+    let operation = match builtin {
         Builtin::Transpose => MusicOperation::Transpose {
             interval: interval_value(&arguments.next()?)?,
             source: music_value(arguments.next()?)?,
@@ -6417,6 +6422,17 @@ fn eval_primitive(
                 set.normal_order()
             };
             Some(pc12_values(members))
+        }
+        Primitive::PcSet12Transposed | Primitive::PcSet12Inverted => {
+            let Value::PcSet12(set) = values.first()? else {
+                return None;
+            };
+            let index = nat_value(values.get(1)?)?;
+            Some(Value::PcSet12(if primitive == Primitive::PcSet12Transposed {
+                (*set).transposed(index)
+            } else {
+                (*set).inverted(index)
+            }))
         }
         Primitive::PcSet12Prime => {
             let Value::PcSet12(set) = values.first()? else {
@@ -6892,7 +6908,7 @@ fn eval_primitive(
             let mapped = source
                 .iter()
                 .cloned()
-                .map(|value| apply_closure(function, vec![Some(value)], meter, expression.span))
+                .map(|value| apply_closure(function, vec![value], meter, expression.span))
                 .collect::<Option<Vec<_>>>()?;
             let Type::List(member) = &expression.ty else {
                 return None;
@@ -6916,7 +6932,7 @@ fn eval_primitive(
             }
             let mut kept = Vec::new();
             for value in values {
-                let decision = apply_closure(predicate, vec![Some(value.clone())], meter, expression.span)?;
+                let decision = apply_closure(predicate, vec![value.clone()], meter, expression.span)?;
                 let Value::Bool(keep) = decision else {
                     return None;
                 };
@@ -6939,12 +6955,7 @@ fn eval_primitive(
                 return None;
             }
             for index in 0..count {
-                accumulator = apply_closure(
-                    step,
-                    vec![Some(Value::Nat(index)), Some(accumulator)],
-                    meter,
-                    expression.span,
-                )?;
+                accumulator = apply_closure(step, vec![Value::Nat(index), accumulator], meter, expression.span)?;
             }
             Some(accumulator)
         }
@@ -6964,12 +6975,7 @@ fn eval_primitive(
                 return None;
             }
             for value in values {
-                accumulator = apply_closure(
-                    step,
-                    vec![Some(value.clone()), Some(accumulator)],
-                    meter,
-                    expression.span,
-                )?;
+                accumulator = apply_closure(step, vec![value.clone(), accumulator], meter, expression.span)?;
             }
             Some(accumulator)
         }
@@ -6986,7 +6992,7 @@ fn eval_primitive(
                     if !meter.step("option_fold", 1, expression.span) {
                         return None;
                     }
-                    apply_closure(some_case, vec![Some(value.as_ref().clone())], meter, expression.span)
+                    apply_closure(some_case, vec![value.as_ref().clone()], meter, expression.span)
                 }
                 None => Some(zero),
             }
@@ -7081,7 +7087,6 @@ fn fold_value(
             }
             Some(field.clone())
         })
-        .map(|argument| argument.map(Some))
         .collect::<Option<Vec<_>>>()?;
     let case = cases.get(index)?;
     // A case that takes nothing is a value, not a function: a constructor with
@@ -7091,7 +7096,7 @@ fn fold_value(
     }
     match case {
         Value::Closure(closure) => apply_closure(closure, arguments, meter, span),
-        Value::Builtin(builtin) => apply_builtin(builtin, arguments, span),
+        Value::Builtin(builtin) => apply_builtin(*builtin, arguments, span),
         // Every other value is not a function, and the checker has already
         // said so: a case of a constructor with fields has an arrow type.
         Value::Bool(_)
@@ -7254,7 +7259,7 @@ fn value_shape(value: &Value) -> (u64, u64) {
         }
         Value::Music(music) => music_shape(music),
         Value::Closure(closure) => aggregate_shape(closure.captures.values()),
-        Value::Builtin(value) => aggregate_shape(value.bound.iter().flatten()),
+        Value::Builtin(_) => (1, 1),
     }
 }
 
@@ -7633,6 +7638,7 @@ fn is_expr_node(kind: SyntaxKind) -> bool {
             | SyntaxKind::OptionExpr
             | SyntaxKind::ResultExpr
             | SyntaxKind::ApplyExpr
+            | SyntaxKind::LambdaExpr
             | SyntaxKind::PitchExpr
             | SyntaxKind::ChordExpr
             | SyntaxKind::ScaleExpr
@@ -7798,7 +7804,7 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(
             entries.len(),
-            77,
+            79,
             "new compiler operations must enter the ownership registry"
         );
         let unique = entries.iter().map(|(spelling, _)| *spelling).collect::<IndexSet<_>>();
@@ -8073,7 +8079,7 @@ mod tests {
         );
         assert_eq!(
             delta + eliminator + music.count(),
-            77,
+            79,
             "a new compiler operation must be classified before it is admitted"
         );
     }

@@ -23,11 +23,11 @@ fn scalar_functions_capture_lexical_values_and_accept_higher_order_arguments() {
 }
 
 #[test]
-fn products_defaults_and_named_arguments_are_checked_and_evaluated() {
+fn products_and_named_arguments_are_checked_and_evaluated() {
     let compilation = compile_core(
         "let pair: (Nat, Bool) = (3, true); \
-         fn keep(value: (Nat, Bool), ornament: Interval = P5) -> (Nat, Bool) { value } \
-         let first: (Nat, Bool) = keep(pair); \
+         fn keep(value: (Nat, Bool), ornament: Interval) -> (Nat, Bool) { value } \
+         let first: (Nat, Bool) = keep(pair, P5); \
          let second: (Nat, Bool) = keep(ornament: M3, value: pair);",
     );
     assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());

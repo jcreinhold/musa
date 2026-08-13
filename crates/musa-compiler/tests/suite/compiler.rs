@@ -195,9 +195,9 @@ fn motifs_only_see_earlier_motifs() {
 #[test]
 fn nested_motifs_and_duration_parameters_expand() {
     let source = "piece \"x\" {
-        motif cell(d: Duration = 1/4) { c4 d d4 d }
-        motif pair(d: Duration = 1/8) { use cell(d); use cell(d); }
-        score { part p { voice v { use pair(1/16); use pair(); } } }
+        motif cell(d: Duration) { c4 d d4 d }
+        motif pair(d: Duration) { use cell(d); use cell(d); }
+        score { part p { voice v { use pair(1/16); use pair(1/8); } } }
     }";
     let compilation = compile_source(source);
     assert!(
@@ -290,7 +290,7 @@ fn a_dot_on_the_long_form_is_refused() {
 }
 
 #[test]
-fn missing_argument_without_default_is_an_error() {
+fn a_motif_use_that_omits_an_argument_is_an_error() {
     let compilation = compile_source(
         "piece \"x\" {
             motif m(root: Pitch) { root 1/4 }
@@ -299,7 +299,7 @@ fn missing_argument_without_default_is_an_error() {
     );
     assert!(compilation.has_errors());
     assert!(
-        reports(&compilation, musa_compiler::Code::NotAValue, "root"),
+        reports(&compilation, musa_compiler::Code::WrongArity, "root"),
         "{:?}",
         messages(&compilation)
     );

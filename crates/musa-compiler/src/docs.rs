@@ -2,10 +2,9 @@
 //!
 //! One record per checked declaration, produced by the pass that already knows
 //! the answer. The type is the *checked* type, not a re-reading of the
-//! annotation; the parameters are the ones the checker lowered, with the
-//! defaults it will actually apply; the summary is the comment block written
-//! above the declaration, read off the lossless tree rather than scraped out
-//! of a line-oriented scan of the file.
+//! annotation; the parameters are the ones the checker lowered; the summary is
+//! the comment block written above the declaration, read off the lossless tree
+//! rather than scraped out of a line-oriented scan of the file.
 //!
 //! Why it exists at all: hover, completion, signature help, and the outline
 //! each need the same five sentences about a name, and before this they either
@@ -83,14 +82,11 @@ pub struct ParameterDoc {
     /// The name it is called by — which is also the name it is passed by,
     /// since Musa's arguments may be named.
     pub name: String,
-    /// `first: Interval`, or `steps: Nat = 1` when it has a default: the
-    /// substring of the signature this parameter occupies, which is what
-    /// signature help highlights.
+    /// `first: Interval` — the substring of the signature this parameter
+    /// occupies, which is what signature help highlights.
     pub label: String,
     /// Its type.
     pub ty: TypeNote,
-    /// The default as written, when the caller may omit it.
-    pub default: Option<String>,
 }
 
 /// Everything an editor says about one declaration.

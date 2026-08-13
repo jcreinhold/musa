@@ -2,7 +2,7 @@
   "document": 0,
   "name": "stdlib-basics.musa",
   "kind": "piece",
-  "source": "// Standard modules are explicit, version-matched source libraries. Their\n// functions pass through the same checker and evaluator as these definitions.\npiece \"Standard Library Basics\" {\n    import std::core;\n    import std::list;\n    import std::option;\n\n    let subject: Music = music {\n        c4/4\n        d4/4\n    };\n\n    fn same_pitch(p: Pitch) -> Pitch { p }\n\n    let answer: Music = compose_music(transpose(P8), retrograde, subject);\n    let chosen: Pitch = pitch_or_else(c4, same_pitch, Some(e4));\n    let counting: List<Nat> = naturals(4);\n\n    score {\n        part strings {\n            voice duet {\n                use overlay(subject, shift(1/2, answer));\n                c5/2\n                rest/2\n            }\n        }\n    }\n}\n",
+  "source": "// Standard modules are explicit, version-matched source libraries. Their\n// functions pass through the same checker and evaluator as these definitions.\npiece \"Standard Library Basics\" {\n    import std::core;\n    import std::list;\n    import std::option;\n\n    let subject: Music = music {\n        c4/4\n        d4/4\n    };\n\n    fn same_pitch(p: Pitch) -> Pitch { p }\n\n    let answer: Music = compose_music(fn (line: Music) -> Music { transpose(P8, line) }, retrograde, subject);\n    let chosen: Pitch = pitch_or_else(c4, same_pitch, Some(e4));\n    let counting: List<Nat> = naturals(4);\n\n    score {\n        part strings {\n            voice duet {\n                use overlay(subject, shift(1/2, answer));\n                c5/2\n                rest/2\n            }\n        }\n    }\n}\n",
   "revision": 0,
   "compiles": true,
   "unsaved": true,
@@ -66,8 +66,8 @@
               "label": "overlay(subject, shift(1/2, answer))",
               "kind": "occurrence",
               "span": {
-                "start": 627,
-                "end": 668
+                "start": 663,
+                "end": 704
               }
             }
           ],
@@ -75,8 +75,8 @@
           "occurrence": "occurrence-0",
           "line": 22,
           "span": {
-            "start": 627,
-            "end": 668
+            "start": 663,
+            "end": 704
           },
           "definitionSpan": {
             "start": 297,
@@ -118,8 +118,8 @@
               "label": "overlay(subject, shift(1/2, answer))",
               "kind": "occurrence",
               "span": {
-                "start": 627,
-                "end": 668
+                "start": 663,
+                "end": 704
               }
             }
           ],
@@ -127,8 +127,8 @@
           "occurrence": "occurrence-0",
           "line": 22,
           "span": {
-            "start": 627,
-            "end": 668
+            "start": 663,
+            "end": 704
           },
           "definitionSpan": {
             "start": 310,
@@ -170,8 +170,8 @@
               "label": "overlay(subject, shift(1/2, answer))",
               "kind": "occurrence",
               "span": {
-                "start": 627,
-                "end": 668
+                "start": 663,
+                "end": 704
               }
             },
             {
@@ -189,8 +189,8 @@
           "occurrence": "occurrence-1",
           "line": 22,
           "span": {
-            "start": 627,
-            "end": 668
+            "start": 663,
+            "end": 704
           },
           "definitionSpan": {
             "start": 310,
@@ -232,8 +232,8 @@
               "label": "overlay(subject, shift(1/2, answer))",
               "kind": "occurrence",
               "span": {
-                "start": 627,
-                "end": 668
+                "start": 663,
+                "end": 704
               }
             },
             {
@@ -251,8 +251,8 @@
           "occurrence": "occurrence-1",
           "line": 22,
           "span": {
-            "start": 627,
-            "end": 668
+            "start": 663,
+            "end": 704
           },
           "definitionSpan": {
             "start": 297,
@@ -294,12 +294,12 @@
           "occurrence": null,
           "line": 23,
           "span": {
-            "start": 685,
-            "end": 689
+            "start": 721,
+            "end": 725
           },
           "definitionSpan": {
-            "start": 685,
-            "end": 689
+            "start": 721,
+            "end": 725
           },
           "decision": null
         }
@@ -333,12 +333,12 @@
           "occurrence": null,
           "line": 24,
           "span": {
-            "start": 706,
-            "end": 712
+            "start": 742,
+            "end": 748
           },
           "definitionSpan": {
-            "start": 706,
-            "end": 712
+            "start": 742,
+            "end": 748
           },
           "decision": null
         }
@@ -352,8 +352,8 @@
             "label": "overlay(subject, shift(1/2, answer))",
             "kind": "occurrence",
             "span": {
-              "start": 627,
-              "end": 668
+              "start": 663,
+              "end": 704
             }
           }
         ],
@@ -361,8 +361,8 @@
         "motif": "overlay",
         "declaration": null,
         "useSite": {
-          "start": 627,
-          "end": 668
+          "start": 663,
+          "end": 704
         },
         "line": 22,
         "events": [
@@ -377,8 +377,8 @@
             "label": "overlay(subject, shift(1/2, answer))",
             "kind": "occurrence",
             "span": {
-              "start": 627,
-              "end": 668
+              "start": 663,
+              "end": 704
             }
           },
           {
@@ -396,8 +396,8 @@
         "motif": "overlay",
         "declaration": null,
         "useSite": {
-          "start": 627,
-          "end": 668
+          "start": 663,
+          "end": 704
         },
         "line": 22,
         "events": [
@@ -484,8 +484,7 @@
           "ty": {
             "name": "Ratio",
             "distinction": "an exact rational number"
-          },
-          "default": null
+          }
         }
       ],
       "deprecation": null,
@@ -513,8 +512,7 @@
           "ty": {
             "name": "Nat",
             "distinction": "a whole number, zero or more"
-          },
-          "default": null
+          }
         }
       ],
       "deprecation": null,
@@ -542,8 +540,7 @@
           "ty": {
             "name": "Music -> Music",
             "distinction": null
-          },
-          "default": null
+          }
         },
         {
           "name": "second",
@@ -551,8 +548,7 @@
           "ty": {
             "name": "Music -> Music",
             "distinction": null
-          },
-          "default": null
+          }
         },
         {
           "name": "value",
@@ -560,8 +556,7 @@
           "ty": {
             "name": "Music",
             "distinction": "notated material"
-          },
-          "default": null
+          }
         }
       ],
       "deprecation": null,
@@ -589,8 +584,7 @@
           "ty": {
             "name": "Pitch -> Pitch",
             "distinction": null
-          },
-          "default": null
+          }
         },
         {
           "name": "second",
@@ -598,8 +592,7 @@
           "ty": {
             "name": "Pitch -> Pitch",
             "distinction": null
-          },
-          "default": null
+          }
         },
         {
           "name": "value",
@@ -607,8 +600,7 @@
           "ty": {
             "name": "Pitch",
             "distinction": "a written pitch: letter, accidental, and octave"
-          },
-          "default": null
+          }
         }
       ],
       "deprecation": null,
@@ -636,8 +628,7 @@
           "ty": {
             "name": "Nat",
             "distinction": "a whole number, zero or more"
-          },
-          "default": null
+          }
         }
       ],
       "deprecation": null,
@@ -665,8 +656,7 @@
           "ty": {
             "name": "Pitch -> Pitch",
             "distinction": null
-          },
-          "default": null
+          }
         },
         {
           "name": "values",
@@ -674,8 +664,7 @@
           "ty": {
             "name": "List<Pitch>",
             "distinction": null
-          },
-          "default": null
+          }
         }
       ],
       "deprecation": null,
@@ -703,8 +692,7 @@
           "ty": {
             "name": "Pitch -> Bool",
             "distinction": null
-          },
-          "default": null
+          }
         },
         {
           "name": "values",
@@ -712,8 +700,7 @@
           "ty": {
             "name": "List<Pitch>",
             "distinction": null
-          },
-          "default": null
+          }
         }
       ],
       "deprecation": null,
@@ -741,8 +728,7 @@
           "ty": {
             "name": "Music",
             "distinction": "notated material"
-          },
-          "default": null
+          }
         },
         {
           "name": "count",
@@ -750,8 +736,7 @@
           "ty": {
             "name": "Nat",
             "distinction": "a whole number, zero or more"
-          },
-          "default": null
+          }
         }
       ],
       "deprecation": null,
@@ -779,8 +764,7 @@
           "ty": {
             "name": "Pitch",
             "distinction": "a written pitch: letter, accidental, and octave"
-          },
-          "default": null
+          }
         },
         {
           "name": "present",
@@ -788,8 +772,7 @@
           "ty": {
             "name": "Pitch -> Pitch",
             "distinction": null
-          },
-          "default": null
+          }
         },
         {
           "name": "value",
@@ -797,8 +780,7 @@
           "ty": {
             "name": "Option<Pitch>",
             "distinction": null
-          },
-          "default": null
+          }
         }
       ],
       "deprecation": null,
@@ -826,8 +808,7 @@
           "ty": {
             "name": "Nat",
             "distinction": "a whole number, zero or more"
-          },
-          "default": null
+          }
         },
         {
           "name": "present",
@@ -835,8 +816,7 @@
           "ty": {
             "name": "Nat -> Nat",
             "distinction": null
-          },
-          "default": null
+          }
         },
         {
           "name": "value",
@@ -844,8 +824,7 @@
           "ty": {
             "name": "Option<Nat>",
             "distinction": null
-          },
-          "default": null
+          }
         }
       ],
       "deprecation": null,
@@ -893,8 +872,7 @@
           "ty": {
             "name": "Pitch",
             "distinction": "a written pitch: letter, accidental, and octave"
-          },
-          "default": null
+          }
         }
       ],
       "deprecation": null,
@@ -942,8 +920,8 @@
       "site": {
         "where": "open",
         "span": {
-          "start": 450,
-          "end": 456
+          "start": 486,
+          "end": 492
         }
       }
     },
@@ -962,8 +940,8 @@
       "site": {
         "where": "open",
         "span": {
-          "start": 515,
-          "end": 523
+          "start": 551,
+          "end": 559
         }
       }
     }
@@ -979,12 +957,12 @@
       "external": null,
       "uses": [
         {
-          "start": 432,
-          "end": 439
+          "start": 468,
+          "end": 475
         },
         {
-          "start": 639,
-          "end": 646
+          "start": 675,
+          "end": 682
         }
       ]
     },
@@ -998,8 +976,8 @@
       "external": null,
       "uses": [
         {
-          "start": 484,
-          "end": 494
+          "start": 520,
+          "end": 530
         }
       ]
     },
@@ -1013,8 +991,8 @@
       "external": null,
       "uses": [
         {
-          "start": 659,
-          "end": 665
+          "start": 695,
+          "end": 701
         }
       ]
     },
@@ -1022,8 +1000,8 @@
       "name": "chosen",
       "kind": "value",
       "declaration": {
-        "start": 450,
-        "end": 456
+        "start": 486,
+        "end": 492
       },
       "external": null,
       "uses": []
@@ -1032,8 +1010,8 @@
       "name": "counting",
       "kind": "value",
       "declaration": {
-        "start": 515,
-        "end": 523
+        "start": 551,
+        "end": 559
       },
       "external": null,
       "uses": []
@@ -1057,8 +1035,8 @@
       "external": "musa-stdlib:/std/option.musa",
       "uses": [
         {
-          "start": 466,
-          "end": 479
+          "start": 502,
+          "end": 515
         }
       ]
     },
@@ -1069,8 +1047,8 @@
       "external": "musa-stdlib:/std/list.musa",
       "uses": [
         {
-          "start": 537,
-          "end": 545
+          "start": 573,
+          "end": 581
         }
       ]
     },
@@ -1078,8 +1056,8 @@
       "name": "strings",
       "kind": "part",
       "declaration": {
-        "start": 576,
-        "end": 583
+        "start": 612,
+        "end": 619
       },
       "external": null,
       "uses": []
@@ -1088,8 +1066,8 @@
       "name": "duet",
       "kind": "voice",
       "declaration": {
-        "start": 604,
-        "end": 608
+        "start": 640,
+        "end": 644
       },
       "external": null,
       "uses": []

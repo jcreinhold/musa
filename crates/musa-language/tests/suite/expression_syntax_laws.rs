@@ -4,12 +4,14 @@ const EXPRESSIONS: &str = r#"piece "Expressions" {
     let fifth: Interval = P5;
     let paths: List<(Pitch, Option<Pitch>)> = [(c4, Some(e4)), (g4, None)];
 
-    fn choose(value: Option<Pitch>, fallback: Pitch = c4) -> Pitch { match value {
+    fn choose(value: Option<Pitch>, fallback: Pitch) -> Pitch { match value {
         None -> fallback,
         Some(found) -> found,
     } }
 
     fn transform(f: Pitch -> Pitch, root: Pitch) -> Pitch { f(root) }
+
+    let raised: Pitch = transform(fn (from: Pitch) -> Pitch { choose(Some(from), c4) }, e4);
 
     fn reason(outcome: Result<Pitch, Text>) -> Text { match outcome {
         Ok(found) -> "",
@@ -58,6 +60,7 @@ fn expression_cst_has_one_role_for_each_surface_form() {
         SyntaxKind::OptionExpr,
         SyntaxKind::ResultExpr,
         SyntaxKind::ApplyExpr,
+        SyntaxKind::LambdaExpr,
         SyntaxKind::MatchExpr,
         SyntaxKind::MatchArm,
         SyntaxKind::MusicExpr,
@@ -85,6 +88,7 @@ fn expression_cst_has_one_role_for_each_surface_form() {
                         | SyntaxKind::OptionExpr
                         | SyntaxKind::ResultExpr
                         | SyntaxKind::ApplyExpr
+                        | SyntaxKind::LambdaExpr
                         | SyntaxKind::MatchExpr
                         | SyntaxKind::MatchArm
                         | SyntaxKind::MusicExpr

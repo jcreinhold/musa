@@ -100,7 +100,7 @@ template piece study(k: Key, mode: Scale, subject: Music) "Study" {
     score {
         part piano {
             voice right { in scale mode { use subject; } }
-            make answer(subject, transpose(P8)) as upper;
+            make answer(subject, fn (line: Music) -> Music { transpose(P8, line) }) as upper;
         }
     }
 }
@@ -154,8 +154,8 @@ fn an_instance_is_marked_as_one() {
 /// function is applied inside the body.
 #[test]
 fn a_higher_order_argument_transforms_the_body() {
-    let octave = MADE.replace("transpose(P8)", "transpose(P15)");
-    let plain = MADE.replace("transpose(P8)", "transpose(P1)");
+    let octave = MADE.replace("transpose(P8, line)", "transpose(P15, line)");
+    let plain = MADE.replace("transpose(P8, line)", "transpose(P1, line)");
     assert_ne!(music(&snapshot_of(&octave)), music(&snapshot_of(MADE)));
     assert_ne!(music(&snapshot_of(&plain)), music(&snapshot_of(MADE)));
 }
@@ -209,7 +209,7 @@ fn renaming_a_parameter_changes_nothing() {
         .replace("key k;", "key tonality;")
         .replace("in scale mode", "in scale sc")
         .replace("use subject;", "use tune;")
-        .replace("answer(subject, transpose(P8))", "answer(tune, transpose(P8))");
+        .replace("answer(subject, fn ", "answer(tune, fn ");
     assert_eq!(music(&snapshot_of(&renamed)), music(&snapshot_of(MADE)));
     assert_eq!(instances(&snapshot_of(&renamed)), instances(&snapshot_of(MADE)));
 }
@@ -217,9 +217,10 @@ fn renaming_a_parameter_changes_nothing() {
 /// Two sites are two declarations, however alike their arguments are.
 #[test]
 fn distinct_sites_have_distinct_identities() {
+    let upper = "make answer(subject, fn (line: Music) -> Music { transpose(P8, line) }) as upper;";
     let twice = MADE.replace(
-        "make answer(subject, transpose(P8)) as upper;",
-        "make answer(subject, transpose(P8)) as upper;\n            make answer(subject, transpose(P8)) as twin;",
+        upper,
+        &format!("{upper}\n            {}", upper.replace("as upper", "as twin")),
     );
     let identities = instances(&snapshot_of(&twice));
     assert_eq!(identities.len(), 3);

@@ -40,8 +40,9 @@ library {
     }
 
     // T_n: transposition by n semitones, `x + n` modulo twelve. The index
-    // comes first so that `transposed_by(3)` is the transposition itself, a
-    // `pc12 -> pc12` that `map_pc` can carry across a list.
+    // comes first because it is what names the operation: T_3 of a member,
+    // read in that order. It is not a function of the index — a call supplies
+    // every parameter, and `transposed_by(3)` supplies one of two.
     fn transposed_by(index: Nat, member: Pc12) -> Pc12 { pc12_transposed(member, index) }
 
     // I_n: inversion about n, `n - x` modulo twelve. I_0 is the plain mirror
@@ -66,15 +67,14 @@ library {
     // that reasons about both must be able to import both.
     fn set_members(set: PcSet12) -> List<Pc12> { pcset12_members(set) }
 
-    // T_n applied to every member.
-    fn set_transposed(set: PcSet12, index: Nat) -> PcSet12 {
-        pcset12_of(map_pc(transposed_by(index), set_members(set)))
-    }
+    // T_n applied to every member. The set is transposed as a set rather
+    // than mapped member by member: T_n on a set is a set operation, and
+    // writing it as a map would need a function of the index alone, which is
+    // not something a call can produce.
+    fn set_transposed(set: PcSet12, index: Nat) -> PcSet12 { pcset12_transposed(set, index) }
 
-    // I_n applied to every member.
-    fn set_inverted(set: PcSet12, index: Nat) -> PcSet12 {
-        pcset12_of(map_pc(inverted_about(index), set_members(set)))
-    }
+    // I_n applied to every member, and a set operation for the same reason.
+    fn set_inverted(set: PcSet12, index: Nat) -> PcSet12 { pcset12_inverted(set, index) }
 
     // Normal order: the rotation of the ascending members packed most
     // tightly to the left. Ties break inward — first to last, then first to

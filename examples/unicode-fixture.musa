@@ -17,7 +17,7 @@ piece "Étude en sol — 𝄞" {
     meter 3/4;
     key g major;
 
-    motif sigh(root: Pitch = d5) {
+    motif sigh(root: Pitch) {
         root/4
         c5/4
         b4/4
@@ -36,7 +36,7 @@ piece "Étude en sol — 𝄞" {
                     b4/4
                     d5/4
                 }
-                use sigh();
+                use sigh(d5);
                 use sigh(g5);
                 phrase "cadence — ♭VII" {
                     f5/4

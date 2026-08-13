@@ -1,0 +1,43 @@
+// A call supplies every parameter (`docs/rules/constitution.md` §9), so a
+// higher-order call is specialized by writing the specialization down rather
+// than by leaving an argument out. The anonymous function is a declaration's
+// own words without its name: `fn`, a parameter list, an optional result type,
+// and a braced body holding one expression.
+piece "Anonymous Functions" {
+    import std::core;
+    import std::list;
+
+    let subject: Music = music {
+        c4/4
+        e4/4
+        g4/4
+        e4/4
+    };
+
+    // `compose_music` takes two transformations. Neither is `transpose`, which
+    // takes an interval as well as a passage — so the interval is supplied
+    // here, in a function of the passage alone.
+    fn raised(by: Interval, line: Music) -> Music {
+        compose_music(fn (inner: Music) -> Music { transpose(by, inner) }, retrograde, line)
+    }
+
+    // `by` is this call's argument, and no declaration could have named it:
+    // that is the whole job the anonymous function does.
+    let answer: Music = raised(P8, subject);
+
+    // The types may be left out where a declaration may leave them out; the
+    // position the lambda stands in says what they are.
+    let counted: List<Nat> = map(fn (index) { identity_nat(index) }, range(4));
+
+    score {
+        part strings {
+            voice lead {
+                use subject;
+            }
+
+            voice follower {
+                use answer;
+            }
+        }
+    }
+}

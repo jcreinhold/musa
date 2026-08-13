@@ -312,7 +312,7 @@ fn references_find_the_declaration_and_every_use() {
     let (uri, _) = server.open("glass-mountain", GLASS_MOUNTAIN);
     // The cursor asks from a use, and the declaration answers with itself.
     for cursor in [
-        at(GLASS_MOUNTAIN, "sigh();"),
+        at(GLASS_MOUNTAIN, "sigh(e5);"),
         shifted(at(GLASS_MOUNTAIN, "motif sigh"), 6),
     ] {
         let answer = server
@@ -323,8 +323,8 @@ fn references_find_the_declaration_and_every_use() {
         lines.sort_unstable();
         let mut expected: Vec<u32> = [
             at(GLASS_MOUNTAIN, "motif sigh").line,
-            at(GLASS_MOUNTAIN, "sigh();").line,
-            at_last(GLASS_MOUNTAIN, "sigh();").line,
+            at(GLASS_MOUNTAIN, "sigh(e5);").line,
+            at_last(GLASS_MOUNTAIN, "sigh(e5);").line,
         ]
         .into_iter()
         .collect();
@@ -345,7 +345,7 @@ fn references_can_exclude_the_declaration() {
     let (uri, _) = server.open("glass-mountain", GLASS_MOUNTAIN);
     let answer = server
         .client
-        .request::<References>(reference_params(&uri, at(GLASS_MOUNTAIN, "sigh();"), false));
+        .request::<References>(reference_params(&uri, at(GLASS_MOUNTAIN, "sigh(e5);"), false));
     let locations: Vec<Location> = serde_json::from_value(answer).expect("locations");
     assert_eq!(locations.len(), 2, "the two uses only: {locations:?}");
     server.stop();
@@ -383,14 +383,14 @@ fn prepare_rename_names_the_name_and_refuses_plain_text() {
     let (uri, _) = server.open("glass-mountain", GLASS_MOUNTAIN);
     let answer = server
         .client
-        .request::<PrepareRenameRequest>(position_params(&uri, at(GLASS_MOUNTAIN, "sigh();")));
+        .request::<PrepareRenameRequest>(position_params(&uri, at(GLASS_MOUNTAIN, "sigh(e5);")));
     let answer: Option<PrepareRenameResponse> = serde_json::from_value(answer).expect("prepare rename");
     let Some(PrepareRenameResponse::RangeWithPlaceholder { range, placeholder }) = answer else {
         panic!("expected a range with the name: {answer:?}");
     };
     assert_eq!(placeholder, "sigh");
-    assert_eq!(range.start, at(GLASS_MOUNTAIN, "sigh();"));
-    assert_eq!(range.end, shifted(at(GLASS_MOUNTAIN, "sigh();"), 4));
+    assert_eq!(range.start, at(GLASS_MOUNTAIN, "sigh(e5);"));
+    assert_eq!(range.end, shifted(at(GLASS_MOUNTAIN, "sigh(e5);"), 4));
     // On a keyword there is nothing to prepare: null, the lawful answer.
     let answer = server
         .client
@@ -470,7 +470,7 @@ fn rename_rewrites_exactly_the_recorded_spans() {
     let (uri, _) = server.open("glass-mountain", GLASS_MOUNTAIN);
     let answer = server
         .client
-        .request::<Rename>(rename_params(&uri, at(GLASS_MOUNTAIN, "sigh();"), "lament"));
+        .request::<Rename>(rename_params(&uri, at(GLASS_MOUNTAIN, "sigh(e5);"), "lament"));
     let edit: lsp_types::WorkspaceEdit = serde_json::from_value(answer).expect("a workspace edit");
     let changes = edit.changes.as_ref().expect("changes");
     let edits = changes.get(&uri).expect("edits for the document");
@@ -510,7 +510,7 @@ fn rename_refuses_an_illegal_name_and_a_nameless_position() {
     let (uri, _) = server.open("glass-mountain", GLASS_MOUNTAIN);
     let response = server
         .client
-        .response::<Rename>(rename_params(&uri, at(GLASS_MOUNTAIN, "sigh();"), "4x"));
+        .response::<Rename>(rename_params(&uri, at(GLASS_MOUNTAIN, "sigh(e5);"), "4x"));
     let error = response.response_result.expect_err("`4x` is not a name");
     assert!(error.message.contains("not a valid name"), "{}", error.message);
     // `4x` must not have edited anything: the document still compiles.
@@ -533,7 +533,7 @@ fn a_broken_document_still_answers_references() {
     assert!(!published.diagnostics.is_empty(), "the edit should not compile");
     let answer = server
         .client
-        .request::<References>(reference_params(&uri, at(GLASS_MOUNTAIN, "sigh();"), true));
+        .request::<References>(reference_params(&uri, at(GLASS_MOUNTAIN, "sigh(e5);"), true));
     let locations: Vec<Location> = serde_json::from_value(answer).expect("locations");
     assert_eq!(locations.len(), 3, "stale-but-honest references: {locations:?}");
     server.stop();
@@ -681,7 +681,7 @@ fn hover_on_a_use_site_reports_the_expansion() {
     let HoverContents::Markup(content) = hover.contents else {
         panic!("expected markdown hover");
     };
-    assert!(content.value.contains("sigh()"), "{}", content.value);
+    assert!(content.value.contains("sigh(e5)"), "{}", content.value);
     assert!(content.value.contains("motif `sigh`"), "{}", content.value);
     server.stop();
 }
@@ -1057,9 +1057,9 @@ fn hover_on_a_declaration_reports_the_checked_signature_and_its_summary() {
     let (uri, published) = server.open("tooling", TOOLING);
     assert!(published.diagnostics.is_empty(), "{published:?}");
     let content = hover_markdown(&mut server, &uri, at(TOOLING, "lifted(what"));
-    // The signature the checker settled on, defaults and all — not the text.
+    // The signature the checker settled on — not the text.
     assert!(
-        content.contains("fn lifted(what: Music, by: Interval = P5) -> Music"),
+        content.contains("fn lifted(what: Music, by: Interval) -> Music"),
         "{content}"
     );
     // The comment block above the declaration, as prose.
@@ -1101,7 +1101,7 @@ fn signature_help_names_the_parameter_the_caret_is_on() {
     // Inside the first argument.
     let help = signature_help(&mut server, &uri, shifted(call, 7));
     let signature = help.signatures.first().expect("one signature");
-    assert_eq!(signature.label, "fn lifted(what: Music, by: Interval = P5) -> Music");
+    assert_eq!(signature.label, "fn lifted(what: Music, by: Interval) -> Music");
     let parameters = signature.parameters.as_ref().expect("parameters");
     let labels: Vec<&str> = parameters
         .iter()
@@ -1110,7 +1110,7 @@ fn signature_help_names_the_parameter_the_caret_is_on() {
             lsp_types::ParameterLabel::LabelOffsets(_) => panic!("expected simple labels"),
         })
         .collect();
-    assert_eq!(labels, ["what: Music", "by: Interval = P5"], "{parameters:?}");
+    assert_eq!(labels, ["what: Music", "by: Interval"], "{parameters:?}");
     assert_eq!(help.active_parameter, Some(0));
     // Past the comma, the second.
     let help = signature_help(&mut server, &uri, shifted(call, 16));
@@ -1135,12 +1135,12 @@ fn signature_help_answers_for_a_claim_from_the_compilers_own_registry() {
 }
 
 #[test]
-fn completion_offers_a_calls_parameter_names_with_their_defaults() {
+fn completion_offers_a_calls_parameter_names() {
     let mut server = Server::start();
     let (uri, _) = server.open("tooling", TOOLING);
     let items = completions(&mut server, &uri, shifted(at(TOOLING, "lifted(subject"), 7));
     let named = items.iter().find(|item| item.label == "by:").expect("`by:` offered");
-    assert_eq!(named.detail.as_deref(), Some("Interval = P5"));
+    assert_eq!(named.detail.as_deref(), Some("Interval"));
     assert_eq!(named.kind, Some(lsp_types::CompletionItemKind::FIELD));
     assert!(
         named.sort_text.as_deref().is_some_and(|sort| sort.starts_with('0')),
@@ -1204,7 +1204,7 @@ fn symbols_list_the_declarations_written_here_and_no_others() {
     for expected in [
         "signature Centred",
         "structure Home: Centred",
-        "fn lifted(what: Music, by: Interval = P5) -> Music",
+        "fn lifted(what: Music, by: Interval) -> Music",
         "let subject: Music",
     ] {
         assert!(names.contains(&expected), "`{expected}` missing: {names:?}");

@@ -25,8 +25,6 @@
     { "kind": "identifier", "text": "root" },
     { "kind": ":", "text": ":" },
     { "kind": "identifier", "text": "Pitch" },
-    { "kind": "=", "text": "=" },
-    { "kind": "pitch_literal", "text": "c5" },
     { "kind": ")", "text": ")" },
     { "kind": "{", "text": "{" },
     { "kind": "identifier", "text": "root" },
