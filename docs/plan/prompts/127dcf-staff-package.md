@@ -26,9 +26,12 @@ the value shape the adapter must be able to produce, established before anything
   is not performed duration. The staff package owns staff concepts; the core owns none of them.
 - Open Music Theory `001`–`012` for the distinctions the data must be able to make — spelling versus pitch class,
   written value versus exact span, meter versus hypermeter — and `docs/rules/style-guide.md` for spellings.
-- Prompt 127dcea's exact-time operations: `duration_add`, `position_shift`, `position_between`, `duration_scale`,
-  `follow`, `track_duration`. These are what `realize` computes with, and they are the reason this prompt can be written
-  at all.
+- Prompt 127dcea's exact-time operations: `duration_of`, `duration_add`, `duration_scale`, `position_of`,
+  `position_shift`, `position_between`, and the comparisons. These are what `realize` computes with, and they are the
+  reason this prompt can be written at all. There is no `follow` and no `track_duration`: 127dcea dropped both rather
+  than build a track operation on the contextual `Music` that prompt 127e deletes, so `realize` answers with exact spans
+  over the package's own data and the cutover decides what those spans become. Every arithmetic operation answers with a
+  `Result`, which is why `realize` does too.
 - `crates/musa-compiler/src/data.rs`, `folded` — a generated fold replaces *one constructor layer*, so a recursive
   occurrence under a container arrives unfolded. This is what makes §2.2's shape unwritable as printed and is the reason
   for the first paragraph of **Design** below.
@@ -51,10 +54,10 @@ they are different data.
 
 **`realize` and `engrave` make the later choices, and they are where a missing choice is an error.** `realize` turns
 written facts into exact time — resolving a tuplet's ratio, a dot's extension, a tie's joined span, a pickup's offset —
-by folding with prompt 127dcea's operations and accumulating positions. `engrave` makes layout choices. Grace timing is
-a performance profile's, not this package's, and `realize` says so by refusing rather than guessing. Both return
-`Result` where the choice can fail, so the diagnostic lands where the choice is made rather than where the note was
-written.
+by folding with prompt 127dcea's operations and accumulating positions; its answer is a list of exact spans against the
+written items that produced them, not a `Music` value. `engrave` makes layout choices. Grace timing is a performance
+profile's, not this package's, and `realize` says so by refusing rather than guessing. Both return `Result` where the
+choice can fail, so the diagnostic lands where the choice is made rather than where the note was written.
 
 Everything here is ordinary Musa: declarations, generated folds, and the compiler-owned operations any package may use.
 Nothing in this prompt runs in the expansion phase, so the whole-module scope an adapter does not get is available, and
