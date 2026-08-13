@@ -186,7 +186,7 @@ impl PcSet12 {
     ///
     /// Set transposition is written in `std::post_tonal::pcset` as `map_pc` over the
     /// members, which is where an author can see what it does; this is the
-    /// same map, and `pcset12_transposed` is the primitive it answers.
+    /// same map, and `pcset12_transposed` is the builtin it answers.
     pub(crate) fn transposed(self, index: u64) -> Self {
         Self::of(self.members().map(|member| member.transposed(index)))
     }

@@ -18,8 +18,8 @@
 //!
 //! How a list is read back. The language has no combinator that turns a
 //! `List<Music>` into sequential music — `use` sequences at the cursor and
-//! `overlay` is simultaneous — so the probes below build one out of the two
-//! primitives that do exist: fold with `together(one, shift(1, carried))`, which
+//! `together` is simultaneous — so the probes below build one out of the two
+//! builtins that do exist: fold with `together(one, shift(1, carried))`, which
 //! lands each element a whole note after the rest of the accumulator. The fold
 //! accumulates left to right, so that lays the list out backwards, and
 //! `retrograde` turns it round again. A test proves the pair reads forwards
@@ -439,17 +439,17 @@ fn the_plural_form_agrees_with_the_singular_at_every_index() {
 
 // ---- What this layer does not add --------------------------------------
 
-/// No compiler primitive.
+/// No compiler builtin.
 ///
-/// The primitive registry in `crates/musa-compiler/src/core.rs` is the only
-/// route by which a primitive enters, and the check here is behavioral rather
+/// The builtin registry in `crates/musa-compiler/src/core.rs` is the only
+/// route by which a builtin enters, and the check here is behavioral rather
 /// than a read of that list: a compiler-owned operation resolves with no
 /// import, and a library function does not. So every name added here is asked
 /// for *without* its module, and every one must fail to resolve. The moment a
 /// schema is implemented by widening the compiler instead of by writing a
 /// function, one of these starts compiling and this test says so.
 #[test]
-fn the_schema_libraries_add_no_compiler_primitive() {
+fn the_schema_libraries_add_no_compiler_builtin() {
     for call in [
         "romanesca_bass()",
         "prinner_bass()",

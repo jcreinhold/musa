@@ -1,7 +1,7 @@
 ---
 id: 127ca
 slug: builtin-ownership-registry
-status: pending
+status: done
 depends_on: [127c]
 phase: 3
 ---

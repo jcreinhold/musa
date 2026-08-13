@@ -747,8 +747,8 @@ enum ExprKind {
         interval: Box<Expr>,
         down: bool,
     },
-    Primitive {
-        primitive: Primitive,
+    Builtin {
+        builtin: Builtin,
         arguments: Vec<Expr>,
     },
     Match {
@@ -825,7 +825,7 @@ struct CheckedMusic {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Primitive {
+enum Builtin {
     NatFold,
     ListFold,
     OptionFold,
@@ -897,13 +897,21 @@ enum Primitive {
     Row12Symmetries,
     Row12Repeats,
     Row12Missing,
+    Transpose,
+    Stretch,
+    Retrograde,
+    Invert,
+    Shift,
+    Together,
+    MapNotePitches,
+    Play,
 }
 
-/// A base type as a primitive signature names it.
+/// A base type as a builtin signature names it.
 ///
 /// These are the inert types of `docs/rules/language/02-core-calculus.md` §5.8: a closed value of one is
 /// an opaque constant, no reduction rule inspects its structure, and everything observable about it
-/// is observed by applying a primitive. That is condition D1, and it holds here by construction —
+/// is observed by applying a builtin. That is condition D1, and it holds here by construction —
 /// there is no variant for a type with an eliminator.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Base {
@@ -925,10 +933,10 @@ enum Base {
     Row12,
 }
 
-/// An argument or result type of a δ-primitive.
+/// An argument or result type of a δ-builtin.
 ///
 /// There is deliberately no arrow constructor. §5.8's no-arrow premise is therefore true of every
-/// declared δ signature by construction rather than by inspection, and a primitive that wanted a
+/// declared δ signature by construction rather than by inspection, and a builtin that wanted a
 /// function argument could not be spelled here at all — it would have to join the eliminators,
 /// which is exactly the classification the theorem depends on.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -937,7 +945,7 @@ enum Shape {
     Option(&'static Self),
     List(&'static Self),
     Product(&'static [Self]),
-    /// `Result<value, error>` — how a primitive with more than one way to
+    /// `Result<value, error>` — how a builtin with more than one way to
     /// fail says which one happened. `Option` says only *that* it did.
     Result(&'static Self, &'static Self),
 }
@@ -956,10 +964,10 @@ impl Shape {
 
     /// Whether absence is expressible in this shape's outermost position.
     ///
-    /// D2 lets a primitive be partial only by saying so in its result type, so this is what the
+    /// D2 lets a builtin be partial only by saying so in its result type, so this is what the
     /// sampling law consults before it accepts a `None` from an evaluator.
     ///
-    /// A `Result` is *not* absence: both of its injections are values, so a primitive that
+    /// A `Result` is *not* absence: both of its injections are values, so a builtin that
     /// returns one owes the law a value on every input. Saying which way it failed is a
     /// stronger promise than saying that it did, and this is where the law reads it.
     #[cfg(test)]
@@ -969,7 +977,7 @@ impl Shape {
 
     /// Whether this shape denotes storable data (`02-core-calculus.md` §1.1).
     ///
-    /// A registered primitive's arguments and result must be storable: it is
+    /// A registered builtin's arguments and result must be storable: it is
     /// handed values that could equally have been written in a data field, and
     /// it hands one back. That is what makes it *foreign* rather than a second
     /// evaluator — it cannot receive a closure to call, a music value to walk,
@@ -1050,30 +1058,34 @@ const fn all_storable(shapes: &[Shape]) -> bool {
     }
 }
 
-/// Which of `02-core-calculus.md` §5.8's three families a compiler-owned operation belongs to.
+/// Which of `02-core-calculus.md` §5.8's families a builtin belongs to.
 ///
 /// The families are disjoint and exhaustive, which is what lets Theorem 5 be stated once instead of
 /// once per musical domain. A new domain is admissible when its operations can be declared here as
 /// `Delta` and discharge D1–D4; it does not get a new induction.
+///
+/// Three of §5.8's four are spelled here. The fourth, machine builtins, arrives with the
+/// operations that populate it (`../across-stages/03-machine-calculus.md` §2) rather than as an
+/// empty variant waiting for them.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Family {
-    /// First-order and arrow-free. Covered by Theorem 5 once D1–D4 hold, and the declared
-    /// signature is the single statement of the operation's type: the checker reads argument and
-    /// result types from it rather than restating them.
+    /// §5.8's **δ-builtins**: first-order and arrow-free. Covered by Theorem 5 once D1–D4 hold,
+    /// and the declared signature is the single statement of the operation's type: the checker
+    /// reads argument and result types from it rather than restating them.
     Delta { arguments: &'static [Shape], result: Shape },
-    /// Takes a function argument or carries a rank-1 scheme. Covered by §5.6, and checked by hand
-    /// because its type depends on its arguments' types.
+    /// §5.8's **structural eliminators**: takes a function argument or carries a rank-1 scheme.
+    /// Covered by §5.6, and checked by hand because its type depends on its arguments' types.
     Eliminator(Eliminator),
-    /// Constructs or transforms `music`. Covered by §5.7.
-    Music,
+    /// §5.8's **track builtins**: constructs or transforms an event track. Covered by §5.7.
+    Track,
 }
 
 /// The seven structural eliminators of `02-core-calculus.md` §5.6.
 ///
-/// They are named as a closed set rather than matched out of [`Primitive`] because §5.6's proof is
+/// They are named as a closed set rather than matched out of [`Builtin`] because §5.6's proof is
 /// about exactly these seven. Naming them here is what lets the checker's remaining hand-written
-/// arms be exhaustive: once a primitive's family is an `Eliminator`, which one it is has already
-/// been decided, and no arm is left over for the sixty-two δ-primitives to fall into by accident.
+/// arms be exhaustive: once a builtin's family is an `Eliminator`, which one it is has already
+/// been decided, and no arm is left over for the sixty-two δ-builtins to fall into by accident.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Eliminator {
     NatFold,
@@ -1185,7 +1197,7 @@ impl Eliminator {
 }
 
 #[derive(Clone, Copy)]
-struct PrimitiveOwnership<T> {
+struct BuiltinOwnership<T> {
     operation: T,
     spelling: &'static str,
     hidden_information: &'static str,
@@ -1236,7 +1248,7 @@ const ROW12_OR_FAULT: Shape = Shape::Result(&ROW12, &ROW_FAULT);
 ///
 /// Every δ entry is built here, so this is the registration site, and a
 /// violation is a build error rather than a call that fails once a composer
-/// finds it. Four conditions hold of a registered primitive
+/// finds it. Four conditions hold of a registered builtin
 /// (`docs/rules/language/02-core-calculus.md` §§1.1 and 5.8):
 ///
 /// - **First-order**, and **no closure argument**: [`Shape`] has no arrow
@@ -1248,451 +1260,499 @@ const ROW12_OR_FAULT: Shape = Shape::Result(&ROW12, &ROW_FAULT);
 ///   Registration cannot see this, so it is the sampling law's D2, which reads
 ///   [`Shape::admits_absence`] and rejects an evaluator that declined to
 ///   answer where the shape promised a value.
-/// - **Failing by value**: a primitive with one way to fail says so with
+/// - **Failing by value**: a builtin with one way to fail says so with
 ///   `Option`, and one with several says which with `Result`. Both injections
 ///   of a `Result` are values, so answering with one is still total.
 const fn delta(arguments: &'static [Shape], result: Shape) -> Family {
     assert!(
         all_storable(arguments),
-        "a registered primitive takes storable data; one of these arguments is not"
+        "a registered builtin takes storable data; one of these arguments is not"
     );
     assert!(
         result.is_storable(),
-        "a registered primitive answers with storable data; this result does not"
+        "a registered builtin answers with storable data; this result does not"
     );
     Family::Delta { arguments, result }
 }
 
-const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 71] = [
-    PrimitiveOwnership {
-        operation: Primitive::NatFold,
+const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 79] = [
+    BuiltinOwnership {
+        operation: Builtin::NatFold,
         spelling: "nat_fold",
         hidden_information: "the evaluator's finite natural representation and structural work budget",
         family: Family::Eliminator(Eliminator::NatFold),
     },
-    PrimitiveOwnership {
-        operation: Primitive::ListFold,
+    BuiltinOwnership {
+        operation: Builtin::ListFold,
         spelling: "list_fold",
         hidden_information: "the evaluator's finite list representation and structural work budget",
         family: Family::Eliminator(Eliminator::ListFold),
     },
-    PrimitiveOwnership {
-        operation: Primitive::OptionFold,
+    BuiltinOwnership {
+        operation: Builtin::OptionFold,
         spelling: "option_fold",
         hidden_information: "the evaluator's hidden option representation and total case dispatch",
         family: Family::Eliminator(Eliminator::OptionFold),
     },
-    PrimitiveOwnership {
-        operation: Primitive::Map,
+    BuiltinOwnership {
+        operation: Builtin::Map,
         spelling: "map",
         hidden_information: "rank-1 monomorphization over the evaluator's hidden finite list representation",
         family: Family::Eliminator(Eliminator::Map),
     },
-    PrimitiveOwnership {
-        operation: Primitive::Filter,
+    BuiltinOwnership {
+        operation: Builtin::Filter,
         spelling: "filter",
         hidden_information: "rank-1 monomorphization over the evaluator's hidden finite list representation",
         family: Family::Eliminator(Eliminator::Filter),
     },
-    PrimitiveOwnership {
-        operation: Primitive::Range,
+    BuiltinOwnership {
+        operation: Builtin::Range,
         spelling: "range",
         hidden_information: "bounded construction governed by the evaluator's structural work budget",
         family: Family::Eliminator(Eliminator::Range),
     },
-    PrimitiveOwnership {
-        operation: Primitive::Repeat,
+    BuiltinOwnership {
+        operation: Builtin::Repeat,
         spelling: "repeat",
         hidden_information: "rank-1 finite-list construction governed by the structural work budget",
         family: Family::Eliminator(Eliminator::Repeat),
     },
-    PrimitiveOwnership {
-        operation: Primitive::IntervalAdd,
+    BuiltinOwnership {
+        operation: Builtin::IntervalAdd,
         spelling: "interval_add",
         hidden_information: "the evaluator's exact written-interval coordinate representation",
         family: delta(&[INTERVAL, INTERVAL], INTERVAL),
     },
-    PrimitiveOwnership {
-        operation: Primitive::IntervalInverse,
+    BuiltinOwnership {
+        operation: Builtin::IntervalInverse,
         spelling: "interval_inverse",
         hidden_information: "the evaluator's exact written-interval coordinate representation",
         family: delta(&[INTERVAL], INTERVAL),
     },
-    PrimitiveOwnership {
-        operation: Primitive::PitchClassOf,
+    BuiltinOwnership {
+        operation: Builtin::PitchClassOf,
         spelling: "pitchclass_of",
         hidden_information: "the written pitch's octave coordinate and spelling-preserving quotient",
         family: delta(&[PITCH], CLASS),
     },
-    PrimitiveOwnership {
-        operation: Primitive::SignatureScale,
+    BuiltinOwnership {
+        operation: Builtin::SignatureScale,
         spelling: "signature_scale",
         hidden_information: "the compiler's table of named collections, which no source text can enumerate",
         family: delta(&[KEY], SCALE),
     },
-    PrimitiveOwnership {
-        operation: Primitive::ScaleOn,
+    BuiltinOwnership {
+        operation: Builtin::ScaleOn,
         spelling: "scale_on",
         hidden_information: "the scale's private ordered offset cycle, re-rooted without being exposed",
         family: delta(&[SCALE, CLASS], SCALE),
     },
-    PrimitiveOwnership {
-        operation: Primitive::ScaleTonic,
+    BuiltinOwnership {
+        operation: Builtin::ScaleTonic,
         spelling: "scale_tonic",
         hidden_information: "the scale's private tonic field",
         family: delta(&[SCALE], CLASS),
     },
-    PrimitiveOwnership {
-        operation: Primitive::ScaleSize,
+    BuiltinOwnership {
+        operation: Builtin::ScaleSize,
         spelling: "scale_size",
         hidden_information: "the length of the scale's private offset cycle",
         family: delta(&[SCALE], NAT),
     },
-    PrimitiveOwnership {
-        operation: Primitive::ScalePitch,
+    BuiltinOwnership {
+        operation: Builtin::ScalePitch,
         spelling: "scale_pitch",
         hidden_information: "spelled membership against the scale's private offset cycle",
         family: delta(&[SCALE, PITCH], MAYBE_DEGREE),
     },
-    PrimitiveOwnership {
-        operation: Primitive::ScaleClass,
+    BuiltinOwnership {
+        operation: Builtin::ScaleClass,
         spelling: "scale_class",
         hidden_information: "the scale's private offset cycle, read without a register",
         family: delta(&[SCALE, DEGREE], MAYBE_CLASS),
     },
-    PrimitiveOwnership {
-        operation: Primitive::ScaleChord,
+    BuiltinOwnership {
+        operation: Builtin::ScaleChord,
         spelling: "scale_chord",
         hidden_information: "the scale's offset cycle and the chord vocabulary's member table at once",
         family: delta(&[SCALE, DEGREE, NAT], MAYBE_CHORD),
     },
-    PrimitiveOwnership {
-        operation: Primitive::PitchFrame,
+    BuiltinOwnership {
+        operation: Builtin::PitchFrame,
         spelling: "pitch_frame",
         hidden_information: "the register frame's representation invariant, which only the compiler can enforce",
         family: delta(&[SCALE, PITCH], MAYBE_FRAME),
     },
-    PrimitiveOwnership {
-        operation: Primitive::FrameScale,
+    BuiltinOwnership {
+        operation: Builtin::FrameScale,
         spelling: "frame_scale",
         hidden_information: "the frame's private scale field",
         family: delta(&[FRAME], SCALE),
     },
-    PrimitiveOwnership {
-        operation: Primitive::FrameTonic,
+    BuiltinOwnership {
+        operation: Builtin::FrameTonic,
         spelling: "frame_tonic",
         hidden_information: "the frame's private registered tonic field",
         family: delta(&[FRAME], PITCH),
     },
-    PrimitiveOwnership {
-        operation: Primitive::FramePitch,
+    BuiltinOwnership {
+        operation: Builtin::FramePitch,
         spelling: "frame_pitch",
         hidden_information: "Euclidean division of a degree through the scale's private period",
         family: delta(&[FRAME, DEGREE], PITCH),
     },
-    PrimitiveOwnership {
-        operation: Primitive::DegreeOf,
+    BuiltinOwnership {
+        operation: Builtin::DegreeOf,
         spelling: "degree_of",
         hidden_information: "the degree's private signed coordinate, which is not the written ordinal",
         family: delta(&[NAT], DEGREE),
     },
-    PrimitiveOwnership {
-        operation: Primitive::DegreeStepUp,
+    BuiltinOwnership {
+        operation: Builtin::DegreeStepUp,
         spelling: "degree_step_up",
         hidden_information: "the degree's private signed coordinate and its machine-integer bound",
         family: delta(&[DEGREE, NAT], DEGREE),
     },
-    PrimitiveOwnership {
-        operation: Primitive::DegreeStepDown,
+    BuiltinOwnership {
+        operation: Builtin::DegreeStepDown,
         spelling: "degree_step_down",
         hidden_information: "the degree's private signed coordinate and its machine-integer bound",
         family: delta(&[DEGREE, NAT], DEGREE),
     },
-    PrimitiveOwnership {
-        operation: Primitive::DegreeRaised,
+    BuiltinOwnership {
+        operation: Builtin::DegreeRaised,
         spelling: "degree_raised",
         hidden_information: "the degree's private chromatic alteration and its machine-integer bound",
         family: delta(&[DEGREE], DEGREE),
     },
-    PrimitiveOwnership {
-        operation: Primitive::DegreeLowered,
+    BuiltinOwnership {
+        operation: Builtin::DegreeLowered,
         spelling: "degree_lowered",
         hidden_information: "the degree's private chromatic alteration and its machine-integer bound",
         family: delta(&[DEGREE], DEGREE),
     },
-    PrimitiveOwnership {
-        operation: Primitive::ChordOn,
+    BuiltinOwnership {
+        operation: Builtin::ChordOn,
         spelling: "chord_on",
         hidden_information: "the compiler's table of chord types, re-rooted without being exposed",
         family: delta(&[CHORD, CLASS], CHORD),
     },
-    PrimitiveOwnership {
-        operation: Primitive::ChordRoot,
+    BuiltinOwnership {
+        operation: Builtin::ChordRoot,
         spelling: "chord_root",
         hidden_information: "the chord class's private root field",
         family: delta(&[CHORD], CLASS),
     },
-    PrimitiveOwnership {
-        operation: Primitive::ChordBass,
+    BuiltinOwnership {
+        operation: Builtin::ChordBass,
         spelling: "chord_bass",
         hidden_information: "the chord class's private bass designation, which is absent and not the root",
         family: delta(&[CHORD], MAYBE_CLASS),
     },
-    PrimitiveOwnership {
-        operation: Primitive::ChordMembers,
+    BuiltinOwnership {
+        operation: Builtin::ChordMembers,
         spelling: "chord_members",
         hidden_information: "the private spelled member stack, which no source text can enumerate",
         family: delta(&[CHORD], INTERVALS),
     },
-    PrimitiveOwnership {
-        operation: Primitive::ChordInversion,
+    BuiltinOwnership {
+        operation: Builtin::ChordInversion,
         spelling: "chord_inversion",
         hidden_information: "membership of the private member stack, which is what makes an inversion true",
         family: delta(&[CHORD, NAT], MAYBE_CHORD),
     },
-    PrimitiveOwnership {
-        operation: Primitive::ChordOver,
+    BuiltinOwnership {
+        operation: Builtin::ChordOver,
         spelling: "chord_over",
         hidden_information: "the chord class's private bass designation",
         family: delta(&[CHORD, CLASS], CHORD),
     },
-    PrimitiveOwnership {
-        operation: Primitive::ChordTriad,
+    BuiltinOwnership {
+        operation: Builtin::ChordTriad,
         spelling: "chord_triad",
         hidden_information: "the triad refinement's representation invariant, which only the compiler can enforce",
         family: delta(&[CHORD], MAYBE_TRIAD),
     },
-    PrimitiveOwnership {
-        operation: Primitive::TriadChord,
+    BuiltinOwnership {
+        operation: Builtin::TriadChord,
         spelling: "triad_chord",
         hidden_information: "the triad refinement's private witness",
         family: delta(&[TRIAD], CHORD),
     },
-    PrimitiveOwnership {
-        operation: Primitive::RomanOf,
+    BuiltinOwnership {
+        operation: Builtin::RomanOf,
         spelling: "roman_of",
         hidden_information: "the numeral's representation invariant, which only the compiler can enforce",
         family: delta(&[NAT, NAT, NAT], MAYBE_ROMAN),
     },
-    PrimitiveOwnership {
-        operation: Primitive::RomanOrdinal,
+    BuiltinOwnership {
+        operation: Builtin::RomanOrdinal,
         spelling: "roman_ordinal",
         hidden_information: "the numeral's private ordinal",
         family: delta(&[ROMAN], NAT),
     },
-    PrimitiveOwnership {
-        operation: Primitive::RomanSize,
+    BuiltinOwnership {
+        operation: Builtin::RomanSize,
         spelling: "roman_size",
         hidden_information: "the numeral's private member count",
         family: delta(&[ROMAN], NAT),
     },
-    PrimitiveOwnership {
-        operation: Primitive::RomanInversion,
+    BuiltinOwnership {
+        operation: Builtin::RomanInversion,
         spelling: "roman_inversion",
         hidden_information: "the numeral's private bass designation, which is a position and not a pitch",
         family: delta(&[ROMAN], NAT),
     },
-    PrimitiveOwnership {
-        operation: Primitive::TriadMajor,
+    BuiltinOwnership {
+        operation: Builtin::TriadMajor,
         spelling: "triad_major",
         hidden_information: "the chord class's private type, which is the only place the two triads differ",
         family: delta(&[TRIAD], BOOL),
     },
-    PrimitiveOwnership {
-        operation: Primitive::VoicingOf,
+    BuiltinOwnership {
+        operation: Builtin::VoicingOf,
         spelling: "voicing_of",
         hidden_information: "the voicing's representation invariant: ascending distinct pitches drawn from the class",
         family: delta(&[CHORD, PITCHES], MAYBE_VOICING),
     },
-    PrimitiveOwnership {
-        operation: Primitive::VoicingPitches,
+    BuiltinOwnership {
+        operation: Builtin::VoicingPitches,
         spelling: "voicing_pitches",
         hidden_information: "the voicing's private ordered pitch sequence",
         family: delta(&[VOICING], PITCHES),
     },
-    PrimitiveOwnership {
-        operation: Primitive::VoicingBass,
+    BuiltinOwnership {
+        operation: Builtin::VoicingBass,
         spelling: "voicing_bass",
         hidden_information: "the voicing's private lowest pitch, held apart from the rest",
         family: delta(&[VOICING], PITCH),
     },
-    PrimitiveOwnership {
-        operation: Primitive::VoicingChord,
+    BuiltinOwnership {
+        operation: Builtin::VoicingChord,
         spelling: "voicing_chord",
         hidden_information: "the voicing's private association to the class it voices",
         family: delta(&[VOICING], CHORD),
     },
-    PrimitiveOwnership {
-        operation: Primitive::VoicingPosition,
+    BuiltinOwnership {
+        operation: Builtin::VoicingPosition,
         spelling: "voicing_position",
         hidden_information: "membership of the private member stack, which is what classifies an inversion",
         family: delta(&[VOICING], MAYBE_NAT),
     },
-    PrimitiveOwnership {
-        operation: Primitive::CloseVoicing,
+    BuiltinOwnership {
+        operation: Builtin::CloseVoicing,
         spelling: "close_voicing",
         hidden_information: "the private member stack walked upward, and the voicing invariant it must satisfy",
         family: delta(&[CHORD, PITCH], MAYBE_VOICING),
     },
-    PrimitiveOwnership {
-        operation: Primitive::DropVoicing,
+    BuiltinOwnership {
+        operation: Builtin::DropVoicing,
         spelling: "drop_voicing",
         hidden_information: "the private member stack walked upward, and the voicing invariant it must satisfy",
         family: delta(&[CHORD, PITCH, NAT], MAYBE_VOICING),
     },
-    PrimitiveOwnership {
-        operation: Primitive::OmitVoicing,
+    BuiltinOwnership {
+        operation: Builtin::OmitVoicing,
         spelling: "omit_voicing",
         hidden_information: "the private member stack, which is what says which pitch an omission removes",
         family: delta(&[VOICING, NAT], MAYBE_VOICING),
     },
-    PrimitiveOwnership {
-        operation: Primitive::Pc12Of,
+    BuiltinOwnership {
+        operation: Builtin::Pc12Of,
         spelling: "pc12_of",
         hidden_information: "the canonical representative of a residue class modulo twelve",
         family: delta(&[NAT], PC12),
     },
-    PrimitiveOwnership {
-        operation: Primitive::Pc12Number,
+    BuiltinOwnership {
+        operation: Builtin::Pc12Number,
         spelling: "pc12_number",
         hidden_information: "the canonical representative, which is the only number a residue class has",
         family: delta(&[PC12], NAT),
     },
-    PrimitiveOwnership {
-        operation: Primitive::Pc12Forget,
+    BuiltinOwnership {
+        operation: Builtin::Pc12Forget,
         spelling: "pc12_forget",
         hidden_information: "the chromatic coordinate of a spelled pitch class, taken modulo twelve",
         family: delta(&[CLASS], PC12),
     },
-    PrimitiveOwnership {
-        operation: Primitive::Pc12Transposed,
+    BuiltinOwnership {
+        operation: Builtin::Pc12Transposed,
         spelling: "pc12_transposed",
         hidden_information: "modular addition, which a `nat` without subtraction cannot express",
         family: delta(&[PC12, NAT], PC12),
     },
-    PrimitiveOwnership {
-        operation: Primitive::Pc12Inverted,
+    BuiltinOwnership {
+        operation: Builtin::Pc12Inverted,
         spelling: "pc12_inverted",
         hidden_information: "modular subtraction, which a `nat` without subtraction cannot express",
         family: delta(&[PC12, NAT], PC12),
     },
-    PrimitiveOwnership {
-        operation: Primitive::Pc12Spelled,
+    BuiltinOwnership {
+        operation: Builtin::Pc12Spelled,
         spelling: "pc12_spelled",
         hidden_information: "the collection's spelled members, searched for the one this class forgets to",
         family: delta(&[PC12, SCALE], MAYBE_CLASS),
     },
-    PrimitiveOwnership {
-        operation: Primitive::PcSet12Of,
+    BuiltinOwnership {
+        operation: Builtin::PcSet12Of,
         spelling: "pcset12_of",
         hidden_information: "the twelve-bit membership word that makes duplication unrepresentable",
         family: delta(&[PC12S], PCSET12),
     },
-    PrimitiveOwnership {
-        operation: Primitive::PcSet12Members,
+    BuiltinOwnership {
+        operation: Builtin::PcSet12Members,
         spelling: "pcset12_members",
         hidden_information: "the membership word, read out ascending",
         family: delta(&[PCSET12], PC12S),
     },
-    PrimitiveOwnership {
-        operation: Primitive::PcSet12Transposed,
+    BuiltinOwnership {
+        operation: Builtin::PcSet12Transposed,
         spelling: "pcset12_transposed",
         hidden_information: "the membership word, rotated by the index without unpacking it",
         family: delta(&[PCSET12, NAT], PCSET12),
     },
-    PrimitiveOwnership {
-        operation: Primitive::PcSet12Inverted,
+    BuiltinOwnership {
+        operation: Builtin::PcSet12Inverted,
         spelling: "pcset12_inverted",
         hidden_information: "the membership word, reflected about the index without unpacking it",
         family: delta(&[PCSET12, NAT], PCSET12),
     },
-    PrimitiveOwnership {
-        operation: Primitive::PcSet12Normal,
+    BuiltinOwnership {
+        operation: Builtin::PcSet12Normal,
         spelling: "pcset12_normal",
         hidden_information: "every rotation of the set and the compactness order that chooses between them",
         family: delta(&[PCSET12], PC12S),
     },
-    PrimitiveOwnership {
-        operation: Primitive::PcSet12Prime,
+    BuiltinOwnership {
+        operation: Builtin::PcSet12Prime,
         spelling: "pcset12_prime",
         hidden_information: "the normal orders of the set and its inversion, and which of the two reads lower",
         family: delta(&[PCSET12], PCSET12),
     },
-    PrimitiveOwnership {
-        operation: Primitive::PcSet12Vector,
+    BuiltinOwnership {
+        operation: Builtin::PcSet12Vector,
         spelling: "pcset12_vector",
         hidden_information: "every unordered pair of members and the interval class each realizes",
         family: delta(&[PCSET12], NATS),
     },
-    PrimitiveOwnership {
-        operation: Primitive::Row12Of,
+    BuiltinOwnership {
+        operation: Builtin::Row12Of,
         spelling: "row12_of",
         hidden_information: "the permutation invariant: twelve order positions and each pitch class once",
         family: delta(&[PC12S], ROW12_OR_FAULT),
     },
-    PrimitiveOwnership {
-        operation: Primitive::Row12Pcs,
+    BuiltinOwnership {
+        operation: Builtin::Row12Pcs,
         spelling: "row12_pcs",
         hidden_information: "the private order-position array",
         family: delta(&[ROW12], PC12S),
     },
-    PrimitiveOwnership {
-        operation: Primitive::Row12Head,
+    BuiltinOwnership {
+        operation: Builtin::Row12Head,
         spelling: "row12_head",
         hidden_information: "order position zero of the private array, which the finite list eliminators cannot index",
         family: delta(&[ROW12], PC12),
     },
-    PrimitiveOwnership {
-        operation: Primitive::Row12Transposed,
+    BuiltinOwnership {
+        operation: Builtin::Row12Transposed,
         spelling: "row12_transposed",
         hidden_information: "modular addition, and the finite-closure lemma that keeps the result a row",
         family: delta(&[ROW12, NAT], ROW12),
     },
-    PrimitiveOwnership {
-        operation: Primitive::Row12Inverted,
+    BuiltinOwnership {
+        operation: Builtin::Row12Inverted,
         spelling: "row12_inverted",
         hidden_information: "modular subtraction, and the finite-closure lemma that keeps the result a row",
         family: delta(&[ROW12, NAT], ROW12),
     },
-    PrimitiveOwnership {
-        operation: Primitive::Row12Retrograde,
+    BuiltinOwnership {
+        operation: Builtin::Row12Retrograde,
         spelling: "row12_retrograde",
         hidden_information: "reversal of the order positions, which the finite list eliminators cannot express",
         family: delta(&[ROW12], ROW12),
     },
-    PrimitiveOwnership {
-        operation: Primitive::Row12Matrix,
+    BuiltinOwnership {
+        operation: Builtin::Row12Matrix,
         spelling: "row12_matrix",
         hidden_information: "the classical construction: the inversion about the row's own head, read as starting pitches",
         family: delta(&[ROW12], ROW12S),
     },
-    PrimitiveOwnership {
-        operation: Primitive::Row12Forms,
+    BuiltinOwnership {
+        operation: Builtin::Row12Forms,
         spelling: "row12_forms",
         hidden_information: "the forty-eight labelled forms, compared for equality and counted once each",
         family: delta(&[ROW12], NAT),
     },
-    PrimitiveOwnership {
-        operation: Primitive::Row12Symmetries,
+    BuiltinOwnership {
+        operation: Builtin::Row12Symmetries,
         spelling: "row12_symmetries",
         hidden_information: "the forty-eight labelled forms, counted where they fix the row",
         family: delta(&[ROW12], NAT),
     },
-    PrimitiveOwnership {
-        operation: Primitive::Row12Repeats,
+    BuiltinOwnership {
+        operation: Builtin::Row12Repeats,
         spelling: "row12_repeats",
         hidden_information: "pitch-class equality, which the surface has no operator for",
         family: delta(&[PC12S], NATS),
     },
-    PrimitiveOwnership {
-        operation: Primitive::Row12Missing,
+    BuiltinOwnership {
+        operation: Builtin::Row12Missing,
         spelling: "row12_missing",
         hidden_information: "pitch-class equality against the whole finite domain",
         family: delta(&[PC12S], PC12S),
     },
+    BuiltinOwnership {
+        operation: Builtin::Transpose,
+        spelling: "transpose",
+        hidden_information: "contextual music representation, written-pitch provenance, and kernel construction",
+        family: Family::Track,
+    },
+    BuiltinOwnership {
+        operation: Builtin::Stretch,
+        spelling: "stretch",
+        hidden_information: "contextual music representation, exact-time provenance, and kernel construction",
+        family: Family::Track,
+    },
+    BuiltinOwnership {
+        operation: Builtin::Retrograde,
+        spelling: "retrograde",
+        hidden_information: "contextual music extent, occurrence provenance, and kernel construction",
+        family: Family::Track,
+    },
+    BuiltinOwnership {
+        operation: Builtin::Invert,
+        spelling: "invert",
+        hidden_information: "contextual music representation, written-pitch provenance, and kernel construction",
+        family: Family::Track,
+    },
+    BuiltinOwnership {
+        operation: Builtin::Shift,
+        spelling: "shift",
+        hidden_information: "contextual music representation, exact-time provenance, and kernel construction",
+        family: Family::Track,
+    },
+    BuiltinOwnership {
+        operation: Builtin::Together,
+        spelling: "together",
+        hidden_information: "contextual music representation, origin paths, and kernel stacking construction",
+        family: Family::Track,
+    },
+    BuiltinOwnership {
+        operation: Builtin::MapNotePitches,
+        spelling: "map_note_pitches",
+        hidden_information: "controlled traversal of contextual notes while preserving non-note facts and provenance",
+        family: Family::Track,
+    },
+    BuiltinOwnership {
+        operation: Builtin::Play,
+        spelling: "play",
+        hidden_information: "contextual music construction: the voicing's private pitches become sounded occurrences with provenance",
+        family: Family::Track,
+    },
 ];
 
-impl Primitive {
+impl Builtin {
     fn name(self) -> &'static str {
         match self {
             Self::NatFold => "nat_fold",
@@ -1766,6 +1826,141 @@ impl Primitive {
             Self::Row12Symmetries => "row12_symmetries",
             Self::Row12Repeats => "row12_repeats",
             Self::Row12Missing => "row12_missing",
+            Self::Transpose => "transpose",
+            Self::Stretch => "stretch",
+            Self::Retrograde => "retrograde",
+            Self::Invert => "invert",
+            Self::Shift => "shift",
+            Self::Together => "together",
+            Self::MapNotePitches => "map_note_pitches",
+            Self::Play => "play",
+        }
+    }
+
+    /// The builtin this name spells, if any.
+    ///
+    /// One registry, one lookup: a name is a compiler-owned operation exactly when
+    /// [`BUILTIN_OWNERSHIP`] holds it, and what *kind* of operation it is the entry's family
+    /// says. Two tables were two answers to one question.
+    fn named(name: &str) -> Option<Self> {
+        let entry = BUILTIN_OWNERSHIP.iter().find(|entry| entry.spelling == name)?;
+        debug_assert!(!entry.hidden_information.is_empty());
+        Some(entry.operation)
+    }
+
+    /// Which of §5.8's families this operation belongs to, and for a δ-builtin its declared
+    /// signature.
+    ///
+    /// This is the single statement of a δ-builtin's type: the checker reads argument and result
+    /// types from here rather than restating them, so the two cannot disagree.
+    /// Absent only if the registry has lost an entry, which the registry's own laws forbid.
+    fn family(self) -> Option<Family> {
+        BUILTIN_OWNERSHIP
+            .iter()
+            .find(|entry| entry.operation == self)
+            .map(|entry| entry.family)
+    }
+
+    /// Whether this is a track builtin — §5.8's track family, and the only one whose members
+    /// are ordinary values.
+    ///
+    /// A track builtin has an arrow type and is applied like anything else with one; a
+    /// δ-builtin or an eliminator is checked at its call site against the signature the
+    /// registry declares, and naming one without applying it is an error. That is the whole
+    /// difference between the two routes, so it is asked here rather than spelled out at each
+    /// of them.
+    fn is_track(self) -> bool {
+        matches!(self.family(), Some(Family::Track))
+    }
+
+    /// A track builtin's parameters, or `None` where the operation is not one.
+    ///
+    /// The other seventy-one state their types in the registry instead, where the checker
+    /// reads them; they never become a [`Value`], so there is no arrow to give them here.
+    fn parameters(self) -> Option<Vec<Type>> {
+        match self {
+            Self::Transpose => Some(vec![Type::Interval, Type::Music]),
+            Self::Stretch => Some(vec![Type::Ratio, Type::Music]),
+            Self::Retrograde => Some(vec![Type::Music]),
+            Self::Invert => Some(vec![Type::Pitch, Type::Music]),
+            Self::Shift => Some(vec![Type::Duration, Type::Music]),
+            Self::Together => Some(vec![Type::Music, Type::Music]),
+            Self::MapNotePitches => Some(vec![
+                Type::Function(vec![Type::Pitch], Box::new(Type::Pitch)),
+                Type::Music,
+            ]),
+            Self::Play => Some(vec![Type::Voicing, Type::Duration]),
+            Self::NatFold
+            | Self::ListFold
+            | Self::OptionFold
+            | Self::Map
+            | Self::Filter
+            | Self::Range
+            | Self::Repeat
+            | Self::IntervalAdd
+            | Self::IntervalInverse
+            | Self::PitchClassOf
+            | Self::SignatureScale
+            | Self::ScaleOn
+            | Self::ScaleTonic
+            | Self::ScaleSize
+            | Self::ScalePitch
+            | Self::ScaleClass
+            | Self::ScaleChord
+            | Self::PitchFrame
+            | Self::FrameScale
+            | Self::FrameTonic
+            | Self::FramePitch
+            | Self::DegreeOf
+            | Self::DegreeStepUp
+            | Self::DegreeStepDown
+            | Self::DegreeRaised
+            | Self::DegreeLowered
+            | Self::ChordOn
+            | Self::ChordRoot
+            | Self::ChordBass
+            | Self::ChordMembers
+            | Self::ChordInversion
+            | Self::ChordOver
+            | Self::ChordTriad
+            | Self::TriadChord
+            | Self::TriadMajor
+            | Self::RomanOf
+            | Self::RomanOrdinal
+            | Self::RomanSize
+            | Self::RomanInversion
+            | Self::VoicingOf
+            | Self::VoicingPitches
+            | Self::VoicingBass
+            | Self::VoicingChord
+            | Self::VoicingPosition
+            | Self::CloseVoicing
+            | Self::DropVoicing
+            | Self::OmitVoicing
+            | Self::Pc12Of
+            | Self::Pc12Number
+            | Self::Pc12Forget
+            | Self::Pc12Transposed
+            | Self::Pc12Inverted
+            | Self::Pc12Spelled
+            | Self::PcSet12Of
+            | Self::PcSet12Members
+            | Self::PcSet12Transposed
+            | Self::PcSet12Inverted
+            | Self::PcSet12Normal
+            | Self::PcSet12Prime
+            | Self::PcSet12Vector
+            | Self::Row12Of
+            | Self::Row12Pcs
+            | Self::Row12Head
+            | Self::Row12Transposed
+            | Self::Row12Inverted
+            | Self::Row12Retrograde
+            | Self::Row12Matrix
+            | Self::Row12Forms
+            | Self::Row12Symmetries
+            | Self::Row12Repeats
+            | Self::Row12Missing => None,
         }
     }
 }
@@ -1934,90 +2129,6 @@ enum Value {
     Music(Music),
     Closure(Box<Closure>),
     Builtin(Builtin),
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Builtin {
-    Transpose,
-    Stretch,
-    Retrograde,
-    Invert,
-    Shift,
-    Together,
-    MapNotePitches,
-    Play,
-}
-
-const BUILTIN_OWNERSHIP: [PrimitiveOwnership<Builtin>; 8] = [
-    PrimitiveOwnership {
-        operation: Builtin::Transpose,
-        spelling: "transpose",
-        hidden_information: "contextual music representation, written-pitch provenance, and kernel construction",
-        family: Family::Music,
-    },
-    PrimitiveOwnership {
-        operation: Builtin::Stretch,
-        spelling: "stretch",
-        hidden_information: "contextual music representation, exact-time provenance, and kernel construction",
-        family: Family::Music,
-    },
-    PrimitiveOwnership {
-        operation: Builtin::Retrograde,
-        spelling: "retrograde",
-        hidden_information: "contextual music extent, occurrence provenance, and kernel construction",
-        family: Family::Music,
-    },
-    PrimitiveOwnership {
-        operation: Builtin::Invert,
-        spelling: "invert",
-        hidden_information: "contextual music representation, written-pitch provenance, and kernel construction",
-        family: Family::Music,
-    },
-    PrimitiveOwnership {
-        operation: Builtin::Shift,
-        spelling: "shift",
-        hidden_information: "contextual music representation, exact-time provenance, and kernel construction",
-        family: Family::Music,
-    },
-    PrimitiveOwnership {
-        operation: Builtin::Together,
-        spelling: "together",
-        hidden_information: "contextual music representation, origin paths, and kernel stacking construction",
-        family: Family::Music,
-    },
-    PrimitiveOwnership {
-        operation: Builtin::MapNotePitches,
-        spelling: "map_note_pitches",
-        hidden_information: "controlled traversal of contextual notes while preserving non-note facts and provenance",
-        family: Family::Music,
-    },
-    PrimitiveOwnership {
-        operation: Builtin::Play,
-        spelling: "play",
-        hidden_information: "contextual music construction: the voicing's private pitches become sounded occurrences with provenance",
-        family: Family::Music,
-    },
-];
-
-impl Builtin {
-    fn named(name: &str) -> Option<Self> {
-        let entry = BUILTIN_OWNERSHIP.iter().find(|entry| entry.spelling == name)?;
-        debug_assert!(!entry.hidden_information.is_empty());
-        Some(entry.operation)
-    }
-
-    fn parameters(self) -> Vec<Type> {
-        match self {
-            Self::Transpose => vec![Type::Interval, Type::Music],
-            Self::Stretch => vec![Type::Ratio, Type::Music],
-            Self::Retrograde => vec![Type::Music],
-            Self::Invert => vec![Type::Pitch, Type::Music],
-            Self::Shift => vec![Type::Duration, Type::Music],
-            Self::Together => vec![Type::Music, Type::Music],
-            Self::MapNotePitches => vec![Type::Function(vec![Type::Pitch], Box::new(Type::Pitch)), Type::Music],
-            Self::Play => vec![Type::Voicing, Type::Duration],
-        }
-    }
 }
 
 /// A notation-first value retained until a voice supplies scope and onset.
@@ -2352,7 +2463,9 @@ impl Value {
                     .collect(),
                 Box::new(closure.result.clone()),
             ),
-            Self::Builtin(builtin) => Type::Function(builtin.parameters(), Box::new(Type::Music)),
+            // Only a track builtin is ever a value — a name position takes no other — so its
+            // parameters are here to be read.
+            Self::Builtin(builtin) => Type::Function(builtin.parameters().unwrap_or_default(), Box::new(Type::Music)),
         }
     }
 
@@ -2557,9 +2670,7 @@ fn settle_expr(unifier: &Unifier, expr: &mut Expr) -> Option<(SourceSpan, Type)>
         ExprKind::PitchAction { pitch, interval, .. } => {
             settle_expr(unifier, pitch).or_else(|| settle_expr(unifier, interval))
         }
-        ExprKind::Primitive { arguments, .. } => {
-            arguments.iter_mut().find_map(|argument| settle_expr(unifier, argument))
-        }
+        ExprKind::Builtin { arguments, .. } => arguments.iter_mut().find_map(|argument| settle_expr(unifier, argument)),
         ExprKind::Match { scrutinee, arms } => settle_expr(unifier, scrutinee)
             .or_else(|| arms.iter_mut().find_map(|arm| settle_expr(unifier, &mut arm.body))),
         ExprKind::Construct { arguments, fields, .. } => {
@@ -3012,7 +3123,11 @@ fn check_and_evaluate_metered(
     for statement in root_uses {
         let expression = child_of(&statement, is_expr_node)?;
         let span = crate::resolve::trimmed_span(&statement);
-        if first_name(&expression).is_some_and(|name| !symbols.contains_key(&name) && Builtin::named(&name).is_none()) {
+        // A track builtin heads a `use` the way a declared name does. A δ-builtin does not: it is
+        // not a value, so a `use` naming one is as unknown here as a misspelling.
+        if first_name(&expression)
+            .is_some_and(|name| !symbols.contains_key(&name) && !Builtin::named(&name).is_some_and(Builtin::is_track))
+        {
             match unknown_root_music {
                 UnknownRootMusic::Reject => {}
                 UnknownRootMusic::Defer => continue,
@@ -3751,7 +3866,7 @@ pub(crate) fn function_type(scope: &TypeScope<'_>, declaration: &FnDecl) -> Opti
 
 /// The type a written name denotes, for the names the compiler owns.
 ///
-/// The spellings are `musa-language`'s `PRIMITIVE_TYPES`, which is where the
+/// The spellings are `musa-language`'s `BASE_TYPES`, which is where the
 /// language server and the parser read them too; this is the one place that
 /// says which [`Type`] each of them is.
 fn named_type(text: &str) -> Option<Type> {
@@ -3819,7 +3934,7 @@ fn lower_type(mut resolver: Option<&mut Resolver>, scope: &TypeScope<'_>, node: 
             return named_type(now);
         }
         if let Some(resolver) = resolver.as_deref_mut() {
-            let vocabulary = musa_language::PRIMITIVE_TYPES
+            let vocabulary = musa_language::BASE_TYPES
                 .iter()
                 .map(|(name, _)| format!("`{name}`"))
                 .collect::<Vec<_>>()
@@ -4787,7 +4902,9 @@ impl Checker<'_> {
             return None;
         }
         let name = reading.name;
-        if let Some(builtin) = Builtin::named(&name) {
+        if let Some(builtin) = Builtin::named(&name)
+            && builtin.is_track()
+        {
             let value = Value::Builtin(builtin);
             return Some(Expr {
                 ty: value.ty(),
@@ -4795,7 +4912,7 @@ impl Checker<'_> {
                 span,
             });
         }
-        if primitive_named(&name).is_some() {
+        if Builtin::named(&name).is_some() {
             self.resolver.report(
                 Diagnostic::error(
                     Code::TypeMismatch,
@@ -5462,8 +5579,10 @@ impl Checker<'_> {
     fn application(&mut self, node: &SyntaxNode, expected: Option<&Type>) -> Option<Expr> {
         let mut children = node.children();
         let function_node = children.find(|child| is_expr_node(child.kind()))?;
-        if let Some(primitive) = name_of(&function_node).as_deref().and_then(primitive_named) {
-            return self.primitive_application(node, primitive, expected);
+        if let Some(builtin) = name_of(&function_node).as_deref().and_then(Builtin::named)
+            && !builtin.is_track()
+        {
+            return self.builtin_application(node, builtin, expected);
         }
         if let Some(name) = name_of(&function_node) {
             if self.world.is_constructor(&name) {
@@ -5579,42 +5698,39 @@ impl Checker<'_> {
         })
     }
 
-    fn primitive_application(
-        &mut self,
-        node: &SyntaxNode,
-        primitive: Primitive,
-        expected: Option<&Type>,
-    ) -> Option<Expr> {
+    fn builtin_application(&mut self, node: &SyntaxNode, builtin: Builtin, expected: Option<&Type>) -> Option<Expr> {
         let span = crate::resolve::trimmed_span(node);
         let raw = raw_arguments(node);
         if raw.iter().any(|argument| argument_name(argument).is_some()) {
             self.resolver.report(
                 Diagnostic::error(
                     Code::WrongArity,
-                    format!("`{}` uses positional arguments", primitive.name()),
+                    format!("`{}` uses positional arguments", builtin.name()),
                 )
                 .at(span, "named arguments are not part of this prelude operation"),
             );
             self.failed = true;
             return None;
         }
-        let wanted = match primitive.family()? {
+        let wanted = match builtin.family()? {
             Family::Delta { arguments, .. } => arguments.len(),
             Family::Eliminator(eliminator) => eliminator.arity(),
-            Family::Music => 1,
+            // Unreached: the caller routes a track builtin to the general application path, where
+            // its arrow type is what the arguments are checked against.
+            Family::Track => builtin.parameters()?.len(),
         };
         if raw.len() != wanted {
             self.resolver.report(
                 Diagnostic::error(
                     Code::WrongArity,
-                    format!("`{}` takes {wanted} arguments, found {}", primitive.name(), raw.len()),
+                    format!("`{}` takes {wanted} arguments, found {}", builtin.name(), raw.len()),
                 )
                 .at(span, "wrong number of arguments"),
             );
             self.failed = true;
             return None;
         }
-        if self.meter.instantiate(primitive.name(), span).is_none() {
+        if self.meter.instantiate(builtin.name(), span).is_none() {
             self.failed = true;
             return None;
         }
@@ -5622,15 +5738,15 @@ impl Checker<'_> {
             .iter()
             .filter_map(|argument| child_of(argument, is_expr_node))
             .collect();
-        let family = primitive.family()?;
+        let family = builtin.family()?;
         if let Family::Delta { arguments, result } = family {
             let mut checked = Vec::with_capacity(arguments.len());
             for (index, shape) in arguments.iter().enumerate() {
                 checked.push(self.check(nodes.get(index)?, Some(&shape.ty()))?);
             }
             return Some(Expr {
-                kind: ExprKind::Primitive {
-                    primitive,
+                kind: ExprKind::Builtin {
+                    builtin,
                     arguments: checked,
                 },
                 ty: result.ty(),
@@ -5657,7 +5773,7 @@ impl Checker<'_> {
         }
         let ty = self.unifier.resolve(&result);
         Some(Expr {
-            kind: ExprKind::Primitive { primitive, arguments },
+            kind: ExprKind::Builtin { builtin, arguments },
             ty,
             span,
         })
@@ -5753,27 +5869,6 @@ impl Checker<'_> {
             }
             _ => types.iter().map(|_| None).collect(),
         }
-    }
-}
-
-fn primitive_named(name: &str) -> Option<Primitive> {
-    let entry = PRIMITIVE_OWNERSHIP.iter().find(|entry| entry.spelling == name)?;
-    debug_assert!(!entry.hidden_information.is_empty());
-    Some(entry.operation)
-}
-
-impl Primitive {
-    /// Which of §5.8's three families this operation belongs to, and for a δ-primitive its declared
-    /// signature.
-    ///
-    /// This is the single statement of a δ-primitive's type: the checker reads argument and result
-    /// types from here rather than restating them, so the two cannot disagree.
-    /// Absent only if the registry has lost an entry, which the registry's own laws forbid.
-    fn family(self) -> Option<Family> {
-        PRIMITIVE_OWNERSHIP
-            .iter()
-            .find(|entry| entry.operation == self)
-            .map(|entry| entry.family)
     }
 }
 
@@ -6162,7 +6257,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                     apply_closure(&closure, provided, meter, expression.span)
                 }
                 Value::Builtin(builtin) => {
-                    let provided = supplied(builtin.parameters().len(), arguments, environment, meter)?;
+                    let provided = supplied(builtin.parameters()?.len(), arguments, environment, meter)?;
                     apply_builtin(builtin, provided, expression.span)
                 }
                 Value::Bool(_)
@@ -6230,9 +6325,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 | Value::Builtin(_) => None,
             }
         }
-        ExprKind::Primitive { primitive, arguments } => {
-            eval_primitive(*primitive, arguments, environment, meter, expression)
-        }
+        ExprKind::Builtin { builtin, arguments } => eval_builtin(*builtin, arguments, environment, meter, expression),
         ExprKind::Match { scrutinee, arms } => {
             let value = eval(scrutinee, environment, meter)?;
             let mut selected = None;
@@ -6399,7 +6492,7 @@ fn pitch_term(expression: &Expr, environment: &IndexMap<String, Value>, meter: &
         | ExprKind::List(_)
         | ExprKind::Apply { .. }
         | ExprKind::Lambda { .. }
-        | ExprKind::Primitive { .. }
+        | ExprKind::Builtin { .. }
         | ExprKind::Match { .. }
         | ExprKind::Construct { .. }
         | ExprKind::Fold { .. }
@@ -6454,7 +6547,7 @@ fn apply_closure(closure: &Closure, provided: Vec<Value>, meter: &mut WorkMeter,
 /// operation and `transpose(P8, line)` names its result, and there is no
 /// third thing in between.
 fn apply_builtin(builtin: Builtin, provided: Vec<Value>, span: SourceSpan) -> Option<Value> {
-    if provided.len() != builtin.parameters().len() {
+    if provided.len() != builtin.parameters()?.len() {
         return None;
     }
     let mut arguments = provided.into_iter();
@@ -6513,6 +6606,79 @@ fn apply_builtin(builtin: Builtin, provided: Vec<Value>, span: SourceSpan) -> Op
             }
             MusicOperation::Play { voicing, held }
         }
+        // A δ-builtin or an eliminator is never a value, so it never arrives here to be
+        // applied as one; `parameters` above has already declined it.
+        Builtin::NatFold
+        | Builtin::ListFold
+        | Builtin::OptionFold
+        | Builtin::Map
+        | Builtin::Filter
+        | Builtin::Range
+        | Builtin::Repeat
+        | Builtin::IntervalAdd
+        | Builtin::IntervalInverse
+        | Builtin::PitchClassOf
+        | Builtin::SignatureScale
+        | Builtin::ScaleOn
+        | Builtin::ScaleTonic
+        | Builtin::ScaleSize
+        | Builtin::ScalePitch
+        | Builtin::ScaleClass
+        | Builtin::ScaleChord
+        | Builtin::PitchFrame
+        | Builtin::FrameScale
+        | Builtin::FrameTonic
+        | Builtin::FramePitch
+        | Builtin::DegreeOf
+        | Builtin::DegreeStepUp
+        | Builtin::DegreeStepDown
+        | Builtin::DegreeRaised
+        | Builtin::DegreeLowered
+        | Builtin::ChordOn
+        | Builtin::ChordRoot
+        | Builtin::ChordBass
+        | Builtin::ChordMembers
+        | Builtin::ChordInversion
+        | Builtin::ChordOver
+        | Builtin::ChordTriad
+        | Builtin::TriadChord
+        | Builtin::TriadMajor
+        | Builtin::RomanOf
+        | Builtin::RomanOrdinal
+        | Builtin::RomanSize
+        | Builtin::RomanInversion
+        | Builtin::VoicingOf
+        | Builtin::VoicingPitches
+        | Builtin::VoicingBass
+        | Builtin::VoicingChord
+        | Builtin::VoicingPosition
+        | Builtin::CloseVoicing
+        | Builtin::DropVoicing
+        | Builtin::OmitVoicing
+        | Builtin::Pc12Of
+        | Builtin::Pc12Number
+        | Builtin::Pc12Forget
+        | Builtin::Pc12Transposed
+        | Builtin::Pc12Inverted
+        | Builtin::Pc12Spelled
+        | Builtin::PcSet12Of
+        | Builtin::PcSet12Members
+        | Builtin::PcSet12Transposed
+        | Builtin::PcSet12Inverted
+        | Builtin::PcSet12Normal
+        | Builtin::PcSet12Prime
+        | Builtin::PcSet12Vector
+        | Builtin::Row12Of
+        | Builtin::Row12Pcs
+        | Builtin::Row12Head
+        | Builtin::Row12Transposed
+        | Builtin::Row12Inverted
+        | Builtin::Row12Retrograde
+        | Builtin::Row12Matrix
+        | Builtin::Row12Forms
+        | Builtin::Row12Symmetries
+        | Builtin::Row12Repeats
+        | Builtin::Row12Missing => return None,
     };
     Some(Value::Music(Music {
         items: Vec::new(),
@@ -6553,8 +6719,8 @@ fn duration_value(value: &Value) -> Option<Ratio<i64>> {
     Some(*value)
 }
 
-fn eval_primitive(
-    primitive: Primitive,
+fn eval_builtin(
+    builtin: Builtin,
     arguments: &[Expr],
     environment: &IndexMap<String, Value>,
     meter: &mut WorkMeter,
@@ -6564,32 +6730,32 @@ fn eval_primitive(
         .iter()
         .map(|argument| eval(argument, environment, meter))
         .collect::<Option<Vec<_>>>()?;
-    match primitive {
-        Primitive::Pc12Of => Some(Value::Pc12(crate::pc12::Pc12::from_number(nat_value(values.first()?)?))),
-        Primitive::Pc12Number => {
+    match builtin {
+        Builtin::Pc12Of => Some(Value::Pc12(crate::pc12::Pc12::from_number(nat_value(values.first()?)?))),
+        Builtin::Pc12Number => {
             let Value::Pc12(member) = values.first()? else {
                 return None;
             };
             Some(Value::Nat(u64::from(member.number())))
         }
-        Primitive::Pc12Forget => {
+        Builtin::Pc12Forget => {
             let Value::PitchClass(spelled) = values.first()? else {
                 return None;
             };
             Some(Value::Pc12(crate::pc12::Pc12::forgetting(*spelled)))
         }
-        Primitive::Pc12Transposed | Primitive::Pc12Inverted => {
+        Builtin::Pc12Transposed | Builtin::Pc12Inverted => {
             let Value::Pc12(member) = values.first()? else {
                 return None;
             };
             let index = nat_value(values.get(1)?)?;
-            Some(Value::Pc12(if primitive == Primitive::Pc12Transposed {
+            Some(Value::Pc12(if builtin == Builtin::Pc12Transposed {
                 member.transposed(index)
             } else {
                 member.inverted(index)
             }))
         }
-        Primitive::Pc12Spelled => {
+        Builtin::Pc12Spelled => {
             let (Value::Pc12(member), Value::Scale(collection)) = (values.first()?, values.get(1)?) else {
                 return None;
             };
@@ -6598,36 +6764,36 @@ fn eval_primitive(
                 member.spelled(*collection).map(Value::PitchClass),
             ))
         }
-        Primitive::PcSet12Of => Some(Value::PcSet12(crate::pc12::PcSet12::of(pc12_list(values.first()?)?))),
-        Primitive::PcSet12Members | Primitive::PcSet12Normal => {
+        Builtin::PcSet12Of => Some(Value::PcSet12(crate::pc12::PcSet12::of(pc12_list(values.first()?)?))),
+        Builtin::PcSet12Members | Builtin::PcSet12Normal => {
             let Value::PcSet12(set) = values.first()? else {
                 return None;
             };
-            let members: Vec<crate::pc12::Pc12> = if primitive == Primitive::PcSet12Members {
+            let members: Vec<crate::pc12::Pc12> = if builtin == Builtin::PcSet12Members {
                 set.members().collect()
             } else {
                 set.normal_order()
             };
             Some(pc12_values(members))
         }
-        Primitive::PcSet12Transposed | Primitive::PcSet12Inverted => {
+        Builtin::PcSet12Transposed | Builtin::PcSet12Inverted => {
             let Value::PcSet12(set) = values.first()? else {
                 return None;
             };
             let index = nat_value(values.get(1)?)?;
-            Some(Value::PcSet12(if primitive == Primitive::PcSet12Transposed {
+            Some(Value::PcSet12(if builtin == Builtin::PcSet12Transposed {
                 (*set).transposed(index)
             } else {
                 (*set).inverted(index)
             }))
         }
-        Primitive::PcSet12Prime => {
+        Builtin::PcSet12Prime => {
             let Value::PcSet12(set) = values.first()? else {
                 return None;
             };
             Some(Value::PcSet12(set.prime_form()))
         }
-        Primitive::PcSet12Vector => {
+        Builtin::PcSet12Vector => {
             let Value::PcSet12(set) = values.first()? else {
                 return None;
             };
@@ -6640,10 +6806,10 @@ fn eval_primitive(
                     .collect(),
             })
         }
-        // The one primitive that says *which* way it failed. A caller used to
+        // The one builtin that says *which* way it failed. A caller used to
         // learn that from `row12_repeats` and `row12_missing`, run again on
         // the same input; the reason now comes back with the refusal.
-        Primitive::Row12Of => {
+        Builtin::Row12Of => {
             let pcs = pc12_list(values.first()?)?;
             let held = match crate::pc12::Row12::checked(&pcs) {
                 Some(row) => Value::Row12(row),
@@ -6665,36 +6831,36 @@ fn eval_primitive(
                 held: Box::new(held),
             })
         }
-        Primitive::Row12Pcs => {
+        Builtin::Row12Pcs => {
             let Value::Row12(row) = values.first()? else {
                 return None;
             };
             Some(pc12_values(row.pcs().collect()))
         }
-        Primitive::Row12Head => {
+        Builtin::Row12Head => {
             let Value::Row12(row) = values.first()? else {
                 return None;
             };
             Some(Value::Pc12(row.head()))
         }
-        Primitive::Row12Transposed | Primitive::Row12Inverted => {
+        Builtin::Row12Transposed | Builtin::Row12Inverted => {
             let Value::Row12(row) = values.first()? else {
                 return None;
             };
             let index = nat_value(values.get(1)?)?;
-            Some(Value::Row12(if primitive == Primitive::Row12Transposed {
+            Some(Value::Row12(if builtin == Builtin::Row12Transposed {
                 row.transposed(index)
             } else {
                 row.inverted(index)
             }))
         }
-        Primitive::Row12Retrograde => {
+        Builtin::Row12Retrograde => {
             let Value::Row12(row) = values.first()? else {
                 return None;
             };
             Some(Value::Row12(row.retrograde()))
         }
-        Primitive::Row12Matrix => {
+        Builtin::Row12Matrix => {
             let Value::Row12(row) = values.first()? else {
                 return None;
             };
@@ -6703,18 +6869,18 @@ fn eval_primitive(
                 values: row.matrix().into_iter().map(Value::Row12).collect(),
             })
         }
-        Primitive::Row12Forms | Primitive::Row12Symmetries => {
+        Builtin::Row12Forms | Builtin::Row12Symmetries => {
             let Value::Row12(row) = values.first()? else {
                 return None;
             };
-            let count = if primitive == Primitive::Row12Forms {
+            let count = if builtin == Builtin::Row12Forms {
                 row.forms()
             } else {
                 row.symmetries()
             };
             Some(Value::Nat(u64::from(count)))
         }
-        Primitive::Row12Repeats => {
+        Builtin::Row12Repeats => {
             let pcs = pc12_list(values.first()?)?;
             Some(Value::List {
                 member: Type::Nat,
@@ -6724,8 +6890,8 @@ fn eval_primitive(
                     .collect(),
             })
         }
-        Primitive::Row12Missing => Some(pc12_values(crate::pc12::missing_classes(&pc12_list(values.first()?)?))),
-        Primitive::IntervalAdd => {
+        Builtin::Row12Missing => Some(pc12_values(crate::pc12::missing_classes(&pc12_list(values.first()?)?))),
+        Builtin::IntervalAdd => {
             let Value::Interval(first) = values.first()? else {
                 return None;
             };
@@ -6734,56 +6900,56 @@ fn eval_primitive(
             };
             first.compose(*second).map(Value::Interval)
         }
-        Primitive::IntervalInverse => {
+        Builtin::IntervalInverse => {
             let Value::Interval(interval) = values.first()? else {
                 return None;
             };
             interval.inverse().map(Value::Interval)
         }
-        Primitive::PitchClassOf => {
+        Builtin::PitchClassOf => {
             let Value::Pitch(pitch) = values.first()? else {
                 return None;
             };
             Some(Value::PitchClass(pitch.pitch_class()))
         }
-        Primitive::SignatureScale => {
+        Builtin::SignatureScale => {
             let Value::Key(key) = values.first()? else {
                 return None;
             };
             Some(Value::Scale(crate::scale::signature_scale(*key)))
         }
-        Primitive::ScaleOn => {
+        Builtin::ScaleOn => {
             let (Value::Scale(scale), Value::PitchClass(tonic)) = (values.first()?, values.get(1)?) else {
                 return None;
             };
             Some(Value::Scale(scale.rooted_at(*tonic)))
         }
-        Primitive::ScaleTonic => {
+        Builtin::ScaleTonic => {
             let Value::Scale(scale) = values.first()? else {
                 return None;
             };
             Some(Value::PitchClass(scale.tonic()))
         }
-        Primitive::ScaleSize => {
+        Builtin::ScaleSize => {
             let Value::Scale(scale) = values.first()? else {
                 return None;
             };
             Some(Value::Nat(u64::try_from(scale.size()).ok()?))
         }
-        Primitive::ScalePitch => {
+        Builtin::ScalePitch => {
             let (Value::Scale(scale), Value::Pitch(pitch)) = (values.first()?, values.get(1)?) else {
                 return None;
             };
             let located = crate::scale::Frame::around(*scale, *pitch).and_then(|frame| frame.locate(*pitch));
             Some(optional(Type::Degree, located.map(Value::Degree)))
         }
-        Primitive::ScaleClass => {
+        Builtin::ScaleClass => {
             let (Value::Scale(scale), Value::Degree(degree)) = (values.first()?, values.get(1)?) else {
                 return None;
             };
             Some(optional(Type::PitchClass, scale.class(*degree).map(Value::PitchClass)))
         }
-        Primitive::ScaleChord => {
+        Builtin::ScaleChord => {
             let (Value::Scale(scale), Value::Degree(degree)) = (values.first()?, values.get(1)?) else {
                 return None;
             };
@@ -6793,7 +6959,7 @@ fn eval_primitive(
                 scale.stacked(*degree, members).map(Value::ChordClass),
             ))
         }
-        Primitive::PitchFrame => {
+        Builtin::PitchFrame => {
             let (Value::Scale(scale), Value::Pitch(tonic)) = (values.first()?, values.get(1)?) else {
                 return None;
             };
@@ -6802,67 +6968,67 @@ fn eval_primitive(
                 crate::scale::Frame::new(*scale, *tonic).map(Value::Frame),
             ))
         }
-        Primitive::FrameScale => {
+        Builtin::FrameScale => {
             let Value::Frame(frame) = values.first()? else {
                 return None;
             };
             Some(Value::Scale(frame.scale()))
         }
-        Primitive::FrameTonic => {
+        Builtin::FrameTonic => {
             let Value::Frame(frame) = values.first()? else {
                 return None;
             };
             Some(Value::Pitch(frame.tonic()))
         }
-        Primitive::FramePitch => {
+        Builtin::FramePitch => {
             let (Value::Frame(frame), Value::Degree(degree)) = (values.first()?, values.get(1)?) else {
                 return None;
             };
             frame.pitch(*degree).map(Value::Pitch)
         }
-        Primitive::DegreeOf => {
+        Builtin::DegreeOf => {
             // Degrees are written from one, as musicians write them, and
             // `Degree` counts from one as well: no adjustment belongs here.
             let ordinal = i64::try_from(nat_value(values.first()?)?).ok()?;
             Some(Value::Degree(crate::scale::Degree::new(ordinal)))
         }
-        Primitive::DegreeStepUp | Primitive::DegreeStepDown => {
+        Builtin::DegreeStepUp | Builtin::DegreeStepDown => {
             let Value::Degree(degree) = values.first()? else {
                 return None;
             };
             let steps = i64::try_from(nat_value(values.get(1)?)?).ok()?;
-            let steps = if primitive == Primitive::DegreeStepDown {
+            let steps = if builtin == Builtin::DegreeStepDown {
                 steps.checked_neg()?
             } else {
                 steps
             };
             degree.step(steps).map(Value::Degree)
         }
-        Primitive::DegreeRaised => {
+        Builtin::DegreeRaised => {
             let Value::Degree(degree) = values.first()? else {
                 return None;
             };
             degree.raised().map(Value::Degree)
         }
-        Primitive::ChordOn => {
+        Builtin::ChordOn => {
             let (Value::ChordClass(class), Value::PitchClass(root)) = (values.first()?, values.get(1)?) else {
                 return None;
             };
             Some(Value::ChordClass(class.rooted_at(*root)))
         }
-        Primitive::ChordRoot => {
+        Builtin::ChordRoot => {
             let Value::ChordClass(class) = values.first()? else {
                 return None;
             };
             Some(Value::PitchClass(class.root()))
         }
-        Primitive::ChordBass => {
+        Builtin::ChordBass => {
             let Value::ChordClass(class) = values.first()? else {
                 return None;
             };
             Some(optional(Type::PitchClass, class.bass().map(Value::PitchClass)))
         }
-        Primitive::ChordMembers => {
+        Builtin::ChordMembers => {
             let Value::ChordClass(class) = values.first()? else {
                 return None;
             };
@@ -6871,7 +7037,7 @@ fn eval_primitive(
                 values: class.members().iter().copied().map(Value::Interval).collect(),
             })
         }
-        Primitive::ChordInversion => {
+        Builtin::ChordInversion => {
             let Value::ChordClass(class) = values.first()? else {
                 return None;
             };
@@ -6881,25 +7047,25 @@ fn eval_primitive(
                 class.inverted(position).ok().map(Value::ChordClass),
             ))
         }
-        Primitive::ChordOver => {
+        Builtin::ChordOver => {
             let (Value::ChordClass(class), Value::PitchClass(bass)) = (values.first()?, values.get(1)?) else {
                 return None;
             };
             Some(Value::ChordClass(class.over(*bass)))
         }
-        Primitive::ChordTriad => {
+        Builtin::ChordTriad => {
             let Value::ChordClass(class) = values.first()? else {
                 return None;
             };
             Some(optional(Type::Triad, crate::chord::Triad::of(*class).map(Value::Triad)))
         }
-        Primitive::TriadChord => {
+        Builtin::TriadChord => {
             let Value::Triad(triad) = values.first()? else {
                 return None;
             };
             Some(Value::ChordClass(triad.class()))
         }
-        Primitive::RomanOf => {
+        Builtin::RomanOf => {
             let (Value::Nat(ordinal), Value::Nat(members), Value::Nat(inversion)) =
                 (values.first()?, values.get(1)?, values.get(2)?)
             else {
@@ -6910,31 +7076,31 @@ fn eval_primitive(
                 crate::roman::Roman::new(*ordinal, *members, *inversion).map(Value::Roman),
             ))
         }
-        Primitive::RomanOrdinal => {
+        Builtin::RomanOrdinal => {
             let Value::Roman(numeral) = values.first()? else {
                 return None;
             };
             Some(Value::Nat(numeral.ordinal()))
         }
-        Primitive::RomanSize => {
+        Builtin::RomanSize => {
             let Value::Roman(numeral) = values.first()? else {
                 return None;
             };
             Some(Value::Nat(numeral.members()))
         }
-        Primitive::RomanInversion => {
+        Builtin::RomanInversion => {
             let Value::Roman(numeral) = values.first()? else {
                 return None;
             };
             Some(Value::Nat(numeral.inversion()))
         }
-        Primitive::TriadMajor => {
+        Builtin::TriadMajor => {
             let Value::Triad(triad) = values.first()? else {
                 return None;
             };
             Some(Value::Bool(triad.is_major()))
         }
-        Primitive::VoicingOf => {
+        Builtin::VoicingOf => {
             let (Value::ChordClass(class), Value::List { values: pitches, .. }) = (values.first()?, values.get(1)?)
             else {
                 return None;
@@ -6976,7 +7142,7 @@ fn eval_primitive(
                 crate::chord::Voicing::new(*class, written?).ok().map(Value::Voicing),
             ))
         }
-        Primitive::VoicingPitches => {
+        Builtin::VoicingPitches => {
             let Value::Voicing(voicing) = values.first()? else {
                 return None;
             };
@@ -6985,19 +7151,19 @@ fn eval_primitive(
                 values: voicing.pitches().map(Value::Pitch).collect(),
             })
         }
-        Primitive::VoicingBass => {
+        Builtin::VoicingBass => {
             let Value::Voicing(voicing) = values.first()? else {
                 return None;
             };
             Some(Value::Pitch(voicing.bass()))
         }
-        Primitive::VoicingChord => {
+        Builtin::VoicingChord => {
             let Value::Voicing(voicing) = values.first()? else {
                 return None;
             };
             Some(Value::ChordClass(voicing.class()))
         }
-        Primitive::VoicingPosition => {
+        Builtin::VoicingPosition => {
             let Value::Voicing(voicing) = values.first()? else {
                 return None;
             };
@@ -7007,7 +7173,7 @@ fn eval_primitive(
                 .map(Value::Nat);
             Some(optional(Type::Nat, position))
         }
-        Primitive::CloseVoicing => {
+        Builtin::CloseVoicing => {
             let (Value::ChordClass(class), Value::Pitch(bass)) = (values.first()?, values.get(1)?) else {
                 return None;
             };
@@ -7018,7 +7184,7 @@ fn eval_primitive(
                     .map(Value::Voicing),
             ))
         }
-        Primitive::DropVoicing => {
+        Builtin::DropVoicing => {
             let (Value::ChordClass(class), Value::Pitch(bass)) = (values.first()?, values.get(1)?) else {
                 return None;
             };
@@ -7030,7 +7196,7 @@ fn eval_primitive(
                     .map(Value::Voicing),
             ))
         }
-        Primitive::OmitVoicing => {
+        Builtin::OmitVoicing => {
             let Value::Voicing(voicing) = values.first()? else {
                 return None;
             };
@@ -7040,13 +7206,13 @@ fn eval_primitive(
                 voicing.omitting(position).ok().map(Value::Voicing),
             ))
         }
-        Primitive::DegreeLowered => {
+        Builtin::DegreeLowered => {
             let Value::Degree(degree) = values.first()? else {
                 return None;
             };
             degree.lowered().map(Value::Degree)
         }
-        Primitive::Range => {
+        Builtin::Range => {
             let count = nat_value(values.first()?)?;
             let nodes = count.saturating_add(1);
             let bytes = count.saturating_mul(8);
@@ -7062,7 +7228,7 @@ fn eval_primitive(
                 values,
             })
         }
-        Primitive::Repeat => {
+        Builtin::Repeat => {
             let value = values.first()?.clone();
             let count = nat_value(values.get(1)?)?;
             let (value_nodes, value_bytes) = value_shape(&value);
@@ -7076,7 +7242,7 @@ fn eval_primitive(
                 values: vec![value; count],
             })
         }
-        Primitive::Map => {
+        Builtin::Map => {
             let Value::Closure(function) = values.first()? else {
                 return None;
             };
@@ -7099,7 +7265,7 @@ fn eval_primitive(
             let member = member.as_ref().clone();
             Some(Value::List { member, values: mapped })
         }
-        Primitive::Filter => {
+        Builtin::Filter => {
             let Value::Closure(predicate) = values.first()? else {
                 return None;
             };
@@ -7126,7 +7292,7 @@ fn eval_primitive(
                 values: kept,
             })
         }
-        Primitive::NatFold => {
+        Builtin::NatFold => {
             let mut accumulator = values.first()?.clone();
             let Value::Closure(step) = values.get(1)? else {
                 return None;
@@ -7138,7 +7304,7 @@ fn eval_primitive(
             }
             Some(accumulator)
         }
-        Primitive::ListFold => {
+        Builtin::ListFold => {
             let mut accumulator = values.first()?.clone();
             let Value::Closure(step) = values.get(1)? else {
                 return None;
@@ -7156,7 +7322,7 @@ fn eval_primitive(
             }
             Some(accumulator)
         }
-        Primitive::OptionFold => {
+        Builtin::OptionFold => {
             let zero = values.first()?.clone();
             let Value::Closure(some_case) = values.get(1)? else {
                 return None;
@@ -7172,6 +7338,17 @@ fn eval_primitive(
                 None => Some(zero),
             }
         }
+        // The track builtins are values with arrow types, performed by `apply_builtin` once
+        // an application supplies their arguments. Elaboration never builds an
+        // `ExprKind::Builtin` around one.
+        Builtin::Transpose
+        | Builtin::Stretch
+        | Builtin::Retrograde
+        | Builtin::Invert
+        | Builtin::Shift
+        | Builtin::Together
+        | Builtin::MapNotePitches
+        | Builtin::Play => None,
     }
 }
 
@@ -7890,7 +8067,7 @@ mod tests {
     /// the spellings it writes back are one vocabulary or they are three.
     #[test]
     fn every_offered_type_name_is_read_and_written_the_same_way() {
-        for (name, _) in musa_language::PRIMITIVE_TYPES {
+        for (name, _) in musa_language::BASE_TYPES {
             let read = named_type(name);
             assert!(read.is_some(), "`{name}` is offered to the composer but is not a type");
             assert_eq!(
@@ -7979,14 +8156,9 @@ mod tests {
 
     #[test]
     fn every_compiler_owned_operation_names_its_hidden_information() {
-        let entries = PRIMITIVE_OWNERSHIP
+        let entries = BUILTIN_OWNERSHIP
             .iter()
             .map(|entry| (entry.spelling, entry.hidden_information))
-            .chain(
-                BUILTIN_OWNERSHIP
-                    .iter()
-                    .map(|entry| (entry.spelling, entry.hidden_information)),
-            )
             .collect::<Vec<_>>();
         assert_eq!(
             entries.len(),
@@ -8007,7 +8179,7 @@ mod tests {
 
     // --- `docs/rules/language/02-core-calculus.md` §5.8: the conservative-extension laws ---
     //
-    // Theorem 5 holds for any base type with no eliminator and any δ-primitives satisfying D1–D4.
+    // Theorem 5 holds for any base type with no eliminator and any δ-builtins satisfying D1–D4.
     // These laws check its premises against the implementation, so that a later musical domain
     // costs a registry entry rather than a new induction and cannot be added without discharging
     // them. They say nothing about whether the musical content is right; that is what the domain
@@ -8019,15 +8191,15 @@ mod tests {
     /// declared domain rather than correct answers on the intended one.
     const SAMPLED_NATS: u64 = 13;
 
-    /// How many times the sample pool is closed under the δ-primitives. Three rounds is what it
+    /// How many times the sample pool is closed under the δ-builtins. Three rounds is what it
     /// takes to reach every constructed domain from the seeds: degrees and pitch classes appear in
     /// the first, frames, chords, rows and sets in the second, triads and voicings in the third.
     const SAMPLE_ROUNDS: usize = 3;
 
-    /// How many applications each δ-primitive is sampled at. The pool is deliberately not
-    /// exhausted combinatorially: a three-argument primitive over a pool of forty would be sixty
+    /// How many applications each δ-builtin is sampled at. The pool is deliberately not
+    /// exhausted combinatorially: a three-argument builtin over a pool of forty would be sixty
     /// thousand evaluations for no additional coverage of the property being checked. The budget
-    /// is spent per *primitive* rather than per argument position so that a unary primitive sees
+    /// is spent per *builtin* rather than per argument position so that a unary builtin sees
     /// its whole domain — which is how all twelve pitch classes reach the pool.
     const SAMPLED_APPLICATIONS: usize = 64;
 
@@ -8036,7 +8208,7 @@ mod tests {
     /// distinct classes would only ever see `row12_of` decline.
     const SAMPLED_LIST_LENGTH: usize = 12;
 
-    /// How many values one argument position draws, given the primitive's arity, so that the
+    /// How many values one argument position draws, given the builtin's arity, so that the
     /// product stays within [`SAMPLED_APPLICATIONS`].
     const fn samples_per_argument(arity: usize) -> usize {
         match arity {
@@ -8046,7 +8218,7 @@ mod tests {
         }
     }
 
-    /// The type of an evaluated value, for the shapes a δ-primitive can return.
+    /// The type of an evaluated value, for the shapes a δ-builtin can return.
     ///
     /// Absent for `music`, closures, and builtins, none of which a δ signature can name — which is
     /// itself part of what the totality law checks.
@@ -8079,8 +8251,8 @@ mod tests {
             } => Type::Sum(Box::new(value.clone()), Box::new(error.clone())),
             Value::List { member, .. } => Type::List(Box::new(member.clone())),
             Value::Product(members) => Type::Product(members.iter().map(value_type).collect::<Option<Vec<_>>>()?),
-            // A declared value has no place in the primitive registry's
-            // sample pool: no δ-primitive's signature can name one, because a
+            // A declared value has no place in the builtin registry's
+            // sample pool: no δ-builtin's signature can name one, because a
             // library declares it and the registry is the compiler's own.
             Value::Data { .. } | Value::Music(_) | Value::Closure(_) | Value::Builtin(_) => return None,
         })
@@ -8090,7 +8262,7 @@ mod tests {
     ///
     /// Only the domains with surface literals are seeded here. Everything else — degrees, frames,
     /// triads, numerals, voicings, and the twelve-tone domains — is reached by *applying the
-    /// primitives*, which is why the closure below doubles as the totality check rather than
+    /// builtins*, which is why the closure below doubles as the totality check rather than
     /// needing a separate constructor for each domain.
     fn sample_seeds() -> Vec<Value> {
         let source = "piece \"law\" { \
@@ -8116,7 +8288,7 @@ mod tests {
     /// Group a pool of values by the type they inhabit, and offer a list of each base type.
     ///
     /// The lists are synthesized rather than discovered because several list arguments are not
-    /// reachable from any result: `pcset12_of` wants a `list[pc12]`, and the only primitive that
+    /// reachable from any result: `pcset12_of` wants a `list[pc12]`, and the only builtin that
     /// returns one wants a `pcset12`. Seeding the list closes that circle without seeding any
     /// value the language itself could not write.
     fn by_type(pool: &[Value]) -> IndexMap<String, Vec<Value>> {
@@ -8137,7 +8309,7 @@ mod tests {
                 continue;
             }
             let ty = Type::List(Box::new(member.clone())).to_string();
-            // An empty list and a full one: the first is the edge case every list primitive has to
+            // An empty list and a full one: the first is the edge case every list builtin has to
             // answer for, the second is what a domain of twelve needs before it can say yes.
             lists.push((
                 ty.clone(),
@@ -8162,8 +8334,8 @@ mod tests {
         grouped
     }
 
-    /// Evaluate one δ-primitive on already-evaluated arguments.
-    fn apply(primitive: Primitive, arguments: &[(Type, Value)]) -> Option<Value> {
+    /// Evaluate one δ-builtin on already-evaluated arguments.
+    fn apply(builtin: Builtin, arguments: &[(Type, Value)]) -> Option<Value> {
         let span = SourceSpan::new(0, 0);
         let exprs: Vec<Expr> = arguments
             .iter()
@@ -8178,17 +8350,17 @@ mod tests {
             ty: Type::Nat,
             span,
         };
-        eval_primitive(primitive, &exprs, &IndexMap::new(), &mut WorkMeter::default(), &site)
+        eval_builtin(builtin, &exprs, &IndexMap::new(), &mut WorkMeter::default(), &site)
     }
 
-    /// Every δ-primitive applied to every sampled argument tuple, with what it answered.
-    fn sampled_applications() -> Vec<(Primitive, Shape, Option<Value>)> {
+    /// Every δ-builtin applied to every sampled argument tuple, with what it answered.
+    fn sampled_applications() -> Vec<(Builtin, Shape, Option<Value>)> {
         let mut pool = sample_seeds();
         let mut observed = Vec::new();
         for _ in 0..SAMPLE_ROUNDS {
             let grouped = by_type(&pool);
             let mut discovered = Vec::new();
-            for entry in &PRIMITIVE_OWNERSHIP {
+            for entry in &BUILTIN_OWNERSHIP {
                 let Family::Delta { arguments, result } = entry.family else {
                     continue;
                 };
@@ -8247,24 +8419,26 @@ mod tests {
 
     #[test]
     fn every_compiler_owned_operation_belongs_to_exactly_one_family() {
-        let primitives = PRIMITIVE_OWNERSHIP.iter().map(|entry| entry.family);
-        let music = BUILTIN_OWNERSHIP.iter().map(|entry| entry.family);
-        let (delta, eliminator) = primitives.clone().fold((0, 0), |(d, e), family| match family {
-            Family::Delta { .. } => (d + 1, e),
-            Family::Eliminator(_) => (d, e + 1),
-            Family::Music => panic!("a `music` operation belongs in the builtin registry"),
+        // One table, one fold: "classified exactly once" is the statement that every entry falls
+        // into one of these arms, and a match is what makes that true rather than checked.
+        let families = BUILTIN_OWNERSHIP.iter().map(|entry| entry.family);
+        let (delta, eliminator, track) = families.fold((0, 0, 0), |(d, e, t), family| match family {
+            Family::Delta { .. } => (d + 1, e, t),
+            Family::Eliminator(_) => (d, e + 1, t),
+            Family::Track => (d, e, t + 1),
         });
-        assert_eq!(delta + eliminator, PRIMITIVE_OWNERSHIP.len());
+        assert_eq!(delta + eliminator + track, BUILTIN_OWNERSHIP.len());
         assert_eq!(
             eliminator, 7,
             "the structural eliminators of §5.6 are nat_fold, list_fold, option_fold, map, filter, range, and repeat"
         );
-        assert!(
-            music.clone().all(|family| family == Family::Music),
-            "every builtin constructs or transforms `music`"
+        assert_eq!(
+            track, 8,
+            "the track builtins of §5.7 are transpose, stretch, retrograde, invert, shift, together, \
+             map_note_pitches, and play"
         );
         assert_eq!(
-            delta + eliminator + music.count(),
+            delta + eliminator + track,
             79,
             "a new compiler operation must be classified before it is admitted"
         );
@@ -8272,7 +8446,7 @@ mod tests {
 
     #[test]
     fn no_first_order_signature_mentions_a_function() {
-        for entry in &PRIMITIVE_OWNERSHIP {
+        for entry in &BUILTIN_OWNERSHIP {
             let Family::Delta { arguments, result } = entry.family else {
                 continue;
             };
@@ -8373,51 +8547,51 @@ mod tests {
     }
 
     #[test]
-    fn every_first_order_primitive_is_total_on_its_declared_domain() {
+    fn every_first_order_builtin_is_total_on_its_declared_domain() {
         let observed = sampled_applications();
         assert!(
             observed.len() > 1_000,
             "the sample must actually exercise the domains, saw {} applications",
             observed.len()
         );
-        let mut exercised: Vec<Primitive> = Vec::new();
-        for (primitive, result, answer) in observed {
-            if !exercised.contains(&primitive) {
-                exercised.push(primitive);
+        let mut exercised: Vec<Builtin> = Vec::new();
+        for (builtin, result, answer) in observed {
+            if !exercised.contains(&builtin) {
+                exercised.push(builtin);
             }
             let Some(value) = answer else {
                 panic!(
                     "`{}` returned no value on a well-typed argument tuple; D2 requires partiality \
                      to be declared in the result type, not reported by the evaluator",
-                    primitive.name()
+                    builtin.name()
                 );
             };
             let actual = value_type(&value)
-                .unwrap_or_else(|| panic!("`{}` returned a value with no first-order type", primitive.name()));
+                .unwrap_or_else(|| panic!("`{}` returned a value with no first-order type", builtin.name()));
             assert_eq!(
                 actual,
                 result.ty(),
                 "`{}` returned a `{actual}` where its signature declares `{}`",
-                primitive.name(),
+                builtin.name(),
                 result.ty()
             );
             if !result.admits_absence() {
                 assert!(
                     !matches!(value, Value::Option { value: None, .. }),
                     "`{}` reported absence at a result type that cannot express it",
-                    primitive.name()
+                    builtin.name()
                 );
             }
         }
-        let declared = PRIMITIVE_OWNERSHIP
+        let declared = BUILTIN_OWNERSHIP
             .iter()
             .filter(|entry| matches!(entry.family, Family::Delta { .. }))
             .count();
         assert_eq!(
             exercised.len(),
             declared,
-            "every δ-primitive must be reached by the sample; unreached: {:?}",
-            PRIMITIVE_OWNERSHIP
+            "every δ-builtin must be reached by the sample; unreached: {:?}",
+            BUILTIN_OWNERSHIP
                 .iter()
                 .filter(|entry| matches!(entry.family, Family::Delta { .. }))
                 .filter(|entry| !exercised.contains(&entry.operation))
@@ -8459,7 +8633,7 @@ mod tests {
     }
 
     #[test]
-    fn finite_primitives_agree_with_small_reference_folds() {
+    fn finite_builtins_agree_with_small_reference_folds() {
         for count in 0..16u64 {
             let source = format!(
                 "piece \"law\" {{ \

@@ -52,4 +52,4 @@ pub use crate::lexer::{LexError, LexErrorKind, Lexed, Token, lex};
 pub use crate::meter::beat_groups;
 pub use crate::parser::{ParsedDocument, parse};
 pub use crate::syntax_kind::SyntaxKind;
-pub use crate::types::{PRIMITIVE_TYPES, RESPELLED_TYPES, respelled_type};
+pub use crate::types::{BASE_TYPES, RESPELLED_TYPES, respelled_type};

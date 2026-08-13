@@ -10,13 +10,18 @@
 //! a type; and the language server, to offer one — and a vocabulary each of
 //! them spelled separately would be three vocabularies.
 
-/// Every value type the compiler owns and does not parameterize, with the one
+/// Every base type the compiler owns and does not parameterize, with the one
 /// line an editor shows beside it.
+///
+/// They are *base types*, never primitives
+/// (`docs/rules/language/02-core-calculus.md` §5): a primitive is a registered
+/// unit whose implementation this language does not own, and none of these is
+/// one.
 ///
 /// `Option` and `List` are absent because they are keywords and carry their
 /// own documentation (`keywords.rs`); everything here is an ordinary
 /// identifier the lexer cannot tell from any other.
-pub const PRIMITIVE_TYPES: &[(&str, &str)] = &[
+pub const BASE_TYPES: &[(&str, &str)] = &[
     ("Unit", "the type with exactly one value"),
     ("Bool", "`true` or `false`"),
     ("Nat", "a whole number, zero or more"),
@@ -97,11 +102,11 @@ pub fn respelled_type(name: &str) -> Option<&'static str> {
 
 #[cfg(test)]
 mod tests {
-    use super::{PRIMITIVE_TYPES, RESPELLED_TYPES, respelled_type};
+    use super::{BASE_TYPES, RESPELLED_TYPES, respelled_type};
 
     #[test]
-    fn every_primitive_is_reachable_from_the_spelling_it_replaced() {
-        for (name, _) in PRIMITIVE_TYPES {
+    fn every_base_type_is_reachable_from_the_spelling_it_replaced() {
+        for (name, _) in BASE_TYPES {
             assert!(
                 RESPELLED_TYPES.iter().any(|(_, now)| now == name),
                 "{name} has no old spelling, so a file written before this change cannot be told what to write"

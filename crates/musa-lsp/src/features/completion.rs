@@ -13,12 +13,12 @@
 //! from the compiler's own collection table, which is the only place that
 //! knows which collections exist. Type names are the same case for the same
 //! reason — a type is spelled with a capital, which makes it an identifier —
-//! so they come from `PRIMITIVE_TYPES`.
+//! so they come from `BASE_TYPES`.
 
 use std::collections::BTreeMap;
 
 use lsp_types::{CompletionItem, CompletionItemKind, CompletionItemTag, CompletionResponse, Position};
-use musa_language::{PRIMITIVE_TYPES, SPELLINGS, SyntaxKind, TokenClass};
+use musa_language::{BASE_TYPES, SPELLINGS, SyntaxKind, TokenClass};
 use musa_project::NameKind;
 
 use crate::workspace::Document;
@@ -48,7 +48,7 @@ pub(crate) fn completions(document: &Document, position: Position) -> Completion
     // The type names. A type is spelled with a capital and is therefore an
     // identifier, so it is not in `SPELLINGS` — the language's own type
     // vocabulary is, and it is the same list the compiler reads a type from.
-    for (name, doc) in PRIMITIVE_TYPES {
+    for (name, doc) in BASE_TYPES {
         items.entry((*name).to_owned()).or_insert_with(|| CompletionItem {
             label: (*name).to_owned(),
             kind: Some(CompletionItemKind::CLASS),

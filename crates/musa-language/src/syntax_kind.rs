@@ -470,9 +470,9 @@ pub enum SyntaxKind {
     Param,
     /// A comma-separated parameter list.
     ParamList,
-    /// A primitive, product, option, list, or arrow type.
+    /// A base, product, option, list, or arrow type.
     TypeExpr,
-    /// A reference to a primitive or named type.
+    /// A reference to a base or named type.
     TypeName,
     /// `left -> right`, right associative.
     FunctionType,

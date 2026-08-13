@@ -54,7 +54,7 @@ pub struct ItemSource {
 /// class" in ordinary speech and are different objects in this language —
 /// spelled versus modulo twelve — and the same is true of `Key` against
 /// `Scale` and `ChordClass` against `Voicing`. The sentences come from
-/// `musa_language::PRIMITIVE_TYPES`, which is the vocabulary the compiler
+/// `musa_language::BASE_TYPES`, which is the vocabulary the compiler
 /// reads a type from, so a hover cannot describe a type the language lacks.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeNote {
@@ -68,9 +68,9 @@ pub struct TypeNote {
 impl TypeNote {
     /// Read the distinction, if the whole spelling names one primitive.
     pub(crate) fn new(name: String) -> Self {
-        let distinction = musa_language::PRIMITIVE_TYPES
+        let distinction = musa_language::BASE_TYPES
             .iter()
-            .find(|(primitive, _)| *primitive == name)
+            .find(|(base, _)| *base == name)
             .map(|(_, line)| *line);
         Self { name, distinction }
     }

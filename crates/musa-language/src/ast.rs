@@ -2141,7 +2141,7 @@ wrapper!(ParamList, SyntaxKind::ParamList);
 pub struct TypeExpr(SyntaxNode);
 wrapper!(TypeExpr, SyntaxKind::TypeExpr);
 
-/// A primitive or named type.
+/// A base or named type.
 pub struct TypeName(SyntaxNode);
 wrapper!(TypeName, SyntaxKind::TypeName);
 
