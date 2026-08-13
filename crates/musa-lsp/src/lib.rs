@@ -355,6 +355,7 @@ fn commands() -> Vec<String> {
     vec![
         features::analysis::ANALYZE.to_owned(),
         features::bundled::BUNDLED_SOURCE.to_owned(),
+        features::adapter::ADAPTER_EDIT.to_owned(),
     ]
 }
 
@@ -374,6 +375,30 @@ fn execute_command(
         };
         let uri = uri.as_str().ok_or_else(|| "the argument is a URI string".to_owned())?;
         return features::bundled::execute(uri);
+    }
+    if params.command == features::adapter::ADAPTER_EDIT {
+        let [uri, offset, command, anchor, argument] = params.arguments.as_slice() else {
+            return Err(format!(
+                "`{}` takes a document URI, an offset, a command name, an anchor, and an argument",
+                params.command
+            ));
+        };
+        let (Some(uri), Some(offset), Some(command), Some(anchor), Some(argument)) = (
+            uri.as_str(),
+            offset.as_u64(),
+            command.as_str(),
+            anchor.as_u64(),
+            argument.as_str(),
+        ) else {
+            return Err("the URI, command, and argument are strings; the offset and anchor are numbers".to_owned());
+        };
+        let uri = Uri::from_str(uri).map_err(|_| format!("`{uri}` is not a URI"))?;
+        let document = workspace
+            .document(&uri)
+            .and_then(surface_only)
+            .ok_or_else(|| "that document is not an open Musa file here".to_owned())?;
+        let offset = u32::try_from(offset).map_err(|_| "that offset is not in this document".to_owned())?;
+        return features::adapter::execute(document, &uri, offset, command, anchor, argument);
     }
     if params.command != features::analysis::ANALYZE {
         return Err(format!("musa-lsp does not run `{}`", params.command));

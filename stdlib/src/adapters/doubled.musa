@@ -91,4 +91,26 @@ library {
             )),
         }
     };
+
+    // The second declared operation, which makes this adapter *editable* rather
+    // than merely readable. One command, `replace`: put this text where the
+    // node the command names stands.
+    //
+    // The node is named by anchor, and the anchor is echoed straight back. That
+    // is the whole of what an adapter may do with a place — it names a node it
+    // was given, and the compiler owns the translation to a range. An adapter
+    // that computed byte offsets would need an operation for reading them, and
+    // there is none.
+    //
+    // Everything the law asks for follows from that. The patch lands inside the
+    // region because an anchor of this region is inside this region; nothing
+    // outside the named range is touched, because nothing else is returned; and
+    // re-expanding the patched region agrees with replacing that node, because
+    // replacing the node is exactly what the patch does.
+    let edit = fn (region, command, anchor, argument) {
+        match command {
+            "replace" -> Ok([(anchor, argument)]),
+            _ -> Err("`doubled` serves one command, `replace`"),
+        }
+    };
 }

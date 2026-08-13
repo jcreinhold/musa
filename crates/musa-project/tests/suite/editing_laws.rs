@@ -635,3 +635,76 @@ fn a_header_edit_is_one_undo() {
     session.undo().expect("there is something to undo");
     assert_eq!(source(&session), before);
 }
+
+/// Where the example's one region stands. The file mentions the region in its
+/// own comment first, so the offset is taken from the declaration.
+fn region_offset(source: &str) -> u32 {
+    let statement = source.find("let pair = ").expect("the example writes the region");
+    u32::try_from(statement.saturating_add("let pair = ".len())).expect("a small file")
+}
+
+/// A region is written in a package's language, so the package says what
+/// editing one means. What stays this crate's is the door: the answer arrives
+/// as text edits and is applied under the same transaction every other
+/// structured edit gets.
+#[test]
+fn an_adapter_command_writes_what_the_adapter_answers() {
+    let mut session = session("doubled.musa");
+    let before = source(&session);
+    let at = region_offset(&before);
+    // Anchor 2 is the region's `c4`: the group is 0, the space before it is 1.
+    let preview = session
+        .adapter_command(at, "replace", 2, "d4")
+        .expect("`doubled` serves `replace`");
+    let [write] = preview.as_slice() else {
+        panic!("one command, one write: {preview:?}");
+    };
+    assert_eq!(
+        before.get(write.start as usize..write.end as usize),
+        Some("c4"),
+        "the write replaces the node the anchor named"
+    );
+
+    session
+        .apply(ProjectCommand::EditScore(EditCommand::AdapterCommand {
+            at,
+            command: "replace".to_owned(),
+            anchor: 2,
+            argument: "d4".to_owned(),
+        }))
+        .expect("the patched region still compiles");
+    assert_eq!(
+        source(&session),
+        before.replacen(
+            "let pair = syntax doubled { c4 }",
+            "let pair = syntax doubled { d4 }",
+            1
+        ),
+        "and nothing outside the region moved"
+    );
+
+    session.undo().expect("an adapter edit is one undo like any other");
+    assert_eq!(source(&session), before);
+}
+
+/// A command the adapter does not know is the adapter's sentence, not a
+/// compiler complaint — and it changes nothing.
+#[test]
+fn a_command_the_adapter_refuses_leaves_the_session_alone() {
+    let mut session = session("doubled.musa");
+    let before = source(&session);
+    let at = region_offset(&before);
+
+    let refused = session.apply(ProjectCommand::EditScore(EditCommand::AdapterCommand {
+        at,
+        command: "transpose".to_owned(),
+        anchor: 2,
+        argument: "up".to_owned(),
+    }));
+
+    let Err(ProjectError::Uneditable(reason)) = refused else {
+        panic!("the adapter's refusal reaches the caller: {refused:?}");
+    };
+    assert!(reason.contains("one command"), "the adapter's own sentence: {reason}");
+    assert_eq!(source(&session), before);
+}

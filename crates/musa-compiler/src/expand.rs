@@ -305,6 +305,239 @@ pub(crate) fn expand(source: &SourceDocument, options: &CompileOptions) -> Expan
     expansion
 }
 
+/// One replacement an adapter asked for, in the composer's own file.
+///
+/// Byte offsets into the document the command was asked against, so a caller
+/// applies them the way it applies every other structured edit. The adapter
+/// never saw these numbers: it named a node by anchor, and the region's own
+/// table turned that into a range.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AdapterEdit {
+    /// Byte offset the replaced text starts at.
+    pub start: u32,
+    /// Byte offset it ends at.
+    pub end: u32,
+    /// What goes in its place.
+    pub text: String,
+}
+
+/// Why an adapter command produced no edit.
+///
+/// Four different situations, and a musician reading one needs to be told
+/// which: a region that is read-only *by declaration* is not a broken adapter,
+/// and an adapter that refused a command is not a compiler fault. Only the last
+/// is a fault at all.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum AdapterEditError {
+    /// No adapter region stands at that offset.
+    NoRegion,
+    /// The adapter declares no `edit`.
+    ///
+    /// `26-language-design-decision.md` §4's *readable* level: its regions are
+    /// read-only, and that is the level rather than a failure.
+    ReadOnly {
+        /// The adapter package, as the header names it.
+        adapter: String,
+    },
+    /// The adapter read the command and would not serve it — its own sentence.
+    Refused {
+        /// The adapter package, as the header names it.
+        adapter: String,
+        /// What it said.
+        message: String,
+    },
+    /// The adapter, or the command, is broken; the diagnostic says how.
+    Broken(Box<Diagnostic>),
+}
+
+impl std::fmt::Display for AdapterEditError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match *self {
+            Self::NoRegion => formatter.write_str("no adapter region stands here"),
+            Self::ReadOnly { ref adapter } => {
+                write!(
+                    formatter,
+                    "`{adapter}` declares no `edit`, so its regions are read-only"
+                )
+            }
+            Self::Refused {
+                ref adapter,
+                ref message,
+            } => write!(formatter, "`{adapter}`: {message}"),
+            Self::Broken(ref diagnostic) => formatter.write_str(&diagnostic.message),
+        }
+    }
+}
+
+impl std::error::Error for AdapterEditError {}
+
+/// Ask the adapter that reads the region at `at` to serve one command.
+///
+/// The second of `26-language-design-decision.md` §4's declared operations,
+/// from the outside. The command is its name, the anchor of the item it is
+/// about, and one text argument; the answer is replacements in the composer's
+/// own file, which a caller applies the way it applies every other structured
+/// edit and then compiles before committing.
+///
+/// **The edit law holds by construction and is checked anyway.** *Locality*:
+/// every range comes from the region's own anchor table, so it lies inside the
+/// region — an anchor that names no node of this region is refused rather than
+/// clamped. *Preservation*: only the named ranges are returned, so every byte
+/// outside them is untouched; nothing here regenerates a region from a value,
+/// which §4 forbids outright. *Agreement* is the caller's to keep and the
+/// tests' to prove: re-expanding the patched region must give what applying the
+/// command to the value gives.
+///
+/// The run is metered by the ordinary meter, so a runaway command is stopped by
+/// the same budget an expansion is. It charges nothing, because an edit is a
+/// question about a document rather than a step in compiling one.
+///
+/// # Errors
+/// [`AdapterEditError`], which distinguishes a region that is read-only by
+/// declaration, an adapter's own refusal, and an adapter that is broken.
+pub fn adapter_edits(
+    source: &SourceDocument,
+    options: &CompileOptions,
+    at: u32,
+    command: &str,
+    anchor: u64,
+    argument: &str,
+) -> Result<Vec<AdapterEdit>, AdapterEditError> {
+    let parsed = musa_language::parse(source.text());
+    let root = parsed.syntax();
+    let regions: Vec<SyntaxNode> = root
+        .descendants()
+        .filter(|node| node.kind() == SyntaxKind::SyntaxRegion)
+        .collect();
+    let (ordinal, region) = regions
+        .iter()
+        .enumerate()
+        .find(|(_, region)| {
+            let span = crate::resolve::trimmed_span(region);
+            span.start <= at && at <= span.end
+        })
+        .ok_or(AdapterEditError::NoRegion)?;
+    let site = crate::resolve::trimmed_span(region);
+    let imports = syntax_imports(&root);
+    let name = region_name(region).ok_or(AdapterEditError::NoRegion)?;
+    let import = imports
+        .iter()
+        .find(|import| import.alias == name)
+        .ok_or(AdapterEditError::NoRegion)?;
+    let uri = crate::imports::resolve_import(source.name(), &import.path);
+    let adapter_source = options.imports.get(&uri).ok_or_else(|| {
+        AdapterEditError::Broken(Box::new(refusal(
+            site,
+            format!("`{}` is not a module this compilation can read", import.path),
+            "check the package path, or provide the file the import names",
+        )))
+    })?;
+    let editor = match editor_of(adapter_source, &import.path, site) {
+        Ok(editor) => editor,
+        Err(None) => {
+            return Err(AdapterEditError::ReadOnly {
+                adapter: import.path.clone(),
+            });
+        }
+        Err(Some(diagnostic)) => return Err(AdapterEditError::Broken(diagnostic)),
+    };
+    let body = region_body(region).ok_or_else(|| {
+        AdapterEditError::Broken(Box::new(refusal(
+            site,
+            "this region is not delimited",
+            "write the region's contents inside `{ … }`",
+        )))
+    })?;
+    // The same reading the expansion gets, at the same ordinal, so the anchors
+    // a command names are the anchors the expansion minted.
+    let subject = crate::syntax::read_region(
+        &body,
+        crate::syntax::ExpansionPath::at(vec![u32::try_from(ordinal).unwrap_or(u32::MAX)]),
+    );
+    let anchors = subject.spans(site);
+    let (answer, _work) = crate::core::edit_syntax(&editor, subject, command, anchor, argument);
+    let patches = answer.map_err(|failure| match failure {
+        crate::core::EditFailure::Refused(message) => AdapterEditError::Refused {
+            adapter: import.path.clone(),
+            message,
+        },
+        crate::core::EditFailure::Stopped => AdapterEditError::Broken(Box::new(
+            Diagnostic::error(
+                Code::ResourceLimit,
+                format!("editing this region with `{}` crossed a compilation limit", import.path),
+            )
+            .at(site, "this region")
+            .help("the adapter is total, so this is a limit rather than a loop"),
+        )),
+        crate::core::EditFailure::NotAnEditor(_) => AdapterEditError::Broken(Box::new(refusal(
+            site,
+            format!("`{}`'s `edit` is not an editor", import.path),
+            "an adapter module declares `let edit = fn (region, command, anchor, argument) { … };`",
+        ))),
+        crate::core::EditFailure::NoAnswer => AdapterEditError::Broken(Box::new(refusal(
+            site,
+            format!("`{}` did not answer this command", import.path),
+            "the adapter checked and then produced nothing, which is a fault in the adapter",
+        ))),
+    })?;
+    patches
+        .into_iter()
+        .map(|(anchor, text)| {
+            let named = usize::try_from(anchor)
+                .ok()
+                .and_then(|anchor| anchors.get(anchor))
+                .copied()
+                .ok_or_else(|| {
+                    AdapterEditError::Broken(Box::new(refusal(
+                        site,
+                        format!("`{}` asked to replace a node this region does not have", import.path),
+                        "an edit names a node the adapter was given, by the anchor the region minted for it",
+                    )))
+                })?;
+            // Locality, checked rather than assumed. It cannot fail while the
+            // table is the region's own nodes, and a check that cannot fail
+            // today is what keeps it true when the table stops being that.
+            if named.start < site.start || named.end > site.end {
+                return Err(AdapterEditError::Broken(Box::new(refusal(
+                    site,
+                    format!("`{}` asked to change text outside the region", import.path),
+                    "an adapter edits its own region and nothing else",
+                ))));
+            }
+            Ok(AdapterEdit {
+                start: named.start,
+                end: named.end,
+                text,
+            })
+        })
+        .collect()
+}
+
+/// The `edit` an adapter module declares, as the text of one expression.
+///
+/// `Err(None)` is the *readable* level: the module declares no `edit`, which is
+/// a level rather than a mistake. `Err(Some(_))` is a module that could not be
+/// read as an adapter at all.
+fn editor_of(adapter_source: &str, path: &str, site: SourceSpan) -> Result<String, Option<Box<Diagnostic>>> {
+    let parsed = musa_language::parse(adapter_source);
+    let root = parsed.syntax();
+    if root.descendants().any(|node| node.kind() == SyntaxKind::SyntaxRegion)
+        || root.descendants().any(|node| is_syntax_import(&node))
+    {
+        return Err(Some(Box::new(refusal(
+            site,
+            format!("`{path}` is written with an adapter of its own"),
+            "an adapter is written in the adapter-free bootstrap: no region, no syntax import",
+        ))));
+    }
+    root.descendants()
+        .filter(|node| node.kind() == SyntaxKind::LetDecl)
+        .find(|declaration| declared_name(declaration).as_deref() == Some("edit"))
+        .and_then(|declaration| declared_body(&declaration, adapter_source))
+        .ok_or(None)
+}
+
 /// One region's answer, kept so a second identical region costs the same.
 #[derive(Clone)]
 struct Cached {
@@ -1226,6 +1459,166 @@ mod tests {
             !given.text.contains("404"),
             "the same call on a node the adapter was given answers with its anchor: {}",
             given.text
+        );
+    }
+
+    /// The offset of `text` in `source`, for naming a place a test cares about.
+    fn offset_of(source: &str, text: &str) -> u32 {
+        u32::try_from(source.find(text).expect("the fixture writes it")).unwrap_or(u32::MAX)
+    }
+
+    /// Ask the fixture to replace the node whose text is `target`.
+    fn replace(source: &str, target: &str, with: &str) -> Result<Vec<AdapterEdit>, AdapterEditError> {
+        let document = SourceDocument::new(source, "laws.musa");
+        let expansion = expand(&document, &CompileOptions::default());
+        let record = expansion.records.first().expect("one record");
+        let anchor = record
+            .anchors
+            .iter()
+            .position(|span| {
+                source
+                    .get(span.start as usize..span.end as usize)
+                    .is_some_and(|held| held == target)
+            })
+            .expect("the region holds that node");
+        adapter_edits(
+            &document,
+            &CompileOptions::default(),
+            record.use_site.start,
+            "replace",
+            anchor as u64,
+            with,
+        )
+    }
+
+    #[test]
+    fn an_adapter_edit_lands_inside_the_region_and_nowhere_else() {
+        // Locality and preservation, which are one test because they are two
+        // halves of one sentence: the patch is inside the region, and the file
+        // outside the patch is the file.
+        let source = piece("c4");
+        let edits = replace(&source, "c4", "d4").expect("the fixture serves `replace`");
+        let [edit] = edits.as_slice() else {
+            panic!("one command, one edit: {edits:?}");
+        };
+        let region = expand(&SourceDocument::new(&source, "laws.musa"), &CompileOptions::default())
+            .records
+            .first()
+            .expect("one record")
+            .use_site;
+        assert!(
+            edit.start >= region.start && edit.end <= region.end,
+            "the edit lies inside the region: {edit:?} against {region:?}"
+        );
+        assert_eq!(
+            source.get(edit.start as usize..edit.end as usize),
+            Some("c4"),
+            "and it replaces the node the command named"
+        );
+        let patched = format!(
+            "{}{}{}",
+            source.get(..edit.start as usize).unwrap_or_default(),
+            edit.text,
+            source.get(edit.end as usize..).unwrap_or_default()
+        );
+        assert_eq!(patched, source.replace("c4 }", "d4 }"), "and nothing else moved");
+    }
+
+    #[test]
+    fn re_expanding_a_patched_region_agrees_with_the_command() {
+        // Agreement. The strongest thing the compiler can check without knowing
+        // the package's type is that the patched region expands to what the
+        // region the command describes expands to — so it checks that, over
+        // the printed expression, which is what the rest of the compiler reads.
+        let source = piece("c4");
+        let edits = replace(&source, "c4", "d4").expect("the fixture serves `replace`");
+        let [edit] = edits.as_slice() else {
+            panic!("one command, one edit: {edits:?}");
+        };
+        let patched = format!(
+            "{}{}{}",
+            source.get(..edit.start as usize).unwrap_or_default(),
+            edit.text,
+            source.get(edit.end as usize..).unwrap_or_default()
+        );
+        let written = piece("d4");
+        assert_eq!(
+            run(&patched).document.text(),
+            run(&written).document.text(),
+            "the patched region expands to what the command meant"
+        );
+    }
+
+    #[test]
+    fn a_command_the_adapter_does_not_know_is_refused_with_its_own_sentence() {
+        let source = piece("c4");
+        let document = SourceDocument::new(&source, "laws.musa");
+        let refused = adapter_edits(
+            &document,
+            &CompileOptions::default(),
+            offset_of(&source, "syntax doubled"),
+            "transpose",
+            1,
+            "up",
+        );
+        let Err(AdapterEditError::Refused { adapter, message }) = refused else {
+            panic!("a command the adapter does not know is the adapter's refusal: {refused:?}");
+        };
+        assert_eq!(adapter, "std::adapters::doubled");
+        assert!(message.contains("one command"), "the adapter's own sentence: {message}");
+        // And it changed nothing: a refusal is an answer, not a patch.
+        assert_eq!(document.text(), source, "asking a question does not edit the document");
+    }
+
+    #[test]
+    fn an_anchor_the_region_never_minted_is_a_broken_adapter_rather_than_an_edit() {
+        let source = piece("c4");
+        let refused = adapter_edits(
+            &SourceDocument::new(&source, "laws.musa"),
+            &CompileOptions::default(),
+            offset_of(&source, "syntax doubled"),
+            "replace",
+            9_999,
+            "d4",
+        );
+        let Err(AdapterEditError::Broken(diagnostic)) = refused else {
+            panic!("an anchor this region never minted is a fault: {refused:?}");
+        };
+        assert!(diagnostic.message.contains("does not have"), "{}", diagnostic.message);
+    }
+
+    #[test]
+    fn an_adapter_with_no_edit_is_read_only_rather_than_broken() {
+        // The *readable* level of §4. A region whose adapter declares no `edit`
+        // is not a failure to report; it is a structured view that cannot be
+        // written through, and an interface has to be able to tell the two
+        // apart to know whether to grey a control or show a complaint.
+        let source = piece("c4");
+        let mut options = CompileOptions::default();
+        let uri = crate::imports::resolve_import("laws.musa", "std::adapters::doubled");
+        let readable = options
+            .imports
+            .get(&uri)
+            .expect("the fixture is bundled")
+            .split("    let edit =")
+            .next()
+            .map(|kept| format!("{kept}}}\n"))
+            .expect("the fixture declares `edit` last");
+        options.imports.insert(uri, readable);
+        let answer = adapter_edits(
+            &SourceDocument::new(&source, "laws.musa"),
+            &options,
+            offset_of(&source, "syntax doubled"),
+            "replace",
+            1,
+            "d4",
+        );
+        assert_eq!(
+            answer,
+            Err(AdapterEditError::ReadOnly {
+                adapter: "std::adapters::doubled".to_owned()
+            }),
+            "an adapter that declares no `edit` reports its level, not a fault"
         );
     }
 

@@ -388,6 +388,23 @@ impl ProjectSession {
     pub fn edit_impact(&self, command: &crate::edit::EditCommand) -> Result<crate::EditImpact, ProjectError> {
         let facts = &self.valid.as_ref().ok_or(ProjectError::NoValidScore)?.facts;
         let mut impact = crate::edit::impact_of(facts, command)?;
+        // An adapter command's text comes from the adapter, by the same code
+        // that would apply it — so what a composer is shown mid-gesture is the
+        // adapter's own answer and not a second guess at it, exactly as it is
+        // for the edits this crate resolves itself.
+        if let crate::edit::EditCommand::AdapterCommand { .. } = *command {
+            impact.writes = self
+                .adapter_edits(command)
+                .unwrap_or_default()
+                .into_iter()
+                .map(|edit| crate::edit::CandidateEdit {
+                    start: edit.start,
+                    end: edit.end,
+                    text: edit.text,
+                })
+                .collect();
+            return Ok(impact);
+        }
         impact.writes = crate::edit::intent_of(facts, command)
             .ok()
             .and_then(|intent| musa_language::compute_edits(&self.source, &intent).ok())
@@ -666,6 +683,11 @@ impl ProjectSession {
     /// That costs one extra compile per successful edit, which at the rate a
     /// human edits music is not worth complicating the history to avoid.
     fn edit_score(&mut self, command: &crate::edit::EditCommand) -> Result<ProjectUpdate, ProjectError> {
+        // A region is not written in Musa, so what its command means is the
+        // adapter's to say. Everything after that is the same transaction.
+        if let crate::edit::EditCommand::AdapterCommand { .. } = *command {
+            return self.edit_adapter(command);
+        }
         let facts = &self.valid.as_ref().ok_or(ProjectError::NoValidScore)?.facts;
         let intent = crate::edit::intent_of(facts, command)?;
         let edits = musa_language::compute_edits(&self.source, &intent)
@@ -678,6 +700,92 @@ impl ProjectSession {
             });
         }
         Ok(self.set_source(candidate))
+    }
+
+    /// Ask a region's adapter to serve one command, and apply what it answers
+    /// under the same transaction every other structured edit gets.
+    ///
+    /// The adapter decides what the command means and which node it touches;
+    /// this decides nothing about the region and only carries the answer
+    /// through the door every edit uses. A command the adapter refuses, a
+    /// region whose adapter declares no `edit`, and an adapter that is broken
+    /// are three different sentences, and each arrives as the adapter's own
+    /// rather than as a compiler complaint.
+    fn edit_adapter(&mut self, command: &crate::edit::EditCommand) -> Result<ProjectUpdate, ProjectError> {
+        let edits = self.adapter_edits(command)?;
+        let edits: Vec<musa_language::TextEdit> = edits
+            .iter()
+            .map(|edit| {
+                musa_language::TextEdit::new(
+                    text_size::TextRange::new(edit.start.into(), edit.end.into()),
+                    edit.text.clone(),
+                )
+            })
+            .collect();
+        let candidate = musa_language::apply_edits(&self.source, &edits);
+        if let Some(reason) = self.first_error(&candidate) {
+            return Err(ProjectError::RejectedEdit {
+                intent: crate::edit::describe(command),
+                reason,
+            });
+        }
+        Ok(self.set_source(candidate))
+    }
+
+    /// What a region's adapter answers to one command, in this document's
+    /// coordinates.
+    fn adapter_edits(
+        &self,
+        command: &crate::edit::EditCommand,
+    ) -> Result<Vec<musa_compiler::AdapterEdit>, ProjectError> {
+        let crate::edit::EditCommand::AdapterCommand {
+            at,
+            ref command,
+            anchor,
+            ref argument,
+        } = *command
+        else {
+            return Err(ProjectError::Uneditable("that is not an adapter command".to_owned()));
+        };
+        let document = musa_compiler::SourceDocument::new(&self.source, &self.name);
+        musa_compiler::adapter_edits(&document, &self.options(), at, command, anchor, argument)
+            .map_err(|error| ProjectError::Uneditable(error.to_string()))
+    }
+
+    /// What a region's adapter would write for one of its own commands.
+    ///
+    /// A question, like [`Self::edit_impact`]: nothing is applied, and the
+    /// caller decides whether to send the command that applies it. The text is
+    /// computed by the same code that would apply it, so an editor showing a
+    /// preview is showing the adapter's answer rather than a second guess at
+    /// it.
+    ///
+    /// # Errors
+    /// [`ProjectError::Uneditable`], carrying the adapter's own sentence: a
+    /// command it refuses, a region whose adapter declares no `edit` and is
+    /// therefore read-only, or an offset no region stands at.
+    pub fn adapter_command(
+        &self,
+        at: u32,
+        command: &str,
+        anchor: u64,
+        argument: &str,
+    ) -> Result<Vec<crate::CandidateEdit>, ProjectError> {
+        let command = crate::edit::EditCommand::AdapterCommand {
+            at,
+            command: command.to_owned(),
+            anchor,
+            argument: argument.to_owned(),
+        };
+        Ok(self
+            .adapter_edits(&command)?
+            .into_iter()
+            .map(|edit| crate::CandidateEdit {
+                start: edit.start,
+                end: edit.end,
+                text: edit.text,
+            })
+            .collect())
     }
 
     /// Resolve a studio edit and apply it under the same transaction a score

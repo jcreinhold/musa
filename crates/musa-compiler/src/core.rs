@@ -9614,6 +9614,166 @@ pub(crate) struct PhaseWork {
     pub(crate) evaluation_steps: u64,
 }
 
+/// Why an adapter's `edit` produced no patch.
+///
+/// The same three-way distinction [`ExpansionFailure`] makes, for the same
+/// reasons, minus the two cases an editor cannot reach: an editor answers with
+/// replacements rather than with syntax, so there is nothing for the expression
+/// gate to reject. It is its own type rather than a reuse because the sentences
+/// a reader gets differ — "this is not a transformer" is not what to tell
+/// somebody whose `edit` is wrong.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum EditFailure {
+    /// The adapter read the command and would not serve it.
+    ///
+    /// The package's own sentence, exactly as a refusal during expansion is.
+    /// It carries no node: a command an adapter does not know is not about a
+    /// place in the region, and pointing at one would be inventing a subject.
+    Refused(String),
+    /// A compilation limit was crossed before the run finished.
+    Stopped,
+    /// The `edit` did not check as an editor.
+    NotAnEditor(Vec<Diagnostic>),
+    /// It checked and then did not answer.
+    NoAnswer,
+}
+
+/// One replacement an adapter asked for: the anchor of the node to replace, and
+/// the text to put there.
+///
+/// An anchor and not a range. An adapter has no operation for reading a source
+/// range and gains none here — it names a node it was given, in the one
+/// vocabulary it and an editor share (prompt 127dcc), and the compiler owns the
+/// translation to bytes. That makes §4's locality a fact about the type rather
+/// than a property the phase has to hope for and check afterwards.
+pub(crate) type AdapterPatch = (u64, String);
+
+/// Run one adapter's `edit` over one already-read region.
+///
+/// The second of `26-language-design-decision.md` §4's declared operations, in
+/// the same phase environment [`expand_syntax`] runs in and by the same
+/// machinery: one ordinary expression, checked by Algorithm W against a wanted
+/// type, evaluated by the total evaluator, metered by the ordinary meter. The
+/// command is spelled as its name, the anchor it is about, and one text
+/// argument, because the phase is type-blind and may not learn a package's
+/// command type.
+pub(crate) fn edit_syntax(
+    editor: &str,
+    subject: crate::syntax::Syntax,
+    command: &str,
+    anchor: u64,
+    argument: &str,
+) -> (Result<Vec<AdapterPatch>, EditFailure>, PhaseWork) {
+    let mut unifier = Unifier::default();
+    let mut meter = WorkMeter::default();
+    let answer = run_editor(editor, subject, command, anchor, argument, &mut unifier, &mut meter);
+    let work = PhaseWork {
+        type_constraints: unifier.constraints(),
+        evaluation_steps: meter.steps(),
+    };
+    (answer, work)
+}
+
+fn run_editor(
+    editor: &str,
+    subject: crate::syntax::Syntax,
+    command: &str,
+    anchor: u64,
+    argument: &str,
+    unifier: &mut Unifier,
+    meter: &mut WorkMeter,
+) -> Result<Vec<AdapterPatch>, EditFailure> {
+    let parsed = musa_language::parse(&format!("piece \"expansion\" {{\n  let editor = {editor}\n}}"));
+    let mut resolver = Resolver::new();
+    // `edit : Syntax × Text × Nat × Text -> Result<List<(Nat, Text)>, Text>`.
+    // The anchor arrives as a number rather than inside the argument text
+    // because the phase language has no operation that reads a number out of
+    // text — a command spelled as one string would be one an adapter could not
+    // serve.
+    let wanted = Type::Function(
+        vec![Type::Syntax, Type::Text, Type::Nat, Type::Text],
+        Box::new(Type::Sum(
+            Box::new(Type::List(Box::new(Type::Product(vec![Type::Nat, Type::Text])))),
+            Box::new(Type::Text),
+        )),
+    );
+    let body = root_nodes(&parsed.syntax(), SyntaxKind::LetDecl)
+        .first()
+        .and_then(|declaration| child_of(declaration, is_expr_node));
+    let checked = body.and_then(|body| {
+        let span = crate::resolve::trimmed_span(&body);
+        let mut checker = Checker {
+            resolver: &mut resolver,
+            definitions: &[],
+            symbols: &IndexMap::new(),
+            locals: IndexMap::new(),
+            unifier: &mut *unifier,
+            dependencies: IndexMap::new(),
+            mentioned: Vec::new(),
+            reading: Reading::Expansion,
+            failed: false,
+            meter: &mut *meter,
+            music_role: None,
+            definition_span: span,
+            deferred_pitch: false,
+            scope: crate::module::NameScope::empty(),
+            modules: &Modules::default(),
+            world: &World::default(),
+        };
+        checker.check(&body, Some(&wanted))
+    });
+    let Some(checked) = checked else {
+        if meter.failure().is_some() {
+            return Err(EditFailure::Stopped);
+        }
+        return Err(EditFailure::NotAnEditor(resolver.diagnostics));
+    };
+    let environment = IndexMap::new();
+    let Some(Value::Closure(function)) = eval(&checked, &environment, meter) else {
+        return Err(edit_stopped_or(meter, EditFailure::NoAnswer));
+    };
+    let arguments = vec![
+        Value::Syntax(Box::new(subject)),
+        Value::Text(command.to_owned()),
+        Value::Nat(anchor),
+        Value::Text(argument.to_owned()),
+    ];
+    let applied = apply_closure(&function, arguments, meter, checked.span);
+    let Some(Value::Sum { error, held, .. }) = applied else {
+        return Err(edit_stopped_or(meter, EditFailure::NoAnswer));
+    };
+    if error {
+        let Value::Text(message) = *held else {
+            return Err(EditFailure::NoAnswer);
+        };
+        return Err(EditFailure::Refused(message));
+    }
+    let Value::List { values, .. } = *held else {
+        return Err(edit_stopped_or(meter, EditFailure::NoAnswer));
+    };
+    values
+        .into_iter()
+        .map(|value| {
+            let Value::Product(parts) = value else {
+                return Err(EditFailure::NoAnswer);
+            };
+            let [Value::Nat(anchor), Value::Text(text)] = parts.as_slice() else {
+                return Err(EditFailure::NoAnswer);
+            };
+            Ok((*anchor, text.clone()))
+        })
+        .collect()
+}
+
+/// A stop when the meter stopped, and `otherwise` when it did not.
+fn edit_stopped_or(meter: &WorkMeter, otherwise: EditFailure) -> EditFailure {
+    if meter.failure().is_some() {
+        EditFailure::Stopped
+    } else {
+        otherwise
+    }
+}
+
 /// Run one transformer over one already-read region, in the phase environment.
 ///
 /// The work is reported whichever way the run came out, because what a run

@@ -568,6 +568,10 @@ fn handshake_advertises_the_feature_set() {
         commands.commands.contains(&"musa.bundledSource".to_owned()),
         "{commands:?}"
     );
+    assert!(
+        commands.commands.contains(&"musa.adapterEdit".to_owned()),
+        "{commands:?}"
+    );
     server.stop();
 }
 
@@ -1396,6 +1400,54 @@ fn a_bundled_module_can_be_read_but_not_written() {
     });
     let error = response.response_result.expect_err("no such bundled module");
     assert!(error.message.contains("not a bundled Musa module"), "{}", error.message);
+    server.stop();
+}
+
+#[test]
+fn an_adapter_command_answers_with_a_workspace_edit_or_the_adapters_own_refusal() {
+    // The route that makes `26-language-design-decision.md` §4's edit operation
+    // reach a musician: the client sends the command it means, and the server
+    // answers with the adapter's edit against this document. It applies
+    // nothing itself, so a client that declines has changed nothing.
+    let piece = "piece \"Doubled\" {\n    import syntax std::adapters::doubled as doubled;\n\n    let pair = syntax doubled { c4 };\n\n    score { part piano { voice one { c4/1 } } }\n}\n";
+    let mut server = Server::start();
+    let (uri, _) = server.open("doubled", piece);
+    let at = piece.find("syntax doubled").expect("the piece writes a region");
+
+    let answer = server.client.request::<ExecuteCommand>(ExecuteCommandParams {
+        command: "musa.adapterEdit".to_owned(),
+        arguments: vec![
+            serde_json::Value::String(uri.to_string()),
+            serde_json::Value::from(at),
+            serde_json::Value::String("replace".to_owned()),
+            serde_json::Value::from(2u64),
+            serde_json::Value::String("d4".to_owned()),
+        ],
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    });
+    let edit: lsp_types::WorkspaceEdit = serde_json::from_value(answer).expect("a workspace edit");
+    let changes = edit.changes.expect("edits for this document");
+    let [edit] = changes.get(&uri).expect("this document's edits").as_slice() else {
+        panic!("one command, one edit: {changes:?}");
+    };
+    assert_eq!(edit.new_text, "d4");
+
+    // A command the adapter does not know is the adapter's sentence, and it
+    // arrives as a refusal rather than as an empty edit — an editor cannot tell
+    // "nothing to do" from "I would not do that" any other way.
+    let response = server.client.response::<ExecuteCommand>(ExecuteCommandParams {
+        command: "musa.adapterEdit".to_owned(),
+        arguments: vec![
+            serde_json::Value::String(uri.to_string()),
+            serde_json::Value::from(at),
+            serde_json::Value::String("transpose".to_owned()),
+            serde_json::Value::from(2u64),
+            serde_json::Value::String("up".to_owned()),
+        ],
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    });
+    let error = response.response_result.expect_err("the adapter refused");
+    assert!(error.message.contains("one command"), "{}", error.message);
     server.stop();
 }
 

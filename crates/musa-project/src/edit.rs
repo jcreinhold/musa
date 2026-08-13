@@ -155,6 +155,24 @@ pub enum EditCommand {
         /// statement; the title refuses.
         value: String,
     },
+    /// Ask the adapter that reads a region to serve one of its own commands.
+    ///
+    /// The only structured edit whose meaning this crate does not know. A
+    /// region is written in the adapter's language, so what a command means is
+    /// the adapter package's business; what stays this crate's business is
+    /// unchanged — the edit is resolved into text edits and applied
+    /// transactionally, exactly as every other one is.
+    AdapterCommand {
+        /// A byte offset inside the region, as the composer's cursor gives one.
+        at: u32,
+        /// The command's name, in the adapter's own vocabulary.
+        command: String,
+        /// The anchor of the item the command is about, as the value produced
+        /// by the expansion carries it.
+        anchor: u64,
+        /// The command's argument, as one text.
+        argument: String,
+    },
     /// Lift the statements behind these events into a new `motif`, leaving a
     /// `use` in their place.
     ExtractMotif {
@@ -310,7 +328,11 @@ pub(crate) fn impact_of(facts: &ScoreFacts, command: &EditCommand) -> Result<Edi
             specializable: false,
             writes: Vec::new(),
         }),
-        EditCommand::SetHeader { .. } => Ok(EditImpact {
+        // Nothing about events: a region's expansion produces music, but what
+        // an adapter command is about is a node in the region, and this crate
+        // does not know which events that node's expansion spelled. The counts
+        // are honestly zero rather than guessed.
+        EditCommand::SetHeader { .. } | EditCommand::AdapterCommand { .. } => Ok(EditImpact {
             generated: false,
             motif: None,
             occurrence: None,
@@ -466,6 +488,14 @@ pub(crate) fn intent_of(facts: &ScoreFacts, command: &EditCommand) -> Result<Edi
             field,
             value: value.clone(),
         }),
+        // An adapter command has no intent here, and must not be given one:
+        // `musa-language` writes Musa, and a region is not written in Musa.
+        // The session routes this command to the adapter instead
+        // (`ProjectSession::edit_adapter`), and this arm exists so that a
+        // caller who reached the wrong door is told so rather than served.
+        EditCommand::AdapterCommand { .. } => Err(ProjectError::Uneditable(
+            "an adapter command is resolved by the adapter that reads the region, not by the score editor".to_owned(),
+        )),
         EditCommand::ExtractMotif { ref events, ref name } => {
             if events.is_empty() {
                 return Err(ProjectError::Uneditable("nothing is selected to extract".to_owned()));
@@ -505,5 +535,10 @@ pub(crate) fn describe(command: &EditCommand) -> String {
         }
         EditCommand::SetHeader { field, ref value } => format!("setting the {} to {value}", field.word()),
         EditCommand::ExtractMotif { ref name, .. } => format!("extracting the motif {name}"),
+        EditCommand::AdapterCommand {
+            ref command,
+            ref argument,
+            ..
+        } => format!("asking the region's adapter to {command} {argument}"),
     }
 }

@@ -11,6 +11,7 @@
 //! treat a match as best-effort — the same bargain every client makes with
 //! its own debounce — and never as a reason to panic.
 
+pub(crate) mod adapter;
 pub(crate) mod analysis;
 pub(crate) mod bundled;
 pub(crate) mod call;

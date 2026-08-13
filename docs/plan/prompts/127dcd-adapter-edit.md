@@ -1,7 +1,7 @@
 ---
 id: 127dcd
 slug: adapter-edit
-status: pending
+status: done
 depends_on: [127dcc]
 phase: 3
 ---
@@ -34,18 +34,28 @@ agree with. Route it so that an edit reaches a musician rather than only a test.
 The operation, in the phase environment `expand` already runs in:
 
 ```text
-edit : Syntax × Text × Text -> Result<List<(Nat, Nat, Text)>, Text>
+edit : Syntax × Text × Nat × Text -> Result<List<(Nat, Text)>, Text>
 ```
 
-One command, spelled as the adapter's own two texts — the command's name and its argument — because the phase is
-type-blind and may not learn a package's command type. The answer is a list of replacements in *region* coordinates,
-which the phase translates into the composer's file, and the error half is the adapter's own sentence exactly as a
-refusal is.
+One command, spelled as the command's name, the anchor of the item it is about, and one text argument — because the
+phase is type-blind and may not learn a package's command type. The answer is a list of replacements, each naming the
+node to replace *by its anchor*, which the phase translates into the composer's file; the error half is the adapter's
+own sentence exactly as a refusal is.
+
+**Why anchors and not ranges.** An adapter has no operation for reading a source range and must not gain one — that is
+the rule prompts 127dcb and 127dcc were both built to keep. An answer spelled as byte ranges would need the adapter to
+*compute* them, which means either handing it a range-reading operation or leaving the operation unwritable in the phase
+language. Naming a node by anchor is the same edit in the one vocabulary the adapter and the editor already share
+(127dcc), and it makes locality a property of the type rather than a hope. The anchor arrives as a `Nat` rather than
+inside the argument text for the same kind of reason: the phase language has no operation that reads a number out of
+text, so a command spelled as one string would be one no adapter could serve.
 
 **The edit law**, stated as three parts and tested as three:
 
-1. **Locality.** Every returned range lies inside the region. The phase checks this rather than trusting it, because a
-   patch that reached outside would let an adapter rewrite text no musician asked it to touch.
+1. **Locality.** Every returned range lies inside the region. An anchor of this region names a node of this region, so
+   it holds by construction; the phase checks it anyway, because a check that cannot fail today is what keeps the law
+   true on the day the table stops being the region's own nodes. An anchor the region never minted is refused rather
+   than clamped.
 2. **Agreement.** Expanding the patched region gives the value applying the command to the original value gives. The
    fixture states its own semantic equality; the phase tests structural equality of the expanded syntax, which is the
    strongest thing the compiler can check without knowing the package's type.
@@ -56,14 +66,16 @@ An adapter that declares no `edit` is *readable* and its regions are read-only. 
 
 ## Target
 
-- `edit` as a second phase entry point in `crates/musa-compiler`, reusing the transformer machinery, the work meter, and
-  the charges, with its refusals reported the way 127dcb reports an expansion's.
-- The translation from region coordinates to file coordinates, and the locality check on the way through.
+- `edit` as a second phase entry point in `crates/musa-compiler`, reusing the transformer machinery and the work meter,
+  with its refusals reported the way 127dcb reports an expansion's. It charges nothing: an edit is a question about a
+  document rather than a step in compiling one, so there is no compilation for a charge to belong to.
+- The translation from anchors to file coordinates, and the locality check on the way through.
 - An `EditCommand` variant in `crates/musa-project` that carries a region and an adapter command, producing
   `CandidateEdit`s the way every other structured edit does, and reachable through `musa-lsp`.
 - `stdlib/src/adapters/doubled.musa` answers one command it can actually serve, so the fixture exercises the law.
-- Tests: locality; agreement; preservation; a command the adapter does not know is refused with the adapter's sentence
-  and changes nothing; an adapter with no `edit` reports read-only rather than broken.
+- Tests: locality; agreement; preservation; an anchor the region never minted is a fault rather than an edit; a command
+  the adapter does not know is refused with the adapter's sentence and changes nothing; an adapter with no `edit`
+  reports read-only rather than broken.
 
 ## Check
 
