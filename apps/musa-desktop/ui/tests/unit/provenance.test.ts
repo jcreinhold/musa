@@ -29,8 +29,8 @@ describe("occurrences", () => {
   it("are two expansions of one motif, one of them transformed", () => {
     const [first, second] = workspace().occurrences;
     expect(workspace().occurrences).toHaveLength(2);
-    expect(labels(first)).toEqual(["sigh()"]);
-    expect(labels(second)).toEqual(["transpose down P5", "sigh()"]);
+    expect(labels(first)).toEqual(["sigh(e5)"]);
+    expect(labels(second)).toEqual(["transpose down P5", "sigh(e5)"]);
     expect(first?.motif).toBe("sigh");
     expect(second?.motif).toBe("sigh");
     // Two occurrences, never one: identity is the whole expansion path, so
@@ -51,7 +51,7 @@ describe("occurrences", () => {
       const declaration = occurrence.declaration;
       expect(declaration).not.toBeNull();
       expect(source.slice(declaration?.start, declaration?.end)).toMatch(/^motif sigh/);
-      expect(source.slice(occurrence.useSite.start, occurrence.useSite.end)).toBe("use sigh();");
+      expect(source.slice(occurrence.useSite.start, occurrence.useSite.end)).toBe("use sigh(e5);");
       // The line the interface prints is the line the use statement is on.
       expect(source.slice(0, occurrence.useSite.start).split("\n")).toHaveLength(occurrence.line);
     }
@@ -73,7 +73,7 @@ describe("selecting an occurrence", () => {
     const space = workspace();
     const [, second] = space.occurrences;
     space.select(second?.events[0] ?? "");
-    // `transpose down P5 ▸ sigh()` — the second segment is the occurrence.
+    // `transpose down P5 ▸ sigh(e5)` — the second segment is the occurrence.
     space.selectOrigin(2);
     expect(space.selected).toEqual(second?.events);
   });
