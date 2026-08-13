@@ -1,7 +1,7 @@
 ---
 id: 127aa
 slug: kinded-inference
-status: pending
+status: in-progress
 depends_on: [127a]
 phase: 3
 ---
@@ -38,6 +38,14 @@ variable only for storable data. Unification never binds a data variable to a fu
 one at any depth. The check is structural over the type, not a surface-syntax rule, and it is a side condition on
 ordinary unification — not subtyping, overloading, or a source-visible type class.
 
+No source position in *this* type set mints a data variable, and that is not an oversight. §1.1 requires storable data in
+five places — an event-track payload, a machine's two port types, its feedback value, a registered primitive's
+configuration, a foreign primitive's argument — and the only one this compiler already has is a quotation's payload,
+which is a written name rather than an inferred type. §1.1 says when a `list` *is* storable data, not what a `list` may
+hold: `std/transformational.musa`'s `chain` folds over a `List<Triad -> Triad>`, so a list member is an ordinary
+variable. The kind is therefore installed and proved here, at the unifier, and first attached to a source position by
+`EventTrack[C, δ]` at prompt 127c.
+
 Generalize at `let` and at a declaration; instantiate at a use. Compute principal types. An annotation remains accepted
 everywhere it is written today and remains required only where separate checking or an abstract public signature needs
 one; `function_type` must stop returning `None` merely because a parameter or result type was omitted.
@@ -56,8 +64,9 @@ Keep `Type`, schemes, substitutions, the unifier, and evaluator values private t
 - Kinded rank-1 Hindley–Milner inference in `musa-compiler`: type variables, schemes, unification with the data-kind
   side condition, generalization at `let` and declarations, instantiation at uses.
 - Optional annotations wherever inference determines the type, with the existing corpus unchanged in meaning.
-- Property tests for principal types and for substitution/unification soundness; compile-fail tests for a data variable
-  unified with a function type, and for a genuinely ambiguous type with no annotation.
+- Property tests for principal types and for substitution/unification soundness; a refusal test for a data variable
+  unified with a function type, at the unifier, because no source position mints one until 127c; and a compile-fail test
+  for a genuinely ambiguous type with no annotation.
 - Updated hover text and diagnostics showing inferred types in plain form.
 
 ## Check
