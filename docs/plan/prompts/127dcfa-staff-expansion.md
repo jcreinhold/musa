@@ -1,7 +1,7 @@
 ---
 id: 127dcfa
 slug: staff-expansion
-status: pending
+status: in-progress
 depends_on: [127dcf]
 phase: 3
 ---
@@ -40,9 +40,19 @@ immediately-applied lambda — `(fn (name) { … })(value)` — which is a real 
 items are built with. This is a privilege the trial wants and does not get, and Target's last bullet is where it is
 written down; granting it would repair prompt 127dcb rather than this prompt.
 
-**Expansion records written facts and nothing else.** A missing choice is not an error here: it is an absence the
-package's `realize` refuses later, which is what §2.4 is about. The adapter never converts a written value to an exact
-span, never resolves a tuplet, and never decides grace timing.
+**The value expansion emits records written facts and nothing else.** A missing choice is not an error here: it is an
+absence the package's `realize` refuses later, which is what §2.4 is about. No exact span, no resolved tuplet, and no
+grace timing appears in the emitted expression; those are the package's answers, and an adapter that pre-computed them
+would be deciding at read time what §2.4 defers.
+
+**A check on what the composer wrote is still expansion's.** §2.5's two diagnostics are both about the block's own text
+— a tie whose two ends spell different pitches, and a bar whose contents do not fill the meter that bar states — and
+expansion is the only stage that can land them on the composer's own text, because it is the only stage holding the
+source nodes. So the adapter may compute a written value's span *internally, to check the composer against themselves*,
+and this is the one arithmetic it does. The distinction the paragraph above draws is between what the emitted value
+contains and what the reader is allowed to verify while reading; §2.3's "closing a bar adds exact spans and checks the
+stated length" is that verification and belongs here. A pickup is a bar that states the shorter meter it fills, so the
+check needs no exception for one.
 
 **The block is locally readable.** No note inherits register or duration from an earlier note, and a test asserts it by
 reading each event in isolation. This is the spelling prompt 127e keeps, so getting it wrong here is expensive later.
