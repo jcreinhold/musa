@@ -45,14 +45,19 @@ absence the package's `realize` refuses later, which is what §2.4 is about. No 
 grace timing appears in the emitted expression; those are the package's answers, and an adapter that pre-computed them
 would be deciding at read time what §2.4 defers.
 
-**A check on what the composer wrote is still expansion's.** §2.5's two diagnostics are both about the block's own text
-— a tie whose two ends spell different pitches, and a bar whose contents do not fill the meter that bar states — and
-expansion is the only stage that can land them on the composer's own text, because it is the only stage holding the
-source nodes. So the adapter may compute a written value's span *internally, to check the composer against themselves*,
-and this is the one arithmetic it does. The distinction the paragraph above draws is between what the emitted value
-contains and what the reader is allowed to verify while reading; §2.3's "closing a bar adds exact spans and checks the
-stated length" is that verification and belongs here. A pickup is a bar that states the shorter meter it fills, so the
-check needs no exception for one.
+**Only one of §2.5's two diagnostics is expansion's, and the other one is the trial's first real finding.** A tie whose
+two ends spell different pitches is a comparison of two token texts, so the adapter refuses it and points at the second
+note. A bar that does not fill the meter it states is arithmetic on the numbers those tokens spell, and **an adapter
+reads spellings, never numbers**: `syntax_fold` hands a token its kind and its text, and no operation turns `Text` into
+a `Nat` or a `Ratio`. §2.3's "closing a bar adds exact spans and checks the stated length" assumed a privilege the phase
+does not grant. A finite table from `"4"` to `1/4` would cover the note values and still not cover `c5(3/8)` — the very
+bar §2.5 reports on — because an exact span is an arbitrary rational the composer wrote.
+
+Nor can the package refuse it in expansion's place. The package computes spans and holds each bar's stated meter, so it
+could find the fault; what it could not do is say *where*. A refusal there is a `Text`, an anchor is a `Nat`, and the
+same missing conversion keeps the two apart — only `Err((node, text))` carries a node, and only the adapter holds nodes.
+So this prompt lands the tie diagnostic and records the bar-length one under Target's last bullet, which is what that
+bullet is for. Closing it needs a refusal that can carry an anchor, and deciding that is not this trial's to make.
 
 **The block is locally readable.** No note inherits register or duration from an earlier note, and a test asserts it by
 reading each event in isolation. This is the spelling prompt 127e keeps, so getting it wrong here is expensive later.
@@ -65,9 +70,10 @@ transposing instruments.
 
 - `stdlib/src/adapters/staff.musa` — the adapter, declared readable, with `expand`.
 - `examples/staff-page.musa` — the trial block, covering all fourteen items, compiling and rendering.
-- Tests: one per coverage item, each asserting the expansion's value against the package's own data; the two §2.5
-  diagnostics landing on the composer's own text; and the local-readability test.
-- A statement, in the adapter's own comments, of any privilege it wanted and did not get.
+- Tests: one per coverage item, each asserting the expansion's value against the package's own data; §2.5's tie
+  diagnostic landing on the composer's own text; and the local-readability test.
+- A statement, in the adapter's own comments, of any privilege it wanted and did not get — including §2.5's bar-length
+  diagnostic, which is one of them, with what it would take to close.
 
 ## Check
 
