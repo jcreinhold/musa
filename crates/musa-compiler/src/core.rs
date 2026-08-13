@@ -1578,6 +1578,18 @@ enum SyntaxOp {
     /// `syntax_at(subject, path)` — the input node at `path`, if there is one.
     /// How a transformer preserves input with its source information intact.
     At,
+    /// `syntax_anchor(subject, path, here)` — the anchor of the input node at
+    /// `path`, as a node built at `here`.
+    ///
+    /// An anchor is how a value remembers where it came from: the number this
+    /// builds into the emitted expression is an index into the expansion
+    /// record's table of the region's own ranges, so a package function
+    /// complaining about the fourth connection three passes later is still
+    /// complaining about the fourth connection. It answers with a *node* and
+    /// not with the number because a transformer may emit a place and may not
+    /// read one (`26-language-design-decision.md` §3.4) — this hands back
+    /// something to splice, and nothing to compare.
+    Anchor,
     /// `syntax_built(path, role, child)` — an output path derived from `path`.
     Built,
     /// `syntax_binding(path, role)` — the binding `path` declares at `role`.
@@ -1621,7 +1633,7 @@ impl SyntaxOp {
         match self {
             Self::Checked => 1,
             Self::At | Self::Binding | Self::Identifier | Self::Binder => 2,
-            Self::Built | Self::Token | Self::Group | Self::Reference => 3,
+            Self::Anchor | Self::Built | Self::Token | Self::Group | Self::Reference => 3,
             Self::Fold => 5,
         }
     }
@@ -1670,6 +1682,14 @@ impl SyntaxOp {
                 )
             }
             Self::At => Type::Function(vec![syntax(), path()], Box::new(Type::Option(Box::new(Type::Syntax)))),
+            // Three arguments and not two: the node it is *about*, and the
+            // place the node it hands back stands in. The answer is optional
+            // for `syntax_at`'s reason — an adapter anchors a node it holds,
+            // and a path it derived addresses no input node at all.
+            Self::Anchor => Type::Function(
+                vec![syntax(), path(), path()],
+                Box::new(Type::Option(Box::new(Type::Syntax))),
+            ),
             Self::Built => Type::Function(vec![path(), Type::Nat, Type::Nat], Box::new(Type::NodePath)),
             Self::Binding => Type::Function(vec![path(), Type::Nat], Box::new(Type::BindingPath)),
             Self::Token => Type::Function(vec![path(), Type::Text, Type::Text], Box::new(Type::Syntax)),
@@ -1707,7 +1727,7 @@ struct BuiltinOwnership<T, F = Family> {
 /// looked up when ordinary source reads a name. Each entry says what it hides,
 /// for the same reason the source entries do — an operation earns a place in a
 /// compiler-owned registry by hiding something a library could not.
-const SYNTAX_OWNERSHIP: [BuiltinOwnership<SyntaxOp, PhaseFamily>; 10] = [
+const SYNTAX_OWNERSHIP: [BuiltinOwnership<SyntaxOp, PhaseFamily>; 11] = [
     BuiltinOwnership {
         operation: SyntaxOp::Fold,
         spelling: "syntax_fold",
@@ -1718,6 +1738,13 @@ const SYNTAX_OWNERSHIP: [BuiltinOwnership<SyntaxOp, PhaseFamily>; 10] = [
         operation: SyntaxOp::At,
         spelling: "syntax_at",
         hidden_information: "descent into the reader's node representation, and a node's untouched source information",
+        family: PhaseFamily::Builder,
+    },
+    BuiltinOwnership {
+        operation: SyntaxOp::Anchor,
+        spelling: "syntax_anchor",
+        hidden_information: "a node's position in the region's own reading order, which is the only name the compiler \
+                             and a later package function both have for it",
         family: PhaseFamily::Builder,
     },
     BuiltinOwnership {
@@ -8628,6 +8655,24 @@ fn eval_syntax(operation: SyntaxOp, values: &[Value], meter: &mut WorkMeter, exp
             }
             Some(optional(Type::Syntax, found.map(|node| Value::Syntax(Box::new(node)))))
         }
+        // The number is built into a token rather than handed over as a `Nat`:
+        // a transformer's answer is an expression, and the only way a number
+        // reaches one is as a literal the ordinary parser reads. Handing back a
+        // node is also what keeps §3.4 exact — the adapter gets something to
+        // splice, and nothing to compare a range against.
+        SyntaxOp::Anchor => {
+            let subject = syntax(values.first()?)?;
+            let wanted = path(values.get(1)?)?;
+            let here = path(values.get(2)?)?;
+            let found = subject
+                .anchor(&wanted)
+                .map(|anchor| crate::syntax::token(here, "Integer".to_owned(), anchor.to_string()));
+            let held = match found {
+                Some(node) => Some(built(node, meter)?),
+                None => None,
+            };
+            Some(optional(Type::Syntax, held))
+        }
         SyntaxOp::Built => Some(Value::NodePath(Box::new(
             path(values.first()?)?.built(index(values.get(1)?)?, index(values.get(2)?)?),
         ))),
@@ -10209,7 +10254,7 @@ mod tests {
     fn the_phase_registry_is_separate_and_classified() {
         assert_eq!(
             SYNTAX_OWNERSHIP.len(),
-            10,
+            11,
             "a new phase operation must enter the phase registry"
         );
         let spellings = SYNTAX_OWNERSHIP

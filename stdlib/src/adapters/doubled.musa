@@ -1,10 +1,19 @@
 // `doubled` — the smallest adapter there is, and the phase's fixture.
 //
-// A region `syntax doubled { c4 }` expands to `repeat(c4, 2)`: whatever the
-// region holds, twice. It is here to be run rather than to be useful — it
-// exercises resolution, expansion, refusal, the record, the source map, and
-// the charges, and it is deliberately not a draft of the staff or studio
+// A region `syntax doubled { c4 }` expands to `(repeat(c4, 2), 0)`: whatever
+// the region holds, twice, paired with the anchor of the group it was rebuilt
+// from. It is here to be run rather than to be useful — it exercises
+// resolution, expansion, refusal, the record, the anchor table, the source map,
+// and the charges, and it is deliberately not a draft of the staff or studio
 // adapters.
+//
+// The anchor is the other half of pointing. Refusing points at a node while the
+// expansion is still running; an anchor is a number the produced *value* keeps,
+// so a package function complaining about that value three passes later is
+// still complaining about a place in the composer's text. The adapter never
+// learns what the place is: `syntax_anchor` answers with a node to splice, the
+// compiler owns the table from number to range, and the number alone means
+// nothing without it.
 //
 // What it shows about the interface: the region arrives as a syntax value and
 // leaves as one, the fold is the only way in, `syntax_built` is the only way to
@@ -61,13 +70,21 @@ library {
                 fn (here, kind, text) { syntax_token(syntax_built(here, 1, 0), kind, text) },
                 fn (here, name) { syntax_identifier(syntax_built(here, 2, 0), name) },
                 fn (here, delimiter, children) {
-                    syntax_group(syntax_built(here, 3, 0), "layout", [
-                        syntax_identifier(syntax_built(here, 4, 0), "repeat"),
-                        syntax_group(syntax_built(here, 5, 0), "parentheses", [
-                            syntax_group(syntax_built(here, 6, 0), "layout", children),
-                            syntax_token(syntax_built(here, 7, 0), "Comma", ","),
-                            syntax_token(syntax_built(here, 8, 0), "Integer", "2")
-                        ])
+                    syntax_group(syntax_built(here, 9, 0), "parentheses", [
+                        syntax_group(syntax_built(here, 3, 0), "layout", [
+                            syntax_identifier(syntax_built(here, 4, 0), "repeat"),
+                            syntax_group(syntax_built(here, 5, 0), "parentheses", [
+                                syntax_group(syntax_built(here, 6, 0), "layout", children),
+                                syntax_token(syntax_built(here, 7, 0), "Comma", ","),
+                                syntax_token(syntax_built(here, 8, 0), "Integer", "2")
+                            ])
+                        ]),
+                        syntax_token(syntax_built(here, 10, 0), "Comma", ","),
+                        option_fold(
+                            syntax_token(syntax_built(here, 12, 0), "Integer", "0"),
+                            fn (node) { node },
+                            syntax_anchor(region, here, syntax_built(here, 11, 0))
+                        )
                     ])
                 },
                 region

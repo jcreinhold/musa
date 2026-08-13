@@ -39,8 +39,10 @@ syntax` names the package that reads a region, and it stands in the header befor
 region is named — by the name the import gave — and delimited, so the lexer and the grouper stay fixed and a package
 never extends them. What is inside is the adapter's language, which is why the formatter writes it back as it stands.
 
-`doubled` expands `syntax doubled { … }` to `repeat(…, 2)`: whatever the region holds, twice. It exists to be run rather
-than to be used — it is the phase's fixture, and the adapters worth writing music with are their own modules.
+`doubled` expands `syntax doubled { … }` to `(repeat(…, 2), 0)`: whatever the region holds, twice, paired with an
+*anchor* — a number the adapter emits and the compiler keeps a table for, so that a value produced by an expansion can
+still say which part of the region it came from. It exists to be run rather than to be used — it is the phase's fixture,
+and the adapters worth writing music with are their own modules.
 
 The reference below is generated from the source comments in the bundled modules.
 

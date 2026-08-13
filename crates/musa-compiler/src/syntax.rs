@@ -327,6 +327,69 @@ impl Syntax {
         children.get(usize::try_from(index).ok()?)?.descend(rest)
     }
 
+    /// The anchor of the sub-node at `path`: its position in this value's own
+    /// reading order, counting this node as zero.
+    ///
+    /// A function of this value alone — not a counter, not the region's ordinal
+    /// in the file, and not anything the compiler allocates. That is what keeps
+    /// prompt 127dc's law intact: two identical regions anywhere in a file mint
+    /// the same anchors, so one region still has one answer and the cache still
+    /// replays a miss's charge. `None` where `at` is `None`, and for the same
+    /// reason — an adapter anchors a node it was given, and a node it built has
+    /// no place in the composer's text to be anchored to.
+    pub(crate) fn anchor(&self, path: &NodePath) -> Option<u64> {
+        let root = self.info().path();
+        if root.expansion != path.expansion || !root.steps.is_empty() {
+            return None;
+        }
+        self.count_to(&path.steps, 0)
+    }
+
+    fn count_to(&self, steps: &[PathStep], here: u64) -> Option<u64> {
+        let Some((first, rest)) = steps.split_first() else {
+            return Some(here);
+        };
+        let PathStep::Child(index) = *first else {
+            return None;
+        };
+        let Self::Group { children, .. } = self else {
+            return None;
+        };
+        let index = usize::try_from(index).ok()?;
+        // Pre-order: this node, then each earlier sibling's whole subtree,
+        // then the wanted child. `shape` already counts a subtree's nodes.
+        let mut reached = here.saturating_add(1);
+        for earlier in children.get(..index)? {
+            reached = reached.saturating_add(earlier.shape().0);
+        }
+        children.get(index)?.count_to(rest, reached)
+    }
+
+    /// Every node's source range, in the order [`Syntax::anchor`] numbers.
+    ///
+    /// The compiler-owned half of the anchor: the number alone means nothing
+    /// without this table, which is what keeps a forged anchor a mislocated
+    /// sentence rather than a way to read a range the adapter was never given.
+    /// A region read from source is `Original` throughout, so `fallback` is
+    /// reached only by a value that was built rather than read.
+    pub(crate) fn spans(&self, fallback: SourceSpan) -> Vec<SourceSpan> {
+        let mut out = Vec::new();
+        self.push_spans(fallback, &mut out);
+        out
+    }
+
+    fn push_spans(&self, fallback: SourceSpan, out: &mut Vec<SourceSpan>) {
+        out.push(match self.info() {
+            SourceInfo::Original { span, .. } => *span,
+            SourceInfo::Generated(_) => fallback,
+        });
+        if let Self::Group { children, .. } = self {
+            for child in children {
+                child.push_spans(fallback, out);
+            }
+        }
+    }
+
     /// This node's exact bytes, for identity.
     pub(crate) fn write_into(&self, out: &mut Vec<u8>) {
         match self {

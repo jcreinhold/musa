@@ -94,6 +94,16 @@ pub(crate) struct ExpansionRecord {
     pub(crate) input: crate::syntax::Syntax,
     /// What it answered with.
     pub(crate) output: crate::syntax::Syntax,
+    /// Every node of the region, by range, in the order `syntax_anchor`
+    /// numbers them.
+    ///
+    /// The compiler's half of an anchor. The adapter emits a number into the
+    /// value it produces; a later ordinary package function complaining about
+    /// that value carries the number along, and this is what turns it back into
+    /// a place in the composer's text. It lives on the record rather than in a
+    /// compilation-wide map because a number means nothing without the region
+    /// that minted it, and the record is what a reader already holds.
+    pub(crate) anchors: Vec<SourceSpan>,
     /// The expansion this one was produced inside, if any.
     ///
     /// Always `None` today, and a field rather than an omission because the
@@ -102,6 +112,24 @@ pub(crate) struct ExpansionRecord {
     /// region, so an expansion has no children; if that rule is ever relaxed,
     /// this is where the parent goes.
     pub(crate) parent: Option<usize>,
+}
+
+impl ExpansionRecord {
+    /// The range an anchor names, or `None` for a number this region never
+    /// minted.
+    ///
+    /// Total for the reason the anchor is a number and not a range: a forged
+    /// anchor addresses nothing here, so the worst it can do is leave a
+    /// package's complaint without a place — which is a mislocated sentence,
+    /// not a way to read text the adapter was never handed.
+    ///
+    /// Exercised by this prompt's tests; the trials of prompts 127dcf and
+    /// 127dcg are what call it in earnest, when a package's `validate` starts
+    /// carrying anchors into complaints a piece has to place.
+    #[cfg(test)]
+    pub(crate) fn anchor(&self, number: u64) -> Option<SourceSpan> {
+        self.anchors.get(usize::try_from(number).ok()?).copied()
+    }
 }
 
 /// Where one stretch of the expanded text came from in the composer's text.
@@ -366,6 +394,10 @@ fn expand_one(
         crate::syntax::ExpansionPath::at(vec![u32::try_from(ordinal).unwrap_or(u32::MAX)]),
     );
 
+    // A function of the region alone, so the cache hit and the cache miss build
+    // the same table from the same region and neither has to remember it.
+    let anchors = subject.spans(site);
+
     let key = (version.clone(), interior);
     if let Some(hit) = cache.get(&key) {
         // The charge is replayed from the record, so the second of two
@@ -376,6 +408,7 @@ fn expand_one(
             use_site: site,
             input: subject,
             output: hit.output.clone(),
+            anchors,
             parent: None,
         };
         return Ok((hit.printed.clone(), record, hit.charges));
@@ -426,6 +459,7 @@ fn expand_one(
         use_site: site,
         input: subject,
         output,
+        anchors,
         parent: None,
     };
     Ok((printed.text, record, charges))
@@ -1093,5 +1127,123 @@ mod tests {
             refused.charges,
             accepted.charges
         );
+    }
+
+    #[test]
+    fn an_anchor_names_the_range_of_the_node_it_was_taken_from() {
+        // The fixture anchors every group at the node it rebuilt, so the
+        // parenthesised group inside the region is anchored by a number the
+        // expanded text carries. That number, put back through the record,
+        // must land on the composer's own `(c4)`.
+        let source = piece("(c4)");
+        let expansion = run(&source);
+        assert!(messages(&expansion).is_empty(), "{:?}", messages(&expansion));
+        let record = expansion.records.first().expect("one record");
+        let at = |span: SourceSpan| {
+            source
+                .get(span.start as usize..span.end as usize)
+                .expect("a range inside the file")
+        };
+        let number = record
+            .anchors
+            .iter()
+            .position(|span| at(*span) == "(c4)")
+            .expect("the region holds a parenthesised group");
+        assert!(
+            expansion.document.text().contains(&format!(", {number})")),
+            "the adapter emitted the anchor of the group it rebuilt:\n{}",
+            expansion.document.text()
+        );
+        let named = record.anchor(number as u64).expect("the number the adapter emitted");
+        assert_eq!(at(named), "(c4)", "an anchor names the node it was taken from");
+        assert_eq!(
+            record.anchor(0).map(at),
+            Some("{ (c4) }"),
+            "and zero is the region's own group, which is what the adapter anchors at the top"
+        );
+    }
+
+    #[test]
+    fn two_identical_regions_mint_the_same_anchors() {
+        // The number is the node's position in the region's own reading order,
+        // so it cannot depend on where in the file the region stands. If it
+        // could, prompt 127dc's law would break here first: the cache would
+        // replay the first region's printed text at the second region's
+        // offsets, and the two would disagree.
+        let expansion = run(
+            "piece \"laws\" {\n    import syntax std::adapters::doubled as doubled;\n\n    let a = syntax doubled { (c4) };\n    let b = syntax doubled { (c4) };\n\n    score { part p { voice v { c4/1 } } }\n}\n",
+        );
+        assert!(messages(&expansion).is_empty(), "{:?}", messages(&expansion));
+        let [first, second] = expansion.records.as_slice() else {
+            panic!("two regions, two records");
+        };
+        assert_eq!(
+            first.anchors.len(),
+            second.anchors.len(),
+            "two identical regions have the same shape, so they have the same anchors"
+        );
+        assert_ne!(
+            first.anchors.first(),
+            second.anchors.first(),
+            "the ranges differ, because the two regions stand at different places"
+        );
+        let offset = i64::from(second.use_site.start) - i64::from(first.use_site.start);
+        for (near, far) in first.anchors.iter().zip(&second.anchors) {
+            assert_eq!(
+                i64::from(far.start) - i64::from(near.start),
+                offset,
+                "the second region's table is the first's, moved by where it was written"
+            );
+        }
+    }
+
+    #[test]
+    fn an_anchor_for_a_node_the_adapter_built_is_none() {
+        // A path the adapter derived addresses no input node, and there is
+        // nothing in the composer's text to anchor it to. Answering `None` is
+        // what keeps §3.4 exact: an adapter cannot invent a place, and cannot
+        // learn one it was not given.
+        let built = answer(
+            &answering(
+                r#"option_fold(syntax_token(syntax_built(here, 9, 0), "Integer", "404"), fn (node) { node }, syntax_anchor(region, syntax_built(here, 0, 0), syntax_built(here, 10, 0)))"#,
+            ),
+            "{ c4 }",
+        )
+        .expect("the transformer answered");
+        assert!(
+            built.text.contains("404"),
+            "the fallback stood, so the anchor of a built node was `None`: {}",
+            built.text
+        );
+        let given = answer(
+            &answering(
+                r#"option_fold(syntax_token(syntax_built(here, 9, 0), "Integer", "404"), fn (node) { node }, syntax_anchor(region, here, syntax_built(here, 10, 0)))"#,
+            ),
+            "{ c4 }",
+        )
+        .expect("the transformer answered");
+        assert!(
+            !given.text.contains("404"),
+            "the same call on a node the adapter was given answers with its anchor: {}",
+            given.text
+        );
+    }
+
+    #[test]
+    fn the_anchor_table_is_the_regions_own_nodes_and_no_run_enlarges_it() {
+        let source = piece("(c4)");
+        let expansion = run(&source);
+        let record = expansion.records.first().expect("one record");
+        assert_eq!(
+            u64::try_from(record.anchors.len()).unwrap_or(u64::MAX),
+            record.input.shape().0,
+            "one entry per node of the region, which is what makes the number an index into reading order"
+        );
+        for span in &record.anchors {
+            assert!(
+                span.start >= record.use_site.start && span.end <= record.use_site.end,
+                "an anchor names a range inside the region it was minted from: {span:?}"
+            );
+        }
     }
 }

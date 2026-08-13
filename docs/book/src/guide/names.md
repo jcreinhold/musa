@@ -199,5 +199,5 @@ A region is named and delimited: named by whatever the import called the adapter
 already knows. Packages do not add tokens and do not move the boundary. Inside the braces the words belong to the
 adapter, so the formatter writes them back exactly as you typed them and complains about nothing.
 
-`std::adapters::doubled` is a fixture rather than a tool — it expands a region to its contents twice, which is enough to
-watch the machinery run and no use at all in a piece.
+`std::adapters::doubled` is a fixture rather than a tool — it expands a region to its contents twice, paired with the
+anchor of the region it read, which is enough to watch the machinery run and no use at all in a piece.
