@@ -14,6 +14,7 @@ The modules:
 | `std::core` | Identity and composition combinators |
 | `std::harmony` | Chord classes: roots, bass, members, inversions, slash basses, the triad refinement |
 | `std::list` | Finite lists and folds |
+| `std::notation::staff` | Staff documents as data: written values, the items on a staff, and realizing them into exact time |
 | `std::option` | The `option` type and its fold |
 | `std::post_tonal::pcset` | Pitch-class sets |
 | `std::pitch` | Pitch and interval operations |

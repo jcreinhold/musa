@@ -71,6 +71,32 @@ private to it.
 - `fn filter_pitches(predicate: Pitch -> Bool, values: List<Pitch>) -> List<Pitch>` — Keep the pitches for which predicate returns true.
 - `fn repeat_music(value: Music, count: Nat) -> List<Music>` — Repeat one contextual music value count times as finite data.
 
+## `std::notation::staff`
+
+- `fn ratio_of(count: Nat) -> Result<Ratio, Text>` — The exact rational a whole number names.  A note value is a division of the whole note, so the package needs one; the language has no coercion from `Nat` to `Ratio`, deliberately, so the conversion is written rather than assumed.
+- `fn division_span(division: Nat) -> Result<Ratio, Text>` — What one undotted note value covers: the whole note divided.
+- `fn dotted_span(base: Ratio, dots: Nat) -> Result<Ratio, Text>` — What a value covers once its dots are added: each dot adds half of what the dot before it added.
+- `fn written_span(value: WrittenDuration) -> Result<Duration<WrittenTime>, Text>` — The exact span a written value covers, or the sentence saying why none does.
+- `fn meter_span(beats: Meter) -> Result<Duration<WrittenTime>, Text>` — The bar a meter measures.
+- `fn joined_spans(first: WrittenSpans, second: WrittenSpans) -> WrittenSpans` — One sequence of spans after another, in the order they were written.
+- `fn stopped(here: Position<WrittenTime>) -> Result<Realization, Text>` — A traversal that has run out of items reaches nothing and stays where it is.
+- `fn nested(body: Position<WrittenTime> -> Result<Realization, Text>, after: Position<WrittenTime> -> Result<Realization, Text>, here: Position<WrittenTime>) -> Result<Realization, Text>` — A nested form — a bar, a slur, a tuplet's siblings, a repeat, an ending — is its body followed by what comes after it.
+- `fn joined_ties(spans: WrittenSpans) -> Result<WrittenSpans, Text>` — A tie joins what is written to whatever sounds next, wherever that is.  This is a pass over the flat spans rather than a case of the traversal, because the traversal is inside a bar when it meets the tie and what the tie reaches is usually in the next one. Joining last is what lets a tie cross a barline, a slur, or a repeat without any of the three knowing about ties.
+- `fn placed(anchor: Nat, held: WrittenDuration, tied: Tie, here: Position<WrittenTime>, after: Position<WrittenTime> -> Result<Realization, Text>) -> Result<Realization, Text>` — One sounding item: its span starts here, and what follows starts after it.
+- `fn sounded_span(anchor: Nat, event: StaffEvent, here: Position<WrittenTime>, after: Position<WrittenTime> -> Result<Realization, Text>) -> Result<Realization, Text>` — What one written event covers.  A grace note refuses. How long a grace takes, and what it takes it from, is a performance profile's choice, and a package that guessed here would be answering a performance question with a notation answer.
+- `fn rescaled(factor: Ratio, here: Position<WrittenTime>, point: Position<WrittenTime>) -> Result<Position<WrittenTime>, Text>` — A point moved by a factor of its distance from the origin, then placed against `here`. This is how a tuplet's inside becomes its outside.
+- `fn rescaled_spans(factor: Ratio, here: Position<WrittenTime>, spans: WrittenSpans) -> Result<WrittenSpans, Text>` — Every span of a tuplet's body, moved and shortened by the tuplet's factor.
+- `fn tuplet_factor(played: Nat, against: Nat) -> Result<Ratio, Text>` — Three in the time of two is a factor of two thirds: the written values stay what they are, and the time they take does not.
+- `fn tupleted(played: Nat, against: Nat, body: Position<WrittenTime> -> Result<Realization, Text>, after: Position<WrittenTime> -> Result<Realization, Text>, here: Position<WrittenTime>) -> Result<Realization, Text>` — A tuplet realizes its body against its own origin and then places the result, so that the factor multiplies distances rather than positions.
+- `fn walked(items: StaffItem) -> Position<WrittenTime> -> Result<Realization, Text>` — The traversal itself: one case per constructor, answering with what the sequence covers once someone says where it starts.  The fold's answer is a function because the fold is bottom-up and time runs the other way: what a suffix covers is known before where it begins, so each case answers "given a starting point, this is what I reach" rather than a value that would have needed the point already.
+- `fn realize(document: StaffDocument) -> Result<Realization, Text>` — What a document covers, in exact written time.  A repeat and an ending are traversed once, because written time counts the page and not the performance: how many times a repeat sounds is a reading of the score, and this answers what the score says.  Ties are joined afterwards, over the flat spans, so that a tie reaches whatever sounds next however deeply either of them is nested.
+- `fn written_extent(document: StaffDocument) -> Result<Duration<WrittenTime>, Text>` — How much written time a document covers altogether.
+- `let readable_values: List<WrittenDuration>` — The note values a reader is expected to read at sight, shortest spelling first: no dots before one dot, and one before two.
+- `fn readable(held: Duration<WrittenTime>) -> Option<WrittenDuration>` — The first readable value that covers a span exactly, if one does.
+- `fn spelled_as(policy: Spelling, held: Duration<WrittenTime>) -> Result<WrittenDuration, Text>` — Which written value a realized span is printed as.  This is the choice expansion deliberately left open, and it is made here so that a span nothing readable spells is a complaint about the document's spelling policy rather than a note quietly rounded.
+- `fn engrave(document: StaffDocument) -> Result<Spelled, Text>` — Every realized span with the written value chosen for it.
+- `fn spelled_spans(policy: Spelling, spans: WrittenSpans) -> Result<Spelled, Text>` — The spelling choice, made once per span and refused once for all of them.
+
 ## `std::option`
 
 - `fn pitch_or_else(fallback: Pitch, present: Pitch -> Pitch, value: Option<Pitch>) -> Pitch` — Read an optional pitch, using fallback when it is absent and present when it is available.

@@ -1,7 +1,7 @@
 ---
 id: 127dcf
 slug: staff-package
-status: pending
+status: done
 depends_on: [127dcea]
 phase: 3
 ---

@@ -109,6 +109,11 @@ articulation, and grace-note placement all move the second without touching the 
 swing would rewrite the notation, and the page would stop saying what the composer wrote (`examples/shuffle.musa`,
 `examples/profile-fixture.musa`).
 
+The written side has its own data, and `std::notation::staff` is where it lives: a `WrittenDuration` is a division of
+the whole note and its dots, `realize` turns one into the exact span it means, and `engrave` chooses the value that
+prints a span back. What a grace note *takes* is not among the answers — `realize` refuses it rather than guessing,
+because a grace's timing belongs to whoever plays it.
+
 ## 11. A voice is not a track, and a part is not an instrument
 
 A voice is a line of music; a part is a performer. Neither is a mixer channel or a synthesizer instance. Sound is

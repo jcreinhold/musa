@@ -13,6 +13,7 @@ mod collections;
 mod harmony;
 mod voicing;
 mod context;
+mod notation;
 mod transformational;
 mod tonal;
 mod post_tonal;

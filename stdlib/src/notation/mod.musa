@@ -1,0 +1,9 @@
+// Notation: what is written on a staff, as data.
+//
+// The distinction this subtree keeps is the layering table's first row —
+// written pitch is not MIDI number, notated duration is not performed
+// duration. A module here says what a reader sees; what a player does with it
+// belongs to a performance profile, and a module that answered both would be
+// answering a performance question with a notation answer.
+
+mod staff;
