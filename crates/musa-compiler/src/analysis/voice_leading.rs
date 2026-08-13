@@ -543,7 +543,7 @@ fn voicing(snapshot: &ScoreSnapshot, slice: &Slice) -> Vec<Departure> {
             voices: Vec::new(),
             interval: None,
             from: slice.onset,
-            to: slice.onset + slice.extent,
+            to: slice.onset + slice.duration,
             notes: slice.refs(),
             also: Vec::new(),
         });
@@ -556,7 +556,7 @@ fn voicing(snapshot: &ScoreSnapshot, slice: &Slice) -> Vec<Departure> {
             voices: Vec::new(),
             interval: None,
             from: slice.onset,
-            to: slice.onset + slice.extent,
+            to: slice.onset + slice.duration,
             notes: slice.refs(),
             also: Vec::new(),
         });
@@ -582,7 +582,7 @@ fn jazz_spacing(slice: &Slice) -> Vec<Departure> {
                 voices: Vec::new(),
                 interval: Some(interval),
                 from: slice.onset,
-                to: slice.onset + slice.extent,
+                to: slice.onset + slice.duration,
                 notes: vec![below.note, above.note],
                 also: Vec::new(),
             });
@@ -595,7 +595,7 @@ fn jazz_spacing(slice: &Slice) -> Vec<Departure> {
 /// any voice travels.
 fn jazz_motion(snapshot: &ScoreSnapshot, now: &Slice, next: &Slice, chord: Option<ChordClass>) -> Vec<Departure> {
     let mut departures = Vec::new();
-    let span = (now.onset, next.onset + next.extent);
+    let span = (now.onset, next.onset + next.duration);
     let guides: Vec<PitchClass> = chord
         .into_iter()
         .flat_map(|chord| [chord.member_class(1), chord.member_class(3)])

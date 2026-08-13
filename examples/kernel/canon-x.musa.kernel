@@ -1,9 +1,9 @@
-% musa-kernel-1
+% musa-kernel-2
 % generated from examples/canon-x.musa by musa-compiler
 kernel "Canon X" {
-  composition main : Timeline[ScoreFact] =
-    overlay {
-      timeline 4 {
+  composition main : EventTrack[WrittenTime, ScoreFact] =
+    together {
+      track 4 {
         occurrence "voice 0 0 dynamic p [1667:1677 #4]" from 0 to 0;
         occurrence "voice 0 0 note c5 1/4 [1695:1699 #4]" from 0 to 1/4;
         occurrence "voice 0 0 note d5 1/4 [1716:1720 #4]" from 1/4 to 1/2;
@@ -22,7 +22,7 @@ kernel "Canon X" {
         occurrence "voice 0 0 note c5 1/4 [1992:1996 #4]" from 7/2 to 15/4;
         occurrence "voice 0 0 note c5 1/4 [2013:2017 #4]" from 15/4 to 4;
       };
-      timeline 4 {
+      track 4 {
         occurrence "voice 1 0 dynamic f [2183:2193 #5]" from 0 to 0;
         occurrence "voice 1 0 note c4 1/4 [2211:2215 #5]" from 0 to 1/4;
         occurrence "voice 1 0 note b3 1/4 [2232:2236 #5]" from 1/4 to 1/2;
@@ -41,7 +41,7 @@ kernel "Canon X" {
         occurrence "voice 1 0 note c4 1/4 [2508:2512 #5]" from 7/2 to 15/4;
         occurrence "voice 1 0 note c4 1/4 [2529:2533 #5]" from 15/4 to 4;
       };
-      timeline 4 {
+      track 4 {
         occurrence "piece meter 4/4 [1372:1387]" from 0 to 4;
         occurrence "piece tempo 1/4=120 [1219:1372]" from 0 to 4;
         occurrence "piece key c major [1387:1404]" from 0 to 4;

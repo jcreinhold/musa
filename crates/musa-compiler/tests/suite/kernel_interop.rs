@@ -115,12 +115,12 @@ fn printed_kernel_text_keeps_the_terms_structure() {
     let document = SourceDocument::new(include_str!("../../../../examples/counterpoint.musa"), "counterpoint");
     let printed = kernel_text(&document, &pinned()).expect("elaborates");
     assert!(
-        printed.contains("overlay {"),
+        printed.contains("together {"),
         "the overlay was flattened away: {printed}"
     );
     let normalized = kernel_normalized_text(&document, &pinned()).expect("elaborates");
     assert!(
-        !normalized.contains("overlay {"),
+        !normalized.contains("together {"),
         "the normal form is a value, not a composition: {normalized}"
     );
 }
@@ -166,7 +166,7 @@ fn malformed_kernel_text_is_rejected() {
     .expect("elaborates");
     let cases = [
         ("empty", String::new()),
-        ("no header", good.replacen("% musa-kernel-1\n", "", 1)),
+        ("no header", good.replacen("% musa-kernel-2\n", "", 1)),
         ("truncated", good[..good.len() / 2].to_owned()),
         ("bad payload", good.replacen("note ", "nyote ", 1)),
     ];

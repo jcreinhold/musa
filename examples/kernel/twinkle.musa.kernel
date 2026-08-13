@@ -1,9 +1,9 @@
-% musa-kernel-1
+% musa-kernel-2
 % generated from examples/twinkle.musa by musa-compiler
 kernel "twinkle" {
-  composition main : Timeline[ScoreFact] =
-    overlay {
-      timeline 5 {
+  composition main : EventTrack[WrittenTime, ScoreFact] =
+    together {
+      track 5 {
         occurrence "voice 0 0 note c4 1/4 [200:204 #4]" from 0 to 1/4;
         occurrence "voice 0 0 note c4 1/4 [205:209 #4]" from 1/4 to 1/2;
         occurrence "voice 0 0 note g4 1/4 [210:214 #4]" from 1/2 to 3/4;
@@ -20,7 +20,7 @@ kernel "twinkle" {
         occurrence "voice 0 0 note c4 1/2 [319:323 #4]" from 7/2 to 4;
         occurrence "voice 0 0 rest 1 [342:348 #4]" from 4 to 5;
       };
-      timeline 5 {
+      track 5 {
         occurrence "piece meter 4/4 [88:103]" from 0 to 5;
         occurrence "piece tempo 1/4=104 [66:88]" from 0 to 5;
         occurrence "piece key c major [103:120]" from 0 to 5;

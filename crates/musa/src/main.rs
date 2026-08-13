@@ -555,8 +555,8 @@ fn cmd_kernel(args: &[String], realization: &Realization) -> ExitCode {
         return match musa_project::check_kernel(&text) {
             Ok(report) => {
                 println!(
-                    "{path}: ok — piece {:?}, {} occurrences, extent {}",
-                    report.name, report.occurrences, report.extent
+                    "{path}: ok — piece {:?}, {} occurrences, duration {}",
+                    report.name, report.occurrences, report.duration
                 );
                 println!(
                     "  realization: {}",

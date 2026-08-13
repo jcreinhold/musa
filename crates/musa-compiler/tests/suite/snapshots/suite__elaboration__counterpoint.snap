@@ -1,8 +1,8 @@
 ---
-source: crates/musa-compiler/tests/elaboration.rs
+source: crates/musa-compiler/tests/suite/elaboration.rs
 expression: form
 ---
-timeline 2 {
+track 2 {
   occurrence 0|0|note:d4|1/2|189|193|[] from 0 to 1/2;
   occurrence 1|0|note:d3|1/2|357|361|[] from 0 to 1/2;
   occurrence *|*|key:d:minor||67|84|[] from 0 to 2;

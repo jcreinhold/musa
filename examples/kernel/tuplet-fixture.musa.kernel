@@ -1,9 +1,9 @@
-% musa-kernel-1
+% musa-kernel-2
 % generated from examples/tuplet-fixture.musa by musa-compiler
 kernel "Tuplet Fixture" {
-  composition main : Timeline[ScoreFact] =
-    overlay {
-      timeline 2 {
+  composition main : EventTrack[WrittenTime, ScoreFact] =
+    together {
+      track 2 {
         occurrence "voice 0 0 dynamic mf [473:484 #5]" from 0 to 0;
         occurrence "voice 0 0 note c5 1/12 spelled '1/8' [534:538 #5]" from 0 to 1/12;
         occurrence "voice 0 0 note d5 1/12 spelled '1/8' [559:563 #5]" from 1/12 to 1/6;
@@ -25,7 +25,7 @@ kernel "Tuplet Fixture" {
         occurrence "voice 0 0 note c5 1/8 [1021:1025 #5]" from 15/8 to 2;
         occurrence "voice 0 0 slur [968:1043 #5]" from 7/4 to 2;
       };
-      timeline 2 {
+      track 2 {
         occurrence "voice 1 0 dynamic p [1155:1165 #6]" from 0 to 0;
         occurrence "voice 1 0 note c3 1/2 [1182:1191 #6]" from 0 to 1/2;
         occurrence "voice 1 0 note g3 1/2 [1182:1191 #6]" from 0 to 1/2;
@@ -35,7 +35,7 @@ kernel "Tuplet Fixture" {
         occurrence "voice 1 0 note g3 1/4 [1332:1336 #6]" from 7/4 to 2;
         occurrence "voice 1 0 slur [1273:1354 #6]" from 3/2 to 2;
       };
-      timeline 2 {
+      track 2 {
         occurrence "piece meter 4/4 [267:282]" from 0 to 2;
         occurrence "piece tempo 1/4=96 [247:267]" from 0 to 2;
         occurrence "piece key c major [282:299]" from 0 to 2;

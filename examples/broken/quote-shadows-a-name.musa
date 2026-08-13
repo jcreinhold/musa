@@ -8,12 +8,12 @@ piece "Quote Shadows A Name" {
         d4/4
     };
 
-    let assembled: Music = kernel Timeline[ScoreFact] {
+    let assembled: Music = kernel EventTrack[WrittenTime, ScoreFact] {
         let material = ${theme} in
-        let material = timeline 1/2 {
+        let material = track 1/2 {
             occurrence "note g4 1/2" from 0 to 1/2;
         } in
-        overlay {
+        together {
             material;
         }
     };

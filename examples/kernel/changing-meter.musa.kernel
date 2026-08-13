@@ -1,9 +1,9 @@
-% musa-kernel-1
+% musa-kernel-2
 % generated from examples/changing-meter.musa by musa-compiler
 kernel "Changing Meter" {
-  composition main : Timeline[ScoreFact] =
-    overlay {
-      timeline 11/2 {
+  composition main : EventTrack[WrittenTime, ScoreFact] =
+    together {
+      track 11/2 {
         occurrence "voice 0 0 note d5 1/4 [675:679 #4]" from 0 to 1/4;
         occurrence "voice 0 0 note e5 1/4 [681:685 #4]" from 1/4 to 1/2;
         occurrence "voice 0 0 note f5 1/8 [687:691 #4]" from 1/2 to 5/8;
@@ -31,7 +31,7 @@ kernel "Changing Meter" {
         occurrence "voice 0 0 note d5 1/4 [936:940 #4]" from 39/8 to 41/8;
         occurrence "voice 0 0 note d5 3/8 [941:946 #4]" from 41/8 to 11/2;
       };
-      timeline 11/2 {
+      track 11/2 {
         occurrence "piece meter 7/8 [538:553]" from 0 to 11/2;
         occurrence "piece tempo 1/4=132 [516:538]" from 0 to 11/2;
         occurrence "piece key d minor [553:570]" from 0 to 11/2;

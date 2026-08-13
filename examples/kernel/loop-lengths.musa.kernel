@@ -1,23 +1,23 @@
-% musa-kernel-1
+% musa-kernel-2
 % generated from examples/loop-lengths.musa by musa-compiler
 % realization seed=42 pins=0
 % decision #0 count=4
 kernel "Loop Lengths" {
-  composition main : Timeline[ScoreFact] =
-    let shared0 = timeline 1 {
+  composition main : EventTrack[WrittenTime, ScoreFact] =
+    let shared0 = track 1 {
         occurrence "voice 0 0 note c2 1/4 [822:826 #4]" from 0 to 1/4;
         occurrence "voice 0 0 note c2 1/4 [847:851 #4]" from 1/4 to 1/2;
         occurrence "voice 0 0 note c2 1/4 [872:876 #4]" from 1/2 to 3/4;
         occurrence "voice 0 0 note c2 1/4 [897:901 #4]" from 3/4 to 1;
       }
-    in let shared1 = timeline 1 {
+    in let shared1 = track 1 {
         occurrence "voice 0 0 note c2 1/4 [972:976 #4]" from 0 to 1/4;
         occurrence "voice 0 0 note c2 1/4 [997:1001 #4]" from 1/4 to 1/2;
         occurrence "voice 0 0 note c2 1/8 [1022:1026 #4]" from 1/2 to 5/8;
         occurrence "voice 0 0 note c2 1/8 [1047:1051 #4]" from 5/8 to 3/4;
         occurrence "voice 0 0 note c2 1/4 [1072:1076 #4]" from 3/4 to 1;
       }
-    in let shared2 = timeline 1 {
+    in let shared2 = track 1 {
         occurrence "voice 0 1 rest 1/8 [1182:1188 #5]" from 0 to 1/8;
         occurrence "voice 0 1 note f#3 1/8 [1209:1214 #5]" from 1/8 to 1/4;
         occurrence "voice 0 1 rest 1/8 [1235:1241 #5]" from 1/4 to 3/8;
@@ -27,7 +27,7 @@ kernel "Loop Lengths" {
         occurrence "voice 0 1 rest 1/8 [1341:1347 #5]" from 3/4 to 7/8;
         occurrence "voice 0 1 note f#3 1/8 [1368:1373 #5]" from 7/8 to 1;
       }
-    in let shared3 = timeline 1 {
+    in let shared3 = track 1 {
         occurrence "voice 0 1 note f#3 1/8 [1444:1449 #5]" from 0 to 1/8;
         occurrence "voice 0 1 note f#3 1/8 [1470:1475 #5]" from 1/8 to 1/4;
         occurrence "voice 0 1 note f#3 1/8 [1496:1501 #5]" from 1/4 to 3/8;
@@ -37,91 +37,91 @@ kernel "Loop Lengths" {
         occurrence "voice 0 1 note f#3 1/8 [1600:1605 #5]" from 3/4 to 7/8;
         occurrence "voice 0 1 note f#3 1/8 [1626:1631 #5]" from 7/8 to 1;
       }
-    in let shared4 = timeline 1 {
+    in let shared4 = track 1 {
         occurrence "voice 1 0 note a1 1/2 [1767:1771 #6]" from 0 to 1/2;
         occurrence "voice 1 0 note e2 1/4 [1792:1796 #6]" from 1/2 to 3/4;
         occurrence "voice 1 0 note g1 1/4 [1817:1821 #6]" from 3/4 to 1;
       }
-    in let shared5 = timeline 1 {
+    in let shared5 = track 1 {
         occurrence "voice 1 0 note a1 1/4 [1892:1896 #6]" from 0 to 1/4;
         occurrence "voice 1 0 note a1 1/4 [1917:1921 #6]" from 1/4 to 1/2;
         occurrence "voice 1 0 note c2 1/4 [1942:1946 #6]" from 1/2 to 3/4;
         occurrence "voice 1 0 note e2 1/4 [1967:1971 #6]" from 3/4 to 1;
       }
-    in overlay {
-      sequence {
-        overlay {
-          sequence {
+    in together {
+      follow {
+        together {
+          follow {
             shared0 @ "depth 0 via repeat 0";
             shared0 @ "depth 0 via repeat 1";
             shared0 @ "depth 0 via repeat 2";
             shared0 @ "depth 0 via repeat 3"
           };
-          timeline 4 {
+          track 4 {
             occurrence "voice 0 0 repeat 4 [791:919 #4]" from 0 to 4;
           }
         };
-        overlay {
-          sequence {
+        together {
+          follow {
             shared1 @ "depth 0 via repeat 0";
             shared1 @ "depth 0 via repeat 1";
             shared1 @ "depth 0 via repeat 2";
             shared1 @ "depth 0 via repeat 3"
           };
-          timeline 4 {
+          track 4 {
             occurrence "voice 0 0 repeat 4 from 2 to 6 [936:1094 #4]" from 0 to 4;
           }
         }
       };
-      sequence {
-        overlay {
-          sequence {
+      follow {
+        together {
+          follow {
             shared2 @ "depth 0 via repeat 0";
             shared2 @ "depth 0 via repeat 1";
             shared2 @ "depth 0 via repeat 2";
             shared2 @ "depth 0 via repeat 3"
           };
-          timeline 4 {
+          track 4 {
             occurrence "voice 0 1 repeat 4 [1151:1391 #5]" from 0 to 4;
           }
         };
-        overlay {
-          sequence {
+        together {
+          follow {
             shared3 @ "depth 0 via repeat 0";
             shared3 @ "depth 0 via repeat 1";
             shared3 @ "depth 0 via repeat 2";
             shared3 @ "depth 0 via repeat 3"
           };
-          timeline 4 {
+          track 4 {
             occurrence "voice 0 1 repeat 4 from 2 to 6 [1408:1649 #5]" from 0 to 4;
           }
         }
       };
-      sequence {
-        overlay {
-          sequence {
+      follow {
+        together {
+          follow {
             shared4 @ "depth 0 via repeat 0";
             shared4 @ "depth 0 via repeat 1";
             shared4 @ "depth 0 via repeat 2";
             shared4 @ "depth 0 via repeat 3"
           };
-          timeline 4 {
+          track 4 {
             occurrence "voice 1 0 repeat 4 [1736:1839 #6]" from 0 to 4;
           }
         };
-        overlay {
-          sequence {
+        together {
+          follow {
             shared5 @ "depth 0 via repeat 0";
             shared5 @ "depth 0 via repeat 1";
             shared5 @ "depth 0 via repeat 2";
             shared5 @ "depth 0 via repeat 3"
           };
-          timeline 4 {
+          track 4 {
             occurrence "voice 1 0 repeat 4 from 2 to 6 [1856:1989 #6]" from 0 to 4;
           }
         }
       };
-      timeline 8 {
+      track 8 {
         occurrence "piece meter 4/4 [683:698]" from 0 to 8;
         occurrence "piece tempo 1/4=124 [661:683]" from 0 to 8;
         occurrence "piece key a minor [698:715]" from 0 to 8;

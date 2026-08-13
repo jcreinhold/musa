@@ -3,7 +3,7 @@
 //!
 //! This is *the* semantic path: name resolution, motif registration and unit
 //! checks come from `resolve.rs`, voice content elaborates into
-//! `Timeline<ScoreFact>` values built from kernel `sequence`/`overlay`, and
+//! `VoiceTrack` values built from kernel `follow`/`together`, and
 //! `project.rs` reads a `ScoreSnapshot` back out of the result (§27).
 //!
 //! Design decisions recorded in docs/rules/kernel/06 and 08:
@@ -31,7 +31,7 @@ use crate::resolve::{self, ExpandCx, Resolver};
 use crate::scope::Scope;
 use crate::score::{DynamicMark, Meter, Mode, NotatedDuration, Part, PartId, ScoreSnapshot, Voice, VoiceId};
 use crate::time::MusicalTime;
-use musa_kernel::{Beat, Occurrence, Span, Term, Timeline, sequence, timeline};
+use musa_kernel::{Duration, EventTrack, Occurrence, Position, Span, Term, WrittenTime, empty, follow, track};
 use musa_language::ast::{AstNode as _, PieceDecl, VoiceItem};
 use musa_language::{SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
@@ -127,8 +127,8 @@ pub(crate) enum FactKind {
     /// The tempo *marking*, over the region it governs.
     ///
     /// The marking, not the map. `♩ = 92` is notation written at a place —
-    /// the engraver prints it, the exporters carry it — and the `Beat →
-    /// Second` function performance integrates is *derived* from the markings
+    /// the engraver prints it, the exporters carry it — and the written-time
+    /// → second function performance integrates is *derived* from the markings
     /// (docs/rules/kernel/06-surface-elaboration.md). Keeping the two apart is why this is a fact:
     /// a fact has a place in the piece, and a function does not.
     ///
@@ -495,7 +495,7 @@ pub(crate) fn elaborate(source: &SourceDocument, options: &crate::CompileOptions
 }
 
 /// One voice's elaborated timeline, before the snapshot adapter sees it.
-pub(crate) type VoiceTimeline = Timeline<ScoreFact>;
+pub(crate) type VoiceTrack = EventTrack<WrittenTime, ScoreFact>;
 
 /// Everything after parsing (docs/rules/kernel/06): elaborate, adapt, check.
 ///
@@ -810,9 +810,9 @@ const fn site_key(span: SourceSpan) -> u64 {
 /// and the barlines are folded from the meter occurrences — which is why no
 /// function in this module recomputes either from the snapshot.
 /// Walk parts and voices exactly as the direct lowerer does, elaborating
-/// each voice into kernel facts — and then overlay every one of them, plus
+/// each voice into kernel facts — and then stack every one of them, plus
 /// the piece's key, meter, form markers and chord symbols, into a single
-/// `Timeline<ScoreFact>` for the whole piece, which is projected once.
+/// `VoiceTrack` for the whole piece, which is projected once.
 ///
 /// One compilation, one temporal object (docs/rules/kernel/06-surface-elaboration.md).
 /// Part and
@@ -921,13 +921,9 @@ fn elaborate_score(
         metadata.push((id, name));
     }
 
-    // The overlay's extent without building the overlay: D3 says it is the
+    // The stack's extent without building the stack: D3 says it is the
     // maximum of the parts', and the context facts need it before they exist.
-    let extent = lanes
-        .iter()
-        .map(|lane| lane.extent)
-        .max()
-        .unwrap_or(musa_kernel::Beat::ZERO);
+    let extent = lanes.iter().map(|lane| lane.extent).max().unwrap_or(Duration::ZERO);
     // The meters first: every check below is measured against the barlines,
     // and where the barlines fall is what the meters decide.
     let bars = resolve_meters(resolver);
@@ -956,7 +952,7 @@ fn elaborate_score(
         share.report_exhaustion(resolver);
         return musa_kernel::SemanticHash::default();
     }
-    if let Some(sink) = &mut resolver.timeline_sink {
+    if let Some(sink) = &mut resolver.track_sink {
         // Measurement only, and the one place a voice is wanted on its own;
         // the piece itself is evaluated once, below.
         let voices: Vec<_> = lanes.iter().map(|lane| share.evaluate(lane.term.clone())).collect();
@@ -970,7 +966,7 @@ fn elaborate_score(
         .map(|lane| lane.term)
         .chain(std::iter::once(Term::literal(context)))
         .collect();
-    let open = Term::over(parts).unwrap_or_else(|_| musa_kernel::Term::literal(empty_segment()));
+    let open = Term::together(parts).unwrap_or_else(|_| musa_kernel::Term::literal(empty_segment()));
     let closed = share.close(open);
     if let Err(error) = closed.check() {
         resolver.report(
@@ -1021,8 +1017,8 @@ fn context_facts(
     score: &musa_language::ast::ScoreDecl,
     declared: &[(u32, resolve::PartContext)],
     bars: &crate::BarLines,
-    extent: Beat,
-) -> Timeline<ScoreFact> {
+    extent: Duration<WrittenTime>,
+) -> VoiceTrack {
     let declaration = crate::origin::DeclarationId::default();
     let at_span = |span: SourceSpan| Origin {
         source_span: span,
@@ -1036,7 +1032,7 @@ fn context_facts(
     let meter = resolver.meter;
     let key = resolver.key;
 
-    let region = Span::new(Beat::ZERO, extent).unwrap_or(Span::ZERO);
+    let region = Span::new(Position::ZERO, extent.reach()).unwrap_or(Span::ZERO);
     let mut occurrences = vec![Occurrence::new(
         region,
         ScoreFact::new(
@@ -1179,13 +1175,13 @@ fn context_facts(
             ScoreFact::new(Scope::Piece, FactKind::Harmony { symbol }, at_span(span)),
         ));
     }
-    timeline_or_empty(extent, occurrences)
+    track_or_empty(extent, occurrences)
 }
 
 /// A point occurrence at an absolute time, for the facts that are placed by
 /// coordinate rather than by where the cursor reached.
-fn point_at(at: MusicalTime, fact: ScoreFact) -> Occurrence<ScoreFact> {
-    let instant = Beat::new(at.as_ratio());
+fn point_at(at: MusicalTime, fact: ScoreFact) -> Occurrence<WrittenTime, ScoreFact> {
+    let instant = Position::new(at.as_ratio());
     let span = Span::new(instant, instant).unwrap_or(Span::ZERO);
     Occurrence::new(span, fact)
 }
@@ -1307,8 +1303,8 @@ fn resolve_position(
 /// evaluated. Computing it by evaluating would defeat the point of emitting a
 /// term at all.
 struct Segment {
-    term: Term<ScoreFact>,
-    extent: Beat,
+    term: Term<WrittenTime, ScoreFact>,
+    extent: Duration<WrittenTime>,
     /// Exact number of occurrences after this term is instantiated. Keeping
     /// it structurally avoids evaluating a shared term merely to decide
     /// whether evaluating it is safe.
@@ -1319,10 +1315,10 @@ struct Segment {
 }
 
 impl Segment {
-    fn literal(value: Timeline<ScoreFact>) -> Self {
+    fn literal(value: VoiceTrack) -> Self {
         let occurrences = u64::try_from(value.occurrences().len()).unwrap_or(u64::MAX);
         Self {
-            extent: value.extent(),
+            extent: value.duration(),
             tied: value.occurrences().iter().any(|it| it.payload().tied),
             occurrences,
             term: Term::literal(value),
@@ -1345,10 +1341,10 @@ impl Segment {
 /// construction, since a motif may only reference motifs declared before it.
 #[derive(Default)]
 struct Share {
-    bindings: Vec<(String, Term<ScoreFact>)>,
+    bindings: Vec<(String, Term<WrittenTime, ScoreFact>)>,
     /// What has already been elaborated, keyed by everything its payloads
     /// depend on, mapping to the binding's name and extent.
-    named: std::collections::HashMap<String, (String, Beat, u64)>,
+    named: std::collections::HashMap<String, (String, Duration<WrittenTime>, u64)>,
     output_meter: crate::core_budget::WorkMeter,
 }
 
@@ -1377,7 +1373,7 @@ impl Share {
     /// mentions it. Dropping the rest matters — a level that had to be
     /// evaluated spent its sharing, and its binding would otherwise be printed
     /// and cloned for nothing.
-    fn close(&self, term: Term<ScoreFact>) -> Term<ScoreFact> {
+    fn close(&self, term: Term<WrittenTime, ScoreFact>) -> Term<WrittenTime, ScoreFact> {
         let mut closed = term;
         for (name, value) in self.bindings.iter().rev() {
             if closed.references_name(name) {
@@ -1395,12 +1391,12 @@ impl Share {
     /// sharing the piece's term holds every occurrence exactly once, and
     /// cloning it to evaluate it would double the compiler's allocations for
     /// nothing.
-    fn evaluate(&self, term: Term<ScoreFact>) -> Timeline<ScoreFact> {
+    fn evaluate(&self, term: Term<WrittenTime, ScoreFact>) -> VoiceTrack {
         musa_kernel::evaluate_marked(self.close(term), instantiate)
     }
 
     /// The binding for `key`, or `None` if this body has not been elaborated.
-    fn lookup(&self, key: &str) -> Option<(String, Beat, u64)> {
+    fn lookup(&self, key: &str) -> Option<(String, Duration<WrittenTime>, u64)> {
         self.named.get(key).cloned()
     }
 
@@ -1430,7 +1426,7 @@ impl Share {
     /// A repeat's body is written in exactly one place, so there is no key that
     /// another site could arrive with; keying it would only invite a false
     /// match between two bodies whose payloads differ.
-    fn bind_anonymous(&mut self, body: Term<ScoreFact>) -> String {
+    fn bind_anonymous(&mut self, body: Term<WrittenTime, ScoreFact>) -> String {
         let name = format!("shared{}", self.bindings.len());
         self.bindings.push((name.clone(), body));
         name
@@ -1466,7 +1462,7 @@ fn mark_of(depth: usize, steps: &[ExpansionStep], origin: Option<SourceSpan>, sc
 /// Payloads only, which is the whole of T6's contract: the spans, the extent,
 /// the count and the order are the instantiated timeline's own and are not
 /// touched here.
-pub(crate) fn instantiate(mark: &str, instance: &mut Timeline<ScoreFact>) {
+pub(crate) fn instantiate(mark: &str, instance: &mut VoiceTrack) {
     let Some(crate::factext::ReferenceMark {
         depth,
         steps,
@@ -1495,18 +1491,18 @@ pub(crate) fn instantiate(mark: &str, instance: &mut Timeline<ScoreFact>) {
 
 /// A region fact — slur, phrase, hairpin, tuplet — laid over a body.
 ///
-/// `overlay { body; timeline extent { occurrence fact from 0 to extent } }`,
+/// `together { body; track extent { occurrence fact from 0 to extent } }`,
 /// in that order, which is the order the direct lowerer built and therefore
 /// the order the storage-order goldens expect.
 fn region(body: Segment, fact: ScoreFact) -> Segment {
     let extent = body.extent;
-    let Ok(span) = Span::new(Beat::from_integer(0), extent) else {
+    let Ok(span) = Span::new(Position::ZERO, extent.reach()) else {
         return body;
     };
-    let Ok(mark) = timeline(extent, vec![Occurrence::new(span, fact)]) else {
+    let Ok(mark) = track(extent, vec![Occurrence::new(span, fact)]) else {
         return body;
     };
-    let Ok(term) = Term::over(vec![body.term, Term::literal(mark)]) else {
+    let Ok(term) = Term::together(vec![body.term, Term::literal(mark)]) else {
         return Segment::empty();
     };
     Segment {
@@ -1524,10 +1520,10 @@ fn region(body: Segment, fact: ScoreFact) -> Segment {
 /// is the point: eight plain notes in a row are eight literals of one
 /// occurrence, and a file that shows them as eight nested `timeline` blocks
 /// has buried the structure a composer wrote under structure they did not.
-fn coalesce(terms: impl ExactSizeIterator<Item = Term<ScoreFact>>) -> Vec<Term<ScoreFact>> {
+fn coalesce(terms: impl ExactSizeIterator<Item = Term<WrittenTime, ScoreFact>>) -> Vec<Term<WrittenTime, ScoreFact>> {
     let count = terms.len();
-    let mut folded: Vec<Term<ScoreFact>> = Vec::with_capacity(count);
-    let mut run: Vec<Timeline<ScoreFact>> = Vec::with_capacity(count);
+    let mut folded: Vec<Term<WrittenTime, ScoreFact>> = Vec::with_capacity(count);
+    let mut run: Vec<VoiceTrack> = Vec::with_capacity(count);
     for term in terms {
         match term.into_literal() {
             Ok(value) => run.push(value),
@@ -1542,17 +1538,17 @@ fn coalesce(terms: impl ExactSizeIterator<Item = Term<ScoreFact>>) -> Vec<Term<S
 }
 
 /// Push the pending run of literals, as one literal, and clear it.
-fn flush(run: &mut Vec<Timeline<ScoreFact>>, folded: &mut Vec<Term<ScoreFact>>) {
+fn flush(run: &mut Vec<VoiceTrack>, folded: &mut Vec<Term<WrittenTime, ScoreFact>>) {
     match run.len() {
         0 => {}
         1 => folded.extend(run.drain(..).map(Term::literal)),
-        _ => folded.push(Term::literal(sequence(std::mem::take(run)))),
+        _ => folded.push(Term::literal(follow(std::mem::take(run)))),
     }
 }
 
 /// The extent of a sequence of segments: exact rational addition (D2).
-fn total_extent(segments: &[Segment]) -> Beat {
-    Beat::new(
+fn total_extent(segments: &[Segment]) -> Duration<WrittenTime> {
+    beats(
         segments
             .iter()
             .map(|segment| segment.extent.as_ratio())
@@ -1688,7 +1684,7 @@ fn one_after_another(resolver: &mut Resolver, share: &Share, segments: Vec<Segme
         let parts = coalesce(segments.into_iter().map(|segment| segment.term));
         let term = match <[_; 1]>::try_from(parts) {
             Ok([only]) => only,
-            Err(parts) => Term::seq(parts).unwrap_or_else(|_| Term::literal(empty_segment())),
+            Err(parts) => Term::follow(parts).unwrap_or_else(|_| Term::literal(empty_segment())),
         };
         return Segment {
             term,
@@ -1707,7 +1703,7 @@ fn one_after_another(resolver: &mut Resolver, share: &Share, segments: Vec<Segme
         .into_iter()
         .map(|segment| share.evaluate(segment.term))
         .collect();
-    Segment::literal(merge_ties(resolver, sequence(values)))
+    Segment::literal(merge_ties(resolver, follow(values)))
 }
 
 /// The articulations written on a note or chord statement.
@@ -1802,7 +1798,7 @@ fn elaborate_grace(
         );
         occurrences.push(Occurrence::new(Span::ZERO, fact));
     }
-    Segment::literal(timeline_or_empty(Beat::ZERO, occurrences))
+    Segment::literal(track_or_empty(Duration::ZERO, occurrences))
 }
 
 /// `mark <name> [<argument>] ;` or `… { … }`.
@@ -2123,13 +2119,10 @@ fn sounded_voicing(
         facts.push(fact);
     }
     let span = span_of_duration(duration);
-    Segment::literal(
-        timeline(
-            span.end(),
-            facts.into_iter().map(|fact| Occurrence::new(span, fact)).collect(),
-        )
-        .unwrap_or_else(|_| musa_kernel::zero()),
-    )
+    Segment::literal(track_or_empty(
+        span.duration(),
+        facts.into_iter().map(|fact| Occurrence::new(span, fact)).collect(),
+    ))
 }
 
 /// Elaborate one item; malformed items elaborate to the empty segment
@@ -2251,16 +2244,13 @@ fn elaborate_item(
                 }
             }
             let span = span_of_duration(&duration);
-            Segment::literal(
-                timeline(
-                    span.end(),
-                    pitches
-                        .into_iter()
-                        .map(|payload| Occurrence::new(span, payload))
-                        .collect(),
-                )
-                .unwrap_or_else(|_| musa_kernel::zero()),
-            )
+            Segment::literal(track_or_empty(
+                span.duration(),
+                pitches
+                    .into_iter()
+                    .map(|payload| Occurrence::new(span, payload))
+                    .collect(),
+            ))
         }
         VoiceItem::Use(call) => elaborate_use(resolver, share, call, cx, scope),
         VoiceItem::Transpose(transpose) => {
@@ -2536,7 +2526,7 @@ fn sequence_of(segments: Vec<Segment>) -> Segment {
     let parts = coalesce(segments.into_iter().map(|segment| segment.term));
     let term = match <[_; 1]>::try_from(parts) {
         Ok([only]) => only,
-        Err(parts) => Term::seq(parts).unwrap_or_else(|_| Term::literal(empty_segment())),
+        Err(parts) => Term::follow(parts).unwrap_or_else(|_| Term::literal(empty_segment())),
     };
     Segment {
         term,
@@ -2566,13 +2556,13 @@ fn elaborate_improvise(
         );
         return Segment::empty();
     };
-    let extent = Beat::new(length * cx.scale);
+    let extent = beats(length * cx.scale);
     let fact = ScoreFact::new(scope, FactKind::Improvise { over: stmt.over() }, origin_of(cx, span));
-    let Ok(region) = Span::new(Beat::ZERO, extent) else {
+    let Ok(region) = Span::new(Position::ZERO, extent.reach()) else {
         return Segment::empty();
     };
     Segment {
-        term: Term::literal(timeline_or_empty(extent, vec![Occurrence::new(region, fact)])),
+        term: Term::literal(track_or_empty(extent, vec![Occurrence::new(region, fact)])),
         extent,
         occurrences: 1,
         tied: false,
@@ -2668,11 +2658,11 @@ fn elaborate_repeat(
     let mark = |iteration: u32| mark_of(cx.path.len(), &[ExpansionStep::RepeatIteration(iteration)], None, None);
     let body_occurrences = body.occurrences;
     let body_name = share.bind_anonymous(body.term);
-    let ending_names: Vec<(String, Beat, u64)> = played
+    let ending_names: Vec<(String, Duration<WrittenTime>, u64)> = played
         .into_iter()
         .map(|segment| (share.bind_anonymous(segment.term), segment.extent, segment.occurrences))
         .collect();
-    let mut passes: Vec<Term<ScoreFact>> = Vec::with_capacity(count as usize);
+    let mut passes: Vec<Term<WrittenTime, ScoreFact>> = Vec::with_capacity(count as usize);
     let mut extent = Ratio::ZERO;
     let mut occurrences = 0u64;
     for iteration in 0..count {
@@ -2704,8 +2694,8 @@ fn elaborate_repeat(
         occurrences = occurrences.saturating_add(ending_occurrences.saturating_add(1));
     }
     let whole = Segment {
-        term: Term::seq(passes).unwrap_or_else(|_| Term::literal(empty_segment())),
-        extent: Beat::new(extent),
+        term: Term::follow(passes).unwrap_or_else(|_| Term::literal(empty_segment())),
+        extent: beats(extent),
         occurrences,
         tied: false,
     };
@@ -2718,7 +2708,10 @@ fn elaborate_repeat(
 
 /// The ending a given pass plays — its 1-based bracket, binding, and length —
 /// by the rule that the last one covers every pass after it.
-fn ending_of(endings: &[(String, Beat, u64)], iteration: u32) -> Option<(u32, &str, Beat, u64)> {
+fn ending_of(
+    endings: &[(String, Duration<WrittenTime>, u64)],
+    iteration: u32,
+) -> Option<(u32, &str, Duration<WrittenTime>, u64)> {
     let index = (iteration as usize).min(endings.len().checked_sub(1)?);
     let bracket = u32::try_from(index.saturating_add(1)).unwrap_or(u32::MAX);
     endings
@@ -2745,7 +2738,7 @@ fn expanded_repeat(
         return Segment::empty();
     }
     let body = share.evaluate(body.term);
-    let played: Vec<Timeline<ScoreFact>> = endings
+    let played: Vec<VoiceTrack> = endings
         .iter()
         .map(|segment| share.evaluate(segment.term.clone()))
         .collect();
@@ -2762,7 +2755,7 @@ fn expanded_repeat(
             segments.push(copy);
         }
     }
-    Segment::literal(sequence(segments))
+    Segment::literal(follow(segments))
 }
 
 fn repeated_ending_occurrences(endings: &[Segment], count: u32) -> u64 {
@@ -3580,8 +3573,8 @@ fn append_contextual_key(key: &mut String, music: &crate::core::Music) {
             append_contextual_key(key, source);
             key.push(']');
         }
-        Some(crate::core::MusicOperation::Overlay { left, right }) => {
-            key.push_str("|overlay[");
+        Some(crate::core::MusicOperation::Together { left, right }) => {
+            key.push_str("|together[");
             append_contextual_key(key, left);
             key.push('|');
             append_contextual_key(key, right);
@@ -3613,7 +3606,7 @@ fn append_contextual_key(key: &mut String, music: &crate::core::Music) {
 
 /// Interpret an opaque contextual value after a voice has supplied scope and
 /// onset. Every constructor delegates to the same transform helpers as its
-/// block spelling; the kernel still receives only a closed `Term<ScoreFact>`.
+/// block spelling; the kernel still receives only a closed `Term<WrittenTime, ScoreFact>`.
 fn elaborate_music_value(
     resolver: &mut Resolver,
     share: &mut Share,
@@ -3649,17 +3642,17 @@ fn elaborate_music_value(
         Some(crate::core::MusicOperation::Shift { by, source }) => {
             let segment = elaborate_music_value(resolver, share, source, &local, scope);
             Segment {
-                term: Term::shift(Beat::new(*by), segment.term).unwrap_or_else(|_| Term::literal(empty_segment())),
-                extent: Beat::new(*by + segment.extent.as_ratio()),
+                term: Term::shift(beats(*by), segment.term),
+                extent: beats(*by + segment.extent.as_ratio()),
                 occurrences: segment.occurrences,
                 tied: false,
             }
         }
-        Some(crate::core::MusicOperation::Overlay { left, right }) => {
+        Some(crate::core::MusicOperation::Together { left, right }) => {
             let left = elaborate_music_value(resolver, share, left, &local, scope);
             let right = elaborate_music_value(resolver, share, right, &local, scope);
             Segment {
-                term: Term::over(vec![left.term, right.term]).unwrap_or_else(|_| Term::literal(empty_segment())),
+                term: Term::together(vec![left.term, right.term]).unwrap_or_else(|_| Term::literal(empty_segment())),
                 extent: left.extent.max(right.extent),
                 occurrences: left.occurrences.saturating_add(right.occurrences),
                 tied: false,
@@ -3710,7 +3703,7 @@ fn elaborate_music_value(
 fn kernel_quote_segment(
     resolver: &mut Resolver,
     share: &mut Share,
-    term: &Term<ScoreFact>,
+    term: &Term<WrittenTime, ScoreFact>,
     holes: &[(String, Ratio<i64>, crate::core::Music)],
     cx: &ExpandCx,
     scope: Scope,
@@ -3742,7 +3735,7 @@ fn kernel_quote_segment(
         occurrences = occurrences.saturating_add(segment.occurrences);
         assembled = Term::bind(name.clone(), segment.term, assembled);
     }
-    let extent = match assembled.extent() {
+    let extent = match assembled.duration() {
         Ok(extent) => extent,
         Err(error) => {
             resolver.report(
@@ -3835,11 +3828,7 @@ fn elaborate_fragment(
 /// Every override that lands records itself in the note's provenance, so the
 /// score can still say both "this came from the motif" and "and this call
 /// changed it" (roadmap §8.3).
-fn specialize(
-    resolver: &mut Resolver,
-    call: &musa_language::ast::UseStmt,
-    elaborated: &Timeline<ScoreFact>,
-) -> Timeline<ScoreFact> {
+fn specialize(resolver: &mut Resolver, call: &musa_language::ast::UseStmt, elaborated: &VoiceTrack) -> VoiceTrack {
     let overrides = call.overrides();
     if overrides.is_empty() {
         return elaborated.clone();
@@ -3936,7 +3925,7 @@ fn specialize(
         return elaborated.clone();
     }
 
-    let occurrences: Vec<Occurrence<ScoreFact>> = elaborated
+    let occurrences: Vec<Occurrence<WrittenTime, ScoreFact>> = elaborated
         .occurrences()
         .iter()
         .enumerate()
@@ -3955,7 +3944,7 @@ fn specialize(
             Occurrence::new(occurrence.span(), payload)
         })
         .collect();
-    timeline_or_empty(elaborated.extent(), occurrences)
+    track_or_empty(elaborated.duration(), occurrences)
 }
 
 /// The derived time reversal (roadmap §5.4): `(d, E)` becomes
@@ -3975,7 +3964,7 @@ fn stretch_segment(share: &Share, segment: Segment, factor: Ratio<i64>) -> Segme
     let elaborated = share.evaluate(segment.term);
     Segment::literal(
         elaborated
-            .map_payload(|payload| payload.stretched(factor))
+            .map_payloads(|payload| payload.stretched(factor))
             .scale(factor)
             .unwrap_or_else(|_| empty_segment()),
     )
@@ -3994,7 +3983,7 @@ fn invert_segment(
 ) -> Segment {
     let elaborated = share.evaluate(segment.term);
     let refused = std::cell::RefCell::new(Vec::new());
-    let inverted = elaborated.map_payload(|payload| {
+    let inverted = elaborated.map_payloads(|payload| {
         payload.inverted(axis).unwrap_or_else(|| {
             if let Some(pitch) = payload.pitch_of() {
                 refused.borrow_mut().push((pitch, payload.origin.definition_span));
@@ -4023,7 +4012,7 @@ fn map_note_pitches_segment(
 ) -> Segment {
     let elaborated = share.evaluate(segment.term);
     let failed = std::cell::Cell::new(false);
-    let mapped = elaborated.map_payload(|payload| {
+    let mapped = elaborated.map_payloads(|payload| {
         map_note_pitch_fact(payload, |pitch| crate::core::apply_pitch_function(mapper, pitch)).unwrap_or_else(|| {
             failed.set(true);
             payload.clone()
@@ -4070,15 +4059,15 @@ pub(crate) fn map_note_pitch_fact(
 }
 
 /// an ordinary occurrence with an ordinary span.
-fn reverse(timeline: &Timeline<ScoreFact>) -> Timeline<ScoreFact> {
-    let extent = timeline.extent();
-    let mut mirrored: Vec<Occurrence<ScoreFact>> = timeline
+fn reverse(timeline: &VoiceTrack) -> VoiceTrack {
+    let extent = timeline.duration();
+    let mut mirrored: Vec<Occurrence<WrittenTime, ScoreFact>> = timeline
         .occurrences()
         .iter()
         .map(|occurrence| {
             let span = occurrence.span();
-            let start = Beat::new(extent.as_ratio() - span.end().as_ratio());
-            let end = Beat::new(extent.as_ratio() - span.start().as_ratio());
+            let start = Position::new(extent.as_ratio() - span.end().as_ratio());
+            let end = Position::new(extent.as_ratio() - span.start().as_ratio());
             let mirrored = Span::new(start, end).unwrap_or(Span::ZERO);
             Occurrence::new(mirrored, occurrence.payload().clone())
         })
@@ -4086,38 +4075,49 @@ fn reverse(timeline: &Timeline<ScoreFact>) -> Timeline<ScoreFact> {
     // Stable by start, so the members of a chord stay adjacent and in the
     // order the projection expects.
     mirrored.sort_by_key(|occurrence| (occurrence.span().start(), occurrence.span().end()));
-    timeline_or_empty(extent, mirrored)
+    track_or_empty(extent, mirrored)
 }
 
 /// A timeline over `extent`, or the empty segment when the occurrences do
 /// not fit it (unreachable for elaborated music; never a panic).
-fn timeline_or_empty(extent: Beat, occurrences: Vec<Occurrence<ScoreFact>>) -> Timeline<ScoreFact> {
-    timeline(extent, occurrences).unwrap_or_else(|_| musa_kernel::zero())
+/// A written-time amount from an exact rational, clamped at zero.
+///
+/// Elaboration derives lengths from notated durations, repeat counts, and
+/// tuplet ratios, all nonnegative by construction. A negative one would be a
+/// bug upstream rather than a piece of music, and answering it with zero keeps
+/// one bad measure from taking the rest of the piece with it — the same
+/// judgment [`track_or_empty`] already makes about an out-of-bounds fact.
+fn beats(amount: num_rational::Ratio<i64>) -> Duration<WrittenTime> {
+    Duration::new(amount).unwrap_or(Duration::ZERO)
+}
+
+fn track_or_empty(extent: Duration<WrittenTime>, occurrences: Vec<Occurrence<WrittenTime, ScoreFact>>) -> VoiceTrack {
+    track(extent, occurrences).unwrap_or_else(|_| empty_segment())
 }
 
 /// The empty segment `(0, ∅)` — contributes nothing to the sequence.
-fn empty_segment() -> Timeline<ScoreFact> {
-    musa_kernel::zero()
+fn empty_segment() -> VoiceTrack {
+    empty(Duration::ZERO)
 }
 
 /// The span `[0, d)` for a notated duration. Non-negative by construction
 /// (durations parse from positive literals); `Span::ZERO` is the dead
 /// fallback.
-fn span_of_duration(duration: &NotatedDuration) -> Span {
-    Span::new(Beat::ZERO, Beat::new(duration.value.as_ratio())).unwrap_or(Span::ZERO)
+fn span_of_duration(duration: &NotatedDuration) -> Span<WrittenTime> {
+    Span::new(Position::ZERO, Position::new(duration.value.as_ratio())).unwrap_or(Span::ZERO)
 }
 
 /// A segment holding one occurrence over `[0, d)`. Bounds hold by
 /// construction; the empty segment is the dead fallback.
-fn single(duration: &NotatedDuration, payload: ScoreFact) -> Timeline<ScoreFact> {
+fn single(duration: &NotatedDuration, payload: ScoreFact) -> VoiceTrack {
     let span = span_of_duration(duration);
-    timeline(span.end(), vec![Occurrence::new(span, payload)]).unwrap_or_else(|_| musa_kernel::zero())
+    track_or_empty(span.duration(), vec![Occurrence::new(span, payload)])
 }
 
 /// A point fact at the cursor: an occurrence of zero extent in a segment of
 /// zero extent, so sequencing places it exactly where it was written.
-fn point(fact: ScoreFact) -> Timeline<ScoreFact> {
-    timeline_or_empty(Beat::ZERO, vec![Occurrence::new(Span::ZERO, fact)])
+fn point(fact: ScoreFact) -> VoiceTrack {
+    track_or_empty(Duration::ZERO, vec![Occurrence::new(Span::ZERO, fact)])
 }
 
 /// The origin for an event under this expansion context (mirrors the direct
@@ -4168,13 +4168,13 @@ fn apply_intervals(
 /// duration is the compound spelling, and nothing downstream ever sees a tie
 /// flag. A tie onto a different pitch, or with nothing after it, is a
 /// diagnostic here rather than a shape the projection has to cope with.
-fn merge_ties(resolver: &mut Resolver, timeline: Timeline<ScoreFact>) -> Timeline<ScoreFact> {
+fn merge_ties(resolver: &mut Resolver, timeline: VoiceTrack) -> VoiceTrack {
     if !timeline.occurrences().iter().any(|it| it.payload().tied) {
         return timeline;
     }
-    let extent = timeline.extent();
+    let extent = timeline.duration();
     let statements = statements(timeline.occurrences());
-    let mut merged: Vec<Vec<Occurrence<ScoreFact>>> = Vec::with_capacity(statements.len());
+    let mut merged: Vec<Vec<Occurrence<WrittenTime, ScoreFact>>> = Vec::with_capacity(statements.len());
     for statement in statements {
         let joins = merged
             .last()
@@ -4206,8 +4206,8 @@ fn merge_ties(resolver: &mut Resolver, timeline: Timeline<ScoreFact>) -> Timelin
         }
         join(previous, &statement);
     }
-    let occurrences: Vec<Occurrence<ScoreFact>> = merged.into_iter().flatten().collect();
-    timeline_or_empty(extent, occurrences)
+    let occurrences: Vec<Occurrence<WrittenTime, ScoreFact>> = merged.into_iter().flatten().collect();
+    track_or_empty(extent, occurrences)
 }
 
 /// The occurrences grouped into *statements*: one written note or rest, or
@@ -4215,8 +4215,8 @@ fn merge_ties(resolver: &mut Resolver, timeline: Timeline<ScoreFact>) -> Timelin
 ///
 /// Region and point facts are statements of one, and never merge: only a
 /// notehead can be tied.
-fn statements(occurrences: &[Occurrence<ScoreFact>]) -> Vec<Vec<Occurrence<ScoreFact>>> {
-    let mut grouped: Vec<Vec<Occurrence<ScoreFact>>> = Vec::with_capacity(occurrences.len());
+fn statements(occurrences: &[Occurrence<WrittenTime, ScoreFact>]) -> Vec<Vec<Occurrence<WrittenTime, ScoreFact>>> {
+    let mut grouped: Vec<Vec<Occurrence<WrittenTime, ScoreFact>>> = Vec::with_capacity(occurrences.len());
     for occurrence in occurrences {
         let joins = grouped.last().and_then(|group| group.first()).is_some_and(|first| {
             first.span() == occurrence.span()
@@ -4233,8 +4233,8 @@ fn statements(occurrences: &[Occurrence<ScoreFact>]) -> Vec<Vec<Occurrence<Score
 }
 
 /// Whether two statements are the same sound: the same pitches, in order.
-fn same_sound(left: &[Occurrence<ScoreFact>], right: &[Occurrence<ScoreFact>]) -> bool {
-    let pitches = |statement: &[Occurrence<ScoreFact>]| -> Option<Vec<WrittenPitch>> {
+fn same_sound(left: &[Occurrence<WrittenTime, ScoreFact>], right: &[Occurrence<WrittenTime, ScoreFact>]) -> bool {
+    let pitches = |statement: &[Occurrence<WrittenTime, ScoreFact>]| -> Option<Vec<WrittenPitch>> {
         statement.iter().map(|it| it.payload().pitch_of()).collect()
     };
     match (pitches(left), pitches(right)) {
@@ -4245,7 +4245,7 @@ fn same_sound(left: &[Occurrence<ScoreFact>], right: &[Occurrence<ScoreFact>]) -
 
 /// Extend `previous` through `statement`: one occurrence per pitch, spanning
 /// both, spelled as the noteheads the composer wrote.
-fn join(previous: &mut [Occurrence<ScoreFact>], statement: &[Occurrence<ScoreFact>]) {
+fn join(previous: &mut [Occurrence<WrittenTime, ScoreFact>], statement: &[Occurrence<WrittenTime, ScoreFact>]) {
     let Some(end) = statement.first().map(|first| first.span().end()) else {
         return;
     };
@@ -4283,12 +4283,12 @@ fn join(previous: &mut [Occurrence<ScoreFact>], statement: &[Occurrence<ScoreFac
 /// continues into whatever follows the block, and merges at the level that
 /// contains both sides. Reported once, and cleared, so no fact leaves
 /// elaboration still claiming to be tied.
-fn check_dangling_tie(resolver: &mut Resolver, timeline: Timeline<ScoreFact>) -> Timeline<ScoreFact> {
+fn check_dangling_tie(resolver: &mut Resolver, timeline: VoiceTrack) -> VoiceTrack {
     if !timeline.occurrences().iter().any(|it| it.payload().tied) {
         return timeline;
     }
-    let extent = timeline.extent();
-    let mut occurrences: Vec<Occurrence<ScoreFact>> = timeline.occurrences().to_vec();
+    let extent = timeline.duration();
+    let mut occurrences: Vec<Occurrence<WrittenTime, ScoreFact>> = timeline.occurrences().to_vec();
     let mut reported = false;
     for occurrence in &mut occurrences {
         if !occurrence.payload().tied {
@@ -4305,11 +4305,11 @@ fn check_dangling_tie(resolver: &mut Resolver, timeline: Timeline<ScoreFact>) ->
         }
         untie(occurrence);
     }
-    timeline_or_empty(extent, occurrences)
+    track_or_empty(extent, occurrences)
 }
 
 /// Clear a tie that could not be honoured, so nothing downstream sees it.
-fn untie(occurrence: &mut Occurrence<ScoreFact>) {
+fn untie(occurrence: &mut Occurrence<WrittenTime, ScoreFact>) {
     let mut fact = occurrence.payload().clone();
     fact.tied = false;
     *occurrence = Occurrence::new(occurrence.span(), fact);
@@ -4387,7 +4387,11 @@ pub fn kernel_normal_form(source: &SourceDocument, realization: &crate::Realizat
 pub(crate) fn piece_term(
     source: &SourceDocument,
     realization: &crate::Realization,
-) -> Option<(String, musa_kernel::Term<ScoreFact>, Vec<crate::DecisionRecord>)> {
+) -> Option<(
+    String,
+    musa_kernel::Term<WrittenTime, ScoreFact>,
+    Vec<crate::DecisionRecord>,
+)> {
     let document = musa_language::parse(source.text());
     if !document.errors().is_empty() {
         return None;
@@ -4457,13 +4461,9 @@ pub(crate) fn piece_term(
             ));
         }
     }
-    // The overlay's extent without building the overlay: D3 says it is the
+    // The stack's extent without building the stack: D3 says it is the
     // maximum of the parts', and the context facts need it before they exist.
-    let extent = lanes
-        .iter()
-        .map(|lane| lane.extent)
-        .max()
-        .unwrap_or(musa_kernel::Beat::ZERO);
+    let extent = lanes.iter().map(|lane| lane.extent).max().unwrap_or(Duration::ZERO);
     let bars = resolve_meters(&mut resolver);
     check_keys(&mut resolver, &bars);
     let context = context_facts(&mut resolver, &piece, &score, &declared, &bars, extent);
@@ -4478,12 +4478,12 @@ pub(crate) fn piece_term(
     ) {
         return None;
     }
-    let parts: Vec<musa_kernel::Term<ScoreFact>> = lanes
+    let parts: Vec<musa_kernel::Term<WrittenTime, ScoreFact>> = lanes
         .into_iter()
         .map(|lane| lane.term)
         .chain(std::iter::once(musa_kernel::Term::literal(context)))
         .collect();
-    let term = share.close(musa_kernel::Term::over(parts).ok()?);
+    let term = share.close(musa_kernel::Term::together(parts).ok()?);
     term.check().ok()?;
     Some((piece.name().unwrap_or_default(), term, resolver.decisions))
 }

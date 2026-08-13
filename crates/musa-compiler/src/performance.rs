@@ -2,8 +2,8 @@
 //! neutral core that integrates the tempo map and schedules a
 //! `ScoreSnapshot` into frame-exact note-on/note-off events.
 //!
-//! Tempo is a monotone map `Beat → Second` applied to symbolic positions
-//! (§22) — it never rewrites the symbolic timeline, and "stretch" (a kernel
+//! Tempo is a monotone map written-time → second applied to symbolic positions
+//! (§22) — it never rewrites the symbolic track, and "stretch" (a kernel
 //! time action) is not "tempo" (a performance map). Symbolic stays in beats
 //! until this boundary; floats (frequency, seconds→frames) appear only here.
 //!
@@ -171,7 +171,7 @@ fn seconds_per_whole(beat: Ratio<i64>, bpm: u32) -> Ratio<i64> {
 }
 
 impl IntegratedTempoMap {
-    /// Integrate the piece's tempo *markings* into a `Beat → Second` map.
+    /// Integrate the piece's tempo *markings* into a written-time → second map.
     ///
     /// This is where the two things called tempo meet and stay apart (course
     /// correction §22). The markings are notation: they have places, they are
@@ -579,7 +579,7 @@ pub fn lower_performance(
             //
             // This is the kernel's prevailing rule (docs/rules/kernel/03 D11) applied
             // in bulk — one ordered pass over the voice, carrying the last
-            // marking forward — and not one `Timeline::prevailing` call per
+            // marking forward — and not one `EventTrack::prevailing` call per
             // event, which would be O(events × markings). The two conventions
             // D11 fixes are honoured here: a marking on an event is in force
             // *at* that event (the assignment precedes the read below), and of
@@ -719,7 +719,7 @@ pub fn lower_performance(
 /// Written time to frames, for one part.
 ///
 /// The composition order is the whole point (docs/rules/kernel/06-surface-elaboration.md): the
-/// groove is a `Beat → Beat` warp and tempo is `Beat → Second`, so the groove
+/// groove is a written-time → written-time warp and tempo is written-time → second, so the groove
 /// goes **first**. Composed the other way a shuffle would be specified in
 /// seconds and would straighten out as the band sped up.
 ///
@@ -806,7 +806,7 @@ struct Reached {
 ///
 /// **Shape versus sampling policy** (docs/rules/kernel/07). The shape — how the
 /// growth is distributed across the region — is a fact about the piece: it
-/// lives in the timeline as a `Progress`, it serializes, and every conforming
+/// lives in the track as a `Progress`, it serializes, and every conforming
 /// consumer must honour it. *Where to sample it* is this layer's choice, and
 /// this layer chooses **once per notated event, at `u = index / (count − 1)`**.
 ///

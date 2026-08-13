@@ -7,8 +7,8 @@ unknown-name
   × this kernel quote does not stand on its own
     ╭─[examples/broken/quote-open-reference.musa:11:28]
  10 │     
- 11 │ ╭─▶     let assembled: Music = kernel Timeline[ScoreFact] {
- 12 │ │           overlay {
+ 11 │ ╭─▶     let assembled: Music = kernel EventTrack[WrittenTime, ScoreFact] {
+ 12 │ │           together {
  13 │ │               theme;
  14 │ │               shift by 1/2 theme;
  15 │ │           }

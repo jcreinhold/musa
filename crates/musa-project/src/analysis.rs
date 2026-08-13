@@ -213,10 +213,10 @@ impl AnalysisFacts {
 /// The finding as a sentence.
 fn summarize(observation: &Observation) -> String {
     match *observation {
-        Observation::Sounding { pitch, extent, .. } => {
-            format!("{} sounds for {}", crate::facts::written(pitch), extent.as_ratio())
+        Observation::Sounding { pitch, duration, .. } => {
+            format!("{} sounds for {}", crate::facts::written(pitch), duration.as_ratio())
         }
-        Observation::Silence { extent, .. } => format!("nothing sounds for {}", extent.as_ratio()),
+        Observation::Silence { duration, .. } => format!("nothing sounds for {}", duration.as_ratio()),
         Observation::Written { ref symbol, .. } => format!("`{}` is written above the staff", symbol.text()),
         Observation::KeyInForce { key, .. } => format!(
             "{} {} is in force",
@@ -227,7 +227,7 @@ fn summarize(observation: &Observation) -> String {
             format!("{}/{} is in force", meter.numerator(), meter.denominator())
         }
         Observation::Sonority {
-            ref pitches, extent, ..
+            ref pitches, duration, ..
         } => format!(
             "{} sound together for {}",
             pitches
@@ -235,7 +235,7 @@ fn summarize(observation: &Observation) -> String {
                 .map(|pitch| crate::facts::written(*pitch))
                 .collect::<Vec<_>>()
                 .join(", "),
-            extent.as_ratio()
+            duration.as_ratio()
         ),
         Observation::ChordFit { chord, fit, .. } => {
             format!("the notes fit {} — {}", name(chord), fit.as_str())

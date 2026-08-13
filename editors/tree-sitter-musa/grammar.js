@@ -134,7 +134,7 @@ module.exports = grammar({
     // tree-sitter editor is a document rather than a page of red.
     kernel_document: ($) => seq($.kernel_marker, optional($.kernel_body)),
 
-    kernel_marker: (_) => token(prec(2, seq('%', /[ \t]*/, 'musa-kernel-1', /[ \t]*/, /\r?\n/))),
+    kernel_marker: (_) => token(prec(2, seq('%', /[ \t]*/, 'musa-kernel-2', /[ \t]*/, /\r?\n/))),
 
     kernel_body: (_) => token(prec(-1, /[\s\S]+/)),
 
@@ -622,7 +622,7 @@ module.exports = grammar({
 
     music_expression: ($) => seq('music', '{', repeat(choice(...VOICE_ITEMS($))), '}'),
 
-    // Parser::kernel_quote — `kernel Timeline[ScoreFact] { <kernel term> }`.
+    // Parser::kernel_quote — `kernel EventTrack[WrittenTime, ScoreFact] { … }`.
     //
     // The body is the *kernel's* grammar, and the kernel owns it: musa-language
     // recognises the shape (matched braces, and `${...}` holes) and hands the
@@ -639,6 +639,8 @@ module.exports = grammar({
         'kernel',
         field('constructor', $.identifier),
         '[',
+        field('coordinate', $.identifier),
+        ',',
         field('payload', $.identifier),
         ']',
         $.kernel_quote_body,

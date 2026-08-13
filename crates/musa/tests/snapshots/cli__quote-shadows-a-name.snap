@@ -7,12 +7,12 @@ unknown-name
   × this kernel quote does not stand on its own
     ╭─[examples/broken/quote-shadows-a-name.musa:11:28]
  10 │     
- 11 │ ╭─▶     let assembled: Music = kernel Timeline[ScoreFact] {
+ 11 │ ╭─▶     let assembled: Music = kernel EventTrack[WrittenTime, ScoreFact] {
  12 │ │           let material = ${theme} in
- 13 │ │           let material = timeline 1/2 {
+ 13 │ │           let material = track 1/2 {
  14 │ │               occurrence "note g4 1/2" from 0 to 1/2;
  15 │ │           } in
- 16 │ │           overlay {
+ 16 │ │           together {
  17 │ │               material;
  18 │ │           }
  19 │ ├─▶     };

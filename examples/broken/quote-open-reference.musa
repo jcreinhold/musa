@@ -8,8 +8,8 @@ piece "Quote Open Reference" {
         d4/4
     };
 
-    let assembled: Music = kernel Timeline[ScoreFact] {
-        overlay {
+    let assembled: Music = kernel EventTrack[WrittenTime, ScoreFact] {
+        together {
             theme;
             shift by 1/2 theme;
         }

@@ -592,51 +592,46 @@
   {
     "class": "name",
     "start": 667,
-    "end": 674
-  },
-  {
-    "class": "punctuation",
-    "start": 674,
     "end": 675
   },
   {
-    "class": "name",
+    "class": "punctuation",
     "start": 675,
-    "end": 682
+    "end": 676
   },
   {
-    "class": "punctuation",
-    "start": 682,
+    "class": "name",
+    "start": 676,
     "end": 683
   },
   {
-    "class": "name",
-    "start": 684,
-    "end": 689
+    "class": "punctuation",
+    "start": 683,
+    "end": 684
   },
   {
-    "class": "punctuation",
-    "start": 689,
+    "class": "name",
+    "start": 685,
     "end": 690
   },
   {
-    "class": "duration",
+    "class": "punctuation",
     "start": 690,
-    "end": 693
+    "end": 691
   },
   {
-    "class": "punctuation",
-    "start": 693,
+    "class": "duration",
+    "start": 691,
     "end": 694
   },
   {
-    "class": "name",
-    "start": 695,
-    "end": 701
+    "class": "punctuation",
+    "start": 694,
+    "end": 695
   },
   {
-    "class": "punctuation",
-    "start": 701,
+    "class": "name",
+    "start": 696,
     "end": 702
   },
   {
@@ -650,53 +645,58 @@
     "end": 704
   },
   {
-    "class": "pitch",
-    "start": 721,
-    "end": 723
+    "class": "punctuation",
+    "start": 704,
+    "end": 705
   },
   {
-    "class": "punctuation",
-    "start": 723,
+    "class": "pitch",
+    "start": 722,
     "end": 724
   },
   {
-    "class": "number",
+    "class": "punctuation",
     "start": 724,
     "end": 725
   },
   {
-    "class": "keyword",
-    "start": 742,
-    "end": 746
+    "class": "number",
+    "start": 725,
+    "end": 726
   },
   {
-    "class": "punctuation",
-    "start": 746,
+    "class": "keyword",
+    "start": 743,
     "end": 747
   },
   {
-    "class": "number",
+    "class": "punctuation",
     "start": 747,
     "end": 748
   },
   {
-    "class": "punctuation",
-    "start": 761,
-    "end": 762
+    "class": "number",
+    "start": 748,
+    "end": 749
   },
   {
     "class": "punctuation",
-    "start": 771,
-    "end": 772
+    "start": 762,
+    "end": 763
   },
   {
     "class": "punctuation",
-    "start": 777,
-    "end": 778
+    "start": 772,
+    "end": 773
   },
   {
     "class": "punctuation",
-    "start": 779,
-    "end": 780
+    "start": 778,
+    "end": 779
+  },
+  {
+    "class": "punctuation",
+    "start": 780,
+    "end": 781
   }
 ]

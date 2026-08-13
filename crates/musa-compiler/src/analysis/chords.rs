@@ -80,7 +80,7 @@ pub(super) fn observe(
         let notes = slice.refs();
         let passage = Evidence::Passage {
             from: slice.onset,
-            to: slice.onset + slice.extent,
+            to: slice.onset + slice.duration,
             notes,
         };
         found.push(AnalysisFinding::stated(
@@ -88,7 +88,7 @@ pub(super) fn observe(
             Observation::Sonority {
                 pitches: slice.notes.iter().map(|voiced| voiced.pitch).collect(),
                 onset: slice.onset,
-                extent: slice.extent,
+                duration: slice.duration,
             },
             passage.clone(),
         ));
@@ -102,7 +102,7 @@ pub(super) fn observe(
                     chord: ChordName::of(*chord),
                     fit: *fit,
                     onset: slice.onset,
-                    extent: slice.extent,
+                    duration: slice.duration,
                 },
                 passage.clone(),
                 vec![Ground {
@@ -221,7 +221,7 @@ fn compare(
 ) -> AnalysisFinding {
     let under = slices
         .iter()
-        .find(|slice| slice.onset <= at && slice.onset + slice.extent > at);
+        .find(|slice| slice.onset <= at && slice.onset + slice.duration > at);
     let classes = under.map(Slice::classes).unwrap_or_default();
     let named = spelled(symbol);
     let root_sounds = classes.contains(&symbol.root());

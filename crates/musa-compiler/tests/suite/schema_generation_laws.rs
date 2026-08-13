@@ -19,7 +19,7 @@
 //! How a list is read back. The language has no combinator that turns a
 //! `List<Music>` into sequential music — `use` sequences at the cursor and
 //! `overlay` is simultaneous — so the probes below build one out of the two
-//! primitives that do exist: fold with `overlay(one, shift(1, carried))`, which
+//! primitives that do exist: fold with `together(one, shift(1, carried))`, which
 //! lands each element a whole note after the rest of the accumulator. The fold
 //! accumulates left to right, so that lays the list out backwards, and
 //! `retrograde` turns it round again. A test proves the pair reads forwards
@@ -62,7 +62,7 @@ const PRELUDE: &str = r"
         map_note_pitches(fn (ignored: Pitch) -> Pitch { placed(written) }, music { c0/1 })
     }
 
-    fn after(one: Music, carried: Music) -> Music { overlay(one, shift(1, carried)) }
+    fn after(one: Music, carried: Music) -> Music { together(one, shift(1, carried)) }
     fn laid_out(values: List<Music>) -> Music { list_fold(music { rest/1 }, after, values) }
     fn line(written: List<Degree>) -> Music { retrograde(laid_out(map(degree_note, written))) }
 

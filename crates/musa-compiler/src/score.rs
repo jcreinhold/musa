@@ -392,7 +392,7 @@ impl Default for Metronome {
 /// number is what most scores actually say; a metronome mark with no word is
 /// what most modern ones say; and a marking with neither is not a marking.
 /// A `TempoMarking` with no [`Metronome`] prints and changes no clock, which
-/// is the fact that keeps the notation and the `Beat → Second` function from
+/// is the fact that keeps the notation and the the written-time → second function from
 /// collapsing back into one struct.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TempoMarking {
@@ -407,7 +407,7 @@ pub struct TempoMarking {
 /// A gradual tempo change: a *rit.*, an *accel.*, an eight-bar riser.
 ///
 /// The reach is in the payload rather than in the occurrence's span, because
-/// every context change is a point on the timeline and the track projected
+/// every context change is a point on the track and the track projected
 /// from those points is what turns them into stretches (`context.rs`). A
 /// ramp is a context change like any other; what is new is that it says
 /// where it is going and how long it takes to get there.
@@ -867,7 +867,7 @@ pub struct HarmonyMark {
 /// A repeat, as the page has to print it (roadmap §2 — one statement, two
 /// projections).
 ///
-/// The timeline holds every pass; this says which stretch of it is the one
+/// The track holds every pass; this says which stretch of it is the one
 /// worth printing, and how many times the printed stretch is played. Anchored
 /// to *time* rather than to events, because repeat barlines are barlines: they
 /// fall between measures and they apply to the whole system, so an answer given
@@ -1154,7 +1154,7 @@ pub struct ScoreSnapshot {
 ///
 /// One track per kind, each carrying its own inheritance rule
 /// ([`crate::ContextKind`]). Grouped rather than three fields on the snapshot
-/// because they are built together, in one pass over the timeline, and a
+/// because they are built together, in one pass over the track, and a
 /// consumer that reads one usually reads the others.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct Contexts {

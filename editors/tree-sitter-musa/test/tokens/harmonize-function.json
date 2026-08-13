@@ -50,7 +50,7 @@
     { "kind": "->", "text": "->" },
     { "kind": "identifier", "text": "Music" },
     { "kind": "{", "text": "{" },
-    { "kind": "identifier", "text": "overlay" },
+    { "kind": "identifier", "text": "together" },
     { "kind": "(", "text": "(" },
     { "kind": "identifier", "text": "subject" },
     { "kind": ",", "text": "," },

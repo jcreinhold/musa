@@ -335,9 +335,9 @@ impl MeasurePlan {
     ///
     /// The meter's answer wherever there is a meter, and the passage's own
     /// length where there is not: an unmeasured stretch is one measure that
-    /// runs until the next meter or until the music stops, so its length is
+    /// runs until the next meter or until the music stops, so its duration is
     /// something only the barlines know.
-    pub fn length(&self) -> MusicalDuration {
+    pub fn duration(&self) -> MusicalDuration {
         self.length
     }
 
@@ -1300,7 +1300,7 @@ fn plan_staff(
         let (start, end) = (measure.start, measure.end);
         let mut plans = Vec::with_capacity(lanes.len());
         for (voice_id, name, events) in &lanes {
-            let lane = plan_lane(events, measure.meter, measure.length().as_ratio(), start, end, marks)?;
+            let lane = plan_lane(events, measure.meter, measure.duration().as_ratio(), start, end, marks)?;
             let here: Vec<PointMark> = points
                 .iter()
                 .filter(|(voice, at, _)| voice == voice_id && start <= *at && *at < end)
@@ -1344,7 +1344,7 @@ fn plan_staff(
         measures.push(MeasurePlan {
             number: measure.number,
             meter: measure.meter,
-            length: measure.length(),
+            length: measure.duration(),
             time_signature: changed.then(|| (measure.meter.numerator(), measure.meter.denominator())),
             key: key_changed.then_some(here_key).flatten(),
             clefs: clefs

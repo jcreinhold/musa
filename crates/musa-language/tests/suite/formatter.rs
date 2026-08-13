@@ -275,7 +275,7 @@ fn an_unmeasurable_bar_keeps_single_spaces() {
 }
 
 /// A bar that does not add up gets no grouping — the grouping would be a lie
-/// about music `check_bar_length` is about to complain of.
+/// about music `check_bar_duration` is about to complain of.
 #[test]
 fn a_bar_that_does_not_add_up_is_not_grouped() {
     for bar in [

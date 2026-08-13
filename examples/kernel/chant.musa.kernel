@@ -1,9 +1,9 @@
-% musa-kernel-1
+% musa-kernel-2
 % generated from examples/chant.musa by musa-compiler
 kernel "Chant" {
-  composition main : Timeline[ScoreFact] =
-    overlay {
-      timeline 27/4 {
+  composition main : EventTrack[WrittenTime, ScoreFact] =
+    together {
+      track 27/4 {
         occurrence "voice 0 0 dynamic mp [888:899 #4]" from 0 to 0;
         occurrence "voice 0 0 note d4 1/4 [995:999 #4]" from 0 to 1/4;
         occurrence "voice 0 0 note f4 1/4 [1016:1020 #4]" from 1/4 to 1/2;
@@ -27,7 +27,7 @@ kernel "Chant" {
         occurrence "voice 0 0 note e4 1/4 [1398:1402 #4]" from 11/2 to 23/4;
         occurrence "voice 0 0 note d4 1 [1419:1423 #4]" from 23/4 to 27/4;
       };
-      timeline 27/4 {
+      track 27/4 {
         occurrence "piece meter 0/4 [752:768]" from 0 to 27/4;
         occurrence "piece tempo 1/4=96 [732:752]" from 0 to 27/4;
         occurrence "piece key c major [768:785]" from 0 to 27/4;

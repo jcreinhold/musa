@@ -107,7 +107,7 @@ fn the_scale_distributes_over_sequence_and_overlay() {
     // Overlaid: a `use` inside the context reads it too, in both branches.
     let overlaid = pitches(&piece_with(
         "    let low: Music = music { (c4 step 2)/2 };\n    let high: Music = music { (c5 step 2)/2 };",
-        "        in scale c dorian { use overlay(low, high); }",
+        "        in scale c dorian { use together(low, high); }",
     ));
     assert_eq!(overlaid, ["eb4", "eb5"]);
 }

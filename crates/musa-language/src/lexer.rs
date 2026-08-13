@@ -361,8 +361,8 @@ enum RawToken {
     #[token("music", priority = 3)]
     MusicKw,
     // The word that opens a quotation. A keyword rather than a contextual
-    // name because `kernel Timeline[ScoreFact] { … }` is an expression form,
-    // and an expression that started with an ordinary identifier would be a
+    // name because `kernel EventTrack[WrittenTime, ScoreFact] { … }` is an
+    // expression form, and one that started with an ordinary identifier would be a
     // call until proven otherwise.
     #[token("kernel", priority = 3)]
     KernelKw,

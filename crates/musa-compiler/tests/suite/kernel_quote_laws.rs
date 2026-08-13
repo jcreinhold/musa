@@ -1,6 +1,6 @@
 //! What a kernel quote promises, and what it does not (prompt 121).
 //!
-//! `kernel Timeline[ScoreFact] { … }` is the assembly-level escape: the
+//! `kernel EventTrack[WrittenTime, ScoreFact] { … }` is the assembly-level escape: the
 //! composer writes the term the compiler would otherwise write for them, and
 //! `${e}` splices ordinary Musa music into it. That is a lot of rope, so the
 //! promises have to be exact:
@@ -120,7 +120,7 @@ fn errors(source: &str) -> Vec<String> {
 /// put the facts. They agree everywhere except under a `let`, where one
 /// instantiation can be placed in several places at once.
 fn spliced(term: &str) -> (Ratio<i64>, Ratio<i64>) {
-    let source = piece(&format!("kernel Timeline[ScoreFact] {term}"));
+    let source = piece(&format!("kernel EventTrack[WrittenTime, ScoreFact] {term}"));
     let Some(&(onset, _, _)) = notes(&source).iter().find(|(_, _, pitch)| pitch == "c4") else {
         panic!("the hole put no c4 anywhere in {term}");
     };
@@ -147,7 +147,7 @@ fn spliced(term: &str) -> (Ratio<i64>, Ratio<i64>) {
 fn the_quotation_locus_follows_the_terms_structure() {
     // `over` preserves: every branch begins where the overlay does.
     assert_eq!(
-        spliced("{ overlay { ${subject}; } }"),
+        spliced("{ together { ${subject}; } }"),
         (Ratio::new(0, 1), Ratio::new(0, 1))
     );
 
@@ -155,7 +155,7 @@ fn the_quotation_locus_follows_the_terms_structure() {
     // half-note gap is written as an empty raw timeline so nothing but the
     // term decides the offset.
     assert_eq!(
-        spliced("{ sequence { timeline 1/2 { }; ${subject}; } }"),
+        spliced("{ follow { track 1/2 { }; ${subject}; } }"),
         (Ratio::new(1, 2), Ratio::new(1, 2)),
     );
 
@@ -168,7 +168,7 @@ fn the_quotation_locus_follows_the_terms_structure() {
     // A positive `scale` scales the *relative* offset, and only that: the
     // hole sits 1/2 into a body whose time is then halved.
     assert_eq!(
-        spliced("{ scale by 1/2 sequence { timeline 1/2 { }; ${subject}; } }"),
+        spliced("{ scale by 1/2 follow { track 1/2 { }; ${subject}; } }"),
         (Ratio::new(1, 4), Ratio::new(1, 4)),
     );
 
@@ -198,9 +198,9 @@ fn the_quotation_locus_follows_the_terms_structure() {
 #[test]
 fn a_hole_cannot_be_captured_by_a_name_the_quote_binds() {
     let notes = notes(&piece(
-        "kernel Timeline[ScoreFact] {
-            let splice0 = timeline 1 { occurrence \"note g2 1\" from 0 to 1; } in
-            overlay {
+        "kernel EventTrack[WrittenTime, ScoreFact] {
+            let splice0 = track 1 { occurrence \"note g2 1\" from 0 to 1; } in
+            together {
                 splice0;
                 ${subject};
             }
@@ -220,7 +220,9 @@ fn a_hole_cannot_be_captured_by_a_name_the_quote_binds() {
 /// A quote stands on its own: every name it uses is one it binds.
 #[test]
 fn a_quote_with_a_free_name_is_refused() {
-    let reported = errors(&piece("kernel Timeline[ScoreFact] { overlay { subject; } }"));
+    let reported = errors(&piece(
+        "kernel EventTrack[WrittenTime, ScoreFact] { together { subject; } }",
+    ));
     assert!(
         reported
             .iter()
@@ -233,10 +235,10 @@ fn a_quote_with_a_free_name_is_refused() {
 #[test]
 fn a_quote_that_rebinds_a_name_is_refused() {
     let reported = errors(&piece(
-        "kernel Timeline[ScoreFact] {
+        "kernel EventTrack[WrittenTime, ScoreFact] {
             let m = ${subject} in
-            let m = timeline 1 { occurrence \"note g2 1\" from 0 to 1; } in
-            overlay { m; }
+            let m = track 1 { occurrence \"note g2 1\" from 0 to 1; } in
+            together { m; }
         }",
     ));
     assert!(
@@ -251,10 +253,27 @@ fn a_quote_that_rebinds_a_name_is_refused() {
 /// exactly one.
 #[test]
 fn a_payload_this_build_does_not_own_is_refused() {
-    let reported = errors(&piece("kernel Timeline[Sample] { timeline 1 { } }"));
+    let reported = errors(&piece("kernel EventTrack[WrittenTime, Sample] { track 1 { } }"));
     assert!(
         reported.iter().any(|message| message.contains("`Sample` payloads")),
         "an unknown payload was accepted: {reported:?}",
+    );
+}
+
+/// The coordinate is checked the same way, and before the payload.
+///
+/// A quote in performed time is not a score whatever its payloads say —
+/// nothing converts one coordinate into another, so the mistake has to be
+/// caught where it is written rather than absorbed by a conversion that does
+/// not exist.
+#[test]
+fn a_quote_in_another_coordinate_is_refused() {
+    let reported = errors(&piece("kernel EventTrack[PerformedTime, ScoreFact] { track 1 { } }"));
+    assert!(
+        reported
+            .iter()
+            .any(|message| message.contains("cannot be written in `PerformedTime`")),
+        "a performed-time quote was accepted as a score: {reported:?}",
     );
 }
 
@@ -274,7 +293,7 @@ fn a_quote_may_not_carry_context_or_choose_a_voice() {
         ),
     ] {
         let reported = errors(&piece(&format!(
-            "kernel Timeline[ScoreFact] {{ timeline 1 {{ {raw} }} }}"
+            "kernel EventTrack[WrittenTime, ScoreFact] {{ track 1 {{ {raw} }} }}"
         )));
         assert!(
             reported.iter().any(|message| message.contains(expected)),
@@ -292,9 +311,9 @@ fn a_quote_may_not_carry_context_or_choose_a_voice() {
 #[test]
 fn a_hole_is_instantiated_once_and_its_facts_are_frozen() {
     let source = piece(
-        "kernel Timeline[ScoreFact] {
+        "kernel EventTrack[WrittenTime, ScoreFact] {
             let m = ${subject} in
-            overlay { m; shift by 1 m; }
+            together { m; shift by 1 m; }
         }",
     );
     let notes = notes(&source);
@@ -338,10 +357,10 @@ fn a_hole_is_instantiated_once_and_its_facts_are_frozen() {
 #[test]
 fn every_spliced_fact_records_its_locus() {
     let compilation = compiled(&piece(
-        "kernel Timeline[ScoreFact] {
-            overlay {
+        "kernel EventTrack[WrittenTime, ScoreFact] {
+            together {
                 shift by 1/2 ${subject};
-                timeline 2 { occurrence \"note g2 1\" from 0 to 1; };
+                track 2 { occurrence \"note g2 1\" from 0 to 1; };
             }
         }",
     ));
@@ -381,12 +400,12 @@ fn every_spliced_fact_records_its_locus() {
 #[test]
 fn a_quote_agrees_with_the_term_written_in_the_surface() {
     let quoted = notes(&piece(
-        "kernel Timeline[ScoreFact] {
+        "kernel EventTrack[WrittenTime, ScoreFact] {
             let m = ${subject} in
-            overlay { m; shift by 1 m; }
+            together { m; shift by 1 m; }
         }",
     ));
-    let surfaced = notes(&piece("overlay(subject, shift(1/1, subject))"));
+    let surfaced = notes(&piece("together(subject, shift(1/1, subject))"));
     assert_eq!(quoted, surfaced, "the two spellings of one term differ");
 }
 
@@ -402,8 +421,12 @@ fn a_quote_agrees_with_the_term_written_in_the_surface() {
 /// composer meant.
 #[test]
 fn raw_scale_moves_facts_without_renotating_them() {
-    let scaled = notes(&piece("kernel Timeline[ScoreFact] { scale by 1/2 ${subject} }"));
-    let stretched = notes(&piece("kernel Timeline[ScoreFact] { ${stretch(1/2, subject)} }"));
+    let scaled = notes(&piece(
+        "kernel EventTrack[WrittenTime, ScoreFact] { scale by 1/2 ${subject} }",
+    ));
+    let stretched = notes(&piece(
+        "kernel EventTrack[WrittenTime, ScoreFact] { ${stretch(1/2, subject)} }",
+    ));
     let onsets: Vec<Ratio<i64>> = scaled.iter().map(|(onset, _, _)| *onset).collect();
     assert_eq!(
         onsets,
@@ -428,8 +451,8 @@ fn raw_scale_moves_facts_without_renotating_them() {
 #[test]
 fn a_quotes_time_stays_exact() {
     let notes = notes(&piece(
-        "kernel Timeline[ScoreFact] {
-            scale by 1/3 sequence { timeline 1/2 { }; ${subject}; }
+        "kernel EventTrack[WrittenTime, ScoreFact] {
+            scale by 1/3 follow { track 1/2 { }; ${subject}; }
         }",
     ));
     let first = notes.first().expect("a note").0;
@@ -459,7 +482,7 @@ fn a_raw_transform_can_invalidate_a_placement_claim() {
     let outside = errors(
         "piece \"Q\" {
             let subject: Music = music { c4/4 d4/4 e4/4 f4/4 };
-            let halved: Music = kernel Timeline[ScoreFact] { scale by 1/2 ${subject} };
+            let halved: Music = kernel EventTrack[WrittenTime, ScoreFact] { scale by 1/2 ${subject} };
             score { part p { voice v { assert fills_meter() { use halved; } } } }
         }",
     );

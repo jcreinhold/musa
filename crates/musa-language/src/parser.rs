@@ -1862,8 +1862,8 @@ impl<'a> Parser<'a> {
         self.finish();
     }
 
-    /// `kernel Timeline[ScoreFact] { … }` — a quoted composition expression
-    /// (`docs/rules/language/01-surface.md` §7).
+    /// `kernel EventTrack[WrittenTime, ScoreFact] { … }` — a quoted composition
+    /// expression (`docs/rules/language/01-surface.md` §7).
     ///
     /// **Recognized, not read.** The tokens between the braces spell the
     /// kernel's own grammar, and `musa-kernel` owns that grammar: a second
@@ -1874,14 +1874,20 @@ impl<'a> Parser<'a> {
     /// along as source text.
     ///
     /// The braces are counted rather than matched against a production, so a
-    /// `timeline … { … }` inside the quote does not end it, and a quote that
+    /// `track … { … }` inside the quote does not end it, and a quote that
     /// is never closed ends at the end of the file rather than eating the
     /// declaration after it.
+    ///
+    /// The head takes two type arguments because an event track is indexed by
+    /// both its coordinate and its payload: a quote must say which time it is
+    /// written in, since nothing converts one coordinate into another.
     fn kernel_quote(&mut self) {
         self.start(SyntaxKind::KernelQuote);
         self.bump(); // kernel
-        self.expect(SyntaxKind::Identifier, "`Timeline`");
+        self.expect(SyntaxKind::Identifier, "`EventTrack`");
         self.expect(SyntaxKind::LBracket, "`[`");
+        self.expect(SyntaxKind::Identifier, "a coordinate");
+        self.expect(SyntaxKind::Comma, "`,`");
         self.expect(SyntaxKind::Identifier, "a payload type");
         self.expect(SyntaxKind::RBracket, "`]`");
         self.expect(SyntaxKind::LBrace, "`{`");

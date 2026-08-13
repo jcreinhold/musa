@@ -1,8 +1,8 @@
-% musa-kernel-1
+% musa-kernel-2
 % generated from examples/canon.musa, normalized by musa-compiler
 kernel "canon" {
-  composition main : Timeline[ScoreFact] =
-    timeline 15/4 {
+  composition main : EventTrack[WrittenTime, ScoreFact] =
+    track 15/4 {
       occurrence "voice 0 0 note g4 1/4 [275:287 def 97:101 #4 via motif 275:287]" from 0 to 1/4;
       occurrence "voice 0 0 note a4 1/4 [275:287 def 110:114 #4 via motif 275:287]" from 1/4 to 1/2;
       occurrence "voice 0 0 note b4 1/4 [275:287 def 123:127 #4 via motif 275:287]" from 1/2 to 3/4;

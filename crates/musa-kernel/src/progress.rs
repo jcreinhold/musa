@@ -24,9 +24,9 @@ use crate::occurrence::Canonical;
 ///
 /// Because `u` is relative to the occurrence's own span, **every kernel
 /// operation acts on the span and leaves these bytes identical**: `scale`
-/// multiplies the span, `sequence` translates it, `overlay` does not touch it,
+/// multiplies the span, `follow` translates it, `together` does not touch it,
 /// and `map_payload` never inspects a payload at all. An absolute-time curve
-/// would have to be rewritten by `scale` and `sequence`, which would mean the
+/// would have to be rewritten by `scale` and `follow`, which would mean the
 /// kernel looking inside payloads to transform them — the §12 violation this
 /// design exists to avoid. The invariance is stated as L24 and tested.
 ///
@@ -34,7 +34,7 @@ use crate::occurrence::Canonical;
 ///
 /// - **Steps.** Piecewise-*linear* only: no step segments, no jump
 ///   discontinuities. A sudden change is a fact at a point, the timeline
-///   already has one, and `Timeline::prevailing` (D11) already answers what is
+///   already has one, and `EventTrack::prevailing` (D11) already answers what is
 ///   in force there. Expressing one change two ways is the complecting this
 ///   type exists to remove.
 /// - **Units.** Values are unit-free fractions in `[0, 1]`. A curve "in

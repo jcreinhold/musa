@@ -1,12 +1,12 @@
-//! The timeline → `ScoreSnapshot` projection (docs/rules/kernel/06).
+//! The event-track → `ScoreSnapshot` projection (docs/rules/kernel/06).
 //!
-//! Elaboration produces one `Timeline<ScoreFact>` for the whole piece. A
+//! Elaboration produces one `EventTrack<WrittenTime, ScoreFact>` for the whole
 //! score, though, is read part by part and voice by voice, with notes that
 //! have identities and annotations that name them. That reading is what this
 //! module computes — and it is a *reading*, not a second representation: the
-//! timeline stays the only place a temporal fact lives.
+//! track stays the only place a temporal fact lives.
 //!
-//! It is a module rather than a method on the timeline because the kernel
+//! It is a module rather than a method on the track because the kernel
 //! must not learn what a score is (docs/rules/kernel/02-static-semantics.md).
 //!
 //! Rational arithmetic on musa's magnitudes is total; the workspace
@@ -14,7 +14,7 @@
 #![allow(clippy::arithmetic_side_effects)]
 
 use indexmap::IndexMap;
-use musa_kernel::{Canonical as _, Occurrence, Timeline};
+use musa_kernel::{Canonical as _, EventTrack, Occurrence, Position, WrittenTime};
 
 use crate::elaborate::{FactKind, ScoreFact};
 use crate::resolve::Resolver;
@@ -27,10 +27,10 @@ use crate::time::MusicalTime;
 /// The projected voices, keyed the way the snapshot's parts are.
 pub(crate) type Voices = IndexMap<(u32, u32), Voice>;
 
-/// Everything the snapshot reads off one piece timeline.
+/// Everything the snapshot reads off one piece track.
 ///
 /// The context maps are *here*, not in the header resolver, because
-/// the key and the meter are occurrences: the timeline states them
+/// the key and the meter are occurrences: the track states them
 /// and this is the reading of it. A piece with no key written has none, which
 /// is why `key` is an `Option` and `meter` is not — 4/4 governs a piece that
 /// never says so.
@@ -41,7 +41,7 @@ pub(crate) struct Projection {
     pub(crate) contexts: crate::score::Contexts,
 }
 
-/// Project the piece's timeline into voices and annotations.
+/// Project the piece's track into voices and annotations.
 ///
 /// One visit over the occurrences, bucketing by scope — never one filtering
 /// pass per part or per annotation kind, which would be O(facts × parts) and
@@ -55,10 +55,10 @@ pub(crate) struct Projection {
 /// it encloses ([`crate::elaborate`]'s `over`). The projection relies on it to
 /// name the events at a region's ends; if it is ever violated, the
 /// elaboration that violated it is the bug.
-pub(crate) fn project(resolver: &mut Resolver, timeline: &Timeline<ScoreFact>) -> Projection {
-    let mut buckets: IndexMap<(u32, u32), Vec<&Occurrence<ScoreFact>>> = IndexMap::new();
-    let mut piece: Vec<&Occurrence<ScoreFact>> = Vec::new();
-    for occurrence in timeline.occurrences() {
+pub(crate) fn project(resolver: &mut Resolver, track: &EventTrack<WrittenTime, ScoreFact>) -> Projection {
+    let mut buckets: IndexMap<(u32, u32), Vec<&Occurrence<WrittenTime, ScoreFact>>> = IndexMap::new();
+    let mut piece: Vec<&Occurrence<WrittenTime, ScoreFact>> = Vec::new();
+    for occurrence in track.occurrences() {
         debug_assert!(
             !occurrence.payload().tied,
             "ties are merged during elaboration; the projection must never see one"
@@ -163,8 +163,11 @@ fn agreed_repeats(
 /// This is D11's *definition* applied by one ordered pass, not a `prevailing`
 /// call per fact. The kernel says what the answer is; bulk derivation sweeps
 /// (docs/rules/kernel/03 D11, "the performance rule").
-fn project_piece(resolver: &mut Resolver, occurrences: &[&Occurrence<ScoreFact>]) -> crate::score::Contexts {
-    let mut ordered: Vec<&&Occurrence<ScoreFact>> = occurrences.iter().collect();
+fn project_piece(
+    resolver: &mut Resolver,
+    occurrences: &[&Occurrence<WrittenTime, ScoreFact>],
+) -> crate::score::Contexts {
+    let mut ordered: Vec<&&Occurrence<WrittenTime, ScoreFact>> = occurrences.iter().collect();
     ordered.sort_by_cached_key(|occurrence| {
         (
             occurrence.span().start(),
@@ -232,19 +235,19 @@ fn project_piece(resolver: &mut Resolver, occurrences: &[&Occurrence<ScoreFact>]
 /// has been read.
 fn project_voice(
     resolver: &mut Resolver,
-    occurrences: &[&Occurrence<ScoreFact>],
+    occurrences: &[&Occurrence<WrittenTime, ScoreFact>],
 ) -> (Voice, Vec<crate::score::RepeatRegion>) {
-    let mut repeats: Vec<&Occurrence<ScoreFact>> = Vec::new();
+    let mut repeats: Vec<&Occurrence<WrittenTime, ScoreFact>> = Vec::new();
     let mut events: Vec<ScoreEvent> = Vec::with_capacity(occurrences.len());
     // Where each event sits, so a region can be resolved to the ids at its
-    // ends without a second pass over the timeline.
+    // ends without a second pass over the track.
     let mut extents: Vec<(MusicalTime, MusicalTime, EventId)> = Vec::with_capacity(occurrences.len());
-    let mut regions: Vec<&Occurrence<ScoreFact>> = Vec::new();
-    let mut points: Vec<&Occurrence<ScoreFact>> = Vec::new();
+    let mut regions: Vec<&Occurrence<WrittenTime, ScoreFact>> = Vec::new();
+    let mut points: Vec<&Occurrence<WrittenTime, ScoreFact>> = Vec::new();
     // Grace notes stand at the onset of the note they lean on, and a point
     // sorts before a span that starts with it, so they arrive first and wait
     // here for their principal.
-    let mut pending_graces: Vec<&Occurrence<ScoreFact>> = Vec::new();
+    let mut pending_graces: Vec<&Occurrence<WrittenTime, ScoreFact>> = Vec::new();
 
     let mut index = 0;
     while index < occurrences.len() {
@@ -382,8 +385,8 @@ fn project_voice(
 /// The elaboration nests the ending regions inside the repeat region, so
 /// containment is the whole rule; a `pass` appears once per time through, and
 /// the bracket that prints is the first of its number.
-fn repeats_of(occurrences: &[&Occurrence<ScoreFact>]) -> Vec<crate::score::RepeatRegion> {
-    let time = |beat: musa_kernel::Beat| MusicalTime::new(beat.as_ratio());
+fn repeats_of(occurrences: &[&Occurrence<WrittenTime, ScoreFact>]) -> Vec<crate::score::RepeatRegion> {
+    let time = |at: Position<WrittenTime>| MusicalTime::new(at.as_ratio());
     let mut repeats: Vec<crate::score::RepeatRegion> = occurrences
         .iter()
         .filter_map(|occurrence| {
@@ -450,7 +453,7 @@ fn body_end(repeat: &crate::score::RepeatRegion) -> MusicalTime {
 
 /// How many occurrences at `index` spell one written statement: a chord's
 /// pitches share a span and an origin.
-fn chord_len(occurrences: &[&Occurrence<ScoreFact>], index: usize) -> usize {
+fn chord_len(occurrences: &[&Occurrence<WrittenTime, ScoreFact>], index: usize) -> usize {
     let Some(first) = occurrences.get(index).copied() else {
         return 1;
     };
@@ -475,7 +478,7 @@ fn chord_len(occurrences: &[&Occurrence<ScoreFact>], index: usize) -> usize {
 /// site, and a skipped event rather than a panic if it ever happens).
 fn event_from(
     resolver: &mut Resolver,
-    occurrences: &[&Occurrence<ScoreFact>],
+    occurrences: &[&Occurrence<WrittenTime, ScoreFact>],
     index: usize,
     consumed: usize,
 ) -> Option<ScoreEvent> {
@@ -505,7 +508,7 @@ fn event_from(
 
 /// The articulations of the statement at `index` — a chord writes them once,
 /// on every pitch, so the first occurrence is the one that carries them.
-fn articulations(occurrences: &[&Occurrence<ScoreFact>], index: usize) -> Vec<crate::Mark> {
+fn articulations(occurrences: &[&Occurrence<WrittenTime, ScoreFact>], index: usize) -> Vec<crate::Mark> {
     occurrences
         .get(index)
         .map(|occurrence| occurrence.payload().kind.articulations_of().to_vec())
@@ -515,10 +518,10 @@ fn articulations(occurrences: &[&Occurrence<ScoreFact>], index: usize) -> Vec<cr
 /// Point facts — dynamics — take effect at the first event at or after them.
 fn project_points(
     resolver: &mut Resolver,
-    points: &[&Occurrence<ScoreFact>],
+    points: &[&Occurrence<WrittenTime, ScoreFact>],
     extents: &[(MusicalTime, MusicalTime, EventId)],
 ) {
-    let mut ordered: Vec<&&Occurrence<ScoreFact>> = points.iter().collect();
+    let mut ordered: Vec<&&Occurrence<WrittenTime, ScoreFact>> = points.iter().collect();
     ordered.sort_by_key(|occurrence| occurrence.span().start());
     for occurrence in ordered {
         let fact = occurrence.payload();
@@ -552,7 +555,7 @@ fn project_points(
 /// and is derived by one ordered pass, not by a query per event.
 fn project_regions(
     resolver: &mut Resolver,
-    regions: &mut [&Occurrence<ScoreFact>],
+    regions: &mut [&Occurrence<WrittenTime, ScoreFact>],
     extents: &[(MusicalTime, MusicalTime, EventId)],
 ) {
     // Time order, outermost first: a bracket that opens earlier is written

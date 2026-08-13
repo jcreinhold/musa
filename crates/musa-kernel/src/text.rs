@@ -24,8 +24,8 @@ use num_rational::Ratio;
 use crate::error::KernelError;
 use crate::occurrence::Occurrence;
 use crate::term::{Form, Term};
-use crate::time::{Beat, Span};
-use crate::timeline::timeline;
+use crate::time::{Coordinate, Duration, Position, Span};
+use crate::track::track;
 
 /// How a payload is spelled in a file.
 ///
@@ -52,7 +52,7 @@ pub trait PayloadText: Sized {
 /// Folding the two together would mean a file could not be read until it was
 /// already understood, which is exactly backwards for an interchange format.
 pub trait TextPayload: PayloadText {
-    /// The payload type's name, as the file's `Timeline[…]` annotation.
+    /// The payload type's name, as the file's `EventTrack[…, …]` annotation.
     fn type_name() -> &'static str;
 }
 
@@ -93,17 +93,27 @@ impl PayloadText for Opaque {
 /// open it, format it, report its syntax errors — before it can know whether
 /// the payload type is one this build supports.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Document<A> {
+pub struct Document<C: Coordinate, A> {
     name: String,
+    coordinate: String,
     payload_type: String,
     notes: Vec<String>,
-    term: Term<A>,
+    term: Term<C, A>,
 }
 
-impl<A> Document<A> {
+impl<C: Coordinate, A> Document<C, A> {
     /// The name the file's `kernel "…"` header declares.
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    /// The coordinate the composition is annotated with.
+    ///
+    /// The name as written, recovered for the same reason as the payload
+    /// type: a reader that does not implement this coordinate can still show
+    /// the file and say which one it is.
+    pub fn coordinate(&self) -> &str {
+        &self.coordinate
     }
 
     /// The payload type the composition is annotated with.
@@ -126,19 +136,19 @@ impl<A> Document<A> {
         &self.notes
     }
 
-    /// The term, as written: `let`, `sequence`, `overlay`, `shift`, `scale`
+    /// The term, as written: `let`, `follow`, `together`, `shift`, `scale`
     /// and `restrict` structure survives reading.
-    pub fn term(&self) -> &Term<A> {
+    pub fn term(&self) -> &Term<C, A> {
         &self.term
     }
 
     /// The term, taken, when the caller wants it and not the file around it.
-    pub fn into_term(self) -> Term<A> {
+    pub fn into_term(self) -> Term<C, A> {
         self.term
     }
 }
 
-impl<A: PayloadText> Document<A> {
+impl<C: Coordinate, A: PayloadText> Document<C, A> {
     /// The file, printed canonically.
     ///
     /// The same writer [`print`] uses, so a formatted file and a generated one
@@ -146,7 +156,13 @@ impl<A: PayloadText> Document<A> {
     /// "format" a well-defined operation on a document whose payloads this
     /// build cannot read.
     pub fn to_text(&self) -> String {
-        write_document(&self.name, &self.payload_type, &self.term, &self.notes)
+        write_document(
+            &self.name,
+            &self.coordinate,
+            &self.payload_type,
+            &self.term,
+            &self.notes,
+        )
     }
 }
 
@@ -154,12 +170,12 @@ impl<A: PayloadText> Document<A> {
 ///
 /// A string, not a negotiation scheme: a reader that does not recognise it
 /// should say so and stop, which is all a version needs to do here.
-pub const FORMAT_VERSION: &str = "musa-kernel-1";
+pub const FORMAT_VERSION: &str = "musa-kernel-2";
 
 /// Print `term` as a kernel file named `name`, with `notes` recorded above it.
 ///
-/// The term is printed as written: `let`, `seq`, `over`, `shift` and `scale`
-/// structure survives. Normalizing first is the caller's separate decision —
+/// The term is printed as written: `let`, `follow`, `together`, `shift` and
+/// `scale` structure survives. Normalizing first is the caller's separate decision —
 /// there is no "normalize while printing" flag, because that would complect
 /// two choices a caller can make in sequence.
 ///
@@ -170,16 +186,22 @@ pub const FORMAT_VERSION: &str = "musa-kernel-1";
 /// learn what a realization is to carry the sentence. Read back with
 /// [`notes`]. Newlines are stripped, since a note that spanned two lines would
 /// read back as two.
-pub fn print<A: TextPayload>(name: &str, term: &Term<A>, notes: &[String]) -> String {
-    write_document(name, A::type_name(), term, notes)
+pub fn print<C: Coordinate, A: TextPayload>(name: &str, term: &Term<C, A>, notes: &[String]) -> String {
+    write_document(name, C::NAME, A::type_name(), term, notes)
 }
 
 /// The one writer, with the payload type supplied rather than looked up.
 ///
-/// [`print`] takes it from the type and [`Document::to_text`] takes it from
-/// the file. There is deliberately no third source: a formatter that invented
-/// an annotation would be rewriting the document it was asked to tidy.
-fn write_document<A: PayloadText>(name: &str, payload_type: &str, term: &Term<A>, notes: &[String]) -> String {
+/// [`print`] takes them from the types and [`Document::to_text`] takes them
+/// from the file. There is deliberately no third source: a formatter that
+/// invented an annotation would be rewriting the document it was asked to tidy.
+fn write_document<C: Coordinate, A: PayloadText>(
+    name: &str,
+    coordinate: &str,
+    payload_type: &str,
+    term: &Term<C, A>,
+    notes: &[String],
+) -> String {
     let mut out = String::with_capacity(256);
     let _ = writeln!(out, "% {FORMAT_VERSION}");
     for note in notes {
@@ -188,7 +210,10 @@ fn write_document<A: PayloadText>(name: &str, payload_type: &str, term: &Term<A>
     let _ = write!(out, "kernel ");
     write_string(&mut out, name);
     let _ = writeln!(out, " {{");
-    let _ = write!(out, "  composition main : Timeline[{payload_type}] =\n    ");
+    let _ = write!(
+        out,
+        "  composition main : EventTrack[{coordinate}, {payload_type}] =\n    "
+    );
     write_term(&mut out, term, 2);
     let _ = writeln!(out, ";");
     let _ = writeln!(out, "}}");
@@ -222,8 +247,8 @@ pub fn notes(text: &str) -> impl Iterator<Item = &str> {
 /// # Errors
 ///
 /// [`KernelError::Parse`], naming the byte offset and what was expected.
-pub fn parse<A: TextPayload>(text: &str) -> Result<Document<A>, KernelError> {
-    read_as::<A>(text, Some(A::type_name()))
+pub fn parse<C: Coordinate, A: TextPayload>(text: &str) -> Result<Document<C, A>, KernelError> {
+    read_as::<C, A>(text, Some((C::NAME, A::type_name())))
 }
 
 /// Parse one composition expression: the right-hand side of a
@@ -244,9 +269,9 @@ pub fn parse<A: TextPayload>(text: &str) -> Result<Document<A>, KernelError> {
 /// # Errors
 ///
 /// [`KernelError::Parse`], naming the byte offset and what was expected.
-pub fn parse_expression<A: TextPayload>(text: &str) -> Result<Term<A>, KernelError> {
+pub fn parse_expression<C: Coordinate, A: TextPayload>(text: &str) -> Result<Term<C, A>, KernelError> {
     let mut cursor = Cursor::new(text);
-    let term = cursor.term::<A>()?;
+    let term = cursor.term::<C, A>()?;
     cursor.end()?;
     Ok(term)
 }
@@ -263,13 +288,16 @@ pub fn parse_expression<A: TextPayload>(text: &str) -> Result<Term<A>, KernelErr
 /// # Errors
 ///
 /// [`KernelError::Parse`], exactly as [`parse`] — same cursor, same offsets.
-pub fn read(text: &str) -> Result<Document<Opaque>, KernelError> {
-    read_as::<Opaque>(text, None)
+pub fn read<C: Coordinate>(text: &str) -> Result<Document<C, Opaque>, KernelError> {
+    read_as::<C, Opaque>(text, None)
 }
 
-/// The one reader. `expect` is the payload type the caller requires, or
-/// `None` to accept whatever the file declares.
-fn read_as<A: PayloadText>(text: &str, expect: Option<&str>) -> Result<Document<A>, KernelError> {
+/// The one reader. `expect` is the coordinate and payload type the caller
+/// requires, or `None` to accept whatever the file declares.
+fn read_as<C: Coordinate, A: PayloadText>(
+    text: &str,
+    expect: Option<(&str, &str)>,
+) -> Result<Document<C, A>, KernelError> {
     // The version line is checked before trivia, because `%` also starts a
     // comment: a file without a header would otherwise parse as a file with
     // one missing, and a consumer would have no way to refuse a format it
@@ -290,34 +318,42 @@ fn read_as<A: PayloadText>(text: &str, expect: Option<&str>) -> Result<Document<
     // composition, and the term is what it denotes.
     drop(cursor.name()?);
     cursor.symbol(":")?;
-    cursor.keyword("Timeline")?;
+    cursor.keyword("EventTrack")?;
     cursor.symbol("[")?;
+    let coordinate = cursor.name()?;
+    cursor.symbol(",")?;
     let payload_type = cursor.name()?;
-    if let Some(expected) = expect
-        && payload_type != expected
-    {
-        return Err(cursor.error(format!("this file carries `{payload_type}` payloads, not `{expected}`")));
+    if let Some((expected_coordinate, expected_payload)) = expect {
+        if coordinate != expected_coordinate {
+            return Err(cursor.error(format!("this file is in `{coordinate}`, not `{expected_coordinate}`")));
+        }
+        if payload_type != expected_payload {
+            return Err(cursor.error(format!(
+                "this file carries `{payload_type}` payloads, not `{expected_payload}`"
+            )));
+        }
     }
     cursor.symbol("]")?;
     cursor.symbol("=")?;
-    let term = cursor.term::<A>()?;
+    let term = cursor.term::<C, A>()?;
     cursor.symbol(";")?;
     cursor.symbol("}")?;
     cursor.end()?;
     Ok(Document {
         name,
+        coordinate,
         payload_type,
         notes: notes(text).map(str::to_owned).collect(),
         term,
     })
 }
 
-fn write_term<A: PayloadText>(out: &mut String, term: &Term<A>, depth: usize) {
+fn write_term<C: Coordinate, A: PayloadText>(out: &mut String, term: &Term<C, A>, depth: usize) {
     let pad = "  ".repeat(depth);
     let inner = "  ".repeat(depth + 1);
     match term.form() {
         Form::Literal(value) => {
-            let _ = write!(out, "timeline {} {{", value.extent());
+            let _ = write!(out, "track {} {{", value.duration());
             for occurrence in value.occurrences() {
                 let _ = write!(out, "\n{inner}occurrence ");
                 write_string(out, &occurrence.payload().to_text());
@@ -330,8 +366,8 @@ fn write_term<A: PayloadText>(out: &mut String, term: &Term<A>, depth: usize) {
             }
             let _ = write!(out, "\n{pad}}}");
         }
-        Form::Seq(parts) => write_block(out, "sequence", parts, depth),
-        Form::Over(parts) => write_block(out, "overlay", parts, depth),
+        Form::Follow(parts) => write_block(out, "follow", parts, depth),
+        Form::Together(parts) => write_block(out, "together", parts, depth),
         Form::Shift { by, body } => {
             let _ = write!(out, "shift by {by} ");
             write_term(out, body, depth);
@@ -362,7 +398,7 @@ fn write_term<A: PayloadText>(out: &mut String, term: &Term<A>, depth: usize) {
     }
 }
 
-fn write_block<A: PayloadText>(out: &mut String, keyword: &str, parts: &[Term<A>], depth: usize) {
+fn write_block<C: Coordinate, A: PayloadText>(out: &mut String, keyword: &str, parts: &[Term<C, A>], depth: usize) {
     let pad = "  ".repeat(depth);
     let inner = "  ".repeat(depth + 1);
     let _ = write!(out, "{keyword} {{");
@@ -534,8 +570,20 @@ impl<'a> Cursor<'a> {
         Ok(Ratio::new(numer, denom))
     }
 
-    fn beat(&mut self) -> Result<Beat, KernelError> {
-        Ok(Beat::new(self.ratio()?))
+    /// A `position-literal`: an instant in the file's coordinate.
+    fn position<C: Coordinate>(&mut self) -> Result<Position<C>, KernelError> {
+        Ok(Position::new(self.ratio()?))
+    }
+
+    /// A `duration-literal`: an amount of the file's time.
+    ///
+    /// Where the two literals differ is exactly here — a negative rational is
+    /// a legal position and never a legal duration, so the grammar's two
+    /// lexical categories become two readers rather than one plus a check
+    /// somewhere later.
+    fn duration<C: Coordinate>(&mut self) -> Result<Duration<C>, KernelError> {
+        let ratio = self.ratio()?;
+        Duration::new(ratio).map_err(|error| self.error(error.to_string()))
     }
 
     fn end(&mut self) -> Result<(), KernelError> {
@@ -547,7 +595,7 @@ impl<'a> Cursor<'a> {
         }
     }
 
-    fn term<A: PayloadText>(&mut self) -> Result<Term<A>, KernelError> {
+    fn term<C: Coordinate, A: PayloadText>(&mut self) -> Result<Term<C, A>, KernelError> {
         self.trivia();
         if self.peek_symbol("(") {
             self.symbol("(")?;
@@ -556,14 +604,14 @@ impl<'a> Cursor<'a> {
             return Ok(inner);
         }
         match self.peek_word() {
-            "timeline" => self.literal(),
-            "sequence" => {
+            "track" => self.literal(),
+            "follow" => {
                 let parts = self.block()?;
-                Term::seq(parts).map_err(|error| self.error(error.to_string()))
+                Term::follow(parts).map_err(|error| self.error(error.to_string()))
             }
-            "overlay" => {
+            "together" => {
                 let parts = self.block()?;
-                Term::over(parts).map_err(|error| self.error(error.to_string()))
+                Term::together(parts).map_err(|error| self.error(error.to_string()))
             }
             "scale" => {
                 self.keyword("scale")?;
@@ -575,16 +623,15 @@ impl<'a> Cursor<'a> {
             "shift" => {
                 self.keyword("shift")?;
                 self.keyword("by")?;
-                let by = self.beat()?;
-                let body = self.term()?;
-                Term::shift(by, body).map_err(|error| self.error(error.to_string()))
+                let by = self.duration()?;
+                Ok(Term::shift(by, self.term()?))
             }
             "restrict" => {
                 self.keyword("restrict")?;
                 self.keyword("from")?;
-                let start = self.beat()?;
+                let start = self.position()?;
                 self.keyword("to")?;
-                let end = self.beat()?;
+                let end = self.position()?;
                 let window = Span::new(start, end)?;
                 Ok(Term::restrict(window, self.term()?))
             }
@@ -609,7 +656,7 @@ impl<'a> Cursor<'a> {
         }
     }
 
-    fn block<A: PayloadText>(&mut self) -> Result<Vec<Term<A>>, KernelError> {
+    fn block<C: Coordinate, A: PayloadText>(&mut self) -> Result<Vec<Term<C, A>>, KernelError> {
         let _ = self.word()?;
         self.symbol("{")?;
         let mut parts = Vec::new();
@@ -625,24 +672,24 @@ impl<'a> Cursor<'a> {
         }
     }
 
-    fn literal<A: PayloadText>(&mut self) -> Result<Term<A>, KernelError> {
-        self.keyword("timeline")?;
-        let extent = self.beat()?;
+    fn literal<C: Coordinate, A: PayloadText>(&mut self) -> Result<Term<C, A>, KernelError> {
+        self.keyword("track")?;
+        let duration = self.duration()?;
         self.symbol("{")?;
         let mut occurrences = Vec::new();
         loop {
             if self.peek_symbol("}") {
                 self.symbol("}")?;
-                let value = timeline(extent, occurrences)?;
+                let value = track(duration, occurrences)?;
                 return Ok(Term::literal(value));
             }
             self.keyword("occurrence")?;
             let text = self.string()?;
             let payload = A::from_text(&text).ok_or_else(|| self.error(format!("`{text}` is not a payload")))?;
             self.keyword("from")?;
-            let start = self.beat()?;
+            let start = self.position()?;
             self.keyword("to")?;
-            let end = self.beat()?;
+            let end = self.position()?;
             self.symbol(";")?;
             occurrences.push(Occurrence::new(Span::new(start, end)?, payload));
         }

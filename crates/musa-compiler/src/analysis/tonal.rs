@@ -198,7 +198,7 @@ fn chord_at(key: Key, slice: &Slice) -> Option<(i64, ChordClass)> {
 fn bounds(slices: &[Slice], region: &Region) -> Option<(MusicalTime, MusicalTime)> {
     let first = slices.get(region.from)?;
     let last = slices.get(region.to)?;
-    Some((first.onset, last.onset + last.extent))
+    Some((first.onset, last.onset + last.duration))
 }
 
 /// The notes a region's finding points at.
@@ -380,11 +380,11 @@ fn read(slice: &Slice, key: Key, alone: bool, why: Option<Ground>) -> Vec<Analys
                     key,
                     fit,
                     onset: slice.onset,
-                    extent: slice.extent,
+                    duration: slice.duration,
                 },
                 Evidence::Passage {
                     from: slice.onset,
-                    to: slice.onset + slice.extent,
+                    to: slice.onset + slice.duration,
                     notes: slice.refs(),
                 },
                 grounds,
@@ -575,11 +575,11 @@ fn tonicizations(
                         target: of.clone(),
                         key,
                         from: here.onset,
-                        to: next.onset + next.extent,
+                        to: next.onset + next.duration,
                     },
                     Evidence::Passage {
                         from: here.onset,
-                        to: next.onset + next.extent,
+                        to: next.onset + next.duration,
                         notes,
                     },
                     vec![
@@ -639,7 +639,7 @@ fn changes(slices: &[Slice], regions: &[Region]) -> Vec<AnalysisFinding> {
             .collect();
         let evidence = Evidence::Passage {
             from: slices.get(before.to).map_or(at, |slice| slice.onset),
-            to: last.map_or(at, |slice| slice.onset + slice.extent),
+            to: last.map_or(at, |slice| slice.onset + slice.duration),
             notes,
         };
         let grounds = vec![
@@ -715,7 +715,7 @@ fn changes(slices: &[Slice], regions: &[Region]) -> Vec<AnalysisFinding> {
                     target: of,
                     key: from_key,
                     from: at,
-                    to: last.map_or(at, |slice| slice.onset + slice.extent),
+                    to: last.map_or(at, |slice| slice.onset + slice.duration),
                 },
                 evidence,
                 grounds,

@@ -230,7 +230,7 @@ fn staff_body(
     let lane_count = staff.measures().first().map_or(0, |m| m.lanes().len());
     let mut lanes: Vec<Vec<LyNode>> = (0..lane_count).map(|_| Vec::new()).collect();
     for (index, measure) in staff.measures().iter().enumerate() {
-        let length = measure.length().as_ratio();
+        let length = measure.duration().as_ratio();
         // `\\cadenzaOn` and `\\cadenzaOff` are Timing commands, shared across a
         // staff's lanes exactly as `\\time` is, so they are written once, in
         // the first — and only where the state changes.

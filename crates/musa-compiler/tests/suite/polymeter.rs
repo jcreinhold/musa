@@ -99,7 +99,7 @@ fn each_part_counts_in_its_own_meter() {
 fn the_same_bar_length_needs_no_second_grid() {
     let score = score_of(HEMIOLA);
     let (treble, bass) = (Scope::Part { part: 0 }, Scope::Part { part: 1 });
-    let length = |scope| score.bars(scope).measure_at(MusicalTime::ZERO).length();
+    let length = |scope| score.bars(scope).measure_at(MusicalTime::ZERO).duration();
     assert_eq!(length(treble), length(bass), "6/8 and 3/4 are the same bar");
     assert_eq!(score.meter_at(treble, MusicalTime::ZERO).denominator(), 8);
     assert_eq!(score.meter_at(bass, MusicalTime::ZERO).denominator(), 4);

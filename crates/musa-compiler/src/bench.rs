@@ -8,10 +8,10 @@
 //! themselves. An interface that grew because a benchmark wanted a seam
 //! would be a benchmark leaking into a design.
 
-use musa_kernel::{Occurrence, Timeline, overlay};
+use musa_kernel::{EventTrack, Occurrence, WrittenTime, together};
 
 use crate::compile::{Compilation, CompileOptions, SourceDocument};
-use crate::elaborate::VoiceTimeline;
+use crate::elaborate::VoiceTrack;
 use crate::resolve::Resolver;
 
 /// How a sharing workload writes the same music (prompt 127).
@@ -122,39 +122,39 @@ pub fn elaborate(parsed: &Parsed, options: &CompileOptions) -> Compilation {
     crate::elaborate::elaborate_parsed(&parsed.document, &parsed.name, options, &mut resolver)
 }
 
-/// The piece's voice timelines, kept for the projection and canonical-form
+/// The piece's voice tracks, kept for the projection and canonical-form
 /// benchmarks. Producing them is elaboration; consuming them is P3 and P4.
-pub struct Timelines {
-    voices: Vec<VoiceTimeline>,
+pub struct Tracks {
+    voices: Vec<VoiceTrack>,
 }
 
-/// Elaborate, and keep the kernel timelines the adapter would have consumed.
-pub fn timelines(parsed: &Parsed, options: &CompileOptions) -> Timelines {
+/// Elaborate, and keep the kernel tracks the adapter would have consumed.
+pub fn tracks(parsed: &Parsed, options: &CompileOptions) -> Tracks {
     let mut resolver = Resolver::new();
-    resolver.timeline_sink = Some(Vec::new());
+    resolver.track_sink = Some(Vec::new());
     drop(crate::elaborate::elaborate_parsed(
         &parsed.document,
         &parsed.name,
         options,
         &mut resolver,
     ));
-    Timelines {
-        voices: resolver.timeline_sink.unwrap_or_default(),
+    Tracks {
+        voices: resolver.track_sink.unwrap_or_default(),
     }
 }
 
-impl Timelines {
+impl Tracks {
     /// How many occurrences the piece holds — the size of what P3 and P4
     /// walk, reported so a benchmark can state its workload.
     pub fn occurrences(&self) -> usize {
-        self.voices.iter().map(|timeline| timeline.occurrences().len()).sum()
+        self.voices.iter().map(|track| track.occurrences().len()).sum()
     }
 
-    /// The snapshot projection (P3): the piece's timeline read back as score
+    /// The snapshot projection (P3): the piece's track read back as score
     /// events. Returns the event count so the work cannot be optimized away.
     pub fn project(&self) -> usize {
         let mut resolver = Resolver::new();
-        let piece = musa_kernel::overlay(self.voices.clone());
+        let piece = together(self.voices.clone());
         crate::project::project(&mut resolver, &piece)
             .voices
             .values()
@@ -170,23 +170,23 @@ impl Timelines {
         self.piece().semantic_hash().to_u128()
     }
 
-    /// Every voice overlaid into one timeline — what P4 and P5 both start
+    /// Every voice stacked into one track — what P4 and P5 both start
     /// from.
-    fn piece(&self) -> Timeline<crate::elaborate::ScoreFact> {
-        overlay(
+    fn piece(&self) -> EventTrack<WrittenTime, crate::elaborate::ScoreFact> {
+        together(
             self.voices
                 .iter()
-                .map(|timeline| {
-                    let occurrences: Vec<Occurrence<_>> = timeline
+                .map(|track| {
+                    let occurrences: Vec<Occurrence<_, _>> = track
                         .occurrences()
                         .iter()
                         .map(|occurrence| Occurrence::new(occurrence.span(), occurrence.payload().clone()))
                         .collect();
-                    musa_kernel::timeline(timeline.extent(), occurrences).unwrap_or_else(|_| {
-                        // The occurrences came from a valid timeline, so this
-                        // is unreachable; an empty timeline is the harmless
+                    musa_kernel::track(track.duration(), occurrences).unwrap_or_else(|_| {
+                        // The occurrences came from a valid track, so this
+                        // is unreachable; an empty track is the harmless
                         // answer rather than a panic in a benchmark.
-                        musa_kernel::zero()
+                        musa_kernel::empty(musa_kernel::Duration::ZERO)
                     })
                 })
                 .collect(),
@@ -194,7 +194,7 @@ impl Timelines {
     }
 
     /// Canonical form of the whole piece (P4): every voice overlaid into one
-    /// timeline and normalized — the sort and the `Canonical` keys that
+    /// track and normalized — the sort and the `Canonical` keys that
     /// semantic identity pays on every edit.
     pub fn canonical(&self) -> usize {
         self.piece().normalize().occurrences().len()

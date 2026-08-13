@@ -49,14 +49,14 @@ pub(super) fn observe(
                 id: event.id,
                 span: event.origin.definition_span,
             });
-            let extent = event.notated_duration.value;
+            let duration = event.notated_duration.value;
             match event.kind {
                 ScoreEventKind::Note { pitch } => found.push(AnalysisFinding::stated(
                     "sounding-pitch",
                     Observation::Sounding {
                         pitch,
                         onset: event.onset,
-                        extent,
+                        duration,
                     },
                     evidence,
                 )),
@@ -70,7 +70,7 @@ pub(super) fn observe(
                             Observation::Sounding {
                                 pitch: *pitch,
                                 onset: event.onset,
-                                extent,
+                                duration,
                             },
                             evidence.clone(),
                         )
@@ -80,7 +80,7 @@ pub(super) fn observe(
                     "silence",
                     Observation::Silence {
                         onset: event.onset,
-                        extent,
+                        duration,
                     },
                     evidence,
                 )),

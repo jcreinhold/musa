@@ -110,8 +110,8 @@ impl TextPayload for ScoreFact {
 
 // The `tied` flag is deliberately absent. It is elaboration-only and false on
 // every fact that leaves `elaborate_items` — a tie says two noteheads spell
-// one occurrence, and that is resolved before a timeline exists. A file that
-// carried it would be describing a state no timeline is ever in.
+// one occurrence, and that is resolved before a track exists. A file that
+// carried it would be describing a state no track is ever in.
 
 /// What a reference's mark rewrites when its body is instantiated (E-Mark).
 ///
@@ -1257,16 +1257,16 @@ mod tests {
     }
 
     /// The composition the unit round trip does not cover: a fact written
-    /// into a one-occurrence timeline, printed as kernel text, parsed back.
+    /// into a one-occurrence track, printed as kernel text, parsed back.
     #[test]
     fn a_label_survives_the_kernels_own_quoting() {
-        use musa_kernel::{Beat, Occurrence, Span, Term, timeline};
+        use musa_kernel::{Duration, Occurrence, Position, Span, Term, WrittenTime, track};
         for fact in corpus().into_iter().flatten() {
-            let extent = Beat::new(Ratio::new(1, 4));
-            let span = Span::new(Beat::from_integer(0), extent).expect("0 to 1/4 is a span");
-            let body = timeline(extent, vec![Occurrence::new(span, fact.clone())]).expect("one occurrence");
+            let extent = Duration::<WrittenTime>::new(Ratio::new(1, 4)).expect("nonnegative");
+            let span = Span::new(Position::ZERO, extent.reach()).expect("0 to 1/4 is a span");
+            let body = track(extent, vec![Occurrence::new(span, fact.clone())]).expect("one occurrence");
             let printed = musa_kernel::print("round-trip", &Term::literal(body), &[]);
-            let parsed = musa_kernel::parse::<ScoreFact>(&printed)
+            let parsed = musa_kernel::parse::<WrittenTime, ScoreFact>(&printed)
                 .expect("what we printed parses")
                 .into_term();
             let read = parsed

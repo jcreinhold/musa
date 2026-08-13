@@ -8,7 +8,7 @@ piece "Canon Functions" {
     };
 
     fn canon(subject: Music, answer: Music -> Music, gap: Duration) -> Music {
-        overlay(subject, shift(gap, answer(subject)))
+        together(subject, shift(gap, answer(subject)))
     }
 
     let octave_answer: Music -> Music = fn (line: Music) -> Music { transpose(P8, line) };

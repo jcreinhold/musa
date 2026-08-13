@@ -18,7 +18,7 @@
 /// Spelled here rather than imported because `musa-language` does not depend
 /// on `musa-kernel` and should not: a frontend that could reach the kernel
 /// would eventually reach past the marker. The copy is checked, not trusted.
-pub const KERNEL_MARKER: &str = "% musa-kernel-1";
+pub const KERNEL_MARKER: &str = "% musa-kernel-2";
 
 /// Which language a document's text is written in.
 ///

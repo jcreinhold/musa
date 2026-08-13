@@ -20,18 +20,18 @@ use std::ops::Range;
 
 /// The words the grammar reserves, in the order the reference gives them.
 ///
-/// `Timeline` is not here: it is a *type* and is classified as one, which is
-/// the distinction a reader wants — `timeline` builds a value and `Timeline`
+/// `EventTrack` is not here: it is a *type* and is classified as one, which is
+/// the distinction a reader wants — `track` builds a value and `EventTrack`
 /// names what the value is.
 const KEYWORDS: [&str; 14] = [
     "kernel",
     "composition",
-    "timeline",
+    "track",
     "occurrence",
     "let",
     "in",
-    "sequence",
-    "overlay",
+    "follow",
+    "together",
     "shift",
     "scale",
     "restrict",
@@ -51,7 +51,7 @@ pub enum TokenClass {
     Comment,
     /// A word the grammar reserves.
     Keyword,
-    /// `Timeline`, and the payload type inside its brackets.
+    /// `EventTrack`, and the coordinate and payload type inside its brackets.
     Type,
     /// A bound name: what a `let` introduces and a variable spells.
     Name,
@@ -72,10 +72,11 @@ pub enum TokenClass {
 pub fn classify(text: &str) -> Vec<(Range<usize>, TokenClass)> {
     let mut out = Vec::new();
     let mut at = 0;
-    // The payload type follows `Timeline` and `[`, and is the one place a bare
-    // word means a type rather than a variable. Tracking it costs one bool and
-    // saves an editor from colouring `ScoreFact` as a `let`-bound name.
-    let mut after_timeline = false;
+    // The coordinate and payload type follow `EventTrack` and `[`, and are the
+    // one place a bare word means a type rather than a variable. Tracking that
+    // costs one bool and saves an editor from colouring `WrittenTime` and
+    // `ScoreFact` as `let`-bound names.
+    let mut after_event_track = false;
     while at < text.len() {
         let rest = text.get(at..).unwrap_or_default();
         let Some(character) = rest.chars().next() else {
@@ -101,26 +102,27 @@ pub fn classify(text: &str) -> Vec<(Range<usize>, TokenClass)> {
             c if c.is_alphabetic() || c == '_' => {
                 let length = span_of(rest, |c| c.is_alphanumeric() || c == '_' || c == '-');
                 let word = rest.get(..length).unwrap_or_default();
-                // The type constructor, and the payload type it is applied
-                // to: `Timeline[ScoreFact]` is one type written in two words,
-                // and the second one is whatever the payload calls itself.
-                let class = if word == "Timeline" || after_timeline {
+                // The type constructor and its two arguments:
+                // `EventTrack[WrittenTime, ScoreFact]` is one type written in
+                // three words, and the last one is whatever the payload calls
+                // itself.
+                let class = if word == "EventTrack" || after_event_track {
                     TokenClass::Type
                 } else if KEYWORDS.contains(&word) {
                     TokenClass::Keyword
                 } else {
                     TokenClass::Name
                 };
-                after_timeline = word == "Timeline";
+                after_event_track = word == "EventTrack";
                 (length, class)
             }
             _ => (character.len_utf8(), TokenClass::Punctuation),
         };
-        // `[` between `Timeline` and the payload type keeps the flag alive;
-        // anything else ends it, so a stray `Timeline` on its own line does
+        // `[` and the `,` between the two arguments keep the flag alive;
+        // anything else ends it, so a stray `EventTrack` on its own line does
         // not retype the next word in the file.
-        if !matches!(class, TokenClass::Type) && character != '[' {
-            after_timeline = false;
+        if !matches!(class, TokenClass::Type) && character != '[' && character != ',' {
+            after_event_track = false;
         }
         let length = length.max(1);
         out.push((at..(at + length).min(text.len()), class));
@@ -159,7 +161,7 @@ fn string_length(rest: &str) -> usize {
 ///
 /// The outline of a kernel term: a file's structure is the shared material it
 /// names, because that is the only thing in the grammar a reader navigates
-/// *to*. `sequence` and `overlay` blocks are structure too, but anonymous
+/// *to*. `follow` and `together` blocks are structure too, but anonymous
 /// structure, and an outline entry with no name is a row that says nothing.
 ///
 /// Built on [`classify`] rather than on the parser, for the reason the module
@@ -191,17 +193,20 @@ pub fn bindings(text: &str) -> Vec<(Range<usize>, String)> {
 pub fn keyword_doc(word: &str) -> Option<&'static str> {
     Some(match word {
         "kernel" => "Opens the file and names the work it projects.",
-        "composition" => "The file's one composition, and the type of timeline it denotes.",
-        "Timeline" => "The type of a finite timeline, parameterized by what its occurrences carry.",
-        "timeline" => "A literal timeline: an extent, and the occurrences inside it.",
+        "composition" => "The file's one composition, and the type of event track it denotes.",
+        "EventTrack" => "The type of a finite event track, in one coordinate of time, carrying one payload type.",
+        "WrittenTime" => "The coordinate a score is notated in.",
+        "PerformedTime" => "The coordinate a performance interpretation produces.",
+        "PhysicalTime" => "The coordinate of physical seconds, reached through a tempo map.",
+        "track" => "A literal event track: a duration, and the occurrences inside it.",
         "occurrence" => "One occurrence: a payload, and the half-open span it fills.",
-        "let" => "Names a timeline so the term can say \"this is that material again\".",
+        "let" => "Names a track so the term can say \"this is that material again\".",
         "in" => "The body a `let`'s name is visible in. Shadowing is rejected.",
-        "sequence" => "Lays its parts end to end, each starting where the last one ended.",
-        "overlay" => "Sounds its parts together from a common zero; the extent is the longest.",
-        "shift" => "Moves a timeline later in ambient time, leaving the material unchanged.",
+        "follow" => "Lays its parts end to end, each starting where the last one ended.",
+        "together" => "Sounds its parts from a common zero; the duration is the longest.",
+        "shift" => "Moves a track later in ambient time, leaving the material unchanged.",
         "scale" => "Multiplies every span by a positive rational — augmentation, exactly.",
-        "restrict" => "Observes a timeline through a window, keeping what is visible through it.",
+        "restrict" => "Observes a track through a window, keeping what is visible through it.",
         "from" | "to" => "The two ends of a span or a window, as exact rationals.",
         "by" => "The amount a `shift` or a `scale` acts by.",
         _ => return None,

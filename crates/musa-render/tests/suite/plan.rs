@@ -160,7 +160,7 @@ proptest! {
         let planned = plan_notation(&score, &NotationOptions::default());
         assert!(planned.is_ok(), "planning failed: {planned:?}");
         let Some(planned) = planned.ok() else { return Ok(()) };
-        let measure_len = score.bars(musa_compiler::Scope::Piece).measure_at(musa_compiler::MusicalTime::ZERO).length().as_ratio();
+        let measure_len = score.bars(musa_compiler::Scope::Piece).measure_at(musa_compiler::MusicalTime::ZERO).duration().as_ratio();
 
         let mut sums: std::collections::HashMap<u64, Ratio<i64>> = std::collections::HashMap::new();
         for staff in planned.staves() {

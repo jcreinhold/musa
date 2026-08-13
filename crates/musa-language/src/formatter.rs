@@ -217,7 +217,7 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer, layout: &Layout) {
 /// Write a quotation verbatim, re-anchored at the writer's indent.
 ///
 /// The first line joins the line in progress — `let doubled: Music = kernel
-/// Timeline[ScoreFact] {` — and the rest keep their depth relative to the
+/// EventTrack[WrittenTime, ScoreFact] {` — and the rest keep their depth relative to the
 /// shallowest of them, which is what makes reformatting a file that only
 /// moved sideways leave the quote's shape alone.
 fn write_quote(text: &str, writer: &mut Writer) {

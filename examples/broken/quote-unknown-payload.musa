@@ -3,8 +3,8 @@
 // for a meaning nothing here can give it. The refusal is at the type, before a
 // single occurrence is read.
 piece "Quote Unknown Payload" {
-    let assembled: Music = kernel Timeline[Sample] {
-        timeline 1 {
+    let assembled: Music = kernel EventTrack[WrittenTime, Sample] {
+        track 1 {
             occurrence "note c4 1" from 0 to 1;
         }
     };

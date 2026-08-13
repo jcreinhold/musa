@@ -1,9 +1,9 @@
-% musa-kernel-1
+% musa-kernel-2
 % generated from examples/riser.musa by musa-compiler
 kernel "Riser" {
-  composition main : Timeline[ScoreFact] =
-    overlay {
-      timeline 10 {
+  composition main : EventTrack[WrittenTime, ScoreFact] =
+    together {
+      track 10 {
         occurrence "voice 0 0 dynamic mp [1058:1069 #4]" from 0 to 0;
         occurrence "voice 0 0 note a4 1/2 [1144:1148 #4]" from 0 to 1/2;
         occurrence "voice 0 0 note c5 1/2 [1165:1169 #4]" from 1/2 to 1;
@@ -54,7 +54,7 @@ kernel "Riser" {
         occurrence "voice 0 0 note a3 1/2 [2200:2204 #4]" from 9 to 19/2;
         occurrence "voice 0 0 note e4 1/2 [2221:2225 #4]" from 19/2 to 10;
       };
-      timeline 10 {
+      track 10 {
         occurrence "piece meter 4/4 [924:939]" from 0 to 10;
         occurrence "piece tempo 1/4=128 'accel.' to 160 over 8 0/1:0/1,1/1:1/1 [762:924]" from 0 to 10;
         occurrence "piece key a minor [939:956]" from 0 to 10;

@@ -79,16 +79,16 @@ default. `examples/broken/no-scale-in-force.musa` is the shape of that failure.
 
 `examples/canon-functions.musa` is two notes and a transformation, and it exercises the whole path.
 
-**This trace is the pre-127a output, reproduced verbatim.** The fixture and the binary still use the old spellings —
-`Music`, `timeline`, `overlay`, `% musa-kernel-1` — and prompts 127b–127e replace them with `EventTrack`, `track`,
-`together`, and `% musa-kernel-2`. The pairs are in [`../clean-break-ledger.md`](../clean-break-ledger.md). What the
-trace *shows* about provenance, sharing, and exact time is unchanged by the rename.
+**This trace is the post-127c output.** The temporal spellings are current — `EventTrack`, `track`, `follow`,
+`together`, `% musa-kernel-2`. The type name `Music` is not: prompt 127e replaces it, and the pairs still owed are in
+[`../clean-break-ledger.md`](../clean-break-ledger.md). What the trace *shows* about provenance, sharing, and exact time
+is unchanged by either rename.
 
 The source:
 
 ```musa
 fn canon(subject: Music, answer: Music -> Music, gap: Duration) -> Music {
-    overlay(subject, shift(gap, answer(subject)))
+    together(subject, shift(gap, answer(subject)))
 }
 ```
 
@@ -99,22 +99,22 @@ use canon(subject, octave_answer, 1/2);
 `musa kernel examples/canon-functions.musa` prints the elaborated term:
 
 ```text
-% musa-kernel-1
+% musa-kernel-2
 kernel "Canon Functions" {
-  composition main : Timeline[ScoreFact] =
-    let shared0 = overlay {
-        timeline 1/2 {
+  composition main : EventTrack[WrittenTime, ScoreFact] =
+    let shared0 = together {
+        track 1/2 {
           occurrence "voice … note c4 1/4 [… def 300:304 #1]" from 0 to 1/4;
           occurrence "voice … note d4 1/4 [… def 313:317 #1]" from 1/4 to 1/2;
         };
-        shift by 1/2 timeline 1/2 {
+        shift by 1/2 track 1/2 {
           occurrence "voice … note c5 1/4 [… def 300:304 #1 via transpose 7 12]" from 0 to 1/4;
           occurrence "voice … note d5 1/4 [… def 313:317 #1 via transpose 7 12]" from 1/4 to 1/2;
         }
       }
-    in overlay {
-      shared0 @ "depth 0 origin 598:637 scope voice 0 0 via motif 598:637";
-      timeline 1 {
+    in together {
+      shared0 @ "depth 0 origin 635:674 scope voice 0 0 via motif 635:674";
+      track 1 {
         occurrence "piece meter 4/4 [0:0]" from 0 to 1;
       }
     };
@@ -123,9 +123,8 @@ kernel "Canon Functions" {
 
 Read what each part is doing.
 
-- **`overlay` and `shift by 1/2`** (`together` and `shift by 1/2` after 127c) are the `canon` function's body,
-  elaborated. Nothing about the term remembers that a function was involved; what it remembers is where the notes came
-  from.
+- **`together` and `shift by 1/2`** are the `canon` function's body, elaborated. Nothing about the term remembers that a
+  function was involved; what it remembers is where the notes came from.
 - **`def 300:304`** is the byte span of the *declaration* the note came from — the `c4/4` inside `subject`. Both the
   original and the transposed copy carry the same `def`, because there is one declaration and two occurrences.
 - **`via transpose 7 12`** is an expansion step: the interval as a written pair, staff displacement and chromatic

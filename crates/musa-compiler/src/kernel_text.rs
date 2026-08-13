@@ -11,7 +11,7 @@
 //! checks, formats, and serves it like any other source file
 //! (`docs/rules/language/01-surface.md` §7). It is not `.musa` because nothing
 //! rewrites it into surface syntax: a kernel file declares one composition,
-//! it compiles to one timeline, and the round trip through this module never
+//! it compiles to one track, and the round trip through this module never
 //! produces a `piece` block. The source is still canonical (AGENTS.md) —
 //! which source it is has simply stopped being a question with one answer.
 
@@ -37,8 +37,8 @@ pub struct KernelCheck {
     pub realization: Option<String>,
     /// How many occurrences the term evaluates to.
     pub occurrences: usize,
-    /// The evaluated timeline's extent, as an exact rational.
-    pub extent: String,
+    /// The evaluated track's duration, as an exact rational.
+    pub duration: String,
 }
 
 /// A piece as kernel text, structure preserved.
@@ -116,7 +116,7 @@ pub fn kernel_normalized_text(source: &SourceDocument, realization: &crate::Real
 /// As [`check_kernel_text`].
 #[doc(hidden)]
 pub fn kernel_text_meaning(text: &str) -> Result<(String, musa_kernel::SemanticHash), String> {
-    let term = musa_kernel::parse::<ScoreFact>(text)
+    let term = musa_kernel::parse::<musa_kernel::WrittenTime, ScoreFact>(text)
         .map_err(|error| error.to_string())?
         .into_term();
     term.check().map_err(|error| error.to_string())?;
@@ -133,7 +133,8 @@ pub fn kernel_text_meaning(text: &str) -> Result<(String, musa_kernel::SemanticH
 /// violation [`musa_kernel::Term::check`] found (K7).
 #[doc(hidden)]
 pub fn check_kernel_text(text: &str) -> Result<KernelCheck, String> {
-    let document = musa_kernel::parse::<ScoreFact>(text).map_err(|error| error.to_string())?;
+    let document =
+        musa_kernel::parse::<musa_kernel::WrittenTime, ScoreFact>(text).map_err(|error| error.to_string())?;
     document.term().check().map_err(|error| error.to_string())?;
     let realization = realization_note(&document);
     let name = document.name().to_owned();
@@ -142,12 +143,12 @@ pub fn check_kernel_text(text: &str) -> Result<KernelCheck, String> {
         name,
         realization,
         occurrences: value.occurrences().len(),
-        extent: value.extent().as_ratio().to_string(),
+        duration: value.duration().as_ratio().to_string(),
     })
 }
 
 /// Which reading of the work a file projects, if it says.
-fn realization_note<A>(document: &musa_kernel::Document<A>) -> Option<String> {
+fn realization_note<C: musa_kernel::Coordinate, A>(document: &musa_kernel::Document<C, A>) -> Option<String> {
     document
         .notes()
         .iter()
@@ -161,19 +162,19 @@ fn realization_note<A>(document: &musa_kernel::Document<A>) -> Option<String> {
 /// line is the kernel marker. There is no surface parse, no resolution, no
 /// name binding and no elaboration: a kernel file *is* the term, so the whole
 /// of the work is read it, check it, evaluate it, and project the result the
-/// same way the surface path projects its own timeline.
+/// same way the surface path projects its own track.
 ///
 /// That last clause is the reason this is worth doing at all. A kernel
 /// document reaching the same [`crate::project::project`] as a `.musa` piece
 /// is what makes the subset claim operational rather than aspirational: one
 /// projection, one snapshot type, and every backend downstream unable to tell
-/// which door the timeline came through.
+/// which door the track came through.
 pub(crate) fn compile_kernel(source: &SourceDocument) -> Compilation {
     let text = source.text();
     // Read first, always, and decoded only afterwards. A file whose payload
     // type this build cannot decode is still a file the toolchain must be
     // able to show, and finding that out costs one erased pass.
-    let document = match musa_kernel::read(text) {
+    let document = match musa_kernel::read::<musa_kernel::WrittenTime>(text) {
         Ok(document) => document,
         Err(error) => return refused(text, &error),
     };
@@ -187,7 +188,7 @@ pub(crate) fn compile_kernel(source: &SourceDocument) -> Compilation {
     // grammar is satisfied; this one decodes the payloads, and it reports at
     // the offset of the payload that failed rather than at the file, which is
     // why it is a parse rather than a walk over what was already read.
-    let typed = match musa_kernel::parse::<ScoreFact>(text) {
+    let typed = match musa_kernel::parse::<musa_kernel::WrittenTime, ScoreFact>(text) {
         Ok(typed) => typed,
         Err(error) => return refused(text, &error),
     };
@@ -214,7 +215,7 @@ pub(crate) fn compile_kernel(source: &SourceDocument) -> Compilation {
 /// the one place that has to make them up — a backend needs something to print
 /// and a reader deserves to see immediately that the file did not say. Losing
 /// the names is not a defect of the projection but of what a projection *is*:
-/// a name is surface metadata, and this format carries the timeline.
+/// a name is surface metadata, and this format carries the track.
 ///
 /// Ordering is by identity rather than by first appearance, so a file whose
 /// second part happens to start first still scores as parts 1, 2.
@@ -252,11 +253,12 @@ fn gather_parts(snapshot: &mut crate::score::ScoreSnapshot, voices: crate::proje
 fn refused(text: &str, error: &musa_kernel::KernelError) -> Compilation {
     // A parse error knows where it stopped reading. A well-formedness
     // violation is about the term as a whole — an occurrence outside its
-    // timeline, a name bound twice — and pointing at one line of it would be
+    // track, a name bound twice — and pointing at one line of it would be
     // a guess dressed as a location, so those point at the document.
     let span = match error {
         musa_kernel::KernelError::Parse { offset, .. } => rest_of_line(text, *offset),
         musa_kernel::KernelError::InvalidSpan { .. }
+        | musa_kernel::KernelError::NegativeDuration { .. }
         | musa_kernel::KernelError::OccurrenceOutOfBounds { .. }
         | musa_kernel::KernelError::EmptyComposition { .. }
         | musa_kernel::KernelError::FreeName { .. }
@@ -292,9 +294,13 @@ fn unsupported_payload(text: &str, payload_type: &str) -> Diagnostic {
     ))
 }
 
-/// Where the composition's `Timeline[…]` annotation stands.
+/// Where the composition's `EventTrack[…]` annotation stands.
+///
+/// The coordinate is `WrittenTime` by the time this is reached: a file in any
+/// other one was refused by the reader, which is typed in the coordinate it
+/// expects.
 fn payload_annotation(text: &str, payload_type: &str) -> SourceSpan {
-    let needle = format!("Timeline[{payload_type}]");
+    let needle = format!("EventTrack[WrittenTime, {payload_type}]");
     let start = text.find(&needle).unwrap_or(0);
     SourceSpan::new(clamp(start), clamp(start.saturating_add(needle.len())))
 }
@@ -323,5 +329,7 @@ fn clamp(offset: usize) -> u32 {
 /// whole reason it goes through the erased reader: an unsupported payload
 /// changes what a file means to us and not how it is written down.
 pub(crate) fn format_kernel(text: &str) -> Option<String> {
-    musa_kernel::read(text).ok().map(|document| document.to_text())
+    musa_kernel::read::<musa_kernel::WrittenTime>(text)
+        .ok()
+        .map(|document| document.to_text())
 }

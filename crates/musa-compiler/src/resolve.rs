@@ -393,20 +393,20 @@ pub(crate) struct Resolver {
     pub(crate) sites: std::collections::BTreeMap<crate::ChoicePath, u32>,
     /// Every decision this compile took, in the order the sites were reached.
     pub(crate) decisions: Vec<crate::DecisionRecord>,
-    /// The key the header wrote, on its way into the timeline.
+    /// The key the header wrote, on its way into the track.
     ///
     /// Staged here rather than on the snapshot because the snapshot's answer
-    /// to "what key is this" is the *projection* of the timeline, and a field
+    /// to "what key is this" is the *projection* of the track, and a field
     /// that held the header's reading until the projection overwrote it would
     /// be a second answer with a window in which it was the live one.
     pub(crate) key: Option<Key>,
-    /// Where each voice's kernel timeline goes on its way to the adapter.
+    /// Where each voice's kernel track goes on its way to the adapter.
     ///
-    /// `None` on every production path — nothing keeps a timeline after the
+    /// `None` on every production path — nothing keeps a track after the
     /// snapshot is built. It is `Some` only under `crate::bench`, which needs
     /// the elaboration and projection stages separable to measure them apart
     /// (roadmap §17.7). One `Option` check per voice is the whole cost.
-    pub(crate) timeline_sink: Option<Vec<crate::elaborate::VoiceTimeline>>,
+    pub(crate) track_sink: Option<Vec<crate::elaborate::VoiceTrack>>,
     /// Every name reference resolved, kept for editors.
     pub(crate) references: ReferenceIndex,
     /// Which performance is being compiled (`docs/rules/kernel/11-realization.md`).
@@ -438,7 +438,7 @@ impl Resolver {
             references: ReferenceIndex::new(),
             decisions: Vec::new(),
             key: None,
-            timeline_sink: None,
+            track_sink: None,
             realization: crate::Realization::deterministic(),
         }
     }
@@ -1500,7 +1500,7 @@ pub(crate) fn part_context(
     }
 }
 
-/// What one `tempo` statement says, as the timeline carries it.
+/// What one `tempo` statement says, as the track carries it.
 ///
 /// The three forms are read here and nowhere else, because "does this marking
 /// change the clock" is one question and every consumer asks it the same way:
@@ -1571,7 +1571,7 @@ fn tempo_ramp(resolver: &mut Resolver, tempo: &TempoStmt, printed: bool) -> Opti
         over: crate::time::MusicalDuration::new(over),
         // The grammar writes no shape, so every ramp is a straight line — in
         // seconds per beat, which is where the evenness a listener hears
-        // lives. The value is in the timeline rather than invented during
+        // lives. The value is in the track rather than invented during
         // lowering, so a second implementation integrates the same curve.
         shape: musa_kernel::Progress::linear(),
     })

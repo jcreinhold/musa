@@ -312,11 +312,11 @@ static SHIFT_FUNCTION: KeywordDoc = doc!(
     "`shift` delays music by an exact written duration without adding a rest event. Supply only the delay to make \
      a reusable entrance function.\n\n```musa\nlet later: Music -> Music = shift(1/2);\n```"
 );
-static OVERLAY_FUNCTION: KeywordDoc = doc!(
-    "overlay",
+static TOGETHER_FUNCTION: KeywordDoc = doc!(
+    "together",
     "music sounding together",
-    "`overlay` starts two music values together and lasts until the later one ends. It expresses simultaneity, \
-     not voice or mixer-track identity.\n\n```musa\nuse overlay(subject, answer);\n```"
+    "`together` starts two music values at the same instant and lasts until the later one ends. It expresses \
+     simultaneity, not voice or mixer-track identity.\n\n```musa\nuse together(subject, answer);\n```"
 );
 static MAP_NOTE_PITCHES_FUNCTION: KeywordDoc = doc!(
     "map_note_pitches",
@@ -330,7 +330,7 @@ static MAP_NOTE_PITCHES_FUNCTION: KeywordDoc = doc!(
 pub fn builtin_doc(name: &str) -> Option<&'static KeywordDoc> {
     match name {
         "shift" => Some(&SHIFT_FUNCTION),
-        "overlay" => Some(&OVERLAY_FUNCTION),
+        "together" => Some(&TOGETHER_FUNCTION),
         "map_note_pitches" => Some(&MAP_NOTE_PITCHES_FUNCTION),
         _ => None,
     }
@@ -527,7 +527,7 @@ static KERNEL: KeywordDoc = doc!(
     "kernel",
     "a quoted kernel composition expression",
     "A `kernel` quote writes a composition term directly, with `${...}` splicing typed `Music` into it. What the quote guarantees is exact extent, closure, and payload typing; what it does not guarantee is that a surface claim made inside a hole still holds after the quote's own `shift`, `scale`, or `restrict` moved it.\n\n\
-     ```musa\nlet doubled: Music = kernel Timeline[ScoreFact] {\n    let s = ${subject} in overlay { s; shift by 1/2 s; }\n};\n```"
+     ```musa\nlet doubled: Music = kernel EventTrack[WrittenTime, ScoreFact] {\n    let s = ${subject} in together { s; shift by 1/2 s; }\n};\n```"
 );
 static OPTION: KeywordDoc = doc!(
     "Option",

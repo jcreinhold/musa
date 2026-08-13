@@ -1,8 +1,8 @@
-% musa-kernel-1
+% musa-kernel-2
 % generated from examples/canon.musa by musa-compiler
 kernel "canon" {
-  composition main : Timeline[ScoreFact] =
-    let shared0 = timeline 3 {
+  composition main : EventTrack[WrittenTime, ScoreFact] =
+    let shared0 = track 3 {
         occurrence "voice 4294967295 4294967295 note g4 1/4 [4294967295:4294967295 def 97:101 #4]" from 0 to 1/4;
         occurrence "voice 4294967295 4294967295 note a4 1/4 [4294967295:4294967295 def 110:114 #4]" from 1/4 to 1/2;
         occurrence "voice 4294967295 4294967295 note b4 1/4 [4294967295:4294967295 def 123:127 #4]" from 1/2 to 3/4;
@@ -12,7 +12,7 @@ kernel "canon" {
         occurrence "voice 4294967295 4294967295 note a4 1/2 [4294967295:4294967295 def 175:179 #4]" from 2 to 5/2;
         occurrence "voice 4294967295 4294967295 note g4 1/2 [4294967295:4294967295 def 188:192 #4]" from 5/2 to 3;
       }
-    in let shared1 = timeline 3 {
+    in let shared1 = track 3 {
         occurrence "voice 4294967295 4294967295 note d5 1/4 [4294967295:4294967295 def 97:101 #4]" from 0 to 1/4;
         occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 110:114 #4]" from 1/4 to 1/2;
         occurrence "voice 4294967295 4294967295 note f#5 1/4 [4294967295:4294967295 def 123:127 #4]" from 1/2 to 3/4;
@@ -22,15 +22,15 @@ kernel "canon" {
         occurrence "voice 4294967295 4294967295 note e5 1/2 [4294967295:4294967295 def 175:179 #4]" from 2 to 5/2;
         occurrence "voice 4294967295 4294967295 note d5 1/2 [4294967295:4294967295 def 188:192 #4]" from 5/2 to 3;
       }
-    in overlay {
+    in together {
       shared0 @ "depth 0 origin 275:287 scope voice 0 0 via motif 275:287";
-      sequence {
-        timeline 3/4 {
+      follow {
+        track 3/4 {
           occurrence "voice 0 1 rest 3/4 [344:351 #6]" from 0 to 3/4;
         };
         shared1 @ "depth 0 origin 406:418 scope voice 0 1 via transpose 4 7 motif 406:418"
       };
-      timeline 15/4 {
+      track 15/4 {
         occurrence "piece meter 3/4 [35:50]" from 0 to 15/4;
         occurrence "piece tempo 1/4=96 [15:35]" from 0 to 15/4;
         occurrence "piece key g major [50:67]" from 0 to 15/4;

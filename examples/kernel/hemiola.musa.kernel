@@ -1,9 +1,9 @@
-% musa-kernel-1
+% musa-kernel-2
 % generated from examples/hemiola.musa by musa-compiler
 kernel "Hemiola" {
-  composition main : Timeline[ScoreFact] =
-    overlay {
-      timeline 3 {
+  composition main : EventTrack[WrittenTime, ScoreFact] =
+    together {
+      track 3 {
         occurrence "voice 0 0 dynamic mf [819:830 #4]" from 0 to 0;
         occurrence "voice 0 0 note g4 1/8 [919:923 #4]" from 0 to 1/8;
         occurrence "voice 0 0 note a4 1/8 [940:944 #4]" from 1/8 to 1/4;
@@ -30,7 +30,7 @@ kernel "Hemiola" {
         occurrence "voice 0 0 note g4 1/8 [1384:1388 #4]" from 11/4 to 23/8;
         occurrence "voice 0 0 note f4 1/8 [1405:1409 #4]" from 23/8 to 3;
       };
-      timeline 3 {
+      track 3 {
         occurrence "voice 1 0 dynamic mp [1521:1532 #5]" from 0 to 0;
         occurrence "voice 1 0 note c3 1/4 [1626:1630 #5]" from 0 to 1/4;
         occurrence "voice 1 0 note e3 1/4 [1647:1651 #5]" from 1/4 to 1/2;
@@ -45,7 +45,7 @@ kernel "Hemiola" {
         occurrence "voice 1 0 note g3 1/4 [1839:1843 #5]" from 5/2 to 11/4;
         occurrence "voice 1 0 note c3 1/4 [1860:1864 #5]" from 11/4 to 3;
       };
-      timeline 3 {
+      track 3 {
         occurrence "piece meter 3/4 [660:675]" from 0 to 3;
         occurrence "piece tempo 1/4=108 [639:660]" from 0 to 3;
         occurrence "piece key c major [675:692]" from 0 to 3;

@@ -2359,26 +2359,33 @@ impl MusicExpr {
     }
 }
 
-/// `kernel Timeline[ScoreFact] { ... }` — a quoted composition expression.
+/// `kernel EventTrack[WrittenTime, ScoreFact] { ... }` — a quoted composition
+/// expression.
 ///
 /// The interior is the kernel's grammar and this crate does not read it
 /// (`docs/rules/language/01-surface.md` §7). What it offers is what a *host* needs:
-/// which payload type the quote claims, where its body is, and where the
-/// holes are — so the compiler can cut the body into text and typed
+/// which coordinate and payload type the quote claims, where its body is, and
+/// where the holes are — so the compiler can cut the body into text and typed
 /// antiquotations and hand the text to the one crate that owns the grammar.
 pub struct KernelQuote(SyntaxNode);
 wrapper!(KernelQuote, SyntaxKind::KernelQuote);
 
 impl KernelQuote {
-    /// The type constructor as written, with its span. `Timeline`, or the
+    /// The type constructor as written, with its span. `EventTrack`, or the
     /// mistake in its place.
     pub fn constructor(&self) -> Option<(String, (u32, u32))> {
         self.identifiers().next()
     }
 
+    /// The coordinate as written, with its span — the first of the two type
+    /// arguments, and the one that says which time the quote is written in.
+    pub fn coordinate(&self) -> Option<(String, (u32, u32))> {
+        self.identifiers().nth(1)
+    }
+
     /// The payload type as written, with its span.
     pub fn payload_type(&self) -> Option<(String, (u32, u32))> {
-        self.identifiers().nth(1)
+        self.identifiers().nth(2)
     }
 
     /// The body's byte range: everything strictly inside the braces.

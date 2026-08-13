@@ -122,7 +122,7 @@ fn walk(text: &str, visit: &mut dyn FnMut(&quick_xml::events::BytesStart<'_>)) -
 /// represents the piece without rounding it. Only the last measure of a part
 /// may fall short, because a piece is allowed to end mid-bar.
 #[test]
-fn measures_add_up_to_the_measure_length() {
+fn measures_add_up_to_the_measure_duration() {
     for (name, source) in EXAMPLES {
         assert_measures_close(name, &musicxml_of(source));
     }

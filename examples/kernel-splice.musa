@@ -1,5 +1,5 @@
 // A kernel quote is the one place Musa lets a composer write the assembly the
-// compiler normally writes for them. `kernel Timeline[ScoreFact] { ... }` is a
+// compiler normally writes for them. `kernel EventTrack[WrittenTime, ScoreFact] { ... }` is a
 // composition expression of the temporal kernel — the same grammar a
 // `.musa.kernel` file is written in — and `${...}` splices ordinary Musa music
 // into it. What it buys is placement no surface constructor spells; what it
@@ -24,9 +24,9 @@ piece "Kernel Splice" {
     // `subj` is referenced three times and elaborated once. That is sharing, and
     // it is why the three references below are three placements of the *same*
     // facts rather than three re-readings of `subject`.
-    let assembled: Music = kernel Timeline[ScoreFact] {
+    let assembled: Music = kernel EventTrack[WrittenTime, ScoreFact] {
         let subj = ${subject} in
-        overlay {
+        together {
             subj;
             // Diminution, a measure later. The halving is written in the
             // host, not as a raw `scale by`: renotating is a payload
@@ -43,7 +43,7 @@ piece "Kernel Splice" {
             // material *is*; it states no scope and no origin, because the
             // use decides which voice this lands in and the quote is where it
             // came from. Writing either is refused.
-            timeline 2 {
+            track 2 {
                 occurrence "note c2 1" from 0 to 1;
                 occurrence "note g2 1" from 1 to 2;
             };

@@ -19,7 +19,7 @@ piece "Standard Library Basics" {
     score {
         part strings {
             voice duet {
-                use overlay(subject, shift(1/2, answer));
+                use together(subject, shift(1/2, answer));
                 c5/2
                 rest/2
             }

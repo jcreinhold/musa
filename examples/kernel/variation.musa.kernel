@@ -1,17 +1,17 @@
-% musa-kernel-1
+% musa-kernel-2
 % generated from examples/variation.musa by musa-compiler
 kernel "Variation" {
-  composition main : Timeline[ScoreFact] =
-    let shared0 = timeline 1 {
+  composition main : EventTrack[WrittenTime, ScoreFact] =
+    let shared0 = track 1 {
         occurrence "voice 4294967295 4294967295 note c5 1/4 [4294967295:4294967295 def 485:489 #4]" from 0 to 1/4;
         occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 498:502 #4]" from 1/4 to 1/2;
         occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 511:515 #4]" from 1/2 to 3/4;
         occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 524:528 #4]" from 3/4 to 1;
       }
-    in overlay {
-      sequence {
+    in together {
+      follow {
         shared0 @ "depth 0 origin 701:713 scope voice 0 0 via motif 701:713";
-        timeline 5 {
+        track 5 {
           occurrence "voice 0 0 note c5 1/2 [902:914 def 485:489 #4 via stretch 2 motif 902:914]" from 0 to 1/2;
           occurrence "voice 0 0 note e5 1/2 [902:914 def 498:502 #4 via stretch 2 motif 902:914]" from 1/2 to 1;
           occurrence "voice 0 0 note g5 1/2 [902:914 def 511:515 #4 via stretch 2 motif 902:914]" from 1 to 3/2;
@@ -30,7 +30,7 @@ kernel "Variation" {
           occurrence "voice 0 0 note e5 1/4 [1498:1567 def 524:528 #4 via motif 1498:1567]" from 19/4 to 5;
         }
       };
-      timeline 6 {
+      track 6 {
         occurrence "piece meter 4/4 [423:438]" from 0 to 6;
         occurrence "piece tempo 1/4=84 [403:423]" from 0 to 6;
         occurrence "piece key c major [438:455]" from 0 to 6;

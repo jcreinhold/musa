@@ -120,7 +120,7 @@
             },
             {
               "type": "STRING",
-              "value": "musa-kernel-1"
+              "value": "musa-kernel-2"
             },
             {
               "type": "PATTERN",
@@ -3090,6 +3090,18 @@
         {
           "type": "STRING",
           "value": "["
+        },
+        {
+          "type": "FIELD",
+          "name": "coordinate",
+          "content": {
+            "type": "SYMBOL",
+            "name": "identifier"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": ","
         },
         {
           "type": "FIELD",

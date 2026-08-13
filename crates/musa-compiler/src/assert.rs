@@ -493,7 +493,7 @@ fn fills_meter(passage: &Passage, settled: &Settled<'_>) -> Option<Diagnostic> {
             .note("`senza { ... }` and `meter none;` say the barlines stop; a `bar` says where one falls"),
         );
     }
-    let measure = here.length().as_ratio();
+    let measure = here.duration().as_ratio();
     let written = passage.extent.as_ratio();
     if written == measure {
         return None;

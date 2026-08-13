@@ -526,7 +526,7 @@ pub enum SyntaxKind {
     Pattern,
     /// `music { ... }`, a notation-first contextual music value.
     MusicExpr,
-    /// `kernel Timeline[ScoreFact] { ... }` — a quoted kernel composition
+    /// `kernel EventTrack[WrittenTime, ScoreFact] { ... }` — a quoted kernel composition
     /// expression, with `${…}` holes.
     ///
     /// Its interior is *recognized, not read*: the tokens between the braces

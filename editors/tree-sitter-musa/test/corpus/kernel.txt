@@ -2,10 +2,10 @@
 kernel: the marker makes the file the other alternative
 ================================================================================
 
-% musa-kernel-1
+% musa-kernel-2
 kernel "twinkle" {
-  composition main : Timeline[ScoreFact] =
-    timeline 1/4 {
+  composition main : EventTrack[WrittenTime, ScoreFact] =
+    track 1/4 {
       occurrence "voice 0 0 note c4 1/4 [0:0 #4]" from 0 to 1/4;
     };
 }
@@ -21,7 +21,7 @@ kernel "twinkle" {
 kernel: the marker is the whole document
 ================================================================================
 
-% musa-kernel-1
+% musa-kernel-2
 
 --------------------------------------------------------------------------------
 
@@ -33,7 +33,7 @@ kernel: the marker is the whole document
 kernel: the marker is a first line, not a word
 ================================================================================
 
-// % musa-kernel-1 names the other alternative only as the whole first line
+// % musa-kernel-2 names the other alternative only as the whole first line
 piece "P" {
     tempo = 60;
 }
@@ -52,12 +52,12 @@ a kernel quote is an expression, and `${...}` is the way back out
 ================================================================================
 
 piece "q" {
-    let a: Music = kernel Timeline[ScoreFact] {
+    let a: Music = kernel EventTrack[WrittenTime, ScoreFact] {
         let x = ${subject} in
-        overlay {
+        together {
             x;
             shift by 1/2 x;
-            timeline 1 {
+            track 1 {
                 occurrence "note c4 1/4" from 0 to 1/4;
             };
         }
@@ -77,6 +77,7 @@ piece "q" {
       value: (expression
         (kernel_quote
           constructor: (identifier)
+          coordinate: (identifier)
           payload: (identifier)
           (kernel_quote_body
             (identifier)

@@ -69,7 +69,7 @@ pub enum DocumentKind {
     Piece,
     /// `library { … }` — declarations for other files to import.
     Material,
-    /// `% musa-kernel-1` — a kernel interchange file, read as itself
+    /// `% musa-kernel-2` — a kernel interchange file, read as itself
     /// (`docs/rules/language/01-surface.md` §7).
     ///
     /// A third kind rather than a second flavour of `Piece`, because the two
@@ -177,13 +177,13 @@ impl Compilation {
         &self.decisions
     }
 
-    /// What this compilation *means*, as a digest of the piece's timeline
+    /// What this compilation *means*, as a digest of the piece's track
     /// (docs/rules/kernel/05 N6).
     ///
     /// Two compilations with the same identity are the same music, whatever
     /// their sources looked like; two with different identities differ in
     /// something a listener or an engraver would see. Provenance is part of
-    /// the timeline's payloads, so moving a note's text without changing the
+    /// the track's payloads, so moving a note's text without changing the
     /// note changes the identity — the question it answers is "is this the
     /// same compiled piece", not "does it sound the same".
     ///

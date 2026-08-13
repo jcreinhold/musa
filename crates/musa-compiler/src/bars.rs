@@ -62,7 +62,7 @@ pub struct Measure {
 impl Measure {
     /// How long it is. For an unmeasured stretch, how long the passage
     /// turned out to be rather than how long the meter said it would be.
-    pub fn length(self) -> MusicalDuration {
+    pub fn duration(self) -> MusicalDuration {
         self.end - self.start
     }
 }

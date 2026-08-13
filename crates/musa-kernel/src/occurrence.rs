@@ -1,6 +1,6 @@
 //! Occurrences: typed values supported over spans (docs/rules/kernel/03 D0).
 
-use crate::time::Span;
+use crate::time::{Coordinate, Duration, Position, Span};
 
 /// Admitted semantic equality for a payload (docs/rules/kernel/05 N3, 12).
 ///
@@ -39,41 +39,41 @@ impl Canonical for String {
     }
 }
 
-/// One typed occurrence: a payload supported over `[start, end)`. Duration is
-/// the span's temporal support, never a payload field (D0).
+/// One typed occurrence: a payload supported over `[start, end)` in coordinate
+/// `C`. Duration is the span's temporal support, never a payload field (D0).
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Occurrence<A> {
-    span: Span,
+pub struct Occurrence<C: Coordinate, A> {
+    span: Span<C>,
     payload: A,
 }
 
-impl<A> Occurrence<A> {
+impl<C: Coordinate, A> Occurrence<C, A> {
     /// An occurrence over `span` carrying `payload`. Bounds relative to the
-    /// timeline's extent are checked by [`timeline`](crate::timeline).
-    pub fn new(span: Span, payload: A) -> Self {
+    /// track's duration are checked by [`track`](crate::track).
+    pub fn new(span: Span<C>, payload: A) -> Self {
         Self { span, payload }
     }
 
     /// The temporal support.
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> Span<C> {
         self.span
     }
 
-    /// The payload.
-    /// The payload, mutably. Only [`Timeline::payloads_mut`] hands this out,
+    /// The payload, mutably. Only [`EventTrack::payloads_mut`] hands this out,
     /// and only for D7-in-place; the span stays immutable.
     ///
-    /// [`Timeline::payloads_mut`]: crate::Timeline::payloads_mut
+    /// [`EventTrack::payloads_mut`]: crate::EventTrack::payloads_mut
     pub(crate) fn payload_mut(&mut self) -> &mut A {
         &mut self.payload
     }
 
+    /// The payload.
     pub fn payload(&self) -> &A {
         &self.payload
     }
 
-    /// The occurrence translated by `offset` beats (τ of docs/rules/kernel/03 D2).
-    pub(crate) fn translate(self, offset: crate::Beat) -> Self {
+    /// The occurrence translated later by `offset` (τ of docs/rules/kernel/03 D2).
+    pub(crate) fn translate(self, offset: Duration<C>) -> Self {
         Self {
             span: self.span.translate(offset),
             payload: self.payload,
@@ -81,9 +81,9 @@ impl<A> Occurrence<A> {
     }
 }
 
-impl<A: Canonical> Occurrence<A> {
+impl<C: Coordinate, A: Canonical> Occurrence<C, A> {
     /// The canonical sort/equality key: start, then end, then payload (N2).
-    pub(crate) fn canonical_key(&self) -> (crate::Beat, crate::Beat, String) {
+    pub(crate) fn canonical_key(&self) -> (Position<C>, Position<C>, String) {
         (self.span.start(), self.span.end(), self.payload.canonical_key())
     }
 }

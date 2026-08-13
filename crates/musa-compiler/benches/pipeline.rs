@@ -143,20 +143,20 @@ fn p2_elaborate(bencher: divan::Bencher<'_, '_>, workload: &str) {
     bencher.bench_local(|| bench::elaborate(divan::black_box(&parsed), &options));
 }
 
-/// P3 — the snapshot projection alone: kernel timelines back into score
+/// P3 — the snapshot projection alone: kernel tracks back into score
 /// events, with elaboration hoisted out of the measured region.
 #[divan::bench(args = WORKLOADS)]
 fn p3_project(bencher: divan::Bencher<'_, '_>, workload: &str) {
-    let timelines = bench::timelines(&bench::parse(&source(workload)), &options(workload));
-    bencher.bench_local(|| divan::black_box(&timelines).project());
+    let tracks = bench::tracks(&bench::parse(&source(workload)), &options(workload));
+    bencher.bench_local(|| divan::black_box(&tracks).project());
 }
 
 /// P4 — canonical form of the whole piece: every voice overlaid into one
-/// timeline and normalized. Semantic identity pays this per edit.
+/// track and normalized. Semantic identity pays this per edit.
 #[divan::bench(args = WORKLOADS)]
 fn p4_canonical(bencher: divan::Bencher<'_, '_>, workload: &str) {
-    let timelines = bench::timelines(&bench::parse(&source(workload)), &options(workload));
-    bencher.bench_local(|| divan::black_box(&timelines).canonical());
+    let tracks = bench::tracks(&bench::parse(&source(workload)), &options(workload));
+    bencher.bench_local(|| divan::black_box(&tracks).canonical());
 }
 
 /// P5 — the semantic hash of the whole piece: P4's canonical order plus the
@@ -164,8 +164,8 @@ fn p4_canonical(bencher: divan::Bencher<'_, '_>, workload: &str) {
 /// so the difference between this row and P4's is what identity costs.
 #[divan::bench(args = WORKLOADS)]
 fn p5_hash(bencher: divan::Bencher<'_, '_>, workload: &str) {
-    let timelines = bench::timelines(&bench::parse(&source(workload)), &options(workload));
-    bencher.bench_local(|| divan::black_box(&timelines).hash());
+    let tracks = bench::tracks(&bench::parse(&source(workload)), &options(workload));
+    bencher.bench_local(|| divan::black_box(&tracks).hash());
 }
 
 /// P6 — the tonal reading of a whole piece: segmentation, chord fitting,
@@ -395,12 +395,12 @@ fn main() {
     // Report what is being measured, so a table row cannot be read without
     // knowing the size of the workload behind it.
     for workload in WORKLOADS {
-        let timelines = bench::timelines(&bench::parse(&source(workload)), &options(workload));
+        let tracks = bench::tracks(&bench::parse(&source(workload)), &options(workload));
         let term = duplication(&source(workload)).map_or_else(
             || "term unavailable (the interchange helper resolves no imports)".to_owned(),
             |(bindings, bytes)| format!("{bindings} shared bindings, {bytes}-byte term"),
         );
-        println!("workload {workload}: {} occurrences, {term}", timelines.occurrences());
+        println!("workload {workload}: {} occurrences, {term}", tracks.occurrences());
     }
     for shape in [
         bench::Sharing::Identical,

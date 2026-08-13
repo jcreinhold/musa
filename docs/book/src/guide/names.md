@@ -17,7 +17,7 @@ From `examples/canon-functions.musa`:
 
 ```musa
 fn canon(subject: Music, answer: Music -> Music, gap: Duration) -> Music {
-    overlay(subject, shift(gap, answer(subject)))
+    together(subject, shift(gap, answer(subject)))
 }
 ```
 
@@ -39,7 +39,7 @@ and the site reads:
 use canon(subject, octave_answer, 1/2);
 ```
 
-`overlay` sounds two pieces of music at once; `shift` starts one later; `transpose` moves one by a written interval.
+`together` sounds two pieces of music at once; `shift` starts one later; `transpose` moves one by a written interval.
 Those three, plus `stretch` for renotating durations and `retrograde` for reversal, are the whole vocabulary — there is
 no fifth combinator hiding somewhere.
 
@@ -54,7 +54,7 @@ do is name what each note's pitch becomes:
 fn pedal(_: Pitch) -> Pitch { c3 }
 
 fn harmonize(subject: Music, answer_pitch: Pitch -> Pitch) -> Music {
-    overlay(subject, map_note_pitches(answer_pitch, subject))
+    together(subject, map_note_pitches(answer_pitch, subject))
 }
 ```
 
@@ -154,7 +154,7 @@ happens to define is private to `CMajor`. The same rule runs the other way:
 ```musa
 // Private. `CanonMaterial` does not list it, so nothing outside this
 // structure may name `MajorCanon.stretto` — which is what sealing means.
-let stretto: Music = overlay(subject, shift(1/2, answer(subject)));
+let stretto: Music = together(subject, shift(1/2, answer(subject)));
 ```
 
 This is also why the generated reference lists a structure's signature members and not the rest: a private member is not

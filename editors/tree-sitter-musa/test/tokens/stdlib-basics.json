@@ -119,7 +119,7 @@
     { "kind": "identifier", "text": "duet" },
     { "kind": "{", "text": "{" },
     { "kind": "use", "text": "use" },
-    { "kind": "identifier", "text": "overlay" },
+    { "kind": "identifier", "text": "together" },
     { "kind": "(", "text": "(" },
     { "kind": "identifier", "text": "subject" },
     { "kind": ",", "text": "," },

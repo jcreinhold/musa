@@ -44,14 +44,14 @@ const PRELUDE: &str = r"
 
     meter 4/4;
 
-    fn tick(one: Music, carried: Music) -> Music { overlay(one, carried) }
+    fn tick(one: Music, carried: Music) -> Music { together(one, carried) }
     fn beat() -> Music { music { c4/1 } }
     fn tally(count: Nat) -> Music { list_fold(music { rest/1 }, tick, repeat(beat(), count)) }
     fn chorus(voices: List<Music>) -> Music { list_fold(music { rest/1 }, tick, voices) }
     fn beat_for_pc(member: Pc12) -> Music { beat() }
     fn beat_for_voicing(chosen: Voicing) -> Music { beat() }
     fn beat_for_triad(refined: Triad) -> Music { beat() }
-    fn numbered(member: Pc12) -> Music { overlay(beat(), tally(number_of(member))) }
+    fn numbered(member: Pc12) -> Music { together(beat(), tally(number_of(member))) }
     fn quality(refined: Triad) -> Music { match is_major(refined) {
         true -> tally(2),
         false -> tally(1),

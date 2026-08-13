@@ -97,7 +97,7 @@ fn points(snapshot: &ScoreSnapshot, lanes: &[Lane], slices: &[Slice]) -> Vec<Poi
         }
     }
     if let Some(last) = slices.last() {
-        mark(last.onset + last.extent, false, false, true);
+        mark(last.onset + last.duration, false, false, true);
     }
     points.sort_by_key(|point| point.at);
     points
@@ -105,7 +105,10 @@ fn points(snapshot: &ScoreSnapshot, lanes: &[Lane], slices: &[Slice]) -> Vec<Poi
 
 /// What the two chords arriving at a point are, in each proposed key.
 fn read(slices: &[Slice], point: &Point, keys: &[Key]) -> Vec<AnalysisFinding> {
-    let Some(final_at) = slices.iter().rposition(|slice| slice.onset + slice.extent <= point.at) else {
+    let Some(final_at) = slices
+        .iter()
+        .rposition(|slice| slice.onset + slice.duration <= point.at)
+    else {
         return Vec::new();
     };
     let (Some(last), Some(before)) = (
@@ -121,7 +124,7 @@ fn read(slices: &[Slice], point: &Point, keys: &[Key]) -> Vec<AnalysisFinding> {
     };
     let evidence = Evidence::Passage {
         from: before.onset,
-        to: last.onset + last.extent,
+        to: last.onset + last.duration,
         notes,
     };
     keys.iter()

@@ -32,7 +32,7 @@ pub(super) struct Slice {
     /// Where the slice begins.
     pub(super) onset: MusicalTime,
     /// How long it lasts.
-    pub(super) extent: MusicalDuration,
+    pub(super) duration: MusicalDuration,
     /// The sounding notes, lowest first.
     pub(super) notes: Vec<Voiced>,
 }
@@ -217,7 +217,7 @@ fn gather(held: &[Held], from: MusicalTime, to: MusicalTime) -> Slice {
     });
     Slice {
         onset: from,
-        extent: to - from,
+        duration: to - from,
         notes: notes
             .into_iter()
             .map(|note| Voiced {

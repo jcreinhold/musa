@@ -798,7 +798,7 @@ enum ExprKind {
 struct CheckedQuote {
     /// The quoted term, with a fresh name standing where each hole was
     /// written.
-    term: musa_kernel::Term<crate::elaborate::ScoreFact>,
+    term: musa_kernel::Term<musa_kernel::WrittenTime, crate::elaborate::ScoreFact>,
     /// Each hole: the fresh name that stands for it, where it sits in the
     /// quote's own time, and the expression spliced there.
     holes: Vec<CheckedHole>,
@@ -1943,7 +1943,7 @@ enum Builtin {
     Retrograde,
     Invert,
     Shift,
-    Overlay,
+    Together,
     MapNotePitches,
     Play,
 }
@@ -1980,9 +1980,9 @@ const BUILTIN_OWNERSHIP: [PrimitiveOwnership<Builtin>; 8] = [
         family: Family::Music,
     },
     PrimitiveOwnership {
-        operation: Builtin::Overlay,
-        spelling: "overlay",
-        hidden_information: "contextual music representation, origin paths, and kernel overlay construction",
+        operation: Builtin::Together,
+        spelling: "together",
+        hidden_information: "contextual music representation, origin paths, and kernel stacking construction",
         family: Family::Music,
     },
     PrimitiveOwnership {
@@ -2013,7 +2013,7 @@ impl Builtin {
             Self::Retrograde => vec![Type::Music],
             Self::Invert => vec![Type::Pitch, Type::Music],
             Self::Shift => vec![Type::Duration, Type::Music],
-            Self::Overlay => vec![Type::Music, Type::Music],
+            Self::Together => vec![Type::Music, Type::Music],
             Self::MapNotePitches => vec![Type::Function(vec![Type::Pitch], Box::new(Type::Pitch)), Type::Music],
             Self::Play => vec![Type::Voicing, Type::Duration],
         }
@@ -2153,7 +2153,7 @@ pub(crate) enum MusicOperation {
         by: Ratio<i64>,
         source: Music,
     },
-    Overlay {
+    Together {
         left: Music,
         right: Box<Music>,
     },
@@ -2170,7 +2170,7 @@ pub(crate) enum MusicOperation {
     /// the extent off the structure; it never rebuilds the term.
     KernelQuote {
         /// The quoted term, over the hole names.
-        term: musa_kernel::Term<crate::elaborate::ScoreFact>,
+        term: musa_kernel::Term<musa_kernel::WrittenTime, crate::elaborate::ScoreFact>,
         /// Each hole: its fresh name, its locus in the quote, and its music.
         holes: Vec<(String, Ratio<i64>, Music)>,
     },
@@ -2470,7 +2470,7 @@ fn music_witness(music: &Music) -> u64 {
             | MusicOperation::Shift { source, .. }
             | MusicOperation::MapNotePitches { source, .. },
         ) => music_witness(source),
-        Some(MusicOperation::Overlay { left, right }) => music_witness(left).rotate_left(7) ^ music_witness(right),
+        Some(MusicOperation::Together { left, right }) => music_witness(left).rotate_left(7) ^ music_witness(right),
         Some(MusicOperation::Play { voicing, held }) => {
             Value::Voicing(voicing.clone()).normalization_witness().rotate_left(11)
                 ^ Value::Duration(*held).normalization_witness()
@@ -4067,11 +4067,12 @@ impl Checker<'_> {
         None
     }
 
-    /// Check `kernel Timeline[ScoreFact] { … }` — a quotation.
+    /// Check `kernel EventTrack[WrittenTime, ScoreFact] { … }` — a quotation.
     ///
     /// The quote is read here, once, in four steps that are deliberately
-    /// separate: the type constructor and payload name are *this* language's
-    /// words and are checked against what this build can mean; the body text
+    /// separate: the type constructor, coordinate, and payload name are
+    /// *this* language's words and are checked against what this build can
+    /// mean; the body text
     /// with its holes replaced by fresh names is handed to `musa-kernel`,
     /// which owns the term grammar and is the only thing that reads it; the
     /// payloads that came back are checked for context authority, because a
@@ -4089,15 +4090,33 @@ impl Checker<'_> {
         let text = quote_text(node);
 
         if let Some((constructor, at)) = quote.constructor()
-            && constructor != "Timeline"
+            && constructor != "EventTrack"
         {
             self.resolver.report(
                 Diagnostic::error(
                     Code::UnknownName,
                     format!("`{constructor}` is not a kernel type constructor"),
                 )
-                .at(SourceSpan::new(at.0, at.1), "expected `Timeline`")
-                .note("a quote writes one composition expression, and a composition is a timeline"),
+                .at(SourceSpan::new(at.0, at.1), "expected `EventTrack`")
+                .note("a quote writes one composition expression, and a composition is an event track"),
+            );
+            self.failed = true;
+            return None;
+        }
+        // The coordinate is checked before the payload because it is the
+        // stronger claim: a track in performed time is not a score, whatever
+        // its payloads say, and nothing converts one coordinate into another.
+        if let Some((coordinate, at)) = quote.coordinate()
+            && coordinate != "WrittenTime"
+        {
+            self.resolver.report(
+                Diagnostic::error(
+                    Code::UnknownName,
+                    format!("a score quote cannot be written in `{coordinate}`"),
+                )
+                .at(SourceSpan::new(at.0, at.1), "expected `WrittenTime`")
+                .help("write `WrittenTime`, the coordinate notation is written in")
+                .note("nothing converts one coordinate into another; performance derives its own"),
             );
             self.failed = true;
             return None;
@@ -4130,7 +4149,8 @@ impl Checker<'_> {
             stem.push('_');
         }
         let (source, spans) = substitute_holes(&text, base, body_start, body_end, &stem, &holes);
-        let term = match musa_kernel::parse_expression::<crate::elaborate::ScoreFact>(&source) {
+        let term = match musa_kernel::parse_expression::<musa_kernel::WrittenTime, crate::elaborate::ScoreFact>(&source)
+        {
             Ok(term) => term,
             Err(error) => {
                 self.resolver.report(
@@ -4198,7 +4218,7 @@ impl Checker<'_> {
         for hole in checked.iter().rev() {
             closed = musa_kernel::Term::bind(
                 hole.name.clone(),
-                musa_kernel::Term::literal(musa_kernel::zero()),
+                musa_kernel::Term::literal(musa_kernel::empty(musa_kernel::Duration::ZERO)),
                 closed,
             );
         }
@@ -6470,7 +6490,7 @@ fn apply_builtin(builtin: Builtin, provided: Vec<Value>, span: SourceSpan) -> Op
                 source: music_value(arguments.next()?)?,
             }
         }
-        Builtin::Overlay => MusicOperation::Overlay {
+        Builtin::Together => MusicOperation::Together {
             left: music_value(arguments.next()?)?,
             right: Box::new(music_value(arguments.next()?)?),
         },
@@ -7429,7 +7449,7 @@ fn music_shape(music: &Music) -> (u64, u64) {
             | MusicOperation::Shift { source, .. }
             | MusicOperation::MapNotePitches { source, .. },
         ) => music_shape(source),
-        Some(MusicOperation::Overlay { left, right }) => {
+        Some(MusicOperation::Together { left, right }) => {
             let left = music_shape(left);
             let right = music_shape(right);
             (left.0.saturating_add(right.0), left.1.saturating_add(right.1))

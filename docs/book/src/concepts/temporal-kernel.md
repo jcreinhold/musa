@@ -20,9 +20,9 @@ decision a backend makes about an uncovered region, not kernel ontology.
 
 ## Three structural forms
 
-- `timeline` — an ambient region with facts supported in it;
-- `sequence` — temporal succession, associative concatenation;
-- `overlay` — simultaneous presence in a common region (commutative, associative, not idempotent).
+- `track` — an ambient region with facts supported in it;
+- `follow` — temporal succession, associative concatenation;
+- `together` — simultaneous presence in a common region (commutative, associative, not idempotent).
 
 There is no primitive `note`, `rest`, `motif`, `voice`, `repeat`, `key`, or `tempo` at this level. Payloads are typed
 but musically opaque: the kernel knows where, when, for how long, and what typed value — never what a note means.
@@ -31,7 +31,7 @@ but musically opaque: the kernel knows where, when, for how long, and what typed
 
 - Not a programming language: no recursion, no general computation. Every closed term evaluates, deterministically, in
   finitely many steps.
-- Not a semiring: `sequence` does not distribute over `overlay`.
+- Not a semiring: `follow` does not distribute over `together`.
 - Not a monad: there is no canonical musically-correct `join`.
 - Not infinite: loops and patterns live above the kernel as producers of finite observations.
 - Not a provenance store: the kernel is a semantic quotient of richer source structure, and provenance is preserved

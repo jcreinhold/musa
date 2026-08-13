@@ -656,14 +656,14 @@ pub enum Observation {
         /// Where it starts, in whole notes from the piece start.
         onset: MusicalTime,
         /// How long it sounds.
-        extent: MusicalDuration,
+        duration: MusicalDuration,
     },
     /// A rest: nothing sounding, over an exact span.
     Silence {
         /// Where the silence starts.
         onset: MusicalTime,
         /// How long it lasts.
-        extent: MusicalDuration,
+        duration: MusicalDuration,
     },
     /// A chord symbol written above the staff.
     ///
@@ -698,7 +698,7 @@ pub enum Observation {
         /// Where the slice begins.
         onset: MusicalTime,
         /// How long it lasts.
-        extent: MusicalDuration,
+        duration: MusicalDuration,
     },
     /// A chord class the simultaneity's pitch content fits, and how.
     ChordFit {
@@ -709,7 +709,7 @@ pub enum Observation {
         /// Where the simultaneity begins.
         onset: MusicalTime,
         /// How long it lasts.
-        extent: MusicalDuration,
+        duration: MusicalDuration,
     },
     /// What a written chord symbol and the notes under it say about each
     /// other. Reported only when a symbol is written: the compiler still
@@ -734,7 +734,7 @@ pub enum Observation {
         /// Where the simultaneity begins.
         onset: MusicalTime,
         /// How long it lasts.
-        extent: MusicalDuration,
+        duration: MusicalDuration,
     },
     /// A stretch of music a key would account for.
     KeyRegion {

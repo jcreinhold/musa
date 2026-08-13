@@ -3,12 +3,12 @@
 // inside. A `music` value may read the context supplied at each use; it may not
 // settle it — and a quote is a `music` value like any other.
 piece "Quote Context Fact" {
-    let assembled: Music = kernel Timeline[ScoreFact] {
-        overlay {
-            timeline 1 {
+    let assembled: Music = kernel EventTrack[WrittenTime, ScoreFact] {
+        together {
+            track 1 {
                 occurrence "key c major" from 0 to 1;
             };
-            timeline 1 {
+            track 1 {
                 occurrence "note c4 1" from 0 to 1;
             };
         }

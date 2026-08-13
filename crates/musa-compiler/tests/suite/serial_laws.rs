@@ -38,7 +38,7 @@ const PRELUDE: &str = r"
 
     meter 4/4;
 
-    fn tick(one: Music, carried: Music) -> Music { overlay(one, carried) }
+    fn tick(one: Music, carried: Music) -> Music { together(one, carried) }
     fn beat() -> Music { music { c4/1 } }
     fn tally(count: Nat) -> Music { list_fold(music { rest/1 }, tick, repeat(beat(), count)) }
     fn beat_for_pc(member: Pc12) -> Music { beat() }

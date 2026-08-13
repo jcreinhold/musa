@@ -1,7 +1,7 @@
 ---
 id: 127c
 slug: event-track-cutover
-status: pending
+status: done
 depends_on: [127b]
 phase: 3
 ---

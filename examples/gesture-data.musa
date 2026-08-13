@@ -27,7 +27,7 @@ piece "Gesture Study" {
     // fields, so its case is a `Music` rather than a function of one.
     fn raised(by: Interval, inner: Music) -> Music { transpose(by, inner) }
 
-    fn stacked(first: Music, second: Music) -> Music { overlay(first, shift(1/2, second)) }
+    fn stacked(first: Music, second: Music) -> Music { together(first, shift(1/2, second)) }
 
     // The plan: the subject against its own octave. Fields are named at the
     // constructor the way parameters are named at a call.

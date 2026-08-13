@@ -305,11 +305,13 @@
 
 ; --- A kernel quote ---------------------------------------------------------
 ;
-; `Timeline` and its payload are types, the same two words `musa-kernel`'s own
-; classifier calls types (`crates/musa-kernel/src/editor.rs`). Inside the body
+; `EventTrack`, its coordinate, and its payload are types — the same words
+; `musa-kernel`'s own classifier calls types (`crates/musa-kernel/src/editor.rs`).
+; Inside the body
 ; the words belong to the kernel's grammar, and an editor colouring them from
 ; here would be a second copy of that lexis; what is marked instead is the
 ; seam — the quote's head, and the `${` that lets the host back in.
 (kernel_quote constructor: (identifier) @type)
+(kernel_quote coordinate: (identifier) @type)
 (kernel_quote payload: (identifier) @type)
 (kernel_hole "$" @punctuation.special)

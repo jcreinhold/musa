@@ -1,15 +1,15 @@
-% musa-kernel-1
+% musa-kernel-2
 % generated from examples/bulgarian.musa by musa-compiler
 kernel "Ruchenitsa" {
-  composition main : Timeline[ScoreFact] =
-    let shared0 = timeline 1 {
+  composition main : EventTrack[WrittenTime, ScoreFact] =
+    let shared0 = track 1 {
         occurrence "voice 4294967295 4294967295 note d3 1/4 [4294967295:4294967295 def 1270:1274 #4]" from 0 to 1/4;
         occurrence "voice 4294967295 4294967295 note a3 1/4 [4294967295:4294967295 def 1275:1279 #4]" from 1/4 to 1/2;
         occurrence "voice 4294967295 4294967295 note d3 1/4 [4294967295:4294967295 def 1280:1284 #4]" from 1/2 to 3/4;
         occurrence "voice 4294967295 4294967295 note a3 1/4 [4294967295:4294967295 def 1285:1289 #4]" from 3/4 to 1;
       }
-    in overlay {
-      timeline 7 {
+    in together {
+      track 7 {
         occurrence "voice 0 0 dynamic mf [1422:1433 #5]" from 0 to 0;
         occurrence "voice 0 0 note a4 1/8 [1506:1510 #5]" from 0 to 1/8;
         occurrence "voice 0 0 note b4 1/8 [1511:1515 #5]" from 1/8 to 1/4;
@@ -60,8 +60,8 @@ kernel "Ruchenitsa" {
         occurrence "voice 0 0 note b4 1/8 [1881:1885 #5]" from 53/8 to 27/4;
         occurrence "voice 0 0 note a4 1/4 [1886:1890 #5]" from 27/4 to 7;
       };
-      sequence {
-        timeline 0 {
+      follow {
+        track 0 {
           occurrence "voice 1 0 dynamic mp [2002:2013 #6]" from 0 to 0;
         };
         shared0 @ "depth 0 origin 2335:2350 scope voice 1 0 via motif 2335:2350";
@@ -72,7 +72,7 @@ kernel "Ruchenitsa" {
         shared0 @ "depth 0 origin 2495:2510 scope voice 1 0 via motif 2495:2510";
         shared0 @ "depth 0 origin 2527:2542 scope voice 1 0 via motif 2527:2542"
       };
-      timeline 7 {
+      track 7 {
         occurrence "piece meter 4/4 [1148:1163]" from 0 to 7;
         occurrence "piece tempo 1/4=132 [1127:1148]" from 0 to 7;
         occurrence "piece key a minor [1163:1180]" from 0 to 7;

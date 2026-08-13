@@ -152,9 +152,9 @@ Musa normally writes kernel terms for you. `kernel { ... }` is the one place you
 surface constructor spells. From `examples/kernel-splice.musa`:
 
 ```musa
-let assembled: Music = kernel Timeline[ScoreFact] {
+let assembled: Music = kernel EventTrack[WrittenTime, ScoreFact] {
     let subj = ${subject} in
-    overlay {
+    together {
         subj;
 ```
 

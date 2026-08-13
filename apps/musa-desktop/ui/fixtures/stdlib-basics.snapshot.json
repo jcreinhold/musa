@@ -2,7 +2,7 @@
   "document": 0,
   "name": "stdlib-basics.musa",
   "kind": "piece",
-  "source": "// Standard modules are explicit, version-matched source libraries. Their\n// functions pass through the same checker and evaluator as these definitions.\npiece \"Standard Library Basics\" {\n    import std::core;\n    import std::list;\n    import std::option;\n\n    let subject: Music = music {\n        c4/4\n        d4/4\n    };\n\n    fn same_pitch(p: Pitch) -> Pitch { p }\n\n    let answer: Music = compose_music(fn (line: Music) -> Music { transpose(P8, line) }, retrograde, subject);\n    let chosen: Pitch = pitch_or_else(c4, same_pitch, Some(e4));\n    let counting: List<Nat> = naturals(4);\n\n    score {\n        part strings {\n            voice duet {\n                use overlay(subject, shift(1/2, answer));\n                c5/2\n                rest/2\n            }\n        }\n    }\n}\n",
+  "source": "// Standard modules are explicit, version-matched source libraries. Their\n// functions pass through the same checker and evaluator as these definitions.\npiece \"Standard Library Basics\" {\n    import std::core;\n    import std::list;\n    import std::option;\n\n    let subject: Music = music {\n        c4/4\n        d4/4\n    };\n\n    fn same_pitch(p: Pitch) -> Pitch { p }\n\n    let answer: Music = compose_music(fn (line: Music) -> Music { transpose(P8, line) }, retrograde, subject);\n    let chosen: Pitch = pitch_or_else(c4, same_pitch, Some(e4));\n    let counting: List<Nat> = naturals(4);\n\n    score {\n        part strings {\n            voice duet {\n                use together(subject, shift(1/2, answer));\n                c5/2\n                rest/2\n            }\n        }\n    }\n}\n",
   "revision": 0,
   "compiles": true,
   "unsaved": true,
@@ -63,11 +63,11 @@
           "generated": true,
           "path": [
             {
-              "label": "overlay(subject, shift(1/2, answer))",
+              "label": "together(subject, shift(1/2, answer))",
               "kind": "occurrence",
               "span": {
                 "start": 663,
-                "end": 704
+                "end": 705
               }
             }
           ],
@@ -76,7 +76,7 @@
           "line": 22,
           "span": {
             "start": 663,
-            "end": 704
+            "end": 705
           },
           "definitionSpan": {
             "start": 297,
@@ -115,11 +115,11 @@
           "generated": true,
           "path": [
             {
-              "label": "overlay(subject, shift(1/2, answer))",
+              "label": "together(subject, shift(1/2, answer))",
               "kind": "occurrence",
               "span": {
                 "start": 663,
-                "end": 704
+                "end": 705
               }
             }
           ],
@@ -128,7 +128,7 @@
           "line": 22,
           "span": {
             "start": 663,
-            "end": 704
+            "end": 705
           },
           "definitionSpan": {
             "start": 310,
@@ -167,11 +167,11 @@
           "generated": true,
           "path": [
             {
-              "label": "overlay(subject, shift(1/2, answer))",
+              "label": "together(subject, shift(1/2, answer))",
               "kind": "occurrence",
               "span": {
                 "start": 663,
-                "end": 704
+                "end": 705
               }
             },
             {
@@ -190,7 +190,7 @@
           "line": 22,
           "span": {
             "start": 663,
-            "end": 704
+            "end": 705
           },
           "definitionSpan": {
             "start": 310,
@@ -229,11 +229,11 @@
           "generated": true,
           "path": [
             {
-              "label": "overlay(subject, shift(1/2, answer))",
+              "label": "together(subject, shift(1/2, answer))",
               "kind": "occurrence",
               "span": {
                 "start": 663,
-                "end": 704
+                "end": 705
               }
             },
             {
@@ -252,7 +252,7 @@
           "line": 22,
           "span": {
             "start": 663,
-            "end": 704
+            "end": 705
           },
           "definitionSpan": {
             "start": 297,
@@ -294,12 +294,12 @@
           "occurrence": null,
           "line": 23,
           "span": {
-            "start": 721,
-            "end": 725
+            "start": 722,
+            "end": 726
           },
           "definitionSpan": {
-            "start": 721,
-            "end": 725
+            "start": 722,
+            "end": 726
           },
           "decision": null
         }
@@ -333,12 +333,12 @@
           "occurrence": null,
           "line": 24,
           "span": {
-            "start": 742,
-            "end": 748
+            "start": 743,
+            "end": 749
           },
           "definitionSpan": {
-            "start": 742,
-            "end": 748
+            "start": 743,
+            "end": 749
           },
           "decision": null
         }
@@ -349,20 +349,20 @@
         "id": "occurrence-0",
         "path": [
           {
-            "label": "overlay(subject, shift(1/2, answer))",
+            "label": "together(subject, shift(1/2, answer))",
             "kind": "occurrence",
             "span": {
               "start": 663,
-              "end": 704
+              "end": 705
             }
           }
         ],
-        "label": "overlay(subject, shift(1/2, answer))",
-        "motif": "overlay",
+        "label": "together(subject, shift(1/2, answer))",
+        "motif": "together",
         "declaration": null,
         "useSite": {
           "start": 663,
-          "end": 704
+          "end": 705
         },
         "line": 22,
         "events": [
@@ -374,11 +374,11 @@
         "id": "occurrence-1",
         "path": [
           {
-            "label": "overlay(subject, shift(1/2, answer))",
+            "label": "together(subject, shift(1/2, answer))",
             "kind": "occurrence",
             "span": {
               "start": 663,
-              "end": 704
+              "end": 705
             }
           },
           {
@@ -392,12 +392,12 @@
             "span": null
           }
         ],
-        "label": "overlay(subject, shift(1/2, answer)) ▸ transpose up P8 ▸ retrograde",
-        "motif": "overlay",
+        "label": "together(subject, shift(1/2, answer)) ▸ transpose up P8 ▸ retrograde",
+        "motif": "together",
         "declaration": null,
         "useSite": {
           "start": 663,
-          "end": 704
+          "end": 705
         },
         "line": 22,
         "events": [
@@ -961,8 +961,8 @@
           "end": 475
         },
         {
-          "start": 675,
-          "end": 682
+          "start": 676,
+          "end": 683
         }
       ]
     },
@@ -991,8 +991,8 @@
       "external": null,
       "uses": [
         {
-          "start": 695,
-          "end": 701
+          "start": 696,
+          "end": 702
         }
       ]
     },

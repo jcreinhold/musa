@@ -40,11 +40,11 @@ template structure Canon(C: TonalContext, gap: Duration): CanonMaterial {
 
     // The canon itself: subject against its own answer, delayed by whatever
     // the site asked for.
-    let canon: Music = overlay(subject, shift(gap, answer(subject)));
+    let canon: Music = together(subject, shift(gap, answer(subject)));
 
     // Private. `CanonMaterial` does not list it, so nothing outside this
     // structure may name `MajorCanon.stretto` — which is what sealing means.
-    let stretto: Music = overlay(subject, shift(1/2, answer(subject)));
+    let stretto: Music = together(subject, shift(1/2, answer(subject)));
 }
 
 // Two instances, two structures. Identity is generative and comes from the

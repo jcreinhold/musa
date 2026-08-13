@@ -10,7 +10,7 @@ piece "Harmonize Function" {
     fn pedal(_: Pitch) -> Pitch { c3 }
 
     fn harmonize(subject: Music, answer_pitch: Pitch -> Pitch) -> Music {
-        overlay(subject, map_note_pitches(answer_pitch, subject))
+        together(subject, map_note_pitches(answer_pitch, subject))
     }
 
     score {

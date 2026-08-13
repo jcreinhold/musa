@@ -1,26 +1,28 @@
 //! The term calculus (docs/rules/kernel/10-term-calculus.md): a syntax whose
-//! meanings are the timelines this crate already builds.
+//! meanings are the event tracks this crate already builds.
 //!
 //! Six forms and a reference. Nothing here adds a meaning: every term denotes
-//! a timeline `03-denotational-semantics.md` defines, and [`evaluate`] hands
-//! off to [`sequence`], [`overlay`], [`Timeline::scale`] and
-//! [`Timeline::restrict`] rather than reimplementing them. What the calculus
+//! a track `03-denotational-semantics.md` defines, and [`evaluate`] hands off
+//! to [`follow`], [`together`], [`EventTrack::scale`] and
+//! [`EventTrack::restrict`] rather than reimplementing them. What the calculus
 //! buys is what values cannot express — **sharing** (`let`, so a canon's
 //! subject is stated once), **deferred observation**, and **interchange**.
 //!
 //! The type is opaque and built through constructors, which is what makes the
 //! static rules of `02-static-semantics.md` K7 mostly unrepresentable rather
-//! than diagnosed: a non-positive `scale` factor, a negative `shift`, a
-//! disordered window, and an empty `seq` cannot be constructed. What remains
-//! is the two rules that are not local to one node — a free name and a
-//! shadowed one — and [`Term::check`] answers those.
+//! than diagnosed: a non-positive `scale` factor, a backwards `shift`, a
+//! disordered window, and an empty `follow` cannot be constructed. A backwards
+//! shift is unrepresentable for a reason worth naming — [`Duration`] is the
+//! nonnegative half of exact time, so the delay a `shift` takes has no negative
+//! value to reject. What remains is the two rules that are not local to one
+//! node — a free name and a shadowed one — and [`Term::check`] answers those.
 
 use num_rational::Ratio;
 
 use crate::error::KernelError;
 use crate::occurrence::Occurrence;
-use crate::time::{Beat, Span};
-use crate::timeline::{Timeline, overlay, sequence, timeline, zero};
+use crate::time::{Coordinate, Duration, Position, Span};
+use crate::track::{EventTrack, empty, follow, together, track};
 
 /// A term of the kernel calculus.
 ///
@@ -28,49 +30,49 @@ use crate::timeline::{Timeline, overlay, sequence, timeline, zero};
 /// *build* terms, not to match on them. Accessors arrive with the consumer
 /// that needs them.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Term<A> {
-    form: Form<A>,
+pub struct Term<C: Coordinate, A> {
+    form: Form<C, A>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) enum Form<A> {
-    /// A literal timeline (E-Timeline).
-    Literal(Timeline<A>),
-    /// Temporal succession (E-Seq).
-    Seq(Vec<Term<A>>),
-    /// Simultaneous presence (E-Over).
-    Over(Vec<Term<A>>),
-    /// Sugar for `seq (timeline by {}) body`, expanded here rather than
+pub(crate) enum Form<C: Coordinate, A> {
+    /// A literal track (E-Track).
+    Literal(EventTrack<C, A>),
+    /// Temporal succession (E-Follow).
+    Follow(Vec<Term<C, A>>),
+    /// Simultaneous presence (E-Together).
+    Together(Vec<Term<C, A>>),
+    /// Sugar for `follow { track by { }; body }`, expanded here rather than
     /// denoted separately (10-term-calculus, "`shift` is sugar").
-    Shift { by: Beat, body: Box<Term<A>> },
+    Shift { by: Duration<C>, body: Box<Term<C, A>> },
     /// Time scaling (E-Scale).
-    Scale { by: Ratio<i64>, body: Box<Term<A>> },
+    Scale { by: Ratio<i64>, body: Box<Term<C, A>> },
     /// Observation (E-Restrict).
-    Restrict { window: Span, body: Box<Term<A>> },
+    Restrict { window: Span<C>, body: Box<Term<C, A>> },
     /// Sharing (E-Let); `name` scopes over `body`.
     Let {
         name: String,
-        value: Box<Term<A>>,
-        body: Box<Term<A>>,
+        value: Box<Term<C, A>>,
+        body: Box<Term<C, A>>,
     },
     /// A reference (E-Var), optionally marked (E-Mark).
     Var { name: String, mark: Option<String> },
 }
 
-impl<A> Term<A> {
-    /// A literal timeline. Its occurrences were bounds-checked when the
-    /// timeline was built (K1), so there is nothing left to reject.
-    pub fn literal(value: Timeline<A>) -> Self {
+impl<C: Coordinate, A> Term<C, A> {
+    /// A literal track. Its occurrences were bounds-checked when the track
+    /// was built (K1), so there is nothing left to reject.
+    pub fn literal(value: EventTrack<C, A>) -> Self {
         Self {
             form: Form::Literal(value),
         }
     }
 
-    /// The timeline this term is, taken by value, or the term back when it is
+    /// The track this term is, taken by value, or the term back when it is
     /// not a literal.
     ///
     /// For a producer that builds bottom-up: a run of adjacent literals in a
-    /// `seq` says nothing a single literal does not, and coalescing it keeps
+    /// `follow` says nothing a single literal does not, and coalescing it keeps
     /// the printed term to the structure that was actually written. Taking by
     /// value rather than by reference is the whole point — folding a run by
     /// cloning each literal out costs a full copy of every occurrence in it,
@@ -82,11 +84,11 @@ impl<A> Term<A> {
     /// # Errors
     ///
     /// The term itself, unchanged, when it is not a literal.
-    pub fn into_literal(self) -> Result<Timeline<A>, Self> {
+    pub fn into_literal(self) -> Result<EventTrack<C, A>, Self> {
         match self.form {
             Form::Literal(value) => Ok(value),
-            form @ (Form::Seq(_)
-            | Form::Over(_)
+            form @ (Form::Follow(_)
+            | Form::Together(_)
             | Form::Shift { .. }
             | Form::Scale { .. }
             | Form::Restrict { .. }
@@ -95,13 +97,13 @@ impl<A> Term<A> {
         }
     }
 
-    /// The ambient extent this term denotes, read off its syntax.
+    /// The ambient duration this term denotes, read off its syntax.
     ///
-    /// The extent is compositional (`03-denotational-semantics.md`): a
-    /// literal carries its own, `seq` adds, `over` takes the maximum, `shift`
-    /// translates, `scale` scales, `restrict` keeps the body's — observation
-    /// never shortens the work it looks at — and `let` is the extent of its
-    /// body under the binding.
+    /// The duration is compositional (`03-denotational-semantics.md`): a
+    /// literal carries its own, `follow` adds, `together` takes the maximum,
+    /// `shift` translates, `scale` scales, `restrict` keeps the body's —
+    /// observation never shortens the work it looks at — and `let` is the
+    /// duration of its body under the binding.
     ///
     /// Reading it rather than evaluating is what an *assembler* needs: a
     /// caller building a piece one statement at a time asks where the next
@@ -111,54 +113,55 @@ impl<A> Term<A> {
     ///
     /// # Errors
     ///
-    /// [`KernelError::FreeName`] for a reference nothing binds — an extent
+    /// [`KernelError::FreeName`] for a reference nothing binds — a duration
     /// needs the binding, and the same rule [`Term::check`] states.
-    pub fn extent(&self) -> Result<Beat, KernelError> {
-        let mut environment: Vec<(&str, Beat)> = Vec::new();
-        self.extent_in(&mut environment)
+    pub fn duration(&self) -> Result<Duration<C>, KernelError> {
+        let mut environment: Vec<(&str, Duration<C>)> = Vec::new();
+        self.duration_in(&mut environment)
     }
 
-    fn extent_in<'a>(&'a self, environment: &mut Vec<(&'a str, Beat)>) -> Result<Beat, KernelError> {
-        let extent = match &self.form {
-            Form::Literal(value) => value.extent(),
-            Form::Seq(parts) => {
-                let mut total = Beat::ZERO;
+    fn duration_in<'a>(&'a self, environment: &mut Vec<(&'a str, Duration<C>)>) -> Result<Duration<C>, KernelError> {
+        let duration = match &self.form {
+            Form::Literal(value) => value.duration(),
+            Form::Follow(parts) => {
+                let mut total = Duration::ZERO;
                 for part in parts {
-                    total = total.plus(part.extent_in(environment)?);
+                    total = total.plus(part.duration_in(environment)?);
                 }
                 total
             }
-            Form::Over(parts) => {
-                let mut longest = Beat::ZERO;
+            Form::Together(parts) => {
+                let mut longest = Duration::ZERO;
                 for part in parts {
-                    longest = longest.max(part.extent_in(environment)?);
+                    longest = longest.max(part.duration_in(environment)?);
                 }
                 longest
             }
-            Form::Shift { by, body } => by.plus(body.extent_in(environment)?),
-            Form::Scale { by, body } => body.extent_in(environment)?.times(*by),
-            Form::Restrict { body, .. } => body.extent_in(environment)?,
+            Form::Shift { by, body } => by.plus(body.duration_in(environment)?),
+            Form::Scale { by, body } => body.duration_in(environment)?.times(*by),
+            Form::Restrict { body, .. } => body.duration_in(environment)?,
             Form::Let { name, value, body } => {
-                let bound = value.extent_in(environment)?;
+                let bound = value.duration_in(environment)?;
                 environment.push((name, bound));
-                let extent = body.extent_in(environment);
+                let duration = body.duration_in(environment);
                 environment.pop();
-                extent?
+                duration?
             }
             Form::Var { name, .. } => environment
                 .iter()
                 .rev()
-                .find_map(|(bound, extent)| (bound == name).then_some(*extent))
+                .find_map(|(bound, duration)| (bound == name).then_some(*duration))
                 .ok_or_else(|| KernelError::FreeName { name: name.clone() })?,
         };
-        Ok(extent)
+        Ok(duration)
     }
 
     /// How many occurrences this term evaluates to, at most.
     ///
     /// A host that shares material has to decide whether evaluating a term is
-    /// affordable *before* evaluating it, and the answer is structural: `seq`
-    /// and `over` add, the moving forms pass through, and a name contributes
+    /// affordable *before* evaluating it, and the answer is structural:
+    /// `follow` and `together` add, the moving forms pass through, and a name
+    /// contributes
     /// the count of what binds it — so material named once and referenced
     /// four times is counted four times, which is what evaluating it costs.
     ///
@@ -176,7 +179,7 @@ impl<A> Term<A> {
     fn bound_in<'a>(&'a self, environment: &mut Vec<(&'a str, u64)>) -> u64 {
         match &self.form {
             Form::Literal(value) => u64::try_from(value.occurrences().len()).unwrap_or(u64::MAX),
-            Form::Seq(parts) | Form::Over(parts) => parts
+            Form::Follow(parts) | Form::Together(parts) => parts
                 .iter()
                 .fold(0, |total, part| total.saturating_add(part.bound_in(environment))),
             Form::Shift { body, .. } | Form::Scale { body, .. } | Form::Restrict { body, .. } => {
@@ -204,8 +207,8 @@ impl<A> Term<A> {
     /// The *quotation locus* of `docs/rules/language/01-surface.md` §7: the position
     /// a hole sits at, which is what a host must know to instantiate the
     /// material it splices in at the right place. It follows the same
-    /// compositional reading as [`Term::extent`] — `seq` adds the exact
-    /// extents of everything before it, `over` leaves it alone, `shift`
+    /// compositional reading as [`Term::duration`] — `follow` adds the exact
+    /// durations of everything before it, `together` leaves it alone, `shift`
     /// translates it, a positive `scale` scales the relative offset,
     /// `restrict` relocates nothing, and a `let` value begins where its `let`
     /// does.
@@ -213,28 +216,31 @@ impl<A> Term<A> {
     /// `None` when nothing references `name`. The *first* reference wins:
     /// a caller that needs one answer per site gives each site its own name,
     /// which is what hole hygiene does anyway.
-    pub fn locus(&self, name: &str) -> Option<Beat> {
-        self.locus_in(name, Beat::ZERO)
+    pub fn locus(&self, name: &str) -> Option<Position<C>> {
+        self.locus_in(name, Position::ZERO)
     }
 
-    fn locus_in(&self, name: &str, base: Beat) -> Option<Beat> {
+    fn locus_in(&self, name: &str, base: Position<C>) -> Option<Position<C>> {
         match &self.form {
             Form::Literal(_) => None,
-            Form::Seq(parts) => {
+            Form::Follow(parts) => {
                 let mut at = base;
                 for part in parts {
                     if let Some(found) = part.locus_in(name, at) {
                         return Some(found);
                     }
-                    at = at.plus(part.extent().ok()?);
+                    at = at.plus(part.duration().ok()?);
                 }
                 None
             }
-            Form::Over(parts) => parts.iter().find_map(|part| part.locus_in(name, base)),
+            Form::Together(parts) => parts.iter().find_map(|part| part.locus_in(name, base)),
             Form::Shift { by, body } => body.locus_in(name, base.plus(*by)),
             // The body's own time is scaled, so a locus inside it is a
             // *relative* offset scaled and then placed.
-            Form::Scale { by, body } => body.locus_in(name, Beat::ZERO).map(|inner| base.plus(inner.times(*by))),
+            Form::Scale { by, body } => body
+                .locus_in(name, Position::ZERO)
+                .and_then(|inner| inner.times(*by).since(Position::ZERO).ok())
+                .map(|offset| base.plus(offset)),
             Form::Restrict { body, .. } => body.locus_in(name, base),
             Form::Let {
                 name: bound,
@@ -265,7 +271,7 @@ impl<A> Term<A> {
                     visit(occurrence.payload());
                 }
             }
-            Form::Seq(parts) | Form::Over(parts) => {
+            Form::Follow(parts) | Form::Together(parts) => {
                 for part in parts {
                     part.for_each_payload(visit);
                 }
@@ -295,7 +301,7 @@ impl<A> Term<A> {
                     rewrite(payload);
                 }
             }
-            Form::Seq(parts) | Form::Over(parts) => {
+            Form::Follow(parts) | Form::Together(parts) => {
                 for part in parts {
                     part.map_payloads(rewrite);
                 }
@@ -323,7 +329,7 @@ impl<A> Term<A> {
         match &self.form {
             Form::Literal(_) => false,
             Form::Var { name: bound, .. } => bound == name,
-            Form::Seq(parts) | Form::Over(parts) => parts.iter().any(|part| part.references_name(name)),
+            Form::Follow(parts) | Form::Together(parts) => parts.iter().any(|part| part.references_name(name)),
             Form::Shift { body, .. } | Form::Scale { body, .. } | Form::Restrict { body, .. } => {
                 body.references_name(name)
             }
@@ -334,17 +340,19 @@ impl<A> Term<A> {
     /// Temporal succession of one or more terms (D2).
     ///
     /// Zero arguments are rejected rather than given a unit: the units of
-    /// `seq` and `over` differ (L2/L6), so the empty case is written as the
-    /// literal it is instead of inferred from context (K7, "Arity").
+    /// `follow` and `together` differ (L2/L6), so the empty case is written as
+    /// the literal it is instead of inferred from context (K7, "Arity").
     ///
     /// # Errors
     ///
     /// [`KernelError::EmptyComposition`] when `parts` is empty.
-    pub fn seq(parts: Vec<Self>) -> Result<Self, KernelError> {
+    pub fn follow(parts: Vec<Self>) -> Result<Self, KernelError> {
         if parts.is_empty() {
-            return Err(KernelError::EmptyComposition { form: "seq" });
+            return Err(KernelError::EmptyComposition { form: "follow" });
         }
-        Ok(Self { form: Form::Seq(parts) })
+        Ok(Self {
+            form: Form::Follow(parts),
+        })
     }
 
     /// Simultaneous presence of one or more terms (D3).
@@ -352,35 +360,26 @@ impl<A> Term<A> {
     /// # Errors
     ///
     /// [`KernelError::EmptyComposition`] when `parts` is empty.
-    pub fn over(parts: Vec<Self>) -> Result<Self, KernelError> {
+    pub fn together(parts: Vec<Self>) -> Result<Self, KernelError> {
         if parts.is_empty() {
-            return Err(KernelError::EmptyComposition { form: "over" });
+            return Err(KernelError::EmptyComposition { form: "together" });
         }
         Ok(Self {
-            form: Form::Over(parts),
+            form: Form::Together(parts),
         })
     }
 
-    /// `body` delayed by `by ≥ 0` beats — sugar for a sequence after an empty
-    /// timeline (D8).
+    /// `body` delayed by `by` — sugar for a `follow` after an empty track (D8).
     ///
-    /// # Errors
-    ///
-    /// [`KernelError::InvalidSpan`] when `by` is negative: a delay runs
-    /// forwards.
-    pub fn shift(by: Beat, body: Self) -> Result<Self, KernelError> {
-        if by < Beat::ZERO {
-            return Err(KernelError::InvalidSpan {
-                start: Beat::ZERO,
-                end: by,
-            });
-        }
-        Ok(Self {
+    /// Infallible, unlike its siblings: a delay runs forwards, and a
+    /// [`Duration`] has no backwards value to reject.
+    pub fn shift(by: Duration<C>, body: Self) -> Self {
+        Self {
             form: Form::Shift {
                 by,
                 body: Box::new(body),
             },
-        })
+        }
     }
 
     /// `body` scaled by a positive rational factor (D5).
@@ -404,7 +403,7 @@ impl<A> Term<A> {
     ///
     /// No error case: `Span` is ordered by construction, and a window past the
     /// extent observes nothing rather than failing — observation is total (L17).
-    pub fn restrict(window: Span, body: Self) -> Self {
+    pub fn restrict(window: Span<C>, body: Self) -> Self {
         Self {
             form: Form::Restrict {
                 window,
@@ -429,7 +428,7 @@ impl<A> Term<A> {
 
     /// The term's form, for the in-crate printer (`text.rs`). Not public:
     /// a public enum is a public layout.
-    pub(crate) fn form(&self) -> &Form<A> {
+    pub(crate) fn form(&self) -> &Form<C, A> {
         &self.form
     }
 
@@ -498,7 +497,7 @@ impl<A> Term<A> {
     fn check_in<'a>(&'a self, bound: &mut Vec<&'a str>) -> Result<(), KernelError> {
         match &self.form {
             Form::Literal(_) => Ok(()),
-            Form::Seq(parts) | Form::Over(parts) => parts.iter().try_for_each(|part| part.check_in(bound)),
+            Form::Follow(parts) | Form::Together(parts) => parts.iter().try_for_each(|part| part.check_in(bound)),
             Form::Shift { body, .. } | Form::Scale { body, .. } | Form::Restrict { body, .. } => body.check_in(bound),
             Form::Let { name, value, body } => {
                 value.check_in(bound)?;
@@ -525,13 +524,13 @@ impl<A> Term<A> {
 ///
 /// Total and deterministic (T4): the rules are syntax-directed, there is no
 /// recursion to diverge through, and every constructor takes finitely many
-/// finite arguments. It therefore returns a `Timeline` rather than a `Result`
+/// finite arguments. It therefore returns an `EventTrack` rather than a `Result`
 /// — every way a term can be ill-formed is either unrepresentable or caught
 /// by [`Term::check`].
 ///
 /// The one case that could not be pushed into construction is a **free name**,
 /// because a reference is built before the binder that encloses it. An
-/// unchecked term containing one evaluates it to the empty timeline `(0, ∅)`
+/// unchecked term containing one evaluates it to the empty track `(0, ∅)`
 /// — the denotation of "nothing here" — rather than panicking in a library.
 /// Call [`Term::check`] first and the case cannot arise; a debug build asserts
 /// that you did.
@@ -541,7 +540,7 @@ impl<A> Term<A> {
 /// once. References currently *clone* the bound value rather than sharing it
 /// behind an `Rc`; only a caller producing terms with heavy reuse would
 /// justify changing that.
-pub fn evaluate<A: Clone>(term: Term<A>) -> Timeline<A> {
+pub fn evaluate<C: Coordinate, A: Clone>(term: Term<C, A>) -> EventTrack<C, A> {
     evaluate_marked(term, |_, _| {})
 }
 
@@ -560,33 +559,36 @@ pub fn evaluate<A: Clone>(term: Term<A>) -> Timeline<A> {
 ///
 /// The contract it owes, and the whole of what T6 rests on: it must not change
 /// how many occurrences there are, where they sit, or what order they are in.
-/// The kernel cannot enforce that — a `&mut Timeline` is the only signature
+/// The kernel cannot enforce that — a `&mut EventTrack` is the only signature
 /// that lets a caller rewrite payloads in place instead of rebuilding — so it
 /// is stated here and checked by `a_mark_changes_payloads_and_nothing_else`.
-/// [`Timeline::map_payload`] is the safe way to honour it.
+/// [`EventTrack::map_payloads`] is the safe way to honour it.
 ///
 /// [`evaluate`] is this with the identity, which is why a consumer that has no
 /// marks never sees this function.
-pub fn evaluate_marked<A: Clone>(term: Term<A>, mut instantiate: impl FnMut(&str, &mut Timeline<A>)) -> Timeline<A> {
+pub fn evaluate_marked<C: Coordinate, A: Clone>(
+    term: Term<C, A>,
+    mut instantiate: impl FnMut(&str, &mut EventTrack<C, A>),
+) -> EventTrack<C, A> {
     debug_assert!(term.check().is_ok(), "evaluate expects a checked term (K7)");
-    let mut environment: Vec<(String, Timeline<A>)> = Vec::new();
+    let mut environment: Vec<(String, EventTrack<C, A>)> = Vec::new();
     eval(term, &mut environment, &mut instantiate)
 }
 
-fn eval<A: Clone>(
-    term: Term<A>,
-    environment: &mut Vec<(String, Timeline<A>)>,
-    instantiate: &mut impl FnMut(&str, &mut Timeline<A>),
-) -> Timeline<A> {
+fn eval<C: Coordinate, A: Clone>(
+    term: Term<C, A>,
+    environment: &mut Vec<(String, EventTrack<C, A>)>,
+    instantiate: &mut impl FnMut(&str, &mut EventTrack<C, A>),
+) -> EventTrack<C, A> {
     match term.form {
         Form::Literal(value) => value,
-        Form::Seq(parts) => sequence(
+        Form::Follow(parts) => follow(
             parts
                 .into_iter()
                 .map(|part| eval(part, environment, instantiate))
                 .collect(),
         ),
-        Form::Over(parts) => overlay(
+        Form::Together(parts) => together(
             parts
                 .into_iter()
                 .map(|part| eval(part, environment, instantiate))
@@ -594,9 +596,8 @@ fn eval<A: Clone>(
         ),
         Form::Shift { by, body } => {
             // The stated expansion, applied rather than denoted separately:
-            // `shift d t = seq (timeline d {}) t` (10-term-calculus).
-            let silence = timeline(by, Vec::new()).unwrap_or_else(|_| zero());
-            sequence(vec![silence, eval(*body, environment, instantiate)])
+            // `shift d t = follow { track d { }; t }` (10-term-calculus).
+            follow(vec![empty(by), eval(*body, environment, instantiate)])
         }
         Form::Scale { by, body } => {
             let value = eval(*body, environment, instantiate);
@@ -618,7 +619,7 @@ fn eval<A: Clone>(
                 .iter()
                 .rev()
                 .find(|(bound, _)| *bound == name)
-                .map_or_else(zero, |(_, value)| value.clone());
+                .map_or_else(|| empty(Duration::ZERO), |(_, value)| value.clone());
             if let Some(mark) = mark {
                 instantiate(&mark, &mut instance);
             }
@@ -628,17 +629,17 @@ fn eval<A: Clone>(
 }
 
 /// D6's observation as a value: the occurrences `window` shows, each keeping
-/// its **whole** span, in a timeline of the observed extent.
+/// its **whole** span, in a track of the observed duration.
 ///
 /// Restriction never rewrites where an occurrence began (§17), in a term any
 /// more than in a value, so this materializes whole spans rather than visible
-/// ones. The extent is the observed timeline's, which is what makes
-/// `restrict` at the full extent the identity (L16).
-fn materialize<A: Clone>(value: &Timeline<A>, window: Span) -> Timeline<A> {
+/// ones. The duration is the observed track's, which is what makes `restrict`
+/// at the full duration the identity (L16).
+fn materialize<C: Coordinate, A: Clone>(value: &EventTrack<C, A>, window: Span<C>) -> EventTrack<C, A> {
     let observation = value.restrict(window);
-    let occurrences: Vec<Occurrence<A>> = observation
+    let occurrences: Vec<Occurrence<C, A>> = observation
         .observed()
         .map(|(_, occurrence)| occurrence.clone())
         .collect();
-    timeline(value.extent(), occurrences).unwrap_or_else(|_| zero())
+    track(value.duration(), occurrences).unwrap_or_else(|_| empty(value.duration()))
 }

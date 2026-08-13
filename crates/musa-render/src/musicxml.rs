@@ -182,9 +182,9 @@ fn widen(divisions: i64, length: Ratio<i64>) -> Result<i64, RenderError> {
 fn divisions_for(plan: &NotationPlan) -> Result<i64, RenderError> {
     let mut divisions = 1;
     for staff in plan.staves() {
-        divisions = widen(divisions, measure_length(staff))?;
+        divisions = widen(divisions, measure_duration(staff))?;
         for measure in staff.measures() {
-            divisions = widen(divisions, measure.length().as_ratio())?;
+            divisions = widen(divisions, measure.duration().as_ratio())?;
             for lane in measure.lanes() {
                 for item in lane.items() {
                     divisions = widen(divisions, item.onset_in_measure().as_ratio())?;
@@ -197,7 +197,7 @@ fn divisions_for(plan: &NotationPlan) -> Result<i64, RenderError> {
 }
 
 /// A measure's length in whole notes, from the time signature.
-fn measure_length(staff: &StaffPlan) -> Ratio<i64> {
+fn measure_duration(staff: &StaffPlan) -> Ratio<i64> {
     let (count, unit) = staff.time_signature();
     if unit == 0 {
         Ratio::ZERO
@@ -440,7 +440,7 @@ fn write_part(
             write_positioned(xml, plan, measure.number(), divisions)?;
         }
         let lanes = measure.lanes();
-        let full = ticks(measure.length().as_ratio(), divisions);
+        let full = ticks(measure.duration().as_ratio(), divisions);
         for (lane_index, lane) in lanes.iter().enumerate() {
             let consumed = write_lane(
                 xml,

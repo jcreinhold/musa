@@ -63,7 +63,7 @@ fn compiled(name: &str, text: &str) -> musa_compiler::Compilation {
 
 /// The marker is the kernel's own version string.
 ///
-/// Two crates spell this: `musa-kernel` writes `% musa-kernel-1` as the first
+/// Two crates spell this: `musa-kernel` writes `% musa-kernel-2` as the first
 /// line of every document it prints, and `musa-language` decides the top-level
 /// alternative by matching that line. They cannot depend on each other —
 /// `musa-language` is below the kernel and stays there — so the law lives in
@@ -211,11 +211,11 @@ fn formatting_a_kernel_document_is_the_kernels_printing() {
 /// only record of where a term came from.
 #[test]
 fn formatting_keeps_a_kernel_documents_notes() {
-    let text = "% musa-kernel-1\n\
+    let text = "% musa-kernel-2\n\
                 % generated from examples/twinkle.musa by musa-compiler\n\
                 kernel \"twinkle\" {\n  \
-                composition main : Timeline[ScoreFact] =\n    \
-                timeline 1/4 {\n      \
+                composition main : EventTrack[WrittenTime, ScoreFact] =\n    \
+                track 1/4 {\n      \
                 occurrence \"voice 0 0 note c4 1/4 [0:0 #4]\" from 0 to 1/4;\n    \
                 };\n\
                 }\n";
@@ -235,10 +235,10 @@ fn formatting_keeps_a_kernel_documents_notes() {
 /// something else entirely.
 #[test]
 fn a_payload_the_compiler_does_not_know_is_refused() {
-    let text = "% musa-kernel-1\n\
+    let text = "% musa-kernel-2\n\
                 kernel \"other\" {\n  \
-                composition main : Timeline[Waveform] =\n    \
-                timeline 1 {\n      \
+                composition main : EventTrack[WrittenTime, Waveform] =\n    \
+                track 1 {\n      \
                 occurrence \"sine 440\" from 0 to 1;\n    \
                 };\n\
                 }\n";
@@ -267,20 +267,27 @@ fn a_payload_the_compiler_does_not_know_is_refused() {
 
 /// A document of a version this compiler does not speak is refused, and the
 /// refusal lands in the document rather than as a panic or an empty score.
+///
+/// Both directions are unknown versions, and the retired one is the
+/// interesting half: `musa-kernel-1` is refused rather than migrated
+/// (`docs/plan/clean-break-ledger.md` §3), so a file written before the
+/// coordinate existed is a file this build declines to guess about.
 #[test]
-fn a_future_format_version_is_refused() {
-    let text = "% musa-kernel-2\nkernel \"later\" {\n}\n";
-    let compilation = compiled("later.musa.kernel", text);
-    assert!(compilation.snapshot().is_none(), "a future version produced a score");
-    assert!(compilation.has_errors(), "a future version compiled clean");
-    // The marker is not this crate's, so the file is surface Musa — and
-    // surface Musa is where the parse errors come from. Either way it is
-    // refused; what must not happen is silent acceptance.
-    assert_eq!(
-        musa_language::alternative(text),
-        musa_language::DocumentAlternative::Surface,
-        "an unknown version claimed to be this kernel",
-    );
+fn an_unknown_format_version_is_refused() {
+    for version in ["% musa-kernel-1", "% musa-kernel-3"] {
+        let text = format!("{version}\nkernel \"later\" {{\n}}\n");
+        let compilation = compiled("later.musa.kernel", &text);
+        assert!(compilation.snapshot().is_none(), "{version} produced a score");
+        assert!(compilation.has_errors(), "{version} compiled clean");
+        // The marker is not this crate's, so the file is surface Musa — and
+        // surface Musa is where the parse errors come from. Either way it is
+        // refused; what must not happen is silent acceptance.
+        assert_eq!(
+            musa_language::alternative(&text),
+            musa_language::DocumentAlternative::Surface,
+            "{version} claimed to be this kernel",
+        );
+    }
 }
 
 /// A kernel document that is malformed *as a kernel document* is refused as
@@ -288,7 +295,7 @@ fn a_future_format_version_is_refused() {
 /// errors.
 #[test]
 fn a_malformed_kernel_document_is_refused_as_a_kernel_document() {
-    let text = "% musa-kernel-1\nkernel \"broken\" {\n  composition main : Timeline[ScoreFact] =\n";
+    let text = "% musa-kernel-2\nkernel \"broken\" {\n  composition main : EventTrack[WrittenTime, ScoreFact] =\n";
     let compilation = compiled("broken.musa.kernel", text);
     assert_eq!(compilation.kind(), DocumentKind::Kernel, "refused as the wrong kind");
     assert!(compilation.snapshot().is_none(), "a truncated term produced a score");

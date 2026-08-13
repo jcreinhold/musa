@@ -1,9 +1,9 @@
-% musa-kernel-1
+% musa-kernel-2
 % generated from examples/rubato.musa by musa-compiler
 kernel "Rubato" {
-  composition main : Timeline[ScoreFact] =
-    overlay {
-      timeline 7 {
+  composition main : EventTrack[WrittenTime, ScoreFact] =
+    together {
+      track 7 {
         occurrence "voice 0 0 dynamic mp [1252:1263 #4]" from 0 to 0;
         occurrence "voice 0 0 note d5 1/4 [1392:1396 #4]" from 0 to 1/4;
         occurrence "voice 0 0 note g5 1/4 [1413:1417 #4]" from 1/4 to 1/2;
@@ -28,7 +28,7 @@ kernel "Rubato" {
         occurrence "voice 0 0 note b5 1/2 [2229:2233 #4]" from 11/2 to 6;
         occurrence "voice 0 0 note g5 1 [2251:2255 #4]" from 6 to 7;
       };
-      timeline 7 {
+      track 7 {
         occurrence "piece meter 4/4 [1117:1132]" from 0 to 7;
         occurrence "piece tempo 1/4=72 [1097:1117]" from 0 to 7;
         occurrence "piece key g major [1132:1149]" from 0 to 7;

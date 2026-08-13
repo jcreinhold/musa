@@ -18,10 +18,10 @@ semantic hashing.
 A standalone `.musa.kernel` file begins with a version header and contains one closed kernel term:
 
 ```text
-% musa-kernel-1
+% musa-kernel-2
 kernel "example" {
-  composition main : Timeline[ScoreFact] =
-    timeline 1/2 {
+  composition main : EventTrack[WrittenTime, ScoreFact] =
+    track 1/2 {
       occurrence "voice 0 0 note c4 1/2 [0:4]" from 0 to 1/2;
     };
 }

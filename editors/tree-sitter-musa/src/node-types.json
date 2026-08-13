@@ -1347,6 +1347,16 @@
           }
         ]
       },
+      "coordinate": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
       "payload": {
         "multiple": false,
         "required": true,

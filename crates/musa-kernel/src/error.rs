@@ -1,31 +1,43 @@
 //! Static violations of the kernel rules (docs/rules/kernel/02). The kernel has no
 //! warnings: a construct is well-formed or rejected.
 
-use crate::time::{Beat, Span};
-
 /// A kernel construction error, naming the violated rule.
+///
+/// The offending times are carried as their reduced rational text rather than
+/// as `Position<C>`: an error is not in a coordinate, and threading `C` through
+/// it would make every caller of a fallible constructor name one just to talk
+/// about a failure.
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum KernelError {
     /// A span's start exceeds its end, or either is negative (K1).
     #[error("invalid span [{start}, {end}): spans satisfy 0 <= start <= end")]
     InvalidSpan {
         /// The offending start.
-        start: Beat,
+        start: String,
         /// The offending end.
-        end: Beat,
+        end: String,
     },
-    /// An occurrence lies outside its timeline's extent (K1).
-    #[error("occurrence span {span} outside extent [0, {extent})")]
+    /// A negative amount of time offered where a duration is required.
+    ///
+    /// Durations are the ordered monoid `(ℚ≥0, +, 0)`; this is the one place
+    /// the `≥ 0` is checked, so every `Duration<C>` that exists is nonnegative.
+    #[error("a duration is never negative, got {amount}")]
+    NegativeDuration {
+        /// The offending amount, in reduced form.
+        amount: String,
+    },
+    /// An occurrence lies outside its track's duration (K1).
+    #[error("occurrence span {span} outside the track's duration [0, {duration})")]
     OccurrenceOutOfBounds {
         /// The offending span.
-        span: Span,
-        /// The timeline extent.
-        extent: Beat,
+        span: String,
+        /// The track's duration.
+        duration: String,
     },
-    /// A `seq` or `over` term with no arguments (K7).
-    #[error("`{form}` needs at least one argument; the empty case is written as a literal timeline")]
+    /// A `follow` or `together` term with no arguments (K7).
+    #[error("`{form}` needs at least one argument; the empty case is written as a literal track")]
     EmptyComposition {
-        /// The offending form, `"seq"` or `"over"`.
+        /// The offending form, `"follow"` or `"together"`.
         form: &'static str,
     },
     /// A term names something no enclosing `let` binds (K7).

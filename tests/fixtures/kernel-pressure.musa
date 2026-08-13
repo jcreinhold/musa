@@ -38,7 +38,7 @@ key c major;
     let cell_30: Music = music { e4/8 g4/8 b4/8 d4/8 };
     let cell_31: Music = music { f4/8 a4/8 c4/8 e4/8 };
 
-    let assembled: Music = kernel Timeline[ScoreFact] {
+    let assembled: Music = kernel EventTrack[WrittenTime, ScoreFact] {
         let held_0 = ${cell_0} in
         let held_1 = ${cell_1} in
         let held_2 = ${cell_2} in
@@ -71,7 +71,7 @@ key c major;
         let held_29 = ${cell_29} in
         let held_30 = ${cell_30} in
         let held_31 = ${cell_31} in
-        overlay {
+        together {
             shift by 0/2 held_0;
             shift by 0/2 restrict from 1/4 to 1/2 held_0;
             shift by 0/2 ${stretch(1/2, cell_0)};
@@ -168,7 +168,7 @@ key c major;
             shift by 31/2 held_31;
             shift by 31/2 restrict from 1/4 to 1/2 held_31;
             shift by 31/2 ${stretch(1/2, cell_31)};
-            timeline 16 {
+            track 16 {
                 occurrence "note c2 1/2" from 0/2 to 1/2;
                 occurrence "note d2 1/2" from 1/2 to 2/2;
                 occurrence "note e2 1/2" from 2/2 to 3/2;

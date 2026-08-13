@@ -1,5 +1,5 @@
 {
-  "marker": "% musa-kernel-1",
+  "marker": "% musa-kernel-2",
   "files": [
     { "file": "kernel/annotated.musa.kernel", "kernel": true },
     { "file": "kernel/bulgarian.musa.kernel", "kernel": true },

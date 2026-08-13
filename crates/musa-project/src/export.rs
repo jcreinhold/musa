@@ -134,8 +134,8 @@ pub struct KernelReport {
     pub name: String,
     /// How many occurrences the term evaluates to.
     pub occurrences: usize,
-    /// The evaluated timeline's extent, as an exact rational.
-    pub extent: String,
+    /// The evaluated track's duration, as an exact rational.
+    pub duration: String,
     /// Which reading of the work the file projects, verbatim from its header
     /// (`docs/rules/kernel/11-realization.md`). `None` when the file does not say —
     /// which a reader reports rather than guesses at, because a realization it
@@ -158,7 +158,7 @@ pub fn check_kernel(text: &str) -> Result<KernelReport, crate::error::ProjectErr
         .map(|check| KernelReport {
             name: check.name,
             occurrences: check.occurrences,
-            extent: check.extent,
+            duration: check.duration,
             realization: check.realization,
         })
         .map_err(crate::error::ProjectError::Kernel)
