@@ -188,7 +188,7 @@ forever.
 
 | workload | pressure | denoted events | evaluated occurrences |
 | --- | --- | ---: | ---: |
-| `core-pressure` | a 64-deep call chain, a 512-element fold, partial application, and `compose_music` | 8 | 8 |
+| `core-pressure` | a 64-deep call chain, a 512-element fold, a named function value, and `compose_music` | 8 | 8 |
 | `template-pressure` | a functor made eight times, read by a voice template that repeats each instance under two scales, plus one source import | 272 | 281 |
 | `analysis-pressure` | 64 bars of four-part harmony over a constructed tonal vocabulary | 448 | 448 |
 | `kernel-pressure` | 32 typed quote holes bound in one term, each placed three ways | 352 | 352 |

@@ -22,6 +22,13 @@ explicit functions and complete calls.
 - `docs/rules/language/02-core-calculus.md` §1, "A call must be complete", and its reason: partial application makes an
   argument list a place where a function silently becomes a function-valued result, which is the value that may not be
   stored.
+- `docs/rules/constitution.md` §9, "Complete", which names all three — partial application, default parameters, and
+  named hole filling — as ambiguity about what a call means rather than features. That is the authority for deleting a
+  default rather than keeping it: an inserted default is a complete call, so §1 alone would not reach it.
+- `docs/rules/language/02-core-calculus.md` §5, which had described defaults as a surface elaboration and closure
+  environments as carrying preceding defaults, and `docs/rules/language/06-performance.md`'s `core-pressure` row, which
+  had named partial application as the pressure it applies. Both were candidate-spec restatements the constitution had
+  already overruled, and both were repaired in the commit that repaired this prompt, before any code moved.
 - `docs/rules/language/00-semantics.md` §3, "Higher-order construction and the pitch traversal" — `transpose(i)` is
   written as a function that takes its track argument, not as a closure produced by an under-applied call.
 - `crates/musa-compiler/src/core.rs` — `BuiltinValue`, its `bound: Vec<Option<Value>>` field, `Builtin::parameters`, and
@@ -43,6 +50,15 @@ returning a function — which is a complete call — and is a type error when i
 Decide each such stdlib entry explicitly and record the decision; do not leave the reader to infer which reading applies
 from whether the call happens to check.
 
+For a *source* declaration that reading is not available, and the reason is §5: there is no anonymous-function surface,
+so every source function value is a named `fn`, and a named `fn` cannot close over the argument a caller just supplied.
+A source function may therefore be passed by name and may not be manufactured. The decision for the standard library is
+accordingly uniform — **no stdlib entry returns a function** — and the one place that had needed to manufacture one,
+`std::post_tonal::pcset`'s `set_transposed` and `set_inverted`, is served by two primitives, `pcset12_transposed` and
+`pcset12_inverted`, so that T_n and I_n on a set are the set operations they already were rather than a map over a
+closure. `transposed_by` and `inverted_about` stay two-argument functions on a single member; their index-first order
+stays, and the comment claiming `transposed_by(3)` is itself a function goes.
+
 Rewrite the corpus. `examples/` are regression fixtures and must keep compiling and rendering; the stdlib, the compiler
 test suite, and every generated documentation page move in this commit. A fixture whose meaning changes is a finding to
 report, not a silent edit.
@@ -52,8 +68,9 @@ report, not a silent edit.
 - Deletion of partial built-in values, named hole filling, default parameters, and the closure states representing
   missing arguments, with no compatibility path.
 - A located under-application diagnostic naming the missing parameters.
-- Explicit declarations for the stdlib entries that are meant to return functions, with the decision recorded per entry.
-- Migrated stdlib, `examples/`, compiler tests, and generated docs.
+- The recorded decision that no stdlib entry returns a function, and the `pcset12_transposed`/`pcset12_inverted`
+  primitives that let `std::post_tonal::pcset` keep its spelling without one.
+- Migrated stdlib, `examples/`, compiler tests, generated fixtures, and generated docs.
 - Compile-fail tests for an incomplete call and for an under-applied builtin.
 
 ## Check
@@ -73,3 +90,5 @@ Commit as `Make every source call complete`.
 - No compatibility mode, deprecation shim, or edition flag for partial calls or default parameters.
 - No new type, no `EventTrack` rename, no machine type, no scheduler, no DSP change.
 - No change to the resource semantics; that is 127b.
+- No anonymous-function or local-`fn` surface. The absence is what makes the stdlib decision above forced, and adding
+  one would be a language change, not a way to keep a partial call working under another spelling.

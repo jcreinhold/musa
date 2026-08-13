@@ -267,8 +267,8 @@ terms above is unchanged and every theorem in §§5.2–5.5 quantifies over exac
 added. There is no new value form, no new reduction rule, and hence no new case in preservation, progress, determinism,
 or strong normalization — not because a block resembles a parenthesis, but because after `⟦·⟧` there is no block left
 for a proof to be about. Multi-argument arrows and applications are notation for the corresponding curried STLC terms. A
-surface call with named arguments is permuted into parameter order; an omitted default is inserted in that order and may
-refer only to earlier parameters. Thus defaults and argument names add no core reduction rule. Products currently have
+surface call with named arguments is permuted into parameter order, and by §1 that call already supplies every
+parameter, so nothing is inserted at the site. Thus argument names add no core reduction rule. Products currently have
 introduction but no surface projection, which is a conservative sublanguage of the product calculus.
 
 ### 5.1 Static judgments
@@ -338,9 +338,8 @@ closed value of type `Γ(x)`. Its big-step judgment is:
 ρ ⊢ let x=e₁ in e₂ ⇓ v₂
 ```
 
-Closure environments contain precisely the free named dependencies plus preceding default parameters. This is an
-implementation optimization: by the environment-substitution lemma below, it has the same meaning as the small-step
-rules.
+Closure environments contain precisely the free named dependencies. This is an implementation optimization: by the
+environment-substitution lemma below, it has the same meaning as the small-step rules.
 
 ### 5.3 Structural lemmas
 
@@ -432,7 +431,7 @@ derivation and the environment-substitution lemma.
 The implementation checks the computational counterpart at every declaration boundary: evaluation returning no value or
 a value whose reconstructed type differs from the checked type is reported as a compiler-invariant failure. The
 generated-law tests additionally compare the production environment evaluator with a separate small substitution
-evaluator and exercise products, lexical capture, higher-order functions, defaults, and rejected cycles.
+evaluator and exercise products, lexical capture, higher-order functions, and rejected cycles.
 
 ### 5.6 Strictly positive finite data
 
