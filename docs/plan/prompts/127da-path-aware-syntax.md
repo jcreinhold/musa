@@ -1,7 +1,7 @@
 ---
 id: 127da
 slug: path-aware-syntax
-status: in-progress
+status: done
 depends_on: [127c, 127d]
 phase: 3
 ---

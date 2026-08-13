@@ -121,6 +121,11 @@ pub(crate) fn member_types(ty: &Type) -> Vec<&Type> {
         | Type::PcSet12
         | Type::Row12
         | Type::Step(_)
+        // A syntax value, a node path, and a binding path are leaves: each is
+        // an opaque finite value with nothing inside it that unifies.
+        | Type::Syntax
+        | Type::NodePath
+        | Type::BindingPath
         | Type::Music => Vec::new(),
     }
 }
@@ -169,6 +174,9 @@ pub(crate) fn rebuilt(ty: &Type, mut member: impl FnMut(&Type) -> Type) -> Type 
         | Type::PcSet12
         | Type::Row12
         | Type::Step(_)
+        | Type::Syntax
+        | Type::NodePath
+        | Type::BindingPath
         | Type::Music => ty.clone(),
     }
 }

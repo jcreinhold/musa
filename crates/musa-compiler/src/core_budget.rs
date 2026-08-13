@@ -131,6 +131,7 @@ pub(crate) enum Reduction {
     ListFold,
     OptionFold,
     DataFold,
+    SyntaxFold,
 }
 
 impl Reduction {
@@ -148,6 +149,7 @@ impl Reduction {
             Self::ListFold => "list_fold",
             Self::OptionFold => "option_fold",
             Self::DataFold => "fold",
+            Self::SyntaxFold => "syntax_fold",
         }
     }
 }

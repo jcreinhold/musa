@@ -64,6 +64,7 @@ mod scale;
 mod scope;
 mod score;
 mod studio;
+mod syntax;
 mod template;
 mod time;
 

@@ -500,6 +500,18 @@ pub(crate) enum Type {
         input: Box<Self>,
         output: Box<Self>,
     },
+    /// A finite syntax value ([`crate::syntax::Syntax`]).
+    ///
+    /// Phase-local: `../rules/language/02-core-calculus.md` §5 closes the
+    /// source type grammar and says the source language has no syntax value,
+    /// and this does not widen it. There is no written spelling for this type —
+    /// [`named_type`] does not read one — so it cannot be annotated, and the
+    /// operations over it are offered only where a transformer is checked.
+    Syntax,
+    /// Where one node sits ([`crate::syntax::NodePath`]).
+    NodePath,
+    /// Which name a binder declares ([`crate::syntax::BindingPath`]).
+    BindingPath,
     Function(Vec<Self>, Box<Self>),
 }
 
@@ -562,6 +574,11 @@ impl std::fmt::Display for Type {
             Self::Step(tag) => write!(out, "{tag}"),
             Self::Primitive { step, input, output } => write!(out, "Primitive<{step}, {input}, {output}>"),
             Self::Machine { step, input, output } => write!(out, "Machine<{step}, {input}, {output}>"),
+            // These three print but do not read back: they name themselves in a
+            // transformer's diagnostics, and no source anywhere may write one.
+            Self::Syntax => out.write_str("Syntax"),
+            Self::NodePath => out.write_str("NodePath"),
+            Self::BindingPath => out.write_str("BindingPath"),
             Self::Function(parameters, result) => {
                 if parameters.len() == 1 {
                     let parameter = parameters.first().unwrap_or(&Self::Unit);
@@ -942,6 +959,15 @@ enum Builtin {
     Copy,
     Drop,
     Swap,
+    /// A phase-local syntax operation — see [`SyntaxOp`].
+    ///
+    /// It is a case of [`Builtin`] because there is **one** evaluator and one
+    /// checker: a second operation type would be a second machine, which is the
+    /// blocker prompt 127da exists to close. It is not a case of [`Family`],
+    /// because §5.8's four families are the four families of *ordinary source*
+    /// and these are not offered there — [`SYNTAX_OWNERSHIP`] owns them
+    /// instead, and [`Builtin::named`] cannot return one.
+    Syntax(SyntaxOp),
 }
 
 impl MachineTree {
@@ -1069,6 +1095,28 @@ fn encode_exactly(value: &Value, bytes: &mut Vec<u8>) -> Option<()> {
             for member in values {
                 encode_exactly(member, bytes)?;
             }
+        }
+        // The three phase-local values encode exactly, because two syntax
+        // values are the same value exactly when they were written the same
+        // way and carry the same derived paths. Their own writers frame every
+        // variable-length part for the same reason the cases above do.
+        Value::Syntax(held) => {
+            bytes.push(8);
+            let mut written = Vec::new();
+            held.write_into(&mut written);
+            framed(bytes, &written);
+        }
+        Value::NodePath(held) => {
+            bytes.push(9);
+            let mut written = Vec::new();
+            held.write_into(&mut written);
+            framed(bytes, &written);
+        }
+        Value::BindingPath(held) => {
+            bytes.push(10);
+            let mut written = Vec::new();
+            held.write_into(&mut written);
+            framed(bytes, &written);
         }
         Value::Pitch(_)
         | Value::PitchClass(_)
@@ -1508,13 +1556,219 @@ impl Eliminator {
     }
 }
 
+/// The ten phase-local syntax operations of prompt 127da.
+///
+/// A closed set, like [`Eliminator`] and [`MachineOp`], and deliberately *not* a
+/// [`Family`]: §5.8's four families classify the builtins ordinary source can
+/// name, and none of these is one of those. They are reachable only where
+/// [`Checker::expansion`] is set, which is the whole of what "phase-local"
+/// means here — one core, one evaluator, and an environment that offers more
+/// names in one place.
+///
+/// Every path a transformer holds was *derived*: [`Self::Fold`] hands each
+/// input node its own structural path, and [`Self::Built`] and
+/// [`Self::Binding`] derive a new one from a path already held. Nothing here
+/// takes a number and returns a path, and nothing mints a fresh id, which is
+/// the repair `37-final-blocker.md` §1 and `34-proof-review.md` asked for.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum SyntaxOp {
+    /// `syntax_fold(missing, token, identifier, group, subject)` — the one way
+    /// into a syntax value, with each step function receiving the node's path.
+    Fold,
+    /// `syntax_at(subject, path)` — the input node at `path`, if there is one.
+    /// How a transformer preserves input with its source information intact.
+    At,
+    /// `syntax_built(path, role, child)` — an output path derived from `path`.
+    Built,
+    /// `syntax_binding(path, role)` — the binding `path` declares at `role`.
+    Binding,
+    /// `syntax_token(path, kind, text)`.
+    Token,
+    /// `syntax_identifier(path, name)` — a name the composer's own source binds.
+    Identifier,
+    /// `syntax_group(path, delimiter, children)`.
+    Group,
+    /// `syntax_binder(binding, name)` — the declaration of a name the expansion
+    /// introduces.
+    Binder,
+    /// `syntax_reference(path, binding, name)` — a use of one.
+    Reference,
+    /// `checked_expression(subject)` — the gate, answering with the value or
+    /// with what is wrong with it.
+    Checked,
+}
+
+/// What kind of phase-local operation a [`SyntaxOp`] is.
+///
+/// Two cases, not four: this registry is small on purpose, and the split that
+/// matters is between the single eliminator and the total first-order builders
+/// around it. "There is exactly one fold over syntax" is then a fact the
+/// registry states rather than a claim a reader has to count out.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum PhaseFamily {
+    /// The one eliminator: it takes function arguments and carries a rank-1
+    /// scheme, so §5.6's account of an eliminator applies to it unchanged.
+    Fold,
+    /// A total first-order operation over syntax values and paths. Each is a
+    /// function of its displayed arguments and nothing else — no counter, no
+    /// clock, no compiler state — which is what makes two runs agree exactly.
+    Builder,
+}
+
+impl SyntaxOp {
+    /// How many arguments this operation is written with.
+    const fn arity(self) -> usize {
+        match self {
+            Self::Checked => 1,
+            Self::At | Self::Binding | Self::Identifier | Self::Binder => 2,
+            Self::Built | Self::Token | Self::Group | Self::Reference => 3,
+            Self::Fold => 5,
+        }
+    }
+
+    /// The operation this name spells, where the phase environment is in scope.
+    ///
+    /// Separate from [`Builtin::named`] on purpose: ordinary source looks names
+    /// up there and there only, so a piece that writes `syntax_group` gets the
+    /// same "cannot find" it would get for any other unbound name.
+    fn named(name: &str) -> Option<Self> {
+        let entry = SYNTAX_OWNERSHIP.iter().find(|entry| entry.spelling == name)?;
+        debug_assert!(!entry.hidden_information.is_empty());
+        Some(entry.operation)
+    }
+
+    fn spelling(self) -> &'static str {
+        SYNTAX_OWNERSHIP
+            .iter()
+            .find(|entry| entry.operation == self)
+            .map_or("syntax", |entry| entry.spelling)
+    }
+
+    /// This operation's type, as a rank-1 scheme, instantiated fresh.
+    ///
+    /// Only the fold has a variable in it — what the transformer is folding
+    /// *to* — and that variable is **ordinary**: a fold may build a list of
+    /// functions as readily as a list of syntax. Everything else is
+    /// monomorphic, because a builder's argument and result types are decided
+    /// by which builder it is.
+    fn instantiate(self, unifier: &mut Unifier) -> Type {
+        let syntax = || Type::Syntax;
+        let path = || Type::NodePath;
+        match self {
+            Self::Fold => {
+                let to = unifier.fresh(Kind::Ordinary);
+                let step = |arguments: Vec<Type>| Type::Function(arguments, Box::new(to.clone()));
+                Type::Function(
+                    vec![
+                        step(vec![path()]),
+                        step(vec![path(), Type::Text, Type::Text]),
+                        step(vec![path(), Type::Text]),
+                        step(vec![path(), Type::Text, Type::List(Box::new(to.clone()))]),
+                        syntax(),
+                    ],
+                    Box::new(to),
+                )
+            }
+            Self::At => Type::Function(vec![syntax(), path()], Box::new(Type::Option(Box::new(Type::Syntax)))),
+            Self::Built => Type::Function(vec![path(), Type::Nat, Type::Nat], Box::new(Type::NodePath)),
+            Self::Binding => Type::Function(vec![path(), Type::Nat], Box::new(Type::BindingPath)),
+            Self::Token => Type::Function(vec![path(), Type::Text, Type::Text], Box::new(Type::Syntax)),
+            Self::Identifier => Type::Function(vec![path(), Type::Text], Box::new(Type::Syntax)),
+            Self::Group => Type::Function(
+                vec![path(), Type::Text, Type::List(Box::new(Type::Syntax))],
+                Box::new(Type::Syntax),
+            ),
+            Self::Binder => Type::Function(vec![Type::BindingPath, Type::Text], Box::new(Type::Syntax)),
+            Self::Reference => Type::Function(vec![path(), Type::BindingPath, Type::Text], Box::new(Type::Syntax)),
+            // The gate says which of several things is wrong, so it answers
+            // with a `Result` rather than an `Option`, exactly as a δ-builtin
+            // with more than one way to fail does.
+            Self::Checked => Type::Function(
+                vec![syntax()],
+                Box::new(Type::Sum(Box::new(Type::Syntax), Box::new(Type::Text))),
+            ),
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
-struct BuiltinOwnership<T> {
+struct BuiltinOwnership<T, F = Family> {
     operation: T,
     spelling: &'static str,
     hidden_information: &'static str,
-    family: Family,
+    family: F,
 }
+
+/// The phase-local registry.
+///
+/// Separate from [`BUILTIN_OWNERSHIP`] so that §5.8's four families stay the
+/// four families of the source core: nothing here is a δ-builtin, an
+/// eliminator, a track builtin, or a machine builtin, and nothing here is
+/// looked up when ordinary source reads a name. Each entry says what it hides,
+/// for the same reason the source entries do — an operation earns a place in a
+/// compiler-owned registry by hiding something a library could not.
+const SYNTAX_OWNERSHIP: [BuiltinOwnership<SyntaxOp, PhaseFamily>; 10] = [
+    BuiltinOwnership {
+        operation: SyntaxOp::Fold,
+        spelling: "syntax_fold",
+        hidden_information: "the reader's node representation and each node's structural path",
+        family: PhaseFamily::Fold,
+    },
+    BuiltinOwnership {
+        operation: SyntaxOp::At,
+        spelling: "syntax_at",
+        hidden_information: "descent into the reader's node representation, and a node's untouched source information",
+        family: PhaseFamily::Builder,
+    },
+    BuiltinOwnership {
+        operation: SyntaxOp::Built,
+        spelling: "syntax_built",
+        hidden_information: "path derivation, which keeps output paths disjoint from input paths by construction",
+        family: PhaseFamily::Builder,
+    },
+    BuiltinOwnership {
+        operation: SyntaxOp::Binding,
+        spelling: "syntax_binding",
+        hidden_information: "name identity as a derived coordinate rather than an allocated fresh id",
+        family: PhaseFamily::Builder,
+    },
+    BuiltinOwnership {
+        operation: SyntaxOp::Token,
+        spelling: "syntax_token",
+        hidden_information: "generated source information, which an adapter can carry but not forge",
+        family: PhaseFamily::Builder,
+    },
+    BuiltinOwnership {
+        operation: SyntaxOp::Identifier,
+        spelling: "syntax_identifier",
+        hidden_information: "generated source information, and the absence of a hygiene scope",
+        family: PhaseFamily::Builder,
+    },
+    BuiltinOwnership {
+        operation: SyntaxOp::Group,
+        spelling: "syntax_group",
+        hidden_information: "generated source information and the fixed grouper's delimiter set",
+        family: PhaseFamily::Builder,
+    },
+    BuiltinOwnership {
+        operation: SyntaxOp::Binder,
+        spelling: "syntax_binder",
+        hidden_information: "the opaque hygiene scope a binding carries, which no operation constructs",
+        family: PhaseFamily::Builder,
+    },
+    BuiltinOwnership {
+        operation: SyntaxOp::Reference,
+        spelling: "syntax_reference",
+        hidden_information: "the opaque hygiene scope a binding carries, which no operation constructs",
+        family: PhaseFamily::Builder,
+    },
+    BuiltinOwnership {
+        operation: SyntaxOp::Checked,
+        spelling: "checked_expression",
+        hidden_information: "output well-formedness: unique generated paths, one binder per binding, real delimiters",
+        family: PhaseFamily::Builder,
+    },
+];
 
 const BOOL: Shape = Shape::Base(Base::Bool);
 const NAT: Shape = Shape::Base(Base::Nat);
@@ -2209,6 +2463,7 @@ impl Builtin {
             Self::Copy => "copy",
             Self::Drop => "drop",
             Self::Swap => "swap",
+            Self::Syntax(operation) => operation.spelling(),
         }
     }
 
@@ -2344,7 +2599,11 @@ impl Builtin {
             | Self::Feedback
             | Self::Copy
             | Self::Drop
-            | Self::Swap => None,
+            | Self::Swap
+            // A phase-local operation states its type in [`SyntaxOp::instantiate`]
+            // for the same reason: it is checked at its call site and never
+            // becomes a bare value.
+            | Self::Syntax(_) => None,
         }
     }
 }
@@ -2530,6 +2789,13 @@ enum Value {
         ty: Type,
         tree: Box<MachineTree>,
     },
+    /// A finite syntax value. Phase-local: no ordinary source expression can
+    /// produce one, because no operation that returns one is in scope there.
+    Syntax(Box<crate::syntax::Syntax>),
+    /// Where one node sits, as a path from an expansion's root.
+    NodePath(Box<crate::syntax::NodePath>),
+    /// Which name a binder declares and a reference means.
+    BindingPath(Box<crate::syntax::BindingPath>),
     Closure(Box<Closure>),
     Builtin(Builtin),
 }
@@ -2937,6 +3203,9 @@ impl Value {
                 output: Box::new(descriptor.output().ty()),
             },
             Self::Machine { ty, .. } => ty.clone(),
+            Self::Syntax(_) => Type::Syntax,
+            Self::NodePath(_) => Type::NodePath,
+            Self::BindingPath(_) => Type::BindingPath,
             Self::Closure(closure) => Type::Function(
                 closure
                     .parameters
@@ -3043,8 +3312,32 @@ impl Value {
                         .fold(witness.rotate_left(5), |witness, byte| witness ^ u64::from(*byte))
                 })
             }
+            // A syntax value and a path are traversed through the bytes their
+            // identity is taken over, exactly as a machine description is.
+            Self::Syntax(held) => {
+                let mut written = Vec::new();
+                held.write_into(&mut written);
+                bytes_witness(&written)
+            }
+            Self::NodePath(held) => {
+                let mut written = Vec::new();
+                held.write_into(&mut written);
+                bytes_witness(&written)
+            }
+            Self::BindingPath(held) => {
+                let mut written = Vec::new();
+                held.write_into(&mut written);
+                bytes_witness(&written)
+            }
         }
     }
+}
+
+/// Fold a byte string into a witness, the way a machine's stored bytes are folded.
+fn bytes_witness(written: &[u8]) -> u64 {
+    written
+        .iter()
+        .fold(0u64, |witness, byte| witness.rotate_left(5) ^ u64::from(*byte))
 }
 
 /// Read a scale into a witness the same way the other finite values are read.
@@ -3238,7 +3531,11 @@ fn infer_open_declarations(
                 unifier,
                 dependencies: IndexMap::new(),
                 mentioned: Vec::new(),
-                foreign: definition.foreign,
+                reading: if definition.foreign {
+                    Reading::Foreign
+                } else {
+                    Reading::Source
+                },
                 failed: false,
                 meter: &mut meter,
                 music_role: definition.role.clone(),
@@ -3571,7 +3868,11 @@ fn check_and_evaluate_metered(
             unifier: &mut unifier,
             dependencies: IndexMap::new(),
             mentioned: Vec::new(),
-            foreign: definition.foreign,
+            reading: if definition.foreign {
+                Reading::Foreign
+            } else {
+                Reading::Source
+            },
             failed: false,
             meter: &mut *meter,
             music_role: definition.role.clone(),
@@ -3657,7 +3958,7 @@ fn check_and_evaluate_metered(
             unifier: &mut unifier,
             dependencies: IndexMap::new(),
             mentioned: Vec::new(),
-            foreign: false,
+            reading: Reading::Source,
             failed: false,
             meter: &mut *meter,
             music_role: None,
@@ -3796,6 +4097,9 @@ fn check_and_evaluate_metered(
             | Value::Closure(_)
             | Value::Primitive { .. }
             | Value::Machine { .. }
+            | Value::Syntax(_)
+            | Value::NodePath(_)
+            | Value::BindingPath(_)
             | Value::Builtin(_) => None,
         })
         .collect();
@@ -3829,7 +4133,7 @@ fn root_checker<'a>(
         unifier,
         dependencies: IndexMap::new(),
         mentioned: Vec::new(),
-        foreign: false,
+        reading: Reading::Source,
         failed: false,
         meter,
         music_role: None,
@@ -4291,6 +4595,9 @@ fn function_result(ty: &Type) -> Option<&Type> {
         | Type::Sum(_, _)
         | Type::Option(_)
         | Type::Nominal(_, _)
+        | Type::Syntax
+        | Type::NodePath
+        | Type::BindingPath
         | Type::List(_) => None,
     }
 }
@@ -4617,6 +4924,31 @@ enum Projected {
     Made(Box<Expr>),
 }
 
+/// Which document the checker is reading.
+///
+/// It decides two things that go together: which names are in scope, and
+/// whose spans this document may publish. The three readings are exclusive —
+/// a transformer is not a foreign module and ordinary source is neither —
+/// which is why they are one field rather than a pair of flags that could be
+/// set at once.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Reading {
+    /// The composer's own source.
+    Source,
+    /// A module compiled elsewhere: its spans belong to that document, so no
+    /// use is recorded against them from here.
+    Foreign,
+    /// A transformer, where the phase environment is in scope.
+    ///
+    /// This is what makes `02-core-calculus.md` §5's "no syntax value"
+    /// sentence still true of the source language: [`SYNTAX_OWNERSHIP`] is
+    /// consulted only under this reading, and the three syntax types have no
+    /// written spelling at all, so a piece can neither name one nor obtain
+    /// one. Set only by [`expand_region`], which is the whole of the phase
+    /// environment this prompt delivers.
+    Expansion,
+}
+
 struct Checker<'a> {
     resolver: &'a mut Resolver,
     definitions: &'a [RawDefinition],
@@ -4635,7 +4967,7 @@ struct Checker<'a> {
     /// what to capture: the names it read, less its own parameters. Empty
     /// while nothing anonymous is open, which is most of the time.
     mentioned: Vec<IndexSet<String>>,
-    foreign: bool,
+    reading: Reading,
     failed: bool,
     meter: &'a mut WorkMeter,
     music_role: Option<MusicRole>,
@@ -5356,7 +5688,7 @@ impl Checker<'_> {
             Some(self.unifier.instantiate(&scheme))
         } else if let Some(symbol) = self.symbols.get(name) {
             self.dependencies.entry(name.to_owned()).or_insert(span);
-            if !self.foreign {
+            if self.reading != Reading::Foreign {
                 self.resolver
                     .references
                     .record_use_from(symbol.kind, name, span, symbol.external_declaration.clone());
@@ -5532,7 +5864,7 @@ impl Checker<'_> {
             return None;
         };
         self.dependencies.entry(name.clone()).or_insert(span);
-        if !self.foreign {
+        if self.reading != Reading::Foreign {
             self.resolver
                 .references
                 .record_use_from(symbol.kind, &name, span, symbol.external_declaration.clone());
@@ -6146,6 +6478,9 @@ impl Checker<'_> {
             | Value::Closure(_)
             | Value::Primitive { .. }
             | Value::Machine { .. }
+            | Value::Syntax(_)
+            | Value::NodePath(_)
+            | Value::BindingPath(_)
             | Value::Builtin(_) => Coverage::Literal(literal_key(&value)),
         };
         Some((Pattern::Literal(value), covered, bindings))
@@ -6185,6 +6520,14 @@ impl Checker<'_> {
             && !builtin.is_track()
         {
             return self.builtin_application(node, builtin, expected);
+        }
+        // Only where the phase environment is in scope. Ordinary source reads
+        // names through the line above and through `self.symbols`, neither of
+        // which knows a syntax operation exists.
+        if self.reading == Reading::Expansion
+            && let Some(operation) = name_of(&function_node).as_deref().and_then(SyntaxOp::named)
+        {
+            return self.syntax_application(node, operation, expected);
         }
         if let Some(name) = name_of(&function_node) {
             if self.world.is_constructor(&name) {
@@ -6367,11 +6710,27 @@ impl Checker<'_> {
             Family::Machine(operation) => operation.instantiate(self.unifier)?,
             Family::Delta { .. } | Family::Track => return None,
         };
-        // One unification against a declared scheme, in place of seven
-        // hand-written checks. The result is unified with what the position
-        // wants *before* the arguments are read, so that `nat_fold(0, step,
-        // n)` in a `List<Nat>` position complains about the zero rather than
-        // about the whole call.
+        self.applied_scheme(builtin, scheme, &nodes, span, expected)
+    }
+
+    /// Check a call against a declared rank-1 scheme.
+    ///
+    /// One unification in place of seven hand-written checks. The result is
+    /// unified with what the position wants *before* the arguments are read, so
+    /// that `nat_fold(0, step, n)` in a `List<Nat>` position complains about
+    /// the zero rather than about the whole call.
+    ///
+    /// Shared by the eliminators, the machine builtins, and the phase-local
+    /// syntax operations, which is one of the two places "there is no second
+    /// checker" stops being a claim and starts being a fact about the code.
+    fn applied_scheme(
+        &mut self,
+        builtin: Builtin,
+        scheme: Type,
+        nodes: &[SyntaxNode],
+        span: SourceSpan,
+        expected: Option<&Type>,
+    ) -> Option<Expr> {
         let (parameters, result) = if let Type::Function(parameters, result) = scheme {
             (parameters, *result)
         } else {
@@ -6393,6 +6752,47 @@ impl Checker<'_> {
             ty,
             span,
         })
+    }
+
+    /// Check one use of a phase-local syntax operation.
+    ///
+    /// The same arity check, the same meter, and the same
+    /// [`Self::applied_scheme`] the eliminators and the machine builtins go
+    /// through. What is different is only which registry the name came from.
+    fn syntax_application(&mut self, node: &SyntaxNode, operation: SyntaxOp, expected: Option<&Type>) -> Option<Expr> {
+        let span = crate::resolve::trimmed_span(node);
+        let raw = raw_arguments(node);
+        let spelling = operation.spelling();
+        if raw.iter().any(|argument| argument_name(argument).is_some()) {
+            self.resolver.report(
+                Diagnostic::error(Code::WrongArity, format!("`{spelling}` uses positional arguments"))
+                    .at(span, "named arguments are not part of this phase operation"),
+            );
+            self.failed = true;
+            return None;
+        }
+        let wanted = operation.arity();
+        if raw.len() != wanted {
+            self.resolver.report(
+                Diagnostic::error(
+                    Code::WrongArity,
+                    format!("`{spelling}` takes {wanted} arguments, found {}", raw.len()),
+                )
+                .at(span, "wrong number of arguments"),
+            );
+            self.failed = true;
+            return None;
+        }
+        if self.meter.instantiate(spelling, span).is_none() {
+            self.failed = true;
+            return None;
+        }
+        let nodes: Vec<_> = raw
+            .iter()
+            .filter_map(|argument| child_of(argument, is_expr_node))
+            .collect();
+        let scheme = operation.instantiate(self.unifier);
+        self.applied_scheme(Builtin::Syntax(operation), scheme, &nodes, span, expected)
     }
 
     /// `primitive(name, version, configuration)` — one instance of a registered
@@ -6653,6 +7053,9 @@ fn uncovered(world: &World, target: &Type, coverage: &IndexSet<Coverage>) -> Opt
         | Type::Primitive { .. }
         | Type::Machine { .. }
         | Type::Product(_)
+        | Type::Syntax
+        | Type::NodePath
+        | Type::BindingPath
         | Type::Function(_, _) => Some("_".to_owned()),
     }
 }
@@ -6690,6 +7093,9 @@ fn literal_key(value: &Value) -> String {
         | Value::Closure(_)
         | Value::Primitive { .. }
         | Value::Machine { .. }
+        | Value::Syntax(_)
+        | Value::NodePath(_)
+        | Value::BindingPath(_)
         | Value::Builtin(_) => "constructor".to_owned(),
     }
 }
@@ -6987,6 +7393,9 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 | Value::Option { .. }
                 | Value::List { .. }
                 | Value::Data { .. }
+                | Value::Syntax(_)
+                | Value::NodePath(_)
+                | Value::BindingPath(_)
                 | Value::Music(_) => None,
             }
         }
@@ -7027,6 +7436,9 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 | Value::Closure(_)
                 | Value::Primitive { .. }
                 | Value::Machine { .. }
+                | Value::Syntax(_)
+                | Value::NodePath(_)
+                | Value::BindingPath(_)
                 | Value::Builtin(_) => None,
             }
         }
@@ -7109,6 +7521,9 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                     | Value::Closure(_)
                     | Value::Primitive { .. }
                     | Value::Machine { .. }
+                    | Value::Syntax(_)
+                    | Value::NodePath(_)
+                    | Value::BindingPath(_)
                     | Value::Builtin(_) => return None,
                 };
                 bindings.insert(name.clone(), bound);
@@ -7394,7 +7809,8 @@ fn apply_builtin(builtin: Builtin, provided: Vec<Value>, span: SourceSpan) -> Op
         | Builtin::Feedback
         | Builtin::Copy
         | Builtin::Drop
-        | Builtin::Swap => return None,
+        | Builtin::Swap
+        | Builtin::Syntax(_) => return None,
     };
     Some(Value::Music(Music {
         items: Vec::new(),
@@ -7447,6 +7863,7 @@ fn eval_builtin(
         .map(|argument| eval(argument, environment, meter))
         .collect::<Option<Vec<_>>>()?;
     match builtin {
+        Builtin::Syntax(operation) => eval_syntax(operation, &values, meter, expression),
         Builtin::Pc12Of => Some(Value::Pc12(crate::pc12::Pc12::from_number(nat_value(values.first()?)?))),
         Builtin::Pc12Number => {
             let Value::Pc12(member) = values.first()? else {
@@ -7852,6 +8269,9 @@ fn eval_builtin(
                     | Value::Closure(_)
                     | Value::Primitive { .. }
                     | Value::Machine { .. }
+                    | Value::Syntax(_)
+                    | Value::NodePath(_)
+                    | Value::BindingPath(_)
                     | Value::Builtin(_) => None,
                 })
                 .collect();
@@ -8143,6 +8563,163 @@ fn eval_builtin(
     }
 }
 
+/// Run one phase-local syntax operation.
+///
+/// Every case here is a function of the values it was handed and nothing else:
+/// there is no counter, no allocation, and no compiler state to read, so two
+/// runs of one transformer over one region agree exactly. The one recursive
+/// case is [`SyntaxOp::Fold`], and it recurses over a finite value, so it
+/// terminates for the same reason `list_fold` does.
+fn eval_syntax(operation: SyntaxOp, values: &[Value], meter: &mut WorkMeter, expression: &Expr) -> Option<Value> {
+    let syntax = |value: &Value| {
+        if let Value::Syntax(held) = value {
+            Some(held.as_ref().clone())
+        } else {
+            None
+        }
+    };
+    let path = |value: &Value| {
+        if let Value::NodePath(held) = value {
+            Some(held.as_ref().clone())
+        } else {
+            None
+        }
+    };
+    let binding = |value: &Value| {
+        if let Value::BindingPath(held) = value {
+            Some(held.as_ref().clone())
+        } else {
+            None
+        }
+    };
+    let text = |value: &Value| {
+        if let Value::Text(held) = value {
+            Some(held.clone())
+        } else {
+            None
+        }
+    };
+    let index = |value: &Value| u32::try_from(nat_value(value)?).ok();
+    let built = |node: crate::syntax::Syntax, meter: &mut WorkMeter| {
+        let (nodes, bytes) = node.shape();
+        meter.preflight_construct(operation.spelling(), nodes, bytes, expression.span)?;
+        Some(Value::Syntax(Box::new(node)))
+    };
+    match operation {
+        SyntaxOp::Fold => {
+            let subject = syntax(values.get(4)?)?;
+            fold_syntax(values, &subject, meter, expression)
+        }
+        SyntaxOp::At => {
+            let subject = syntax(values.first()?)?;
+            let wanted = path(values.get(1)?)?;
+            let found = subject.at(&wanted).cloned();
+            if let Some(found) = &found {
+                let (nodes, bytes) = found.shape();
+                meter.preflight_construct(operation.spelling(), nodes, bytes, expression.span)?;
+            }
+            Some(optional(Type::Syntax, found.map(|node| Value::Syntax(Box::new(node)))))
+        }
+        SyntaxOp::Built => Some(Value::NodePath(Box::new(
+            path(values.first()?)?.built(index(values.get(1)?)?, index(values.get(2)?)?),
+        ))),
+        SyntaxOp::Binding => Some(Value::BindingPath(Box::new(
+            path(values.first()?)?.binding(index(values.get(1)?)?),
+        ))),
+        SyntaxOp::Token => built(
+            crate::syntax::token(path(values.first()?)?, text(values.get(1)?)?, text(values.get(2)?)?),
+            meter,
+        ),
+        SyntaxOp::Identifier => built(
+            crate::syntax::identifier(path(values.first()?)?, text(values.get(1)?)?),
+            meter,
+        ),
+        SyntaxOp::Group => {
+            let Value::List { values: children, .. } = values.get(2)? else {
+                return None;
+            };
+            let children = children.iter().map(syntax).collect::<Option<Vec<_>>>()?;
+            built(
+                crate::syntax::group(path(values.first()?)?, text(values.get(1)?)?, children),
+                meter,
+            )
+        }
+        SyntaxOp::Binder => built(
+            crate::syntax::binder(&binding(values.first()?)?, text(values.get(1)?)?),
+            meter,
+        ),
+        SyntaxOp::Reference => built(
+            crate::syntax::reference(path(values.first()?)?, &binding(values.get(1)?)?, text(values.get(2)?)?),
+            meter,
+        ),
+        // The gate answers with a value either way, which is what keeps it
+        // total: a transformer that builds badly gets a `Result` back and
+        // decides what to say about it.
+        SyntaxOp::Checked => {
+            let subject = syntax(values.first()?)?;
+            let held = match crate::syntax::check_expression(&subject) {
+                Ok(()) => Value::Syntax(Box::new(subject)),
+                Err(refusal) => Value::Text(refusal.to_string()),
+            };
+            Some(Value::Sum {
+                value_type: Type::Syntax,
+                error_type: Type::Text,
+                error: matches!(held, Value::Text(_)),
+                held: Box::new(held),
+            })
+        }
+    }
+}
+
+/// The path-aware fold, as prompt 127ac generates one for finite data.
+///
+/// The step function for each case receives the node's own path — read out of
+/// the node rather than reconstructed — so a transformer cannot reach a node
+/// without also holding the path it would build output from. That is the whole
+/// of blocker 1's repair: paths come *from here*, and from deriving one already
+/// held.
+fn fold_syntax(
+    cases: &[Value],
+    subject: &crate::syntax::Syntax,
+    meter: &mut WorkMeter,
+    expression: &Expr,
+) -> Option<Value> {
+    meter.step(Reduction::SyntaxFold, 1, expression.span)?;
+    let at = Value::NodePath(Box::new(subject.info().path().clone()));
+    let (case, arguments) = match subject {
+        crate::syntax::Syntax::Missing(_) => (cases.first()?, vec![at]),
+        crate::syntax::Syntax::Token { kind, text, .. } => (
+            cases.get(1)?,
+            vec![at, Value::Text(kind.clone()), Value::Text(text.clone())],
+        ),
+        crate::syntax::Syntax::Identifier { name, .. } => (cases.get(2)?, vec![at, Value::Text(name.clone())]),
+        crate::syntax::Syntax::Group {
+            delimiter, children, ..
+        } => {
+            let folded = children
+                .iter()
+                .map(|child| fold_syntax(cases, child, meter, expression))
+                .collect::<Option<Vec<_>>>()?;
+            // The fold's own result type: the group step is handed a
+            // `List<to>`, and a list whose member type was guessed from its
+            // first value would be a different type when the group is empty.
+            let member = expression.ty.clone();
+            (
+                cases.get(3)?,
+                vec![
+                    at,
+                    Value::Text(delimiter.clone()),
+                    Value::List { member, values: folded },
+                ],
+            )
+        }
+    };
+    let Value::Closure(case) = case else {
+        return None;
+    };
+    apply_closure(case, arguments, meter, expression.span)
+}
+
 /// A finished description as a value, charged for what it holds.
 ///
 /// The type comes from the expression rather than from the tree because the
@@ -8281,6 +8858,9 @@ fn fold_value(
         | Value::Option { .. }
         | Value::List { .. }
         | Value::Data { .. }
+        | Value::Syntax(_)
+        | Value::NodePath(_)
+        | Value::BindingPath(_)
         | Value::Music(_) => None,
     }
 }
@@ -8425,6 +9005,9 @@ fn value_shape(value: &Value) -> (u64, u64) {
             (nodes.saturating_add(1), bytes)
         }
         Value::Machine { tree, .. } => tree.shape(),
+        Value::Syntax(held) => held.shape(),
+        Value::NodePath(held) => held.shape(),
+        Value::BindingPath(held) => held.shape(),
     }
 }
 
@@ -8871,6 +9454,110 @@ fn token_span(token: &SyntaxToken) -> SourceSpan {
     )
 }
 
+/// What running a transformer over a region produced, or why it did not.
+///
+/// The three failures are different mistakes and a transformer author reading
+/// one should be told which they made, which is why this is a type rather than
+/// a `None`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "the phase driver is proved by the syntax module's law suite; prompt 127dc gives it its product caller in the compiler order"
+    )
+)]
+pub(crate) enum ExpansionFailure {
+    /// The transformer did not check as `Syntax -> Syntax`.
+    NotATransformer(Vec<Diagnostic>),
+    /// It checked and then did not answer — a budget crossed, or the evaluator
+    /// and the checker disagreeing, which is a compiler fault rather than a
+    /// language effect.
+    NoAnswer,
+    /// It answered with something that is not a well-formed expression.
+    NotAnExpression(crate::syntax::NotAnExpression),
+}
+
+/// Run one transformer over one region, in the phase environment.
+///
+/// **This is the phase environment**, and the only place [`Checker::expansion`]
+/// is ever set. Everything about it is the ordinary machinery: the same terms,
+/// the same Algorithm W, the same total evaluator, the same work meter. What is
+/// phase-local is the *environment* — [`SYNTAX_OWNERSHIP`] is in scope here and
+/// nowhere else — which is what keeps `02-core-calculus.md` §5's closed source
+/// type grammar and its "no syntax value" sentence true while a transformer can
+/// still be written rather than displayed.
+///
+/// `transformer` is one expression of type `Syntax -> Syntax`. `region` is
+/// source text, read by the fixed reader Musa already has: this driver does not
+/// extend the lexer or the grouper, and prompt 127dc owns the compiler order
+/// that will call it on a real adapter region.
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "the phase driver is proved by the syntax module's law suite; prompt 127dc gives it its product caller in the compiler order"
+    )
+)]
+pub(crate) fn expand_region(
+    transformer: &str,
+    region: &str,
+    expansion: crate::syntax::ExpansionPath,
+) -> Result<crate::syntax::Syntax, ExpansionFailure> {
+    let subject = crate::syntax::read_region(&musa_language::parse(region).syntax(), expansion);
+    let parsed = musa_language::parse(&format!("piece \"expansion\" {{\n  let transform = {transformer}\n}}"));
+    let mut resolver = Resolver::new();
+    let mut unifier = Unifier::default();
+    let mut meter = WorkMeter::default();
+    let wanted = Type::Function(vec![Type::Syntax], Box::new(Type::Syntax));
+    let body = root_nodes(&parsed.syntax(), SyntaxKind::LetDecl)
+        .first()
+        .and_then(|declaration| child_of(declaration, is_expr_node));
+    let checked = body.and_then(|body| {
+        let span = crate::resolve::trimmed_span(&body);
+        let mut checker = Checker {
+            resolver: &mut resolver,
+            definitions: &[],
+            symbols: &IndexMap::new(),
+            locals: IndexMap::new(),
+            unifier: &mut unifier,
+            dependencies: IndexMap::new(),
+            mentioned: Vec::new(),
+            reading: Reading::Expansion,
+            failed: false,
+            meter: &mut meter,
+            music_role: None,
+            definition_span: span,
+            deferred_pitch: false,
+            scope: crate::module::NameScope::empty(),
+            modules: &Modules::default(),
+            world: &World::default(),
+        };
+        checker.check(&body, Some(&wanted))
+    });
+    let Some(checked) = checked else {
+        return Err(ExpansionFailure::NotATransformer(resolver.diagnostics));
+    };
+    let environment = IndexMap::new();
+    let Some(Value::Closure(function)) = eval(&checked, &environment, &mut meter) else {
+        return Err(ExpansionFailure::NoAnswer);
+    };
+    let applied = apply_closure(
+        &function,
+        vec![Value::Syntax(Box::new(subject))],
+        &mut meter,
+        checked.span,
+    );
+    let Some(Value::Syntax(produced)) = applied else {
+        return Err(ExpansionFailure::NoAnswer);
+    };
+    // The gate again, here rather than only in `checked_expression`: a
+    // transformer that never called the builtin has still produced output the
+    // rest of the compiler will have to anchor diagnostics against.
+    crate::syntax::check_expression(&produced).map_err(ExpansionFailure::NotAnExpression)?;
+    Ok(*produced)
+}
+
 #[cfg(test)]
 // A law suite reports a violated law by failing, which is what `panic!` and `expect` are for here }
 // the crate's integration tests carry the same allowances for the same reason.
@@ -9074,6 +9761,13 @@ mod tests {
             | Value::Closure(_)
             | Value::Primitive { .. }
             | Value::Machine { .. }
+            // A phase-local value has no place in the source builtin
+            // registry's sample pool either: no δ-builtin's signature can
+            // name a syntax type, which is what keeps §5.8's four families
+            // the four families of ordinary source.
+            | Value::Syntax(_)
+            | Value::NodePath(_)
+            | Value::BindingPath(_)
             | Value::Builtin(_) => return None,
         })
     }
@@ -9270,6 +9964,143 @@ mod tests {
         );
     }
 
+    /// `02-core-calculus.md` §5 closes the source type grammar and says the
+    /// source language has no syntax value; §5.8 fixes four builtin families.
+    /// This prompt adds a calculus without touching either, and the way it
+    /// does so is structural rather than promised: the phase types have no
+    /// written spelling at all, and the phase builtins are looked up in a
+    /// registry ordinary source never reads.
+    #[test]
+    fn ordinary_source_can_neither_name_a_syntax_type_nor_obtain_a_syntax_value() {
+        for name in ["Syntax", "NodePath", "BindingPath"] {
+            assert!(
+                named_type(name).is_none(),
+                "`{name}` is nameable from ordinary source, which §5's grammar forbids"
+            );
+            assert!(
+                !musa_language::BASE_TYPES.iter().any(|(offered, _)| *offered == name),
+                "`{name}` is offered to the composer as a type"
+            );
+        }
+        for entry in &SYNTAX_OWNERSHIP {
+            assert!(
+                Builtin::named(entry.spelling).is_none(),
+                "`{}` is reachable from the name table ordinary source reads",
+                entry.spelling
+            );
+            let source = format!("piece \"one\" {{\n  let refused = {}(1)\n}}", entry.spelling);
+            assert!(
+                !refusals(&source).is_empty(),
+                "`{}` resolved in ordinary source, so a piece can obtain a syntax value",
+                entry.spelling
+            );
+        }
+    }
+
+    /// The phase registry is a second registry, not a fifth family.
+    #[test]
+    fn the_phase_registry_is_separate_and_classified() {
+        assert_eq!(
+            SYNTAX_OWNERSHIP.len(),
+            10,
+            "a new phase operation must enter the phase registry"
+        );
+        let spellings = SYNTAX_OWNERSHIP
+            .iter()
+            .map(|entry| entry.spelling)
+            .collect::<IndexSet<_>>();
+        assert_eq!(
+            spellings.len(),
+            SYNTAX_OWNERSHIP.len(),
+            "phase operation spellings must be unique"
+        );
+        assert!(
+            SYNTAX_OWNERSHIP
+                .iter()
+                .all(|entry| !entry.hidden_information.trim().is_empty()),
+            "a phase operation earns its place by hiding something a library could not"
+        );
+        for entry in &SYNTAX_OWNERSHIP {
+            assert!(
+                !BUILTIN_OWNERSHIP.iter().any(|source| source.spelling == entry.spelling),
+                "`{}` is in both registries, so §5.8's four families would have gained a member",
+                entry.spelling
+            );
+        }
+        let (folds, builders) = SYNTAX_OWNERSHIP
+            .iter()
+            .fold((0_usize, 0_usize), |(f, b), entry| match entry.family {
+                PhaseFamily::Fold => (f.saturating_add(1), b),
+                PhaseFamily::Builder => (f, b.saturating_add(1)),
+            });
+        assert_eq!(folds, 1, "the fold is the only way into a syntax value");
+        assert_eq!(folds + builders, SYNTAX_OWNERSHIP.len());
+    }
+
+    /// Check and evaluate one expression under one reading. Everything else —
+    /// the terms, the checker, the evaluator — is the same either way.
+    fn phase_nat(source: &str, reading: Reading) -> Option<u64> {
+        let parsed = musa_language::parse(&format!("piece \"one\" {{\n  let answer = {source}\n}}"));
+        let body = root_nodes(&parsed.syntax(), SyntaxKind::LetDecl)
+            .first()
+            .and_then(|declaration| child_of(declaration, is_expr_node))?;
+        let mut resolver = Resolver::new();
+        let mut unifier = Unifier::default();
+        let mut meter = WorkMeter::default();
+        let span = crate::resolve::trimmed_span(&body);
+        let checked = {
+            let mut checker = Checker {
+                resolver: &mut resolver,
+                definitions: &[],
+                symbols: &IndexMap::new(),
+                locals: IndexMap::new(),
+                unifier: &mut unifier,
+                dependencies: IndexMap::new(),
+                mentioned: Vec::new(),
+                reading,
+                failed: false,
+                meter: &mut meter,
+                music_role: None,
+                definition_span: span,
+                deferred_pitch: false,
+                scope: crate::module::NameScope::empty(),
+                modules: &Modules::default(),
+                world: &World::default(),
+            };
+            checker.check(&body, None)
+        }?;
+        if let Some(Value::Nat(found)) = eval(&checked, &IndexMap::new(), &mut meter) {
+            Some(found)
+        } else {
+            None
+        }
+    }
+
+    /// Blocker 2 is closed by stating what prompt 127b already decided.
+    /// Exhaustive `match` is one explicit form in the private evaluation core
+    /// and there is no join point, jump, or switch target beside it, so
+    /// transformer code and ordinary source run on one match semantics. The
+    /// phase environment offers more *names*; it does not offer another way
+    /// to take a value apart.
+    #[test]
+    fn there_is_exactly_one_match_evaluator() {
+        const CASES: [&str; 4] = [
+            "match Some(2) { None -> 0, Some(n) -> n }",
+            "match Some(2) { None -> 0, Some(n) -> nat_fold(n, fn (a, b) { a }, 4) }",
+            "match range(3) { [] -> 0, [head, ..tail] -> head }",
+            "match range(2) { [] -> 5, [head, ..tail] -> list_fold(head, fn (m, a) { a }, tail) }",
+        ];
+        for case in CASES {
+            let ordinary = phase_nat(case, Reading::Source);
+            assert!(ordinary.is_some(), "`{case}` did not run in ordinary source");
+            assert_eq!(
+                ordinary,
+                phase_nat(case, Reading::Expansion),
+                "`{case}` ran differently once the phase environment was in scope"
+            );
+        }
+    }
+
     #[test]
     fn no_first_order_signature_mentions_a_function() {
         for entry in &BUILTIN_OWNERSHIP {
@@ -9326,6 +10157,9 @@ mod tests {
             // holding an arrow is refused where the declaration is written.
             | Type::Nominal(_, _)
             | Type::Step(_)
+            | Type::Syntax
+            | Type::NodePath
+            | Type::BindingPath
             | Type::Music => false,
         }
     }
