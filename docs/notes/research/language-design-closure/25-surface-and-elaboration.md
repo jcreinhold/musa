@@ -61,7 +61,7 @@ This is the invariant that makes chunked reasoning safe, and everything below fo
 | collapsing `score`/`part`/`voice` | **withdrawn** | `part` carries instrument, transposition, clef, staff count, score order, and studio binding. |
 | the collision with LilyPond's note token | **moot** | It only existed because the draft borrowed LilyPond's stickiness. Without that, `c4` has no competing reading. |
 | `tempo 4 = 104` | **withdrawn** | Note 21's original `tempo 1/4 = 104` is fully explicit and was right. Meter-derived beat is available as adapter sugar but should not be canonical. |
-| `|` bar margin with a checked closing bar | **kept, and stronger** | With explicit durations the check is a pure assertion over written text: the highest-value syntax in the whole design. |
+| `\|` bar margin with a checked closing bar | **kept, and stronger** | With explicit durations the check is a pure assertion over written text: the highest-value syntax in the whole design. |
 | `field: value` in records; `=` binds | **kept** | Ambiguity fix, not a brevity fix. |
 | one-line `fn` bodies; qualified library naming | **kept** | Both remove ambiguity or nesting, neither trades away precision. |
 | `->` and bar alignment in the formatter | **kept** | Free, and diff-friendly. |
