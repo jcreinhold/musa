@@ -2,7 +2,7 @@
 id: 127dcg
 slug: studio-trial
 status: pending
-depends_on: [127dcf]
+depends_on: [127dcfb]
 phase: 3
 ---
 
@@ -24,7 +24,7 @@ one syntax machinery is what the trial is for; one adapter proves nothing about 
   is finite data while the process it describes is not. The adapter neither allocates a processor nor steps audio.
 - `crates/musa-audio/src/`: the existing studio graph spec and its render-plan compiler. The adapter produces a
   description; what already exists consumes one, and the two must not become two ontologies.
-- Prompts 127dcc–127dcf: anchors, `edit`, `print`, the levels, and the staff trial the boundary is now shared with.
+- Prompts 127dcc–127dcfb: anchors, `edit`, `print`, the levels, and the staff trial the boundary is now shared with.
 
 ## Design
 
