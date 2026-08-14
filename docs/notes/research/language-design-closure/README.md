@@ -121,5 +121,12 @@ ship.
     types until real programs earn them. It corrects the fire-triangle premise, several claims in note 38, and its own
     first recursor design; its later qualification separates the association lemma delivered by sealing from the
     reducibility argument still owed for source termination.
+41. [40-sealed-step-recursor-trial.md](40-sealed-step-recursor-trial.md) trials that recursor on five complete programs
+    before any code implements it: staff, studio, an anchored edit, the degenerate leaves, and a hostile nested
+    traversal. The interface passes and is frozen; the reducibility argument goes through under definition acyclicity,
+    with no dynamic owner check, failure result, higher rank, or affine restriction. It finds the fold *incomplete*
+    rather than merely awkward — a re-descending reader is unwritable under it — and corrects note 39 three times: the
+    right-to-left accumulator survives, studio gains nothing so the derived bottom-up fold stays public, and the
+    normalization proof needs acyclicity as a stated premise.
 
 The proof gate failed. Nothing in this workspace moves to `docs/rules/` or into implementation prompts.

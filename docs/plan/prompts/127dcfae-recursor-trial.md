@@ -1,7 +1,7 @@
 ---
 id: 127dcfae
 slug: recursor-trial
-status: pending
+status: done
 depends_on: [127dcfad]
 phase: 3
 ---
