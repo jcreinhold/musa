@@ -1,7 +1,7 @@
 ---
 id: 127dceb
 slug: adapter-module-scope
-status: pending
+status: in-progress
 depends_on: [127dce, 127dcea]
 phase: 3
 ---
@@ -49,10 +49,18 @@ each one. An adapter written that way is unreadable and the notation it reads is
 about the phase, not about the adapter.
 
 **An adapter module is a module.** It is parsed, checked, and evaluated exactly as a library is, under
-`Reading::Expansion` rather than `Reading::Source`. Its `let`, its `fn`, and its `data` are in scope in `expand`, in
-`edit`, and in `print`, because they are declarations of the module those operations are declared in. `level` is one of
-those declarations and is read the same way. The text slice goes: `declaration_of` and `declared_body` are deleted, and
-the phase asks the checked module for a value by name.
+`Reading::Expansion` rather than `Reading::Source`. Its `let`, its `fn`, and its `data` are in scope in `expand` and in
+`edit`, because they are declarations of the module those operations are declared in. `level` is one of those
+declarations and is read the same way. The text slice goes: `declaration_of` and `declared_body` are deleted, and the
+phase asks the checked module for a value by name.
+
+**`print` is the one operation that stays outside the checked module, and its reason is the same reason the module has
+no imports.** A printer is handed the value the region produced, whose type belongs to the *composer's* package — the
+adapter, importing nothing, has no name for it. So `print` cannot be a declaration of a module checked on its own; it
+keeps what it has today, read as text and checked at the site that calls it, under `Reading::Foreign`, against the value
+it is actually handed. The cost is real and is stated rather than hidden: a printer cannot call its module's other
+declarations. Whether a printer should be checked against an interface the adapter can name is prompt 127dcf's question
+— that is where the first adapter with a printer worth writing arrives — and it is not this prompt's.
 
 One checker and one evaluator, two readings — which is what 127dc said. The reading still decides two things and only
 two: whether the phase registry answers a name, and whether the phase's types have a spelling.
@@ -120,6 +128,7 @@ Commit as `Give an adapter module the phase environment it was promised`.
 ## Stop
 
 - No change to `expand`'s type, to the refusal, to anchors, or to the three levels.
+- No change to how `print` is checked — it stays at its call site, under `Reading::Foreign`.
 - No syntax value, syntax type name, or phase operation reachable from ordinary source.
 - No import resolution for adapter modules — refuse and say so.
 - No staff adapter, no studio adapter, and no work on prompt 127dcfa's fourteen items.
