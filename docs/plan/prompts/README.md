@@ -265,6 +265,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 127dcec | construction-charges | 3 | Charge a value where it is constructed, not where it is named |
 | 127dcf | staff-package | 3 | Write the staff package as ordinary unprivileged Musa |
 | 127dcfa | staff-expansion | 3 | Expand a staff region into the staff package, item by item |
+| 127dcfaa | list-fold-direction | 3 | Say which end a list fold runs from |
 | 127dcfb | staff-edit-print | 3 | Make the staff adapter generative |
 | 127dcg | studio-trial | 3 | Write the studio adapter as an unprivileged package |
 | 127dd | adapter-trials | 3 | Freeze the adapter rules and carry them through hostile review |
@@ -535,7 +536,9 @@ compute with, which the governing calculus already fixed and no prompt had yet i
 proved missing (127dceb), the construction charge the same trial measured — a value charged once per mention rather than
 once per construction, which made a project's cost the product of its data size and its program size (127dcec), the
 staff trial in three parts — the package the expansion produces (127dcf), the expansion itself with its fourteen items
-(127dcfa), and the edit and printer that make it generative (127dcfb) — and the studio trial (127dcg), all of them
+(127dcfa), and the edit and printer that make it generative (127dcfb) — the list eliminator the expansion found missing,
+a fold that runs from the end, so that reading a region into right-nested data stops being a closure chain and lists
+stop being the one inductive type whose eliminator is not its own (127dcfaa), and the studio trial (127dcg), all of them
 carrying real musical load without privilege, and the freeze and hostile review that turn them into a proved claim
 (127dd). The second blocker — a lowered match with no executable meaning — closes by *not* adding a decision-tree
 target: source `match` remains the one evaluator. 127e then deletes contextual `Music`; notation becomes a source-mapped
