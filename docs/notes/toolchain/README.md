@@ -12,6 +12,7 @@ new contributor would lose an afternoon rediscovering it.
 | --- | --- |
 | [generated-files.md](generated-files.md) | Why a currency test says a fixture is stale when nobody changed the generator, and which formatter owns which files |
 | [slow-test-suite.md](slow-test-suite.md) | Why the test suite appears to hang on macOS at 0% CPU, and why `cargo clean` fixes it |
+| [tracing-in-tests.md](tracing-in-tests.md) | Why a logging law fails under `cargo test` but passes under `cargo nextest run`, and what to install instead of `with_default` |
 
 What does *not* belong here: anything that decides semantics (that is `../../rules/constitution.md`,
 `../../rules/across-stages/`, and the per-stage specifications), anything about which crate implements what
