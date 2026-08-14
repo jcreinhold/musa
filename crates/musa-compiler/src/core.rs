@@ -3683,8 +3683,8 @@ impl Program {
         self.keys.get(&span_key(span)).copied()
     }
 
-    pub(crate) fn named_music_values(&self) -> IndexMap<String, Music> {
-        self.named_music.clone()
+    pub(crate) fn named_music_values(&self) -> &IndexMap<String, Music> {
+        &self.named_music
     }
 }
 

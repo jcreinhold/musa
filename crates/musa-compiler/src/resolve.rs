@@ -82,7 +82,7 @@ impl Material {
 /// What kind of thing a recorded name names.
 ///
 /// Values and functions share the elaboration-value namespace. Motifs, bars,
-/// and fragments share the material namespace (see [`Material`]); parts,
+/// and fragments share the material namespace (see [`MaterialCx`]); parts,
 /// voices, and patches are a namespace each. The kind is what a rename checks
 /// a collision against.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -291,45 +291,128 @@ pub(crate) enum BoundValue {
     Duration(NotatedDuration),
 }
 
-/// Expansion context carried through blocks: bound parameters, the
-/// transposition stack (outermost first), and the provenance path prefix.
-#[derive(Clone)]
-pub(crate) struct ExpandCx {
-    pub(crate) params: IndexMap<String, BoundValue>,
-    pub(crate) intervals: Vec<Interval>,
-    pub(crate) path: Vec<ExpansionStep>,
-    pub(crate) declaration: DeclarationId,
+/// The material an expansion is reading: which contextual value, under which
+/// names, belonging to which declaration.
+///
+/// Everything here is fixed by *which* material is in hand, and so is rebuilt
+/// only where a new one is entered — a `use`, a fragment, a nested contextual
+/// value. What changes as a reader descends through the blocks *inside* one
+/// material lives in [`ExpandCx`] instead.
+///
+/// The split is what makes descending cheap. Elaboration pushes one expansion
+/// step per nested block, and when this was one record the push copied the
+/// whole contextual value and every named value in the document along with it.
+/// Neither is mutated after construction, so both are borrowed: `MaterialCx` is
+/// covariant in `'a`, and a material built from a longer-lived value coerces
+/// to the borrow at the recursion site.
+pub(crate) struct MaterialCx<'a> {
+    /// The contextual value whose nested `use` expressions were evaluated by
+    /// the total core. The score root uses an empty value carrying only its
+    /// checked root uses.
+    music: &'a crate::core::Music,
+    /// Named music values needed by non-expression consumers such as a
+    /// mobile's fragment list.
+    named_music: &'a IndexMap<String, crate::core::Music>,
+    params: IndexMap<String, BoundValue>,
+    declaration: DeclarationId,
     /// Set when expanding a motif: every event's origin points at the call.
-    pub(crate) origin_span: Option<SourceSpan>,
+    origin_span: Option<SourceSpan>,
     /// Only motifs declared before this index are visible; this makes
     /// cyclic expansion impossible by construction (roadmap §6.5).
-    pub(crate) max_motif: usize,
-    /// How the enclosing tuplets scale the durations written here (`2/3`
-    /// inside a `3/2` tuplet). Always `1` on the direct path, which rejects
-    /// tuplets outright.
-    pub(crate) scale: Ratio<i64>,
+    max_motif: usize,
+    /// Whether the text being read belongs to an imported library rather
+    /// than the compiled document.
+    ///
+    /// The reference record records spans in the document's own text only, so
+    /// a `use` read under a foreign context is resolved but never recorded.
+    /// Set when the material being entered came from an import; the piece's
+    /// own root material is never foreign.
+    foreign: bool,
+}
+
+impl<'a> MaterialCx<'a> {
+    /// The material a voice's own items are read as: the piece's root value,
+    /// with no parameters bound and every declaration in view.
+    pub(crate) fn root(
+        music: &'a crate::core::Music,
+        named_music: &'a IndexMap<String, crate::core::Music>,
+        declaration: DeclarationId,
+    ) -> Self {
+        Self {
+            music,
+            named_music,
+            params: IndexMap::new(),
+            declaration,
+            origin_span: None,
+            max_motif: usize::MAX,
+            foreign: false,
+        }
+    }
+
+    /// The same material, reading a contextual value nested inside it.
+    ///
+    /// The value's own bindings come into force over its body. Everything
+    /// else — whose declaration this is, how far up the material list it may
+    /// look, whether it is foreign — is a fact about how the material was
+    /// *entered*, and descending inside it does not change any of them.
+    pub(crate) fn nested<'b>(&'b self, music: &'b crate::core::Music) -> MaterialCx<'b> {
+        let mut params = self.params.clone();
+        params.extend(music.bindings.clone());
+        MaterialCx {
+            music,
+            named_music: self.named_music,
+            params,
+            declaration: self.declaration,
+            origin_span: self.origin_span,
+            max_motif: self.max_motif,
+            foreign: self.foreign,
+        }
+    }
+
+    /// The material a `use` enters: a new declaration, a new visibility limit,
+    /// and every event's origin pointing at the shared body rather than at any
+    /// one call of it.
+    pub(crate) fn entered<'b>(
+        &'b self,
+        music: &'b crate::core::Music,
+        declaration: DeclarationId,
+        max_motif: usize,
+        foreign: bool,
+    ) -> MaterialCx<'b> {
+        MaterialCx {
+            declaration,
+            origin_span: Some(crate::elaborate::SHARED_ORIGIN),
+            max_motif,
+            foreign,
+            ..self.nested(music)
+        }
+    }
+}
+
+/// Where inside one [`MaterialCx`] the reader has reached: what the enclosing
+/// blocks have added.
+///
+/// Every field here is pushed onto or replaced by a nested block, which is why
+/// they are the ones a scoped constructor copies. The material is borrowed, so
+/// descending costs the steps and nothing else.
+#[derive(Clone)]
+pub(crate) struct ExpandCx<'a> {
+    material: &'a MaterialCx<'a>,
+    /// The transposition stack, outermost first.
+    intervals: Vec<Interval>,
+    /// The provenance path prefix every fact made here carries.
+    path: Vec<ExpansionStep>,
     /// The named place these items sit in — part, voice, motif, bar.
     ///
     /// The prefix of every [`crate::ChoicePath`] built here. A motif body
     /// resets it to the motif's own name, exactly as `path` is reset: the
     /// body is elaborated once and shared between call sites, so a decision
     /// inside it belongs to the *material* and not to any one use of it.
-    pub(crate) choice: crate::ChoicePath,
-    /// Whether the text being read belongs to an imported library rather
-    /// than the compiled document.
-    ///
-    /// The reference record records spans in the document's own
-    /// text only, so a `use` read under a foreign context is resolved but
-    /// never recorded. Set by `expand_material` when the body being expanded
-    /// came from an import; the piece's own root context is never foreign.
-    pub(crate) foreign: bool,
-    /// The contextual value whose nested `use` expressions were evaluated by
-    /// the total core. The score root uses an empty value carrying only its
-    /// checked root uses.
-    pub(crate) music: crate::core::Music,
-    /// Named music values needed by non-expression consumers such as a
-    /// mobile's fragment list.
-    pub(crate) named_music: IndexMap<String, crate::core::Music>,
+    choice: crate::ChoicePath,
+    /// How the enclosing tuplets scale the durations written here (`2/3`
+    /// inside a `3/2` tuplet). Always `1` on the direct path, which rejects
+    /// tuplets outright.
+    scale: Ratio<i64>,
     /// The scale `step` reads here, if `in scale` put one in force.
     ///
     /// This is the whole of the lexical pitch context: it is inherited by
@@ -337,7 +420,171 @@ pub(crate) struct ExpandCx {
     /// key. A `None` here means the key's default collection is asked next,
     /// and if the piece has stated no key either, `step` is a diagnostic
     /// rather than an implicit C major.
-    pub(crate) pitch_scale: Option<crate::scale::Scale>,
+    pitch_scale: Option<crate::scale::Scale>,
+}
+
+impl<'a> ExpandCx<'a> {
+    /// The top of a voice, standing behind whatever expansion made the voice.
+    pub(crate) fn root(material: &'a MaterialCx<'a>, path: Vec<ExpansionStep>) -> Self {
+        Self {
+            material,
+            intervals: Vec::new(),
+            path,
+            choice: crate::ChoicePath::default(),
+            scale: Ratio::ONE,
+            pitch_scale: None,
+        }
+    }
+
+    /// The context a `use`'s body is read in.
+    ///
+    /// The path resets because the body is elaborated once and shared between
+    /// call sites: the steps that led *to* the call belong to the reference,
+    /// which carries them in its mark. Transposition, tuplet scaling and the
+    /// scale in force do reach inside, because they change what the body's
+    /// notes are rather than where the body sits.
+    pub(crate) fn entering<'b>(&self, material: &'b MaterialCx<'b>, choice: crate::ChoicePath) -> ExpandCx<'b> {
+        ExpandCx {
+            material,
+            intervals: self.intervals.clone(),
+            path: Vec::new(),
+            choice,
+            scale: self.scale,
+            pitch_scale: self.pitch_scale,
+        }
+    }
+
+    /// The same place, reading a contextual value nested in this one.
+    pub(crate) fn rebased<'b>(&self, material: &'b MaterialCx<'b>) -> ExpandCx<'b> {
+        ExpandCx {
+            material,
+            intervals: self.intervals.clone(),
+            path: self.path.clone(),
+            choice: self.choice.clone(),
+            scale: self.scale,
+            pitch_scale: self.pitch_scale,
+        }
+    }
+
+    /// Inside a block that leaves one step on the provenance path and changes
+    /// nothing else — a stretch, a retrograde, an inversion, an assertion, a
+    /// kernel splice.
+    pub(crate) fn with_step(&self, step: ExpansionStep) -> Self {
+        let mut inner = self.clone();
+        inner.path.push(step);
+        inner
+    }
+
+    /// Inside `transpose`: one more interval on the stack, and the step that
+    /// records it.
+    pub(crate) fn transposed(&self, interval: Interval) -> Self {
+        let mut inner = self.with_step(ExpansionStep::Transposition(interval));
+        inner.intervals.push(interval);
+        inner
+    }
+
+    /// Inside a tuplet: durations written here are scaled by one more factor.
+    ///
+    /// Tuplets nest, so the factor multiplies rather than replaces.
+    pub(crate) fn scaled(&self, factor: Ratio<i64>) -> Self {
+        let mut inner = self.clone();
+        inner.scale *= factor;
+        inner
+    }
+
+    /// Inside `in scale`: the collection a bare `step` walks here.
+    pub(crate) fn in_scale(&self, scale: crate::scale::Scale) -> Self {
+        let mut inner = self.with_step(ExpansionStep::ScaleContext {
+            scale: scale.to_string(),
+        });
+        inner.pitch_scale = Some(scale);
+        inner
+    }
+
+    /// Inside a *named* bar, which plays here and also answers `use`.
+    ///
+    /// Both elaborations must reach the same decision, so the body carries the
+    /// bar's own choice prefix — the one a `use` would build — rather than the
+    /// enclosing voice's.
+    pub(crate) fn in_bar(&self, name: &str) -> Self {
+        let mut inner = self.clone();
+        inner.choice = crate::ChoicePath::default().then(crate::ChoiceStep::Bar(name.into()));
+        inner
+    }
+
+    /// The contextual value in force: what a `use`, a `step`, a claim or a key
+    /// written here is read out of.
+    pub(crate) fn music(&self) -> &'a crate::core::Music {
+        self.material.music
+    }
+
+    /// The named music value `name` stands for, if the document has one.
+    pub(crate) fn fragment(&self, name: &str) -> Option<&'a crate::core::Music> {
+        self.material.named_music.get(name)
+    }
+
+    /// Every named music value in the document, for suggesting a name that
+    /// could not be found.
+    pub(crate) fn known_names(&self) -> impl Iterator<Item = &'a str> {
+        self.material.named_music.keys().map(String::as_str)
+    }
+
+    /// What `name` is bound to at this point, if a `use` bound it.
+    pub(crate) fn bound(&self, name: &str) -> Option<&BoundValue> {
+        self.material.params.get(name)
+    }
+
+    /// Every binding in force, in the order they came into force.
+    pub(crate) fn bindings(&self) -> impl Iterator<Item = (&String, &BoundValue)> {
+        self.material.params.iter()
+    }
+
+    pub(crate) fn intervals(&self) -> &[Interval] {
+        &self.intervals
+    }
+
+    pub(crate) fn path(&self) -> &[ExpansionStep] {
+        &self.path
+    }
+
+    pub(crate) fn choice(&self) -> &crate::ChoicePath {
+        &self.choice
+    }
+
+    pub(crate) fn scale(&self) -> Ratio<i64> {
+        self.scale
+    }
+
+    pub(crate) fn pitch_scale(&self) -> Option<crate::scale::Scale> {
+        self.pitch_scale
+    }
+
+    pub(crate) fn declaration(&self) -> DeclarationId {
+        self.material.declaration
+    }
+
+    pub(crate) fn max_motif(&self) -> usize {
+        self.material.max_motif
+    }
+
+    pub(crate) fn foreign(&self) -> bool {
+        self.material.foreign
+    }
+
+    /// The source span a fact written at `span` reports as its own.
+    ///
+    /// Inside a shared body that is the body's marker rather than the span, so
+    /// that facts elaborated once for many call sites do not claim to have
+    /// been written at whichever call happened to elaborate them.
+    pub(crate) fn source_span(&self, span: SourceSpan) -> SourceSpan {
+        self.material.origin_span.unwrap_or(span)
+    }
+
+    /// The material this context is reading, so that entering a value nested
+    /// inside it starts from the bindings already in force.
+    pub(crate) fn material(&self) -> &'a MaterialCx<'a> {
+        self.material
+    }
 }
 
 /// What resolution accumulates while a piece is read: the tables names are
@@ -1663,11 +1910,11 @@ pub(crate) fn resolve_pitch(
     resolver: &mut Resolver,
     text: &str,
     node: &SyntaxNode,
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
 ) -> Option<WrittenPitch> {
     let pitch = if let Some(pitch) = WrittenPitch::parse(text) {
         pitch
-    } else if let Some(BoundValue::Pitch(pitch)) = cx.params.get(text) {
+    } else if let Some(BoundValue::Pitch(pitch)) = cx.bound(text) {
         *pitch
     } else {
         resolver.report(
@@ -1684,11 +1931,11 @@ pub(crate) fn resolve_pitch(
 pub(crate) fn apply_intervals(
     resolver: &mut Resolver,
     pitch: WrittenPitch,
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     node: &SyntaxNode,
 ) -> Option<WrittenPitch> {
     let mut current = pitch;
-    for interval in &cx.intervals {
+    for interval in cx.intervals() {
         let Some(next) = current.transpose(*interval) else {
             resolver.report(
                 Diagnostic::error(
@@ -1709,12 +1956,16 @@ pub(crate) fn apply_intervals(
 }
 
 /// Resolve a duration token: a literal, or a bound `duration` parameter.
-pub(crate) fn resolve_duration(resolver: &mut Resolver, node: &SyntaxNode, cx: &ExpandCx) -> Option<NotatedDuration> {
+pub(crate) fn resolve_duration(
+    resolver: &mut Resolver,
+    node: &SyntaxNode,
+    cx: &ExpandCx<'_>,
+) -> Option<NotatedDuration> {
     if let Some(duration) = parse_duration(node) {
         return Some(duration);
     }
     if let Some(text) = musa_language::ast::Duration::of(node).and_then(|duration| duration.parameter())
-        && let Some(BoundValue::Duration(duration)) = cx.params.get(&text)
+        && let Some(BoundValue::Duration(duration)) = cx.bound(&text)
     {
         return Some(duration.clone());
     }

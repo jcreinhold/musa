@@ -1573,22 +1573,11 @@ fn elaborate_voice(
     // what makes a repeat the page can draw take one count rather than one per
     // voice. See [`crate::ChoicePath`].
     resolver.sites.remove(&crate::ChoicePath::default());
-    let cx = ExpandCx {
-        params: indexmap::IndexMap::new(),
-        intervals: Vec::new(),
-        // A voice a template made stands behind the instance that made it,
-        // and every event in it says so.
-        path,
-        declaration,
-        origin_span: None,
-        max_motif: usize::MAX,
-        scale: Ratio::ONE,
-        choice: crate::ChoicePath::default(),
-        foreign: false,
-        music: core.root_music(),
-        named_music: core.named_music_values(),
-        pitch_scale: None,
-    };
+    let root = core.root_music();
+    let material = crate::resolve::MaterialCx::root(&root, core.named_music_values(), declaration);
+    // A voice a template made stands behind the instance that made it, and
+    // every event in it says so.
+    let cx = ExpandCx::root(&material, path);
     resolver.cursor = MusicalTime::ZERO;
     let segment = elaborate_place(
         resolver,
@@ -1619,7 +1608,7 @@ fn elaborate_items(
     resolver: &mut Resolver,
     share: &mut Share,
     items: &[VoiceItem],
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     scope: Scope,
 ) -> Segment {
     elaborate_place(resolver, share, items, cx, scope, Place::Material)
@@ -1646,7 +1635,7 @@ fn elaborate_place(
     resolver: &mut Resolver,
     share: &mut Share,
     items: &[VoiceItem],
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     scope: Scope,
     place: Place,
 ) -> Segment {
@@ -1755,7 +1744,7 @@ fn articulations_of(resolver: &mut Resolver, names: &[String], span: SourceSpan)
 fn elaborate_grace(
     resolver: &mut Resolver,
     statement: &musa_language::ast::GraceStmt,
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     scope: Scope,
 ) -> Segment {
     let span = resolve::trimmed_span(statement.syntax());
@@ -1813,7 +1802,7 @@ fn elaborate_mark(
     resolver: &mut Resolver,
     share: &mut Share,
     statement: &musa_language::ast::MarkStmt,
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     scope: Scope,
 ) -> Segment {
     use crate::marks::{Anchor, Argument, MarkArgument};
@@ -1924,8 +1913,8 @@ fn written_span(node: &musa_language::SyntaxNode) -> SourceSpan {
 /// `step` then walks. Writing `in scale c harmonic_minor` around the passage
 /// is how the other minor collections are asked for, and neither reading
 /// changes the other.
-fn scale_in_force(resolver: &Resolver, cx: &ExpandCx) -> Option<crate::scale::Scale> {
-    if let Some(scale) = cx.pitch_scale {
+fn scale_in_force(resolver: &Resolver, cx: &ExpandCx<'_>) -> Option<crate::scale::Scale> {
+    if let Some(scale) = cx.pitch_scale() {
         return Some(scale);
     }
     // The key in force is the latest one written at or before the cursor,
@@ -1946,7 +1935,7 @@ fn scale_in_force(resolver: &Resolver, cx: &ExpandCx) -> Option<crate::scale::Sc
 fn resolve_pitch_term(
     resolver: &mut Resolver,
     term: &crate::core::PitchTerm,
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     span: SourceSpan,
 ) -> Option<WrittenPitch> {
     let scale = scale_in_force(resolver, cx);
@@ -1993,12 +1982,12 @@ fn elaborate_in_scale(
     resolver: &mut Resolver,
     share: &mut Share,
     stmt: &musa_language::ast::InScaleStmt,
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     scope: Scope,
     place: Place,
 ) -> Segment {
     let span = resolve::trimmed_span(stmt.syntax());
-    let Some(scale) = cx.music.scale_at(span) else {
+    let Some(scale) = cx.music().scale_at(span) else {
         resolver.error(
             Code::NotAValue,
             "this scale cannot be read",
@@ -2007,12 +1996,7 @@ fn elaborate_in_scale(
         );
         return Segment::empty();
     };
-    let mut inner = cx.clone();
-    inner.pitch_scale = Some(scale);
-    inner.path.push(ExpansionStep::ScaleContext {
-        scale: scale.to_string(),
-    });
-    elaborate_place(resolver, share, &stmt.items(), &inner, scope, place)
+    elaborate_place(resolver, share, &stmt.items(), &cx.in_scale(scale), scope, place)
 }
 
 /// `stack c4 major7/2` — a chord class sounded in close position.
@@ -2024,7 +2008,7 @@ fn elaborate_in_scale(
 fn elaborate_stack(
     resolver: &mut Resolver,
     stmt: &musa_language::ast::StackStmt,
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     scope: Scope,
 ) -> Segment {
     let node_span = resolve::trimmed_span(stmt.syntax());
@@ -2097,7 +2081,7 @@ fn sounded_voicing(
     duration: &NotatedDuration,
     articulations: &[crate::Mark],
     tied: bool,
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     scope: Scope,
     node_span: SourceSpan,
 ) -> Segment {
@@ -2132,7 +2116,7 @@ fn elaborate_item(
     resolver: &mut Resolver,
     share: &mut Share,
     item: &VoiceItem,
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     scope: Scope,
     place: Place,
 ) -> Segment {
@@ -2153,7 +2137,7 @@ fn elaborate_item(
                 return Segment::empty();
             };
             let span = resolve::trimmed_span(note.syntax());
-            let pitch = if let Some(term) = cx.music.pitch_at(span) {
+            let pitch = if let Some(term) = cx.music().pitch_at(span) {
                 // The statement's span is the lookup key; the diagnostic wants
                 // the pitch the composer wrote, not the whole event.
                 let written = note.pitch_expr().map_or(span, |node| written_span(&node));
@@ -2264,10 +2248,7 @@ fn elaborate_item(
                 );
                 return Segment::empty();
             };
-            let mut inner = cx.clone();
-            inner.intervals.push(interval);
-            inner.path.push(ExpansionStep::Transposition(interval));
-            elaborate_items(resolver, share, &transpose.items(), &inner, scope)
+            elaborate_items(resolver, share, &transpose.items(), &cx.transposed(interval), scope)
         }
         VoiceItem::Repeat(repeat) => elaborate_repeat(resolver, share, repeat, cx, scope),
         VoiceItem::Ending(ending) => {
@@ -2332,8 +2313,7 @@ fn elaborate_item(
                 return Segment::empty();
             };
             let origin = origin_of(cx, span);
-            let mut inner = cx.clone();
-            inner.scale = cx.scale * Ratio::new(i64::from(den), i64::from(num));
+            let inner = cx.scaled(Ratio::new(i64::from(den), i64::from(num)));
             let body = elaborate_items(resolver, share, &tuplet.items(), &inner, scope);
             region(body, ScoreFact::new(scope, FactKind::Tuplet { num, den }, origin))
         }
@@ -2350,14 +2330,12 @@ fn elaborate_item(
                 );
                 return Segment::empty();
             };
-            let mut inner = cx.clone();
-            inner.path.push(ExpansionStep::Stretch(factor));
+            let inner = cx.with_step(ExpansionStep::Stretch(factor));
             let segment = elaborate_items(resolver, share, &stretch.items(), &inner, scope);
             stretch_segment(share, segment, factor)
         }
         VoiceItem::Retrograde(retrograde) => {
-            let mut inner = cx.clone();
-            inner.path.push(ExpansionStep::Retrograde);
+            let inner = cx.with_step(ExpansionStep::Retrograde);
             let segment = elaborate_items(resolver, share, &retrograde.items(), &inner, scope);
             retrograde_segment(share, segment)
         }
@@ -2373,8 +2351,7 @@ fn elaborate_item(
                 );
                 return Segment::empty();
             };
-            let mut inner = cx.clone();
-            inner.path.push(ExpansionStep::Inversion { axis: text.clone() });
+            let inner = cx.with_step(ExpansionStep::Inversion { axis: text.clone() });
             let segment = elaborate_items(resolver, share, &invert.items(), &inner, scope);
             invert_segment(resolver, share, segment, axis, &text)
         }
@@ -2410,12 +2387,12 @@ fn parse_tuplet_ratio(text: &str) -> Option<(u32, u32)> {
 }
 
 /// The written duration of a statement, scaled by the enclosing tuplets.
-fn resolve_scaled_duration(resolver: &mut Resolver, node: &SyntaxNode, cx: &ExpandCx) -> Option<NotatedDuration> {
+fn resolve_scaled_duration(resolver: &mut Resolver, node: &SyntaxNode, cx: &ExpandCx<'_>) -> Option<NotatedDuration> {
     let duration = resolve::resolve_duration(resolver, node, cx)?;
-    Some(if cx.scale == Ratio::ONE {
+    Some(if cx.scale() == Ratio::ONE {
         duration
     } else {
-        duration.scaled(cx.scale)
+        duration.scaled(cx.scale())
     })
 }
 
@@ -2429,7 +2406,7 @@ fn resolve_scaled_duration(resolver: &mut Resolver, node: &SyntaxNode, cx: &Expa
 fn held(
     resolver: &mut Resolver,
     to: Option<&str>,
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     duration: NotatedDuration,
     span: SourceSpan,
 ) -> (NotatedDuration, Option<crate::score::FreeDuration>) {
@@ -2444,7 +2421,7 @@ fn held(
         );
         return (duration, None);
     };
-    let most = crate::MusicalDuration::new(most * cx.scale);
+    let most = crate::MusicalDuration::new(most * cx.scale());
     if most.as_ratio() < duration.value.as_ratio() {
         resolver.report(
             Diagnostic::error(Code::NotAValue, "a held note counts upwards")
@@ -2454,7 +2431,7 @@ fn held(
         return (duration, None);
     }
     let least = duration.value;
-    let sounds = resolver.decide_duration(&cx.choice, least.as_ratio(), most.as_ratio(), span);
+    let sounds = resolver.decide_duration(cx.choice(), least.as_ratio(), most.as_ratio(), span);
     (
         NotatedDuration {
             value: crate::MusicalDuration::new(sounds),
@@ -2474,7 +2451,7 @@ fn elaborate_mobile(
     resolver: &mut Resolver,
     share: &mut Share,
     mobile: &musa_language::ast::MobileStmt,
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     scope: Scope,
 ) -> Segment {
     let span = resolve::trimmed_span(mobile.syntax());
@@ -2487,7 +2464,7 @@ fn elaborate_mobile(
         );
         return Segment::empty();
     }
-    let order = resolver.decide_order(&cx.choice, &names, span);
+    let order = resolver.decide_order(cx.choice(), &names, span);
     let name_tokens = mobile.fragment_tokens();
     let mut played: Vec<Segment> = Vec::with_capacity(names.len());
     for index in &order {
@@ -2545,7 +2522,7 @@ fn sequence_of(segments: Vec<Segment>) -> Segment {
 fn elaborate_improvise(
     resolver: &mut Resolver,
     stmt: &musa_language::ast::ImproviseStmt,
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     scope: Scope,
 ) -> Segment {
     let span = resolve::trimmed_span(stmt.syntax());
@@ -2557,7 +2534,7 @@ fn elaborate_improvise(
         );
         return Segment::empty();
     };
-    let extent = beats(length * cx.scale);
+    let extent = beats(length * cx.scale());
     let fact = ScoreFact::new(scope, FactKind::Improvise { over: stmt.over() }, origin_of(cx, span));
     let Ok(region) = Span::new(Position::ZERO, extent.reach()) else {
         return Segment::empty();
@@ -2585,7 +2562,7 @@ fn elaborate_improvise(
 fn ranged_count(
     resolver: &mut Resolver,
     repeat: &musa_language::ast::RepeatStmt,
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     least: u32,
 ) -> Option<(u32, Option<(u32, u32)>)> {
     let Some(most) = repeat.most() else {
@@ -2600,7 +2577,7 @@ fn ranged_count(
         );
         return None;
     };
-    let count = resolver.decide_count(&cx.choice, least, most, span).1;
+    let count = resolver.decide_count(cx.choice(), least, most, span).1;
     Some((count, Some((least, most))))
 }
 
@@ -2619,7 +2596,7 @@ fn elaborate_repeat(
     resolver: &mut Resolver,
     share: &mut Share,
     repeat: &musa_language::ast::RepeatStmt,
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     scope: Scope,
 ) -> Segment {
     let least: u32 = repeat.count().and_then(|text| text.parse().ok()).unwrap_or(0);
@@ -2656,7 +2633,14 @@ fn elaborate_repeat(
         return Segment::empty();
     }
 
-    let mark = |iteration: u32| mark_of(cx.path.len(), &[ExpansionStep::RepeatIteration(iteration)], None, None);
+    let mark = |iteration: u32| {
+        mark_of(
+            cx.path().len(),
+            &[ExpansionStep::RepeatIteration(iteration)],
+            None,
+            None,
+        )
+    };
     let body_occurrences = body.occurrences;
     let body_name = share.bind_anonymous(body.term);
     let ending_names: Vec<(String, Duration<WrittenTime>, u64)> = played
@@ -2725,7 +2709,7 @@ fn ending_of(
 fn expanded_repeat(
     resolver: &mut Resolver,
     share: &mut Share,
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     body: Segment,
     endings: &[Segment],
     count: u32,
@@ -2733,7 +2717,7 @@ fn expanded_repeat(
     let body_output = body.occurrences.saturating_mul(u64::from(count));
     let ending_output = repeated_ending_occurrences(endings, count);
     let output = body_output.saturating_add(ending_output);
-    let span = cx.music.definition_span;
+    let span = cx.music().definition_span;
     if !share.preflight_output("expanding a tied repeat", output, span) {
         share.report_exhaustion(resolver);
         return Segment::empty();
@@ -2745,7 +2729,12 @@ fn expanded_repeat(
         .collect();
     let mut segments = Vec::with_capacity(count as usize);
     for iteration in 0..count {
-        let mark = mark_of(cx.path.len(), &[ExpansionStep::RepeatIteration(iteration)], None, None);
+        let mark = mark_of(
+            cx.path().len(),
+            &[ExpansionStep::RepeatIteration(iteration)],
+            None,
+            None,
+        );
         let mut copy = body.clone();
         instantiate(&mark, &mut copy);
         segments.push(copy);
@@ -2855,7 +2844,7 @@ fn elaborate_bar(
     resolver: &mut Resolver,
     share: &mut Share,
     bar: &musa_language::ast::BarStmt,
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     scope: Scope,
     place: Place,
 ) -> Segment {
@@ -2866,13 +2855,7 @@ fn elaborate_bar(
     // in the middle of a measure, and a measure is a `bar`. A named bar can be
     // answered from another voice, which makes it material like a motif.
     let inside = if bar.name().is_none() { place } else { Place::Material };
-    // A named bar plays here *and* answers `use`, and both elaborations must
-    // reach the same decision — so its body carries the bar's own prefix, the
-    // one a `use` would build, rather than this voice's.
-    let named = bar.name().map(|name| ExpandCx {
-        choice: crate::ChoicePath::default().then(crate::ChoiceStep::Bar(name.as_str().into())),
-        ..cx.clone()
-    });
+    let named = bar.name().map(|name| cx.in_bar(&name));
     let body = elaborate_place(
         resolver,
         share,
@@ -2925,19 +2908,18 @@ fn elaborate_assert(
     resolver: &mut Resolver,
     share: &mut Share,
     assertion: &musa_language::ast::AssertStmt,
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     scope: Scope,
     place: Place,
 ) -> Segment {
     let at = resolver.cursor;
     let span = resolve::trimmed_span(assertion.syntax());
     let before = errors_so_far(resolver);
-    let claim = cx.music.claim_at(span).cloned();
-    let mut inner = cx.clone();
+    let claim = cx.music().claim_at(span).cloned();
     // The step goes on before the body is elaborated, exactly as `in scale`
     // puts its own on: a fact carries the steps that were in force when it was
     // made, and an assertion is in force over everything inside its braces.
-    inner.path.push(ExpansionStep::Assertion {
+    let inner = cx.with_step(ExpansionStep::Assertion {
         // The checked claim when there is one, so the step reads back with its
         // arguments; the bare name when the claim did not survive checking, so
         // that a fact under a misspelled assertion still says what was written
@@ -2996,7 +2978,7 @@ fn elaborate_assert(
 fn elaborate_meter(
     resolver: &mut Resolver,
     stmt: &musa_language::ast::MeterStmt,
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     place: Place,
 ) -> Segment {
     let span = resolve::trimmed_span(stmt.syntax());
@@ -3027,7 +3009,7 @@ fn elaborate_senza(
     resolver: &mut Resolver,
     share: &mut Share,
     stmt: &musa_language::ast::SenzaStmt,
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     scope: Scope,
     place: Place,
 ) -> Segment {
@@ -3066,7 +3048,7 @@ fn prevailing_meter(resolver: &Resolver) -> Meter {
 
 /// The occurrence a meter change contributes, and the record `resolve_meters`
 /// folds into barlines afterwards.
-fn meter_change(resolver: &mut Resolver, meter: Meter, cx: &ExpandCx, span: SourceSpan) -> Segment {
+fn meter_change(resolver: &mut Resolver, meter: Meter, cx: &ExpandCx<'_>, span: SourceSpan) -> Segment {
     resolver.meter_changes.push((resolver.cursor, meter, span));
     Segment::literal(point(ScoreFact::new(
         Scope::Piece,
@@ -3090,7 +3072,7 @@ fn meter_change(resolver: &mut Resolver, meter: Meter, cx: &ExpandCx, span: Sour
 fn elaborate_tempo(
     resolver: &mut Resolver,
     stmt: &musa_language::ast::TempoStmt,
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     place: Place,
 ) -> Segment {
     let span = resolve::trimmed_span(stmt.syntax());
@@ -3112,7 +3094,12 @@ fn elaborate_tempo(
 /// rule's answer (`context.rs`), so a part that opened in its own key keeps
 /// it until the piece says otherwise and follows the piece from there — the
 /// viola case the `Latest` rule was written for.
-fn elaborate_key(resolver: &mut Resolver, stmt: &musa_language::ast::KeyStmt, cx: &ExpandCx, place: Place) -> Segment {
+fn elaborate_key(
+    resolver: &mut Resolver,
+    stmt: &musa_language::ast::KeyStmt,
+    cx: &ExpandCx<'_>,
+    place: Place,
+) -> Segment {
     let span = resolve::trimmed_span(stmt.syntax());
     if place == Place::Material {
         resolver.report(misplaced_context("key", span));
@@ -3120,7 +3107,7 @@ fn elaborate_key(resolver: &mut Resolver, stmt: &musa_language::ast::KeyStmt, cx
     }
     // Written out, or named: `key k;` inside a template's voice is the value
     // the instance supplied, evaluated before any of this ran.
-    let Some(key) = resolve::parse_key(stmt).or_else(|| cx.music.key_at(span)) else {
+    let Some(key) = resolve::parse_key(stmt).or_else(|| cx.music().key_at(span)) else {
         resolver.error(
             Code::NotAValue,
             "this key cannot be read",
@@ -3150,7 +3137,7 @@ fn elaborate_key(resolver: &mut Resolver, stmt: &musa_language::ast::KeyStmt, cx
 fn elaborate_clef(
     resolver: &mut Resolver,
     stmt: &musa_language::ast::ClefStmt,
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     scope: Scope,
     place: Place,
 ) -> Segment {
@@ -3346,14 +3333,14 @@ fn elaborate_use(
     resolver: &mut Resolver,
     share: &mut Share,
     call: &musa_language::ast::UseStmt,
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     scope: Scope,
 ) -> Segment {
     let call_span = resolve::trimmed_span(call.syntax());
-    let Some(music) = cx.music.music_at(call_span).cloned() else {
+    let Some(music) = cx.music().music_at(call_span) else {
         let name = call.motif().unwrap_or_default();
         let mut known: Vec<&str> = resolver.motifs.keys().map(String::as_str).collect();
-        known.extend(cx.named_music.keys().map(String::as_str));
+        known.extend(cx.known_names());
         resolver.report(
             Diagnostic::error(Code::UnknownName, format!("cannot find `{name}`"))
                 .at(call_span, "not declared in this piece")
@@ -3361,7 +3348,7 @@ fn elaborate_use(
         );
         return Segment::empty();
     };
-    let reference = instantiate_music(resolver, share, &music, cx, scope, call_span);
+    let reference = instantiate_music(resolver, share, music, cx, scope, call_span);
     if call.overrides().is_empty() {
         return reference;
     }
@@ -3375,7 +3362,7 @@ fn instantiate_music(
     resolver: &mut Resolver,
     share: &mut Share,
     music: &crate::core::Music,
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     scope: Scope,
     call_span: SourceSpan,
 ) -> Segment {
@@ -3407,7 +3394,7 @@ fn instantiate_music(
             resolver.report(diagnostic);
             return Segment::empty();
         }
-        if *index >= cx.max_motif {
+        if *index >= cx.max_motif() {
             let word = material.word();
             resolver.report(
                 Diagnostic::error(Code::Misplaced, format!("{word} `{name}` is declared after this one"))
@@ -3426,40 +3413,27 @@ fn instantiate_music(
             (
                 format!("value@{}:{}", music.definition_span.start, music.definition_span.end),
                 None,
-                cx.max_motif,
-                cx.declaration,
-                cx.foreign,
+                cx.max_motif(),
+                cx.declaration(),
+                cx.foreign(),
             )
         },
         |(name, material, index, declaration, _, foreign)| {
             (name.clone(), Some(*material), *index, *declaration, *foreign)
         },
     );
-    let mut params = cx.params.clone();
-    params.extend(music.bindings.clone());
-    let inner = ExpandCx {
-        params,
-        intervals: cx.intervals.clone(),
-        path: Vec::new(),
-        declaration,
-        origin_span: Some(SHARED_ORIGIN),
-        max_motif: index,
-        scale: cx.scale,
-        pitch_scale: cx.pitch_scale,
-        foreign,
-        choice: material.map_or_else(
-            || cx.choice.clone(),
-            |material| {
-                crate::ChoicePath::default().then(match material {
-                    crate::resolve::Material::Bar => crate::ChoiceStep::Bar(name.as_str().into()),
-                    crate::resolve::Material::Motif => crate::ChoiceStep::Motif(name.as_str().into()),
-                    crate::resolve::Material::Fragment => crate::ChoiceStep::Fragment(name.as_str().into()),
-                })
-            },
-        ),
-        music: music.clone(),
-        named_music: cx.named_music.clone(),
-    };
+    let choice = material.map_or_else(
+        || cx.choice().clone(),
+        |material| {
+            crate::ChoicePath::default().then(match material {
+                crate::resolve::Material::Bar => crate::ChoiceStep::Bar(name.as_str().into()),
+                crate::resolve::Material::Motif => crate::ChoiceStep::Motif(name.as_str().into()),
+                crate::resolve::Material::Fragment => crate::ChoiceStep::Fragment(name.as_str().into()),
+            })
+        },
+    );
+    let entered = cx.material().entered(music, declaration, index, foreign);
+    let inner = cx.entering(&entered, choice);
     let key = music_key(&name, &inner, music.definition_span, scale_in_force(resolver, &inner));
     let (binding, extent, occurrences) = match share.lookup(&key) {
         // A hit charges the output meter nothing, and neither did the miss.
@@ -3480,7 +3454,7 @@ fn instantiate_music(
         }
     };
     let steps = cx
-        .path
+        .path()
         .iter()
         .cloned()
         .chain(std::iter::once(ExpansionStep::MotifApplication {
@@ -3505,26 +3479,26 @@ fn instantiate_music(
 /// and neither is a property of the motif. Naming it directly is what lets
 /// the site itself go, because the site is otherwise carried at the
 /// *reference*, in its mark, and never baked into the body.
-fn music_key(name: &str, inner: &ExpandCx, definition: SourceSpan, pitch: Option<crate::scale::Scale>) -> String {
+fn music_key(name: &str, inner: &ExpandCx<'_>, definition: SourceSpan, pitch: Option<crate::scale::Scale>) -> String {
     let mut key = format!(
         "{name}|{}:{}|pitch={}|scale={}|decl={:?}|limit={}|foreign={}|choice={:?}|",
         definition.start,
         definition.end,
         pitch.map_or_else(|| "-".to_owned(), |scale| scale.to_string()),
-        inner.scale,
-        inner.declaration,
-        inner.max_motif,
-        inner.foreign,
-        inner.choice,
+        inner.scale(),
+        inner.declaration(),
+        inner.max_motif(),
+        inner.foreign(),
+        inner.choice(),
     );
-    for interval in &inner.intervals {
+    for interval in inner.intervals() {
         let _ = write!(key, "{interval:?},");
     }
     key.push('|');
-    for (param, value) in &inner.params {
+    for (param, value) in inner.bindings() {
         let _ = write!(key, "{param}={value:?};");
     }
-    append_contextual_key(&mut key, &inner.music);
+    append_contextual_key(&mut key, inner.music());
     key
 }
 
@@ -3612,31 +3586,28 @@ fn elaborate_music_value(
     resolver: &mut Resolver,
     share: &mut Share,
     music: &crate::core::Music,
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     scope: Scope,
 ) -> Segment {
-    let mut local = cx.clone();
-    local.params.extend(music.bindings.clone());
-    local.music = music.clone();
+    let material = cx.material().nested(music);
+    let local = cx.rebased(&material);
     match music.operation.as_deref() {
         None => elaborate_items(resolver, share, &music.items, &local, scope),
         Some(crate::core::MusicOperation::Transpose { interval, source }) => {
-            local.intervals.push(*interval);
-            local.path.push(ExpansionStep::Transposition(*interval));
-            elaborate_music_value(resolver, share, source, &local, scope)
+            elaborate_music_value(resolver, share, source, &local.transposed(*interval), scope)
         }
         Some(crate::core::MusicOperation::Stretch { factor, source }) => {
-            local.path.push(ExpansionStep::Stretch(*factor));
+            let local = local.with_step(ExpansionStep::Stretch(*factor));
             let segment = elaborate_music_value(resolver, share, source, &local, scope);
             stretch_segment(share, segment, *factor)
         }
         Some(crate::core::MusicOperation::Retrograde { source }) => {
-            local.path.push(ExpansionStep::Retrograde);
+            let local = local.with_step(ExpansionStep::Retrograde);
             let segment = elaborate_music_value(resolver, share, source, &local, scope);
             retrograde_segment(share, segment)
         }
         Some(crate::core::MusicOperation::Invert { axis, source }) => {
-            local.path.push(ExpansionStep::Inversion { axis: axis.to_string() });
+            let local = local.with_step(ExpansionStep::Inversion { axis: axis.to_string() });
             let segment = elaborate_music_value(resolver, share, source, &local, scope);
             invert_segment(resolver, share, segment, *axis, &axis.to_string())
         }
@@ -3660,7 +3631,7 @@ fn elaborate_music_value(
             }
         }
         Some(crate::core::MusicOperation::MapNotePitches { mapper, source }) => {
-            local.path.push(ExpansionStep::MapNotePitches);
+            let local = local.with_step(ExpansionStep::MapNotePitches);
             let segment = elaborate_music_value(resolver, share, source, &local, scope);
             map_note_pitches_segment(resolver, share, segment, mapper)
         }
@@ -3706,7 +3677,7 @@ fn kernel_quote_segment(
     share: &mut Share,
     term: &Term<WrittenTime, ScoreFact>,
     holes: &[(String, Ratio<i64>, crate::core::Music)],
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     scope: Scope,
     span: SourceSpan,
 ) -> Segment {
@@ -3716,13 +3687,13 @@ fn kernel_quote_segment(
     // Scope and origin are supplied here rather than read: the checker made
     // the quote leave both blank, because material does not choose the voice
     // it is used in.
-    let mut path = cx.path.clone();
+    let mut path = cx.path().to_vec();
     path.push(ExpansionStep::KernelSplice { at: Ratio::new(0, 1) });
     assembled.map_payloads(&mut |fact| {
         fact.scope = scope;
-        fact.origin.source_span = cx.origin_span.unwrap_or(span);
+        fact.origin.source_span = cx.source_span(span);
         fact.origin.definition_span = span;
-        fact.origin.declaration = cx.declaration;
+        fact.origin.declaration = cx.declaration();
         fact.origin.expansion_path.clone_from(&path);
     });
     // Reverse, so the first hole's binding ends up outermost and a later
@@ -3730,8 +3701,7 @@ fn kernel_quote_segment(
     // make that impossible anyway, and the order keeps the printed term
     // reading in the order the quote's holes do.
     for (name, locus, music) in holes.iter().rev() {
-        let mut inner = cx.clone();
-        inner.path.push(ExpansionStep::KernelSplice { at: *locus });
+        let inner = cx.with_step(ExpansionStep::KernelSplice { at: *locus });
         let segment = elaborate_music_value(resolver, share, music, &inner, scope);
         occurrences = occurrences.saturating_add(segment.occurrences);
         assembled = Term::bind(name.clone(), segment.term, assembled);
@@ -3762,7 +3732,7 @@ fn elaborate_fragment(
     resolver: &mut Resolver,
     share: &mut Share,
     name: &str,
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     scope: Scope,
     span: SourceSpan,
     use_span: SourceSpan,
@@ -3780,7 +3750,7 @@ fn elaborate_fragment(
         );
         return Segment::empty();
     }
-    let Some(music) = cx.named_music.get(name).cloned() else {
+    let Some(music) = cx.fragment(name) else {
         let known: Vec<&str> = resolver.motifs.keys().map(String::as_str).collect();
         resolver.report(
             Diagnostic::error(Code::UnknownName, format!("cannot find `{name}`"))
@@ -3805,12 +3775,12 @@ fn elaborate_fragment(
         return Segment::empty();
     }
     // A name in a mobile's list is a use of the fragment it resolves to.
-    if !cx.foreign {
+    if !cx.foreign() {
         resolver
             .references
             .record_use(crate::resolve::NameKind::Fragment, name, use_span);
     }
-    instantiate_music(resolver, share, &music, cx, scope, span)
+    instantiate_music(resolver, share, music, cx, scope, span)
 }
 
 /// Apply an occurrence's `with { note n = <pitch>; }` overrides (roadmap §9).
@@ -4123,12 +4093,12 @@ fn point(fact: ScoreFact) -> VoiceTrack {
 
 /// The origin for an event under this expansion context (mirrors the direct
 /// lowerer: motif applications point at the call site).
-fn origin_of(cx: &ExpandCx, span: SourceSpan) -> Origin {
+fn origin_of(cx: &ExpandCx<'_>, span: SourceSpan) -> Origin {
     Origin {
-        source_span: cx.origin_span.unwrap_or(span),
+        source_span: cx.source_span(span),
         definition_span: span,
-        declaration: cx.declaration,
-        expansion_path: cx.path.clone(),
+        declaration: cx.declaration(),
+        expansion_path: cx.path().to_vec(),
     }
 }
 
@@ -4140,11 +4110,11 @@ fn origin_of(cx: &ExpandCx, span: SourceSpan) -> Origin {
 fn apply_intervals(
     resolver: &mut Resolver,
     pitch: WrittenPitch,
-    cx: &ExpandCx,
+    cx: &ExpandCx<'_>,
     blame: SourceSpan,
 ) -> Option<WrittenPitch> {
     let mut current = pitch;
-    for interval in &cx.intervals {
+    for interval in cx.intervals() {
         let Some(next) = current.transpose(*interval) else {
             resolver.report(
                 Diagnostic::error(
