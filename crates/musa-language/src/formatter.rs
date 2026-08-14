@@ -362,6 +362,35 @@ fn line_tail(list: &SyntaxNode, enclosing: &[bool], layout: &Layout) -> usize {
     width
 }
 
+/// Whether a branch of `owner` continues the line it is written on rather than
+/// ending it.
+///
+/// Neither branch of a conditional ends anything: `else` follows the consequent
+/// and closes back onto its brace, and whatever the whole `if` was written into
+/// — a `,`, a `;`, nothing — follows the alternative. A ladder therefore reads
+/// `} else if … {` down one column instead of putting each `else` on a line of
+/// its own, and the comma after a conditional arm stays on the arm.
+fn continues_past_a_branch(owner: &SyntaxNode) -> bool {
+    owner.kind() == SyntaxKind::IfExpr
+}
+
+/// Whether `child` is a consequent of the conditional `owner` — a branch that
+/// `else` follows, rather than the alternative the whole `if` ends with.
+///
+/// Reaching this question at all means the conditional did not fit on one line:
+/// its parent measured it and wrote it out longhand instead. A rung whose body
+/// still fits would then stay on the line, and the ladder would keep growing
+/// rightwards until some condition's argument list was broken to make room —
+/// a break taken in the wrong place, on a call rather than between rungs. So a
+/// consequent goes down the page and the next rung opens with `} else if` back
+/// at the ladder's own indent. The alternative is exempt: nothing follows it to
+/// push anything rightwards, and `} else { None }` reads as one closing line.
+fn opens_a_further_rung(owner: &SyntaxNode, child: &SyntaxNode) -> bool {
+    owner.kind() == SyntaxKind::IfExpr
+        && child.kind() == SyntaxKind::BlockExpr
+        && owner.children().last().as_ref() != Some(child)
+}
+
 /// Whether this node is written as a braced body, so its `{` ends the line the
 /// thing it belongs to started.
 fn opens_a_body(kind: SyntaxKind) -> bool {
@@ -427,18 +456,27 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer, layout: &Layout) {
                 // A bar or a grace note owns its line, so its width is
                 // measured from the indent. A block is a body written after
                 // what it belongs to — `fn f(x: nat) -> nat` — so its width
-                // is measured from where the line has already reached.
-                let start = if child.kind() == SyntaxKind::BlockExpr {
+                // is measured from where the line has already reached. A rung
+                // of an `else if` ladder is written after the `else`, which is
+                // the same situation: measured from the indent it would look
+                // like it fits, and then be written off the right edge, taking
+                // the break out on its condition's arguments instead of on the
+                // ladder.
+                let start = if child.kind() == SyntaxKind::BlockExpr
+                    || (child.kind() == SyntaxKind::IfExpr && node.kind() == SyntaxKind::IfExpr)
+                {
                     writer.column()
                 } else {
                     writer.indent
                 };
-                if let Some(lines) = inline_run(&child, start, layout) {
+                if let Some(lines) = inline_run(&child, start, layout).filter(|_| !opens_a_further_rung(node, &child)) {
                     // A lambda's body is the last thing in an expression, not
                     // the last thing on a line: `map(fn (x) { f(x) }, xs)`
-                    // continues with a comma. Every other block ends what it
-                    // was written after.
-                    let inline = node.kind() == SyntaxKind::LambdaExpr;
+                    // continues with a comma. A conditional's branches are the
+                    // same — `else` follows one and the enclosing `,` or `;`
+                    // follows the other, so neither may end the line it is
+                    // written on.
+                    let inline = node.kind() == SyntaxKind::LambdaExpr || continues_past_a_branch(node);
                     let last = lines.len().saturating_sub(1);
                     for (index, line) in lines.iter().enumerate() {
                         if inline && index == last {
@@ -567,11 +605,14 @@ fn format_token(node: &SyntaxNode, token: &SyntaxToken, writer: &mut Writer) {
     // list's.
     let stacked = breakable_list(parent) && writer.list_breaks();
     // A lambda's braces close an expression that has more after it, so its
-    // `}` does not end the line the way a declaration's body does.
+    // `}` does not end the line the way a declaration's body does. A
+    // conditional's branches close the same way: what follows the consequent is
+    // `else`, and what follows the alternative is whatever the `if` was written
+    // into. Either way the brace leaves the line open for it.
     let held = parent == SyntaxKind::BlockExpr
         && node
             .parent()
-            .is_some_and(|owner| owner.kind() == SyntaxKind::LambdaExpr);
+            .is_some_and(|owner| owner.kind() == SyntaxKind::LambdaExpr || continues_past_a_branch(&owner));
     if kind == SyntaxKind::LineComment || kind == SyntaxKind::BlockComment {
         writer.comment(text);
         return;

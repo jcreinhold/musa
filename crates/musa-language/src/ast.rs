@@ -2362,6 +2362,17 @@ wrapper!(MatchArm, SyntaxKind::MatchArm);
 pub struct Pattern(SyntaxNode);
 wrapper!(Pattern, SyntaxKind::Pattern);
 
+/// `if condition { consequent } else { alternative }`.
+///
+/// Surface syntax the compiler elaborates to the two-arm boolean match, so
+/// nothing downstream of elaboration has an `if`. What a *reader* of the tree
+/// needs is which of the three children is which, and the answer is positional:
+/// the condition is the first expression, the consequent the second, the
+/// alternative the third — a nested `if` in that last position being an `else
+/// if` rung.
+pub struct IfExpr(SyntaxNode);
+wrapper!(IfExpr, SyntaxKind::IfExpr);
+
 /// `music { ... }`, a contextual notation-first music value.
 pub struct MusicExpr(SyntaxNode);
 wrapper!(MusicExpr, SyntaxKind::MusicExpr);

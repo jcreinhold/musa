@@ -566,10 +566,9 @@ library {
                 match sofar {
                     Some(found) -> Some(found),
                     None -> match one {
-                        Piece(spot, kind, spelling) -> match text_equal(kind, "PitchLiteral") {
-                            true -> Some(spelling),
-                            false -> None,
-                        },
+                        Piece(spot, kind, spelling) -> if text_equal(kind, "PitchLiteral") {
+                            Some(spelling)
+                        } else { None },
                         Trivia -> None,
                         Grouped(spot, delimiter, parts_inside) -> None,
                         Body(spot, read) -> None,
@@ -746,12 +745,10 @@ library {
             Closed -> Ok(beyond),
             Hangs(spelling, node) -> match next {
                 Silent -> Ok(Hangs(spelling, node)),
-                Sounds(other, at_node) -> match text_equal(spelling, other) {
-                    true -> Ok(beyond),
-                    false -> Err(Refused(
-                        at_node,
-                        "this staff ties a note to a differently spelled one"
-                    )),
+                Sounds(other, at_node) -> if text_equal(spelling, other) {
+                    Ok(beyond)
+                } else {
+                    Err(Refused(at_node, "this staff ties a note to a differently spelled one"))
                 },
             },
         }
@@ -1152,30 +1149,24 @@ library {
 
     // What a clef word names.
     fn clef_named(here: NodePath, spelling: Text) -> Option<Syntax> {
-        match text_equal(spelling, "treble") {
-            true -> Some(syntax_identifier(syntax_built(here, 38, 0), "Treble")),
-            false -> match text_equal(spelling, "bass") {
-                true -> Some(syntax_identifier(syntax_built(here, 38, 1), "Bass")),
-                false -> match text_equal(spelling, "alto") {
-                    true -> Some(syntax_identifier(syntax_built(here, 38, 2), "Alto")),
-                    false -> match text_equal(spelling, "tenor") {
-                        true -> Some(syntax_identifier(syntax_built(here, 38, 3), "Tenor")),
-                        false -> None,
-                    },
-                },
-            },
-        }
+        if text_equal(spelling, "treble") {
+            Some(syntax_identifier(syntax_built(here, 38, 0), "Treble"))
+        } else if text_equal(spelling, "bass") {
+            Some(syntax_identifier(syntax_built(here, 38, 1), "Bass"))
+        } else if text_equal(spelling, "alto") {
+            Some(syntax_identifier(syntax_built(here, 38, 2), "Alto"))
+        } else if text_equal(spelling, "tenor") {
+            Some(syntax_identifier(syntax_built(here, 38, 3), "Tenor"))
+        } else { None }
     }
 
     // What a spelling word names.
     fn spelling_named(here: NodePath, spelling: Text) -> Option<Syntax> {
-        match text_equal(spelling, "shortest_readable") {
-            true -> Some(syntax_identifier(syntax_built(here, 39, 0), "ShortestReadable")),
-            false -> match text_equal(spelling, "exact_values") {
-                true -> Some(syntax_identifier(syntax_built(here, 39, 1), "ExactValues")),
-                false -> None,
-            },
-        }
+        if text_equal(spelling, "shortest_readable") {
+            Some(syntax_identifier(syntax_built(here, 39, 0), "ShortestReadable"))
+        } else if text_equal(spelling, "exact_values") {
+            Some(syntax_identifier(syntax_built(here, 39, 1), "ExactValues"))
+        } else { None }
     }
 
     // `rest/8` — a written silence.
@@ -1341,12 +1332,13 @@ library {
                                     ),
                                     body,
                                     wanted,
-                                    match ratio_equal(span, wanted) {
-                                        true -> NoRefusal,
-                                        false -> Refused(
+                                    if ratio_equal(span, wanted) {
+                                        NoRefusal
+                                    } else {
+                                        Refused(
                                             node_at(region, spot),
                                             "this bar does not hold what it says it measures",
-                                        ),
+                                        )
                                     },
                                 ),
                             }
@@ -1594,18 +1586,19 @@ library {
             stray_word(region, spot, later, words),
             fn (said: Said) -> Pending {
                 match said {
-                    Said(word_at, said_kind, spelling) -> match text_equal(said_kind, kind) {
-                        true -> heading(
+                    Said(word_at, said_kind, spelling) -> if text_equal(said_kind, kind) {
+                        heading(
                             later,
                             which,
                             syntax_token(syntax_built(word_at, 50, 0), kind, spelling),
                             node_at(region, word_at),
-                        ),
-                        false -> refusing(
+                        )
+                    } else {
+                        refusing(
                             later,
                             node_at(region, word_at),
                             "this staff field was given the wrong kind of word",
-                        ),
+                        )
                     },
                 }
             },
@@ -1635,10 +1628,9 @@ library {
                         fn (given: Syntax) -> Pending {
                             heading(later, which, given, node_at(region, word_at))
                         },
-                        match text_equal(which, "clef") {
-                            true -> clef_named(word_at, spelling),
-                            false -> spelling_named(word_at, spelling),
-                        },
+                        if text_equal(which, "clef") {
+                            clef_named(word_at, spelling)
+                        } else { spelling_named(word_at, spelling) },
                     ),
                 }
             },
@@ -2092,23 +2084,19 @@ library {
         match syntax_fold(
             fn (here) { Unreadable(here) },
             fn (here, kind, text) {
-                match text_equal(kind, "Whitespace") {
-                    true -> Trivia,
-                    false -> match text_equal(kind, "LineComment") {
-                        true -> Trivia,
-                        false -> match text_equal(kind, "BlockComment") {
-                            true -> Trivia,
-                            false -> Piece(here, kind, text),
-                        },
-                    },
-                }
+                if text_equal(kind, "Whitespace") {
+                    Trivia
+                } else if text_equal(kind, "LineComment") {
+                    Trivia
+                } else if text_equal(kind, "BlockComment") {
+                    Trivia
+                } else { Piece(here, kind, text) }
             },
             fn (here, name) { Piece(here, "Identifier", name) },
             fn (here, delimiter, children) {
-                match text_equal(delimiter, "braces") {
-                    true -> Body(here, read_body(region, here, children)),
-                    false -> Grouped(here, delimiter, children),
-                }
+                if text_equal(delimiter, "braces") {
+                    Body(here, read_body(region, here, children))
+                } else { Grouped(here, delimiter, children) }
             },
             region,
         ) {

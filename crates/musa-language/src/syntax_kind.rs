@@ -245,6 +245,10 @@ pub enum SyntaxKind {
     ResultKw,
     /// `match`
     MatchKw,
+    /// `if`
+    IfKw,
+    /// `else`
+    ElseKw,
     /// `some`
     SomeKw,
     /// `none`
@@ -524,6 +528,14 @@ pub enum SyntaxKind {
     MatchExpr,
     /// One pattern and result in a match.
     MatchArm,
+    /// `if condition { consequent } else { alternative }`.
+    ///
+    /// Surface syntax with no core term behind it: the compiler elaborates it
+    /// to the two-arm boolean match that already exists
+    /// (`docs/rules/language/02-core-calculus.md` §1). The `else` is
+    /// mandatory, so there is no dangling-else question and an `else if`
+    /// ladder is one `IfExpr` nested in the alternative position of another.
+    IfExpr,
     /// A literal, binding, option, list, or product pattern.
     Pattern,
     /// `music { ... }`, a notation-first contextual music value.

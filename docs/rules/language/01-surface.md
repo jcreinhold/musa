@@ -17,13 +17,14 @@ function     := "fn" IDENT "(" params? ")" "->" type block
 param        := IDENT ":" type ("=" expr)?
 call         := expr "(" args? ")"
 expr         := literal | IDENT | path | "(" expr ")" | block | product | list | option
-              | call | match | music-expr
+              | call | match | conditional | music-expr
 block        := "{" expr "}"
 product      := "(" expr "," expr ("," expr)* ")"
 list         := "[" (expr ("," expr)*)? "]"
 option       := "None" | "Some" "(" expr ")"
 match        := "match" expr "{" match-arm ("," match-arm)* ","? "}"
 match-arm    := pattern "->" expr
+conditional  := "if" expr block "else" (block | conditional)
 pattern      := "_" | literal | IDENT | "None" | "Some" "(" IDENT ")"
               | "[" "]" | "[" IDENT "," ".." IDENT "]"
               | "(" IDENT "," IDENT ("," IDENT)* ")"
@@ -80,6 +81,19 @@ arrows keep the alternatives legible when an arm's expression spans lines. The i
 and other literal domains, options, empty/cons lists, and products. A bare identifier binds the whole value; `_`
 discards it. Prompt 96 defines exhaustiveness and rejects duplicate or unreachable arms. It also owns the constructor
 meaning of `[head, ..tail]`; `..` is two adjacent `.` tokens, not a new general range operator.
+
+`if condition { consequent } else { alternative }` is one expression and not a statement. The condition has type `Bool`,
+the two branches have one type between them, and that type is the conditional's. The `else` is mandatory: a one-armed
+conditional would need a value for the case it does not cover, and this language has neither a unit value in expression
+position nor an implicit failure. A ladder is written by putting another conditional after `else`, which nests in the
+alternative rather than adding a third keyword.
+
+It adds no term to the calculus. `if c { a } else { b }` elaborates to `match c { true -> a, false -> b }`, the
+exhaustive two-arm boolean match the surface already had, so it costs what that match costs and every rule about
+matching applies to it unchanged — `02-core-calculus.md` §1. What it buys is the reading: a value decided by a yes-or-no
+question is written as a yes-or-no question rather than as case analysis on a two-valued type, and a run of them is a
+ladder rather than a staircase of nested braces. Guards on match arms would flatten the same staircase and are refused
+separately; §6.2 keeps patterns at depth one and a guard proposal has to earn its own change.
 
 Structural folds do not add syntax. `nat_fold(zero, step, count)`, `list_fold_from_start(zero, step, values)`,
 `list_fold_from_end(zero, step, values)`, and `option_fold(zero, some_case, value)` are ordinary calls to compiler-owned

@@ -195,6 +195,8 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         SyntaxKind::ListKw => "List",
         SyntaxKind::ResultKw => "Result",
         SyntaxKind::MatchKw => "match",
+        SyntaxKind::IfKw => "if",
+        SyntaxKind::ElseKw => "else",
         SyntaxKind::SomeKw => "Some",
         SyntaxKind::NoneKw => "None",
         SyntaxKind::OkKw => "Ok",
@@ -311,6 +313,7 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::ExprArgList
         | SyntaxKind::ExprArg
         | SyntaxKind::MatchExpr
+        | SyntaxKind::IfExpr
         | SyntaxKind::MatchArm
         | SyntaxKind::Pattern
         | SyntaxKind::MusicExpr

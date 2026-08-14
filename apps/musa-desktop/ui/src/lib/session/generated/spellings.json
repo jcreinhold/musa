@@ -276,6 +276,14 @@
     "keyword"
   ],
   [
+    "if",
+    "keyword"
+  ],
+  [
+    "else",
+    "keyword"
+  ],
+  [
     "Some",
     "keyword"
   ],

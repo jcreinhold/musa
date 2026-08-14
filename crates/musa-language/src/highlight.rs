@@ -89,6 +89,8 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("List", SyntaxKind::ListKw),
     ("Result", SyntaxKind::ResultKw),
     ("match", SyntaxKind::MatchKw),
+    ("if", SyntaxKind::IfKw),
+    ("else", SyntaxKind::ElseKw),
     ("Some", SyntaxKind::SomeKw),
     ("None", SyntaxKind::NoneKw),
     ("Ok", SyntaxKind::OkKw),
@@ -313,6 +315,8 @@ impl TokenClass {
             | SyntaxKind::ListKw
             | SyntaxKind::ResultKw
             | SyntaxKind::MatchKw
+            | SyntaxKind::IfKw
+            | SyntaxKind::ElseKw
             | SyntaxKind::SomeKw
             | SyntaxKind::NoneKw
             | SyntaxKind::OkKw
@@ -429,6 +433,7 @@ impl TokenClass {
             | SyntaxKind::ExprArg
             | SyntaxKind::MatchExpr
             | SyntaxKind::MatchArm
+            | SyntaxKind::IfExpr
             | SyntaxKind::Pattern
             | SyntaxKind::MusicExpr
             | SyntaxKind::KernelQuote

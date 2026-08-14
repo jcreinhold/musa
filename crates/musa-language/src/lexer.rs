@@ -376,6 +376,10 @@ enum RawToken {
     ResultKw,
     #[token("match", priority = 3)]
     MatchKw,
+    #[token("if", priority = 3)]
+    IfKw,
+    #[token("else", priority = 3)]
+    ElseKw,
     #[token("Some", priority = 3)]
     SomeKw,
     #[token("None", priority = 3)]
@@ -533,6 +537,8 @@ impl RawToken {
             | Self::ListKw
             | Self::ResultKw
             | Self::MatchKw
+            | Self::IfKw
+            | Self::ElseKw
             | Self::SomeKw
             | Self::NoneKw
             | Self::OkKw
@@ -666,6 +672,8 @@ impl RawToken {
             Self::ListKw => SyntaxKind::ListKw,
             Self::ResultKw => SyntaxKind::ResultKw,
             Self::MatchKw => SyntaxKind::MatchKw,
+            Self::IfKw => SyntaxKind::IfKw,
+            Self::ElseKw => SyntaxKind::ElseKw,
             Self::SomeKw => SyntaxKind::SomeKw,
             Self::NoneKw => SyntaxKind::NoneKw,
             Self::OkKw => SyntaxKind::OkKw,

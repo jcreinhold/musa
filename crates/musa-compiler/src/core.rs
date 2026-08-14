@@ -5576,6 +5576,8 @@ impl Checker<'_> {
             self.scale_step(node)
         } else if kind == SyntaxKind::MatchExpr {
             self.match_expression(node, expected)
+        } else if kind == SyntaxKind::IfExpr {
+            self.if_expression(node, expected)
         } else if kind == SyntaxKind::MusicExpr {
             self.music_expression(node)
         } else if kind == SyntaxKind::KernelQuote {
@@ -6810,6 +6812,50 @@ impl Checker<'_> {
         Some(Expr {
             kind: ExprKind::Option(checked),
             ty: Type::Option(Box::new(member)),
+            span: crate::resolve::trimmed_span(node),
+        })
+    }
+
+    /// `if c { a } else { b }` — the two-arm boolean match, written the way an
+    /// author asks the question.
+    ///
+    /// The elaboration is the whole of it: there is no `If` term, no typing
+    /// rule, no reduction, and no measure case, because what this builds is
+    /// the `Match` the surface already had
+    /// (`docs/rules/language/02-core-calculus.md` §1). Adding a core term
+    /// would give `bool` two eliminators, which §5.6's own argument against
+    /// redundant eliminators refuses.
+    ///
+    /// Each of the three parts is checked at *its* span, so a non-boolean
+    /// condition is reported on the condition and a branch that disagrees is
+    /// reported on that branch — never on a synthesized match the author did
+    /// not write. The consequent goes first so that, with no expected type
+    /// from above, it is the one that decides and the alternative is the one
+    /// asked to agree.
+    fn if_expression(&mut self, node: &SyntaxNode, expected: Option<&Type>) -> Option<Expr> {
+        let mut parts = node.children().filter(|child| is_expr_node(child.kind()));
+        let condition_node = parts.next()?;
+        let consequent_node = parts.next()?;
+        let alternative_node = parts.next()?;
+        let condition = self.check(&condition_node, Some(&Type::Bool))?;
+        let consequent = self.check(&consequent_node, expected)?;
+        let alternative = self.check(&alternative_node, Some(&consequent.ty))?;
+        let result = self.unifier.resolve(&consequent.ty);
+        Some(Expr {
+            kind: ExprKind::Match {
+                scrutinee: Box::new(condition),
+                arms: vec![
+                    CheckedArm {
+                        pattern: Pattern::Literal(Value::Bool(true)),
+                        body: consequent,
+                    },
+                    CheckedArm {
+                        pattern: Pattern::Literal(Value::Bool(false)),
+                        body: alternative,
+                    },
+                ],
+            },
+            ty: result,
             span: crate::resolve::trimmed_span(node),
         })
     }
@@ -10391,6 +10437,7 @@ fn is_expr_node(kind: SyntaxKind) -> bool {
             | SyntaxKind::KeyExpr
             | SyntaxKind::StepExpr
             | SyntaxKind::MatchExpr
+            | SyntaxKind::IfExpr
             | SyntaxKind::MusicExpr
             | SyntaxKind::KernelQuote
     )
@@ -12677,6 +12724,111 @@ mod tests {
                 .iter()
                 .any(|fix| fix.edits.iter().any(|edit| edit.replacement == "list_fold_from_start")),
             "the applicable fix must be the one that preserves the old meaning: {named:?}"
+        );
+    }
+
+    /// A conditional and the boolean match it elaborates to are the same
+    /// program — same answers, and the same number of charged nodes.
+    ///
+    /// This is the whole claim prompt 127dcfab makes. `if` adds no core term,
+    /// no typing rule, no reduction, no measure case, and no cost-table entry,
+    /// which is only true if the elaborated form is indistinguishable from the
+    /// match an author would have written by hand. Equal values would allow a
+    /// conditional that reached the same answer by a longer route; equal charge
+    /// is what says it is the same route. The ladder is included because
+    /// `else if` is not a form of its own — it is the alternative being another
+    /// conditional — so a three-rung ladder must cost what three nested matches
+    /// cost, not one frame more.
+    #[test]
+    fn a_conditional_is_the_boolean_match_it_elaborates_to() {
+        const CONDITIONAL: &str = "fn count(said: Text) -> Nat { \
+             if text_equal(said, \"none\") { 0 } \
+             else if text_equal(said, \"one\") { 1 } \
+             else { 9 } } \
+             let of_none: Nat = count(\"none\"); \
+             let of_one: Nat = count(\"one\"); \
+             let of_other: Nat = count(\"four\");";
+        const BY_HAND: &str = "fn count(said: Text) -> Nat { \
+             match text_equal(said, \"none\") { \
+             true -> 0, \
+             false -> match text_equal(said, \"one\") { true -> 1, false -> 9 }, \
+             } } \
+             let of_none: Nat = count(\"none\"); \
+             let of_one: Nat = count(\"one\"); \
+             let of_other: Nat = count(\"four\");";
+
+        let keyed = |source: &str| {
+            values(&format!("piece \"law\" {{ {source} }}"))
+                .unwrap_or_else(|| panic!("well-typed source was rejected: {source}"))
+                .iter()
+                .map(|(name, value)| (name.clone(), literal_key(value)))
+                .collect::<Vec<_>>()
+        };
+        let conditional = keyed(CONDITIONAL);
+        assert_eq!(
+            conditional,
+            [
+                ("count".to_owned(), "constructor".to_owned()),
+                ("of_none".to_owned(), "nat:0".to_owned()),
+                ("of_one".to_owned(), "nat:1".to_owned()),
+                ("of_other".to_owned(), "nat:9".to_owned()),
+            ]
+        );
+        assert_eq!(conditional, keyed(BY_HAND), "the conditional answered differently");
+
+        assert_eq!(
+            charged_nodes(CONDITIONAL),
+            charged_nodes(BY_HAND),
+            "the conditional cost more than the match it is"
+        );
+    }
+
+    /// A conditional has one result type, and the branch that disagrees is the
+    /// one the diagnostic points at.
+    ///
+    /// The consequent is checked first and fixes the type; the alternative is
+    /// then checked against it. That order is why the span lands on the second
+    /// branch rather than on the whole `if`, which would ask the reader to work
+    /// out which half was meant.
+    #[test]
+    fn a_conditional_whose_branches_disagree_names_the_branch_that_disagrees() {
+        let source = "piece \"law\" { let m: Nat = if true { 1 } else { \"two\" }; }";
+        let refused = refusals(source);
+        let mismatch = refused
+            .iter()
+            .find(|diagnostic| diagnostic.message.contains("expected `Nat`"))
+            .unwrap_or_else(|| panic!("branches of different types were accepted: {refused:?}"));
+        let at = mismatch
+            .labels
+            .iter()
+            .find(|label| label.primary)
+            .expect("a type error points somewhere");
+        assert_eq!(
+            &source[at.span.start as usize..at.span.end as usize],
+            "\"two\"",
+            "the diagnostic did not point at the disagreeing branch: {mismatch:?}"
+        );
+    }
+
+    /// What a conditional asks must be a `Bool`, and the refusal lands on the
+    /// condition rather than on the conditional around it.
+    #[test]
+    fn a_condition_that_is_not_a_bool_is_refused_where_it_is_written() {
+        let source = "piece \"law\" { let m: Nat = if 3 { 1 } else { 2 }; }";
+        let refused = refusals(source);
+        let mismatch = refused
+            .iter()
+            .find(|diagnostic| diagnostic.message.contains("expected `Bool`"))
+            .unwrap_or_else(|| panic!("a non-boolean condition was accepted: {refused:?}"));
+        let at = mismatch
+            .labels
+            .iter()
+            .find(|label| label.primary)
+            .expect("a type error points somewhere");
+        assert_eq!(
+            &source[at.span.start as usize..at.span.end as usize],
+            "3",
+            "the diagnostic did not point at the condition: {mismatch:?}"
         );
     }
 

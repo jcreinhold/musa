@@ -345,6 +345,16 @@
     "doc": "A `match` expression names each possible case of an option, list, product, boolean, or other finite value. The checker requires complete, non-overlapping arms.\n\n```musa\nfn keep(x: Option<Pitch>) -> Option<Pitch> { match x { None -> None, Some(p) -> Some(p), } }\n```"
   },
   {
+    "spelling": "if",
+    "summary": "choose between two values by a condition",
+    "doc": "`if condition { consequent } else { alternative }` is one expression, not a statement: it has a value, both branches have the same type, and the `else` is required. It is written out as the two-arm boolean `match` it stands for, so it costs exactly what that match costs.\n\n```musa\nfn clef_named(word: Text) -> Clef { if text_equal(word, \"treble\") { Treble } else { Bass } }\n```"
+  },
+  {
+    "spelling": "else",
+    "summary": "the other branch of an `if`",
+    "doc": "`else` introduces the value an `if` takes when its condition is false. It is mandatory — a one-armed conditional would need a value for the case it does not cover, and this language has none. Writing another `if` after it makes a ladder.\n\n```musa\nif quarters(n) { Quarter } else if halves(n) { Half } else { Whole }\n```"
+  },
+  {
     "spelling": "Some",
     "summary": "an option containing a value",
     "doc": "`Some(value)` constructs the present case of an `Option`; a `match` can bind the contained value. It carries its type's capital because it is one of that type's two constructors.\n\n```musa\nlet tonic: Option<Pitch> = Some(c4);\n```"

@@ -205,3 +205,82 @@ piece "Recovery" {
             (expression
               (name_expression
                 (MISSING identifier)))))))))
+
+==================
+expression if, including an else-if ladder
+==================
+
+piece "Conditionals" {
+  fn size(word: Text) -> Text {
+    if text_equal(word, "one") { "small" } else if text_equal(word, "two") { "middling" } else { "large" }
+  }
+  score { part piano { voice one { c4/1 } } }
+}
+
+---
+
+(source_file
+  (piece_declaration
+    (string)
+    (function_declaration
+      (identifier)
+      (parameter_list
+        (parameter
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier)))))
+      (type_expression
+        (type_name
+          (identifier)))
+      (block_expression
+        (expression
+          (if_expression
+            (expression
+              (application_expression
+                (name_expression
+                  (identifier))
+                (expression_argument_list
+                  (expression_argument
+                    (expression
+                      (name_expression
+                        (identifier))))
+                  (expression_argument
+                    (expression
+                      (literal_expression
+                        (string)))))))
+            (block_expression
+              (expression
+                (literal_expression
+                  (string))))
+            (if_expression
+              (expression
+                (application_expression
+                  (name_expression
+                    (identifier))
+                  (expression_argument_list
+                    (expression_argument
+                      (expression
+                        (name_expression
+                          (identifier))))
+                    (expression_argument
+                      (expression
+                        (literal_expression
+                          (string)))))))
+              (block_expression
+                (expression
+                  (literal_expression
+                    (string))))
+              (block_expression
+                (expression
+                  (literal_expression
+                    (string)))))))))
+    (score_declaration
+      (part_declaration
+        (identifier)
+        (voice_declaration
+          (identifier)
+          (note_statement
+            (pitch_literal)
+            (duration
+              (integer))))))))

@@ -490,6 +490,7 @@ module.exports = grammar({
     expression: ($) =>
       choice(
         $.match_expression,
+        $.if_expression,
         $.music_expression,
         $.kernel_quote,
         $.application_expression,
@@ -654,6 +655,18 @@ module.exports = grammar({
       ),
 
     match_arm: ($) => seq(field('pattern', $.pattern), '->', field('value', $.expression)),
+
+    // `else` is mandatory, so there is no dangling-else ambiguity to resolve
+    // and an `else if` ladder is one `if_expression` nested in the
+    // `alternative` field of another (Parser::if_expr).
+    if_expression: ($) =>
+      seq(
+        'if',
+        field('condition', $.expression),
+        field('consequent', $.block_expression),
+        'else',
+        field('alternative', choice($.block_expression, $.if_expression)),
+      ),
 
     pattern: ($) =>
       choice(

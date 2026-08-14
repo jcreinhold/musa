@@ -578,6 +578,18 @@ static MATCH: KeywordDoc = doc!(
     "A `match` expression names each possible case of an option, list, product, boolean, or other finite value. The checker requires complete, non-overlapping arms.\n\n\
      ```musa\nfn keep(x: Option<Pitch>) -> Option<Pitch> { match x { None -> None, Some(p) -> Some(p), } }\n```"
 );
+static IF: KeywordDoc = doc!(
+    "if",
+    "choose between two values by a condition",
+    "`if condition { consequent } else { alternative }` is one expression, not a statement: it has a value, both branches have the same type, and the `else` is required. It is written out as the two-arm boolean `match` it stands for, so it costs exactly what that match costs.\n\n\
+     ```musa\nfn clef_named(word: Text) -> Clef { if text_equal(word, \"treble\") { Treble } else { Bass } }\n```"
+);
+static ELSE: KeywordDoc = doc!(
+    "else",
+    "the other branch of an `if`",
+    "`else` introduces the value an `if` takes when its condition is false. It is mandatory — a one-armed conditional would need a value for the case it does not cover, and this language has none. Writing another `if` after it makes a ladder.\n\n\
+     ```musa\nif quarters(n) { Quarter } else if halves(n) { Half } else { Whole }\n```"
+);
 static SOME: KeywordDoc = doc!(
     "Some",
     "an option containing a value",
@@ -826,6 +838,8 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         SyntaxKind::ListKw => &LIST,
         SyntaxKind::ResultKw => &RESULT,
         SyntaxKind::MatchKw => &MATCH,
+        SyntaxKind::IfKw => &IF,
+        SyntaxKind::ElseKw => &ELSE,
         SyntaxKind::SomeKw => &SOME,
         SyntaxKind::NoneKw => &NONE,
         SyntaxKind::OkKw => &OK,
@@ -973,6 +987,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::ExprArg
         | SyntaxKind::MatchExpr
         | SyntaxKind::MatchArm
+        | SyntaxKind::IfExpr
         | SyntaxKind::Pattern
         | SyntaxKind::MusicExpr
         | SyntaxKind::KernelQuote
@@ -1082,6 +1097,8 @@ mod tests {
             SyntaxKind::OptionKw,
             SyntaxKind::ListKw,
             SyntaxKind::MatchKw,
+            SyntaxKind::IfKw,
+            SyntaxKind::ElseKw,
             SyntaxKind::SomeKw,
             SyntaxKind::NoneKw,
             SyntaxKind::TrueKw,

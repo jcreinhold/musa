@@ -1669,6 +1669,7 @@ impl<'a> Parser<'a> {
             Some(SyntaxKind::LParen) => self.paren_or_product_expr(),
             Some(SyntaxKind::FnKw) => self.lambda_expr(),
             Some(SyntaxKind::MatchKw) => self.match_expr(),
+            Some(SyntaxKind::IfKw) => self.if_expr(),
             Some(SyntaxKind::MusicKw) => self.music_expr(),
             Some(SyntaxKind::KernelKw) => self.kernel_quote(),
             Some(SyntaxKind::ScaleKw) => self.scale_expr(),
@@ -1814,6 +1815,28 @@ impl<'a> Parser<'a> {
         self.expect(SyntaxKind::LParen, "`(`");
         self.expr();
         self.expect(SyntaxKind::RParen, "`)`");
+        self.finish();
+    }
+
+    /// `if condition { consequent } else { alternative }`.
+    ///
+    /// The `else` is not optional, which is what makes this one production
+    /// with no dangling-else question: an `if` is an expression and has to
+    /// have a value in both cases. A ladder is written by putting another `if`
+    /// after `else`, and it nests in the alternative rather than becoming a
+    /// list of rungs — `else if` is two words the parser reads one at a time,
+    /// not a third keyword.
+    fn if_expr(&mut self) {
+        self.start(SyntaxKind::IfExpr);
+        self.bump(); // if
+        self.expr();
+        self.block_expr();
+        self.expect(SyntaxKind::ElseKw, "`else`");
+        if self.at(SyntaxKind::IfKw) {
+            self.if_expr();
+        } else {
+            self.block_expr();
+        }
         self.finish();
     }
 

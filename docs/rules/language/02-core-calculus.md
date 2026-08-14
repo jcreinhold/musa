@@ -87,8 +87,8 @@ called *base types*, never primitives; `../kernel/` uses "primitive" in its ordi
 where no registered unit is in scope.
 
 Terms are variables, literals, products/projections, sum injections, nominal constructors, exhaustive `match`, lambdas,
-application, non-recursive `let`, conditionals, finite builtin operations, and these eliminators — the generated fold of
-each nominal declaration, and:
+application, non-recursive `let`, finite builtin operations, and these eliminators — the generated fold of each nominal
+declaration, and:
 
 ```text
 nat_fold  : A → (nat → A → A) → nat → A
@@ -96,6 +96,13 @@ list_fold_from_start : A → (X → A → A) → list X → A
 list_fold_from_end   : A → (X → A → A) → list X → A
 option_fold : A → (X → A) → option X → A
 ```
+
+**A conditional is surface syntax, not a term of this calculus.** `if c { a } else { b }` elaborates to the two-arm
+boolean `match` above — `match c { true -> a, false -> b }` — so it has no typing rule of its own in §5.1, no reduction
+in §5.2, no case in the normalization measure, and no entry in the cost table: a conditional costs what its match costs,
+because it *is* that match. `01-surface.md` gives its grammar and fixes the `else` as mandatory. Adding an `If` term
+instead would give `bool` two eliminators, which is the redundancy §5.6 argues against for `nat` and `option`, and it
+would duplicate the match rule for no expressive gain.
 
 The surface provides `map`, `filter`, bounded `range`, `repeat`, and row/chord traversals only as typed definitions or
 compiler builtins reducible to these eliminators. A builtin must be total on its declared domain. A builtin that can
