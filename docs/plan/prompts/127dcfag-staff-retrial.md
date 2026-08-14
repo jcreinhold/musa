@@ -1,7 +1,7 @@
 ---
 id: 127dcfag
 slug: staff-retrial
-status: pending
+status: done
 depends_on: [127dcfaf]
 phase: 3
 ---

@@ -128,5 +128,12 @@ ship.
     rather than merely awkward — a re-descending reader is unwritable under it — and corrects note 39 three times: the
     right-to-left accumulator survives, studio gains nothing so the derived bottom-up fold stays public, and the
     normalization proof needs acyclicity as a stated premise.
+42. [41-staff-on-the-repaired-interface.md](41-staff-on-the-repaired-interface.md) rewrites the staff adapter against
+    the five landed repairs and measures each one's contribution separately. The ergonomic repairs did the shrinking
+    (127 code lines); the recursor added 61 and bought the one thing the fold could not express — a group inside `( … )`
+    read the way the notation wants. It corrects the trial's line count (44 → 34 on the slice becomes 149 → 187 at full
+    size, for three stated reasons), confirms that `Pending` is the notation's cost and not the interface's, refutes the
+    prompt's own expectation that `C` would carry the meter, and records that a single pass costs 2.1× the constructed
+    cells two passes did, at 7% of the budget.
 
 The proof gate failed. Nothing in this workspace moves to `docs/rules/` or into implementation prompts.
