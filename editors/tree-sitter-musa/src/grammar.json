@@ -1880,6 +1880,10 @@
         },
         {
           "type": "SYMBOL",
+          "name": "question_expression"
+        },
+        {
+          "type": "SYMBOL",
           "name": "music_expression"
         },
         {
@@ -1951,6 +1955,10 @@
                 {
                   "type": "SYMBOL",
                   "name": "record_update_expression"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "question_expression"
                 },
                 {
                   "type": "SYMBOL",
@@ -2034,6 +2042,44 @@
           }
         }
       ]
+    },
+    "question_expression": {
+      "type": "PREC_LEFT",
+      "value": 0,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "FIELD",
+            "name": "subject",
+            "content": {
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "question_expression"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "record_update_expression"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "application_expression"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_primary_expression"
+                }
+              ]
+            }
+          },
+          {
+            "type": "STRING",
+            "value": "?"
+          }
+        ]
+      }
     },
     "pitch_expression": {
       "type": "PREC_LEFT",

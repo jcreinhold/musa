@@ -886,6 +886,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::Caret
         | SyntaxKind::Hash
         | SyntaxKind::Dollar
+        | SyntaxKind::Question
         | SyntaxKind::Error
         | SyntaxKind::Root
         | SyntaxKind::PieceDecl
@@ -990,6 +991,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::IfExpr
         | SyntaxKind::RecordUpdateExpr
         | SyntaxKind::FieldUpdate
+        | SyntaxKind::QuestionExpr
         | SyntaxKind::Pattern
         | SyntaxKind::MusicExpr
         | SyntaxKind::KernelQuote

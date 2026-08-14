@@ -3943,6 +3943,9 @@ fn infer_open_declarations(
                 scope: &definition.scope,
                 modules,
                 world,
+                questions: Vec::new(),
+                asked: 0,
+                tail: false,
             };
             check_definition(&mut checker, definition);
         }
@@ -4057,8 +4060,10 @@ fn check_definition(checker: &mut Checker<'_>, definition: &RawDefinition) -> Op
                     ty: parameter.ty.clone(),
                 });
             }
+            // A declaration's body is the one place a failure written in it
+            // can leave from, so this is where its questions discharge.
             checker
-                .check(body, function_result(&definition.ty))
+                .answering(body, function_result(&definition.ty))
                 .map(|body| CheckedDefinitionKind::Function {
                     parameters: checked_parameters,
                     body,
@@ -4306,6 +4311,9 @@ fn check_and_evaluate_metered(
             scope: &definition.scope,
             modules,
             world,
+            questions: Vec::new(),
+            asked: 0,
+            tail: false,
         };
         let kind = check_definition(&mut checker, definition);
         let failed = checker.failed;
@@ -4392,6 +4400,9 @@ fn check_and_evaluate_metered(
             scope: crate::module::NameScope::empty(),
             modules,
             world,
+            questions: Vec::new(),
+            asked: 0,
+            tail: false,
         };
         let checked_use = checker.check(&expression, Some(&Type::Music))?;
         let Value::Music(music) = eval(&checked_use, &values, &mut *meter)? else {
@@ -4573,6 +4584,9 @@ fn root_checker<'a>(
         scope: crate::module::NameScope::empty(),
         modules,
         world,
+        questions: Vec::new(),
+        asked: 0,
+        tail: false,
     }
 }
 
@@ -5515,6 +5529,55 @@ struct Checker<'a> {
     /// Every `data` declaration in scope: what a constructor, a fold, and a
     /// nominal type name mean here.
     world: &'a World,
+    /// One frame per expression a failure could leave from, innermost last: a
+    /// function body, and every branch whose value *is* that body's value.
+    ///
+    /// `?` has no core term to become, so what it elaborates to is a match
+    /// wrapped around the answer it was written inside of, and this is where
+    /// the questions wait until that answer has been checked. Empty at the top
+    /// level, where a `?` has no function to leave.
+    questions: Vec<QuestionFrame>,
+    /// How many questions this definition has asked, for naming their binders.
+    ///
+    /// One counter for the whole definition rather than one per frame, so that
+    /// no two binders in one body are spelled alike whatever they nest inside.
+    asked: usize,
+    /// Whether the expression about to be checked *is* the enclosing
+    /// function's answer, rather than a part of something that is.
+    ///
+    /// Taken at the top of [`Checker::check`] and restored only by the forms
+    /// that pass it on — a block, a parenthesis, and the branches of a
+    /// conditional or a match — so every other position clears it by default
+    /// and a form that wants to be transparent has to say so.
+    tail: bool,
+}
+
+/// One place a `?` could carry a failure out to.
+enum QuestionFrame {
+    /// An answer of the enclosing function: a failure written here leaves the
+    /// function, so `result` is what it leaves as and `asked` collects the
+    /// questions in the order they were written.
+    Open { result: Type, asked: Vec<PendingQuestion> },
+    /// A branch whose value is *not* the function's answer.
+    ///
+    /// `g(match s { A -> h(e?) })` has nowhere to send a failure: the branch's
+    /// value is an argument to `g`, so a match wrapped around it would answer
+    /// `g` rather than the function's caller. Rust writes `return` here; this
+    /// language has no statement to return from, so the position is refused
+    /// and the author writes the `match` they mean.
+    Blocked,
+}
+
+/// One `?`, waiting for the answer it was written inside of.
+struct PendingQuestion {
+    /// The subject, checked once. It becomes the scrutinee, which is what
+    /// evaluates it exactly once.
+    subject: Expr,
+    /// The unspellable name standing where the `?` was written.
+    binder: String,
+    /// The `?` itself, so a failure points at the question that propagated it
+    /// rather than at a match nobody wrote.
+    span: SourceSpan,
 }
 
 impl Checker<'_> {
@@ -5528,11 +5591,19 @@ impl Checker<'_> {
         // than on what it stands for would lose that.
         let expected = expected.map(|ty| self.unifier.resolve(ty));
         let expected = expected.as_ref();
+        // Taken rather than read: a position is not the function's answer
+        // unless the form that wrote it says so, and the three that do say so
+        // below. Everything else — an argument, a scrutinee, a field — clears
+        // it by being checked at all.
+        let tail = std::mem::take(&mut self.tail);
         let checked = if kind == SyntaxKind::ParenExpr || kind == SyntaxKind::BlockExpr {
             // `⟦{ e }⟧ = ⟦e⟧`, exactly as for parentheses. A block delimits
             // one expression and holds no sequence, so it adds a shape to the
             // surface and no case to this checker.
-            child_of(node, is_expr_node).and_then(|child| self.check(&child, expected))
+            child_of(node, is_expr_node).and_then(|child| {
+                self.tail = tail;
+                self.check(&child, expected)
+            })
         } else if kind == SyntaxKind::LiteralExpr {
             self.literal(node, expected)
         } else if kind == SyntaxKind::NameExpr {
@@ -5575,11 +5646,13 @@ impl Checker<'_> {
         } else if kind == SyntaxKind::StepExpr {
             self.scale_step(node)
         } else if kind == SyntaxKind::MatchExpr {
-            self.match_expression(node, expected)
+            self.match_expression(node, expected, tail)
         } else if kind == SyntaxKind::IfExpr {
-            self.if_expression(node, expected)
+            self.if_expression(node, expected, tail)
         } else if kind == SyntaxKind::RecordUpdateExpr {
             self.record_update(node)
+        } else if kind == SyntaxKind::QuestionExpr {
+            self.question(node)
         } else if kind == SyntaxKind::MusicExpr {
             self.music_expression(node)
         } else if kind == SyntaxKind::KernelQuote {
@@ -6834,14 +6907,20 @@ impl Checker<'_> {
     /// not write. The consequent goes first so that, with no expected type
     /// from above, it is the one that decides and the alternative is the one
     /// asked to agree.
-    fn if_expression(&mut self, node: &SyntaxNode, expected: Option<&Type>) -> Option<Expr> {
+    fn if_expression(&mut self, node: &SyntaxNode, expected: Option<&Type>, tail: bool) -> Option<Expr> {
         let mut parts = node.children().filter(|child| is_expr_node(child.kind()));
         let condition_node = parts.next()?;
         let consequent_node = parts.next()?;
         let alternative_node = parts.next()?;
         let condition = self.check(&condition_node, Some(&Type::Bool))?;
-        let consequent = self.check(&consequent_node, expected)?;
-        let alternative = self.check(&alternative_node, Some(&consequent.ty))?;
+        // Same reason as a match's first arm: a `?` in the consequent has to
+        // know what the conditional answers before the consequent decides it.
+        let wanted = match (tail, expected) {
+            (true, None) => Some(self.unifier.fresh(Kind::Ordinary)),
+            (_, expected) => expected.cloned(),
+        };
+        let consequent = self.branch(&consequent_node, wanted.as_ref(), tail)?;
+        let alternative = self.branch(&alternative_node, Some(&consequent.ty), tail)?;
         let result = self.unifier.resolve(&consequent.ty);
         Some(Expr {
             kind: ExprKind::Match {
@@ -6859,6 +6938,218 @@ impl Checker<'_> {
             },
             ty: result,
             span: crate::resolve::trimmed_span(node),
+        })
+    }
+
+    /// Check a function's body, and discharge the questions written in it.
+    ///
+    /// The body is what the function answers, so this is the outermost place a
+    /// `?` can carry a failure to. A body with no written result type still
+    /// gets a frame: the variable standing for that type is what `?`
+    /// constrains, which is how an unannotated function infers through one.
+    fn answering(&mut self, node: &SyntaxNode, result: Option<&Type>) -> Option<Expr> {
+        self.branch(node, result, true)
+    }
+
+    /// Check one branch of a conditional or a match, and discharge the
+    /// questions written in it.
+    ///
+    /// A branch is where `?` stops being hoistable. Everything above a branch
+    /// — an argument, a scrutinee, a field — is evaluated whatever happens, so
+    /// a question there can be lifted to the answer around it without changing
+    /// when its subject runs. A branch is not: lifting a question out of one
+    /// arm would evaluate its subject even when the other arm was taken. So
+    /// the branch discharges its own questions, and can do so exactly when it
+    /// is itself the function's answer — which is what `tail` records.
+    fn branch(&mut self, node: &SyntaxNode, expected: Option<&Type>, tail: bool) -> Option<Expr> {
+        let frame = match (tail, expected) {
+            (true, Some(result)) => QuestionFrame::Open {
+                result: result.clone(),
+                asked: Vec::new(),
+            },
+            _ => QuestionFrame::Blocked,
+        };
+        self.questions.push(frame);
+        self.tail = tail;
+        let body = self.check(node, expected);
+        let frame = self.questions.pop();
+        self.discharge(frame?, body?)
+    }
+
+    /// Wrap an answer in the propagating matches the questions inside it asked
+    /// for, outermost question first.
+    ///
+    /// The questions are discharged in the order they were written, which is
+    /// the order their subjects are evaluated and therefore which failure a
+    /// program reports when more than one thing goes wrong. Nothing else about
+    /// the answer moves: each wrap is the two-arm `Result` match the surface
+    /// already had, so what this returns is a term the author could have
+    /// written, at the same cost.
+    fn discharge(&self, frame: QuestionFrame, body: Expr) -> Option<Expr> {
+        let QuestionFrame::Open { result, asked } = frame else {
+            return Some(body);
+        };
+        if asked.is_empty() {
+            return Some(body);
+        }
+        let result = self.unifier.resolve(&result);
+        // Every question unified the answer with a sum before it was recorded,
+        // so this holds by the time anything was recorded at all.
+        let Type::Sum(value, error) = result.clone() else {
+            return Some(body);
+        };
+        let mut answer = body;
+        for question in asked.into_iter().rev() {
+            let span = question.span;
+            let failure = format!("{} failed", question.binder);
+            answer = Expr {
+                kind: ExprKind::Match {
+                    scrutinee: Box::new(question.subject),
+                    arms: vec![
+                        CheckedArm {
+                            pattern: Pattern::Ok(question.binder),
+                            body: answer,
+                        },
+                        CheckedArm {
+                            pattern: Pattern::Err(failure.clone()),
+                            body: Expr {
+                                kind: ExprKind::Injection {
+                                    error: true,
+                                    held: Box::new(Expr {
+                                        kind: ExprKind::Name(failure),
+                                        ty: error.as_ref().clone(),
+                                        span,
+                                    }),
+                                    value_type: value.as_ref().clone(),
+                                    error_type: error.as_ref().clone(),
+                                },
+                                ty: result.clone(),
+                                span,
+                            },
+                        },
+                    ],
+                },
+                ty: result.clone(),
+                span,
+            };
+        }
+        Some(answer)
+    }
+
+    /// `e?` — the success payload here, and the same failure out there.
+    ///
+    /// One meaning and no others: the subject is a `Result`, the answer around
+    /// it is a `Result` with the identical error type, and the value of the
+    /// whole thing is what the subject succeeded with. There is no conversion
+    /// between error types, because a function's signature is supposed to say
+    /// which failures can come out of it and a silent widening would make that
+    /// sentence untrue.
+    ///
+    /// The expression this returns is a name — the binder the enclosing
+    /// [`Checker::branch`] will bind in the `Ok` arm it wraps. The binder is
+    /// unspellable, so nothing an author writes can capture it, and the
+    /// subject appears once, as that match's scrutinee, so it is evaluated
+    /// exactly once.
+    fn question(&mut self, node: &SyntaxNode) -> Option<Expr> {
+        let span = crate::resolve::trimmed_span(node);
+        let subject_node = child_of(node, is_expr_node)?;
+        let subject = self.check(&subject_node, None)?;
+        let asked = self.unifier.resolve(&subject.ty);
+        let Type::Sum(value, error) = asked else {
+            let named = crate::infer::plain_one(&asked);
+            let mut report = Diagnostic::error(
+                Code::TypeMismatch,
+                format!("`?` asks a `Result`, and this is `{named}`"),
+            )
+            .at(subject.span, format!("this has type `{named}`"));
+            report = if matches!(asked, Type::Option(_)) {
+                // An `Option` is the one near miss worth its own sentence: it
+                // has a missing case but no failure to carry, so there is
+                // nothing for `?` to propagate and the author has to say what
+                // the absence means.
+                report.help(
+                    "an `Option` says only that a value is missing, not why; \
+                     match on it and say what the missing case means",
+                )
+            } else {
+                report.help("`?` carries a failure outward, so what it asks has to be able to fail")
+            };
+            self.resolver.report(report);
+            self.failed = true;
+            return None;
+        };
+        let answer = match self.questions.last() {
+            Some(QuestionFrame::Open { result, .. }) => result.clone(),
+            here => {
+                let (told, help) = match here {
+                    Some(QuestionFrame::Blocked) => (
+                        "this branch is not what the function answers, so a failure has nowhere to go",
+                        "a `?` carries a failure out of the function around it; write the `match` this branch means",
+                    ),
+                    _ => (
+                        "there is no function here for a failure to leave",
+                        "a `?` carries a failure out of the function around it; match on the `Result` instead",
+                    ),
+                };
+                self.resolver.report(
+                    Diagnostic::error(Code::TypeMismatch, "`?` has nowhere to carry a failure to")
+                        .at(span, told)
+                        .help(help),
+                );
+                self.failed = true;
+                return None;
+            }
+        };
+        // The answer is constrained to a `Result` failing the same way, which
+        // is what makes an unannotated function infer through `?` instead of
+        // demanding that its result be written down.
+        let carried = Type::Sum(Box::new(self.unifier.fresh(Kind::Ordinary)), error);
+        if self.unifier.unify(&answer, &carried).is_err() {
+            let [answering, asking] =
+                crate::infer::plain([&self.unifier.resolve(&answer), &self.unifier.resolve(&subject.ty)]);
+            // Two different mistakes, and a reader can only act on the one
+            // they made: an answer that is no `Result` at all needs a
+            // different result type, and one that fails another way needs the
+            // failure said in this language's words before it goes out.
+            let report = if matches!(self.unifier.resolve(&answer), Type::Sum(_, _)) {
+                Diagnostic::error(
+                    Code::TypeMismatch,
+                    format!("a failure of `{asking}` cannot leave an answer of `{answering}`"),
+                )
+                .at(span, format!("this fails with `{asking}`"))
+                .help(
+                    "`?` carries a failure unchanged and converts nothing; match on this one and \
+                     say what it means here",
+                )
+            } else {
+                Diagnostic::error(
+                    Code::TypeMismatch,
+                    format!("this answers `{answering}`, so a failure has no way out of it"),
+                )
+                .at(span, format!("this fails with `{asking}`"))
+                .help(
+                    "`?` carries a failure out of the answer around it, so that answer is a \
+                     `Result` too; match on this one instead",
+                )
+            };
+            self.resolver.report(report);
+            self.failed = true;
+            return None;
+        }
+        let binder = format!(" answer {}", self.asked);
+        self.asked = self.asked.saturating_add(1);
+        let Some(QuestionFrame::Open { asked, .. }) = self.questions.last_mut() else {
+            return None;
+        };
+        asked.push(PendingQuestion {
+            subject,
+            binder: binder.clone(),
+            span,
+        });
+        Some(Expr {
+            kind: ExprKind::Name(binder),
+            ty: value.as_ref().clone(),
+            span,
         })
     }
 
@@ -7029,12 +7320,18 @@ impl Checker<'_> {
         })
     }
 
-    fn match_expression(&mut self, node: &SyntaxNode, expected: Option<&Type>) -> Option<Expr> {
+    fn match_expression(&mut self, node: &SyntaxNode, expected: Option<&Type>, tail: bool) -> Option<Expr> {
         let scrutinee_node = child_of(node, is_expr_node)?;
         let scrutinee = self.check(&scrutinee_node, None)?;
         let mut coverage = IndexSet::new();
         let mut catch_all = false;
         let mut result = expected.cloned();
+        // A `?` in the first arm needs a type to constrain before that arm has
+        // been checked, and an unannotated match in answer position has none
+        // yet. The variable is what the arm decides anyway, one step earlier.
+        if tail && result.is_none() {
+            result = Some(self.unifier.fresh(Kind::Ordinary));
+        }
         let mut arms = Vec::new();
         for arm in node.children().filter(|child| child.kind() == SyntaxKind::MatchArm) {
             let pattern_node = arm.children().find(|child| child.kind() == SyntaxKind::Pattern)?;
@@ -7054,8 +7351,9 @@ impl Checker<'_> {
             self.locals
                 .extend(bindings.into_iter().map(|(name, ty)| (name, Scheme::monomorphic(ty))));
             let body_node = child_of(&arm, is_expr_node)?;
-            let body = self.check(&body_node, result.as_ref())?;
+            let body = self.branch(&body_node, result.as_ref(), tail);
             self.locals = saved;
+            let body = body?;
             if result.is_none() {
                 result = Some(body.ty.clone());
             }
@@ -7703,7 +8001,9 @@ impl Checker<'_> {
                 .insert(parameter.name.clone(), Scheme::monomorphic(parameter.ty.clone()));
         }
         self.mentioned.push(IndexSet::new());
-        let body = self.check(&body_node, Some(&result));
+        // An anonymous function is a function: a `?` in its body leaves *it*,
+        // not whatever it was written inside of.
+        let body = self.answering(&body_node, Some(&result));
         let read = self.mentioned.pop().unwrap_or_default();
         self.locals = saved;
         let body = body?;
@@ -10608,6 +10908,7 @@ fn is_expr_node(kind: SyntaxKind) -> bool {
             | SyntaxKind::MatchExpr
             | SyntaxKind::IfExpr
             | SyntaxKind::RecordUpdateExpr
+            | SyntaxKind::QuestionExpr
             | SyntaxKind::MusicExpr
             | SyntaxKind::KernelQuote
     )
@@ -11282,6 +11583,9 @@ fn check_ordinary(
         scope: crate::module::NameScope::empty(),
         modules: &Modules::default(),
         world: &World::default(),
+        questions: Vec::new(),
+        asked: 0,
+        tail: false,
     };
     checker.check(node, wanted)
 }
@@ -11338,6 +11642,9 @@ pub(crate) fn evaluate_text(expression: &str) -> Option<String> {
         scope: crate::module::NameScope::empty(),
         modules: &Modules::default(),
         world: &World::default(),
+        questions: Vec::new(),
+        asked: 0,
+        tail: false,
     };
     let checked = checker.check(&body, Some(&Type::Text))?;
     let environment = IndexMap::new();
@@ -12607,6 +12914,9 @@ mod tests {
                 scope: crate::module::NameScope::empty(),
                 modules: &Modules::default(),
                 world: &World::default(),
+                questions: Vec::new(),
+                asked: 0,
+                tail: false,
             };
             checker.check(&body, None)
         }?;
@@ -13213,6 +13523,210 @@ mod tests {
             assert!(
                 !refused.is_empty(),
                 "updating a value with no single constructor was accepted: {source}"
+            );
+        }
+    }
+
+    /// A question and the `Result` match it elaborates to are the same
+    /// program — same answers, and the same number of charged nodes.
+    ///
+    /// This is the whole claim prompt 127dcfad makes. `?` adds no core term,
+    /// no typing rule, no reduction, no measure case, and no cost-table entry,
+    /// which is only true if the elaborated form is indistinguishable from the
+    /// match an author would have written. The subject here builds an
+    /// eight-member list, so a second evaluation of it would be several nodes
+    /// wide: equal charge against a match that visibly evaluates its scrutinee
+    /// once is what says the question does too. Two questions are chained
+    /// because they nest rather than sit side by side, and a chain that cost
+    /// one frame more than its nesting would say the elaboration had invented
+    /// something.
+    #[test]
+    fn a_question_is_the_result_match_it_elaborates_to() {
+        const MADE: &str = "fn made(said: Text) -> Result<List<Nat>, Text> { \
+             if text_equal(said, \"none\") { Err(\"nothing made\") } else { Ok([1, 2, 3, 4, 5, 6, 7, 8]) } } \
+             fn kept(held: List<Nat>) -> Result<Nat, Text> { Ok(4) } ";
+        const ASKED: &str = "fn used(said: Text) -> Result<Nat, Text> { Ok(nat_add(kept(made(said)?)?, 1)?) } \
+             let good: Nat = match used(\"some\") { Ok(v) -> v, Err(why) -> 99 }; \
+             let bad: Text = match used(\"none\") { Ok(v) -> \"no\", Err(why) -> why };";
+        const BY_HAND: &str = "fn used(said: Text) -> Result<Nat, Text> { \
+             match made(said) { \
+             Ok(one) -> match kept(one) { \
+             Ok(two) -> match nat_add(two, 1) { Ok(three) -> Ok(three), Err(why) -> Err(why) }, \
+             Err(why) -> Err(why), \
+             }, \
+             Err(why) -> Err(why), \
+             } } \
+             let good: Nat = match used(\"some\") { Ok(v) -> v, Err(why) -> 99 }; \
+             let bad: Text = match used(\"none\") { Ok(v) -> \"no\", Err(why) -> why };";
+
+        let keyed = |source: &str| {
+            values(&format!("piece \"law\" {{ {MADE}{source} }}"))
+                .unwrap_or_else(|| panic!("well-typed source was rejected: {source}"))
+                .iter()
+                .filter(|(name, _)| name.as_str() == "good" || name.as_str() == "bad")
+                .map(|(name, value)| (name.clone(), literal_key(value)))
+                .collect::<Vec<_>>()
+        };
+        let asked = keyed(ASKED);
+        assert_eq!(
+            asked,
+            [
+                ("good".to_owned(), "nat:5".to_owned()),
+                ("bad".to_owned(), "text:\"nothing made\"".to_owned()),
+            ]
+        );
+        assert_eq!(asked, keyed(BY_HAND), "the question answered differently");
+        assert_eq!(
+            charged_nodes(&format!("{MADE}{ASKED}")),
+            charged_nodes(&format!("{MADE}{BY_HAND}")),
+            "the question cost more than the match it is, so its subject is not evaluated once"
+        );
+    }
+
+    /// A failure comes out exactly as it went in, payload and all.
+    ///
+    /// The error here is the pair an adapter refuses with — where it happened
+    /// and what to say — because prompt 127dcb makes the node part of the
+    /// answer. Rebuilding the `Err` is what the elaboration does, so this is
+    /// the law that says rebuilding it changes nothing about it.
+    #[test]
+    fn a_question_carries_the_failure_it_was_given_unchanged() {
+        const SOURCE: &str = "fn refusing(said: Text) -> Result<Nat, (Nat, Text)> { Err((7, said)) } \
+             fn carrying(said: Text) -> Result<Nat, (Nat, Text)> { Ok(refusing(said)?) } \
+             let where_from: Nat = match carrying(\"say so\") { \
+             Ok(v) -> 0, \
+             Err(refusal) -> match refusal { (node, told) -> node }, \
+             }; \
+             let told: Text = match carrying(\"say so\") { \
+             Ok(v) -> \"\", \
+             Err(refusal) -> match refusal { (node, told) -> told }, \
+             };";
+        let bound = values(&format!("piece \"law\" {{ {SOURCE} }}")).expect("well-typed source");
+        assert_eq!(
+            [
+                bound.get("where_from").map(literal_key),
+                bound.get("told").map(literal_key)
+            ],
+            [Some("nat:7".to_owned()), Some("text:\"say so\"".to_owned())],
+            "the propagated failure is not the one that was given"
+        );
+    }
+
+    /// A function that writes no result type still infers through a `?`, named
+    /// or anonymous.
+    ///
+    /// This is the part of prompt 127dcfad most easily got wrong. `?`
+    /// constrains the enclosing answer to a `Result` failing the same way, and
+    /// a constraint is discharged by unification like every other one — so
+    /// requiring the annotation would have made this the one construct that
+    /// demands one, and made "principal rank-1 inference" false as a
+    /// language-wide sentence.
+    #[test]
+    fn an_unannotated_function_infers_through_a_question() {
+        const SOURCE: &str = "fn made(said: Text) -> Result<Nat, Text> { \
+             if text_equal(said, \"none\") { Err(\"nothing made\") } else { Ok(4) } } \
+             fn named(said) { Ok(nat_add(made(said)?, 1)?) } \
+             let by_name: Nat = match named(\"some\") { Ok(v) -> v, Err(why) -> 99 }; \
+             let anonymous = fn (said: Text) { Ok(nat_add(made(said)?, 2)?) }; \
+             let by_lambda: Nat = match anonymous(\"some\") { Ok(v) -> v, Err(why) -> 99 }; \
+             let anonymous_bad: Text = match anonymous(\"none\") { Ok(v) -> \"no\", Err(why) -> why };";
+        let bound = values(&format!("piece \"law\" {{ {SOURCE} }}")).expect("well-typed source");
+        assert_eq!(
+            [
+                bound.get("by_name").map(literal_key),
+                bound.get("by_lambda").map(literal_key),
+                bound.get("anonymous_bad").map(literal_key),
+            ],
+            [
+                Some("nat:5".to_owned()),
+                Some("nat:6".to_owned()),
+                Some("text:\"nothing made\"".to_owned()),
+            ]
+        );
+    }
+
+    /// Chained questions run left to right and the first failure is the one
+    /// reported.
+    ///
+    /// The elaboration nests them in written order, which is what decides this
+    /// — so a program with two things wrong with it complains about the
+    /// leftmost, the way a reader reads.
+    #[test]
+    fn chained_questions_stop_at_the_first_failure() {
+        const SOURCE: &str = "fn named(said: Text) -> Result<Nat, Text> { \
+             if text_equal(said, \"fine\") { Ok(1) } else { Err(said) } } \
+             fn both(first: Text, second: Text) -> Result<Nat, Text> { \
+             Ok(nat_add(named(first)?, named(second)?)?) } \
+             let leftmost: Text = match both(\"one bad\", \"two bad\") { Ok(v) -> \"no\", Err(why) -> why }; \
+             let rightmost: Text = match both(\"fine\", \"two bad\") { Ok(v) -> \"no\", Err(why) -> why }; \
+             let neither: Nat = match both(\"fine\", \"fine\") { Ok(v) -> v, Err(why) -> 99 };";
+        let bound = values(&format!("piece \"law\" {{ {SOURCE} }}")).expect("well-typed source");
+        assert_eq!(
+            [
+                bound.get("leftmost").map(literal_key),
+                bound.get("rightmost").map(literal_key),
+                bound.get("neither").map(literal_key),
+            ],
+            [
+                Some("text:\"one bad\"".to_owned()),
+                Some("text:\"two bad\"".to_owned()),
+                Some("nat:2".to_owned()),
+            ],
+            "a chain must stop at the first failure, in written order"
+        );
+    }
+
+    /// A `?` is refused where the answer around it cannot fail, and the
+    /// refusal lands on the question rather than on a match nobody wrote.
+    ///
+    /// Three ways to have nowhere to carry a failure to, and each says which
+    /// one it is: an answer that is no `Result`, an answer that fails another
+    /// way, and a branch whose value is not the function's answer at all. The
+    /// last is the one this elaboration cannot do without a `return`, and
+    /// refusing it is why there is no `return`.
+    #[test]
+    fn a_question_with_nowhere_to_go_is_refused_at_its_own_span() {
+        const MADE: &str = "fn made(said: Text) -> Result<Nat, Text> { Ok(4) } \
+             fn kept(held: Nat) -> Result<Nat, Text> { Ok(held) } \
+             fn maybe(said: Text) -> Option<Nat> { Some(4) } ";
+        for (body, expected, at) in [
+            (
+                "fn plain(said: Text) -> Nat { made(said)? }",
+                "this answers `Nat`, so a failure has no way out of it",
+                "made(said)?",
+            ),
+            (
+                "fn other(said: Text) -> Result<Nat, Nat> { Ok(made(said)?) }",
+                "a failure of `Result<Nat, Text>` cannot leave an answer of `Result<Nat, Nat>`",
+                "made(said)?",
+            ),
+            (
+                "fn buried(said: Text) -> Result<Nat, Text> { \
+                 kept(match text_equal(said, \"x\") { true -> made(said)?, false -> 1 }) }",
+                "`?` has nowhere to carry a failure to",
+                "made(said)?",
+            ),
+            (
+                "fn absent(said: Text) -> Result<Nat, Text> { Ok(maybe(said)?) }",
+                "`?` asks a `Result`, and this is `Option<Nat>`",
+                "maybe(said)",
+            ),
+        ] {
+            let source = format!("piece \"law\" {{ {MADE}{body} }}");
+            let refused = refusals(&source);
+            let named = refused
+                .iter()
+                .find(|diagnostic| diagnostic.message == expected)
+                .unwrap_or_else(|| panic!("expected `{expected}`, saw: {refused:?}"));
+            let span = named
+                .labels
+                .iter()
+                .find(|label| label.primary)
+                .expect("a refusal points somewhere");
+            assert_eq!(
+                source[span.span.start as usize..span.span.end as usize].trim(),
+                at,
+                "the refusal did not point at the question: {named:?}"
             );
         }
     }

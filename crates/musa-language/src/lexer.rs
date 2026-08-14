@@ -233,6 +233,11 @@ enum RawToken {
     // two-character token would have to be un-lexed to find that out.
     #[token("$")]
     Dollar,
+    // Postfix, and never anything else: `e?` carries a `Result`'s failure out
+    // of the function around it. There is no ternary and no optional-chaining
+    // reading for the character to collide with.
+    #[token("?")]
+    Question,
 
     #[token("piece", priority = 3)]
     PieceKw,
@@ -468,6 +473,7 @@ impl RawToken {
             | Self::Caret
             | Self::Hash
             | Self::Dollar
+            | Self::Question
             | Self::PieceKw
             | Self::TempoKw
             | Self::MeterKw
@@ -603,6 +609,7 @@ impl RawToken {
             Self::Caret => SyntaxKind::Caret,
             Self::Hash => SyntaxKind::Hash,
             Self::Dollar => SyntaxKind::Dollar,
+            Self::Question => SyntaxKind::Question,
             Self::PieceKw => SyntaxKind::PieceKw,
             Self::TempoKw => SyntaxKind::TempoKw,
             Self::MeterKw => SyntaxKind::MeterKw,

@@ -17,7 +17,7 @@ function     := "fn" IDENT "(" params? ")" "->" type block
 param        := IDENT ":" type ("=" expr)?
 call         := expr "(" args? ")"
 expr         := literal | IDENT | path | "(" expr ")" | block | product | list | option
-              | call | match | conditional | record-update | music-expr
+              | call | match | conditional | record-update | question | music-expr
 block        := "{" expr "}"
 product      := "(" expr "," expr ("," expr)* ")"
 list         := "[" (expr ("," expr)*)? "]"
@@ -27,6 +27,7 @@ match-arm    := pattern "->" expr
 conditional  := "if" expr block "else" (block | conditional)
 record-update := expr "with" "{" field-update ("," field-update)* ","? "}"
 field-update := IDENT "=" expr
+question     := expr "?"
 pattern      := "_" | literal | IDENT | "None" | "Some" "(" IDENT ")"
               | "[" "]" | "[" IDENT "," ".." IDENT "]"
               | "(" IDENT "," IDENT ("," IDENT)* ")"
@@ -125,6 +126,35 @@ across both spellings is what keeps `p with { f = e }` and the full construction
 `with` is the same word the `use` statement spells its occurrence overrides with, and the statement keeps it: in
 `use theme() with { note 3 = a5; }` the `with` belongs to the statement, because that is where a reader's eye already
 puts it. Only the top level of a `use` value is affected; an update written inside an argument is an ordinary update.
+
+`e?` carries a failure outward. Where `e : Result<A, E>`, the whole expression has type `A` and denotes what `e`
+succeeded with; where `e` fails, the answer around the `?` is that same `Err` value. Four things are fixed about it.
+
+- `e` is evaluated exactly once, however much of the answer is written around the `?`.
+- The error types are identical. There is no conversion, widening, or coercion: a `Result<A, E₁>` asked inside an answer
+  of `Result<B, E₂>` is refused, naming both. A function's written type is supposed to say which failures come out of
+  it, and a silent conversion would make that sentence untrue. A caller with a different failure matches on it and says
+  what it means here.
+- The answer the `?` leaves is the enclosing *function*'s. Written directly in a function's body, or in a branch whose
+  value is that body's value, `?` is what it says. Written where the value is not the function's answer — inside an
+  argument, say, so that a match wrapped around it would answer the call rather than the caller — it is refused, because
+  there is no statement in this language to return from and inventing one would be a second way for a value to leave.
+  That branch writes the `match` it means.
+- The answer's type has to be a `Result`, and it may be inferred rather than written. `?` constrains the enclosing
+  result to `Result<_, E>` with the same `E` as its subject; an explicit annotation may discharge that constraint and is
+  never required, so a function using `?` infers exactly as principally as any other. `?` is refused only when the
+  answer *cannot* be a `Result`, and the diagnostic names the type — inferred or written — that it turned out to be.
+
+`?` is for `Result` and nothing else. An `Option` says only that a value is missing, not why, so there is no failure for
+`?` to carry; a caller that wants propagation matches and says what the absence means. There is no `Try`, no `Monad`, no
+`do`, and no `bind`: one constructor propagating is evidence for one operation, not for abstracting over which
+constructor it is.
+
+It adds no term to the calculus. `C[e?]`, where `C` is the answer written around it, elaborates to
+`match e { Ok(x) -> C[x], Err(y) -> Err(y) }` — the exhaustive two-arm `Result` match the surface already had —
+`02-core-calculus.md` §5. `e` is the scrutinee, which is what evaluates it once; `x` is unspellable, so nothing an
+author writes can capture it; and several questions in one answer nest in the order they are written, so a program with
+more than one thing wrong with it reports the leftmost.
 
 Structural folds do not add syntax. `nat_fold(zero, step, count)`, `list_fold_from_start(zero, step, values)`,
 `list_fold_from_end(zero, step, values)`, and `option_fold(zero, some_case, value)` are ordinary calls to compiler-owned

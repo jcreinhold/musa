@@ -422,3 +422,60 @@ fn a_use_statement_keeps_its_with_and_an_expression_does_not() {
         );
     }
 }
+
+/// `?` binds tighter than anything it can be written after, and the formatter
+/// keeps it against its subject.
+///
+/// Postfix operators are where a grammar quietly acquires ambiguity, so the
+/// cases here are the three that could have gone wrong: a question asked of a
+/// call, a question asked of a question, and a question asked of a record
+/// update, each of which has to take the *whole* preceding expression as its
+/// subject rather than its last fragment. Formatting round-trips because a
+/// space before `?` would read as a stray token, and the formatter's idempotence
+/// law is what makes that stay true.
+#[test]
+fn a_question_takes_the_whole_expression_before_it() {
+    for (source, questions) in [
+        (
+            "piece \"x\" { fn f(r: Result<Nat, Text>) -> Result<Nat, Text> { Ok(r?) } }",
+            1,
+        ),
+        (
+            "piece \"x\" { fn f(r: Result<Result<Nat, Text>, Text>) -> Result<Nat, Text> { Ok(r??) } }",
+            2,
+        ),
+        (
+            "piece \"x\" { data P { P(a: Result<Nat, Text>) } \
+             fn f(p: P, r: Result<Nat, Text>) -> Result<Nat, Text> { Ok(g(p with { a = r })?) } \
+             fn g(p: P) -> Result<Nat, Text> { match p { P(a) -> a } } }",
+            1,
+        ),
+    ] {
+        let parsed = parse(source);
+        assert!(parsed.errors().is_empty(), "{source}\n{:?}", parsed.errors());
+        let root = parsed.syntax();
+        assert_eq!(
+            root.descendants()
+                .filter(|node| node.kind() == SyntaxKind::QuestionExpr)
+                .count(),
+            questions,
+            "the wrong number of questions was parsed in: {source}"
+        );
+
+        let once = format(&parsed, BarSpacing::Compact).to_string();
+        assert!(
+            !once.contains(" ?"),
+            "the formatter loosened `?` from its subject:\n{once}"
+        );
+        let reparsed = parse(&once);
+        assert!(
+            reparsed.errors().is_empty(),
+            "the formatted text no longer parses:\n{once}"
+        );
+        assert_eq!(
+            format(&reparsed, BarSpacing::Compact).to_string(),
+            once,
+            "formatting `?` is not idempotent:\n{once}"
+        );
+    }
+}

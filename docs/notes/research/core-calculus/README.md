@@ -63,4 +63,10 @@ enough.
     `staff.musa`, refuses row polymorphism, generated setters, lenses, and nested-path update, and states the two places
     the implementation departs from the prompt's Design.
 
+23. [Carrying a failure outward](22-carrying-a-failure-outward.md) records prompt 127dcfad's addition of postfix `?`. It
+    elaborates to the exhaustive `Result` match with unspellable binders, so it adds no core term and costs what that
+    match costs — proved by the meter rather than asserted. It records `document_read`'s measured collapse, states why
+    the discharge point is the answer's *tail* in a language with no `return` and why that is not an annotation
+    requirement, and refuses `Try`/`Monad`, a general `do`, error-type coercion, and `?` on `Option`.
+
 Each rejected claim stays beside its refutation. No file here authorizes a compiler change or a change to `docs/rules/`.

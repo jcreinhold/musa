@@ -1584,17 +1584,28 @@ impl<'a> Parser<'a> {
         let spoken_for = std::mem::take(&mut self.with_is_spoken_for);
         let checkpoint = self.events.len();
         self.expr_atom();
-        while self.at(SyntaxKind::LParen) {
-            self.start_at(checkpoint, SyntaxKind::ApplyExpr);
-            self.expr_arg_list();
-            self.finish();
-        }
-        // `p with { f = e } with { g = h }` is two updates, the second of the
-        // first's result, which is why this is a loop and not an `if`.
-        while self.at(SyntaxKind::WithKw) && !spoken_for {
-            self.start_at(checkpoint, SyntaxKind::RecordUpdateExpr);
-            self.field_update_list();
-            self.finish();
+        // One loop for all three postfixes, so they compose in the order they
+        // are written and a reader never has to know which of them binds
+        // tighter: `read(here)?` asks its question of the call's answer, and
+        // `later? with { dots = more }` updates the payload the question
+        // yielded. `p with { f = e } with { g = h }` is likewise two updates,
+        // the second of the first's result.
+        loop {
+            if self.at(SyntaxKind::LParen) {
+                self.start_at(checkpoint, SyntaxKind::ApplyExpr);
+                self.expr_arg_list();
+                self.finish();
+            } else if self.at(SyntaxKind::WithKw) && !spoken_for {
+                self.start_at(checkpoint, SyntaxKind::RecordUpdateExpr);
+                self.field_update_list();
+                self.finish();
+            } else if self.at(SyntaxKind::Question) {
+                self.start_at(checkpoint, SyntaxKind::QuestionExpr);
+                self.bump();
+                self.finish();
+            } else {
+                break;
+            }
         }
         if self.at(SyntaxKind::StepKw) {
             self.start_at(checkpoint, SyntaxKind::StepExpr);

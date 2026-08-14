@@ -101,6 +101,8 @@ pub enum SyntaxKind {
     Hash,
     /// `$` — the head of `${…}`, an antiquotation inside a kernel quote.
     Dollar,
+    /// `?` — postfix, carrying a `Result`'s failure out of the function.
+    Question,
 
     // --- Structural keywords. Processor names (`oscillator`, `lowpass`, …)
     /// are deliberately *not* keywords: they lex as identifiers so the
@@ -547,6 +549,14 @@ pub enum SyntaxKind {
     RecordUpdateExpr,
     /// `field = expr` — one replaced field of a record update.
     FieldUpdate,
+    /// `subject?` — propagate a `Result`'s failure out of the function.
+    ///
+    /// Surface syntax with no core term behind it: the compiler elaborates it
+    /// to the exhaustive two-arm `Result` match the surface already had, with
+    /// the rest of the enclosing answer in the `Ok` arm and the same `Err`
+    /// value in the other (`docs/rules/language/02-core-calculus.md` §5). The
+    /// subject is the one expression child.
+    QuestionExpr,
     /// A literal, binding, option, list, or product pattern.
     Pattern,
     /// `music { ... }`, a notation-first contextual music value.

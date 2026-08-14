@@ -118,6 +118,7 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         SyntaxKind::Caret => "^",
         SyntaxKind::Hash => "#",
         SyntaxKind::Dollar => "$",
+        SyntaxKind::Question => "?",
         SyntaxKind::TemplateKw => "template",
         SyntaxKind::SignatureKw => "signature",
         SyntaxKind::StructureKw => "structure",
@@ -316,6 +317,7 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::IfExpr
         | SyntaxKind::RecordUpdateExpr
         | SyntaxKind::FieldUpdate
+        | SyntaxKind::QuestionExpr
         | SyntaxKind::MatchArm
         | SyntaxKind::Pattern
         | SyntaxKind::MusicExpr

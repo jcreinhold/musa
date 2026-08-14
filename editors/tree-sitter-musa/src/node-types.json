@@ -865,6 +865,10 @@
           "named": true
         },
         {
+          "type": "question_expression",
+          "named": true
+        },
+        {
           "type": "record_update_expression",
           "named": true
         },
@@ -2870,6 +2874,78 @@
     }
   },
   {
+    "type": "question_expression",
+    "named": true,
+    "fields": {
+      "subject": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "(",
+            "named": false
+          },
+          {
+            "type": ")",
+            "named": false
+          },
+          {
+            "type": "application_expression",
+            "named": true
+          },
+          {
+            "type": "block_expression",
+            "named": true
+          },
+          {
+            "type": "expression",
+            "named": true
+          },
+          {
+            "type": "lambda_expression",
+            "named": true
+          },
+          {
+            "type": "list_expression",
+            "named": true
+          },
+          {
+            "type": "literal_expression",
+            "named": true
+          },
+          {
+            "type": "name_expression",
+            "named": true
+          },
+          {
+            "type": "option_expression",
+            "named": true
+          },
+          {
+            "type": "product_expression",
+            "named": true
+          },
+          {
+            "type": "question_expression",
+            "named": true
+          },
+          {
+            "type": "record_update_expression",
+            "named": true
+          },
+          {
+            "type": "result_expression",
+            "named": true
+          },
+          {
+            "type": "syntax_region",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "record_update_expression",
     "named": true,
     "fields": {
@@ -2919,6 +2995,10 @@
           },
           {
             "type": "product_expression",
+            "named": true
+          },
+          {
+            "type": "question_expression",
             "named": true
           },
           {
@@ -4267,6 +4347,10 @@
   },
   {
     "type": ">",
+    "named": false
+  },
+  {
+    "type": "?",
     "named": false
   },
   {

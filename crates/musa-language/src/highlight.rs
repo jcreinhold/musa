@@ -139,6 +139,7 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("^", SyntaxKind::Caret),
     ("#", SyntaxKind::Hash),
     ("$", SyntaxKind::Dollar),
+    ("?", SyntaxKind::Question),
 ];
 
 /// What a token is, for setting purposes.
@@ -235,7 +236,8 @@ impl TokenClass {
             | SyntaxKind::Less
             | SyntaxKind::Caret
             | SyntaxKind::Hash
-            | SyntaxKind::Dollar => Self::Punctuation,
+            | SyntaxKind::Dollar
+            | SyntaxKind::Question => Self::Punctuation,
 
             SyntaxKind::UseKw => Self::Use,
 
@@ -436,6 +438,7 @@ impl TokenClass {
             | SyntaxKind::IfExpr
             | SyntaxKind::RecordUpdateExpr
             | SyntaxKind::FieldUpdate
+            | SyntaxKind::QuestionExpr
             | SyntaxKind::Pattern
             | SyntaxKind::MusicExpr
             | SyntaxKind::KernelQuote

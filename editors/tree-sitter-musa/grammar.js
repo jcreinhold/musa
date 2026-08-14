@@ -499,6 +499,7 @@ module.exports = grammar({
         $.match_expression,
         $.if_expression,
         $.record_update_expression,
+        $.question_expression,
         $.music_expression,
         $.kernel_quote,
         $.application_expression,
@@ -521,7 +522,15 @@ module.exports = grammar({
     record_update_expression: ($) =>
       prec.left(
         seq(
-          field('subject', choice($.record_update_expression, $.application_expression, $._primary_expression)),
+          field(
+            'subject',
+            choice(
+              $.record_update_expression,
+              $.question_expression,
+              $.application_expression,
+              $._primary_expression,
+            ),
+          ),
           'with',
           '{',
           $.field_update,
@@ -532,6 +541,26 @@ module.exports = grammar({
       ),
 
     field_update: ($) => seq(field('name', $.identifier), '=', field('value', $.expression)),
+
+    // Parser::expr — `e?`, the failure carried outward. Postfix like a call
+    // and an update, and read in the same left-to-right loop, so `read(here)?`
+    // asks about the call's answer and `later? with { … }` updates the payload
+    // the question yielded.
+    question_expression: ($) =>
+      prec.left(
+        seq(
+          field(
+            'subject',
+            choice(
+              $.question_expression,
+              $.record_update_expression,
+              $.application_expression,
+              $._primary_expression,
+            ),
+          ),
+          '?',
+        ),
+      ),
 
     pitch_expression: ($) =>
       prec.left(

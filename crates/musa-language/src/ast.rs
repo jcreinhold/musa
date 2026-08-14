@@ -2386,6 +2386,14 @@ wrapper!(RecordUpdateExpr, SyntaxKind::RecordUpdateExpr);
 pub struct FieldUpdate(SyntaxNode);
 wrapper!(FieldUpdate, SyntaxKind::FieldUpdate);
 
+/// `subject?` — propagate a `Result`'s failure out of the function.
+///
+/// Surface syntax the compiler elaborates to the exhaustive `Result` match,
+/// so nothing downstream of elaboration has a question. The subject is the one
+/// expression child; the `?` itself is the last token.
+pub struct QuestionExpr(SyntaxNode);
+wrapper!(QuestionExpr, SyntaxKind::QuestionExpr);
+
 /// `music { ... }`, a contextual notation-first music value.
 pub struct MusicExpr(SyntaxNode);
 wrapper!(MusicExpr, SyntaxKind::MusicExpr);

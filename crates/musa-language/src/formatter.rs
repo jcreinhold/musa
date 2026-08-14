@@ -724,13 +724,21 @@ fn format_token(node: &SyntaxNode, token: &SyntaxToken, writer: &mut Writer) {
         }
     } else if matches!(
         kind,
-        SyntaxKind::Slash | SyntaxKind::Dot | SyntaxKind::Greater | SyntaxKind::Caret | SyntaxKind::Less
+        SyntaxKind::Slash
+            | SyntaxKind::Dot
+            | SyntaxKind::Greater
+            | SyntaxKind::Caret
+            | SyntaxKind::Less
+            | SyntaxKind::Question
     ) {
         // A short-form duration is part of the note's word: `c4/4.` is one
         // note written one way, not a pitch beside a fraction beside a dot.
         // An accent or a marcato is drawn on its notehead, so it is written
         // on its note: `c4/4>`, never `c4/4 >`. A type parameter binds to its
-        // type the same way: `Option<Pitch>`, never `Option <Pitch>`.
+        // type the same way: `Option<Pitch>`, never `Option <Pitch>`. A
+        // question is postfix and closes up for the same reason: `read(here)?`
+        // asks about the call, and a space would make the `?` look like a
+        // token of the line rather than part of the expression.
         writer.write(text);
     } else {
         if writer.needs_word_space() {

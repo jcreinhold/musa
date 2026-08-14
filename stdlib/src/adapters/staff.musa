@@ -1880,9 +1880,9 @@ library {
         here: NodePath,
         field: Given,
         missing: Text
-    ) -> Result<Syntax, Refusal> {
+    ) -> Result<Syntax, (Syntax, Text)> {
         match field {
-            Absent -> Err(Refused(node_at(region, here), missing)),
+            Absent -> Err((node_at(region, here), missing)),
             Stated(node) -> Ok(node),
         }
     }
@@ -1902,102 +1902,53 @@ library {
                         "this staff ties a note to nothing: no note sounds after it"
                     )),
                     Closed -> match head {
-                        Head(instrument, shift, written_clef, tonality, beats, spelled) -> match stated_field(
-                            region,
+                        // Six things the head has to have said, asked in the
+                        // order a reader would ask them. Each `?` hands the
+                        // first refusal straight back out, so what is left on
+                        // the page is the document being built rather than the
+                        // six ways it might not be.
+                        Head(instrument, shift, written_clef, tonality, beats, spelled) -> Ok(call7(
                             here,
-                            instrument,
-                            "this staff does not say what instrument it is written for",
-                        ) {
-                            Err(why) -> match why {
-                                Refused(node, told) -> Err((node, told)),
-                                NoRefusal -> Err((
-                                    node_at(region, here),
-                                    "this staff is incomplete"
-                                )),
-                            },
-                            Ok(named_instrument) -> match stated_field(
+                            19,
+                            "Document",
+                            stated_field(
+                                region,
+                                here,
+                                instrument,
+                                "this staff does not say what instrument it is written for",
+                            )?,
+                            stated_field(
                                 region,
                                 here,
                                 shift,
                                 "this staff does not say how far its written pitch sits from its sounding pitch",
-                            ) {
-                                Err(why) -> match why {
-                                    Refused(node, told) -> Err((node, told)),
-                                    NoRefusal -> Err((
-                                        node_at(region, here),
-                                        "this staff is incomplete"
-                                    )),
-                                },
-                                Ok(sounding_shift) -> match stated_field(
-                                    region,
-                                    here,
-                                    written_clef,
-                                    "this staff does not say what clef it is read in",
-                                ) {
-                                    Err(why) -> match why {
-                                        Refused(node, told) -> Err((node, told)),
-                                        NoRefusal -> Err((
-                                            node_at(region, here),
-                                            "this staff is incomplete"
-                                        )),
-                                    },
-                                    Ok(read_clef) -> match stated_field(
-                                        region,
-                                        here,
-                                        tonality,
-                                        "this staff does not say what key it is written in",
-                                    ) {
-                                        Err(why) -> match why {
-                                            Refused(node, told) -> Err((node, told)),
-                                            NoRefusal -> Err((
-                                                node_at(region, here),
-                                                "this staff is incomplete"
-                                            )),
-                                        },
-                                        Ok(written_key) -> match stated_field(
-                                            region,
-                                            here,
-                                            beats,
-                                            "this staff does not say what time it opens in",
-                                        ) {
-                                            Err(why) -> match why {
-                                                Refused(node, told) -> Err((node, told)),
-                                                NoRefusal -> Err((
-                                                    node_at(region, here),
-                                                    "this staff is incomplete"
-                                                )),
-                                            },
-                                            Ok(opening) -> match stated_field(
-                                                region,
-                                                here,
-                                                spelled,
-                                                "this staff does not say how a realized span is spelled",
-                                            ) {
-                                                Err(why) -> match why {
-                                                    Refused(node, told) -> Err((node, told)),
-                                                    NoRefusal -> Err((
-                                                        node_at(region, here),
-                                                        "this staff is incomplete"
-                                                    )),
-                                                },
-                                                Ok(spelling) -> Ok(call7(
-                                                    here,
-                                                    19,
-                                                    "Document",
-                                                    named_instrument,
-                                                    sounding_shift,
-                                                    read_clef,
-                                                    written_key,
-                                                    opening,
-                                                    spelling,
-                                                    items
-                                                )),
-                                            },
-                                        },
-                                    },
-                                },
-                            },
-                        },
+                            )?,
+                            stated_field(
+                                region,
+                                here,
+                                written_clef,
+                                "this staff does not say what clef it is read in",
+                            )?,
+                            stated_field(
+                                region,
+                                here,
+                                tonality,
+                                "this staff does not say what key it is written in",
+                            )?,
+                            stated_field(
+                                region,
+                                here,
+                                beats,
+                                "this staff does not say what time it opens in"
+                            )?,
+                            stated_field(
+                                region,
+                                here,
+                                spelled,
+                                "this staff does not say how a realized span is spelled",
+                            )?,
+                            items
+                        )),
                     },
                 },
             },

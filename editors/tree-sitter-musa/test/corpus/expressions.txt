@@ -393,3 +393,107 @@ piece "Rebuilding" {
             (pitch_literal)
             (duration
               (integer))))))))
+
+================================================================================
+postfix question, including one asked of a call and one chained with an update
+================================================================================
+
+piece "questions" {
+    fn twice(said: Text) -> Result<Nat, Text> { nat_add(half(said)?, half(said)?) }
+    fn rebuilt(held: Pending) -> Result<Pending, Text> { Ok(reading(held)? with { dots = 1 }) }
+    score { part p { voice v { c4/4 } } }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (piece_declaration
+    (string)
+    (function_declaration
+      (identifier)
+      (parameter_list
+        (parameter
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier)))))
+      (type_expression
+        (result_type
+          (type_expression
+            (type_name
+              (identifier)))
+          (type_expression
+            (type_name
+              (identifier)))))
+      (block_expression
+        (expression
+          (application_expression
+            (name_expression
+              (identifier))
+            (expression_argument_list
+              (expression_argument
+                (expression
+                  (question_expression
+                    (application_expression
+                      (name_expression
+                        (identifier))
+                      (expression_argument_list
+                        (expression_argument
+                          (expression
+                            (name_expression
+                              (identifier)))))))))
+              (expression_argument
+                (expression
+                  (question_expression
+                    (application_expression
+                      (name_expression
+                        (identifier))
+                      (expression_argument_list
+                        (expression_argument
+                          (expression
+                            (name_expression
+                              (identifier))))))))))))))
+    (function_declaration
+      (identifier)
+      (parameter_list
+        (parameter
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier)))))
+      (type_expression
+        (result_type
+          (type_expression
+            (type_name
+              (identifier)))
+          (type_expression
+            (type_name
+              (identifier)))))
+      (block_expression
+        (expression
+          (result_expression
+            (expression
+              (record_update_expression
+                (question_expression
+                  (application_expression
+                    (name_expression
+                      (identifier))
+                    (expression_argument_list
+                      (expression_argument
+                        (expression
+                          (name_expression
+                            (identifier)))))))
+                (field_update
+                  (identifier)
+                  (expression
+                    (literal_expression
+                      (integer))))))))))
+    (score_declaration
+      (part_declaration
+        (identifier)
+        (voice_declaration
+          (identifier)
+          (note_statement
+            (pitch_literal)
+            (duration
+              (integer))))))))

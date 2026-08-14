@@ -298,7 +298,19 @@ because there is no projection to elaborate to, per the previous paragraph; the 
 binders are unspellable, so no source name can capture them and the erasure needs no renaming side condition. The
 subject appears once, as the scrutinee, so it is evaluated once; exactly one constructor introduction appears, so an
 update charges exactly one construction; and after `⟦·⟧` there is no update left for a proof to be about, so §§5.2–5.5
-and §5.6 quantify over exactly the set they did before. §5 is otherwise unchanged by the form.
+and §5.6 quantify over exactly the set they did before.
+
+Failure propagation is the third derived form and adds nothing here either. Writing `C` for the answer a `?` was written
+inside of, `⟦C[e?]⟧` is `match ⟦e⟧ { Ok(x) → ⟦C⟧[x], Err(y) → Err(y) }` — the exhaustive elimination of the binary sum
+of §1, and its two injections. `x` and `y` are unspellable, so the erasure needs no renaming side condition; `⟦e⟧`
+appears once, as the scrutinee, so it is evaluated once; and where `C` itself contains a further `?` the two nest in
+written order, which is what fixes which failure a program reports when more than one thing is wrong with it. `C`
+reaches outward to the enclosing abstraction's body, through the branches of a case analysis whose value is that body's
+value and no further: a `?` written where the surrounding value is *not* the abstraction's result is refused rather than
+elaborated, because carrying it out would need a control operator this calculus does not have and the surface will not
+be given one. The typing precondition is that `e : σ + ε` and the answer is `τ + ε` for the same `ε`; it is discharged
+by unification like any other, which is why an abstraction with no written result type still elaborates. After `⟦·⟧`
+there is no question left for a proof to be about. §5 is otherwise unchanged by these three forms.
 
 ### 5.1 Static judgments
 
