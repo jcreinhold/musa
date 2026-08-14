@@ -6,7 +6,7 @@ use num_rational::Ratio;
 use serde::{Deserialize, Serialize};
 
 /// A byte span in the source document.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct SourceSpan {
     /// First byte of the span.
     pub start: u32,

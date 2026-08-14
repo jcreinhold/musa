@@ -259,6 +259,15 @@ struct Node {
 pub struct Derivation {
     pass: PassDescriptor,
     nodes: Vec<Node>,
+    /// Where each anchor's node first appeared, so that [`Derivation::find`]
+    /// answers without walking the graph.
+    ///
+    /// Derived from `nodes` and never consulted for identity: two graphs with
+    /// the same nodes have the same index, which is why it may sit inside a
+    /// record that compares structurally. It exists because `find` is asked
+    /// once per event and once per generation site, and a scan there made
+    /// assembling a score's derivation quadratic in the score.
+    first: std::collections::HashMap<Anchor, NodeId>,
     /// Which node each score event ended at, in event order. Empty for a
     /// graph built by hand rather than read off a score.
     events: Vec<(crate::score::EventId, NodeId)>,
@@ -266,10 +275,11 @@ pub struct Derivation {
 
 impl Derivation {
     /// An empty derivation for `pass`.
-    pub(crate) const fn new(pass: PassDescriptor) -> Self {
+    pub(crate) fn new(pass: PassDescriptor) -> Self {
         Self {
             pass,
             nodes: Vec::new(),
+            first: std::collections::HashMap::new(),
             events: Vec::new(),
         }
     }
@@ -402,12 +412,12 @@ impl Derivation {
     }
 
     /// The node naming `anchor`, if this graph holds one.
+    ///
+    /// The *first* such node, as a scan from the front would find: a step may
+    /// name an anchor a leaf already names, and interning has always meant the
+    /// earlier one.
     pub(crate) fn find(&self, anchor: Anchor) -> Option<NodeId> {
-        self.nodes
-            .iter()
-            .position(|node| node.anchor == anchor)
-            .and_then(|index| u32::try_from(index).ok())
-            .map(NodeId)
+        self.first.get(&anchor).copied()
     }
 
     /// Whether every node reaches a leaf in the pass's source representation
@@ -611,6 +621,7 @@ impl Derivation {
 
     fn push(&mut self, node: Node) -> NodeId {
         let id = u32::try_from(self.nodes.len()).unwrap_or(u32::MAX);
+        self.first.entry(node.anchor).or_insert(NodeId(id));
         self.nodes.push(node);
         NodeId(id)
     }
@@ -708,8 +719,7 @@ pub(crate) struct ExpansionAnchor {
 
 pub(crate) fn of_score(score: &crate::score::ScoreSnapshot, expansions: &[ExpansionAnchor]) -> Derivation {
     let mut graph = Derivation::new(ELABORATION);
-    let mut sources: Vec<SourceSpan> = Vec::new();
-    let mut targets: Vec<Vec<u8>> = Vec::new();
+    let mut names = Names::default();
     let mut parts = Vec::new();
     for (_, part) in score.parts().iter() {
         let mut voices = Vec::new();
@@ -717,30 +727,20 @@ pub(crate) fn of_score(score: &crate::score::ScoreSnapshot, expansions: &[Expans
             let mut events = Vec::new();
             let mut reached = Vec::new();
             for event in voice.events() {
-                if let Some(id) = of_event(&mut graph, &mut sources, &mut targets, &event.origin, expansions) {
+                if let Some(id) = of_event(&mut graph, &mut names, &event.origin, expansions) {
                     events.push(id);
                     reached.push((event.id, id));
                 }
             }
             graph.events.extend(reached);
             let key = format!("voice {} {}", part.id().0, voice_id.0);
-            let Some(id) = graph.combined(
-                intern_target(&mut targets, key.as_bytes()),
-                None,
-                events,
-                Evidence::of("voice"),
-            ) else {
+            let Some(id) = graph.combined(names.target(key.as_bytes()), None, events, Evidence::of("voice")) else {
                 continue;
             };
             voices.push(id);
         }
         let key = format!("part {}", part.id().0);
-        if let Some(id) = graph.combined(
-            intern_target(&mut targets, key.as_bytes()),
-            None,
-            voices,
-            Evidence::of("part"),
-        ) {
+        if let Some(id) = graph.combined(names.target(key.as_bytes()), None, voices, Evidence::of("part")) {
             parts.push(id);
         }
     }
@@ -748,12 +748,7 @@ pub(crate) fn of_score(score: &crate::score::ScoreSnapshot, expansions: &[Expans
     // several parts would have several roots and no node standing for the
     // whole result, which is what §1's "root anchor for the whole
     // representation" asks for.
-    graph.combined(
-        intern_target(&mut targets, b"score"),
-        None,
-        parts,
-        Evidence::of("score"),
-    );
+    graph.combined(names.target(b"score"), None, parts, Evidence::of("score"));
     graph
 }
 
@@ -761,12 +756,11 @@ pub(crate) fn of_score(score: &crate::score::ScoreSnapshot, expansions: &[Expans
 /// innermost first, because that is the order they were applied in.
 fn of_event(
     graph: &mut Derivation,
-    sources: &mut Vec<SourceSpan>,
-    targets: &mut Vec<Vec<u8>>,
+    names: &mut Names,
     origin: &crate::origin::Origin,
     expansions: &[ExpansionAnchor],
 ) -> Option<NodeId> {
-    let written = intern_source(sources, origin.definition_span);
+    let written = names.source(origin.definition_span);
     let mut node = graph.leaf(written, Some(origin.definition_span));
     let mut key = format!("{}:{}", origin.definition_span.start, origin.definition_span.end);
     // An adapter region is where the innermost step starts when there is one:
@@ -780,7 +774,7 @@ fn of_event(
             use std::fmt::Write as _;
             let _ = write!(key, "/expand({})", expansion.adapter);
         }
-        let anchor = intern_target(targets, key.as_bytes());
+        let anchor = names.target(key.as_bytes());
         let evidence = Evidence::of(format!("expansion:{}", expansion.adapter));
         node = graph.generated(anchor, None, node, node, evidence)?;
     }
@@ -788,11 +782,11 @@ fn of_event(
         let spelled = step_key(step);
         key.push('/');
         key.push_str(&spelled);
-        let anchor = intern_target(targets, key.as_bytes());
+        let anchor = names.target(key.as_bytes());
         let evidence = Evidence::of(spelled);
         node = match generation_site(step, origin) {
             Some(span) => {
-                let site = intern_source(sources, span);
+                let site = names.source(span);
                 let site = graph.leaf(site, Some(span));
                 graph.generated(anchor, None, node, site, evidence)?
             }
@@ -863,32 +857,41 @@ fn step_key(step: &crate::origin::ExpansionStep) -> String {
     }
 }
 
-fn intern_source(sources: &mut Vec<SourceSpan>, span: SourceSpan) -> Anchor {
-    let id = match sources.iter().position(|held| *held == span) {
-        Some(found) => found,
-        None => {
-            sources.push(span);
-            sources.len().saturating_sub(1)
-        }
-    };
-    Anchor::at(
-        PresentationRef::at(PresentationKind::Source, 1),
-        u32::try_from(id).unwrap_or(u32::MAX),
-    )
+/// The anchor ids one assembly hands out, in the order it first asks for them.
+///
+/// An anchor id *is* how many distinct names came before it, so a name asked
+/// for twice answers twice with the same anchor and the graph shares a node —
+/// that sharing is the whole reason §6 calls this a graph rather than a forest.
+/// What the two maps buy is only the speed of that question: a score of *n*
+/// events asks it on the order of *n* times, and answering by scanning the
+/// names already given made assembling a derivation quadratic in the score.
+/// Nothing but the count is kept, because nothing but the count is read.
+#[derive(Default)]
+struct Names {
+    written: std::collections::HashMap<SourceSpan, u32>,
+    produced: std::collections::HashMap<Vec<u8>, u32>,
 }
 
-fn intern_target(targets: &mut Vec<Vec<u8>>, key: &[u8]) -> Anchor {
-    let id = match targets.iter().position(|held| held == key) {
-        Some(found) => found,
-        None => {
-            targets.push(key.to_vec());
-            targets.len().saturating_sub(1)
-        }
-    };
-    Anchor::at(
-        PresentationRef::at(PresentationKind::ScoreTrack, 1),
-        u32::try_from(id).unwrap_or(u32::MAX),
-    )
+impl Names {
+    /// The anchor for a place in the composer's own text.
+    fn source(&mut self, span: SourceSpan) -> Anchor {
+        let next = u32::try_from(self.written.len()).unwrap_or(u32::MAX);
+        let id = *self.written.entry(span).or_insert(next);
+        Anchor::at(PresentationRef::at(PresentationKind::Source, 1), id)
+    }
+
+    /// The anchor for an item of the score this assembly is explaining.
+    fn target(&mut self, key: &[u8]) -> Anchor {
+        let id = match self.produced.get(key) {
+            Some(found) => *found,
+            None => {
+                let next = u32::try_from(self.produced.len()).unwrap_or(u32::MAX);
+                self.produced.insert(key.to_vec(), next);
+                next
+            }
+        };
+        Anchor::at(PresentationRef::at(PresentationKind::ScoreTrack, 1), id)
+    }
 }
 
 #[cfg(test)]
