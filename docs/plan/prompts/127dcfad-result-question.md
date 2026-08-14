@@ -1,7 +1,7 @@
 ---
 id: 127dcfad
 slug: result-question
-status: pending
+status: in-progress
 depends_on: [127dcfac]
 phase: 3
 ---
