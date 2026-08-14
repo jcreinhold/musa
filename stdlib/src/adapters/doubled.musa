@@ -40,8 +40,52 @@
 // Two folds, then, rather than one carrying a pair: reading the region and
 // reading it for the thing it will not accept are two questions, and asking
 // them separately keeps each fold's step functions as simple as the original.
+//
+// The module is the adapter's scope. `expand` reads the module's own `data`
+// and its own `fn`s, because they are declarations of the module it is
+// declared in — the phase checks and evaluates the whole module, not one
+// spliced expression. Even a fixture this small is better for it: `Refusal`
+// says what the first fold is looking for, and `first_refusal` says how two of
+// them combine, where before both were an anonymous `Option<Syntax>` and a
+// nested `option_fold` a reader had to decode.
 
 library {
+
+    // What the first fold is looking for: a node this adapter will not read,
+    // or nothing wrong yet.
+    //
+    // A `data` rather than an `Option<Syntax>`, and the difference is the
+    // name. Two fields would be indistinguishable from any other pair of a
+    // node and an absence; `Refusal` says which question this fold is asking.
+    data Refusal {
+        Nothing,
+        Found(node: Syntax),
+    }
+
+    // The first refusal among two, in the order they were written.
+    //
+    // A left-to-right `list_fold` over a group's children carries the refusal
+    // it already has, so this is what "the first `;` in the region" means, and
+    // it is one named function rather than a fold nested inside a fold.
+    let first_refusal = fn (found: Refusal, later: Refusal) {
+        match found {
+            Found(node) -> Found(node),
+            Nothing -> later,
+        }
+    };
+
+    // The refusal a node standing at `here` amounts to, when the region still
+    // has a node there.
+    //
+    // `syntax_at` answers with an `Option` and this fold carries a `Refusal`,
+    // so somewhere the two have to meet; giving that meeting a name is what
+    // keeps the fold's step one line long. Both parameters are annotated,
+    // which an adapter can do because the phase's own types have a spelling in
+    // the module it is written in.
+    let found_at = fn (region: Syntax, here: NodePath) {
+        option_fold(Nothing, fn (node) { Found(node) }, syntax_at(region, here))
+    };
+
     // What this adapter promises, of `26-language-design-decision.md` §4's
     // three levels. It is checked where the module is imported: a level is a
     // promise a musician relies on, so a module that declared `generative` and
@@ -58,28 +102,32 @@ library {
 
     let expand = fn (region) {
         match syntax_fold(
-            fn (here) { None },
+            fn (here) { Nothing },
             // Where the refusal is found and where it is pointed are the same
             // node: `syntax_at` hands back the composer's own `;` rather than
             // the rebuilt one, and its source information is what the compiler
             // reads the range from.
             fn (here, kind, text) {
                 match kind {
-                    "Semicolon" -> syntax_at(region, here),
-                    _ -> None,
+                    "Semicolon" -> found_at(region, here),
+                    _ -> Nothing,
                 }
             },
-            fn (here, name) { None },
+            fn (here, name) { Nothing },
             // The first refusal among the children, in the order they are
-            // written: `list_fold` runs left to right, and an accumulator that
-            // already carries a node keeps it.
+            // written: `list_fold` runs left to right, and the sibling
+            // `first_refusal` says what "first" means once, here rather than
+            // inside the step.
             fn (here, delimiter, children) {
-                list_fold(None, fn (child, found) { option_fold(child, fn (node) { Some(node) }, found) }, children)
+                list_fold(Nothing, fn (child, found) { first_refusal(found, child) }, children)
             },
             region
         ) {
-            Some(node) -> Err((node, "this region holds a `;`, and I read one expression's worth of tokens")),
-            None -> Ok(syntax_fold(
+            Found(node) -> Err((
+                node,
+                "this region holds a `;`, and I read one expression's worth of tokens"
+            )),
+            Nothing -> Ok(syntax_fold(
                 fn (here) { syntax_token(syntax_built(here, 0, 0), "Missing", "") },
                 fn (here, kind, text) { syntax_token(syntax_built(here, 1, 0), kind, text) },
                 fn (here, name) { syntax_identifier(syntax_built(here, 2, 0), name) },

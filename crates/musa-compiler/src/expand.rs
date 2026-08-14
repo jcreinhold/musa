@@ -309,6 +309,10 @@ impl Level {
 struct LevelFault {
     message: String,
     help: &'static str,
+    /// Which complaint this is. A module that crossed a compilation limit
+    /// while being read is a limit and says so, exactly as a stop during
+    /// expansion does; everything else here is the module's own fault.
+    code: Code,
 }
 
 /// The level `adapter_source` declares, checked against what it offers.
@@ -323,23 +327,39 @@ struct LevelFault {
 /// "Declared and checked, not inferred" is the whole point: a default would be
 /// the compiler deciding what a package promises.
 fn level_of(adapter_source: &str, path: &str) -> Result<Level, LevelFault> {
-    let declared = declaration_of(adapter_source, "level").ok_or_else(|| LevelFault {
+    let module = crate::core::read_adapter_module(adapter_source).map_err(|fault| match fault {
+        crate::core::ModuleFault::Stopped => LevelFault {
+            message: format!("reading `{path}` crossed a compilation limit"),
+            help: "an adapter is total, so this is a limit rather than a loop",
+            code: Code::ResourceLimit,
+        },
+        crate::core::ModuleFault::Broken(diagnostics) => LevelFault {
+            message: format!(
+                "`{path}` is not an adapter module: {}",
+                diagnostics
+                    .first()
+                    .map_or_else(|| "it does not check".to_owned(), |first| first.message.clone())
+            ),
+            help: "an adapter module is a `library` of ordinary declarations, checked in the expansion phase",
+            code: Code::Expansion,
+        },
+    })?;
+    let declared = module.text("level").ok_or_else(|| LevelFault {
         message: format!("`{path}` declares no conformance level"),
         help: "an adapter module declares `let level = \"readable\";`, `\"editable\"`, or `\"generative\"`",
+        code: Code::Expansion,
     })?;
-    let word = declared
-        .strip_prefix('"')
-        .and_then(|rest| rest.strip_suffix('"'))
-        .unwrap_or(&declared);
-    let level = Level::named(word).ok_or_else(|| LevelFault {
-        message: format!("`{path}` declares the level `{word}`, which is not one of the three"),
+    let level = Level::named(declared).ok_or_else(|| LevelFault {
+        message: format!("`{path}` declares the level `{declared}`, which is not one of the three"),
         help: "the levels are `readable`, `editable`, and `generative`, and each is the one before it plus an operation",
+        code: Code::Expansion,
     })?;
     for operation in level.operations() {
-        if declaration_of(adapter_source, operation).is_none() {
+        if !module.declares(operation) {
             return Err(LevelFault {
                 message: format!("`{path}` declares the {} level and no `{operation}`", level.word()),
                 help: "a level is a promise: declare the level the module reaches, or write the operation it names",
+                code: Code::Expansion,
             });
         }
     }
@@ -372,7 +392,7 @@ pub(crate) fn expand(source: &SourceDocument, options: &CompileOptions) -> Expan
         };
         if let Err(fault) = level_of(adapter_source, &import.path) {
             expansion.diagnostics.push(
-                Diagnostic::error(Code::Expansion, fault.message)
+                Diagnostic::error(fault.code, fault.message)
                     .at(import.at, "this import")
                     .help(fault.help),
             );
@@ -563,15 +583,6 @@ pub fn adapter_edits(
             adapter: import.path.clone(),
         });
     }
-    let editor = match editor_of(adapter_source, &import.path, site) {
-        Ok(editor) => editor,
-        Err(None) => {
-            return Err(AdapterEditError::ReadOnly {
-                adapter: import.path.clone(),
-            });
-        }
-        Err(Some(diagnostic)) => return Err(AdapterEditError::Broken(diagnostic)),
-    };
     let body = region_body(region).ok_or_else(|| {
         AdapterEditError::Broken(Box::new(refusal(
             site,
@@ -586,7 +597,7 @@ pub fn adapter_edits(
         crate::syntax::ExpansionPath::at(vec![u32::try_from(ordinal).unwrap_or(u32::MAX)]),
     );
     let anchors = subject.spans(site);
-    let (answer, _work) = crate::core::edit_syntax(&editor, subject, command, anchor, argument);
+    let (answer, _work) = crate::core::edit_syntax(adapter_source, subject, command, anchor, argument);
     let patches = answer.map_err(|failure| match failure {
         crate::core::EditFailure::Refused(message) => AdapterEditError::Refused {
             adapter: import.path.clone(),
@@ -743,13 +754,7 @@ pub fn adapter_print(
             level: level.word().to_owned(),
         });
     }
-    let printer = declaration_of(adapter_source, "print").ok_or_else(|| {
-        broken(
-            format!("`{adapter}` declares no `print`"),
-            "an adapter module declares `let print = fn (value) { … };` to be generative",
-        )
-    })?;
-    crate::core::print_value(&printer, value).map_err(|failure| match failure {
+    crate::core::print_value(adapter_source, value).map_err(|failure| match failure {
         crate::core::PrintFailure::Loss(message) => AdapterPrintError::Loss {
             adapter: adapter.to_owned(),
             message,
@@ -770,30 +775,6 @@ pub fn adapter_print(
             "the adapter checked and then produced nothing, which is a fault in the adapter",
         ),
     })
-}
-
-/// The `edit` an adapter module declares, as the text of one expression.
-///
-/// `Err(None)` is the *readable* level: the module declares no `edit`, which is
-/// a level rather than a mistake. `Err(Some(_))` is a module that could not be
-/// read as an adapter at all.
-fn editor_of(adapter_source: &str, path: &str, site: SourceSpan) -> Result<String, Option<Box<Diagnostic>>> {
-    let parsed = musa_language::parse(adapter_source);
-    let root = parsed.syntax();
-    if root.descendants().any(|node| node.kind() == SyntaxKind::SyntaxRegion)
-        || root.descendants().any(|node| is_syntax_import(&node))
-    {
-        return Err(Some(Box::new(refusal(
-            site,
-            format!("`{path}` is written with an adapter of its own"),
-            "an adapter is written in the adapter-free bootstrap: no region, no syntax import",
-        ))));
-    }
-    root.descendants()
-        .filter(|node| node.kind() == SyntaxKind::LetDecl)
-        .find(|declaration| declared_name(declaration).as_deref() == Some("edit"))
-        .and_then(|declaration| declared_body(&declaration, adapter_source))
-        .ok_or(None)
 }
 
 /// One region's answer, kept so a second identical region costs the same.
@@ -905,8 +886,7 @@ fn expand_one(
         return Ok((hit.printed.clone(), record, hit.charges));
     }
 
-    let transformer = transformer_of(adapter_source, &import.path, site)?;
-    let (answer, work) = crate::core::expand_syntax(&transformer, subject.clone());
+    let (answer, work) = crate::core::expand_syntax(adapter_source, subject.clone());
     // The run happened, so the run is charged, and everything below reports
     // against the same charge whether the adapter answered or refused.
     let charged = |generated_syntax_nodes| Charges {
@@ -1037,77 +1017,6 @@ fn ordinary_expression(text: &str, site: SourceSpan) -> Result<(), Box<Diagnosti
         )));
     }
     Ok(())
-}
-
-/// The `expand` an adapter module declares, as the text of one expression.
-fn transformer_of(adapter_source: &str, path: &str, site: SourceSpan) -> Result<String, Box<Diagnostic>> {
-    let parsed = musa_language::parse(adapter_source);
-    let root = parsed.syntax();
-    // The adapter-free bootstrap, checked rather than assumed. An adapter
-    // whose own definition needed an adapter would put the expansion order
-    // back into a cycle, and this is the whole of what prevents it.
-    if root.descendants().any(|node| node.kind() == SyntaxKind::SyntaxRegion)
-        || root.descendants().any(|node| is_syntax_import(&node))
-    {
-        return Err(Box::new(refusal(
-            site,
-            format!("`{path}` is written with an adapter of its own"),
-            "an adapter is written in the adapter-free bootstrap: no region, no syntax import",
-        )));
-    }
-    root.descendants()
-        .filter(|node| node.kind() == SyntaxKind::LetDecl)
-        .find(|declaration| declared_name(declaration).as_deref() == Some("expand"))
-        .and_then(|declaration| declared_body(&declaration, adapter_source))
-        .ok_or_else(|| {
-            Box::new(refusal(
-                site,
-                format!("`{path}` declares no `expand`"),
-                "an adapter module declares `let expand = fn (region) { … };`",
-            ))
-        })
-}
-
-/// The text of the module's `let <name> = …;`, whatever it declares.
-///
-/// The one way this phase reads an adapter module. An adapter's operations are
-/// its declarations and nothing else — there is no descriptor, no attribute,
-/// and no registration — so "does it offer `print`" and "what is its `print`"
-/// are the same question asked twice.
-fn declaration_of(adapter_source: &str, name: &str) -> Option<String> {
-    musa_language::parse(adapter_source)
-        .syntax()
-        .descendants()
-        .filter(|node| node.kind() == SyntaxKind::LetDecl)
-        .find(|declaration| declared_name(declaration).as_deref() == Some(name))
-        .and_then(|declaration| declared_body(&declaration, adapter_source))
-}
-
-/// The text of `let <name> = <this>;`.
-fn declared_body(declaration: &SyntaxNode, source: &str) -> Option<String> {
-    let mut equals = None;
-    let mut semicolon = None;
-    // Everything else in a `let` — the name, the type, the body's own tokens —
-    // lies between the two marks rather than being one of them.
-    for token in declaration.children_with_tokens().filter_map(|it| it.into_token()) {
-        if token.kind() == SyntaxKind::Equals && equals.is_none() {
-            equals = Some(u32::from(token.text_range().end()));
-        } else if token.kind() == SyntaxKind::Semicolon {
-            semicolon = Some(u32::from(token.text_range().start()));
-        }
-    }
-    let from = usize::try_from(equals?).ok()?;
-    let to = usize::try_from(semicolon.unwrap_or_else(|| u32::from(declaration.text_range().end()))).ok()?;
-    Some(source.get(from..to)?.trim().to_owned())
-}
-
-/// The name a `let` declares.
-fn declared_name(declaration: &SyntaxNode) -> Option<String> {
-    declaration
-        .children_with_tokens()
-        .filter_map(|it| it.into_token())
-        .find(|token| token.kind() == SyntaxKind::Identifier)
-        .map(|token| token.text().to_owned())
 }
 
 /// The adapter name a region is written with.
@@ -1254,11 +1163,21 @@ mod tests {
         )
     }
 
+    /// The smallest adapter module holding `expand`.
+    ///
+    /// A law about the fold or about a builder is about that one expression,
+    /// and making each such test write a whole `library` around it would bury
+    /// the law in ceremony. Every test about a *module* — its scope, its own
+    /// declarations, its level — writes the module out.
+    fn module(expand: &str) -> String {
+        format!("library {{\n    let level = \"readable\";\n\n    let expand = {expand};\n}}\n")
+    }
+
     /// Expand one region's worth of text through `transformer`, and print it.
     fn answer(transformer: &str, region: &str) -> Result<crate::syntax::Printed, crate::core::ExpansionFailure> {
         let read = musa_language::parse(region);
         let subject = crate::syntax::read_region(&read.syntax(), crate::syntax::ExpansionPath::at(vec![0]));
-        crate::core::expand_syntax(transformer, subject)
+        crate::core::expand_syntax(&module(transformer), subject)
             .0
             .map(|output| crate::syntax::print(&output))
     }
@@ -1395,12 +1314,12 @@ mod tests {
 
     #[test]
     fn an_adapter_written_with_an_adapter_is_refused() {
-        let refusal = transformer_of(
-            "library {\n    let expand = syntax other { c4 };\n}\n",
-            "std::adapters::circular",
-            SourceSpan::new(0, 1),
-        )
-        .expect_err("the bootstrap is adapter-free");
+        let Err(crate::core::ModuleFault::Broken(diagnostics)) =
+            crate::core::read_adapter_module("library {\n    let expand = syntax other { c4 };\n}\n")
+        else {
+            panic!("the bootstrap is adapter-free")
+        };
+        let refusal = diagnostics.into_iter().next().expect("it says why");
         assert!(refusal.message.contains("adapter of its own"), "{}", refusal.message);
     }
 
@@ -1533,7 +1452,7 @@ mod tests {
         );
         let read = musa_language::parse("c4");
         let subject = crate::syntax::read_region(&read.syntax(), crate::syntax::ExpansionPath::at(vec![0]));
-        let Err(generated) = crate::core::expand_syntax(&refusing, subject).0 else {
+        let Err(generated) = crate::core::expand_syntax(&module(&refusing), subject).0 else {
             panic!("the adapter refuses");
         };
         assert_eq!(

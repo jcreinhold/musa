@@ -120,6 +120,14 @@ pub(crate) struct World {
     constructors: IndexMap<String, (NominalId, usize)>,
     /// A generated fold's name, and the declaration it folds.
     folds: IndexMap<String, NominalId>,
+    /// Whether this world belongs to an adapter module rather than to
+    /// ordinary source.
+    ///
+    /// It decides one thing: whether the expansion phase's own types have a
+    /// written spelling. `02-core-calculus.md` §5's "no syntax value" sentence
+    /// is about the source language, and this flag is how that stays true —
+    /// ordinary source is read in a world where `Syntax` names nothing.
+    phase: bool,
 }
 
 /// What a written type name may mean where it is written: the parameters of
@@ -128,11 +136,17 @@ pub(crate) struct World {
 pub(crate) struct TypeScope<'a> {
     world: Option<&'a World>,
     parameters: &'a [String],
+    phase: bool,
 }
 
 impl TypeScope<'_> {
     /// What `name` denotes here, if anything: a parameter in scope, or a
     /// declaration, applied to `arguments`.
+    /// Whether the expansion phase's type names are written names here.
+    pub(crate) const fn in_phase(&self) -> bool {
+        self.phase
+    }
+
     pub(crate) fn named(&self, name: &str, arguments: Vec<Type>) -> Option<Type> {
         if arguments.is_empty()
             && let Some(index) = self.parameters.iter().position(|parameter| parameter == name)
@@ -166,7 +180,17 @@ impl World {
         TypeScope {
             world: Some(self),
             parameters: &[],
+            phase: self.phase,
         }
+    }
+
+    /// The same, for an adapter module.
+    ///
+    /// Its declarations may hold the phase's own types, so the flag is set
+    /// before anything is read rather than after: a `data` holding a `Syntax`
+    /// is refused by a world that does not yet know it is a phase world.
+    pub(crate) fn read_in_phase(resolver: &mut Resolver, owners: &[SyntaxNode]) -> Self {
+        Self::read_with(resolver, owners, true)
     }
 
     /// Read every `data` declaration under `owners`, check each group once,
@@ -177,7 +201,14 @@ impl World {
     /// A declaration written inside a `structure` is found through that
     /// structure, and remembers it — that is what seals its constructors.
     pub(crate) fn read(resolver: &mut Resolver, owners: &[SyntaxNode]) -> Self {
-        let mut world = Self::default();
+        Self::read_with(resolver, owners, false)
+    }
+
+    fn read_with(resolver: &mut Resolver, owners: &[SyntaxNode], phase: bool) -> Self {
+        let mut world = Self {
+            phase,
+            ..Self::default()
+        };
         // Two passes over the same declarations, because a field may name a
         // type declared after it — or the one it is declared in. The first
         // pass learns which names are types; only then can the second read a
@@ -235,6 +266,7 @@ impl World {
             let scope = TypeScope {
                 world: Some(&world),
                 parameters: &parameters,
+                phase: world.phase,
             };
             let variants = declaration
                 .variants()

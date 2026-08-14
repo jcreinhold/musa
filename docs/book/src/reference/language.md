@@ -176,6 +176,7 @@ answers with a `Result`:
 | `position_shift` | `Result<Position<C>, Text>` |
 | `position_between` | `Result<Duration<C>, Text>` |
 | `position_less`, `position_equal` | `Bool` |
+| `text_equal` | `Bool` |
 
 The `Result`s are not caution. Exact arithmetic is exact: two representable rationals can have a sum that is not
 representable, a duration is nonnegative by definition, and dividing by zero is not a number. Each of those is a

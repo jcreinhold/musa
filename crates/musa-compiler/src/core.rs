@@ -49,6 +49,7 @@ pub(crate) fn check_piece(
         UnknownRootMusic::Defer,
         &modules,
         &world,
+        Reading::Source,
     )
 }
 
@@ -79,6 +80,7 @@ pub(crate) fn check_arguments(
         UnknownRootMusic::Reject,
         &modules,
         &world,
+        Reading::Source,
     )
 }
 
@@ -110,6 +112,7 @@ pub(crate) fn check_template_voice(
         UnknownRootMusic::Defer,
         &modules,
         &world,
+        Reading::Source,
     )
 }
 
@@ -199,6 +202,7 @@ pub(crate) fn check_material(
         UnknownRootMusic::Reject,
         &modules,
         &world,
+        Reading::Source,
     )
     .is_some()
 }
@@ -232,6 +236,7 @@ fn validate_imports(resolver: &mut Resolver, libraries: &Libraries) -> bool {
             UnknownRootMusic::Reject,
             &modules,
             &world,
+            Reading::Source,
         )
         .is_some();
         let first_error = foreign_resolver
@@ -942,6 +947,7 @@ enum Builtin {
     RatioDiv,
     RatioLess,
     RatioEqual,
+    TextEqual,
     NatAdd,
     NatMul,
     NatSub,
@@ -1704,6 +1710,16 @@ enum SyntaxOp {
     /// read one (`26-language-design-decision.md` §3.4) — this hands back
     /// something to splice, and nothing to compare.
     Anchor,
+    /// `syntax_number(node)` — the exact rational a numeric token spells.
+    ///
+    /// The reader has already read it: the lexer keeps `3/8` whole as one
+    /// `Rational` token and `4` as one `Integer`, so this hands back a reading
+    /// the compiler performed rather than making a transformer re-derive one
+    /// from text. Nothing is revealed that the fold did not already reveal —
+    /// the transformer can see the same token's spelling — and what is saved is
+    /// a conversion the phase has no operation for and no finite table could
+    /// stand in for, since a written span is an arbitrary rational.
+    Number,
     /// `syntax_built(path, role, child)` — an output path derived from `path`.
     Built,
     /// `syntax_binding(path, role)` — the binding `path` declares at `role`.
@@ -1745,7 +1761,7 @@ impl SyntaxOp {
     /// How many arguments this operation is written with.
     const fn arity(self) -> usize {
         match self {
-            Self::Checked => 1,
+            Self::Checked | Self::Number => 1,
             Self::At | Self::Binding | Self::Identifier | Self::Binder => 2,
             Self::Anchor | Self::Built | Self::Token | Self::Group | Self::Reference => 3,
             Self::Fold => 5,
@@ -1804,6 +1820,10 @@ impl SyntaxOp {
                 vec![syntax(), path(), path()],
                 Box::new(Type::Option(Box::new(Type::Syntax))),
             ),
+            // `Option` because a node that is not a numeric token is not a
+            // number, and `Ratio` because one operation covering both numeric
+            // kinds is one operation an adapter has to learn.
+            Self::Number => Type::Function(vec![syntax()], Box::new(Type::Option(Box::new(Type::Ratio)))),
             Self::Built => Type::Function(vec![path(), Type::Nat, Type::Nat], Box::new(Type::NodePath)),
             Self::Binding => Type::Function(vec![path(), Type::Nat], Box::new(Type::BindingPath)),
             Self::Token => Type::Function(vec![path(), Type::Text, Type::Text], Box::new(Type::Syntax)),
@@ -1841,7 +1861,7 @@ struct BuiltinOwnership<T, F = Family> {
 /// looked up when ordinary source reads a name. Each entry says what it hides,
 /// for the same reason the source entries do — an operation earns a place in a
 /// compiler-owned registry by hiding something a library could not.
-const SYNTAX_OWNERSHIP: [BuiltinOwnership<SyntaxOp, PhaseFamily>; 11] = [
+const SYNTAX_OWNERSHIP: [BuiltinOwnership<SyntaxOp, PhaseFamily>; 12] = [
     BuiltinOwnership {
         operation: SyntaxOp::Fold,
         spelling: "syntax_fold",
@@ -1859,6 +1879,13 @@ const SYNTAX_OWNERSHIP: [BuiltinOwnership<SyntaxOp, PhaseFamily>; 11] = [
         spelling: "syntax_anchor",
         hidden_information: "a node's position in the region's own reading order, which is the only name the compiler \
                              and a later package function both have for it",
+        family: PhaseFamily::Builder,
+    },
+    BuiltinOwnership {
+        operation: SyntaxOp::Number,
+        spelling: "syntax_number",
+        hidden_information: "the reader's own numeric reading of a literal token, which a transformer has no operation \
+                             to derive from that token's text",
         family: PhaseFamily::Builder,
     },
     BuiltinOwnership {
@@ -1998,7 +2025,7 @@ const fn delta(arguments: &'static [Shape], result: Shape) -> Family {
     Family::Delta { arguments, result }
 }
 
-const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 109] = [
+const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 110] = [
     BuiltinOwnership {
         operation: Builtin::NatFold,
         spelling: "nat_fold",
@@ -2076,6 +2103,12 @@ const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 109] = [
         spelling: "ratio_equal",
         hidden_information: "the reduced form two exact rationals share, which no source expression can inspect",
         family: delta(&[RATIO, RATIO], BOOL),
+    },
+    BuiltinOwnership {
+        operation: Builtin::TextEqual,
+        spelling: "text_equal",
+        hidden_information: "the encoding two texts are compared in, which no source expression can inspect",
+        family: delta(&[TEXT, TEXT], BOOL),
     },
     BuiltinOwnership {
         operation: Builtin::NatAdd,
@@ -2671,6 +2704,7 @@ impl Builtin {
             Self::RatioDiv => "ratio_div",
             Self::RatioLess => "ratio_less",
             Self::RatioEqual => "ratio_equal",
+            Self::TextEqual => "text_equal",
             Self::NatAdd => "nat_add",
             Self::NatMul => "nat_mul",
             Self::NatSub => "nat_sub",
@@ -2837,6 +2871,7 @@ impl Builtin {
             | Self::RatioDiv
             | Self::RatioLess
             | Self::RatioEqual
+            | Self::TextEqual
             | Self::NatAdd
             | Self::NatMul
             | Self::NatSub
@@ -3395,6 +3430,13 @@ pub(crate) struct Program {
     keys: IndexMap<u64, crate::Key>,
     named_music: IndexMap<String, Music>,
     values: IndexMap<String, Value>,
+    /// The settled type of each declaration, by name.
+    ///
+    /// Kept because the expansion phase asks a module whether the operation it
+    /// declares is the operation the phase runs — `expand` is a transformer or
+    /// it is not — and that is a question about a type. Nothing else reads it:
+    /// a value leaves this compiler as a value.
+    types: IndexMap<String, Type>,
 }
 
 impl Program {
@@ -4047,8 +4089,10 @@ fn check_and_evaluate(
     unknown_root_music: UnknownRootMusic,
     modules: &Modules,
     world: &World,
+    reading: Reading,
 ) -> Option<Program> {
     let mut meter = WorkMeter::default();
+    let mut unifier = Unifier::default();
     let program = check_and_evaluate_metered(
         resolver,
         declarations,
@@ -4056,6 +4100,9 @@ fn check_and_evaluate(
         unknown_root_music,
         modules,
         world,
+        reading,
+        &IndexMap::new(),
+        &mut unifier,
         &mut meter,
     );
     if program.is_none()
@@ -4073,13 +4120,30 @@ fn check_and_evaluate_metered(
     unknown_root_music: UnknownRootMusic,
     modules: &Modules,
     world: &World,
+    // Which document these declarations belong to: `Reading::Source` for every
+    // ordinary path, and `Reading::Expansion` for an adapter module, which is
+    // the whole of what makes one an adapter module. It rides here rather than
+    // being written in at the checker because it is a fact about the document,
+    // and the pass is the only thing that knows which document this is.
+    reading: Reading,
+    // Types the caller already knows some declarations must have, by name.
+    //
+    // Empty on every ordinary path: a piece's declarations mean what they say.
+    // The expansion phase seeds it with `expand` and `edit`, because those are
+    // the phase's own operations and their types are the interface rather than
+    // something an adapter gets to infer. Without it an adapter whose `expand`
+    // never refuses would leave the error half of its answer open, and be
+    // rejected for not saying what it holds — the type would be missing from
+    // the module because it belongs to the phase.
+    expected: &IndexMap<String, Type>,
+    // One substitution for the whole module. A variable minted for a
+    // declaration that did not write its type is the same variable wherever it
+    // is read, which is what makes the answer one answer. The caller owns it so
+    // that the phase can read off what checking a module cost.
+    unifier: &mut Unifier,
     meter: &mut WorkMeter,
 ) -> Option<Program> {
     let root_uses = root.map(root_uses).unwrap_or_default();
-    // One substitution for the whole piece. A variable minted for a
-    // declaration that did not write its type is the same variable wherever
-    // it is read, which is what makes the answer one answer.
-    let mut unifier = Unifier::default();
     let mut raw = Vec::new();
     // Per bound name: where it was bound, which library it came from if it
     // came from one, and whether it was a legacy material declaration.
@@ -4142,7 +4206,7 @@ fn check_and_evaluate_metered(
         if let Some(definition) = lower_signature(
             resolver,
             &world.scope(),
-            &mut unifier,
+            &mut *unifier,
             declaration,
             name,
             name_span,
@@ -4179,7 +4243,15 @@ fn check_and_evaluate_metered(
     // principal type rather than whatever the first use happened to need.
     // Nothing runs here when every declaration wrote its type, which is the
     // case this pass costs nothing in.
-    infer_open_declarations(&raw, &mut symbols, &mut unifier, modules, world);
+    let mut expectation_failed = false;
+    for definition in &raw {
+        if let Some(wanted) = expected.get(&definition.name)
+            && unifier.unify(&definition.ty, wanted).is_err()
+        {
+            expectation_failed = true;
+        }
+    }
+    infer_open_declarations(&raw, &mut symbols, &mut *unifier, modules, world);
 
     // Documentation is written from the type each declaration ended up with,
     // which for an annotated one is what it wrote and for an inferred one is
@@ -4195,21 +4267,17 @@ fn check_and_evaluate_metered(
     }
 
     let mut checked = Vec::with_capacity(raw.len());
-    let mut type_errors = false;
+    let mut type_errors = expectation_failed;
     for definition in &raw {
         let mut checker = Checker {
             resolver,
             definitions: &raw,
             symbols: &symbols,
             locals: IndexMap::new(),
-            unifier: &mut unifier,
+            unifier: &mut *unifier,
             dependencies: IndexMap::new(),
             mentioned: Vec::new(),
-            reading: if definition.foreign {
-                Reading::Foreign
-            } else {
-                Reading::Source
-            },
+            reading: if definition.foreign { Reading::Foreign } else { reading },
             failed: false,
             meter: &mut *meter,
             music_role: definition.role.clone(),
@@ -4223,9 +4291,9 @@ fn check_and_evaluate_metered(
         let failed = checker.failed;
         let dependencies = checker.dependencies;
         type_errors |= failed || kind.is_none();
-        let ty = unifier.resolve(&definition.ty);
+        let ty = (*unifier).resolve(&definition.ty);
         if let Some(mut kind) = kind {
-            if let Some((span, undetermined)) = settle(&unifier, &mut kind) {
+            if let Some((span, undetermined)) = settle(unifier, &mut kind) {
                 resolver.report(
                     Diagnostic::error(Code::TypeMismatch, "the program does not say what this holds")
                         .at(
@@ -4292,7 +4360,7 @@ fn check_and_evaluate_metered(
             definitions: &raw,
             symbols: &symbols,
             locals: IndexMap::new(),
-            unifier: &mut unifier,
+            unifier: &mut *unifier,
             dependencies: IndexMap::new(),
             mentioned: Vec::new(),
             reading: Reading::Source,
@@ -4328,7 +4396,7 @@ fn check_and_evaluate_metered(
                 resolver,
                 &raw,
                 &symbols,
-                &mut unifier,
+                &mut *unifier,
                 &mut *meter,
                 span,
                 modules,
@@ -4352,7 +4420,7 @@ fn check_and_evaluate_metered(
                 resolver,
                 &raw,
                 &symbols,
-                &mut unifier,
+                &mut *unifier,
                 &mut *meter,
                 span,
                 modules,
@@ -4370,7 +4438,7 @@ fn check_and_evaluate_metered(
                 resolver,
                 &raw,
                 &symbols,
-                &mut unifier,
+                &mut *unifier,
                 &mut *meter,
                 span,
                 modules,
@@ -4390,7 +4458,7 @@ fn check_and_evaluate_metered(
                 resolver,
                 &raw,
                 &symbols,
-                &mut unifier,
+                &mut *unifier,
                 &mut *meter,
                 span,
                 modules,
@@ -4441,6 +4509,10 @@ fn check_and_evaluate_metered(
             | Value::Builtin(_) => None,
         })
         .collect();
+    let types = checked
+        .iter()
+        .map(|definition| (definition.name.clone(), definition.ty.clone()))
+        .collect();
     Some(Program {
         uses,
         pitches,
@@ -4449,6 +4521,7 @@ fn check_and_evaluate_metered(
         keys,
         named_music,
         values,
+        types,
     })
 }
 
@@ -4520,6 +4593,7 @@ pub(crate) fn check_for_kernel(
         UnknownRootMusic::Silent,
         &modules,
         &world,
+        Reading::Source,
     )
 }
 
@@ -5016,6 +5090,22 @@ pub(crate) fn function_type(scope: &TypeScope<'_>, declaration: &FnDecl) -> Opti
     Some(Type::Function(parameters, Box::new(result)))
 }
 
+/// The type a written name denotes in an adapter module, and nowhere else.
+///
+/// Deliberately absent from `musa-language`'s `BASE_TYPES`: these are not
+/// spellings the parser offers, the language server completes, or a composer
+/// can write. They are read only where [`crate::data::TypeScope::in_phase`]
+/// holds, which is the same boundary [`Reading::Expansion`] draws for the
+/// phase's operations — one line between the two languages rather than two.
+fn phase_type(text: &str) -> Option<Type> {
+    match text {
+        "Syntax" => Some(Type::Syntax),
+        "NodePath" => Some(Type::NodePath),
+        "BindingPath" => Some(Type::BindingPath),
+        _ => None,
+    }
+}
+
 /// The type a written name denotes, for the names the compiler owns.
 ///
 /// The spellings are `musa-language`'s `BASE_TYPES`, which is where the
@@ -5063,6 +5153,17 @@ fn lower_type(mut resolver: Option<&mut Resolver>, scope: &TypeScope<'_>, node: 
         let text = node.to_string();
         let text = text.trim();
         if let Some(named) = named_type(text) {
+            return Some(named);
+        }
+        // The phase's own three, and only where an adapter module is being
+        // read. An adapter traffics in these types, so it must be able to
+        // annotate a parameter and declare a `data` that holds a node;
+        // ordinary source is read in a scope that is not `in_phase`, so there
+        // the words fall through to the same "cannot find" any other unbound
+        // type name gets, and §5's sentence stands.
+        if scope.in_phase()
+            && let Some(named) = phase_type(text)
+        {
             return Some(named);
         }
         // A step tag is a type so that `K` unifies like any other index, but
@@ -8179,6 +8280,7 @@ fn apply_builtin(builtin: Builtin, provided: Vec<Value>, span: SourceSpan) -> Op
         | Builtin::RatioDiv
         | Builtin::RatioLess
         | Builtin::RatioEqual
+        | Builtin::TextEqual
         | Builtin::NatAdd
         | Builtin::NatMul
         | Builtin::NatSub
@@ -8614,6 +8716,12 @@ fn eval_builtin(
         Builtin::RatioEqual => Some(Value::Bool(
             ratio_value(values.first()?)? == ratio_value(values.get(1)?)?,
         )),
+        Builtin::TextEqual => {
+            let (Value::Text(left), Value::Text(right)) = (values.first()?, values.get(1)?) else {
+                return None;
+            };
+            Some(Value::Bool(left == right))
+        }
         Builtin::NatAdd | Builtin::NatMul => {
             let (left, right) = (nat_value(values.first()?)?, nat_value(values.get(1)?)?);
             let held = if builtin == Builtin::NatAdd {
@@ -9295,6 +9403,32 @@ fn eval_syntax(operation: SyntaxOp, values: &[Value], meter: &mut WorkMeter, exp
         SyntaxOp::Fold => {
             let subject = syntax(values.get(4)?)?;
             fold_syntax(values, &subject, meter, expression)
+        }
+        // The reader's own reading, handed back rather than re-derived. Both
+        // numeric kinds the lexer distinguishes answer here and everything
+        // else — an identifier, a group, a pitch literal, a token of some
+        // other kind — is not a number and says so in the value.
+        SyntaxOp::Number => {
+            // Total, as every δ-style operation is: a token this compiler
+            // cannot represent exactly answers "not a number" rather than
+            // getting stuck, so the transformer sees one absence and not two
+            // kinds of silence.
+            let found = match syntax(values.first()?)? {
+                crate::syntax::Syntax::Token { ref kind, ref text, .. } => match kind.as_str() {
+                    "Integer" => text.parse::<i64>().ok().map(Ratio::from_integer),
+                    "Rational" => text
+                        .split_once('/')
+                        .and_then(|(numerator, denominator)| {
+                            Some((numerator.parse::<i128>().ok()?, denominator.parse::<i128>().ok()?))
+                        })
+                        .and_then(|(numerator, denominator)| exact_ratio(numerator, denominator)),
+                    _ => None,
+                },
+                crate::syntax::Syntax::Missing(_)
+                | crate::syntax::Syntax::Identifier { .. }
+                | crate::syntax::Syntax::Group { .. } => None,
+            };
+            Some(optional(Type::Ratio, found.map(Value::Ratio)))
         }
         SyntaxOp::At => {
             let subject = syntax(values.first()?)?;
@@ -10157,6 +10291,257 @@ fn token_span(token: &SyntaxToken) -> SourceSpan {
     )
 }
 
+/// One adapter module, checked and evaluated in the phase environment.
+///
+/// **This is the phase environment**, and the only place [`Reading::Expansion`]
+/// is ever set. Everything about it is the ordinary machinery: the same
+/// declarations, the same Algorithm W, the same total evaluator, the same work
+/// meter, and the same `data` world. What is phase-local is the *environment* —
+/// [`SYNTAX_OWNERSHIP`] answers a name here and nowhere else, and
+/// [`phase_type`] gives the phase's three types a written spelling here and
+/// nowhere else — which is what keeps `02-core-calculus.md` §5's closed source
+/// type grammar and its "no syntax value" sentence true of the language a
+/// composer writes.
+///
+/// A module and not an expression. An adapter's operations read the module's
+/// own `let`, `fn`, and `data`, because they are declarations of the module
+/// those operations are declared in, and because a reader written without local
+/// definitions is a reader nobody can follow (Peyton Jones ch. 3).
+pub(crate) struct AdapterModule {
+    values: IndexMap<String, Value>,
+    types: IndexMap<String, Type>,
+    /// The text of `print`, which is the one declaration not checked with the
+    /// module.
+    ///
+    /// A printer's argument is the *package's* type — what its regions produce
+    /// — and an adapter module imports nothing, so it cannot name that type and
+    /// a standalone check of the printer would have nothing to settle its
+    /// parameter against. So the printer is read where it is run, against the
+    /// value it is handed ([`print_value`]), which is also why it is the one
+    /// operation that never sees the phase environment. The cost is real and
+    /// worth saying: a printer cannot call the module's other declarations.
+    printer: Option<String>,
+}
+
+impl AdapterModule {
+    /// The text a declaration holds, when it holds one.
+    ///
+    /// How `level` is read: the declared level is a `Text` the module
+    /// evaluates to, so asking for it is asking the module for one of its own
+    /// values rather than matching the shape of its source.
+    pub(crate) fn text(&self, name: &str) -> Option<&str> {
+        let Value::Text(held) = self.values.get(name)? else {
+            return None;
+        };
+        Some(held)
+    }
+
+    /// Whether the module declares `name` at all.
+    pub(crate) fn declares(&self, name: &str) -> bool {
+        self.values.contains_key(name) || (name == "print" && self.printer.is_some())
+    }
+
+    /// The printer's source, for the one operation read at its use site.
+    pub(crate) fn printer(&self) -> Option<&str> {
+        self.printer.as_deref()
+    }
+
+    /// The operation `name`, if the module declares it at exactly `wanted`.
+    ///
+    /// Two ways to answer no, kept apart because they are different mistakes:
+    /// a module that declares no `expand` is not the same as a module whose
+    /// `expand` is not a transformer, and the second wants to say what type it
+    /// found instead.
+    fn operation(&self, name: &str, wanted: &Type) -> Result<&Closure, Option<&Type>> {
+        let Some(found) = self.types.get(name) else {
+            return Err(None);
+        };
+        if found != wanted {
+            return Err(Some(found));
+        }
+        match self.values.get(name) {
+            Some(Value::Closure(closure)) => Ok(closure),
+            _ => Err(Some(found)),
+        }
+    }
+}
+
+/// Check and evaluate one adapter module, in the phase environment.
+///
+/// The diagnostics come back rather than being reported: they are about the
+/// adapter package's own document, and publishing a span inside it as a span in
+/// the composer's file is exactly what the source map exists to prevent. The
+/// caller decides which of its own spans to restate them at.
+pub(crate) fn read_adapter_module(source: &str) -> Result<AdapterModule, ModuleFault> {
+    let mut meter = WorkMeter::default();
+    read_adapter_module_metered(source, &mut Unifier::default(), &mut meter).map_err(|diagnostics| {
+        if meter.failure().is_some() {
+            ModuleFault::Stopped
+        } else {
+            ModuleFault::Broken(diagnostics)
+        }
+    })
+}
+
+/// Why a module could not be read as an adapter module.
+///
+/// Two cases and not one, for the reason [`ExpansionFailure`] separates the
+/// same pair: a compilation that ran out of budget has said nothing about the
+/// module, and reporting it as a broken adapter would make a narrowed budget
+/// look like a package that does not compile.
+pub(crate) enum ModuleFault {
+    /// A compilation limit was crossed before the module finished checking.
+    Stopped,
+    /// It is not an adapter module, and these say why.
+    Broken(Vec<Diagnostic>),
+}
+
+/// The same, charged to a run's own meter.
+///
+/// The phase reports what checking a module cost, because it is work the
+/// compilation did: an adapter that is expensive to check is expensive whether
+/// or not the region it reads is small.
+fn read_adapter_module_metered(
+    source: &str,
+    unifier: &mut Unifier,
+    meter: &mut WorkMeter,
+) -> Result<AdapterModule, Vec<Diagnostic>> {
+    let parsed = musa_language::parse(source);
+    if let Some(error) = parsed.errors().first() {
+        return Err(vec![Diagnostic::error(
+            Code::Expansion,
+            format!("it does not parse: {}", error.message()),
+        )]);
+    }
+    let root = parsed.syntax();
+    let Some(library) = musa_language::ast::LibraryDecl::from_root(&root) else {
+        return Err(vec![
+            Diagnostic::error(Code::Expansion, "an adapter module is a `library`").help(
+                "write the module as `library { let level = …; let expand = …; }`, the way `stdlib/src/adapters/` does",
+            ),
+        ]);
+    };
+    // An adapter that imported would need the phase to resolve a package graph
+    // before it can expand, and the phase runs before ordinary resolution. It
+    // is refused rather than ignored: a module whose imports silently did
+    // nothing would be a module whose author was misled.
+    if root.descendants().any(|node| node.kind() == SyntaxKind::ImportStmt) {
+        return Err(vec![
+            Diagnostic::error(Code::Expansion, "an adapter module imports nothing").help(
+                "expansion runs before ordinary resolution, so an adapter reads its own declarations and the phase's \
+                 operations",
+            ),
+        ]);
+    }
+    // The adapter-free bootstrap, checked rather than assumed. An adapter whose
+    // own definition needed an adapter would put the expansion order back into
+    // a cycle, and this is the whole of what prevents it — which is also why
+    // termination is structural and needs no rank arithmetic.
+    if root.descendants().any(|node| node.kind() == SyntaxKind::SyntaxRegion) {
+        return Err(vec![
+            Diagnostic::error(Code::Expansion, "it is written with an adapter of its own")
+                .help("an adapter is written in the adapter-free bootstrap: no region, no syntax import"),
+        ]);
+    }
+    let mut resolver = Resolver::new();
+    let owners = [library.syntax().clone()];
+    let world = World::read_in_phase(&mut resolver, &owners);
+    let modules = Modules::read(&mut resolver, &world, std::iter::once((None, library.syntax().clone())));
+    let printer = printer_source(library.syntax());
+    let program = check_and_evaluate_metered(
+        &mut resolver,
+        declarations(library.syntax(), None)
+            .into_iter()
+            .filter(|declaration| surface_identity(declaration).is_none_or(|(name, ..)| name != "print")),
+        None,
+        UnknownRootMusic::Reject,
+        &modules,
+        &world,
+        Reading::Expansion,
+        &phase_operations(),
+        unifier,
+        meter,
+    );
+    let Some(program) = program else {
+        return Err(if resolver.diagnostics.is_empty() {
+            vec![Diagnostic::error(Code::Expansion, "it does not check")]
+        } else {
+            resolver.diagnostics
+        });
+    };
+    Ok(AdapterModule {
+        values: program.values,
+        types: program.types,
+        printer,
+    })
+}
+
+/// The type of each operation the phase runs, by the name it is declared under.
+///
+/// The phase's interface, stated once. An adapter does not get to infer these:
+/// `expand`'s error half is how it refuses, and an adapter that never refuses
+/// would otherwise leave that half open and be told its own module does not say
+/// what it holds — a complaint about a type that was never the module's.
+fn phase_operations() -> IndexMap<String, Type> {
+    IndexMap::from([
+        (
+            "expand".to_owned(),
+            Type::Function(
+                vec![Type::Syntax],
+                Box::new(Type::Sum(
+                    Box::new(Type::Syntax),
+                    Box::new(Type::Product(vec![Type::Syntax, Type::Text])),
+                )),
+            ),
+        ),
+        (
+            "edit".to_owned(),
+            Type::Function(
+                vec![Type::Syntax, Type::Text, Type::Nat, Type::Text],
+                Box::new(Type::Sum(
+                    Box::new(Type::List(Box::new(Type::Product(vec![Type::Nat, Type::Text])))),
+                    Box::new(Type::Text),
+                )),
+            ),
+        ),
+    ])
+}
+
+/// The text of `let print = <this>;`, if the module declares one.
+///
+/// The one declaration read as text rather than as a value, for the reason
+/// [`AdapterModule::printer`] gives. Everything between the `=` and the `;` and
+/// nothing else: the name, the type, and the body's own tokens all lie between
+/// the two marks rather than being one of them.
+fn printer_source(library: &SyntaxNode) -> Option<String> {
+    let declaration = root_nodes(library, SyntaxKind::LetDecl)
+        .into_iter()
+        .find(|declaration| declared_name(declaration).as_deref() == Some("print"))?;
+    let mut equals = None;
+    let mut semicolon = None;
+    for token in declaration.children_with_tokens().filter_map(|it| it.into_token()) {
+        if token.kind() == SyntaxKind::Equals && equals.is_none() {
+            equals = Some(usize::try_from(u32::from(token.text_range().end())).ok()?);
+        } else if token.kind() == SyntaxKind::Semicolon {
+            semicolon = Some(usize::try_from(u32::from(token.text_range().start())).ok()?);
+        }
+    }
+    let text = library.to_string();
+    let base = usize::try_from(u32::from(library.text_range().start())).ok()?;
+    let from = equals?.checked_sub(base)?;
+    let to = semicolon?.checked_sub(base)?;
+    Some(text.get(from..to)?.trim().to_owned())
+}
+
+/// The name a `let` declares.
+fn declared_name(declaration: &SyntaxNode) -> Option<String> {
+    declaration
+        .children_with_tokens()
+        .filter_map(|it| it.into_token())
+        .find(|token| token.kind() == SyntaxKind::Identifier)
+        .map(|token| token.text().to_owned())
+}
+
 /// What running a transformer over a region produced, or why it did not.
 ///
 /// The three failures are different mistakes and a transformer author reading
@@ -10197,21 +10582,17 @@ pub(crate) enum ExpansionFailure {
     NotAnExpression(crate::syntax::NotAnExpression),
 }
 
-/// Run one transformer over one region, in the phase environment.
+/// Run one transformer expression over one region, in the phase environment.
 ///
-/// **This is the phase environment**, and the only place [`Checker::expansion`]
-/// is ever set. Everything about it is the ordinary machinery: the same terms,
-/// the same Algorithm W, the same total evaluator, the same work meter. What is
-/// phase-local is the *environment* — [`SYNTAX_OWNERSHIP`] is in scope here and
-/// nowhere else — which is what keeps `02-core-calculus.md` §5's closed source
-/// type grammar and its "no syntax value" sentence true while a transformer can
-/// still be written rather than displayed.
+/// A test helper, and the one place a bare `expand` expression is still wrapped
+/// into a module for the phase to read: a law about the fold or about a builder
+/// is about that expression, and making each such test write a whole `library`
+/// around it would bury the law in ceremony. Everything else — the compiler's
+/// own path, and every test about an adapter *module* — hands the phase a
+/// module.
 ///
-/// `transformer` is one expression of type `Syntax -> Result<Syntax, (Syntax,
-/// Text)>`; the error half is how an adapter refuses. `region` is
-/// source text, read by the fixed reader Musa already has: this driver does not
-/// extend the lexer or the grouper, and prompt 127dc owns the compiler order
-/// that will call it on a real adapter region.
+/// `region` is source text, read by the fixed reader Musa already has: this
+/// driver does not extend the lexer or the grouper.
 #[cfg(test)]
 pub(crate) fn expand_region(
     transformer: &str,
@@ -10219,7 +10600,11 @@ pub(crate) fn expand_region(
     expansion: crate::syntax::ExpansionPath,
 ) -> Result<crate::syntax::Syntax, ExpansionFailure> {
     let subject = crate::syntax::read_region(&musa_language::parse(region).syntax(), expansion);
-    expand_syntax(transformer, subject).0
+    expand_syntax(
+        &format!("library {{\n    let level = \"readable\";\n\n    let expand = {transformer};\n}}\n"),
+        subject,
+    )
+    .0
 }
 
 /// The refusal an `Err((node, message))` carries.
@@ -10310,7 +10695,7 @@ pub(crate) type AdapterPatch = (u64, String);
 /// argument, because the phase is type-blind and may not learn a package's
 /// command type.
 pub(crate) fn edit_syntax(
-    editor: &str,
+    adapter_source: &str,
     subject: crate::syntax::Syntax,
     command: &str,
     anchor: u64,
@@ -10318,7 +10703,15 @@ pub(crate) fn edit_syntax(
 ) -> (Result<Vec<AdapterPatch>, EditFailure>, PhaseWork) {
     let mut unifier = Unifier::default();
     let mut meter = WorkMeter::default();
-    let answer = run_editor(editor, subject, command, anchor, argument, &mut unifier, &mut meter);
+    let answer = run_editor(
+        adapter_source,
+        subject,
+        command,
+        anchor,
+        argument,
+        &mut unifier,
+        &mut meter,
+    );
     let work = PhaseWork {
         type_constraints: unifier.constraints(),
         evaluation_steps: meter.steps(),
@@ -10327,7 +10720,7 @@ pub(crate) fn edit_syntax(
 }
 
 fn run_editor(
-    editor: &str,
+    adapter_source: &str,
     subject: crate::syntax::Syntax,
     command: &str,
     anchor: u64,
@@ -10335,54 +10728,23 @@ fn run_editor(
     unifier: &mut Unifier,
     meter: &mut WorkMeter,
 ) -> Result<Vec<AdapterPatch>, EditFailure> {
-    let parsed = musa_language::parse(&format!("piece \"expansion\" {{\n  let editor = {editor}\n}}"));
-    let mut resolver = Resolver::new();
     // `edit : Syntax × Text × Nat × Text -> Result<List<(Nat, Text)>, Text>`.
     // The anchor arrives as a number rather than inside the argument text
-    // because the phase language has no operation that reads a number out of
-    // text — a command spelled as one string would be one an adapter could not
-    // serve.
-    let wanted = Type::Function(
-        vec![Type::Syntax, Type::Text, Type::Nat, Type::Text],
-        Box::new(Type::Sum(
-            Box::new(Type::List(Box::new(Type::Product(vec![Type::Nat, Type::Text])))),
-            Box::new(Type::Text),
-        )),
-    );
-    let body = root_nodes(&parsed.syntax(), SyntaxKind::LetDecl)
-        .first()
-        .and_then(|declaration| child_of(declaration, is_expr_node));
-    let checked = body.and_then(|body| {
-        let span = crate::resolve::trimmed_span(&body);
-        let mut checker = Checker {
-            resolver: &mut resolver,
-            definitions: &[],
-            symbols: &IndexMap::new(),
-            locals: IndexMap::new(),
-            unifier: &mut *unifier,
-            dependencies: IndexMap::new(),
-            mentioned: Vec::new(),
-            reading: Reading::Expansion,
-            failed: false,
-            meter: &mut *meter,
-            music_role: None,
-            definition_span: span,
-            deferred_pitch: false,
-            scope: crate::module::NameScope::empty(),
-            modules: &Modules::default(),
-            world: &World::default(),
-        };
-        checker.check(&body, Some(&wanted))
-    });
-    let Some(checked) = checked else {
-        if meter.failure().is_some() {
-            return Err(EditFailure::Stopped);
+    // because a command spelled as one string would be one an adapter could
+    // not take apart.
+    let wanted = phase_operations().swap_remove("edit").unwrap_or(Type::Unit);
+    let module = match read_adapter_module_metered(adapter_source, unifier, meter) {
+        Ok(module) => module,
+        Err(diagnostics) => {
+            if meter.failure().is_some() {
+                return Err(EditFailure::Stopped);
+            }
+            return Err(EditFailure::NotAnEditor(diagnostics));
         }
-        return Err(EditFailure::NotAnEditor(resolver.diagnostics));
     };
-    let environment = IndexMap::new();
-    let Some(Value::Closure(function)) = eval(&checked, &environment, meter) else {
-        return Err(edit_stopped_or(meter, EditFailure::NoAnswer));
+    let function = match module.operation("edit", &wanted) {
+        Ok(function) => function.clone(),
+        Err(found) => return Err(EditFailure::NotAnEditor(vec![not_the_operation("edit", found)])),
     };
     let arguments = vec![
         Value::Syntax(Box::new(subject)),
@@ -10390,7 +10752,7 @@ fn run_editor(
         Value::Nat(anchor),
         Value::Text(argument.to_owned()),
     ];
-    let applied = apply_closure(&function, arguments, meter, checked.span);
+    let applied = apply_closure(&function, arguments, meter, SourceSpan::new(0, 0));
     let Some(Value::Sum { error, held, .. }) = applied else {
         return Err(edit_stopped_or(meter, EditFailure::NoAnswer));
     };
@@ -10460,9 +10822,16 @@ pub(crate) enum PrintFailure {
 /// and the value are checked as one application, so `A` is settled by
 /// unification rather than declared: the phase never learns the package's type
 /// and does not need to.
-pub(crate) fn print_value(printer: &str, value: &str) -> Result<String, PrintFailure> {
+pub(crate) fn print_value(adapter_source: &str, value: &str) -> Result<String, PrintFailure> {
     let mut unifier = Unifier::default();
     let mut meter = WorkMeter::default();
+    let module = match read_adapter_module_metered(adapter_source, &mut unifier, &mut meter) {
+        Ok(module) => module,
+        Err(diagnostics) => return Err(PrintFailure::NotAPrinter(diagnostics)),
+    };
+    let Some(printer) = module.printer() else {
+        return Err(PrintFailure::NotAPrinter(vec![not_the_operation("print", None)]));
+    };
     run_printer(printer, value, &mut unifier, &mut meter)
 }
 
@@ -10621,12 +10990,12 @@ pub(crate) fn evaluate_text(expression: &str) -> Option<String> {
 /// charged nothing for that would let a file buy unbounded reading by
 /// arranging to be refused.
 pub(crate) fn expand_syntax(
-    transformer: &str,
+    adapter_source: &str,
     subject: crate::syntax::Syntax,
 ) -> (Result<crate::syntax::Syntax, ExpansionFailure>, PhaseWork) {
     let mut unifier = Unifier::default();
     let mut meter = WorkMeter::default();
-    let answer = run_transformer(transformer, subject, &mut unifier, &mut meter);
+    let answer = run_transformer(adapter_source, subject, &mut unifier, &mut meter);
     let work = PhaseWork {
         type_constraints: unifier.constraints(),
         evaluation_steps: meter.steps(),
@@ -10635,60 +11004,39 @@ pub(crate) fn expand_syntax(
 }
 
 fn run_transformer(
-    transformer: &str,
+    adapter_source: &str,
     subject: crate::syntax::Syntax,
     unifier: &mut Unifier,
     meter: &mut WorkMeter,
 ) -> Result<crate::syntax::Syntax, ExpansionFailure> {
-    let parsed = musa_language::parse(&format!("piece \"expansion\" {{\n  let transform = {transformer}\n}}"));
-    let mut resolver = Resolver::new();
     // `expand : Syntax -> Result<Syntax, (Syntax, Text)>`, which is
     // `26-language-design-decision.md` §3.4's operation with both halves. One
     // shape and not two: a phase that took either would be two interfaces
     // wearing one name.
-    let wanted = Type::Function(
-        vec![Type::Syntax],
-        Box::new(Type::Sum(
-            Box::new(Type::Syntax),
-            Box::new(Type::Product(vec![Type::Syntax, Type::Text])),
-        )),
-    );
-    let body = root_nodes(&parsed.syntax(), SyntaxKind::LetDecl)
-        .first()
-        .and_then(|declaration| child_of(declaration, is_expr_node));
-    let checked = body.and_then(|body| {
-        let span = crate::resolve::trimmed_span(&body);
-        let mut checker = Checker {
-            resolver: &mut resolver,
-            definitions: &[],
-            symbols: &IndexMap::new(),
-            locals: IndexMap::new(),
-            unifier: &mut *unifier,
-            dependencies: IndexMap::new(),
-            mentioned: Vec::new(),
-            reading: Reading::Expansion,
-            failed: false,
-            meter: &mut *meter,
-            music_role: None,
-            definition_span: span,
-            deferred_pitch: false,
-            scope: crate::module::NameScope::empty(),
-            modules: &Modules::default(),
-            world: &World::default(),
-        };
-        checker.check(&body, Some(&wanted))
-    });
-    let Some(checked) = checked else {
-        if meter.failure().is_some() {
-            return Err(ExpansionFailure::Stopped);
+    let wanted = phase_operations().swap_remove("expand").unwrap_or(Type::Unit);
+    let module = match read_adapter_module_metered(adapter_source, unifier, meter) {
+        Ok(module) => module,
+        Err(diagnostics) => {
+            if meter.failure().is_some() {
+                return Err(ExpansionFailure::Stopped);
+            }
+            return Err(ExpansionFailure::NotATransformer(diagnostics));
         }
-        return Err(ExpansionFailure::NotATransformer(resolver.diagnostics));
     };
-    let environment = IndexMap::new();
-    let Some(Value::Closure(function)) = eval(&checked, &environment, meter) else {
-        return Err(stopped_or(meter, ExpansionFailure::NoAnswer));
+    let function = match module.operation("expand", &wanted) {
+        Ok(function) => function.clone(),
+        Err(found) => {
+            return Err(ExpansionFailure::NotATransformer(vec![not_the_operation(
+                "expand", found,
+            )]));
+        }
     };
-    let applied = apply_closure(&function, vec![Value::Syntax(Box::new(subject))], meter, checked.span);
+    let applied = apply_closure(
+        &function,
+        vec![Value::Syntax(Box::new(subject))],
+        meter,
+        SourceSpan::new(0, 0),
+    );
     let Some(Value::Sum { error, held, .. }) = applied else {
         return Err(stopped_or(meter, ExpansionFailure::NoAnswer));
     };
@@ -10703,6 +11051,29 @@ fn run_transformer(
     // rest of the compiler will have to anchor diagnostics against.
     crate::syntax::check_expression(&produced).map_err(ExpansionFailure::NotAnExpression)?;
     Ok(*produced)
+}
+
+/// The complaint for a module that declares the wrong thing under a name the
+/// phase runs, or nothing at all.
+///
+/// It says the type it found, because "this is not a transformer" is not
+/// advice: the author wrote a function and wants to know which function the
+/// phase was expecting.
+fn not_the_operation(name: &str, found: Option<&Type>) -> Diagnostic {
+    match found {
+        None => Diagnostic::error(Code::Expansion, format!("it declares no `{name}`")),
+        Some(found) => Diagnostic::error(
+            Code::Expansion,
+            format!("its `{name}` has type `{}`", crate::infer::plain_one(found)),
+        ),
+    }
+    .help(match name {
+        "expand" => {
+            "an adapter declares `let expand = fn (region) { … };`, answering `Ok(syntax)` or `Err((node, why))`"
+        }
+        "edit" => "an adapter declares `let edit = fn (region, command, anchor, argument) { … };`",
+        _ => "an adapter declares `let print = fn (value) { … };`, answering `Ok(text)` or `Err(loss)`",
+    })
 }
 
 #[cfg(test)]
@@ -11141,6 +11512,7 @@ mod tests {
             UnknownRootMusic::Reject,
             &Modules::default(),
             &World::default(),
+            Reading::Source,
         )
         .map(|program| program.values)
     }
@@ -11153,7 +11525,7 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(
             entries.len(),
-            109,
+            110,
             "new compiler operations must enter the ownership registry"
         );
         let unique = entries.iter().map(|(spelling, _)| *spelling).collect::<IndexSet<_>>();
@@ -11456,9 +11828,156 @@ mod tests {
         );
         assert_eq!(
             delta + eliminator + track + machine,
-            109,
+            110,
             "a new compiler operation must be classified before it is admitted"
         );
+    }
+
+    /// The phase environment is a *language*, not a hole an expression is
+    /// dropped into: an adapter module's own declarations are in scope in its
+    /// operations, and the phase's types have a spelling there.
+    ///
+    /// This is prompt 127dc's own sentence — "an adapter definition is checked
+    /// and evaluated in the phase environment, where the syntax types are in
+    /// scope" — held to by a test rather than left to a comment, because the
+    /// first implementation of it was a text splice with no scope at all and
+    /// nothing noticed for four prompts.
+    #[test]
+    fn an_adapter_module_reads_its_own_declarations_and_spells_the_phases_types() {
+        let module = "library {
+    let level = \"readable\";
+
+    data Seen {
+        Nothing,
+        One(node: Syntax),
+    }
+
+    let held = fn (node: Syntax) { One(node) };
+
+    let first = fn (found: Seen, later: Seen) {
+        match found {
+            One(node) -> One(node),
+            Nothing -> later,
+        }
+    };
+
+    let expand = fn (region) {
+        match first(held(region), Nothing) {
+            One(node) -> Ok(node),
+            Nothing -> Err((region, \"a region is always a node\")),
+        }
+    };
+}
+";
+        let subject = crate::syntax::read_region(
+            &musa_language::parse("let melody = c4").syntax(),
+            crate::syntax::ExpansionPath::at(vec![0]),
+        );
+        assert!(
+            expand_syntax(module, subject).0.is_ok(),
+            "a `data` holding a `Syntax`, a parameter annotated `Syntax`, and a sibling `fn` are all the module's own"
+        );
+    }
+
+    /// An adapter reads its region and imports nothing: expansion runs before
+    /// ordinary resolution, so there is no package graph for it to reach into.
+    #[test]
+    fn an_adapter_module_that_imports_is_refused_with_a_sentence() {
+        let module = "library {\n    import std::notation::staff;\n\n    let level = \"readable\";\n}\n";
+        let Err(ModuleFault::Broken(diagnostics)) = read_adapter_module(module) else {
+            panic!("an adapter that imports is refused")
+        };
+        assert!(
+            diagnostics
+                .first()
+                .is_some_and(|first| first.message.contains("imports nothing")),
+            "and it says which rule it broke: {diagnostics:?}"
+        );
+    }
+
+    /// A mistake inside an adapter module is the *adapter's* mistake, and its
+    /// diagnostics say so rather than landing on the composer's region.
+    #[test]
+    fn a_diagnostic_inside_an_adapter_module_stays_in_that_module() {
+        let module =
+            "library {\n    let level = \"readable\";\n\n    let expand = fn (region) { Ok(nowhere(region)) };\n}\n";
+        let Err(ModuleFault::Broken(diagnostics)) = read_adapter_module(module) else {
+            panic!("an unbound name is a broken module")
+        };
+        assert!(
+            diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.message.contains("nowhere")),
+            "the module's own diagnostics are what come back: {diagnostics:?}"
+        );
+    }
+
+    /// `syntax_number` hands over the reading the lexer already performed, for
+    /// both numeric token kinds and for nothing else.
+    ///
+    /// Read through a refusal, because a refusal's sentence is the one `Text` a
+    /// transformer's answer can carry out of the phase.
+    #[test]
+    fn the_reader_hands_a_transformer_the_number_it_already_read() {
+        let read = |region: &str| {
+            let transformer = "fn (region) {
+                Err((region, syntax_fold(
+                    fn (here) { \"none\" },
+                    fn (here, kind, text) {
+                        option_fold(\"none\", fn (node) {
+                            option_fold(\"none\", fn (value) {
+                                match ratio_equal(value, 3/8) {
+                                    true -> \"three eighths\",
+                                    false -> \"another number\",
+                                }
+                            }, syntax_number(node))
+                        }, syntax_at(region, here))
+                    },
+                    fn (here, name) { \"none\" },
+                    fn (here, delimiter, children) {
+                        list_fold(\"none\", fn (child, found) {
+                            match text_equal(found, \"none\") { true -> child, false -> found }
+                        }, children)
+                    },
+                    region
+                )))
+            }";
+            match expand_region(transformer, region, crate::syntax::ExpansionPath::at(vec![0])) {
+                Err(ExpansionFailure::Refused { message, .. }) => message,
+                other => panic!("this transformer refuses: {other:?}"),
+            }
+        };
+        assert_eq!(
+            read("let held = 3/8"),
+            "three eighths",
+            "a rational token the lexer kept whole"
+        );
+        assert_eq!(
+            read("let held = 4"),
+            "another number",
+            "an integer token is a number too"
+        );
+        assert_eq!(
+            read("let held = c5"),
+            "none",
+            "and a token that is not a number is not one"
+        );
+    }
+
+    /// `text_equal` is an ordinary δ-builtin: `Text` is a base type, and its
+    /// equality was simply never registered.
+    #[test]
+    fn two_texts_compare_in_ordinary_source() {
+        let same = only(
+            "let same = text_equal(\"f5\", \"f5\"); let apart = text_equal(\"f5\", \"f#5\");",
+            "same",
+        );
+        assert!(matches!(same, Value::Bool(true)), "two spellings of one text agree");
+        let apart = only(
+            "let same = text_equal(\"f5\", \"f5\"); let apart = text_equal(\"f5\", \"f#5\");",
+            "apart",
+        );
+        assert!(matches!(apart, Value::Bool(false)), "and two different ones do not");
     }
 
     /// `02-core-calculus.md` §5 closes the source type grammar and says the
@@ -11492,6 +12011,17 @@ mod tests {
                 entry.spelling
             );
         }
+        // And the type names, through the checker rather than through the
+        // table: `phase_type` answers only under `Reading::Expansion`, so a
+        // piece annotating a parameter `Syntax` gets the same "cannot find" any
+        // other unbound type earns.
+        for name in ["Syntax", "NodePath", "BindingPath"] {
+            let source = format!("piece \"one\" {{\n  let refused = fn (node: {name}) {{ node }}\n}}");
+            assert!(
+                !refusals(&source).is_empty(),
+                "ordinary source annotated a parameter `{name}`"
+            );
+        }
     }
 
     /// The phase registry is a second registry, not a fifth family.
@@ -11499,7 +12029,7 @@ mod tests {
     fn the_phase_registry_is_separate_and_classified() {
         assert_eq!(
             SYNTAX_OWNERSHIP.len(),
-            11,
+            12,
             "a new phase operation must enter the phase registry"
         );
         let spellings = SYNTAX_OWNERSHIP
@@ -11732,6 +12262,7 @@ mod tests {
             UnknownRootMusic::Reject,
             &Modules::default(),
             &World::default(),
+            Reading::Source,
         );
         resolver.diagnostics
     }

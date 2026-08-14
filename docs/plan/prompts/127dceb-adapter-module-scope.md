@@ -1,7 +1,7 @@
 ---
 id: 127dceb
 slug: adapter-module-scope
-status: in-progress
+status: done
 depends_on: [127dce, 127dcea]
 phase: 3
 ---
