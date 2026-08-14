@@ -35,11 +35,11 @@ pub(crate) fn lint(
     references: &ReferenceIndex,
     studio: &StudioSpec,
 ) -> Vec<Diagnostic> {
-    let source = document.syntax().text().to_string();
+    let source = document.text();
     let mut lints = Vec::new();
-    unused_material(document, &source, references, &mut lints);
-    unassigned_patch(document, &source, references, studio, &mut lints);
-    redundant_marking(piece, &mut lints);
+    unused_material(document, source, references, &mut lints);
+    unassigned_patch(document, source, references, studio, &mut lints);
+    redundant_marking(piece, source, &mut lints);
     copied_bars(piece, &mut lints);
     lints
 }
@@ -133,7 +133,7 @@ fn unassigned_patch(
 /// not the text), a `senza` block clears the meter record (it changes and
 /// restores the meter without a statement), and nested blocks are not
 /// walked. Under-reporting is the rule's way of never lying.
-fn redundant_marking(piece: &PieceDecl, lints: &mut Vec<Diagnostic>) {
+fn redundant_marking(piece: &PieceDecl, source: &str, lints: &mut Vec<Diagnostic>) {
     let seed = [
         piece
             .tempos()
@@ -150,12 +150,12 @@ fn redundant_marking(piece: &PieceDecl, lints: &mut Vec<Diagnostic>) {
                 if tempo.over().is_some() {
                     in_force.retain(|(kind, _)| *kind != "tempo");
                 } else {
-                    check_marking("tempo", tempo.syntax(), &mut in_force, lints);
+                    check_marking("tempo", tempo.syntax(), source, &mut in_force, lints);
                 }
             } else if let VoiceItem::Meter(meter) = &item {
-                check_marking("meter", meter.syntax(), &mut in_force, lints);
+                check_marking("meter", meter.syntax(), source, &mut in_force, lints);
             } else if let VoiceItem::Key(key) = &item {
-                check_marking("key", key.syntax(), &mut in_force, lints);
+                check_marking("key", key.syntax(), source, &mut in_force, lints);
             } else if let VoiceItem::Senza(_) = &item {
                 // `senza` is an implicit `meter none` and an implicit restore.
                 in_force.retain(|(kind, _)| *kind != "meter");
@@ -169,6 +169,7 @@ fn redundant_marking(piece: &PieceDecl, lints: &mut Vec<Diagnostic>) {
 fn check_marking(
     kind: &'static str,
     node: &SyntaxNode,
+    source: &str,
     in_force: &mut Vec<(&'static str, String)>,
     lints: &mut Vec<Diagnostic>,
 ) {
@@ -183,11 +184,7 @@ fn check_marking(
                     .at(span_of(node), "states what is already in force")
                     .help("a marking is a change, written where it happens — a reassurance belongs in a comment")
                     .note("docs/rules/style-guide.md §2: a marking changes something")
-                    .fix(
-                        format!("delete this {kind} marking"),
-                        delete_lines(&text_source(node), node),
-                        "",
-                    ),
+                    .fix(format!("delete this {kind} marking"), delete_lines(source, node), ""),
             );
         }
         return;
@@ -323,14 +320,6 @@ fn normalized(node: &SyntaxNode) -> String {
 fn span_of(node: &SyntaxNode) -> SourceSpan {
     let range = node.text_range();
     SourceSpan::new(u32::from(range.start()), u32::from(range.end()))
-}
-
-/// The source text a node lives in, for line arithmetic.
-fn text_source(node: &SyntaxNode) -> String {
-    node.ancestors()
-        .last()
-        .map(|root| root.text().to_string())
-        .unwrap_or_default()
 }
 
 /// The whole lines a node's statement spans — leading indent and trailing

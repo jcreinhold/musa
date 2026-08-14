@@ -828,21 +828,26 @@ pub(crate) fn span_of(node: &SyntaxNode) -> SourceSpan {
 
 /// The span of a node's significant (non-trivia) content: provenance points
 /// at the construct, not at the whitespace before it.
+///
+/// Walked inwards from both ends rather than across, because the answer is
+/// only ever the first significant child and the last. Trivia clusters at the
+/// edges — leading indent, a trailing newline — so both walks stop within a
+/// step or two, where enumerating the children materialized a cursor per child
+/// of every node whose span anything ever asked for.
 pub(crate) fn trimmed_span(node: &SyntaxNode) -> SourceSpan {
-    let mut start = None;
-    let mut end = None;
-    for element in node.children_with_tokens() {
-        if element.kind().is_trivia() {
-            continue;
-        }
-        let range = element.text_range();
-        if start.is_none() {
-            start = Some(range.start());
-        }
-        end = Some(range.end());
+    let mut forward = node.first_child_or_token();
+    while forward.as_ref().is_some_and(|element| element.kind().is_trivia()) {
+        forward = forward.and_then(|element| element.next_sibling_or_token());
     }
-    match (start, end) {
-        (Some(start), Some(end)) => SourceSpan::new(u32::from(start), u32::from(end)),
+    let mut backward = node.last_child_or_token();
+    while backward.as_ref().is_some_and(|element| element.kind().is_trivia()) {
+        backward = backward.and_then(|element| element.prev_sibling_or_token());
+    }
+    match (forward, backward) {
+        (Some(first), Some(last)) => SourceSpan::new(
+            u32::from(first.text_range().start()),
+            u32::from(last.text_range().end()),
+        ),
         _ => span_of(node),
     }
 }

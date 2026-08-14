@@ -23,6 +23,7 @@ use crate::{Lexed, SyntaxError, SyntaxKind, Token, lex};
 /// [`ParsedDocument::errors`] for diagnostics.
 pub struct ParsedDocument {
     node: SyntaxNode,
+    source: Box<str>,
     errors: Vec<SyntaxError>,
 }
 
@@ -33,6 +34,18 @@ impl ParsedDocument {
     /// Invariant: the tree's text equals the parsed source exactly.
     pub fn syntax(&self) -> SyntaxNode {
         self.node.clone()
+    }
+
+    /// The text this document was parsed from.
+    ///
+    /// Kept because the tree is lossless but not *contiguous*: rendering it
+    /// back to a `String` walks every leaf and concatenates it, and a pass
+    /// that wants to look at the source by byte offset — a lint reading the
+    /// line around a diagnostic, say — would pay that walk once per question.
+    /// The parser was handed this text, so it hands it on rather than making
+    /// the next stage reconstruct it.
+    pub fn text(&self) -> &str {
+        &self.source
     }
 
     /// Lexical and parse errors with source spans, in source order.
@@ -70,7 +83,11 @@ pub fn parse(source: &str) -> ParsedDocument {
         .collect();
     let node = Parser::new(source, &lexed).run();
     errors.extend(node.1);
-    ParsedDocument { node: node.0, errors }
+    ParsedDocument {
+        node: node.0,
+        source: source.into(),
+        errors,
+    }
 }
 
 /// What a file's lexical root turned out to be, as far as the parser can tell.
