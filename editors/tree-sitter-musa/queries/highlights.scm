@@ -284,6 +284,8 @@
 (setting_statement name: (identifier) @property)
 (signature_member name: (identifier) @property)
 (data_field name: (identifier) @property)
+; A record update names the same fields the declaration does.
+(field_update name: (identifier) @property)
 (expression_argument name: (identifier) @property)
 
 ; Parameters are the declaration side of an argument.

@@ -5578,6 +5578,8 @@ impl Checker<'_> {
             self.match_expression(node, expected)
         } else if kind == SyntaxKind::IfExpr {
             self.if_expression(node, expected)
+        } else if kind == SyntaxKind::RecordUpdateExpr {
+            self.record_update(node)
         } else if kind == SyntaxKind::MusicExpr {
             self.music_expression(node)
         } else if kind == SyntaxKind::KernelQuote {
@@ -6857,6 +6859,173 @@ impl Checker<'_> {
             },
             ty: result,
             span: crate::resolve::trimmed_span(node),
+        })
+    }
+
+    /// `p with { f = e, … }` — `p`, rebuilt with `f` replaced.
+    ///
+    /// The elaboration is a match on the subject that binds every field, and a
+    /// construction that takes the written right-hand sides where they were
+    /// given and the bound field everywhere else. This language has no surface
+    /// projection (`docs/rules/language/02-core-calculus.md` §5.4), so binding
+    /// by pattern *is* how the unmentioned fields are read; the subject is the
+    /// match's scrutinee, so it is evaluated exactly once however many fields
+    /// are carried over, and exactly one record is constructed, which is the
+    /// charge prompt 127dcec asks for.
+    ///
+    /// The binders are unspellable — a leading space is not an identifier — so
+    /// a right-hand side naming `dots` reads the `dots` in scope around the
+    /// update and never the field of the same name. That is the contract's
+    /// second clause, enforced by construction rather than by renaming.
+    ///
+    /// Fields are read in written order, so the first complaint about an
+    /// update is about the leftmost thing wrong with it, and the record is
+    /// built in declaration order, which is already what a constructor written
+    /// with named fields does.
+    fn record_update(&mut self, node: &SyntaxNode) -> Option<Expr> {
+        let subject_node = child_of(node, is_expr_node)?;
+        let subject = self.check(&subject_node, None)?;
+        let span = crate::resolve::trimmed_span(node);
+        let resolved = self.unifier.resolve(&subject.ty);
+        let Type::Nominal(id, type_arguments) = resolved else {
+            self.resolver.report(
+                Diagnostic::error(
+                    Code::TypeMismatch,
+                    format!("`{resolved}` is not a record, so there is nothing to rebuild"),
+                )
+                .at(subject.span, "written here")
+                .help("`with` rebuilds a value of a `data` type declared with one constructor"),
+            );
+            self.failed = true;
+            return None;
+        };
+        let variants = self.world.variants(&id);
+        let [(constructor, _)] = variants.as_slice() else {
+            let mut report = Diagnostic::error(
+                Code::TypeMismatch,
+                format!(
+                    "`{id}` has {} constructors, so which one to rebuild is not written",
+                    variants.len()
+                ),
+            )
+            .at(subject.span, "written here")
+            .help("take it apart with `match`, which names the case, and rebuild inside the arm");
+            if let Some(declared) = self.world.declared_at(&id) {
+                report = report.also(declared, format!("`{id}` is declared here"));
+            }
+            self.resolver.report(report);
+            self.failed = true;
+            return None;
+        };
+        let constructor = constructor.clone();
+        // Rebuilding is constructing, so a constructor this use may not write
+        // is a value this use may not rebuild. Asked through the one place
+        // that answers it, so the two readings cannot drift apart.
+        let owner = self.scope.owner().map(str::to_owned);
+        if let Some(crate::data::Constructing::Sealed {
+            declared_in,
+            ty,
+            declared_at,
+        }) = self.world.constructor(&constructor, owner.as_deref(), self.unifier)
+        {
+            self.resolver.report(
+                Diagnostic::error(Code::UnknownName, format!("`{ty}` is private"))
+                    .at(span, "rebuilt from outside the structure that declares it")
+                    .also(declared_at, format!("`{declared_in}` declares `{ty}` here"))
+                    .help(format!(
+                        "rebuilding a value writes its constructor; `{declared_in}` has to expose a way to make a \
+                         `{ty}`"
+                    )),
+            );
+            self.failed = true;
+            return None;
+        }
+        let declared = self.world.fields(&id, 0, &type_arguments);
+        let mut given: Vec<Option<Expr>> = (0..declared.len()).map(|_| None).collect();
+        let mut first_mention: IndexMap<usize, SourceSpan> = IndexMap::new();
+        for field in node.children().filter(|child| child.kind() == SyntaxKind::FieldUpdate) {
+            // The field's *name*, not the whole `name = value`: what is wrong
+            // about an unknown or repeated field is the name, and the value
+            // beside it is not part of the mistake.
+            let named = field
+                .children_with_tokens()
+                .filter_map(SyntaxElement::into_token)
+                .find(|token| token.kind() == SyntaxKind::Identifier)?;
+            let at = token_span(&named);
+            let named = named.text().to_owned();
+            let Some(index) = declared.iter().position(|(name, _)| name == &named) else {
+                let mut report = Diagnostic::error(Code::UnknownName, format!("`{id}` has no field `{named}`"))
+                    .at(at, "unknown field")
+                    .help(format!(
+                        "`{id}` stores {}",
+                        declared
+                            .iter()
+                            .map(|(name, _)| format!("`{name}`"))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ));
+                if let Some(declared_at) = self.world.declared_at(&id) {
+                    report = report.also(declared_at, format!("`{id}` is declared here"));
+                }
+                self.resolver.report(report);
+                self.failed = true;
+                return None;
+            };
+            if let Some(already) = first_mention.get(&index) {
+                self.resolver.report(
+                    Diagnostic::error(Code::DuplicateName, format!("`{named}` is replaced twice"))
+                        .at(at, "given again here")
+                        .also(*already, "first given here")
+                        .help("one update replaces each field once; the second value would silently win"),
+                );
+                self.failed = true;
+                return None;
+            }
+            first_mention.insert(index, at);
+            let value_node = child_of(&field, is_expr_node)?;
+            let wanted = declared.get(index).map(|(_, ty)| ty.clone())?;
+            let checked = self.check(&value_node, Some(&wanted))?;
+            self.reconcile(&wanted, &checked.ty, checked.span)?;
+            *given.get_mut(index)? = Some(checked);
+        }
+        let binders = (0..declared.len())
+            .map(|index| format!(" field {index}"))
+            .collect::<Vec<_>>();
+        let fields = given
+            .into_iter()
+            .enumerate()
+            .map(|(index, written)| match written {
+                Some(value) => Some(value),
+                None => Some(Expr {
+                    kind: ExprKind::Name(binders.get(index)?.clone()),
+                    ty: declared.get(index).map(|(_, ty)| ty.clone())?,
+                    span,
+                }),
+            })
+            .collect::<Option<Vec<_>>>()?;
+        let result = Type::Nominal(id.clone(), type_arguments.clone());
+        Some(Expr {
+            kind: ExprKind::Match {
+                scrutinee: Box::new(subject),
+                arms: vec![CheckedArm {
+                    pattern: Pattern::Constructor {
+                        variant: 0,
+                        fields: binders,
+                    },
+                    body: Expr {
+                        kind: ExprKind::Construct {
+                            id,
+                            variant: 0,
+                            arguments: type_arguments,
+                            fields,
+                        },
+                        ty: result.clone(),
+                        span,
+                    },
+                }],
+            },
+            ty: result,
+            span,
         })
     }
 
@@ -10438,6 +10607,7 @@ fn is_expr_node(kind: SyntaxKind) -> bool {
             | SyntaxKind::StepExpr
             | SyntaxKind::MatchExpr
             | SyntaxKind::IfExpr
+            | SyntaxKind::RecordUpdateExpr
             | SyntaxKind::MusicExpr
             | SyntaxKind::KernelQuote
     )
@@ -12830,6 +13000,246 @@ mod tests {
             "3",
             "the diagnostic did not point at the condition: {mismatch:?}"
         );
+    }
+
+    /// A record update and the construction it elaborates to are the same
+    /// program — same fields afterwards, and the same number of charged nodes.
+    ///
+    /// This is the whole claim prompt 127dcfac makes. `with` adds no core term:
+    /// it is a one-arm match on the subject and a use of the declaration's own
+    /// constructor. Equal fields would allow an update that reached the same
+    /// record by building an intermediate one; equal charge is what says it
+    /// built exactly one. The many-field case is here for the same reason the
+    /// ladder is in the conditional law — if a mentioned right-hand side were
+    /// evaluated twice, or the subject rebuilt once per carried field, the
+    /// meter would say so and inspection would not.
+    #[test]
+    fn an_update_is_the_construction_it_elaborates_to() {
+        const DATA: &str = "data Pending {\n    Pending(read: Nat, length: Nat, dots: Nat)\n}\n";
+        const UPDATED: &str = "let start = Pending(1, 2, 3); \
+             let one = start with { dots = 9 }; \
+             let many = start with { read = 7, dots = 8 }; \
+             let one_read = match one { Pending(read, length, dots) -> read }; \
+             let one_length = match one { Pending(read, length, dots) -> length }; \
+             let one_dots = match one { Pending(read, length, dots) -> dots }; \
+             let many_read = match many { Pending(read, length, dots) -> read }; \
+             let many_length = match many { Pending(read, length, dots) -> length }; \
+             let many_dots = match many { Pending(read, length, dots) -> dots };";
+        const BY_HAND: &str = "let start = Pending(1, 2, 3); \
+             let one = match start { Pending(read, length, dots) -> Pending(read, length, 9) }; \
+             let many = match start { Pending(read, length, dots) -> Pending(7, length, 8) }; \
+             let one_read = match one { Pending(read, length, dots) -> read }; \
+             let one_length = match one { Pending(read, length, dots) -> length }; \
+             let one_dots = match one { Pending(read, length, dots) -> dots }; \
+             let many_read = match many { Pending(read, length, dots) -> read }; \
+             let many_length = match many { Pending(read, length, dots) -> length }; \
+             let many_dots = match many { Pending(read, length, dots) -> dots };";
+
+        let read_back = |source: &str| {
+            [
+                "one_read",
+                "one_length",
+                "one_dots",
+                "many_read",
+                "many_length",
+                "many_dots",
+            ]
+            .map(|name| literal_key(&value_from_declared_data(&format!("{DATA}{source}"), name)))
+        };
+        let updated = read_back(UPDATED);
+        assert_eq!(
+            updated,
+            [
+                // Mentioned, carried over, mentioned.
+                "nat:1", "nat:2", "nat:9", "nat:7", "nat:2", "nat:8",
+            ]
+            .map(str::to_owned),
+            "an unmentioned field was not carried over unchanged"
+        );
+        assert_eq!(
+            updated,
+            read_back(BY_HAND),
+            "the update answered differently from the construction it is"
+        );
+        assert_eq!(
+            charged_nodes(&format!("{DATA}{UPDATED}")),
+            charged_nodes(&format!("{DATA}{BY_HAND}")),
+            "the update cost more than the construction it is"
+        );
+    }
+
+    /// An update charges one construction, and carrying a field over does not
+    /// charge for what is in it.
+    ///
+    /// Prompt 127dcec charges a value where it is built. A carried-over field
+    /// is not built again — the elaboration binds it and hands the same value
+    /// back — so an update of a record holding a long list must cost what an
+    /// update of one holding a short list costs. Under a copying reading it
+    /// would not, and the `holding_*` functions this form replaces would have
+    /// been the cheaper way to write it.
+    #[test]
+    fn an_update_charges_one_construction_and_does_not_copy_what_it_carries() {
+        const BOX: &str = "data Box {\n    Box(held: List<Nat>, tag: Nat)\n}\n";
+        let cost = |held: &str, built: &str| {
+            let start = format!("{BOX} let held = {held}; let start = Box(held, 0);");
+            charged_nodes(&format!("{start} let moved = {built};")) - charged_nodes(&start)
+        };
+        let short = cost("[1, 2]", "start with { tag = 1 }");
+        let long = cost("[1, 2, 3, 4, 5, 6, 7, 8]", "start with { tag = 1 }");
+        assert_eq!(
+            short, long,
+            "updating a record holding a longer list cost more, so a carried field is being copied"
+        );
+        assert_eq!(
+            short,
+            cost("[1, 2]", "Box(held, 1)"),
+            "an update cost more than writing the same record out, so it is building more than one"
+        );
+    }
+
+    /// A right-hand side reads the scope around the update, not the field of
+    /// the same name.
+    ///
+    /// An update is not a `let` over the old fields. The binders the
+    /// elaboration introduces are unspellable, so this is true by construction
+    /// rather than by a renaming rule — but it is the part of the contract a
+    /// reader is most likely to assume the other way, so it is checked rather
+    /// than asserted.
+    #[test]
+    fn a_right_hand_side_reads_the_surrounding_binding_and_not_the_field() {
+        const SOURCE: &str = "data Pending {\n    Pending(dots: Nat, tying: Nat)\n}\n \
+             let dots = 5; \
+             let start = Pending(1, 2); \
+             let moved = start with { tying = dots }; \
+             let carried = match moved { Pending(dots, tying) -> tying };";
+        assert_eq!(
+            literal_key(&value_from_declared_data(SOURCE, "carried")),
+            "nat:5",
+            "the right-hand side read the subject's field instead of the surrounding binding"
+        );
+    }
+
+    /// A field named twice is refused, and both mentions are named.
+    ///
+    /// The second value would silently win, and nothing in the spelling says
+    /// which one was meant — so the diagnostic points at the repeat and says
+    /// where the first one was, in the shape every other duplicate diagnostic
+    /// uses.
+    #[test]
+    fn a_field_named_twice_is_refused_at_both_mentions() {
+        let source = "piece \"law\" { data Pending {\n    Pending(dots: Nat, tying: Nat)\n}\n \
+             let start = Pending(1, 2); \
+             let moved = start with { dots = 3, dots = 4 }; }";
+        let refused = refusals_from_declared_data(source);
+        let repeated = refused
+            .iter()
+            .find(|diagnostic| diagnostic.message.contains("dots"))
+            .unwrap_or_else(|| panic!("a field named twice was accepted: {refused:?}"));
+        let spans = repeated
+            .labels
+            .iter()
+            .map(|label| {
+                (
+                    label.primary,
+                    source[label.span.start as usize..label.span.end as usize].to_owned(),
+                )
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            spans,
+            [(true, "dots".to_owned()), (false, "dots".to_owned())],
+            "a duplicate field must point at the repeat and name the first: {repeated:?}"
+        );
+        assert_ne!(
+            repeated.labels.first().map(|label| label.span.start),
+            repeated.labels.get(1).map(|label| label.span.start),
+            "both labels landed on the same mention: {repeated:?}"
+        );
+    }
+
+    /// Naming a field the declaration does not have is refused at that name,
+    /// and the diagnostic names the declaration.
+    ///
+    /// Including the case where the name is a real field — of some *other*
+    /// declaration. The update is nominal: the subject's type fixes the field
+    /// set, so a name borrowed from another record is exactly as unknown as an
+    /// invented one, and saying which declaration was being updated is what
+    /// tells the author that.
+    #[test]
+    fn an_unknown_field_is_refused_at_its_name_and_names_the_declaration() {
+        for field in ["missing", "elsewhere"] {
+            let source = format!(
+                "piece \"law\" {{ data Pending {{\n    Pending(dots: Nat)\n}}\n \
+                 data Other {{\n    Other(elsewhere: Nat)\n}}\n \
+                 let start = Pending(1); \
+                 let moved = start with {{ {field} = 3 }}; }}"
+            );
+            let refused = refusals_from_declared_data(&source);
+            let unknown = refused
+                .iter()
+                .find(|diagnostic| diagnostic.message.contains(field))
+                .unwrap_or_else(|| panic!("`{field}` was accepted as a field: {refused:?}"));
+            let at = unknown
+                .labels
+                .iter()
+                .find(|label| label.primary)
+                .expect("an unknown name points somewhere");
+            assert_eq!(
+                &source[at.span.start as usize..at.span.end as usize],
+                field,
+                "the diagnostic did not point at the field name: {unknown:?}"
+            );
+            assert!(
+                unknown.message.contains("Pending"),
+                "the diagnostic must name the declaration being updated: {unknown:?}"
+            );
+        }
+    }
+
+    /// Only a single-constructor nominal record can be updated.
+    ///
+    /// A `Nat` has no fields; a sum has fields only once the case is known, and
+    /// knowing the case is what `match` is for. An update that skipped it would
+    /// have to fail where the value turned out to be the other constructor, and
+    /// this language has no run-time failure to fail with.
+    #[test]
+    fn updating_something_that_is_not_a_single_constructor_record_is_refused() {
+        for source in [
+            "piece \"law\" { let held = 3; let moved = held with { dots = 1 }; }",
+            "piece \"law\" { data Held {\n    One(dots: Nat),\n    Two(dots: Nat),\n}\n \
+             let start = One(1); let moved = start with { dots = 2 }; }",
+        ] {
+            let refused = refusals_from_declared_data(source);
+            assert!(
+                !refused.is_empty(),
+                "updating a value with no single constructor was accepted: {source}"
+            );
+        }
+    }
+
+    /// Why a piece that declares its own `data` types was refused.
+    ///
+    /// [`refusals`] reads an empty world, which cannot resolve a declared
+    /// constructor, so a piece with a `data` declaration needs the world
+    /// [`charged_nodes`] builds or every name in it is unknown for the wrong
+    /// reason.
+    fn refusals_from_declared_data(source: &str) -> Vec<Diagnostic> {
+        let parsed = musa_language::parse(source);
+        let Some(piece) = musa_language::ast::PieceDecl::from_root(&parsed.syntax()) else {
+            return Vec::new();
+        };
+        let mut resolver = Resolver::new();
+        let world = World::read(&mut resolver, &[piece.syntax().clone()]);
+        check_and_evaluate(
+            &mut resolver,
+            declarations(piece.syntax(), None).into_iter(),
+            Some(piece.syntax()),
+            UnknownRootMusic::Reject,
+            &Modules::default(),
+            &world,
+            Reading::Source,
+        );
+        resolver.diagnostics
     }
 
     /// Why a piece was refused.

@@ -56,4 +56,11 @@ enough.
     where a name has to say it; `nat` and `option` need one name each for reasons the note states. It refuses both
     flipping the name's meaning in place and leaving the closure chain in the standard library.
 
+22. [Rebuilding a record by naming only what changed](21-record-update.md) records prompt 127dcfac's addition of
+    `subject with { field = expr }`. It elaborates to a one-arm match and the declaration's own constructor, so it adds
+    no core term and charges one construction; the binders it introduces are unspellable, which is what makes a
+    right-hand side read the surrounding scope rather than the field. It records the measured `holding_*` reduction in
+    `staff.musa`, refuses row polymorphism, generated setters, lenses, and nested-path update, and states the two places
+    the implementation departs from the prompt's Design.
+
 Each rejected claim stays beside its refutation. No file here authorizes a compiler change or a change to `docs/rules/`.

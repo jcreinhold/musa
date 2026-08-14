@@ -576,6 +576,13 @@ impl World {
             .any(|declaration| declaration.owner.as_deref() == Some(owner) && declaration.id.name() == name)
     }
 
+    /// Where a declaration's name is written — what a diagnostic about one of
+    /// its fields points at second, so a reader can see the field list it was
+    /// judged against without going to look for it.
+    pub(crate) fn declared_at(&self, id: &NominalId) -> Option<SourceSpan> {
+        self.declarations.get(id).map(|declaration| declaration.name_span)
+    }
+
     /// Which declaration a constructor belongs to, and which variant it is —
     /// what a pattern needs in order to say which case it covers.
     pub(crate) fn constructor_of(&self, id: &NominalId, name: &str) -> Option<usize> {

@@ -889,21 +889,6 @@ library {
 
     // ----------------------------------------------------------- what is held
 
-    fn holding_body(later: Pending, spot: NodePath, read: Reading) -> Pending {
-        match later {
-            Pending(r, length, dots, tying, numbers, taken, voiced, words) -> Pending(
-                r,
-                length,
-                dots,
-                tying,
-                numbers,
-                Took(spot, read),
-                voiced,
-                words,
-            ),
-        }
-    }
-
     // The written value the next note takes, or the refusal that says it was
     // stated twice.
     //
@@ -919,7 +904,13 @@ library {
     ) -> Pending {
         match later {
             Pending(r, was, dots, tying, numbers, taken, voiced, words) -> match was {
-                NoLength -> Pending(r, length, NoDots, tying, numbers, taken, voiced, words),
+                // The left `length` is the field; the right is this
+                // function's parameter. A right-hand side reads the scope
+                // around the update, never the fields of its subject.
+                NoLength -> later with {
+                    length = length,
+                    dots = NoDots
+                },
                 Divided(numeral, held_dots, span) -> faulting(
                     later,
                     node_at(region, spot),
@@ -934,91 +925,17 @@ library {
         }
     }
 
-    fn holding_dots(later: Pending, dots: Dots) -> Pending {
-        match later {
-            Pending(r, length, was, tying, numbers, taken, voiced, words) -> Pending(
-                r,
-                length,
-                dots,
-                tying,
-                numbers,
-                taken,
-                voiced,
-                words,
-            ),
-        }
-    }
-
-    fn holding_tie(later: Pending, tying: Tying) -> Pending {
-        match later {
-            Pending(r, length, dots, was, numbers, taken, voiced, words) -> Pending(
-                r,
-                length,
-                dots,
-                tying,
-                numbers,
-                taken,
-                voiced,
-                words,
-            ),
-        }
-    }
-
-    fn holding_numbers(later: Pending, numbers: Numbers) -> Pending {
-        match later {
-            Pending(r, length, dots, tying, was, taken, voiced, words) -> Pending(
-                r,
-                length,
-                dots,
-                tying,
-                numbers,
-                taken,
-                voiced,
-                words,
-            ),
-        }
-    }
-
-    fn holding_voices(later: Pending, voiced: Voiced) -> Pending {
-        match later {
-            Pending(r, length, dots, tying, numbers, taken, was, words) -> Pending(
-                r,
-                length,
-                dots,
-                tying,
-                numbers,
-                taken,
-                voiced,
-                words,
-            ),
-        }
-    }
-
     // One more word waiting for the word that says what it was. A third is one
     // more than any form in this notation takes.
     fn holding_word(region: Syntax, later: Pending, said: Said) -> Pending {
         match later {
             Pending(r, length, dots, tying, numbers, taken, voiced, words) -> match words {
-                NoWords -> Pending(
-                    r,
-                    length,
-                    dots,
-                    tying,
-                    numbers,
-                    taken,
-                    voiced,
-                    OneWord(said)
-                ),
-                OneWord(only) -> Pending(
-                    r,
-                    length,
-                    dots,
-                    tying,
-                    numbers,
-                    taken,
-                    voiced,
-                    TwoWords(said, only),
-                ),
+                NoWords -> later with {
+                    words = OneWord(said)
+                },
+                OneWord(only) -> later with {
+                    words = TwoWords(said, only)
+                },
                 TwoWords(first, second) -> match said {
                     Said(spot, kind, spelling) -> refusing(
                         later,
@@ -1749,10 +1666,12 @@ library {
     ) -> Pending {
         match later {
             Pending(read, length, dots, tying, numbers, taken, voiced, words) -> match kind {
-                "Tilde" -> holding_tie(later, Tied(node_at(region, spot))),
+                "Tilde" -> later with {
+                    tying = Tied(node_at(region, spot))
+                },
                 "Dot" -> option_fold(
                     refusing(later, node_at(region, spot), "this value carries too many dots"),
-                    fn (more: Dots) -> Pending { holding_dots(later, more) },
+                    fn (more: Dots) -> Pending { later with { dots = more } },
                     one_more_dot(dots),
                 ),
                 "Integer" -> option_fold(
@@ -1802,12 +1721,16 @@ library {
         match later {
             Pending(read, length, dots, tying, numbers, taken, voiced, words) -> match delimiter {
                 "parentheses" -> option_fold(
-                    holding_numbers(later, stated_numbers(region, parts)),
+                    later with {
+                        numbers = stated_numbers(region, parts)
+                    },
                     fn (exact: Length) -> Pending { holding_length(region, spot, later, exact) },
                     stated_exact(region, parts),
                 ),
                 "brackets" -> match length {
-                    NoLength -> holding_voices(later, voiced_of(spot, parts)),
+                    NoLength -> later with {
+                        voiced = voiced_of(spot, parts)
+                    },
                     Divided(numeral, held_dots, span) -> chord_read(
                         region,
                         spot,
@@ -1839,7 +1762,9 @@ library {
                 node_at(region, spot),
                 "this staff cannot read this"
             ),
-            Body(spot, read) -> holding_body(later, spot, read),
+            Body(spot, read) -> later with {
+                taken = Took(spot, read)
+            },
             Grouped(spot, delimiter, parts) -> group_read(
                 region,
                 spot,

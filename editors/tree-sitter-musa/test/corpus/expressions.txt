@@ -284,3 +284,112 @@ piece "Conditionals" {
             (pitch_literal)
             (duration
               (integer))))))))
+
+==================
+record update, including a chain
+==================
+
+piece "Rebuilding" {
+  data Held {
+    Held(read: Nat, dots: Nat, tying: Nat),
+  }
+  let start: Held = Held(1, 2, 3);
+  let one: Held = start with { dots = 4 };
+  let two: Held = start with { dots = 4, tying = 5 } with { read = 6 };
+  score { part piano { voice one { c4/1 } } }
+}
+
+---
+
+(source_file
+  (piece_declaration
+    (string)
+    (data_declaration
+      (identifier)
+      (data_variant
+        (identifier)
+        (data_field
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier))))
+        (data_field
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier))))
+        (data_field
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier))))))
+    (let_declaration
+      (identifier)
+      (type_expression
+        (type_name
+          (identifier)))
+      (expression
+        (application_expression
+          (name_expression
+            (identifier))
+          (expression_argument_list
+            (expression_argument
+              (expression
+                (literal_expression
+                  (integer))))
+            (expression_argument
+              (expression
+                (literal_expression
+                  (integer))))
+            (expression_argument
+              (expression
+                (literal_expression
+                  (integer))))))))
+    (let_declaration
+      (identifier)
+      (type_expression
+        (type_name
+          (identifier)))
+      (expression
+        (record_update_expression
+          (name_expression
+            (identifier))
+          (field_update
+            (identifier)
+            (expression
+              (literal_expression
+                (integer)))))))
+    (let_declaration
+      (identifier)
+      (type_expression
+        (type_name
+          (identifier)))
+      (expression
+        (record_update_expression
+          (record_update_expression
+            (name_expression
+              (identifier))
+            (field_update
+              (identifier)
+              (expression
+                (literal_expression
+                  (integer))))
+            (field_update
+              (identifier)
+              (expression
+                (literal_expression
+                  (integer)))))
+          (field_update
+            (identifier)
+            (expression
+              (literal_expression
+                (integer)))))))
+    (score_declaration
+      (part_declaration
+        (identifier)
+        (voice_declaration
+          (identifier)
+          (note_statement
+            (pitch_literal)
+            (duration
+              (integer))))))))

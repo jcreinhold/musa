@@ -434,6 +434,8 @@ impl TokenClass {
             | SyntaxKind::MatchExpr
             | SyntaxKind::MatchArm
             | SyntaxKind::IfExpr
+            | SyntaxKind::RecordUpdateExpr
+            | SyntaxKind::FieldUpdate
             | SyntaxKind::Pattern
             | SyntaxKind::MusicExpr
             | SyntaxKind::KernelQuote

@@ -629,7 +629,10 @@ fn format_token(node: &SyntaxNode, token: &SyntaxToken, writer: &mut Writer) {
         // brace that closes it asks for the line itself. A declaration's last
         // variant may be written without its trailing comma, which leaves the
         // same brace stranded after it.
-        if parent == SyntaxKind::BlockExpr || parent == SyntaxKind::DataDecl {
+        if matches!(
+            parent,
+            SyntaxKind::BlockExpr | SyntaxKind::DataDecl | SyntaxKind::RecordUpdateExpr
+        ) {
             writer.break_before_close();
         }
         // On its own line the `}` needs no space in front of it, and
@@ -640,7 +643,15 @@ fn format_token(node: &SyntaxNode, token: &SyntaxToken, writer: &mut Writer) {
             writer.space();
         }
         writer.write("}");
-        if !held && !matches!(parent, SyntaxKind::MusicExpr | SyntaxKind::MatchExpr) {
+        // A record update closes an *expression*, like a match: a `,` or a
+        // `;` may follow it, so the brace leaves the line open for whatever
+        // the update was written into.
+        if !held
+            && !matches!(
+                parent,
+                SyntaxKind::MusicExpr | SyntaxKind::MatchExpr | SyntaxKind::RecordUpdateExpr
+            )
+        {
             writer.end_line();
         }
     } else if kind == SyntaxKind::Semicolon {
@@ -652,7 +663,11 @@ fn format_token(node: &SyntaxNode, token: &SyntaxToken, writer: &mut Writer) {
         // both read as a list read downwards. A comma *inside* a constructor
         // separates its fields, which are one word's worth of a line, and that
         // comma belongs to the `DataVariant`, not to the declaration.
-        if parent == SyntaxKind::MatchExpr || parent == SyntaxKind::DataDecl || stacked {
+        if matches!(
+            parent,
+            SyntaxKind::MatchExpr | SyntaxKind::DataDecl | SyntaxKind::RecordUpdateExpr
+        ) || stacked
+        {
             writer.end_line();
         } else if !ends_its_list(token) {
             writer.space();

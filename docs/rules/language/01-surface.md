@@ -17,7 +17,7 @@ function     := "fn" IDENT "(" params? ")" "->" type block
 param        := IDENT ":" type ("=" expr)?
 call         := expr "(" args? ")"
 expr         := literal | IDENT | path | "(" expr ")" | block | product | list | option
-              | call | match | conditional | music-expr
+              | call | match | conditional | record-update | music-expr
 block        := "{" expr "}"
 product      := "(" expr "," expr ("," expr)* ")"
 list         := "[" (expr ("," expr)*)? "]"
@@ -25,6 +25,8 @@ option       := "None" | "Some" "(" expr ")"
 match        := "match" expr "{" match-arm ("," match-arm)* ","? "}"
 match-arm    := pattern "->" expr
 conditional  := "if" expr block "else" (block | conditional)
+record-update := expr "with" "{" field-update ("," field-update)* ","? "}"
+field-update := IDENT "=" expr
 pattern      := "_" | literal | IDENT | "None" | "Some" "(" IDENT ")"
               | "[" "]" | "[" IDENT "," ".." IDENT "]"
               | "(" IDENT "," IDENT ("," IDENT)* ")"
@@ -94,6 +96,35 @@ matching applies to it unchanged — `02-core-calculus.md` §1. What it buys is 
 question is written as a yes-or-no question rather than as case analysis on a two-valued type, and a run of them is a
 ladder rather than a staircase of nested braces. Guards on match arms would flatten the same staircase and are refused
 separately; §6.2 keeps patterns at depth one and a guard proposal has to earn its own change.
+
+`subject with { field = expr, ... }` rebuilds a record: the result is the subject's value with the named fields replaced
+and every other field carried over unchanged. Five things are fixed about it.
+
+- The subject is evaluated exactly once, however many fields are carried over.
+- Each written right-hand side is evaluated exactly once, and against the scope *around* the update rather than against
+  the subject's fields. `p with { n = plus(n, 1) }` reads the `n` in scope where it is written, not `p`'s field of that
+  name; an author who means the field writes the match that binds it. That reading is decidable by looking at one line,
+  which is the whole reason for the rule.
+- Every field named must be a field of the subject's declaration, and the subject's type must be a `data` declaration
+  with exactly one constructor. A value that could be one of several cases is taken apart with `match`, which names the
+  case, and rebuilt inside the arm.
+- A field named twice is refused, and the diagnostic points at both mentions. The second value would silently win, and
+  nothing about the spelling says which one the author meant.
+- The result has the subject's own type. An update never widens, narrows, or changes what a value is.
+
+It adds no term to the calculus. `p with { f = e }` elaborates to a match on `p` that binds every field of its one
+constructor, and a use of that same constructor taking `e` where `f` was named and the bound field everywhere else —
+`02-core-calculus.md` §5. The subject is the scrutinee, which is what evaluates it once; exactly one record is built,
+which is what makes an update cost one construction; and the binders the elaboration introduces cannot be written in
+source, which is what makes the second rule above true by construction rather than by renaming. Right-hand sides are
+*checked* where they are written, so a diagnostic points at the line the author wrote, and *evaluated* in the
+declaration's field order, which is already the order a constructor written with named fields evaluates in. Nothing
+observes the difference — the language is total and its expressions have no effects — and fixing evaluation to one order
+across both spellings is what keeps `p with { f = e }` and the full construction the same program.
+
+`with` is the same word the `use` statement spells its occurrence overrides with, and the statement keeps it: in
+`use theme() with { note 3 = a5; }` the `with` belongs to the statement, because that is where a reader's eye already
+puts it. Only the top level of a `use` value is affected; an update written inside an argument is an ordinary update.
 
 Structural folds do not add syntax. `nat_fold(zero, step, count)`, `list_fold_from_start(zero, step, values)`,
 `list_fold_from_end(zero, step, values)`, and `option_fold(zero, some_case, value)` are ordinary calls to compiler-owned

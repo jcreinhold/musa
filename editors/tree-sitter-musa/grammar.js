@@ -110,6 +110,13 @@ module.exports = grammar({
     [$.stack_statement],
     [$.grace_note],
     [$.articulation_list],
+    // A `with` following an expression is claimed twice: by a record update
+    // on that expression, and by the override clause of the `use` statement it
+    // may be sitting in. Nothing decides it one token ahead — an override list
+    // opens with `note` and a field list with an identifier, which is two
+    // tokens away — so both readings are explored and the one that parses
+    // survives. This is the grammar's version of Parser::with_is_spoken_for.
+    [$.expression, $.record_update_expression],
   ],
 
   // `identifier` as the word token steers error recovery toward spelling
@@ -491,6 +498,7 @@ module.exports = grammar({
       choice(
         $.match_expression,
         $.if_expression,
+        $.record_update_expression,
         $.music_expression,
         $.kernel_quote,
         $.application_expression,
@@ -504,6 +512,26 @@ module.exports = grammar({
 
     application_expression: ($) =>
       prec.left(2, seq($._primary_expression, repeat1($.expression_argument_list))),
+
+    // Parser::expr — `p with { f = e }`, the record rebuilt. The subject may
+    // itself be an update, which is how `p with { … } with { … }` chains, and
+    // the real parser reads the `with` suffix after the call suffix, so a
+    // call is a subject too. `use x() with { note … }` keeps its own reading:
+    // an override list is not `field = expr`, so nothing here can claim it.
+    record_update_expression: ($) =>
+      prec.left(
+        seq(
+          field('subject', choice($.record_update_expression, $.application_expression, $._primary_expression)),
+          'with',
+          '{',
+          $.field_update,
+          repeat(seq(',', $.field_update)),
+          optional(','),
+          '}',
+        ),
+      ),
+
+    field_update: ($) => seq(field('name', $.identifier), '=', field('value', $.expression)),
 
     pitch_expression: ($) =>
       prec.left(

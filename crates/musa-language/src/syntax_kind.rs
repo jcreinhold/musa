@@ -536,6 +536,17 @@ pub enum SyntaxKind {
     /// mandatory, so there is no dangling-else question and an `else if`
     /// ladder is one `IfExpr` nested in the alternative position of another.
     IfExpr,
+    /// `subject with { field = expr, ... }`.
+    ///
+    /// Surface syntax with no core term behind it: the compiler elaborates it
+    /// to the nominal constructor the declaration already generates, applied
+    /// to the written right-hand sides and to the subject's other fields
+    /// (`docs/rules/language/02-core-calculus.md` §5). The subject is the
+    /// first child; the rest are the `FieldUpdate`s, in the order they were
+    /// written.
+    RecordUpdateExpr,
+    /// `field = expr` — one replaced field of a record update.
+    FieldUpdate,
     /// A literal, binding, option, list, or product pattern.
     Pattern,
     /// `music { ... }`, a notation-first contextual music value.

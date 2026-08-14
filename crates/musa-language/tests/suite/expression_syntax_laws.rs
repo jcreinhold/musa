@@ -317,3 +317,108 @@ fn if_and_else_are_keywords_and_not_available_as_names() {
         assert_eq!(document.syntax().to_string(), taken);
     }
 }
+
+/// A record update round-trips and formats to a fixpoint, with one field and
+/// with many, and a chain of updates stays a chain.
+///
+/// The many-field case is the one that has to be looked at: a field list is
+/// laid out the way a `data` declaration's is, one field to a line once it no
+/// longer fits, rather than being run together the way a call's arguments are.
+/// The chain matters because `p with { … } with { … }` is two updates and not
+/// a longer field list — the second updates the first's result — so the tree
+/// has to keep them nested and the printer has to write them back that way.
+#[test]
+fn a_record_update_round_trips_with_one_field_and_with_many() {
+    let source = "piece \"x\" {\n\
+         data Pending {\n\
+             Pending(read: Nat, length: Nat, dots: Nat, tying: Nat, numbers: Nat, taken: Nat)\n\
+         }\n\
+         fn one(held: Pending) -> Pending { held with { dots = 1 } }\n\
+         fn many(held: Pending) -> Pending { held with { read = 1, length = 2, dots = 3, tying = 4, numbers = 5, taken = 6 } }\n\
+         fn chained(held: Pending) -> Pending { held with { dots = 1 } with { tying = 2 } }\n\
+     }";
+    let parsed = parse(source);
+    assert!(parsed.errors().is_empty(), "{:?}", parsed.errors());
+    let before = significant_shape(&parsed);
+
+    let once = format(&parsed, BarSpacing::Compact).to_string();
+    let reparsed = parse(&once);
+    assert!(reparsed.errors().is_empty(), "{:?}\n{once}", reparsed.errors());
+    assert_eq!(
+        significant_shape(&reparsed),
+        before,
+        "formatting changed the tree:\n{once}"
+    );
+    assert_eq!(
+        format(&reparsed, BarSpacing::Compact).to_string(),
+        once,
+        "formatting is not a fixpoint"
+    );
+
+    let root = reparsed.syntax();
+    assert_eq!(
+        root.descendants()
+            .filter(|node| node.kind() == SyntaxKind::RecordUpdateExpr)
+            .count(),
+        4,
+        "one, many, and two chained updates:\n{once}"
+    );
+    assert_eq!(
+        root.descendants()
+            .filter(|node| node.kind() == SyntaxKind::FieldUpdate)
+            .count(),
+        9,
+        "one field, six fields, and one each in the chain:\n{once}"
+    );
+
+    // The one-field update stays on its line; the six-field one does not.
+    assert!(
+        once.lines().any(|line| line.contains("held with { dots = 1 } }")),
+        "a one-field update was broken open:\n{once}"
+    );
+    assert!(
+        once.lines().any(|line| line.trim() == "read = 1,"),
+        "a field list that does not fit must lay out one field to a line:\n{once}"
+    );
+}
+
+/// `with` after a `use` value belongs to the statement, and `with` after any
+/// other expression is an update.
+///
+/// The two forms were spelled with the same word before this prompt existed —
+/// `use theme() with { note 3 = a5; }` is the occurrence override, and
+/// `examples/variation.musa` writes it — so the reading a reader already has is
+/// the one the statement keeps. Only the *top level* of a `use` value stands
+/// down: an update written inside an argument is an ordinary update, which is
+/// what the third case here pins.
+#[test]
+fn a_use_statement_keeps_its_with_and_an_expression_does_not() {
+    for (source, updates, overrides) in [
+        (
+            "piece \"x\" { score { part p { voice v { use theme() with { note 3 = a5; } } } } }",
+            0,
+            1,
+        ),
+        (
+            "piece \"x\" { data P { P(a: Nat) } fn f(p: P) -> P { p with { a = 1 } } }",
+            1,
+            0,
+        ),
+        (
+            "piece \"x\" { data P { P(a: Nat) } fn t(p: P) -> Music { music { c4/4 } } \
+             score { part p { voice v { use t(held with { a = 1 }); } } } }",
+            1,
+            0,
+        ),
+    ] {
+        let parsed = parse(source);
+        assert!(parsed.errors().is_empty(), "{source}\n{:?}", parsed.errors());
+        let root = parsed.syntax();
+        let counted = |kind| root.descendants().filter(|node| node.kind() == kind).count();
+        assert_eq!(
+            (counted(SyntaxKind::RecordUpdateExpr), counted(SyntaxKind::WithClause)),
+            (updates, overrides),
+            "`with` was claimed by the wrong form in: {source}"
+        );
+    }
+}

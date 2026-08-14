@@ -2373,6 +2373,19 @@ wrapper!(Pattern, SyntaxKind::Pattern);
 pub struct IfExpr(SyntaxNode);
 wrapper!(IfExpr, SyntaxKind::IfExpr);
 
+/// `subject with { field = expr, ... }`.
+///
+/// Surface syntax the compiler elaborates to the declaration's own
+/// constructor, so nothing downstream of elaboration has an update. The
+/// subject is the first expression child; the [`FieldUpdate`]s follow it in
+/// written order, which is the order their diagnostics come in.
+pub struct RecordUpdateExpr(SyntaxNode);
+wrapper!(RecordUpdateExpr, SyntaxKind::RecordUpdateExpr);
+
+/// `field = expr` — one replaced field of a [`RecordUpdateExpr`].
+pub struct FieldUpdate(SyntaxNode);
+wrapper!(FieldUpdate, SyntaxKind::FieldUpdate);
+
 /// `music { ... }`, a contextual notation-first music value.
 pub struct MusicExpr(SyntaxNode);
 wrapper!(MusicExpr, SyntaxKind::MusicExpr);

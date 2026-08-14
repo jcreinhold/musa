@@ -290,6 +290,16 @@ call already supplies every parameter, so nothing is inserted at the site. Thus 
 rule. Products currently have introduction but no surface projection, which is a conservative sublanguage of the product
 calculus.
 
+Record update is likewise a derived form and adds nothing here. `p with { f = e }` is erased by `⟦·⟧` into a one-arm
+match on `p` whose pattern is the sole constructor of `p`'s declaration binding every field to a fresh binder, and whose
+body is that same constructor applied to `⟦e⟧` in `f`'s position and the corresponding binder in every other — the
+constructor introduction of §5.6 and the case analysis it already comes with. It is a match rather than a projection
+because there is no projection to elaborate to, per the previous paragraph; the pattern *is* how a field is read. The
+binders are unspellable, so no source name can capture them and the erasure needs no renaming side condition. The
+subject appears once, as the scrutinee, so it is evaluated once; exactly one constructor introduction appears, so an
+update charges exactly one construction; and after `⟦·⟧` there is no update left for a proof to be about, so §§5.2–5.5
+and §5.6 quantify over exactly the set they did before. §5 is otherwise unchanged by the form.
+
 ### 5.1 Static judgments
 
 Literal checking is a partial *compiler* judgment `token ⇝ c : b`: malformed or out-of-range text produces a located

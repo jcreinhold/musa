@@ -254,6 +254,18 @@ struct Parser<'a> {
     /// before, so the same token means "stop" one level down and "start" one
     /// level up. This flag is which of the two the parser is looking at.
     in_pipe_bar: bool,
+    /// Whether a `with` standing after the expression being parsed belongs to
+    /// something else.
+    ///
+    /// The word is spoken for twice. `use theme() with { note 3 = a5; }`
+    /// specializes one occurrence of some material, and `p with { dots = d }`
+    /// rebuilds a record; both put `with {` directly after an expression, so
+    /// the expression parser cannot tell them apart by looking. The statement
+    /// is the one that owns its `with`, so `use_stmt` sets this while reading
+    /// its own expression and the record form stands down. Nothing is lost:
+    /// `use` takes music, and a record is not music, so the suppressed reading
+    /// was never a program. Parentheses restore it if one is ever wanted.
+    with_is_spoken_for: bool,
 }
 
 impl<'a> Parser<'a> {
@@ -267,6 +279,7 @@ impl<'a> Parser<'a> {
             blamed_the_end: false,
             bar_depth: 0,
             in_pipe_bar: false,
+            with_is_spoken_for: false,
         }
     }
 
@@ -1564,11 +1577,23 @@ impl<'a> Parser<'a> {
     /// Both pitch operators are non-associative: `p up M2 down m2` needs
     /// parentheses, and so does a second `step`.
     fn expr(&mut self) {
+        // Taken rather than read: the suppression is about *this* expression's
+        // trailing `with`, and everything nested inside it — a call's
+        // arguments, a parenthesized subexpression — is an ordinary place
+        // where a record update is exactly what `with` means.
+        let spoken_for = std::mem::take(&mut self.with_is_spoken_for);
         let checkpoint = self.events.len();
         self.expr_atom();
         while self.at(SyntaxKind::LParen) {
             self.start_at(checkpoint, SyntaxKind::ApplyExpr);
             self.expr_arg_list();
+            self.finish();
+        }
+        // `p with { f = e } with { g = h }` is two updates, the second of the
+        // first's result, which is why this is a loop and not an `if`.
+        while self.at(SyntaxKind::WithKw) && !spoken_for {
+            self.start_at(checkpoint, SyntaxKind::RecordUpdateExpr);
+            self.field_update_list();
             self.finish();
         }
         if self.at(SyntaxKind::StepKw) {
@@ -1588,6 +1613,51 @@ impl<'a> Parser<'a> {
             self.expr_atom();
             self.finish();
         }
+    }
+
+    /// `with { field = expr, ... }` — the tail of a record update.
+    ///
+    /// The subject is already on the stack when this runs; what is parsed here
+    /// is only which fields are being replaced. An empty brace pair is a parse
+    /// error rather than an identity: writing `p with { }` says nothing that
+    /// writing `p` does not, and reading it as `p` would make an empty update
+    /// a silent no-op that looks like an unfinished edit.
+    fn field_update_list(&mut self) {
+        self.bump(); // with
+        self.expect(SyntaxKind::LBrace, "`{`");
+        let mut any = false;
+        loop {
+            if self.at(SyntaxKind::RBrace) || self.current().is_none() {
+                if !any {
+                    self.expected("a field to replace, such as `dots = more`");
+                }
+                break;
+            }
+            any = true;
+            self.field_update();
+            if self.at(SyntaxKind::Comma) {
+                self.bump();
+            } else {
+                break;
+            }
+        }
+        self.expect(SyntaxKind::RBrace, "`}`");
+    }
+
+    /// `field = expr` — one field of a record update.
+    fn field_update(&mut self) {
+        self.start(SyntaxKind::FieldUpdate);
+        if self.at(SyntaxKind::Identifier) {
+            self.bump();
+        } else {
+            self.expected("a field name");
+            self.recover(&[SyntaxKind::Comma, SyntaxKind::RBrace]);
+            self.finish();
+            return;
+        }
+        self.expect(SyntaxKind::Equals, "`=`");
+        self.expr();
+        self.finish();
     }
 
     /// `scale <tonic> <collection>` — a collection rooted on a pitch class.
@@ -2931,7 +3001,12 @@ impl<'a> Parser<'a> {
     fn use_stmt(&mut self) {
         self.start(SyntaxKind::UseStmt);
         self.bump(); // use
+        // This statement's own `with` clause follows the expression, so the
+        // expression must not read it as a record update — see
+        // `with_is_spoken_for`.
+        let outer = std::mem::replace(&mut self.with_is_spoken_for, true);
         self.expr();
+        self.with_is_spoken_for = outer;
         // `with { ... }` specializes this occurrence and only this one
         // (roadmap §9). A call that ends there is a block, not a statement,
         // so it takes no `;` — the same shape every other block has.

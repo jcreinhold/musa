@@ -1876,6 +1876,10 @@
         },
         {
           "type": "SYMBOL",
+          "name": "record_update_expression"
+        },
+        {
+          "type": "SYMBOL",
           "name": "music_expression"
         },
         {
@@ -1931,6 +1935,105 @@
           }
         ]
       }
+    },
+    "record_update_expression": {
+      "type": "PREC_LEFT",
+      "value": 0,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "FIELD",
+            "name": "subject",
+            "content": {
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "record_update_expression"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "application_expression"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_primary_expression"
+                }
+              ]
+            }
+          },
+          {
+            "type": "STRING",
+            "value": "with"
+          },
+          {
+            "type": "STRING",
+            "value": "{"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "field_update"
+          },
+          {
+            "type": "REPEAT",
+            "content": {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "STRING",
+                  "value": ","
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "field_update"
+                }
+              ]
+            }
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "STRING",
+                "value": ","
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          },
+          {
+            "type": "STRING",
+            "value": "}"
+          }
+        ]
+      }
+    },
+    "field_update": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "FIELD",
+          "name": "name",
+          "content": {
+            "type": "SYMBOL",
+            "name": "identifier"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "="
+        },
+        {
+          "type": "FIELD",
+          "name": "value",
+          "content": {
+            "type": "SYMBOL",
+            "name": "expression"
+          }
+        }
+      ]
     },
     "pitch_expression": {
       "type": "PREC_LEFT",
@@ -6560,6 +6663,10 @@
     ],
     [
       "articulation_list"
+    ],
+    [
+      "expression",
+      "record_update_expression"
     ]
   ],
   "precedences": [],
