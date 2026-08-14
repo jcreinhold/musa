@@ -613,6 +613,57 @@ fn the_pressure_workloads_compile_and_denote_what_they_claim() {
     }
 }
 
+/// Every generated sharing shape compiles, and each one denotes what it
+/// claims.
+///
+/// The committed pressure fixtures have had this guarantee since they were
+/// written; the *generated* sharing pieces did not, and the gap was not
+/// theoretical. `sharing_source` went on emitting a parameter default for
+/// fifty-three commits after the language dropped defaults, so the benchmark
+/// binary panicked in its own preamble and every P0–S2 measurement was
+/// unreachable — including the two that had regressed past the 10% gate in
+/// `docs/rules/language/06-performance.md`. A benchmark nobody can run is a
+/// gate nobody is holding.
+///
+/// One representative call count is enough: what this protects is that the
+/// three shapes still *are* musa, not the shape of their scaling curve, which
+/// is what the benchmark itself measures.
+#[test]
+fn the_sharing_shapes_compile_and_denote_what_they_claim() {
+    use musa_compiler::bench::{Sharing, sharing_source};
+
+    const CALLS: usize = 8;
+    const BODY: usize = 16;
+    for (shape, notes) in [
+        // Every call denotes the body and nothing else.
+        (Sharing::Identical, CALLS * BODY),
+        // The argument is the first note; the body follows it.
+        (Sharing::Distinct, CALLS * (1 + BODY)),
+        // The same music, with the argument-independent tail written beside
+        // the parameterized head rather than inside it.
+        (Sharing::Hoisted, CALLS * (1 + BODY)),
+    ] {
+        let name = format!("benches/sharing-{shape:?}.musa");
+        let document = SourceDocument::new(sharing_source(shape, CALLS, BODY), &name);
+        let compilation = compile(&document, &CompileOptions::default());
+        let errors: Vec<&str> = compilation
+            .diagnostics()
+            .iter()
+            .filter(|diagnostic| diagnostic.severity == musa_compiler::Severity::Error)
+            .map(|diagnostic| diagnostic.message.as_str())
+            .collect();
+        assert!(errors.is_empty(), "{shape:?} does not compile: {errors:?}");
+        let score = compilation.snapshot().expect("a sharing workload denotes a score");
+        let counted: usize = score
+            .parts()
+            .iter()
+            .flat_map(|(_, part)| part.voices())
+            .map(|(_, voice)| voice.events().len())
+            .sum();
+        assert_eq!(counted, notes, "{shape:?} denotes a different number of events");
+    }
+}
+
 #[test]
 fn shape_pair_has_the_same_denoted_note_count() {
     let count = |source: String, name: &str| {

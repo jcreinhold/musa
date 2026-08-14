@@ -426,6 +426,76 @@ The resource meter's limits are unchanged by this prompt, and one of them is now
 | --- | ---: | --- |
 | estimated music occurrences | 1,000,000 | a 640,000-occurrence piece compiles; the rejection is deterministic, names `elaborating the piece timeline`, and reports the attempted count. Sharing does not move the threshold: one more call charges exactly one more body |
 
+## Hot-path repair
+
+The gate above says a P1 or P2 move over 10% requires a recorded rerun and an allocation comparison. That gate was not
+being held, and the reason is worth recording before the numbers are: **the benchmark binary could not run.**
+`bench::sharing_source` went on emitting a parameter default for fifty-three commits after the language removed
+defaults, so `main` panicked in its own preamble and every P0–P7, K0, E0–E4 and S0–S2 measurement was unreachable. Two
+workloads had drifted well past 10% in that window. A gate with no live baseline is not a gate, so the generated sharing
+shapes now carry the same compile-and-denote assertion the committed pressure fixtures have had since they were written
+(`the_sharing_shapes_compile_and_denote_what_they_claim`).
+
+Four repairs followed, each measured alone: an index behind `Derivation::find` and the anchor interner, which were
+linear scans and therefore quadratic in distinct anchors; a split of the expansion context into borrowed material and
+the nesting that changes, which stopped every nested block from copying a contextual value and the document's named
+values; a retained source string on `ParsedDocument` and a both-ends walk in `trimmed_span`, which stopped two stages
+re-deriving what the parser had already been handed.
+
+Machine: Apple M4 Pro, arm64, macOS 26.5.1, release profile, divan medians over 100 samples, both sides measured
+sequentially on an otherwise idle machine from the same benchmark code. Command:
+
+```sh
+cargo bench -p musa-compiler
+```
+
+| stage | workload | before | after | Δ median | allocations before → after |
+| --- | --- | ---: | ---: | ---: | ---: |
+| P1 | kernel-pressure | 10.34 ms | 2.116 ms | −79.5% | 372,287 → 45,712 |
+| P1 | shared | 6.027 ms | 2.604 ms | −56.8% | 35,685 → 35,139 |
+| P1 | large | 5.788 ms | 4.853 ms | −16.2% | 147,686 → 135,574 |
+| P1 | audio-bridge | 161.4 µs | 138.4 µs | −14.3% | 4,773 → 4,013 |
+| P1 | small | 202.8 µs | 177.1 µs | −12.7% | 5,523 → 4,782 |
+| P1 | declaration-heavy | 1.649 ms | 1.482 ms | −10.1% | 54,924 → 49,451 |
+| P1 | template-pressure | 10.04 ms | 9.251 ms | −7.9% | 270,637 → 250,314 |
+| P1 | open-shape | 632.0 µs | 586.3 µs | −7.2% | 16,062 → 14,212 |
+| P1 | higher-order-shape | 355.3 µs | 366.5 µs | +3.2% | 5,593 → 5,222 |
+| P1 | analysis-pressure | 3.106 ms | 3.320 ms | +6.9% | 86,803 → 81,947 |
+| P1 | core-pressure | 3.518 ms | 3.801 ms | +8.0% | 105,960 → 102,699 |
+| P2 | kernel-pressure | 10.10 ms | 1.897 ms | −81.2% | 369,923 → 43,346 |
+| P2 | shared | 5.905 ms | 2.568 ms | −56.5% | 35,197 → 34,649 |
+| P2 | audio-bridge | 117.8 µs | 93.30 µs | −20.8% | 4,043 → 3,281 |
+| P2 | large | 5.100 ms | 4.168 ms | −18.3% | 139,580 → 127,466 |
+| P2 | small | 148.5 µs | 126.2 µs | −15.0% | 4,685 → 3,942 |
+| P2 | open-shape | 575.4 µs | 510.7 µs | −11.2% | 15,018 → 13,166 |
+| P2 | declaration-heavy | 1.501 ms | 1.349 ms | −10.1% | 53,010 → 47,535 |
+| P2 | template-pressure | 9.968 ms | 9.150 ms | −8.2% | 269,617 → 249,292 |
+| P2 | higher-order-shape | 328.5 µs | 345.6 µs | +5.2% | 5,305 → 4,932 |
+| P2 | analysis-pressure | 2.854 ms | 2.810 ms | −1.5% | 83,642 → 78,784 |
+| P2 | core-pressure | 3.289 ms | 3.245 ms | −1.3% | 103,112 → 99,849 |
+
+**Every workload's allocation count fell.** That is what makes the table readable: the three positive medians —
+`higher-order-shape` in both stages and `analysis-pressure` and `core-pressure` in P1 — each come with *fewer*
+allocations than before, and each is contradicted by the same workload's other stage. By this document's own rule they
+are the machine, not the compiler. Run-to-run spread at a fixed binary reached 9% on the sub-millisecond workloads here,
+which is why no claim in the repair commits rests on a median under 10% without an allocation column beside it.
+
+The three rows that are not noise say what each repair bought and where:
+
+- **kernel-pressure, −80% and 88% fewer allocations.** Both the derivation index and the context split land here, and
+  the split is the larger half: this is the one workload that builds nested contextual values and kernel quotes, so it
+  entered new material at every level, and every entry copied a `Music` tree and an `IndexMap` of the document's named
+  values.
+- **shared, −57% at an unchanged allocation count.** Purely the derivation index. Each of this workload's occurrences
+  carries a `RepeatIteration` and a `MotifApplication` step, so it mints anchors that a flat score never mints, and
+  three linear scans per event over a growing table is quadratic in exactly those.
+- **small, audio-bridge, declaration-heavy, open-shape, −10% to −21% with allocations down by the same proportion.** The
+  CST repairs. The smallest workloads gain the most, which is the signature of a per-statement fixed cost rather than
+  anything that scales with the music.
+
+`template-pressure` and `core-pressure` are the two workloads left with a five-figure allocation count and no repair
+aimed at them; they are where a further measurement should start.
+
 ## Prompt 127 public surface and dependencies
 
 No new crate, and no compiler internal became public. The sharing change is entirely inside
