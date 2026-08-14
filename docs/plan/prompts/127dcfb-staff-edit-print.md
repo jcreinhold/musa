@@ -2,7 +2,7 @@
 id: 127dcfb
 slug: staff-edit-print
 status: pending
-depends_on: [127dcfag]
+depends_on: [127dcfah]
 phase: 3
 ---
 
@@ -23,6 +23,9 @@ land §2.6's structured edit changing one pitch and no other byte, and prove the
 - Prompts 127dcd and 127dce: anchors as the way a command names a node, the level declaration and where it is checked,
   and that `PrintLoss` is an answer rather than a failure.
 - Prompt 127dcfa's `expand`: the printer's round trip is against it, so the two are one contract read from two sides.
+- Prompt [127dcfah](127dcfah-printed-literals.md) — `text_join` and the five literal spellings. The printer is written
+  with those and adds none: this prompt's "no new compiler-owned operation" stands because the operations a printer
+  needs landed there, after the attempt to write this one found that the language could not build a text at all.
 
 ## Design
 
@@ -38,7 +41,9 @@ way to make an expansion out of a value.
 **The staff document is the first value a printer has had that it can genuinely fail to spell**, which is what makes it
 the real test of `PrintLoss`. A document carrying a written fact the staff spelling has no notation for must produce a
 loss that names it, not a smaller document. A printer that silently dropped it would satisfy the round-trip law by
-making the value smaller, which is the failure §4 names.
+making the value smaller, which is the failure §4 names. Prompt 127dcfah's `interval_literal` is where the unspellable
+case is real rather than staged: a transposing shift with no written interval name is a document the staff cannot write
+down, and the loss says so.
 
 The round-trip law is stated as the package's own equality on `StaffDocument` rather than as text equality, because
 printing is allowed to normalize: expand the trial block, print the value, expand the printed region, and compare the

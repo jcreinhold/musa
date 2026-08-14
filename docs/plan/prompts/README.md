@@ -272,6 +272,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 127dcfae | recursor-trial | 3 | Paper-trial the sealed-step recursor before any code implements it |
 | 127dcfaf | syntax-step-recursor | 3 | Replace the syntax catamorphism with an inherited-context recursor |
 | 127dcfag | staff-retrial | 3 | Rewrite staff expansion on the repaired API and measure what changed |
+| 127dcfah | printed-literals | 3 | Give the language the two operations a printer needs |
 | 127dcfb | staff-edit-print | 3 | Make the staff adapter generative |
 | 127dcg | studio-trial | 3 | Write the studio adapter as an unprivileged package |
 | 127dd | adapter-trials | 3 | Freeze the adapter rules and carry them through hostile review |
@@ -550,18 +551,19 @@ trial found the language missing — the conditional the core inventory already 
 standing in for (127dcfac), and `Result`-specific `?`, which flattens a six-frame failure staircase without buying a
 monad (127dcfad) — the traversal repair those four leave behind: a paper trial of an inherited-context recursor over
 sealed steps (127dcfae), its implementation and the rules amendment that precedes it (127dcfaf), and the staff rewrite
-that measures which repair removed what (127dcfag), and the studio trial (127dcg), all of them carrying real musical
-load without privilege, and the freeze and hostile review that turn them into a proved claim (127dd). The ergonomics
-land before the traversal deliberately: with them in hand, an improvement measured after the recursor cannot be an
-improvement `foldr`, `if`, record update, or `?` had already made. 127dcfaf supersedes 127da's rule that a fold is the
-only way into a syntax value — an adapter may now look at a node before choosing whether, in what order, and under what
-context to read its children — while leaving derived paths, unreadable `SourceInfo`, and the builder facade exactly
-where 127da put them. The second blocker — a lowered match with no executable meaning — closes by *not* adding a
-decision-tree target: source `match` remains the one evaluator. 127e then deletes contextual `Music`; notation becomes a
-source-mapped adapter into ordinary inferred terms. 127f gives each machine one exact next step. 127g makes the
-time-to-frame policy explicit. 127h makes one sample frame the reference meaning of audio and treats host blocks only as
-checked batching. 127i proves and audits the complete path before any later sound prompt may run. Old syntax, APIs, and
-serialized forms are removed, not kept behind aliases.
+that measures which repair removed what (127dcfag), the last thing the language was missing, found by trying to write
+the printer and discovering that nothing in the language builds a text at all (127dcfah), and the studio trial (127dcg),
+all of them carrying real musical load without privilege, and the freeze and hostile review that turn them into a proved
+claim (127dd). The ergonomics land before the traversal deliberately: with them in hand, an improvement measured after
+the recursor cannot be an improvement `foldr`, `if`, record update, or `?` had already made. 127dcfaf supersedes 127da's
+rule that a fold is the only way into a syntax value — an adapter may now look at a node before choosing whether, in
+what order, and under what context to read its children — while leaving derived paths, unreadable `SourceInfo`, and the
+builder facade exactly where 127da put them. The second blocker — a lowered match with no executable meaning — closes by
+*not* adding a decision-tree target: source `match` remains the one evaluator. 127e then deletes contextual `Music`;
+notation becomes a source-mapped adapter into ordinary inferred terms. 127f gives each machine one exact next step. 127g
+makes the time-to-frame policy explicit. 127h makes one sample frame the reference meaning of audio and treats host
+blocks only as checked batching. 127i proves and audits the complete path before any later sound prompt may run. Old
+syntax, APIs, and serialized forms are removed, not kept behind aliases.
 
 **128–134 build musical sound on that core.** 128 makes the primitive vocabulary discoverable from one catalogue; 129
 keeps written quantities exact; and 129a's payload rule is revised for the new storable-data boundary. 130 defines
