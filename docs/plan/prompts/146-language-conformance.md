@@ -38,6 +38,12 @@ matrix where possible; review every manual bridge. At minimum it must cover:
 
 - principal inferred types, value/data kinds, total evaluation, finite data, complete calls, deterministic budgets, and
   module abstraction;
+- the surface elaborations that add no core term — expression `if`, nominal record update, and `Result`-specific `?` —
+  each shown observationally equal to the core form it elaborates to, at the same charge, with its subject and each
+  right-hand side evaluated exactly once;
+- the sealed-step syntax traversal: sealed formation and association, inherited context, repeatability of a captured
+  step, structural decrease under capture and nested traversal, opacity, derivation of the bottom-up fold, budget
+  accounting, and phase conservativity;
 - event-track algebra, machine formation/steps, initialized feedback, structural folds, template identity, provenance
   multiplicity, and exact cached/uncached arguments where a cache actually exists;
 - written pitch/interval action, scales/degrees/context, chord class/voicing, pc12/set/row operations, transformations,
@@ -49,7 +55,7 @@ matrix where possible; review every manual bridge. At minimum it must cover:
 - parser recovery, formatting idempotence, tree-sitter drift, LSP facts, editor extension assets, desktop navigation,
   all exports, playback scheduling, last-valid-artifact behavior, and prompt 127/137 budgets.
 
-Four rows exist because these boundaries are cheap to hold and expensive to recover:
+Five rows exist because these boundaries are cheap to hold and expensive to recover:
 
 - **Patterns are still depth one.** `docs/rules/language/02-core-calculus.md` §6.2 fixes the invariant that every
   sub-position of a pattern is a binder and never another pattern, with no repeated variables, guards, or patterns on
@@ -57,7 +63,14 @@ Four rows exist because these boundaries are cheap to hold and expensive to reco
   `crates/musa-compiler/src/core.rs` must remain non-recursive, and the surface grammar must not admit a pattern inside
   a pattern. Nesting would require a pattern-match compiler and a failure mechanism between equations, a subsystem whose
   only purpose is compiling a convenience into eliminators the language already writes directly. If a prompt between 92
-  and 144 added nesting, it took on that subsystem; the row fails unless that prompt says so and cites it.
+  and 144 added nesting, it took on that subsystem; the row fails unless that prompt says so and cites it. Prompt
+  127dcfab's expression `if` is not that subsystem and does not fail this row: it decides values and elaborates to the
+  boolean `match`, leaving arms unguarded and patterns depth one. A guard on a match arm would fail it.
+- **Structural descent is not general recursion.** Prompt 127dcfaf's sealed steps let an adapter enter a strict subtree;
+  nothing in the language lets it enter itself. Audit that no `fix`, recursive binding, self-application, or unsealed
+  child value exists in source or adapter code, and that the structural-decrease measure still discharges the capture
+  and nested-traversal cases. The distinction is the whole termination argument, and it is the one a later convenience
+  is most likely to blur.
 - **Finite source evaluation and running machines remain different actions.** A source term may construct and connect a
   machine but never advances its unbounded history. The compiler evaluator contains no machine state or audio callback;
   the runtime contains no source closure or evaluator environment.

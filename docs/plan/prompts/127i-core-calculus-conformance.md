@@ -27,8 +27,14 @@ Build a conformance matrix from each core rule and theorem to implementation own
 
 - decidable principal inference, value/data-kind preservation, substitution, preservation, progress, determinism, source
   termination, exhaustive matching, exact encodings, and deterministic resource failure;
+- surface elaborations that add no core term — expression `if`, nominal record update, and `Result`-specific `?` — each
+  shown observationally equal to the core form it elaborates to, at the same charge;
 - adapter termination, determinism, type blindness, path uniqueness, hygiene, edit locality, print round-trip where
   claimed, and the absence of a second match evaluator;
+- the sealed-step traversal: sealed formation and association, inherited context, repeatability of a captured step,
+  structural decrease under capture and nested traversal, opacity, derivation of the bottom-up fold, budget accounting
+  for capture and repeat, and phase conservativity — note 39 §5.3's eleven laws, each with the evidence prompt 127dcfaf
+  attached to it;
 - event-track bounds, algebra, multiplicity, coordinate separation, half-open spans, normalization, and exact equality;
 - finite machine formation, registry uniqueness, one total next step, causality, initialized feedback, chain and
   side-by-side laws, explicit seeds, and structural versus behavioral equality;

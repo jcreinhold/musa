@@ -2,7 +2,7 @@
 id: 127dcfb
 slug: staff-edit-print
 status: pending
-depends_on: [127dcfa, 127dcfaa]
+depends_on: [127dcfag]
 phase: 3
 ---
 

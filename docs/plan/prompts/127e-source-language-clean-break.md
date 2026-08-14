@@ -23,8 +23,10 @@ universal contextual `Music` value and every compiler path whose only purpose is
 
 ## Design
 
-Keep the fixed reader, compiler order, syntax data, path-aware fold, derivation graph, source maps, and adapter
-contracts proved by prompts 127da–127dd. The notation surface is an adapter into ordinary inferred expressions, not a
+Keep the fixed reader, compiler order, syntax data, the inherited-context recursor over sealed steps, the derivation
+graph, source maps, and adapter contracts proved by prompts 127da–127dd. The traversal to retain is prompt 127dcfaf's
+recursor, not prompt 127da's path-aware fold, which that prompt superseded; the derived bottom-up fold stays only under
+the name and equations 127dcfaf gave it. The notation surface is an adapter into ordinary inferred expressions, not a
 second semantic core.
 
 If the surface moves to an indentation-based file structure, it moves here, in one break, with the grammar, tree-sitter

@@ -266,6 +266,12 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 127dcf | staff-package | 3 | Write the staff package as ordinary unprivileged Musa |
 | 127dcfa | staff-expansion | 3 | Expand a staff region into the staff package, item by item |
 | 127dcfaa | list-fold-direction | 3 | Say which end a list fold runs from |
+| 127dcfab | expression-if | 3 | Give the surface the conditional the core already claims |
+| 127dcfac | record-update | 3 | Let a record be rebuilt by naming only what changed |
+| 127dcfad | result-question | 3 | Let a failure propagate without a staircase |
+| 127dcfae | recursor-trial | 3 | Paper-trial the sealed-step recursor before any code implements it |
+| 127dcfaf | syntax-step-recursor | 3 | Replace the syntax catamorphism with an inherited-context recursor |
+| 127dcfag | staff-retrial | 3 | Rewrite staff expansion on the repaired API and measure what changed |
 | 127dcfb | staff-edit-print | 3 | Make the staff adapter generative |
 | 127dcg | studio-trial | 3 | Write the studio adapter as an unprivileged package |
 | 127dd | adapter-trials | 3 | Freeze the adapter rules and carry them through hostile review |
@@ -538,14 +544,24 @@ once per construction, which made a project's cost the product of its data size 
 staff trial in three parts — the package the expansion produces (127dcf), the expansion itself with its fourteen items
 (127dcfa), and the edit and printer that make it generative (127dcfb) — the list eliminator the expansion found missing,
 a fold that runs from the end, so that reading a region into right-nested data stops being a closure chain and lists
-stop being the one inductive type whose eliminator is not its own (127dcfaa), and the studio trial (127dcg), all of them
-carrying real musical load without privilege, and the freeze and hostile review that turn them into a proved claim
-(127dd). The second blocker — a lowered match with no executable meaning — closes by *not* adding a decision-tree
-target: source `match` remains the one evaluator. 127e then deletes contextual `Music`; notation becomes a source-mapped
-adapter into ordinary inferred terms. 127f gives each machine one exact next step. 127g makes the time-to-frame policy
-explicit. 127h makes one sample frame the reference meaning of audio and treats host blocks only as checked batching.
-127i proves and audits the complete path before any later sound prompt may run. Old syntax, APIs, and serialized forms
-are removed, not kept behind aliases.
+stop being the one inductive type whose eliminator is not its own (127dcfaa), the four everyday facilities the staff
+trial found the language missing — the conditional the core inventory already claimed and the surface never had
+(127dcfab), immutable update of a named record field, which seven near-identical `holding_*` functions in one file were
+standing in for (127dcfac), and `Result`-specific `?`, which flattens a six-frame failure staircase without buying a
+monad (127dcfad) — the traversal repair those four leave behind: a paper trial of an inherited-context recursor over
+sealed steps (127dcfae), its implementation and the rules amendment that precedes it (127dcfaf), and the staff rewrite
+that measures which repair removed what (127dcfag), and the studio trial (127dcg), all of them carrying real musical
+load without privilege, and the freeze and hostile review that turn them into a proved claim (127dd). The ergonomics
+land before the traversal deliberately: with them in hand, an improvement measured after the recursor cannot be an
+improvement `foldr`, `if`, record update, or `?` had already made. 127dcfaf supersedes 127da's rule that a fold is the
+only way into a syntax value — an adapter may now look at a node before choosing whether, in what order, and under what
+context to read its children — while leaving derived paths, unreadable `SourceInfo`, and the builder facade exactly
+where 127da put them. The second blocker — a lowered match with no executable meaning — closes by *not* adding a
+decision-tree target: source `match` remains the one evaluator. 127e then deletes contextual `Music`; notation becomes a
+source-mapped adapter into ordinary inferred terms. 127f gives each machine one exact next step. 127g makes the
+time-to-frame policy explicit. 127h makes one sample frame the reference meaning of audio and treats host blocks only as
+checked batching. 127i proves and audits the complete path before any later sound prompt may run. Old syntax, APIs, and
+serialized forms are removed, not kept behind aliases.
 
 **128–134 build musical sound on that core.** 128 makes the primitive vocabulary discoverable from one catalogue; 129
 keeps written quantities exact; and 129a's payload rule is revised for the new storable-data boundary. 130 defines

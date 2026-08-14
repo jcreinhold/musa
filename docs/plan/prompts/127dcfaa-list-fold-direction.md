@@ -198,8 +198,9 @@ eliminator and deletes its wrapper.
   argument stays visible after the equations stop showing it.
 
 The plan bookkeeping is already done and is not this prompt's work: `docs/plan/prompts/README.md` carries the
-sequence-overview row and names this prompt in its 127d paragraph, and `127dcfb-staff-edit-print.md` already depends on
-it, so the printer is written against the eliminator the expansion ends up using.
+sequence-overview row and names this prompt in its 127d paragraph, and `127dcfb-staff-edit-print.md` depends on it
+transitively through [127dcfag](127dcfag-staff-retrial.md), so the printer is written against the eliminator the
+expansion ends up using.
 
 ## Check
 

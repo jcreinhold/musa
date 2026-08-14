@@ -72,6 +72,13 @@ constructor from a number, a string, or a counter, and no operation that mints a
 the same way, which is what makes "calling one local binding path twice denotes the same name" a fact about the API
 rather than a convention.
 
+**Superseded in part by prompt [127dcfaf](127dcfaf-syntax-step-recursor.md).** The staff trial showed that a bottom-up
+catamorphism cannot inspect a node before deciding whether, in what order, and under what context to read its children,
+and the adapter paid for it with a seven-slot state record and a closure chain. The eliminator below is now derived from
+an inherited-context recursor over sealed steps rather than being the primitive. Everything else on this page stands
+unchanged: derived paths, `SourceInfo` with no eliminator, the builder facade, `checked_expression`, and the one match
+evaluator. This prompt is not reopened; the note is here so a reader of the rule below finds the rule that replaced it.
+
 The fold is the only way into a syntax value. Give it the shape prompt 127ac already generates for finite data, plus the
 path argument:
 

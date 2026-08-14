@@ -25,6 +25,9 @@ one syntax machinery is what the trial is for; one adapter proves nothing about 
 - `crates/musa-audio/src/`: the existing studio graph spec and its render-plan compiler. The adapter produces a
   description; what already exists consumes one, and the two must not become two ontologies.
 - Prompts 127dcc–127dcfb: anchors, `edit`, `print`, the levels, and the staff trial the boundary is now shared with.
+- Prompt [127dcfaf](127dcfaf-syntax-step-recursor.md) and the paper trial [127dcfae](127dcfae-recursor-trial.md) — the
+  sealed-step recursor this adapter reads syntax through, and the studio program written on paper before it. A
+  divergence between that paper program and this implementation is a finding about the trial.
 
 ## Design
 
@@ -40,6 +43,12 @@ complaint about the fourth connection rather than about the region.
 The coverage list is discharged item by item: processors, named ports, connections, parameters, instrument bindings,
 graph inputs, graph outputs, the four §3.4 diagnostics, and the §3.5 edit that replaces `3/10` with `2/5` and moves
 nothing else.
+
+The adapter reads its region through the sealed-step recursor, exercising inherited context and selective descent where
+a node's header selects the grammar of its body. Whether that helps here or whether the derived bottom-up fold reads
+better for studio is a finding: prompt 127dcfae's paper trial asked the question and this prompt answers it against a
+complete program. "The fold was clearer for studio" is a legitimate answer and must be recorded as staff/studio
+asymmetry rather than smoothed over.
 
 Where the staff adapter needed something this one does not, or the reverse, say so in the trial's own record: an
 asymmetry in the compiler-facing rows is the finding the trial exists to produce.
