@@ -14,7 +14,7 @@ Repair the smaller foundations that the staff adapter actually falsified:
 | Question from note 38 §10 | Recommendation |
 | --- | --- |
 | Record update, guards/`if`, `try`/`?`, `foldr` | Add record update, ordinary expression `if`, `Result`-specific `?`, and the already-planned `list_fold_from_end`; do not add guarded pattern equations. |
-| Structural `Syntax` eliminator | Replace the primitive bottom-up catamorphism with a total, path-aware, Mendler-shaped structural recursor over opaque immediate-child handles. Derive the old fold from it. |
+| Structural `Syntax` eliminator | Replace the primitive bottom-up catamorphism with a total, path-aware, inherited-context structural recursor over sealed immediate-child steps. Derive the old fold from it. |
 | Container abstraction | Accept constructor-specific operations for now. Do not add higher-kinded variables or dependent types. Pointwise enumeration remains available when an actual summary operation needs it. |
 | Source totality | Keep it. The domain audit supplies no operation that needs divergence, and the actual adapter obstacles all have total repairs. |
 | Dependent types | Reject them for Musa's foundation. They remove no demonstrated musical side condition and close no safety boundary that opaque types, checked constructors, and `Result` leave open. |
@@ -96,7 +96,7 @@ it is a domain result at the point where all musical evidence is available.
 
 | Demand | Exact object | Cheaper sufficient level | Verdict |
 | --- | --- | --- | --- |
-| Read a finite syntax tree with context and selective descent | an initial algebra with controlled structural recursion | a phase-local Mendler-shaped recursor | use the exact recursion principle, but keep the representation opaque |
+| Read a finite syntax tree with context and selective descent | an initial algebra with controlled structural recursion | a phase-local inherited-context recursor with sealed child steps | use the exact recursion principle, but keep the representation opaque |
 | Summarize elements in an arbitrary finite container | a natural transformation to the free monoid `List` | a pointwise `C -> List<X>` view | add only when a real operation needs it |
 | Write one `map`/`traverse`/`bind` over many constructors | a variable of kind `Type -> Type` and an explicit model | no first-order shadow preserves the varying constructor | no demonstrated cross-constructor operation; defer |
 | Ensure a constructed musical value satisfies a theory-owned invariant | a proposition indexed by that value | an opaque type with a checked constructor | use the value-level boundary |
@@ -162,7 +162,7 @@ fold_from_end(z, s, x :: xs)  = s(x, fold_from_end(z, s, xs)).
 It is total and removes the closure chain used to build right-nested staff values. It does not abstract over a container
 and should not be made to wait for that question.
 
-## 5. `Syntax`: use a total Mendler-shaped recursor
+## 5. `Syntax`: use a total inherited-context recursor
 
 ### 5.1 The phenomenon
 
@@ -191,55 +191,80 @@ recurse_syntax(
 group : C
      -> NodePath
      -> Delimiter
-     -> List<SyntaxChild<C,A>>
-     -> ((C, SyntaxChild<C,A>) -> A)
+     -> List<SyntaxStep<C,A>>
      -> A
+
+run_syntax_step : C -> SyntaxStep<C,A> -> A
 ```
 
-Every branch receives the current `C`. `SyntaxChild<C,A>` is an opaque capability minted only for an immediate proper
-child of the group currently being handled. It has no source constructor and no operation that yields scopes, a source
-range, a path, or raw syntax. Applying the supplied `descend(next_context, child)` evaluates the same recursor on that
-proper subtree, passes `next_context` to its branch, and supplies the subtree's unique compiler-derived path separately
-to that branch.
+Every branch receives the current `C`. `SyntaxStep<C,A>` is an opaque, non-storable suspended recursive call minted for
+exactly one immediate proper child. It seals together that child, the current algebra, and the operation that resumes
+the recursor. It has no source constructor and no operation that yields scopes, a source range, a path, raw syntax, or
+its hidden algebra. `run_syntax_step(next_context, step)` passes `next_context` to the sealed child's branch; that
+branch receives the child's unique compiler-derived path separately.
 
-This is the operational form of an inherited-context Mendler iterator:
+The intrinsic characterization is the observationally unique function `R : (C, Syntax) -> A` satisfying these equations,
+where `step_R(s)` is the sealed step for proper child `s` under the same `R`:
 
 ```text
-forall X. (C -> X -> A) -> C -> SyntaxLayer<X> -> A.
+R(c, Missing(path)) = missing(c, path)
+R(c, Token(path, kind, text)) = token(c, path, kind, text)
+R(c, Identifier(path, name)) = identifier(c, path, name)
+R(c, Group(path, delimiter, [s1, ..., sn]))
+  = group(c, path, delimiter, [step_R(s1), ..., step_R(sn)])
+
+run_syntax_step(c, step_R(s)) = R(c, s)
 ```
 
-Musa cannot express that rank-2 type as an ordinary library value. The phase-local primitive enforces its non-escape
-property without adding general higher-rank polymorphism: the handle family is indexed by this invocation's `C` and `A`,
-excluded from `d`, and can be consumed only by the matching `descend`. Unifying either `C` or `A` with a value that
-contains `SyntaxChild<C,A>` fails the ordinary occurs check, so a handle cannot become inherited context or a recursive
-result. This is a justified compiler builtin: the hidden fact is well-founded immediate-child membership, not a parser
-privilege.
+Existence and uniqueness are by structural recursion on `Syntax`: constructing a step does not enter its child, and
+running it enters exactly that strict subtree. Categorically, this is the syntax catamorphism at carrier `C -> A`, made
+operationally selective by suspending each recursive child call. The suspension is the exact object the adapter needs; a
+child handle separated from its runner is a lossy representation because it forgets which structural-decrease proof
+belongs to which call.
 
-The old catamorphism is derivable with `C = Unit`: the group case descends into every child with `Unit` and passes the
-resulting `List<A>` to the old group algebra. It should therefore cease to be the primitive. A derived `fold_syntax` may
-remain as a convenience only if its name and equations make the strict bottom-up behavior explicit.
+This remains rank 1. `C` and `A` are quantified only in the outer builtin scheme, and `SyntaxStep<C,A>` is one nominal
+phase-local type constructor over ordinary type arguments. It is excluded from `d` because its hidden representation
+contains the current algebra. A step may be captured in an intermediate closure and invoked later in the same phase;
+that is safe because it cannot be re-associated with another traversal. The required property is sealed association, not
+dynamic non-escape.
+
+**Correction to the first draft of this note.** The earlier `SyntaxChild<C,A>` plus separately supplied `descend` did
+not enforce its claimed non-escape law. Nested recursors can choose the same `C` and `A`, capture a child from an outer
+group, and pass it to an inner group's descender. The types then agree even though the child is not a proper child of
+the inner group. At a descendant callback the captured child can denote the node being processed, turning the purported
+structural call into self-descent. The ordinary occurs check sees types, not values hidden in closure environments, and
+the `d` exclusion protects only the phase boundary. A dynamic owner check would need an explicit failure result because
+the operation otherwise has no `A` to return; a fresh rank-2 region could prevent cross-pairing but is unnecessary once
+the child and its runner are sealed into one step.
+
+The old catamorphism is derivable with `C = Unit`: the group case runs every step with `Unit` and passes the resulting
+`List<A>` to the old group algebra. It should therefore cease to be the primitive. A derived `fold_syntax` may remain as
+a convenience only if its name and equations make the strict bottom-up behavior explicit.
 
 ### 5.3 Laws
 
 The recursor needs these laws, separately from its representation conveniences:
 
-1. **Proper-child formation.** Every handle denotes one immediate proper child of the current group; no other handle can
-   be constructed, and only that group's matching `descend` accepts it.
-2. **Capability non-escape.** A child handle cannot occur in `C`, in `A`, or in the completed phase result.
-3. **Inherited context.** `descend(c, child)` supplies exactly `c` to the selected child's branch; no ambient state is
-   read or changed.
-4. **Path uniqueness.** Descending a handle supplies exactly the structural path already assigned to that child.
-5. **Structural decrease.** Every descent is to a strict subtree, so evaluation terminates even when the algebra chooses
-   order or omits children.
-6. **Determinism.** Equal subject, algebra, initial context, and budget produce equal completed results.
-7. **Opacity.** A handle reveals no `SourceInfo`, scopes, raw syntax, or path. Branches receive compiler-derived
-   `NodePath`; no operation forges one or reveals a `BindingPath` from the input.
-8. **Fold derivation.** Eagerly descending every child in source order with `Unit` is observationally equal to the
-   current `fold_syntax`.
-9. **Budget accounting.** Each descent and repeated descent is charged by a versioned structural rule; a handle does not
-   hide free work.
-10. **Phase conservativity.** Ordinary source still cannot name or obtain `Syntax` or a child handle, and the transformer
-   uses the same checker and evaluator as ordinary source.
+1. **Sealed formation.** Every step is compiler-minted for one immediate proper child and the algebra of the recursor
+   that exposed it; source constructs neither a step nor a replacement algebra for one.
+2. **Association.** Running a step always uses its sealed child and algebra. Passing it through a nested recursor cannot
+   make that recursor interpret the step as one of its own children.
+3. **Inherited context.** `run_syntax_step(c, step)` supplies exactly `c` to the sealed child's branch; no ambient state
+   is read or changed.
+4. **Path uniqueness.** Running a step supplies exactly the structural path already assigned to its child.
+5. **Structural decrease.** Every step application enters a strict subtree of the group that minted it, even when the
+   step is captured, invoked later, or invoked from a nested traversal.
+6. **Repeatability.** A step may be omitted or run finitely many times under different contexts; every run has the same
+   sealed subject and algebra.
+7. **Determinism.** Equal subject, algebra, initial context, and budget produce equal completed results.
+8. **Opacity.** A step reveals no `SourceInfo`, scopes, raw syntax, path, or hidden algebra. Branches receive a
+   compiler-derived `NodePath`; no operation forges one or reveals a `BindingPath` from the input.
+9. **Fold derivation.** Running every step in source order with `Unit` is observationally equal to the current
+   `fold_syntax`.
+10. **Budget accounting.** Minting and running a step are charged by versioned structural rules; capture and repeated
+    use do not hide free work.
+11. **Phase conservativity.** Ordinary source cannot name or obtain `Syntax` or `SyntaxStep`, the completed phase result
+    is storable data, and the transformer uses the same rank-1 checker and evaluator as ordinary source.
 
 ### 5.4 Representative programs
 
@@ -250,8 +275,8 @@ The recursor needs these laws, separately from its representation conveniences:
   trial must establish whether selective descent helps or whether a plain derived fold remains clearer.
 - **Source-preserving edit.** The adapter can stop after the anchored child it needs, while the path law still
   identifies the edit locus.
-- **Degenerate leaf.** `Missing`, token, and identifier branches receive no child capability. Their termination argument
-  is immediate.
+- **Degenerate leaf.** `Missing`, token, and identifier branches receive no child step. Their termination argument is
+  immediate.
 
 This is more general than the current irritation but no more general than structural recursion on the compiler's one
 finite tree. It does not add a cursor with arbitrary parent/sibling navigation, general recursion, quotation, fresh
@@ -547,7 +572,7 @@ plan first, run the trials, then amend the candidate language pages before imple
 | --- | --- | --- | --- |
 | Record update, expression `if`, `Result ?` | `language/01-surface.md`; the elaboration and source-map portions of `language/02-core-calculus.md` and `language/05-verification.md` | typing/elaboration preservation; single evaluation and source-map laws; no new core reduction for desugared forms | add one ergonomics prompt before the remaining adapter trials; repair grammar/formatter/tree-sitter/tooling evidence from 80 and 122; rerun staff evidence before 127dcfb |
 | Directional list folds | `language/01-surface.md` and `language/02-core-calculus.md` as prompt 127dcfaa already states | one list-decrease case in preservation/progress/determinism/normalization | 127dcfaa remains valid and should run independently of container abstraction |
-| Structural `Syntax` recursor | add the phase-local rules to `language/00-semantics.md` and `language/02-core-calculus.md`, plus adapter laws in `language/05-verification.md`; constitution §9 remains satisfied | typing and structural-decrease lemma; determinism; path uniqueness; fold derivation; budget law; phase conservativity; differential evaluator coverage | 127da's “fold is the only way in” design is superseded and needs a repair prompt; 127dcfa must be rewritten/retrialed; 127dcfb and 127dcg should use the repaired API; 127dd, 127e, 127i, and 146 must wait for the repaired evidence |
+| Structural `Syntax` recursor | add the phase-local rules to `language/00-semantics.md` and `language/02-core-calculus.md`, plus adapter laws in `language/05-verification.md`; constitution §9 remains satisfied | typing and canonical forms for non-storable `SyntaxStep`; sealed-association and structural-decrease lemmas, including nested traversal; determinism; path uniqueness; fold derivation; budget law; phase conservativity; differential evaluator coverage | 127da's “fold is the only way in” design is superseded and needs a repair prompt; 127dcfa must be rewritten/retrialed; 127dcfb and 127dcg should use the repaired API; 127dd, 127e, 127i, and 146 must wait for the repaired evidence |
 | Constructor-specific container operations | no governing change | no proof restatement | no prompt invalidation; do not add generated `Listing`/`Building` without a caller |
 | Keep source totality | no governing change | retain §5.5 strong normalization independently of T4 and M1; extend it for the new recursor/fold only | 127i and 146 keep their source-termination rows |
 | Reject dependent types | no governing change | no checker or metatheory replacement | 127aa, 127b, 127i, and 146 remain rank-1/principal-inference prompts |
@@ -594,12 +619,20 @@ budget handles it” is not a type-system design.
 
 ### 12.1 The exact recursor surface
 
-The capability laws and structural-decrease principle are the recommendation. The exact names, argument order, whether
-child paths are passed beside handles or only on descent, and whether the derived bottom-up fold remains public should
-be settled by rewriting the staff adapter and implementing the studio adapter on paper before governance.
+The sealed-step equations and structural-decrease principle are the recommendation. The exact names, argument order,
+whether a step is invoked by `run_syntax_step` or callable syntax, whether child paths appear only at the resumed
+branch, and whether the derived bottom-up fold remains public should be settled by rewriting the staff adapter and
+implementing the studio adapter on paper before governance.
 
-A falsifier is simple: if either adapter must recover raw `Syntax`, forge a path, or encode the same `Pending`/closure
-machine after the recursor is available, the interface is wrong.
+The ordinary adapter falsifiers remain: if either adapter must recover raw `Syntax`, forge a path, or encode the same
+`Pending`/closure machine after the recursor is available, the interface is wrong.
+
+Add one hostile nested-traversal trial before governance. An outer group captures one of its steps; an inner recursor
+uses the same `C` and `A` and runs that outer step from its group branch. The run must use the step's sealed outer
+algebra and proper child, terminate by that proper-child decrease, and never reinterpret the step as an inner child. A
+second trial may capture the step in a non-storable closure and invoke it after the group callback returns. If either
+trial needs a dynamic owner mismatch, revisits the current node, or escapes a step into the completed phase result, the
+interface is wrong.
 
 ### 12.2 Higher-kinded constructor variables
 
@@ -641,8 +674,9 @@ different constructor. Add a targeted container trial only if duplication actual
   [26-language-design-decision.md](26-language-design-decision.md), [27-adapter-trials.md](27-adapter-trials.md),
   [33-metatheory.md](33-metatheory.md), and
   [38-abstraction-totality-and-substitution.md](38-abstraction-totality-and-substitution.md).
-- The implemented `Syntax` fold and evaluator in `crates/musa-compiler/src/core.rs`, the staff reader in
-  `stdlib/src/adapters/staff.musa`, and prompts 127a, 127aa–127b, 127da, 127dcfa–127dd, 127e, 127i, and 146.
+- The implemented `Syntax` fold, evaluator, and closure representation in `crates/musa-compiler/src/core.rs`; the rank-1
+  occurs and storable-data checks in `crates/musa-compiler/src/infer.rs`; the staff reader in
+  `stdlib/src/adapters/staff.musa`; and prompts 127a, 127aa–127b, 127da, 127dcfa–127dd, 127e, 127i, and 146.
 
 ### Music theory
 

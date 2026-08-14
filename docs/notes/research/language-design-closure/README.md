@@ -117,7 +117,8 @@ ship.
     cost, why each was chosen, and how the alternatives work. It corrects four claims and decides nothing.
 40. [39-totality-and-structural-abstraction.md](39-totality-and-structural-abstraction.md) recommends keeping the total,
     rank-1 source foundation, repairing everyday ergonomics, replacing the primitive syntax catamorphism with a total
-    structural recursor, and deferring higher-kinded container abstraction and dependent types until real programs earn
-    them. It corrects the fire-triangle premise and several claims in note 38.
+    inherited-context recursor over sealed child steps, and deferring higher-kinded container abstraction and dependent
+    types until real programs earn them. It corrects the fire-triangle premise, several claims in note 38, and its own
+    first recursor design.
 
 The proof gate failed. Nothing in this workspace moves to `docs/rules/` or into implementation prompts.
