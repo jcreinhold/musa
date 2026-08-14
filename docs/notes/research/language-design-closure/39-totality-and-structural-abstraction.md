@@ -46,8 +46,8 @@ The representative examples were:
 - phrase-led intent and ensemble-led tuning; and
 - a live finite-state protocol whose history is unbounded only in the host.
 
-The method is the phenomenon/object/law/level procedure in `theory-design`, especially its
-`level-audit.md` and `theory-decomposition-patterns.md` references. The sources actually inspected are listed in §13.
+The method is the phenomenon/object/law/level procedure in `theory-design`, especially its `level-audit.md` and
+`theory-decomposition-patterns.md` references. The sources actually inspected are listed in §13.
 
 ## 3. Domain audit
 
@@ -87,10 +87,10 @@ Changing the source foundation does not invalidate the judgments in
 | Ensemble tuning | ensemble, degree, register, and acoustic target jointly determine a pair | an ordinary total function returning `Result` |
 | Live protocol | each input has one finite-state response; the number of host steps is unbounded | a total `step`, with repetition in the runtime rather than source evaluation |
 
-The question from [23-values-not-types.md](23-values-not-types.md) remains decisive: does a caller need a relation before
-evaluating, does an opaque result erase information needed later, or is a small decidable index equality the only way to
-protect a boundary? None of these cases answers yes. A failed constructor is not a type error delayed too long; it is a
-domain result at the point where all musical evidence is available.
+The question from [23-values-not-types.md](23-values-not-types.md) remains decisive: does a caller need a relation
+before evaluating, does an opaque result erase information needed later, or is a small decidable index equality the only
+way to protect a boundary? None of these cases answers yes. A failed constructor is not a type error delayed too long;
+it is a domain result at the point where all musical evidence is available.
 
 ### 3.3 Level audit of the new proposals
 
@@ -127,8 +127,8 @@ The exact spelling is not foundational. A form such as `pending with { dots = mo
 ### 4.2 `if`, not pattern guards
 
 Add ordinary expression `if condition { then } else { otherwise }`. The core-calculus term inventory already includes
-conditionals ([02-core-calculus.md](../../../rules/language/02-core-calculus.md) §1), while the surface grammar does not.
-This is specification/implementation drift, not a new type-theoretic choice.
+conditionals ([02-core-calculus.md](../../../rules/language/02-core-calculus.md) §1), while the surface grammar does
+not. This is specification/implementation drift, not a new type-theoretic choice.
 
 Do **not** add guards to match arms or guarded function equations in the same change. Core-calculus §6.2 deliberately
 keeps patterns depth one; Peyton Jones Chapters 4–6 show that guarded equations, fall-through, and nested patterns are a
@@ -151,17 +151,16 @@ larger problem than the program presents.
 
 ### 4.4 `foldr`
 
-Take the design already written in
-[prompt 127dcfaa](../../../plan/prompts/127dcfaa-list-fold-direction.md): replace ambiguous `list_fold` with
-`list_fold_from_start` and `list_fold_from_end`. The latter is the list catamorphism
+Take the design already written in [prompt 127dcfaa](../../../plan/prompts/127dcfaa-list-fold-direction.md): replace
+ambiguous `list_fold` with `list_fold_from_start` and `list_fold_from_end`. The latter is the list catamorphism
 
 ```text
 fold_from_end(z, s, [])       = z
 fold_from_end(z, s, x :: xs)  = s(x, fold_from_end(z, s, xs)).
 ```
 
-It is total and removes the closure chain used to build right-nested staff values. It does not abstract over a
-container and should not be made to wait for that question.
+It is total and removes the closure chain used to build right-nested staff values. It does not abstract over a container
+and should not be made to wait for that question.
 
 ## 5. `Syntax`: use a total Mendler-shaped recursor
 
@@ -177,7 +176,7 @@ restore recursion but would also expose information the adapter is specifically 
 
 ### 5.2 The object and its interface
 
-Use a phase-local, path-aware recursor with this schematic shape:
+Use a phase-local, path-aware recursor with explicit inherited context and this schematic shape:
 
 ```text
 recurse_syntax(
@@ -185,62 +184,72 @@ recurse_syntax(
   token,
   identifier,
   group,
+  initial_context,
   subject,
 ) -> A
 
-group : NodePath
+group : C
+     -> NodePath
      -> Delimiter
-     -> List<SyntaxChild<A>>
-     -> (SyntaxChild<A> -> A)
+     -> List<SyntaxChild<C,A>>
+     -> ((C, SyntaxChild<C,A>) -> A)
      -> A
 ```
 
-`SyntaxChild<A>` is an opaque capability minted only for an immediate proper child of the group currently being
-handled. It has no source constructor and no operation that yields scopes, a source range, or raw syntax. Applying the
-supplied `descend` function evaluates the same recursor on that proper subtree and supplies the subtree's unique path to
-its branch.
+Every branch receives the current `C`. `SyntaxChild<C,A>` is an opaque capability minted only for an immediate proper
+child of the group currently being handled. It has no source constructor and no operation that yields scopes, a source
+range, a path, or raw syntax. Applying the supplied `descend(next_context, child)` evaluates the same recursor on that
+proper subtree, passes `next_context` to its branch, and supplies the subtree's unique compiler-derived path separately
+to that branch.
 
-This is the operational form of a Mendler iterator:
+This is the operational form of an inherited-context Mendler iterator:
 
 ```text
-forall X. (X -> A) -> SyntaxLayer<X> -> A.
+forall X. (C -> X -> A) -> C -> SyntaxLayer<X> -> A.
 ```
 
-Musa cannot express that rank-2 type as an ordinary library value. The phase-local primitive enforces the same
-abstraction by making the recursive subject an unconstructable child capability. This is a justified compiler builtin:
-the hidden fact is well-founded immediate-child membership, not a parser privilege.
+Musa cannot express that rank-2 type as an ordinary library value. The phase-local primitive enforces its non-escape
+property without adding general higher-rank polymorphism: the handle family is indexed by this invocation's `C` and `A`,
+excluded from `d`, and can be consumed only by the matching `descend`. Unifying either `C` or `A` with a value that
+contains `SyntaxChild<C,A>` fails the ordinary occurs check, so a handle cannot become inherited context or a recursive
+result. This is a justified compiler builtin: the hidden fact is well-founded immediate-child membership, not a parser
+privilege.
 
-The old catamorphism is derivable: the group case descends into every child and passes the resulting `List<A>` to the
-old group algebra. It should therefore cease to be the primitive. A derived `fold_syntax` may remain as a convenience
-only if its name and equations make the strict bottom-up behavior explicit.
+The old catamorphism is derivable with `C = Unit`: the group case descends into every child with `Unit` and passes the
+resulting `List<A>` to the old group algebra. It should therefore cease to be the primitive. A derived `fold_syntax` may
+remain as a convenience only if its name and equations make the strict bottom-up behavior explicit.
 
 ### 5.3 Laws
 
 The recursor needs these laws, separately from its representation conveniences:
 
 1. **Proper-child formation.** Every handle denotes one immediate proper child of the current group; no other handle can
-   be constructed.
-2. **Path uniqueness.** Descending a handle supplies exactly the structural path already assigned to that child.
-3. **Structural decrease.** Every descent is to a strict subtree, so evaluation terminates even when the algebra chooses
+   be constructed, and only that group's matching `descend` accepts it.
+2. **Capability non-escape.** A child handle cannot occur in `C`, in `A`, or in the completed phase result.
+3. **Inherited context.** `descend(c, child)` supplies exactly `c` to the selected child's branch; no ambient state is
+   read or changed.
+4. **Path uniqueness.** Descending a handle supplies exactly the structural path already assigned to that child.
+5. **Structural decrease.** Every descent is to a strict subtree, so evaluation terminates even when the algebra chooses
    order or omits children.
-4. **Determinism.** Equal subject, algebra, and budget produce equal completed results.
-5. **Opacity.** No operation reveals or forges `SourceInfo`, scopes, `NodePath`, or `BindingPath`.
-6. **Fold derivation.** Eagerly descending every child in source order is observationally equal to the current
-   `fold_syntax`.
-7. **Budget accounting.** Each descent and repeated descent is charged by a versioned structural rule; a handle does not
+6. **Determinism.** Equal subject, algebra, initial context, and budget produce equal completed results.
+7. **Opacity.** A handle reveals no `SourceInfo`, scopes, raw syntax, or path. Branches receive compiler-derived
+   `NodePath`; no operation forges one or reveals a `BindingPath` from the input.
+8. **Fold derivation.** Eagerly descending every child in source order with `Unit` is observationally equal to the
+   current `fold_syntax`.
+9. **Budget accounting.** Each descent and repeated descent is charged by a versioned structural rule; a handle does not
    hide free work.
-8. **Phase conservativity.** Ordinary source still cannot name or obtain `Syntax` or a child handle, and the transformer
+10. **Phase conservativity.** Ordinary source still cannot name or obtain `Syntax` or a child handle, and the transformer
    uses the same checker and evaluator as ordinary source.
 
 ### 5.4 Representative programs
 
-- **Staff.** A layout group can read its head, choose right-to-left processing for ties and right-nested output, and pass
-  the current meter or open-form context to selected child computations. `A` may itself be
-  `Context -> Result<StaffRead, Error>`; totality does not prohibit that.
+- **Staff.** Take `C` to be the current meter/open-form state and `A` to be the reader's result. A layout group can
+  choose right-to-left processing for ties and right-nested output, then pass the updated state explicitly to each
+  selected child. No `Context -> Result` encoding is required by the traversal interface.
 - **Studio.** A node declaration can inspect its header before selecting the parameter grammar for its body. The actual
   trial must establish whether selective descent helps or whether a plain derived fold remains clearer.
-- **Source-preserving edit.** The adapter can stop after the anchored child it needs, while the path law still identifies
-  the edit locus.
+- **Source-preserving edit.** The adapter can stop after the anchored child it needs, while the path law still
+  identifies the edit locus.
 - **Degenerate leaf.** `Missing`, token, and identifier branches receive no child capability. Their termination argument
   is immediate.
 
@@ -281,15 +290,15 @@ pitch-class set do not all have the same canonical enumeration merely because th
 
 ### 6.3 Why dependent types are not the container answer
 
-Dependent types make a constructor kind an ordinary Π-type, but that is incidental power. They also replace Algorithm
-W, make conversion depend on term normalization, and allow values to enter types. Buying that foundation to quantify
-over `F` is the Overconstrained Hypothesis anti-pattern: the container operation needs a constructor variable, not
-dependent elimination.
+Dependent types make a constructor kind an ordinary Π-type, but that is incidental power. They also replace Algorithm W,
+make conversion depend on term normalization, and allow values to enter types. Buying that foundation to quantify over
+`F` is the Overconstrained Hypothesis anti-pattern: the container operation needs a constructor variable, not dependent
+elimination.
 
 ### 6.4 Reopening rule
 
-The leading reopening candidate is **higher-kinded constructor variables with explicit, pointwise model arguments and
-no search**. Reopen only after recording:
+The leading reopening candidate is **higher-kinded constructor variables with explicit, pointwise model arguments and no
+search**. Reopen only after recording:
 
 1. one complete musical or adapter algorithm that is duplicated solely to run over two distinct constructors; and
 2. a second materially different algorithm needing `map`, `traverse`, or `bind` across constructors.
@@ -299,15 +308,15 @@ interface. The trial must compare source, diagnostics, inferred types, and laws 
 versions.
 
 If reopened, remain in the constructor-pattern fragment: no type families, type-level computation, constructor lambdas,
-or implicit instance search. In rank 1, model records must be **pointwise**, for example
-`Mapping<F,A,B>`, because a single record field polymorphic in `A` and `B` would itself be rank 2. Laws remain explicit
-package/generated-law obligations; internal parametricity and cohesion are much larger foundations than this demand.
+or implicit instance search. In rank 1, model records must be **pointwise**, for example `Mapping<F,A,B>`, because a
+single record field polymorphic in `A` and `B` would itself be rank 2. Laws remain explicit package/generated-law
+obligations; internal parametricity and cohesion are much larger foundations than this demand.
 
 ### 6.5 Cost of this refusal
 
-Musa will have several similarly shaped functions, and a library algorithm that genuinely wants constructor
-polymorphism must currently be duplicated. That is an accepted cost, not a claim that duplication is good. The
-foundation remains reopenable before release when the required programs exist.
+Musa will have several similarly shaped functions, and a library algorithm that genuinely wants constructor polymorphism
+must currently be duplicated. That is an accepted cost, not a claim that duplication is good. The foundation remains
+reopenable before release when the required programs exist.
 
 The benefit is that musicians see no model arguments, package authors do not manufacture naturality evidence, and the
 checker retains the principal rank-1 inference it already promises.
@@ -324,8 +333,8 @@ That observation removes a bad argument for totality; it does not supply an argu
 
 ### 7.2 The proposal that needs evidence is non-termination
 
-Totality is the current constitutional invariant. The domain-first question is therefore not “which musical object
-needs totality?” but “which required source operation cannot be expressed by structural or well-founded recursion and
+Totality is the current constitutional invariant. The domain-first question is therefore not “which musical object needs
+totality?” but “which required source operation cannot be expressed by structural or well-founded recursion and
 therefore needs possible divergence?” No reviewed case provides one:
 
 - staff expansion is structural over finite syntax;
@@ -380,8 +389,8 @@ Neither point is positive evidence for dependent types. The decisive reasons are
 3. Musical classifications are often theory-, repertoire-, method-, and context-owned. Turning one into an index makes
    its choice load-bearing in every operation and proof.
 4. Higher kinds, the only concrete foundational benefit proposed in note 38, can be added directly if earned.
-5. Dependent types replace the checker, equality, evaluator support for conversion, diagnostics, and the metatheory. That
-   is not a library feature that can later be ignored.
+5. Dependent types replace the checker, equality, evaluator support for conversion, diagnostics, and the metatheory.
+   That is not a library feature that can later be ignored.
 
 The annotation cost against `examples/` is not decision-grade evidence. That corpus is deliberately small, and adapter
 entries such as `let expand = fn (region) { ... }` rely on contextual inference outside the measured examples. A real
@@ -393,8 +402,8 @@ new annotations and compare error locality. There is no reason to run that expen
 - Musa's phase-local adapter environment is **not two-level type theory**. The inspected 2LTT source has two full type
   theories, inner and outer, with distinct type formers/equalities and a conversion from inner to outer. Musa has one
   rank-1 theory under two name environments.
-- The `d` class is **not a grade or modality** in the cited graded-modal sense. Those grades are elements of a semiring or
-  lattice assigned to variable use, erasure, information flow, or effects. Musa's `d` is a structural admissibility
+- The `d` class is **not a grade or modality** in the cited graded-modal sense. Those grades are elements of a semiring
+  or lattice assigned to variable use, erasure, information flow, or effects. Musa's `d` is a structural admissibility
   predicate on type shapes: no function at any depth plus a finite exact encoding.
 - Internal parametricity would make naturality expressible, but the cited cubical/cohesive systems add modalities and a
   new metatheory. External generated-law tests are proportionate to an explicit container model; internal parametricity
@@ -412,8 +421,8 @@ two musical uses survive the plurality audit, dependent types can be reopened wi
 ### 9.1 Correction to the premise of this review
 
 Pédrot and Tabareau do prove that **observable effects + substitution + dependent elimination** are inconsistent
-(`fire-triangle.../text.md:51–110`). But their Definition 3 is specific, and the paper immediately says that it **does not
-apply to non-termination**, printing, or unhandled exceptions because the type theory cannot reason on those effects
+(`fire-triangle.../text.md:51–110`). But their Definition 3 is specific, and the paper immediately says that it **does
+not apply to non-termination**, printing, or unhandled exceptions because the type theory cannot reason on those effects
 (`:117–119`).
 
 Therefore this statement is false as an attribution to the paper:
@@ -475,8 +484,8 @@ instance search. The accurate statement is:
 > first-order type variables plus neither explicit protocol/model abstraction nor an associated-type-like projection
 > imply constructor-specific operations.
 
-Totality controls recursive calls. Search controls how a model is selected. Constructor abstraction controls whether
-the model's type can be written. They are independent axes.
+Totality controls recursive calls. Search controls how a model is selected. Constructor abstraction controls whether the
+model's type can be written. They are independent axes.
 
 ### Correction B: the table calls enumeration “fold”
 
@@ -550,15 +559,14 @@ API.
 
 ### 11.1 What would change if totality were dropped
 
-This is not recommended. It would require the amendment procedure in
-[`docs/rules/README.md`](../../../rules/README.md):
+This is not recommended. It would require the amendment procedure in [`docs/rules/README.md`](../../../rules/README.md):
 
 - replace constitution §9's **Total** rule with a rule saying that pure, deterministic source evaluation may diverge,
   while every compiler run is stopped by a versioned resource budget and completed runs remain budget-independent;
 - amend obligations §10 with the two concrete operations that require possible divergence and their smallest failing
   total terms;
-- remove source strong normalization from `language/02-core-calculus.md` §5.5 and from prompts 127i/146, without touching
-  T4 or M1; and
+- remove source strong normalization from `language/02-core-calculus.md` §5.5 and from prompts 127i/146, without
+  touching T4 or M1; and
 - restate every API currently promising a value or `Result` so that divergence/resource exhaustion is an additional
   outcome.
 
@@ -622,18 +630,16 @@ different constructor. Add a targeted container trial only if duplication actual
 
 ### Repository
 
-- [`AGENTS.md`](../../../../../AGENTS.md) and [`docs/README.md`](../../../README.md).
-- [`constitution.md`](../../../rules/constitution.md) §§4, 7–9;
-  [`obligations.md`](../../../rules/obligations.md) §10; and the amendment procedure in
-  [`rules/README.md`](../../../rules/README.md).
+- [`AGENTS.md`](../../../../AGENTS.md) and [`docs/README.md`](../../../README.md).
+- [`constitution.md`](../../../rules/constitution.md) §§4, 7–9; [`obligations.md`](../../../rules/obligations.md) §10;
+  and the amendment procedure in [`rules/README.md`](../../../rules/README.md).
 - [`language/02-core-calculus.md`](../../../rules/language/02-core-calculus.md) §§1, 1.1, 5, 5.5–5.8, 6.1–6.2.
 - [02-five-musical-cases.md](02-five-musical-cases.md),
   [19-inference-course-correction.md](19-inference-course-correction.md),
-  [22-syntax-extension.md](22-syntax-extension.md),
-  [23-values-not-types.md](23-values-not-types.md),
+  [22-syntax-extension.md](22-syntax-extension.md), [23-values-not-types.md](23-values-not-types.md),
   [24-pipeline-and-syntax-review.md](24-pipeline-and-syntax-review.md),
-  [26-language-design-decision.md](26-language-design-decision.md),
-  [27-adapter-trials.md](27-adapter-trials.md), [33-metatheory.md](33-metatheory.md), and
+  [26-language-design-decision.md](26-language-design-decision.md), [27-adapter-trials.md](27-adapter-trials.md),
+  [33-metatheory.md](33-metatheory.md), and
   [38-abstraction-totality-and-substitution.md](38-abstraction-totality-and-substitution.md).
 - The implemented `Syntax` fold and evaluator in `crates/musa-compiler/src/core.rs`, the staff reader in
   `stdlib/src/adapters/staff.musa`, and prompts 127a, 127aa–127b, 127da, 127dcfa–127dd, 127e, 127i, and 146.
@@ -643,10 +649,9 @@ different constructor. Add a targeted container trial only if duplication actual
 The local files actually read under `~/Code/papers/music-theory/open-music-theory/` were:
 
 - `008-texture.md`, `009-notating-rhythm.md`, `052-foundational-concepts-for-phrase-level-forms.md`,
-  `074-swing-rhythms.md`, `083-rhythm-and-meter-in-pop-music.md`,
-  `098-twentieth-century-rhythmic-techniques.md`, `099-pitch-and-pitch-class.md`,
-  `101-pitch-class-sets-normal-order-and-transformations.md`, `104-analyzing-with-set-theory-or-not.md`, and
-  `114-core-principles-of-orchestration.md`.
+  `074-swing-rhythms.md`, `083-rhythm-and-meter-in-pop-music.md`, `098-twentieth-century-rhythmic-techniques.md`,
+  `099-pitch-and-pitch-class.md`, `101-pitch-class-sets-normal-order-and-transformations.md`,
+  `104-analyzing-with-set-theory-or-not.md`, and `114-core-principles-of-orchestration.md`.
 
 They were used for distinctions and counterexamples, not as a universal ontology. The Karnatak, gamelan, and bomba
 judgments remain limited pressure tests and retain note 02's specialist-review warning.
@@ -671,7 +676,7 @@ not cited for non-termination.
 
 ### Functional-language and module design
 
-The local sources inspected were Peyton Jones, *The Implementation of Functional Programming Languages*, Chapters 3,
-5, 6, 8, and 9; Ousterhout, *A Philosophy of Software Design*, Chapters 4, 7, and 8; and Hickey, *Simple Made Easy*.
-They support enriching the one language with direct constructs, keeping the pattern compiler separate from expression
-`if`, and pulling traversal complexity behind the narrow phase-owned recursor. They do not decide the musical domain.
+The local sources inspected were Peyton Jones, *The Implementation of Functional Programming Languages*, Chapters 3, 5,
+6, 8, and 9; Ousterhout, *A Philosophy of Software Design*, Chapters 4, 7, and 8; and Hickey, *Simple Made Easy*. They
+support enriching the one language with direct constructs, keeping the pattern compiler separate from expression `if`,
+and pulling traversal complexity behind the narrow phase-owned recursor. They do not decide the musical domain.
