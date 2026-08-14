@@ -11,7 +11,7 @@ use musa_language::ast::{AstNode as _, FnDecl, LetDecl, VoiceItem};
 use musa_language::{SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken};
 use num_rational::Ratio;
 
-use crate::core_budget::{Evaluation, Reduction, ResourceError, WorkMeter};
+use crate::core_budget::{Evaluation, NESTING_METRIC, Reduction, ResourceError, WorkMeter};
 use crate::data::{TypeScope, World};
 use crate::diagnose::{Code, Diagnostic};
 use crate::imports::Libraries;
@@ -8532,7 +8532,20 @@ fn evaluate(
     }
 }
 
+/// One expression's value, one nesting level down.
+///
+/// The level is charged here rather than in [`eval_nested`] because native
+/// recursion is what it bounds: every evaluator frame that can stand inside
+/// another one is entered through a [`WorkMeter::nested`] wrapper, so the
+/// counter the budget reads and the stack the machine actually spends grow
+/// together (`../rules/language/02-core-calculus.md` §4).
 fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut WorkMeter) -> Option<Value> {
+    meter.nested(Reduction::Expression, expression.span, |meter| {
+        eval_nested(expression, environment, meter)
+    })
+}
+
+fn eval_nested(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut WorkMeter) -> Option<Value> {
     meter.step(Reduction::Expression, 1, expression.span)?;
     let value = match &expression.kind {
         ExprKind::Literal(value) => Some(value.clone()),
@@ -10345,6 +10358,12 @@ struct Inherited {
 /// scope. The governing argument is §5.9's reducibility candidate and
 /// fundamental lemma, which rest on the checker's definition acyclicity; this
 /// function is that argument's implementation and not a substitute for it.
+///
+/// Termination is not the same promise as *fitting*, which is why the descent
+/// is entered one metered level down: normalization says the traversal ends,
+/// and §4's nesting limit says the machine can reach the end without running
+/// out of stack first. A region deeper than the limit is refused where it went
+/// too far, not aborted.
 fn recurse_syntax(
     algebra: &[Value],
     descent: &Descent,
@@ -10352,16 +10371,26 @@ fn recurse_syntax(
     meter: &mut WorkMeter,
     expression: &Expr,
 ) -> Option<Value> {
-    meter.step(
-        match descent {
-            Descent::Sealed(_) => Reduction::SyntaxRecurse,
-            // Unchanged from the fold this derives, so no shipped adapter's
-            // budget moves when the name does.
-            Descent::FromLeaves => Reduction::SyntaxFold,
-        },
-        1,
-        expression.span,
-    )?;
+    let reduction = match descent {
+        Descent::Sealed(_) => Reduction::SyntaxRecurse,
+        // Unchanged from the fold this derives, so no shipped adapter's
+        // budget moves when the name does.
+        Descent::FromLeaves => Reduction::SyntaxFold,
+    };
+    meter.nested(reduction, expression.span, |meter| {
+        recurse_syntax_nested(algebra, descent, subject, reduction, meter, expression)
+    })
+}
+
+fn recurse_syntax_nested(
+    algebra: &[Value],
+    descent: &Descent,
+    subject: &crate::syntax::Syntax,
+    reduction: Reduction,
+    meter: &mut WorkMeter,
+    expression: &Expr,
+) -> Option<Value> {
+    meter.step(reduction, 1, expression.span)?;
     let at = Value::NodePath(Box::new(subject.info().path().clone()));
     let mut arguments = match descent {
         Descent::Sealed(inherited) => vec![inherited.context.clone(), at],
@@ -10509,6 +10538,18 @@ const fn span_key(span: SourceSpan) -> u64 {
 /// in the order [`crate::data::Folding`] laid them out, so this and the type
 /// the checker gave the fold read the same list.
 fn fold_value(
+    cases: &[Value],
+    shape: &[(crate::data::NominalId, usize)],
+    value: &Value,
+    meter: &mut WorkMeter,
+    span: SourceSpan,
+) -> Option<Value> {
+    meter.nested(Reduction::DataFold, span, |meter| {
+        fold_value_nested(cases, shape, value, meter, span)
+    })
+}
+
+fn fold_value_nested(
     cases: &[Value],
     shape: &[(crate::data::NominalId, usize)],
     value: &Value,
@@ -10893,7 +10934,14 @@ pub(crate) fn report_resource_error(resolver: &mut Resolver, failure: ResourceEr
             "the expression is finite; Musa rejected its size before publishing a partial value (cost table {})",
             failure.cost_version
         ))
-        .help("reduce the bound or split the generated material into smaller declarations"),
+        .help(if failure.metric == NESTING_METRIC {
+            // Nesting is the one metric a smaller bound does not help: what
+            // crossed it is how far *inside* itself the evaluation went, so
+            // the advice is about shape rather than about size.
+            "this nests further than Musa evaluates: flatten it, or name an inner part in its own declaration"
+        } else {
+            "reduce the bound or split the generated material into smaller declarations"
+        }),
     );
 }
 
@@ -11595,7 +11643,7 @@ pub(crate) fn expand_region(
     let subject = crate::syntax::read_region(&musa_language::parse(region).syntax(), expansion);
     expand_syntax(
         &format!("library {{\n    let level = \"readable\";\n\n    let expand = {transformer};\n}}\n"),
-        subject,
+        &subject,
     )
     .0
 }
@@ -11990,16 +12038,63 @@ pub(crate) fn evaluate_text(expression: &str) -> Option<String> {
 /// arranging to be refused.
 pub(crate) fn expand_syntax(
     adapter_source: &str,
-    subject: crate::syntax::Syntax,
+    subject: &crate::syntax::Syntax,
 ) -> (Result<crate::syntax::Syntax, ExpansionFailure>, PhaseWork) {
     let mut unifier = Unifier::default();
+    // Built here and lent inwards rather than made on the other side of
+    // `with_room`: the meter carries the budget this run is metered by, and a
+    // meter made on a fresh thread would be made under a fresh default.
     let mut meter = WorkMeter::default();
-    let answer = run_transformer(adapter_source, subject, &mut unifier, &mut meter);
+    let answer = with_room(adapter_source, subject, &mut unifier, &mut meter);
     let work = PhaseWork {
         type_constraints: unifier.constraints(),
         evaluation_steps: meter.steps(),
     };
     (answer, work)
+}
+
+/// Run one transformer with enough stack for the nesting the budget allows.
+///
+/// The budget is the guard: `Budget::LANGUAGE`'s nesting limit is what turns a
+/// region too deep to read into a refusal that names an operation and a place
+/// (`../rules/language/02-core-calculus.md` §4). This is what makes that
+/// refusal *reachable*. A limit no host can afford to run up to is a limit the
+/// process dies before hitting, and not dying is the whole exercise. Neither
+/// half stands in for the other: room alone only moves the cliff, and a limit
+/// alone only promises a diagnostic the machine may not live to print.
+///
+/// The room is `NESTING × FRAME_CEILING`, derived rather than picked, so
+/// raising the published limit cannot quietly outrun the stack that honours it.
+///
+/// A host with no threads — the wasm shell — takes the second path and runs on
+/// the stack it was linked with, where the room is a link-time setting instead.
+/// The budget does not move, so both hosts accept and refuse exactly the same
+/// programs; they differ only in what they survive.
+fn with_room(
+    adapter_source: &str,
+    subject: &crate::syntax::Syntax,
+    unifier: &mut Unifier,
+    meter: &mut WorkMeter,
+) -> Result<crate::syntax::Syntax, ExpansionFailure> {
+    let room = usize::try_from(crate::core_budget::NESTING.saturating_mul(crate::core_budget::FRAME_CEILING))
+        .unwrap_or(usize::MAX);
+    let mut answer = None;
+    if !cfg!(target_family = "wasm") {
+        std::thread::scope(|scope| {
+            let run = || answer = Some(run_transformer(adapter_source, subject.clone(), unifier, meter));
+            if let Ok(running) = std::thread::Builder::new().stack_size(room).spawn_scoped(scope, run)
+                && let Err(panic) = running.join()
+            {
+                // A panic inside is a compiler fault. Resuming it on this side
+                // keeps it looking like one, rather than like a phase that
+                // quietly answered nothing.
+                std::panic::resume_unwind(panic);
+            }
+        });
+    }
+    // Either the host gave no thread or it is not a host that has them. The
+    // work is done here instead, at the caller's own depth.
+    answer.unwrap_or_else(|| run_transformer(adapter_source, subject.clone(), unifier, meter))
 }
 
 fn run_transformer(
@@ -13023,7 +13118,7 @@ mod tests {
             crate::syntax::ExpansionPath::at(vec![0]),
         );
         assert!(
-            expand_syntax(module, subject).0.is_ok(),
+            expand_syntax(module, &subject).0.is_ok(),
             "a `data` holding a `Syntax`, a parameter annotated `Syntax`, and a sibling `fn` are all the module's own"
         );
     }

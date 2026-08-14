@@ -225,7 +225,7 @@ implementation escape:
 run(budget, e)   ⇓   done(v)   |   failed(ResourceError)
 ```
 
-The cost table is a versioned assignment of nonnegative integers to reduction steps and constructions, at version 2. The
+The cost table is a versioned assignment of nonnegative integers to reduction steps and constructions, at version 3. The
 budget can stop an evaluation; it cannot change an accepted one. Formally: if `run(b₁, e) ⇓ done(v₁)` and
 `run(b₂, e) ⇓ done(v₂)` then `v₁ = v₂`, for every pair of budgets. §4 states the meter this instantiates.
 
@@ -249,15 +249,46 @@ declaration graph succeeds, so exhaustion publishes neither a partial value nor 
 - generated occurrence count and core-term binding count;
 - constructed machine node count and wiring depth;
 - template/module instantiation count and static dependency depth;
-- quotation size after typed substitution.
+- quotation size after typed substitution;
+- nested evaluation levels — how far inside itself an evaluation currently is.
 
 A project whose next charge exceeds the deterministic budget is rejected at that operation. The diagnostic names the
 operation, metric, attempted amount, and limit. The prompt-96 defaults are 200,000 reduction steps, 100,000 constructed
-value nodes, 1,048,576 logical value bytes, 2,048 instantiated prelude entries, and 1,000,000 estimated occurrences. The
-scalar fragment charges zero output occurrences; track and machine constructors charge the already present output
-counter. These are language-version constants, not timeouts or machine-memory observations. Interactive cancellation
-remains an external compiler operation, not a language effect. Prompts 124 and 142 benchmark and may tighten the
-accepted envelope deliberately.
+value nodes, 1,048,576 logical value bytes, 2,048 instantiated prelude entries, and 1,000,000 estimated occurrences,
+with 256 nested evaluation levels, added to guard the descent §5.9's recursor introduced. The scalar fragment charges
+zero output occurrences; track and machine constructors charge the already present output counter. These are
+language-version constants, not timeouts or machine-memory observations. Interactive cancellation remains an external
+compiler operation, not a language effect. Prompts 124 and 142 benchmark and may tighten the accepted envelope
+deliberately.
+
+### 4.1 Nesting, and the room to reach the limit
+
+Nesting is the one metric that goes back down. Every other counter measures what a run has spent and never returns; this
+one measures how far in the run currently is, and a level is released when the work at that level finishes. A sequence
+of a million siblings is one level deep, not a million. The limit is charged wherever an evaluation can stand inside
+another one — evaluating an expression, folding a finite data value, and descending into a syntax value — so what the
+counter bounds is exactly what the machine spends stack on.
+
+The metric exists because §5.9's recursor descends *through* the transformer's own branches: one level of a region's
+nesting costs a whole chain of evaluator frames rather than one, so a deep enough region could exhaust a host stack.
+Ending the process there is not an outcome this language may have. Musa is total and refuses by budget; a compiler that
+aborts instead has replaced a diagnostic with a crash, and neither `done(v)` nor `failed(ResourceError)` describes what
+happened. Nesting is therefore a language limit like the other five: the same source and compiler version is refused at
+the same operation on every machine, and the refusal names the operation, the metric, the attempted level, and the
+place.
+
+A limit is only a refusal if the machine survives long enough to print it. The implementation therefore owes a second,
+non-normative obligation: **the compiler must run evaluation with at least `nesting limit × frame ceiling` bytes of
+stack**, where the frame ceiling is a stated measured bound on what one level costs. This is not a second guard and does
+not decide acceptance — it is what makes the guard's decision reachable. The two are not interchangeable. Room without a
+limit only moves the cliff; a limit without room only promises a diagnostic the process may not live to print. How a
+host provides the room is the host's business — a thread sized from the published limit where threads exist, a link-time
+stack size where they do not — and because the budget does not move with it, every host accepts and refuses exactly the
+same programs.
+
+Shrinking the frame ceiling is welcome and changes nothing normative: a cheaper evaluator needs less room for the same
+limit. Raising the *limit* is a cost-table version bump, because a program refused at 256 levels and accepted at 512 is
+a program two compilers disagree about.
 
 ## 5. Prompt-95 fragment and metatheory
 
@@ -864,7 +895,14 @@ restriction, or general recursion, and none is added.
 
 Minting a step and running a step are charged by their own reduction kinds, and a descent is charged per node entered. A
 step a branch keeps and never runs still costs its mint; a step run twice costs twice. New reduction kinds are not a
-change to an existing weight, so the cost table's version is unaffected.
+change to an existing weight, so the cost table's version is unaffected by them.
+
+A descent is also charged one nesting level, released when it returns (§4.1). Normalization and nesting answer two
+different questions and neither answers the other's: normalization says the traversal ends, and the nesting limit says
+the machine can reach the end. The gap between them is this recursor's own doing — under a catamorphism the compiler
+descends in its own code and one region level costs one frame, while here the descent runs through the algebra's
+branches and one region level costs a chain of them. That is the price of letting a branch decide whether, in what
+order, and under what context to read its children, and it is paid by a limit rather than by a stack overflow.
 
 #### What this supersedes
 

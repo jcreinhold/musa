@@ -38,12 +38,13 @@ pub(crate) struct CostTable {
     byte: u64,
     instance: u64,
     occurrence: u64,
+    level: u64,
 }
 
 impl CostTable {
-    /// Version 2: one unit per reduction, per constructed node, per logical
-    /// value byte, per instantiated prelude entry, and per estimated
-    /// occurrence.
+    /// Version 3: one unit per reduction, per constructed node, per logical
+    /// value byte, per instantiated prelude entry, per estimated occurrence,
+    /// and per nested evaluation level.
     ///
     /// Uniform on purpose. A weight that differed between reductions would be a
     /// claim about their relative expense, and that claim needs measurement
@@ -67,19 +68,67 @@ impl CostTable {
     /// version 1's, so no project that compiled under version 1 stops
     /// compiling; a rejection cites the version because two compilers that
     /// disagree here do not agree on acceptance.
-    pub(crate) const V2: Self = Self {
-        version: 2,
+    ///
+    /// Version 3 added the sixth metric, nested evaluation levels
+    /// (`../rules/language/02-core-calculus.md` §4). That *is* a table change
+    /// rather than a new reduction kind: a program the evaluator would have
+    /// entered 300 levels deep is refused now and was not before, so two
+    /// compilers that disagree about this metric disagree about acceptance and
+    /// must not share a version. Nothing else moved — every version-2 weight is
+    /// still 1, and every charge a version-2 compiler made a version-3 compiler
+    /// makes identically.
+    pub(crate) const V3: Self = Self {
+        version: 3,
         reduction: 1,
         node: 1,
         byte: 1,
         instance: 1,
         occurrence: 1,
+        level: 1,
     };
 
     pub(crate) const fn version(self) -> u32 {
         self.version
     }
 }
+
+/// How many evaluator frames may stand inside one another
+/// (`../rules/language/02-core-calculus.md` §4).
+///
+/// The limit that turns a stack overflow into a refusal. The inherited-context
+/// recursor descends *through* the transformer's own branches, so one level of
+/// source nesting costs a whole chain of `eval`/`apply_closure` frames, and a
+/// region deep enough to exhaust the machine's stack would abort the process
+/// rather than earn a diagnostic — which a total language whose budget system
+/// exists precisely to refuse rather than crash cannot have.
+///
+/// 256 because it is past anything a person writes and short of anything a
+/// host cannot hold. The reference recursor of `crate::expand`'s law suite
+/// spends four levels per level of source nesting, so 256 admits regions
+/// nested some sixty deep; a transformer that does more per node admits
+/// proportionally less, and still more than a real region needs.
+pub(crate) const NESTING: u64 = 256;
+
+/// The stack one nested evaluation level may spend, in bytes.
+///
+/// Not a language constant: [`NESTING`] decides acceptance, and this decides
+/// what the implementation must arrange so that the decision can be *reached*.
+/// A limit no host can afford to run up to would be a limit that still aborts.
+///
+/// Measured at 62,876 bytes per level in a debug build on arm64 — `eval` and
+/// `eval_builtin` are the two fat frames, at 22,608 and 50,528 bytes, because a
+/// debug build gives every arm of a large match its own slots — and 5,968 in a
+/// release build. The ceiling doubles the debug measurement, since it has to
+/// hold on targets and future arms nobody has measured. Shrinking those two
+/// matches is how this number comes down; it is not how the refusal happens.
+pub(crate) const FRAME_CEILING: u64 = 128 * 1024;
+
+/// What a nesting refusal prints for its metric.
+///
+/// Named because two places read it: the refusal that records it and the
+/// diagnostic that decides what advice to offer, which for this one metric is
+/// not "make it smaller".
+pub(crate) const NESTING_METRIC: &str = "nested evaluation levels";
 
 /// The limits the cost table is spent against (`02-core-calculus.md` §4).
 #[derive(Clone, Copy)]
@@ -89,12 +138,15 @@ pub(crate) struct Budget {
     bytes: u64,
     instances: u64,
     output: u64,
+    nesting: u64,
 }
 
 impl Budget {
     /// The prompt-96 language defaults: 200,000 reduction steps, 100,000
     /// constructed value nodes, 1,048,576 logical value bytes, 2,048
-    /// instantiated prelude entries, and 1,000,000 estimated occurrences.
+    /// instantiated prelude entries, and 1,000,000 estimated occurrences —
+    /// with 256 nested evaluation levels, added to guard the descent prompt
+    /// 127dcfaf's recursor introduced.
     ///
     /// These are language-version constants, not timeouts or machine-memory
     /// observations.
@@ -104,6 +156,7 @@ impl Budget {
         bytes: 1024 * 1024,
         instances: 2_048,
         output: 1_000_000,
+        nesting: NESTING,
     };
 
     /// The language budget with every limit divided by `divisor`.
@@ -127,6 +180,7 @@ impl Budget {
             bytes: share(self.bytes, divisor),
             instances: share(self.instances, divisor),
             output: share(self.output, divisor),
+            nesting: share(self.nesting, divisor),
         }
     }
 }
@@ -217,6 +271,13 @@ pub(crate) struct WorkMeter {
     bytes: u64,
     instances: u64,
     output: u64,
+    /// How many evaluator frames are open right now.
+    ///
+    /// The one counter that goes back down. Every other metric measures what a
+    /// run has spent and never returns; this one measures how far in it
+    /// currently is, because what it stands for — machine stack — is given back
+    /// when a frame returns.
+    nesting: u64,
     failure: Option<ResourceError>,
 }
 
@@ -258,12 +319,13 @@ impl WorkMeter {
     pub(crate) fn new(budget: Budget) -> Self {
         Self {
             budget,
-            costs: CostTable::V2,
+            costs: CostTable::V3,
             steps: 0,
             nodes: 0,
             bytes: 0,
             instances: 0,
             output: 0,
+            nesting: 0,
             failure: None,
         }
     }
@@ -306,6 +368,31 @@ impl WorkMeter {
             (Some(value), None) => Evaluation::Done(value),
             (None, None) => Evaluation::Broken,
         }
+    }
+
+    /// Run `body` one evaluation level down, or refuse at the limit.
+    ///
+    /// A wrapper rather than a pair of `enter`/`leave` calls because the level
+    /// has to be given back on *every* way out, and an evaluator whose arms are
+    /// mostly `?` has more ways out than a reader can check. The level is
+    /// released even when `body` answers `None`: a meter that has already
+    /// failed refuses every later charge anyway, so what is being protected
+    /// here is the run that has not failed.
+    ///
+    /// `reduction` is the operation the diagnostic names, so a region that
+    /// nests too far is reported against the descent that went one level too
+    /// deep rather than against whatever happened to be underneath it.
+    pub(crate) fn nested<T>(
+        &mut self,
+        reduction: Reduction,
+        span: SourceSpan,
+        body: impl FnOnce(&mut Self) -> Option<T>,
+    ) -> Option<T> {
+        let level = self.costs.level;
+        self.charge(Counter::Nesting, reduction.operation(), NESTING_METRIC, level, span)?;
+        let value = body(self);
+        self.nesting = self.nesting.saturating_sub(level);
+        value
     }
 
     /// Charge `amount` reductions of `reduction`.
@@ -415,6 +502,7 @@ impl WorkMeter {
             Counter::Bytes => self.budget.bytes,
             Counter::Instances => self.budget.instances,
             Counter::Output => self.budget.output,
+            Counter::Nesting => self.budget.nesting,
         }
     }
 
@@ -425,6 +513,7 @@ impl WorkMeter {
             Counter::Bytes => &mut self.bytes,
             Counter::Instances => &mut self.instances,
             Counter::Output => &mut self.output,
+            Counter::Nesting => &mut self.nesting,
         }
     }
 
@@ -490,6 +579,7 @@ enum Counter {
     Bytes,
     Instances,
     Output,
+    Nesting,
 }
 
 #[cfg(test)]
@@ -587,6 +677,50 @@ mod tests {
                 (name, std::fs::read_to_string(&path).expect("example text"))
             })
             .collect()
+    }
+
+    /// Nesting is refused at the limit, and the refusal says what crossed it.
+    ///
+    /// Stated on the meter rather than through a deep region because the
+    /// property is the counter's, not any one traversal's: whatever recurses,
+    /// it stops here, and it stops with an operation, a metric, a limit, and a
+    /// place rather than with a dead process.
+    #[test]
+    fn nesting_stops_at_the_limit_and_names_where_it_stopped() {
+        /// Descend forever, or as far as the meter allows.
+        fn descend(meter: &mut WorkMeter, span: SourceSpan) -> Option<()> {
+            meter.nested(Reduction::SyntaxRecurse, span, |meter| descend(meter, span))
+        }
+        let mut meter = WorkMeter::new(Budget::LANGUAGE);
+        let span = SourceSpan::new(7, 11);
+        assert!(descend(&mut meter, span).is_none(), "unbounded descent was not stopped");
+        let failure = meter.failure().expect("the stop was recorded as a resource failure");
+        assert_eq!(failure.metric, NESTING_METRIC);
+        assert_eq!(failure.operation, Reduction::SyntaxRecurse.operation());
+        assert_eq!(failure.limit, NESTING);
+        assert_eq!(failure.attempted, NESTING.saturating_add(1));
+        assert_eq!(
+            failure.span, span,
+            "the refusal points at the operation that went too deep"
+        );
+    }
+
+    /// A level is given back when its frame returns.
+    ///
+    /// The one counter that goes down, and the one that would silently turn
+    /// every long run into a refusal if it did not: an evaluation that enters
+    /// and leaves a million times is a level deep, not a million.
+    #[test]
+    fn a_level_is_released_when_the_work_at_it_finishes() {
+        let mut meter = WorkMeter::new(Budget::LANGUAGE);
+        let span = SourceSpan::default();
+        for _ in 0..NESTING.saturating_mul(4) {
+            assert!(
+                meter.nested(Reduction::Expression, span, |_| Some(())).is_some(),
+                "a sibling was charged as if it were a descendant"
+            );
+        }
+        assert!(meter.failure().is_none());
     }
 
     /// The law over every committed example, at every divisor.

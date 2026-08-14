@@ -886,7 +886,7 @@ fn expand_one(
         return Ok((hit.printed.clone(), record, hit.charges));
     }
 
-    let (answer, work) = crate::core::expand_syntax(adapter_source, subject.clone());
+    let (answer, work) = crate::core::expand_syntax(adapter_source, &subject);
     // The run happened, so the run is charged, and everything below reports
     // against the same charge whether the adapter answered or refused.
     let charged = |generated_syntax_nodes| Charges {
@@ -1177,7 +1177,7 @@ mod tests {
     fn answer(transformer: &str, region: &str) -> Result<crate::syntax::Printed, crate::core::ExpansionFailure> {
         let read = musa_language::parse(region);
         let subject = crate::syntax::read_region(&read.syntax(), crate::syntax::ExpansionPath::at(vec![0]));
-        crate::core::expand_syntax(&module(transformer), subject)
+        crate::core::expand_syntax(&module(transformer), &subject)
             .0
             .map(|output| crate::syntax::print(&output))
     }
@@ -1452,7 +1452,7 @@ mod tests {
         );
         let read = musa_language::parse("c4");
         let subject = crate::syntax::read_region(&read.syntax(), crate::syntax::ExpansionPath::at(vec![0]));
-        let Err(generated) = crate::core::expand_syntax(&module(&refusing), subject).0 else {
+        let Err(generated) = crate::core::expand_syntax(&module(&refusing), &subject).0 else {
             panic!("the adapter refuses");
         };
         assert_eq!(
@@ -2009,10 +2009,10 @@ mod tests {
     /// group — which is where a traversal that dropped a level would show —
     /// and a hole, because a region parsed on its own is not always a whole
     /// expression and the reader answers with `Missing` where the parser gave
-    /// up. They are deliberately shallow: the recursor's descent runs through
-    /// the transformer's own branches, so one source level costs many
-    /// evaluator frames, and a debug build's test stack is the limit a law
-    /// suite has no business being near.
+    /// up. They are shallow because a differential law needs no depth to be
+    /// stated, not any more because depth was dangerous: depth is the budget's
+    /// business now, and `a_region_deeper_than_the_budget_allows_is_refused_
+    /// rather_than_fatal` owns it.
     const REGIONS: [&str; 4] = ["a", "together(a)", "together(a, b)", "together(inner(a))"];
 
     /// A transformer over the recursor whose branches rebuild what they read.
@@ -2043,7 +2043,7 @@ mod tests {
     fn charged(transformer: &str, region: &str) -> u64 {
         let read = musa_language::parse(region);
         let subject = crate::syntax::read_region(&read.syntax(), crate::syntax::ExpansionPath::at(vec![0]));
-        let (answered, work) = crate::core::expand_syntax(&module(transformer), subject);
+        let (answered, work) = crate::core::expand_syntax(&module(transformer), &subject);
         if let Err(fault) = answered {
             panic!("the transformer answers over `{region}`: {fault:?}");
         }
@@ -2056,6 +2056,71 @@ mod tests {
 
     /// Read nothing: a group branch that answers without running a step.
     const NONE_AT_ALL: &str = r"syntax_group(syntax_built(here, 3, 0), delimiter, [])";
+
+    /// A region that is `levels` groups deep, with one identifier at the
+    /// bottom.
+    ///
+    /// Built rather than parsed. Depth is the whole point of these two tests
+    /// and the parser flattens nesting it does not need, so a region written
+    /// out as text would say how deep the *parser* goes and not how deep the
+    /// recursor may.
+    fn nested_region(levels: usize) -> crate::syntax::Syntax {
+        let root = crate::syntax::NodePath::root(crate::syntax::ExpansionPath::at(vec![0]));
+        let mut subject = crate::syntax::identifier(root.clone(), "a".to_owned());
+        for _ in 0..levels {
+            subject = crate::syntax::group(root.clone(), "round".to_owned(), vec![subject]);
+        }
+        subject
+    }
+
+    /// A region deeper than the budget allows is refused, not fatal.
+    ///
+    /// The recursor descends through the transformer's own branches, so one
+    /// level of source nesting costs a whole chain of `eval`/`apply_closure`
+    /// frames and a deep enough region used to end the process with `fatal
+    /// runtime error: stack overflow`. That is the one outcome a total language
+    /// with a budget may not have: the budget exists in order to refuse.
+    ///
+    /// The region is far past the limit — deep enough that the old failure
+    /// needed some sixty megabytes of stack — so what this test asserts is not
+    /// that the number is exactly right but that no region can be deep enough
+    /// to get past the counter. A test process that aborts fails this test by
+    /// taking the whole binary with it, which is the failure mode being
+    /// guarded and reads unmistakably in the output.
+    #[test]
+    fn a_region_deeper_than_the_budget_allows_is_refused_rather_than_fatal() {
+        let (answered, _) = crate::core::expand_syntax(&module(&recursing("\"\"", EACH_ONCE)), &nested_region(1_000));
+        assert!(
+            matches!(answered, Err(crate::core::ExpansionFailure::Stopped)),
+            "a region too deep to read is a limit crossed, not a crash and not a malformed adapter"
+        );
+        // And the phase says so where the region stands, with the code that
+        // means a limit rather than the one that means a broken adapter.
+        let complaint = stopped_or_refused(
+            &crate::core::ExpansionFailure::Stopped,
+            "std::adapters::doubled",
+            SourceSpan::new(4, 9),
+        );
+        assert_eq!(complaint.code, Code::ResourceLimit);
+        assert_eq!(complaint.primary_span(), Some(SourceSpan::new(4, 9)));
+    }
+
+    /// The limit is set where honest work still fits under it.
+    ///
+    /// A guard that refused the regions adapters actually meet would be a
+    /// crash with better manners. This recursor spends four nesting levels per
+    /// level of the region, so the 256 of `Budget::LANGUAGE` first refuses at
+    /// 64 groups deep; a region nested well past anything a person writes has
+    /// to expand, and forty-eight is well past it while leaving the exact
+    /// boundary to the meter's own law rather than pinning it here.
+    #[test]
+    fn a_region_nested_deeper_than_anyone_writes_still_expands() {
+        let (answered, _) = crate::core::expand_syntax(&module(&recursing("\"\"", EACH_ONCE)), &nested_region(48));
+        assert!(
+            !matches!(answered, Err(crate::core::ExpansionFailure::Stopped)),
+            "a region forty-eight groups deep was refused: the nesting limit is below what adapters meet"
+        );
+    }
 
     #[test]
     fn law_9_the_derived_fold_is_the_recursor_at_a_context_nothing_reads() {
