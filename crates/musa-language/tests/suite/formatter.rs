@@ -562,6 +562,115 @@ fn a_parameterized_declaration_keeps_its_parameters_on_its_name() {
     assert_semantics_preserved(source, &formatted);
 }
 
+/// The longest line the formatter budgets for. Written here as the number the
+/// tests below assert about, so a test that says "too wide" is saying it
+/// against the same measure the formatter uses.
+const MEASURE: usize = 96;
+
+fn widest_line(text: &str) -> usize {
+    text.lines().map(|line| line.chars().count()).max().unwrap_or_default()
+}
+
+/// A constructor's fields are a list, and a list is horizontal until it is
+/// long. The one that fits keeps its line; the one that does not is read
+/// downwards, rather than joined into a line nothing can read across.
+#[test]
+fn a_constructor_too_wide_for_its_line_stacks_its_fields() {
+    let source = concat!(
+        "library {\n",
+        "data Staff {\n",
+        "Bar(anchor: Nat, beats: Meter),\n",
+        "Document(instrument: Text, sounding_shift: Interval, written_clef: Clef, ",
+        "written_key: Key, beats: Meter, spelling: Spelling, items: StaffItem,),\n",
+        "}\n}\n",
+    );
+    let formatted = fmt(source);
+    assert!(
+        formatted.contains("        Bar(anchor: Nat, beats: Meter),\n"),
+        "a constructor that fits keeps its line:\n{formatted}"
+    );
+    assert!(
+        formatted.contains("        Document(\n            instrument: Text,\n"),
+        "and one that does not takes a line per field:\n{formatted}"
+    );
+    assert!(
+        formatted.contains("            items: StaffItem,\n        ),\n"),
+        "with the closing paren back at the constructor's own indent:\n{formatted}"
+    );
+    assert!(widest_line(&formatted) <= MEASURE, "{formatted}");
+    assert_eq!(fmt(&formatted), formatted, "idempotent");
+    assert_semantics_preserved(source, &formatted);
+}
+
+/// The budget is the *line*, not the list. A parameter list that would fit on
+/// its own is still too wide when the return type written after it does not
+/// fit behind it — which is the whole of why a list is measured with
+/// everything up to the next place the line can be cut.
+#[test]
+fn a_parameter_list_is_measured_with_what_follows_it() {
+    let source = concat!(
+        "library {\n",
+        "fn rescaled(factor: Ratio, here: Position<WrittenTime>, point: Position<WrittenTime>,) ",
+        "-> Result<Position<WrittenTime>, Text> { point }\n",
+        "}\n",
+    );
+    let formatted = fmt(source);
+    assert!(
+        formatted.contains("    fn rescaled(\n        factor: Ratio,\n"),
+        "the head is too long for one line, so its parameters stack:\n{formatted}"
+    );
+    assert!(
+        formatted.contains("    ) -> Result<Position<WrittenTime>, Text> { point }\n"),
+        "and the return type stays with the paren that closes them:\n{formatted}"
+    );
+    assert!(widest_line(&formatted) <= MEASURE, "{formatted}");
+    assert_eq!(fmt(&formatted), formatted, "idempotent");
+    assert_semantics_preserved(source, &formatted);
+}
+
+/// A trailing comma survives being joined back onto one line, because this
+/// formatter rewrites whitespace and never tokens. What it must not do is
+/// leave behind the space it would have written in front of the next field:
+/// `Beats(count: Nat, )` is a gap with nothing on either side of it.
+#[test]
+fn a_trailing_comma_takes_no_space_before_the_closer() {
+    let source = "library {\ndata Meter {\nBeats(count: Nat, unit: Nat,),\n}\n}\n";
+    let formatted = fmt(source);
+    assert!(
+        formatted.contains("        Beats(count: Nat, unit: Nat,),\n"),
+        "{formatted}"
+    );
+    assert_eq!(fmt(&formatted), formatted, "idempotent");
+    assert_semantics_preserved(source, &formatted);
+}
+
+/// A bracketed literal in the last position opens on the line of the call that
+/// holds it, the way a body's brace does. Stacking the call instead would put
+/// three lines around a bracket that was going to open one anyway — and would
+/// do it again at every level of a nested tree.
+#[test]
+fn a_trailing_bracket_opens_on_the_line_of_its_call() {
+    let source = concat!(
+        "library {\n",
+        "let tree: Syntax = syntax_group(syntax_built(here, 9, 0), \"parentheses\", [",
+        "syntax_identifier(syntax_built(here, 4, 0), \"repeat\"), ",
+        "syntax_token(syntax_built(here, 8, 0), \"Integer\", \"2\")]);\n",
+        "}\n",
+    );
+    let formatted = fmt(source);
+    assert!(
+        formatted.contains("syntax_group(syntax_built(here, 9, 0), \"parentheses\", [\n"),
+        "the call keeps its line and the bracket opens on it:\n{formatted}"
+    );
+    assert!(
+        formatted.contains("\n    ]);\n"),
+        "and the bracket closes at the indent the call started at:\n{formatted}"
+    );
+    assert!(widest_line(&formatted) <= MEASURE, "{formatted}");
+    assert_eq!(fmt(&formatted), formatted, "idempotent");
+    assert_semantics_preserved(source, &formatted);
+}
+
 #[test]
 fn apply_edits_replaces_ranges_in_order() {
     use musa_language::{TextEdit, apply_edits};

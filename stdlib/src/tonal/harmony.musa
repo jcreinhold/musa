@@ -75,7 +75,12 @@ library {
     // major. Tonicization is a local relationship between two chords; whether
     // a passage has modulated is a claim about the passage and is not decided
     // here. OMT 050.
-    fn secondary(home: Scale, target: Degree, mode: Scale, written: Roman) -> Option<ChordClass> {
+    fn secondary(
+        home: Scale,
+        target: Degree,
+        mode: Scale,
+        written: Roman
+    ) -> Option<ChordClass> {
         match altered_class(home, target) {
             None -> None,
             Some(tonicized) -> numeral_chord(scale_on(mode, tonicized), written),
@@ -89,7 +94,11 @@ library {
     // plain second, and that difference is the caller's to write, because the
     // minor collection was the caller's to choose. Absent when the collection
     // has no such degree.
-    fn quality_on_degree(collection: Scale, written: Degree, quality: ChordClass) -> Option<ChordClass> {
+    fn quality_on_degree(
+        collection: Scale,
+        written: Degree,
+        quality: ChordClass
+    ) -> Option<ChordClass> {
         match altered_class(collection, written) {
             None -> None,
             Some(root) -> Some(chord_rooted_on(quality, root)),

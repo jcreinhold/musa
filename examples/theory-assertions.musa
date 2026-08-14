@@ -19,7 +19,11 @@ piece "Theory Assertions" {
     // `Option`, and a total language unwraps one by naming what happens when
     // there is nothing there: the fallback is the root-position chord, which
     // the assertion below would then refuse rather than quietly accept.
-    let first_inversion: ChordClass = option_fold(chord c major, same, inversion(chord c major, 1));
+    let first_inversion: ChordClass = option_fold(
+        chord c major,
+        same,
+        inversion(chord c major, 1)
+    );
 
     score {
         part choir {

@@ -21,11 +21,19 @@ and two registered units already mean it: `count`'s input and `drop`'s output. N
 composer to ever hold the value — machines are wired to each other, and a port is inhabited by the machine layer at each
 step, never by an expression at a call site.
 
-That role does, however, require the *word*. The compiler prints `Unit`: `machine_laws.rs` reads `drop`'s projected
-output as the string `"Unit"`, and a composer meets the word in a machine's type, in a hover, and in a type error. A
-word the compiler prints must be a word an annotation can repeat, which is exactly what the existing law
-`every_offered_type_name_is_read_and_written_the_same_way` (`crates/musa-compiler/src/core.rs`) protects. So `Unit` is
-readable, printable, and offered — and inhabited by nothing written.
+That role does, however, require the *word*, and not because a diagnostic happens to print it.
+`drop : Machine<K,A,Unit>` is fixed by `docs/rules/across-stages/03-machine-calculus.md` §2 — a *governing* page, above
+the candidate language specification in the precedence ladder — and `drop` is one of the seven structural forms the
+calculus requires. So a composer who writes `connect(source, drop)` owns a value whose type contains `Unit`, and the
+question is not whether a string is printed but whether they may declare what they hold. They may:
+`let m: Machine<AudioFrameStep, Ratio, Unit> = connect(machine(primitive("scale", 1, 3/2)), drop)` compiles, and so does
+a function taking and returning that type.
+
+Drop the name from the vocabulary and that stops compiling. The type does not go away — nothing about `drop` changes —
+it just becomes unspellable, so the value can be held but never annotated, never passed to a declared function, never
+named in a library signature. That is the hole the existing law
+`every_offered_type_name_is_read_and_written_the_same_way` (`crates/musa-compiler/src/core.rs`) exists to prevent. So
+`Unit` is readable, printable, and offered — and inhabited by nothing written.
 
 There is already a precedent for a nameable type with no value: `AudioFrameStep`. `lower_type` says of it that it "is a
 type so that `K` unifies like any other index, but it is not a *value* type: nothing inhabits it". `Unit` is not the
@@ -59,32 +67,52 @@ expression grammar, plus the lexer, the parser, the formatter, the tree-sitter g
 That is the ordinary amendment path for a candidate specification (`docs/rules/README.md`) and it is available — but it
 is a lot of machinery for a value with no consumer.
 
-## 3. The one thing the absence costs
+## 3. The one thing the absence costs, and the prompt that will pay it
 
 A registered primitive whose configuration is `Unit` — a unit with no configuration at all — cannot be instantiated,
 because `primitive("name", 1, …)` has nothing to write in the third position. `crates/musa-compiler/src/machine.rs`
 already stated the constraint as prose beside the registry: "Every configuration is a value this language can write,
 since a unit whose configuration could not be spelled could not be instantiated."
 
-This is not a wart the missing literal caused; it is a real distinction the registry should be making anyway. **A port
-type says what flows. A configuration type says what is written.** `Unit` can say *nothing flows*, and it cannot say
-*nothing is written*, because nothing-written is not something a composer writes. A registered unit that genuinely has
-no parameters is a registry design question — it declares whatever the smallest honest configuration is — and not a
-reason to add a surface literal.
+There is a distinction underneath that, and it is a real one. **A port type says what flows. A configuration type says
+what is written.** `Unit` can say *nothing flows*, and it cannot say *nothing is written*, because nothing-written is
+not something a composer writes. On the five-unit reference family the constraint costs nothing, and it is now checked
+rather than promised (§5).
 
-So the cost is real, bounded, and belongs to the registry. It is now checked there rather than promised (§5).
+**It will not stay free.** Six processors in the current studio catalogue declare no parameters at all —
+`crates/musa-audio/src/spec.rs`'s `Noise`, `Passthrough`, `Mixer`, `Splitter`, `MonoToStereo`, and `StereoToMono` — and
+prompt 127h is *Register each current DSP unit as a registered primitive*, naming the mixer among them: "a mixer is a
+primitive from a tuple of frames to one frame". Three of the six are wiring that the structural forms already cover
+(`copy` is `Splitter`; the channel adapters are adapters), and `Passthrough` is `identity`. Two are not. `Noise` and a
+plain summing `Mixer` are registered units with genuinely nothing to configure.
+
+Both may still acquire an honest configuration rather than an empty one. `Noise` is documented as "xorshift; fixed seed
+per node", and an *explicit* `Nat` seed is arguably the better design in a language whose machine identity is exact — a
+hidden fixed seed is a value the machine's digest cannot see. A mixer may take per-input gains, which is what the
+reference `MIX` already does. So the collision is real but not yet forced, and the choice between "declare the smallest
+honest configuration" and "introduce the literal" is a registry-design question best answered with the real units in
+hand.
+
+What this note fixes is that the question cannot be reached by accident: the `const` assertion in §5 makes an empty
+configuration a build error at the moment prompt 127f or 127h writes one, with the reason in the panic message.
 
 ## 4. Refused: remove `Unit` from the offered vocabulary
 
 The other alternative was to stop offering `Unit` — to let it exist only as a type the compiler produces, the way
 `AudioFrameStep` is looked up separately from `BASE_TYPES`.
 
-This is worse than the status quo, and for the reason §1 gives. The compiler prints `Unit` in machine types and in
-diagnostics. A composer who reads `Machine<AudioFrameStep, Ratio, Unit>` in an error and cannot write it in an
-annotation is worse off than one who can write the type but never the value: the first is a word with no meaning
-available to them, the second is a type with a clear meaning — *nothing flows here* — and no need for a value. Removing
-the name would also break the round-trip law, or force a second, quieter vocabulary beside `BASE_TYPES` for words the
-compiler prints and the composer may not write, which is three vocabularies again.
+This is worse than the status quo, and for the reason §1 gives. The tempting reply is that if the only problem is that
+the compiler *prints* `Unit`, the compiler should stop printing it — but there is nothing to stop. `drop`'s output type
+is `Unit` because a governing page says so, and the type appears in composer programs whether or not any diagnostic
+mentions it. A composer who can hold `connect(source, drop)` and cannot declare it is worse off than one who can write
+the type but never the value: the first has a value they cannot pass to a declared function, the second has a type with
+a clear meaning — *nothing flows here* — and no need for a value. Removing the name would also break the round-trip law,
+or force a second, quieter vocabulary beside `BASE_TYPES` for words the compiler prints and the composer may not write,
+which is three vocabularies again.
+
+The only way to remove `Unit` from the surface honestly is to change what `drop` *is* in
+`docs/rules/across-stages/03-machine-calculus.md` §2, under that page's amendment procedure — and there is no candidate
+replacement. `drop` produces nothing, and nothing is what `Unit` names.
 
 `AudioFrameStep` is not a counterexample: it is position-restricted to the first argument of `Machine<…>` and
 `Primitive<…>`, checked where those are read, and it is not a value type at all. `Unit` is a value type in the calculus
@@ -109,9 +137,19 @@ The decision is only worth recording if a later prompt cannot undo it without no
   exactly one value", which invites a composer to go looking for the literal; it now says the type carries nothing and
   that no expression writes it.
 
-## 6. What would reverse this
+## 6. What would reverse this, and which half it would reverse
 
-A registered unit that genuinely has no configuration and cannot honestly declare one, or a builtin or eliminator that
-takes or returns `Unit`, would give the literal a consumer and make §2's first ground false. That is the reversal
-`02-core-calculus.md` §5.3 already leaves room for, and the law in §5 is where it would be stated: the assertion's
-expected value stops being `["Unit"]`.
+The two halves of this decision are not equally settled, and they should not be read as one.
+
+**`Unit` stays offered** is settled, and not by preference. It follows from `drop`'s governing type, and reversing it
+means amending `03-machine-calculus.md` §2 with a replacement for a form that produces nothing.
+
+**`Unit` stays without a literal** is a decision made on the units this build registers, and §3 names the work that will
+test it. Prompt 127f registers the reference family; prompt 127h migrates the studio catalogue, where `Noise` and a
+plain summing `Mixer` are registered units with nothing to configure. If either declares an empty configuration rather
+than an honest one, the literal has its first consumer and §2's first ground — that nothing consumes a unit value —
+becomes false. A builtin or eliminator taking or returning `Unit` would do the same.
+
+That is the reversal `02-core-calculus.md` §5.3 already leaves room for. When it comes, this is what changes: the law in
+§5 stops expecting `["Unit"]`, the `const` assertion in `machine.rs` loses its `Unit` arm, and the amendment path in §2
+runs — §5.3's proof, §1's term grammar, `01-surface.md`, then lexer, parser, formatter, tree-sitter, and book.

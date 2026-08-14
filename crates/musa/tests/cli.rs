@@ -68,6 +68,28 @@ fn format_check_passes_on_canonical_examples() -> std::io::Result<()> {
     Ok(())
 }
 
+/// So is the standard library, and for a stronger reason than the examples:
+/// `stdlib/` is the corpus every package a composer writes is read against, so
+/// a module the formatter would rewrite is the language teaching a shape it
+/// does not itself write. It was outside every gate until now, which is how
+/// five modules came to sit unformatted at once.
+///
+/// One invocation rather than a walk, because `format` recurses through a
+/// directory itself and `stdlib/src` is a module *tree*: a per-file loop over
+/// one flat directory would have missed exactly the nested modules that drifted.
+#[test]
+fn format_check_passes_on_the_standard_library() -> std::io::Result<()> {
+    let root = format!("{}/../..", env!("CARGO_MANIFEST_DIR"));
+    let output = musa(&["format", "--check", &format!("{root}/stdlib")])?;
+    assert!(
+        output.status.success(),
+        "the standard library is not formatted:\n{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 #[test]
 fn format_rewrites_a_messy_file_to_canonical_form() -> std::io::Result<()> {
     let messy = "piece   \"M\"{\nmeter 4/4;\nscore{\npart p{\nvoice v{\nc5   1\n}\n}\n}\n}\n";

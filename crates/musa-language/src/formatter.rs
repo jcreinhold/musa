@@ -11,6 +11,9 @@
 //!   comment stays attached above the construct it precedes.
 //! - A bar that fits the source measure is written on one line. The one
 //!   exception, and see [`MEASURE`] for why it earns itself.
+//! - A comma-separated list — a call's arguments, a constructor's fields —
+//!   is written on one line when it fits [`MEASURE`], and one item per line
+//!   when it does not. See [`breakable_list`].
 //! - Inside a bar, the gap between beat groups is two spaces instead of one.
 //!   A beam is how notation shows which beats a player hears together, and
 //!   horizontal space is the only thing text has to draw one with. Which
@@ -25,7 +28,7 @@ use std::collections::{HashMap, HashSet};
 
 use text_size::TextRange;
 
-use crate::language::SyntaxNode;
+use crate::language::{SyntaxNode, SyntaxToken};
 use crate::meter::beat_groups;
 use crate::{ParsedDocument, SyntaxElement, SyntaxKind};
 
@@ -92,7 +95,8 @@ struct Layout {
     bars: BarSpacing,
 }
 
-/// How wide a line a bar may keep, indent included.
+/// How wide a line a bar — or a comma-separated list — may keep, indent
+/// included.
 ///
 /// Everything else in musa is a short statement on its own line. A bar is the
 /// one statement that is naturally horizontal, because that is the direction
@@ -110,7 +114,284 @@ struct Layout {
 /// enough to need scrolling to read is a bar long enough to stack. The cost is
 /// that a barred piece has lines past the column, and the column scrolls them,
 /// which is what it already does for comment prose and long signal chains.
+///
+/// A list is budgeted by the same number for the same reason: a list is
+/// horizontal until it is long, and one number is one rule to remember.
 const MEASURE: usize = 96;
+
+/// Whether this node is a comma-separated list that may be written down the
+/// page instead of across it.
+///
+/// Every list whose items can be arbitrarily large is here, and that is the
+/// membership rule rather than a taste: a lambda with a `match` in it is one
+/// argument, a function type is one parameter, a constructor call is one
+/// element, so none of these lists has a width its spelling bounds. A list
+/// left out of this set is a list the formatter would join to whatever length
+/// it came to, which is the 200-character line this rule exists to prevent.
+///
+/// The set must also be *closed downwards* through nesting, and that is the
+/// second reason it is wide. A list decides before the lists inside it do, so
+/// an outer list that cannot break leaves an inner one to absorb the overflow
+/// alone — `[NoteValue(1, 0), …, NoteValue(\n    64,\n    2,\n)]`, which
+/// breaks the one list that had nothing to gain by breaking. Whenever a list
+/// can hold another, both belong here or neither does.
+///
+/// Types are the deliberate omission. `Result<Position<WrittenTime>, Text>` is
+/// one name for one type and reads as a word however long it runs; a `<` that
+/// opened a stack of lines would be the formatter claiming a type has parts a
+/// reader looks at separately.
+fn breakable_list(kind: SyntaxKind) -> bool {
+    matches!(
+        kind,
+        SyntaxKind::ExprArgList
+            | SyntaxKind::ArgList
+            | SyntaxKind::ParamList
+            | SyntaxKind::DataVariant
+            | SyntaxKind::ListExpr
+            | SyntaxKind::ProductExpr
+    )
+}
+
+/// Whether a list must be written one item per line.
+///
+/// Two reasons, and both are the same reason: the one-line layout is not
+/// available. It does not fit the line it would start at, or it carries a
+/// comment — and a comment wants a line of its own, so a list holding one has
+/// already been written down the page by the hand that wrote the comment.
+///
+/// Measured by rendering the list flat with the writer everything else uses,
+/// so a list is judged by exactly the text it would produce rather than by a
+/// second estimate of it — and measured together with [`line_tail`], because
+/// what the budget is about is the line and a list is only part of one.
+fn list_breaks(node: &SyntaxNode, writer: &Writer, layout: &Layout) -> bool {
+    if node
+        .descendants_with_tokens()
+        .any(|element| matches!(element.kind(), SyntaxKind::LineComment | SyntaxKind::BlockComment))
+    {
+        return true;
+    }
+    let fits = writer
+        .column()
+        .saturating_add(one_line(node, layout).chars().count())
+        .saturating_add(line_tail(node, &writer.lists, layout))
+        <= MEASURE;
+    !fits && !hugs_its_last(node, writer, layout)
+}
+
+/// Whether an over-wide list can stay on its line because the item that
+/// overflows it is a list of its own, which will break where it stands.
+///
+/// `syntax_group(syntax_built(here, 9, 0), "parentheses", [ … ])` is the case:
+/// a call whose last argument is a tree written out. Stacking it puts three
+/// lines around a bracket that was already going to open one, and because the
+/// argument is itself a call with a list in it, every level does that again —
+/// the nesting a reader follows becomes a staircase four indents deep before
+/// it says anything. Left hugging, the same text reads as what it is, a `[`
+/// that opens a body on the line of the call it belongs to.
+///
+/// The hug is offered only to a bracketed literal in the last position, and
+/// only when the call's own line up to its `[` fits. Both halves matter. A
+/// prefix that does not fit is a line the hug cannot rescue, which is what
+/// keeps a twenty-element list from hugging its last element's arguments; and
+/// a bracket is the one closer that says *a collection ends here* on sight, so
+/// it can hold a line open the way a brace does. A trailing call cannot:
+/// `option_fold(chord c major, same, inversion(chord c major, 1))` hugged at
+/// `inversion(` puts two of five arguments down the page and reads as though
+/// the inversion were the point, which is why that one stacks instead.
+fn hugs_its_last(list: &SyntaxNode, writer: &Writer, layout: &Layout) -> bool {
+    let Some(hugged) = trailing_list(list) else {
+        return false;
+    };
+    let Some(opener) = opening_token(&hugged) else {
+        return false;
+    };
+    let mut prefix = Writer::one_line(HashSet::new());
+    write_through(list, &opener, &mut prefix, layout);
+    writer.column().saturating_add(prefix.written()) <= MEASURE
+}
+
+/// The bracketed literal the last item of `list` would break at, following the
+/// last child down — an argument is a call is a list, and that spine is the
+/// only place a break at the end of the line can come from.
+///
+/// `None` at a body, whose braces break by their own rule, and `None` at any
+/// other list, because the first breakable thing down the spine is where the
+/// break would land and only a `[` earns the hug.
+fn trailing_list(list: &SyntaxNode) -> Option<SyntaxNode> {
+    let mut node = list.children().last()?;
+    loop {
+        if opens_a_body(node.kind()) {
+            return None;
+        }
+        if breakable_list(node.kind()) {
+            return (node.kind() == SyntaxKind::ListExpr).then_some(node);
+        }
+        node = node.children().last()?;
+    }
+}
+
+/// Whether this closing delimiter is written on a line of its own rather than
+/// on the one the tail is measuring.
+fn closes_a_line(kind: SyntaxKind, writer: &Writer) -> bool {
+    kind == SyntaxKind::RBrace || (matches!(kind, SyntaxKind::RParen | SyntaxKind::RBracket) && writer.list_breaks())
+}
+
+/// The delimiter of the first place inside `node` where the line could be cut
+/// — the `(`, `[` or `{` of the first list or body it holds, itself included.
+fn next_break(node: &SyntaxNode) -> Option<SyntaxToken> {
+    let opportunity = node
+        .descendants()
+        .find(|inner| breakable_list(inner.kind()) || opens_a_body(inner.kind()))?;
+    opening_token(&opportunity)
+}
+
+/// The first token of a node that is written rather than skipped. A node owns
+/// the trivia in front of it, so its literal first token can be the whitespace
+/// the previous line ended with.
+fn opening_token(node: &SyntaxNode) -> Option<SyntaxToken> {
+    node.descendants_with_tokens()
+        .filter_map(SyntaxElement::into_token)
+        .find(|token| {
+            !matches!(
+                token.kind(),
+                SyntaxKind::Whitespace | SyntaxKind::LineComment | SyntaxKind::BlockComment
+            )
+        })
+}
+
+/// Write `node` flat, stopping after `stop`. Whether it was reached.
+fn write_through(node: &SyntaxNode, stop: &SyntaxToken, writer: &mut Writer, layout: &Layout) -> bool {
+    for element in node.children_with_tokens() {
+        match element {
+            SyntaxElement::Node(child) if child.text_range().contains_range(stop.text_range()) => {
+                return write_through(&child, stop, writer, layout);
+            }
+            SyntaxElement::Node(child) => format_node(&child, writer, layout),
+            SyntaxElement::Token(token) if token.kind() == SyntaxKind::Whitespace => {
+                writer.note_whitespace(token.text());
+            }
+            SyntaxElement::Token(token) => {
+                let reached = token.text_range() == stop.text_range();
+                format_token(node, &token, writer);
+                if reached {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+/// How much of the list's line is spoken for after the list closes.
+///
+/// A parameter list is the case that makes this necessary and not a
+/// refinement: `fn rescaled(factor: Ratio, here: Position<WrittenTime>, point:
+/// Position<WrittenTime>)` is 90 columns of list and then 41 more of
+/// `-> Result<Position<WrittenTime>, Text> {`, and a rule that weighed only
+/// the first would call a 131-column line comfortable.
+///
+/// Read forward from the list through its siblings and then its parents', in
+/// the order the writer will reach them, and stop at the first thing that ends
+/// a line or could: a `;`, a stacking comma, or the opening delimiter of the
+/// next list or body, which is the next place the line can be cut and so the
+/// last column this list is answerable for. Reading past that would charge one
+/// list for a length another one is going to break anyway, which is how
+/// `syntax_built(here, 9, 0)` came to stack because a bracketed tree three
+/// arguments later was long. Stop also once the tail alone has spent the
+/// budget, because past that the answer cannot change and the work is a whole
+/// subtree's worth of rendering.
+///
+/// `enclosing` is the stacking decision of every list this one sits inside,
+/// outermost first, and it is what makes the walk agree with the writer rather
+/// than guess at it: an outer list that has already chosen to stack ends the
+/// tail at its next comma, so `Ok(Dotted(base, base))` is measured as the
+/// short line it will be written on and not as the whole `nat_fold` call it
+/// happens to be an argument of.
+fn line_tail(list: &SyntaxNode, enclosing: &[bool], layout: &Layout) -> usize {
+    let mut writer = Writer::one_line(HashSet::new());
+    let mut outer = enclosing.len();
+    let mut width = 0_usize;
+    let mut node = list.clone();
+    while let Some(parent) = node.parent() {
+        // The writer reaches this parent's own tokens under this parent's
+        // stacking decision, which was taken before the list being measured
+        // was reached and so is already in `enclosing`.
+        writer.lists.clear();
+        if breakable_list(parent.kind()) {
+            outer = outer.saturating_sub(1);
+            writer.lists.push(enclosing.get(outer).copied().unwrap_or_default());
+        }
+        let mut following = node.next_sibling_or_token();
+        while let Some(element) = following {
+            following = element.next_sibling_or_token();
+            match element {
+                SyntaxElement::Node(child) => match next_break(&child) {
+                    // The line can be cut here, so this is where the tail ends
+                    // and the delimiter that cuts it is the last of it.
+                    Some(opener) => {
+                        write_through(&child, &opener, &mut writer, layout);
+                        return writer.written();
+                    }
+                    None => format_node(&child, &mut writer, layout),
+                },
+                SyntaxElement::Token(token) if token.kind() == SyntaxKind::Whitespace => {
+                    writer.note_whitespace(token.text());
+                }
+                // A chain long enough to stack puts every stage on its own
+                // line, so the `|>` is where this line stops.
+                SyntaxElement::Token(token)
+                    if token.kind() == SyntaxKind::PipeForward && wraps_across_lines(&parent) =>
+                {
+                    return width;
+                }
+                // A closer that takes its own line is not on this one. The
+                // `}` of a body always does, and so does the `)` of a list
+                // that has already chosen to stack.
+                SyntaxElement::Token(token) if closes_a_line(token.kind(), &writer) => {
+                    return width;
+                }
+                SyntaxElement::Token(token) => format_token(&parent, &token, &mut writer),
+            }
+            width = writer.written();
+            if writer.line_ended() || width > MEASURE {
+                return width;
+            }
+        }
+        node = parent;
+    }
+    width
+}
+
+/// Whether this node is written as a braced body, so its `{` ends the line the
+/// thing it belongs to started.
+fn opens_a_body(kind: SyntaxKind) -> bool {
+    matches!(
+        kind,
+        SyntaxKind::BlockExpr | SyntaxKind::Block | SyntaxKind::MatchExpr | SyntaxKind::MusicExpr
+    )
+}
+
+/// Whether nothing follows this comma inside its list, so there is nothing for
+/// a space after it to separate.
+///
+/// A trailing comma is how a list written down the page keeps its last item
+/// editable, and it survives when the list is joined back up because the
+/// formatter rewrites whitespace and never tokens. `f(a, b, )` is that comma
+/// with a space it has no use for; `f(a, b,)` is the same list spelled the way
+/// a reader would.
+fn ends_its_list(comma: &SyntaxToken) -> bool {
+    let mut following = comma.next_sibling_or_token();
+    while let Some(element) = following {
+        if element.kind() != SyntaxKind::Whitespace {
+            return matches!(
+                element.kind(),
+                SyntaxKind::RParen | SyntaxKind::RBracket | SyntaxKind::RBrace | SyntaxKind::Greater
+            );
+        }
+        following = element.next_sibling_or_token();
+    }
+    true
+}
 
 fn format_node(node: &SyntaxNode, writer: &mut Writer, layout: &Layout) {
     // Set once the first token of a one-word construct has been written, so
@@ -172,7 +453,21 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer, layout: &Layout) {
                 if wrap {
                     writer.open_chain();
                 }
+                // A list decides here, where the column it would start at is
+                // known, and tells its own commas and parentheses through the
+                // writer — they are the tokens that draw the decision, and
+                // they are written too far in to measure anything.
+                let list = breakable_list(child.kind());
+                if list {
+                    // A run has no lines to break at: inside one, a list is
+                    // whatever the run is, which is one line.
+                    let broken = !writer.in_run() && list_breaks(&child, writer, layout);
+                    writer.open_list(broken);
+                }
                 format_node(&child, writer, layout);
+                if list {
+                    writer.close_list();
+                }
                 if wrap {
                     writer.close_chain();
                 }
@@ -216,7 +511,7 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer, layout: &Layout) {
                     tight = true;
                     continue;
                 }
-                format_token(node, kind, token.text(), writer);
+                format_token(node, &token, writer);
             }
         }
     }
@@ -262,8 +557,15 @@ fn write_quote(text: &str, writer: &mut Writer) {
     writer.after_significant(SyntaxKind::RBrace);
 }
 
-fn format_token(node: &SyntaxNode, kind: SyntaxKind, text: &str, writer: &mut Writer) {
+fn format_token(node: &SyntaxNode, token: &SyntaxToken, writer: &mut Writer) {
+    let kind = token.kind();
+    let text = token.text();
     let parent = node.kind();
+    // Whether this token belongs to a list that is being written down the
+    // page. Only the list's own punctuation asks, and a token whose parent is
+    // the list is directly inside it, so the writer's innermost answer is that
+    // list's.
+    let stacked = breakable_list(parent) && writer.list_breaks();
     // A lambda's braces close an expression that has more after it, so its
     // `}` does not end the line the way a declaration's body does.
     let held = parent == SyntaxKind::BlockExpr
@@ -309,9 +611,9 @@ fn format_token(node: &SyntaxNode, kind: SyntaxKind, text: &str, writer: &mut Wr
         // both read as a list read downwards. A comma *inside* a constructor
         // separates its fields, which are one word's worth of a line, and that
         // comma belongs to the `DataVariant`, not to the declaration.
-        if parent == SyntaxKind::MatchExpr || parent == SyntaxKind::DataDecl {
+        if parent == SyntaxKind::MatchExpr || parent == SyntaxKind::DataDecl || stacked {
             writer.end_line();
-        } else {
+        } else if !ends_its_list(token) {
             writer.space();
         }
     } else if kind == SyntaxKind::Equals {
@@ -342,13 +644,28 @@ fn format_token(node: &SyntaxNode, kind: SyntaxKind, text: &str, writer: &mut Wr
             writer.space();
         }
         writer.write(text);
+        if stacked {
+            writer.indent_more();
+            writer.end_line();
+        }
     } else if kind == SyntaxKind::LParen || kind == SyntaxKind::RBracket || kind == SyntaxKind::RParen {
+        // A list written down the page opens and closes the way a block does:
+        // the opener takes the rest of its line, the items are the lines, and
+        // the closer comes back out to the indent the list started at.
+        if stacked && kind != SyntaxKind::LParen {
+            writer.indent_less();
+            writer.break_before_close();
+        }
         // `use sigh(` closes up; `fn (line: Music)` does not, because there is
         // no name between the word and the list and `fn(` reads as a call.
         if kind == SyntaxKind::LParen && writer.prev == Some(SyntaxKind::FnKw) {
             writer.space();
         }
         writer.write(text);
+        if kind == SyntaxKind::LParen && stacked {
+            writer.indent_more();
+            writer.end_line();
+        }
     } else if matches!(
         kind,
         SyntaxKind::Slash | SyntaxKind::Dot | SyntaxKind::Greater | SyntaxKind::Caret | SyntaxKind::Less
@@ -383,6 +700,9 @@ struct Writer {
     /// One entry per enclosing stacked chain: whether its continuation
     /// indent has been applied yet.
     chains: Vec<bool>,
+    /// One entry per enclosing comma-separated list: whether it is written
+    /// one item per line. Innermost last.
+    lists: Vec<bool>,
     /// Set while rendering a horizontal run, which is the only time newlines
     /// are swallowed and the only time a gap is ever wider than one space.
     run: Option<Run>,
@@ -860,6 +1180,7 @@ impl Writer {
             pending_newlines: 0,
             prev: None,
             chains: Vec::new(),
+            lists: Vec::new(),
             run: None,
         }
     }
@@ -903,6 +1224,37 @@ impl Writer {
 
     fn in_wrapped_chain(&self) -> bool {
         !self.chains.is_empty()
+    }
+
+    /// Whether this writer is laying its input out on one line.
+    fn in_run(&self) -> bool {
+        self.run.is_some()
+    }
+
+    /// How much has been written, in columns.
+    fn written(&self) -> usize {
+        self.out.chars().count()
+    }
+
+    /// Whether the last thing written asked for the line to end.
+    fn line_ended(&self) -> bool {
+        self.need_newline
+    }
+
+    /// Enter a comma-separated list, recording whether it stacks. Entered for
+    /// every list and not only the stacked ones: a short list inside a long
+    /// one stays on its line, and the stack is what says so.
+    fn open_list(&mut self, broken: bool) {
+        self.lists.push(broken);
+    }
+
+    fn close_list(&mut self) {
+        self.lists.pop();
+    }
+
+    /// Whether the innermost enclosing list is written one item per line.
+    fn list_breaks(&self) -> bool {
+        self.lists.last().copied().unwrap_or_default()
     }
 
     /// Indent the continuation lines — once per chain, and only when the

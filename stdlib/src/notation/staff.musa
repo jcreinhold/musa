@@ -126,7 +126,12 @@ library {
     // A realized span with the written value `engrave` chose for it.
     data Spelled {
         NoSpelling,
-        Written(anchor: Nat, start: Position<WrittenTime>, value: WrittenDuration, after: Spelled),
+        Written(
+            anchor: Nat,
+            start: Position<WrittenTime>,
+            value: WrittenDuration,
+            after: Spelled
+        ),
     }
 
     // A dotted value in the making: what it covers so far, and what the next
@@ -226,9 +231,7 @@ library {
                 held: Duration<WrittenTime>,
                 tied: Tie,
                 after: WrittenSpans,
-            ) -> WrittenSpans {
-                Span(anchor, start, held, tied, after)
-            },
+            ) -> WrittenSpans { Span(anchor, start, held, tied, after) },
             first,
         )
     }
@@ -248,7 +251,10 @@ library {
     ) -> Result<Realization, Text> {
         match body(here) {
             Ok(inner) -> match after(inner.at_end) {
-                Ok(later) -> Ok(Realization(joined_spans(inner.spans, later.spans), later.at_end)),
+                Ok(later) -> Ok(Realization(
+                    joined_spans(inner.spans, later.spans),
+                    later.at_end
+                )),
                 Err(why) -> Err(why),
             },
             Err(why) -> Err(why),
@@ -305,7 +311,10 @@ library {
         match written_span(held) {
             Ok(span) -> match position_shift(here, span) {
                 Ok(next) -> match after(next) {
-                    Ok(later) -> Ok(Realization(Span(anchor, here, span, tied, later.spans), later.at_end)),
+                    Ok(later) -> Ok(Realization(
+                        Span(anchor, here, span, tied, later.spans),
+                        later.at_end
+                    )),
                     Err(why) -> Err(why),
                 },
                 Err(why) -> Err(why),
@@ -407,7 +416,10 @@ library {
                 Ok(inner) -> match rescaled_spans(factor, here, inner.spans) {
                     Ok(spans) -> match rescaled(factor, here, inner.at_end) {
                         Ok(at_end) -> match after(at_end) {
-                            Ok(later) -> Ok(Realization(joined_spans(spans, later.spans), later.at_end)),
+                            Ok(later) -> Ok(Realization(
+                                joined_spans(spans, later.spans),
+                                later.at_end
+                            )),
                             Err(why) -> Err(why),
                         },
                         Err(why) -> Err(why),
@@ -445,14 +457,18 @@ library {
                 body: (Position<WrittenTime> -> Result<Realization, Text>),
                 after: (Position<WrittenTime> -> Result<Realization, Text>),
             ) -> (Position<WrittenTime> -> Result<Realization, Text>) {
-                fn (here: Position<WrittenTime>) -> Result<Realization, Text> { nested(body, after, here) }
+                fn (here: Position<WrittenTime>) -> Result<Realization, Text> {
+                    nested(body, after, here)
+                }
             },
             fn (
                 anchor: Nat,
                 body: (Position<WrittenTime> -> Result<Realization, Text>),
                 after: (Position<WrittenTime> -> Result<Realization, Text>),
             ) -> (Position<WrittenTime> -> Result<Realization, Text>) {
-                fn (here: Position<WrittenTime>) -> Result<Realization, Text> { nested(body, after, here) }
+                fn (here: Position<WrittenTime>) -> Result<Realization, Text> {
+                    nested(body, after, here)
+                }
             },
             fn (
                 anchor: Nat,
@@ -471,7 +487,9 @@ library {
                 body: (Position<WrittenTime> -> Result<Realization, Text>),
                 after: (Position<WrittenTime> -> Result<Realization, Text>),
             ) -> (Position<WrittenTime> -> Result<Realization, Text>) {
-                fn (here: Position<WrittenTime>) -> Result<Realization, Text> { nested(body, after, here) }
+                fn (here: Position<WrittenTime>) -> Result<Realization, Text> {
+                    nested(body, after, here)
+                }
             },
             fn (
                 anchor: Nat,
@@ -479,7 +497,9 @@ library {
                 body: (Position<WrittenTime> -> Result<Realization, Text>),
                 after: (Position<WrittenTime> -> Result<Realization, Text>),
             ) -> (Position<WrittenTime> -> Result<Realization, Text>) {
-                fn (here: Position<WrittenTime>) -> Result<Realization, Text> { nested(body, after, here) }
+                fn (here: Position<WrittenTime>) -> Result<Realization, Text> {
+                    nested(body, after, here)
+                }
             },
             items,
         )
@@ -541,7 +561,10 @@ library {
     fn readable(held: Duration<WrittenTime>) -> Option<WrittenDuration> {
         list_fold(
             None,
-            fn (candidate: WrittenDuration, found: Option<WrittenDuration>) -> Option<WrittenDuration> {
+            fn (
+                candidate: WrittenDuration,
+                found: Option<WrittenDuration>
+            ) -> Option<WrittenDuration> {
                 match found {
                     Some(value) -> Some(value),
                     None -> match written_span(candidate) {
@@ -562,7 +585,10 @@ library {
     // This is the choice expansion deliberately left open, and it is made
     // here so that a span nothing readable spells is a complaint about the
     // document's spelling policy rather than a note quietly rounded.
-    fn spelled_as(policy: Spelling, held: Duration<WrittenTime>) -> Result<WrittenDuration, Text> {
+    fn spelled_as(
+        policy: Spelling,
+        held: Duration<WrittenTime>
+    ) -> Result<WrittenDuration, Text> {
         match policy {
             ExactValues -> Ok(ExactSpan(duration_ratio(held))),
             ShortestReadable -> match readable(held) {

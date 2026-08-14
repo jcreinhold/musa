@@ -24,7 +24,11 @@ library {
     // steps. Index zero is the start, which is what makes a count of one mean
     // "the pattern, stated once".
     fn rising_degree(start: Degree, steps: Nat, index: Nat) -> Degree {
-        nat_fold(start, fn (nth: Nat, from: Degree) -> Degree { risen_by(steps, nth, from) }, index)
+        nat_fold(
+            start,
+            fn (nth: Nat, from: Degree) -> Degree { risen_by(steps, nth, from) },
+            index
+        )
     }
 
     // The rise itself, as the `nat_fold` step it is applied by. The index is
@@ -37,7 +41,11 @@ library {
     // a `nat` has no sign and a direction that could be forgotten is a
     // direction that will be.
     fn falling_degree(start: Degree, steps: Nat, index: Nat) -> Degree {
-        nat_fold(start, fn (nth: Nat, from: Degree) -> Degree { fallen_by(steps, nth, from) }, index)
+        nat_fold(
+            start,
+            fn (nth: Nat, from: Degree) -> Degree { fallen_by(steps, nth, from) },
+            index
+        )
     }
 
     // The fall, as the `nat_fold` step it is applied by.
@@ -66,9 +74,15 @@ library {
     // Harmonize a whole walk. The quality of each chord is the collection's,
     // so a sequence in minor is a different succession of qualities from the
     // same sequence in major without either being written twice.
-    fn harmonized(collection: Scale, members: Nat, walk: List<Degree>) -> List<Option<ChordClass>> {
+    fn harmonized(
+        collection: Scale,
+        members: Nat,
+        walk: List<Degree>
+    ) -> List<Option<ChordClass>> {
         map(
-            fn (written: Degree) -> Option<ChordClass> { stacked_on(collection, members, written) },
+            fn (written: Degree) -> Option<ChordClass> {
+                stacked_on(collection, members, written)
+            },
             walk,
         )
     }
@@ -81,22 +95,31 @@ library {
     }
 
     // The chord the descending-fifths sequence reaches at one index.
-    fn descending_fifths_chord(collection: Scale, start: Degree, members: Nat, index: Nat) -> Option<ChordClass> {
+    fn descending_fifths_chord(
+        collection: Scale,
+        start: Degree,
+        members: Nat,
+        index: Nat
+    ) -> Option<ChordClass> {
         stacked_on(collection, members, descending_fifths_degree(start, index))
     }
 
     // The descending-fifths sequence as triads. In a major collection this is
     // the succession OMT writes `I–IV–viiº–iii–vi–ii–V–I`, and the diminished
     // triad in it is the collection's doing rather than an exception. OMT 049.
-    fn descending_fifths(collection: Scale, start: Degree, count: Nat) -> List<Option<ChordClass>> {
-        harmonized(collection, 3, falling_degrees(start, 4, count))
-    }
+    fn descending_fifths(
+        collection: Scale,
+        start: Degree,
+        count: Nat
+    ) -> List<Option<ChordClass>> { harmonized(collection, 3, falling_degrees(start, 4, count)) }
 
     // The same sequence as seventh chords, which is how OMT 049 most often
     // presents it because the sevenths chain the resolutions together.
-    fn descending_fifths_sevenths(collection: Scale, start: Degree, count: Nat) -> List<Option<ChordClass>> {
-        harmonized(collection, 4, falling_degrees(start, 4, count))
-    }
+    fn descending_fifths_sevenths(
+        collection: Scale,
+        start: Degree,
+        count: Nat
+    ) -> List<Option<ChordClass>> { harmonized(collection, 4, falling_degrees(start, 4, count)) }
 
     // The ascending-fifths sequence: roots rise four scale steps each time.
     // A different pattern from the descending one and not its retrograde,
@@ -106,9 +129,11 @@ library {
     }
 
     // The ascending-fifths sequence as triads.
-    fn ascending_fifths(collection: Scale, start: Degree, count: Nat) -> List<Option<ChordClass>> {
-        harmonized(collection, 3, rising_degrees(start, 4, count))
-    }
+    fn ascending_fifths(
+        collection: Scale,
+        start: Degree,
+        count: Nat
+    ) -> List<Option<ChordClass>> { harmonized(collection, 3, rising_degrees(start, 4, count)) }
 
     // The descending-thirds sequence, the skeleton under the descending 5–6
     // pattern: roots fall two scale steps each time. OMT 049.
@@ -117,9 +142,11 @@ library {
     }
 
     // The descending-thirds sequence as triads.
-    fn descending_thirds(collection: Scale, start: Degree, count: Nat) -> List<Option<ChordClass>> {
-        harmonized(collection, 3, falling_degrees(start, 2, count))
-    }
+    fn descending_thirds(
+        collection: Scale,
+        start: Degree,
+        count: Nat
+    ) -> List<Option<ChordClass>> { harmonized(collection, 3, falling_degrees(start, 2, count)) }
 
     // The ascending-seconds sequence, the skeleton under the ascending 5–6
     // pattern and under parallel first-inversion chords: roots rise one scale
@@ -129,15 +156,21 @@ library {
     }
 
     // The ascending-seconds sequence as triads, in root position.
-    fn ascending_seconds(collection: Scale, start: Degree, count: Nat) -> List<Option<ChordClass>> {
-        harmonized(collection, 3, rising_degrees(start, 1, count))
-    }
+    fn ascending_seconds(
+        collection: Scale,
+        start: Degree,
+        count: Nat
+    ) -> List<Option<ChordClass>> { harmonized(collection, 3, rising_degrees(start, 1, count)) }
 
     // The same walk with every chord in first inversion: the parallel `6/3`
     // passage OMT 049 describes. The inversion is a designation on the chord
     // class and not yet a bass note — which note actually sounds lowest is
     // still the voicing's decision.
-    fn parallel_sixths(collection: Scale, start: Degree, count: Nat) -> List<Option<ChordClass>> {
+    fn parallel_sixths(
+        collection: Scale,
+        start: Degree,
+        count: Nat
+    ) -> List<Option<ChordClass>> {
         map(first_inversion, ascending_seconds(collection, start, count))
     }
 

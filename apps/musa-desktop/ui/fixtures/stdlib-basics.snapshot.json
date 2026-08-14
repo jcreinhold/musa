@@ -2,7 +2,7 @@
   "document": 0,
   "name": "stdlib-basics.musa",
   "kind": "piece",
-  "source": "// Standard modules are explicit, version-matched source libraries. Their\n// functions pass through the same checker and evaluator as these definitions.\npiece \"Standard Library Basics\" {\n    import std::core;\n    import std::list;\n    import std::option;\n\n    let subject: Music = music {\n        c4/4\n        d4/4\n    };\n\n    fn same_pitch(p: Pitch) -> Pitch { p }\n\n    let answer: Music = compose_music(fn (line: Music) -> Music { transpose(P8, line) }, retrograde, subject);\n    let chosen: Pitch = pitch_or_else(c4, same_pitch, Some(e4));\n    let counting: List<Nat> = naturals(4);\n\n    score {\n        part strings {\n            voice duet {\n                use together(subject, shift(1/2, answer));\n                c5/2\n                rest/2\n            }\n        }\n    }\n}\n",
+  "source": "// Standard modules are explicit, version-matched source libraries. Their\n// functions pass through the same checker and evaluator as these definitions.\npiece \"Standard Library Basics\" {\n    import std::core;\n    import std::list;\n    import std::option;\n\n    let subject: Music = music {\n        c4/4\n        d4/4\n    };\n\n    fn same_pitch(p: Pitch) -> Pitch { p }\n\n    let answer: Music = compose_music(\n        fn (line: Music) -> Music { transpose(P8, line) },\n        retrograde,\n        subject\n    );\n    let chosen: Pitch = pitch_or_else(c4, same_pitch, Some(e4));\n    let counting: List<Nat> = naturals(4);\n\n    score {\n        part strings {\n            voice duet {\n                use together(subject, shift(1/2, answer));\n                c5/2\n                rest/2\n            }\n        }\n    }\n}\n",
   "revision": 0,
   "compiles": true,
   "unsaved": true,
@@ -66,17 +66,17 @@
               "label": "together(subject, shift(1/2, answer))",
               "kind": "occurrence",
               "span": {
-                "start": 663,
-                "end": 705
+                "start": 693,
+                "end": 735
               }
             }
           ],
           "noteIndex": 1,
           "occurrence": "occurrence-0",
-          "line": 22,
+          "line": 26,
           "span": {
-            "start": 663,
-            "end": 705
+            "start": 693,
+            "end": 735
           },
           "definitionSpan": {
             "start": 297,
@@ -88,8 +88,8 @@
               "end": 301
             },
             {
-              "start": 663,
-              "end": 705
+              "start": 693,
+              "end": 735
             }
           ],
           "decision": null
@@ -128,17 +128,17 @@
               "label": "together(subject, shift(1/2, answer))",
               "kind": "occurrence",
               "span": {
-                "start": 663,
-                "end": 705
+                "start": 693,
+                "end": 735
               }
             }
           ],
           "noteIndex": 2,
           "occurrence": "occurrence-0",
-          "line": 22,
+          "line": 26,
           "span": {
-            "start": 663,
-            "end": 705
+            "start": 693,
+            "end": 735
           },
           "definitionSpan": {
             "start": 310,
@@ -150,8 +150,8 @@
               "end": 314
             },
             {
-              "start": 663,
-              "end": 705
+              "start": 693,
+              "end": 735
             }
           ],
           "decision": null
@@ -190,8 +190,8 @@
               "label": "together(subject, shift(1/2, answer))",
               "kind": "occurrence",
               "span": {
-                "start": 663,
-                "end": 705
+                "start": 693,
+                "end": 735
               }
             },
             {
@@ -207,10 +207,10 @@
           ],
           "noteIndex": 1,
           "occurrence": "occurrence-1",
-          "line": 22,
+          "line": 26,
           "span": {
-            "start": 663,
-            "end": 705
+            "start": 693,
+            "end": 735
           },
           "definitionSpan": {
             "start": 310,
@@ -222,8 +222,8 @@
               "end": 314
             },
             {
-              "start": 663,
-              "end": 705
+              "start": 693,
+              "end": 735
             }
           ],
           "decision": null
@@ -262,8 +262,8 @@
               "label": "together(subject, shift(1/2, answer))",
               "kind": "occurrence",
               "span": {
-                "start": 663,
-                "end": 705
+                "start": 693,
+                "end": 735
               }
             },
             {
@@ -279,10 +279,10 @@
           ],
           "noteIndex": 2,
           "occurrence": "occurrence-1",
-          "line": 22,
+          "line": 26,
           "span": {
-            "start": 663,
-            "end": 705
+            "start": 693,
+            "end": 735
           },
           "definitionSpan": {
             "start": 297,
@@ -294,8 +294,8 @@
               "end": 301
             },
             {
-              "start": 663,
-              "end": 705
+              "start": 693,
+              "end": 735
             }
           ],
           "decision": null
@@ -332,19 +332,19 @@
           "path": [],
           "noteIndex": null,
           "occurrence": null,
-          "line": 23,
+          "line": 27,
           "span": {
-            "start": 722,
-            "end": 726
+            "start": 752,
+            "end": 756
           },
           "definitionSpan": {
-            "start": 722,
-            "end": 726
+            "start": 752,
+            "end": 756
           },
           "supportedBy": [
             {
-              "start": 722,
-              "end": 726
+              "start": 752,
+              "end": 756
             }
           ],
           "decision": null
@@ -377,19 +377,19 @@
           "path": [],
           "noteIndex": null,
           "occurrence": null,
-          "line": 24,
+          "line": 28,
           "span": {
-            "start": 743,
-            "end": 749
+            "start": 773,
+            "end": 779
           },
           "definitionSpan": {
-            "start": 743,
-            "end": 749
+            "start": 773,
+            "end": 779
           },
           "supportedBy": [
             {
-              "start": 743,
-              "end": 749
+              "start": 773,
+              "end": 779
             }
           ],
           "decision": null
@@ -404,8 +404,8 @@
             "label": "together(subject, shift(1/2, answer))",
             "kind": "occurrence",
             "span": {
-              "start": 663,
-              "end": 705
+              "start": 693,
+              "end": 735
             }
           }
         ],
@@ -413,10 +413,10 @@
         "motif": "together",
         "declaration": null,
         "useSite": {
-          "start": 663,
-          "end": 705
+          "start": 693,
+          "end": 735
         },
-        "line": 22,
+        "line": 26,
         "events": [
           "event-0",
           "event-1"
@@ -429,8 +429,8 @@
             "label": "together(subject, shift(1/2, answer))",
             "kind": "occurrence",
             "span": {
-              "start": 663,
-              "end": 705
+              "start": 693,
+              "end": 735
             }
           },
           {
@@ -448,10 +448,10 @@
         "motif": "together",
         "declaration": null,
         "useSite": {
-          "start": 663,
-          "end": 705
+          "start": 693,
+          "end": 735
         },
-        "line": 22,
+        "line": 26,
         "events": [
           "event-2",
           "event-3"
@@ -972,8 +972,8 @@
       "site": {
         "where": "open",
         "span": {
-          "start": 486,
-          "end": 492
+          "start": 516,
+          "end": 522
         }
       }
     },
@@ -992,8 +992,8 @@
       "site": {
         "where": "open",
         "span": {
-          "start": 551,
-          "end": 559
+          "start": 581,
+          "end": 589
         }
       }
     }
@@ -1009,12 +1009,12 @@
       "external": null,
       "uses": [
         {
-          "start": 468,
-          "end": 475
+          "start": 493,
+          "end": 500
         },
         {
-          "start": 676,
-          "end": 683
+          "start": 706,
+          "end": 713
         }
       ]
     },
@@ -1028,8 +1028,8 @@
       "external": null,
       "uses": [
         {
-          "start": 520,
-          "end": 530
+          "start": 550,
+          "end": 560
         }
       ]
     },
@@ -1043,8 +1043,8 @@
       "external": null,
       "uses": [
         {
-          "start": 696,
-          "end": 702
+          "start": 726,
+          "end": 732
         }
       ]
     },
@@ -1052,8 +1052,8 @@
       "name": "chosen",
       "kind": "value",
       "declaration": {
-        "start": 486,
-        "end": 492
+        "start": 516,
+        "end": 522
       },
       "external": null,
       "uses": []
@@ -1062,8 +1062,8 @@
       "name": "counting",
       "kind": "value",
       "declaration": {
-        "start": 551,
-        "end": 559
+        "start": 581,
+        "end": 589
       },
       "external": null,
       "uses": []
@@ -1087,8 +1087,8 @@
       "external": "musa-stdlib:/std/option.musa",
       "uses": [
         {
-          "start": 502,
-          "end": 515
+          "start": 532,
+          "end": 545
         }
       ]
     },
@@ -1099,8 +1099,8 @@
       "external": "musa-stdlib:/std/list.musa",
       "uses": [
         {
-          "start": 573,
-          "end": 581
+          "start": 603,
+          "end": 611
         }
       ]
     },
@@ -1108,8 +1108,8 @@
       "name": "strings",
       "kind": "part",
       "declaration": {
-        "start": 612,
-        "end": 619
+        "start": 642,
+        "end": 649
       },
       "external": null,
       "uses": []
@@ -1118,8 +1118,8 @@
       "name": "duet",
       "kind": "voice",
       "declaration": {
-        "start": 640,
-        "end": 644
+        "start": 670,
+        "end": 674
       },
       "external": null,
       "uses": []
