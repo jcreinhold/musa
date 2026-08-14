@@ -148,6 +148,11 @@ are storable data, and the admitted payload types of `../kernel/12-payload-admis
 never storable data, and neither is any container holding one — including at a depth the surface never writes out, which
 is why the check is structural rather than a surface-syntax rule.
 
+`SyntaxStep[C,A]` (§5.9) is the second type that is never storable data, and it is refused for a stronger reason than an
+arrow's: a step *holds* the algebra of the recursor that minted it, which is four source closures and a child of the
+region being read. It is excluded from `d`, no `data` field may store one at any depth, and it never crosses the
+expansion phase's boundary — so the completed phase result stays storable data, as §5.9's law 11 requires.
+
 A nominal declaration group is checked once: mutually recursive types are grouped, a stored function field is rejected,
 and the group is accepted as storable data when every field leaving it is already storable data. So `Tree[nat]` may be
 storable data while a type with a `unit → unit` field is not. The check terminates because the declaration graph is
@@ -444,6 +449,9 @@ R_((τ₁,…,τₙ)→τ)(t)     iff t : (τ₁,…,τₙ)→τ, t ∈ SN, and 
                             R_τᵢ(aᵢ), R_τ(t(a₁,…,aₙ))
 ```
 
+§5.9 adds one clause to this list, for the expansion phase's `SyntaxStep[C,A]`, and two cases to the fundamental lemma
+below. Both are stated there rather than here because the type exists only inside that phase.
+
 These candidates satisfy: (i) membership implies `SN`; (ii) they are closed under reduction; and (iii) a neutral term
 whose immediate reducts are in the candidate is in the candidate. All three properties follow simultaneously by
 induction on the type; the arrow case applies an arbitrary reducible argument tuple, and the product case uses the
@@ -710,6 +718,162 @@ without panicking, diagnosing, or reporting a Rust-level absence at a non-`optio
 A new base type is admissible only with a stated reason no existing domain can carry the distinction, a D1–D4 discharge
 with its registry entries, and a row in `03-musical-domains.md` giving its definition, source, and a counterexample it
 rules out.
+
+### 5.9 The expansion phase: sealed steps and the inherited-context recursor
+
+A syntax adapter runs before name resolution and inference: it is handed the region a composer wrote and answers with
+the syntax that stands there instead. The adapter module is written in this same calculus and checked by this same
+checker, under a **phase environment** that adds three things and takes nothing away — the phase-local types `Syntax`,
+`NodePath`, `BindingPath`, and `SyntaxStep[C,A]`; a separate registry of compiler-owned phase operations; and the
+`Reading::Expansion` scope in which those names mean anything at all. Ordinary source is read in a scope where none of
+them resolve, which is law 11 below.
+
+The phase registry is a **second registry, not a fifth family**: nothing in it is a δ-builtin, a structural eliminator,
+a track builtin, or a machine builtin, so §5.8's four families remain the four families of the source core, and the
+disjointness law it names is unaffected. Each phase operation carries the same obligation a source builtin carries — it
+earns its place by hiding information a library could not hide — and the descent operations state theirs as:
+`recurse_syntax` hides the reader's node representation, each node's structural path, and the suspended entry into a
+proper child; `run_syntax_step` hides which child and which algebra a step was minted for; `syntax_fold_from_leaves`
+hides what it always hid.
+
+#### The type
+
+```text
+τ ::= … | SyntaxStep[C, A]    % source spelling `SyntaxStep<C, A>`; phase-local, never storable data
+```
+
+One suspended recursive call, sealed to three things at once: one immediate proper child of the node being read, the
+algebra of the recursor that exposed it, and the operation that resumes that recursor. `C` and `A` are ordinary type
+variables — an adapter may inherit a function and answer with one — and the constructor is a nominal phase-local
+constructor at kind *ordinary*, quantified only in the operations' own schemes. Rank stays 1.
+
+The type is spellable in the phase environment, and only there, because a group branch is worth factoring out:
+`fn read_group(state, here, delimiter, kids: List<SyntaxStep<State, State>>)` is a definition, and without a written
+spelling every branch would have to be one inline lambda. It is **not** spellable in ordinary source, has no constructor
+in any scope, and no `data` field may hold one (§1.1).
+
+#### The operations
+
+```text
+recurse_syntax : ((C, NodePath) → A,
+                  (C, NodePath, text, text) → A,
+                  (C, NodePath, text) → A,
+                  (C, NodePath, text, list SyntaxStep[C,A]) → A,
+                  C, Syntax) → A
+run_syntax_step : (C, SyntaxStep[C,A]) → A
+```
+
+The branches are `missing`, `token`, `identifier`, `group`, in that order, then the initial context, then the subject.
+The context is the *first* argument of every branch, because `group`'s last argument is the step list and burying the
+context behind it reads worse in every program the trial wrote. A child's path is not paired with its step: a branch
+receives its own path when it is entered, so a branch cannot name a child without entering it.
+
+`run_syntax_step` is an operation and not callable syntax. Were a step written `next(c)` it would have to be a function
+type, any `C → A` would unify with it, sealing would stop being a type-level fact, and the `d` exclusion could not be
+stated for the reason it must be.
+
+#### Intrinsic equations
+
+Let `R` be the function an algebra `(m, tk, id, g)` determines, and `step_R(s)` the step minted for a child `s`:
+
+```text
+R(c, Missing(p))                = m(c, p)
+R(c, Token(p, k, x))            = tk(c, p, k, x)
+R(c, Identifier(p, n))          = id(c, p, n)
+R(c, Group(p, d, [s₁..sₙ]))     = g(c, p, d, [step_R(s₁), …, step_R(sₙ)])
+run_syntax_step(c, step_R(s))   = R(c, s)
+```
+
+Minting is the only introduction and running is the only elimination. Nothing takes a step apart, and no operation
+yields its child, its algebra, a path, a scope, a source range, or raw syntax from one.
+
+**The derived fold.** `syntax_fold_from_leaves` is `recurse_syntax` at a context nothing reads, running every step in
+source order and handing the resulting `list A` to the group branch:
+
+```text
+syntax_fold_from_leaves(m, tk, id, g, s)
+  ≡ recurse_syntax(λ(_,p). m(p), λ(_,p,k,x). tk(p,k,x), λ(_,p,n). id(p,n),
+                   λ(_,p,d,ks). g(p, d, map(λk. run_syntax_step(unit, k), ks)),
+                   unit, s)
+```
+
+It stays public, and its name says which end it runs from, because a name that hides the eagerness is what produced the
+staff adapter's shadow-tree encoding. Its charge is unchanged, so no shipped adapter's budget moves.
+
+#### Sealed association and local decrease
+
+**Lemma (association and decrease).** Let `step_R(s)` be minted for a proper child `s` of `Group(p, d, [s₁..sₙ])` while
+`R(c, Group(p, d, [s₁..sₙ]))` is evaluated. Then for every context `c'`, `run_syntax_step(c', step_R(s))` reduces to
+`R(c', s)`, and `s` is a strict subtree of that group.
+
+*Proof.* Immediate from the equations above. Minting is the only way a step comes into existence and occurs only in the
+group case, where each `sᵢ` is by construction an immediate proper child; running is the only elimination and its
+equation names `R` and `s`, neither of which any operation can replace. Hence the pair sealed at mint time is the pair
+used at every run, however many runs there are, wherever they occur, and whichever recursor lexically encloses them. ∎
+
+This is what sealing buys, and it is not a termination theorem: a branch may start a fresh recursor on the original
+subject, which is larger than the child whose step is in flight, so no globally decreasing runtime tree size exists to
+point at. Termination is discharged below instead.
+
+#### Normalization
+
+**Premise — definition acyclicity.** Definitions form a directed acyclic graph; the compiler rejects a cycle
+(`DependencyCycle`), and there is no `fix`, no `letrec`, and no recursive lambda. The premise is already enforced for
+older reasons, and it must be stated here because it is what makes the induction on typing derivations well-founded when
+an algebra's body starts a fresh recursor.
+
+**Candidate.** §5.5's reducibility predicates gain one clause:
+
+```text
+R_SyntaxStep[C,A](t)   iff t : SyntaxStep[C,A], t ∈ SN, and for every
+                            reducible c : C, run_syntax_step(c, t) is reducible at A
+```
+
+The clause is hereditary in the sense the arrow clause is — the predicate at a constructor is the action of its
+eliminator — and it is universally quantified over contexts, which is what makes it survive capture, storage, delay, and
+repetition: those operations do not choose the context, and the clause has already promised every context.
+
+**Fundamental lemma, case `recurse_syntax(m, tk, id, g, c₀, s)`.** With `m`, `tk`, `id`, `g`, `c₀`, `s` reducible, `s`
+is a value of type `Syntax`, which is storable data with no arrow at any depth and hence a finite tree. Prove by an
+inner induction on the size of `s`, universally quantified over contexts: for every reducible `c`,
+`recurse_syntax(m, tk, id, g, c, s)` is reducible.
+
+- `s = Missing(p)` / `Token(p,k,x)` / `Identifier(p,n)`: the term reduces to an application of a reducible function to
+  reducible arguments, hence is reducible.
+- `s = Group(p, d, [s₁..sₙ])`: the term reduces to `g(c, p, d, [step(s₁), …, step(sₙ)])`. Each `step(sᵢ)` is reducible
+  at `SyntaxStep[C,A]` — it is a value, hence SN, and for every reducible `c'`, `run_syntax_step(c', step(sᵢ))` reduces
+  to `recurse_syntax(m, tk, id, g, c', sᵢ)`, reducible by the inner induction hypothesis because `sᵢ` is a strict
+  subtree. A list of reducible elements is reducible, so `g` applied to reducible arguments is reducible. ∎
+
+**Fundamental lemma, case `run_syntax_step(c, e)`.** Reducibility of `e` at `SyntaxStep[C,A]` is exactly the statement
+that `run_syntax_step(c, e)` is reducible at `A` for reducible `c`. ∎
+
+The hostile terms are covered without a further case. Function-valued `C` and `A` are unconstrained by either case. A
+step captured in a closure is a reducible value substituted for a free variable, which is the λ-case. A step stored in
+an `option` or a `list` is covered by the container clause and is not re-derived on the way out. Delayed and repeated
+use are two instances of the one promise the candidate makes about every context. A nested recursor inside `g`'s body is
+handled by its own instance of the case above, with its own value induction on its own subject: the two inductions are
+lexicographic — outer on the typing derivation, inner on the subject value — and neither appeals to the other's
+conclusion. Acyclicity forbids the one term that would break this, an algebra that is its own descendant in the
+definition graph.
+
+No case needs a dynamic owner check, a failure result for `run_syntax_step`, a rank-2 region, an affine or linear use
+restriction, or general recursion, and none is added.
+
+#### Budget
+
+Minting a step and running a step are charged by their own reduction kinds, and a descent is charged per node entered. A
+step a branch keeps and never runs still costs its mint; a step run twice costs twice. New reduction kinds are not a
+change to an existing weight, so the cost table's version is unaffected.
+
+#### What this supersedes
+
+Prompt 127da's design law — "the fold is the only way into a syntax value" — is superseded here, deliberately. `Syntax`
+remains opaque, paths remain compiler-derived, `SourceInfo` remains unreadable, and the descent operations remain the
+only way in; what changes is that an adapter may look at a node before deciding whether, in what order, and under what
+context to read its children. The reason is evidence rather than taste: under the catamorphism a reader whose group
+meaning depends on inherited information must build a shadow tree and traverse it again, and a re-descending reader of
+nested groups cannot be written at all without the mutual recursion acyclicity forbids.
 
 ## 6. Implementation boundary
 

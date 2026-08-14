@@ -574,6 +574,24 @@ pub(crate) enum Type {
     NodePath,
     /// Which name a binder declares ([`crate::syntax::BindingPath`]).
     BindingPath,
+    /// `SyntaxStep<C, A>` — one suspended recursive call, sealed to the child
+    /// it descends to and the algebra that exposed it.
+    ///
+    /// Phase-local like [`Type::Syntax`], and the one phase type with
+    /// arguments, so `C` and `A` unify the way any other member does. It has
+    /// no source constructor: a step is minted only by the recursor's group
+    /// case and consumed only by `run_syntax_step`, which is what makes
+    /// `docs/rules/language/02-core-calculus.md` §5.9's association lemma a
+    /// fact about the value rather than a check someone has to run.
+    ///
+    /// **Never storable data**, at any depth, for a stronger reason than an
+    /// arrow's: what it hides *is* an algebra of source closures. The
+    /// exclusion is enforced structurally in [`crate::infer::Unifier`], beside
+    /// the arrow's.
+    SyntaxStep {
+        context: Box<Self>,
+        answer: Box<Self>,
+    },
     Function(Vec<Self>, Box<Self>),
 }
 
@@ -642,6 +660,7 @@ impl std::fmt::Display for Type {
             Self::Syntax => out.write_str("Syntax"),
             Self::NodePath => out.write_str("NodePath"),
             Self::BindingPath => out.write_str("BindingPath"),
+            Self::SyntaxStep { context, answer } => write!(out, "SyntaxStep<{context}, {answer}>"),
             Self::Function(parameters, result) => {
                 if parameters.len() == 1 {
                     let parameter = parameters.first().unwrap_or(&Self::Unit);
@@ -1241,6 +1260,10 @@ fn encode_exactly(value: &Value, bytes: &mut Vec<u8>) -> Option<()> {
         | Value::Primitive { .. }
         | Value::Machine { .. }
         | Value::Closure(_)
+        // Refused beside the closure, and for the same reason: a sealed step
+        // holds an algebra of them. Nothing storable can be one, so nothing
+        // exactly encoded ever is.
+        | Value::SyntaxStep(_)
         | Value::Builtin(_) => return None,
     }
     Some(())
@@ -1688,7 +1711,7 @@ impl Eliminator {
     }
 }
 
-/// The ten phase-local syntax operations of prompt 127da.
+/// The fourteen phase-local syntax operations.
 ///
 /// A closed set, like [`Eliminator`] and [`MachineOp`], and deliberately *not* a
 /// [`Family`]: §5.8's four families classify the builtins ordinary source can
@@ -1697,15 +1720,41 @@ impl Eliminator {
 /// means here — one core, one evaluator, and an environment that offers more
 /// names in one place.
 ///
-/// Every path a transformer holds was *derived*: [`Self::Fold`] hands each
+/// Every path a transformer holds was *derived*: [`Self::Recurse`] hands each
 /// input node its own structural path, and [`Self::Built`] and
 /// [`Self::Binding`] derive a new one from a path already held. Nothing here
 /// takes a number and returns a path, and nothing mints a fresh id, which is
 /// the repair `37-final-blocker.md` §1 and `34-proof-review.md` asked for.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum SyntaxOp {
-    /// `syntax_fold(missing, token, identifier, group, subject)` — the one way
-    /// into a syntax value, with each step function receiving the node's path.
+    /// `recurse_syntax(missing, token, identifier, group, context, subject)` —
+    /// the way into a syntax value, with each branch receiving the inherited
+    /// context and the node's own path.
+    ///
+    /// The group branch is handed a `List<SyntaxStep<C,A>>` rather than a
+    /// `List<A>`: it decides whether, in what order, and under what context
+    /// each child is read. Prompt 127da's "the fold is the only way in" is
+    /// superseded here — `Syntax` is still opaque, paths are still derived,
+    /// and what changed is only that an adapter may look at a node before
+    /// reading its children (`../rules/language/02-core-calculus.md` §5.9).
+    Recurse,
+    /// `run_syntax_step(context, next)` — resume one sealed step.
+    ///
+    /// A builtin and not callable syntax, for two reasons that point the same
+    /// way. A step spelled `next(c)` would *be* a function type, so any `C ->
+    /// A` would unify with it and sealing would stop being a fact about the
+    /// type; and an arrow-shaped step could not be excluded from `d` for the
+    /// reason it must be.
+    Run,
+    /// `syntax_fold_from_leaves(missing, token, identifier, group, subject)` —
+    /// the derived bottom-up fold: every child is read, in source order,
+    /// before its group's branch runs.
+    ///
+    /// Named for which end it runs from, because that is the behaviour a
+    /// caller has to plan around and it cannot be in the type — the same
+    /// argument prompt 127dcfaa made for the two list folds. It is
+    /// [`Self::Recurse`] at a context nothing reads, and the traversal below
+    /// is literally the same function in its other mode.
     Fold,
     /// `syntax_at(subject, path)` — the input node at `path`, if there is one.
     /// How a transformer preserves input with its source information intact.
@@ -1755,13 +1804,17 @@ enum SyntaxOp {
 /// What kind of phase-local operation a [`SyntaxOp`] is.
 ///
 /// Two cases, not four: this registry is small on purpose, and the split that
-/// matters is between the single eliminator and the total first-order builders
-/// around it. "There is exactly one fold over syntax" is then a fact the
-/// registry states rather than a claim a reader has to count out.
+/// matters is between the operations that eliminate a syntax value and the
+/// total first-order builders around it. "Descent into syntax happens in
+/// exactly one place" is then a fact the registry states rather than a claim a
+/// reader has to count out.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum PhaseFamily {
-    /// The one eliminator: it takes function arguments and carries a rank-1
-    /// scheme, so §5.6's account of an eliminator applies to it unchanged.
+    /// Descent: [`SyntaxOp::Recurse`], [`SyntaxOp::Run`], and the derived
+    /// [`SyntaxOp::Fold`]. Each takes function arguments and carries a rank-1
+    /// scheme, so §5.6's account of an eliminator applies to them unchanged,
+    /// and all three run the *same* traversal — [`recurse_syntax`] — so there
+    /// is one descent in the implementation and not three.
     Fold,
     /// A total first-order operation over syntax values and paths. Each is a
     /// function of its displayed arguments and nothing else — no counter, no
@@ -1774,9 +1827,10 @@ impl SyntaxOp {
     const fn arity(self) -> usize {
         match self {
             Self::Checked | Self::Number => 1,
-            Self::At | Self::Binding | Self::Identifier | Self::Binder => 2,
+            Self::At | Self::Binding | Self::Identifier | Self::Binder | Self::Run => 2,
             Self::Anchor | Self::Built | Self::Token | Self::Group | Self::Reference => 3,
             Self::Fold => 5,
+            Self::Recurse => 6,
         }
     }
 
@@ -1822,6 +1876,47 @@ impl SyntaxOp {
                     ],
                     Box::new(to),
                 )
+            }
+            // Two variables, both **ordinary**: an adapter may inherit a
+            // function and answer with one, and program five of prompt
+            // 127dcfae's trial does both at once. Rank stays 1 — they are
+            // quantified here, at the outside of this one scheme, and
+            // `SyntaxStep<C, A>` is a type constructor over them rather than
+            // a quantifier of its own.
+            Self::Recurse => {
+                let context = unifier.fresh(Kind::Ordinary);
+                let to = unifier.fresh(Kind::Ordinary);
+                let branch = |mut arguments: Vec<Type>| {
+                    arguments.insert(0, context.clone());
+                    Type::Function(arguments, Box::new(to.clone()))
+                };
+                let sealed = Type::SyntaxStep {
+                    context: Box::new(context.clone()),
+                    answer: Box::new(to.clone()),
+                };
+                Type::Function(
+                    vec![
+                        branch(vec![path()]),
+                        branch(vec![path(), Type::Text, Type::Text]),
+                        branch(vec![path(), Type::Text]),
+                        branch(vec![path(), Type::Text, Type::List(Box::new(sealed))]),
+                        context,
+                        syntax(),
+                    ],
+                    Box::new(to),
+                )
+            }
+            // The context comes first for the reason the folding use makes
+            // plain: `fn (kid, later) { run_syntax_step(later, kid) }` puts
+            // the context where the accumulator is.
+            Self::Run => {
+                let context = unifier.fresh(Kind::Ordinary);
+                let to = unifier.fresh(Kind::Ordinary);
+                let sealed = Type::SyntaxStep {
+                    context: Box::new(context.clone()),
+                    answer: Box::new(to.clone()),
+                };
+                Type::Function(vec![context, sealed], Box::new(to))
             }
             Self::At => Type::Function(vec![syntax(), path()], Box::new(Type::Option(Box::new(Type::Syntax)))),
             // Three arguments and not two: the node it is *about*, and the
@@ -1873,10 +1968,23 @@ struct BuiltinOwnership<T, F = Family> {
 /// looked up when ordinary source reads a name. Each entry says what it hides,
 /// for the same reason the source entries do — an operation earns a place in a
 /// compiler-owned registry by hiding something a library could not.
-const SYNTAX_OWNERSHIP: [BuiltinOwnership<SyntaxOp, PhaseFamily>; 12] = [
+const SYNTAX_OWNERSHIP: [BuiltinOwnership<SyntaxOp, PhaseFamily>; 14] = [
+    BuiltinOwnership {
+        operation: SyntaxOp::Recurse,
+        spelling: "recurse_syntax",
+        hidden_information: "the reader's node representation, each node's structural path, and the suspended entry \
+                             into a proper child",
+        family: PhaseFamily::Fold,
+    },
+    BuiltinOwnership {
+        operation: SyntaxOp::Run,
+        spelling: "run_syntax_step",
+        hidden_information: "which child and which algebra a step was minted for",
+        family: PhaseFamily::Fold,
+    },
     BuiltinOwnership {
         operation: SyntaxOp::Fold,
-        spelling: "syntax_fold",
+        spelling: "syntax_fold_from_leaves",
         hidden_information: "the reader's node representation and each node's structural path",
         family: PhaseFamily::Fold,
     },
@@ -3184,8 +3292,34 @@ enum Value {
     NodePath(Box<crate::syntax::NodePath>),
     /// Which name a binder declares and a reference means.
     BindingPath(Box<crate::syntax::BindingPath>),
+    /// One suspended recursive call, sealed (see [`SealedStep`]).
+    SyntaxStep(Box<SealedStep>),
     Closure(Box<Closure>),
     Builtin(Builtin),
+}
+
+/// A suspended recursive call into one immediate proper child.
+///
+/// The three fields travel together and are never separable, which is the
+/// whole of `docs/rules/language/02-core-calculus.md` §5.9's association
+/// lemma: minting is the only way one comes into existence, running is the
+/// only way one is consumed, and nothing between the two can replace the
+/// algebra or the child. A nested recursor handed this value therefore runs
+/// *this* child under *this* algebra, and needs no ownership check to be
+/// stopped from doing anything else — there is no operation that would let it
+/// try.
+#[derive(Clone)]
+struct SealedStep {
+    /// The four branches of the recursor that minted it, in the order
+    /// [`SyntaxOp::Recurse`] takes them.
+    algebra: Vec<Value>,
+    /// The one immediate proper child this descends to. Strictly smaller than
+    /// the group that minted it, which is the local decrease §5.9 states.
+    child: Box<crate::syntax::Syntax>,
+    /// `SyntaxStep<C, A>`, kept because a group inside `child` has to build
+    /// the list of steps it hands its own branch, and a list carries its
+    /// member type.
+    ty: Type,
 }
 
 /// A machine description, as §2's forms build one.
@@ -3593,6 +3727,7 @@ impl Value {
             Self::List { member, .. } => Type::List(Box::new(member.clone())),
             Self::Data { id, arguments, .. } => Type::Nominal(id.clone(), arguments.clone()),
             Self::Music(_) => Type::Music,
+            Self::SyntaxStep(step) => step.ty.clone(),
             Self::Primitive { descriptor, .. } => Type::Primitive {
                 step: Box::new(Type::Step(descriptor.step())),
                 input: Box::new(descriptor.input().ty()),
@@ -3727,6 +3862,17 @@ impl Value {
                 let mut written = Vec::new();
                 held.write_into(&mut written);
                 bytes_witness(&written)
+            }
+            // The child it seals, and the algebra it holds, each read the way
+            // they would be read alone. A step is never a completed phase
+            // result — it is not storable data — so this is reached only where
+            // one is still in flight inside a value being traversed.
+            Self::SyntaxStep(step) => {
+                let mut written = Vec::new();
+                step.child.write_into(&mut written);
+                step.algebra.iter().fold(bytes_witness(&written), |witness, branch| {
+                    witness.rotate_left(5) ^ branch.normalization_witness()
+                })
             }
         }
     }
@@ -4537,6 +4683,7 @@ fn check_and_evaluate_metered(
             | Value::Syntax(_)
             | Value::NodePath(_)
             | Value::BindingPath(_)
+            | Value::SyntaxStep(_)
             | Value::Builtin(_) => None,
         })
         .collect();
@@ -5046,6 +5193,7 @@ fn function_result(ty: &Type) -> Option<&Type> {
         | Type::Syntax
         | Type::NodePath
         | Type::BindingPath
+        | Type::SyntaxStep { .. }
         | Type::List(_) => None,
     }
 }
@@ -5131,6 +5279,9 @@ pub(crate) fn function_type(scope: &TypeScope<'_>, declaration: &FnDecl) -> Opti
 /// can write. They are read only where [`crate::data::TypeScope::in_phase`]
 /// holds, which is the same boundary [`Reading::Expansion`] draws for the
 /// phase's operations — one line between the two languages rather than two.
+///
+/// The three here take no arguments. `SyntaxStep<C, A>` does, so it is read
+/// where the other applied forms are, under the same `in_phase` gate.
 fn phase_type(text: &str) -> Option<Type> {
     match text {
         "Syntax" => Some(Type::Syntax),
@@ -5287,6 +5438,32 @@ fn lower_type(mut resolver: Option<&mut Resolver>, scope: &TypeScope<'_>, node: 
         let arguments = arguments?;
         if matches!(written, "Machine" | "Primitive") {
             return machine_type(resolver.as_deref_mut(), node, written, arguments);
+        }
+        // The phase's one type constructor, and only where an adapter is being
+        // read. It is spellable at all because a group branch is worth
+        // factoring out: `fn group_read(state, here, delimiter, kids:
+        // List<SyntaxStep<State, State>>)` is a definition, and without a
+        // written spelling every branch would have to be one inline lambda.
+        // Ordinary source is read in a scope that is not `in_phase`, so there
+        // the word falls through to "not a type that takes arguments".
+        if written == "SyntaxStep" && scope.in_phase() {
+            let [context, answer] = arguments.as_slice() else {
+                if let Some(resolver) = resolver.as_deref_mut() {
+                    resolver.report(
+                        Diagnostic::error(
+                            Code::WrongArity,
+                            format!("`SyntaxStep` takes 2 type arguments, not {}", arguments.len()),
+                        )
+                        .at(crate::resolve::trimmed_span(node), "written here")
+                        .help("write `SyntaxStep<C, A>`: the context a step is run under, and what it answers with"),
+                    );
+                }
+                return None;
+            };
+            return Some(Type::SyntaxStep {
+                context: Box::new(context.clone()),
+                answer: Box::new(answer.clone()),
+            });
         }
         // Arity is checked here rather than at unification, because a
         // declaration written at the wrong size names no type at all: there is
@@ -5453,7 +5630,8 @@ fn machine_type(
 /// structurally at unification; this is the same question asked of a type the
 /// file wrote out, where there is no variable to constrain.
 fn holds_an_arrow(ty: &Type) -> bool {
-    matches!(ty, Type::Function(_, _)) || crate::infer::member_types(ty).into_iter().any(holds_an_arrow)
+    matches!(ty, Type::Function(_, _) | Type::SyntaxStep { .. })
+        || crate::infer::member_types(ty).into_iter().any(holds_an_arrow)
 }
 
 /// What a dotted name turned out to be, once a record projection is one of the
@@ -7558,6 +7736,7 @@ impl Checker<'_> {
             | Value::Syntax(_)
             | Value::NodePath(_)
             | Value::BindingPath(_)
+            | Value::SyntaxStep(_)
             | Value::Builtin(_) => Coverage::Literal(literal_key(&value)),
         };
         Some((Pattern::Literal(value), covered, bindings))
@@ -8138,6 +8317,7 @@ fn uncovered(world: &World, target: &Type, coverage: &IndexSet<Coverage>) -> Opt
         | Type::Syntax
         | Type::NodePath
         | Type::BindingPath
+        | Type::SyntaxStep { .. }
         | Type::Function(_, _) => Some("_".to_owned()),
     }
 }
@@ -8183,6 +8363,7 @@ fn literal_key(value: &Value) -> String {
         | Value::Syntax(_)
         | Value::NodePath(_)
         | Value::BindingPath(_)
+        | Value::SyntaxStep(_)
         | Value::Builtin(_) => "constructor".to_owned(),
     }
 }
@@ -8484,6 +8665,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 | Value::Syntax(_)
                 | Value::NodePath(_)
                 | Value::BindingPath(_)
+                | Value::SyntaxStep(_)
                 | Value::Music(_) => None,
             }
         }
@@ -8528,6 +8710,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 | Value::Syntax(_)
                 | Value::NodePath(_)
                 | Value::BindingPath(_)
+                | Value::SyntaxStep(_)
                 | Value::Builtin(_) => None,
             }
         }
@@ -8614,6 +8797,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                     | Value::Syntax(_)
                     | Value::NodePath(_)
                     | Value::BindingPath(_)
+                    | Value::SyntaxStep(_)
                     | Value::Builtin(_) => return None,
                 };
                 bindings.insert(name.clone(), bound);
@@ -9099,7 +9283,7 @@ fn eval_builtin(
         .map(|argument| eval(argument, environment, meter))
         .collect::<Option<Vec<_>>>()?;
     match builtin {
-        Builtin::Syntax(operation) => eval_syntax(operation, &values, meter, expression),
+        Builtin::Syntax(operation) => eval_syntax(operation, arguments, &values, meter, expression),
         Builtin::Pc12Of => Some(Value::Pc12(crate::pc12::Pc12::from_number(nat_value(values.first()?)?))),
         Builtin::Pc12Number => {
             let Value::Pc12(member) = values.first()? else {
@@ -9620,6 +9804,7 @@ fn eval_builtin(
                     | Value::Syntax(_)
                     | Value::NodePath(_)
                     | Value::BindingPath(_)
+                    | Value::SyntaxStep(_)
                     | Value::Builtin(_) => None,
                 })
                 .collect();
@@ -9936,10 +10121,21 @@ fn eval_builtin(
 ///
 /// Every case here is a function of the values it was handed and nothing else:
 /// there is no counter, no allocation, and no compiler state to read, so two
-/// runs of one transformer over one region agree exactly. The one recursive
-/// case is [`SyntaxOp::Fold`], and it recurses over a finite value, so it
-/// terminates for the same reason `list_fold_from_start` does.
-fn eval_syntax(operation: SyntaxOp, values: &[Value], meter: &mut WorkMeter, expression: &Expr) -> Option<Value> {
+/// runs of one transformer over one region agree exactly. The recursive cases
+/// are [`SyntaxOp::Recurse`], [`SyntaxOp::Run`], and [`SyntaxOp::Fold`], all
+/// three of which are [`recurse_syntax`], and each descent enters a strict
+/// subtree of a finite value.
+///
+/// `arguments` is here for one reason: the recursor's group branch is handed a
+/// `List<SyntaxStep<C, A>>`, and the member type of that list needs `C`, which
+/// lives on the context argument's checked type and in no value.
+fn eval_syntax(
+    operation: SyntaxOp,
+    arguments: &[Expr],
+    values: &[Value],
+    meter: &mut WorkMeter,
+    expression: &Expr,
+) -> Option<Value> {
     let syntax = |value: &Value| {
         if let Value::Syntax(held) = value {
             Some(held.as_ref().clone())
@@ -9977,7 +10173,24 @@ fn eval_syntax(operation: SyntaxOp, values: &[Value], meter: &mut WorkMeter, exp
     match operation {
         SyntaxOp::Fold => {
             let subject = syntax(values.get(4)?)?;
-            fold_syntax(values, &subject, meter, expression)
+            recurse_syntax(values, &Descent::FromLeaves, &subject, meter, expression)
+        }
+        SyntaxOp::Recurse => {
+            let subject = syntax(values.get(5)?)?;
+            let descent = Descent::Sealed(Box::new(Inherited {
+                context: values.get(4)?.clone(),
+                step_type: Type::SyntaxStep {
+                    context: Box::new(arguments.get(4)?.ty.clone()),
+                    answer: Box::new(expression.ty.clone()),
+                },
+            }));
+            recurse_syntax(values, &descent, &subject, meter, expression)
+        }
+        SyntaxOp::Run => {
+            let Value::SyntaxStep(step) = values.get(1)? else {
+                return None;
+            };
+            run_syntax_step(values.first()?, step, meter, expression)
         }
         // The reader's own reading, handed back rather than re-derived. Both
         // numeric kinds the lexer distinguishes answer here and everything
@@ -10084,53 +10297,145 @@ fn eval_syntax(operation: SyntaxOp, values: &[Value], meter: &mut WorkMeter, exp
     }
 }
 
-/// The path-aware fold, as prompt 127ac generates one for finite data.
+/// How a group's children reach its branch.
 ///
-/// The step function for each case receives the node's own path — read out of
-/// the node rather than reconstructed — so a transformer cannot reach a node
-/// without also holding the path it would build output from. That is the whole
-/// of blocker 1's repair: paths come *from here*, and from deriving one already
-/// held.
-fn fold_syntax(
-    cases: &[Value],
+/// The one difference between the two descents, and therefore the only thing
+/// worth parameterizing. `docs/rules/language/02-core-calculus.md` §5.9's law
+/// 9 is the statement that these two agree on the value when the context is
+/// one nothing reads, and it is checkable here because there is one traversal
+/// to compare against itself.
+#[derive(Clone)]
+enum Descent {
+    /// Sealed steps, under an inherited context. The branch decides whether,
+    /// in what order, and under what context each child is read. Boxed
+    /// because the other descent carries nothing at all.
+    Sealed(Box<Inherited>),
+    /// Already-read answers, in source order: every child is read before its
+    /// group's branch runs. The derived `syntax_fold_from_leaves`.
+    FromLeaves,
+}
+
+/// What a sealed descent carries down.
+#[derive(Clone)]
+struct Inherited {
+    /// The context this node is read under — §5.9's `c`.
+    context: Value,
+    /// `SyntaxStep<C, A>`, for the member type of the list a group branch is
+    /// handed.
+    step_type: Type,
+}
+
+/// The one descent into a syntax value.
+///
+/// Each branch receives the node's own path — read out of the node rather than
+/// reconstructed — so a transformer cannot reach a node without also holding
+/// the path it would build output from. That is blocker 1's repair: paths come
+/// *from here*, and from deriving one already held.
+///
+/// Under [`Descent::Sealed`] the group branch is handed one
+/// [`Value::SyntaxStep`] per child instead of one answer per child. Minting is
+/// the only way such a value is made and [`SyntaxOp::Run`] the only way one is
+/// consumed, so the child and the algebra a step names are decided here and
+/// nowhere else — which is why a step carried into a nested recursor still
+/// runs its own child under its own algebra, with no ownership check to
+/// perform (§5.9).
+///
+/// Termination is not the local decrease alone: a branch may capture a step,
+/// run it later, run it twice, or start a fresh recursor on any subject in
+/// scope. The governing argument is §5.9's reducibility candidate and
+/// fundamental lemma, which rest on the checker's definition acyclicity; this
+/// function is that argument's implementation and not a substitute for it.
+fn recurse_syntax(
+    algebra: &[Value],
+    descent: &Descent,
     subject: &crate::syntax::Syntax,
     meter: &mut WorkMeter,
     expression: &Expr,
 ) -> Option<Value> {
-    meter.step(Reduction::SyntaxFold, 1, expression.span)?;
+    meter.step(
+        match descent {
+            Descent::Sealed(_) => Reduction::SyntaxRecurse,
+            // Unchanged from the fold this derives, so no shipped adapter's
+            // budget moves when the name does.
+            Descent::FromLeaves => Reduction::SyntaxFold,
+        },
+        1,
+        expression.span,
+    )?;
     let at = Value::NodePath(Box::new(subject.info().path().clone()));
-    let (case, arguments) = match subject {
-        crate::syntax::Syntax::Missing(_) => (cases.first()?, vec![at]),
-        crate::syntax::Syntax::Token { kind, text, .. } => (
-            cases.get(1)?,
-            vec![at, Value::Text(kind.clone()), Value::Text(text.clone())],
-        ),
-        crate::syntax::Syntax::Identifier { name, .. } => (cases.get(2)?, vec![at, Value::Text(name.clone())]),
+    let mut arguments = match descent {
+        Descent::Sealed(inherited) => vec![inherited.context.clone(), at],
+        Descent::FromLeaves => vec![at],
+    };
+    let branch = match subject {
+        crate::syntax::Syntax::Missing(_) => algebra.first()?,
+        crate::syntax::Syntax::Token { kind, text, .. } => {
+            arguments.push(Value::Text(kind.clone()));
+            arguments.push(Value::Text(text.clone()));
+            algebra.get(1)?
+        }
+        crate::syntax::Syntax::Identifier { name, .. } => {
+            arguments.push(Value::Text(name.clone()));
+            algebra.get(2)?
+        }
         crate::syntax::Syntax::Group {
             delimiter, children, ..
         } => {
-            let folded = children
-                .iter()
-                .map(|child| fold_syntax(cases, child, meter, expression))
-                .collect::<Option<Vec<_>>>()?;
-            // The fold's own result type: the group step is handed a
-            // `List<to>`, and a list whose member type was guessed from its
-            // first value would be a different type when the group is empty.
-            let member = expression.ty.clone();
-            (
-                cases.get(3)?,
-                vec![
-                    at,
-                    Value::Text(delimiter.clone()),
-                    Value::List { member, values: folded },
-                ],
-            )
+            arguments.push(Value::Text(delimiter.clone()));
+            // The member type comes from the operation's own scheme and not
+            // from the first value: a list whose member type was guessed from
+            // what it happens to hold would be a different type when the group
+            // is empty.
+            let (member, values) = match descent {
+                Descent::Sealed(inherited) => {
+                    let mut minted = Vec::with_capacity(children.len());
+                    for child in children {
+                        meter.step(Reduction::SyntaxStepMint, 1, expression.span)?;
+                        minted.push(Value::SyntaxStep(Box::new(SealedStep {
+                            algebra: algebra.to_vec(),
+                            child: Box::new(child.clone()),
+                            ty: inherited.step_type.clone(),
+                        })));
+                    }
+                    (inherited.step_type.clone(), minted)
+                }
+                Descent::FromLeaves => (
+                    expression.ty.clone(),
+                    children
+                        .iter()
+                        .map(|child| recurse_syntax(algebra, descent, child, meter, expression))
+                        .collect::<Option<Vec<_>>>()?,
+                ),
+            };
+            arguments.push(Value::List { member, values });
+            algebra.get(3)?
         }
     };
-    let Value::Closure(case) = case else {
+    let Value::Closure(branch) = branch else {
         return None;
     };
-    apply_closure(case, arguments, meter, expression.span)
+    apply_closure(branch, arguments, meter, expression.span)
+}
+
+/// Resume one sealed step under `context`.
+///
+/// The whole of `run_syntax_step`: the step says which child and which
+/// algebra, and the caller says only the context. There is nothing here that
+/// could consult the recursor a call happens to stand inside, which is why the
+/// association law needs no dynamic check and this returns a value rather than
+/// a `Result`.
+fn run_syntax_step(context: &Value, step: &SealedStep, meter: &mut WorkMeter, expression: &Expr) -> Option<Value> {
+    meter.step(Reduction::SyntaxStepRun, 1, expression.span)?;
+    recurse_syntax(
+        &step.algebra,
+        &Descent::Sealed(Box::new(Inherited {
+            context: context.clone(),
+            step_type: step.ty.clone(),
+        })),
+        &step.child,
+        meter,
+        expression,
+    )
 }
 
 /// A finished description as a value, charged for what it holds.
@@ -10275,6 +10580,7 @@ fn fold_value(
         | Value::Syntax(_)
         | Value::NodePath(_)
         | Value::BindingPath(_)
+        | Value::SyntaxStep(_)
         | Value::Music(_) => None,
     }
 }
@@ -10453,7 +10759,8 @@ fn wiring_shape(value: &Value) -> (u64, u64) {
         | Value::Machine { .. }
         | Value::Syntax(_)
         | Value::NodePath(_)
-        | Value::BindingPath(_) => 0,
+        | Value::BindingPath(_)
+        | Value::SyntaxStep(_) => 0,
     };
     let cells = u64::try_from(fields).unwrap_or(u64::MAX).saturating_add(1);
     (cells, cells)
@@ -10508,6 +10815,12 @@ fn value_shape(value: &Value) -> (u64, u64) {
         Value::Syntax(held) => held.shape(),
         Value::NodePath(held) => held.shape(),
         Value::BindingPath(held) => held.shape(),
+        // One cell and nothing under it. A step constructs nothing: its child
+        // is already a node of the subject and its algebra is already in the
+        // environment, both charged where they arrived. What minting costs is
+        // a reduction, charged by `Reduction::SyntaxStepMint`, which is what
+        // keeps §5.9's law 10 honest about capture.
+        Value::SyntaxStep(_) => (1, 0),
     }
 }
 
@@ -11135,6 +11448,20 @@ fn read_adapter_module_metered(
             resolver.diagnostics
         });
     };
+    // A checked program is not yet a checked *module*: the declaration world is
+    // read before the expressions are, and its refusals — a field storing an
+    // arrow, a field storing a sealed step — are recorded there. Answering
+    // `Ok` while the resolver holds an error would be an adapter running with
+    // a declaration the checker had already refused.
+    let refusals: Vec<Diagnostic> = resolver
+        .diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic.severity == crate::diagnose::Severity::Error)
+        .cloned()
+        .collect();
+    if !refusals.is_empty() {
+        return Err(refusals);
+    }
     Ok(AdapterModule {
         values: program.values,
         types: program.types,
@@ -12453,6 +12780,7 @@ mod tests {
             | Value::Syntax(_)
             | Value::NodePath(_)
             | Value::BindingPath(_)
+            | Value::SyntaxStep(_)
             | Value::Builtin(_) => return None,
         })
     }
@@ -12742,7 +13070,7 @@ mod tests {
     fn the_reader_hands_a_transformer_the_number_it_already_read() {
         let read = |region: &str| {
             let transformer = "fn (region) {
-                Err((region, syntax_fold(
+                Err((region, syntax_fold_from_leaves(
                     fn (here) { \"none\" },
                     fn (here, kind, text) {
                         option_fold(\"none\", fn (node) {
@@ -12836,7 +13164,7 @@ mod tests {
         // table: `phase_type` answers only under `Reading::Expansion`, so a
         // piece annotating a parameter `Syntax` gets the same "cannot find" any
         // other unbound type earns.
-        for name in ["Syntax", "NodePath", "BindingPath"] {
+        for name in ["Syntax", "NodePath", "BindingPath", "SyntaxStep<Nat, Nat>"] {
             let source = format!("piece \"one\" {{\n  let refused = fn (node: {name}) {{ node }}\n}}");
             assert!(
                 !refusals(&source).is_empty(),
@@ -12850,7 +13178,7 @@ mod tests {
     fn the_phase_registry_is_separate_and_classified() {
         assert_eq!(
             SYNTAX_OWNERSHIP.len(),
-            12,
+            14,
             "a new phase operation must enter the phase registry"
         );
         let spellings = SYNTAX_OWNERSHIP
@@ -12881,8 +13209,155 @@ mod tests {
                 PhaseFamily::Fold => (f.saturating_add(1), b),
                 PhaseFamily::Builder => (f, b.saturating_add(1)),
             });
-        assert_eq!(folds, 1, "the fold is the only way into a syntax value");
+        // Three, and all three are one function: `recurse_syntax` descends,
+        // `run_syntax_step` resumes a descent it did not start, and
+        // `syntax_fold_from_leaves` is the first at a context nothing reads.
+        // Nothing else in the registry enters a syntax value at all.
+        assert_eq!(folds, 3, "descent into a syntax value happens in exactly one place");
         assert_eq!(folds + builders, SYNTAX_OWNERSHIP.len());
+    }
+
+    /// Every refusal one adapter module earns, by the sentence it earns it
+    /// with. The module is checked whole: a declaration the checker refused is
+    /// a refused module even where the expressions around it check.
+    fn adapter_refusals(module: &str) -> Vec<String> {
+        match read_adapter_module(module) {
+            Ok(_) => Vec::new(),
+            Err(ModuleFault::Broken(diagnostics)) => {
+                diagnostics.into_iter().map(|diagnostic| diagnostic.message).collect()
+            }
+            Err(_) => vec!["it is not a module at all".to_owned()],
+        }
+    }
+
+    /// One adapter module around `body`, which is spliced in above `expand`.
+    fn adapter_module(body: &str) -> String {
+        format!(
+            "library {{\n    let level = \"readable\";\n\n{body}\n\n    let expand = fn (region) {{ Ok(region) }};\n}}\n"
+        )
+    }
+
+    /// Law 1: a sealed step is minted by the recursor and by nothing else.
+    ///
+    /// The type is *spellable* — a group branch is worth factoring out, and
+    /// `fn read_group(state, here, delimiter, kids: List<SyntaxStep<C, A>>)`
+    /// is a definition an adapter should be able to write. What no adapter can
+    /// do is make one: there is no constructor of that name, no other type
+    /// coerces to it, and it cannot be stored in a declaration and carried out
+    /// of the traversal that sealed it.
+    #[test]
+    fn law_1_a_sealed_step_is_minted_by_the_recursor_and_by_nothing_else() {
+        // Spellable, and usable where one is already in hand.
+        assert!(
+            adapter_refusals(&adapter_module(
+                "    let run_it = fn (sealed: SyntaxStep<Text, Text>) { run_syntax_step(\"c\", sealed) };"
+            ))
+            .is_empty(),
+            "an adapter may name the type of the value its group branch is handed"
+        );
+        // Written at the wrong size it names no type at all, so the mistake is
+        // reported where it was written rather than at a later mismatch.
+        assert!(
+            adapter_refusals(&adapter_module(
+                "    let run_it = fn (sealed: SyntaxStep<Text>) { sealed };"
+            ))
+            .iter()
+            .any(|message| message.contains("takes 2 type arguments")),
+            "`SyntaxStep` written with one argument is refused where it is written"
+        );
+        // No constructor: the name is a type and not a term.
+        assert!(
+            adapter_refusals(&adapter_module(
+                "    let forged = fn (node: Syntax) { SyntaxStep(node) };"
+            ))
+            .iter()
+            .any(|message| message.contains("cannot find `SyntaxStep`")),
+            "a step has no source constructor"
+        );
+        // And nothing else is one. A region is a `Syntax`, which is what the
+        // recursor descends into — not what running a step resumes.
+        assert!(
+            adapter_refusals(
+                "library {\n    let level = \"readable\";\n\n    let expand = fn (region) { Ok(run_syntax_step(\"c\", \
+                 region)) };\n}\n"
+            )
+            .iter()
+            .any(|message| message.contains("expected `SyntaxStep")),
+            "a raw region is not a step, so minting stays the only introduction"
+        );
+        // Not storable, directly or inside a container: a stored step would
+        // outlive the traversal that sealed it, which is what sealing is for.
+        for field in ["SyntaxStep<Text, Text>", "List<SyntaxStep<Text, Text>>"] {
+            let module = adapter_module(&format!(
+                "    data Held {{\n        Nothing,\n        One(held: {field}),\n    }}"
+            ));
+            assert!(
+                adapter_refusals(&module)
+                    .iter()
+                    .any(|message| message.contains("may not be a sealed step")),
+                "a `data` field of type `{field}` was accepted"
+            );
+        }
+    }
+
+    /// Law 8: a step tells nothing about itself, and running it is the only
+    /// question it answers.
+    ///
+    /// Stated over the registry rather than over a list of attempts, because
+    /// the property is about what operations *exist*: one takes a step, none
+    /// answers with one, and none turns one back into the node, the path, or
+    /// the algebra it was sealed with.
+    #[test]
+    fn law_8_the_only_question_a_sealed_step_answers_is_the_one_that_runs_it() {
+        fn holds_a_step(ty: &Type) -> bool {
+            matches!(ty, Type::SyntaxStep { .. }) || crate::infer::member_types(ty).into_iter().any(holds_a_step)
+        }
+        let mut takes_one = Vec::new();
+        let mut answers_one = Vec::new();
+        for entry in &SYNTAX_OWNERSHIP {
+            let mut unifier = Unifier::default();
+            let Type::Function(arguments, result) = entry.operation.instantiate(&mut unifier) else {
+                panic!("`{}` is written with arguments", entry.spelling)
+            };
+            if arguments
+                .iter()
+                .any(|argument| matches!(argument, Type::SyntaxStep { .. }))
+            {
+                takes_one.push(entry.spelling);
+            }
+            if holds_a_step(&result) {
+                answers_one.push(entry.spelling);
+            }
+        }
+        assert_eq!(
+            takes_one,
+            ["run_syntax_step"],
+            "exactly one operation takes a step, and it is the one that runs it"
+        );
+        assert!(
+            answers_one.is_empty(),
+            "no operation answers with a step: minting happens inside the recursor, into the branch it hands it to \
+             ({answers_one:?})"
+        );
+        // And from the adapter's side: a step is not a node, so every
+        // operation that reads a node refuses one.
+        let branch = |reading: &str| {
+            format!(
+                "library {{\n    let level = \"readable\";\n\n    let expand = fn (region) {{ Ok(recurse_syntax(\n     \
+                    fn (c, here) {{ region }},\n        fn (c, here, kind, text) {{ region }},\n        fn (c, here, \
+                 name) {{ region }},\n        fn (c, here, delimiter, kids) {{ {reading} }},\n        \"\", region)) \
+                 }};\n}}\n"
+            )
+        };
+        for reading in [
+            "option_fold(region, fn (node) { node }, syntax_at(kids, here))",
+            "option_fold(region, fn (node) { node }, syntax_at(map(fn (kid) { kid }, kids), here))",
+        ] {
+            assert!(
+                !adapter_refusals(&branch(reading)).is_empty(),
+                "a step reached an operation that reads a node: {reading}"
+            );
+        }
     }
 
     /// Check and evaluate one expression under one reading. Everything else —
@@ -12979,6 +13454,10 @@ mod tests {
             Type::Primitive { step, input, output } | Type::Machine { step, input, output } => {
                 mentions_function(step) || mentions_function(input) || mentions_function(output)
             }
+            // A sealed step hides an algebra of source closures, so it answers
+            // the way an arrow does and for a stronger reason: an arrow *is* a
+            // function, and this *holds* four of them.
+            Type::SyntaxStep { .. } => true,
             // Listed rather than wildcarded: a new *type former* would otherwise be assumed
             // arrow-free, and this law is the only thing standing between that assumption and
             // §5.8's no-arrow premise. A registry signature is written, not inferred, so a

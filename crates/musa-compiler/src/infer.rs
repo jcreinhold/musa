@@ -99,6 +99,10 @@ pub(crate) fn member_types(ty: &Type) -> Vec<&Type> {
         Type::Primitive { step, input, output } | Type::Machine { step, input, output } => {
             vec![step, input, output]
         }
+        // A step's context and answer are ordinary members: the recursor's
+        // group branch is what unifies them with the rest of the algebra, and
+        // it can only do that if a walk looks inside.
+        Type::SyntaxStep { context, answer } => vec![context, answer],
         Type::Var(_)
         | Type::Unit
         | Type::Bool
@@ -152,6 +156,10 @@ pub(crate) fn rebuilt(ty: &Type, mut member: impl FnMut(&Type) -> Type) -> Type 
             step: Box::new(member(step)),
             input: Box::new(member(input)),
             output: Box::new(member(output)),
+        },
+        Type::SyntaxStep { context, answer } => Type::SyntaxStep {
+            context: Box::new(member(context)),
+            answer: Box::new(member(answer)),
         },
         Type::Var(_)
         | Type::Unit
@@ -390,6 +398,24 @@ impl Unifier {
                 self.unify(our_input, their_input)?;
                 self.unify(our_output, their_output)
             }
+            // Two sealed steps are one type when they are run under the same
+            // context and answer with the same thing. Which child and which
+            // algebra a step was minted for is not in its type and could not
+            // be: the recursor's group branch is handed a *list* of steps, and
+            // they descend to different children.
+            (
+                Type::SyntaxStep {
+                    context: our_context,
+                    answer: our_answer,
+                },
+                Type::SyntaxStep {
+                    context: their_context,
+                    answer: their_answer,
+                },
+            ) => {
+                self.unify(our_context, their_context)?;
+                self.unify(our_answer, their_answer)
+            }
             _ if left == right => Ok(()),
             _ => Err(Mismatch::Shape),
         }
@@ -489,7 +515,11 @@ impl Unifier {
     /// is why the check is structural rather than a surface-syntax rule".
     fn demand_data(&mut self, ty: &Type) -> Result<(), Mismatch> {
         let ty = self.shallow(ty);
-        if matches!(ty, Type::Function(_, _)) {
+        // A sealed step is refused here beside the arrow, and for a stronger
+        // reason: what it hides is an algebra of source closures, so a `data`
+        // variable that admitted one would have admitted four functions at
+        // once (`docs/rules/language/02-core-calculus.md` §5.9).
+        if matches!(ty, Type::Function(_, _) | Type::SyntaxStep { .. }) {
             return Err(Mismatch::NotStorable);
         }
         if let Type::Var(variable) = ty {
@@ -578,7 +608,15 @@ mod tests {
         // success side, and neither may be an arrow.
         let returned = Type::Sum(Box::new(Type::Row12), Box::new(arrow.clone()));
         let carried = Type::Sum(Box::new(arrow.clone()), Box::new(Type::Nat));
-        for refused in [arrow, buried, returned, carried] {
+        // And the sealed step, which holds no *written* arrow and is refused
+        // anyway: what it hides is an algebra of source closures, so admitting
+        // one to a data variable would admit four functions at once.
+        let sealed = Type::SyntaxStep {
+            context: Box::new(Type::Nat),
+            answer: Box::new(Type::Nat),
+        };
+        let stored = Type::List(Box::new(sealed.clone()));
+        for refused in [arrow, buried, returned, carried, sealed, stored] {
             let mut unifier = Unifier::default();
             let data = unifier.fresh(Kind::Data);
             assert_eq!(
@@ -685,8 +723,16 @@ mod tests {
                 inner.clone().prop_map(|member| Type::Option(Box::new(member))),
                 (inner.clone(), inner.clone()).prop_map(|(value, error)| Type::Sum(Box::new(value), Box::new(error))),
                 prop::collection::vec(inner.clone(), 1..3).prop_map(Type::Product),
-                (prop::collection::vec(inner.clone(), 1..3), inner)
+                (prop::collection::vec(inner.clone(), 1..3), inner.clone())
                     .prop_map(|(parameters, result)| Type::Function(parameters, Box::new(result))),
+                // A sealed step is generated so that the two properties below
+                // reach it: it unifies structurally like any other former, and
+                // it is refused a data variable the way an arrow is
+                // (`../rules/language/02-core-calculus.md` §5.9).
+                (inner.clone(), inner).prop_map(|(context, answer)| Type::SyntaxStep {
+                    context: Box::new(context),
+                    answer: Box::new(answer),
+                }),
             ]
         })
     }
@@ -731,7 +777,11 @@ mod tests {
         #[test]
         fn a_data_variable_takes_exactly_the_types_holding_no_arrow(ty in any_type()) {
             fn holds_an_arrow(ty: &Type) -> bool {
-                matches!(ty, Type::Function(_, _)) || super::member_types(ty).into_iter().any(holds_an_arrow)
+                // A sealed step counts, and its members are not looked at: it
+                // is refused for what it *hides*, so a `SyntaxStep<Nat, Nat>`
+                // with no arrow written anywhere in it is still not storable.
+                matches!(ty, Type::Function(_, _) | Type::SyntaxStep { .. })
+                    || super::member_types(ty).into_iter().any(holds_an_arrow)
             }
             let mut unifier = Unifier::default();
             // The two variables the generator can name, minted first so that

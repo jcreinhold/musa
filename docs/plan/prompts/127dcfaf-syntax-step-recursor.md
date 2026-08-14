@@ -1,7 +1,7 @@
 ---
 id: 127dcfaf
 slug: syntax-step-recursor
-status: pending
+status: done
 depends_on: [127dcfae]
 phase: 3
 ---

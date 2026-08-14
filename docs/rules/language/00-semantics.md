@@ -62,6 +62,20 @@ The value stage uses the ordinary static and evaluation judgments:
 declaration kinds are `library`, `piece`, `part`, `voice`, `performance`, `instrument`, `mix`, and `structure`; they are
 not value types.
 
+**The expansion phase is these judgments in a second environment, not a second language.** Adapter expansion happens
+before name resolution and inference, and an adapter module is checked and evaluated by the same checker and the same
+evaluator, under a phase environment `Σφ` that adds the phase-local types `Syntax`, `NodePath`, `BindingPath`, and
+`SyntaxStep<C, A>` and a separate registry of compiler-owned phase operations. Ordinary source is read in a scope where
+none of those names resolve, so nothing the phase owns can be written, named, or obtained outside it. The one thing that
+crosses back is the answer, which is syntax that stands where the region stood; a sealed step is never part of it,
+because a step is not storable data (`02-core-calculus.md` §1.1, §5.9).
+
+`Σφ`'s registry is a second registry rather than a fifth builtin family, so §5.8's four families of the source core are
+unchanged by it. Descent into a syntax value happens in exactly one place: `recurse_syntax`, with `run_syntax_step`
+resuming a descent it did not start and `syntax_fold_from_leaves` derived from the first at a context nothing reads.
+Prompt 127da's earlier law that a bottom-up fold is the only way into a syntax value is superseded there, with its
+reason.
+
 The budget can stop an evaluation but cannot change an accepted one: if two runs both reach `done`, they reach the same
 value (`02-core-calculus.md`).
 

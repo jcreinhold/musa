@@ -151,6 +151,9 @@ pub(crate) enum Reduction {
     OptionFold,
     DataFold,
     SyntaxFold,
+    SyntaxRecurse,
+    SyntaxStepMint,
+    SyntaxStepRun,
 }
 
 impl Reduction {
@@ -169,7 +172,15 @@ impl Reduction {
             Self::ListFoldFromEnd => "list_fold_from_end",
             Self::OptionFold => "option_fold",
             Self::DataFold => "fold",
-            Self::SyntaxFold => "syntax_fold",
+            Self::SyntaxFold => "syntax_fold_from_leaves",
+            Self::SyntaxRecurse => "recurse_syntax",
+            // Minting and running are charged apart from entering a node so
+            // that capture and repetition cost what they cost: a step kept and
+            // never run is charged its mint alone, and a step run twice is
+            // charged twice (`../rules/language/02-core-calculus.md` §5.9,
+            // law 10).
+            Self::SyntaxStepMint => "syntax step",
+            Self::SyntaxStepRun => "run_syntax_step",
         }
     }
 }

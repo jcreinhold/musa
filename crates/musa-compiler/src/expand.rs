@@ -1156,7 +1156,7 @@ mod tests {
     /// A transformer that answers `Ok` with `emitted`, whatever the region held.
     fn answering(emitted: &str) -> String {
         format!(
-            "fn (region) {{ Ok(syntax_fold(fn (here) {{ syntax_token(syntax_built(here, 0, 0), \"Missing\", \"\") }}, \
+            "fn (region) {{ Ok(syntax_fold_from_leaves(fn (here) {{ syntax_token(syntax_built(here, 0, 0), \"Missing\", \"\") }}, \
              fn (here, kind, text) {{ syntax_token(syntax_built(here, 1, 0), kind, text) }}, \
              fn (here, name) {{ syntax_identifier(syntax_built(here, 2, 0), name) }}, \
              fn (here, delimiter, children) {{ {emitted} }}, region)) }}"
@@ -1447,7 +1447,7 @@ mod tests {
         // whichever node reaches the top carries `Generated` and nothing else.
         let refused = r#"Err((syntax_token(syntax_built(here, 9, 0), "Missing", ""), "nothing here is mine"))"#;
         let refusing = format!(
-            "fn (region) {{ syntax_fold(fn (here) {{ {refused} }}, fn (here, kind, text) {{ {refused} }}, \
+            "fn (region) {{ syntax_fold_from_leaves(fn (here) {{ {refused} }}, fn (here, kind, text) {{ {refused} }}, \
              fn (here, name) {{ {refused} }}, fn (here, delimiter, children) {{ {refused} }}, region) }}"
         );
         let read = musa_language::parse("c4");
@@ -1827,7 +1827,7 @@ mod tests {
     let level = "generative";
 
     let expand = fn (region) {
-        Ok(syntax_fold(
+        Ok(syntax_fold_from_leaves(
             fn (here) { syntax_token(syntax_built(here, 0, 0), "Missing", "") },
             fn (here, kind, text) { syntax_token(syntax_built(here, 1, 0), kind, text) },
             fn (here, name) { syntax_identifier(syntax_built(here, 2, 0), name) },
@@ -1994,5 +1994,281 @@ mod tests {
                 "an anchor names a range inside the region it was minted from: {span:?}"
             );
         }
+    }
+
+    // The inherited-context recursor and its sealed steps, one test per law
+    // (`../rules/language/02-core-calculus.md` §5.9). The type-side laws —
+    // sealed formation, opacity, the `d`-exclusion, phase conservativity —
+    // are refusals rather than runs and live beside the other registry laws in
+    // `core.rs`; these are the ones that need a traversal to actually happen.
+
+    /// The regions every differential law below runs over.
+    ///
+    /// One identifier, one call, a call with two arguments, and a call inside
+    /// a call: between them they reach every branch, a group whose child is a
+    /// group — which is where a traversal that dropped a level would show —
+    /// and a hole, because a region parsed on its own is not always a whole
+    /// expression and the reader answers with `Missing` where the parser gave
+    /// up. They are deliberately shallow: the recursor's descent runs through
+    /// the transformer's own branches, so one source level costs many
+    /// evaluator frames, and a debug build's test stack is the limit a law
+    /// suite has no business being near.
+    const REGIONS: [&str; 4] = ["a", "together(a)", "together(a, b)", "together(inner(a))"];
+
+    /// A transformer over the recursor whose branches rebuild what they read.
+    ///
+    /// `C` is `Text` and the identifier branch emits *the context* rather than
+    /// the name, so what a node was read under is visible in the printed
+    /// answer. `group` is the one thing a law varies; `initial` is the context
+    /// the root is read under.
+    fn recursing(initial: &str, group: &str) -> String {
+        format!(
+            "fn (region) {{ Ok(recurse_syntax(\
+             fn (c, here) {{ syntax_token(syntax_built(here, 0, 0), \"Missing\", \"\") }}, \
+             fn (c, here, kind, text) {{ syntax_token(syntax_built(here, 1, 0), kind, text) }}, \
+             fn (c, here, name) {{ syntax_identifier(syntax_built(here, 2, 0), c) }}, \
+             fn (c, here, delimiter, kids) {{ {group} }}, \
+             {initial}, region)) }}"
+        )
+    }
+
+    /// The printed text one transformer answers with, over one region.
+    fn printed(transformer: &str, region: &str) -> String {
+        answer(transformer, region)
+            .unwrap_or_else(|fault| panic!("the transformer answers over `{region}`: {fault:?}"))
+            .text
+    }
+
+    /// What one transformer charged, over one region.
+    fn charged(transformer: &str, region: &str) -> u64 {
+        let read = musa_language::parse(region);
+        let subject = crate::syntax::read_region(&read.syntax(), crate::syntax::ExpansionPath::at(vec![0]));
+        let (answered, work) = crate::core::expand_syntax(&module(transformer), subject);
+        if let Err(fault) = answered {
+            panic!("the transformer answers over `{region}`: {fault:?}");
+        }
+        work.evaluation_steps
+    }
+
+    /// Read every child once, left to right, under the context handed down.
+    const EACH_ONCE: &str =
+        r"syntax_group(syntax_built(here, 3, 0), delimiter, map(fn (kid) { run_syntax_step(c, kid) }, kids))";
+
+    /// Read nothing: a group branch that answers without running a step.
+    const NONE_AT_ALL: &str = r"syntax_group(syntax_built(here, 3, 0), delimiter, [])";
+
+    #[test]
+    fn law_9_the_derived_fold_is_the_recursor_at_a_context_nothing_reads() {
+        // Running every step in source order, under a context no branch reads,
+        // *is* `syntax_fold_from_leaves`. One traversal implements both, so
+        // this is the differential test that keeps the derivation honest
+        // rather than merely asserted — and law 4 rides on it, because both
+        // sides build their output from the path they were handed and the two
+        // outputs are compared byte for byte.
+        let recursor = recursing(
+            "\"\"",
+            r#"syntax_group(syntax_built(here, 3, 0), delimiter, map(fn (kid) { run_syntax_step("", kid) }, kids))"#,
+        );
+        let fold = "fn (region) { Ok(syntax_fold_from_leaves(\
+             fn (here) { syntax_token(syntax_built(here, 0, 0), \"Missing\", \"\") }, \
+             fn (here, kind, text) { syntax_token(syntax_built(here, 1, 0), kind, text) }, \
+             fn (here, name) { syntax_identifier(syntax_built(here, 2, 0), \"\") }, \
+             fn (here, delimiter, children) { syntax_group(syntax_built(here, 3, 0), delimiter, children) }, \
+             region)) }";
+        for region in REGIONS {
+            assert_eq!(
+                printed(&recursor, region),
+                printed(fold, region),
+                "the two descents disagree over `{region}`"
+            );
+        }
+    }
+
+    #[test]
+    fn law_3_a_branch_is_read_under_exactly_the_context_it_was_run_with() {
+        // The identifier branch emits its own context, so the printed answer
+        // says what each name was read under. Nothing ambient decides it: a
+        // child is read under whatever its parent's branch passed, and a fold
+        // has no place to put either.
+        let saying = |passed: &str| {
+            recursing(
+                "\"top\"",
+                &format!(
+                    r#"syntax_group(syntax_built(here, 3, 0), delimiter,
+                         map(fn (kid) {{ run_syntax_step("{passed}", kid) }}, kids))"#
+                ),
+            )
+        };
+        let under = printed(&saying("under"), "together(a)");
+        assert!(
+            under.contains("under"),
+            "a child is read under what its parent passed: {under}"
+        );
+        assert!(
+            !under.contains("top"),
+            "and the root's own context is not handed down behind the branch's back: {under}"
+        );
+        // The same region, one word changed in the branch: what a node is read
+        // under is the branch's decision and the recursor's delivery, with
+        // nothing between them.
+        let deep = printed(&saying("deeper"), "together(a)");
+        assert!(
+            deep.contains("deeper") && !deep.contains("under"),
+            "the recursor supplies exactly the context the branch chose: {deep}"
+        );
+    }
+
+    #[test]
+    fn law_6_a_step_may_be_omitted_or_run_more_than_once() {
+        // Omission first: a group branch that answers without running anything
+        // reads none of its children, which is the selective descent a fold
+        // cannot do — under a fold the children are values before the branch
+        // is entered.
+        let dropped = printed(&recursing("\"seen\"", NONE_AT_ALL), "together(a, b)");
+        assert!(!dropped.contains("seen"), "an omitted step read nothing: {dropped}");
+        let read = printed(&recursing("\"seen\"", EACH_ONCE), "together(a, b)");
+        assert!(
+            read.contains("seen"),
+            "and the same algebra that runs its steps does read them: {read}"
+        );
+        // And repetition, under two different contexts. Each child is run
+        // twice and only the second answer is emitted — two answers at one
+        // path would be two nodes in one place, which the output gate refuses
+        // for reasons that have nothing to do with steps. What the emitted
+        // answer proves is that the second run used the context the second run
+        // was given, over the same sealed child.
+        let repeated = printed(&recursing("\"\"", TWICE_OVER), "together(a)");
+        assert!(
+            repeated.contains("second") && !repeated.contains("first"),
+            "the second run answered under its own context: {repeated}"
+        );
+    }
+
+    /// Run every child twice, under two contexts, and emit the second answer.
+    const TWICE_OVER: &str = r#"syntax_group(syntax_built(here, 3, 0), delimiter,
+         map(fn (kid) {
+           option_fold(
+             syntax_token(syntax_built(here, 8, 0), "Missing", ""),
+             fn (node) { run_syntax_step("second", kid) },
+             Some(run_syntax_step("first", kid)))
+         }, kids))"#;
+
+    #[test]
+    fn law_2_a_step_carried_into_a_nested_recursor_still_runs_its_own_algebra() {
+        // The hostile case of prompt 127dcfae's program five, cut to what can
+        // be printed. The outer group branch starts a *fresh* recursor over
+        // the original region and, from inside that recursor's own group
+        // branch, runs the steps the outer traversal minted.
+        //
+        // The two algebras are told apart by what their identifier branch
+        // emits, `outer` against `inner`. If a nested recursor could
+        // re-associate a step with itself, the captured steps would come back
+        // `inner`. They do not, and no ownership check is what stops it —
+        // there is no operation that would let the inner traversal try.
+        let hostile = r#"fn (region) { Ok(recurse_syntax(
+            fn (c, here) { syntax_token(syntax_built(here, 0, 0), "Missing", "") },
+            fn (c, here, kind, text) { syntax_token(syntax_built(here, 1, 0), kind, text) },
+            fn (c, here, name) { syntax_identifier(syntax_built(here, 2, 0), "outer") },
+            fn (c, here, delimiter, kids) {
+                recurse_syntax(
+                    fn (d, spot) { syntax_token(syntax_built(here, 4, 0), "Missing", "") },
+                    fn (d, spot, kind, text) { syntax_token(syntax_built(here, 5, 0), kind, text) },
+                    fn (d, spot, name) { syntax_identifier(syntax_built(here, 6, 0), "inner") },
+                    fn (d, spot, delimiter, others) {
+                        syntax_group(syntax_built(here, 7, 0), delimiter,
+                            map(fn (kid) { run_syntax_step(d, kid) }, kids))
+                    },
+                    c, region)
+            },
+            "", region)) }"#;
+        let answered = printed(hostile, "together(a)");
+        assert!(
+            answered.contains("outer"),
+            "the captured step ran its own algebra from inside a foreign traversal: {answered}"
+        );
+        assert!(
+            !answered.contains("inner"),
+            "and the foreign traversal did not get to reinterpret it: {answered}"
+        );
+    }
+
+    #[test]
+    fn law_5_a_nested_recursor_over_the_original_subject_still_terminates() {
+        // Local decrease alone does not give this: the inner recursor restarts
+        // on the *whole* region, which is larger than the child whose step is
+        // in flight, so no globally decreasing runtime tree size exists to
+        // point at. What answers is §5.9's reducibility argument, resting on
+        // the checker's definition acyclicity. This test is the executable
+        // half — it cannot stand in for the proof, and it does catch an
+        // implementation that lost the local decrease.
+        let restarting = recursing(
+            "\"\"",
+            r"syntax_group(syntax_built(here, 3, 0), delimiter,
+                 map(fn (kid) {
+                   recurse_syntax(
+                     fn (d, spot) { run_syntax_step(d, kid) },
+                     fn (d, spot, kind, text) { run_syntax_step(d, kid) },
+                     fn (d, spot, name) { run_syntax_step(d, kid) },
+                     fn (d, spot, delimiter, others) { run_syntax_step(d, kid) },
+                     c, region)
+                 }, kids))",
+        );
+        for region in ["a", "together(a)"] {
+            drop(printed(&restarting, region));
+        }
+    }
+
+    #[test]
+    fn law_7_two_runs_of_one_transformer_agree_on_value_and_on_charge() {
+        let transformer = recursing("\"\"", EACH_ONCE);
+        for region in REGIONS {
+            assert_eq!(
+                printed(&transformer, region),
+                printed(&transformer, region),
+                "two runs over `{region}` disagreed on the value"
+            );
+            assert_eq!(
+                charged(&transformer, region),
+                charged(&transformer, region),
+                "two runs over `{region}` disagreed on the charge"
+            );
+        }
+    }
+
+    #[test]
+    fn law_10_capture_and_repetition_are_charged_for_what_they_cost() {
+        // Three algebras over one region: one that runs nothing, one that runs
+        // each child once, and one that runs each child twice. A step that a
+        // branch keeps and never runs must still cost its mint, or capture
+        // would be a way to buy work off the meter.
+        let region = "together(a, b)";
+        let none = charged(&recursing("\"\"", NONE_AT_ALL), region);
+        let once = charged(&recursing("\"\"", EACH_ONCE), region);
+        let twice = charged(&recursing("\"\"", TWICE_OVER), region);
+        assert!(
+            none < once,
+            "running a step costs more than omitting it: {none} vs {once}"
+        );
+        assert!(
+            once < twice,
+            "running a step twice costs more than running it once: {once} vs {twice}"
+        );
+        // And the mint is charged even where the step is never run. The
+        // algebra below descends exactly one level — the context says "stop"
+        // and the branch reads it — so every step at that level is minted and
+        // none of them is run. A wider level is dearer all the same, which is
+        // what stops capture from being a way to buy work off the meter.
+        let one_level = recursing(
+            "\"go\"",
+            r#"match c {
+                 "stop" -> syntax_group(syntax_built(here, 3, 0), delimiter, []),
+                 _ -> syntax_group(syntax_built(here, 4, 0), delimiter,
+                        map(fn (kid) { run_syntax_step("stop", kid) }, kids)),
+               }"#,
+        );
+        assert!(
+            charged(&one_level, "a b c d") > charged(&one_level, "a"),
+            "minting a step is charged even where the step is never run"
+        );
     }
 }

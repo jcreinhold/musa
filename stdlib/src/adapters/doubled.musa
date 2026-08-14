@@ -102,7 +102,7 @@ library {
     let level = "editable";
 
     let expand = fn (region) {
-        match syntax_fold(
+        match syntax_fold_from_leaves(
             fn (here) { Nothing },
             // Where the refusal is found and where it is pointed are the same
             // node: `syntax_at` hands back the composer's own `;` rather than
@@ -132,7 +132,7 @@ library {
                 node,
                 "this region holds a `;`, and I read one expression's worth of tokens"
             )),
-            Nothing -> Ok(syntax_fold(
+            Nothing -> Ok(syntax_fold_from_leaves(
                 fn (here) { syntax_token(syntax_built(here, 0, 0), "Missing", "") },
                 fn (here, kind, text) { syntax_token(syntax_built(here, 1, 0), kind, text) },
                 fn (here, name) { syntax_identifier(syntax_built(here, 2, 0), name) },

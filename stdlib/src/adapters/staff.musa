@@ -1957,7 +1957,7 @@ library {
 
     // One region of staff notation, read into one ordinary expression.
     let expand = fn (region) {
-        match syntax_fold(
+        match syntax_fold_from_leaves(
             fn (here) { Unreadable(here) },
             fn (here, kind, text) {
                 if text_equal(kind, "Whitespace") {

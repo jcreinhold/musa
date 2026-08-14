@@ -850,7 +850,7 @@ mod tests {
     /// there is a diagnostic to read it out of.
     fn transformer(missing: &str, token: &str, identifier: &str, group: &str) -> String {
         format!(
-            "fn (region) {{ Ok(syntax_fold(fn (here) {{ {missing} }}, fn (here, kind, text) {{ {token} }}, \
+            "fn (region) {{ Ok(syntax_fold_from_leaves(fn (here) {{ {missing} }}, fn (here, kind, text) {{ {token} }}, \
              fn (here, name) {{ {identifier} }}, fn (here, delimiter, children) {{ {group} }}, region)) }}"
         )
     }

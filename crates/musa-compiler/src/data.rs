@@ -390,8 +390,8 @@ impl World {
     /// wrote down.
     ///
     /// What is not here is a separate storable-data check. Every type but an
-    /// arrow is storable data, an arrow is refused right here, and so a group
-    /// that survives this is storable data by construction.
+    /// arrow and a sealed step is storable data, both are refused right here,
+    /// and so a group that survives this is storable data by construction.
     fn check(&self, resolver: &mut Resolver) {
         for declaration in self.declarations.values() {
             let group: IndexSet<NominalId> = self
@@ -413,6 +413,22 @@ impl World {
                                 "a declaration is finite and strictly positive, so a value of it cannot be an \
                                  argument to a function stored inside it",
                             ),
+                        );
+                        continue;
+                    }
+                    // A sealed step is refused for a stronger reason than an
+                    // arrow's, and so says so separately: it *holds* the
+                    // algebra of the recursor that minted it, which is four
+                    // source closures and a child nobody else may name. Stored
+                    // in a declaration it would outlive the traversal that
+                    // sealed it, which is exactly what sealing is for.
+                    if holds_sealed_step(&field.ty) {
+                        resolver.report(
+                            Diagnostic::error(Code::TypeMismatch, "a stored field may not be a sealed step")
+                                .at(field.span, format!("`{}` stores a suspended descent", field.name))
+                                .note(
+                                    "a `SyntaxStep<C, A>` holds the algebra it was minted under, so it is never                                      storable data and is excluded from `d`                                      (`docs/rules/language/02-core-calculus.md` §5.9)",
+                                ),
                         );
                         continue;
                     }
@@ -689,6 +705,11 @@ fn negative_occurrence(ty: &Type, group: &IndexSet<NominalId>) -> Option<String>
     crate::infer::member_types(ty)
         .into_iter()
         .find_map(|member| negative_occurrence(member, group))
+}
+
+/// Whether a sealed step appears anywhere inside a type.
+fn holds_sealed_step(ty: &Type) -> bool {
+    matches!(ty, Type::SyntaxStep { .. }) || crate::infer::member_types(ty).into_iter().any(holds_sealed_step)
 }
 
 /// Whether an arrow appears anywhere inside a type.
