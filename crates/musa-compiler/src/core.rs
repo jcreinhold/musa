@@ -935,7 +935,8 @@ struct CheckedMusic {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Builtin {
     NatFold,
-    ListFold,
+    ListFoldFromStart,
+    ListFoldFromEnd,
     OptionFold,
     Map,
     Filter,
@@ -1560,16 +1561,22 @@ impl MachineOp {
     }
 }
 
-/// The seven structural eliminators of `02-core-calculus.md` §5.6.
+/// The eight structural eliminators of `02-core-calculus.md` §5.6.
 ///
 /// They are named as a closed set rather than matched out of [`Builtin`] because §5.6's proof is
-/// about exactly these seven. Naming them here is what lets the checker's remaining hand-written
+/// about exactly these eight. Naming them here is what lets the checker's remaining hand-written
 /// arms be exhaustive: once a builtin's family is an `Eliminator`, which one it is has already
 /// been decided, and no arm is left over for the sixty-two δ-builtins to fall into by accident.
+///
+/// `list` has two because it is the one type in the language whose fold direction is observable:
+/// its outermost cons holds the *first* element, so folding from the outside in and accumulating
+/// from the start disagree for any step that is not associative with unit. The two share one type,
+/// which is exactly why the direction has to be in the name.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Eliminator {
     NatFold,
-    ListFold,
+    ListFoldFromStart,
+    ListFoldFromEnd,
     OptionFold,
     Map,
     Filter,
@@ -1580,7 +1587,7 @@ enum Eliminator {
 impl Eliminator {
     const fn arity(self) -> usize {
         match self {
-            Self::NatFold | Self::ListFold | Self::OptionFold => 3,
+            Self::NatFold | Self::ListFoldFromStart | Self::ListFoldFromEnd | Self::OptionFold => 3,
             Self::Map | Self::Filter | Self::Repeat => 2,
             Self::Range => 1,
         }
@@ -1588,10 +1595,10 @@ impl Eliminator {
 
     /// This eliminator's type, as a rank-1 scheme, instantiated fresh.
     ///
-    /// All seven of them *are* rank-1 schemes, which is why none is checked
+    /// All eight of them *are* rank-1 schemes, which is why none is checked
     /// by hand any more. What the old arms tested one `if` at a time — that
     /// `map`'s first argument is a one-argument function, that a `filter`
-    /// predicate returns `bool`, that a `list_fold` step takes the member and
+    /// predicate returns `bool`, that a list fold's step takes the member and
     /// the accumulator and gives the accumulator back — is what unifying an
     /// application against these types says once, in the same words, with the
     /// same diagnostic every other type error gets. Nothing was kept: there
@@ -1648,7 +1655,11 @@ impl Eliminator {
                     Box::new(accumulator),
                 )
             }
-            Self::ListFold => {
+            // The two directions share one type. That is the point: a call migrates between them
+            // by changing one word, and a reader comparing two call sites compares only the word
+            // that differs. Which end the fold runs from is in the name because it cannot be in
+            // the type.
+            Self::ListFoldFromStart | Self::ListFoldFromEnd => {
                 let member = unifier.fresh(Kind::Ordinary);
                 let accumulator = unifier.fresh(Kind::Ordinary);
                 Type::Function(
@@ -2025,7 +2036,7 @@ const fn delta(arguments: &'static [Shape], result: Shape) -> Family {
     Family::Delta { arguments, result }
 }
 
-const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 110] = [
+const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 111] = [
     BuiltinOwnership {
         operation: Builtin::NatFold,
         spelling: "nat_fold",
@@ -2033,10 +2044,16 @@ const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 110] = [
         family: Family::Eliminator(Eliminator::NatFold),
     },
     BuiltinOwnership {
-        operation: Builtin::ListFold,
-        spelling: "list_fold",
+        operation: Builtin::ListFoldFromStart,
+        spelling: "list_fold_from_start",
         hidden_information: "the evaluator's finite list representation and structural work budget",
-        family: Family::Eliminator(Eliminator::ListFold),
+        family: Family::Eliminator(Eliminator::ListFoldFromStart),
+    },
+    BuiltinOwnership {
+        operation: Builtin::ListFoldFromEnd,
+        spelling: "list_fold_from_end",
+        hidden_information: "the evaluator's finite list representation, reverse traversal, and structural work budget",
+        family: Family::Eliminator(Eliminator::ListFoldFromEnd),
     },
     BuiltinOwnership {
         operation: Builtin::OptionFold,
@@ -2692,7 +2709,8 @@ impl Builtin {
     fn name(self) -> &'static str {
         match self {
             Self::NatFold => "nat_fold",
-            Self::ListFold => "list_fold",
+            Self::ListFoldFromStart => "list_fold_from_start",
+            Self::ListFoldFromEnd => "list_fold_from_end",
             Self::OptionFold => "option_fold",
             Self::Map => "map",
             Self::Filter => "filter",
@@ -2859,7 +2877,8 @@ impl Builtin {
             ]),
             Self::Play => Some(vec![Type::Voicing, Type::Duration(Coordinate::WrittenTime)]),
             Self::NatFold
-            | Self::ListFold
+            | Self::ListFoldFromStart
+            | Self::ListFoldFromEnd
             | Self::OptionFold
             | Self::Map
             | Self::Filter
@@ -6373,10 +6392,28 @@ impl Checker<'_> {
             return None;
         }
         let Some(symbol) = self.symbols.get(&name) else {
-            self.resolver.report(
+            // `list_fold` was retired by prompt 127dcfaa rather than renamed, because a direction
+            // change is the one break a reader cannot see: every call would keep compiling and
+            // start answering differently wherever the step is not symmetric. The name resolves to
+            // nothing, and this diagnostic is the migration.
+            let retired = if name == "list_fold" {
+                Diagnostic::error(Code::UnknownName, "`list_fold` no longer names an eliminator")
+                    .at(span, "this fold has to say which end it runs from")
+                    .help(
+                        "`list_fold_from_start` keeps the old meaning: it accumulates left to right. \
+                         `list_fold_from_end` is the catamorphism, and it builds right-nested data without a \
+                         closure chain",
+                    )
+                    .note(
+                        "`list` is the one type in the language whose fold direction is observable, because its \
+                         outermost cons holds the first element — `02-core-calculus.md` §5.6",
+                    )
+                    .fix("keep the current meaning", span, "list_fold_from_start")
+            } else {
                 Diagnostic::error(Code::UnknownName, format!("cannot find `{name}`"))
-                    .at(span, "nothing binds this name"),
-            );
+                    .at(span, "nothing binds this name")
+            };
+            self.resolver.report(retired);
             self.failed = true;
             return None;
         };
@@ -8268,7 +8305,8 @@ fn apply_builtin(builtin: Builtin, provided: Vec<Value>, span: SourceSpan) -> Op
         // A δ-builtin or an eliminator is never a value, so it never arrives here to be
         // applied as one; `parameters` above has already declined it.
         Builtin::NatFold
-        | Builtin::ListFold
+        | Builtin::ListFoldFromStart
+        | Builtin::ListFoldFromEnd
         | Builtin::OptionFold
         | Builtin::Map
         | Builtin::Filter
@@ -9236,7 +9274,7 @@ fn eval_builtin(
             }
             Some(accumulator)
         }
-        Builtin::ListFold => {
+        Builtin::ListFoldFromStart => {
             let mut accumulator = values.first()?.clone();
             let Value::Closure(step) = values.get(1)? else {
                 return None;
@@ -9245,11 +9283,32 @@ fn eval_builtin(
                 return None;
             };
             meter.step(
-                Reduction::ListFold,
+                Reduction::ListFoldFromStart,
                 u64::try_from(values.len()).unwrap_or(u64::MAX),
                 expression.span,
             )?;
             for value in values {
+                accumulator = apply_closure(step, vec![value.clone(), accumulator], meter, expression.span)?;
+            }
+            Some(accumulator)
+        }
+        // The catamorphism. §5.6's equation is `s(x, fold(xs))`, so the step nearest the base case
+        // is the one applied to the *last* member; iterating in reverse computes that without
+        // building the recursive term, exactly as the other folds iterate rather than build.
+        Builtin::ListFoldFromEnd => {
+            let mut accumulator = values.first()?.clone();
+            let Value::Closure(step) = values.get(1)? else {
+                return None;
+            };
+            let Value::List { values, .. } = values.get(2)? else {
+                return None;
+            };
+            meter.step(
+                Reduction::ListFoldFromEnd,
+                u64::try_from(values.len()).unwrap_or(u64::MAX),
+                expression.span,
+            )?;
+            for value in values.iter().rev() {
                 accumulator = apply_closure(step, vec![value.clone(), accumulator], meter, expression.span)?;
             }
             Some(accumulator)
@@ -9363,7 +9422,7 @@ fn eval_builtin(
 /// there is no counter, no allocation, and no compiler state to read, so two
 /// runs of one transformer over one region agree exactly. The one recursive
 /// case is [`SyntaxOp::Fold`], and it recurses over a finite value, so it
-/// terminates for the same reason `list_fold` does.
+/// terminates for the same reason `list_fold_from_start` does.
 fn eval_syntax(operation: SyntaxOp, values: &[Value], meter: &mut WorkMeter, expression: &Expr) -> Option<Value> {
     let syntax = |value: &Value| {
         if let Value::Syntax(held) = value {
@@ -11625,6 +11684,39 @@ mod tests {
         meter.nodes()
     }
 
+    /// One binding's value from a piece that declares its own `data` types.
+    ///
+    /// [`values`] reads an empty world, which is right for pieces built only
+    /// from the core types; a piece that declares a data type needs the world
+    /// [`charged_nodes`] builds, or its constructors resolve to nothing.
+    fn value_from_declared_data(text: &str, name: &str) -> Value {
+        let source = format!("piece \"law\" {{ {text} }}");
+        let parsed = musa_language::parse(&source);
+        let piece = musa_language::ast::PieceDecl::from_root(&parsed.syntax()).expect("a piece");
+        let mut resolver = Resolver::new();
+        let world = World::read(&mut resolver, &[piece.syntax().clone()]);
+        let program = check_and_evaluate(
+            &mut resolver,
+            declarations(piece.syntax(), None).into_iter(),
+            Some(piece.syntax()),
+            UnknownRootMusic::Reject,
+            &Modules::default(),
+            &world,
+            Reading::Source,
+        )
+        .unwrap_or_else(|| {
+            panic!(
+                "well-typed source was rejected: {source}\n{:?}",
+                resolver.diagnostics.iter().map(|d| &d.message).collect::<Vec<_>>()
+            )
+        });
+        program
+            .values
+            .get(name)
+            .unwrap_or_else(|| panic!("`{name}` was not bound by: {source}"))
+            .clone()
+    }
+
     /// Naming a value builds nothing, so it charges nothing.
     ///
     /// The version-1 charge was the value's whole shape at every expression it
@@ -11728,7 +11820,7 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(
             entries.len(),
-            110,
+            111,
             "new compiler operations must enter the ownership registry"
         );
         let unique = entries.iter().map(|(spelling, _)| *spelling).collect::<IndexSet<_>>();
@@ -12016,8 +12108,9 @@ mod tests {
         });
         assert_eq!(delta + eliminator + track + machine, BUILTIN_OWNERSHIP.len());
         assert_eq!(
-            eliminator, 7,
-            "the structural eliminators of §5.6 are nat_fold, list_fold, option_fold, map, filter, range, and repeat"
+            eliminator, 8,
+            "the structural eliminators of §5.6 are nat_fold, list_fold_from_start, list_fold_from_end, option_fold, \
+             map, filter, range, and repeat"
         );
         assert_eq!(
             track, 8,
@@ -12031,7 +12124,7 @@ mod tests {
         );
         assert_eq!(
             delta + eliminator + track + machine,
-            110,
+            111,
             "a new compiler operation must be classified before it is admitted"
         );
     }
@@ -12138,7 +12231,7 @@ mod tests {
                     },
                     fn (here, name) { \"none\" },
                     fn (here, delimiter, children) {
-                        list_fold(\"none\", fn (child, found) {
+                        list_fold_from_start(\"none\", fn (child, found) {
                             match text_equal(found, \"none\") { true -> child, false -> found }
                         }, children)
                     },
@@ -12318,7 +12411,7 @@ mod tests {
             "match Some(2) { None -> 0, Some(n) -> n }",
             "match Some(2) { None -> 0, Some(n) -> nat_fold(n, fn (a, b) { a }, 4) }",
             "match range(3) { [] -> 0, [head, ..tail] -> head }",
-            "match range(2) { [] -> 5, [head, ..tail] -> list_fold(head, fn (m, a) { a }, tail) }",
+            "match range(2) { [] -> 5, [head, ..tail] -> list_fold_from_start(head, fn (m, a) { a }, tail) }",
         ];
         for case in CASES {
             let ordinary = phase_nat(case, Reading::Source);
@@ -12451,6 +12544,143 @@ mod tests {
         );
     }
 
+    /// The two list folds agree exactly when the step cannot tell them apart.
+    ///
+    /// A step that is associative with unit makes the direction unobservable,
+    /// which is the whole reason `nat` and `option` need only one name each.
+    /// A step that is not — subtraction-shaped, or one that keeps the member
+    /// it saw first — is where the two answers separate, and where a reader of
+    /// the old bare `list_fold` had nothing but the equations to tell them
+    /// which one they had written.
+    #[test]
+    fn the_two_list_folds_differ_exactly_when_the_step_is_not_symmetric() {
+        const SUMS: &str = "fn plus(member: Nat, running: Nat) -> Nat { \
+             match nat_add(member, running) { Ok(sum) -> sum, Err(why) -> 0 } } \
+             let from_start: Nat = list_fold_from_start(0, plus, [1, 2, 3, 4]); \
+             let from_end: Nat = list_fold_from_end(0, plus, [1, 2, 3, 4]);";
+        assert_eq!(
+            literal_key(&only(SUMS, "from_start")),
+            literal_key(&only(SUMS, "from_end")),
+            "addition is associative and commutative, so the direction must not be observable"
+        );
+
+        // `fn (member, running) { member }` keeps whichever member the step saw
+        // last, so it reports the end the fold finished at.
+        const KEEPS_THE_LAST_MEMBER_SEEN: &str = "fn latest(member: Nat, running: Nat) -> Nat { member } \
+             let from_start: Nat = list_fold_from_start(0, latest, [1, 2, 3, 4]); \
+             let from_end: Nat = list_fold_from_end(0, latest, [1, 2, 3, 4]);";
+        assert_eq!(literal_key(&only(KEEPS_THE_LAST_MEMBER_SEEN, "from_start")), "nat:4");
+        assert_eq!(literal_key(&only(KEEPS_THE_LAST_MEMBER_SEEN, "from_end")), "nat:1");
+    }
+
+    /// Both folds are total on the empty list, and both answer the seed.
+    #[test]
+    fn both_list_folds_are_total_on_the_empty_list() {
+        const EMPTY: &str = "fn latest(member: Nat, running: Nat) -> Nat { member } \
+             fn reject(member: Nat) -> Bool { false } \
+             let empty: List<Nat> = filter(reject, range(3)); \
+             let from_start: Nat = list_fold_from_start(7, latest, empty); \
+             let from_end: Nat = list_fold_from_end(7, latest, empty);";
+        assert_eq!(literal_key(&only(EMPTY, "from_start")), "nat:7");
+        assert_eq!(literal_key(&only(EMPTY, "from_end")), "nat:7");
+    }
+
+    /// A generated `data` fold and `list_fold_from_end` are the same law read
+    /// on two types, and `list_fold_from_start` is not.
+    ///
+    /// §5.6's equations are what a fold *denotes*, and a generated fold is the
+    /// catamorphism of its declaration by construction: a case sees its
+    /// recursive field already folded. `list` is a `data` declaration in
+    /// everything but spelling, so its catamorphism has to answer what the
+    /// generated one answers over the same members and the same step. Before
+    /// this prompt only the accumulator fold was reachable from source, so the
+    /// comparison had no left-hand side to run — the generated law was checked
+    /// against the term written out by hand and never against the list
+    /// eliminator that stands for it.
+    #[test]
+    fn a_generated_fold_and_the_list_catamorphism_answer_alike() {
+        const DECLARATION: &str = "data Chain {\n    End,\n    Link(first: Nat, later: Chain),\n}\n \
+             fn keep(first: Nat, later: Nat) -> Nat { first } \
+             let built = list_fold_from_end(End, fn (member: Nat, later: Chain) -> Chain { Link(member, later) }, \
+             [1, 2, 3, 4]); \
+             let by_declaration: Nat = chain_fold(0, keep, built); \
+             let by_catamorphism: Nat = list_fold_from_end(0, keep, [1, 2, 3, 4]); \
+             let by_accumulator: Nat = list_fold_from_start(0, keep, [1, 2, 3, 4]);";
+        assert_eq!(
+            literal_key(&value_from_declared_data(DECLARATION, "by_declaration")),
+            literal_key(&value_from_declared_data(DECLARATION, "by_catamorphism")),
+            "the generated fold and the list catamorphism must be the same law on two types"
+        );
+        assert_ne!(
+            literal_key(&value_from_declared_data(DECLARATION, "by_declaration")),
+            literal_key(&value_from_declared_data(DECLARATION, "by_accumulator")),
+            "if the accumulator fold answered this too the comparison would prove nothing"
+        );
+    }
+
+    /// `list_fold_from_end` builds the same right-nested value as the closure
+    /// chain it replaces, and costs strictly fewer nodes doing it.
+    ///
+    /// The chain is what `stdlib/src/adapters/staff.musa` wrote before this
+    /// prompt: fold to a `Pending -> Pending` and apply it. Prompt 127dcec
+    /// measured that at one closure and one extra application per element, and
+    /// this is the same measurement against the eliminator that removes it.
+    #[test]
+    fn folding_from_the_end_builds_the_nesting_the_closure_chain_built() {
+        // `rest` is spoken for by the notation, so the tail field is `later`.
+        const DECLARATION: &str = "data Chain {\n    End,\n    Link(first: Nat, later: Chain),\n}\n \
+             fn link(member, later) { Link(member, later) } ";
+        const DIRECT: &str = "let built = list_fold_from_end(End, link, [1, 2, 3, 4, 5, 6, 7, 8]);";
+        const CHAINED: &str = "let built = list_fold_from_start( \
+             fn (later: Chain) -> Chain { later }, \
+             fn (member: Nat, sofar: Chain -> Chain) -> Chain -> Chain { \
+             fn (later: Chain) -> Chain { sofar(Link(member, later)) } }, \
+             [1, 2, 3, 4, 5, 6, 7, 8])(End);";
+
+        assert_eq!(
+            literal_key(&value_from_declared_data(&format!("{DECLARATION}{DIRECT}"), "built")),
+            literal_key(&value_from_declared_data(&format!("{DECLARATION}{CHAINED}"), "built")),
+            "the eliminator must build exactly the value the closure chain built"
+        );
+        let direct = charged_nodes(&format!("{DECLARATION}{DIRECT}"));
+        let chained = charged_nodes(&format!("{DECLARATION}{CHAINED}"));
+        assert!(
+            direct < chained,
+            "the eliminator charged {direct} nodes and the closure chain {chained}; \
+             the point of the eliminator is that it does not allocate a closure per element"
+        );
+    }
+
+    /// The bare `list_fold` resolves to nothing, and says which name preserves
+    /// the meaning the call already had.
+    ///
+    /// It is not an alias and not a deprecation. A direction change is the one
+    /// break a reader cannot see — every call would keep compiling and start
+    /// answering differently wherever the step is not symmetric — so the name
+    /// is deleted and this diagnostic is the migration.
+    #[test]
+    fn the_bare_list_fold_is_rejected_with_the_name_that_keeps_its_meaning() {
+        let refused = refusals("piece \"law\" { let n: Nat = list_fold(0, fn (m, a) { m }, [1, 2]); }");
+        let named = refused
+            .iter()
+            .find(|diagnostic| diagnostic.code == Code::UnknownName)
+            .unwrap_or_else(|| panic!("`list_fold` was not refused: {refused:?}"));
+        assert!(
+            named
+                .help
+                .as_ref()
+                .is_some_and(|help| help.contains("list_fold_from_start") && help.contains("list_fold_from_end")),
+            "the diagnostic must name both replacements: {named:?}"
+        );
+        assert!(
+            named
+                .fixes
+                .iter()
+                .any(|fix| fix.edits.iter().any(|edit| edit.replacement == "list_fold_from_start")),
+            "the applicable fix must be the one that preserves the old meaning: {named:?}"
+        );
+    }
+
     /// Why a piece was refused.
     fn refusals(source: &str) -> Vec<Diagnostic> {
         let parsed = musa_language::parse(source);
@@ -12570,7 +12800,7 @@ mod tests {
                  let values: List<Nat> = range({count}); \
                  let mapped: List<Nat> = map(id, values); \
                  let filtered: List<Nat> = filter(reject, mapped); \
-                 let by_list: Nat = list_fold(0, item, mapped); \
+                 let by_list: Nat = list_fold_from_start(0, item, mapped); \
                  let selected: Nat = from_option(Some(by_list)); \
                  }}"
             );

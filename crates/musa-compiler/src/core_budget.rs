@@ -50,6 +50,14 @@ impl CostTable {
     /// (prompts 124 and 142) rather than an author's intuition. What the
     /// weights fix is that they exist, are named, and move together.
     ///
+    /// A new reduction *kind* is therefore not a table change. Prompt 127dcfaa
+    /// added `list_fold_from_start` and `list_fold_from_end` and left this
+    /// version alone: the weights are per metric, not per kind, so the new
+    /// names change what a rejection prints and nothing about what it costs. A
+    /// program naming `list_fold_from_end` is refused by a version-2 compiler
+    /// at resolution, because the builtin is not there to resolve, so there is
+    /// no version at which two compilers disagree about its cost.
+    ///
     /// Version 2 changed no weight. It changed where a value is charged:
     /// version 1 charged a value's whole shape at every expression that named
     /// it and at every closure that captured it, which made a project's cost
@@ -138,7 +146,8 @@ pub(crate) enum Reduction {
     Map,
     Filter,
     NatFold,
-    ListFold,
+    ListFoldFromStart,
+    ListFoldFromEnd,
     OptionFold,
     DataFold,
     SyntaxFold,
@@ -156,7 +165,8 @@ impl Reduction {
             Self::Map => "map",
             Self::Filter => "filter",
             Self::NatFold => "nat_fold",
-            Self::ListFold => "list_fold",
+            Self::ListFoldFromStart => "list_fold_from_start",
+            Self::ListFoldFromEnd => "list_fold_from_end",
             Self::OptionFold => "option_fold",
             Self::DataFold => "fold",
             Self::SyntaxFold => "syntax_fold",

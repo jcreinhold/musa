@@ -559,7 +559,7 @@ library {
 
     // The first readable value that covers a span exactly, if one does.
     fn readable(held: Duration<WrittenTime>) -> Option<WrittenDuration> {
-        list_fold(
+        list_fold_from_start(
             None,
             fn (
                 candidate: WrittenDuration,

@@ -95,9 +95,9 @@ fn an_annotation_specializes_the_principal_type_and_cannot_widen_it() {
 fn a_deeply_nested_finite_program_evaluates_to_its_value() {
     let compilation = compile_core(
         "let rows: List<List<Nat>> = map(fn (index) { range(index) }, range(4)); \
-         let widths: List<Nat> = map(fn (row) { list_fold(0, fn (member, running) { running }, row) }, rows); \
-         let total: Nat = list_fold(7, fn (width, running) { running }, widths); \
-         let repeated: List<Nat> = list_fold(range(3), fn (row, running) { running }, rows);",
+         let widths: List<Nat> = map(fn (row) { list_fold_from_start(0, fn (member, running) { running }, row) }, rows); \
+         let total: Nat = list_fold_from_start(7, fn (width, running) { running }, widths); \
+         let repeated: List<Nat> = list_fold_from_start(range(3), fn (row, running) { running }, rows);",
     );
     assert!(
         !compilation.has_errors(),

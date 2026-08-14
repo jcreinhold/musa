@@ -256,7 +256,7 @@ fn core_pressure() -> String {
     source.push_str(
         "\n    let deep: Nat = depth_63(0);\n\
          \x20   let counted: List<Nat> = naturals(512);\n\
-         \x20   let folded: Nat = list_fold(0, keep, counted);\n\n\
+         \x20   let folded: Nat = list_fold_from_start(0, keep, counted);\n\n\
          \x20   let raise: Music -> Music = fn (line: Music) -> Music { transpose(P8, line) };\n\
          \x20   let subject: Music = music { c4/4 d4/4 e4/4 f4/4 };\n\
          \x20   let answer: Music = compose_music(raise, retrograde, subject);\n\n\

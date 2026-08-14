@@ -110,7 +110,7 @@ library {
     // keyword or a special form, so a list of them is ordinary data and this
     // is an ordinary fold.
     fn chain(steps: List<Triad -> Triad>, start: Triad) -> Triad {
-        list_fold(start, applied, steps)
+        list_fold_from_start(start, applied, steps)
     }
 
     // One step of `chain`.

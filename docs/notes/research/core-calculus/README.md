@@ -50,4 +50,10 @@ enough.
     surface, because a port says what flows and nothing consumes the value. It refuses both a unit literal and dropping
     the name.
 
+21. [The direction a list fold runs](20-the-direction-a-list-fold-runs.md) records prompt 127dcfaa's split of
+    `list_fold` into `list_fold_from_start` and `list_fold_from_end`. `list` is the one inductive type here whose
+    constructor nesting and element order disagree, so it is the one whose fold direction is observable and the one
+    where a name has to say it; `nat` and `option` need one name each for reasons the note states. It refuses both
+    flipping the name's meaning in place and leaving the closure chain in the standard library.
+
 Each rejected claim stays beside its refutation. No file here authorizes a compiler change or a change to `docs/rules/`.

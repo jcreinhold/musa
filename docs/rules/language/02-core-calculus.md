@@ -92,7 +92,8 @@ each nominal declaration, and:
 
 ```text
 nat_fold  : A → (nat → A → A) → nat → A
-list_fold : A → (X → A → A) → list X → A
+list_fold_from_start : A → (X → A → A) → list X → A
+list_fold_from_end   : A → (X → A → A) → list X → A
 option_fold : A → (X → A) → option X → A
 ```
 
@@ -109,11 +110,11 @@ not be stored (§1.1).
 
 **There is also no signed integer type**, and the reason is the eliminators above rather than a preference about
 numbers. `nat` is in the language to be the *inductive* numeric type: `zero | succ` is well founded, so `nat_fold`
-terminates by construction, exactly as `list_fold` and `option_fold` do over `nil | cons` and `none | some`. ℤ has no
-such structure and no least element to descend to, so an `int_fold` would either be a `nat_fold` on the magnitude with a
-sign carried alongside — `nat` plus bookkeeping — or an unbounded loop, which totality forbids. An `int` could therefore
-only be an extra base type with no eliminator of its own, and the governing design rule then applies: removing it makes
-nothing impossible.
+terminates by construction, exactly as the two list folds and `option_fold` do over `nil | cons` and `none | some`. ℤ
+has no such structure and no least element to descend to, so an `int_fold` would either be a `nat_fold` on the magnitude
+with a sign carried alongside — `nat` plus bookkeeping — or an unbounded loop, which totality forbids. An `int` could
+therefore only be an extra base type with no eliminator of its own, and the governing design rule then applies: removing
+it makes nothing impossible.
 
 Nothing musical is left unsayable by that, because the language already has better types for both halves of what an
 `int` would be asked to do. Ordinary signed arithmetic is `ratio`, which is signed, with the refinements at its
@@ -450,7 +451,8 @@ Prompt 96 extends terms and values by:
 
 ```text
 e ::= … | none_τ | some(e) | []_τ | e :: e | match e with arms
-        | nat_fold(z,s,n) | list_fold(z,s,xs) | option_fold(z,s,o)
+        | nat_fold(z,s,n) | option_fold(z,s,o)
+        | list_fold_from_start(z,s,xs) | list_fold_from_end(z,s,xs)
 v ::= … | none_τ | some(v) | []_τ | v :: v
 ```
 
@@ -467,8 +469,12 @@ operator. Constructor typing and the three eliminators are:
 Γ ⊢ nat_fold(z,s,n) : A
 
 Γ ⊢ z : A   Γ ⊢ s : (X,A)→A   Γ ⊢ xs : list X
-──────────────────────────────────────────────── ListFold
-Γ ⊢ list_fold(z,s,xs) : A
+──────────────────────────────────────────────── ListFoldFromStart
+Γ ⊢ list_fold_from_start(z,s,xs) : A
+
+Γ ⊢ z : A   Γ ⊢ s : (X,A)→A   Γ ⊢ xs : list X
+──────────────────────────────────────────────── ListFoldFromEnd
+Γ ⊢ list_fold_from_end(z,s,xs) : A
 
 Γ ⊢ z : A   Γ ⊢ s : X→A   Γ ⊢ o : option X
 ────────────────────────────────────────────── OptionFold
@@ -482,16 +488,41 @@ catch-all. Product binding patterns are irrefutable. An arm following complete c
 literal already covered, is rejected as unreachable. These finite coverage facts extend canonical forms and make the
 match case of progress immediate.
 
-The fold equations are deterministic left folds in source order:
+Each fold equation is deterministic. `nat_fold`, `option_fold`, `list_fold_from_end`, and every fold generated for a
+nominal declaration (§5.6's data rule) are the *catamorphisms* of their types: the step case receives what the
+eliminator has already made of the substructure. `list_fold_from_start` is the accumulator fold that `list` also needs,
+and it is the one that runs left to right.
 
 ```text
-nat_fold(z,s,0)       → z
-nat_fold(z,s,n+1)     → s(n, nat_fold(z,s,n))
-list_fold(z,s,[])     → z
-list_fold(z,s,x::xs)  → list_fold(s(x,z),s,xs)
-option_fold(z,s,none) → z
-option_fold(z,s,some(x)) → s(x)
+nat_fold(z,s,0)                     → z
+nat_fold(z,s,n+1)                   → s(n, nat_fold(z,s,n))
+list_fold_from_start(z,s,[])        → z
+list_fold_from_start(z,s,x::xs)     → list_fold_from_start(s(x,z),s,xs)
+list_fold_from_end(z,s,[])          → z
+list_fold_from_end(z,s,x::xs)       → s(x, list_fold_from_end(z,s,xs))
+option_fold(z,s,none)               → z
+option_fold(z,s,some(x))            → s(x)
 ```
+
+**Only `list` is asked which direction it runs.** The direction of a fold is observable exactly when a type's
+constructor nesting and its element order run in opposite directions, and among this language's inductive types only
+`list` does. For `nat` they coincide: `nat_fold` expands to `s(n−1, … s(1, s(0, z)))`, and an accumulator fold visiting
+the indices from `0` upward builds the same term, because the successor structure numbers itself and its outermost
+constructor carries its largest index. `option` has no sequence to have a direction. A generated `data` fold is a
+catamorphism by construction — a case sees its group-member fields already folded, one constructor layer at a time. For
+`list` the outermost cons holds the *first* element, so folding from the outside in reaches the last element first while
+accumulating from the start reaches it last, and the two disagree for any step that is not associative with unit. Both
+are useful, so `list` is the one type whose eliminators have to say in their names which is meant.
+
+**Both are primitive, and either derives from the other.** Nothing here extends what the language can express:
+
+```text
+list_fold_from_end(z,s,xs) ≡ list_fold_from_start(λa.a, λ(x,g).λa.g(s(x,a)), xs)(z)
+```
+
+What it changes is what the language can say plainly and what the meter charges. The derivation costs one closure and
+one application per element, and it puts a higher-order term at a call site whose subject may be a list of note-heads.
+Providing both is the same decision §1 makes about surface conveniences: pay once here rather than at every author.
 
 The implementation iterates rather than building these recursive terms; the equations specify the result. `map` and
 `filter` are list folds, `range(n)` constructs `[0,…,n−1]`, and value `repeat(x,n)` constructs `n` copies of `x`. Their
@@ -506,13 +537,15 @@ R_(list τ)(t)   iff t ∈ SN and t →* [v₁,…,vₙ] with every R_τ(vᵢ)
 ```
 
 Constructor compatibility follows from the induction hypotheses for members. For eliminators, use the lexicographic
-measure `(constructor count, reduction height of arguments)`: `nat_fold` decreases the natural by one, `list_fold`,
-`map`, and `filter` decrease list length by one, `option_fold` consumes its sole constructor, and `range`/value-repeat
-decrease their compiler-owned natural counter. The step function is already reducible at the instantiated arrow type, so
-applying it preserves the accumulator candidate. Induction on that measure proves each eliminator maps reducible
-arguments to a reducible result. These new cases extend the fundamental lemma and hence preservation, progress,
-determinism, and strong normalization. Rank-1 instantiation does not alter the proof: each instance is an ordinary term
-at a closed type, and the accepted instance graph is finite and acyclic.
+measure `(constructor count, reduction height of arguments)`: `nat_fold` decreases the natural by one,
+`list_fold_from_start`, `list_fold_from_end`, `map`, and `filter` decrease list length by one — `list_fold_from_end`
+applies its step to a reducible member and to the reducible result of the fold over the shorter list, so the candidate
+closure argument is the one already written for `list_fold_from_start` — `option_fold` consumes its sole constructor,
+and `range`/value-repeat decrease their compiler-owned natural counter. The step function is already reducible at the
+instantiated arrow type, so applying it preserves the accumulator candidate. Induction on that measure proves each
+eliminator maps reducible arguments to a reducible result. These new cases extend the fundamental lemma and hence
+preservation, progress, determinism, and strong normalization. Rank-1 instantiation does not alter the proof: each
+instance is an ordinary term at a closed type, and the accepted instance graph is finite and acyclic.
 
 ### 5.7 Track-construction safety (prompt 97, amended at prompt 127a)
 
@@ -592,8 +625,8 @@ is a checked law:
 
 - **δ-builtins** — every argument type and the result type is a base type or a finite constructor (`option`, `list`,
   product) over base types, with no arrow anywhere in the signature;
-- **structural eliminators** — `nat_fold`, `list_fold`, `option_fold`, `map`, `filter`, `range`, `repeat`, proved in
-  §5.6;
+- **structural eliminators** — `nat_fold`, `list_fold_from_start`, `list_fold_from_end`, `option_fold`, `map`, `filter`,
+  `range`, `repeat`, proved in §5.6;
 - **track builtins** — the constructors and controlled transforms of §5.7; and
 - **machine builtins** — the constructors of `../across-stages/03-machine-calculus.md` §2, whose registered
   implementations are governed there.

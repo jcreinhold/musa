@@ -46,8 +46,8 @@ const PRELUDE: &str = r"
 
     fn tick(one: Music, carried: Music) -> Music { together(one, carried) }
     fn beat() -> Music { music { c4/1 } }
-    fn tally(count: Nat) -> Music { list_fold(music { rest/1 }, tick, repeat(beat(), count)) }
-    fn chorus(voices: List<Music>) -> Music { list_fold(music { rest/1 }, tick, voices) }
+    fn tally(count: Nat) -> Music { list_fold_from_start(music { rest/1 }, tick, repeat(beat(), count)) }
+    fn chorus(voices: List<Music>) -> Music { list_fold_from_start(music { rest/1 }, tick, voices) }
     fn beat_for_pc(member: Pc12) -> Music { beat() }
     fn beat_for_voicing(chosen: Voicing) -> Music { beat() }
     fn beat_for_triad(refined: Triad) -> Music { beat() }

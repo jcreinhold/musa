@@ -81,10 +81,17 @@ and other literal domains, options, empty/cons lists, and products. A bare ident
 discards it. Prompt 96 defines exhaustiveness and rejects duplicate or unreachable arms. It also owns the constructor
 meaning of `[head, ..tail]`; `..` is two adjacent `.` tokens, not a new general range operator.
 
-Structural folds do not add syntax. `nat_fold(zero, step, count)`, `list_fold(zero, step, values)`, and
-`option_fold(zero, some_case, value)` are ordinary calls to compiler-owned total builtins. Their step arguments are
-named functions because this candidate deliberately has no anonymous-lambda surface. This gives musicians one call
-notation to learn and leaves `repeat n { body }` as the notation-facing fold over musical material.
+Structural folds do not add syntax. `nat_fold(zero, step, count)`, `list_fold_from_start(zero, step, values)`,
+`list_fold_from_end(zero, step, values)`, and `option_fold(zero, some_case, value)` are ordinary calls to compiler-owned
+total builtins. A step argument is a named function or an anonymous one, whichever reads better at the call site. This
+gives musicians one call notation to learn and leaves `repeat n { body }` as the notation-facing fold over musical
+material.
+
+A list has two folds because it is the one type whose direction is observable, and the direction is in the name rather
+than in the type: both have the identical signature, so a reader comparing two calls compares only the word that
+differs. `list_fold_from_start` accumulates left to right; `list_fold_from_end` is the catamorphism, and it is what
+reads a region into right-nested data without a closure chain. `02-core-calculus.md` §5.6 says why no other type needs
+the distinction.
 
 The value types added here are `Bool`, `Nat`, `Ratio`, `Duration`, `Pitch`, `Interval`, `NoteName`, `Pc12`, `Scale`,
 `Key`, `Degree`, `ChordClass`, `Triad`, `Roman`, `Voicing`, `Row12`, `Analysis<A>`, and `EventTrack[C, A]`. Products,

@@ -479,7 +479,8 @@ impl World {
     /// stopped at the group boundary would not be a traversal. With one
     /// declaration in the group — every declaration that is not mutually
     /// recursive — the shape degenerates to one case per constructor plus the
-    /// value, which is exactly `nat_fold`'s and `list_fold`'s shape.
+    /// value, which is exactly `nat_fold`'s and `list_fold_from_end`'s shape —
+    /// the catamorphisms, which is what a generated fold is.
     pub(crate) fn fold(&self, name: &str, unifier: &mut Unifier) -> Option<Folding> {
         let id = self.folds.get(name)?;
         let declaration = self.declarations.get(id)?;
@@ -508,7 +509,7 @@ impl World {
                 let result = results.get(&member.id)?.clone();
                 // A constructor holding nothing takes the *answer*, not a
                 // function returning it: that is `nat_fold`'s `zero` and
-                // `list_fold`'s `start`, and a nullary arrow here would make
+                // a list fold's `start`, and a nullary arrow here would make
                 // a reader who knows those write something else.
                 cases.push(if parameters.is_empty() {
                     result
@@ -613,9 +614,13 @@ pub(crate) struct Folding {
 /// The name of the fold a declaration generates: `motive_fold` for `Motive`,
 /// `chord_shape_fold` for `ChordShape`.
 ///
-/// The shape is `nat_fold`, `list_fold`, `option_fold` — the eliminators the
-/// language already had — because a generated fold *is* one of those, and a
-/// reader who knows one should not have to learn a second convention.
+/// The shape is `nat_fold`, `option_fold`, `list_fold_from_end` — the
+/// catamorphisms the language already had — because a generated fold *is* one
+/// of those, and a reader who knows one should not have to learn a second
+/// convention. A generated fold has no direction to name: a case sees its
+/// group-member fields already folded, one constructor layer at a time, which
+/// is what "replaces one constructor layer" means. Only `list` has two names,
+/// because only `list` nests its constructors against its element order.
 pub(crate) fn fold_name(ty: &str) -> String {
     let mut out = String::with_capacity(ty.len().saturating_add(6));
     for (index, character) in ty.chars().enumerate() {

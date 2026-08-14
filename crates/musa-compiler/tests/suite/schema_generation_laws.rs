@@ -63,7 +63,7 @@ const PRELUDE: &str = r"
     }
 
     fn after(one: Music, carried: Music) -> Music { together(one, shift(1, carried)) }
-    fn laid_out(values: List<Music>) -> Music { list_fold(music { rest/1 }, after, values) }
+    fn laid_out(values: List<Music>) -> Music { list_fold_from_start(music { rest/1 }, after, values) }
     fn line(written: List<Degree>) -> Music { retrograde(laid_out(map(degree_note, written))) }
 
     fn spelled(bass: Pitch, content: Option<ChordClass>) -> Music { match content {

@@ -1,7 +1,7 @@
 ---
 id: 127dcfaa
 slug: list-fold-direction
-status: pending
+status: done
 depends_on: [127dcfa]
 phase: 3
 ---

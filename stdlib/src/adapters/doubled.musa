@@ -64,9 +64,10 @@ library {
 
     // The first refusal among two, in the order they were written.
     //
-    // A left-to-right `list_fold` over a group's children carries the refusal
-    // it already has, so this is what "the first `;` in the region" means, and
-    // it is one named function rather than a fold nested inside a fold.
+    // A left-to-right `list_fold_from_start` over a group's children carries
+    // the refusal it already has, so this is what "the first `;` in the region"
+    // means, and it is one named function rather than a fold nested inside a
+    // fold.
     let first_refusal = fn (found: Refusal, later: Refusal) {
         match found {
             Found(node) -> Found(node),
@@ -115,11 +116,15 @@ library {
             },
             fn (here, name) { Nothing },
             // The first refusal among the children, in the order they are
-            // written: `list_fold` runs left to right, and the sibling
-            // `first_refusal` says what "first" means once, here rather than
-            // inside the step.
+            // written: `list_fold_from_start` runs left to right, and the
+            // sibling `first_refusal` says what "first" means once, here
+            // rather than inside the step.
             fn (here, delimiter, children) {
-                list_fold(Nothing, fn (child, found) { first_refusal(found, child) }, children)
+                list_fold_from_start(
+                    Nothing,
+                    fn (child, found) { first_refusal(found, child) },
+                    children
+                )
             },
             region
         ) {

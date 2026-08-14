@@ -95,11 +95,10 @@
 //   takes a count, and the only way to hand it one is to spell it. Four dots
 //   are refused for the same reason, and closing that would take an operation
 //   turning a phase number into a literal token.
-// - **A list cannot be built, and lists fold only from the left.** A group's
-//   children arrive as a `List`, and the data this adapter emits is
-//   right-nested, so the sequence has to be built from its end. `from_the_end`
-//   does that with the one closure in this file. Closing it would take a right
-//   fold over lists, which is a core-calculus question and not an adapter's.
+// - **A list cannot be built.** A group's children arrive as a `List` and
+//   there is no way to add one to it. Reading them into right-nested data no
+//   longer needs a closure: prompt 127dcfaa gave `list` a fold that runs from
+//   its end, which is what `read_body` uses.
 // - **A tie's continuation is checked by spelling, not by pitch.** There is no
 //   operation reading a pitch out of a token, so `f5` tied to `f#5` is caught
 //   by comparing the two spellings the composer wrote. That is the check §2.5
@@ -561,7 +560,7 @@ library {
 
     // The spelling of the first pitch among some pieces, if there is one.
     fn first_voice(parts: List<Read>) -> Option<Text> {
-        list_fold(
+        list_fold_from_start(
             None,
             fn (one: Read, sofar: Option<Text>) -> Option<Text> {
                 match sofar {
@@ -584,7 +583,7 @@ library {
 
     // The numbers a form stated between its parentheses, in the order written.
     fn stated_numbers(region: Syntax, parts: List<Read>) -> Numbers {
-        list_fold(
+        list_fold_from_start(
             NoNumbers,
             fn (one: Read, sofar: Numbers) -> Numbers {
                 match one {
@@ -635,7 +634,7 @@ library {
 
     // The exact span a `( 3/8 )` states, if that is what the parentheses hold.
     fn stated_exact(region: Syntax, parts: List<Read>) -> Option<Length> {
-        list_fold(
+        list_fold_from_start(
             None,
             fn (one: Read, sofar: Option<Length>) -> Option<Length> {
                 match sofar {
@@ -1860,24 +1859,6 @@ library {
         }
     }
 
-    // A right fold over the pieces of one group.
-    //
-    // `list_fold` runs left to right and the data this adapter emits is
-    // right-nested, so the sequence is assembled from its end. This is the
-    // standard way to get one fold out of the other, and it is written once,
-    // here: everything else in this file is an ordinary function of what it
-    // was handed. Reading from the end is also what makes a tie easy — what a
-    // tie reaches is already in hand when the tie is met.
-    fn from_the_end(region: Syntax, start: Pending, pieces: List<Read>) -> Pending {
-        list_fold(
-            fn (later: Pending) -> Pending { later },
-            fn (one_piece: Read, sofar: Pending -> Pending) -> Pending -> Pending {
-                fn (later: Pending) -> Pending { sofar(taken_piece(region, one_piece, later)) }
-            },
-            pieces,
-        )(start)
-    }
-
     // Anything read and never used is something this staff did not understand.
     fn leftover(
         region: Syntax,
@@ -1938,9 +1919,11 @@ library {
     }
 
     // Everything between one pair of braces, read.
+    //
+    // The fold runs from the end because the data this adapter emits is
+    // right-nested: what a tie reaches is already in hand when the tie is met.
     fn read_body(region: Syntax, here: NodePath, pieces: List<Read>) -> Reading {
-        match from_the_end(
-            region,
+        match list_fold_from_end(
             Pending(
                 nothing_read(here),
                 NoLength,
@@ -1951,6 +1934,9 @@ library {
                 NoVoices,
                 NoWords,
             ),
+            fn (one_piece: Read, later: Pending) -> Pending {
+                taken_piece(region, one_piece, later)
+            },
             pieces,
         ) {
             Pending(read, length, dots, tying, numbers, taken, voiced, words) -> match read {
