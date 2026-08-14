@@ -119,6 +119,7 @@ ship.
     rank-1 source foundation, repairing everyday ergonomics, replacing the primitive syntax catamorphism with a total
     inherited-context recursor over sealed child steps, and deferring higher-kinded container abstraction and dependent
     types until real programs earn them. It corrects the fire-triangle premise, several claims in note 38, and its own
-    first recursor design.
+    first recursor design; its later qualification separates the association lemma delivered by sealing from the
+    reducibility argument still owed for source termination.
 
 The proof gate failed. Nothing in this workspace moves to `docs/rules/` or into implementation prompts.

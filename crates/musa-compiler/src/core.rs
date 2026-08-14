@@ -1568,10 +1568,11 @@ impl MachineOp {
 /// arms be exhaustive: once a builtin's family is an `Eliminator`, which one it is has already
 /// been decided, and no arm is left over for the sixty-two δ-builtins to fall into by accident.
 ///
-/// `list` has two because it is the one type in the language whose fold direction is observable:
-/// its outermost cons holds the *first* element, so folding from the outside in and accumulating
-/// from the start disagree for any step that is not associative with unit. The two share one type,
-/// which is exactly why the direction has to be in the name.
+/// `list` has two because both directions have demonstrated consumers: its outermost cons holds
+/// the *first* element, so folding from the outside in and accumulating from the start can
+/// disagree. The projection step `s(x,a) = x` is one witness. The two folds share one type, which
+/// is exactly why the direction has to be in the name. Other structures may admit ordered
+/// traversals too; they keep one canonical eliminator until another primitive earns a caller.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Eliminator {
     NatFold,
@@ -12544,16 +12545,14 @@ mod tests {
         );
     }
 
-    /// The two list folds agree exactly when the step cannot tell them apart.
+    /// The two list folds agree for addition and disagree for projection.
     ///
-    /// A step that is associative with unit makes the direction unobservable,
-    /// which is the whole reason `nat` and `option` need only one name each.
-    /// A step that is not — subtraction-shaped, or one that keeps the member
-    /// it saw first — is where the two answers separate, and where a reader of
-    /// the old bare `list_fold` had nothing but the equations to tell them
-    /// which one they had written.
+    /// Associativity and commutativity with a common unit are sufficient for
+    /// the direction to be unobservable, but their absence is not an exact
+    /// classification of every operation and input. The projection step below
+    /// is a concrete witness that the two source operations are distinguishable.
     #[test]
-    fn the_two_list_folds_differ_exactly_when_the_step_is_not_symmetric() {
+    fn the_two_list_folds_agree_for_addition_and_disagree_for_projection() {
         const SUMS: &str = "fn plus(member: Nat, running: Nat) -> Nat { \
              match nat_add(member, running) { Ok(sum) -> sum, Err(why) -> 0 } } \
              let from_start: Nat = list_fold_from_start(0, plus, [1, 2, 3, 4]); \

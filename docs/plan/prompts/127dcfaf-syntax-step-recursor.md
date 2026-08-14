@@ -40,21 +40,31 @@ that an adapter may look at a node before deciding whether, in what order, and u
 - `crates/musa-compiler/src/core_budget.rs`: `Reduction::SyntaxFold` at line 144 and its spelling at 162.
 - `docs/rules/language/02-core-calculus.md` §1.1 and the `d`/`a` variable classes — a sealed step is excluded from `d`
   because its hidden representation contains the current algebra.
+- `~/Code/papers/logic-and-computation/type-theory/logical-relations-as-types/text.md` §1.4 — the Tait-computability
+  method behind the reducibility/fundamental-lemma extension frozen by prompt 127dcfae. Its module calculus and
+  modalities are not imported into Musa.
 
 ## Design
 
 **Amend the rules first, then implement.** The candidate pages gain the phase-local typing and evaluation rules for
-`SyntaxStep<C,A>` and `run_syntax_step`, the recursor's rule with its inherited context, the structural-decrease case in
-§5.5's measure, and the `d`-exclusion in the storability predicate; `05-verification.md` gains the eleven laws. Code
-follows in the same commit. A prompt that implements against stale rules is the drift root `AGENTS.md` forbids.
+`SyntaxStep<C,A>` and `run_syntax_step`, the recursor's rule with its inherited context, the local decrease lemma and
+reducibility/fundamental-lemma cases in §5.5, and the `d`-exclusion in the storability predicate; `05-verification.md`
+gains the eleven laws. Code follows in the same commit. A prompt that implements against stale rules is the drift root
+`AGENTS.md` forbids.
 
-**The step is sealed, and that is the whole safety argument.** `SyntaxStep<C,A>` binds together one immediate proper
-child, the algebra of the recursor that exposed it, and the operation that resumes that recursor. It has no source
-constructor, and no operation yields its child, its algebra, a path, a scope, a source range, or raw syntax.
-`run_syntax_step(c, step)` supplies `c` to the sealed child's branch. Because the child and the runner cannot be
-separated, a step captured in a closure and carried into a nested traversal still runs *its own* child under *its own*
-algebra: there is nothing for a nested recursor to re-associate it with. No dynamic owner check is needed, and none is
-added — a dynamic check would need a failure result that the operation has no way to produce.
+**Sealing delivers association.** `SyntaxStep<C,A>` binds together one immediate proper child, the algebra of the
+recursor that exposed it, and the operation that resumes that recursor. It has no source constructor, and no operation
+yields its child, its algebra, a path, a scope, a source range, or raw syntax. `run_syntax_step(c, step)` supplies `c`
+to the sealed child's branch. Because the child and the runner cannot be separated, a step captured in a closure and
+carried into a nested traversal still runs *its own* child under *its own* algebra: there is nothing for a nested
+recursor to re-associate it with. No dynamic owner check is needed, and none is added — a dynamic check would need a
+failure result that the operation has no way to produce.
+
+**Reducibility delivers source termination.** The local association/decrease lemma is necessary but not sufficient: an
+algebra may use function-valued `C` or `A`, capture and duplicate a step, delay it, or start a nested recursor on the
+original subject. The §5.5 amendment therefore defines the step candidate frozen by prompt 127dcfae and extends the
+fundamental lemma for `recurse_syntax` and `run_syntax_step`. Tests exercise the hostile terms, but the governing proof
+must cover all reducible higher-order contexts and results; no finite test suite substitutes for that argument.
 
 **Rank 1 is preserved.** `C` and `A` are quantified only in the builtin's own scheme, and `SyntaxStep<C,A>` is one
 nominal phase-local type constructor over ordinary type arguments. Nothing here introduces higher-rank or higher-kinded
@@ -78,8 +88,9 @@ table says what each owes. A law whose evidence is a paragraph is asserted, not 
 ## Target
 
 - `docs/rules/language/00-semantics.md` and `docs/rules/language/02-core-calculus.md` — the phase-local rules for
-  `SyntaxStep<C,A>`, `run_syntax_step`, and the inherited-context recursor; the §5.5 structural-decrease case covering
-  capture and nesting; the §5.8 builtin-family row; the `d`-exclusion; and the sentence recording that 127da's fold-only
+  `SyntaxStep<C,A>`, `run_syntax_step`, and the inherited-context recursor; the §5.5 sealed-association/local-decrease
+  lemma and reducibility/fundamental-lemma cases covering higher-order `C`/`A`, capture, duplication, delayed use, and
+  nested recursors; the §5.8 builtin-family row; the `d`-exclusion; and the sentence recording that 127da's fold-only
   law is superseded and why.
 - `docs/rules/language/05-verification.md` — the eleven laws, each naming its evidence.
 - `crates/musa-compiler/src/core.rs` — `SyntaxStep` as a phase-local value; the recursor builtin with its branches and
@@ -91,11 +102,12 @@ table says what each owes. A law whose evidence is a paragraph is asserted, not 
 - `crates/musa-language/`, `editors/tree-sitter-musa/` — only if the frozen surface needs syntax. If `run_syntax_step`
   is a builtin rather than a form, neither changes and the prompt says so.
 - Tests in `crates/musa-compiler`, one per law: sealed formation; association under nesting, using prompt 127dcfae's
-  hostile program; inherited context delivered exactly; path uniqueness; structural decrease with a captured step run
-  later; repeatability under two different contexts; determinism; opacity, as compile-fail cases proving no operation
-  reveals `SourceInfo`, scopes, raw syntax, path, or the algebra; fold derivation, as a differential test against the
-  current `fold_syntax` over the existing corpus; budget accounting for capture and repeat; and phase conservativity, as
-  compile-fail cases proving ordinary source can name neither `Syntax` nor `SyntaxStep`.
+  hostile program including restart on the original subject and function-valued `C`/`A` that capture a step; inherited
+  context delivered exactly; path uniqueness; local structural decrease with a captured step run later; repeatability
+  under two different contexts; determinism; opacity, as compile-fail cases proving no operation reveals `SourceInfo`,
+  scopes, raw syntax, path, or the algebra; fold derivation, as a differential test against the current `fold_syntax`
+  over the existing corpus; budget accounting for capture and repeat; and phase conservativity, as compile-fail cases
+  proving ordinary source can name neither `Syntax` nor `SyntaxStep`.
 - The differential-evaluator coverage the laws suite already runs, extended to the new builtins.
 
 ## Check
@@ -121,6 +133,8 @@ Commit as `Replace the syntax catamorphism with an inherited-context recursor`.
 - No general recursion, no `fix`, no higher-rank polymorphism, no higher-kinded type variable, and no type class.
 - No dynamic owner check and no failure result on `run_syntax_step`. If sealing turns out not to make one unnecessary,
   that contradicts the paper trial: report it and stop.
+- No implementation if the reducibility/fundamental-lemma cases frozen by 127dcfae do not go through for higher-order
+  `C`/`A`, duplication, delayed use, or nested recursors. Tests alone do not waive this stop.
 - No quotation, antiquotation, text-to-syntax, syntax reflection, or fresh-name operation.
 - No staff adapter rewrite. Prompt 127dcfag owns the migration and its measurement, and doing it here would merge the
   interface's evidence with its first user's.

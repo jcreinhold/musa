@@ -10,7 +10,7 @@ phase: 3
 
 ## Task
 
-The staff adapter is the evidence that failed the old interface. Five ergonomic repairs and one traversal replacement
+The staff adapter is the evidence that failed the old interface. Four ergonomic repairs and one traversal replacement
 have landed since it was written. This prompt rewrites `stdlib/src/adapters/staff.musa` against them and measures the
 result, so the freeze in prompt 127dd stands on a program written for the boundary rather than around it.
 

@@ -19,7 +19,8 @@ that separates the two readings — is stated by neither the type nor the name.
 
 This prompt gives `list` two eliminators whose names state their direction, `list_fold_from_start` and
 `list_fold_from_end`, retires the bare `list_fold` with a diagnostic that names the replacement, and adds to §5.6 the
-paragraph saying why `list` is the only type in the language that needs two.
+paragraph saying why `list` has earned both directions while other types retain one canonical eliminator until a second
+primitive has evidence.
 
 ## Read
 
@@ -55,22 +56,24 @@ paragraph saying why `list` is the only type in the language that needs two.
 
 ## Design
 
-**Only `list` can be asked the question.** The direction of a fold is observable exactly when a type's constructor
-nesting and its element order run in opposite directions, and among this language's inductive types only `list` does.
+**Only `list` has earned two compiler-owned answers.** This is an admission claim, not a theorem that other finite
+structures cannot have an observable traversal order.
 
-- For `nat`, they coincide. The catamorphism `nat_fold(z,s,n+1) → s(n, nat_fold(z,s,n))` expands to
-  `s(n−1, … s(1, s(0, z)))`, and an accumulator fold that visits the indices from `0` upward builds the same term: the
-  successor structure numbers itself, so its outermost constructor carries its largest index. The implementation already
-  exploits this — it iterates `0..n` with an accumulator and satisfies the catamorphic equation. There is one `nat_fold`
-  because there is only one answer.
+- For the current `nat_fold`, catamorphism and upward accumulation coincide. The equation
+  `nat_fold(z,s,n+1) → s(n, nat_fold(z,s,n))` expands to `s(n−1, … s(1, s(0, z)))`, and an accumulator fold that visits
+  the indices from `0` upward builds the same term: the successor structure numbers itself, so its outermost constructor
+  carries its largest index. The implementation already exploits this — it iterates `0..n` with an accumulator and
+  satisfies the catamorphic equation. A reverse visit from `n−1` downward would be observable with `s(i,a) = i`, but no
+  reviewed program needs it, so it has not earned a primitive.
 - For `option`, there is no sequence to have a direction; `option_fold` consumes its sole constructor.
-- A generated `data` fold is a catamorphism by construction: a case sees its group-member fields already folded, one
-  constructor layer at a time. Direction is not a choice there either — it is what "replaces one constructor layer"
-  means.
+- A generated `data` fold is the declaration's canonical catamorphism: a case sees its recursive fields already folded,
+  one constructor layer at a time. A particular declaration may encode an ordered structure and later earn another
+  traversal; generation does not add one without a caller.
 - For `list`, the outermost `CONS` holds the *first* element. Folding from the outside in therefore reaches the last
-  element first, while accumulating from the start reaches it last, and the two disagree for any step that is not
-  associative-with-unit. Both are useful and neither is derivable at zero cost, so `list` is the one type where a name
-  has to say which is meant.
+  element first, while accumulating from the start reaches it last. The projection `s(x,a) = x` distinguishes them;
+  associativity and commutativity with a common unit are sufficient for agreement but are not an exact classification of
+  every operation or input. Both directions have current consumers and neither is derivable at zero cost, so both names
+  are admitted.
 
 **The missing direction is the one the language most needs.** Prompt 127ac made right-nested `data` first class, and a
 catamorphism-shaped value is what the staff package's `StaffItem` is: `Sounded(anchor, event, after)` nests to the
@@ -188,11 +191,12 @@ eliminator and deletes its wrapper.
   change.
 - `stdlib/`, `tests/fixtures/core-pressure.musa`, and the fixture sources under `crates/musa-compiler/tests/suite/` —
   the migration table above.
-- Tests in `crates/musa-compiler`: the two folds agree on a step that is associative with unit and disagree on one that
-  is not; `list_fold_from_end` over a right-nested `data` declaration builds the same value as the closure chain it
-  replaces, and costs strictly fewer nodes; the bare `list_fold` is rejected with the fix naming `list_fold_from_start`;
-  both folds are total on the empty list; and the generated-law comparison against the substitution evaluator covers the
-  new direction.
+- Tests in `crates/musa-compiler`: the two folds agree for addition and disagree for the projection `s(x,a) = x`;
+  `list_fold_from_end` over a right-nested `data` declaration builds the same value as the closure chain it replaces,
+  and costs strictly fewer nodes; the bare `list_fold` is rejected with the fix naming `list_fold_from_start`; both
+  folds are total on the empty list; and the existing generated-fold law compares the declaration's catamorphism with
+  the two list directions through terms evaluated by the one production evaluator. There is no separate substitution
+  evaluator to extend.
 - `docs/notes/research/core-calculus/20-the-direction-a-list-fold-runs.md` and its entry in that directory's `README.md`
   — the decision, the coincidence that makes `nat` need one name, and the two refused alternatives above, so the
   argument stays visible after the equations stop showing it.
@@ -217,8 +221,9 @@ Commit as `Say which end a list fold runs from`.
 
 ## Stop
 
-- No change to `nat_fold` or `option_fold`, and no second name for either. **Design** says why one name is the whole
-  answer for both, and adding `nat_fold_from_end` would name a distinction that does not exist.
+- No change to `nat_fold` or `option_fold`, and no second name for either. `Option` has no ordered member sequence, and
+  no reviewed program needs a reverse natural-number traversal. A later prompt may reopen either only with evidence;
+  this prompt does not turn the absence of current evidence into an impossibility theorem.
 - No change to generated `data` folds. They are already catamorphisms; only the doc comment claiming kinship with
   `list_fold` moves.
 - No `map`, `filter`, `range`, or `repeat` change. Direction is unobservable in all four.

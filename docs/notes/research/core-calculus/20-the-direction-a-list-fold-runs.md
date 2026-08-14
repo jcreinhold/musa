@@ -3,12 +3,12 @@
 **Status: research. These notes do not set Musa's rules.**
 
 Prompt 127dcfaa split `list_fold` into `list_fold_from_start` and `list_fold_from_end` and deleted the bare name. This
-note records why the split is not a convenience, why `nat` and `option` do not get the same treatment, and what was
-refused on the way.
+note records why that primitive convenience is earned, why `nat` and `option` do not currently get the same treatment,
+and what was refused on the way.
 
-The short version: **`list` is the only inductive type in this language whose constructor nesting and its element order
-run in opposite directions, so it is the only one where the direction of a fold is observable and therefore the only one
-where a name has to say it.**
+The short version: **Musa has demonstrated uses for both directional folds over `List`, and their types are identical,
+so their names say which direction they use.** That is an admission argument about the current language, not a theorem
+that no other finite structure can have an observable traversal order.
 
 ## 1. What was wrong
 
@@ -27,30 +27,34 @@ threads an accumulator. `list` was therefore the one inductive type in the langu
 eliminator, and the single fact that separates the two readings — which end the traversal starts from — was stated by
 neither the type nor the name. Both folds have the *identical* type, which is exactly why the name has to carry it.
 
-## 2. Why `nat` needs one name and `list` needs two
+## 2. Why `list` has two names today
 
-The direction of a fold is observable exactly when a type's constructor nesting and its element order disagree. Among
-this language's inductive types only `list` has that property.
+The earlier version of this note said that direction was observable only when constructor nesting and element order
+disagreed, and therefore only for `list`. That was too strong. It confused the canonical catamorphism of a type with all
+the additional traversals that could be defined over values of that type.
 
-**For `nat` they coincide.** The catamorphism `nat_fold(z,s,n+1) → s(n, nat_fold(z,s,n))` expands to
-`s(n−1, … s(1, s(0, z)))`, and an accumulator fold visiting the indices from `0` upward builds the same term. The
-successor structure numbers itself, so its outermost constructor carries its *largest* index — the opposite of a list,
-whose outermost `CONS` carries its *first* element. The implementation already exploits the coincidence: it iterates
-`0..n` with an accumulator and satisfies the catamorphic equation. There is one `nat_fold` because there is only one
-answer.
+**For the current `nat_fold`, catamorphism and upward accumulation coincide.** The equation
+`nat_fold(z,s,n+1) → s(n, nat_fold(z,s,n))` expands to `s(n−1, … s(1, s(0, z)))`, and an accumulator fold visiting the
+indices from `0` upward builds the same term. The successor structure numbers itself, so its outermost constructor
+carries its *largest* index — the opposite of a list, whose outermost `CONS` carries its *first* element. The
+implementation exploits that coincidence by iterating `0..n`. But a fold visiting `n−1` downward is still observable:
+with `s(i,a) = i`, the current fold answers `n−1` and the reverse visit answers `0`. Musa has one `nat_fold` because no
+reviewed program needs the second traversal, not because only one answer exists.
 
 **For `option` there is no sequence to have a direction.** `option_fold` consumes its sole constructor.
 
-**For a generated `data` fold direction is not a choice.** A case sees its recursive field already folded, one
-constructor layer at a time.
+**A generated `data` fold is the declaration's canonical catamorphism.** A case sees its recursive fields already
+folded, one constructor layer at a time. A particular declaration may still describe an ordered structure and later earn
+another traversal; the generator does not manufacture one without a caller.
 
 **For `list` the two disagree.** Folding from the outside in reaches the last element first; accumulating from the start
-reaches it last. The two answers differ for any step that is not associative-with-unit, and both readings are wanted:
-`chain` applies its steps in the order written, `readable` takes the first covering value, and a staff adapter building
-`Sounded(anchor, event, after)` needs the other end.
+reaches it last. The projection `s(x,a) = x` makes the disagreement immediate. Associativity and commutativity with a
+common unit are sufficient conditions for agreement, not a necessary-and-sufficient classification of every operation
+and input. Both readings are wanted: `chain` applies its steps in the order written, `readable` takes the first covering
+value, and a staff adapter building `Sounded(anchor, event, after)` needs the other end.
 
-A reader who asks "why does `nat` have one name and `list` two?" now finds the answer in §5.6, where the question
-occurs.
+A reader who asks "why does `nat` have one name and `list` two?" now finds the evidence answer in §5.6: `list` has two
+current consumers, while a second natural-number traversal has none.
 
 ## 3. The missing direction is the one the language most needs
 
@@ -145,5 +149,7 @@ expression, a reversal, or indexing, the question of what `list`'s vocabulary sh
 question — but adding a constructor in order to make a fold expressible would have been answering this one twice, which
 is why prompt 127dcfaa stopped short of all three.
 
-The one thing that would *not* reverse it is a second name for `nat_fold` or `option_fold`. §2 is the argument that
-`nat_fold_from_end` would name a distinction that does not exist.
+A demonstrated use for a reverse natural-number traversal could earn a second name later. It would not reverse the list
+decision; it would show only that the earlier uniqueness claim was wrong, which this revision already records. `Option`
+still has no ordered sequence of members, though a future convenience must meet the same evidence rule rather than be
+ruled out by analogy.

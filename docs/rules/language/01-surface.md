@@ -87,11 +87,12 @@ total builtins. A step argument is a named function or an anonymous one, whichev
 gives musicians one call notation to learn and leaves `repeat n { body }` as the notation-facing fold over musical
 material.
 
-A list has two folds because it is the one type whose direction is observable, and the direction is in the name rather
-than in the type: both have the identical signature, so a reader comparing two calls compares only the word that
+A list has two folds because Musa has demonstrated uses for both directional readings, and the direction is in the name
+rather than in the type: both have the identical signature, so a reader comparing two calls compares only the word that
 differs. `list_fold_from_start` accumulates left to right; `list_fold_from_end` is the catamorphism, and it is what
-reads a region into right-nested data without a closure chain. `02-core-calculus.md` §5.6 says why no other type needs
-the distinction.
+reads a region into right-nested data without a closure chain. This does not claim that no other finite structure admits
+an order-sensitive traversal. `Nat`, `Option`, and generated nominal-data folds keep one canonical eliminator because no
+second primitive for them has earned admission; `02-core-calculus.md` §5.6 states that evidence boundary.
 
 The value types added here are `Bool`, `Nat`, `Ratio`, `Duration`, `Pitch`, `Interval`, `NoteName`, `Pc12`, `Scale`,
 `Key`, `Degree`, `ChordClass`, `Triad`, `Roman`, `Voicing`, `Row12`, `Analysis<A>`, and `EventTrack[C, A]`. Products,

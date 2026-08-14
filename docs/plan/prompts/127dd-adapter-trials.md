@@ -46,15 +46,17 @@ Freeze the exact rules, and prove each of these:
 - match execution by the one evaluator;
 - derivation coverage;
 - associative derivation composition; and
-- the sealed-step traversal prompt 127dcfaf installed: sealed association, safety under nested traversal, repeatability
-  of a captured step, and structural decrease including the capture and nesting cases.
+- the sealed-step traversal prompt 127dcfaf installed: sealed association, local structural decrease, repeatability of a
+  captured step, and the reducibility/fundamental-lemma cases for higher-order contexts/results, capture, duplication,
+  delayed use, and nested traversal.
 
 The last of these is new since this prompt was written, and it is the one to attack hardest. Prompt 127dcfae's paper
 trial killed an earlier design in which a child and its descender were separate values: nested recursors could choose
 the same context and result types, capture an outer child, and turn a purported structural call into self-descent, with
-the types agreeing throughout. Sealing the child and its runner into one value is what closes that, and the freeze must
-prove it closed rather than restate the claim. Note 39 §5.3's eleven laws are the list, and each already names its
-executable evidence.
+the types agreeing throughout. Sealing the child and its runner into one value closes reassociation; it does not by
+itself prove strong normalization of arbitrary higher-order algebras. The freeze must prove both the association lemma
+and the reducibility extension rather than restating either claim. Note 39 §5.3's eleven laws are the list, and each
+already names its executable evidence.
 
 The freeze covers the phase-local transformer calculus prompt 127da introduced, which `docs/rules/` does not yet
 describe — that is what a freeze is for. It must also establish conservativity over the source core. **If the proof
@@ -98,8 +100,9 @@ Commit as `Freeze the adapter rules and carry them through hostile review`.
   evidence against the boundary, and prompts 127da–127dcg have already closed or reported each.
 - No general macro system, type-directed expansion, or adapter-generated declarations. No general recursion in adapter
   code — no `fix`, no recursive binding, no self-application. Sealed structural descent through prompt 127dcfaf's
-  recursor is not that and is explicitly admitted: every step enters a strict subtree of the group that minted it, which
-  is why it terminates and why the freeze proves it rather than forbidding it.
+  recursor is not that and is explicitly admitted: every step enters the proper child sealed into it, and the
+  reducibility proof shows that higher-order capture and nested recursors preserve source termination. Local decrease
+  alone is not accepted as the whole proof.
 - No deletion of contextual `Music`, no notation migration of the corpus, and no surface cutover — prompt 127e owns all
   three.
 - No decision-tree or join-point target without a measured need and its own complete semantics and simulation proof.

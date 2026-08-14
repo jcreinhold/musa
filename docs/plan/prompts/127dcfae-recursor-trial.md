@@ -38,6 +38,10 @@ implementation a transcription rather than a design.
 - `docs/rules/language/02-core-calculus.md` §5, §5.5, and §5.8 — the closed type grammar, strong normalization, and the
   four builtin families. A sealed step is a new phase-local type, and the trial must state exactly where it sits in
   each.
+- `~/Code/papers/logic-and-computation/type-theory/logical-relations-as-types/text.md` §1.4 — the Tait-computability
+  view of logical relations as a hereditary action on type constructors. Musa does not import that paper's module theory
+  or modalities; the relevant method is that higher-order termination is a reducibility/fundamental-lemma argument
+  rather than a claim that one runtime size decreases at every evaluator step.
 - Prompts [127dcfab](127dcfab-expression-if.md), [127dcfac](127dcfac-record-update.md), and
   [127dcfad](127dcfad-result-question.md) — landed before this trial deliberately, so their measurements are already in
   hand and this trial cannot credit the recursor for what they did.
@@ -56,35 +60,41 @@ is the one that killed the first draft.
 3. **Source-preserving edit.** Stop after the anchored child, with the path law still identifying the edit locus.
 4. **Degenerate leaf.** `Missing`, token, and identifier. Their termination argument is immediate and the trial states
    it, because a degenerate case that is merely obvious in prose is where a law hides.
-5. **Hostile nested traversal.** An inner `recurse_syntax` invoked from inside an outer group branch, choosing the same
-   `C` and `A`, capturing an outer step, and attempting to run it from a descendant callback. Under the first draft's
-   separated child-and-descender this was self-descent with agreeing types. The trial must show that sealing makes the
-   attempt either ill-typed or harmlessly equal to running the outer step, with no dynamic owner check and no failure
+5. **Hostile higher-order nesting.** An inner `recurse_syntax` is invoked from inside an outer group branch, chooses the
+   same `C` and `A`, restarts on the original or an ancestor subject, captures an outer step, and runs it from a
+   descendant callback. Variants make `C` and `A` function types whose closures capture that step, invoke it after the
+   outer callback returns, and invoke it twice under different contexts. Under the first draft's separated
+   child-and-descender, cross-pairing produced self-descent with agreeing types. The trial must show both that sealing
+   prevents reassociation and that the higher-order terms remain reducible, with no dynamic owner check and no failure
    result — and if it cannot, say so.
 
 **Check every law against every program.** Note 39 §5.3's eleven laws are the frozen list. For each, the trial says
 which program exercises it and what executable evidence prompt 127dcfaf will owe. A law no program exercises is either
 unnecessary or the program set is incomplete, and the trial must say which.
 
-**Discharge structural decrease explicitly, including capture.** Law 5 claims a step application enters a strict subtree
-"even when the step is captured, invoked later, or invoked from a nested traversal." That is the whole termination
-argument and it is the claim most likely to be wrong. Write it as a measure argument over `Syntax` with the capture and
-nesting cases discharged, in the shape §5.5's strong-normalization measure will need.
+**Discharge normalization, not only local decrease.** Law 5 first claims that a step application enters the proper child
+sealed into it. Prove that association/decrease lemma, but do not call it the whole termination argument: a nested
+recursor may restart on the original subject, so the size of the subject currently being evaluated need not decrease at
+every reduction. Define the reducibility candidate for `SyntaxStep<C,A>` — running the step under every reducible `C`
+produces a reducible `A`, by induction on its sealed child — and write the fundamental-lemma cases for the recursor and
+`run_syntax_step`. Discharge function-valued `C` and `A`, step capture inside their closures, duplication, delayed use,
+and nested re-entry. This is the proof shape §5.5 and prompt 127dcfaf must implement.
 
 **Settle what §12.1 leaves open.** Exact names, argument order, whether a child's path arrives beside its step or only
 at the resumed branch, whether `run_syntax_step` is a builtin or callable syntax, and whether the derived `fold_syntax`
 stays public. Each is settled by what the five programs read best as, with the losing option recorded.
 
 **The stop condition is real.** If sealed steps still force staff or studio into the same higher-order state machine, or
-if structural decrease under nesting cannot be discharged without a dynamic failure result, this prompt does not freeze
-an interface. It records the finding, repairs note 39 §5, and stops — implementation does not begin on a design the
-paper trial rejected.
+if the reducibility/fundamental-lemma cases for higher-order capture and nesting cannot be discharged without a dynamic
+failure result, rank-2 region, affine restriction, or general recursion, this prompt does not freeze an interface. It
+records the finding, repairs note 39 §5, and stops — implementation does not begin on a design the paper trial rejected.
 
 ## Target
 
 - `docs/notes/research/language-design-closure/40-<slug>.md` and its entry in that directory's `README.md`: the five
-  complete programs, the law-to-program table with the evidence each will owe, the structural-decrease argument with its
-  capture and nesting cases, the settled surface with the options it beat, and any staff/studio asymmetry.
+  complete programs, the law-to-program table with the evidence each will owe, the sealed-association/local-decrease
+  lemma, the reducibility candidate and fundamental-lemma cases for higher-order capture and nesting, the settled
+  surface with the options it beat, and any staff/studio asymmetry.
 - The frozen interface, exactly: the recursor's branch signatures, `SyntaxStep<C,A>`'s kinding and its exclusion from
   `d`, `run_syntax_step`, the intrinsic equations, and the derived `fold_syntax` at `C = Unit`.
 - A repair to note 39 §5 where the trial contradicts it, marked as a correction rather than folded in silently.

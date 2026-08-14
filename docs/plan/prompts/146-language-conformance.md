@@ -42,8 +42,9 @@ matrix where possible; review every manual bridge. At minimum it must cover:
   each shown observationally equal to the core form it elaborates to, at the same charge, with its subject and each
   right-hand side evaluated exactly once;
 - the sealed-step syntax traversal: sealed formation and association, inherited context, repeatability of a captured
-  step, structural decrease under capture and nested traversal, opacity, derivation of the bottom-up fold, budget
-  accounting, and phase conservativity;
+  step, local structural decrease plus the reducibility/fundamental-lemma cases for higher-order contexts/results,
+  capture, duplication, delayed use, and nested traversal, opacity, derivation of the bottom-up fold, budget accounting,
+  and phase conservativity;
 - event-track algebra, machine formation/steps, initialized feedback, structural folds, template identity, provenance
   multiplicity, and exact cached/uncached arguments where a cache actually exists;
 - written pitch/interval action, scales/degrees/context, chord class/voicing, pc12/set/row operations, transformations,
@@ -68,9 +69,9 @@ Five rows exist because these boundaries are cheap to hold and expensive to reco
   boolean `match`, leaving arms unguarded and patterns depth one. A guard on a match arm would fail it.
 - **Structural descent is not general recursion.** Prompt 127dcfaf's sealed steps let an adapter enter a strict subtree;
   nothing in the language lets it enter itself. Audit that no `fix`, recursive binding, self-application, or unsealed
-  child value exists in source or adapter code, and that the structural-decrease measure still discharges the capture
-  and nested-traversal cases. The distinction is the whole termination argument, and it is the one a later convenience
-  is most likely to blur.
+  child value exists in source or adapter code, that sealing still enforces association, and that the reducibility proof
+  still discharges higher-order capture, duplication, delayed use, and nested recursors. A local proper-child lemma is
+  not the whole termination argument, and that distinction is the one a later convenience is most likely to blur.
 - **Finite source evaluation and running machines remain different actions.** A source term may construct and connect a
   machine but never advances its unbounded history. The compiler evaluator contains no machine state or audio callback;
   the runtime contains no source closure or evaluator environment.

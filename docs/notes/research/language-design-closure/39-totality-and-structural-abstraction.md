@@ -225,8 +225,19 @@ belongs to which call.
 This remains rank 1. `C` and `A` are quantified only in the outer builtin scheme, and `SyntaxStep<C,A>` is one nominal
 phase-local type constructor over ordinary type arguments. It is excluded from `d` because its hidden representation
 contains the current algebra. A step may be captured in an intermediate closure and invoked later in the same phase;
-that is safe because it cannot be re-associated with another traversal. The required property is sealed association, not
-dynamic non-escape.
+that preserves association because it cannot be re-associated with another traversal. The representation property is
+sealed association rather than dynamic non-escape; source termination also needs the qualification below.
+
+**Qualification to the sealed-step revision.** Sealing proves the association lemma; it is not by itself the whole
+source-termination proof. `C` and `A` may be function types whose closures capture steps, and a branch may start a
+nested recursor on the original subject before running a captured outer step. In such a trace, each step still enters
+the proper child that minted it, but the size of the subject currently being evaluated need not decrease at every
+reduction because the nested recursor may restart from a larger tree. The §5.5 extension must therefore use the
+calculus's reducibility argument: a step over child `s` is reducible when `run_syntax_step(c, step)` is reducible for
+every reducible `c`, proved by induction on `s`, and the fundamental lemma must cover higher-order contexts/results,
+capture, duplication, delayed use, and nested recursors. The paper trial in §12.1 is a falsifier for that proof
+obligation. This qualification does not exhibit a loop or reopen the sealed representation; it separates the local
+decrease lemma from the global normalization theorem that still has to be established.
 
 **Correction to the first draft of this note.** The earlier `SyntaxChild<C,A>` plus separately supplied `descend` did
 not enforce its claimed non-escape law. Nested recursors can choose the same `C` and `A`, capture a child from an outer
@@ -252,8 +263,10 @@ The recursor needs these laws, separately from its representation conveniences:
 3. **Inherited context.** `run_syntax_step(c, step)` supplies exactly `c` to the sealed child's branch; no ambient state
    is read or changed.
 4. **Path uniqueness.** Running a step supplies exactly the structural path already assigned to its child.
-5. **Structural decrease.** Every step application enters a strict subtree of the group that minted it, even when the
-   step is captured, invoked later, or invoked from a nested traversal.
+5. **Structural decrease and reducibility.** Every step application enters a strict subtree of the group that minted it,
+   even when the step is captured, invoked later, or invoked from a nested traversal. Strong normalization follows only
+   after the reducibility candidate for steps and the fundamental lemma discharge higher-order `C`/`A`, delayed and
+   repeated use, and nested recursors; it is not inferred from a globally decreasing runtime tree-size trace.
 6. **Repeatability.** A step may be omitted or run finitely many times under different contexts; every run has the same
    sealed subject and algebra.
 7. **Determinism.** Equal subject, algebra, initial context, and budget produce equal completed results.
@@ -572,7 +585,7 @@ plan first, run the trials, then amend the candidate language pages before imple
 | --- | --- | --- | --- |
 | Record update, expression `if`, `Result ?` | `language/01-surface.md`; the elaboration and source-map portions of `language/02-core-calculus.md` and `language/05-verification.md` | typing/elaboration preservation; single evaluation and source-map laws; no new core reduction for desugared forms | add one ergonomics prompt before the remaining adapter trials; repair grammar/formatter/tree-sitter/tooling evidence from 80 and 122; rerun staff evidence before 127dcfb |
 | Directional list folds | `language/01-surface.md` and `language/02-core-calculus.md` as prompt 127dcfaa already states | one list-decrease case in preservation/progress/determinism/normalization | 127dcfaa remains valid and should run independently of container abstraction |
-| Structural `Syntax` recursor | add the phase-local rules to `language/00-semantics.md` and `language/02-core-calculus.md`, plus adapter laws in `language/05-verification.md`; constitution §9 remains satisfied | typing and canonical forms for non-storable `SyntaxStep`; sealed-association and structural-decrease lemmas, including nested traversal; determinism; path uniqueness; fold derivation; budget law; phase conservativity; differential evaluator coverage | 127da's “fold is the only way in” design is superseded and needs a repair prompt; 127dcfa must be rewritten/retrialed; 127dcfb and 127dcg should use the repaired API; 127dd, 127e, 127i, and 146 must wait for the repaired evidence |
+| Structural `Syntax` recursor | add the phase-local rules to `language/00-semantics.md` and `language/02-core-calculus.md`, plus adapter laws in `language/05-verification.md`; constitution §9 remains satisfied | typing and canonical forms for non-storable `SyntaxStep`; sealed-association and local structural-decrease lemmas; the reducibility candidate and fundamental-lemma cases for higher-order `C`/`A`, capture, duplication, delayed use, and nested traversal; determinism; path uniqueness; fold derivation; budget law; phase conservativity; differential evaluator coverage | 127da's “fold is the only way in” design is superseded and needs a repair prompt; 127dcfa must be rewritten/retrialed; 127dcfb and 127dcg should use the repaired API; 127dd, 127e, 127i, and 146 must wait for the repaired evidence |
 | Constructor-specific container operations | no governing change | no proof restatement | no prompt invalidation; do not add generated `Listing`/`Building` without a caller |
 | Keep source totality | no governing change | retain §5.5 strong normalization independently of T4 and M1; extend it for the new recursor/fold only | 127i and 146 keep their source-termination rows |
 | Reject dependent types | no governing change | no checker or metatheory replacement | 127aa, 127b, 127i, and 146 remain rank-1/principal-inference prompts |
@@ -628,11 +641,13 @@ The ordinary adapter falsifiers remain: if either adapter must recover raw `Synt
 `Pending`/closure machine after the recursor is available, the interface is wrong.
 
 Add one hostile nested-traversal trial before governance. An outer group captures one of its steps; an inner recursor
-uses the same `C` and `A` and runs that outer step from its group branch. The run must use the step's sealed outer
-algebra and proper child, terminate by that proper-child decrease, and never reinterpret the step as an inner child. A
-second trial may capture the step in a non-storable closure and invoke it after the group callback returns. If either
-trial needs a dynamic owner mismatch, revisits the current node, or escapes a step into the completed phase result, the
-interface is wrong.
+uses the same `C` and `A`, restarts on the original or an ancestor subject, and runs that outer step from its group
+branch. The run must use the step's sealed outer algebra and proper child and never reinterpret the step as an inner
+child. Exercise function-valued `C` and `A` whose closures capture a step, delayed invocation after the group callback,
+and repeated invocation under two contexts. Then discharge the reducibility argument rather than claiming that a single
+runtime tree-size measure decreases across the fresh nested recursor. If the fundamental lemma cannot cover those terms
+without a dynamic owner mismatch, a failure result, rank-2 regions, affinity, or general recursion, the interface is
+wrong.
 
 ### 12.2 Higher-kinded constructor variables
 

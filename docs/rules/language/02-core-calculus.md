@@ -441,9 +441,10 @@ value of its declared type. Existence follows from normalization plus progress; 
 derivation and the environment-substitution lemma.
 
 The implementation checks the computational counterpart at every declaration boundary: evaluation returning no value or
-a value whose reconstructed type differs from the checked type is reported as a compiler-invariant failure. The
-generated-law tests additionally compare the production environment evaluator with a separate small substitution
-evaluator and exercise products, lexical capture, higher-order functions, and rejected cycles.
+a value whose reconstructed type differs from the checked type is reported as a compiler-invariant failure. There is no
+second substitution evaluator. The generated-law tests compare a restricted family of generated source terms with a
+small independent reference interpretation, compare generated folds with the corresponding term written by hand, and
+separately exercise products, lexical capture, higher-order functions, and rejected cycles.
 
 ### 5.6 Strictly positive finite data
 
@@ -504,15 +505,19 @@ option_fold(z,s,none)               → z
 option_fold(z,s,some(x))            → s(x)
 ```
 
-**Only `list` is asked which direction it runs.** The direction of a fold is observable exactly when a type's
-constructor nesting and its element order run in opposite directions, and among this language's inductive types only
-`list` does. For `nat` they coincide: `nat_fold` expands to `s(n−1, … s(1, s(0, z)))`, and an accumulator fold visiting
-the indices from `0` upward builds the same term, because the successor structure numbers itself and its outermost
-constructor carries its largest index. `option` has no sequence to have a direction. A generated `data` fold is a
-catamorphism by construction — a case sees its group-member fields already folded, one constructor layer at a time. For
-`list` the outermost cons holds the *first* element, so folding from the outside in reaches the last element first while
-accumulating from the start reaches it last, and the two disagree for any step that is not associative with unit. Both
-are useful, so `list` is the one type whose eliminators have to say in their names which is meant.
+**`list` has earned both directions.** Its outermost cons holds the first element, so the two equations above can
+disagree: with `s(x,a) = x`, `list_fold_from_start` answers the last member while `list_fold_from_end` answers the
+first. Associativity and commutativity with a common unit are sufficient conditions under which the readings agree;
+their absence is not an if-and-only-if test for disagreement on every operation or input.
+
+The fact that `nat_fold` is both the natural-number catamorphism and an accumulator visiting `0` upward does not make a
+reverse visit impossible. A primitive visiting `n−1` downward could be distinguished by the same projection step, but no
+program reviewed for this calculus needs it. `option` has no ordered sequence of members. A generated `data` fold is the
+declaration's canonical catamorphism — a case sees its recursive fields already folded — but a particular user-declared
+datatype may still admit other order-sensitive traversals if programs later earn them. `list` has two compiler-owned
+eliminators because both have current uses and deriving either from the other costs the closure chain below. The other
+types keep one canonical eliminator because no second primitive has passed that evidence test, not because another
+traversal is mathematically inexpressible.
 
 **Both are primitive, and either derives from the other.** Nothing here extends what the language can express:
 

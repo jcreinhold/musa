@@ -32,8 +32,9 @@ Build a conformance matrix from each core rule and theorem to implementation own
 - adapter termination, determinism, type blindness, path uniqueness, hygiene, edit locality, print round-trip where
   claimed, and the absence of a second match evaluator;
 - the sealed-step traversal: sealed formation and association, inherited context, repeatability of a captured step,
-  structural decrease under capture and nested traversal, opacity, derivation of the bottom-up fold, budget accounting
-  for capture and repeat, and phase conservativity — note 39 §5.3's eleven laws, each with the evidence prompt 127dcfaf
+  local structural decrease plus the reducibility/fundamental-lemma cases for higher-order `C`/`A`, capture,
+  duplication, delayed use, and nested traversal, opacity, derivation of the bottom-up fold, budget accounting for
+  capture and repeat, and phase conservativity — note 39 §5.3's eleven laws, each with the evidence prompt 127dcfaf
   attached to it;
 - event-track bounds, algebra, multiplicity, coordinate separation, half-open spans, normalization, and exact equality;
 - finite machine formation, registry uniqueness, one total next step, causality, initialized feedback, chain and
