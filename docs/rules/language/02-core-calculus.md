@@ -212,9 +212,9 @@ implementation escape:
 run(budget, e)   ⇓   done(v)   |   failed(ResourceError)
 ```
 
-The cost table is a versioned assignment of nonnegative integers to reduction steps and constructions. The budget can
-stop an evaluation; it cannot change an accepted one. Formally: if `run(b₁, e) ⇓ done(v₁)` and `run(b₂, e) ⇓ done(v₂)`
-then `v₁ = v₂`, for every pair of budgets. §4 states the meter this instantiates.
+The cost table is a versioned assignment of nonnegative integers to reduction steps and constructions, at version 2. The
+budget can stop an evaluation; it cannot change an accepted one. Formally: if `run(b₁, e) ⇓ done(v₁)` and
+`run(b₂, e) ⇓ done(v₂)` then `v₁ = v₂`, for every pair of budgets. §4 states the meter this instantiates.
 
 Exact values remain integers or reduced rationals. There is no floating-point base type in the source language; floats
 appear only inside a registered primitive's private state and at the device edge. Ordering of maps, declarations,
@@ -225,8 +225,11 @@ diagnostic witnesses, and provenance steps is source-stable, never hash-iteratio
 Strong normalization does not bound a terminating program to useful project size. Musa therefore maintains one
 deterministic meter over checking and evaluation. A finite aggregate operation charges its known count and logical
 result shape before entering its loop or allocating its result; nested work is charged when its enclosing operation is
-reached. All values remain private until the whole declaration graph succeeds, so exhaustion publishes neither a partial
-value nor a partial score. The meter covers:
+reached. A value is charged once, where it is constructed: an expression that names, selects, or returns a value already
+built charges it no nodes and no bytes, and a constructor is charged its own node and one field per part it holds rather
+than those parts again. Charging a value once per mention instead would make a project's cost the product of its data
+size and its program size, which is not a measure of what the project builds. All values remain private until the whole
+declaration graph succeeds, so exhaustion publishes neither a partial value nor a partial score. The meter covers:
 
 - instantiated definition count and closure environment size;
 - natural/list fold work, including products induced by nested folds;

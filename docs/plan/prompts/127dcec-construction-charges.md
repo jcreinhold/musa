@@ -1,7 +1,7 @@
 ---
 id: 127dcec
 slug: construction-charges
-status: pending
+status: done
 depends_on: [127dceb]
 phase: 3
 ---

@@ -8103,7 +8103,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
             }))
         }
     }?;
-    let (nodes, bytes) = value_shape(&value);
+    let (nodes, bytes) = charged_shape(&expression.kind, &value);
     // A polymorphic function's body has the *declaration's* type, which is a
     // variable; the value flowing through it is whatever the caller chose.
     // `admits` is that distinction, and it is equality everywhere else.
@@ -9803,6 +9803,87 @@ fn literal_values_equal(left: &Value, right: &Value) -> bool {
     literal_key(left) == literal_key(right)
 }
 
+/// What one expression constructs, which is what the node and byte counters
+/// charge (`02-core-calculus.md` §4).
+///
+/// A value is charged once, where it is built. Naming it, matching on it, or
+/// returning it from a call builds nothing, so those charge nothing; the
+/// reduction step they already charge is what bounds a program's length, and
+/// charging the size of something an expression did not build would make a
+/// project's cost the product of its data size and its program size. That is
+/// not a conservative approximation of anything — prompt 127dcfa's staff
+/// adapter, whose reader state is one value threaded through a region, could
+/// not read six header lines and one bar under it.
+///
+/// Three cases, and the middle one is the one worth reading twice. An
+/// aggregate built out of parts already evaluated is one cell whose fields
+/// hold the addresses of those parts (Peyton Jones ch. 10 §10.3), so it is
+/// charged its own node and its wiring and not its parts again. A value that
+/// is new all the way down — a literal, a builtin's answer, a quotation — is
+/// charged all the way down, because nothing else charged it.
+fn charged_shape(kind: &ExprKind, value: &Value) -> (u64, u64) {
+    match kind {
+        // Selection: the value already existed.
+        ExprKind::Name(_) | ExprKind::Match { .. } | ExprKind::Apply { .. } | ExprKind::Fold { .. } => (0, 0),
+        // Wiring: one cell, and one field per part it points at.
+        ExprKind::Product(_)
+        | ExprKind::Option(_)
+        | ExprKind::Injection { .. }
+        | ExprKind::List(_)
+        | ExprKind::Construct { .. }
+        | ExprKind::Lambda { .. } => wiring_shape(value),
+        // Fabrication: nothing else has charged this.
+        ExprKind::Literal(_)
+        | ExprKind::PitchAction { .. }
+        | ExprKind::Step { .. }
+        | ExprKind::Builtin { .. }
+        | ExprKind::Music(_)
+        | ExprKind::KernelQuote(_) => value_shape(value),
+    }
+}
+
+/// One constructed cell and one field per part it holds.
+fn wiring_shape(value: &Value) -> (u64, u64) {
+    let fields = match value {
+        Value::Product(members) => members.len(),
+        Value::List { values, .. } => values.len(),
+        Value::Data { fields, .. } => fields.len(),
+        Value::Option { value, .. } => usize::from(value.is_some()),
+        Value::Closure(closure) => closure.captures.len(),
+        Value::Sum { .. } => 1,
+        // Not built by a wiring expression; charged as a leaf if one ever is.
+        Value::Bool(_)
+        | Value::Nat(_)
+        | Value::Ratio(_)
+        | Value::Duration(..)
+        | Value::Position(..)
+        | Value::Pitch(_)
+        | Value::PitchClass(_)
+        | Value::Interval(_)
+        | Value::Key(_)
+        | Value::Degree(_)
+        | Value::Scale(_)
+        | Value::Frame(_)
+        | Value::ChordClass(_)
+        | Value::Triad(_)
+        | Value::Roman(_)
+        | Value::Pc12(_)
+        | Value::PcSet12(_)
+        | Value::Row12(_)
+        | Value::Voicing(_)
+        | Value::Text(_)
+        | Value::Music(_)
+        | Value::Builtin(_)
+        | Value::Primitive { .. }
+        | Value::Machine { .. }
+        | Value::Syntax(_)
+        | Value::NodePath(_)
+        | Value::BindingPath(_) => 0,
+    };
+    let cells = u64::try_from(fields).unwrap_or(u64::MAX).saturating_add(1);
+    (cells, cells)
+}
+
 fn value_shape(value: &Value) -> (u64, u64) {
     match value {
         Value::Bool(_) => (1, 1),
@@ -9833,7 +9914,14 @@ fn value_shape(value: &Value) -> (u64, u64) {
             (nodes.saturating_add(1), bytes.saturating_add(1))
         }
         Value::Music(music) => music_shape(music),
-        Value::Closure(closure) => aggregate_shape(closure.captures.values()),
+        // A closure's environment is its bindings, not its bindings'
+        // contents. Capturing a name is a pointer to a value that already
+        // exists and was already charged; §4's "closure environment size" is
+        // that count.
+        Value::Closure(closure) => {
+            let bound = u64::try_from(closure.captures.len()).unwrap_or(u64::MAX);
+            (bound.saturating_add(1), bound.saturating_add(1))
+        }
         Value::Builtin(_) => (1, 1),
         // One node per description node, and its stored bytes as its size: a
         // configuration is what a machine value actually holds.
@@ -11499,6 +11587,121 @@ mod tests {
                 Self::Identity(argument) => argument.evaluate(),
             }
         }
+    }
+
+    /// How many value nodes evaluating `declarations` charges.
+    ///
+    /// The four tests below are about §4's charging locus, which is a claim
+    /// about this number and not about whether one particular file fits: a
+    /// program that names a value ten times must cost what one that names it
+    /// once costs, and a chain of `n` constructions must grow by a constant
+    /// per link. Reading the counter says that; watching an accept/reject
+    /// boundary would only say that one hand-picked size happened to fit.
+    fn charged_nodes(text: &str) -> u64 {
+        let source = format!("piece \"law\" {{ {text} }}");
+        let parsed = musa_language::parse(&source);
+        let piece = musa_language::ast::PieceDecl::from_root(&parsed.syntax()).expect("a piece");
+        let mut resolver = Resolver::new();
+        let mut meter = WorkMeter::default();
+        let mut unifier = Unifier::default();
+        let world = World::read(&mut resolver, &[piece.syntax().clone()]);
+        let program = check_and_evaluate_metered(
+            &mut resolver,
+            declarations(piece.syntax(), None).into_iter(),
+            Some(piece.syntax()),
+            UnknownRootMusic::Reject,
+            &Modules::default(),
+            &world,
+            Reading::Source,
+            &IndexMap::new(),
+            &mut unifier,
+            &mut meter,
+        );
+        assert!(
+            program.is_some(),
+            "well-typed source was rejected: {source}\n{:?}",
+            resolver.diagnostics.iter().map(|d| &d.message).collect::<Vec<_>>()
+        );
+        meter.nodes()
+    }
+
+    /// Naming a value builds nothing, so it charges nothing.
+    ///
+    /// The version-1 charge was the value's whole shape at every expression it
+    /// passed through, which made this program cost ten lists rather than one.
+    /// That is what stopped prompt 127dcfa's staff adapter: a reader state
+    /// threaded through a region is one value mentioned a great many times.
+    #[test]
+    fn naming_a_value_costs_nothing_beyond_building_it() {
+        let once = charged_nodes("let held = [1, 2, 3, 4, 5, 6, 7, 8]; let one = held;");
+        let ten = charged_nodes(
+            "let held = [1, 2, 3, 4, 5, 6, 7, 8]; let one = held; let two = held; let three = held; \
+             let four = held; let five = held; let six = held; let seven = held; let eight = held; \
+             let nine = held; let ten = held;",
+        );
+        assert_eq!(
+            once, ten,
+            "naming a value nine more times charged more nodes, so a mention is being charged as a construction"
+        );
+    }
+
+    /// A constructor holds its fields; it does not build them again.
+    #[test]
+    fn holding_a_value_in_a_constructor_costs_one_cell() {
+        const BOX: &str = "data Box {\n    Box(held: List<Nat>)\n}\n";
+        let short = charged_nodes(&format!("{BOX} let held = [1, 2]; let put = Box(held);"))
+            - charged_nodes(&format!("{BOX} let held = [1, 2];"));
+        let long = charged_nodes(&format!(
+            "{BOX} let held = [1, 2, 3, 4, 5, 6, 7, 8]; let put = Box(held);"
+        )) - charged_nodes(&format!("{BOX} let held = [1, 2, 3, 4, 5, 6, 7, 8];"));
+        assert_eq!(short, long, "wrapping a longer list in the same constructor cost more");
+        assert_eq!(
+            short, 2,
+            "a one-field constructor should cost its own cell and its one field"
+        );
+    }
+
+    /// A chain of constructions is linear in its length.
+    ///
+    /// The right-nested chain is the shape a notation package gives a sequence
+    /// of items, so this is the growth an adapter that reads a page pays. Under
+    /// the version-1 charge each link re-charged the whole tail and the chain
+    /// was quadratic.
+    #[test]
+    fn a_chain_of_constructions_grows_by_a_constant_per_link() {
+        fn chain(links: usize) -> u64 {
+            let mut source = "data Chain {\n    End,\n    Link(next: Chain),\n}\n let held0 = End;".to_owned();
+            for link in 1..=links {
+                use std::fmt::Write as _;
+                let _ = write!(source, " let held{link} = Link(held{});", link - 1);
+            }
+            charged_nodes(&source)
+        }
+        let early = (chain(8) - chain(4)) / 4;
+        let late = (chain(16) - chain(8)) / 8;
+        assert_eq!(
+            early, late,
+            "a chain's cost per link changed with its length, so a link is re-charging its tail"
+        );
+        assert_eq!(early, 2, "a one-field link should cost its own cell and its one field");
+    }
+
+    /// A closure's environment is its bindings, not their contents.
+    #[test]
+    fn capturing_a_value_costs_the_binding_and_not_the_value() {
+        const TAKE: &str = " let take = fn (ignored: Nat) { held };";
+        let short = "let held = [1, 2];";
+        let long = "let held = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];";
+        let capturing_short = charged_nodes(&format!("{short}{TAKE}")) - charged_nodes(short);
+        let capturing_long = charged_nodes(&format!("{long}{TAKE}")) - charged_nodes(long);
+        assert_eq!(
+            capturing_short, capturing_long,
+            "the closure charged more for capturing a longer list, so a capture is being charged as a copy"
+        );
+        assert_eq!(
+            capturing_short, 2,
+            "a closure over one name should cost its own cell and its one binding"
+        );
     }
 
     fn values(source: &str) -> Option<IndexMap<String, Value>> {

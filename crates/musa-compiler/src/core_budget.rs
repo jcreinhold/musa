@@ -41,16 +41,26 @@ pub(crate) struct CostTable {
 }
 
 impl CostTable {
-    /// Version 1: one unit per reduction, per constructed node, per logical
+    /// Version 2: one unit per reduction, per constructed node, per logical
     /// value byte, per instantiated prelude entry, and per estimated
     /// occurrence.
     ///
     /// Uniform on purpose. A weight that differed between reductions would be a
     /// claim about their relative expense, and that claim needs measurement
-    /// (prompts 124 and 142) rather than an author's intuition. What version 1
-    /// fixes is that the weights exist, are named, and move together.
-    pub(crate) const V1: Self = Self {
-        version: 1,
+    /// (prompts 124 and 142) rather than an author's intuition. What the
+    /// weights fix is that they exist, are named, and move together.
+    ///
+    /// Version 2 changed no weight. It changed where a value is charged:
+    /// version 1 charged a value's whole shape at every expression that named
+    /// it and at every closure that captured it, which made a project's cost
+    /// the product of its data size and its program size rather than the count
+    /// of what it built. A value is now charged once, where it is constructed
+    /// (`crate::core::charged_shape`). Every charge is pointwise no larger than
+    /// version 1's, so no project that compiled under version 1 stops
+    /// compiling; a rejection cites the version because two compilers that
+    /// disagree here do not agree on acceptance.
+    pub(crate) const V2: Self = Self {
+        version: 2,
         reduction: 1,
         node: 1,
         byte: 1,
@@ -227,7 +237,7 @@ impl WorkMeter {
     pub(crate) fn new(budget: Budget) -> Self {
         Self {
             budget,
-            costs: CostTable::V1,
+            costs: CostTable::V2,
             steps: 0,
             nodes: 0,
             bytes: 0,
@@ -242,6 +252,17 @@ impl WorkMeter {
     /// The `evaluation_steps` charge of `26-language-design-decision.md` §3.5.
     pub(crate) const fn steps(&self) -> u64 {
         self.steps
+    }
+
+    /// How many constructed value nodes this meter has charged.
+    ///
+    /// Test-only, and it is the charging *locus* the tests read it for: a law
+    /// about where a value is charged is a law about this number's growth, and
+    /// stating it through the accept/reject boundary instead would only say
+    /// that one hand-picked program fits.
+    #[cfg(test)]
+    pub(crate) const fn nodes(&self) -> u64 {
+        self.nodes
     }
 
     /// Drive one evaluation to its typed configuration.
