@@ -50,6 +50,12 @@ If nothing is pending, the stack is complete — say so and stop.
 - Keep examples in `examples/` compiling and rendering.
 - Out-of-scope problems you notice in passing are worth recording, not fixing — spawn a background task for them so the
   commit stays prompt-bound.
+- **An encoding no reader would recognize is evidence about the design, not a puzzle to solve.** If delivering
+  **Target** starts to need continuation-passing or state-transformer tricks, a workaround for a feature the rest of the
+  language has, or a fixture bent to fit the mechanism rather than the domain, stop and go to §6. Two or three failed
+  encodings is the signal; a long bisection to find a fourth is the rabbit hole. The theory corpora exist for exactly
+  this moment — *Philosophy of Software Design* ch. 7, 8 and 24 name most of these as red flags, and Peyton Jones ch. 3
+  argues the direction a working sublanguage moves in.
 
 ## 4. Check and commit
 

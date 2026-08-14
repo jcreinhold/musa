@@ -135,6 +135,15 @@ seconds. `cargo clean` fixes it; see
 - **Real-time rules.** The audio callback never allocates, locks, does I/O, logs, or destroys large objects. Plans are
   preallocated on the control side and cross the boundary on `rtrb` queues.
 - **Exact time.** Musical time is rational (`num-rational`); floats appear only at the performance/DSP edge.
+- **No sublanguage by subtraction.** Any language we hand a user — an adapter phase, a template dialect, a config
+  grammar — is built by *enriching* a core, never by removing modules, local definitions, or data declarations from the
+  source language and calling the remainder a phase. Peyton Jones ch. 3 enriches the calculus for precisely this reason:
+  a language for programmers needs abstractions and local definitions. A layer that is "ordinary Musa minus features" is
+  the same abstraction one level down (Ousterhout ch. 7), and every convenience it drops is paid by every author who
+  writes in it rather than once by us (ch. 8).
+- **Hand a consumer what we already computed.** If a stage has already lexed, resolved, or measured something, expose it
+  rather than making the next stage re-derive it from text. An adapter re-parsing `3/8` out of a token's spelling is the
+  shape of the mistake.
 - **`.musa` style.** `docs/rules/style-guide.md` owns what the formatter cannot say — naming, and spellings that are
   correct and still mislead the player. The lint pass enforces its machine-checkable subset; each rule names its
   diagnostic.
