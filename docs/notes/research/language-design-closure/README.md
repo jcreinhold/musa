@@ -112,5 +112,8 @@ ship.
     counterexamples.
 38. [37-final-blocker.md](37-final-blocker.md) stops the bounded effort, records what survived, and names the four
     definitions required before this work should reopen.
+39. [38-abstraction-totality-and-substitution.md](38-abstraction-totality-and-substitution.md) reviews the staff
+    adapter's shape as implementation evidence: what per-type eliminators, totality, and the environment evaluator each
+    cost, why each was chosen, and how the alternatives work. It corrects four claims and decides nothing.
 
 The proof gate failed. Nothing in this workspace moves to `docs/rules/` or into implementation prompts.
