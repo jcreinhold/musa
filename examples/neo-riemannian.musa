@@ -63,42 +63,42 @@ piece "Neo-Riemannian" {
             rest/1
         },
         fn (refined: Triad) -> Music { close_on(c4, refined) },
-        tonic
+        tonic,
     );
     let close_two: Music = option_fold(
         music {
             rest/1
         },
         fn (start: Triad) -> Music { compose_close(c4, at_p, start) },
-        tonic
+        tonic,
     );
     let close_three: Music = option_fold(
         music {
             rest/1
         },
         fn (start: Triad) -> Music { compose_close(ab3, at_pl, start) },
-        tonic
+        tonic,
     );
     let close_four: Music = option_fold(
         music {
             rest/1
         },
         fn (start: Triad) -> Music { compose_close(ab3, at_plp, start) },
-        tonic
+        tonic,
     );
     let close_five: Music = option_fold(
         music {
             rest/1
         },
         fn (start: Triad) -> Music { compose_close(fb3, at_plpl, start) },
-        tonic
+        tonic,
     );
     let close_six: Music = option_fold(
         music {
             rest/1
         },
         fn (start: Triad) -> Music { compose_close(fb3, at_plplp, start) },
-        tonic
+        tonic,
     );
 
     // The same six under drop-2, which is the same chord classes and a
@@ -108,42 +108,42 @@ piece "Neo-Riemannian" {
             rest/1
         },
         fn (refined: Triad) -> Music { drop_on(c4, refined) },
-        tonic
+        tonic,
     );
     let drop_two: Music = option_fold(
         music {
             rest/1
         },
         fn (start: Triad) -> Music { compose_drop(c4, at_p, start) },
-        tonic
+        tonic,
     );
     let drop_three: Music = option_fold(
         music {
             rest/1
         },
         fn (start: Triad) -> Music { compose_drop(ab3, at_pl, start) },
-        tonic
+        tonic,
     );
     let drop_four: Music = option_fold(
         music {
             rest/1
         },
         fn (start: Triad) -> Music { compose_drop(ab3, at_plp, start) },
-        tonic
+        tonic,
     );
     let drop_five: Music = option_fold(
         music {
             rest/1
         },
         fn (start: Triad) -> Music { compose_drop(fb3, at_plpl, start) },
-        tonic
+        tonic,
     );
     let drop_six: Music = option_fold(
         music {
             rest/1
         },
         fn (start: Triad) -> Music { compose_drop(fb3, at_plplp, start) },
-        tonic
+        tonic,
     );
 
     // Reach a waypoint, then voice it. Written out because a composition of

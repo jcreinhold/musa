@@ -1,9 +1,10 @@
 //! Formatter laws and layout snapshots.
 //!
 //! Laws (roadmap §17.3): `format(format(x)) == format(x)` and
-//! `parse(format(parse(x)))` equals `parse(x)` up to whitespace trivia —
-//! tested as `proptest` properties over a grammar-directed generator plus
-//! the example corpus.
+//! `parse(format(parse(x)))` equals `parse(x)` up to whitespace trivia and a
+//! list's own trailing comma, which is layout rather than program — see
+//! [`significant_tokens`]. Both are tested as `proptest` properties over a
+//! grammar-directed generator plus the example corpus.
 
 // A fixture that does not hold what a test looks for is the test failing, so
 // panicking on one is the assertion rather than an oversight — including
@@ -34,12 +35,33 @@ fn fmt_to_scale(source: &str) -> String {
 
 /// The significant (non-whitespace) token sequence of a document: the
 /// "same program up to formatting" oracle.
+///
+/// A comma directly in front of a `)` or a `]` is not significant, and that is
+/// the whole of the exemption. It separates nothing, so a list means exactly
+/// what it meant without it; it is punctuation the *layout* writes, the way an
+/// indent is, and the formatter adds it when a list opens down the page and
+/// drops it when the list joins back onto one line. Every other comma is a
+/// separator between two items and changes the program, so a formatter that
+/// lost one is still caught here.
 fn significant_tokens(doc: &ParsedDocument) -> Vec<(SyntaxKind, String)> {
-    doc.syntax()
+    let written: Vec<(SyntaxKind, String)> = doc
+        .syntax()
         .descendants_with_tokens()
         .filter_map(SyntaxElement::into_token)
         .filter(|token| token.kind() != SyntaxKind::Whitespace)
         .map(|token| (token.kind(), token.text().to_string()))
+        .collect();
+    written
+        .iter()
+        .enumerate()
+        .filter(|(index, (kind, _))| {
+            *kind != SyntaxKind::Comma
+                || !matches!(
+                    written.get(index + 1).map(|(next, _)| *next),
+                    Some(SyntaxKind::RParen | SyntaxKind::RBracket)
+                )
+        })
+        .map(|(_, token)| token.clone())
         .collect()
 }
 
@@ -628,20 +650,51 @@ fn a_parameter_list_is_measured_with_what_follows_it() {
     assert_semantics_preserved(source, &formatted);
 }
 
-/// A trailing comma survives being joined back onto one line, because this
-/// formatter rewrites whitespace and never tokens. What it must not do is
-/// leave behind the space it would have written in front of the next field:
-/// `Beats(count: Nat, )` is a gap with nothing on either side of it.
+/// A list joined onto one line has no use for a trailing comma: it separates
+/// nothing there, and the alternative to dropping it is `Beats(count: Nat, )`,
+/// a gap with nothing on either side of it.
 #[test]
-fn a_trailing_comma_takes_no_space_before_the_closer() {
+fn a_joined_list_drops_the_comma_that_held_it_open() {
     let source = "library {\ndata Meter {\nBeats(count: Nat, unit: Nat,),\n}\n}\n";
     let formatted = fmt(source);
     assert!(
-        formatted.contains("        Beats(count: Nat, unit: Nat,),\n"),
+        formatted.contains("        Beats(count: Nat, unit: Nat),\n"),
         "{formatted}"
     );
+    // The comma after the *variant* is the declaration's, not the list's: it
+    // separates this variant from the next one that could be written under it.
     assert_eq!(fmt(&formatted), formatted, "idempotent");
     assert_semantics_preserved(source, &formatted);
+}
+
+/// A list written down the page ends with a trailing comma however short the
+/// item that comes last happens to be.
+///
+/// The rule is about the layout and not about widths, and this is the shape
+/// that proves it has to be: five sibling calls in `stdlib/src/adapters/staff.musa`
+/// each stack their four arguments, and the one whose last argument was
+/// shortest was the one that came back spelled differently from its siblings —
+/// because the comma was being read from the source, where nobody had a reason
+/// to keep five of them in step by hand.
+#[test]
+fn a_broken_list_ends_with_a_comma_however_short_its_last_item_is() {
+    let call = concat!(
+        "widening(a_long_enough_first_argument_here, ",
+        "a_long_enough_second_argument_as_well_here, c)"
+    );
+    let source = format!("library {{\nfn a() -> Nat {{ {call} }}\n}}\n");
+    let formatted = fmt(&source);
+    assert!(
+        formatted.contains("            a_long_enough_second_argument_as_well_here,\n            c,\n        )\n"),
+        "the list is too wide for one line, so it stacks and its last item takes a comma:\n{formatted}"
+    );
+    // And the same list with the comma already written formats identically:
+    // the two spellings a corpus drifts into converge on one.
+    let spelled = source.replace(", c)", ", c,)");
+    assert_eq!(fmt(&spelled), formatted, "both spellings converge");
+    assert_eq!(fmt(&formatted), formatted, "idempotent");
+    assert_semantics_preserved(&source, &formatted);
+    assert_semantics_preserved(&spelled, &formatted);
 }
 
 /// A bracketed literal in the last position opens on the line of the call that

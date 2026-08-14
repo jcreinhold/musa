@@ -22,7 +22,7 @@ piece "Theory Assertions" {
     let first_inversion: ChordClass = option_fold(
         chord c major,
         same,
-        inversion(chord c major, 1)
+        inversion(chord c major, 1),
     );
 
     score {

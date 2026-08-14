@@ -2,7 +2,7 @@
   "document": 0,
   "name": "stdlib-basics.musa",
   "kind": "piece",
-  "source": "// Standard modules are explicit, version-matched source libraries. Their\n// functions pass through the same checker and evaluator as these definitions.\npiece \"Standard Library Basics\" {\n    import std::core;\n    import std::list;\n    import std::option;\n\n    let subject: Music = music {\n        c4/4\n        d4/4\n    };\n\n    fn same_pitch(p: Pitch) -> Pitch { p }\n\n    let answer: Music = compose_music(\n        fn (line: Music) -> Music { transpose(P8, line) },\n        retrograde,\n        subject\n    );\n    let chosen: Pitch = pitch_or_else(c4, same_pitch, Some(e4));\n    let counting: List<Nat> = naturals(4);\n\n    score {\n        part strings {\n            voice duet {\n                use together(subject, shift(1/2, answer));\n                c5/2\n                rest/2\n            }\n        }\n    }\n}\n",
+  "source": "// Standard modules are explicit, version-matched source libraries. Their\n// functions pass through the same checker and evaluator as these definitions.\npiece \"Standard Library Basics\" {\n    import std::core;\n    import std::list;\n    import std::option;\n\n    let subject: Music = music {\n        c4/4\n        d4/4\n    };\n\n    fn same_pitch(p: Pitch) -> Pitch { p }\n\n    let answer: Music = compose_music(\n        fn (line: Music) -> Music { transpose(P8, line) },\n        retrograde,\n        subject,\n    );\n    let chosen: Pitch = pitch_or_else(c4, same_pitch, Some(e4));\n    let counting: List<Nat> = naturals(4);\n\n    score {\n        part strings {\n            voice duet {\n                use together(subject, shift(1/2, answer));\n                c5/2\n                rest/2\n            }\n        }\n    }\n}\n",
   "revision": 0,
   "compiles": true,
   "unsaved": true,
@@ -66,8 +66,8 @@
               "label": "together(subject, shift(1/2, answer))",
               "kind": "occurrence",
               "span": {
-                "start": 693,
-                "end": 735
+                "start": 694,
+                "end": 736
               }
             }
           ],
@@ -75,8 +75,8 @@
           "occurrence": "occurrence-0",
           "line": 26,
           "span": {
-            "start": 693,
-            "end": 735
+            "start": 694,
+            "end": 736
           },
           "definitionSpan": {
             "start": 297,
@@ -88,8 +88,8 @@
               "end": 301
             },
             {
-              "start": 693,
-              "end": 735
+              "start": 694,
+              "end": 736
             }
           ],
           "decision": null
@@ -128,8 +128,8 @@
               "label": "together(subject, shift(1/2, answer))",
               "kind": "occurrence",
               "span": {
-                "start": 693,
-                "end": 735
+                "start": 694,
+                "end": 736
               }
             }
           ],
@@ -137,8 +137,8 @@
           "occurrence": "occurrence-0",
           "line": 26,
           "span": {
-            "start": 693,
-            "end": 735
+            "start": 694,
+            "end": 736
           },
           "definitionSpan": {
             "start": 310,
@@ -150,8 +150,8 @@
               "end": 314
             },
             {
-              "start": 693,
-              "end": 735
+              "start": 694,
+              "end": 736
             }
           ],
           "decision": null
@@ -190,8 +190,8 @@
               "label": "together(subject, shift(1/2, answer))",
               "kind": "occurrence",
               "span": {
-                "start": 693,
-                "end": 735
+                "start": 694,
+                "end": 736
               }
             },
             {
@@ -209,8 +209,8 @@
           "occurrence": "occurrence-1",
           "line": 26,
           "span": {
-            "start": 693,
-            "end": 735
+            "start": 694,
+            "end": 736
           },
           "definitionSpan": {
             "start": 310,
@@ -222,8 +222,8 @@
               "end": 314
             },
             {
-              "start": 693,
-              "end": 735
+              "start": 694,
+              "end": 736
             }
           ],
           "decision": null
@@ -262,8 +262,8 @@
               "label": "together(subject, shift(1/2, answer))",
               "kind": "occurrence",
               "span": {
-                "start": 693,
-                "end": 735
+                "start": 694,
+                "end": 736
               }
             },
             {
@@ -281,8 +281,8 @@
           "occurrence": "occurrence-1",
           "line": 26,
           "span": {
-            "start": 693,
-            "end": 735
+            "start": 694,
+            "end": 736
           },
           "definitionSpan": {
             "start": 297,
@@ -294,8 +294,8 @@
               "end": 301
             },
             {
-              "start": 693,
-              "end": 735
+              "start": 694,
+              "end": 736
             }
           ],
           "decision": null
@@ -334,17 +334,17 @@
           "occurrence": null,
           "line": 27,
           "span": {
-            "start": 752,
-            "end": 756
+            "start": 753,
+            "end": 757
           },
           "definitionSpan": {
-            "start": 752,
-            "end": 756
+            "start": 753,
+            "end": 757
           },
           "supportedBy": [
             {
-              "start": 752,
-              "end": 756
+              "start": 753,
+              "end": 757
             }
           ],
           "decision": null
@@ -379,17 +379,17 @@
           "occurrence": null,
           "line": 28,
           "span": {
-            "start": 773,
-            "end": 779
+            "start": 774,
+            "end": 780
           },
           "definitionSpan": {
-            "start": 773,
-            "end": 779
+            "start": 774,
+            "end": 780
           },
           "supportedBy": [
             {
-              "start": 773,
-              "end": 779
+              "start": 774,
+              "end": 780
             }
           ],
           "decision": null
@@ -404,8 +404,8 @@
             "label": "together(subject, shift(1/2, answer))",
             "kind": "occurrence",
             "span": {
-              "start": 693,
-              "end": 735
+              "start": 694,
+              "end": 736
             }
           }
         ],
@@ -413,8 +413,8 @@
         "motif": "together",
         "declaration": null,
         "useSite": {
-          "start": 693,
-          "end": 735
+          "start": 694,
+          "end": 736
         },
         "line": 26,
         "events": [
@@ -429,8 +429,8 @@
             "label": "together(subject, shift(1/2, answer))",
             "kind": "occurrence",
             "span": {
-              "start": 693,
-              "end": 735
+              "start": 694,
+              "end": 736
             }
           },
           {
@@ -448,8 +448,8 @@
         "motif": "together",
         "declaration": null,
         "useSite": {
-          "start": 693,
-          "end": 735
+          "start": 694,
+          "end": 736
         },
         "line": 26,
         "events": [
@@ -972,8 +972,8 @@
       "site": {
         "where": "open",
         "span": {
-          "start": 516,
-          "end": 522
+          "start": 517,
+          "end": 523
         }
       }
     },
@@ -992,8 +992,8 @@
       "site": {
         "where": "open",
         "span": {
-          "start": 581,
-          "end": 589
+          "start": 582,
+          "end": 590
         }
       }
     }
@@ -1013,8 +1013,8 @@
           "end": 500
         },
         {
-          "start": 706,
-          "end": 713
+          "start": 707,
+          "end": 714
         }
       ]
     },
@@ -1028,8 +1028,8 @@
       "external": null,
       "uses": [
         {
-          "start": 550,
-          "end": 560
+          "start": 551,
+          "end": 561
         }
       ]
     },
@@ -1043,8 +1043,8 @@
       "external": null,
       "uses": [
         {
-          "start": 726,
-          "end": 732
+          "start": 727,
+          "end": 733
         }
       ]
     },
@@ -1052,8 +1052,8 @@
       "name": "chosen",
       "kind": "value",
       "declaration": {
-        "start": 516,
-        "end": 522
+        "start": 517,
+        "end": 523
       },
       "external": null,
       "uses": []
@@ -1062,8 +1062,8 @@
       "name": "counting",
       "kind": "value",
       "declaration": {
-        "start": 581,
-        "end": 589
+        "start": 582,
+        "end": 590
       },
       "external": null,
       "uses": []
@@ -1087,8 +1087,8 @@
       "external": "musa-stdlib:/std/option.musa",
       "uses": [
         {
-          "start": 532,
-          "end": 545
+          "start": 533,
+          "end": 546
         }
       ]
     },
@@ -1099,8 +1099,8 @@
       "external": "musa-stdlib:/std/list.musa",
       "uses": [
         {
-          "start": 603,
-          "end": 611
+          "start": 604,
+          "end": 612
         }
       ]
     },
@@ -1108,8 +1108,8 @@
       "name": "strings",
       "kind": "part",
       "declaration": {
-        "start": 642,
-        "end": 649
+        "start": 643,
+        "end": 650
       },
       "external": null,
       "uses": []
@@ -1118,8 +1118,8 @@
       "name": "duet",
       "kind": "voice",
       "declaration": {
-        "start": 670,
-        "end": 674
+        "start": 671,
+        "end": 675
       },
       "external": null,
       "uses": []

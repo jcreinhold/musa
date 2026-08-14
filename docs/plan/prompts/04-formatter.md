@@ -33,6 +33,16 @@ preserves comments predictably.
   pub fn apply_edits(source: &str, edits: &[TextEdit]) -> String;
   ```
 
+  **Amended.** "Every token survives" turned out to claim one token too many. A list's own trailing comma separates
+  nothing — it is punctuation the *layout* writes, the way an indent is — so leaving it to the source meant the same
+  list had two spellings and no rule to choose between them, and a corpus with no rule drifts: `stdlib/` reached 88
+  broken-open lists spelled one way and the rest the other, with `stdlib/src/adapters/staff.musa` holding five sibling
+  calls of which four ended in a comma and one did not. The formatter now writes that comma when a list opens down the
+  page and drops it when the list joins back onto one line. Nothing else about the claim changes: every comment and
+  every token that says something still survives, and the amendment is written out where the rule is, at
+  `ends_its_list` in `crates/musa-language/src/formatter.rs`. The formatting law it has to keep is roadmap §17.3's, and
+  that law is stated over `semantic(parse(…))`, which a trailing comma does not reach.
+
 - Formatting rules: 4-space indent per block level; one statement per line; `;` terminates; blank line between top-level
   declarations; `{` on the declaration line. Comments stay attached to the following token (trailing comments stay on
   their line). Whatever rules you choose, encode them as insta snapshots so review is textual.

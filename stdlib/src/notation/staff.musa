@@ -130,7 +130,7 @@ library {
             anchor: Nat,
             start: Position<WrittenTime>,
             value: WrittenDuration,
-            after: Spelled
+            after: Spelled,
         ),
     }
 
@@ -253,7 +253,7 @@ library {
             Ok(inner) -> match after(inner.at_end) {
                 Ok(later) -> Ok(Realization(
                     joined_spans(inner.spans, later.spans),
-                    later.at_end
+                    later.at_end,
                 )),
                 Err(why) -> Err(why),
             },
@@ -313,7 +313,7 @@ library {
                 Ok(next) -> match after(next) {
                     Ok(later) -> Ok(Realization(
                         Span(anchor, here, span, tied, later.spans),
-                        later.at_end
+                        later.at_end,
                     )),
                     Err(why) -> Err(why),
                 },
@@ -418,7 +418,7 @@ library {
                         Ok(at_end) -> match after(at_end) {
                             Ok(later) -> Ok(Realization(
                                 joined_spans(spans, later.spans),
-                                later.at_end
+                                later.at_end,
                             )),
                             Err(why) -> Err(why),
                         },
@@ -563,7 +563,7 @@ library {
             None,
             fn (
                 candidate: WrittenDuration,
-                found: Option<WrittenDuration>
+                found: Option<WrittenDuration>,
             ) -> Option<WrittenDuration> {
                 match found {
                     Some(value) -> Some(value),
@@ -587,7 +587,7 @@ library {
     // document's spelling policy rather than a note quietly rounded.
     fn spelled_as(
         policy: Spelling,
-        held: Duration<WrittenTime>
+        held: Duration<WrittenTime>,
     ) -> Result<WrittenDuration, Text> {
         match policy {
             ExactValues -> Ok(ExactSpan(duration_ratio(held))),

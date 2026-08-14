@@ -78,6 +78,7 @@
     { "kind": "retrograde", "text": "retrograde" },
     { "kind": ",", "text": "," },
     { "kind": "identifier", "text": "subject" },
+    { "kind": ",", "text": "," },
     { "kind": ")", "text": ")" },
     { "kind": ";", "text": ";" },
     { "kind": "let", "text": "let" },

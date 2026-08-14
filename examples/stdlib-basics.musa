@@ -15,7 +15,7 @@ piece "Standard Library Basics" {
     let answer: Music = compose_music(
         fn (line: Music) -> Music { transpose(P8, line) },
         retrograde,
-        subject
+        subject,
     );
     let chosen: Pitch = pitch_or_else(c4, same_pitch, Some(e4));
     let counting: List<Nat> = naturals(4);

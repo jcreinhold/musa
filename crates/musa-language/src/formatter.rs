@@ -13,7 +13,9 @@
 //!   exception, and see [`MEASURE`] for why it earns itself.
 //! - A comma-separated list — a call's arguments, a constructor's fields —
 //!   is written on one line when it fits [`MEASURE`], and one item per line
-//!   when it does not. See [`breakable_list`].
+//!   when it does not. See [`breakable_list`]. Its trailing comma follows
+//!   that decision rather than the source: present when the list is written
+//!   down the page, absent when it is on one line. See [`ends_its_list`].
 //! - Inside a bar, the gap between beat groups is two spaces instead of one.
 //!   A beam is how notation shows which beats a player hears together, and
 //!   horizontal space is the only thing text has to draw one with. Which
@@ -69,8 +71,13 @@ pub enum BarSpacing {
     Proportional,
 }
 
-/// Format a parsed document. Lossless: every comment and token survives;
-/// only whitespace trivia is normalized.
+/// Format a parsed document.
+///
+/// Lossless: every comment survives, and every token that says something
+/// survives. Whitespace trivia is normalized, and so is the one token that is
+/// punctuation for a layout rather than a word of the program — a list's own
+/// trailing comma, which [`ends_its_list`] explains and which is written or
+/// dropped to match the layout the list was given.
 ///
 /// `bars` is a required parameter and not an overload on purpose. Leaving a
 /// one-argument `format` in the API would leave a trap that silently means
@@ -150,6 +157,20 @@ fn breakable_list(kind: SyntaxKind) -> bool {
             | SyntaxKind::ListExpr
             | SyntaxKind::ProductExpr
     )
+}
+
+/// Whether a list of this kind ends with a trailing comma when it is written
+/// down the page — [`breakable_list`] minus the one that does not.
+///
+/// A product is the exception, and the grammar says so first: `(a, b,)` does
+/// not parse, because `paren_or_product_expr` reads an expression after every
+/// comma. But it would be the exception anyway. A trailing comma is for a list
+/// whose length is open, where the next item is added by writing a line and
+/// not by editing the line above it. A product's arity is part of its type:
+/// there is no next item to add, so there is nothing for the comma to hold a
+/// place for.
+fn carries_a_trailing_comma(kind: SyntaxKind) -> bool {
+    breakable_list(kind) && kind != SyntaxKind::ProductExpr
 }
 
 /// Whether a list must be written one item per line.
@@ -404,10 +425,20 @@ fn opens_a_body(kind: SyntaxKind) -> bool {
 /// a space after it to separate.
 ///
 /// A trailing comma is how a list written down the page keeps its last item
-/// editable, and it survives when the list is joined back up because the
-/// formatter rewrites whitespace and never tokens. `f(a, b, )` is that comma
-/// with a space it has no use for; `f(a, b,)` is the same list spelled the way
-/// a reader would.
+/// editable: with one, every item is a whole line that can be moved, copied or
+/// deleted without touching its neighbours, and adding an item after the last
+/// one does not edit the last one. That is a property of the *layout*, so the
+/// layout writes it — [`format_token`] adds the comma when a list stacks and
+/// drops it when the list is joined back onto one line, where `f(a, b,)` is a
+/// separator with nothing to separate.
+///
+/// This is the one token the formatter writes without being given it, and the
+/// exception is narrow on purpose: only inside a list that
+/// [`carries_a_trailing_comma`], only in the last position, and it says
+/// nothing — a list means what it means with the
+/// comma or without it, which is why the two spellings were free to drift apart
+/// in the first place. Every other token is the program, and the program is
+/// read, never written.
 fn ends_its_list(comma: &SyntaxToken) -> bool {
     let mut following = comma.next_sibling_or_token();
     while let Some(element) = following {
@@ -615,6 +646,22 @@ fn format_token(node: &SyntaxNode, token: &SyntaxToken, writer: &mut Writer) {
             .is_some_and(|owner| owner.kind() == SyntaxKind::LambdaExpr || continues_past_a_branch(&owner));
     if kind == SyntaxKind::LineComment || kind == SyntaxKind::BlockComment {
         writer.comment(text);
+        return;
+    }
+    // The two halves of the trailing-comma rule, taken before `prep_line`
+    // because both are decided on the line the last item ended, not on the
+    // line its closer will start. See [`ends_its_list`].
+    if stacked
+        && carries_a_trailing_comma(parent)
+        && matches!(kind, SyntaxKind::RParen | SyntaxKind::RBracket)
+        && writer.wants_trailing_comma()
+    {
+        writer.write(",");
+        writer.after_significant(SyntaxKind::Comma);
+        writer.end_line();
+    }
+    if kind == SyntaxKind::Comma && !stacked && carries_a_trailing_comma(parent) && ends_its_list(token) {
+        writer.skip_token();
         return;
     }
     writer.prep_line();
@@ -1319,6 +1366,27 @@ impl Writer {
     /// Whether the innermost enclosing list is written one item per line.
     fn list_breaks(&self) -> bool {
         self.lists.last().copied().unwrap_or_default()
+    }
+
+    /// Whether a stacked list about to close still owes its trailing comma:
+    /// it has a last item, and that item is not already followed by one.
+    ///
+    /// An opener as the previous token is the empty list — nothing to end —
+    /// and a line already broken is a list whose comma has been written and
+    /// whose newline has been spent.
+    fn wants_trailing_comma(&self) -> bool {
+        !self.at_line_start
+            && !matches!(
+                self.prev,
+                None | Some(SyntaxKind::Comma | SyntaxKind::LParen | SyntaxKind::LBracket)
+            )
+    }
+
+    /// A token the layout chose not to write. The whitespace in front of it is
+    /// spent with it; `prev` stays what it was, because nothing was written and
+    /// so what the next token joins is still the token before this one.
+    fn skip_token(&mut self) {
+        self.pending_newlines = 0;
     }
 
     /// Indent the continuation lines — once per chain, and only when the

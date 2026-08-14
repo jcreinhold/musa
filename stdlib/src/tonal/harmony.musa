@@ -79,7 +79,7 @@ library {
         home: Scale,
         target: Degree,
         mode: Scale,
-        written: Roman
+        written: Roman,
     ) -> Option<ChordClass> {
         match altered_class(home, target) {
             None -> None,
@@ -97,7 +97,7 @@ library {
     fn quality_on_degree(
         collection: Scale,
         written: Degree,
-        quality: ChordClass
+        quality: ChordClass,
     ) -> Option<ChordClass> {
         match altered_class(collection, written) {
             None -> None,

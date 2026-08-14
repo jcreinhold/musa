@@ -331,7 +331,7 @@ library {
         spelling: Text,
         one: Syntax,
         two: Syntax,
-        three: Syntax
+        three: Syntax,
     ) -> Syntax {
         syntax_group(syntax_built(here, role, 0), "layout", [
             named(here, role, spelling),
@@ -476,7 +476,7 @@ library {
                         TwoDots -> "2",
                         ThreeDots -> "3",
                     },
-                )
+                ),
             )),
             Spanned(numeral, span) -> Some(call1(here, 36, "ExactSpan", numeral)),
         }
@@ -501,7 +501,7 @@ library {
                 37,
                 "Beats",
                 first,
-                second
+                second,
             )),
         }
     }
@@ -551,7 +551,7 @@ library {
             Grouped(spot, delimiter, parts) -> syntax_token(
                 syntax_built(here, 44, 1),
                 "Missing",
-                ""
+                "",
             ),
             Body(spot, read) -> syntax_token(syntax_built(here, 44, 2), "Missing", ""),
             Unreadable(spot) -> syntax_token(syntax_built(here, 44, 3), "Missing", ""),
@@ -595,7 +595,7 @@ library {
                                         syntax_token(
                                             syntax_built(spot, 45, 0),
                                             "Integer",
-                                            spelling
+                                            spelling,
                                         ),
                                         value,
                                     ),
@@ -605,7 +605,7 @@ library {
                                         syntax_token(
                                             syntax_built(spot, 45, 0),
                                             "Integer",
-                                            spelling
+                                            spelling,
                                         ),
                                         value,
                                     ),
@@ -647,9 +647,9 @@ library {
                                         syntax_token(
                                             syntax_built(spot, 46, 0),
                                             "Rational",
-                                            spelling
+                                            spelling,
                                         ),
-                                        value
+                                        value,
                                     ))
                                 },
                                 syntax_number(node_at(region, spot)),
@@ -679,8 +679,8 @@ library {
                         "brackets",
                         map(
                             fn (one: Read) -> Syntax { voice_written(here, one) },
-                            filter(is_pitch, parts)
-                        )
+                            filter(is_pitch, parts),
+                        ),
                     ),
                     spelling,
                     syntax_group(
@@ -688,8 +688,8 @@ library {
                         "brackets",
                         map(
                             fn (one: Read) -> Syntax { voice_written(here, one) },
-                            filter(is_pitch, parts)
-                        )
+                            filter(is_pitch, parts),
+                        ),
                     ),
                 )
             },
@@ -776,7 +776,7 @@ library {
             Reading(items, span, next, beyond, head, refusal) -> match tie_met(
                 hangs,
                 next,
-                beyond
+                beyond,
             ) {
                 Ok(reached) -> after_item(
                     later,
@@ -900,7 +900,7 @@ library {
         region: Syntax,
         spot: NodePath,
         later: Pending,
-        length: Length
+        length: Length,
     ) -> Pending {
         match later {
             Pending(r, was, dots, tying, numbers, taken, voiced, words) -> match was {
@@ -963,7 +963,7 @@ library {
                         written_clef,
                         tonality,
                         beats,
-                        spelled
+                        spelled,
                     )),
                     Stated(already) -> Err(Refused(node, "this staff says this twice")),
                 },
@@ -974,7 +974,7 @@ library {
                         written_clef,
                         tonality,
                         beats,
-                        spelled
+                        spelled,
                     )),
                     Stated(already) -> Err(Refused(node, "this staff says this twice")),
                 },
@@ -985,7 +985,7 @@ library {
                         Stated(given),
                         tonality,
                         beats,
-                        spelled
+                        spelled,
                     )),
                     Stated(already) -> Err(Refused(node, "this staff says this twice")),
                 },
@@ -996,7 +996,7 @@ library {
                         written_clef,
                         Stated(given),
                         beats,
-                        spelled
+                        spelled,
                     )),
                     Stated(already) -> Err(Refused(node, "this staff says this twice")),
                 },
@@ -1007,7 +1007,7 @@ library {
                         written_clef,
                         tonality,
                         Stated(given),
-                        spelled
+                        spelled,
                     )),
                     Stated(already) -> Err(Refused(node, "this staff says this twice")),
                 },
@@ -1018,7 +1018,7 @@ library {
                         written_clef,
                         tonality,
                         beats,
-                        Stated(given)
+                        Stated(given),
                     )),
                     Stated(already) -> Err(Refused(node, "this staff says this twice")),
                 },
@@ -1162,13 +1162,13 @@ library {
                 None -> refusing(
                     later,
                     node_at(region, spot),
-                    "this chord states no written value"
+                    "this chord states no written value",
                 ),
                 Some(value) -> option_fold(
                     refusing(
                         later,
                         node_at(region, spot),
-                        "this chord states no written value"
+                        "this chord states no written value",
                     ),
                     fn (span: Ratio) -> Pending {
                         sounding(
@@ -1216,7 +1216,7 @@ library {
         spot: NodePath,
         later: Pending,
         numbers: Numbers,
-        taken: Taken
+        taken: Taken,
     ) -> Pending {
         match taken {
             NoBody -> refusing(later, node_at(region, spot), "this bar holds no notation"),
@@ -1224,14 +1224,14 @@ library {
                 refusing(
                     later,
                     node_at(region, spot),
-                    "this bar does not say what it measures"
+                    "this bar does not say what it measures",
                 ),
                 fn (wanted: Ratio) -> Pending {
                     option_fold(
                         refusing(
                             later,
                             node_at(region, spot),
-                            "this bar does not say what it measures"
+                            "this bar does not say what it measures",
                         ),
                         fn (beats: Syntax) -> Pending {
                             match body {
@@ -1300,7 +1300,7 @@ library {
                 NoNumbers -> refusing(
                     later,
                     node_at(region, spot),
-                    "this tuplet states no ratio"
+                    "this tuplet states no ratio",
                 ),
                 OneNumber(first, value) -> refusing(
                     later,
@@ -1372,7 +1372,7 @@ library {
                             anchored(region, spot),
                             first,
                             items,
-                            after_items(later)
+                            after_items(later),
                         ),
                         body,
                         span,
@@ -1382,7 +1382,7 @@ library {
                 TwoNumbers(first, value, second, other) -> refusing(
                     later,
                     node_at(region, spot),
-                    missing
+                    missing,
                 ),
             },
         }
@@ -1400,13 +1400,13 @@ library {
         region: Syntax,
         spot: NodePath,
         later: Pending,
-        numbers: Numbers
+        numbers: Numbers,
     ) -> Pending {
         option_fold(
             refusing(
                 later,
                 node_at(region, spot),
-                "this staff does not say what time it opens in"
+                "this staff does not say what time it opens in",
             ),
             fn (beats: Syntax) -> Pending {
                 heading(later, "time", beats, node_at(region, spot))
@@ -1477,7 +1477,7 @@ library {
             OneWord(only) -> refusing(
                 later,
                 node_at(region, spot),
-                "this staff field says nothing"
+                "this staff field says nothing",
             ),
             TwoWords(first, second) -> match second {
                 Said(stray_at, stray_kind, spelling) -> refusing(
@@ -1576,12 +1576,12 @@ library {
             NoWords -> refusing(
                 later,
                 node_at(region, spot),
-                "this key names no tonic and no mode"
+                "this key names no tonic and no mode",
             ),
             OneWord(only) -> refusing(
                 later,
                 node_at(region, spot),
-                "this key names no tonic and no mode"
+                "this key names no tonic and no mode",
             ),
         }
     }
@@ -1600,7 +1600,7 @@ library {
         spot: NodePath,
         spelling: Text,
         kind: Text,
-        later: Pending
+        later: Pending,
     ) -> Pending {
         match later {
             Pending(read, length, dots, tying, numbers, taken, voiced, words) -> match spelling {
@@ -1638,7 +1638,7 @@ library {
                     later,
                     "instrument",
                     "String",
-                    words
+                    words,
                 ),
                 "transposing" -> literal_header(
                     region,
@@ -1646,7 +1646,7 @@ library {
                     later,
                     "transposing",
                     "IntervalLiteral",
-                    words
+                    words,
                 ),
                 "clef" -> named_header(region, spot, later, "clef", words),
                 "spelling" -> named_header(region, spot, later, "spelling", words),
@@ -1662,7 +1662,7 @@ library {
         spot: NodePath,
         kind: Text,
         spelling: Text,
-        later: Pending
+        later: Pending,
     ) -> Pending {
         match later {
             Pending(read, length, dots, tying, numbers, taken, voiced, words) -> match kind {
@@ -1686,7 +1686,7 @@ library {
                                     syntax_token(
                                         syntax_built(spot, 53, 0),
                                         "Integer",
-                                        spelling
+                                        spelling,
                                     ),
                                     dots,
                                     span,
@@ -1760,7 +1760,7 @@ library {
             Unreadable(spot) -> refusing(
                 later,
                 node_at(region, spot),
-                "this staff cannot read this"
+                "this staff cannot read this",
             ),
             Body(spot, read) -> later with {
                 taken = Took(spot, read)
@@ -1770,7 +1770,7 @@ library {
                 spot,
                 delimiter,
                 parts,
-                later
+                later,
             ),
             Piece(spot, kind, spelling) -> token_read(region, spot, kind, spelling, later),
         }
@@ -1802,7 +1802,7 @@ library {
             NoWords -> match voiced {
                 Voices(node, spelling, listed) -> Refused(
                     node,
-                    "these pitches are held for nothing"
+                    "these pitches are held for nothing",
                 ),
                 NoVoices -> match taken {
                     Took(spot, read) -> Refused(
@@ -1879,7 +1879,7 @@ library {
         region: Syntax,
         here: NodePath,
         field: Given,
-        missing: Text
+        missing: Text,
     ) -> Result<Syntax, (Syntax, Text)> {
         match field {
             Absent -> Err((node_at(region, here), missing)),
@@ -1891,7 +1891,7 @@ library {
     fn document_read(
         region: Syntax,
         here: NodePath,
-        read: Reading
+        read: Reading,
     ) -> Result<Syntax, (Syntax, Text)> {
         match read {
             Reading(items, span, opens, hangs, head, refusal) -> match refusal {
@@ -1939,7 +1939,7 @@ library {
                                 region,
                                 here,
                                 beats,
-                                "this staff does not say what time it opens in"
+                                "this staff does not say what time it opens in",
                             )?,
                             stated_field(
                                 region,
@@ -1947,7 +1947,7 @@ library {
                                 spelled,
                                 "this staff does not say how a realized span is spelled",
                             )?,
-                            items
+                            items,
                         )),
                     },
                 },
