@@ -363,3 +363,36 @@ fn event_frames_are_the_engine_s_clock() {
         "an event lasts a positive time"
     );
 }
+
+/// An adapter region is read at compile time, so a piece holding one reaches
+/// every backend the way a piece without one does.
+///
+/// `examples/staff-page.musa` is the staff adapter's trial block: a page of
+/// notation covering every item the notation has, expanded into
+/// `std::notation::staff`'s own data before anything downstream sees it. What
+/// this law protects is that the expansion leaves nothing behind — the piece
+/// compiles, and every notation target renders it.
+#[test]
+fn the_staff_page_example_compiles_and_renders() -> Result {
+    let session = ProjectSession::from_text(include_str!("../../../../examples/staff-page.musa"), "staff-page.musa");
+    assert!(
+        session.snapshot().compiles(),
+        "{:?}",
+        session
+            .snapshot()
+            .diagnostics()
+            .iter()
+            .map(|diagnostic| &diagnostic.message)
+            .collect::<Vec<_>>()
+    );
+    for request in [
+        ExportRequest::Mei,
+        ExportRequest::LilyPond,
+        ExportRequest::MusicXml,
+        ExportRequest::Midi(musa_project::MidiMode::Score),
+    ] {
+        let artifact = session.export(request)?;
+        assert!(!artifact.as_bytes().is_empty(), "{request:?} produced nothing");
+    }
+    Ok(())
+}

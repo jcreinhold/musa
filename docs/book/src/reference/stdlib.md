@@ -38,12 +38,34 @@ let pair = syntax doubled { c4 };
 The two words are two statements. An ordinary `import` brings in values and cannot change how anything is read; `import
 syntax` names the package that reads a region, and it stands in the header before the first definition that uses one. A
 region is named — by the name the import gave — and delimited, so the lexer and the grouper stay fixed and a package
-never extends them. What is inside is the adapter's language, which is why the formatter writes it back as it stands.
+never extends them. What is inside is the adapter's language, and until an adapter promises to *print* one, the
+formatter reflows a region by the compiler's own rules rather than by the notation's.
 
 `doubled` expands `syntax doubled { … }` to `(repeat(…, 2), 0)`: whatever the region holds, twice, paired with an
 *anchor* — a number the adapter emits and the compiler keeps a table for, so that a value produced by an expansion can
 still say which part of the region it came from. It exists to be run rather than to be used — it is the phase's fixture,
 and the adapters worth writing music with are their own modules.
+
+`std::adapters::staff` is the first adapter written to be composed in rather than to be run. A region of it is a page of
+staff notation: a head stating the instrument, how far its written pitch sits from its sounding pitch, the clef, the
+key, the time and how written values are spelled, and then the notation — bars that each say what they measure, holding
+notes, rests, chords, dots, exact durations, ties, slurs, tuplets, grace notes, pickups, repeats, alternate endings and
+meter changes.
+
+```musa
+        instrument "bb_clarinet"
+        transposing M2
+        clef treble
+        key d major
+        time (4, 4)
+        spelling shortest_readable
+```
+
+It expands to one call to `std::notation::staff`'s `Document` constructor, so the adapter reads and the package decides:
+no sounding pitch, no performed duration, no resolved tuplet span and no grace-note timing is settled at read time.
+Nothing on the page is inherited either — every note states its own register and its own written value, and every bar
+states its own length — which is what lets a bar that does not hold what it says it measures be reported against that
+bar. `examples/staff-page.musa` is a page that exercises every item it reads.
 
 Every adapter declares what it promises, and the compiler checks the promise where the module is imported. A *readable*
 adapter expands, and its regions are read-only; an *editable* one also answers structured commands with edits into its

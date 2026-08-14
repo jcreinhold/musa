@@ -1,0 +1,2142 @@
+// `staff` — read staff notation, and produce a `std::notation::staff` document.
+//
+// A region of this adapter is a page of staff notation written in text. It
+// expands to one ordinary expression — a call to the staff package's
+// `Document` constructor — which is then resolved, checked, and evaluated
+// exactly as if the composer had written it out. The adapter reads; the
+// package decides. Nothing here computes a sounding pitch, a performed
+// duration, an exact tuplet span, or a grace note's timing: those are
+// `realize`'s and a performance profile's answers, and an adapter that
+// pre-computed them would be deciding at read time what the package defers.
+//
+// # The spelling
+//
+//     syntax staff {
+//         instrument "bb_clarinet"
+//         transposing M2
+//         clef treble
+//         key d major
+//         time (4, 4)
+//         spelling shortest_readable
+//
+//         pickup (1, 4) { g4/4 }
+//
+//         repeat (2) {
+//             bar (4, 4) { c5/4 d5/4. e5/8 f5/4 ~ }
+//             bar (4, 4) { f5/8 rest/8 [g4 b4 d5]/4 c5(3/8) rest/8 }
+//
+//             ending (1) {
+//                 bar (4, 4) { slur { tuplet (3, 2) { a4/8 b4/8 c5/8 } d5/4 } grace [e5] f5/2 }
+//             }
+//
+//             ending (2) {
+//                 meter (3, 4)
+//                 bar (3, 4) { g5/4 a5/4 b5/4 }
+//             }
+//         }
+//     }
+//
+// One rule covers every form in it: a **word**, then its **parentheses** if it
+// takes numbers, then its **braces** if it holds notation. `bar (4, 4) { … }`,
+// `tuplet (3, 2) { … }` and `repeat (2) { … }` are the same shape, and
+// `slur { … }` is that shape with the numbers left off. A chord and a grace
+// hold pitches rather than notation, so they take brackets instead of braces:
+// `[g4 b4 d5]/4` and `grace [e5]`.
+//
+// # Why it is not the layout a musician would draw
+//
+// The compiler hands an adapter the fixed lexer's tokens grouped by matched
+// delimiters and nothing else. There are no lines: `Whitespace` is one
+// undifferentiated trivia kind, and a newline is not a token an adapter can
+// see. So a spelling that meant one thing per line could not be read at all,
+// and the forms are delimited instead. That is the one place this notation
+// departs from what the trial note drew, and it is the compiler's shape
+// showing through rather than a preference.
+//
+// `time (4, 4)` is two numbers rather than `4/4` for the same kind of reason:
+// the lexer keeps `4/4` whole as one rational token, and a rational is
+// reduced, so `4/4` and `1/1` arrive identical. A time signature is a count of
+// a unit and not a quotient, so the two numbers are written as two.
+//
+// # `time` opens a staff and `meter` changes one
+//
+// A page states `time (4, 4)` at its head, and a change of meter part-way
+// through states `meter (3, 4)` where it happens. They are two words because
+// there are no lines: a word written above the music and the same word written
+// among it arrive here identically, so a single spelling would leave the reader
+// guessing which of the two the composer meant — and guessing wrong turns a
+// change of meter into a second opening statement, or the reverse. Two words
+// is one more thing to learn and nothing left to infer.
+//
+// # Every bar states what it measures
+//
+// `bar (4, 4) { … }` says its own meter, and its contents are checked against
+// it. Nothing is inherited: the same reason a note states its own octave and
+// its own written value is the reason a bar states its own length. A reader
+// looking at one bar can say whether it is full without looking anywhere else,
+// and so can this adapter — which is what lets the check land on the bar the
+// composer wrote rather than on the page.
+//
+// It is also what the compiler's shape asks for. The fold runs from the leaves
+// up, so a bar is read before anything enclosing it has been read; a meter
+// arriving from an enclosing form would have to travel the other way, and the
+// only way to carry it would be to fold every node to a function of a reader
+// state. The notation says the meter twice instead, and stays readable.
+//
+// `pickup (1, 4) { … }` is a bar of a stated length that is not the meter, and
+// it produces a `Bar` like any other: the package has no pickup, because a
+// pickup is a bar with fewer beats in it.
+//
+// # What this adapter wanted and did not get
+//
+// - **A number it computed cannot be written back as a numeral.** Every number
+//   this adapter emits is a token the composer wrote, echoed. That is why dots
+//   are counted through a four-valued `Dots` rather than a `Nat`: `NoteValue`
+//   takes a count, and the only way to hand it one is to spell it. Four dots
+//   are refused for the same reason, and closing that would take an operation
+//   turning a phase number into a literal token.
+// - **A list cannot be built, and lists fold only from the left.** A group's
+//   children arrive as a `List`, and the data this adapter emits is
+//   right-nested, so the sequence has to be built from its end. `from_the_end`
+//   does that with the one closure in this file. Closing it would take a right
+//   fold over lists, which is a core-calculus question and not an adapter's.
+// - **A tie's continuation is checked by spelling, not by pitch.** There is no
+//   operation reading a pitch out of a token, so `f5` tied to `f#5` is caught
+//   by comparing the two spellings the composer wrote. That is the check §2.5
+//   of the trial note asks for, and it is also all this adapter can see.
+// - **A region is reformatted generically until this adapter can print one.**
+//   `readable` means no `print`, so `musa format` reflows a region by the
+//   compiler's own rules, and the blank lines a page was laid out with do not
+//   survive it. Prompt 127dcfb's `print` is what closes this, and until then a
+//   staff page is spaced the way the formatter spaces expressions.
+// - **A refusal cannot quote the numbers it computed.** "This bar does not hold
+//   what it says it measures" points at the bar and stops there; saying *by how
+//   much* would mean spelling a computed rational back as text, which is the
+//   first item on this list again. The place is the half that matters — the
+//   package could find the same fault and could not point anywhere — but the
+//   sentence is poorer than the trial note drew it.
+
+library {
+    // Read-only, of the three levels: prompt 127dcfb gives this adapter `edit`
+    // and `print`, and until it does, a region of this adapter is source a
+    // musician changes by typing.
+    let level = "readable";
+
+    // ---------------------------------------------------------------- reading
+
+    // Why a region was refused, and the node the refusal is about.
+    //
+    // A refusal carries a node rather than a place: the compiler reads the
+    // range off the node, and an adapter has no operation for reading one.
+    data Refusal {
+        NoRefusal,
+        Refused(node: Syntax, why: Text),
+    }
+
+    // The first refusal of two, in the order they were written.
+    fn first_refusal(found: Refusal, later: Refusal) -> Refusal {
+        match found {
+            Refused(node, why) -> Refused(node, why),
+            NoRefusal -> later,
+        }
+    }
+
+    // What sounds first in a stretch of notation, by the spelling the composer
+    // wrote for it.
+    //
+    // A tie reaches whatever sounds next, and "next" is usually in the next
+    // bar. Reading from the end means the answer is already in hand when the
+    // tie is met.
+    data Sound {
+        Silent,
+        Sounds(spelling: Text, node: Syntax),
+    }
+
+    // A tie left hanging at the end of a stretch: it continues into whatever
+    // follows the stretch, which the stretch itself cannot see.
+    data Hanging {
+        Closed,
+        Hangs(spelling: Text, node: Syntax),
+    }
+
+    // One header field, once it has been read.
+    data Given {
+        Absent,
+        Stated(node: Syntax),
+    }
+
+    // The six things a staff says about itself before any notation.
+    data Head {
+        Head(
+            instrument: Given,
+            shift: Given,
+            written_clef: Given,
+            tonality: Given,
+            beats: Given,
+            spelled: Given,
+        ),
+    }
+
+    // What one stretch of notation reads to.
+    data Reading {
+        Reading(
+            items: Syntax,
+            span: Ratio,
+            opens: Sound,
+            hangs: Hanging,
+            head: Head,
+            refusal: Refusal,
+        ),
+    }
+
+    // How many dots a written value carries.
+    //
+    // Four values and not a `Nat`, because the count has to be emitted as a
+    // numeral and this adapter can only emit numerals it can spell.
+    data Dots {
+        NoDots,
+        OneDot,
+        TwoDots,
+        ThreeDots,
+    }
+
+    // One more dot, or nothing further.
+    fn one_more_dot(sofar: Dots) -> Option<Dots> {
+        match sofar {
+            NoDots -> Some(OneDot),
+            OneDot -> Some(TwoDots),
+            TwoDots -> Some(ThreeDots),
+            ThreeDots -> None,
+        }
+    }
+
+    // What the dots multiply the undotted value by: each dot adds half of what
+    // the dot before it added.
+    fn dotted_factor(dots: Dots) -> Ratio {
+        match dots {
+            NoDots -> 1,
+            OneDot -> 3/2,
+            TwoDots -> 7/4,
+            ThreeDots -> 15/8,
+        }
+    }
+
+    // The written value a note or rest states, waiting for what it belongs to.
+    data Length {
+        NoLength,
+        Divided(numeral: Syntax, dots: Dots, span: Ratio),
+        Spanned(numeral: Syntax, span: Ratio),
+    }
+
+    // Whether what is being read is tied on to whatever sounds next.
+    data Tying {
+        Untied,
+        Tied(node: Syntax),
+    }
+
+    // Up to two numbers a form stated in its parentheses.
+    data Numbers {
+        NoNumbers,
+        OneNumber(first: Syntax, value: Ratio),
+        TwoNumbers(first: Syntax, value: Ratio, second: Syntax, other: Ratio),
+    }
+
+    // A braces body a form has taken but not yet used.
+    data Taken {
+        NoBody,
+        Took(spot: NodePath, read: Reading),
+    }
+
+    // The pitches of a chord or a grace group, waiting for what holds them.
+    data Voiced {
+        NoVoices,
+        Voices(node: Syntax, spelling: Text, listed: Syntax),
+    }
+
+    // One word or literal, waiting for the word that says what it was.
+    data Said {
+        Said(spot: NodePath, kind: Text, spelling: Text),
+    }
+
+    // Up to two of them: `key d major` is the only form that takes two.
+    data Words {
+        NoWords,
+        OneWord(only: Said),
+        TwoWords(first: Said, second: Said),
+    }
+
+    // What has been read since the last word, reading from the end.
+    //
+    // This is the whole of the reader's state, and it is small on purpose:
+    // every form in this notation is a word followed by its arguments, so
+    // reading from the end means collecting the arguments and then meeting the
+    // word that says what they were.
+    data Pending {
+        Pending(
+            read: Reading,
+            length: Length,
+            dots: Dots,
+            tying: Tying,
+            numbers: Numbers,
+            taken: Taken,
+            voiced: Voiced,
+            words: Words,
+        ),
+    }
+
+    // One piece of a region, as the first pass tags it.
+    //
+    // A braces group is already a `Reading`, because the fold runs from the
+    // leaves up: by the time a body's word is met, the body has been read.
+    data Read {
+        Trivia,
+        Piece(spot: NodePath, kind: Text, spelling: Text),
+        Grouped(spot: NodePath, delimiter: Text, parts: List<Read>),
+        Body(spot: NodePath, read: Reading),
+        Unreadable(spot: NodePath),
+    }
+
+    // --------------------------------------------------------------- emitting
+
+    // Nothing said yet.
+    let no_head = Head(Absent, Absent, Absent, Absent, Absent, Absent);
+
+    // A name, as an expression.
+    fn named(here: NodePath, role: Nat, spelling: Text) -> Syntax {
+        syntax_identifier(syntax_built(here, role, 1), spelling)
+    }
+
+    // `name(one)`, `name(one, two)`, and so on. A call is a name beside its
+    // parenthesised arguments, which is what the ordinary parser reads back.
+    fn call1(here: NodePath, role: Nat, spelling: Text, one: Syntax) -> Syntax {
+        syntax_group(syntax_built(here, role, 0), "layout", [
+            named(here, role, spelling),
+            syntax_group(syntax_built(here, role, 2), "parentheses", [one]),
+        ])
+    }
+
+    fn call2(here: NodePath, role: Nat, spelling: Text, one: Syntax, two: Syntax) -> Syntax {
+        syntax_group(syntax_built(here, role, 0), "layout", [
+            named(here, role, spelling),
+            syntax_group(syntax_built(here, role, 2), "parentheses", [
+                one,
+                syntax_token(syntax_built(here, role, 3), "Comma", ","),
+                two,
+            ]),
+        ])
+    }
+
+    fn call3(
+        here: NodePath,
+        role: Nat,
+        spelling: Text,
+        one: Syntax,
+        two: Syntax,
+        three: Syntax
+    ) -> Syntax {
+        syntax_group(syntax_built(here, role, 0), "layout", [
+            named(here, role, spelling),
+            syntax_group(syntax_built(here, role, 2), "parentheses", [
+                one,
+                syntax_token(syntax_built(here, role, 3), "Comma", ","),
+                two,
+                syntax_token(syntax_built(here, role, 4), "Comma", ","),
+                three,
+            ]),
+        ])
+    }
+
+    fn call4(
+        here: NodePath,
+        role: Nat,
+        spelling: Text,
+        one: Syntax,
+        two: Syntax,
+        three: Syntax,
+        four: Syntax,
+    ) -> Syntax {
+        syntax_group(syntax_built(here, role, 0), "layout", [
+            named(here, role, spelling),
+            syntax_group(syntax_built(here, role, 2), "parentheses", [
+                one,
+                syntax_token(syntax_built(here, role, 3), "Comma", ","),
+                two,
+                syntax_token(syntax_built(here, role, 4), "Comma", ","),
+                three,
+                syntax_token(syntax_built(here, role, 5), "Comma", ","),
+                four,
+            ]),
+        ])
+    }
+
+    fn call5(
+        here: NodePath,
+        role: Nat,
+        spelling: Text,
+        one: Syntax,
+        two: Syntax,
+        three: Syntax,
+        four: Syntax,
+        five: Syntax,
+    ) -> Syntax {
+        syntax_group(syntax_built(here, role, 0), "layout", [
+            named(here, role, spelling),
+            syntax_group(syntax_built(here, role, 2), "parentheses", [
+                one,
+                syntax_token(syntax_built(here, role, 3), "Comma", ","),
+                two,
+                syntax_token(syntax_built(here, role, 4), "Comma", ","),
+                three,
+                syntax_token(syntax_built(here, role, 5), "Comma", ","),
+                four,
+                syntax_token(syntax_built(here, role, 6), "Comma", ","),
+                five,
+            ]),
+        ])
+    }
+
+    fn call7(
+        here: NodePath,
+        role: Nat,
+        spelling: Text,
+        one: Syntax,
+        two: Syntax,
+        three: Syntax,
+        four: Syntax,
+        five: Syntax,
+        six: Syntax,
+        seven: Syntax,
+    ) -> Syntax {
+        syntax_group(syntax_built(here, role, 0), "layout", [
+            named(here, role, spelling),
+            syntax_group(syntax_built(here, role, 2), "parentheses", [
+                one,
+                syntax_token(syntax_built(here, role, 3), "Comma", ","),
+                two,
+                syntax_token(syntax_built(here, role, 4), "Comma", ","),
+                three,
+                syntax_token(syntax_built(here, role, 5), "Comma", ","),
+                four,
+                syntax_token(syntax_built(here, role, 6), "Comma", ","),
+                five,
+                syntax_token(syntax_built(here, role, 7), "Comma", ","),
+                six,
+                syntax_token(syntax_built(here, role, 8), "Comma", ","),
+                seven,
+            ]),
+        ])
+    }
+
+    // The end of a written sequence.
+    fn no_items(here: NodePath) -> Syntax {
+        syntax_identifier(syntax_built(here, 31, 0), "NoItems")
+    }
+
+    // Nothing read at all.
+    fn nothing_read(here: NodePath) -> Reading {
+        Reading(no_items(here), 0, Silent, Closed, no_head, NoRefusal)
+    }
+
+    // The anchor of the node at `here`, or a zero where the compiler has no
+    // range. An anchor is a number whose meaning is the compiler's table: this
+    // adapter hands one over and can read nothing from it.
+    fn anchored(region: Syntax, here: NodePath) -> Syntax {
+        option_fold(
+            syntax_token(syntax_built(here, 32, 0), "Integer", "0"),
+            fn (node: Syntax) -> Syntax { node },
+            syntax_anchor(region, here, syntax_built(here, 33, 0)),
+        )
+    }
+
+    // `Tie`, as the package spells it.
+    fn tie_of(here: NodePath, tying: Tying) -> Syntax {
+        syntax_identifier(
+            syntax_built(here, 34, 0),
+            match tying {
+                Untied -> "Untied",
+                Tied(node) -> "TiedOn",
+            },
+        )
+    }
+
+    // `WrittenDuration`, as the package spells it.
+    fn written_duration(here: NodePath, length: Length) -> Option<Syntax> {
+        match length {
+            NoLength -> None,
+            Divided(numeral, dots, span) -> Some(call2(
+                here,
+                35,
+                "NoteValue",
+                numeral,
+                syntax_token(
+                    syntax_built(here, 30, 0),
+                    "Integer",
+                    match dots {
+                        NoDots -> "0",
+                        OneDot -> "1",
+                        TwoDots -> "2",
+                        ThreeDots -> "3",
+                    },
+                )
+            )),
+            Spanned(numeral, span) -> Some(call1(here, 36, "ExactSpan", numeral)),
+        }
+    }
+
+    // The exact span a stated written value covers.
+    fn stated_span(length: Length) -> Option<Ratio> {
+        match length {
+            NoLength -> None,
+            Divided(numeral, dots, span) -> Some(span),
+            Spanned(numeral, span) -> Some(span),
+        }
+    }
+
+    // `Beats(count, unit)`, from the two numbers a form stated.
+    fn beats_of(here: NodePath, numbers: Numbers) -> Option<Syntax> {
+        match numbers {
+            NoNumbers -> None,
+            OneNumber(first, value) -> None,
+            TwoNumbers(first, value, second, other) -> Some(call2(
+                here,
+                37,
+                "Beats",
+                first,
+                second
+            )),
+        }
+    }
+
+    // What a stated meter measures, in whole notes.
+    fn beats_span(numbers: Numbers) -> Option<Ratio> {
+        match numbers {
+            NoNumbers -> None,
+            OneNumber(first, value) -> None,
+            TwoNumbers(first, count, second, unit) -> match ratio_div(count, unit) {
+                Ok(span) -> Some(span),
+                Err(why) -> None,
+            },
+        }
+    }
+
+    // ---------------------------------------------------------------- pieces
+
+    // The node the region holds at a path, for a refusal to point at. The
+    // region itself stands in where there is nothing there, which cannot
+    // happen for a path the fold handed out.
+    fn node_at(region: Syntax, spot: NodePath) -> Syntax {
+        option_fold(region, fn (node: Syntax) -> Syntax { node }, syntax_at(region, spot))
+    }
+
+    // Whether a piece is a written pitch.
+    fn is_pitch(one: Read) -> Bool {
+        match one {
+            Piece(spot, kind, spelling) -> text_equal(kind, "PitchLiteral"),
+            Trivia -> false,
+            Grouped(spot, delimiter, parts) -> false,
+            Body(spot, read) -> false,
+            Unreadable(spot) -> false,
+        }
+    }
+
+    // One pitch of a chord, written back with the comma that separates it from
+    // the next. A layout group is transparent to the parser, so a list of them
+    // reads as the list literal it spells.
+    fn voice_written(here: NodePath, one: Read) -> Syntax {
+        match one {
+            Piece(spot, kind, spelling) -> syntax_group(syntax_built(spot, 42, 0), "layout", [
+                syntax_token(syntax_built(spot, 41, 0), "PitchLiteral", spelling),
+                syntax_token(syntax_built(spot, 43, 0), "Comma", ","),
+            ]),
+            Trivia -> syntax_token(syntax_built(here, 44, 0), "Missing", ""),
+            Grouped(spot, delimiter, parts) -> syntax_token(
+                syntax_built(here, 44, 1),
+                "Missing",
+                ""
+            ),
+            Body(spot, read) -> syntax_token(syntax_built(here, 44, 2), "Missing", ""),
+            Unreadable(spot) -> syntax_token(syntax_built(here, 44, 3), "Missing", ""),
+        }
+    }
+
+    // The spelling of the first pitch among some pieces, if there is one.
+    fn first_voice(parts: List<Read>) -> Option<Text> {
+        list_fold(
+            None,
+            fn (one: Read, sofar: Option<Text>) -> Option<Text> {
+                match sofar {
+                    Some(found) -> Some(found),
+                    None -> match one {
+                        Piece(spot, kind, spelling) -> match text_equal(kind, "PitchLiteral") {
+                            true -> Some(spelling),
+                            false -> None,
+                        },
+                        Trivia -> None,
+                        Grouped(spot, delimiter, parts_inside) -> None,
+                        Body(spot, read) -> None,
+                        Unreadable(spot) -> None,
+                    },
+                }
+            },
+            parts,
+        )
+    }
+
+    // The numbers a form stated between its parentheses, in the order written.
+    fn stated_numbers(region: Syntax, parts: List<Read>) -> Numbers {
+        list_fold(
+            NoNumbers,
+            fn (one: Read, sofar: Numbers) -> Numbers {
+                match one {
+                    Piece(spot, kind, spelling) -> match text_equal(kind, "Integer") {
+                        true -> option_fold(
+                            sofar,
+                            fn (value: Ratio) -> Numbers {
+                                match sofar {
+                                    NoNumbers -> OneNumber(
+                                        syntax_token(
+                                            syntax_built(spot, 45, 0),
+                                            "Integer",
+                                            spelling
+                                        ),
+                                        value,
+                                    ),
+                                    OneNumber(first, already) -> TwoNumbers(
+                                        first,
+                                        already,
+                                        syntax_token(
+                                            syntax_built(spot, 45, 0),
+                                            "Integer",
+                                            spelling
+                                        ),
+                                        value,
+                                    ),
+                                    TwoNumbers(first, already, second, other) -> TwoNumbers(
+                                        first,
+                                        already,
+                                        second,
+                                        other,
+                                    ),
+                                }
+                            },
+                            syntax_number(node_at(region, spot)),
+                        ),
+                        false -> sofar,
+                    },
+                    Trivia -> sofar,
+                    Grouped(spot, delimiter, inside) -> sofar,
+                    Body(spot, read) -> sofar,
+                    Unreadable(spot) -> sofar,
+                }
+            },
+            parts,
+        )
+    }
+
+    // The exact span a `( 3/8 )` states, if that is what the parentheses hold.
+    fn stated_exact(region: Syntax, parts: List<Read>) -> Option<Length> {
+        list_fold(
+            None,
+            fn (one: Read, sofar: Option<Length>) -> Option<Length> {
+                match sofar {
+                    Some(found) -> Some(found),
+                    None -> match one {
+                        Piece(spot, kind, spelling) -> match text_equal(kind, "Rational") {
+                            true -> option_fold(
+                                None,
+                                fn (value: Ratio) -> Option<Length> {
+                                    Some(Spanned(
+                                        syntax_token(
+                                            syntax_built(spot, 46, 0),
+                                            "Rational",
+                                            spelling
+                                        ),
+                                        value
+                                    ))
+                                },
+                                syntax_number(node_at(region, spot)),
+                            ),
+                            false -> None,
+                        },
+                        Trivia -> None,
+                        Grouped(spot, delimiter, inside) -> None,
+                        Body(spot, read) -> None,
+                        Unreadable(spot) -> None,
+                    },
+                }
+            },
+            parts,
+        )
+    }
+
+    // The pitches of `[ … ]`, as the list expression the package's `Chord` and
+    // `Grace` take, together with the first of them for a tie to meet.
+    fn voiced_of(here: NodePath, parts: List<Read>) -> Voiced {
+        option_fold(
+            NoVoices,
+            fn (spelling: Text) -> Voiced {
+                Voices(
+                    syntax_group(
+                        syntax_built(here, 47, 0),
+                        "brackets",
+                        map(
+                            fn (one: Read) -> Syntax { voice_written(here, one) },
+                            filter(is_pitch, parts)
+                        )
+                    ),
+                    spelling,
+                    syntax_group(
+                        syntax_built(here, 48, 0),
+                        "brackets",
+                        map(
+                            fn (one: Read) -> Syntax { voice_written(here, one) },
+                            filter(is_pitch, parts)
+                        )
+                    ),
+                )
+            },
+            first_voice(parts),
+        )
+    }
+
+    // ---------------------------------------------------------------- placing
+
+    // What a form leaves behind: everything it took is used up, what follows
+    // it is unchanged, and the sequence has grown by one item.
+    fn after_item(
+        later: Pending,
+        items: Syntax,
+        added: Ratio,
+        opens: Sound,
+        hangs: Hanging,
+        trouble: Refusal,
+    ) -> Pending {
+        match later {
+            Pending(read, length, dots, tying, numbers, taken, voiced, words) -> match read {
+                Reading(was, span, was_open, was_hanging, head, refusal) -> Pending(
+                    Reading(
+                        items,
+                        match ratio_add(span, added) {
+                            Ok(total) -> total,
+                            Err(why) -> span,
+                        },
+                        opens,
+                        hangs,
+                        head,
+                        first_refusal(trouble, refusal),
+                    ),
+                    NoLength,
+                    NoDots,
+                    Untied,
+                    NoNumbers,
+                    NoBody,
+                    NoVoices,
+                    NoWords,
+                ),
+            },
+        }
+    }
+
+    // A tie left open by what is being placed, met against what follows it.
+    //
+    // The tie is checked by spelling because a spelling is what the composer
+    // wrote and all this adapter can see: `f5` tied to `f#5` is two different
+    // texts, which is exactly the mistake worth catching.
+    fn tie_met(hangs: Hanging, next: Sound, beyond: Hanging) -> Result<Hanging, Refusal> {
+        match hangs {
+            Closed -> Ok(beyond),
+            Hangs(spelling, node) -> match next {
+                Silent -> Ok(Hangs(spelling, node)),
+                Sounds(other, at_node) -> match text_equal(spelling, other) {
+                    true -> Ok(beyond),
+                    false -> Err(Refused(
+                        at_node,
+                        "this staff ties a note to a differently spelled one"
+                    )),
+                },
+            },
+        }
+    }
+
+    // Everything a placed item needs to know about what follows it.
+    fn following(later: Pending) -> Reading {
+        match later {
+            Pending(read, length, dots, tying, numbers, taken, voiced, words) -> read,
+        }
+    }
+
+    // One sounding item — a note, a rest, a chord, a grace group, a meter
+    // change — placed in front of what follows it.
+    fn sounding(
+        region: Syntax,
+        here: NodePath,
+        later: Pending,
+        event: Syntax,
+        added: Ratio,
+        opens: Sound,
+        hangs: Hanging,
+    ) -> Pending {
+        match following(later) {
+            Reading(items, span, next, beyond, head, refusal) -> match tie_met(
+                hangs,
+                next,
+                beyond
+            ) {
+                Ok(reached) -> after_item(
+                    later,
+                    call3(here, 1, "Sounded", anchored(region, here), event, items),
+                    added,
+                    match opens {
+                        Silent -> next,
+                        Sounds(spelling, node) -> Sounds(spelling, node),
+                    },
+                    reached,
+                    NoRefusal,
+                ),
+                Err(why) -> after_item(later, items, added, next, beyond, why),
+            },
+        }
+    }
+
+    // A nested form — a bar, a slur, a tuplet, a repeat, an ending — placed in
+    // front of what follows it, carrying its body's own reading with it.
+    //
+    // What went wrong inside is reported before what went wrong around it: a
+    // bar whose notation the reader could not read does not measure what it
+    // says either, and that second sentence is a consequence of the first
+    // rather than a second fault.
+    fn nesting(
+        here: NodePath,
+        later: Pending,
+        built: Syntax,
+        body: Reading,
+        added: Ratio,
+        trouble: Refusal,
+    ) -> Pending {
+        match body {
+            Reading(inner, inner_span, inner_opens, inner_hangs, inner_head, inner_refusal) -> match following(
+                later,
+            ) {
+                Reading(items, span, next, beyond, head, refusal) -> match tie_met(
+                    inner_hangs,
+                    next,
+                    beyond,
+                ) {
+                    Ok(reached) -> after_item(
+                        later,
+                        built,
+                        added,
+                        match inner_opens {
+                            Silent -> next,
+                            Sounds(spelling, node) -> Sounds(spelling, node),
+                        },
+                        reached,
+                        first_refusal(inner_refusal, trouble),
+                    ),
+                    Err(why) -> after_item(
+                        later,
+                        items,
+                        added,
+                        next,
+                        beyond,
+                        first_refusal(trouble, first_refusal(inner_refusal, why)),
+                    ),
+                },
+            },
+        }
+    }
+
+    // A refusal that leaves what is being read where it is.
+    //
+    // `refusing` ends the item it is reading, which is right when the item is
+    // the fault. A fault found while a written value is still in hand is not:
+    // clearing it would make the note that value belongs to look valueless,
+    // and the reader would go on to say so — a second sentence about a note
+    // that is not what went wrong.
+    fn faulting(later: Pending, node: Syntax, why: Text) -> Pending {
+        match later {
+            Pending(read, length, dots, tying, numbers, taken, voiced, words) -> match read {
+                Reading(items, span, opens, hangs, head, refusal) -> Pending(
+                    Reading(
+                        items,
+                        span,
+                        opens,
+                        hangs,
+                        head,
+                        first_refusal(Refused(node, why), refusal),
+                    ),
+                    length,
+                    dots,
+                    tying,
+                    numbers,
+                    taken,
+                    voiced,
+                    words,
+                ),
+            },
+        }
+    }
+
+    // A refusal, with nothing placed.
+    fn refusing(later: Pending, node: Syntax, why: Text) -> Pending {
+        match following(later) {
+            Reading(items, span, next, beyond, head, refusal) -> after_item(
+                later,
+                items,
+                0,
+                next,
+                beyond,
+                Refused(node, why),
+            ),
+        }
+    }
+
+    // ----------------------------------------------------------- what is held
+
+    fn holding_body(later: Pending, spot: NodePath, read: Reading) -> Pending {
+        match later {
+            Pending(r, length, dots, tying, numbers, taken, voiced, words) -> Pending(
+                r,
+                length,
+                dots,
+                tying,
+                numbers,
+                Took(spot, read),
+                voiced,
+                words,
+            ),
+        }
+    }
+
+    // The written value the next note takes, or the refusal that says it was
+    // stated twice.
+    //
+    // A value is spent the moment the note it belongs to is read, so a value
+    // arriving while one is already held belongs to no note that has been
+    // read: `c5/4/8` states two, and neither of them is more the note's than
+    // the other.
+    fn holding_length(
+        region: Syntax,
+        spot: NodePath,
+        later: Pending,
+        length: Length
+    ) -> Pending {
+        match later {
+            Pending(r, was, dots, tying, numbers, taken, voiced, words) -> match was {
+                NoLength -> Pending(r, length, NoDots, tying, numbers, taken, voiced, words),
+                Divided(numeral, held_dots, span) -> faulting(
+                    later,
+                    node_at(region, spot),
+                    "this note states two written values",
+                ),
+                Spanned(numeral, span) -> faulting(
+                    later,
+                    node_at(region, spot),
+                    "this note states two written values",
+                ),
+            },
+        }
+    }
+
+    fn holding_dots(later: Pending, dots: Dots) -> Pending {
+        match later {
+            Pending(r, length, was, tying, numbers, taken, voiced, words) -> Pending(
+                r,
+                length,
+                dots,
+                tying,
+                numbers,
+                taken,
+                voiced,
+                words,
+            ),
+        }
+    }
+
+    fn holding_tie(later: Pending, tying: Tying) -> Pending {
+        match later {
+            Pending(r, length, dots, was, numbers, taken, voiced, words) -> Pending(
+                r,
+                length,
+                dots,
+                tying,
+                numbers,
+                taken,
+                voiced,
+                words,
+            ),
+        }
+    }
+
+    fn holding_numbers(later: Pending, numbers: Numbers) -> Pending {
+        match later {
+            Pending(r, length, dots, tying, was, taken, voiced, words) -> Pending(
+                r,
+                length,
+                dots,
+                tying,
+                numbers,
+                taken,
+                voiced,
+                words,
+            ),
+        }
+    }
+
+    fn holding_voices(later: Pending, voiced: Voiced) -> Pending {
+        match later {
+            Pending(r, length, dots, tying, numbers, taken, was, words) -> Pending(
+                r,
+                length,
+                dots,
+                tying,
+                numbers,
+                taken,
+                voiced,
+                words,
+            ),
+        }
+    }
+
+    // One more word waiting for the word that says what it was. A third is one
+    // more than any form in this notation takes.
+    fn holding_word(region: Syntax, later: Pending, said: Said) -> Pending {
+        match later {
+            Pending(r, length, dots, tying, numbers, taken, voiced, words) -> match words {
+                NoWords -> Pending(
+                    r,
+                    length,
+                    dots,
+                    tying,
+                    numbers,
+                    taken,
+                    voiced,
+                    OneWord(said)
+                ),
+                OneWord(only) -> Pending(
+                    r,
+                    length,
+                    dots,
+                    tying,
+                    numbers,
+                    taken,
+                    voiced,
+                    TwoWords(said, only),
+                ),
+                TwoWords(first, second) -> match said {
+                    Said(spot, kind, spelling) -> refusing(
+                        later,
+                        node_at(region, spot),
+                        "this staff does not know this word",
+                    ),
+                },
+            },
+        }
+    }
+
+    // The head this reading states, with one more field filled in, or the
+    // refusal that says it was stated twice.
+    //
+    // Five words, and a head holds one of each. A sixth statement of the same
+    // word is not a correction: nothing here is written in order, so the
+    // reader has no way to say which of the two the composer meant.
+    fn stating(head: Head, which: Text, given: Syntax, node: Syntax) -> Result<Head, Refusal> {
+        match head {
+            Head(instrument, shift, written_clef, tonality, beats, spelled) -> match which {
+                "instrument" -> match instrument {
+                    Absent -> Ok(Head(
+                        Stated(given),
+                        shift,
+                        written_clef,
+                        tonality,
+                        beats,
+                        spelled
+                    )),
+                    Stated(already) -> Err(Refused(node, "this staff says this twice")),
+                },
+                "transposing" -> match shift {
+                    Absent -> Ok(Head(
+                        instrument,
+                        Stated(given),
+                        written_clef,
+                        tonality,
+                        beats,
+                        spelled
+                    )),
+                    Stated(already) -> Err(Refused(node, "this staff says this twice")),
+                },
+                "clef" -> match written_clef {
+                    Absent -> Ok(Head(
+                        instrument,
+                        shift,
+                        Stated(given),
+                        tonality,
+                        beats,
+                        spelled
+                    )),
+                    Stated(already) -> Err(Refused(node, "this staff says this twice")),
+                },
+                "key" -> match tonality {
+                    Absent -> Ok(Head(
+                        instrument,
+                        shift,
+                        written_clef,
+                        Stated(given),
+                        beats,
+                        spelled
+                    )),
+                    Stated(already) -> Err(Refused(node, "this staff says this twice")),
+                },
+                "time" -> match beats {
+                    Absent -> Ok(Head(
+                        instrument,
+                        shift,
+                        written_clef,
+                        tonality,
+                        Stated(given),
+                        spelled
+                    )),
+                    Stated(already) -> Err(Refused(node, "this staff says this twice")),
+                },
+                _ -> match spelled {
+                    Absent -> Ok(Head(
+                        instrument,
+                        shift,
+                        written_clef,
+                        tonality,
+                        beats,
+                        Stated(given)
+                    )),
+                    Stated(already) -> Err(Refused(node, "this staff says this twice")),
+                },
+            },
+        }
+    }
+
+    // A header field, read and put away. Nothing is placed: a header is what
+    // the staff is, not something on it.
+    fn heading(later: Pending, which: Text, given: Syntax, node: Syntax) -> Pending {
+        match later {
+            Pending(read, length, dots, tying, numbers, taken, voiced, words) -> match read {
+                Reading(items, span, opens, hangs, head, refusal) -> match stating(
+                    head,
+                    which,
+                    given,
+                    node,
+                ) {
+                    Ok(stated) -> Pending(
+                        Reading(items, span, opens, hangs, stated, refusal),
+                        NoLength,
+                        NoDots,
+                        Untied,
+                        NoNumbers,
+                        NoBody,
+                        NoVoices,
+                        NoWords,
+                    ),
+                    Err(why) -> Pending(
+                        Reading(items, span, opens, hangs, head, first_refusal(why, refusal)),
+                        NoLength,
+                        NoDots,
+                        Untied,
+                        NoNumbers,
+                        NoBody,
+                        NoVoices,
+                        NoWords,
+                    ),
+                },
+            },
+        }
+    }
+
+    // ------------------------------------------------------------ the forms
+
+    // What a clef word names.
+    fn clef_named(here: NodePath, spelling: Text) -> Option<Syntax> {
+        match text_equal(spelling, "treble") {
+            true -> Some(syntax_identifier(syntax_built(here, 38, 0), "Treble")),
+            false -> match text_equal(spelling, "bass") {
+                true -> Some(syntax_identifier(syntax_built(here, 38, 1), "Bass")),
+                false -> match text_equal(spelling, "alto") {
+                    true -> Some(syntax_identifier(syntax_built(here, 38, 2), "Alto")),
+                    false -> match text_equal(spelling, "tenor") {
+                        true -> Some(syntax_identifier(syntax_built(here, 38, 3), "Tenor")),
+                        false -> None,
+                    },
+                },
+            },
+        }
+    }
+
+    // What a spelling word names.
+    fn spelling_named(here: NodePath, spelling: Text) -> Option<Syntax> {
+        match text_equal(spelling, "shortest_readable") {
+            true -> Some(syntax_identifier(syntax_built(here, 39, 0), "ShortestReadable")),
+            false -> match text_equal(spelling, "exact_values") {
+                true -> Some(syntax_identifier(syntax_built(here, 39, 1), "ExactValues")),
+                false -> None,
+            },
+        }
+    }
+
+    // `rest/8` — a written silence.
+    fn rest_read(region: Syntax, spot: NodePath, later: Pending, length: Length) -> Pending {
+        match written_duration(spot, length) {
+            None -> refusing(later, node_at(region, spot), "this rest states no written value"),
+            Some(value) -> option_fold(
+                refusing(later, node_at(region, spot), "this rest states no written value"),
+                fn (span: Ratio) -> Pending {
+                    sounding(
+                        region,
+                        spot,
+                        later,
+                        call1(spot, 3, "Rest", value),
+                        span,
+                        Silent,
+                        Closed,
+                    )
+                },
+                stated_span(length),
+            ),
+        }
+    }
+
+    // `c5/4`, `d5/4.`, `f5/4 ~`, `c5(3/8)` — one written note.
+    fn note_read(
+        region: Syntax,
+        spot: NodePath,
+        later: Pending,
+        spelling: Text,
+        length: Length,
+        tying: Tying,
+    ) -> Pending {
+        match written_duration(spot, length) {
+            None -> refusing(later, node_at(region, spot), "this note states no written value"),
+            Some(value) -> option_fold(
+                refusing(later, node_at(region, spot), "this note states no written value"),
+                fn (span: Ratio) -> Pending {
+                    sounding(
+                        region,
+                        spot,
+                        later,
+                        call3(
+                            spot,
+                            2,
+                            "Note",
+                            syntax_token(syntax_built(spot, 49, 0), "PitchLiteral", spelling),
+                            value,
+                            tie_of(spot, tying),
+                        ),
+                        span,
+                        Sounds(spelling, node_at(region, spot)),
+                        match tying {
+                            Untied -> Closed,
+                            Tied(node) -> Hangs(spelling, node),
+                        },
+                    )
+                },
+                stated_span(length),
+            ),
+        }
+    }
+
+    // `[g4 b4 d5]/4` — one written chord.
+    fn chord_read(
+        region: Syntax,
+        spot: NodePath,
+        later: Pending,
+        voiced: Voiced,
+        length: Length,
+        tying: Tying,
+    ) -> Pending {
+        match voiced {
+            NoVoices -> refusing(later, node_at(region, spot), "this chord holds no pitches"),
+            Voices(node, spelling, listed) -> match written_duration(spot, length) {
+                None -> refusing(
+                    later,
+                    node_at(region, spot),
+                    "this chord states no written value"
+                ),
+                Some(value) -> option_fold(
+                    refusing(
+                        later,
+                        node_at(region, spot),
+                        "this chord states no written value"
+                    ),
+                    fn (span: Ratio) -> Pending {
+                        sounding(
+                            region,
+                            spot,
+                            later,
+                            call3(spot, 4, "Chord", listed, value, tie_of(spot, tying)),
+                            span,
+                            Sounds(spelling, node_at(region, spot)),
+                            match tying {
+                                Untied -> Closed,
+                                Tied(hung) -> Hangs(spelling, hung),
+                            },
+                        )
+                    },
+                    stated_span(length),
+                ),
+            },
+        }
+    }
+
+    // What follows the item being placed.
+    fn after_items(later: Pending) -> Syntax {
+        match following(later) {
+            Reading(items, span, opens, hangs, head, refusal) -> items,
+        }
+    }
+
+    // What a body reads to, or nothing read at all.
+    fn body_of(here: NodePath, taken: Taken) -> Reading {
+        match taken {
+            NoBody -> nothing_read(here),
+            Took(spot, read) -> read,
+        }
+    }
+
+    // `bar (4, 4) { … }` and `pickup (1, 4) { … }` — a measure of stated
+    // length, checked against what it holds.
+    //
+    // This is one of the two diagnostics the trial note asks for, and it lands
+    // on the bar the composer wrote because the adapter is the one holding a
+    // node. The package could find the same fault and could not point at it.
+    fn bar_read(
+        region: Syntax,
+        spot: NodePath,
+        later: Pending,
+        numbers: Numbers,
+        taken: Taken
+    ) -> Pending {
+        match taken {
+            NoBody -> refusing(later, node_at(region, spot), "this bar holds no notation"),
+            Took(body_at, body) -> option_fold(
+                refusing(
+                    later,
+                    node_at(region, spot),
+                    "this bar does not say what it measures"
+                ),
+                fn (wanted: Ratio) -> Pending {
+                    option_fold(
+                        refusing(
+                            later,
+                            node_at(region, spot),
+                            "this bar does not say what it measures"
+                        ),
+                        fn (beats: Syntax) -> Pending {
+                            match body {
+                                Reading(items, span, opens, hangs, head, refusal) -> nesting(
+                                    spot,
+                                    later,
+                                    call4(
+                                        spot,
+                                        7,
+                                        "Bar",
+                                        anchored(region, spot),
+                                        beats,
+                                        items,
+                                        after_items(later),
+                                    ),
+                                    body,
+                                    wanted,
+                                    match ratio_equal(span, wanted) {
+                                        true -> NoRefusal,
+                                        false -> Refused(
+                                            node_at(region, spot),
+                                            "this bar does not hold what it says it measures",
+                                        ),
+                                    },
+                                ),
+                            }
+                        },
+                        beats_of(spot, numbers),
+                    )
+                },
+                beats_span(numbers),
+            ),
+        }
+    }
+
+    // `slur { … }` — one phrase mark over what it holds.
+    fn slur_read(region: Syntax, spot: NodePath, later: Pending, taken: Taken) -> Pending {
+        match taken {
+            NoBody -> refusing(later, node_at(region, spot), "this slur holds no notation"),
+            Took(body_at, body) -> match body {
+                Reading(items, span, opens, hangs, head, refusal) -> nesting(
+                    spot,
+                    later,
+                    call3(spot, 8, "Slur", anchored(region, spot), items, after_items(later)),
+                    body,
+                    span,
+                    NoRefusal,
+                ),
+            },
+        }
+    }
+
+    // `tuplet (3, 2) { … }` — three in the time of two, and the bracket is
+    // kept rather than resolved: what the notes become is `realize`'s answer.
+    fn tuplet_read(
+        region: Syntax,
+        spot: NodePath,
+        later: Pending,
+        numbers: Numbers,
+        taken: Taken,
+    ) -> Pending {
+        match taken {
+            NoBody -> refusing(later, node_at(region, spot), "this tuplet holds no notation"),
+            Took(body_at, body) -> match numbers {
+                NoNumbers -> refusing(
+                    later,
+                    node_at(region, spot),
+                    "this tuplet states no ratio"
+                ),
+                OneNumber(first, value) -> refusing(
+                    later,
+                    node_at(region, spot),
+                    "this tuplet states no ratio",
+                ),
+                TwoNumbers(first, played, second, against) -> match ratio_equal(played, 0) {
+                    true -> refusing(
+                        later,
+                        node_at(region, spot),
+                        "this tuplet plays no notes in the time of some",
+                    ),
+                    false -> match body {
+                        Reading(items, span, opens, hangs, head, refusal) -> nesting(
+                            spot,
+                            later,
+                            call5(
+                                spot,
+                                9,
+                                "Tuplet",
+                                anchored(region, spot),
+                                first,
+                                second,
+                                items,
+                                after_items(later),
+                            ),
+                            body,
+                            match ratio_div(against, played) {
+                                Ok(factor) -> match ratio_mul(span, factor) {
+                                    Ok(outside) -> outside,
+                                    Err(why) -> span,
+                                },
+                                Err(why) -> span,
+                            },
+                            NoRefusal,
+                        ),
+                    },
+                },
+            },
+        }
+    }
+
+    // `repeat (2) { … }` and `ending (1) { … }`.
+    //
+    // Written time counts the page and not the performance, so a repeat covers
+    // its body once: how many times it sounds is a reading of the score.
+    fn repeated_read(
+        region: Syntax,
+        spot: NodePath,
+        later: Pending,
+        role: Nat,
+        spelling: Text,
+        numbers: Numbers,
+        taken: Taken,
+        missing: Text,
+    ) -> Pending {
+        match taken {
+            NoBody -> refusing(later, node_at(region, spot), missing),
+            Took(body_at, body) -> match numbers {
+                NoNumbers -> refusing(later, node_at(region, spot), missing),
+                OneNumber(first, value) -> match body {
+                    Reading(items, span, opens, hangs, head, refusal) -> nesting(
+                        spot,
+                        later,
+                        call4(
+                            spot,
+                            role,
+                            spelling,
+                            anchored(region, spot),
+                            first,
+                            items,
+                            after_items(later)
+                        ),
+                        body,
+                        span,
+                        NoRefusal,
+                    ),
+                },
+                TwoNumbers(first, value, second, other) -> refusing(
+                    later,
+                    node_at(region, spot),
+                    missing
+                ),
+            },
+        }
+    }
+
+    // `time (4, 4)` — the meter this staff opens in.
+    //
+    // A different word from the `meter (3, 4)` that changes it, and the region
+    // grouper is the reason. An adapter cannot see lines, so it cannot tell a
+    // word written above the music from the same word written among it; two
+    // words is what that costs. The notation carries the cost well enough — a
+    // staff opens in a time signature and changes meter later — and the head
+    // reads like the five statements beside it rather than like an item.
+    fn time_header(
+        region: Syntax,
+        spot: NodePath,
+        later: Pending,
+        numbers: Numbers
+    ) -> Pending {
+        option_fold(
+            refusing(
+                later,
+                node_at(region, spot),
+                "this staff does not say what time it opens in"
+            ),
+            fn (beats: Syntax) -> Pending {
+                heading(later, "time", beats, node_at(region, spot))
+            },
+            beats_of(spot, numbers),
+        )
+    }
+
+    // `meter (3, 4)` — the meter changes here, and the bars after it say so
+    // themselves.
+    fn meter_read(region: Syntax, spot: NodePath, later: Pending, numbers: Numbers) -> Pending {
+        option_fold(
+            refusing(later, node_at(region, spot), "this meter states no count and unit"),
+            fn (beats: Syntax) -> Pending {
+                sounding(
+                    region,
+                    spot,
+                    later,
+                    call1(spot, 6, "MeterChange", beats),
+                    0,
+                    Silent,
+                    Closed,
+                )
+            },
+            beats_of(spot, numbers),
+        )
+    }
+
+    // `grace [e5]` — written pitches with no written duration. What a grace
+    // takes, and what it takes it from, is a performance profile's choice.
+    fn grace_read(region: Syntax, spot: NodePath, later: Pending, voiced: Voiced) -> Pending {
+        match voiced {
+            NoVoices -> refusing(later, node_at(region, spot), "this grace holds no pitches"),
+            Voices(node, spelling, listed) -> sounding(
+                region,
+                spot,
+                later,
+                call1(spot, 5, "Grace", listed),
+                0,
+                Silent,
+                Closed,
+            ),
+        }
+    }
+
+    // ------------------------------------------------------------- the header
+
+    // The one word a header field took, if it took exactly one.
+    fn only_word(words: Words) -> Option<Said> {
+        match words {
+            NoWords -> None,
+            OneWord(only) -> Some(only),
+            TwoWords(first, second) -> None,
+        }
+    }
+
+    // Why a header field did not take exactly one word.
+    //
+    // No word at all is an empty field. Two words means one of them stands
+    // between the field and its argument, and nothing in this staff reads a
+    // word in that position — so the useful sentence names *that* word rather
+    // than reporting the field as empty, which it is not. The reader works
+    // from the end, so the field's own argument is the nearer of the two and
+    // the stray one is the further.
+    fn stray_word(region: Syntax, spot: NodePath, later: Pending, words: Words) -> Pending {
+        match words {
+            NoWords -> refusing(later, node_at(region, spot), "this staff field says nothing"),
+            OneWord(only) -> refusing(
+                later,
+                node_at(region, spot),
+                "this staff field says nothing"
+            ),
+            TwoWords(first, second) -> match second {
+                Said(stray_at, stray_kind, spelling) -> refusing(
+                    later,
+                    node_at(region, stray_at),
+                    "this staff does not know this word",
+                ),
+            },
+        }
+    }
+
+    // `instrument "bb_clarinet"` and `transposing M2` — a literal written back
+    // as the composer spelled it.
+    fn literal_header(
+        region: Syntax,
+        spot: NodePath,
+        later: Pending,
+        which: Text,
+        kind: Text,
+        words: Words,
+    ) -> Pending {
+        option_fold(
+            stray_word(region, spot, later, words),
+            fn (said: Said) -> Pending {
+                match said {
+                    Said(word_at, said_kind, spelling) -> match text_equal(said_kind, kind) {
+                        true -> heading(
+                            later,
+                            which,
+                            syntax_token(syntax_built(word_at, 50, 0), kind, spelling),
+                            node_at(region, word_at),
+                        ),
+                        false -> refusing(
+                            later,
+                            node_at(region, word_at),
+                            "this staff field was given the wrong kind of word",
+                        ),
+                    },
+                }
+            },
+            only_word(words),
+        )
+    }
+
+    // `clef treble` and `spelling shortest_readable` — a word this adapter
+    // knows, or the refusal that says it does not.
+    fn named_header(
+        region: Syntax,
+        spot: NodePath,
+        later: Pending,
+        which: Text,
+        words: Words,
+    ) -> Pending {
+        option_fold(
+            stray_word(region, spot, later, words),
+            fn (said: Said) -> Pending {
+                match said {
+                    Said(word_at, said_kind, spelling) -> option_fold(
+                        refusing(
+                            later,
+                            node_at(region, word_at),
+                            "this staff does not know this word",
+                        ),
+                        fn (given: Syntax) -> Pending {
+                            heading(later, which, given, node_at(region, word_at))
+                        },
+                        match text_equal(which, "clef") {
+                            true -> clef_named(word_at, spelling),
+                            false -> spelling_named(word_at, spelling),
+                        },
+                    ),
+                }
+            },
+            only_word(words),
+        )
+    }
+
+    // `key d major` — written back as the key expression the composer wrote,
+    // parenthesised so that it reads as one argument.
+    fn key_header(region: Syntax, spot: NodePath, later: Pending, words: Words) -> Pending {
+        match words {
+            TwoWords(first, second) -> match first {
+                Said(tonic_at, tonic_kind, tonic) -> match second {
+                    Said(mode_at, mode_kind, mode) -> heading(
+                        later,
+                        "key",
+                        syntax_group(syntax_built(spot, 51, 0), "parentheses", [
+                            syntax_token(syntax_built(spot, 51, 1), "KeyKw", "key"),
+                            syntax_token(syntax_built(tonic_at, 52, 0), "Identifier", tonic),
+                            syntax_token(syntax_built(mode_at, 52, 1), "Identifier", mode),
+                        ]),
+                        node_at(region, spot),
+                    ),
+                },
+            },
+            NoWords -> refusing(
+                later,
+                node_at(region, spot),
+                "this key names no tonic and no mode"
+            ),
+            OneWord(only) -> refusing(
+                later,
+                node_at(region, spot),
+                "this key names no tonic and no mode"
+            ),
+        }
+    }
+
+    // ------------------------------------------------------------ the reader
+
+    // One word, and what it does with whatever was read since the last one.
+    //
+    // Every word the staff spelling has, in one table. A word either opens a
+    // form — a bar, a slur, a tuplet, a repeat — or states one of the six
+    // facts a document carries in its head. Anything else is a word this staff
+    // does not know, and is held rather than refused here, because what comes
+    // after it is often what says which word it was meant to be.
+    fn word_read(
+        region: Syntax,
+        spot: NodePath,
+        spelling: Text,
+        kind: Text,
+        later: Pending
+    ) -> Pending {
+        match later {
+            Pending(read, length, dots, tying, numbers, taken, voiced, words) -> match spelling {
+                "rest" -> rest_read(region, spot, later, length),
+                "bar" -> bar_read(region, spot, later, numbers, taken),
+                "pickup" -> bar_read(region, spot, later, numbers, taken),
+                "slur" -> slur_read(region, spot, later, taken),
+                "tuplet" -> tuplet_read(region, spot, later, numbers, taken),
+                "grace" -> grace_read(region, spot, later, voiced),
+                "repeat" -> repeated_read(
+                    region,
+                    spot,
+                    later,
+                    10,
+                    "Repeat",
+                    numbers,
+                    taken,
+                    "this repeat does not say how many times it holds what",
+                ),
+                "ending" -> repeated_read(
+                    region,
+                    spot,
+                    later,
+                    11,
+                    "Ending",
+                    numbers,
+                    taken,
+                    "this ending does not say which pass it holds what for",
+                ),
+                "time" -> time_header(region, spot, later, numbers),
+                "meter" -> meter_read(region, spot, later, numbers),
+                "instrument" -> literal_header(
+                    region,
+                    spot,
+                    later,
+                    "instrument",
+                    "String",
+                    words
+                ),
+                "transposing" -> literal_header(
+                    region,
+                    spot,
+                    later,
+                    "transposing",
+                    "IntervalLiteral",
+                    words
+                ),
+                "clef" -> named_header(region, spot, later, "clef", words),
+                "spelling" -> named_header(region, spot, later, "spelling", words),
+                "key" -> key_header(region, spot, later, words),
+                _ -> holding_word(region, later, Said(spot, kind, spelling)),
+            },
+        }
+    }
+
+    // One token, by what the lexer called it.
+    fn token_read(
+        region: Syntax,
+        spot: NodePath,
+        kind: Text,
+        spelling: Text,
+        later: Pending
+    ) -> Pending {
+        match later {
+            Pending(read, length, dots, tying, numbers, taken, voiced, words) -> match kind {
+                "Tilde" -> holding_tie(later, Tied(node_at(region, spot))),
+                "Dot" -> option_fold(
+                    refusing(later, node_at(region, spot), "this value carries too many dots"),
+                    fn (more: Dots) -> Pending { holding_dots(later, more) },
+                    one_more_dot(dots),
+                ),
+                "Integer" -> option_fold(
+                    refusing(later, node_at(region, spot), "this is not a written value"),
+                    fn (value: Ratio) -> Pending {
+                        match ratio_div(dotted_factor(dots), value) {
+                            Ok(span) -> holding_length(
+                                region,
+                                spot,
+                                later,
+                                Divided(
+                                    syntax_token(
+                                        syntax_built(spot, 53, 0),
+                                        "Integer",
+                                        spelling
+                                    ),
+                                    dots,
+                                    span,
+                                ),
+                            ),
+                            Err(why) -> refusing(
+                                later,
+                                node_at(region, spot),
+                                "this is not a written value",
+                            ),
+                        }
+                    },
+                    syntax_number(node_at(region, spot)),
+                ),
+                "PitchLiteral" -> note_read(region, spot, later, spelling, length, tying),
+                "Slash" -> later,
+                "Comma" -> later,
+                _ -> word_read(region, spot, spelling, kind, later),
+            },
+        }
+    }
+
+    // One group: parentheses state numbers or an exact span, brackets hold
+    // pitches, and braces have already been read.
+    fn group_read(
+        region: Syntax,
+        spot: NodePath,
+        delimiter: Text,
+        parts: List<Read>,
+        later: Pending,
+    ) -> Pending {
+        match later {
+            Pending(read, length, dots, tying, numbers, taken, voiced, words) -> match delimiter {
+                "parentheses" -> option_fold(
+                    holding_numbers(later, stated_numbers(region, parts)),
+                    fn (exact: Length) -> Pending { holding_length(region, spot, later, exact) },
+                    stated_exact(region, parts),
+                ),
+                "brackets" -> match length {
+                    NoLength -> holding_voices(later, voiced_of(spot, parts)),
+                    Divided(numeral, held_dots, span) -> chord_read(
+                        region,
+                        spot,
+                        later,
+                        voiced_of(spot, parts),
+                        length,
+                        tying,
+                    ),
+                    Spanned(numeral, span) -> chord_read(
+                        region,
+                        spot,
+                        later,
+                        voiced_of(spot, parts),
+                        length,
+                        tying,
+                    ),
+                },
+                _ -> later,
+            },
+        }
+    }
+
+    // One piece of a region, read into what follows it.
+    fn taken_piece(region: Syntax, one_piece: Read, later: Pending) -> Pending {
+        match one_piece {
+            Trivia -> later,
+            Unreadable(spot) -> refusing(
+                later,
+                node_at(region, spot),
+                "this staff cannot read this"
+            ),
+            Body(spot, read) -> holding_body(later, spot, read),
+            Grouped(spot, delimiter, parts) -> group_read(
+                region,
+                spot,
+                delimiter,
+                parts,
+                later
+            ),
+            Piece(spot, kind, spelling) -> token_read(region, spot, kind, spelling, later),
+        }
+    }
+
+    // A right fold over the pieces of one group.
+    //
+    // `list_fold` runs left to right and the data this adapter emits is
+    // right-nested, so the sequence is assembled from its end. This is the
+    // standard way to get one fold out of the other, and it is written once,
+    // here: everything else in this file is an ordinary function of what it
+    // was handed. Reading from the end is also what makes a tie easy — what a
+    // tie reaches is already in hand when the tie is met.
+    fn from_the_end(region: Syntax, start: Pending, pieces: List<Read>) -> Pending {
+        list_fold(
+            fn (later: Pending) -> Pending { later },
+            fn (one_piece: Read, sofar: Pending -> Pending) -> Pending -> Pending {
+                fn (later: Pending) -> Pending { sofar(taken_piece(region, one_piece, later)) }
+            },
+            pieces,
+        )(start)
+    }
+
+    // Anything read and never used is something this staff did not understand.
+    fn leftover(
+        region: Syntax,
+        here: NodePath,
+        length: Length,
+        numbers: Numbers,
+        taken: Taken,
+        voiced: Voiced,
+        words: Words,
+    ) -> Refusal {
+        match words {
+            OneWord(only) -> match only {
+                Said(spot, kind, spelling) -> Refused(
+                    node_at(region, spot),
+                    "this staff does not know this word",
+                ),
+            },
+            TwoWords(first, second) -> match first {
+                Said(spot, kind, spelling) -> Refused(
+                    node_at(region, spot),
+                    "this staff does not know this word",
+                ),
+            },
+            NoWords -> match voiced {
+                Voices(node, spelling, listed) -> Refused(
+                    node,
+                    "these pitches are held for nothing"
+                ),
+                NoVoices -> match taken {
+                    Took(spot, read) -> Refused(
+                        node_at(region, spot),
+                        "this staff does not know what holds this",
+                    ),
+                    NoBody -> match numbers {
+                        OneNumber(first, value) -> Refused(
+                            node_at(region, here),
+                            "this staff does not know what these numbers are for",
+                        ),
+                        TwoNumbers(first, value, second, other) -> Refused(
+                            node_at(region, here),
+                            "this staff does not know what these numbers are for",
+                        ),
+                        NoNumbers -> match length {
+                            Divided(numeral, dots, span) -> Refused(
+                                node_at(region, here),
+                                "this written value belongs to nothing",
+                            ),
+                            Spanned(numeral, span) -> Refused(
+                                node_at(region, here),
+                                "this written value belongs to nothing",
+                            ),
+                            NoLength -> NoRefusal,
+                        },
+                    },
+                },
+            },
+        }
+    }
+
+    // Everything between one pair of braces, read.
+    fn read_body(region: Syntax, here: NodePath, pieces: List<Read>) -> Reading {
+        match from_the_end(
+            region,
+            Pending(
+                nothing_read(here),
+                NoLength,
+                NoDots,
+                Untied,
+                NoNumbers,
+                NoBody,
+                NoVoices,
+                NoWords,
+            ),
+            pieces,
+        ) {
+            Pending(read, length, dots, tying, numbers, taken, voiced, words) -> match read {
+                Reading(items, span, opens, hangs, head, refusal) -> Reading(
+                    items,
+                    span,
+                    opens,
+                    hangs,
+                    head,
+                    first_refusal(
+                        leftover(region, here, length, numbers, taken, voiced, words),
+                        refusal,
+                    ),
+                ),
+            },
+        }
+    }
+
+    // ---------------------------------------------------------- the document
+
+    // A field the staff had to state.
+    fn stated_field(
+        region: Syntax,
+        here: NodePath,
+        field: Given,
+        missing: Text
+    ) -> Result<Syntax, Refusal> {
+        match field {
+            Absent -> Err(Refused(node_at(region, here), missing)),
+            Stated(node) -> Ok(node),
+        }
+    }
+
+    // The whole staff, as the one expression a region expands to.
+    fn document_read(
+        region: Syntax,
+        here: NodePath,
+        read: Reading
+    ) -> Result<Syntax, (Syntax, Text)> {
+        match read {
+            Reading(items, span, opens, hangs, head, refusal) -> match refusal {
+                Refused(node, why) -> Err((node, why)),
+                NoRefusal -> match hangs {
+                    Hangs(spelling, node) -> Err((
+                        node,
+                        "this staff ties a note to nothing: no note sounds after it"
+                    )),
+                    Closed -> match head {
+                        Head(instrument, shift, written_clef, tonality, beats, spelled) -> match stated_field(
+                            region,
+                            here,
+                            instrument,
+                            "this staff does not say what instrument it is written for",
+                        ) {
+                            Err(why) -> match why {
+                                Refused(node, told) -> Err((node, told)),
+                                NoRefusal -> Err((
+                                    node_at(region, here),
+                                    "this staff is incomplete"
+                                )),
+                            },
+                            Ok(named_instrument) -> match stated_field(
+                                region,
+                                here,
+                                shift,
+                                "this staff does not say how far its written pitch sits from its sounding pitch",
+                            ) {
+                                Err(why) -> match why {
+                                    Refused(node, told) -> Err((node, told)),
+                                    NoRefusal -> Err((
+                                        node_at(region, here),
+                                        "this staff is incomplete"
+                                    )),
+                                },
+                                Ok(sounding_shift) -> match stated_field(
+                                    region,
+                                    here,
+                                    written_clef,
+                                    "this staff does not say what clef it is read in",
+                                ) {
+                                    Err(why) -> match why {
+                                        Refused(node, told) -> Err((node, told)),
+                                        NoRefusal -> Err((
+                                            node_at(region, here),
+                                            "this staff is incomplete"
+                                        )),
+                                    },
+                                    Ok(read_clef) -> match stated_field(
+                                        region,
+                                        here,
+                                        tonality,
+                                        "this staff does not say what key it is written in",
+                                    ) {
+                                        Err(why) -> match why {
+                                            Refused(node, told) -> Err((node, told)),
+                                            NoRefusal -> Err((
+                                                node_at(region, here),
+                                                "this staff is incomplete"
+                                            )),
+                                        },
+                                        Ok(written_key) -> match stated_field(
+                                            region,
+                                            here,
+                                            beats,
+                                            "this staff does not say what time it opens in",
+                                        ) {
+                                            Err(why) -> match why {
+                                                Refused(node, told) -> Err((node, told)),
+                                                NoRefusal -> Err((
+                                                    node_at(region, here),
+                                                    "this staff is incomplete"
+                                                )),
+                                            },
+                                            Ok(opening) -> match stated_field(
+                                                region,
+                                                here,
+                                                spelled,
+                                                "this staff does not say how a realized span is spelled",
+                                            ) {
+                                                Err(why) -> match why {
+                                                    Refused(node, told) -> Err((node, told)),
+                                                    NoRefusal -> Err((
+                                                        node_at(region, here),
+                                                        "this staff is incomplete"
+                                                    )),
+                                                },
+                                                Ok(spelling) -> Ok(call7(
+                                                    here,
+                                                    19,
+                                                    "Document",
+                                                    named_instrument,
+                                                    sounding_shift,
+                                                    read_clef,
+                                                    written_key,
+                                                    opening,
+                                                    spelling,
+                                                    items
+                                                )),
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        }
+    }
+
+    // One region of staff notation, read into one ordinary expression.
+    let expand = fn (region) {
+        match syntax_fold(
+            fn (here) { Unreadable(here) },
+            fn (here, kind, text) {
+                match text_equal(kind, "Whitespace") {
+                    true -> Trivia,
+                    false -> match text_equal(kind, "LineComment") {
+                        true -> Trivia,
+                        false -> match text_equal(kind, "BlockComment") {
+                            true -> Trivia,
+                            false -> Piece(here, kind, text),
+                        },
+                    },
+                }
+            },
+            fn (here, name) { Piece(here, "Identifier", name) },
+            fn (here, delimiter, children) {
+                match text_equal(delimiter, "braces") {
+                    true -> Body(here, read_body(region, here, children)),
+                    false -> Grouped(here, delimiter, children),
+                }
+            },
+            region,
+        ) {
+            Body(spot, read) -> document_read(region, spot, read),
+            Trivia -> Err((region, "a staff region is written between braces")),
+            Piece(spot, kind, spelling) -> Err((
+                region,
+                "a staff region is written between braces"
+            )),
+            Grouped(spot, delimiter, parts) -> Err((
+                region,
+                "a staff region is written between braces"
+            )),
+            Unreadable(spot) -> Err((region, "a staff region is written between braces")),
+        }
+    };
+}

@@ -7,3 +7,4 @@
 // modules would be reading names that ordinary source has no way to spell.
 
 mod doubled;
+mod staff;

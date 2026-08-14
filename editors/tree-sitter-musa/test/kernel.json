@@ -69,6 +69,7 @@
     { "file": "scale-context.musa", "kernel": false },
     { "file": "serial-forms.musa", "kernel": false },
     { "file": "shuffle.musa", "kernel": false },
+    { "file": "staff-page.musa", "kernel": false },
     { "file": "stdlib-basics.musa", "kernel": false },
     { "file": "template-study.musa", "kernel": false },
     { "file": "tempo-changes.musa", "kernel": false },

@@ -197,7 +197,40 @@ in it can be read unusually, which is the whole reason the word is there.
 
 A region is named and delimited: named by whatever the import called the adapter, delimited by braces the grouper
 already knows. Packages do not add tokens and do not move the boundary. Inside the braces the words belong to the
-adapter, so the formatter writes them back exactly as you typed them and complains about nothing.
+adapter, and Musa complains about none of them — though until an adapter promises to print a region back, the formatter
+still reflows one by its own rules rather than by the notation's.
 
 `std::adapters::doubled` is a fixture rather than a tool — it expands a region to its contents twice, paired with the
 anchor of the region it read, which is enough to watch the machinery run and no use at all in a piece.
+
+`std::adapters::staff` is one written to be composed in. Its regions are pages of staff notation, and they need both
+imports — one for the package's names, one for the adapter that reads the region:
+
+```musa
+    import std::notation::staff;
+    import syntax std::adapters::staff as staff;
+```
+
+Inside the region a page opens by saying what it is written for and how it is to be read:
+
+```musa
+        instrument "bb_clarinet"
+        transposing M2
+        clef treble
+        key d major
+        time (4, 4)
+        spelling shortest_readable
+```
+
+and then holds the notation itself:
+
+```musa
+        bar (4, 4) { c5/4 d5/4. e5/8 f5/4 ~ }
+        bar (4, 4) { f5/8 rest/8 [g4 b4 d5]/4 c5(3/8) rest/8 }
+```
+
+Every note states its own register and its own written value, and every bar states its own length, so any one of them
+can be read without reading the one before it — and a bar that does not hold what it says it measures is reported
+against that bar. What the region expands to is one call to `std::notation::staff`'s `Document` constructor: the adapter
+reads, and the package decides what the reading means. `examples/staff-page.musa` is a page that uses every item it
+reads.

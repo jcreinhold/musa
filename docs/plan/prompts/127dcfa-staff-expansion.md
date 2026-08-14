@@ -1,7 +1,7 @@
 ---
 id: 127dcfa
 slug: staff-expansion
-status: pending
+status: done
 depends_on: [127dceb, 127dcec, 127dcf]
 phase: 3
 ---

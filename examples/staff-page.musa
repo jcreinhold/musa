@@ -1,0 +1,77 @@
+// A page of staff notation, read by an adapter and owned by a package.
+//
+// `syntax staff { … }` is not ordinary Musa. The region's contents are read by
+// the fixed lexer and grouper and handed to `std::adapters::staff`, which
+// answers with one ordinary expression — a call to `std::notation::staff`'s
+// `Document` constructor — that is then resolved, checked, and evaluated as if
+// it had been written out here. The adapter reads; the package decides.
+//
+// Everything a musician states on a page is stated here: the instrument, how
+// far its written pitch sits from its sounding pitch, the clef, the key, the
+// time it opens in, and how written values are to be spelled. Then the notation itself —
+// a pickup, a repeat with two endings, bars that each say what they measure,
+// notes, rests, chords, dots, exact durations, a tie across a bar line, a
+// slur, a tuplet, a grace note, and a meter change.
+//
+// Nothing is inherited. Every note states its own register and its own written
+// value, and every bar states its own length, so any one of them can be read
+// without reading the one before it — which is also what lets the adapter
+// report an unfull bar against the bar the composer wrote rather than against
+// the page.
+//
+// # Why the score below is written out rather than realized from the page
+//
+// The page holds a grace note, and a grace note has no written span: when it
+// sounds is a performance question, and `std::notation::staff` refuses to
+// invent an answer to it. So `realize` refuses this page rather than placing
+// its grace somewhere, which is the deliberate silence rather than a fault.
+// A staff page becomes sound when a performance profile says how it is played;
+// until then it is notation, and the score below is the page's two repeated
+// bars written in the language the compiler reads today — the tie written as
+// its two halves, and `c5(3/8)` as the dotted quarter it is worth.
+
+piece "Staff page" {
+    import std::notation::staff;
+    import syntax std::adapters::staff as staff;
+
+    let page: StaffDocument = syntax staff {
+        instrument "bb_clarinet"
+        transposing M2
+        clef treble
+        key d major
+        time (4, 4)
+        spelling shortest_readable
+        pickup (1, 4) { g4/4 }
+        repeat (2) {
+            bar (4, 4) { c5/4 d5/4. e5/8 f5/4 ~ }
+            bar (4, 4) { f5/8 rest/8 [g4 b4 d5]/4 c5(3/8) rest/8 }
+            ending (1) {
+                bar (4, 4) { slur { tuplet (3, 2) { a4/8 b4/8 c5/8 } d5/4 } grace [e5] f5/2 }
+            }
+            ending (2) {
+                meter (3, 4)
+                bar (3, 4) { g5/4 a5/4 b5/4 }
+            }
+        }
+    };
+
+    tempo 1/4 = 96;
+    meter 4/4;
+    key d major;
+
+    score {
+        part clarinet {
+            voice line {
+                c5/4
+                d5/4.
+                e5/8
+                f5/4
+                f5/8
+                rest/8
+                [g4 b4 d5]/4
+                c5/4.
+                rest/8
+            }
+        }
+    }
+}

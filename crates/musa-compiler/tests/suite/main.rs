@@ -53,6 +53,7 @@ mod scale_context_laws;
 mod schema_generation_laws;
 mod serial_laws;
 mod sharing_laws;
+mod staff_expansion_laws;
 mod staff_package_laws;
 mod studio_laws;
 mod template_laws;
