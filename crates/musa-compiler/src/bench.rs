@@ -72,12 +72,12 @@ pub fn sharing_source(shape: Sharing, calls: usize, body: usize) -> String {
             source.push_str(" }\n");
         }
         Sharing::Distinct => {
-            source.push_str("    motif cell(root: Pitch = c5) { root/16");
+            source.push_str("    motif cell(root: Pitch) { root/16");
             tail(&mut source);
             source.push_str(" }\n");
         }
         Sharing::Hoisted => {
-            source.push_str("    motif head(root: Pitch = c5) { root/16 }\n    motif tail() {");
+            source.push_str("    motif head(root: Pitch) { root/16 }\n    motif tail() {");
             tail(&mut source);
             source.push_str(" }\n");
         }
