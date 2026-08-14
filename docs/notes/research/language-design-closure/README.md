@@ -115,5 +115,9 @@ ship.
 39. [38-abstraction-totality-and-substitution.md](38-abstraction-totality-and-substitution.md) reviews the staff
     adapter's shape as implementation evidence: what per-type eliminators, totality, and the environment evaluator each
     cost, why each was chosen, and how the alternatives work. It corrects four claims and decides nothing.
+40. [39-totality-and-structural-abstraction.md](39-totality-and-structural-abstraction.md) recommends keeping the total,
+    rank-1 source foundation, repairing everyday ergonomics, replacing the primitive syntax catamorphism with a total
+    structural recursor, and deferring higher-kinded container abstraction and dependent types until real programs earn
+    them. It corrects the fire-triangle premise and several claims in note 38.
 
 The proof gate failed. Nothing in this workspace moves to `docs/rules/` or into implementation prompts.
