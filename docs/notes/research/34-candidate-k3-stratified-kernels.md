@@ -362,7 +362,7 @@ node, observed through K₃ᴾ. The diagram, not a common carrier, is the cohere
 1. **Do not index the temporal kernel by extent. Do not restrict overlay. Do not add padding.**
 2. Treat the current source calculus and temporal kernel as two intentionally different stages, not fragments awaiting
    unification.
-3. Repair prompts 130–132 so score→gesture→prepared execution carries finite lineage and explicit loss, while R1 names
+3. Repair prompts 156–158 so score→gesture→prepared execution carries finite lineage and explicit loss, while R1 names
    execution equality separately from lineage equality.
 4. Specify the current studio as a block-tick process with an explicit register in every admitted cycle; add the
    block-size differential test. Prototype frame-causal SCC execution before promising block-partition independence for

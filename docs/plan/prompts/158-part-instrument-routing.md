@@ -1,15 +1,15 @@
 ---
-id: 132
+id: 158
 slug: part-instrument-routing
 status: pending
-depends_on: [31, 127i, 130, 131]
+depends_on: [31, 153, 156, 157]
 phase: 3
 ---
 
 # A Part Sounds Only Through Its Instrument Instance
 
-> **Governed by the event-track and machine core installed by prompts 127a–127i.** Routing must lower to typed machine
-> wiring without identifying a part, instrument declaration, or prepared instance.
+> **Governed by the event-track and machine core installed by prompts 127a–127e and 150–153.** Routing must lower to
+> typed machine wiring without identifying a part, instrument declaration, or prepared instance.
 
 ## Task
 
@@ -60,7 +60,7 @@ Commit as `Route each part to its own instrument`.
 
 ## Stop
 
-- No score-driven controls (prompt 133), samples, multitimbral plug-ins, or cross-part voice sharing.
+- No score-driven controls (prompt 159), samples, multitimbral plug-ins, or cross-part voice sharing.
 - Do not place `PartId` on every public DSP node; resolve it at the preparation boundary and keep compact indices
   private.
 - No mixer-track identity masquerading as part identity.

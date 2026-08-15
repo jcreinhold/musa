@@ -511,7 +511,7 @@ evaluation produces ordinary values, and building and closing a fragment produce
 closures, and modules stay private to `musa-compiler`; the candidate adds no public `musa-elaboration` crate. Prompt
 127a deleted the contextual `Music` type this paragraph used to name — reusable material is an ordinary value of type
 `EventTrack[WrittenTime, ScoreFact]` (`docs/rules/language/00-semantics.md` §3). This paragraph is candidate guidance
-until prompt 144.
+until prompt 170.
 
 ## 6.3 Expanded score representation
 
@@ -636,7 +636,7 @@ The studio does not inspect notes, measures, or slurs directly. It receives perf
 > semantic `ControlKey` resolves privately to graph/sample-engine targets, every lane retains `PartId`, and a profile
 > never addresses a patch node. Instrument declarations expose signatures and hide native graphs or sample maps; part
 > signals alone enter the mix. The studio describes the instrument and room of the work, not recording edits or a
-> mastering suite. This replaces the bridge sketch only if prompt 144 graduates the candidate.
+> mastering suite. This replaces the bridge sketch only if prompt 170 graduates the candidate.
 
 ---
 
@@ -1247,7 +1247,7 @@ pub fn compile(
 > **Language candidate (prompt 92):** prompts 93–124 refine the private elaboration/HIR stages to a total value
 > calculus, structural declaration templates, and typed core quotation (prompt 127a deleted the contextual `music` type
 > this line used to name). They still terminate in one closed `Term[ScoreFact]` before kernel evaluation. Prompts
-> 125–143 refine the downstream path to exact gestures and typed instrument preparation. No intermediate type named by
+> 154–169 refine the downstream path to exact gestures and typed instrument preparation. No intermediate type named by
 > that candidate is thereby a public crate API.
 
 Intermediate pass types should remain private unless another crate has a real semantic need for them.
@@ -2353,10 +2353,10 @@ Relative imports are sufficient:
 use "../library/patches.musa";
 ```
 
-> **Candidate extension (prompts 133–134):** retain relative imports for local work, and add exact-pinned Git packages
+> **Candidate extension (prompts 159–160):** retain relative imports for local work, and add exact-pinned Git packages
 > through `musa.toml`, `musa.lock`, an explicit `musa fetch`, and `pkg:` paths. Ordinary builds remain offline. Full
 > commit pins are graph collection, not version-range solving; registries, ranges, tags, branches, and implicit fetching
-> remain rejected. Until prompt 144, the relative-import-only rule above remains governing.
+> remain rejected. Until prompt 170, the relative-import-only rule above remains governing.
 
 Imports should be:
 

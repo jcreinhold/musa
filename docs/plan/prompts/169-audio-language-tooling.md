@@ -1,15 +1,15 @@
 ---
-id: 143
+id: 169
 slug: audio-language-tooling
 status: pending
-depends_on: [125, 127i, 128, 134, 136, 138, 139, 140, 142]
+depends_on: [125, 153, 154, 160, 162, 164, 165, 166, 168]
 phase: 4
 ---
 
 # The Sound Language Explains Itself
 
-> **Governed by the event-track and machine core installed by prompts 127a–127i.** Tooling explains inferred values,
-> event tracks, machine types, scheduling, and private primitive boundaries from compiler facts.
+> **Governed by the event-track and machine core installed by prompts 127a–127e and 150–153.** Tooling explains inferred
+> values, event tracks, machine types, scheduling, and private primitive boundaries from compiler facts.
 
 ## Task
 
@@ -21,8 +21,8 @@ support, and extension boundaries from generated facts and tested examples.
 ## Read
 
 - Prompts 122 and 122 seams; all of `docs/rules/language/08-performance-and-sound.md` and `09-assets-and-packages.md`;
-  prompts 130–142 completion/repair notes.
-- OMT chapters cited by prompt 92/135; SFZ sources cited by prompt 138; SoundFont 2.04 source cited by prompt 139.
+  prompts 156–168 completion/repair notes.
+- OMT chapters cited by prompt 92/161; SFZ sources cited by prompt 164; SoundFont 2.04 source cited by prompt 165.
 - Current LSP, VS Code, Zed, desktop virtual documents, keyword docs, generated stdlib docs, and handbook checker.
 
 ## Design

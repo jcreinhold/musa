@@ -5,11 +5,11 @@
 its proof gate. [The final blocker](../notes/research/language-design-closure/37-final-blocker.md) records why.
 
 Later work asked the broader source-to-audio question and passed its final paper review. That work lives in
-[`../notes/research/core-calculus/`](../notes/research/core-calculus/README.md). Prompts 127a–127i, including inserted
-prompts 127da–127dd, now form the active clean-break implementation path. They amend the rules first, repair the old
-adapter proof blockers, replace contextual `Music` with ordinary inferred values, make finite event tracks and finite
-machine descriptions part of one total source language, give machines one-frame step semantics, connect tracks to
-machines through a checked scheduler, and audit the result before later sound work.
+[`../notes/research/core-calculus/`](../notes/research/core-calculus/README.md). Prompts 127a–127e and 150–153,
+including inserted prompts 127da–127dd, now form the active clean-break implementation path. They amend the rules first,
+repair the old adapter proof blockers, replace contextual `Music` with ordinary inferred values, make finite event
+tracks and finite machine descriptions part of one total source language, give machines one-frame step semantics,
+connect tracks to machines through a checked scheduler, and audit the result before later sound work.
 
 The numbered sections below preserve the original plan. They no longer direct implementation.
 

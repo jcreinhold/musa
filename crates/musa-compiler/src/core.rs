@@ -3417,7 +3417,7 @@ struct SealedStep {
 /// what matters.
 ///
 /// It holds no source closure, no environment, and no state. What a step *does*
-/// is the registered unit's, and prompt 127f is where that arrives.
+/// is the registered unit's, and prompt 150 is where that arrives.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum MachineTree {
     Primitive {

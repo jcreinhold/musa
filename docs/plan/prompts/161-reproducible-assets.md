@@ -1,15 +1,15 @@
 ---
-id: 135
+id: 161
 slug: reproducible-assets
 status: pending
-depends_on: [85, 127i, 129, 131]
+depends_on: [85, 153, 155, 157]
 phase: 4
 ---
 
 # Assets Are Immutable Build Inputs
 
-> **Governed by the event-track and machine core installed by prompts 127a–127i.** Assets are exact finite preparation
-> inputs; decoded audio remains private runtime state.
+> **Governed by the event-track and machine core installed by prompts 127a–127e and 150–153.** Assets are exact finite
+> preparation inputs; decoded audio remains private runtime state.
 
 ## Task
 

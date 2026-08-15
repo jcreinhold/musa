@@ -173,10 +173,10 @@ occurrence. It crosses no crate boundary at all.
 
 D-1 claimed that R1's cache key `semantic_hash(M) ⊕ B ⊕ s` is uncomputable because `StudioGraphSpec` lacks `PartialEq`
 and `Hash`. **That conflates two different objects.** `docs/core-boundary.md` states R1 over "all instrument bindings
-`B`", and its own ledger row for prompt 132 says "`PartId` on the gesture payload is what B already implies". `B` is the
+`B`", and its own ledger row for prompt 158 says "`PartId` on the gesture payload is what B already implies". `B` is the
 part→instrument binding, not the studio patch graph.
 
-Worse for the claim: **`B` does not exist yet.** Prompts 130, 131, and 132 are all `pending`. There is no type in the
+Worse for the claim: **`B` does not exist yet.** Prompts 156, 157, and 158 are all `pending`. There is no type in the
 workspace for instrument bindings; `crates/musa-compiler/src/core.rs:351`'s `Binding` is a let-binding in the value
 calculus and unrelated.
 
@@ -184,7 +184,7 @@ So D-1 as written is wrong twice over — wrong object, and a defect asserted ag
 is smaller and forward-looking, and it belongs to the prompt stack rather than to this directory:
 
 > **D-1, corrected.** R1 presupposes that `B` has a decidable equality, because a cache keyed on `semantic_hash(M) ⊕ B ⊕
-> s` is only well-defined if `B` can be compared and hashed. `B` is introduced by prompts 131 and 132. Therefore *that*
+> s` is only well-defined if `B` can be compared and hashed. `B` is introduced by prompts 157 and 158. Therefore *that*
 > is a design constraint on those prompts, not a repair to existing code. The observation is still worth having — it is
 > cheaper to satisfy at introduction than to retrofit — but it is not evidence of a present defect and must not be
 > reported as one.

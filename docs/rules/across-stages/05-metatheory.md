@@ -19,11 +19,11 @@ audio engine, and the implementation column is deliberately blunt about the gap.
 | Accepted source expressions terminate, and a resource failure cannot change an accepted value | proved in outline, `06-proof-outline.md` §2 | implemented for the current monomorphic core; the inferred core is prompt 127b |
 | Storable data excludes a source function at every depth, including inside containers | proved by the admission check, `docs/rules/language/02-core-calculus.md` | absent; prompt 127b |
 | `follow`, `together`, `map_payloads` preserve bounds and obey their laws, with unequal durations and multiplicity kept | proved in `docs/rules/kernel/03`–`05` and `10` | implemented and tested at the untagged type; coordinate tags are prompt 127c |
-| Versioned exact bytes represent event-track semantic equality exactly (I1) | reviewed as part of K₃.3 | implemented by prompt 129a with delimiter and structured-payload tests |
+| Versioned exact bytes represent event-track semantic equality exactly (I1) | reviewed as part of K₃.3 | implemented by prompt 155a with delimiter and structured-payload tests |
 | Every machine has one total deterministic next step, and machines are causal (M1, M2) | proved in `03-machine-calculus.md` §7 | absent; the current audio graph does not implement these semantics |
 | Feedback has a first output and reads only stored data (M3) | proved | absent; the current delay path defers cycle inputs to the previous host block |
 | Chain and side-by-side laws (M4, M5) | proved | absent |
-| Scheduling emits every boundary exactly once and records every decision (M6) | proved | absent; prompt 127g |
+| Scheduling emits every boundary exactly once and records every decision (M6) | proved | absent; prompt 151 |
 | Scheduling preserves simultaneous placement under an occurrence-local policy (M7, M8) | proved, conditionally | absent |
 | One audio frame is the reference step; a valid whole-machine batch changes nothing (R1-batch) | contract stated; the composition rule for feedback-free machines is proved | absent; current modulation runs once per host block |
 | Complete origin paths compose without losing intermediate anchors; stage composition grafts and is associative | theorem reviewed as part of K₃.3; the graft rule is stated by prompt 127a | only partial provenance exists today |
@@ -55,7 +55,7 @@ Nothing here proves:
 ## 3. The implementation is behind the specification, and by how much
 
 The core-calculus review audited the repository at the time it was written and found three things worth repeating,
-because they set the size of prompts 127b–127i:
+because they set the size of prompts 127b–127e and 150–153:
 
 - `crates/musa-kernel` already implements the untagged heart of the event track — exact rational duration, finite
   occurrences, succession by shifting, simultaneity by maximum and multiset union, payload mapping. What it lacks is the

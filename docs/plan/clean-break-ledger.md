@@ -3,9 +3,9 @@
 **Status: directive.** Written by prompt 127a as part of the amendment that made the event track and the machine the two
 core values (`../rules/constitution.md`, `../rules/README.md`).
 
-This page names every source spelling, Rust API, serialized form, fixture, and test name that prompts 127b–127i
-**delete** rather than keep working through an alias, a deprecation shim, or a compatibility reader. It exists so that
-"clean break" is a checkable list rather than an intention.
+This page names every source spelling, Rust API, serialized form, fixture, and test name that prompts 127b–127e and
+150–153 **delete** rather than keep working through an alias, a deprecation shim, or a compatibility reader. It exists
+so that "clean break" is a checkable list rather than an intention.
 
 ## Why a ledger rather than aliases
 
@@ -53,12 +53,12 @@ best-effort translation.
 | `Timeline::length`, `Term::length`, `Measure::length`, `check_bar_length`, `ly.rs::measure_length`, `musicxml.rs::measure_length` | `duration` / `check_bar_duration` / `measure_duration` | 127c |
 | `SecondTime` as a coordinate tag | `PhysicalTime` | 127c |
 | `PrimitiveOwnership<Builtin>` and `primitive` naming a compiler-owned operation | `BuiltinOwnership<Builtin>`; compiler-owned operations are *builtins*, registered units are *primitives* | 127b, discharged by 127ca |
-| `Scheduled<A>` | `Schedule<A>`, matching the existing `ScheduleError` | 127g |
+| `Scheduled<A>` | `Schedule<A>`, matching the existing `ScheduleError` | 151 |
 | `musa_compiler::core::Music`, `MusicOperation`, `MusicRole` | ordinary values of ordinary types | 127e |
 | the private `close` and `instantiate_music` elaboration path, and the fragment type they close | building and closing over ordinary values | 127e |
-| `musa_audio::compile_graph` and public `StudioGraphSpec` as a semantic alternative | machine construction and `prepare_audio(format, machine)` | 127h |
-| `RenderPlan` / `PreparedExecution` as the public prepared artifact | `PreparedMachine` | 127f, 127h |
-| a caller- or preparation-chosen "semantic step" option | one audio step is one sample frame; batching is a checked `batch(n)` contract | 127h |
+| `musa_audio::compile_graph` and public `StudioGraphSpec` as a semantic alternative | machine construction and `prepare_audio(format, machine)` | 152 |
+| `RenderPlan` / `PreparedExecution` as the public prepared artifact | `PreparedMachine` | 150, 152 |
+| a caller- or preparation-chosen "semantic step" option | one audio step is one sample frame; batching is a checked `batch(n)` contract | 152 |
 
 The kernel stays a leaf through all of this: no machine type, audio type, or frame index enters `musa-kernel`.
 
@@ -69,7 +69,7 @@ The kernel stays a leaf through all of this: no machine type, audio type, or fra
 | the `% musa-kernel-1` document header | refused with an error naming the version and this ledger; **not** upgraded | 127c |
 | event-track encoding versions 1 and 2 (`../rules/kernel/05-normalization.md` N6, `12-payload-admission.md` A7) | refused; version 3 adds the coordinate tag and is the only accepted one | 127c |
 | unframed `Display`-derived digests | already invalid; they remain invalid and are not read as track identity | (already broken) |
-| any prepared-plan cache record keyed without the coordinate tag or the operation version | refused as a version error rather than treated as a miss | 127c, 127h |
+| any prepared-plan cache record keyed without the coordinate tag or the operation version | refused as a version error rather than treated as a miss | 127c, 152 |
 
 A version header exists precisely so this can be a refusal rather than a guess. A reader that cannot reproduce a
 document's version says so.
@@ -81,7 +81,7 @@ document's version says so.
 | all 24 files in `examples/kernel/*.musa.kernel` — regenerated at `% musa-kernel-2` with `track`, `follow`, `together`, and durations | 127c |
 | every `.musa` example and stdlib source that spells the type `Music` or calls `overlay`/`sequence` | 127e |
 | the insta snapshots under `crates/musa-kernel` and `crates/musa-compiler` that pin the old kernel text | 127c, 127e |
-| studio fixtures whose expected output depends on host-block-defined feedback or modulation | 127h |
+| studio fixtures whose expected output depends on host-block-defined feedback or modulation | 152 |
 
 Goldens are rewritten in the same prompt that breaks them, never left failing across a prompt boundary
 (`prompts/README.md`).
@@ -124,8 +124,8 @@ These survive the break unchanged, and a prompt that removes one is wrong:
 
 ## 7. How a prompt discharges its rows
 
-A prompt in 127b–127i is not done while a row it owns still resolves in the workspace. The check is mechanical: after
-the prompt's commit, searching the workspace for the deleted spelling returns only this ledger and the research record.
-If it returns code, a fixture, or a governing document, the break is incomplete.
+A prompt in 127b–127e and 150–153 is not done while a row it owns still resolves in the workspace. The check is
+mechanical: after the prompt's commit, searching the workspace for the deleted spelling returns only this ledger and the
+research record. If it returns code, a fixture, or a governing document, the break is incomplete.
 
-Prompt 127i audits the whole ledger as one of its conformance rows.
+Prompt 153 audits the whole ledger as one of its conformance rows.

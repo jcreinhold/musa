@@ -130,7 +130,7 @@ rather than merely diagnosed.
 `docs/core-boundary.md` §6.1's "no fourth combinator" forbid: the proposal adds *indices*, not forms.
 
 **D-3. R1 stops being an axiom and becomes a theorem.** `docs/core-boundary.md` states R1 — `M ≡ N` implies
-`prepare(M,B,s) = prepare(N,B,s)` — as a law to be *measured* at prompt 144. But the kernel already proves confluence
+`prepare(M,B,s) = prepare(N,B,s)` — as a law to be *measured* at prompt 170. But the kernel already proves confluence
 and strong normalization for its own calculus, and `docs/rules/language/02-core-calculus.md` §5.5 proves it for the
 elaboration core. If `prepare` is *defined by structural recursion on the kernel normal form*, R1 holds by construction:
 equal normal forms give equal results. The measurement at 144 becomes a regression check on the definition rather than

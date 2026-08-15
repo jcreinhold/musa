@@ -14,8 +14,8 @@ Turn the implemented score language and bundled theory library into one tested r
 musicians can learn by musical task and language developers can recover the grammar, typing, elaboration, laws,
 ownership, and performance model precisely. Replace the proposal's provisional examples with compiling Musa source and
 make every public standard-library operation discoverable from source, editor hover, and the handbook without
-duplicating its definition. This is not the final whole-language handbook: prompt 143 adds performance, instruments,
-studio, assets, packages, samples, and clips before prompt 146 graduates the complete specification.
+duplicating its definition. This is not the final whole-language handbook: prompt 169 adds performance, instruments,
+studio, assets, packages, samples, and clips before prompt 172 graduates the complete specification.
 
 ## Read
 
@@ -63,7 +63,7 @@ errors and snapshot their plain-language diagnostic and repair. Test all interna
 - Compiling positive examples and diagnostic goldens for negative examples in `examples/` or focused doc-test fixtures.
 - Reconciliation of the design essay: mark resolved choices as implemented, link to governing candidate
   `docs/rules/language/`, and retain rejected alternatives and rationale as design history. Do not call the candidate
-  governing before prompt 146.
+  governing before prompt 172.
 
 ## Check
 
@@ -85,5 +85,5 @@ implementor guide. Commit as `Publish the Musa language and theory handbook`.
 - No exhaustive music-theory textbook and no claim that the bundled conventions cover every musical culture or style.
 - No copied OMT chapter text; cite and explain only the concepts Musa actually implements.
 - No separate hand-maintained LSP documentation table or public exposure of compiler pass types.
-- No placeholder prose for audio features that prompts 130–142 have not implemented; leave stable anchors for the later
+- No placeholder prose for audio features that prompts 156–168 have not implemented; leave stable anchors for the later
   generated sound-language reference instead.

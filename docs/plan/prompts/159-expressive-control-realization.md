@@ -1,15 +1,15 @@
 ---
-id: 133
+id: 159
 slug: expressive-control-realization
 status: pending
-depends_on: [127i, 130, 131, 132]
+depends_on: [153, 156, 157, 158]
 phase: 3
 ---
 
 # A Mark Moves a Musical Control
 
-> **Governed by the event-track and machine core installed by prompts 127a–127i.** Controls remain gesture payload data
-> until scheduling and instrument-machine binding.
+> **Governed by the event-track and machine core installed by prompts 127a–127e and 150–153.** Controls remain gesture
+> payload data until scheduling and instrument-machine binding.
 
 ## Task
 
@@ -20,7 +20,7 @@ making any notation fact denote a DSP operation.
 
 ## Read
 
-- `docs/rules/language/08-performance-and-sound.md`; prompt 130 gesture laws, prompt 131 signatures/mappings, prompt 132
+- `docs/rules/language/08-performance-and-sound.md`; prompt 156 gesture laws, prompt 157 signatures/mappings, prompt 158
   routing.
 - Kernel `Progress`; current profile hairpin interpretation; `PerformanceEvent::Parameter`; audio modulation
   combination/smoothing; MIDI control export/loss reporting.

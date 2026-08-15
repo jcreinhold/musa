@@ -50,7 +50,7 @@ binds them into an immutable plan; neither ordinary callers nor the real-time ca
 
 The present independent `PerformancePlan`/`StudioSpec` handoff has the right ownership but an insufficient contract: it
 turns profiles into a few floats before knowing the instrument, discards part identity at graph input, declares but
-ignores `PerformanceEvent::Parameter`, and exposes graph-stage addressing as if it were musical control. Prompts 127–131
+ignores `PerformanceEvent::Parameter`, and exposes graph-stage addressing as if it were musical control. Prompts 127–157
 replace those debts. A rejected combined score-audio object would make notation edits mutate DSP state and would destroy
 independent export, caching, and UI projections.
 

@@ -10,7 +10,7 @@ phase: 3
 
 ## Task
 
-Decide, in writing and with evidence, what Musa's core calculus is *of* — and do it before prompts 128–146 spend
+Decide, in writing and with evidence, what Musa's core calculus is *of* — and do it before prompts 154–172 spend
 nineteen prompts assuming an answer. Peyton Jones (1987) §3 states the criterion this prompt applies: the translation
 into the core *is* the language's semantics, so a surface construct that translates into nothing has no semantics beyond
 whatever its compiler pass happens to do. Take the census, name the candidates, test them against that criterion, and
@@ -52,7 +52,7 @@ Two claims made in conversation are premises the census must confirm or refute, 
 
 1. `Timeline<A>` and `Occurrence<A>` are payload-polymorphic, and outside `musa-kernel` are instantiated at `ScoreFact`
    and nothing else.
-2. `GestureTimeline` — the exact instrument-independent control timeline prompt 130 is meant to build — is named in
+2. `GestureTimeline` — the exact instrument-independent control timeline prompt 156 is meant to build — is named in
    several design documents and in no line of code.
 
 If either is false, say so and let the corrected fact drive the decision.
@@ -88,7 +88,7 @@ justification for anything.
 - **Layer separation.** Roadmap §2's table survives intact: written pitch ≠ MIDI number, notated duration ≠ performed
   duration, voice ≠ mixer track, part ≠ synthesizer, dynamic marking ≠ decibels. A candidate that collapses a row is
   rejected regardless of its elegance — OMT keeps these vocabularies apart, and so does the roadmap.
-- **Cost in prompts.** For each of 127–146: unchanged, repaired (and how), deleted, or replaced. A candidate whose
+- **Cost in prompts.** For each of 127–172: unchanged, repaired (and how), deleted, or replaced. A candidate whose
   ledger is missing a prompt is not costed.
 - **Cost to undo.** What reversing the decision costs after the block is built. Candidate C's answer here is the whole
   argument against it, and must be written down rather than gestured at.
@@ -108,10 +108,10 @@ the repair and the decision that forces it are one change.
 
 - The core-boundary decision record (`docs/notes/research/61-core-boundary-decision-record.md`): the census, the three
   candidates, the five tests applied to each, the chosen answer, the signal question settled, and the ledger over
-  prompts 127–146. It states its own precedence: it governs over `docs/rules/language/` where they differ, and sits
+  prompts 127–172. It states its own precedence: it governs over `docs/rules/language/` where they differ, and sits
   under the temporal-kernel specification — the amendment is written into the governing documents themselves, in this
   commit, or it has not been made.
-- Repairs to the `Design` and `depends_on` of every prompt in 127–146 the decision changes, and new prompt files for
+- Repairs to the `Design` and `depends_on` of every prompt in 127–172 the decision changes, and new prompt files for
   work the decision requires that no prompt covers, inserted with `scripts/renumber-prompts.py`.
 - Updated `docs/plan/prompts/README.md` (index table, block summaries) and `AGENTS.md` (governing-document list, prompt
   count).
@@ -141,6 +141,6 @@ decided rather than implemented. Commit as `Decide what the core is a calculus o
   §2 row it collapses — never by tone.
 - No unconditional deferral of the signal question. Deferring is allowed; deferring without naming the measurement or
   event that reopens it is not.
-- No graduation of `docs/rules/language/`, and no change to what prompt 146 audits. This prompt may change what the
+- No graduation of `docs/rules/language/`, and no change to what prompt 172 audits. This prompt may change what the
   later prompts *do*, not whether they are checked.
 - No renumbering by hand, and no renumbering of finished prompts to make a range look tidy.

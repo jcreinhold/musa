@@ -1,15 +1,15 @@
 ---
-id: 144
+id: 170
 slug: audio-performance-closure
 status: pending
-depends_on: [93, 127i, 132, 133, 137, 138, 139, 141, 142, 143]
+depends_on: [93, 153, 158, 159, 163, 164, 165, 167, 168, 169]
 phase: 4
 ---
 
 # Close Audio Preparation and Rendering Against Measurement
 
-> **Governed by the event-track and machine core installed by prompts 127a–127i.** Measure the implemented one-frame
-> semantics; do not reopen it because an old block path is faster.
+> **Governed by the event-track and machine core installed by prompts 127a–127e and 150–153.** Measure the implemented
+> one-frame semantics; do not reopen it because an old block path is faster.
 
 ## Task
 
@@ -21,11 +21,11 @@ no-allocation/no-lock/no-I/O contract.
 ## Read
 
 - The revised audio constitution and `R1` in the revised backend contract.
-- Prompt 93 baseline/expected-change ledger, prompt 127i core-calculus report, `docs/rules/desktop/06-performance.md`,
-  roadmap §§13.2/17.5, and all completion notes from prompts 130–143.
+- Prompt 93 baseline/expected-change ledger, prompt 153 core-calculus report, `docs/rules/desktop/06-performance.md`,
+  roadmap §§13.2/17.5, and all completion notes from prompts 156–169.
 - Audio/compiler/project benchmarks, callback instrumentation, offline/live render code, prepared-plan queues and
   retirement, decoded-asset store, sampler/media voices, UI Sound/Mix performance tests.
-- The revised machine and identity specifications; prompts 127f–127h and 131 completion notes.
+- The revised machine and identity specifications; prompts 150–152 and 131 completion notes.
 
 ## Design
 

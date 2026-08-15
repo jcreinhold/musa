@@ -1,15 +1,15 @@
 ---
-id: 137
+id: 163
 slug: sampler-runtime
 status: pending
-depends_on: [127i, 130, 131, 132, 133, 135]
+depends_on: [153, 156, 157, 158, 159, 161]
 phase: 4
 ---
 
 # A Sample Map Is an Instrument Implementation
 
-> **Governed by the event-track and machine core installed by prompts 127a–127i.** The sampler is a registered machine
-> primitive family behind an instrument contract.
+> **Governed by the event-track and machine core installed by prompts 127a–127e and 150–153.** The sampler is a
+> registered machine primitive family behind an instrument contract.
 
 ## Task
 
@@ -22,8 +22,8 @@ choice on the audio thread.
 
 - `docs/rules/language/08-performance-and-sound.md` and `09-assets-and-packages.md`; roadmap §§13.2, 13.5, 17.5, 18
   Phase 4.
-- Prompt 130 gestures, prompt 131 instrument implementation family, prompt 132 instance routing, prompt 133 controls,
-  prompt 135 asset store; current voice allocator, oscillator instrument, render plan, and engine retirement path.
+- Prompt 156 gestures, prompt 157 instrument implementation family, prompt 158 instance routing, prompt 159 controls,
+  prompt 161 asset store; current voice allocator, oscillator instrument, render plan, and engine retirement path.
 - Existing allowed dependency lists and decoder/resampler implementations. Measure before adding a large dependency;
   keep its types private if one is justified.
 

@@ -1,8 +1,8 @@
 ---
-id: 127h
+id: 152
 slug: one-frame-audio
 status: pending
-depends_on: [127f, 127g]
+depends_on: [150, 151]
 phase: 3
 ---
 

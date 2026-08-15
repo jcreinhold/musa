@@ -99,7 +99,7 @@ neither blocks the source language:
 - a package dependency edge is not a source module import; and
 - exact source bytes decide equality, while a hash only finds possible matches.
 
-Prompt 136 can apply those rules when Musa implements exact Git source packages. Until then, language research assumes
+Prompt 162 can apply those rules when Musa implements exact Git source packages. Until then, language research assumes
 one finite resolved package graph per build and fresh private type identities inside that build. Registries, version
 solving, persistent compiled identities, and compiled-artifact caches are outside the current design closure. A measured
 need in a working package system may reopen them later.

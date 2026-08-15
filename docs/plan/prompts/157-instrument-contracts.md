@@ -1,15 +1,15 @@
 ---
-id: 131
+id: 157
 slug: instrument-contracts
 status: pending
-depends_on: [127i, 128, 129, 130]
+depends_on: [153, 154, 155, 156]
 phase: 3
 ---
 
 # Instruments Expose Contracts and Hide Implementations
 
-> **Governed by the event-track and machine core installed by prompts 127a–127i.** An instrument is a typed machine
-> contract over private registered primitives, not a separate graph semantics.
+> **Governed by the event-track and machine core installed by prompts 127a–127e and 150–153.** An instrument is a typed
+> machine contract over private registered primitives, not a separate graph semantics.
 
 ## Task
 
@@ -20,7 +20,7 @@ hides whether it is implemented by oscillators, samples, or later adapters. Its 
 ## Read
 
 - The revised machine, scheduling, and audio rules; `R1` in the revised backend contract.
-- Prompts 127f–127h and `docs/plan/code-map/process-runtime.md`; these fix private runtime state, exact preparation,
+- Prompts 150–152 and `docs/plan/code-map/process-runtime.md`; these fix private runtime state, exact preparation,
   one-frame semantics, and batching premises.
 - `docs/rules/language/08-performance-and-sound.md`; roadmap §§2, 6.5, 10.6, 13, 15.
 - Current `StudioSpec`, `StudioGraphSpec`, `RenderPlan`, project/CLI/offline/engine callers, and prompts 29–31 repairs.
@@ -71,7 +71,7 @@ that produces it is part of the core language. Preparation is one operation rath
 
 - Instrument/signature declarations in language/compiler and hard-error migration fixes for removed patches.
 - Native machine implementation hidden behind `musa-audio` preparation; curated facade and documented invariants.
-- Instrument-body checking against the machine constructors and registered primitive catalogue from prompts 127f–128.
+- Instrument-body checking against the machine constructors and registered primitive catalogue from prompts 150–128.
 - Static checking for duplicate/missing controls, incompatible mappings, private-node access, technique support, and
   channel shape.
 - Instrument replacement law: two implementations of one signature accept the same gesture/control lanes without
@@ -97,7 +97,7 @@ Commit as `Give instruments typed sound contracts`.
 ## Stop
 
 - No trait or plug-in registry for hypothetical implementations; use the concrete closed implementation family with a
-  native machine as the current case and add sample bodies at prompt 137.
+  native machine as the current case and add sample bodies at prompt 163.
 - No part routing yet, no sample decoding, and no GUI node canvas.
 - No score, context, measure, or notation type crosses into `musa-audio`.
 - No signal or audio history as a finite source value, and no written-time coordinate past scheduling. The separate

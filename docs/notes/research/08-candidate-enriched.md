@@ -76,9 +76,9 @@ where nothing downstream reads it again** — it is right, and it is what SPJ's 
 **D-1 originally named the wrong object, and [07](07-probe-log.md) P-3 corrects it.** The first draft claimed R1's cache
 key `semantic_hash(M) ⊕ B ⊕ s` is uncomputable because `StudioGraphSpec` lacks `PartialEq` and `Hash`. But R1 quantifies
 over *instrument bindings* `B`, not over the studio patch graph — `docs/core-boundary.md`'s own ledger row for prompt
-132 says "`PartId` on the gesture payload is what B already implies" — and `B` does not exist yet, since prompts 130,
-131, and 132 are all `pending`. So there is no present defect there; there is a **design constraint on prompts 131 and
-132**, which is cheaper to satisfy at introduction than to retrofit: whatever `B` becomes must be comparable and
+158 says "`PartId` on the gesture payload is what B already implies" — and `B` does not exist yet, since prompts 156,
+157, and 158 are all `pending`. So there is no present defect there; there is a **design constraint on prompts 157 and
+158**, which is cheaper to satisfy at introduction than to retrofit: whatever `B` becomes must be comparable and
 hashable, because R1's cache is only well-defined if it is.
 
 Where Prop 7 *does* bite is the seam this directory noticed at the outset and then walked past:
@@ -133,7 +133,7 @@ but the surrounding chapters should not be imported wholesale.
 | 1 | trivial: a construct with one consumer | passes — survives to that consumer, then erased |
 | 2 | one operation: `let` in SPJ's own setting | passes — this is the worked case |
 | 3 | composition: two passes needing the same structure | passes — erasure point is the later of the two |
-| 4 | dependency: the render cache needing `B`'s identity | passes — but as a constraint on prompts 131/132, not a present defect (P-3) |
+| 4 | dependency: the render cache needing `B`'s identity | passes — but as a constraint on prompts 157/158, not a present defect (P-3) |
 | 5 | hardest: a construct whose only consumer is *outside* the compiler — a UI that edits patches structurally | **run, and the premise was false** ([07](07-probe-log.md) P-3). The UI displays `StudioFacts`, a projection, and emits `StudioEdit` → `TextEdit`s into the source; `StudioGraphSpec` crosses no crate boundary at all. The editor consumes facts and text, not term structure, so the erasure point does not move. The facts layer is what absorbs the pressure Prop 7 would otherwise put on every boundary — worth noting as a pattern, not just a relief. |
 
 ## 7. Verdict

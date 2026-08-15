@@ -1,15 +1,15 @@
 ---
-id: 141
+id: 167
 slug: audio-clips
 status: pending
-depends_on: [127h, 132, 135, 137, 140]
+depends_on: [152, 158, 161, 163, 166]
 phase: 4
 ---
 
 # Recorded Media Reaches the Mix
 
-> **Governed by the event-track and machine core installed by prompts 127a–127i.** Clips and cues become registered
-> source machines connected to explicit mix machines.
+> **Governed by the event-track and machine core installed by prompts 127a–127e and 150–153.** Clips and cues become
+> registered source machines connected to explicit mix machines.
 
 ## Task
 
@@ -20,8 +20,8 @@ behavior.
 
 ## Read
 
-- Prompt 140's normative semantics; prompt 135 asset store; prompt 137 prepared sample playback and resampling; prompt
-  130 part isolation; existing offline/live render path, transport seek/loop, and release-tail calculation.
+- Prompt 166's normative semantics; prompt 161 asset store; prompt 163 prepared sample playback and resampling; prompt
+  156 part isolation; existing offline/live render path, transport seek/loop, and release-tail calculation.
 - Roadmap §§13.2, 13.8, 18 Phase 4. Audio recording and waveform editing remain explicitly outside Musa.
 
 ## Design

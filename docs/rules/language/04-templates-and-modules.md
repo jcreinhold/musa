@@ -181,5 +181,5 @@ The following are static errors: a parameterized declaration without `template`;
 first-class `piece`, `voice`, `structure`, or source-syntax use; a structure member that fails its signature; two
 generated declarations with the same public address; and a structural declaration embedded in a track value.
 
-Prompts 103–104 implement this stage. Prompt 124 measures expansion and caching. Prompt 144 verifies that identity and
+Prompts 103–104 implement this stage. Prompt 124 measures expansion and caching. Prompt 170 verifies that identity and
 Origin remain stable through the migration.

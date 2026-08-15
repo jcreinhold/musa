@@ -585,10 +585,10 @@ plan first, run the trials, then amend the candidate language pages before imple
 | --- | --- | --- | --- |
 | Record update, expression `if`, `Result ?` | `language/01-surface.md`; the elaboration and source-map portions of `language/02-core-calculus.md` and `language/05-verification.md` | typing/elaboration preservation; single evaluation and source-map laws; no new core reduction for desugared forms | add one ergonomics prompt before the remaining adapter trials; repair grammar/formatter/tree-sitter/tooling evidence from 80 and 122; rerun staff evidence before 127dcfb |
 | Directional list folds | `language/01-surface.md` and `language/02-core-calculus.md` as prompt 127dcfaa already states | one list-decrease case in preservation/progress/determinism/normalization | 127dcfaa remains valid and should run independently of container abstraction |
-| Structural `Syntax` recursor | add the phase-local rules to `language/00-semantics.md` and `language/02-core-calculus.md`, plus adapter laws in `language/05-verification.md`; constitution §9 remains satisfied | typing and canonical forms for non-storable `SyntaxStep`; sealed-association and local structural-decrease lemmas; the reducibility candidate and fundamental-lemma cases for higher-order `C`/`A`, capture, duplication, delayed use, and nested traversal; determinism; path uniqueness; fold derivation; budget law; phase conservativity; differential evaluator coverage | 127da's “fold is the only way in” design is superseded and needs a repair prompt; 127dcfa must be rewritten/retrialed; 127dcfb and 127dcg should use the repaired API; 127dd, 127e, 127i, and 146 must wait for the repaired evidence |
+| Structural `Syntax` recursor | add the phase-local rules to `language/00-semantics.md` and `language/02-core-calculus.md`, plus adapter laws in `language/05-verification.md`; constitution §9 remains satisfied | typing and canonical forms for non-storable `SyntaxStep`; sealed-association and local structural-decrease lemmas; the reducibility candidate and fundamental-lemma cases for higher-order `C`/`A`, capture, duplication, delayed use, and nested traversal; determinism; path uniqueness; fold derivation; budget law; phase conservativity; differential evaluator coverage | 127da's “fold is the only way in” design is superseded and needs a repair prompt; 127dcfa must be rewritten/retrialed; 127dcfb and 127dcg should use the repaired API; 127dd, 127e, 153, and 146 must wait for the repaired evidence |
 | Constructor-specific container operations | no governing change | no proof restatement | no prompt invalidation; do not add generated `Listing`/`Building` without a caller |
-| Keep source totality | no governing change | retain §5.5 strong normalization independently of T4 and M1; extend it for the new recursor/fold only | 127i and 146 keep their source-termination rows |
-| Reject dependent types | no governing change | no checker or metatheory replacement | 127aa, 127b, 127i, and 146 remain rank-1/principal-inference prompts |
+| Keep source totality | no governing change | retain §5.5 strong normalization independently of T4 and M1; extend it for the new recursor/fold only | 153 and 146 keep their source-termination rows |
+| Reject dependent types | no governing change | no checker or metatheory replacement | 127aa, 127b, 153, and 146 remain rank-1/principal-inference prompts |
 
 The historical prompt 127ac remains correct for ordinary user-declared data: one generated catamorphism is the general
 eliminator. `Syntax` is exceptional because it is an opaque compiler-owned phase value whose proper-child relation and
@@ -603,8 +603,8 @@ This is not recommended. It would require the amendment procedure in [`docs/rule
   while every compiler run is stopped by a versioned resource budget and completed runs remain budget-independent;
 - amend obligations §10 with the two concrete operations that require possible divergence and their smallest failing
   total terms;
-- remove source strong normalization from `language/02-core-calculus.md` §5.5 and from prompts 127i/146, without
-  touching T4 or M1; and
+- remove source strong normalization from `language/02-core-calculus.md` §5.5 and from prompts 153/146, without touching
+  T4 or M1; and
 - restate every API currently promising a value or `Result` so that divergence/resource exhaustion is an additional
   outcome.
 
@@ -622,7 +622,7 @@ This is not recommended. It would require:
 - amending obligations §10 with two musical uses or one otherwise unstated safety boundary;
 - replacing Algorithm W, principal types, and the closed-value environment proof with conversion, open neutrals,
   reification, weakening/renaming, and the chosen normalization/partiality theorem; and
-- repairing prompts 127a, 127aa–127b, 127i, and 146, plus every language/tooling prompt whose diagnostics assume
+- repairing prompts 127a, 127aa–127b, 153, and 146, plus every language/tooling prompt whose diagnostics assume
   principal inferred types.
 
 Adopting dependent types *and* general recursion would additionally have to state which row of §9.2 Musa takes. “The
@@ -691,7 +691,7 @@ different constructor. Add a targeted container trial only if duplication actual
   [38-abstraction-totality-and-substitution.md](38-abstraction-totality-and-substitution.md).
 - The implemented `Syntax` fold, evaluator, and closure representation in `crates/musa-compiler/src/core.rs`; the rank-1
   occurs and storable-data checks in `crates/musa-compiler/src/infer.rs`; the staff reader in
-  `stdlib/src/adapters/staff.musa`; and prompts 127a, 127aa–127b, 127da, 127dcfa–127dd, 127e, 127i, and 146.
+  `stdlib/src/adapters/staff.musa`; and prompts 127a, 127aa–127b, 127da, 127dcfa–127dd, 127e, 153, and 146.
 
 ### Music theory
 

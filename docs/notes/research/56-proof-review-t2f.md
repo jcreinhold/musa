@@ -146,7 +146,7 @@ questions.
   snapshot leakage, functions and `Music` under both new judgments, parent imports, path escape, symlink-boundary
   formation, diamonds, chains, duplicate DAG nodes, nominal ranks, and the imported source-core proof dependencies.
 - **Limits:** T₂f is not implemented. I treated the T₂b/T₂c operational metatheory and exact `Text`/`Result`/nominal
-  encoders as previously reviewed dependencies. I did not test a remote package fetcher because prompt 136 remains
+  encoders as previously reviewed dependencies. I did not test a remote package fetcher because prompt 162 remains
   pending and no such current implementation exists.
 
 ## Claim audit
@@ -231,7 +231,7 @@ normalization therefore continue to follow from the reviewed T₂b–T₂e premi
 ### Not checked
 
 - Any executable T₂f checker, serializer, owner table, or cache, because none exists.
-- Remote fetch/lock/cache behavior planned by prompt 136.
+- Remote fetch/lock/cache behavior planned by prompt 162.
 - Cultural adequacy of the W/K mechanism probes; T₂f adds no new musical evidence.
 
 ## Required closure

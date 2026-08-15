@@ -34,7 +34,7 @@ I read `docs/notes/research/README.md` and 00–09 in order; the governing cours
 kernel specification, kernel hypothesis, requested core-calculus sections, and `AGENTS.md`; every requested Open Music
 Theory chapter; the requested Peyton Jones, Grothendieck-method, 50-examples, and graded-modal-types texts; Levy's CBPV
 paper; and Xi and Pfenning's Dependent ML paper. I inspected the requested implementation files at `ff9dbcc`, the
-relevant callers and repository history, and the frontmatter of prompts 130–132.
+relevant callers and repository history, and the frontmatter of prompts 156–158.
 
 I also ran these targeted tests on the review worktree:
 
@@ -515,7 +515,7 @@ processor kinds, typed ports, edges/modulations, graph options, and an output. `
 resolves names and routing and materializes processor/source/envelope structure for `compile_graph`.
 
 `StudioGraphSpec` derives `Clone`, `Debug`, and `Default`, not `PartialEq` or `Hash`, exactly as P-3's correction says.
-Prompts 130, 131, and 132 are all still `pending`, so instrument bindings B are not yet the object whose computable key
+Prompts 156, 157, and 158 are all still `pending`, so instrument bindings B are not yet the object whose computable key
 can be audited.
 
 **JUDGED.** This is not duplicate representation of one graph. It is a normal deep-module boundary between source
@@ -685,7 +685,7 @@ surface notation for indices is not enough.
 
 ### 10.4 Prove R1 at the real boundary
 
-After prompts 130–132 define gestures and bindings, specify:
+After prompts 156–158 define gestures and bindings, specify:
 
 - the exact domain and equality of normalized gestures;
 - the canonical representation/equality of bindings and assets;
@@ -721,7 +721,7 @@ maps exist should correspondences or idempotent completion be evaluated.
 - **UNCHECKED:** I did not validate the notebook's broad historical claims about every tradition or every composer's
   working practice. The named counterdomains are sufficient to defeat universality; they are not a substitute for
   specialists in those repertoires.
-- **UNCHECKED:** Prompts 130–132 are pending, so the eventual instrument-binding representation and full R1 preparation
+- **UNCHECKED:** Prompts 156–158 are pending, so the eventual instrument-binding representation and full R1 preparation
   function do not yet exist to audit. Any claim that their final design will or will not satisfy R1 is premature.
 
 ## 12. Final verdict

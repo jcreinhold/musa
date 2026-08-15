@@ -1,5 +1,5 @@
 ---
-id: 129a
+id: 155a
 slug: payload-admission-rule
 status: done
 depends_on: [126]
@@ -10,7 +10,7 @@ phase: 3
 
 ## Task
 
-Write the payload-admission rule into `docs/rules/kernel/` **before** prompt 130 admits the first payload that is not
+Write the payload-admission rule into `docs/rules/kernel/` **before** prompt 156 admits the first payload that is not
 `ScoreFact`, repair the verified unframed semantic-identity bug, and state exact `R1`. Prompt 126 decided that the core
 is a calculus of occurrences of any canonical payload. The later proof review found that the current N5 display writer
 is not an injective encoding and that “injective on values” contradicts `ScoreFact` deliberately dropping fields. This
@@ -130,7 +130,7 @@ The law suite must pass at both payloads with the same property statements. Comm
 
 - No new temporal operation, term form, or dependency. Public `Canonical` metadata may change only as required to make
   the existing equality/hash contract exact.
-- No gesture payload. Prompt 130 defines it; this prompt defines what it will have to satisfy.
+- No gesture payload. Prompt 156 defines it; this prompt defines what it will have to satisfy.
 - No signal payload, and no re-opening of `docs/rules/constitution.md` §4.
 - No change to which `ScoreFact` fields its key observes. Add its owner/version metadata and record the current
   quotient; a different quotient is a separate design decision.

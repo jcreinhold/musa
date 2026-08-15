@@ -259,7 +259,7 @@ Add lineage to the K₁ architecture before any governing rewrite:
 
 1. treat current `Origin` as the `Source → ScoreFact` special case;
 2. define stable nominal anchors for gesture and prepared-plan events;
-3. require prompts 130–132 to return or retain explicit score→gesture→plan lineage;
+3. require prompts 156–158 to return or retain explicit score→gesture→plan lineage;
 4. keep lineage out of the generic temporal algebra—it rides in payload/adjacent presentation data;
 5. state content, presentation, and derivation equality separately; and
 6. test one-to-many, many-to-one, generated-default, selected-alternative, and quantized-region examples.

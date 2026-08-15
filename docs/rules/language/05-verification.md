@@ -147,10 +147,10 @@ Each rejected shortcut has a fixture that would fail if the shortcut returned:
 | 118–119 | standalone kernel and quotation preserve the existing kernel grammar and closure guarantees |
 | 120–122 | formatter, LSP, workbench, and handbook expose exact syntax and teach domain distinctions |
 | 123 | incremental and cold compilation meet recorded budgets; cache keys include context and build closure |
-| 125–132 | sound vocabulary, exact values, gestures, typed instruments, part isolation, expression, and ergonomic binding |
-| 133–139 | immutable assets, exact-pinned offline packages, sample adapters, media cues, and clip/fixed-media distinction |
-| 140–143 | workbench and tooling preserve source authority; performance and conformance laws pass |
-| 143 | full corpus, migration, docs, public API, performance, and governing-precedence audit |
+| 154–160 | sound vocabulary, exact values, gestures, typed instruments, part isolation, expression, and ergonomic binding |
+| 161–167 | immutable assets, exact-pinned offline packages, sample adapters, media cues, and clip/fixed-media distinction |
+| 168–171 | workbench and tooling preserve source authority; performance and conformance laws pass |
+| 172 | full corpus, migration, docs, public API, performance, and governing-precedence audit |
 
 No gate is satisfied by a unit test that recreates the implementation in the assertion. Property generators use small
 independent models; end-to-end fixtures inspect public compilation/render results; compile-fail tests assert stable
@@ -158,7 +158,7 @@ diagnostic codes and salient labels, not whole prose strings.
 
 ## 7. Graduation evidence
 
-Prompt 144 records: every law and counterexample fixture; benchmark baselines and variance policy; old/new corpus
+Prompt 170 records: every law and counterexample fixture; benchmark baselines and variance policy; old/new corpus
 compatibility; public API diff; kernel constructor diff (which must be empty); reproducible asset lock audit;
 live/offline audio comparison; and a contradiction scan of all governing documents. Only then may `README.md` change
 from candidate to governing.

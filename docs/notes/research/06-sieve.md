@@ -100,7 +100,7 @@ Per the working rules: what emerged that was not put in.
    change or an analysis feature, and therefore whether the base is in the motive.
 3. **Constrain `B`'s equality when `B` is introduced** — *restated after [07](07-probe-log.md) P-3 corrected it.* The
    earlier wording claimed a present defect and named the wrong object. `B` is R1's *instrument bindings*, not
-   `StudioGraphSpec`, and `B` does not exist yet: prompts 130, 131, and 132 are all `pending`. So this is not a repair,
+   `StudioGraphSpec`, and `B` does not exist yet: prompts 156, 157, and 158 are all `pending`. So this is not a repair,
    it is a design constraint on 131/132 — whatever `B` becomes must be comparable and hashable, since R1's cache key
    `semantic_hash(M) ⊕ B ⊕ s` is only well-defined if it is. Cheap at introduction, expensive to retrofit. If `B` ends
    up carrying anything graph-shaped, note the ordering trap: identity that is positional rather than structural makes

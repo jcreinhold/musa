@@ -343,7 +343,7 @@ it.
 ## The candidate language, restated after prompt 127a
 
 The rules above remain the governing account of the implemented grammar. `../language/` is the candidate contract for
-prompts 93–140 and becomes governing only after prompt 146. Its staging, after this amendment, has one fewer stage than
+prompts 93–166 and becomes governing only after prompt 172. Its staging, after this amendment, has one fewer stage than
 it used to:
 
 ```text

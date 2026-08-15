@@ -1,15 +1,15 @@
 ---
-id: 128
+id: 154
 slug: studio-vocabulary
 status: pending
-depends_on: [122, 127i]
+depends_on: [122, 153]
 phase: 3
 ---
 
 # One Discoverable Studio Vocabulary
 
-> **Governed by the event-track and machine core installed by prompts 127a–127i.** Read the revised rules and the
-> core-calculus conformance report before this prompt's Design.
+> **Governed by the event-track and machine core installed by prompts 127a–127e and 150–153.** Read the revised rules
+> and the core-calculus conformance report before this prompt's Design.
 
 ## Task
 
@@ -25,7 +25,7 @@ desktop, and generated reference material consume the same facts.
   keyword docs and `musa-lsp/src/features/hover.rs::at_studio`.
 - Existing Sound/Mix facts and all hard-coded processor/parameter name matches. Count them before choosing an owner.
 - The revised machine and audio specifications and `docs/plan/code-map/process-runtime.md`; the catalogue's stable
-  processor/port descriptors join the build-local primitive registry established by prompts 127f–127h.
+  processor/port descriptors join the build-local primitive registry established by prompts 150–152.
 
 ## Design
 
@@ -73,4 +73,4 @@ Commit as `Make the studio vocabulary discoverable`.
 
 - No new processor merely to make the catalogue look complete.
 - No public DSP registry, dynamic processor plug-in API, or public compiler HIR.
-- No change to score-driven controls or routing; prompts 132–133 own those semantics.
+- No change to score-driven controls or routing; prompts 158–159 own those semantics.

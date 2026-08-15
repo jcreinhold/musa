@@ -77,7 +77,7 @@ standard that can be switched off silently is a rumour of a standard.
 
 ## 6. Candidate vocabulary says which layer it means
 
-**Candidate rule for prompts 93–142; it becomes governing only with prompt 143.** The additions in
+**Candidate rule for prompts 93–168; it becomes governing only with prompt 169.** The additions in
 `docs/rules/language/` keep the musician-facing word when it names a musical intention and the technical word when the
 author has deliberately entered an implementation block.
 

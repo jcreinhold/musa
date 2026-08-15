@@ -1,6 +1,6 @@
 # Semantic staging and ownership
 
-This document fixes the objects Musa computes and the boundaries between them. "Must" is normative for prompts 93–145;
+This document fixes the objects Musa computes and the boundaries between them. "Must" is normative for prompts 93–171;
 candidate precedence is defined in `README.md`. Prompt 127a rewrote it against the event-track and machine core.
 
 ## 1. Representations
@@ -200,7 +200,7 @@ scales or meter tracks.
 If a project resolves, all declarations check, `Σ ⊢piece Δ ⇓ t : Term[ScoreFact]`, and resource checking accepts it,
 then `t` is finite, closed, core-well-formed, and every payload decodes as `ScoreFact`. Core totality then gives a
 unique finite `EventTrack[WrittenTime, ScoreFact]`. Prompts 93–119 establish the typing, normalization, closure,
-quotation closure, and adapter lemmas; prompt 144 audits the end-to-end theorem against the implementation.
+quotation closure, and adapter lemmas; prompt 170 audits the end-to-end theorem against the implementation.
 
 The corresponding claim on the sound side is stated where the machines are, not here: preparation determinism is R1 and
 frame equality is R1-frames, both in `../across-stages/04-identity-and-realization.md`.

@@ -1,34 +1,34 @@
 ---
-id: 146
+id: 172
 slug: language-conformance
 status: pending
-depends_on: [120, 121, 122, 124, 125, 127i, 145]
+depends_on: [120, 121, 122, 124, 125, 153, 171]
 phase: 4
 ---
 
 # Whole-Language Conformance and Graduation
 
-> **Governed by the event-track and machine core installed by prompts 127a–127i.** Graduation covers the clean-break
-> language only; removed syntax and semantic paths are not compatibility obligations.
+> **Governed by the event-track and machine core installed by prompts 127a–127e and 150–153.** Graduation covers the
+> clean-break language only; removed syntax and semantic paths are not compatibility obligations.
 
 ## Task
 
-Audit the current language produced by prompts 92–145, including the clean replacement in 127a–127i. Close every law,
-theory, provenance, tooling, documentation, performance, sound, asset, package, and real-time obligation, and graduate
-`docs/rules/language/` from candidate to governing. This prompt adds no feature. It demonstrates that one well-typed
-source semantics reaches the kernel, renderers, performance gestures, instruments, audio, project, editors, and desktop
-without a competing evaluator or undocumented exception.
+Audit the current language produced by prompts 92–171, including the clean replacement in 127a–127e and 150–153. Close
+every law, theory, provenance, tooling, documentation, performance, sound, asset, package, and real-time obligation, and
+graduate `docs/rules/language/` from candidate to governing. This prompt adds no feature. It demonstrates that one
+well-typed source semantics reaches the kernel, renderers, performance gestures, instruments, audio, project, editors,
+and desktop without a competing evaluator or undocumented exception.
 
 ## Read
 
-- Prompt 92's acceptance matrix, the prompt-127a clean-break ledger, and all completion/repair notes through prompt 145.
+- Prompt 92's acceptance matrix, the prompt-127a clean-break ledger, and all completion/repair notes through prompt 171.
 - All of `docs/rules/language/`, `docs/rules/kernel/`, `docs/rules/desktop/`, `docs/rules/`,
   `docs/rules/across-stages/`, the roadmap, AGENTS.md, and the prompt README. The reasoning behind the language and the
   corrections applied to it is `docs/notes/research/60-language-decision-record.md`; it is history, and is read for
   context rather than audited against.
-- Prompt 93's historical baseline, prompt 127i's core report, prompt 144's audio performance report, and prompt 145's
+- Prompt 93's historical baseline, prompt 153's core report, prompt 170's audio performance report, and prompt 171's
   audio conformance matrix.
-- The OMT/source citation map and local proof obligations delivered by prompts 125 and 139.
+- The OMT/source citation map and local proof obligations delivered by prompts 125 and 165.
 
 ## Design
 
@@ -52,9 +52,9 @@ matrix where possible; review every manual bridge. At minimum it must cover:
 - `.musa.kernel` document inclusion and local typed quote/antiquote, including hygiene, unknown payloads, source maps,
   and the context-neutral boundary;
 - exact performance gestures/control curves, checked scheduling, tempo/tuning realization, typed instrument machines,
-  part routing, mix, assets/packages, sampler adapters, media cues/clips, and every prompt 145 row;
+  part routing, mix, assets/packages, sampler adapters, media cues/clips, and every prompt 171 row;
 - parser recovery, formatting idempotence, tree-sitter drift, LSP facts, editor extension assets, desktop navigation,
-  all exports, playback scheduling, last-valid-artifact behavior, and prompt 127/137 budgets.
+  all exports, playback scheduling, last-valid-artifact behavior, and prompt 127/163 budgets.
 
 Five rows exist because these boundaries are cheap to hold and expensive to recover:
 
@@ -136,7 +136,7 @@ git -C ../vscode-musa diff --check
 git -C ../zed-musa diff --check
 ```
 
-Repeat prompts 127 and 140 release comparisons on their recorded benchmark hosts and attach the results. Record manual
+Repeat prompts 127 and 166 release comparisons on their recorded benchmark hosts and attach the results. Record manual
 smoke tests for VS Code, Zed, and the desktop workbench. Commit each affected repository intentionally, record
 cross-repository commit ids, and commit Musa as `Graduate the Musa language`.
 
@@ -144,6 +144,6 @@ cross-repository commit ids, and commit Musa as `Graduate the Musa language`.
 
 - No new surface construct, theory/audio feature, backend, syntax alias, or opportunistic refactor.
 - No weakened golden, deleted failing test, hidden retained path, or undocumented conformance exception.
-- No graduation with a red or unowned matrix row or a red prompt 145 audit.
+- No graduation with a red or unowned matrix row or a red prompt 171 audit.
 - No claim that passing tests proves a theoretical convention or audio-format interpretation universal beyond its
   documented domain.

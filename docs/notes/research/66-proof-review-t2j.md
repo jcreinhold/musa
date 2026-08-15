@@ -221,7 +221,7 @@ claims.
 
 - Any executable T₂j resolver, package graph, exact-tree registry, interface encoder/transport, nominal loader, replay
   scheduler, persistent cache, or result codec, because none exists.
-- Remote Git fetch, hostile repository/archive, lockfile, and offline-cache behavior planned by prompt 136.
+- Remote Git fetch, hostile repository/archive, lockfile, and offline-cache behavior planned by prompt 162.
 - Musical or cultural adequacy of the future theory packages.
 
 ## Required closure

@@ -4,7 +4,7 @@ This page answers two engineering questions: which crate owns each stage, and ho
 API.
 
 The stage names below are the governing ones installed by prompt 127a. The Rust identifiers in the workspace still carry
-their pre-127a spellings until prompts 127b–127i land; the pairs are listed in
+their pre-127a spellings until prompts 127b–127e and 150–153 land; the pairs are listed in
 [`../clean-break-ledger.md`](../clean-break-ledger.md), and this page is stale wherever it uses one as if it were the
 other.
 

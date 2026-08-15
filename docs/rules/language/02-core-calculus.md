@@ -258,7 +258,7 @@ value nodes, 1,048,576 logical value bytes, 2,048 instantiated prelude entries, 
 with 256 nested evaluation levels, added to guard the descent §5.9's recursor introduced. The scalar fragment charges
 zero output occurrences; track and machine constructors charge the already present output counter. These are
 language-version constants, not timeouts or machine-memory observations. Interactive cancellation remains an external
-compiler operation, not a language effect. Prompts 124 and 142 benchmark and may tighten the accepted envelope
+compiler operation, not a language effect. Prompts 124 and 168 benchmark and may tighten the accepted envelope
 deliberately.
 
 ### 4.1 Nesting, and the room to reach the limit
@@ -971,7 +971,7 @@ to compile a surface convenience into the eliminators musa already writes direct
 unrepresentable.
 
 **The invariant to hold:** if a later prompt adds nesting, repeated variables, or guards to patterns, it has taken on
-that subsystem and must say so and cite it. Prompt 146 checks this row.
+that subsystem and must say so and cite it. Prompt 172 checks this row.
 
 ## 7. Provenance
 

@@ -427,7 +427,7 @@ The next implementation decision is smaller:
 
 1. retain the current finite temporal kernel and its unequal-extent overlay;
 2. specify current compiler passes as `Derived` values with composed lineage;
-3. make score→gesture→prepared-plan identity and loss explicit in prompts 130–132;
+3. make score→gesture→prepared-plan identity and loss explicit in prompts 156–158;
 4. specify the studio's actual process tick and port-level instantaneous dependency contract; and
 5. add total exact warps only when one score/performance caller demonstrates the need.
 

@@ -81,7 +81,7 @@ rather than promised (§5).
 
 **It will not stay free.** Six processors in the current studio catalogue declare no parameters at all —
 `crates/musa-audio/src/spec.rs`'s `Noise`, `Passthrough`, `Mixer`, `Splitter`, `MonoToStereo`, and `StereoToMono` — and
-prompt 127h is *Register each current DSP unit as a registered primitive*, naming the mixer among them: "a mixer is a
+prompt 152 is *Register each current DSP unit as a registered primitive*, naming the mixer among them: "a mixer is a
 primitive from a tuple of frames to one frame". Three of the six are wiring that the structural forms already cover
 (`copy` is `Splitter`; the channel adapters are adapters), and `Passthrough` is `identity`. Two are not. `Noise` and a
 plain summing `Mixer` are registered units with genuinely nothing to configure.
@@ -94,7 +94,7 @@ honest configuration" and "introduce the literal" is a registry-design question 
 hand.
 
 What this note fixes is that the question cannot be reached by accident: the `const` assertion in §5 makes an empty
-configuration a build error at the moment prompt 127f or 127h writes one, with the reason in the panic message.
+configuration a build error at the moment prompt 150 or 152 writes one, with the reason in the panic message.
 
 ## 4. Refused: remove `Unit` from the offered vocabulary
 
@@ -145,10 +145,10 @@ The two halves of this decision are not equally settled, and they should not be 
 means amending `03-machine-calculus.md` §2 with a replacement for a form that produces nothing.
 
 **`Unit` stays without a literal** is a decision made on the units this build registers, and §3 names the work that will
-test it. Prompt 127f registers the reference family; prompt 127h migrates the studio catalogue, where `Noise` and a
-plain summing `Mixer` are registered units with nothing to configure. If either declares an empty configuration rather
-than an honest one, the literal has its first consumer and §2's first ground — that nothing consumes a unit value —
-becomes false. A builtin or eliminator taking or returning `Unit` would do the same.
+test it. Prompt 150 registers the reference family; prompt 152 migrates the studio catalogue, where `Noise` and a plain
+summing `Mixer` are registered units with nothing to configure. If either declares an empty configuration rather than an
+honest one, the literal has its first consumer and §2's first ground — that nothing consumes a unit value — becomes
+false. A builtin or eliminator taking or returning `Unit` would do the same.
 
 That is the reversal `02-core-calculus.md` §5.3 already leaves room for. When it comes, this is what changes: the law in
 §5 stops expecting `["Unit"]`, the `const` assertion in `machine.rs` loses its `Unit` arm, and the amendment path in §2

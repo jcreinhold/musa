@@ -1,15 +1,15 @@
 ---
-id: 134
+id: 160
 slug: ergonomic-sound-bindings
 status: pending
-depends_on: [125, 127i, 131, 132, 133]
+depends_on: [125, 153, 157, 158, 159]
 phase: 3
 ---
 
 # Choosing a Sound Is One Musical Action
 
-> **Governed by the event-track and machine core installed by prompts 127a–127i.** Surface conveniences must elaborate
-> to ordinary values, event tracks, and machines.
+> **Governed by the event-track and machine core installed by prompts 127a–127e and 150–153.** Surface conveniences must
+> elaborate to ordinary values, event tracks, and machines.
 
 ## Task
 
@@ -23,7 +23,7 @@ learning its private wiring.
 - `docs/rules/language/01-surface.md` and `08-performance-and-sound.md` spellings/desugarings; roadmap §2's Warm Pad
   example and §14.4 progressive disclosure.
 - Current `profile` binding, `assign`/`route`/`send` syntax, default studio, structured studio edits, examples, style
-  guide, and prompts 130–133.
+  guide, and prompts 156–159.
 
 ## Design
 

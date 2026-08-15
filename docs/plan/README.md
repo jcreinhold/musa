@@ -6,16 +6,16 @@
 | Page | What it is |
 | --- | --- |
 | [`roadmap.md`](roadmap.md) | The broad crate and product plan: layers, crate ownership, DSP rules, what is deliberately rejected. Binding where the rules are silent |
-| [`language-design-closure.md`](language-design-closure.md) | Record of the bounded source-language attempt that stopped at proof review; the replacement implementation path is prompts 127a–127i |
-| [`clean-break-ledger.md`](clean-break-ledger.md) | Every source spelling, Rust API, serialized form, fixture, and test name that prompts 127b–127i delete rather than alias |
+| [`language-design-closure.md`](language-design-closure.md) | Record of the bounded source-language attempt that stopped at proof review; the replacement implementation path is prompts 127a–127e and 150–153 |
+| [`clean-break-ledger.md`](clean-break-ledger.md) | Every source spelling, Rust API, serialized form, fixture, and test name that prompts 127b–127e and 150–153 delete rather than alias |
 | [`code-map/`](code-map/README.md) | Which crate implements which stage, and what is implemented, partial, or absent. Reports on code; decides nothing |
 | [`prompts/`](prompts/README.md) | The numbered work plan, executed in dependency order, one prompt per commit |
 
 The pages answer different questions. `roadmap.md` says what musa is for and how it is carved into crates.
 `language-design-closure.md` records why the first replacement stopped. The reviewed successor lives in
-`../notes/research/core-calculus/`; prompts 127a–127i turn it into rules and code before pending studio and audio work
-continues, and `clean-break-ledger.md` is the checkable list of what that cutover deletes rather than aliases.
-`code-map/` says what exists today. `prompts/` says what happens next, and in what order.
+`../notes/research/core-calculus/`; prompts 127a–127e and 150–153 turn it into rules and code before pending studio and
+audio work continues, and `clean-break-ledger.md` is the checkable list of what that cutover deletes rather than
+aliases. `code-map/` says what exists today. `prompts/` says what happens next, and in what order.
 
 When the roadmap and a specification under `../rules/` disagree, the specification wins and the roadmap is stale. When
 `code-map/` and the code disagree, `code-map/` is stale. When a prompt and a rule disagree, the prompt is repaired

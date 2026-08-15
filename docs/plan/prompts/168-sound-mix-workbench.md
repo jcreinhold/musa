@@ -1,15 +1,15 @@
 ---
-id: 142
+id: 168
 slug: sound-mix-workbench
 status: pending
-depends_on: [124, 127i, 134, 136, 138, 139, 141]
+depends_on: [124, 153, 160, 162, 164, 165, 167]
 phase: 4
 ---
 
 # Sound and Mix Show Musical Objects First
 
-> **Governed by the event-track and machine core installed by prompts 127a–127i.** The workbench edits source that
-> constructs instruments and machine wiring; it owns no second graph.
+> **Governed by the event-track and machine core installed by prompts 127a–127e and 150–153.** The workbench edits
+> source that constructs instruments and machine wiring; it owns no second graph.
 
 ## Task
 
@@ -22,7 +22,7 @@ source and consumes immutable project/compiler facts.
 
 - Governing `docs/rules/desktop/`, especially source authority, selection, state/voice, Origin, accessibility, and
   budgets; roadmap §14.4; prompts 31 and 119.
-- Prompts 128, 132–139 facts/edit commands; current Sound/Mix Svelte components, Tauri/project boundary, screenshots,
+- Prompts 154, 158–165 facts/edit commands; current Sound/Mix Svelte components, Tauri/project boundary, screenshots,
   and Playwright fixtures.
 
 ## Design
@@ -37,10 +37,10 @@ Write the interaction/spec repair before UI code. Progressive disclosure has thr
 
 Imported/built-in instruments navigate to read-only source/support facts. Asset failures and offline packages have
 loading/error/remediation states. Parameter/control gestures replace source tokens and commit once; playback may use a
-separate prepared-plan update only if source has already become authoritative and prompt 144 measurement requires it.
+separate prepared-plan update only if source has already become authoritative and prompt 170 measurement requires it.
 Private machine wiring is not editable from a generic property grid or free-form canvas.
 
-All terms use prompt 128's authoritative catalogue and the compiler/project facts from prompts 136–141; prompt 143
+All terms use prompt 154's authoritative catalogue and the compiler/project facts from prompts 162–167; prompt 169
 carries those same facts into editors and the handbook. Include keyboard navigation, screen-reader grouping, focus
 preservation on recompile, narrow layouts, stale/last-valid plan indication, and reduced-motion behavior.
 

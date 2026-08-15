@@ -36,7 +36,7 @@ Keep the evaluator's `Value` private. Expose one immutable, exact, caller-orient
 independent current consumers need the same stable representation and the new crate hides more than it exposes.
 
 The build-local primitive descriptor table rejects one id/version paired with unequal schema or configuration codec.
-Actual start state and step code remain absent until prompt 127f.
+Actual start state and step code remain absent until prompt 150.
 
 ## Target
 

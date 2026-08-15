@@ -1,5 +1,5 @@
 ---
-id: 127f
+id: 150
 slug: machine-runtime
 status: pending
 depends_on: [127d, 127e]
@@ -34,7 +34,7 @@ Keep state, buffers, primitive instances, node order, and flattened layout priva
 the structural tree directly. A later flattening is valid only when differential tests show the same state and outputs.
 `musa-engine` receives an opaque prepared machine.
 
-This prompt uses small deterministic reference primitives, not the full studio catalogue. Prompt 127h migrates existing
+This prompt uses small deterministic reference primitives, not the full studio catalogue. Prompt 152 migrates existing
 DSP units after the semantics pass.
 
 ## Target

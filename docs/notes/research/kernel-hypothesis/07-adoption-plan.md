@@ -130,7 +130,7 @@ Nothing yet. Concretely:
   evidence. A kernel-shape change is the one irreversible-feeling move here and it should be the last one made.
 - **Renumbering.** Per the standing convention, new work becomes numbered prompts with the rest renumbered. Track A and
   B prompts belong in the phase-3 block (115–127). A Track C prompt belongs *after*
-  [146](../../../plan/prompts/146-language-conformance.md), the whole-language conformance and graduation prompt,
+  [172](../../../plan/prompts/172-language-conformance.md), the whole-language conformance and graduation prompt,
   because changing the kernel denotation before the language is graduated against it would invalidate the graduation.
 - **This directory's status.** It stays research. If Tracks A and B land, `00-constitution.md`'s Amendments III, V, and
   VI get folded into `docs/course-correction.md` as amendments to it, and Amendments II and IV are either withdrawn or
@@ -158,10 +158,10 @@ three landed as edits elsewhere and are recorded here so the plan stays the sing
    abstraction map says what it *means*, and only the second makes the fact/candidate/conflict classification precise.
    **Amendment VI is improved by this and should be restated in its terms if it is ever promoted.**
 4. **Flat patterns are a boundary, not an omission.** `docs/rules/language/02-core-calculus.md` §6.2, checked by prompt
-   146. **Done.**
+   172. **Done.**
 
 The general lesson is the one Gate 0 taught in a different form: musa has been re-deriving a literature it does not
-cite, and mostly getting it right. Citing it is cheap and makes the refusals arguable. Prompt 146 now audits that every
+cite, and mostly getting it right. Citing it is cheap and makes the refusals arguable. Prompt 172 now audits that every
 "deliberately absent" item carries either a citation or a musical falsifier — the same standard the music-theory claims
 have always been held to.
 

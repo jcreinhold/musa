@@ -106,7 +106,7 @@ Commit as `Charge a value where it is constructed, not where it is named`.
 
 ## Stop
 
-- No change to the budget's limits. `Budget::LANGUAGE`'s five numbers are prompt 96's and stay; prompts 124 and 142 own
+- No change to the budget's limits. `Budget::LANGUAGE`'s five numbers are prompt 96's and stay; prompts 124 and 168 own
   measuring them.
 - No change to the cost table's weights. They stay uniform at one, for prompt 96's stated reason.
 - No new eliminator and no change to `list_fold`'s direction. That `list_fold` is a left fold while `nat_fold` and every

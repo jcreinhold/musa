@@ -146,7 +146,7 @@ Do not implement B inside the current research turn. First:
 
 1. add an impulse differential test proving the current block-size dependence;
 2. document current execution as design A, without calling it a one-frame guarded trace;
-3. decide whether prompt 144's block-partition law includes feedback graphs;
+3. decide whether prompt 170's block-partition law includes feedback graphs;
 4. prototype one feedback SCC with the per-output primitive contract; and
 5. compare performance with current block execution before choosing whether B replaces A or feedback is temporarily
    restricted by C.

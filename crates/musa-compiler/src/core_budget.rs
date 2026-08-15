@@ -48,7 +48,7 @@ impl CostTable {
     ///
     /// Uniform on purpose. A weight that differed between reductions would be a
     /// claim about their relative expense, and that claim needs measurement
-    /// (prompts 124 and 142) rather than an author's intuition. What the
+    /// (prompts 124 and 168) rather than an author's intuition. What the
     /// weights fix is that they exist, are named, and move together.
     ///
     /// A new reduction *kind* is therefore not a table change. Prompt 127dcfaa

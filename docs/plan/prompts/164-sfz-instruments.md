@@ -1,25 +1,25 @@
 ---
-id: 138
+id: 164
 slug: sfz-instruments
 status: pending
-depends_on: [127i, 135, 137]
+depends_on: [153, 161, 163]
 phase: 4
 ---
 
 # SFZ Instruments Enter Through a Checked Adapter
 
-> **Governed by the event-track and machine core installed by prompts 127a–127i.** SFZ adapts into the sampler machine;
-> it does not add a core form.
+> **Governed by the event-track and machine core installed by prompts 127a–127e and 150–153.** SFZ adapts into the
+> sampler machine; it does not add a core form.
 
 ## Task
 
 Import a documented SFZ v1-compatible core into Musa's native sample-map representation. SFZ is an interchange adapter,
 not Musa's instrument semantics: every accepted opcode has one explicit translation, every unsupported or dialect opcode
-is diagnosed by name, and the runtime remains the deterministic sampler built by prompt 137.
+is diagnosed by name, and the runtime remains the deterministic sampler built by prompt 163.
 
 ## Read
 
-- `docs/rules/language/09-assets-and-packages.md`; prompts 135 and 133.
+- `docs/rules/language/09-assets-and-packages.md`; prompts 161 and 159.
 - SFZ format overview, headers, regions, samples, and opcode/version table: `https://sfzformat.com/`,
   `https://sfzformat.com/headers/`, `https://sfzformat.com/headers/region/`, `https://sfzformat.com/opcodes/sample/`,
   and `https://sfzformat.com/opcodes/`. The catalogue mixes SFZ v1/v2, ARIA, and LinuxSampler extensions; never describe
@@ -36,7 +36,7 @@ position/duration; and the standard sustain-pedal conditions needed by the nativ
 into Musa gesture and control semantics only at this adapter; MIDI controller numbers do not become the instrument
 contract.
 
-Resolve samples and any supported includes within the SFZ asset/package root with prompt 135's traversal/digest rules.
+Resolve samples and any supported includes within the SFZ asset/package root with prompt 161's traversal/digest rules.
 If includes/macros cannot be implemented without weakening the resolver, reject them in this version and say so. Parse
 off-thread with bounded file/region/opcode/string counts. Duplicate/contradictory regions and unknown values get spans
 and useful diagnostics. Unsupported sound-changing opcodes are errors by default; explicitly harmless metadata may be

@@ -11,9 +11,9 @@ carry their pre-127a spellings, and the pairs are in [`../clean-break-ledger.md`
 | Building and closing a fragment into a core term | compiler to kernel | implemented, but over the deleted contextual `music` type | prompt 127e rebuilds it over ordinary values; differential and closure tests |
 | Finite `EventTrack<C,A>` operations, including unequal-duration `together` | `musa-kernel` | implemented at the old names and without the coordinate index | prompts 127b–127c; current 62 kernel tests and final conformance audit |
 | Versioned exact bytes for event-track equality | `musa-kernel` | implemented; the coordinate tag is not yet in the encoding | prompt 127c, then a migration test when a persisted reader is added |
-| `Machine<K,A,B>` as a core value of the source language | `musa-compiler`/`musa-audio` | absent | prompts 127f–127h |
-| `schedule(format, policy, time map, track)` with a recorded decision list | `musa-audio` | absent | prompt 127h |
-| Gesture event track | `musa-compiler` | absent | prompt 130 and its admission tests |
+| `Machine<K,A,B>` as a core value of the source language | `musa-compiler`/`musa-audio` | absent | prompts 150–152 |
+| `schedule(format, policy, time map, track)` with a recorded decision list | `musa-audio` | absent | prompt 152 |
+| Gesture event track | `musa-compiler` | absent | prompt 156 and its admission tests |
 | Engraving plan and current exports | `musa-render` | implemented for current score facts | language graduation matrix |
 | Analysis packages with their own hidden value types and evidence | `musa-compiler` | partial built-in analyses; no general package mechanism | accepted source type design and real package examples |
 | Valid whole-machine step order | `musa-audio` | partial and not conforming to the new ordering rule | known ordering counterexample, machine-law tests |
@@ -26,8 +26,8 @@ carry their pre-127a spellings, and the pairs are in [`../clean-break-ledger.md`
 
 ## Recommended implementation order
 
-1. Carry out the clean break of prompts 127b–127i: the event-track rename and coordinate index, the deletion of the
-   contextual `music` type, machines as core values, and `schedule`.
+1. Carry out the clean break of prompts 127b–127e and 150–153: the event-track rename and coordinate index, the deletion
+   of the contextual `music` type, machines as core values, and `schedule`.
 2. Finish or reject the small source-language design for theory-owned data. Do not implement it while stable package
    selection remains undefined.
 3. Add the gesture event track using the now-implemented payload admission rule.

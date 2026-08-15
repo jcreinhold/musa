@@ -24,7 +24,7 @@ source file no `mod` reaches is rejected rather than silently unreachable. The f
   mechanism.
 - `docs/rules/language/01-surface.md` on nested module paths, flat binding, and the alias-at-a-collision rule.
 - Prompt 99, which built the bundled library and mandated the layout this prompt corrects.
-- Prompt 136 (pinned package imports), which inherits this shape and must not invent a second one.
+- Prompt 162 (pinned package imports), which inherits this shape and must not invent a second one.
 
 ## Design
 
@@ -91,7 +91,7 @@ Commit as `Make the standard library a package with a module tree`.
 ## Stop
 
 - No registry, no version-range solver, no network access during compilation, and no dependency resolution of any kind.
-  Prompt 136 adds exact pinned fetching on top of this shape and nothing here anticipates it.
+  Prompt 162 adds exact pinned fetching on top of this shape and nothing here anticipates it.
 - No directory scanning, no implicit module discovery, and no convention that a file's presence makes it importable.
 - No prelude, no implicit import, no glob import, and no re-export (`pub use`) form.
 - No `module` value, no first-class module, and no change to §4's static signature/module/functor layer.

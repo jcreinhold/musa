@@ -9,7 +9,7 @@ remain private, how data is stored, and where validation occurs.
 
 **Vocabulary note (prompt 127a).** These pages now use the governing names — event track, `follow`, `together`,
 `map_payloads`, duration, machine, registered primitive, step, `schedule`, `PreparedMachine`. The Rust identifiers in
-the workspace still carry their pre-127a spellings until prompts 127b–127i land, and every pair is listed in
+the workspace still carry their pre-127a spellings until prompts 127b–127e and 150–153 land, and every pair is listed in
 [`../clean-break-ledger.md`](../clean-break-ledger.md). Where a page quotes literal current output or a fixture, it says
 so.
 

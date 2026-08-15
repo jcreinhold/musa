@@ -8,8 +8,8 @@ phase: 3
 
 # Add Text, Sums, and One Structural Result
 
-> **Governed by the event-track and machine core installed by prompts 127a–127i.** Second of the five prompts that
-> replace the source checker and evaluator; the chain is 127aa, 127ab, 127ac, 127ad, 127b.
+> **Governed by the event-track and machine core installed by prompts 127a–127e and 150–153.** Second of the five
+> prompts that replace the source checker and evaluator; the chain is 127aa, 127ab, 127ac, 127ad, 127b.
 
 ## Task
 

@@ -1,7 +1,7 @@
 # Musa language candidate
 
-**Status: candidate. Not yet governing.** These documents are the implementation contract for prompts 93–145. Until
-prompt 146 completes its conformance audit, everything above this directory in
+**Status: candidate. Not yet governing.** These documents are the implementation contract for prompts 93–171. Until
+prompt 172 completes its conformance audit, everything above this directory in
 [the precedence ladder](../../README.md#which-document-wins) takes precedence: `docs/rules/`,
 `docs/rules/across-stages/`, `docs/rules/kernel/`, and the relevant settled parts of `docs/plan/roadmap.md`. A
 contradiction is a prompt defect to repair, not permission to implement whichever text is convenient.
@@ -48,9 +48,9 @@ implementor's path — grammar to kernel, laws, ownership, and extension recipes
 
 ## Graduation
 
-Prompt 146 may mark this specification governing only after all of the following hold:
+Prompt 172 may mark this specification governing only after all of the following hold:
 
-1. prompts 93–145 have discharged the proof, compatibility, performance, diagnostics, editor, and audio obligations
+1. prompts 93–171 have discharged the proof, compatibility, performance, diagnostics, editor, and audio obligations
    named here;
 2. every pre-candidate example either retains its meaning or has an explicit, tested migration diagnostic;
 3. the core law suite still passes unchanged and no surface convenience has entered `musa-kernel`;

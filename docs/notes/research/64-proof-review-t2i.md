@@ -209,7 +209,7 @@ next adequacy gate.
   package-instance DAG, public graph, graph inclusion, transitive package type, simultaneous version selection, or
   lockfile.
 - Current package code traverses the bundled standard library's declared `lib.musa`/`mod.musa` tree. Exact locked Git
-  fetching and the resolver/cache work remain in pending prompt 136.
+  fetching and the resolver/cache work remain in pending prompt 162.
 - User-defined nominal data, hidden constructors, and abstract type members are absent. Current internal `DeclKey`
   values are transient and explicitly must not be serialized.
 - Current `WorkMeter` enforces the governing source limits inside checking/evaluation. There are no replay events,
@@ -228,7 +228,7 @@ law. All passed. They verify the present compatibility surface, not T₂i's unim
   prior review obligations.
 - Governing exact identity/hash rules, source authority, package shape, exact Git/no-solver plan, deterministic resource
   acceptance, diagnostic ordering, and source-core metatheory.
-- The reorganized documentation precedence, implementation code map, prompt 136 package boundary, current compiler and
+- The reorganized documentation precedence, implementation code map, prompt 162 package boundary, current compiler and
   project surfaces, and the focused suites listed above.
 
 ### Judged
@@ -242,7 +242,7 @@ law. All passed. They verify the present compatibility surface, not T₂i's unim
 
 - Any executable package resolver, public/checking/execution graph, graph codec, interface inclusion, checked artifact,
   replay scheduler, persistent cache, or user-nominal loader, because none exists.
-- Network fetch, lockfile, offline package-cache, and hostile archive behavior planned by prompt 136.
+- Network fetch, lockfile, offline package-cache, and hostile archive behavior planned by prompt 162.
 - Musical or cultural adequacy of the future W/K source packages.
 
 ## Required closure

@@ -1,15 +1,15 @@
 ---
-id: 129
+id: 155
 slug: exact-studio-values
 status: pending
-depends_on: [93, 127i, 128]
+depends_on: [93, 153, 154]
 phase: 3
 ---
 
 # Written Sound Values Stay Exact
 
-> **Governed by the event-track and machine core installed by prompts 127a–127i.** Read its exact storable-data and
-> audio preparation rules before this prompt's Design.
+> **Governed by the event-track and machine core installed by prompts 127a–127e and 150–153.** Read its exact
+> storable-data and audio preparation rules before this prompt's Design.
 
 ## Task
 

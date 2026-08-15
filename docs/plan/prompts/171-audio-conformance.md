@@ -1,19 +1,19 @@
 ---
-id: 145
+id: 171
 slug: audio-conformance
 status: pending
-depends_on: [127i, 128, 129, 129a, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144]
+depends_on: [153, 154, 155, 155a, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170]
 phase: 4
 ---
 
 # Audit the Performance and Sound Language
 
-> **Governed by the event-track and machine core installed by prompts 127a–127i.** This audit must catch any sound
-> prompt that quietly restored a second event container, another machine semantics, or block-defined audio path.
+> **Governed by the event-track and machine core installed by prompts 127a–127e and 150–153.** This audit must catch any
+> sound prompt that quietly restored a second event container, another machine semantics, or block-defined audio path.
 
 ## Task
 
-Audit prompts 128–144 as one coherent performance/sound implementation. Trace every rule and canonical-source claim in
+Audit prompts 154–170 as one coherent performance/sound implementation. Trace every rule and canonical-source claim in
 `docs/rules/language/08-performance-and-sound.md` and `09-assets-and-packages.md` to an owner and executable evidence;
 close every routing, exactness, control, instrument, asset, package, sample-format, media, UI, tooling, determinism, and
 real-time row before the whole-language graduation prompt may run. This prompt adds no feature.
@@ -22,8 +22,8 @@ real-time row before the whole-language graduation prompt may run. This prompt a
 
 - The revised constitution and obligations in full; the event-track payload-admission table.
 - The revised machine, scheduling, identity, and audio-step specifications and architecture map.
-- Prompt 127i's core conformance matrix and every completion/repair note from prompts 127a–127i.
-- Prompt 93 baseline and expected-change ledger; all prompt 128–142 completion/repair notes and benchmark artifacts.
+- Prompt 153's core conformance matrix and every completion/repair note from prompts 127a–127e and 150–153.
+- Prompt 93 baseline and expected-change ledger; all prompt 154–168 completion/repair notes and benchmark artifacts.
 - The candidate sound/assets specs, roadmap/kernel boundaries, interface specification, handbook, SFZ support matrix,
   SoundFont support matrix, package/asset schemas, and public crate facades.
 - Every audio preparation/offline/live/project/CLI/LSP/desktop caller and every unsafe/RT-sensitive block.
@@ -41,7 +41,7 @@ and observed result. At minimum cover:
 - native sample maps, deterministic selection, SFZ and SoundFont claimed support/loss matrices;
 - musical clips versus fixed cues, transform/tempo/seek/tail behavior;
 - source-edit authority, Origin/navigation, generated docs, editor drift, accessibility, stale/error states;
-- offline/live equality, deterministic outputs, NaN/silence laws, callback/retirement instrumentation, and prompt 144
+- offline/live equality, deterministic outputs, NaN/silence laws, callback/retirement instrumentation, and prompt 170
   budgets;
 - **the core boundary itself** — executable evidence for every integration risk:
   - no type outside `musa-kernel` pairs a finite rational duration with positioned events and defines its own ordering
@@ -73,7 +73,7 @@ amendment procedure; this audit may not weaken the rule. This prompt does not ye
 - End-to-end fixture project using functions/templates/theory, two profiles/instruments, controls, room/send, native
   sampler, SFZ, SoundFont, locked package asset, musical clip, and fixed cue.
 - Repairs required solely for specified behavior, with rationale linked to the owning prompt.
-- Public API/dependency/RT audit and final prompt 144 comparison attached.
+- Public API/dependency/RT audit and final prompt 170 comparison attached.
 
 ## Check
 

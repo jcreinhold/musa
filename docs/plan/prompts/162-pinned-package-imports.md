@@ -1,15 +1,15 @@
 ---
-id: 136
+id: 162
 slug: pinned-package-imports
 status: pending
-depends_on: [99, 104, 110, 127i, 135]
+depends_on: [99, 104, 110, 153, 161]
 phase: 4
 ---
 
 # A Library May Live Elsewhere Without Making Builds Implicit
 
-> **Governed by the event-track and machine core installed by prompts 127a–127i.** This prompt adds exact source
-> packages only; it promises no persistent compiled identity or cache.
+> **Governed by the event-track and machine core installed by prompts 127a–127e and 150–153.** This prompt adds exact
+> source packages only; it promises no persistent compiled identity or cache.
 
 ## Task
 
@@ -20,7 +20,7 @@ lockfile and work offline.
 ## Read
 
 - `docs/rules/language/04-templates-and-modules.md` and `09-assets-and-packages.md`; prompt 36 import rules, prompt 84a
-  project, prompt 99 bundled library, prompt 104 namespaces/signatures, prompt 135 assets.
+  project, prompt 99 bundled library, prompt 104 namespaces/signatures, prompt 161 assets.
 - Roadmap §16's “relative imports are sufficient” and §19's registry/solver rejection. Repair the first deliberately
   while retaining the second; explain why exact fetching is a different capability from version solving.
 - Git invocation/security, cache, lockfile, offline, and diagnostic code in `musa-project`/CLI. Prefer a narrow library
