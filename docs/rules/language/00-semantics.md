@@ -66,12 +66,12 @@ not value types.
 **The expansion phase is these judgments in a second environment, not a second language.** Adapter expansion happens
 before name resolution and elaboration, and an adapter module is checked and evaluated by the same checker and the same
 evaluator, under a phase environment `Σφ` that adds the phase-local types `Syntax<Cat>`, `NodePath`, `BindingPath`, and
-`SyntaxStep<C, A>` and a separate registry of compiler-owned phase operations. `Cat` is the four-case index — `Expr`,
-`Item`, `Pattern`, `TokenTree` — that says how a syntax value parses (`11-quotation.md` §1); the untyped `Syntax` it
-replaces is the same tree with nothing claimed about it, which is now spelled `Syntax<TokenTree>`. Ordinary source is
-read in a scope where none of those names resolve, so nothing the phase owns can be written, named, or obtained outside
-it. The one thing that crosses back is the answer, which is syntax that stands where the region stood; a sealed step is
-never part of it, because a step is not storable data (`02-core-calculus.md` §1.2, §5.9).
+`SyntaxStep<C, A>` and a separate registry of compiler-owned phase operations. `Cat` is the two-case index — `Expr` and
+`TokenTree` — that says how a syntax value parses (`11-quotation.md` §1); the untyped `Syntax` it replaces is the same
+tree with nothing claimed about it, which is now spelled `Syntax<TokenTree>`. Ordinary source is read in a scope where
+none of those names resolve, so nothing the phase owns can be written, named, or obtained outside it. The one thing that
+crosses back is the answer, which is syntax that stands where the region stood; a sealed step is never part of it,
+because a step is not storable data (`02-core-calculus.md` §1.2, §5.9).
 
 `Σφ`'s registry is a second registry rather than a fifth builtin family, so §5.8's four families of the source core are
 unchanged by it. Descent into a syntax value happens in exactly **two** places: `recurse_syntax` for syntax of unknown

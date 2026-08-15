@@ -320,7 +320,7 @@ two things have a similar shape. There is no third quotation form, and adding on
 
 | Obligation | What discharges it | Owed by |
 | --- | --- | --- |
-| **Index soundness** — a `Syntax<Expr>` prints as source the parser reads as an expression, and likewise for `Item` and `Pattern` | round-trip property tests over the corpus, and the construction rules of §1 | 138, 147 |
+| **Index soundness** — a `Syntax<Expr>` prints as source the parser reads as an expression, and `as_expression` answers `Some` exactly then | round-trip property tests over the corpus, and the construction rules of §1 | 138, 147 |
 | **Derived-identity injectivity** — the triple of §3 is injective on literal nodes, and no two distinct literal positions collide | the path-uniqueness argument, plus `checked_expression`'s gate as its executable evidence | 139, 148 |
 | **Hygiene** — no identifier written in a quote captures one spliced in, or the reverse | the scope discipline of 127da, restated for splicing | 139, 147 |
 | **Construction/pattern round trip** — matching a quote pattern against a quote built from the same shape returns the spliced values unchanged | property tests over generated shapes | 140, 147 |
