@@ -1,7 +1,7 @@
 ---
 id: 137a
 slug: operators-and-methods
-status: pending
+status: in-progress
 depends_on: [137]
 phase: 3
 ---
@@ -11,7 +11,7 @@ phase: 3
 ## Task
 
 Give 137's dictionaries their spelling. `trait`, `impl`, and `where` in the surface language — grammar, CST, formatter,
-highlighting, completion, tree-sitter and its drift test — plus operator syntax for `== < > + - * /` and indexing,
+highlighting, completion, tree-sitter and its drift test — plus operator syntax for `== < + - * /` and indexing,
 method-call syntax and `Type::item` paths, and the exact-receiver lookup that resolves them. Naming rules for traits,
 methods, record fields, and enum constructors in `docs/rules/style-guide.md`, each with the `lint.rs` diagnostic that
 reports it.
@@ -62,7 +62,16 @@ and resolves as a qualified name, with no new resolution rule.
 
 **Precedence is fixed and small, and there is no way to add to it.** One table in the parser covering comparison,
 additive, multiplicative, and indexing, with no user-defined symbols and no sections — the mechanism that makes an
-operator table extensible is the mechanism that makes a program's parse depend on its imports.
+operator table extensible is the mechanism that makes a program's parse depend on its imports. The table is
+`01-surface.md` §1's six levels exactly, so `step`, `up`, and `down` sit *between* additive and comparison rather than
+above or below all of it. There is no `>`: `10-traits.md` §5 gives `Ord` one method and `01-surface.md` §1's `binary-op`
+lists six symbols, and `>` after a note is the accent mark.
+
+**A note's pitch is not an arithmetic expression.** In a music statement `/` and `-` are the duration's own syntax, so
+`c5 up 2 /4` is a transposed note lasting a quarter and not a division. The note statement therefore reads its pitch at
+`01-surface.md` §1's levels 1, 4, and 5, and an author who means arithmetic writes the parentheses that say so. This is
+the concrete form of the Read section's claim that the music statements are what proves the operators enter without an
+ambiguity — they enter the *expression* grammar, which is a different production from a note.
 
 **`private` on a `trait` or an `impl`.** 136a's grammar admits the marker and `01-surface.md` §1.3 explicitly deferred
 its meaning to this prompt: a hidden `impl` is a coherence question, because the same expression elaborating to two
