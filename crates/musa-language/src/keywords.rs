@@ -770,6 +770,21 @@ static ENUM: KeywordDoc = doc!(
      Text },\n}\n```"
 );
 
+static PRIVATE: KeywordDoc = doc!(
+    "private",
+    "keep a declaration inside its own module",
+    "`private` before a declaration makes it nameable only inside the module that writes it; siblings in that module \
+     read it by its bare name with no ceremony. Everything is public without the marker, because a musa package is a \
+     vocabulary — `std::notation::staff` exists to be named — so hiding is the thing worth writing down.\n\n\
+     Before an enum's cases it hides the constructors and leaves the *type* public, which is how a package maintains \
+     an invariant: a chord whose symbol has to agree with its tones is built through the function that keeps them in \
+     step, and there is no raw constructor to route around it. All the cases or none of them — a mixed enum has no \
+     coverage rule worth explaining — and outside the module such a type is not taken apart by `match`, but received \
+     from and passed to whatever its package exports.\n\n\
+     ```musa\nprivate fn dotted_factor(dots: Dots) -> Ratio { … }\n\nenum Chord {\n    private \
+     NamedChord(ChordSymbol, List<Spelling>),\n}\n```"
+);
+
 /// The keyword's documentation, or `None` for anything that is not a
 /// keyword.
 ///
@@ -794,6 +809,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         SyntaxKind::EnumKw => &ENUM,
         SyntaxKind::ModuleKw => &MODULE,
         SyntaxKind::ModKw => &MOD,
+        SyntaxKind::PrivateKw => &PRIVATE,
         SyntaxKind::MakeKw => &MAKE,
         SyntaxKind::AsKw => &AS,
         SyntaxKind::PieceKw => &PIECE,
@@ -1093,6 +1109,7 @@ mod tests {
             SyntaxKind::RecordKw,
             SyntaxKind::EnumKw,
             SyntaxKind::ModuleKw,
+            SyntaxKind::PrivateKw,
             SyntaxKind::TransposeKw,
             SyntaxKind::UpKw,
             SyntaxKind::DownKw,

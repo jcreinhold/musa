@@ -18,16 +18,17 @@ type-args    := "<" type ("," type)* ">"
 type-params  := "<" IDENT ("," IDENT)* ">"
 where-clause := "where" constraint ("," constraint)*
 constraint   := type-name type-args
-binding      := "let" IDENT (":" type)? "=" expr ";"
-function     := "fn" IDENT type-params? "(" params? ")" "->" type where-clause? block
+visibility   := "private"
+binding      := visibility? "let" IDENT (":" type)? "=" expr ";"
+function     := visibility? "fn" IDENT type-params? "(" params? ")" "->" type where-clause? block
 param        := IDENT (":" type)? ("=" expr)?
-record       := "record" IDENT type-params? where-clause? "{" field-decl* "}"
+record       := visibility? "record" IDENT type-params? where-clause? "{" field-decl* "}"
 field-decl   := IDENT ":" type ";"
-enum         := "enum" IDENT type-params? where-clause? "{" (enum-case ("," enum-case)* ","?)? "}"
-enum-case    := IDENT ("(" type ("," type)* ")" | "{" field-decl* "}")?
-trait        := "trait" IDENT type-params where-clause? "{" trait-item* "}"
+enum         := visibility? "enum" IDENT type-params? where-clause? "{" (enum-case ("," enum-case)* ","?)? "}"
+enum-case    := visibility? IDENT ("(" type ("," type)* ")" | "{" field-decl* "}")?
+trait        := visibility? "trait" IDENT type-params where-clause? "{" trait-item* "}"
 trait-item   := "fn" IDENT type-params? "(" params? ")" "->" type where-clause? (";" | block)
-impl         := "impl" type-params? constraint where-clause? "{" function* "}"
+impl         := visibility? "impl" type-params? constraint where-clause? "{" function* "}"
 inherent     := "impl" type-params? type-name type-args? "{" function* "}"
 call         := expr "(" args? ")"
 expr         := literal | IDENT | qualified | "(" expr ")" | block | product | list
@@ -69,7 +70,7 @@ document     := (import | binding | function | record | enum | trait | impl | in
                 (piece | library | instance)
 signature    := "signature" IDENT "{" member* "}"
 member       := "let" IDENT ":" type ";"
-structure    := "structure" IDENT params? ":" IDENT "{" (binding | function)* "}"
+structure    := visibility? "structure" IDENT params? ":" IDENT "{" (binding | function)* "}"
 template     := "template" decl-kind IDENT "(" params? ")" decl-body
 instance     := "make" IDENT "(" args? ")" "as" IDENT ";"
 path         := IDENT "." IDENT
@@ -430,6 +431,52 @@ The dispatch table is the other measurement. `text_equal(kind, "PitchLiteral")` 
 twenty-one sites over thirteen distinct string literals, and a misspelling in any of them is a comparison that is
 quietly false forever. `kind == TokenKind::PitchLiteral` is the same test with the misspelling turned into a resolution
 error, and `match kind { … }` over the declared cases is the same table with coverage checked.
+
+**A case may be private, and then the type is abstract outside its module.** `private` before a case hides the
+constructor and leaves the type public, so a package can maintain an invariant that its clients cannot break:
+
+```musa
+enum Chord {
+    private NamedChord(ChordSymbol, List<Spelling>),
+    private AnonymousChord(List<Spelling>),
+}
+
+fn build(symbol: ChordSymbol) -> Chord { Chord::NamedChord(symbol, tones_of(symbol)) }
+```
+
+Inside `Chord`'s own module the constructor is an ordinary name with no ceremony, which is what makes `build` writable.
+Outside it, three things are refused and each names the module rather than falling through to "no such name": the
+constructor (`private-name`), the generated recursor, and a `match` that takes the value apart (`abstract-match`). The
+recursor goes with the cases because eliminating a family *is* the case analysis the marker exists to prevent, and the
+`match` is refused where it is written rather than silently becoming inexhaustive — a client eliminates through whatever
+the package exports. What stays reachable is the type itself: a client writes `Chord` in a signature and receives one
+from `build`. The bare-constructor rule above is unaffected inside the module and refuses outside it for the same reason
+and with the same diagnostic.
+
+**All the cases or none of them.** One private case beside a public one is refused (`mixed-visibility`), naming both.
+The reason is coverage: outside the module a `match` on such a type could still be written, and the arms it is allowed
+to write would never exhaust it, so every one of them would need a catch-all for cases the author cannot see. That is a
+worse thing to explain than a refusal. Re-opening this needs a program with a genuinely public case beside a private
+one, and a stated answer for what its `match` coverage means.
+
+**`private` marks a declaration, and public is the default.** The same word stands before a `let`, `fn`, `record`,
+`enum`, `data`, or `structure` and hides the whole declaration; §4 of `04-templates-and-modules.md` states the boundary
+it hides behind and why it does not overlap with sealing. A marked declaration is nameable from a sibling definition in
+its own module and from nowhere else, including through an `import` alias and through a re-export, and marking one
+changes no program that did not name it. `trait` and `impl` take the marker in the grammar above, but what a hidden
+`impl` means for coherence is `10-traits.md`'s question and not this section's — a naming rule cannot settle whether the
+same expression may elaborate to two different dictionaries in two modules.
+
+Public by default is the opposite of Rust's choice and the opposite of what *A Philosophy of Software Design* ch. 5
+would argue for a fresh language, and the argument it loses to is specific rather than general: Musa's packages are
+*vocabularies* — `std::notation::staff` exists to be named — and flipping the default would mean marking almost every
+one of `stdlib/`'s roughly 150 definitions inside the single migration that is already the largest prompt in the
+language pass. The re-opening condition is a measured count, taken after the two adapter rewrites: if the declarations
+that *should* have been private and were not are a large fraction of `stdlib/`, the default was wrong and this paragraph
+is what changes.
+
+There is one visibility boundary and it is the module. No `pub(crate)`, no `pub(super)`, no package-visible tier, and no
+export list: a second tier is a new decision that needs a program that wants it.
 
 ### 1.4 Traits and impls
 
@@ -951,6 +998,11 @@ is a rule nobody can implement, which is why the third column is not optional.
 | qualified constructor | `Tying::Untied` ⇝ the family's constructor | `Tying::Tied` — *no such case*, listing the declared cases |
 | bare constructor, checking | `let t: Tying = Untied;` ⇝ the same constructor | `let t = Untied;` — *bare constructor needs an expected type*, with the qualified form as the fix |
 | enum pattern | `match t { Untied -> …, TiedOn -> … }` ⇝ a case tree | a missing case — *non-exhaustive match*, naming the cases left out; an arm no constraint reaches — *unreachable arm* |
+| private declaration | `private fn dotted_factor(dots: Dots) -> Ratio { … }` ⇝ the same declaration, answered only inside its module | naming it from anywhere else, including through an `import` alias — *private name* (`private-name`), naming the module that maintains it |
+| private cases | `enum Chord { private NamedChord(…), private AnonymousChord(…) }` ⇝ the family with module-local constructors and a public type | one private case beside a public one — *mixed visibility* (`mixed-visibility`), naming both cases |
+| abstract elimination | inside the module, `match c { NamedChord(s, t) -> … }` ⇝ a case tree; outside it, whatever the package exports | the same `match` outside the module — *abstract match* (`abstract-match`), naming the type and its module rather than reporting an inexhaustive one |
+| misplaced marker | — | `private use x;` — *`private` does not mark this*, since only a declaration can be private |
+| redundant marker | — | `private` on a structure member — *this is already private*, naming the signature that hides everything it does not list |
 | trait declaration | `trait Eq<A> { fn equal(x: A, y: A) -> Bool; }` ⇝ `Eq : (A : Type ℓ) → Type ℓ` over a record type | a required method with no parameter mentioning a trait parameter — *method does not use the trait's parameter* |
 | impl | `impl Eq<Tying> { … }` ⇝ a definition of `Eq Tying` | an impl omitting a required method — *missing method*; an impl supplying a derived one — *derived methods are not replaceable* |
 | coherence | one impl per trait and head type | a second `impl Eq<Tying>` anywhere in the program — *duplicate instance*, naming both declarations |

@@ -89,6 +89,9 @@
   "data"
   "record"
   "enum"
+  ; The one visibility marker (`01-surface.md` §1.3). It reads as a keyword of
+  ; the declaration it stands before, because that is what it is.
+  "private"
   "music"
   "kernel"
   "import"

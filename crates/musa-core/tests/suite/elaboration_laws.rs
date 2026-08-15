@@ -227,6 +227,24 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
         assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
         reached.insert(kind(&refusal));
     }
+    // Two refusals are questions about *where* a program is written rather than
+    // about what it says, so they need a context standing outside the module
+    // that declared what they name.
+    let (outside, refused) = crate::visibility_laws::refused_outside();
+    for crate::visibility_laws::RefusedOutside {
+        name,
+        raw,
+        ty,
+        expected,
+    } in refused
+    {
+        let Err(error) = check(&outside, &ty, &raw) else {
+            panic!("{name}: elaboration accepted a program it must refuse");
+        };
+        let refusal = refusal(name, error);
+        assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
+        reached.insert(kind(&refusal));
+    }
     assert_eq!(
         reached,
         ALL_REFUSALS.iter().copied().collect(),
@@ -235,7 +253,7 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
 }
 
 /// Every refusal this crate can answer with.
-const ALL_REFUSALS: [&str; 21] = [
+const ALL_REFUSALS: [&str; 24] = [
     "unknown-name",
     "mismatch",
     "unsolved",
@@ -257,6 +275,9 @@ const ALL_REFUSALS: [&str; 21] = [
     "duplicate-case",
     "overlapping-update",
     "bare-constructor",
+    "private",
+    "mixed-visibility",
+    "abstract-match",
 ];
 
 /// Which refusal this is, as a tag the coverage gate can compare.
@@ -286,6 +307,9 @@ fn kind(refusal: &Refusal) -> &'static str {
         Refusal::DuplicateCase { .. } => "duplicate-case",
         Refusal::OverlappingUpdate { .. } => "overlapping-update",
         Refusal::BareConstructor { .. } => "bare-constructor",
+        Refusal::Private { .. } => "private",
+        Refusal::MixedVisibility { .. } => "mixed-visibility",
+        Refusal::AbstractMatch { .. } => "abstract-match",
     }
 }
 

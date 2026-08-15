@@ -23,8 +23,8 @@ of the compiler holds, and bring P1 and P2 back inside `06-performance.md`'s 10%
   actually experiences, so they are the numbers that decide whether this prompt is done.
 - `crates/musa-compiler/src/diagnose.rs` and `crates/musa/src/main.rs`'s `cmd_explain` — the existing diagnostic
   vocabulary and the rule that every code has an explainable rule behind it.
-- Every `Code` variant added by prompts 134, 135, 137, 139, and 140, and the message each currently produces. Those were
-  written to be correct; this prompt makes them good.
+- Every `Code` variant added by prompts 134, 135, 136a, 137, 139, and 140, and the message each currently produces.
+  Those were written to be correct; this prompt makes them good.
 - The `rust-performance` skill's workflow in full — name the workload, reuse the nearest credible bench, find what
   actually costs, make the smallest matching change, re-measure, and report the numbers with the command.
 - `crates/musa-compiler/src/bench.rs` and `core_budget.rs` — where measurement already happens and where the budget is

@@ -431,6 +431,8 @@ enum RawToken {
     ModuleKw,
     #[token("mod", priority = 3)]
     ModKw,
+    #[token("private", priority = 3)]
+    PrivateKw,
 }
 
 impl RawToken {
@@ -571,7 +573,8 @@ impl RawToken {
             | Self::RecordKw
             | Self::EnumKw
             | Self::ModuleKw
-            | Self::ModKw => None,
+            | Self::ModKw
+            | Self::PrivateKw => None,
         }
     }
 
@@ -710,6 +713,7 @@ impl RawToken {
             Self::EnumKw => SyntaxKind::EnumKw,
             Self::ModuleKw => SyntaxKind::ModuleKw,
             Self::ModKw => SyntaxKind::ModKw,
+            Self::PrivateKw => SyntaxKind::PrivateKw,
         }
     }
 }

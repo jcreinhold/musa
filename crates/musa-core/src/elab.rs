@@ -215,6 +215,18 @@ impl Elaborator {
         let Some(found) = scope.declared(name) else {
             return Err(self.unresolved(scope, here, name));
         };
+        // Found, and possibly not for this reader. The check is here rather
+        // than inside the lookup so that the answer is "private" and not "not
+        // found" — see [`crate::visibility`] for why that distinction is the
+        // whole of `01-surface.md` §1.3's value.
+        if let Some(module) = found.hidden_from(scope.cx().module()) {
+            return Err(Refusal::Private {
+                name: Arc::clone(name),
+                module,
+                at: here,
+            }
+            .into());
+        }
         let level = if found.is_recursor() {
             self.fresh_level(here)?
         } else {

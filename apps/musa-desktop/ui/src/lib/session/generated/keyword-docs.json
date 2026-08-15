@@ -460,6 +460,11 @@
     "doc": "`mod tonal;` says this package has a module called `tonal` — a `tonal.musa` beside this file, or a `tonal/mod.musa` declaring children of its own. A package's tree is its `mod` declarations and nothing else: a `.musa` file no `mod` reaches is not part of the package, and saying so is an error rather than a silence.\n\n```musa\nmod core;\nmod tonal;\n```"
   },
   {
+    "spelling": "private",
+    "summary": "keep a declaration inside its own module",
+    "doc": "`private` before a declaration makes it nameable only inside the module that writes it; siblings in that module read it by its bare name with no ceremony. Everything is public without the marker, because a musa package is a vocabulary — `std::notation::staff` exists to be named — so hiding is the thing worth writing down.\n\nBefore an enum's cases it hides the constructors and leaves the *type* public, which is how a package maintains an invariant: a chord whose symbol has to agree with its tones is built through the function that keeps them in step, and there is no raw constructor to route around it. All the cases or none of them — a mixed enum has no coverage rule worth explaining — and outside the module such a type is not taken apart by `match`, but received from and passed to whatever its package exports.\n\n```musa\nprivate fn dotted_factor(dots: Dots) -> Ratio { … }\n\nenum Chord {\n    private NamedChord(ChordSymbol, List<Spelling>),\n}\n```"
+  },
+  {
     "spelling": "make",
     "summary": "instantiate a template here",
     "doc": "`make study(key g major) as study_in_g;` evaluates the arguments in the scope it is written in and expands the template into an ordinary declaration at this place. A piece instance stands at the file's root and is that file's piece; a voice instance stands among a part's voices. The `as` name is the address; identity comes from the site, so two instances with equal arguments remain two declarations.\n\n```musa\nmake answer(subject, transpose(P8)) as follower;\n```"

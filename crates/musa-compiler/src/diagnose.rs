@@ -131,6 +131,17 @@ pub enum Code {
     ForcedIndex,
     /// A recursive call the termination rule cannot see is smaller.
     UncheckedRecursion,
+    /// A name that exists and is `private` to the module that declares it.
+    ///
+    /// Distinct from [`Self::UnknownName`] on purpose: the whole value of the
+    /// marker is in telling a reader that the thing they wrote is real and
+    /// maintained somewhere else, which sends them to an interface rather than
+    /// looking for a typo.
+    PrivateName,
+    /// An enum with a `private` case beside a public one.
+    MixedVisibility,
+    /// A `match` on a type whose constructors are private here.
+    AbstractMatch,
 }
 
 /// Writes each code's spelling once, and derives the roster from the same
@@ -195,6 +206,9 @@ code_table! {
     UnreachableBranch => "unreachable-branch",
     ForcedIndex => "forced-index",
     UncheckedRecursion => "unchecked-recursion",
+    PrivateName => "private-name",
+    MixedVisibility => "mixed-visibility",
+    AbstractMatch => "abstract-match",
 }
 
 impl Code {

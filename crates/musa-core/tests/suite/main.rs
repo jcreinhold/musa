@@ -25,6 +25,7 @@ mod provenance_laws;
 mod record_laws;
 mod termination_laws;
 mod unification_laws;
+mod visibility_laws;
 
 /// The terms every law suite is stated over.
 pub(crate) mod fixtures {

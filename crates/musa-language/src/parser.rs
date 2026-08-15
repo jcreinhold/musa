@@ -400,6 +400,41 @@ impl<'a> Parser<'a> {
         self.current().is_some_and(|kind| kinds.contains(&kind))
     }
 
+    /// The word that opens the declaration standing here, looking past a
+    /// `private`.
+    ///
+    /// `private` is a marker on a declaration and never a declaration itself,
+    /// so every dispatch that admits one asks this rather than [`Self::at`].
+    /// One token of lookahead is the whole of it — there is no second modifier
+    /// for the two to be written in either order.
+    fn opener(&self) -> Option<SyntaxKind> {
+        match self.current() {
+            Some(SyntaxKind::PrivateKw) => self.nth_significant(1),
+            other => other,
+        }
+    }
+
+    /// Whether `kind` opens the declaration standing here, `private` or not.
+    fn opens(&self, kind: SyntaxKind) -> bool {
+        self.opener() == Some(kind)
+    }
+
+    fn opens_any(&self, kinds: &[SyntaxKind]) -> bool {
+        self.opener().is_some_and(|kind| kinds.contains(&kind))
+    }
+
+    /// Consume a `private` marker if the declaration being parsed carries one.
+    ///
+    /// Called after the declaration's node is started, so the marker is a token
+    /// *inside* it: `LetDecl`, `EnumCase`, and the rest keep every accessor
+    /// they had, and asking whether one is private is one child lookup rather
+    /// than a wrapper node every reader would have to see through.
+    fn visibility(&mut self) {
+        if self.at(SyntaxKind::PrivateKw) {
+            self.bump();
+        }
+    }
+
     /// The kind `n` significant tokens ahead (`0` is [`Self::current`]).
     ///
     /// The studio grammar is the only place that needs lookahead: `name =`,
@@ -647,9 +682,9 @@ impl<'a> Parser<'a> {
             } else if self.at(SyntaxKind::ModKw) {
                 self.mod_decl();
                 shape.declares_modules = true;
-            } else if self.at(SyntaxKind::LetKw) {
+            } else if self.opens(SyntaxKind::LetKw) {
                 self.let_decl();
-            } else if self.at(SyntaxKind::FnKw) {
+            } else if self.opens(SyntaxKind::FnKw) {
                 self.fn_decl();
             } else if self.at(SyntaxKind::TemplateKw) {
                 self.template_decl();
@@ -657,8 +692,10 @@ impl<'a> Parser<'a> {
                 self.signature_decl();
             } else if self.at_type_decl() {
                 self.type_decl();
-            } else if self.at_any(&[SyntaxKind::StructureKw, SyntaxKind::ModuleKw]) {
+            } else if self.opens_any(&[SyntaxKind::StructureKw, SyntaxKind::ModuleKw]) {
                 self.structure_decl();
+            } else if self.at(SyntaxKind::PrivateKw) {
+                self.misplaced_private();
             } else if self.at(SyntaxKind::MakeKw) {
                 // Every `make` a file's root writes is read here, whether it
                 // makes a module or the piece itself. Which one is the piece
@@ -721,6 +758,7 @@ impl<'a> Parser<'a> {
     /// project.
     fn data_decl(&mut self) {
         self.start(SyntaxKind::DataDecl);
+        self.visibility();
         self.bump(); // data
         self.expect(SyntaxKind::Identifier, "a type name");
         if self.at(SyntaxKind::Less) {
@@ -742,9 +780,59 @@ impl<'a> Parser<'a> {
         self.finish();
     }
 
-    /// Whether a type declaration opens here.
+    /// Whether a type declaration opens here, `private` or not.
     fn at_type_decl(&self) -> bool {
-        self.at_any(&[SyntaxKind::DataKw, SyntaxKind::RecordKw, SyntaxKind::EnumKw])
+        self.opens_any(&[SyntaxKind::DataKw, SyntaxKind::RecordKw, SyntaxKind::EnumKw])
+    }
+
+    /// A `private` standing in front of something it cannot mark.
+    ///
+    /// The word marks a *declaration*, and an `import`, a `make`, or a `mod` is
+    /// not one: there would be nothing for it to hide. Reported here rather
+    /// than let through, because the alternative is a dispatcher falling off
+    /// the end of its chain and complaining that a declaration was expected —
+    /// at a position where one *was* written, with the actual mistake one word
+    /// to the left.
+    fn misplaced_private(&mut self) {
+        if !self.cascading()
+            && let Some(token) = self.significant()
+        {
+            self.errors.push(
+                SyntaxError::new(
+                    token.range,
+                    "`private` does not mark this",
+                    "only a declaration can be private",
+                )
+                .with_help("`private` stands before `let`, `fn`, `record`, `enum`, `data`, or `structure`"),
+            );
+        }
+        self.bump(); // the marker, so the next dispatch sees what follows it
+    }
+
+    /// A `private` on a member of a structure, which its signature already
+    /// hides.
+    ///
+    /// The two mechanisms do not overlap and do not conflict: a structure seals
+    /// by *listing* — the signature is the interface, and everything else is
+    /// already private to the structure — while a module hides by *marking*. A
+    /// marker that means nothing is worth saying so, because a reader who wrote
+    /// one believes it is doing something.
+    fn sealed_already(&mut self) {
+        if !self.cascading()
+            && let Some(token) = self.significant()
+        {
+            self.errors.push(
+                SyntaxError::new(
+                    token.range,
+                    "this is already private",
+                    "a structure's signature is its interface",
+                )
+                .with_help(
+                    "a member the signature does not list is private to the structure, so the marker adds nothing",
+                )
+                .with_fix("remove `private`", ""),
+            );
+        }
     }
 
     /// Whichever of `data`, `record`, and `enum` opens here.
@@ -754,9 +842,9 @@ impl<'a> Parser<'a> {
     /// and in a structure, and which of the three words opens it changes what
     /// the type *is* rather than where it may be written.
     fn type_decl(&mut self) {
-        if self.at(SyntaxKind::RecordKw) {
+        if self.opens(SyntaxKind::RecordKw) {
             self.record_decl();
-        } else if self.at(SyntaxKind::EnumKw) {
+        } else if self.opens(SyntaxKind::EnumKw) {
             self.enum_decl();
         } else {
             self.data_decl();
@@ -772,6 +860,7 @@ impl<'a> Parser<'a> {
     /// reading a record and reading a sum.
     fn record_decl(&mut self) {
         self.start(SyntaxKind::RecordDecl);
+        self.visibility();
         self.bump(); // record
         self.expect(SyntaxKind::Identifier, "a type name");
         if self.at(SyntaxKind::Less) {
@@ -810,6 +899,7 @@ impl<'a> Parser<'a> {
     /// the named form where the names are the interface.
     fn enum_decl(&mut self) {
         self.start(SyntaxKind::EnumDecl);
+        self.visibility();
         self.bump(); // enum
         self.expect(SyntaxKind::Identifier, "a type name");
         if self.at(SyntaxKind::Less) {
@@ -820,7 +910,7 @@ impl<'a> Parser<'a> {
         // Empty {}` is the type with no closed inhabitant, which is what
         // `P -> Empty` needs to say *not P* (§1.3).
         while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
-            if self.at(SyntaxKind::Identifier) {
+            if self.opens(SyntaxKind::Identifier) {
                 self.enum_case();
                 if self.at(SyntaxKind::Comma) {
                     self.bump();
@@ -839,6 +929,7 @@ impl<'a> Parser<'a> {
     /// One case of an enum: empty, positional, or named.
     fn enum_case(&mut self) {
         self.start(SyntaxKind::EnumCase);
+        self.visibility();
         self.bump(); // the case's name
         if self.at(SyntaxKind::LParen) {
             self.bump();
@@ -943,6 +1034,7 @@ impl<'a> Parser<'a> {
     /// parameter list for the structure a `template` parameterizes.
     fn structure_decl(&mut self) {
         self.start(SyntaxKind::StructureDecl);
+        self.visibility();
         if self.at(SyntaxKind::ModuleKw) {
             self.moved_to_structure();
         }
@@ -955,9 +1047,12 @@ impl<'a> Parser<'a> {
         self.expect(SyntaxKind::Identifier, "the signature this structure provides");
         self.expect(SyntaxKind::LBrace, "`{`");
         while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
-            if self.at(SyntaxKind::LetKw) {
+            if self.at(SyntaxKind::PrivateKw) {
+                self.sealed_already();
+            }
+            if self.opens(SyntaxKind::LetKw) {
                 self.let_decl();
-            } else if self.at(SyntaxKind::FnKw) {
+            } else if self.opens(SyntaxKind::FnKw) {
                 self.fn_decl();
             } else if self.at_type_decl() {
                 self.type_decl();
@@ -1058,12 +1153,14 @@ impl<'a> Parser<'a> {
                 self.motif_decl();
             } else if self.at(SyntaxKind::FragmentKw) {
                 self.fragment_decl();
-            } else if self.at(SyntaxKind::LetKw) {
+            } else if self.opens(SyntaxKind::LetKw) {
                 self.let_decl();
-            } else if self.at(SyntaxKind::FnKw) {
+            } else if self.opens(SyntaxKind::FnKw) {
                 self.fn_decl();
             } else if self.at_type_decl() {
                 self.type_decl();
+            } else if self.at(SyntaxKind::PrivateKw) {
+                self.misplaced_private();
             } else if self.at(SyntaxKind::ScoreKw) {
                 self.score_decl();
             } else if self.at(SyntaxKind::PerformanceKw) {
@@ -1160,9 +1257,9 @@ impl<'a> Parser<'a> {
                 self.motif_decl();
             } else if self.at(SyntaxKind::FragmentKw) {
                 self.fragment_decl();
-            } else if self.at(SyntaxKind::LetKw) {
+            } else if self.opens(SyntaxKind::LetKw) {
                 self.let_decl();
-            } else if self.at(SyntaxKind::FnKw) {
+            } else if self.opens(SyntaxKind::FnKw) {
                 self.fn_decl();
             } else if self.at(SyntaxKind::PerformanceKw) {
                 self.performance_decl();
@@ -1172,8 +1269,10 @@ impl<'a> Parser<'a> {
                 self.signature_decl();
             } else if self.at_type_decl() {
                 self.type_decl();
-            } else if self.at_any(&[SyntaxKind::StructureKw, SyntaxKind::ModuleKw]) {
+            } else if self.opens_any(&[SyntaxKind::StructureKw, SyntaxKind::ModuleKw]) {
                 self.structure_decl();
+            } else if self.at(SyntaxKind::PrivateKw) {
+                self.misplaced_private();
             } else if self.at(SyntaxKind::TemplateKw)
                 && matches!(
                     self.nth_significant(1),
@@ -1382,6 +1481,7 @@ impl<'a> Parser<'a> {
     /// stay in the tree exactly where they were written.
     fn let_decl(&mut self) {
         self.start(SyntaxKind::LetDecl);
+        self.visibility();
         self.bump();
         self.expect(SyntaxKind::Identifier, "a binding name");
         if self.at(SyntaxKind::Colon) {
@@ -1404,6 +1504,7 @@ impl<'a> Parser<'a> {
     /// carrying the rewrite rather than a cascade about a missing `{`.
     fn fn_decl(&mut self) {
         self.start(SyntaxKind::FnDecl);
+        self.visibility();
         self.bump();
         self.expect(SyntaxKind::Identifier, "a function name");
         self.param_list();

@@ -112,6 +112,7 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("enum", SyntaxKind::EnumKw),
     ("module", SyntaxKind::ModuleKw),
     ("mod", SyntaxKind::ModKw),
+    ("private", SyntaxKind::PrivateKw),
     ("make", SyntaxKind::MakeKw),
     ("as", SyntaxKind::AsKw),
     ("Hz", SyntaxKind::UnitHz),
@@ -302,6 +303,7 @@ impl TokenClass {
             | SyntaxKind::EnumKw
             | SyntaxKind::ModuleKw
             | SyntaxKind::ModKw
+            | SyntaxKind::PrivateKw
             | SyntaxKind::CrescendoKw
             | SyntaxKind::DiminuendoKw
             | SyntaxKind::ToKw

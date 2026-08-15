@@ -1,7 +1,7 @@
 ---
 id: 136a
 slug: module-visibility
-status: pending
+status: done
 depends_on: [136]
 phase: 3
 ---

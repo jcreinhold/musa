@@ -126,6 +126,7 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         SyntaxKind::RecordKw => "record",
         SyntaxKind::EnumKw => "enum",
         SyntaxKind::ModuleKw => "module",
+        SyntaxKind::PrivateKw => "private",
         SyntaxKind::MakeKw => "make",
         SyntaxKind::AsKw => "as",
         SyntaxKind::PieceKw => "piece",

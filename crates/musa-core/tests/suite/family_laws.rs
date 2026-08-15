@@ -9,7 +9,7 @@
 
 use std::sync::Arc;
 
-use musa_core::{Cx, Group, Level, Raw, RawBinder, RawConstructor, RawData, RawFamily, Refusal, Term};
+use musa_core::{Cx, Group, Level, Raw, RawBinder, RawConstructor, RawData, RawFamily, Refusal, Term, Visibility};
 
 use crate::programs::{WRITTEN, refusal};
 
@@ -24,6 +24,7 @@ pub(crate) fn constructor(name: &str, fields: Vec<RawBinder>, indices: Vec<Raw>)
     RawConstructor {
         origin: WRITTEN,
         name: Arc::from(name),
+        visibility: Visibility::Public,
         fields,
         indices,
     }
@@ -32,9 +33,26 @@ pub(crate) fn constructor(name: &str, fields: Vec<RawBinder>, indices: Vec<Raw>)
 pub(crate) fn family(name: &str, indices: Vec<RawBinder>, constructors: Vec<RawConstructor>) -> RawFamily {
     RawFamily {
         name: Arc::from(name),
+        visibility: Visibility::Public,
         indices,
         constructors,
     }
+}
+
+/// The same constructor, marked `private`.
+///
+/// A combinator rather than a parameter on [`constructor`], because every test
+/// that predates §1.3 wrote a public one and adding an argument to all of them
+/// would say "visibility" a hundred times to state the default.
+pub(crate) fn hidden_case(mut case: RawConstructor) -> RawConstructor {
+    case.visibility = Visibility::Private;
+    case
+}
+
+/// The same family, marked `private`.
+pub(crate) fn hidden_family(mut declared: RawFamily) -> RawFamily {
+    declared.visibility = Visibility::Private;
+    declared
 }
 
 pub(crate) fn data(params: Vec<RawBinder>, families: Vec<RawFamily>) -> RawData {
@@ -541,6 +559,25 @@ pub(crate) fn refused_declarations() -> Vec<RefusedData> {
                     }
                 )
             },
+        },
+        RefusedData {
+            // §1.3: `private` on a case is what makes a *type* abstract, so a
+            // family that hides one case and publishes another has said two
+            // incompatible things about the same type. Refused at the
+            // declaration rather than at the first client who trips over it.
+            name: "an enum hiding some of its cases and not the others",
+            declaration: data(
+                Vec::new(),
+                vec![family(
+                    "Half",
+                    Vec::new(),
+                    vec![
+                        constructor("Open", Vec::new(), Vec::new()),
+                        hidden_case(constructor("Shut", Vec::new(), Vec::new())),
+                    ],
+                )],
+            ),
+            expected: |refusal: &Refusal| matches!(*refusal, Refusal::MixedVisibility { .. }),
         },
     ]
 }

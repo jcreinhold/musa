@@ -296,6 +296,8 @@ pub enum SyntaxKind {
     /// `module`, which no longer declares one. Lexed so the migration
     /// diagnostic can point at the word and carry the word that replaces it.
     ModuleKw,
+    /// `private`, the one visibility marker (`01-surface.md` §1.3).
+    PrivateKw,
 
     /// A span the lexer could not recognize; emitted so the token stream
     /// stays lossless even for invalid input. Also used for parser error

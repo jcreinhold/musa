@@ -35,6 +35,7 @@ use crate::error::{CoreError, Malformed};
 use crate::meta::MetaSource;
 use crate::origin::Origin;
 use crate::term::{Name, Term};
+use crate::visibility::ModuleId;
 
 /// Why elaboration did not produce a core term.
 ///
@@ -87,6 +88,51 @@ pub enum Refusal {
     /// §2's `Switch` called conversion and conversion said no.
     #[error("{0}")]
     Mismatch(Box<Mismatch>),
+    /// A name that exists, and is private to the module that declared it.
+    ///
+    /// Deliberately not [`Self::UnknownName`]: `01-surface.md` §1.3's value is
+    /// in telling a reader that the thing they wrote is real and maintained
+    /// somewhere else, which is a different sentence from "no such name".
+    #[error("`{name}` is private to the module that declares it")]
+    Private {
+        /// The name as written.
+        name: Name,
+        /// The module it is private to. Opaque here — this crate does not know
+        /// what a module is called, so a caller that does renders it.
+        module: ModuleId,
+        /// Where it was written.
+        at: Origin,
+    },
+    /// An enum with a `private` case beside a public one.
+    ///
+    /// Refused at the declaration rather than at each use, because a partly
+    /// private type has no coverage rule anyone would want to explain: outside
+    /// the module, the arms an author is allowed to write never exhaust it.
+    #[error("`{family}` has both public and private cases: `{public}` and `{private}`")]
+    MixedVisibility {
+        /// The family whose cases disagree.
+        family: Name,
+        /// The first public case.
+        public: Name,
+        /// The first private case.
+        private: Name,
+        /// Where the public case was written.
+        at: Origin,
+    },
+    /// A `match` that would take apart a family whose cases are private here.
+    ///
+    /// Refused where it is written rather than silently made inexhaustive. A
+    /// client eliminates through whatever its package exports, which is the
+    /// point of hiding the cases.
+    #[error("`{family}`'s cases are private to the module that declares it, so this cannot take one apart")]
+    AbstractMatch {
+        /// The family the subject belongs to.
+        family: Name,
+        /// The module its cases are private to.
+        module: ModuleId,
+        /// The subject the split was going to be on.
+        at: Origin,
+    },
     /// A metavariable was still unsolved when the declaration that created it
     /// ended. Never defaulted and never generalized (§2.1).
     #[error("could not determine {}", site.describe())]

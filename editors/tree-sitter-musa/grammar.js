@@ -86,7 +86,7 @@ const SYNTAX_WORDS = [
   'ending', 'fragment', 'mobile', 'improvise', 'over', 'let', 'fn', 'music',
   'kernel', 'Option', 'List', 'Result', 'match', 'Some', 'None', 'Ok',
   'Err', 'true', 'false', 'scale', 'degree', 'frame', 'in', 'step',
-  'chord', 'stack',
+  'chord', 'stack', 'private',
 ];
 
 const SYNTAX_MARKS = [
@@ -207,6 +207,7 @@ module.exports = grammar({
     // `template structure` adds, and nothing else about the node changes.
     structure_declaration: ($) =>
       seq(
+        optional('private'),
         'structure',
         field('name', $.identifier),
         optional($.parameter_list),
@@ -232,6 +233,7 @@ module.exports = grammar({
     // field the record case could not project.
     data_declaration: ($) =>
       seq(
+        optional('private'),
         'data',
         field('name', $.identifier),
         optional($.type_parameter_list),
@@ -258,6 +260,7 @@ module.exports = grammar({
     // name as part of what is declared.
     record_declaration: ($) =>
       seq(
+        optional('private'),
         'record',
         field('name', $.identifier),
         optional($.type_parameter_list),
@@ -274,6 +277,7 @@ module.exports = grammar({
     // admitted: `enum Empty {}` is what `P -> Empty` needs to say *not P*.
     enum_declaration: ($) =>
       seq(
+        optional('private'),
         'enum',
         field('name', $.identifier),
         optional($.type_parameter_list),
@@ -284,6 +288,7 @@ module.exports = grammar({
 
     enum_case: ($) =>
       seq(
+        optional('private'),
         field('name', $.identifier),
         optional(
           choice(
@@ -495,6 +500,7 @@ module.exports = grammar({
     // determines it.
     let_declaration: ($) =>
       seq(
+        optional('private'),
         'let',
         field('name', $.identifier),
         optional(seq(':', field('type', $.type_expression))),
@@ -508,6 +514,7 @@ module.exports = grammar({
     // a syntax error in the hand parser, so not a clean parse here either.
     function_declaration: ($) =>
       seq(
+        optional('private'),
         'fn',
         field('name', $.identifier),
         $.parameter_list,

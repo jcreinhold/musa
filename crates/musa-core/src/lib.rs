@@ -102,6 +102,7 @@ mod scope;
 mod term;
 mod unify;
 mod value;
+mod visibility;
 
 pub use crate::budget::{Budget, Metric, ResourceError};
 pub use crate::context::Cx;
@@ -114,6 +115,7 @@ pub use crate::raw::{Raw, RawArm, RawBinder, RawConstructor, RawData, RawFamily,
 pub use crate::recheck::well_typed;
 pub use crate::refuse::{ElabError, Mismatch, PathStep, Refusal};
 pub use crate::term::{DbLevel, Field, Index, Name, Plicity, Shape, Term};
+pub use crate::visibility::{ModuleId, Visibility};
 
 use std::sync::Arc;
 

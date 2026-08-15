@@ -138,6 +138,22 @@ is what sealing means here.
 Paths are `Structure.member`, and inside a structure a sibling member is read by its bare name. Unqualified lookup never
 searches remote packages or every imported module.
 
+**A module hides by marking, and a structure hides by listing.** Sealing is not privacy for declarations a structure
+body cannot hold: a `structure` admits `binding | function` and no type declaration, so no arrangement of signatures
+hides a constructor. `private` (`01-surface.md` §1.3) is the marker that covers the rest, and its boundary is the
+module: a marked declaration is nameable from a sibling definition in the module that declares it and from nowhere else,
+including through an `import` alias and through a re-export. The two mechanisms compose without a rule because they
+answer different questions, and the one place they could be confused is refused rather than accepted — `private` on a
+structure member means nothing, since the signature already hides everything it does not list, so the marker there is
+reported and names the signature that made it redundant.
+
+Visibility is a filter on the one lookup that already exists, not a second resolution path, and a private declaration is
+declined *by name*: the checker knows the name exists and is hidden here, so the refusal says which module maintains it.
+Building each module's scope without its private declarations would be simpler and would report "no such thing as
+`NamedChord`", which sends a reader looking for a typo instead of to the interface. Two things follow and both are
+checkable: a private name is still in its own module's scope, so a sibling reads it bare with no ceremony; and a private
+name never read inside its own module is dead code, which the unused-declaration diagnostic already says.
+
 Functor application checks the argument's signature against the parameter's, expands once at the named site, seals the
 result to the result signature, and assigns a stable generative identity derived from the functor, the argument
 structures' identities, and the instance site — never the argument *expressions*, so two sites given equal arguments
@@ -179,7 +195,9 @@ write an assertion after construction.
 
 The following are static errors: a parameterized declaration without `template`; `make` without `as`; a template cycle;
 first-class `piece`, `voice`, `structure`, or source-syntax use; a structure member that fails its signature; two
-generated declarations with the same public address; and a structural declaration embedded in a track value.
+generated declarations with the same public address; a structural declaration embedded in a track value; naming a
+private declaration from outside its module; `private` on a structure member; an `enum` that marks some of its cases and
+not the others; and a `match` outside the module on a type whose cases are private.
 
 Prompts 103–104 implement this stage. Prompt 124 measures expansion and caching. Prompt 170 verifies that identity and
 Origin remain stable through the migration.

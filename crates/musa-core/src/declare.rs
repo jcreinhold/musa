@@ -42,6 +42,7 @@ use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
 use crate::term::{Index, Name, Shape, Term};
 use crate::value::{Form, Value};
+use crate::visibility::Visibility;
 
 /// Elaborate a `data` declaration group.
 ///
@@ -94,8 +95,10 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<Arc<Group>, ElabError> 
             }
             .into());
         }
+        uniform(family)?;
         families.push(Declared {
             name: Arc::clone(&family.name),
+            visibility: family.visibility,
             indices: Arc::from(declared_indices.clone()),
             level: level.resolved(),
             constructors: Arc::from(built.constructors),
@@ -107,7 +110,43 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<Arc<Group>, ElabError> 
         origin: here,
         params: Arc::from(params),
         families: Arc::from(families),
+        module: cx.module(),
     }))
+}
+
+/// Refuse a family whose cases are not all equally visible.
+///
+/// `01-surface.md` §1.3 takes all the cases or none of them, and the reason is
+/// coverage rather than tidiness: outside the module a `match` on a partly
+/// private type could still be written, the arms it is *allowed* to write would
+/// never exhaust the type, and every such `match` would need a catch-all for
+/// cases the author cannot see. Refusing the declaration is a better thing to
+/// explain than that.
+///
+/// It runs at the declaration and not at the use site because that is where the
+/// author can fix it, and because everything downstream — [`Found::hidden_from`]
+/// most of all — is then entitled to ask the first case and stop.
+fn uniform(family: &RawFamily) -> Result<(), ElabError> {
+    let mut public = None;
+    let mut private = None;
+    for case in &family.constructors {
+        let seen = match case.visibility {
+            Visibility::Public => &mut public,
+            Visibility::Private => &mut private,
+        };
+        seen.get_or_insert((Arc::clone(&case.name), case.origin));
+    }
+    match (public, private) {
+        (Some((public, at)), Some((private, _))) => Err(Refusal::MixedVisibility {
+            family: Arc::clone(&family.name),
+            public,
+            private,
+            at,
+        }
+        .into()),
+        // Every other shape is uniform: all public, all private, or no cases.
+        _ => Ok(()),
+    }
 }
 
 /// The scope holding one binder per family, at whatever type `ty` says.
@@ -254,6 +293,7 @@ fn constructors(
         let chosen = chosen_indices(elaborator, &inner, scope, constructor, indices, data.origin)?;
         built.push(Constructor {
             name: Arc::clone(&constructor.name),
+            visibility: constructor.visibility,
             fields: Arc::from(fields),
             recursive: Arc::from(recursive),
             indices: Arc::from(chosen),

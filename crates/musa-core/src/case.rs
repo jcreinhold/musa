@@ -471,6 +471,19 @@ impl Tree<'_, '_> {
         let Some(found) = element(self.elaborator.meter(), &subject.ty)? else {
             return Err(self.not_a_constructor(scope, problem, column, at)?);
         };
+        // A split *is* the case analysis `private` cases exist to prevent, so it
+        // is the one place that has to ask. Reaching it means the first row
+        // names a constructor: a `match` that only binds never splits, and
+        // therefore never takes an abstract type apart, which is why this is
+        // the split rather than the `match`.
+        if let Some(module) = found.abstract_from(scope.cx().module()) {
+            return Err(Refusal::AbstractMatch {
+                family: found.name(),
+                module,
+                at,
+            }
+            .into());
+        }
         self.belong(scope, problem, column, &found)?;
         let split = Split::read(self, scope, subject, &found, &problem.goal, at)?;
         let motives = self.motives(scope, problem, &split, column)?;

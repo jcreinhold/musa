@@ -536,6 +536,65 @@ pub fn explain(code: &str) -> Option<&'static str> {
              keystroke, so a definition that might not stop is a compiler and \
              editor that might not stop."
         }
+        musa_compiler::Code::PrivateName => {
+            "A name that exists, and is `private` to the module that declares \
+             it.\n\n\
+             This is deliberately not `unknown-name`. The two are different \
+             sentences: \"no such thing\" sends a reader looking for a typo, \
+             while this one tells them the name is real and that some other \
+             module maintains it. The report names that module, which is where \
+             the interface is.\n\n\
+             `private` before a declaration hides it. `private` before an \
+             enum's cases hides the constructors and leaves the *type* public, \
+             which is the shape a package uses to maintain an invariant: a \
+             chord whose symbol has to agree with its tones is built through \
+             the function that keeps them in step, and there is no raw \
+             constructor to route around it. A smart constructor beside a \
+             reachable raw one is decoration.\n\n\
+             What is hidden is hidden from outside only. Inside the declaring \
+             module a private name is ordinary — a sibling definition writes \
+             it bare, with no ceremony — so this never fires on the code that \
+             maintains the invariant, only on the code that would break it.\n\n\
+             The generated recursor is hidden with the cases, because \
+             eliminating a family is the case analysis the marker exists to \
+             prevent. Hiding the pattern spelling and leaving `Chord.elim` \
+             reachable would hide nothing at all."
+        }
+        musa_compiler::Code::MixedVisibility => {
+            "An enum marks some of its cases `private` and leaves others \
+             public.\n\n\
+             Refused at the declaration rather than at the first client who \
+             trips over it, because a partly private type has no coverage rule \
+             anyone would want to explain. Outside the module, the arms an \
+             author is allowed to write can never exhaust the type, so every \
+             such `match` would need a catch-all for cases the author cannot \
+             see — and a catch-all standing in for something invisible is a \
+             worse thing to explain than a refusal.\n\n\
+             The fix is to decide what the type is. If its invariant is \
+             package-maintained, mark every case `private` and export the \
+             functions that build and read one. If it is an ordinary data \
+             type, mark none of them.\n\n\
+             Re-opening this would need a program with a genuinely public case \
+             beside a private one, and a stated answer for what its `match` \
+             coverage means."
+        }
+        musa_compiler::Code::AbstractMatch => {
+            "A `match` would take apart a type whose constructors are private \
+             here.\n\n\
+             Refused where it is written rather than silently made \
+             inexhaustive. The report names the type and the module that \
+             maintains it; a client eliminates through whatever that module \
+             exports — `members`, `analyze`, `write` — which is the package's \
+             own interface and the entire point of hiding the \
+             constructors.\n\n\
+             A `match` that only binds is not this: it never splits, so it \
+             never takes the type apart, and it is admitted. What is refused \
+             is naming a constructor of the type in a pattern.\n\n\
+             Inside the declaring module the same `match` is an ordinary \
+             program. If the elimination genuinely belongs to the client, the \
+             repair is a function the package exports, not a marker \
+             removed."
+        }
     })
 }
 

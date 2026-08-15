@@ -28,6 +28,7 @@ use crate::origin::Origin;
 use crate::quote::Depth;
 use crate::term::{DbLevel, Index, Name, Term};
 use crate::value::{Env, Value};
+use crate::visibility::ModuleId;
 
 /// The binders a term is read under, and the budget its conversions run in.
 #[derive(Clone)]
@@ -51,6 +52,13 @@ pub struct Cx {
     /// drop every binder and keep every declaration, which is what a `data`
     /// declaration is elaborated in.
     declared: List<Arc<Group>>,
+    /// The module a term elaborated here is written in, when the caller named
+    /// one.
+    ///
+    /// `None` is inside *every* module, which is what keeps the visibility rule
+    /// invisible to a caller that has no packages — see
+    /// [`crate::visibility`]. This crate never mints one.
+    module: Option<ModuleId>,
     depth: u32,
     budget: Budget,
 }
@@ -73,6 +81,7 @@ impl Cx {
             env: Env::EMPTY,
             types: List::EMPTY,
             declared: List::EMPTY,
+            module: None,
             depth: 0,
             budget,
         }
@@ -91,9 +100,30 @@ impl Cx {
             env: Env::EMPTY,
             types: List::EMPTY,
             declared: self.declared.clone(),
+            module: self.module,
             depth: 0,
             budget: self.budget,
         }
+    }
+
+    /// This context, elaborating inside the module the caller numbers
+    /// `module`.
+    ///
+    /// What a declaration group is stamped with when it is declared here, and
+    /// what a private name is checked against when it is read. A context that
+    /// never says this is inside every module, so nothing that does not have
+    /// packages has to care — the argument is in [`crate::visibility`].
+    #[must_use]
+    pub fn in_module(&self, module: ModuleId) -> Self {
+        Self {
+            module: Some(module),
+            ..self.clone()
+        }
+    }
+
+    /// The module terms elaborated here are written in, if the caller named one.
+    pub(crate) const fn module(&self) -> Option<ModuleId> {
+        self.module
     }
 
     /// This context with `group`'s families, constructors, and recursors in
@@ -257,6 +287,7 @@ impl Cx {
             env: self.env.push(value),
             types: self.types.push(ty),
             declared: self.declared.clone(),
+            module: self.module,
             depth: self.depth.saturating_add(1),
             budget: self.budget,
         }

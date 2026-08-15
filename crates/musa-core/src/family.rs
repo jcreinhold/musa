@@ -89,6 +89,7 @@ use crate::origin::Origin;
 use crate::quote::{Depth, quote_type};
 use crate::term::{DbLevel, Index, Name, Shape, Term};
 use crate::value::{Elim, Env, Form, Head, Neutral, Value};
+use crate::visibility::{ModuleId, Visibility};
 
 /// One binder of a telescope: a name and the type it stands at.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -104,6 +105,8 @@ pub struct Binder {
 pub struct Constructor {
     /// Its name, which is how a pattern and a diagnostic refer to it.
     pub(crate) name: Name,
+    /// Whether it may be named outside the module its group was declared in.
+    pub(crate) visibility: Visibility,
     /// Its arguments, a telescope read under the declaration context and the
     /// group's parameters.
     pub(crate) fields: Arc<[Binder]>,
@@ -124,6 +127,10 @@ pub struct Constructor {
 pub struct Declared {
     /// Its name.
     pub(crate) name: Name,
+    /// Whether the *type* may be named outside the module its group was
+    /// declared in. Independent of its constructors': `01-surface.md` §1.3's
+    /// whole point is a public type whose cases are package-maintained.
+    pub(crate) visibility: Visibility,
     /// Its indices, a telescope read under the declaration context and the
     /// group's parameters.
     pub(crate) indices: Arc<[Binder]>,
@@ -153,6 +160,10 @@ pub struct Group {
     pub(crate) params: Arc<[Binder]>,
     /// The families, in declaration order.
     pub(crate) families: Arc<[Declared]>,
+    /// The module the declaration was written in, when the declaring context
+    /// named one. Stamped once at [`crate::declare`] rather than asked for
+    /// again, because a group is immutable and a second answer could disagree.
+    pub(crate) module: Option<ModuleId>,
 }
 
 /// A type that turned out to be a family applied to its arguments.
@@ -167,6 +178,32 @@ pub(crate) struct Element {
     pub(crate) family: u32,
     pub(crate) params: Vec<Value>,
     pub(crate) indices: Vec<Value>,
+}
+
+impl Element {
+    /// The family's name, for a diagnostic that has to say which type it is.
+    pub(crate) fn name(&self) -> Name {
+        self.group
+            .family_at(self.family)
+            .map_or_else(|| Arc::from("?"), |declared| Arc::clone(&declared.name))
+    }
+
+    /// The module this family's cases are private to, when `viewer` may not
+    /// take one apart.
+    ///
+    /// Asked at a split rather than at the `match`, because the split is the
+    /// case analysis. [`declare`](crate::declare) has already refused a family
+    /// whose cases disagree, so the first case answers for all of them, and a
+    /// family with no cases hides nothing — there is no elimination to refuse.
+    pub(crate) fn abstract_from(&self, viewer: Option<ModuleId>) -> Option<ModuleId> {
+        let home = self.group.module?;
+        let declared = self.group.family_at(self.family)?;
+        let open = declared
+            .constructors
+            .first()
+            .is_none_or(|case| case.visibility.visible_from(self.group.module, viewer));
+        (!open).then_some(home)
+    }
 }
 
 /// The family `ty` is the type of elements of, if it is one.
@@ -328,6 +365,44 @@ impl Found {
     /// Whether finishing this needs a level the caller has to create.
     pub(crate) const fn is_recursor(&self) -> bool {
         matches!(*self, Self::Recursor(_, _))
+    }
+
+    /// The module this name is private to, when `viewer` may not name it.
+    ///
+    /// Three rules and each earns its place. A family answers for itself. A
+    /// constructor is hidden by its own marker *and* by its family's, because a
+    /// case of a type nobody outside can name is not reachable either way. And
+    /// a recursor is hidden when the constructors are, because eliminating a
+    /// family is exactly the case analysis `private` cases exist to prevent —
+    /// hiding the pattern spelling while leaving `Chord.elim` in scope would
+    /// hide nothing at all.
+    pub(crate) fn hidden_from(&self, viewer: Option<ModuleId>) -> Option<ModuleId> {
+        let (group, family) = match self {
+            Self::Rigid(constant) => (&constant.group, constant.family),
+            Self::Recursor(group, family) => (group, *family),
+        };
+        let home = group.module?;
+        let declared = group.family_at(family)?;
+        let sees = |visibility: Visibility| visibility.visible_from(group.module, viewer);
+        // `declare` has already refused a family whose cases disagree, so the
+        // first case answers for all of them.
+        let sees_cases = || declared.constructors.first().is_none_or(|case| sees(case.visibility));
+        let visible = sees(declared.visibility)
+            && match self {
+                Self::Rigid(Constant {
+                    role: Role::Constructor(which),
+                    ..
+                }) => declared
+                    .constructor_at(*which)
+                    .is_some_and(|case| sees(case.visibility)),
+                Self::Rigid(Constant {
+                    role: Role::Recursor(_),
+                    ..
+                })
+                | Self::Recursor(_, _) => sees_cases(),
+                Self::Rigid(Constant { role: Role::Family, .. }) => true,
+            };
+        (!visible).then_some(home)
     }
 }
 

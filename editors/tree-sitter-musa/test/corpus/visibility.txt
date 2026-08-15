@@ -1,0 +1,126 @@
+==================
+private on every declaration it may mark
+==================
+
+library {
+  private let concert_a = 440;
+
+  private fn dotted(dots: Nat) -> Nat { dots }
+
+  private record Pending {
+    read: Nat;
+  }
+
+  enum Chord {
+    private NamedChord(Symbol),
+    AnonymousChord,
+  }
+
+  private enum Tuning {
+    Equal,
+  }
+
+  private data Tag {
+    Only,
+  }
+}
+
+---
+
+(source_file
+  (library_declaration
+    (let_declaration
+      (identifier)
+      (expression
+        (literal_expression
+          (integer))))
+    (function_declaration
+      (identifier)
+      (parameter_list
+        (parameter
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier)))))
+      (type_expression
+        (type_name
+          (identifier)))
+      (block_expression
+        (expression
+          (name_expression
+            (identifier)))))
+    (record_declaration
+      (identifier)
+      (field_declaration
+        (identifier)
+        (type_expression
+          (type_name
+            (identifier)))))
+    (enum_declaration
+      (identifier)
+      (enum_case
+        (identifier)
+        (type_expression
+          (type_name
+            (identifier))))
+      (enum_case
+        (identifier)))
+    (enum_declaration
+      (identifier)
+      (enum_case
+        (identifier)))
+    (data_declaration
+      (identifier)
+      (data_variant
+        (identifier)))))
+
+==================
+the marker is a token of the declaration, so the node is the same one
+==================
+
+library {
+  private structure Common : Chords {
+    let unison = 0;
+  }
+
+  structure Open : Chords {
+    let unison = 1;
+  }
+}
+
+---
+
+(source_file
+  (library_declaration
+    (structure_declaration
+      (identifier)
+      (identifier)
+      (let_declaration
+        (identifier)
+        (expression
+          (literal_expression
+            (integer)))))
+    (structure_declaration
+      (identifier)
+      (identifier)
+      (let_declaration
+        (identifier)
+        (expression
+          (literal_expression
+            (integer)))))))
+
+==================
+a marker on something that is not a declaration does not parse
+==================
+
+library {
+  private use x;
+}
+
+---
+
+(source_file
+  (library_declaration
+    (ERROR
+      (identifier)
+      (identifier))))

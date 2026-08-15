@@ -38,6 +38,7 @@ use std::sync::Arc;
 use crate::level::Level;
 use crate::origin::Origin;
 use crate::term::{Name, Plicity};
+use crate::visibility::Visibility;
 
 /// One binder of a raw telescope: a parameter, an index, or a constructor field.
 #[derive(Clone, Debug)]
@@ -64,6 +65,9 @@ pub struct RawConstructor {
     pub origin: Origin,
     /// Its name, unqualified: the family qualifies it.
     pub name: Name,
+    /// Whether `private` was written before it. All the cases or none of them —
+    /// a family whose cases disagree is refused at its declaration.
+    pub visibility: Visibility,
     /// Its arguments, read under the family names and the group's parameters.
     pub fields: Vec<RawBinder>,
     /// The index arguments its result chooses, in the family's index order, read
@@ -76,6 +80,10 @@ pub struct RawConstructor {
 pub struct RawFamily {
     /// Its name.
     pub name: Name,
+    /// Whether `private` was written before the declaration, hiding the *type*.
+    /// Independent of its cases': a public type with private cases is the shape
+    /// `01-surface.md` §1.3 exists for.
+    pub visibility: Visibility,
     /// Its indices, read under the family names and the group's parameters.
     pub indices: Vec<RawBinder>,
     /// Its constructors.

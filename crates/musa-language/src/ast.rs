@@ -35,6 +35,16 @@ fn token_text(node: &SyntaxNode, kind: SyntaxKind) -> Option<String> {
     find_token(node, kind).map(|token| token.text().to_string())
 }
 
+/// Whether a declaration carries the `private` marker
+/// (`01-surface.md` §1.3).
+///
+/// A token of the declaration's own node rather than a wrapper around it, so
+/// every accessor a declaration already had still reads the same node and the
+/// answer costs one child lookup.
+fn is_private(node: &SyntaxNode) -> bool {
+    find_token(node, SyntaxKind::PrivateKw).is_some()
+}
+
 fn descendant_token_text(node: &SyntaxNode, kind: SyntaxKind) -> Option<String> {
     node.descendants_with_tokens()
         .filter_map(SyntaxElement::into_token)
@@ -1050,6 +1060,16 @@ impl StructureDecl {
     /// The functions it defines, in source order.
     pub fn fns(&self) -> Vec<FnDecl> {
         children(&self.0)
+    }
+
+    /// Whether it is marked `private`, and so nameable only inside the module
+    /// that declares it (`01-surface.md` §1.3).
+    ///
+    /// About the structure itself and not about its members: a member the
+    /// signature does not list is already private *to the structure*, which is
+    /// sealing by listing rather than by marking, and the two do not overlap.
+    pub fn is_private(&self) -> bool {
+        is_private(&self.0)
     }
 }
 
@@ -2104,6 +2124,12 @@ impl LetDecl {
     pub fn name(&self) -> Option<String> {
         token_text(&self.0, SyntaxKind::Identifier)
     }
+
+    /// Whether it is marked `private`, and so nameable only inside the module
+    /// that declares it (`01-surface.md` §1.3).
+    pub fn is_private(&self) -> bool {
+        is_private(&self.0)
+    }
 }
 
 /// `fn name(parameters) { expression }`, with an optional `-> type`.
@@ -2119,6 +2145,12 @@ impl FnDecl {
     /// Its parameters in source order, annotated or not.
     pub fn params(&self) -> Vec<FnParam> {
         params_of(&self.0)
+    }
+
+    /// Whether it is marked `private`, and so nameable only inside the module
+    /// that declares it (`01-surface.md` §1.3).
+    pub fn is_private(&self) -> bool {
+        is_private(&self.0)
     }
 }
 
@@ -2238,6 +2270,12 @@ impl DataDecl {
     pub fn variants(&self) -> Vec<DataVariant> {
         children(&self.0)
     }
+
+    /// Whether it is marked `private`, and so nameable only inside the module
+    /// that declares it (`01-surface.md` §1.3).
+    pub fn is_private(&self) -> bool {
+        is_private(&self.0)
+    }
 }
 
 /// `record Pending { read: Reading; dots: Dots; }` — a declaration of named
@@ -2269,6 +2307,12 @@ impl RecordDecl {
     /// evaluated in and the order a telescope reads them.
     pub fn fields(&self) -> Vec<FieldDecl> {
         children(&self.0)
+    }
+
+    /// Whether it is marked `private`, and so nameable only inside the module
+    /// that declares it (`01-surface.md` §1.3).
+    pub fn is_private(&self) -> bool {
+        is_private(&self.0)
     }
 }
 
@@ -2312,6 +2356,12 @@ impl EnumDecl {
     pub fn cases(&self) -> Vec<EnumCase> {
         children(&self.0)
     }
+
+    /// Whether it is marked `private`, and so nameable only inside the module
+    /// that declares it (`01-surface.md` §1.3).
+    pub fn is_private(&self) -> bool {
+        is_private(&self.0)
+    }
 }
 
 /// `Refused { at: NodePath, why: Text }` — one case of an enum.
@@ -2334,6 +2384,13 @@ impl EnumCase {
     /// The fields a named case declares, in source order.
     pub fn named(&self) -> Vec<FieldDecl> {
         children(&self.0)
+    }
+
+    /// Whether the case is marked `private`, so that the *type* stays public
+    /// and the constructor is the declaring module's to build
+    /// (`01-surface.md` §1.3).
+    pub fn is_private(&self) -> bool {
+        is_private(&self.0)
     }
 }
 
