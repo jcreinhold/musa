@@ -158,6 +158,23 @@ ship.
     proposes a ten-row table of counts in its place. It records one gap the pass does not cover: hidden constructors
     have no spelling, and no prompt from 133 to 149 adds one.
 
+45. [44-audit-against-smalltt-and-peyton-jones.md](44-audit-against-smalltt-and-peyton-jones.md) audits the core built
+    by prompts 133–136 against `~/Code/smalltt` and Peyton Jones chapters 3–6, and classifies every divergence as
+    **backed** or **ad hoc**. Seven divergences; two backed, five ad hoc, none of them about soundness. The measured one
+    is `match`: an arm's body is duplicated once per case-tree leaf and **re-elaborated** at each copy, so elaborated
+    term size and elaboration time both grow **2.2× per matched column** — 14.9 MB and 45 ms at ten columns for eleven
+    lines of source. That is Peyton Jones §5.4.1's `unwieldy` exactly, and notes 24 §H5 and 26 §2.4 had already found it
+    and chosen local join points as the answer; prompt 135 silently took the option those notes rejected. The proposed
+    replacement is note 26's join point in a calculus without labels — one `let`-bound function per arm, applied at each
+    leaf, well-typed because a variable pattern's binder *is* the abstraction that makes the body uniform. The other
+    four ad hoc findings are one decision seen four ways: musa-core has no top-level definition scope, so it cannot fold
+    anything, so none of smalltt's speed techniques — glued evaluation, approximate conversion, the three quotation
+    modes, approximate occurs checking — are available. Prompt 142 hands that core the standard library. Also: neutral
+    spines are left-nested `Arc` chains with the head O(n) away, `rigid` has no structural arm for two lambdas or two
+    records (which prompt 137's dictionaries make a hot path), and `convertible` is a second and maximally naive
+    conversion path. Repairing §6.2's stated reason for declining the fat bar would be an amendment, and is left to the
+    user.
+
 The proof gate failed for the design notes 19–41 pursued, and nothing in *those* notes moved to `docs/rules/` or into
 implementation prompts. Note 42 is the exception and says why: it is an amendment taken under
 [`docs/rules/README.md`](../../../rules/README.md)'s procedure, on engineering evidence those notes did not weigh, and
