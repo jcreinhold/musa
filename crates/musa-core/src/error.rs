@@ -1,0 +1,60 @@
+//! What this crate answers when it cannot answer.
+//!
+//! Two shapes, and the distinction is the point. **Exhaustion** is a language
+//! outcome: `docs/rules/language/02-core-calculus.md` §4 names it as the third
+//! outcome beside acceptance and refusal, and a program that exhausts one
+//! budget may be accepted under another. **Malformation** is a caller defect:
+//! this crate does not type-check — prompt 134's elaborator does — so a term
+//! that projects a field from a function is not a program that was refused, it
+//! is a term nobody should have handed over.
+//!
+//! Reporting the second rather than panicking on it is deliberate. A total
+//! language that aborts has replaced a diagnostic with a crash, and none of the
+//! three outcomes describes what happened.
+
+use crate::budget::ResourceError;
+use crate::term::{Index, Name};
+
+/// Why a core operation did not produce a term.
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum CoreError {
+    /// The deterministic budget ended the operation (§4).
+    #[error(transparent)]
+    Exhausted(#[from] ResourceError),
+    /// The caller handed over a term that does not fit its stated type, or a
+    /// context it does not belong to. A compiler defect, reported as one.
+    #[error("malformed core term: {0}")]
+    Malformed(#[from] Malformed),
+}
+
+/// A term that does not fit where it was used.
+///
+/// Each variant names a *shape* mismatch rather than a typing verdict, because
+/// a typing verdict needs a type-checker and this crate is not one. What these
+/// say is that evaluation reached a point where the term's own structure made
+/// the next step meaningless.
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum Malformed {
+    /// A variable named a binder that is not in scope.
+    #[error("variable {0:?} is not bound in this context")]
+    UnboundVariable(Index),
+    /// Something that is not a function was applied.
+    #[error("applied a value that is not a function")]
+    NotAFunction,
+    /// Something that is not a record was projected.
+    #[error("projected a value that is not a record")]
+    NotARecord,
+    /// A record was projected at a field it does not have.
+    #[error("record has no field named `{0}`")]
+    NoSuchField(Name),
+    /// A value stood where a type was needed.
+    #[error("a value that is not a type stood in type position")]
+    NotAType,
+    /// `J` was applied to something that is not an identity proof.
+    #[error("eliminated a value that is not an identity proof")]
+    NotAnIdentity,
+    /// Quotation reached a level that its own depth does not name, which can
+    /// only mean levels and indices were confused somewhere above.
+    #[error("quotation reached a variable outside the scope it was quoting in")]
+    EscapedVariable,
+}

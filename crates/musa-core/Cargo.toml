@@ -1,0 +1,13 @@
+[package]
+description = "The dependently typed core: terms, contexts, and conversion by normalization-by-evaluation"
+edition.workspace = true
+license.workspace = true
+name = "musa-core"
+repository.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+thiserror = "2"

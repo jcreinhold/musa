@@ -1,7 +1,7 @@
 ---
 id: 133
 slug: core-crate
-status: pending
+status: done
 depends_on: [132]
 phase: 3
 ---

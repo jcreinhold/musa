@@ -7,6 +7,7 @@ carry their pre-127a spellings, and the pairs are in [`../clean-break-ledger.md`
 | Feature | Owner | Current state | Next evidence |
 | --- | --- | --- | --- |
 | Total non-recursive source expressions | `musa-compiler` | implemented for the current value types and folds | whole-language conformance tests |
+| Definitional equality over the dependent core, decided by normalization by evaluation | `musa-core` | implemented for universes, Π, dependent records with η, `Id`/`refl`/`J`, and `let`, under the §4 budget | prompts 134–135 add elaboration, families, and the termination checker; prompt 148 owes the metatheory matrix |
 | User-defined nominal data, private constructors, and abstract type members | `musa-compiler` | absent; research candidate still incomplete after review 54 | repair active package-version selection, then review again |
 | Building and closing a fragment into a core term | compiler to kernel | implemented, but over the deleted contextual `music` type | prompt 142 rebuilds it over ordinary values; differential and closure tests |
 | Finite `EventTrack<C,A>` operations, including unequal-duration `together` | `musa-kernel` | implemented at the old names and without the coordinate index | prompts 127b–127c; current 62 kernel tests and final conformance audit |

@@ -2352,15 +2352,31 @@ tracing
 
 Deliberately short. A core that reaches for `num-rational` has started to know what a duration is, and a core that
 reaches for `serde` has started to have a serialized form that something outside it will come to depend on. Nothing in
-this list can pull in `musa-language`.
+this list can pull in `musa-language`. Prompt 133 uses only `thiserror`; the other two arrive with the elaborator that
+needs them.
 
 Public interface:
 
 ```rust
-pub fn elaborate(raw: &RawTerm, expected: Option<&Term>) -> Result<Elaborated, CoreError>;
-pub fn convertible(left: &Term, right: &Term, ty: &Term) -> bool;
-pub fn normalize(term: &Term) -> Term;
+pub fn normalize(cx: &Cx, ty: &Term, term: &Term) -> Result<Term, CoreError>;
+pub fn normalize_type(cx: &Cx, ty: &Term) -> Result<Term, CoreError>;
+pub fn convertible(cx: &Cx, ty: &Term, left: &Term, right: &Term) -> Result<bool, CoreError>;
+pub fn convertible_types(cx: &Cx, left: &Term, right: &Term) -> Result<bool, CoreError>;
+pub fn elaborate(raw: &RawTerm, expected: Option<&Term>) -> Result<Elaborated, CoreError>; // prompt 134
 ```
+
+Three things the first sketch of this block left out, each of which prompt 133 found by building it:
+
+- **A context, not a bare term.** A term means nothing without the binders it is read under, and quotation needs the
+  depth of those binders to turn the level it invents into the index that names it. `Cx` carries them and the budget
+  together, because limits are inherited by every operation under a context while a *spend* belongs to the operation
+  that made it.
+- **A type, and one operation per sort.** η at Π and at records is performed by quotation rather than by a conversion
+  rule (`docs/rules/language/02-core-calculus.md` §3), so there is nothing to η-expand against without the type. A type
+  is the one thing whose own type — a universe — says nothing about η, which is why `normalize_type` and
+  `convertible_types` exist rather than being reached by inventing a level.
+- **`Result`, not `bool`.** §4's outcomes are three. `Ok(false)` is "these differ" and `Err(Exhausted)` is "nobody found
+  out"; a `bool` could not tell them apart, and a resource limit would silently decide a program's meaning.
 
 `Value` — the semantic domain NbE evaluates into — stays private. It contains closures over the evaluator's own
 representation, so exposing it would make every later change to evaluation a breaking change for `musa-compiler`;
