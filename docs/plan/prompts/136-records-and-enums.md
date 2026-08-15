@@ -1,7 +1,7 @@
 ---
 id: 136
 slug: records-and-enums
-status: pending
+status: in-progress
 depends_on: [135]
 phase: 3
 ---
@@ -10,8 +10,8 @@ phase: 3
 
 ## Task
 
-Add the first two surface forms of the new language: nominal records with field projection and `with` update along a
-path, and typed enums whose constructors live in their type's namespace. Grammar, CST, formatter, and tree-sitter in
+Add the first two surface forms of the new language: structural records with field projection and `with` update along a
+path, and nominal enums whose constructors live in their type's namespace. Grammar, CST, formatter, and tree-sitter in
 `musa-language`; elaboration into the core in `musa-core`. This is where `data Pending`'s eight-field destructure dies
 and where the `Untied` collision that forced `names_a_phase_type` into the compiler stops being possible.
 
@@ -41,12 +41,14 @@ deliberate: wiring a second checking path through the old compiler and then dele
 migration twice and would put a second elaborator in the tree for six prompts. This same split applies to prompts
 137–141, and 142's Design says how the seam closes.
 
-**Records are nominal, with named fields and η from the core.** Declaration, construction by field name, projection
-`p.field`, and update along a path: `p with { region.anchor = a }`. The path form is the widening 127dcfac deferred, and
-`Pending` is why: eight fields, read one at a time, updated one at a time, destructured in full every time. Two rules
-worth stating in the grammar rather than discovering in review — an update names a path, not an expression, so `p with {
-f(x).g = y }` is a syntax error rather than a puzzle; and an update of a field that does not exist names the record type
-and its actual fields.
+**Records are structural, with named fields and η from the core.** `01-surface.md` §1.2 is explicit: a record *is* its
+fields, two declarations with the same fields at the same types denote one type, and an author who wants two quantities
+kept apart declares one-case enums instead. The declared name is what diagnostics say and nothing more. Declaration,
+construction by field name, projection `p.field`, and update along a path: `p with { region.anchor = a }`. The path form
+is the widening 127dcfac deferred, and `Pending` is why: eight fields, read one at a time, updated one at a time,
+destructured in full every time. Two rules worth stating in the grammar rather than discovering in review — an update
+names a path, not an expression, so `p with { f(x).g = y }` is a syntax error rather than a puzzle; and an update of a
+field that does not exist names the record type and its actual fields.
 
 **Enums are nominal sums with namespaced constructors.** `TokenKind::PitchLiteral`. Two enums in one module may share a
 constructor spelling, which is the whole point: the printer splice in prompt 127dcfb failed because the staff adapter's
@@ -54,10 +56,12 @@ constructor spelling, which is the whole point: the printer splice in prompt 127
 scar. A bare constructor is still accepted where the expected type is known — that is 134's check direction doing its
 job, not an inference heuristic — and ambiguity between two enums in check position is an error naming both.
 
-**`data` does not fork into three declarations.** Records and enums are the two shapes `data` was being used for, so
-they are the same declaration form with the same positivity check and the same storable-data treatment, differing in
-whether the constructors are one or many and whether the fields are named. A language with `data`, `record`, and `enum`
-as three unrelated declarations is three things to learn where there is one idea.
+**`data` does not fork into three declarations.** Records and enums are the two shapes `data` was being used for, and
+they are two spellings an author chooses between rather than three unrelated declarations to learn. They do not
+elaborate the same way, and §1.2's last bullet is why: a `record` becomes a core dependent record type, so there is no
+family, no recursor, and no positivity question, while an `enum` generates its own family under §1.1's positivity check.
+That asymmetry is the *reason* the surface distinction is worth having — it is what makes records structural and enums
+nominal — so the prompt states one surface idea with two elaborations rather than one elaboration with two skins.
 
 **The formatter decides the layout before the first program is written.** Records and enums are declarations authors
 read far more often than they write; `musa format` owns their shape, the round-trip and idempotence tests cover them,
