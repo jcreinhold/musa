@@ -13,7 +13,7 @@
 
 use std::sync::Arc;
 
-use musa_core::{Cx, Instance, Raw, Refusal, Term, check, convertible, declare_impl, declare_trait, infer};
+use musa_core::{Cx, Instance, Raw, Refusal, Term, check, convertible, declare_impl, declare_trait, infer, well_typed};
 
 use crate::family_laws::{binder, nat_context, type0, var};
 use crate::programs::WRITTEN;
@@ -150,6 +150,52 @@ fn a_method_call_is_the_qualified_call() {
         Ok(true),
         "`x.add(y)` and `Add.add(x, y)` must be one term, not two that agree"
     );
+}
+
+/// Prompt 134's invariant, reaching a program with a trait in it: a call of a
+/// method is a term the independent re-checker accepts.
+///
+/// `trait_laws.rs`'s `the_re_checker_accepts_what_dictionary_elaboration_produced`
+/// states the same obligation, and the case it cannot reach is this one. A
+/// solved dictionary hole is read back as a **normal form** at the method's
+/// type: `Eq.equal : Nat` reads back as `Nat.Zero`, a constant, which infers —
+/// but a normal form at a Π is η-long, so `Add.add : Nat → Nat → Nat` reads back
+/// as `λx. λy. x`. A *call* of it is then an application whose function is an
+/// introduction form, which `02-core-calculus.md` §2 gives no inference rule,
+/// and prompt 134's obligation was discharged for exactly the programs with no
+/// operator in them.
+///
+/// So the law is stated at a call rather than at the method: the bare method is
+/// checked against a type and never needed one inferred, and it passes whether
+/// or not the read-back writes anything down.
+#[test]
+fn a_call_of_a_method_re_checks_in_the_core() {
+    let cx = one_add();
+    let ty = nat(&cx);
+    let zero = var("Nat.Zero");
+    let binary_ty = Raw::pi(WRITTEN, "x", var("Nat"), Raw::pi(WRITTEN, "y", var("Nat"), var("Nat")));
+    let (binary_ty, _) = infer(&cx, &binary_ty).expect("`Nat → Nat → Nat` is a type");
+
+    for (spelling, at, raw) in [
+        (
+            "Add.add(x, y)",
+            &ty,
+            Raw::app(WRITTEN, Raw::app(WRITTEN, var("Add.add"), zero.clone()), zero.clone()),
+        ),
+        (
+            "x.add(y)",
+            &ty,
+            Raw::app(WRITTEN, Raw::method(WRITTEN, zero.clone(), "add"), zero),
+        ),
+        // The method as a value, which is the same read-back standing in a
+        // checking position rather than an inferring one.
+        ("Add.add", &binary_ty, var("Add.add")),
+    ] {
+        let term = check(&cx, at, &raw).expect("`add` at `Nat` resolves");
+        if let Err(error) = well_typed(&cx, at, &term) {
+            panic!("the re-checker rejects `{spelling}`, which elaboration accepted: {error}");
+        }
+    }
 }
 
 /// §6: exactly one candidate resolves, and the lookup is keyed on the receiver's

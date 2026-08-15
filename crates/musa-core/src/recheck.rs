@@ -34,8 +34,16 @@
 //! everything it accepts is well typed, and a refusal here is a claim about this
 //! checker's reach, not about the program.
 //!
-//! Elaboration reaches such a term only by β- or projection-redex the author
-//! wrote themselves; the corpus in `tests/suite` stays clear of them, and prompt
+//! Elaboration reaches such a term only by a β- or projection-redex the author
+//! wrote themselves — and that is *kept* true rather than observed. A solved
+//! metavariable is read back as a normal form, and a normal form at a Π is
+//! η-long while one at a record type is a literal, so a resolved trait method is
+//! an introduction form and the call the author wrote around it is exactly the
+//! redex above. [`crate::elab`]'s read-back therefore writes the type the hole
+//! stood at into a `let` — §1 has one and §2 gives it a rule — so the head of
+//! every elimination elaboration produces infers.
+//!
+//! The corpus in `tests/suite` stays clear of author-written redexes, and prompt
 //! 135 revisits the question when `match` gives the core a second elimination
 //! form to answer it for.
 

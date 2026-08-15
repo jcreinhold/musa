@@ -78,7 +78,7 @@ use crate::eval::{apply, apply_closure, eval, field_type, force};
 use crate::level::{Level, LevelMeta};
 use crate::meta::{Meta, MetaSource};
 use crate::origin::Origin;
-use crate::quote::{Depth, quote};
+use crate::quote::{Depth, quote, quote_type};
 use crate::raw::{Raw, RawField, RawShape, RawUpdate};
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
@@ -1603,12 +1603,55 @@ impl<'a> MetaSpine<'a> {
             value = apply(meter, self.origin, value, variable.clone())?;
             ty = apply_closure(meter, &codomain, variable)?;
         }
-        let mut read = quote(meter, Depth(depth), &ty, &value)?.at(self.origin);
+        let read = quote(meter, Depth(depth), &ty, &value)?.at(self.origin);
+        let mut read = stated(meter, depth, self.origin, self.meta.source(), &ty, read)?;
         for argument in self.extra {
             read = Term::app(self.origin, read, zonk(meter, depth, argument)?);
         }
         Ok(read)
     }
+}
+
+/// A read-back solution with the type it stood at **written down**, whenever the
+/// normal form it read back to is one §2 gives no inference rule.
+///
+/// A solution is read back as a normal form, and a normal form at a Π is η-long
+/// and at a record type is a literal. Both are introduction forms, so both are
+/// [`Refusal::Uninferable`] to [`crate::well_typed`] — and a hole standing where
+/// a method goes is eliminated by whatever the author applied or projected it
+/// with, which makes the elimination-of-an-introduction that
+/// [`crate::recheck`]'s module doc says elaboration does not produce. `Eq.equal`
+/// at `Nat` read back as `Nat.Zero` and inferred; `Add.add` at `Nat` reads back
+/// as `λx. λy. x`, and `Add.add(Nat.Zero, Nat.Zero)` is then a β-redex nothing
+/// downstream can re-check.
+///
+/// §1's `let x : A = e in b` is the core's annotation form and §2 gives it a
+/// rule, so writing the type there is not a new rule and not a change to what
+/// the term means: δ makes `let x : A = e in x` and `e` one term. The elaborator
+/// knew `A` all along — this is the one place that knowledge was being dropped.
+///
+/// Every other normal form — a constant, a variable, a neutral spine, a
+/// universe, a Π, a record *type*, `refl` — infers on its own, so nothing is
+/// written for it and the ordinary implicit argument reads back exactly as
+/// before.
+fn stated(
+    meter: &mut Meter,
+    depth: u32,
+    at: Origin,
+    source: MetaSource,
+    ty: &Value,
+    read: Term,
+) -> Result<Term, CoreError> {
+    if !matches!(read.shape(), Shape::Lam { .. } | Shape::Record(_)) {
+        return Ok(read);
+    }
+    let name = match source {
+        MetaSource::Dictionary => "method",
+        MetaSource::ImplicitArgument => "implicit",
+        MetaSource::BinderType | MetaSource::UniverseLevel => "solved",
+    };
+    let stated = quote_type(meter, Depth(depth), ty)?.at(at);
+    Ok(Term::bind(at, name, stated, read, Term::var(at, Index(0))))
 }
 
 fn zonk_fields(meter: &mut Meter, depth: u32, fields: &[Field]) -> Result<Arc<[Field]>, CoreError> {

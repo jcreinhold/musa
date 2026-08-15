@@ -489,6 +489,13 @@ pub(crate) struct Postponed {
 /// projection out of one has nothing to infer through. Solving a metavariable
 /// makes the *value* of the projection the solution, and quotation reads back a
 /// normal form — `Nat.Zero`, which infers.
+///
+/// That is half of what the re-checker needs, and the half this module can
+/// supply. A normal form at a **Π** is η-long, so a method that is a function —
+/// which every method `10-traits.md` §5 gives an operator is — reads back as a
+/// λ, and the call around it is an application of an introduction form. Writing
+/// the method's type down is what answers that, and it is done where the
+/// read-back happens rather than here: see [`crate::elab`]'s `stated`.
 pub(crate) struct Wanted {
     /// The hole standing for the dictionary, solved alongside the method's.
     pub(crate) dictionary: Term,
