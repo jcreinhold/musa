@@ -282,6 +282,11 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 130 | trait-and-surface-spec | 3 | Specify records, enums, traits, and their surface |
 | 131 | quotation-spec | 3 | Specify typed quotation and syntax patterns |
 | 132 | paper-trial | 3 | Paper-trial the dependent language before any code implements it |
+| 133 | core-crate | 3 | Build the dependent core as a leaf crate |
+| 134 | bidirectional-elaboration | 3 | Elaborate bidirectionally, with metavariables |
+| 135 | inductive-families | 3 | Add inductive families, dependent match, and termination checking |
+| 136 | records-and-enums | 3 | Give the language records and namespaced enums |
+| 137 | traits-and-operators | 3 | Add traits, dictionaries, operators, and methods |
 | 150 | machine-runtime | 3 | Give each prepared machine one deterministic next step |
 | 151 | track-scheduling | 3 | Connect exact event tracks to frame machines with checked decisions |
 | 152 | one-frame-audio | 3 | Make one audio frame the reference meaning for every DSP unit |
