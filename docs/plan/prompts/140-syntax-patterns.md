@@ -1,7 +1,7 @@
 ---
 id: 140
 slug: syntax-patterns
-status: pending
+status: in-progress
 depends_on: [139]
 phase: 3
 ---
@@ -18,7 +18,8 @@ string-dispatch table from adapter code.
 
 - `docs/rules/language/11-quotation.md`'s pattern section and its two rules — a pattern quote binds only splice
   variables, and matching is on syntactic shape rather than provenance. Both are refusals with teeth and both need a
-  test.
+  test. Its two example programs are normative about where a spread may stand: the second is a block, so a spread in a
+  pattern is not restricted to the comma-separated positions construction restricts it to.
 - `docs/rules/language/00-semantics.md` §2 as amended — why a second descent is allowed and what makes this one
   controlled. If the implementation ends up needing more than one level of decomposition per pattern, that is evidence
   against the amendment and a repair, not a widening made in passing.
@@ -52,9 +53,12 @@ human" from inside a pattern.
 — because the alternative makes every adapter fragile against formatting. Say what "modulo trivia" means precisely,
 including for a sequence splice, and test the case where trivia sits between two spliced elements.
 
-**Sequence patterns bind sequences.** `$..xs` in a repetition position binds the rest, with the same grammatical
-restriction as construction. Exactly one open sequence splice per repetition, because two would need search, and search
-is what this language keeps refusing.
+**Sequence patterns bind sequences.** `$..xs` binds the run of siblings it stands among, and it may stand among any
+group's children — which is *wider* than construction, where a spread needs the comma its position supplies.
+`11-quotation.md` §4's second example is `quote { { $..items } }` and a block separates nothing, so the narrower rule
+would refuse the specification's own program. The asymmetry is not an oversight: writing a run needs a separator to put
+between its elements, and reading one needs only a run to bind. Exactly one open sequence splice per group, because two
+would need search, and search is what this language keeps refusing.
 
 **When to use which, written down.** A pattern quote decides a known shape; `recurse_syntax` traverses an unknown one.
 The tests carry one program of each kind side by side, and the doc comment on each names the other. This is the cheapest
@@ -63,7 +67,7 @@ possible defence against a future adapter that reimplements traversal out of pat
 **Laws.** Match after build is the identity: matching `quote { $a + $b }` against a value built by `quote at here { $x +
 $y }` binds `a` to `x` and `b` to `y`. Coverage and unreachability behave as for any other pattern. A literal identifier
 does not bind. Provenance does not affect matching, tested with a derived and a source node of the same shape. Trivia
-does not affect matching. Two open sequence splices in one repetition are refused.
+does not affect matching. Two open sequence splices in one group are refused.
 
 ## Target
 
