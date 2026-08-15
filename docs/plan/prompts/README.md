@@ -287,6 +287,13 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 135 | inductive-families | 3 | Add inductive families, dependent match, and termination checking |
 | 136 | records-and-enums | 3 | Give the language records and namespaced enums |
 | 137 | traits-and-operators | 3 | Add traits, dictionaries, operators, and methods |
+| 138 | typed-syntax | 3 | Give syntax a category, and the phase API its types |
+| 139 | quotation | 3 | Implement quotation, splicing, and automatic provenance |
+| 140 | syntax-patterns | 3 | Match syntax by quoting the shape you mean |
+| 141 | collections | 3 | Let a list be built |
+| 142 | surface-cutover | 3 | Move the whole language over, once |
+| 143 | builtin-collapse | 3 | Collapse the builtin registry behind traits and namespaces |
+| 144 | diagnostics-and-performance | 3 | Make the new failures legible and the new checker fast enough |
 | 150 | machine-runtime | 3 | Give each prepared machine one deterministic next step |
 | 151 | track-scheduling | 3 | Connect exact event tracks to frame machines with checked decisions |
 | 152 | one-frame-audio | 3 | Make one audio frame the reference meaning for every DSP unit |
