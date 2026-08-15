@@ -4,7 +4,7 @@
 //! build, and one more set of object files that cargo never reclaims from
 //! `target/debug/deps`. See `docs/notes/toolchain/slow-test-suite.md`.
 //!
-//! The four suites state `docs/rules/language/02-core-calculus.md`'s §3, §4, and
+//! The suites state `docs/rules/language/02-core-calculus.md`'s §2, §3, §4, and
 //! §7 obligations as tests. They share one corpus, deliberately: a law that held
 //! only for the terms its own file happened to build would be a law about those
 //! terms. [`fixtures::corpus`] is that corpus, and every sample in it names the
@@ -17,8 +17,10 @@
 
 mod budget_laws;
 mod conversion_laws;
+mod elaboration_laws;
 mod normalization_laws;
 mod provenance_laws;
+mod unification_laws;
 
 /// The terms every law suite is stated over.
 pub(crate) mod fixtures {
@@ -279,5 +281,357 @@ pub(crate) mod fixtures {
                 equal: true,
             },
         ])
+    }
+}
+
+/// The raw programs the elaboration suites are stated over.
+///
+/// Closed, every one of them, and that is forced rather than chosen: a raw term
+/// resolves names against binders it introduced itself, and a binder the caller's
+/// context already held has no name for it to resolve to (§2, and `scope.rs`).
+///
+/// The corpus has no `data` and no primitives, because prompt 134 has neither.
+/// What stands in for them is the **empty record**: `{}` as a type is the
+/// smallest thing in `Type 0`, `{}` as a literal is its one inhabitant, and
+/// `Id (Type 1) (Type 0) (Type 0)` supplies a second family with a constructor.
+/// Everything below is built from those.
+pub(crate) mod programs {
+    use musa_core::{ElabError, Level, Origin, Raw, Refusal, Term};
+
+    /// Where every raw term in the corpus says it was written.
+    ///
+    /// One origin is enough here: `provenance_laws.rs` is the suite about which
+    /// origin lands where, and these are about what elaborates to what.
+    pub(crate) const WRITTEN: Origin = Origin::node(400);
+
+    /// A program elaboration must accept.
+    pub(crate) struct Program {
+        /// What the program exercises.
+        pub(crate) name: &'static str,
+        pub(crate) raw: Raw,
+        /// The type to check it against, or `None` to infer one.
+        pub(crate) ty: Option<Term>,
+    }
+
+    /// A program elaboration must refuse, and the refusal it owes.
+    pub(crate) struct Refused {
+        pub(crate) name: &'static str,
+        pub(crate) raw: Raw,
+        pub(crate) ty: Option<Term>,
+        /// Whether the refusal is the one this program is about.
+        pub(crate) expected: fn(&Refusal) -> bool,
+    }
+
+    /// `{}` as a type: the unit of this corpus, in `Type 0`.
+    pub(crate) fn unit_type() -> Raw {
+        Raw::record_type(WRITTEN, [])
+    }
+
+    /// `{}` as a value: unit's one inhabitant.
+    pub(crate) fn unit() -> Raw {
+        Raw::record(WRITTEN, [])
+    }
+
+    /// The same type as a core term, for a checking question.
+    pub(crate) fn core_unit_type() -> Term {
+        Term::record_type(WRITTEN, [])
+    }
+
+    /// `({} : {})` — the unit value where a type has to be *inferred* from it.
+    ///
+    /// An argument filling an explicit binder whose type is still a
+    /// metavariable is checked against that metavariable, and §2 gives a record
+    /// literal no rule there: the literal is an introduction form, and a
+    /// metavariable is not a record type it could check field by field. Writing
+    /// the annotation is what an author does, and it is what determines the
+    /// implicit.
+    pub(crate) fn annotated_unit() -> Raw {
+        Raw::annot(WRITTEN, unit(), unit_type())
+    }
+
+    fn type0() -> Raw {
+        Raw::universe(WRITTEN, Level::ZERO)
+    }
+
+    fn var(name: &'static str) -> Raw {
+        Raw::var(WRITTEN, name)
+    }
+
+    /// `{X : Type 0} → X → X`, the polymorphic identity's type.
+    fn implicit_identity_type() -> Raw {
+        Raw::implicit_pi(WRITTEN, "X", type0(), Raw::pi(WRITTEN, "_", var("X"), var("X")))
+    }
+
+    /// `λ{X}. λx. x`.
+    fn implicit_identity() -> Raw {
+        Raw::implicit_lam(WRITTEN, "X", Raw::lam(WRITTEN, "x", var("x")))
+    }
+
+    /// `(y : {}) → Id {} {} y → Type 0`'s inhabitant, written unannotated so
+    /// that both of its binder types are metavariables.
+    /// `{X : Type 0} → X → X` as a core term, for a checking question.
+    fn core_implicit_identity_type() -> Term {
+        Term::implicit_pi(
+            WRITTEN,
+            "X",
+            Term::universe(WRITTEN, Level::ZERO),
+            Term::pi(
+                WRITTEN,
+                "_",
+                Term::var(WRITTEN, musa_core::Index(0)),
+                Term::var(WRITTEN, musa_core::Index(1)),
+            ),
+        )
+    }
+
+    fn constant_motive() -> Raw {
+        Raw::lam(WRITTEN, "y", Raw::lam(WRITTEN, "e", unit_type()))
+    }
+
+    pub(crate) fn accepted() -> Vec<Program> {
+        vec![
+            Program {
+                name: "the unit value at its type",
+                raw: unit(),
+                ty: Some(core_unit_type()),
+            },
+            Program {
+                name: "an annotated identity function, inferred",
+                raw: Raw::annotated_lam(WRITTEN, "x", unit_type(), var("x")),
+                ty: None,
+            },
+            Program {
+                name: "an unannotated identity function, checked",
+                raw: Raw::lam(WRITTEN, "x", var("x")),
+                ty: Some(Term::pi(WRITTEN, "x", core_unit_type(), core_unit_type())),
+            },
+            Program {
+                name: "a binder shadowing an outer one",
+                raw: Raw::annotated_lam(
+                    WRITTEN,
+                    "x",
+                    unit_type(),
+                    Raw::annotated_lam(WRITTEN, "x", unit_type(), var("x")),
+                ),
+                ty: None,
+            },
+            Program {
+                name: "an implicit abstraction, checked against an implicit Pi",
+                raw: implicit_identity(),
+                ty: Some(core_implicit_identity_type()),
+            },
+            Program {
+                name: "an implicit inserted at a use site",
+                raw: Raw::annotated_bind(
+                    WRITTEN,
+                    "id",
+                    implicit_identity_type(),
+                    implicit_identity(),
+                    Raw::app(WRITTEN, var("id"), annotated_unit()),
+                ),
+                ty: None,
+            },
+            Program {
+                name: "an implicit written at the use site rather than inserted",
+                raw: Raw::annotated_bind(
+                    WRITTEN,
+                    "id",
+                    implicit_identity_type(),
+                    implicit_identity(),
+                    Raw::app(WRITTEN, Raw::implicit_app(WRITTEN, var("id"), unit_type()), unit()),
+                ),
+                ty: None,
+            },
+            Program {
+                name: "a term checked against an implicit Pi is abstracted, not switched",
+                raw: Raw::lam(WRITTEN, "x", var("x")),
+                ty: Some(Term::implicit_pi(
+                    WRITTEN,
+                    "X",
+                    Term::universe(WRITTEN, Level::ZERO),
+                    Term::pi(
+                        WRITTEN,
+                        "x",
+                        Term::var(WRITTEN, musa_core::Index(0)),
+                        Term::var(WRITTEN, musa_core::Index(1)),
+                    ),
+                )),
+            },
+            Program {
+                name: "a dependent record type",
+                raw: Raw::record_type(WRITTEN, [("ty", type0()), ("val", var("ty"))]),
+                ty: None,
+            },
+            Program {
+                name: "a dependent record literal",
+                raw: Raw::record(WRITTEN, [("ty", unit_type()), ("val", unit())]),
+                ty: Some(Term::record_type(
+                    WRITTEN,
+                    [
+                        ("ty", Term::universe(WRITTEN, Level::ZERO)),
+                        ("val", Term::var(WRITTEN, musa_core::Index(0))),
+                    ],
+                )),
+            },
+            Program {
+                name: "a projection",
+                // Through a `let` rather than straight out of the literal,
+                // because §2 gives a record literal no inference rule: the
+                // author names the type once and both the projection and the
+                // re-checker read it from there.
+                raw: Raw::annotated_bind(
+                    WRITTEN,
+                    "r",
+                    Raw::record_type(WRITTEN, [("ty", type0()), ("val", var("ty"))]),
+                    Raw::record(WRITTEN, [("ty", unit_type()), ("val", unit())]),
+                    Raw::project(WRITTEN, var("r"), "val"),
+                ),
+                ty: None,
+            },
+            Program {
+                name: "reflexivity at unit",
+                raw: Raw::refl(WRITTEN, unit()),
+                ty: Some(Term::identity(
+                    WRITTEN,
+                    core_unit_type(),
+                    Term::record(WRITTEN, []),
+                    Term::record(WRITTEN, []),
+                )),
+            },
+            Program {
+                name: "J at a constant motive, with both binder types inferred",
+                raw: Raw::jay(
+                    WRITTEN,
+                    unit_type(),
+                    unit(),
+                    constant_motive(),
+                    unit(),
+                    unit(),
+                    Raw::refl(WRITTEN, unit()),
+                ),
+                ty: None,
+            },
+            Program {
+                name: "an annotation re-entering checking mode",
+                raw: Raw::annot(WRITTEN, unit(), unit_type()),
+                ty: None,
+            },
+            Program {
+                name: "a let whose type is inferred",
+                raw: Raw::bind(WRITTEN, "u", annotated_unit(), var("u")),
+                ty: None,
+            },
+            Program {
+                name: "a universe",
+                raw: type0(),
+                ty: Some(Term::universe(WRITTEN, Level::ZERO.succ())),
+            },
+        ]
+    }
+
+    pub(crate) fn refused() -> Vec<Refused> {
+        vec![
+            Refused {
+                name: "a name with no binder",
+                raw: var("nowhere"),
+                ty: None,
+                expected: |refusal| matches!(refusal, Refusal::UnknownName { .. }),
+            },
+            Refused {
+                name: "a universe checked one level too low",
+                raw: type0(),
+                ty: Some(Term::universe(WRITTEN, Level::ZERO)),
+                expected: |refusal| matches!(refusal, Refusal::Mismatch(_)),
+            },
+            Refused {
+                name: "applying something that is not a function",
+                // A universe rather than a record literal: the literal has no
+                // inference rule at all, so it would be refused a step earlier
+                // and for a different reason.
+                raw: Raw::app(WRITTEN, type0(), unit()),
+                ty: None,
+                expected: |refusal| matches!(refusal, Refusal::NotAFunction { .. }),
+            },
+            Refused {
+                name: "an implicit argument at an explicit binder",
+                raw: Raw::implicit_app(WRITTEN, Raw::annotated_lam(WRITTEN, "x", unit_type(), var("x")), unit()),
+                ty: None,
+                expected: |refusal| matches!(refusal, Refusal::PlicityMismatch { .. }),
+            },
+            Refused {
+                name: "an implicit abstraction at an explicit Pi",
+                raw: Raw::implicit_lam(WRITTEN, "x", unit()),
+                ty: Some(Term::pi(WRITTEN, "x", core_unit_type(), core_unit_type())),
+                expected: |refusal| matches!(refusal, Refusal::PlicityMismatch { .. }),
+            },
+            Refused {
+                name: "projecting something that is not a record",
+                raw: Raw::project(WRITTEN, type0(), "f"),
+                ty: None,
+                expected: |refusal| matches!(refusal, Refusal::NotARecord { .. }),
+            },
+            Refused {
+                name: "projecting a field the record type does not have",
+                raw: Raw::annotated_bind(
+                    WRITTEN,
+                    "r",
+                    Raw::record_type(WRITTEN, [("a", unit_type())]),
+                    Raw::record(WRITTEN, [("a", unit())]),
+                    Raw::project(WRITTEN, var("r"), "b"),
+                ),
+                ty: None,
+                expected: |refusal| matches!(refusal, Refusal::NoSuchField { .. }),
+            },
+            Refused {
+                name: "a record literal with no type to check against",
+                // §2: introduction forms check. The type such a literal
+                // "obviously" has is a guess — this one inhabits both
+                // `{ ty : Type 0, val : ty }` and `{ ty : Type 0, val : {} }` —
+                // so elaboration asks rather than picks.
+                raw: Raw::record(WRITTEN, [("ty", unit_type()), ("val", unit())]),
+                ty: None,
+                expected: |refusal| matches!(refusal, Refusal::Uninferable { .. }),
+            },
+            Refused {
+                name: "a record literal whose fields are not the type's",
+                raw: Raw::record(WRITTEN, [("b", unit())]),
+                ty: Some(Term::record_type(WRITTEN, [("a", core_unit_type())])),
+                expected: |refusal| matches!(refusal, Refusal::RecordShape { .. }),
+            },
+            Refused {
+                name: "a value standing in type position",
+                // Annotated, so that it has a type at all: a bare literal is
+                // refused for want of one before anything asks whether it is a
+                // universe.
+                raw: Raw::pi(WRITTEN, "x", annotated_unit(), unit_type()),
+                ty: None,
+                expected: |refusal| matches!(refusal, Refusal::NotAType { .. }),
+            },
+            Refused {
+                name: "a binder type nothing determines",
+                raw: Raw::lam(WRITTEN, "x", var("x")),
+                ty: None,
+                expected: |refusal| matches!(refusal, Refusal::Unsolved { .. }),
+            },
+        ]
+    }
+
+    /// The refusal an error carries, or a panic naming what arrived instead.
+    ///
+    /// Exhaustion and malformedness are *not* refusals (§4), so a suite that
+    /// accepted either as "the program was rejected" would be testing the
+    /// opposite of what §4 says.
+    ///
+    /// # Panics
+    ///
+    /// When the error is not a refusal.
+    pub(crate) fn refusal(name: &str, error: ElabError) -> Refusal {
+        match error {
+            ElabError::Refused(refusal) => refusal,
+            ElabError::Exhausted(exhausted) => {
+                panic!("{name}: the budget ended the judgment ({exhausted}) rather than refusing it")
+            }
+            ElabError::Malformed(malformed) => panic!("{name}: {malformed}"),
+        }
     }
 }

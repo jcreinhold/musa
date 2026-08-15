@@ -26,7 +26,14 @@
 //! - [`quote_type`] reads a value back *as a type*, where the type of the type
 //!   is a universe and tells η nothing.
 //! - [`quote_neutral`] reads a blocked elimination back, recovering each
-//!   argument's type from the spine through [`crate::eval::neutral_type`].
+//!   argument's type from the spine through [`crate::eval::head_type`].
+//!
+//! **Every value quotation matches on is forced first.** A value built before a
+//! metavariable was solved still says "blocked"; matching it unforced would read
+//! an unsolved `?α` back into a normal form that has one, and answer
+//! [`Malformed::NotAFunction`] for a term the elaborator had just accepted (§2.1).
+//! Forcing is only ever *at the head*, so a solved meta buried under a Π's
+//! codomain is unfolded when quotation reaches it, not before.
 //!
 //! **Every node written here carries an origin, and §7 fixes which one.** A node
 //! that reads a value back takes that *value's* origin — never the type's, which
@@ -41,7 +48,7 @@ use std::sync::Arc;
 
 use crate::budget::Meter;
 use crate::error::{CoreError, Malformed};
-use crate::eval::{apply, apply_closure, field_type, neutral_type, project};
+use crate::eval::{apply, apply_closure, field_type, force, head_type, project};
 use crate::origin::Origin;
 use crate::term::{DbLevel, Field, Term};
 use crate::value::{Form, Neutral, Spine, Telescope, Value};
@@ -72,10 +79,23 @@ impl Depth {
 pub(crate) fn quote(meter: &mut Meter, depth: Depth, ty: &Value, value: &Value) -> Result<Term, CoreError> {
     meter.nested("quotation", |meter| {
         meter.quoted_node("quotation")?;
+        // `as_ref().unwrap_or` rather than `unwrap_or_else(clone)`: the common
+        // case is a value with no metavariable in it, and that case must not pay
+        // an allocation per quoted node.
+        let unfolded_ty = force(meter, ty)?;
+        let ty = unfolded_ty.as_ref().unwrap_or(ty);
+        let unfolded_value = force(meter, value)?;
+        let value = unfolded_value.as_ref().unwrap_or(value);
         let here = value.origin;
         match &ty.form {
-            // η at Π: a lambda, whether or not the value is one.
-            Form::Pi { name, domain, codomain } => {
+            // η at Π: a lambda, whether or not the value is one. A λ has no
+            // plicity to write — it is the Π that says how the argument arrives.
+            Form::Pi {
+                plicity: _,
+                name,
+                domain,
+                codomain,
+            } => {
                 let variable = Value::var(Origin::UNKNOWN, depth.fresh(), Arc::clone(domain));
                 let body_type = apply_closure(meter, codomain, variable.clone())?;
                 let body = apply(meter, here, value.clone(), variable)?;
@@ -134,14 +154,22 @@ pub(crate) fn quote(meter: &mut Meter, depth: Depth, ty: &Value, value: &Value) 
 pub(crate) fn quote_type(meter: &mut Meter, depth: Depth, value: &Value) -> Result<Term, CoreError> {
     meter.nested("quotation", |meter| {
         meter.quoted_node("quotation")?;
+        let unfolded = force(meter, value)?;
+        let value = unfolded.as_ref().unwrap_or(value);
         let here = value.origin;
         match &value.form {
             Form::Universe(level) => Ok(Term::universe(here, *level)),
-            Form::Pi { name, domain, codomain } => {
+            Form::Pi {
+                plicity,
+                name,
+                domain,
+                codomain,
+            } => {
                 let variable = Value::var(Origin::UNKNOWN, depth.fresh(), Arc::clone(domain));
                 let opened = apply_closure(meter, codomain, variable)?;
-                Ok(Term::pi(
+                Ok(Term::function(
                     here,
+                    *plicity,
                     Arc::clone(name),
                     quote_type(meter, depth, domain)?,
                     quote_type(meter, depth.under_binder(), &opened)?,
@@ -175,7 +203,7 @@ fn quote_telescope(meter: &mut Meter, here: Origin, depth: Depth, telescope: &Te
             name: Arc::clone(name),
             term: quote_type(meter, at, &field_ty)?,
         });
-        env = env.extend(Value::var(Origin::UNKNOWN, at.fresh(), Arc::new(field_ty)));
+        env = env.push(Value::var(Origin::UNKNOWN, at.fresh(), Arc::new(field_ty)));
         at = at.under_binder();
     }
     Ok(Term::new(here, crate::term::Shape::RecordType(fields.into())))
@@ -184,7 +212,7 @@ fn quote_telescope(meter: &mut Meter, here: Origin, depth: Depth, telescope: &Te
 /// Read a blocked elimination back.
 ///
 /// Each argument is quoted at the type the spine gives it, which is why
-/// [`neutral_type`] exists: an argument quoted untyped would not be η-expanded,
+/// [`head_type`] exists: an argument quoted untyped would not be η-expanded,
 /// and `f g` would read back differently from `f (λx. g x)`.
 fn quote_neutral(meter: &mut Meter, depth: Depth, neutral: &Neutral) -> Result<Term, CoreError> {
     meter.nested("quotation", |meter| {
@@ -195,8 +223,11 @@ fn quote_neutral(meter: &mut Meter, depth: Depth, neutral: &Neutral) -> Result<T
                 .to_index(depth.0)
                 .map(|index| Term::var(here, index))
                 .ok_or_else(|| Malformed::EscapedVariable.into()),
+            // Reached only unsolved: [`quote`] forces first, and a spine whose
+            // innermost head is solved forces whole.
+            Spine::Meta(meta) => Ok(Term::meta(here, meta.clone())),
             Spine::App { function, argument } => {
-                let domain = match neutral_type(meter, function)?.form {
+                let domain = match head_type(meter, function)?.form {
                     Form::Pi { domain, .. } => domain,
                     Form::Universe(_)
                     | Form::Lam(_)

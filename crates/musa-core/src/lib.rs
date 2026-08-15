@@ -77,23 +77,77 @@
 
 mod budget;
 mod context;
+mod elab;
 mod error;
 mod eval;
 mod level;
+mod list;
+mod meta;
 mod origin;
 mod quote;
+mod raw;
+mod recheck;
+mod refuse;
+mod scope;
 mod term;
+mod unify;
 mod value;
 
 pub use crate::budget::{Budget, Metric, ResourceError};
 pub use crate::context::Cx;
 pub use crate::error::{CoreError, Malformed};
 pub use crate::level::Level;
+pub use crate::meta::{Meta, MetaSource};
 pub use crate::origin::Origin;
-pub use crate::term::{DbLevel, Field, Index, Name, Shape, Term};
+pub use crate::raw::{Raw, RawField, RawShape};
+pub use crate::recheck::well_typed;
+pub use crate::refuse::{ElabError, Mismatch, PathStep, Refusal};
+pub use crate::term::{DbLevel, Field, Index, Name, Plicity, Shape, Term};
 
+use crate::elab::Elaborator;
 use crate::eval::eval;
 use crate::quote::{quote, quote_type};
+use crate::scope::Scope;
+
+/// Elaborate `raw` against the type `ty`, in context `cx`.
+///
+/// The output is a core term with **no metavariables left in it**: §2.1 never
+/// defaults and never generalizes, so one still undetermined here is
+/// [`Refusal::Unsolved`] rather than a hole the next stage inherits. It is
+/// independently re-checkable, which is what [`well_typed`] is for and the
+/// single most valuable invariant in this crate.
+///
+/// `ty` is a [`Term`] rather than the semantic type elaboration actually works
+/// against, and that is roadmap §15.12's boundary holding: the caller has a type
+/// it wrote, and the value it evaluates to is this crate's business.
+///
+/// # Errors
+///
+/// [`ElabError::Refused`] when the program is wrong, [`ElabError::Exhausted`]
+/// when the budget ended the judgment — which is **not** a type error — and
+/// [`ElabError::Malformed`] when `ty` is not a term this crate could produce.
+pub fn check(cx: &Cx, ty: &Term, raw: &Raw) -> Result<Term, ElabError> {
+    let mut elaborator = Elaborator::new(cx);
+    let scope = Scope::new(cx);
+    let ty = scope.eval(&mut cx.meter(), ty)?;
+    elaborator.run_check(&scope, raw, &ty)
+}
+
+/// Elaborate `raw`, answering it and the type it was found to have.
+///
+/// Not every term has one. §2 gives the introduction forms — a record literal
+/// above all — a rule that *reads* a type rather than producing one, because the
+/// type such a term "obviously" has is a guess and not a principal type:
+/// `{ ty = {}, val = {} }` inhabits `{ ty : Type 0, val : ty }` and
+/// `{ ty : Type 0, val : {} }` equally. Those are [`Refusal::Uninferable`] here,
+/// and the answer is [`check`] with the type the author meant.
+///
+/// # Errors
+///
+/// As [`check`].
+pub fn infer(cx: &Cx, raw: &Raw) -> Result<(Term, Term), ElabError> {
+    Elaborator::new(cx).run_infer(&Scope::new(cx), raw)
+}
 
 /// The normal form of `term` at type `ty`, in context `cx`.
 ///

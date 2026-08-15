@@ -188,5 +188,9 @@ fn is_normal(term: &Term) -> bool {
                 && is_normal(proof)
         }
         Shape::Let { .. } => false,
+        // A normal form has none: elaboration either solved it or refused the
+        // declaration that left it unsolved (§2.1). Reaching one here means a
+        // term went to `normalize` before that happened.
+        Shape::Meta(_) => false,
     }
 }

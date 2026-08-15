@@ -401,6 +401,45 @@ pub fn explain(code: &str) -> Option<&'static str> {
              was given too much to read, not a run that would not have \
              stopped."
         }
+        musa_compiler::Code::UnsolvedMetavariable => {
+            "Elaboration left a hole, and nothing in the program says what \
+             belongs in it.\n\n\
+             Some things a program does not have to write down: the type of a \
+             binder a later use pins down, an implicit argument the explicit \
+             ones determine. Elaboration stands a *metavariable* in each such \
+             place and lets the rest of the declaration decide it. This report \
+             means the rest of the declaration did not.\n\n\
+             It is never guessed at. Musa will not pick the smallest type that \
+             fits, will not fall back to a default, and will not generalize the \
+             hole into a type variable — each of those decides what a program \
+             means on evidence the author did not give, and none of them can be \
+             taken back by a later reader. The report says which kind of hole it \
+             is (the type of a binder, an implicit argument, an annotation the \
+             author omitted), where the term that opened it was written, and — \
+             when one constraint was still waiting on another — which term that \
+             constraint came from.\n\n\
+             The fix is to write the missing thing: annotate the binder, or \
+             pass the argument in braces at the use site."
+        }
+        musa_compiler::Code::ConversionMismatch => {
+            "Two types elaboration had to make equal are not equal, after \
+             computing both as far as deciding the question required.\n\n\
+             This is not the same question as `type-mismatch`. Types here can \
+             *compute* — one may be a function applied to a value, or a \
+             definition that unfolds — so `equal` means equal after that \
+             computation, and either side may be a form the author never \
+             wrote.\n\n\
+             How much of one gets printed is a stated policy, because a \
+             conversion error that prints two forty-line normal forms is a \
+             failed diagnostic even when it is a correct one. The report gives \
+             **the smallest pair of subterms that actually disagreed, and the \
+             path from the two whole types down to that pair** — \"the result \
+             type: expected …, found …\" rather than both function types in \
+             full. Each side is unfolded exactly as far as comparing it \
+             required and no further, which is what the comparison itself did, \
+             and each carries the source node it came from so the message can \
+             point at text even when neither side is text."
+        }
     })
 }
 
@@ -419,5 +458,17 @@ mod tests {
     #[test]
     fn an_unknown_code_has_none() {
         assert_eq!(explain("not-a-code"), None);
+    }
+
+    #[test]
+    fn a_listed_code_is_a_code_explain_answers_about() {
+        // `codes()` is what `musa explain` prints with no argument, and
+        // `explain` is what it prints with one. A code in the listing that
+        // `explain` returns `None` for reads as "no such code" to the person
+        // who just read it off the listing.
+        for code in super::codes() {
+            assert!(explain(code).is_some(), "{code} is listed but has no explanation");
+        }
+        assert!(super::codes().contains(&"expansion"));
     }
 }

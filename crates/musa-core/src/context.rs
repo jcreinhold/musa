@@ -22,15 +22,26 @@ use std::sync::Arc;
 use crate::budget::{Budget, Meter};
 use crate::error::CoreError;
 use crate::eval::eval;
+use crate::list::List;
 use crate::origin::Origin;
 use crate::quote::Depth;
-use crate::term::{DbLevel, Term};
+use crate::term::{DbLevel, Index, Term};
 use crate::value::{Env, Value};
 
 /// The binders a term is read under, and the budget its conversions run in.
 #[derive(Clone)]
 pub struct Cx {
     env: Env,
+    /// The type each binder was introduced at, innermost first.
+    ///
+    /// Kept rather than discarded, and that is not bookkeeping for its own sake:
+    /// both [`Self::assume`] and [`Self::define`] evaluate a type already, and a
+    /// context that threw the result away would force the elaborator — which
+    /// must abstract a metavariable over every binder in scope, at its type — to
+    /// evaluate all of them a second time. The environment answers this for an
+    /// *assumption*, whose variable value carries its type; it cannot for a
+    /// definition, whose value is the definition.
+    types: List<Arc<Value>>,
     depth: u32,
     budget: Budget,
 }
@@ -51,6 +62,7 @@ impl Cx {
     pub const fn with_budget(budget: Budget) -> Self {
         Self {
             env: Env::EMPTY,
+            types: List::EMPTY,
             depth: 0,
             budget,
         }
@@ -77,8 +89,8 @@ impl Cx {
     /// `ty`, which is read in *this* context and so must be closed under it.
     pub fn assume(&self, binder: Origin, ty: &Term) -> Result<Self, CoreError> {
         let mut meter = Meter::new(self.budget);
-        let ty = eval(&mut meter, &self.env, ty)?;
-        Ok(self.pushed(Value::var(binder, DbLevel(self.depth), Arc::new(ty))))
+        let ty = Arc::new(eval(&mut meter, &self.env, ty)?);
+        Ok(self.assumed(binder, ty))
     }
 
     /// This context extended by a definition of `value` at type `ty`.
@@ -92,13 +104,13 @@ impl Cx {
     /// As [`Self::assume`], for either term.
     pub fn define(&self, ty: &Term, value: &Term) -> Result<Self, CoreError> {
         let mut meter = Meter::new(self.budget);
-        // The type is evaluated and discarded: nothing in this crate checks
-        // that `value` inhabits it — prompt 134's elaborator does — but a type
-        // that cannot be evaluated is a defect worth reporting where it was
-        // written rather than at the first conversion that trips over it.
-        drop(eval(&mut meter, &self.env, ty)?);
+        // Nothing in this crate checks that `value` inhabits `ty` — the
+        // elaborator does — but a type that cannot be evaluated is a defect
+        // worth reporting where it was written rather than at the first
+        // conversion that trips over it.
+        let ty = Arc::new(eval(&mut meter, &self.env, ty)?);
         let value = eval(&mut meter, &self.env, value)?;
-        Ok(self.pushed(value))
+        Ok(self.defined(ty, value))
     }
 
     /// How many binders are in scope.
@@ -113,6 +125,41 @@ impl Cx {
         self.budget
     }
 
+    /// This context extended by an assumption at an *already evaluated* type.
+    ///
+    /// What [`Self::assume`] is on top of, for the caller that has the type as
+    /// a value already. Sharing the [`Arc`] with the variable's own type is why
+    /// the two copies cannot disagree.
+    pub(crate) fn assumed(&self, binder: Origin, ty: Arc<Value>) -> Self {
+        let variable = Value::var(binder, DbLevel(self.depth), Arc::clone(&ty));
+        self.pushed(ty, variable)
+    }
+
+    /// This context extended by an already-evaluated definition.
+    pub(crate) fn defined(&self, ty: Arc<Value>, value: Value) -> Self {
+        self.pushed(ty, value)
+    }
+
+    /// The type of every binder in scope, innermost first.
+    ///
+    /// Handed over whole rather than one lookup at a time, because the caller
+    /// that wants them — a metavariable abstracting over its context — wants all
+    /// of them in that order, and asking by index would make it recover the
+    /// depth arithmetic this already knows.
+    pub(crate) const fn binder_types(&self) -> &List<Arc<Value>> {
+        &self.types
+    }
+
+    /// The type binder `index` was introduced at, counting outward from here.
+    ///
+    /// The other question about the same list, and it earns its own operation
+    /// rather than making a caller index [`Self::binder_types`]: a type checker
+    /// walking a term asks about exactly one binder at a time, and `None` here
+    /// is the unbound variable it must report.
+    pub(crate) fn binder_type(&self, index: Index) -> Option<&Arc<Value>> {
+        self.types.get(index.0)
+    }
+
     pub(crate) const fn quoting_depth(&self) -> Depth {
         Depth(self.depth)
     }
@@ -125,9 +172,10 @@ impl Cx {
         Meter::new(self.budget)
     }
 
-    fn pushed(&self, value: Value) -> Self {
+    fn pushed(&self, ty: Arc<Value>, value: Value) -> Self {
         Self {
-            env: self.env.extend(value),
+            env: self.env.push(value),
+            types: self.types.push(ty),
             depth: self.depth.saturating_add(1),
             budget: self.budget,
         }

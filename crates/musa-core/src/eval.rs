@@ -32,7 +32,7 @@ use std::sync::Arc;
 use crate::budget::Meter;
 use crate::error::{CoreError, Malformed};
 use crate::origin::Origin;
-use crate::term::{Field, Name, Shape, Term};
+use crate::term::{Field, Name, Plicity, Shape, Term};
 use crate::value::{Closure, Env, Form, Neutral, Spine, Telescope, Value};
 
 /// Evaluate `term` in `env`.
@@ -47,11 +47,25 @@ pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, C
         let here = term.origin();
         match term.shape() {
             Shape::Var(index) => env
-                .lookup(index.0)
+                .get(index.0)
                 .cloned()
                 .ok_or_else(|| Malformed::UnboundVariable(*index).into()),
             Shape::Universe(level) => Ok(Value::new(here, Form::Universe(*level))),
-            Shape::Pi { name, domain, codomain } => pi(meter, env, here, name, domain, codomain),
+            // A meta is closed, so the environment says nothing about it: it is
+            // either its solution, with that solution's own origins (§7), or a
+            // flexible head waiting for one.
+            Shape::Meta(meta) => Ok(meta.solution().cloned().unwrap_or_else(|| {
+                Value::neutral(Neutral {
+                    origin: here,
+                    spine: Spine::Meta(meta.clone()),
+                })
+            })),
+            Shape::Pi {
+                plicity,
+                name,
+                domain,
+                codomain,
+            } => pi(meter, env, here, *plicity, name, domain, codomain),
             Shape::Lam { name: _, body } => Ok(Value::new(
                 here,
                 Form::Lam(Closure {
@@ -110,6 +124,7 @@ fn pi(
     meter: &mut Meter,
     env: &Env,
     here: Origin,
+    plicity: Plicity,
     name: &Name,
     domain: &Term,
     codomain: &Term,
@@ -117,6 +132,7 @@ fn pi(
     Ok(Value::new(
         here,
         Form::Pi {
+            plicity,
             name: Arc::clone(name),
             domain: Arc::new(eval(meter, env, domain)?),
             codomain: Closure {
@@ -184,7 +200,82 @@ fn elimination(meter: &mut Meter, env: &Env, here: Origin, arguments: [&Term; 6]
 
 fn binding(meter: &mut Meter, env: &Env, value: &Term, body: &Term) -> Result<Value, CoreError> {
     let value = eval(meter, env, value)?;
-    eval(meter, &env.extend(value), body)
+    eval(meter, &env.push(value), body)
+}
+
+/// The value with a solved metavariable at its head unfolded, or `None` when
+/// there was nothing to unfold.
+///
+/// A neutral is blocked on its *head*, and the head of `?α x y .f` is `?α`. Once
+/// that meta is solved the whole spine computes again, but the value already
+/// built still says "blocked" — so every place that decides something by looking
+/// at a value's shape has to ask here first. Returning `None` rather than a
+/// clone keeps the common case, a value with no metavariable anywhere in it,
+/// free.
+///
+/// # Errors
+///
+/// As [`eval`]: replaying the spine is ordinary evaluation.
+pub(crate) fn force(meter: &mut Meter, value: &Value) -> Result<Option<Value>, CoreError> {
+    let Form::Neutral(neutral) = &value.form else {
+        return Ok(None);
+    };
+    if !head_is_solved(neutral) {
+        return Ok(None);
+    }
+    replay(meter, neutral).map(Some)
+}
+
+/// Whether the innermost head of a spine is a metavariable that now has a
+/// solution.
+fn head_is_solved(neutral: &Neutral) -> bool {
+    match &neutral.spine {
+        Spine::Var(_, _) => false,
+        Spine::Meta(meta) => meta.is_solved(),
+        Spine::App { function, .. } => head_is_solved(function),
+        Spine::Project { record, .. } => head_is_solved(record),
+        Spine::J { proof, .. } => head_is_solved(proof),
+    }
+}
+
+/// Re-run a blocked spine against a head that is no longer blocked.
+fn replay(meter: &mut Meter, neutral: &Arc<Neutral>) -> Result<Value, CoreError> {
+    let here = neutral.origin;
+    match &neutral.spine {
+        Spine::Var(_, _) => Ok(Value::shared_neutral(neutral)),
+        Spine::Meta(meta) => Ok(meta
+            .solution()
+            .cloned()
+            .unwrap_or_else(|| Value::shared_neutral(neutral))),
+        Spine::App { function, argument } => {
+            let function = replay(meter, function)?;
+            apply(meter, here, function, Value::clone(argument))
+        }
+        Spine::Project { record, field } => {
+            let record = replay(meter, record)?;
+            project(meter, here, record, field)
+        }
+        Spine::J {
+            ty,
+            from,
+            motive,
+            base,
+            to,
+            proof,
+        } => {
+            let proof = replay(meter, proof)?;
+            jay(
+                meter,
+                here,
+                Value::clone(ty),
+                Value::clone(from),
+                Value::clone(motive),
+                Value::clone(base),
+                Value::clone(to),
+                proof,
+            )
+        }
+    }
 }
 
 /// Open a closure at `argument`.
@@ -193,7 +284,7 @@ fn binding(meter: &mut Meter, env: &Env, value: &Term, body: &Term) -> Result<Va
 ///
 /// As [`eval`].
 pub(crate) fn apply_closure(meter: &mut Meter, closure: &Closure, argument: Value) -> Result<Value, CoreError> {
-    eval(meter, &closure.env.extend(argument), &closure.body)
+    eval(meter, &closure.env.push(argument), &closure.body)
 }
 
 /// β, or a blocked application.
@@ -207,6 +298,7 @@ pub(crate) fn apply_closure(meter: &mut Meter, closure: &Closure, argument: Valu
 /// [`Malformed::NotAFunction`] when `function` is neither a lambda nor neutral.
 pub(crate) fn apply(meter: &mut Meter, here: Origin, function: Value, argument: Value) -> Result<Value, CoreError> {
     meter.step("function application")?;
+    let function = force(meter, &function)?.unwrap_or(function);
     match function.form {
         Form::Lam(body) => apply_closure(meter, &body, argument),
         Form::Neutral(function) => Ok(Value::neutral(Neutral {
@@ -233,6 +325,7 @@ pub(crate) fn apply(meter: &mut Meter, here: Origin, function: Value, argument: 
 /// [`Malformed::NoSuchField`] when it is a record without that field.
 pub(crate) fn project(meter: &mut Meter, here: Origin, record: Value, field: &Name) -> Result<Value, CoreError> {
     meter.step("field projection")?;
+    let record = force(meter, &record)?.unwrap_or(record);
     match record.form {
         Form::Record(fields) => fields
             .iter()
@@ -271,6 +364,7 @@ pub(crate) fn jay(
     proof: Value,
 ) -> Result<Value, CoreError> {
     meter.step("identity elimination")?;
+    let proof = force(meter, &proof)?.unwrap_or(proof);
     match proof.form {
         Form::Refl(_) => Ok(base),
         Form::Neutral(proof) => Ok(Value::neutral(Neutral {
@@ -314,7 +408,7 @@ pub(crate) fn field_type(
         if name == field {
             return eval(meter, &env, term);
         }
-        env = env.extend(project(meter, subject.origin, subject.clone(), name)?);
+        env = env.push(project(meter, subject.origin, subject.clone(), name)?);
     }
     Err(Malformed::NoSuchField(Arc::clone(field)).into())
 }
@@ -338,7 +432,10 @@ pub(crate) fn field_type(
 pub(crate) fn neutral_type(meter: &mut Meter, neutral: &Neutral) -> Result<Value, CoreError> {
     meter.nested("neutral typing", |meter| match &neutral.spine {
         Spine::Var(_, ty) => Ok(Value::clone(ty)),
-        Spine::App { function, argument } => match neutral_type(meter, function)?.form {
+        // A meta is closed and carries its own type, which is why creating one
+        // has to build that type rather than remember a context.
+        Spine::Meta(meta) => Ok(meta.ty().clone()),
+        Spine::App { function, argument } => match head_type(meter, function)?.form {
             Form::Pi { codomain, .. } => apply_closure(meter, &codomain, Value::clone(argument)),
             Form::Universe(_)
             | Form::Lam(_)
@@ -348,7 +445,7 @@ pub(crate) fn neutral_type(meter: &mut Meter, neutral: &Neutral) -> Result<Value
             | Form::Refl(_)
             | Form::Neutral(_) => Err(Malformed::NotAFunction.into()),
         },
-        Spine::Project { record, field } => match neutral_type(meter, record)?.form {
+        Spine::Project { record, field } => match head_type(meter, record)?.form {
             Form::RecordType(telescope) => {
                 let subject = Value::shared_neutral(record);
                 field_type(meter, &telescope, &subject, field)
@@ -366,4 +463,21 @@ pub(crate) fn neutral_type(meter: &mut Meter, neutral: &Neutral) -> Result<Value
             apply(meter, neutral.origin, at_endpoint, Value::shared_neutral(proof))
         }
     })
+}
+
+/// The type of a blocked elimination's head, unfolded far enough to be matched
+/// on.
+///
+/// [`neutral_type`] decides what an elimination is legal by matching its head's
+/// type against [`Form::Pi`] or [`Form::RecordType`], and a type that was itself
+/// written as a metavariable is [`Form::Neutral`] until that meta is solved.
+/// Matching without forcing would answer [`Malformed::NotAFunction`] for a term
+/// the elaborator had just proved well typed.
+///
+/// # Errors
+///
+/// As [`neutral_type`].
+pub(crate) fn head_type(meter: &mut Meter, neutral: &Neutral) -> Result<Value, CoreError> {
+    let ty = neutral_type(meter, neutral)?;
+    Ok(force(meter, &ty)?.unwrap_or(ty))
 }

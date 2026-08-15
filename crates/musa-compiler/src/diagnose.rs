@@ -26,6 +26,14 @@ use crate::origin::SourceSpan;
 /// every variant, so adding a code without writing its explanation fails to
 /// compile. That is the cheapest possible guard against a code that ships with
 /// nothing behind it.
+///
+/// [`Self::as_str`] and [`Self::ALL`] are generated together, from the table
+/// below the enum, for the same reason. The roster used to be written out a
+/// second time by hand, and `expansion` was left out of it: the code existed,
+/// raised, and had an explanation written for it, but [`Self::parse`] only
+/// knows the codes the roster names, so `musa explain expansion` answered
+/// "no such code". A variant the table omits now fails to compile at
+/// `as_str`'s match instead of shipping unreachable.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Code {
     /// The source is not shaped like musa.
@@ -91,69 +99,77 @@ pub enum Code {
     /// An adapter region that cannot be resolved, expanded, or whose answer is
     /// not one ordinary expression.
     Expansion,
+    /// Elaboration left a hole nothing in the program determined.
+    UnsolvedMetavariable,
+    /// Two types elaboration had to make equal are not.
+    ///
+    /// Distinct from [`Self::TypeMismatch`], which the rank-1 checker raises
+    /// about types the author wrote. This one can name a normal form nobody
+    /// wrote, which is why it has its own explanation and its own policy on how
+    /// much of one to print.
+    ConversionMismatch,
+}
+
+/// Writes each code's spelling once, and derives the roster from the same
+/// line.
+///
+/// The `match` that `as_str` expands to has to cover [`Code`], so the table
+/// cannot be short; `ALL` is built from that table, so the roster cannot
+/// disagree with it. Two lists that had to be kept in step by hand is how
+/// `expansion` came to be a code nothing could look up.
+macro_rules! code_table {
+    ($($variant:ident => $text:literal,)+) => {
+        impl Code {
+            /// The code as it is written and typed.
+            pub const fn as_str(self) -> &'static str {
+                match self {
+                    $(Self::$variant => $text,)+
+                }
+            }
+
+            /// Every code, in the order the enum declares them, for
+            /// `musa explain` with no argument and for the tests that keep the
+            /// explanation table honest.
+            pub const ALL: [Self; [$(code_table!(@unit $variant)),+].len()] = [$(Self::$variant,)+];
+        }
+    };
+    // One `()` per line of the table, so `ALL` is as long as the table is.
+    (@unit $variant:ident) => {
+        ()
+    };
+}
+
+code_table! {
+    Syntax => "syntax",
+    UnknownName => "unknown-name",
+    DuplicateName => "duplicate-name",
+    UnknownWord => "unknown-word",
+    NotAValue => "not-a-value",
+    OutOfRange => "out-of-range",
+    Misplaced => "misplaced",
+    DoesNotAddUp => "does-not-add-up",
+    Import => "import",
+    Studio => "studio",
+    Ignored => "ignored",
+    TypeMismatch => "type-mismatch",
+    WrongArity => "wrong-arity",
+    DependencyCycle => "dependency-cycle",
+    ResourceLimit => "resource-limit",
+    NonExhaustiveMatch => "non-exhaustive-match",
+    UnreachablePattern => "unreachable-pattern",
+    UnsupportedLanguageStage => "unsupported-language-stage",
+    UnusedMaterial => "unused-material",
+    UnassignedPatch => "unassigned-patch",
+    RedundantMarking => "redundant-marking",
+    CopiedBars => "copied-bars",
+    UnmetClaim => "unmet-claim",
+    UnsupportedPayload => "unsupported-payload",
+    Expansion => "expansion",
+    UnsolvedMetavariable => "unsolved-metavariable",
+    ConversionMismatch => "conversion-mismatch",
 }
 
 impl Code {
-    /// The code as it is written and typed.
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Syntax => "syntax",
-            Self::UnknownName => "unknown-name",
-            Self::DuplicateName => "duplicate-name",
-            Self::UnknownWord => "unknown-word",
-            Self::NotAValue => "not-a-value",
-            Self::OutOfRange => "out-of-range",
-            Self::Misplaced => "misplaced",
-            Self::DoesNotAddUp => "does-not-add-up",
-            Self::Import => "import",
-            Self::Studio => "studio",
-            Self::Ignored => "ignored",
-            Self::TypeMismatch => "type-mismatch",
-            Self::WrongArity => "wrong-arity",
-            Self::DependencyCycle => "dependency-cycle",
-            Self::ResourceLimit => "resource-limit",
-            Self::NonExhaustiveMatch => "non-exhaustive-match",
-            Self::UnreachablePattern => "unreachable-pattern",
-            Self::UnsupportedLanguageStage => "unsupported-language-stage",
-            Self::UnusedMaterial => "unused-material",
-            Self::UnassignedPatch => "unassigned-patch",
-            Self::RedundantMarking => "redundant-marking",
-            Self::CopiedBars => "copied-bars",
-            Self::UnmetClaim => "unmet-claim",
-            Self::UnsupportedPayload => "unsupported-payload",
-            Self::Expansion => "expansion",
-        }
-    }
-
-    /// Every code, for `musa explain` with no argument and for the tests that
-    /// keep the explanation table honest.
-    pub const ALL: [Self; 24] = [
-        Self::Syntax,
-        Self::UnknownName,
-        Self::DuplicateName,
-        Self::UnknownWord,
-        Self::NotAValue,
-        Self::OutOfRange,
-        Self::Misplaced,
-        Self::DoesNotAddUp,
-        Self::Import,
-        Self::Studio,
-        Self::Ignored,
-        Self::TypeMismatch,
-        Self::WrongArity,
-        Self::DependencyCycle,
-        Self::ResourceLimit,
-        Self::NonExhaustiveMatch,
-        Self::UnreachablePattern,
-        Self::UnsupportedLanguageStage,
-        Self::UnusedMaterial,
-        Self::UnassignedPatch,
-        Self::RedundantMarking,
-        Self::CopiedBars,
-        Self::UnmetClaim,
-        Self::UnsupportedPayload,
-    ];
-
     /// Parse a code back from its written form.
     pub fn parse(text: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|code| code.as_str() == text)
@@ -507,9 +523,34 @@ mod tests {
 
     #[test]
     fn every_code_round_trips_through_its_text() {
+        // Reading the roster is sound here only because the roster and the
+        // `as_str` match are one table: a variant missing from it stops the
+        // crate compiling, so this loop cannot be short the way it once was.
         for code in Code::ALL {
             assert_eq!(Code::parse(code.as_str()), Some(code));
         }
         assert_eq!(Code::parse("not-a-code"), None);
+    }
+
+    #[test]
+    fn no_two_codes_are_spelled_the_same() {
+        // `parse` answers with the first match, so a spelling written twice
+        // would make one of the two unreachable — the same failure a missing
+        // roster entry caused, arriving by the one route the table still
+        // leaves open.
+        let mut seen = std::collections::BTreeSet::new();
+        for code in Code::ALL {
+            assert!(seen.insert(code.as_str()), "{code} shares a spelling with another code");
+        }
+    }
+
+    #[test]
+    fn expansion_is_a_code_you_can_look_up() {
+        // For one stretch it was not: the enum, `as_str`, and the explanation
+        // in musa-project all knew `expansion`, and only the hand-written
+        // roster did not, so `musa explain expansion` said there was no such
+        // code.
+        assert_eq!(Code::parse("expansion"), Some(Code::Expansion));
+        assert!(Code::ALL.contains(&Code::Expansion));
     }
 }

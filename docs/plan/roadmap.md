@@ -2353,8 +2353,9 @@ tracing
 
 Deliberately short. A core that reaches for `num-rational` has started to know what a duration is, and a core that
 reaches for `serde` has started to have a serialized form that something outside it will come to depend on. Nothing in
-this list can pull in `musa-language`. Prompt 133 uses only `thiserror`; the other two arrive with the elaborator that
-needs them.
+this list can pull in `musa-language`. Prompts 133 and 134 use only `thiserror` — the elaborator turned out to want
+neither of the other two, because a metavariable is reached by identity rather than looked up by key, and a crate whose
+every failure is a returned diagnostic has nothing left to trace.
 
 Public interface:
 
@@ -2363,7 +2364,9 @@ pub fn normalize(cx: &Cx, ty: &Term, term: &Term) -> Result<Term, CoreError>;
 pub fn normalize_type(cx: &Cx, ty: &Term) -> Result<Term, CoreError>;
 pub fn convertible(cx: &Cx, ty: &Term, left: &Term, right: &Term) -> Result<bool, CoreError>;
 pub fn convertible_types(cx: &Cx, left: &Term, right: &Term) -> Result<bool, CoreError>;
-pub fn elaborate(raw: &RawTerm, expected: Option<&Term>) -> Result<Elaborated, CoreError>; // prompt 134
+pub fn check(cx: &Cx, ty: &Term, raw: &Raw) -> Result<Term, ElabError>;          // prompt 134
+pub fn infer(cx: &Cx, raw: &Raw) -> Result<(Term, Term), ElabError>;            // prompt 134
+pub fn well_typed(cx: &Cx, ty: &Term, term: &Term) -> Result<(), ElabError>;    // prompt 134
 
 impl Cx {
     pub fn assume(&self, binder: Origin, ty: &Term) -> Result<Cx, CoreError>;
@@ -2371,7 +2374,7 @@ impl Cx {
 }
 ```
 
-Four things the first sketch of this block left out, each of which prompts 133 and 133a found by building it:
+Five things the first sketch of this block left out, each of which prompts 133, 133a, and 134 found by building it:
 
 - **A context, not a bare term.** A term means nothing without the binders it is read under, and quotation needs the
   depth of those binders to turn the level it invents into the index that names it. `Cx` carries them and the budget
@@ -2387,6 +2390,13 @@ Four things the first sketch of this block left out, each of which prompts 133 a
   `Term` is a shape and an `Origin` and `Term`'s equality ignores the second half. `assume` takes one because an
   assumption has no value to take an origin from: without it, every occurrence of a variable in a normal form would
   point nowhere. `define` needs none, because the value it is given already carries origins of its own.
+
+- **Two entry points, not one, and a third to check them.** The sketch had a single `elaborate` taking `Option<&Term>`,
+  which is the two bidirectional judgments with their difference hidden in an argument: the caller cannot tell which one
+  it asked for, and the *checking* mode has no type to return while the *inferring* mode must return one. `check` and
+  `infer` are those two judgments, `ElabError` is separate from `CoreError` because refusing a program and being handed
+  a malformed term are different answers, and `well_typed` re-checks an elaborated term from the core rules alone — the
+  suite's primary gate, and the only public item here that exists for a test to call.
 
 `Value` — the semantic domain NbE evaluates into — stays private. It contains closures over the evaluator's own
 representation, so exposing it would make every later change to evaluation a breaking change for `musa-compiler`;

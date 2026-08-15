@@ -27,7 +27,7 @@ use crate::error::CoreError;
 
 /// The metric a charge is spent against.
 ///
-/// Three, and each is here because §4 names it. The compiler's own meter has
+/// Five, and each is here because §4 names it. The compiler's own meter has
 /// six; the other three — logical value bytes, instantiated prelude entries,
 /// and estimated occurrences — are about values with musical payloads, and this
 /// crate does not know what a payload is.
@@ -41,6 +41,14 @@ pub enum Metric {
     /// How far inside itself an evaluation currently is. The one metric that
     /// goes back down.
     Nesting,
+    /// Metavariables created during one elaboration (§4, §2.1).
+    Metavariables,
+    /// Retries of a postponed constraint (§4, §2.1).
+    ///
+    /// Charged rather than merely bounded by the loop's own progress argument,
+    /// because "each retry either solves something or changes nothing" bounds
+    /// the *rounds*, and a round is quadratic in the queue.
+    Retries,
 }
 
 impl Metric {
@@ -51,6 +59,8 @@ impl Metric {
             Self::Steps => "reduction steps",
             Self::QuotedNodes => "quoted nodes",
             Self::Nesting => "nested evaluation levels",
+            Self::Metavariables => "metavariables",
+            Self::Retries => "postponed-constraint retries",
         }
     }
 }
@@ -64,6 +74,8 @@ pub struct Budget {
     steps: u64,
     quoted_nodes: u64,
     nesting: u64,
+    metavariables: u64,
+    retries: u64,
 }
 
 impl Budget {
@@ -83,15 +95,18 @@ impl Budget {
     /// compilers disagree about, and the two evaluators become one at prompt
     /// 142.
     ///
-    /// **Quoted nodes are charged and not limited.** §4 says so in as many
-    /// words: "Conversion and metavariable metrics have no defaults yet: prompt
-    /// 144 measures the new checker and sets them, and until it does, the
-    /// checker charges them and reports them without a limit." The charge path
-    /// is live and tested through [`Self::scaled`]; only the default is open.
+    /// **Quoted nodes, metavariables, and retries are charged and not
+    /// limited.** §4 says so in as many words: "Conversion and metavariable
+    /// metrics have no defaults yet: prompt 144 measures the new checker and
+    /// sets them, and until it does, the checker charges them and reports them
+    /// without a limit." The charge paths are live and tested through
+    /// [`Self::scaled`]; only the defaults are open.
     pub const LANGUAGE: Self = Self {
         steps: 200_000,
         quoted_nodes: u64::MAX,
         nesting: Self::NESTING,
+        metavariables: u64::MAX,
+        retries: u64::MAX,
     };
 
     /// The language budget with every limit divided by `divisor`.
@@ -117,6 +132,8 @@ impl Budget {
             steps: share(self.steps, divisor),
             quoted_nodes: share(self.quoted_nodes, divisor),
             nesting: share(self.nesting, divisor),
+            metavariables: share(self.metavariables, divisor),
+            retries: share(self.retries, divisor),
         }
     }
 
@@ -125,6 +142,8 @@ impl Budget {
             Metric::Steps => self.steps,
             Metric::QuotedNodes => self.quoted_nodes,
             Metric::Nesting => self.nesting,
+            Metric::Metavariables => self.metavariables,
+            Metric::Retries => self.retries,
         }
     }
 }
@@ -158,6 +177,8 @@ pub(crate) struct Meter {
     steps: u64,
     quoted_nodes: u64,
     nesting: u64,
+    metavariables: u64,
+    retries: u64,
 }
 
 impl Meter {
@@ -167,6 +188,8 @@ impl Meter {
             steps: 0,
             quoted_nodes: 0,
             nesting: 0,
+            metavariables: 0,
+            retries: 0,
         }
     }
 
@@ -187,6 +210,26 @@ impl Meter {
     /// [`CoreError::Exhausted`] when the charge would cross the limit.
     pub(crate) fn quoted_node(&mut self, operation: &'static str) -> Result<(), CoreError> {
         self.quoted_nodes = self.charge(Metric::QuotedNodes, operation, self.quoted_nodes)?;
+        Ok(())
+    }
+
+    /// Charge one metavariable.
+    ///
+    /// # Errors
+    ///
+    /// [`CoreError::Exhausted`] when the charge would cross the limit.
+    pub(crate) fn metavariable(&mut self, operation: &'static str) -> Result<(), CoreError> {
+        self.metavariables = self.charge(Metric::Metavariables, operation, self.metavariables)?;
+        Ok(())
+    }
+
+    /// Charge one retry of a postponed constraint.
+    ///
+    /// # Errors
+    ///
+    /// [`CoreError::Exhausted`] when the charge would cross the limit.
+    pub(crate) fn retry(&mut self, operation: &'static str) -> Result<(), CoreError> {
+        self.retries = self.charge(Metric::Retries, operation, self.retries)?;
         Ok(())
     }
 

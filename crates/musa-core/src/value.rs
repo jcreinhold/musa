@@ -42,50 +42,18 @@
 use std::sync::Arc;
 
 use crate::level::Level;
+use crate::list::List;
+use crate::meta::Meta;
 use crate::origin::Origin;
-use crate::term::{DbLevel, Field, Name, Term};
+use crate::term::{DbLevel, Field, Name, Plicity, Term};
 
 /// An immutable environment: the values of the binders in scope, innermost
 /// first.
 ///
-/// A persistent list rather than a vector, because evaluation extends it once
-/// per binder and conversion under a binder extends it again for every
-/// comparison. Extension is one allocation and no copy; lookup walks, and the
-/// walk is bounded by how many binders a term actually mentions.
-#[derive(Clone, Default)]
-pub(crate) struct Env(Option<Arc<Cell>>);
-
-struct Cell {
-    value: Value,
-    rest: Env,
-}
-
-impl Env {
-    /// No binders at all.
-    pub(crate) const EMPTY: Self = Self(None);
-
-    /// This environment with `value` bound innermost.
-    pub(crate) fn extend(&self, value: Value) -> Self {
-        Self(Some(Arc::new(Cell {
-            value,
-            rest: self.clone(),
-        })))
-    }
-
-    /// The value `index` binders out, or `None` when it names no binder.
-    pub(crate) fn lookup(&self, index: u32) -> Option<&Value> {
-        let mut here = self;
-        let mut remaining = index;
-        loop {
-            let cell = here.0.as_ref()?;
-            if remaining == 0 {
-                return Some(&cell.value);
-            }
-            remaining = remaining.checked_sub(1)?;
-            here = &cell.rest;
-        }
-    }
-}
+/// An alias rather than a newtype: an environment is a [`List`] and nothing
+/// about it is more specific than that, so a wrapper here would be a type that
+/// only forwards.
+pub(crate) type Env = List<Value>;
 
 /// A term paired with the environment its free variables are read in.
 #[derive(Clone)]
@@ -114,6 +82,10 @@ pub(crate) struct Value {
 pub(crate) enum Form {
     Universe(Level),
     Pi {
+        /// Carried so that elaboration can read it off a *type it computed*
+        /// rather than off the syntax it was written as — the point of §1's
+        /// amendment. No operation in this crate branches on it.
+        plicity: Plicity,
         name: Name,
         domain: Arc<Value>,
         codomain: Closure,
@@ -147,6 +119,10 @@ pub(crate) struct Neutral {
 pub(crate) enum Spine {
     /// A variable, with the type it was assumed at.
     Var(DbLevel, Arc<Value>),
+    /// An unsolved metavariable. The one *flexible* head: a neutral headed by a
+    /// variable can never compute, while this one computes the moment the meta
+    /// is solved, which is exactly the distinction unification turns on.
+    Meta(Meta),
     App {
         function: Arc<Neutral>,
         argument: Arc<Value>,

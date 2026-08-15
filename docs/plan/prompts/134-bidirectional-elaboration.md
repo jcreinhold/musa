@@ -1,7 +1,7 @@
 ---
 id: 134
 slug: bidirectional-elaboration
-status: in-progress
+status: done
 depends_on: [133a]
 phase: 3
 ---

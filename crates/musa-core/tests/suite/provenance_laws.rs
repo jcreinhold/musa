@@ -298,7 +298,13 @@ fn restamp(term: &Term, origin: Origin) -> Term {
     let shape = match term.shape() {
         Shape::Var(index) => Shape::Var(*index),
         Shape::Universe(level) => Shape::Universe(*level),
-        Shape::Pi { name, domain, codomain } => Shape::Pi {
+        Shape::Pi {
+            plicity,
+            name,
+            domain,
+            codomain,
+        } => Shape::Pi {
+            plicity: *plicity,
             name: Arc::clone(name),
             domain: restamp(domain, origin),
             codomain: restamp(codomain, origin),
@@ -344,6 +350,9 @@ fn restamp(term: &Term, origin: Origin) -> Term {
             value: restamp(value, origin),
             body: restamp(body, origin),
         },
+        // A meta has no subterms to restamp, and its identity is the cell rather
+        // than anything written here — cloning it keeps the same unknown.
+        Shape::Meta(meta) => Shape::Meta(meta.clone()),
     };
     Term::new(origin, shape)
 }
@@ -378,5 +387,6 @@ fn children(term: &Term) -> Vec<&Term> {
             proof,
         } => vec![ty, from, motive, base, to, proof],
         Shape::Let { ty, value, body, .. } => vec![ty, value, body],
+        Shape::Meta(_) => Vec::new(),
     }
 }

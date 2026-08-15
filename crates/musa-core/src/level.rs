@@ -6,10 +6,12 @@
 //! closed, and a closed level built from `0`, `succ`, and `max` *is* a natural
 //! number — `max` computes. The representation is therefore that number.
 //!
-//! When prompt 134 adds level metavariables this becomes a sum, and `succ` and
-//! `max` stop computing on the variable arms. Keeping the three operations as
-//! the only way to build a level is what makes that change local: no caller
-//! writes a numeral, so no caller has to learn about the arms it grows.
+//! When prompt 135 adds level metavariables — alongside the level-polymorphic
+//! families that are the first declarations unable to write their own levels —
+//! this becomes a sum, and `succ` and `max` stop computing on the variable arms.
+//! Keeping the three operations as the only way to build a level is what makes
+//! that change local: no caller writes a numeral, so no caller has to learn
+//! about the arms it grows.
 
 /// A universe level.
 ///

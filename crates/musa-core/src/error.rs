@@ -57,4 +57,16 @@ pub enum Malformed {
     /// only mean levels and indices were confused somewhere above.
     #[error("quotation reached a variable outside the scope it was quoting in")]
     EscapedVariable,
+    /// A metavariable was solved twice. Solutions are write-once (§2.1), so the
+    /// second attempt is a unifier defect rather than a program's fault.
+    #[error("metavariable ?{0} was solved twice")]
+    AlreadySolved(u32),
+    /// A metavariable stood applied to fewer arguments than it abstracts.
+    ///
+    /// Every metavariable is created applied to the identity spine of its
+    /// creation context (§2.1), which is what makes its solution closed. A
+    /// shorter spine means a term was assembled by something other than the
+    /// elaborator.
+    #[error("metavariable ?{0} stands applied to fewer arguments than it abstracts")]
+    UnderappliedMeta(u32),
 }
