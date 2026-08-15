@@ -79,7 +79,7 @@ fixtures via their generators, and `editors/tree-sitter-musa`'s corpus. The book
 follow-up.
 
 **`staff.musa` migrates; it is not rewritten.** It moves onto the new language with its structure intact, still
-backwards, still without quotation. Prompt 145 rewrites it and measures the result against 2,158 lines, and a partial
+backwards, still without quotation. Prompt 145 rewrites it and measures the result against 2,404 lines, and a partial
 rewrite here would destroy that measurement. The same applies to the studio adapter and prompt 146.
 
 ## Target

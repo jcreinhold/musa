@@ -593,7 +593,7 @@ meaning of audio and treats host blocks only as checked batching. 153 proves and
 later sound prompt may run. Old syntax, APIs, and serialized forms are removed, not kept behind aliases.
 
 **128–149 rebuild the surface language on a dependent core, and 150–153 wait for them.** The staff adapter is the
-evidence: 2,158 lines of Musa for a notation reader, most of it compensating for a language that cannot build a list,
+evidence: 2,404 lines of Musa for a notation reader, most of it compensating for a language that cannot build a list,
 name a field, or say what a piece of syntax is. 128 amends the constitution and obligations to admit that evidence,
 keeping totality and widening it to a checked well-founded measure — Musa is almost entirely a compile-time language, so
 divergence is a compiler hang, and a dependent checker is an evaluator. 129 specifies the core: universes, Π, dependent

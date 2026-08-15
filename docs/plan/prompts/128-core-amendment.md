@@ -1,7 +1,7 @@
 ---
 id: 128
 slug: core-amendment
-status: pending
+status: in-progress
 depends_on: [127dcfb]
 phase: 3
 ---
@@ -69,7 +69,7 @@ direction, and the amendment says so: there is no `partial` keyword and no escap
 §12.3's evidence and this procedure again.
 
 **Obligations §10 is amended, not evaded.** Its current standard asks for two musical operations that ordinary finite
-data makes unclear or unsafe. The staff adapter is not a musical operation; it is 2,158 lines of Musa that the language
+data makes unclear or unsafe. The staff adapter is not a musical operation; it is 2,404 lines of Musa that the language
 made three times longer than the notation it reads. The amendment adds a second admission route — *measured engineering
 evidence in Musa itself*, with the failing program named, its size recorded, and the specific constructs it compensates
 with enumerated — and keeps the musical route unchanged. It also keeps §10's real teeth: the failing program comes

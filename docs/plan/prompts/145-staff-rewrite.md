@@ -12,7 +12,7 @@ phase: 3
 
 Rewrite `stdlib/src/adapters/staff.musa` on the new language. This is the acceptance gate for the entire pass: the
 adapter is the recorded failing program that prompt 128's amendment was granted on, and if the rewrite is not
-dramatically shorter and more obviously correct than 2,158 lines, the design failed and this prompt is a repair of Phase
+dramatically shorter and more obviously correct than 2,404 lines, the design failed and this prompt is a repair of Phase
 A rather than an implementation.
 
 ## Read

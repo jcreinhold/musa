@@ -82,9 +82,10 @@ on.
 
 **Predict the staff rewrite's size, in public.** State a predicted line count and byte count for prompt 145's
 `staff.musa`, derived from the four rewritten pieces and stated with the extrapolation shown, not asserted. Record the
-current 2,158 lines / 82 KB beside it. Prompt 145 measures against this number, so a prediction that is generous here is
-a gate that means nothing there. Say what would count as the design failing — a rewrite that is not *dramatically*
-shorter — and put a figure on "dramatically".
+current 2,404 lines / 93,252 bytes beside it — the file as prompt 127dcfb left it, not the smaller figure note 41
+measured before the `// ---- writing` section existed. Prompt 145 measures against this number, so a prediction that is
+generous here is a gate that means nothing there. Say what would count as the design failing — a rewrite that is not
+*dramatically* shorter — and put a figure on "dramatically".
 
 **Two findings the trial should expect to make, and must not smooth over.** First, the K decision in 129: index
 unification for `Vec` and for `Syntax<Cat>` is where K either pays for itself or turns out to be unnecessary, and the
