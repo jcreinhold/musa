@@ -297,7 +297,8 @@ fn origins(term: &Term, into: &mut BTreeSet<Origin>) {
 fn restamp(term: &Term, origin: Origin) -> Term {
     let shape = match term.shape() {
         Shape::Var(index) => Shape::Var(*index),
-        Shape::Universe(level) => Shape::Universe(*level),
+        Shape::Const(constant) => Shape::Const(constant.clone()),
+        Shape::Universe(level) => Shape::Universe(level.clone()),
         Shape::Pi {
             plicity,
             name,
@@ -370,7 +371,7 @@ fn restamp_fields(fields: &[Field], origin: Origin) -> Arc<[Field]> {
 /// A term's immediate subterms, in the order they were written.
 fn children(term: &Term) -> Vec<&Term> {
     match term.shape() {
-        Shape::Var(_) | Shape::Universe(_) => Vec::new(),
+        Shape::Var(_) | Shape::Universe(_) | Shape::Const(_) => Vec::new(),
         Shape::Pi { domain, codomain, .. } => vec![domain, codomain],
         Shape::Lam { body, .. } => vec![body],
         Shape::App { function, argument } => vec![function, argument],

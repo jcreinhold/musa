@@ -77,9 +77,11 @@
 
 mod budget;
 mod context;
+mod declare;
 mod elab;
 mod error;
 mod eval;
+mod family;
 mod level;
 mod list;
 mod meta;
@@ -96,18 +98,43 @@ mod value;
 pub use crate::budget::{Budget, Metric, ResourceError};
 pub use crate::context::Cx;
 pub use crate::error::{CoreError, Malformed};
+pub use crate::family::{Binder, Constant, Constructor, Declared, Group};
 pub use crate::level::Level;
 pub use crate::meta::{Meta, MetaSource};
 pub use crate::origin::Origin;
-pub use crate::raw::{Raw, RawField, RawShape};
+pub use crate::raw::{Raw, RawBinder, RawConstructor, RawData, RawFamily, RawField, RawShape};
 pub use crate::recheck::well_typed;
 pub use crate::refuse::{ElabError, Mismatch, PathStep, Refusal};
 pub use crate::term::{DbLevel, Field, Index, Name, Plicity, Shape, Term};
+
+use std::sync::Arc;
 
 use crate::elab::Elaborator;
 use crate::eval::eval;
 use crate::quote::{quote, quote_type};
 use crate::scope::Scope;
+
+/// Elaborate a `data` declaration group, in context `cx`.
+///
+/// One call declares *all* the families that may mention each other, because
+/// mutual recursion is not a relation between two finished declarations — a
+/// constructor of the first may store the second, so neither exists until both
+/// do (§1.1).
+///
+/// The result is opaque on purpose. A caller brings the declaration into scope
+/// with [`Cx::declaring`] and then writes `Vec`, `Vec.Cons`, and `Vec.elim` in
+/// ordinary raw terms; it never assembles a constructor's type itself, because
+/// the recursor's is a term nobody wrote and the group is the only thing that
+/// knows how to build it.
+///
+/// # Errors
+///
+/// [`Refusal::NonPositive`] for an occurrence §1.1 forbids, and otherwise as
+/// [`check`] — a declaration's parameters, indices, fields, and chosen index
+/// arguments are ordinary elaboration and fail in the ordinary ways.
+pub fn declare(cx: &Cx, data: &RawData) -> Result<Arc<Group>, ElabError> {
+    crate::declare::declare(cx, data)
+}
 
 /// Elaborate `raw` against the type `ty`, in context `cx`.
 ///

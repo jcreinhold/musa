@@ -27,11 +27,12 @@ use std::sync::{Arc, OnceLock};
 use crate::budget::Meter;
 use crate::context::Cx;
 use crate::error::CoreError;
+use crate::family::Found;
 use crate::list::List;
 use crate::origin::Origin;
 use crate::quote::{Depth, quote_type};
 use crate::term::{DbLevel, Index, Name, Term};
-use crate::value::Value;
+use crate::value::{Env, Value};
 
 /// One binder, as elaboration sees it.
 struct Binding {
@@ -115,6 +116,14 @@ impl Scope {
         })
     }
 
+    /// What a declared name refers to here.
+    ///
+    /// Asked only when [`Self::lookup`] found nothing, which is what makes a
+    /// binder shadow a declaration rather than the other way round.
+    pub(crate) fn declared(&self, name: &str) -> Option<Found> {
+        self.cx.declared(name)
+    }
+
     /// This scope extended by an assumption named `name` at type `ty`.
     pub(crate) fn assume(&self, name: Option<Name>, binder: Origin, ty: Arc<Value>) -> Self {
         Self {
@@ -144,6 +153,16 @@ impl Scope {
     /// The variable a binder introduced here would be.
     pub(crate) fn fresh_var(&self, origin: Origin, ty: Arc<Value>) -> Value {
         Value::var(origin, DbLevel(self.depth()), ty)
+    }
+
+    /// The values these binders stand for.
+    ///
+    /// Handed over for the one caller that reads a term under a *different*
+    /// telescope than this scope's — a `data` declaration checking a
+    /// constructor's chosen index against the family's index type, which is read
+    /// under the indices and not under the constructor's fields.
+    pub(crate) fn env(&self) -> &Env {
+        self.cx.env()
     }
 
     /// Evaluate a term read under these binders.

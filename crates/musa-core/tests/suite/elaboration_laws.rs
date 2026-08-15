@@ -167,6 +167,23 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
         assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
         reached.insert(kind(&refusal));
     }
+    // A declaration is a program too, and two refusals are reached only by one.
+    // The gate spans both corpora rather than being satisfied by whichever half
+    // this file happens to hold.
+    let (declaring, _) = crate::family_laws::nat_context();
+    for crate::family_laws::RefusedData {
+        name,
+        declaration,
+        expected,
+    } in crate::family_laws::refused_declarations()
+    {
+        let Err(error) = musa_core::declare(&declaring, &declaration) else {
+            panic!("{name}: the declaration was admitted");
+        };
+        let refusal = refusal(name, error);
+        assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
+        reached.insert(kind(&refusal));
+    }
     assert_eq!(
         reached,
         ALL_REFUSALS.iter().copied().collect(),
@@ -175,7 +192,7 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
 }
 
 /// Every refusal this crate can answer with.
-const ALL_REFUSALS: [&str; 10] = [
+const ALL_REFUSALS: [&str; 12] = [
     "unknown-name",
     "mismatch",
     "unsolved",
@@ -186,6 +203,8 @@ const ALL_REFUSALS: [&str; 10] = [
     "record-shape",
     "not-a-type",
     "uninferable",
+    "non-positive",
+    "index-count",
 ];
 
 /// Which refusal this is, as a tag the coverage gate can compare.
@@ -204,6 +223,8 @@ fn kind(refusal: &Refusal) -> &'static str {
         Refusal::RecordShape { .. } => "record-shape",
         Refusal::NotAType { .. } => "not-a-type",
         Refusal::Uninferable { .. } => "uninferable",
+        Refusal::NonPositive { .. } => "non-positive",
+        Refusal::IndexCount { .. } => "index-count",
     }
 }
 
@@ -284,7 +305,7 @@ fn meta_free(term: &Term) -> bool {
 
     match term.shape() {
         Shape::Meta(_) => false,
-        Shape::Var(_) | Shape::Universe(_) => true,
+        Shape::Var(_) | Shape::Universe(_) | Shape::Const(_) => true,
         Shape::Pi { domain, codomain, .. } => meta_free(domain) && meta_free(codomain),
         Shape::Lam { body, .. } => meta_free(body),
         Shape::App { function, argument } => meta_free(function) && meta_free(argument),

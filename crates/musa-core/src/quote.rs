@@ -158,7 +158,7 @@ pub(crate) fn quote_type(meter: &mut Meter, depth: Depth, value: &Value) -> Resu
         let value = unfolded.as_ref().unwrap_or(value);
         let here = value.origin;
         match &value.form {
-            Form::Universe(level) => Ok(Term::universe(here, *level)),
+            Form::Universe(level) => Ok(Term::universe(here, level.resolved())),
             Form::Pi {
                 plicity,
                 name,
@@ -226,6 +226,7 @@ fn quote_neutral(meter: &mut Meter, depth: Depth, neutral: &Neutral) -> Result<T
             // Reached only unsolved: [`quote`] forces first, and a spine whose
             // innermost head is solved forces whole.
             Spine::Meta(meta) => Ok(Term::meta(here, meta.clone())),
+            Spine::Const(constant) => Ok(constant.term(here)),
             Spine::App { function, argument } => {
                 let domain = match head_type(meter, function)?.form {
                     Form::Pi { domain, .. } => domain,

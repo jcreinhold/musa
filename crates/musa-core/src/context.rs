@@ -22,6 +22,7 @@ use std::sync::Arc;
 use crate::budget::{Budget, Meter};
 use crate::error::CoreError;
 use crate::eval::eval;
+use crate::family::{Found, Group};
 use crate::list::List;
 use crate::origin::Origin;
 use crate::quote::Depth;
@@ -42,6 +43,14 @@ pub struct Cx {
     /// *assumption*, whose variable value carries its type; it cannot for a
     /// definition, whose value is the definition.
     types: List<Arc<Value>>,
+    /// The declaration groups whose constants are in scope, most recent first.
+    ///
+    /// Beside the binders rather than among them, because a constant is not one:
+    /// it has no de Bruijn index, nothing shadows it, and it is in scope in its
+    /// own declaration. Keeping the two lists apart is what lets [`Self::closed`]
+    /// drop every binder and keep every declaration, which is what a `data`
+    /// declaration is elaborated in.
+    declared: List<Arc<Group>>,
     depth: u32,
     budget: Budget,
 }
@@ -63,9 +72,43 @@ impl Cx {
         Self {
             env: Env::EMPTY,
             types: List::EMPTY,
+            declared: List::EMPTY,
             depth: 0,
             budget,
         }
+    }
+
+    /// This context's declarations, with none of its binders.
+    ///
+    /// What a `data` declaration is elaborated in: §1.1's parameters, indices,
+    /// and constructor types are read under the declaration's own binders and
+    /// nothing else, so a group elaborated inside a term would store terms whose
+    /// variables named binders the group does not carry. Rather than track an
+    /// offset nobody could check, a declaration is closed by construction.
+    #[must_use]
+    pub fn closed(&self) -> Self {
+        Self {
+            env: Env::EMPTY,
+            types: List::EMPTY,
+            declared: self.declared.clone(),
+            depth: 0,
+            budget: self.budget,
+        }
+    }
+
+    /// This context with `group`'s families, constructors, and recursors in
+    /// scope.
+    #[must_use]
+    pub fn declaring(&self, group: &Arc<Group>) -> Self {
+        Self {
+            declared: self.declared.push(Arc::clone(group)),
+            ..self.clone()
+        }
+    }
+
+    /// What a declared name refers to here, most recent declaration first.
+    pub(crate) fn declared(&self, name: &str) -> Option<Found> {
+        self.declared.iter().find_map(|group| Found::named(group, name))
     }
 
     /// This context extended by an assumption at type `ty`, written at
@@ -176,6 +219,7 @@ impl Cx {
         Self {
             env: self.env.push(value),
             types: self.types.push(ty),
+            declared: self.declared.clone(),
             depth: self.depth.saturating_add(1),
             budget: self.budget,
         }

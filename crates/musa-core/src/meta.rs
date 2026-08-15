@@ -3,15 +3,16 @@
 //! `docs/rules/language/02-core-calculus.md` §2.1 names exactly three places one
 //! is created — an inserted implicit argument, a binder whose type the checking
 //! type did not supply, and a level position the surface did not write — and
-//! [`MetaSource`] is that list minus its third entry, because a diagnostic that
-//! cannot say which site it came from has to say "somewhere".
+//! [`MetaSource`] is that list, because a diagnostic that cannot say which site
+//! it came from has to say "somewhere".
 //!
-//! The third site is an unknown of a *different sort*: a level, not a term.
-//! Admitting one makes [`crate::Level`] a sum whose `succ` and `max` stop
-//! computing, which every place that reads a level would then have to force.
-//! Prompt 134 defers it to prompt 135, where a level-polymorphic family becomes
-//! the first declaration that cannot write its own levels; until then every
-//! `Type` reaching this crate states which one.
+//! The third site is an unknown of a *different sort*: a level, not a term. It
+//! is [`crate::Level`]'s own metavariable rather than a [`Meta`], since a level
+//! is not a term and a solution for one is a number and not a value — but it
+//! shares this list, because the question a diagnostic asks is the same one.
+//! Prompt 135 opened it, and what it cost is that `succ` and `max` stop
+//! computing on an unsolved arm, so every place that reads a level resolves it
+//! first.
 //!
 //! # Contextual, and closed
 //!
@@ -52,6 +53,8 @@ pub enum MetaSource {
     ImplicitArgument,
     /// A binder whose type the checking type did not supply.
     BinderType,
+    /// A universe whose level the surface did not write.
+    UniverseLevel,
 }
 
 impl MetaSource {
@@ -65,6 +68,7 @@ impl MetaSource {
         match self {
             Self::ImplicitArgument => "an implicit argument",
             Self::BinderType => "the type of a binder",
+            Self::UniverseLevel => "the level of a universe",
         }
     }
 }

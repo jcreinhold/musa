@@ -111,6 +111,10 @@ impl Checker {
                 };
                 Ok(Value::clone(ty))
             }
+            // A constant's type is decided by its declaration, and the
+            // declaration was checked when it was made. Re-checking it here would
+            // re-run strict positivity at every occurrence of `Nat`.
+            Shape::Const(constant) => Ok(constant.ty(&mut self.meter)?),
             Shape::Universe(level) => Ok(Value::new(here, Form::Universe(level.succ()))),
             Shape::Pi {
                 plicity: _,
@@ -122,7 +126,7 @@ impl Checker {
                 let domain_value = eval(&mut self.meter, cx.env(), domain)?;
                 let inner = cx.assumed(here, Arc::new(domain_value));
                 let codomain_level = self.universe(&inner, codomain)?;
-                Ok(Value::new(here, Form::Universe(domain_level.max(codomain_level))))
+                Ok(Value::new(here, Form::Universe(domain_level.max(&codomain_level))))
             }
             // Introduction forms check; see the module doc for the one term
             // shape this makes un-re-checkable and why that is the core's
@@ -139,7 +143,7 @@ impl Checker {
                 let mut level = Level::ZERO;
                 let mut inner = cx.clone();
                 for field in fields.iter() {
-                    level = level.max(self.universe(&inner, &field.term)?);
+                    level = level.max(&self.universe(&inner, &field.term)?);
                     let value = eval(&mut self.meter, inner.env(), &field.term)?;
                     inner = inner.assumed(field.term.origin(), Arc::new(value));
                 }
@@ -343,14 +347,14 @@ impl Checker {
         let ty = self.infer(cx, term)?;
         let unfolded = force(&mut self.meter, &ty)?;
         let ty = unfolded.as_ref().unwrap_or(&ty);
-        let Form::Universe(level) = ty.form else {
+        let Form::Universe(level) = &ty.form else {
             return Err(Refusal::NotAType {
                 at: term.origin(),
                 ty: quote_type(&mut self.meter, cx.quoting_depth(), ty)?,
             }
             .into());
         };
-        Ok(level)
+        Ok(level.clone())
     }
 
     /// Take a Π type apart, refusing what is not one.

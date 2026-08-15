@@ -50,7 +50,13 @@ pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, C
                 .get(index.0)
                 .cloned()
                 .ok_or_else(|| Malformed::UnboundVariable(*index).into()),
-            Shape::Universe(level) => Ok(Value::new(here, Form::Universe(*level))),
+            // Resolved on the way in, so a value carries the level its arms
+            // have already been solved to rather than the one written first.
+            Shape::Universe(level) => Ok(Value::new(here, Form::Universe(level.resolved()))),
+            // A constant is closed and rigid, so evaluating one is reading it.
+            // ι does not fire here: it needs the target, which arrives through
+            // [`apply`].
+            Shape::Const(constant) => Ok(constant.value(here)),
             // A meta is closed, so the environment says nothing about it: it is
             // either its solution, with that solution's own origins (§7), or a
             // flexible head waiting for one.
@@ -230,7 +236,7 @@ pub(crate) fn force(meter: &mut Meter, value: &Value) -> Result<Option<Value>, C
 /// solution.
 fn head_is_solved(neutral: &Neutral) -> bool {
     match &neutral.spine {
-        Spine::Var(_, _) => false,
+        Spine::Var(_, _) | Spine::Const(_) => false,
         Spine::Meta(meta) => meta.is_solved(),
         Spine::App { function, .. } => head_is_solved(function),
         Spine::Project { record, .. } => head_is_solved(record),
@@ -242,7 +248,7 @@ fn head_is_solved(neutral: &Neutral) -> bool {
 fn replay(meter: &mut Meter, neutral: &Arc<Neutral>) -> Result<Value, CoreError> {
     let here = neutral.origin;
     match &neutral.spine {
-        Spine::Var(_, _) => Ok(Value::shared_neutral(neutral)),
+        Spine::Var(_, _) | Spine::Const(_) => Ok(Value::shared_neutral(neutral)),
         Spine::Meta(meta) => Ok(meta
             .solution()
             .cloned()
@@ -301,13 +307,22 @@ pub(crate) fn apply(meter: &mut Meter, here: Origin, function: Value, argument: 
     let function = force(meter, &function)?.unwrap_or(function);
     match function.form {
         Form::Lam(body) => apply_closure(meter, &body, argument),
-        Form::Neutral(function) => Ok(Value::neutral(Neutral {
-            origin: here,
-            spine: Spine::App {
-                function,
-                argument: Arc::new(argument),
-            },
-        })),
+        // A blocked application is where ι at an inductive family fires: the
+        // recursor's target is its last argument, so this is the first moment the
+        // elimination can know it has met a constructor.
+        Form::Neutral(function) => {
+            let built = Neutral {
+                origin: here,
+                spine: Spine::App {
+                    function,
+                    argument: Arc::new(argument),
+                },
+            };
+            match crate::family::iota(meter, &built)? {
+                Some(reduced) => Ok(reduced),
+                None => Ok(Value::neutral(built)),
+            }
+        }
         Form::Universe(_)
         | Form::Pi { .. }
         | Form::RecordType(_)
@@ -435,6 +450,9 @@ pub(crate) fn neutral_type(meter: &mut Meter, neutral: &Neutral) -> Result<Value
         // A meta is closed and carries its own type, which is why creating one
         // has to build that type rather than remember a context.
         Spine::Meta(meta) => Ok(meta.ty().clone()),
+        // A constant's type is its declaration's, assembled on demand rather
+        // than stored beside it — `family.rs` says why.
+        Spine::Const(constant) => constant.ty(meter),
         Spine::App { function, argument } => match head_type(meter, function)?.form {
             Form::Pi { codomain, .. } => apply_closure(meter, &codomain, Value::clone(argument)),
             Form::Universe(_)

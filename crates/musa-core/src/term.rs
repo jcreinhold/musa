@@ -24,6 +24,7 @@
 
 use std::sync::Arc;
 
+use crate::family::Constant;
 use crate::level::Level;
 use crate::meta::Meta;
 use crate::origin::Origin;
@@ -134,6 +135,14 @@ impl Eq for Term {}
 pub enum Shape {
     /// A variable, named by how many binders out its binder is.
     Var(Index),
+    /// A declared constant: an inductive family, one of its constructors, or its
+    /// generated recursor (§1.1).
+    ///
+    /// One variant rather than three saturated forms, because a family, a
+    /// constructor, and a recursor are all just *applied* — [`Self::App`] already
+    /// says what an argument is, and three spine-carrying variants would say it
+    /// three more times while making partial application a different term.
+    Const(Constant),
     /// `Type l`. Predicative and not cumulative: `Type l : Type (succ l)`.
     Universe(Level),
     /// `(x : A) → B`, the one function type.
@@ -246,6 +255,7 @@ impl PartialEq for Shape {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Var(left), Self::Var(right)) => left == right,
+            (Self::Const(left), Self::Const(right)) => left == right,
             (Self::Universe(left), Self::Universe(right)) => left == right,
             (
                 Self::Pi {
@@ -353,6 +363,7 @@ impl PartialEq for Shape {
             // the new form.
             (
                 Self::Var(_)
+                | Self::Const(_)
                 | Self::Universe(_)
                 | Self::Pi { .. }
                 | Self::Lam { .. }

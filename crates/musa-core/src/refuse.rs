@@ -153,6 +153,32 @@ pub enum Refusal {
         /// The type it turned out to have.
         ty: Term,
     },
+    /// A constructor field mentions a family the declaration is declaring,
+    /// somewhere §1.1's strict positivity does not allow.
+    ///
+    /// The occurrence is named rather than the constructor alone, because the
+    /// edit an author makes is at the occurrence: the field is usually right and
+    /// one argument of it is wrong.
+    #[error("`{family}` occurs in `{constructor}` where a recursive occurrence is not allowed")]
+    NonPositive {
+        /// The offending occurrence.
+        at: Origin,
+        /// The family that occurs.
+        family: Name,
+        /// The constructor whose field it occurs in.
+        constructor: Name,
+    },
+    /// A constructor chose a different number of index arguments than the family
+    /// it belongs to declares.
+    #[error("this constructor chooses {found} index arguments, but the family declares {expected}")]
+    IndexCount {
+        /// The constructor.
+        at: Origin,
+        /// How many indices the family declares.
+        expected: usize,
+        /// How many the constructor wrote.
+        found: usize,
+    },
     /// An introduction form stood where a type had to be synthesized.
     ///
     /// §2's discipline in one variant: introduction forms *check*, so a record

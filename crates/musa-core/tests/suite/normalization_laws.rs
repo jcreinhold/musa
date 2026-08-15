@@ -161,7 +161,7 @@ fn definitions_are_unfolded() {
 /// this function about would silently pass every test above.
 fn is_normal(term: &Term) -> bool {
     match term.shape() {
-        Shape::Var(_) | Shape::Universe(_) => true,
+        Shape::Var(_) | Shape::Universe(_) | Shape::Const(_) => true,
         Shape::Pi { domain, codomain, .. } => is_normal(domain) && is_normal(codomain),
         Shape::Lam { body, .. } => is_normal(body),
         Shape::App { function, argument } => {

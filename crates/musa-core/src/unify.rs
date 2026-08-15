@@ -284,7 +284,18 @@ impl Unifier {
         right: &Value,
     ) -> Step {
         match (&left.form, &right.form) {
-            (Form::Universe(one), Form::Universe(other)) if one == other => Ok(()),
+            // Two universes agree when their levels can be made the same, which
+            // is where a level metavariable is solved. `determine` refuses
+            // rather than searching, and a refusal falls through to the reading
+            // back that every other disagreement uses — so the diagnostic is
+            // built in one place and says `Type 0` against `Type 1` rather than
+            // naming a constraint the author never wrote.
+            (Form::Universe(one), Form::Universe(other)) => {
+                if one.determine(other) {
+                    return Ok(());
+                }
+                Self::by_reading_back(meter, depth, at, left, right)
+            }
             (
                 Form::Pi {
                     domain: left_domain,
@@ -400,6 +411,9 @@ impl Unifier {
     ) -> Step {
         match (&one.spine, &other.spine) {
             (Spine::Var(level, _), Spine::Var(other_level, _)) if level.0 == other_level.0 => Ok(()),
+            // Rigid like a variable, and decided the same way: a constant is its
+            // name, so there is nothing under it to unify.
+            (Spine::Const(left), Spine::Const(right)) if left == right => Ok(()),
             (
                 Spine::App {
                     function: left_function,
@@ -550,7 +564,7 @@ fn flexible_head(value: &Value) -> Option<&Meta> {
     let mut here = neutral;
     loop {
         match &here.spine {
-            Spine::Var(_, _) => return None,
+            Spine::Var(_, _) | Spine::Const(_) => return None,
             Spine::Meta(meta) => return Some(meta),
             Spine::App { function, .. } => here = function,
             Spine::Project { record, .. } => here = record,
@@ -594,7 +608,10 @@ fn restrict(term: &Term, meta: &Meta, arity: u32, depth: u32, bound: u32) -> Opt
             }
             Shape::Meta(found.clone())
         }
-        Shape::Universe(level) => Shape::Universe(*level),
+        Shape::Universe(level) => Shape::Universe(level.resolved()),
+        // Closed and mentioning no binder, so it moves between contexts
+        // untouched — the same reason a solved metavariable's body does.
+        Shape::Const(constant) => Shape::Const(constant.clone()),
         Shape::Pi {
             plicity,
             name,

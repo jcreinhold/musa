@@ -49,15 +49,23 @@
 //! that is solved is substituted away by [`zonk`]. That is what lets
 //! [`crate::check`] promise a term the re-checker accepts.
 //!
-//! # One level this crate cannot infer yet
+//! # Levels are unknowns too
 //!
-//! Inferring an unannotated λ needs a type for its binder, and a *type* needs a
-//! universe to stand in. §2.1's third metavariable site is a level, deferred to
-//! prompt 135 with the level-polymorphic families that need it, so the binder's
-//! type metavariable is created at [`Level::ZERO`]. That level is never read
-//! back into the elaborated term — a core λ records no domain — so the choice
-//! cannot make a wrong program accepted; at worst an unannotated binder standing
-//! for a higher universe has to be annotated. Prompt 135 removes the choice.
+//! §2.1's third creation site is a level, and prompt 135 opened it: a bare
+//! `Type` gets a [`LevelMeta`] rather than a number chosen here, solved by the
+//! same discipline as a term metavariable and refused by the same rule — one
+//! still undetermined when elaboration ends is [`Refusal::Unsolved`], never
+//! defaulted to zero.
+//!
+//! Read that site precisely. It is "a level position **the surface did not
+//! write**", which the universe a *hole's own type* stands in is not: no
+//! universe stands there at all, and [`Elaborator::infer_lambda`] says why a
+//! metavariable there would refuse every unannotated binder instead of
+//! describing one.
+//!
+//! The solver is [`Level::determine`] and it is narrower than the term unifier
+//! on purpose — its bound is documented there rather than here, because it is a
+//! property of the level sort and not of this module.
 
 use std::sync::Arc;
 
@@ -65,7 +73,7 @@ use crate::budget::Meter;
 use crate::context::Cx;
 use crate::error::{CoreError, Malformed};
 use crate::eval::{apply, apply_closure, eval, field_type, force};
-use crate::level::Level;
+use crate::level::{Level, LevelMeta};
 use crate::meta::{Meta, MetaSource};
 use crate::origin::Origin;
 use crate::quote::{Depth, quote};
@@ -100,6 +108,12 @@ pub(crate) struct Elaborator {
     /// rather than whichever one a walk of the output happened to reach — the
     /// earliest is the one their next edit is about.
     metas: Vec<Meta>,
+    /// Every *level* metavariable, with the term that created it.
+    ///
+    /// A separate list because a level is a separate sort: its solution is a
+    /// level and not a value, so it cannot live in [`Meta`]. What it shares is
+    /// the report, which is why the origin travels with it.
+    levels: Vec<(LevelMeta, Origin)>,
 }
 
 impl Elaborator {
@@ -108,6 +122,7 @@ impl Elaborator {
             meter: cx.meter(),
             unifier: Unifier::default(),
             metas: Vec::new(),
+            levels: Vec::new(),
         }
     }
 
@@ -131,17 +146,86 @@ impl Elaborator {
         ))
     }
 
-    /// Refuse if any metavariable is still undetermined.
-    fn settled(&self) -> Result<(), ElabError> {
-        let Some(unsolved) = self.metas.iter().find(|meta| !meta.is_solved()) else {
+    /// Refuse if any metavariable — of either sort — is still undetermined.
+    pub(crate) fn settled(&self) -> Result<(), ElabError> {
+        if let Some(unsolved) = self.metas.iter().find(|meta| !meta.is_solved()) {
+            return Err(Refusal::Unsolved {
+                site: unsolved.source(),
+                created: unsolved.origin(),
+                blocked: self.unifier.blocked(),
+            }
+            .into());
+        }
+        // Levels are checked after terms rather than before, because a level is
+        // usually determined *by* a term constraint: reporting the level first
+        // would name a consequence where the cause is a hole the author can see.
+        let Some((_, created)) = self.levels.iter().find(|(level, _)| !level.is_solved()) else {
             return Ok(());
         };
         Err(Refusal::Unsolved {
-            site: unsolved.source(),
-            created: unsolved.origin(),
+            site: MetaSource::UniverseLevel,
+            created: *created,
             blocked: self.unifier.blocked(),
         }
         .into())
+    }
+
+    /// The meter this elaboration is spending.
+    ///
+    /// Handed out rather than wrapped, for the one caller outside this module —
+    /// [`crate::declare`], which evaluates and quotes between elaborations and
+    /// must spend the same budget doing it, or a declaration would get a fresh
+    /// allowance per telescope.
+    pub(crate) const fn meter(&mut self) -> &mut Meter {
+        &mut self.meter
+    }
+
+    /// Elaborate `raw` against `ty` **without finishing**.
+    ///
+    /// [`Self::run_check`] is one whole judgment: it checks that nothing is left
+    /// unsolved and zonks. A declaration is many judgments that share one set of
+    /// metavariables — a constructor's chosen index may be what determines a
+    /// parameter's level — so it checks each part with this and finishes once.
+    pub(crate) fn check_open(&mut self, scope: &Scope, raw: &Raw, ty: &Value) -> Result<Term, ElabError> {
+        self.check(scope, raw, ty)
+    }
+
+    /// A name no binder in scope answers to, which a declaration may.
+    ///
+    /// Constants are looked up *after* binders rather than merged with them, so
+    /// a local binder named `Nat` shadows the family — the ordinary rule, and the
+    /// one an author expects from every other name in the language.
+    ///
+    /// A recursor gets its motive universe here, and here is the only place it
+    /// can: §1.3 admits no universe polymorphism beyond level metavariables, so
+    /// the level is one per *use site* and this is what a use site is.
+    fn constant(&mut self, scope: &Scope, here: Origin, name: &Name) -> Result<Typed, ElabError> {
+        let Some(found) = scope.declared(name) else {
+            return Err(Refusal::UnknownName {
+                name: Arc::clone(name),
+                at: here,
+            }
+            .into());
+        };
+        let level = if found.is_recursor() {
+            self.fresh_level(here)?
+        } else {
+            Level::ZERO
+        };
+        let constant = found.at(level);
+        let ty = constant.ty(&mut self.meter)?;
+        Ok(Typed {
+            term: constant.term(here),
+            ty,
+        })
+    }
+
+    /// A universe at a level nobody wrote — §2.1's third creation site.
+    pub(crate) fn fresh_level(&mut self, origin: Origin) -> Result<Level, ElabError> {
+        self.meter.metavariable("elaboration")?;
+        let meta = LevelMeta::new(u32::try_from(self.levels.len()).unwrap_or(u32::MAX));
+        self.levels.push((meta.clone(), origin));
+        Ok(Level::variable(meta))
     }
 
     // ---- checking ----------------------------------------------------------
@@ -365,21 +449,23 @@ impl Elaborator {
         match raw.shape() {
             RawShape::Var(name) => {
                 let Some(found) = scope.lookup(name) else {
-                    return Err(Refusal::UnknownName {
-                        name: Arc::clone(name),
-                        at: here,
-                    }
-                    .into());
+                    return self.constant(scope, here, name);
                 };
                 Ok(Typed {
                     term: Term::var(here, found.index),
                     ty: Value::clone(&found.ty),
                 })
             }
-            RawShape::Universe(level) => Ok(Typed {
-                term: Term::universe(here, *level),
-                ty: Value::new(here, Form::Universe(level.succ())),
-            }),
+            RawShape::Universe(written) => {
+                let level = match written {
+                    Some(level) => level.clone(),
+                    None => self.fresh_level(here)?,
+                };
+                Ok(Typed {
+                    ty: Value::new(here, Form::Universe(level.succ())),
+                    term: Term::universe(here, level),
+                })
+            }
             RawShape::Pi {
                 plicity,
                 name,
@@ -500,7 +586,7 @@ impl Elaborator {
         let (codomain_term, codomain_level) = self.check_type(&inner, codomain)?;
         Ok(Typed {
             term: Term::function(here, plicity, Arc::clone(name), domain_term, codomain_term),
-            ty: Value::new(here, Form::Universe(domain_level.max(codomain_level))),
+            ty: Value::new(here, Form::Universe(domain_level.max(&codomain_level))),
         })
     }
 
@@ -520,9 +606,19 @@ impl Elaborator {
                 Arc::new(scope.eval(&mut self.meter, &term)?)
             }
             None => {
-                // See the module note: the universe this hole stands in is
-                // `Type 0` until prompt 135 admits level metavariables, and the
-                // choice never reaches the elaborated term.
+                // §2.1's third site is "a level position *the surface did not
+                // write*", and this is not one: no universe stands here at all,
+                // only the sort a hole's type has to have. A metavariable would
+                // be an unknown no program could determine — the elaborator
+                // never compares a hole's type against anything — so it would
+                // refuse every unannotated binder rather than describe one.
+                //
+                // The choice is unobservable. A core λ records no domain (§1),
+                // and this level is read only by [`zonk`], which quotes the
+                // solution *as a type* and never looks at which universe it was
+                // told. What it costs is nothing: a binder whose type genuinely
+                // lives higher is one the author annotates, which §2 asks for at
+                // every signature anyway.
                 let universe = Value::new(here, Form::Universe(Level::ZERO));
                 let hole = self.fresh_meta(scope, here, MetaSource::BinderType, &universe)?;
                 Arc::new(scope.eval(&mut self.meter, &hole)?)
@@ -595,7 +691,7 @@ impl Elaborator {
         let mut elaborated = Vec::with_capacity(fields.len());
         for field in fields {
             let (term, field_level) = self.check_type(&inner, &field.term)?;
-            level = level.max(field_level);
+            level = level.max(&field_level);
             let value = inner.eval(&mut self.meter, &term)?;
             inner = inner.assume(Some(Arc::clone(&field.name)), field.term.origin(), Arc::new(value));
             elaborated.push(Field {
@@ -764,19 +860,19 @@ impl Elaborator {
     // ---- shared premises ---------------------------------------------------
 
     /// Elaborate a term standing in type position, answering its universe.
-    fn check_type(&mut self, scope: &Scope, raw: &Raw) -> Result<(Term, Level), ElabError> {
+    pub(crate) fn check_type(&mut self, scope: &Scope, raw: &Raw) -> Result<(Term, Level), ElabError> {
         let inferred = self.infer(scope, raw)?;
         let inferred = self.inserted(scope, inferred)?;
         let unfolded = force(&mut self.meter, &inferred.ty)?;
         let ty = unfolded.as_ref().unwrap_or(&inferred.ty);
-        let Form::Universe(level) = ty.form else {
+        let Form::Universe(level) = &ty.form else {
             return Err(Refusal::NotAType {
                 at: raw.origin(),
                 ty: scope.quote_type(&mut self.meter, ty)?,
             }
             .into());
         };
-        Ok((inferred.term, level))
+        Ok((inferred.term, level.resolved()))
     }
 
     /// Elaborate a `let`'s definition and answer the scope its body is read in.
@@ -865,7 +961,11 @@ fn zonk(meter: &mut Meter, depth: u32, term: &Term) -> Result<Term, CoreError> {
             // application, which [`MetaSpine::of`] has already handled.
             Shape::Meta(meta) => return Err(Malformed::UnderappliedMeta(meta.id()).into()),
             Shape::Var(index) => Shape::Var(*index),
-            Shape::Universe(level) => Shape::Universe(*level),
+            // A recursor's motive universe is the one level a constant carries,
+            // and it is resolved by [`Constant`]'s own equality rather than here:
+            // the level lives inside the group, which zonking does not rebuild.
+            Shape::Const(constant) => Shape::Const(constant.clone()),
+            Shape::Universe(level) => Shape::Universe(level.resolved()),
             Shape::Pi {
                 plicity,
                 name,

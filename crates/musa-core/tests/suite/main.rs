@@ -18,6 +18,7 @@
 mod budget_laws;
 mod conversion_laws;
 mod elaboration_laws;
+mod family_laws;
 mod normalization_laws;
 mod provenance_laws;
 mod unification_laws;

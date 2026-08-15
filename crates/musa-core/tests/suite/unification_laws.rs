@@ -236,6 +236,8 @@ fn mentions_free_variable(term: &Term) -> bool {
 
         match term.shape() {
             Shape::Var(index) => index.0 >= depth,
+            // Closed by construction, so it escapes nothing.
+            Shape::Const(_) => false,
             Shape::Universe(_) | Shape::Meta(_) => false,
             Shape::Pi { domain, codomain, .. } => walk(domain, depth) || walk(codomain, depth.saturating_add(1)),
             Shape::Lam { body, .. } => walk(body, depth.saturating_add(1)),
@@ -263,4 +265,38 @@ fn mentions_free_variable(term: &Term) -> bool {
     }
 
     walk(term, 0)
+}
+
+/// §2.1's third site: a universe the surface wrote without a level is solved by
+/// what the term is used as.
+///
+/// `succ ?ℓ ≡ 1` is the constraint, and `succ` is injective on the naturals, so
+/// `?ℓ` is `0` and nothing was guessed to get there.
+#[test]
+fn a_universe_written_without_a_level_is_solved_by_the_one_it_meets() {
+    let one = Term::universe(WRITTEN, Level::ZERO.succ());
+    let term = check(&Cx::new(), &one, &Raw::any_universe(WRITTEN))
+        .unwrap_or_else(|error| panic!("a bare universe checked at `Type 1`: {error}"));
+    assert_eq!(
+        term,
+        Term::universe(WRITTEN, Level::ZERO),
+        "the level solved to the one the checking type determined"
+    );
+}
+
+/// And one nothing determines is refused, by the same rule that refuses an
+/// undetermined term: §2.1 never defaults, in either sort.
+///
+/// `Type 0` would be the obvious guess and is exactly the guess forbidden — a
+/// program whose universe the checker picked is a program whose meaning it
+/// decided.
+#[test]
+fn a_universe_level_nothing_determines_is_refused_rather_than_defaulted() {
+    let refusal = refuse("a bare universe with nothing to fix its level", &Raw::any_universe(WRITTEN), None);
+    let Refusal::Unsolved { site, created, .. } = &refusal else {
+        panic!("expected an unsolved level, got `{refusal}`");
+    };
+    assert_eq!(site.describe(), "the level of a universe");
+    assert_eq!(*created, WRITTEN, "the report points at the `Type` that made it");
+    assert_eq!(refusal.to_string(), "could not determine the level of a universe");
 }

@@ -119,6 +119,15 @@ pub(crate) struct Neutral {
 pub(crate) enum Spine {
     /// A variable, with the type it was assumed at.
     Var(DbLevel, Arc<Value>),
+    /// A declared constant. Rigid, like a variable: a family and a constructor
+    /// never compute, and a recursor computes only when ι fires — which
+    /// [`crate::eval::apply`] does at the moment the target becomes a
+    /// constructor, so a spine that is still headed by one here is genuinely
+    /// blocked.
+    ///
+    /// It carries no type, unlike [`Self::Var`], because a constant's type is
+    /// determined by its declaration and [`crate::family::Constant`] holds that.
+    Const(crate::family::Constant),
     /// An unsolved metavariable. The one *flexible* head: a neutral headed by a
     /// variable can never compute, while this one computes the moment the meta
     /// is solved, which is exactly the distinction unification turns on.

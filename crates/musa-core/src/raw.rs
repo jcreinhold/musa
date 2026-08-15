@@ -25,18 +25,78 @@
 //!   rules that switch modes, which is why it is a language feature rather than
 //!   a hint.
 //!
+//! - **A universe need not say which one.** §1: "the surface never writes a
+//!   level". A bare `Type` is §2.1's third metavariable site, and the level it
+//!   stands at is solved by whatever the term is used as.
+//!
 //! # What it does not have
 //!
-//! No inductive families, no `match`, no traits — prompts 135 and 137. And no
-//! bare `Type`: §2.1's third metavariable site is a *level*, which prompt 135
-//! admits along with the level-polymorphic families that need it, so until then
-//! a raw term states the level of every universe it mentions.
+//! No traits, no operators, no method syntax — prompt 137.
 
 use std::sync::Arc;
 
 use crate::level::Level;
 use crate::origin::Origin;
 use crate::term::{Name, Plicity};
+
+/// One binder of a raw telescope: a parameter, an index, or a constructor field.
+#[derive(Clone, Debug)]
+pub struct RawBinder {
+    /// The binder's name, which later binders and the constructor's result may
+    /// mention.
+    pub name: Name,
+    /// Its type.
+    pub ty: Raw,
+}
+
+/// One constructor of a family, before elaboration.
+///
+/// It does **not** write its result type. §1.1 says a parameter is fixed across
+/// the declaration and an index is chosen per constructor, and a constructor that
+/// wrote `Vec A n` in full could write `Vec B n` instead — so the parameters are
+/// supplied by the declaration and only the indices are written here. The rule is
+/// then a property of the representation rather than a check that could be
+/// forgotten.
+#[derive(Clone, Debug)]
+pub struct RawConstructor {
+    /// Its name, unqualified: the family qualifies it.
+    pub name: Name,
+    /// Its arguments, read under the family names and the group's parameters.
+    pub fields: Vec<RawBinder>,
+    /// The index arguments its result chooses, in the family's index order, read
+    /// under those binders and its own fields.
+    pub indices: Vec<Raw>,
+}
+
+/// One family of a declaration group, before elaboration.
+#[derive(Clone, Debug)]
+pub struct RawFamily {
+    /// Its name.
+    pub name: Name,
+    /// Its indices, read under the family names and the group's parameters.
+    pub indices: Vec<RawBinder>,
+    /// Its constructors.
+    pub constructors: Vec<RawConstructor>,
+}
+
+/// A `data` declaration group, before elaboration.
+///
+/// A group rather than a single family because §1.1 checks strict positivity on
+/// the whole declaration, and because mutual families share one recursor's
+/// motives and methods. A single family is the group of one.
+///
+/// The universe each family lands in is absent, and deliberately: §1 says the
+/// surface never writes a level, so it is computed as the join of the
+/// constructors' field levels.
+#[derive(Clone, Debug)]
+pub struct RawData {
+    /// Where the declaration was written.
+    pub origin: Origin,
+    /// The parameters, shared by every family in the group.
+    pub params: Vec<RawBinder>,
+    /// The families, in declaration order.
+    pub families: Vec<RawFamily>,
+}
 
 /// One field of a raw record type or record literal.
 #[derive(Clone, Debug)]
@@ -63,8 +123,9 @@ pub struct Raw {
 pub enum RawShape {
     /// A name, to be resolved against the binders in scope.
     Var(Name),
-    /// `Type l`, at a level the writer states.
-    Universe(Level),
+    /// `Type l`, at a level the writer states — or bare `Type`, whose level is
+    /// §2.1's third metavariable site.
+    Universe(Option<Level>),
     /// `(x : A) → B`, or `{x : A} → B` when the binder is implicit.
     Pi {
         /// Whether uses of the function must write this argument.
@@ -184,10 +245,16 @@ impl Raw {
         Self::new(origin, RawShape::Var(name.into()))
     }
 
-    /// `Type level`.
+    /// `Type level`, at a level the caller names.
     #[must_use]
     pub fn universe(origin: Origin, level: Level) -> Self {
-        Self::new(origin, RawShape::Universe(level))
+        Self::new(origin, RawShape::Universe(Some(level)))
+    }
+
+    /// `Type`, at whatever level the surrounding term determines.
+    #[must_use]
+    pub fn any_universe(origin: Origin) -> Self {
+        Self::new(origin, RawShape::Universe(None))
     }
 
     /// `(name : domain) → codomain`.
