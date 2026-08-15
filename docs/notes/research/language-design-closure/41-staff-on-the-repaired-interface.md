@@ -39,7 +39,7 @@ Line counts are `total / non-comment non-blank`.
 | 127dcfaa — `list_fold_from_end` | `82b71bb` | 2128 / 1730 | −7 | the `from_the_end` closure chain: one closure and one extra application per element, and the reason the smallest region could not be expanded at all |
 | 127dcfab — expression `if` | `3234a68` | 2116 / 1718 | −12 | `clef_named`'s four-deep `match text_equal(…)` staircase, and three like it |
 | 127dcfac — record update | `a0028d2` | 2041 / 1645 | −73 | five of seven `fn holding_*` setters; explicit `Pending(…)` constructions 13 → 5 |
-| 127dcfad — `?` | `c6b05ef` | 1992 / 1591 | −54 | `document_read` 115 → 61 lines, deepest indent 56 → 32 columns, sixteen nested `match`es → four |
+| 127dcfad — `?` | `c6b05ef` | 1992 / 1591 | −54 | `document_read` 115 → 61 lines, deepest indent 56 → 32 columns, sixteen nested `match` expressions → four |
 | 127dcfaf — the recursor | `64b97f6` | 1992 / 1591 | 0 | nothing: the prompt landed the recursor in the *language* and only renamed `syntax_fold` at this call site |
 | 127dcfag — this prompt | — | 2158 / 1652 | **+61** | `data Read`, the second traversal, and the nested-group hole for `( … )` |
 

@@ -15,12 +15,12 @@ actual work sat at the rightmost leaf.
 | --- | --- | --- |
 | `document_read`, lines | 115 | 61 |
 | `document_read`, deepest indent | 56 columns | 32 columns |
-| `match`es inside it | 16 | 4 |
+| `match` expressions inside it | 16 | 4 |
 | `staff.musa`, lines | 2041 | 1987 |
 
-The four `match`es that remain are the ones that *decide* something rather than propagate: they read a head, and they
-choose between two shapes. The twelve that went are the failure arms and the success arms that existed only to bind a
-name for the next question.
+The four `match` expressions that remain are the ones that *decide* something rather than propagate: they read a head,
+and they choose between two shapes. The twelve that went are the failure arms and the success arms that existed only to
+bind a name for the next question.
 
 `stated_field` changed type as part of this — from an `Option`-shaped answer to `Result<Syntax, (Syntax, Text)>` — so
 that its absence carries the node it is absent from, which is what prompt 127dcb makes part of an adapter's answer. That
