@@ -54,10 +54,29 @@ checker from proving everything, and a total language whose type theory is incon
 — under `Type : Type` a closed term of the empty type exists, so §5's canonicity obligation would be discharged by a
 lie.
 
-**One function type, and plicity is not in the core.** Implicit arguments are an *elaboration* notion: the surface marks
+**One function type, and no core rule reads plicity.** Implicit arguments are an *elaboration* notion: the surface marks
 a binder implicit, the elaborator inserts a metavariable at each use, and what reaches the core is an ordinary `(x : A)
-→ B`. Nothing downstream — traits, `Syntax<Cat>`, `Vec A n` — needs a second binder form, and keeping plicity out of the
-core keeps conversion from having to know about it.
+→ B`. Nothing downstream — traits, `Syntax<Cat>`, `Vec A n` — needs a second binder form.
+
+There is exactly **one** Π, and plicity rides on it as an annotation that **no rule in this document mentions**: not
+formation, not introduction, not elimination, and above all not conversion. Two function types that differ only in
+whether a binder is written at its use sites are the same type, by the same clause of §7 that makes two terms with
+different origins the same term. This is not a weakening of "plicity is not in the core" but the operational form of it,
+and it is forced: a Π reached by evaluating a term has been through the semantic domain, so an elaborator that could not
+read plicity off a *type* could not answer "is this binder implicit?" for a type obtained by projection or by
+substitution — the exact cases `10-traits.md` §4 needs when it resolves a dictionary at type arguments the author did
+not write. The alternative, a plicity table carried beside the type, answers the question only where the elaborator
+happened to have the surface syntax in hand, which is not where the question is asked.
+
+What the annotation must not become is a second binder form. A rule that branches on plicity is a rule about two
+function types, and this document has one; if such a rule is ever wanted, it belongs to elaboration (§2), which is
+allowed to know things the core does not.
+
+> **Amendment, prompt 134.** This paragraph previously read "plicity is not in the core" and said the elaborator inserts
+> implicits without saying what it reads them from. Implementation found the gap: the core Π is the only carrier that
+> survives evaluation, and every alternative loses plicity exactly where traits will need it. The refinement narrows the
+> claim from "absent" to "present and unread", which is what the original reason — "keeps conversion from having to know
+> about it" — actually asked for.
 
 **Dependent records are primitive, not Σ sugar**, with η. Two reasons, both concrete. Trait dictionaries are records
 (`10-traits.md`), and a coherence argument is far easier to state when two dictionaries for the same instance are
@@ -278,6 +297,14 @@ and a literal infer.
 
 Annotations are still written at public signatures and wherever separate checking needs one. What changed is that a
 signature may mention a value: `(n : Nat) → Vec A n → Vec A (succ n)` is an ordinary signature.
+
+**Implicit insertion is a rule of this section and of no other.** §1 keeps plicity unread by every core rule, and this
+is where it is read: inferring a term whose type is an implicit Π applies it to a fresh metavariable, and repeats. Two
+places stop the repetition, and both are needed. Insertion does not happen when the argument written at the use site is
+itself marked implicit — that is the author supplying it. And it does not happen when the term is being *checked*
+against a type that is itself an implicit Π, because the binder the author wants filled is the one the expected type
+already announces; without that case the elaborator inserts a metavariable, finds it must abstract it again, and does
+not stop.
 
 ### 2.1 Metavariables and pattern unification
 
@@ -690,6 +717,13 @@ term it expanded. A metavariable's solution carries the origin of the term that 
 Origins are **not** part of conversion. Two terms with different origins and the same normal form are convertible;
 otherwise provenance would change what a program means, and a compiler that type-checked differently after a file was
 moved would be the result.
+
+**Three things a core term carries that conversion does not look at**, and they are one rule rather than three
+exceptions: an origin, a binder's written name, and a binder's plicity (§1). Each exists so that a later stage can say
+something an author will recognize — where a term came from, what they called a variable, whether they would have
+written an argument — and none of them may decide what a program means. A binder's name is the clearest case: `(x : A) →
+B` and `(y : A) → B` are the same type, quotation writes whichever name the type it is quoting at happens to hold, and a
+conversion that compared names would answer `false` for two spellings of one function type.
 
 The theoretical provenance of this calculus — every construction, and the chapter or paper it comes from — is
 [`citations.md`](citations.md) §13. The short form: nothing here is novel. Universes, Π, dependent records, families,
