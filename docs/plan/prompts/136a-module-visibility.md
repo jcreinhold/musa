@@ -35,8 +35,16 @@ in `musa-language`; the resolution rule and its diagnostics in `musa-core`. Reco
 - `stdlib/src/adapters/staff.musa` and `stdlib/src/notation/staff.musa` — roughly 150 top-level definitions of which a
   handful are the interface. That is the second measurement, and it says whether the marker is worth having beyond
   constructors.
-- `crates/musa-compiler/src/module.rs` — where a name is resolved today, and the `NameScope` a module boundary already
-  is. Adding visibility should be a filter on an existing lookup, not a second resolution path.
+- `crates/musa-compiler/src/module.rs` — what a module scope has to be able to answer, and **not** where this lands.
+  That `NameScope` belongs to the checker prompt 142 deletes; building the filter there would be work thrown away, and
+  the Stop below forbids it.
+- `crates/musa-core/src/{scope.rs, context.rs, family.rs, declare.rs}` — where a name is resolved *after* 142. A raw
+  variable resolves against binders and against the declared groups a `Cx` was extended by, and `Cx` is flat: there is
+  no module in it for a filter to test against. That is the missing prerequisite this prompt supplies, and it is why the
+  filter cannot be "a filter on an existing lookup" until the lookup has a boundary to know about.
+- `crates/musa-core/src/origin.rs` — the precedent for the shape that boundary takes. An `Origin` is "a number the
+  caller assigned, and the only thing this crate does with that number is keep it attached to the right term"; a module
+  identity is the same bargain, and the argument that keeps the core a leaf is the same one.
 - *A Philosophy of Software Design* ch. 5 and ch. 8 — information hiding, and the argument that an invariant maintained
   by a smart constructor is decoration if the raw constructor is reachable. Ch. 7 is the reason this prompt is one
   mechanism rather than two: a "constructor privacy" feature and a "declaration privacy" feature would be the same
@@ -82,11 +90,27 @@ package's own interface and the point of hiding the constructors. The bare-const
 (`01-surface.md` §1.3) is unaffected inside the module and refuses outside it for the same reason and with the same
 message.
 
-**Visibility is a filter on one lookup, not a second resolution path.** `module.rs` already resolves a qualified path
-through a `NameScope`; a private declaration is one that scope does not answer for a query originating outside it. Two
-things follow and both are checkable: a private name is still *in* the module's scope, so a sibling definition reads it
-by its bare name with no ceremony; and a private name that is never read inside its own module is dead code, which the
-existing unused-declaration diagnostic should say rather than this prompt inventing a second one.
+**The core has to learn what a module is, and it learns exactly one thing about it.** `Cx` is flat: a raw name resolves
+against binders and against the groups the context was extended by, and nothing in `musa-core` can say whether an
+elaboration is happening inside a declaration's own module. Give it an opaque module identity — a number the caller
+assigns — carried on a `Cx` and stamped on a declared group when it is brought into scope, compared only for equality
+and never interpreted. That is `Origin`'s bargain word for word (`origin.rs`: the core "does not know what a file is,
+what a span is, or what a syntax node is, and it must not learn"), and it is what keeps this rule in the crate that is
+provably right without importing the compiler's idea of a package. `musa-core` never mints one; the caller does, and no
+caller mints a real one until 142.
+
+The alternative — have the compiler build each module's `Cx` without the private declarations at all — is rejected, and
+for a stated reason rather than a preference: a name that is absent is `UnknownName`, and this prompt's whole value is
+in the two refusals that need the checker to know the name *exists and is hidden here*. "No such thing as `NamedChord`"
+sends a reader looking for a typo; "`NamedChord` is a private case of `Chord`, which `std::theory::chord` maintains
+through `build`" sends them to the interface.
+
+**Visibility is then a filter on one lookup, not a second resolution path.** Resolution already walks the declared
+groups; a private declaration is one it declines to answer with when the querying `Cx`'s module is not the one stamped
+on the group, and it declines by *naming* rather than by falling through to "not found". Two things follow and both are
+checkable: a private name is still in its module's scope, so a sibling definition reads it by its bare name with no
+ceremony; and a private name that is never read inside its own module is dead code, which the existing
+unused-declaration diagnostic should say rather than this prompt inventing a second one.
 
 **`private` and `signature`/`structure` do not overlap and do not conflict.** A structure seals by *listing* — the
 signature is the interface and everything else is private. A module hides by *marking*. They compose without a rule:
@@ -107,8 +131,10 @@ name it. Parsing round-trips losslessly and formatting is idempotent with the ma
 
 - `musa-language`: the `private` keyword, its grammar and CST positions, formatter layout, highlighting, and completion.
 - `editors/tree-sitter-musa`: grammar and queries, with the drift test green.
-- `musa-core`: the resolution filter, the mixed-enum refusal, the outside-`match` refusal, and their diagnostics with
-  `musa explain` codes.
+- `musa-core`: an opaque module identity on `Cx` and on a declared group, the visibility a `RawData` and its cases
+  carry, the resolution filter, the mixed-enum refusal, the outside-`match` refusal, and their diagnostics with `musa
+  explain` codes. A context with no module named is inside every module, which is what keeps every existing test and
+  every existing caller unchanged.
 - `crates/musa-language/tests/suite/` and `crates/musa-core/tests/suite/` cases, including the `Chord` program from note
   43 §5.1 written out as a fixture: the package builds a `NamedChord` through `build`, and the client that tries to
   build one directly is refused.
@@ -137,7 +163,12 @@ Commit as `Let a package hide what it maintains`.
 
 - No visibility tier below or above the module. No `pub` keyword, no export list, no re-export form.
 - No `musa-compiler` wire-up and no migration of `stdlib/` or `examples/`; the marker reaches real packages in 142, and
-  the two adapter rewrites at 145 and 146 are what measure whether it earned its keep.
+  the two adapter rewrites at 145 and 146 are what measure whether it earned its keep. `musa-core` takes the module
+  identity as a parameter and mints none, so nothing supplies a real one until then — the rule is testable here because
+  a test can assign the numbers a compiler will later assign.
+- **No module system in `musa-core`.** One opaque identity, compared for equality, is the whole of it. No path, no
+  nesting, no parent relation, no `import`, no notion of a file. If a refusal needs to *print* a module's name, the
+  caller supplies the text the way it supplies a span for an `Origin`.
 - No change to `signature`/`structure` sealing, and no new privacy mechanism beside it.
 - No abstract *type* form — a type whose definition is hidden and whose constructors are hidden with it is a different
   feature, needs a program, and would need its own conversion rule in `02-core-calculus.md`.
