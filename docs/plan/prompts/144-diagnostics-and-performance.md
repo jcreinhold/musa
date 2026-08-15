@@ -23,8 +23,8 @@ of the compiler holds, and bring P1 and P2 back inside `06-performance.md`'s 10%
   actually experiences, so they are the numbers that decide whether this prompt is done.
 - `crates/musa-compiler/src/diagnose.rs` and `crates/musa/src/main.rs`'s `cmd_explain` — the existing diagnostic
   vocabulary and the rule that every code has an explainable rule behind it.
-- Every `Code` variant added by prompts 134, 135, 136a, 137, 139, and 140, and the message each currently produces.
-  Those were written to be correct; this prompt makes them good.
+- Every `Code` variant added by prompts 134, 135, 136a, 137, 137a, 139, and 140, and the message each currently
+  produces. Those were written to be correct; this prompt makes them good.
 - The `rust-performance` skill's workflow in full — name the workload, reuse the nearest credible bench, find what
   actually costs, make the smallest matching change, re-measure, and report the numbers with the command.
 - `crates/musa-compiler/src/bench.rs` and `core_budget.rs` — where measurement already happens and where the budget is
@@ -61,7 +61,7 @@ recursor is.
 left open, and what annotation would settle it. This is the message that will appear most often while people learn the
 new language, so it is worth more care than its frequency in the test suite suggests.
 
-**Ambiguity names both candidates.** Prompt 137 made ambiguity an error rather than a default; the error is only better
+**Ambiguity names both candidates.** Prompt 137a made ambiguity an error rather than a default; the error is only better
 than a default if it says what the two possibilities were and how to pick one.
 
 **Then measure, in that order.** Diagnostics first because a fast compiler with unreadable errors is worse than a slow
@@ -114,8 +114,8 @@ and never a quietly raised threshold.
 
 ## Target
 
-- Every diagnostic from prompts 134, 135, 137, 139, and 140 rewritten to the standard above, each with `musa explain`
-  text and a test that pins the message on a realistic program rather than a minimal one.
+- Every diagnostic from prompts 134, 135, 137, 137a, 139, and 140 rewritten to the standard above, each with
+  `musa explain` text and a test that pins the message on a realistic program rather than a minimal one.
 - Profiles of the new checker on the four recorded workloads, the interventions chosen, and the re-measured numbers.
 - `docs/rules/language/06-performance.md` updated with post-migration P1/P2 rows and, if the gate was exceeded, the
   argument and its resolution.

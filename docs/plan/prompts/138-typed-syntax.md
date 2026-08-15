@@ -2,7 +2,7 @@
 id: 138
 slug: typed-syntax
 status: pending
-depends_on: [137]
+depends_on: [137a]
 phase: 3
 ---
 

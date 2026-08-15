@@ -25,8 +25,8 @@ actually hides. Record what shrank and what did not, and why.
 - `docs/rules/language/00-semantics.md`'s compiler-ownership paragraph — "an operation may be a builtin only when it
   needs source-aware provenance, direct core construction, a registered primitive's private state, or the private finite
   representation and work budget needed to preserve total evaluation." That is the four-way test each entry faces.
-- `docs/rules/language/10-traits.md`'s operator table, and prompt [137](137-traits-and-operators.md)'s implementation —
-  the replacements have to exist and be as fast, or this is a regression dressed as a cleanup.
+- `docs/rules/language/10-traits.md`'s operator table, and prompt [137a](137a-operators-and-methods.md)'s implementation
+  — the replacements have to exist and be as fast, or this is a regression dressed as a cleanup.
 - Prompt [138](138-typed-syntax.md)'s registry survey, which already marked phase entries for deletion once their
   arguments became typed.
 - `docs/rules/language/02-core-calculus.md` §5.8's four builtin families — collapsing entries must not change how many
