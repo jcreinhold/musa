@@ -184,16 +184,22 @@ is wrong.
 
 ## 9. One total source language builds both core values
 
-There is one source language. It is pure, strict, total, and its types are inferred. It builds ordinary values, event
-tracks, and machines; there is no second language for the studio and no contextual value that means something different
-depending on where it is used.
+There is one source language. It is pure, strict, total, and its types are checked bidirectionally. It builds ordinary
+values, event tracks, and machines; there is no second language for the studio and no contextual value that means
+something different depending on where it is used.
 
 Five properties are load-bearing, and each of them is a refusal:
 
-- **Total.** There is no general recursion and no partial call. Every accepted program finishes. A resource budget may
-  stop an evaluation, but it may not change the value an accepted program produces.
-- **Inferred.** Types are rank-1 Hindley–Milner. Annotations are written where a public signature or separate checking
-  needs one, not to teach the compiler what the program already determines.
+- **Total.** There is no general recursion and no partial call. Every accepted program finishes, and the reason it
+  finishes is visible to the checker: every recursive definition decreases a **well-founded measure the checker
+  verifies**, whether that measure is constructor size or something the author states and proves. There is no `partial`
+  keyword and no escape hatch; a definition whose termination the checker cannot see is rejected rather than trusted. A
+  resource budget may stop an evaluation, but it may not change the value an accepted program produces.
+- **Checked bidirectionally.** Types are checked by **bidirectional elaboration**: a term is checked against a known
+  type or its type is inferred, with metavariables and pattern-fragment unification filling in what the program
+  determines. Annotations are written where a public signature or separate checking needs one, not to teach the compiler
+  what the program already determines. A signature may mention a value, so there are no principal types and no global
+  inference: what a program means is fixed by what it says, and what it does not say is solved locally or reported.
 - **Complete.** A call supplies every argument. A function of several parameters takes one product argument. Partial
   application, default parameters, and named hole filling are not features whose absence needs a workaround; they are
   ambiguity about what a call means.
@@ -205,8 +211,18 @@ Five properties are load-bearing, and each of them is a refusal:
   running machine. A unit that runs in the audio path is a registered primitive with a stated state, step, and resource
   contract, not a closure the source handed over.
 
-What this rules out is as important as what it admits: no universal contextual `Music` value, no dependent or refinement
-types, no call-by-push-value stratification, no first-class signals or streams, no type-directed macros, and no built-in
-notes, chords, keys, metres, instruments, or cultural theories. Each of those may be proposed again, and each must then
-meet the standard in the obligations: remove a real side condition in at least two different musical uses, or close a
-safety boundary the current rules cannot state.
+What this rules out is as important as what it admits: no universal contextual `Music` value, no call-by-push-value
+stratification, no first-class signals or streams, no macro that dispatches on an inferred type, and no built-in notes,
+chords, keys, metres, instruments, or cultural theories. Each of those may be proposed again, and each must then meet
+one of the two standards in the obligations: remove a real side condition in at least two different musical uses or
+close a safety boundary the current rules cannot state, or carry measured engineering evidence from a committed Musa
+program the language made unwritable.
+
+Two of those refusals were narrowed rather than kept, and the narrowing is stated here so nobody has to reconstruct it
+from a diff. **Dependent and refinement types are admitted**: a type may mention a value, indexed families are ordinary
+declarations, and the identity type is part of the core. **Typed quotation is admitted** as the one form of
+metaprogramming: a quotation produces syntax of a stated category, its provenance is derived rather than written, and it
+runs during elaboration. What stays refused is the type-directed macro proper — expansion that inspects an inferred type
+to decide what code to produce, which makes a program's meaning depend on the order in which the checker solved it.
+[`docs/notes/research/language-design-closure/42-dependent-core-decision.md`](../notes/research/language-design-closure/42-dependent-core-decision.md)
+is the record: the evidence, the cost, and the arguments this narrowing overturned.

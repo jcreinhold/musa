@@ -1,7 +1,7 @@
 ---
 id: 128
 slug: core-amendment
-status: in-progress
+status: done
 depends_on: [127dcfb]
 phase: 3
 ---

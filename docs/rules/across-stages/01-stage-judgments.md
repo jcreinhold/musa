@@ -35,9 +35,11 @@ The source language uses the typing and evaluation rules in `docs/rules/language
 Σ ; Γ ⊢ e : A
 ```
 
-means that expression `e` has type `A` when `Σ` supplies declarations and `Γ` supplies local variables. Types are
-inferred: `A` is the principal type of `e`, and an annotation is required only where a public signature or separate
-checking needs one.
+means that expression `e` has type `A` when `Σ` supplies declarations and `Γ` supplies local variables. The judgment is
+**bidirectional**: `e` is either checked against an `A` that is already known, or its `A` is inferred and flows outward,
+with metavariables and pattern-fragment unification solving what the program determines. There is no principal type —
+constitution §9's *Checked bidirectionally* rule replaced that discipline — and an annotation is required only where a
+public signature or separate checking needs one. A type may mention a value.
 
 Evaluation is pure, strict, deterministic, and terminating for accepted programs, subject to the stated limits on
 foreign operations. A typed evaluation of result `A` is one of

@@ -15,7 +15,7 @@ audio engine, and the implementation column is deliberately blunt about the gap.
 
 | Result | Review status | Implementation status |
 | --- | --- | --- |
-| Type inference terminates and returns a principal type in the two-class Hindley–Milner discipline | proved in outline, `06-proof-outline.md` §2 | absent; prompt 127b implements it |
+| ~~Type inference terminates and returns a principal type in the two-class Hindley–Milner discipline~~ — **superseded** by the constitution's prompt-128 amendment, which replaced principal inference with bidirectional elaboration | the outline proof in `06-proof-outline.md` §2 stands for the discipline it was about; it is no longer a result about Musa | replaced; prompt 148 owes decidability of conversion, and soundness and completeness of normalization by evaluation, in its place |
 | Accepted source expressions terminate, and a resource failure cannot change an accepted value | proved in outline, `06-proof-outline.md` §2 | implemented for the current monomorphic core; the inferred core is prompt 127b |
 | Storable data excludes a source function at every depth, including inside containers | proved by the admission check, `docs/rules/language/02-core-calculus.md` | absent; prompt 127b |
 | `follow`, `together`, `map_payloads` preserve bounds and obey their laws, with unequal durations and multiplicity kept | proved in `docs/rules/kernel/03`–`05` and `10` | implemented and tested at the untagged type; coordinate tags are prompt 127c |
@@ -75,8 +75,9 @@ Each implementation step must test the premise on which its proof relies:
 
 - byte encoders test empty strings, delimiters, newlines, multiplicity, coordinate tags, version changes, and migration;
 - registries reject one id and version paired with two exact descriptors;
-- inference tests principal types, and compile-fail tests cover a function hidden in a list, constructor, or abstract
-  value; an incomplete call; a recursive term; and a non-exhaustive match;
+- elaboration tests that checking and inference agree where both apply and that an unsolved metavariable is reported at
+  the term that left it unsolved, and compile-fail tests cover a function hidden in a list, constructor, or abstract
+  value; an incomplete call; a term whose termination measure the checker cannot see; and a non-exhaustive match;
 - machines test every constructor, the first feedback output, Boolean negation through a stored delay, causality, and
   the whole-node scheduling counterexample the old graph rules could not handle;
 - batching tests every partition of the same requested frames against a plain structural interpreter;

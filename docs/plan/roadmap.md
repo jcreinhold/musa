@@ -1947,22 +1947,23 @@ musa/
 ## 15.1 Dependency direction
 
 ```text
-musa-language
-      │
-      ▼
-musa-compiler
-   │       │
-   ▼       ▼
-render    audio
-             │
+musa-language   musa-core
+      │             │
+      └──────┬──────┘
              ▼
-           engine
-       \      │      /
-        \     ▼     /
-          project
-          │   │   │
-          ▼   ▼   ▼
-         cli desktop lsp
+        musa-compiler
+         │       │
+         ▼       ▼
+      render    audio
+                   │
+                   ▼
+                 engine
+             \      │      /
+              \     ▼     /
+                project
+                │   │   │
+                ▼   ▼   ▼
+               cli desktop lsp
 ```
 
 No dependency points upward.
@@ -1971,6 +1972,7 @@ In particular:
 
 - compiler does not depend on rendering;
 - compiler does not depend on audio;
+- the core does not depend on the compiler, on `musa-language`, or on anything musical (§15.12);
 - audio does not depend on the GUI;
 - render does not know about source-editor widgets;
 - the frontend does not know about CPAL or FunDSP;
@@ -2029,6 +2031,7 @@ Dependencies:
 
 ```text
 musa-language
+musa-core
 num-rational
 slotmap
 indexmap
@@ -2317,6 +2320,49 @@ travels as a workspace edit for the client to apply.
 It installs the same subscriber the CLI does, on stderr, because a language server is launched by an editor and cannot
 be run under a debugger — a span per request, carrying the method and the document, is the only account of what it did.
 Its stdout is the JSON-RPC transport and carries nothing else.
+
+
+## 15.12 `musa-core`
+
+The dependently typed core the source language elaborates into, and a **leaf**: it depends on no other Musa crate and
+knows nothing about pitch, time, notation, or audio. It sits below `musa-compiler` the way `musa-kernel` does, and for
+the same reason — the thing that has to be provably right is smaller than the thing that has to be convenient, and it is
+easier to keep it that way if it cannot reach the rest of the workspace.
+
+Owns:
+
+- core terms, values, and typing contexts;
+- universes and their constraints;
+- normalization by evaluation: `eval`, `quote`, and conversion;
+- bidirectional elaboration, metavariables, and pattern-fragment unification;
+- inductive families, strict positivity, and dependent match with coverage;
+- the well-founded termination checker;
+- the identity type.
+
+Dependencies:
+
+```text
+indexmap
+thiserror
+tracing
+```
+
+Deliberately short. A core that reaches for `num-rational` has started to know what a duration is, and a core that
+reaches for `serde` has started to have a serialized form that something outside it will come to depend on. Nothing in
+this list can pull in `musa-language`.
+
+Public interface:
+
+```rust
+pub fn elaborate(raw: &RawTerm, expected: Option<&Term>) -> Result<Elaborated, CoreError>;
+pub fn convertible(left: &Term, right: &Term, ty: &Term) -> bool;
+pub fn normalize(term: &Term) -> Term;
+```
+
+`Value` — the semantic domain NbE evaluates into — stays private. It contains closures over the evaluator's own
+representation, so exposing it would make every later change to evaluation a breaking change for `musa-compiler`;
+callers get `Term` back through `quote`. Prompt 133 states the argument in full, because the pressure to leak `Value`
+arrives with the first caller that wants to inspect a normal form.
 
 
 ---

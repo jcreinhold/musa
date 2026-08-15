@@ -21,6 +21,14 @@ This candidate therefore specifies one language that builds both core values, an
 add a seventh track operation and does not make sound a track concern. The source remains canonical; every UI edits or
 projects source rather than owning another mutable score, instrument, or mix model.
 
+Third — and this is the newest of the three — the constitution's amendment at prompt 128 replaced the *type discipline*
+this candidate was written against. Rank-1 inference and principal types are gone; §9 now says bidirectional
+elaboration, dependent types are admitted, totality is well-founded rather than structural, and typed quotation is the
+one admitted form of metaprogramming. Prompts 129–131 rewrite `02-core-calculus.md` and `01-surface.md` and add
+`10-traits.md` and `11-quotation.md` accordingly, and until they land, those two pages describe a language the
+constitution above them no longer specifies. The record is
+[`../../notes/research/language-design-closure/42-dependent-core-decision.md`](../../notes/research/language-design-closure/42-dependent-core-decision.md).
+
 ## Document map
 
 | File | Contract |
@@ -51,9 +59,13 @@ implementor's path — grammar to kernel, laws, ownership, and extension recipes
 Prompt 172 may mark this specification governing only after all of the following hold:
 
 1. prompts 93–171 have discharged the proof, compatibility, performance, diagnostics, editor, and audio obligations
-   named here;
+   named here — including the language pass at 128–149, whose obligations replace rather than extend the ones
+   `02-core-calculus.md` §5 carried before it;
 2. every pre-candidate example either retains its meaning or has an explicit, tested migration diagnostic;
-3. the core law suite still passes unchanged and no surface convenience has entered `musa-kernel`;
+3. the core law suite passes and no surface convenience has entered `musa-kernel` or `musa-core`. It does *not* pass
+   unchanged: prompt 148 re-derives the metatheory matrix against the dependent core, and prompt 142 is the one prompt
+   permitted to move the compatibility oracle. Both are audited by the entries they leave behind, not by the suite being
+   untouched;
 4. live and offline rendering agree, part routing is isolated, and builds are reproducible from the project closure;
 5. the roadmap, governance decisions, kernel and across-stage documents, style guide, implementation, and prompt stack
    pass a final contradiction audit.

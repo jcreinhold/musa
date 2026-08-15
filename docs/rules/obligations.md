@@ -99,13 +99,30 @@ source or generation site.
 
 ## 10. New language features need real examples
 
-Musa should add a type-system feature only when ordinary finite data, total functions, and modules make at least two
-real musical operations unclear or unsafe. Nominal data and private constructors have such examples: different theory
-packages need to hide their representations.
+A type-system feature enters Musa on evidence, by one of two routes. Whichever route is used, **the failed examples come
+first**: the program that could not be written is written badly, committed, and measured before the feature that fixes
+it is designed.
 
-Dependent types, general recursion, call-by-push-value, first-class signals, type-directed macros, “worlds,” and
-equality proofs do not enter the language merely because they fit an analogy. The failed examples must come first, and
-the smallest failing term must be recorded.
+**The musical route.** Ordinary finite data, total functions, and modules make at least two real musical operations
+unclear or unsafe, and the smallest failing term is recorded. Nominal data and private constructors entered this way:
+different theory packages need to hide their representations.
+
+**The engineering route.** A committed Musa program — the standard library, an adapter, a fixture — is measurably
+deformed by the language itself. This route requires all four of: the failing program named and committed at a stated
+revision; its size measured in lines and bytes; the compensating constructs enumerated and counted, not described; and a
+later prompt that rewrites the same program on the new feature and reports the new measurement. A prediction is not
+evidence and a rewrite that does not shrink the program is the feature failing, whatever else it improved.
+
+`stdlib/src/adapters/staff.musa` is the first admission on this route: 2,404 lines and 93,252 bytes of Musa to read
+staff notation, of which six hand-written `call1`–`call7` argument builders, 27 distinct hand-allocated role integers
+across 56 `syntax_built` calls, an eight-field product destructured in full to read one field, 21 `text_equal` tests
+against token-kind spellings, and a reading algorithm that runs backwards because a list cannot be constructed are
+compensation for the language rather than facts about notation. The record is
+[`../notes/research/language-design-closure/42-dependent-core-decision.md`](../notes/research/language-design-closure/42-dependent-core-decision.md).
+
+Neither route is satisfied by an analogy. General recursion, call-by-push-value, first-class signals, macros that
+dispatch on an inferred type, and “worlds” do not enter the language because they fit one, and none of them is admitted
+by the amendment that opened the engineering route.
 
 ## 11. A formal compiler stage need not be source syntax
 

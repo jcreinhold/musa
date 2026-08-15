@@ -1,6 +1,6 @@
 # Language design closure
 
-**Status: one inference-first candidate is active. It still governs nothing.** This directory carries out
+**Status: notes 01–41 govern nothing; note 42 is an amendment and governs.** This directory carries out
 [`docs/plan/language-design-closure.md`](../../../plan/language-design-closure.md). Its purpose is to settle Musa's
 source language, not to invent another temporal kernel or a package cache.
 
@@ -135,5 +135,16 @@ ship.
     size, for three stated reasons), confirms that `Pending` is the notation's cost and not the interface's, refutes the
     prompt's own expectation that `C` would carry the meter, and records that a single pass costs 2.1× the constructed
     cells two passes did, at 7% of the budget.
+43. [42-dependent-core-decision.md](42-dependent-core-decision.md) is a **decision, and it governs**: constitution §9's
+    *Inferred* property becomes bidirectional elaboration, *Total* becomes well-founded rather than structural, the
+    refusal of dependent and refinement types is deleted, the refusal of type-directed macros is narrowed to admit typed
+    quotation, and obligations §10 gains a second admission route for measured engineering evidence. The evidence is
+    `stdlib/src/adapters/staff.musa` at 2,404 lines and 93,252 bytes, measured construct by construct. It discharges
+    `docs/rules/README.md`'s six requirements and note 39 §11.2's five items, declines CBPV and `partial`, and states
+    that note 39 §8.1's first reason — no *musical* operation needs a value in a type — is not refuted but was answering
+    a different question. Prompt 145's rewrite of the same file is the gate that decides whether it was right.
 
-The proof gate failed. Nothing in this workspace moves to `docs/rules/` or into implementation prompts.
+The proof gate failed for the design notes 19–41 pursued, and nothing in *those* notes moved to `docs/rules/` or into
+implementation prompts. Note 42 is the exception and says why: it is an amendment taken under
+[`docs/rules/README.md`](../../../rules/README.md)'s procedure, on engineering evidence those notes did not weigh, and
+it is answerable to a measurement rather than to a proof.
