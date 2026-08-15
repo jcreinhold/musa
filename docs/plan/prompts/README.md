@@ -294,6 +294,11 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 142 | surface-cutover | 3 | Move the whole language over, once |
 | 143 | builtin-collapse | 3 | Collapse the builtin registry behind traits and namespaces |
 | 144 | diagnostics-and-performance | 3 | Make the new failures legible and the new checker fast enough |
+| 145 | staff-rewrite | 3 | Rewrite the staff adapter on the new language |
+| 146 | studio-rewrite | 3 | Write the studio adapter as an unprivileged package |
+| 147 | adapter-freeze | 3 | Freeze the adapter rules and carry them through hostile review |
+| 148 | core-conformance | 3 | Discharge the core's obligation matrix |
+| 149 | language-pass-closure | 3 | Close the language pass |
 | 150 | machine-runtime | 3 | Give each prepared machine one deterministic next step |
 | 151 | track-scheduling | 3 | Connect exact event tracks to frame machines with checked decisions |
 | 152 | one-frame-audio | 3 | Make one audio frame the reference meaning for every DSP unit |
