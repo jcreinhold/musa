@@ -277,6 +277,11 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 127dcg | studio-trial | 3 | Write the studio adapter as an unprivileged package |
 | 127dd | adapter-trials | 3 | Freeze the adapter rules and carry them through hostile review |
 | 127e | source-language-clean-break | 3 | Delete contextual `Music` and migrate notation to ordinary values |
+| 128 | core-amendment | 3 | Amend the core to admit a dependent foundation |
+| 129 | dependent-core-spec | 3 | Specify the dependent core |
+| 130 | trait-and-surface-spec | 3 | Specify records, enums, traits, and their surface |
+| 131 | quotation-spec | 3 | Specify typed quotation and syntax patterns |
+| 132 | paper-trial | 3 | Paper-trial the dependent language before any code implements it |
 | 150 | machine-runtime | 3 | Give each prepared machine one deterministic next step |
 | 151 | track-scheduling | 3 | Connect exact event tracks to frame machines with checked decisions |
 | 152 | one-frame-audio | 3 | Make one audio frame the reference meaning for every DSP unit |
@@ -564,6 +569,21 @@ notation becomes a source-mapped adapter into ordinary inferred terms. 150 gives
 makes the time-to-frame policy explicit. 152 makes one sample frame the reference meaning of audio and treats host
 blocks only as checked batching. 153 proves and audits the complete path before any later sound prompt may run. Old
 syntax, APIs, and serialized forms are removed, not kept behind aliases.
+
+**128–149 rebuild the surface language on a dependent core, and 150–153 wait for them.** The staff adapter is the
+evidence: 2,158 lines of Musa for a notation reader, most of it compensating for a language that cannot build a list,
+name a field, or say what a piece of syntax is. 128 amends the constitution and obligations to admit that evidence,
+keeping totality and widening it to a checked well-founded measure — Musa is almost entirely a compile-time language, so
+divergence is a compiler hang, and a dependent checker is an evaluator. 129 specifies the core: universes, Π, dependent
+records, inductive families, an identity type, conversion by normalization-by-evaluation, and bidirectional elaboration
+with metavariables. 130 says what an author types — records with nested update, namespaced enums, coherent
+dictionary-elaborated traits with no search, operators and methods under exact-receiver lookup. 131 adds `Syntax<Cat>`,
+`quote at here { … }` with splicing, provenance the elaborator computes rather than the author allocating by hand, and
+the inverse pattern form. 132 then trials all of it on paper against nine complete programs before a line is
+implemented, and records the predicted size of the staff rewrite as the gate that rewrite is measured by. Ranks 133–149
+carry the implementation — the core crate, elaboration, families, records and enums, traits, typed syntax, quotation and
+patterns, collections, one surface cutover rather than two, the builtin collapse, the staff and studio rewrites, and the
+conformance audit — and each is written when the prompt before it has made its design real.
 
 **154–160 build musical sound on that core.** 154 makes the primitive vocabulary discoverable from one catalogue; 155
 keeps written quantities exact; and 155a's payload rule is revised for the new storable-data boundary. 156 defines
