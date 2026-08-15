@@ -24,9 +24,9 @@ projects source rather than owning another mutable score, instrument, or mix mod
 Third — and this is the newest of the three — the constitution's amendment at prompt 128 replaced the *type discipline*
 this candidate was written against. Rank-1 inference and principal types are gone; §9 now says bidirectional
 elaboration, dependent types are admitted, totality is well-founded rather than structural, and typed quotation is the
-one admitted form of metaprogramming. Prompts 129–131 rewrite `02-core-calculus.md` and `01-surface.md` and add
-`10-traits.md` and `11-quotation.md` accordingly, and until they land, those two pages describe a language the
-constitution above them no longer specifies. The record is
+one admitted form of metaprogramming. Prompt 129 rewrote `02-core-calculus.md` against the dependent core and prompt 130
+rewrote `01-surface.md` and added `10-traits.md`; prompt 131 still owes `11-quotation.md`, so until it lands
+`01-surface.md` §7 is the only account of quotation and it describes the kernel quote alone. The record is
 [`../../notes/research/language-design-closure/42-dependent-core-decision.md`](../../notes/research/language-design-closure/42-dependent-core-decision.md).
 
 ## Document map
@@ -43,6 +43,7 @@ constitution above them no longer specifies. The record is
 | `07-analysis.md` | the analysis boundary, findings and evidence, and the admission rule for a new kind |
 | `08-performance-and-sound.md` | score-to-gesture-to-instrument-to-audio semantics |
 | `09-assets-and-packages.md` | reproducible assets, packages, sample maps, clips, and fixed media |
+| `10-traits.md` | coherence, dictionary elaboration, operators, methods and namespaces, and what is refused |
 | `citations.md` | every theoretical claim in these documents, and the chapter or proof it comes from |
 
 The numbering deliberately leaves room for future notation and analysis documents without renumbering the sound and

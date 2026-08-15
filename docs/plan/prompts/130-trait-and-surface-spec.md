@@ -1,7 +1,7 @@
 ---
 id: 130
 slug: trait-and-surface-spec
-status: pending
+status: done
 depends_on: [129]
 phase: 3
 ---

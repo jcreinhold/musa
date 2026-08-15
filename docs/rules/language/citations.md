@@ -216,7 +216,9 @@ verified by `scripts/check-docs.sh`: the corpus is outside the repository and is
 | What Musa implements | Where it comes from |
 | --- | --- |
 | the surface → core → evaluation architecture, and why Musa is *not* the enriched-calculus arrangement | Peyton Jones (1987), `software-engineering/implementation-of-functional-programming-languages/03-translating-a-high-level-functional-language-into-the-lambda-calculus.md` §3.1 |
-| case-tree compilation of nested patterns: the variable, constructor, empty, and mixture rules | Peyton Jones and Wadler, same book, `04-structured-types-and-the-semantics-of-pattern-matching.md` and `05-efficient-compilation-of-pattern-matching.md` |
+| case-tree compilation of nested patterns: the variable, constructor, empty, and mixture rules — which is also what record and enum patterns, and the nested patterns method and operator sugar produce, compile through | Peyton Jones and Wadler, same book, `04-structured-types-and-the-semantics-of-pattern-matching.md` and `05-efficient-compilation-of-pattern-matching.md` |
+| surface forms that add no term to the calculus — `with` update, `?`, `if`, method syntax, operator syntax — as a source-to-source translation rather than as new constructs | same book, `03-translating-a-high-level-functional-language-into-the-lambda-calculus.md` |
+| list comprehensions as sugar over `map` and `filter` — cited to be **refused** for now (`10-traits.md` §9) | same book, `07-comprehensions.md` |
 | the shape a type checker takes as a program: constraint generation separated from solving | Hancock, same book, `08-polymorphic-type-checking.md` and `09-a-type-checker.md` |
 | `Y` and the fixed-point combinator — cited to be **refused** (§1.3) | same book, `02-the-lambda-calculus.md` §2.4 |
 | dependent function and sum types, families over a base, and what a universe is | Jacobs, *Categorical Logic and Type Theory*, `type-theory/categorical-logic-and-type-theory/10-first-order-dependent-type-theory.md` and `11-higher-order-dependent-type-theory.md` |
@@ -240,6 +242,9 @@ verified by `scripts/check-docs.sh`: the corpus is outside the repository and is
 | decidable equality implies UIP, which is why K is not an extra assumption for the families Musa declares | Hedberg (1998), "A coherence theorem for Martin-Löf's type theory" |
 | well-founded recursion as the general form of a terminating definition, with structural decrease as its special case | Nordström (1988), "Terminating general recursion" |
 | dictionary-passing elaboration of a class-like construct, which `10-traits.md` builds on | Wadler and Blott (1989), "How to make ad-hoc polymorphism less ad hoc" |
+| coherence, and the design space that overlap, specialization, and defaulting sit in — Musa refuses all three and `10-traits.md` §9 says why | Peyton Jones, Jones, and Meijer (1997), "Type classes: an exploration of the design space" |
+| the orphan rule as the module-level condition that makes coherence checkable rather than aspirational | the same paper's treatment of instance scoping, and the Haskell 98 Report's rule that instances are program-global regardless of import |
+| termination of instance resolution by a measure that decreases from an instance head to its context | the Paterson conditions, as recorded in Sulzmann, Duck, Peyton Jones, and Stuckey (2007), "Understanding functional dependencies via constraint handling rules" |
 
 ### 13.3 Musa's own, and priced
 

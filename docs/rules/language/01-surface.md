@@ -10,27 +10,52 @@ self-delimiting and do not take `;`. No added production is newline-sensitive.
 The normative schematic grammar is:
 
 ```ebnf
-type         := base-type | "Option" "<" type ">" | "List" "<" type ">"
-              | "(" type ")" | "(" type "," type ("," type)* ")" | type "->" type
-binding      := "let" IDENT ":" type "=" expr ";"
-function     := "fn" IDENT "(" params? ")" "->" type block
-param        := IDENT ":" type ("=" expr)?
+type         := type-name type-args? | "(" type ")" | "(" type "," type ("," type)* ")"
+              | type "->" type
+type-name    := (module-path "::")? IDENT
+type-args    := "<" type ("," type)* ">"
+type-params  := "<" IDENT ("," IDENT)* ">"
+where-clause := "where" constraint ("," constraint)*
+constraint   := type-name type-args
+binding      := "let" IDENT (":" type)? "=" expr ";"
+function     := "fn" IDENT type-params? "(" params? ")" "->" type where-clause? block
+param        := IDENT (":" type)? ("=" expr)?
+record       := "record" IDENT type-params? where-clause? "{" field-decl* "}"
+field-decl   := IDENT ":" type ";"
+enum         := "enum" IDENT type-params? where-clause? "{" (enum-case ("," enum-case)* ","?)? "}"
+enum-case    := IDENT ("(" type ("," type)* ")" | "{" field-decl* "}")?
+trait        := "trait" IDENT type-params where-clause? "{" trait-item* "}"
+trait-item   := "fn" IDENT type-params? "(" params? ")" "->" type where-clause? (";" | block)
+impl         := "impl" type-params? constraint where-clause? "{" function* "}"
+inherent     := "impl" type-params? type-name type-args? "{" function* "}"
 call         := expr "(" args? ")"
-expr         := literal | IDENT | path | "(" expr ")" | block | product | list | option
-              | call | match | conditional | record-update | question | music-expr
+expr         := literal | IDENT | qualified | "(" expr ")" | block | product | list
+              | call | projection | method-call | index | operation | question
+              | match | conditional | record-literal | record-update | music-expr
 block        := "{" expr "}"
 product      := "(" expr "," expr ("," expr)* ")"
 list         := "[" (expr ("," expr)*)? "]"
-option       := "None" | "Some" "(" expr ")"
+qualified    := type-name "::" IDENT
+projection   := expr "." IDENT
+method-call  := expr "." IDENT "(" args? ")"
+index        := expr "[" expr "]"
+operation    := expr binary-op expr
+binary-op    := "==" | "<" | "+" | "-" | "*" | "/"
+record-literal := type-name "{" field-init ("," field-init)* ","? "}"
+field-init   := IDENT "=" expr
 match        := "match" expr "{" match-arm ("," match-arm)* ","? "}"
 match-arm    := pattern "->" expr
 conditional  := "if" expr block "else" (block | conditional)
 record-update := expr "with" "{" field-update ("," field-update)* ","? "}"
-field-update := IDENT "=" expr
+field-update := field-path "=" expr
+field-path   := IDENT ("." IDENT)*
 question     := expr "?"
-pattern      := "_" | literal | IDENT | "None" | "Some" "(" IDENT ")"
-              | "[" "]" | "[" IDENT "," ".." IDENT "]"
-              | "(" IDENT "," IDENT ("," IDENT)* ")"
+pattern      := "_" | literal | IDENT | constructor-pattern | record-pattern
+              | "[" "]" | "[" pattern "," ".." IDENT "]"
+              | "(" pattern "," pattern ("," pattern)* ")"
+constructor-pattern := (type-name "::")? IDENT ("(" pattern ("," pattern)* ")")?
+record-pattern := type-name "{" field-pattern ("," field-pattern)* ","? "}"
+field-pattern := IDENT ("=" pattern)?
 music-expr   := "music" "{" music-statement* "}"
 music-use    := "use" expr ";"
 scale-local  := "in" "scale" expr "{" music-statement* "}"
@@ -38,7 +63,8 @@ assertion    := "assert" IDENT "(" args? ")" "{" music-statement* "}"
 analysis     := "analysis" IDENT "=" expr ";"
 kernel-quote := "kernel" "EventTrack" "[" "WrittenTime" "," "ScoreFact" "]" "{" kernel-item* "}"
 antiquote    := "${" expr "}"
-document     := (import | binding | function | signature | structure | template | instance)*
+document     := (import | binding | function | record | enum | trait | impl | inherent
+                | signature | structure | template | instance)*
                 (piece | library | instance)
 signature    := "signature" IDENT "{" member* "}"
 member       := "let" IDENT ":" type ";"
@@ -64,26 +90,46 @@ mod-decl     := "mod" IDENT ";"
 module-file  := mod-decl*
 ```
 
-Function arrows associate right; call binds tighter than pitch operators; pitch operators bind as follows, tightest
-first: parentheses, `step`, `up`/`down`. `root up M2 down m2` is rejected as ambiguous; write parentheses. `up` and
-`down` take a `Pitch` or a `NoteName` and return whichever they were given, so `c4 up M3` is a pitch and
-`chord_root(triad) up M3` is a pitch class: the operand's own type decides, and no register is invented for a value that
-never had one. Every `fn` has an expression body, written in braces: `{ e }` is a block, it holds exactly one
-expression, and it means that expression — `⟦{ e }⟧ = ⟦e⟧` (`02-core-calculus.md` §5). A block is an expression form
-wherever an expression is admitted, not a special case of `fn`. There is no statement language inside it: no `let`, no
-`return`, no `;`-separated sequence, and a second expression in a block is a static error naming the rule. A
-multi-statement musical body is explicitly `music { ... }`, which is a different construct that happens to abut the
-body's brace.
+Function arrows associate right. Expression forms bind as follows, tightest first:
+
+| Level | Forms | Associativity |
+| --- | --- | --- |
+| 1 | `e(…)`, `e.f`, `e.m(…)`, `e[i]`, `e?`, `e with { … }`, `T::x`, and every brace-delimited form | left |
+| 2 | `*`, `/` | left |
+| 3 | `+`, `-` | left |
+| 4 | `step` | left |
+| 5 | `up`, `down` | none |
+| 6 | `==`, `<` | none |
+
+A brace-delimited form — a block, `match`, `if`, `music`, a record literal — is a primary expression at level 1, so it
+never needs parentheses to be an operand. Arithmetic binds tighter than the pitch operators, which is the reading a
+musician wants: `c4 up M3 + P5` transposes by the sum of two intervals rather than adding a pitch to an interval, and
+the second reading is not well typed anyway. The two non-associative levels reject a chain rather than silently choosing
+one: `root up M2 down m2` is rejected as ambiguous; write parentheses. So is `a == b == c`, which in a language whose
+`==` answers `Bool` would otherwise compare a boolean with `c`. `up` and `down` take a `Pitch` or a `NoteName` and
+return whichever they were given, so `c4 up M3` is a pitch and `chord_root(triad) up M3` is a pitch class: the operand's
+own type decides, and no register is invented for a value that never had one. Every `fn` has an expression body, written
+in braces: `{ e }` is a block, it holds exactly one expression, and it means that expression — `⟦{ e }⟧ = ⟦e⟧`
+(`02-core-calculus.md` §2). A block is an expression form wherever an expression is admitted, not a special case of
+`fn`. There is no statement language inside it: no `let`, no `return`, no `;`-separated sequence, and a second
+expression in a block is a static error naming the rule. A multi-statement musical body is explicitly `music { ... }`,
+which is a different construct that happens to abut the body's brace.
 
 Named intervals use conventional `P`, `M`, `m`, and repeated `A`/`d` qualities. Because lowercase `d4` already means the
 written pitch D4, a singly diminished fourth is written `dim4`; `dd4` and `ddd4` remain the compact multiply diminished
 spellings.
 
 `match` is the sole added case-analysis spelling. Arms are comma-separated and a final comma is accepted; braces and
-arrows keep the alternatives legible when an arm's expression spans lines. The initial patterns cover booleans, naturals
-and other literal domains, options, empty/cons lists, and products. A bare identifier binds the whole value; `_`
-discards it. Prompt 96 defines exhaustiveness and rejects duplicate or unreachable arms. It also owns the constructor
-meaning of `[head, ..tail]`; `..` is two adjacent `.` tokens, not a new general range operator.
+arrows keep the alternatives legible when an arm's expression spans lines. Patterns cover booleans, naturals and other
+literal domains, empty/cons lists, products, enum constructors, and record fields. A bare identifier binds the whole
+value; `_` discards it. Prompt 96 defines exhaustiveness and rejects duplicate or unreachable arms. It also owns the
+constructor meaning of `[head, ..tail]`; `..` is two adjacent `.` tokens, not a new general range operator.
+
+**Patterns nest.** A sub-position holds another pattern rather than only a binder, and `02-core-calculus.md` §6.2 is
+where that is decided: a `match` compiles through a case tree to the generated dependent recursors, and coverage is
+decided there. This replaces the earlier depth-one rule, whose whole argument was that the case-tree compiler had not
+earned its place; §6.2 states what changed and why. There are still no guards, no conditional equations, and no pattern
+on the left of a definition.
 
 `if condition { consequent } else { alternative }` is one expression and not a statement. The condition has type `Bool`,
 the two branches have one type between them, and that type is the conditional's. The `else` is mandatory: a one-armed
@@ -96,32 +142,38 @@ exhaustive two-arm boolean match the surface already had, so it costs what that 
 matching applies to it unchanged — `02-core-calculus.md` §1. What it buys is the reading: a value decided by a yes-or-no
 question is written as a yes-or-no question rather than as case analysis on a two-valued type, and a run of them is a
 ladder rather than a staircase of nested braces. Guards on match arms would flatten the same staircase and are refused
-separately; §6.2 keeps patterns at depth one and a guard proposal has to earn its own change.
+separately; a guard reintroduces the fall-through between equations that a case tree exists to eliminate
+(`02-core-calculus.md` §6.2), so a guard proposal has to earn its own change.
 
-`subject with { field = expr, ... }` rebuilds a record: the result is the subject's value with the named fields replaced
-and every other field carried over unchanged. Five things are fixed about it.
+`subject with { path = expr, ... }` rebuilds a record: the result is the subject's value with the named fields replaced
+and every other field carried over unchanged. Six things are fixed about it.
 
 - The subject is evaluated exactly once, however many fields are carried over.
 - Each written right-hand side is evaluated exactly once, and against the scope *around* the update rather than against
   the subject's fields. `p with { n = plus(n, 1) }` reads the `n` in scope where it is written, not `p`'s field of that
-  name; an author who means the field writes the match that binds it. That reading is decidable by looking at one line,
-  which is the whole reason for the rule.
-- Every field named must be a field of the subject's declaration, and the subject's type must be a `data` declaration
-  with exactly one constructor. A value that could be one of several cases is taken apart with `match`, which names the
-  case, and rebuilt inside the arm.
-- A field named twice is refused, and the diagnostic points at both mentions. The second value would silently win, and
-  nothing about the spelling says which one the author meant.
+  name; an author who means the field writes the projection or the match that reads it. That reading is decidable by
+  looking at one line, which is the whole reason for the rule.
+- **A left-hand side is a path**, so `p with { region.anchor = a }` reaches through a field into the record it holds.
+  Every segment must name a field of the record its prefix denotes, and every proper prefix must therefore denote a
+  record. A path costs one construction per segment and nothing else: no segment's siblings are re-evaluated, and no
+  intermediate value is built twice.
+- The subject's type — and every proper prefix's — must be a `record` declaration (§1.2). A value that could be one of
+  several cases is taken apart with `match`, which names the case, and rebuilt inside the arm.
+- Two paths where one is a prefix of the other are refused, and so is the same path twice; the diagnostic points at both
+  mentions. `p with { r = x, r.a = y }` has two readings that differ, and nothing about the spelling says which one the
+  author meant.
 - The result has the subject's own type. An update never widens, narrows, or changes what a value is.
 
-It adds no term to the calculus. `p with { f = e }` elaborates to a match on `p` that binds every field of its one
-constructor, and a use of that same constructor taking `e` where `f` was named and the bound field everywhere else —
-`02-core-calculus.md` §5. The subject is the scrutinee, which is what evaluates it once; exactly one record is built,
-which is what makes an update cost one construction; and the binders the elaboration introduces cannot be written in
-source, which is what makes the second rule above true by construction rather than by renaming. Right-hand sides are
-*checked* where they are written, so a diagnostic points at the line the author wrote, and *evaluated* in the
-declaration's field order, which is already the order a constructor written with named fields evaluates in. Nothing
-observes the difference — the language is total and its expressions have no effects — and fixing evaluation to one order
-across both spellings is what keeps `p with { f = e }` and the full construction the same program.
+It adds no term to the calculus. `p with { f = e }` elaborates to a `let` binding the subject and one record literal
+whose other fields are projections of that binding — `02-core-calculus.md` §2. A path nests the same rule: `p with { a.b
+= e }` is `p with { a = (p.a with { b = e }) }` with the subject bound once and read twice, which is why the cost is one
+construction per segment. The subject is bound rather than repeated, which is what evaluates it once; exactly one record
+is built at each level, which is what makes an update cost what it looks like; and the binder the elaboration introduces
+cannot be written in source, which is what makes the second rule above true by construction rather than by renaming.
+Right-hand sides are *checked* where they are written, so a diagnostic points at the line the author wrote, and
+*evaluated* in the declaration's field order, which is already the order a record literal written with named fields
+evaluates in. Nothing observes the difference — the language is total and its expressions have no effects — and fixing
+evaluation to one order across both spellings is what keeps `p with { f = e }` and the full literal the same program.
 
 `with` is the same word the `use` statement spells its occurrence overrides with, and the statement keeps it: in
 `use theme() with { note 3 = a5; }` the `with` belongs to the statement, because that is where a reader's eye already
@@ -140,10 +192,12 @@ succeeded with; where `e` fails, the answer around the `?` is that same `Err` va
   argument, say, so that a match wrapped around it would answer the call rather than the caller — it is refused, because
   there is no statement in this language to return from and inventing one would be a second way for a value to leave.
   That branch writes the `match` it means.
-- The answer's type has to be a `Result`, and it may be inferred rather than written. `?` constrains the enclosing
-  result to `Result<_, E>` with the same `E` as its subject; an explicit annotation may discharge that constraint and is
-  never required, so a function using `?` infers exactly as principally as any other. `?` is refused only when the
-  answer *cannot* be a `Result`, and the diagnostic names the type — inferred or written — that it turned out to be.
+- The answer's type has to be a `Result`, and it is the type the enclosing function was *checked* against. A public
+  signature is written, so in ordinary code that type is already known when the `?` is reached, and `?` is refused only
+  when it turns out not to be a `Result` — the diagnostic naming the type it turned out to be. Where the answer's type
+  is still a metavariable, the constraint `Result<_, E>` is recorded with the same `E` as the subject and postponed
+  (`02-core-calculus.md` §2.1); a metavariable left unsolved at the end of the declaration is the ordinary *unsolved
+  metavariable* error, reported at the `?` that recorded the constraint.
 
 `?` is for `Result` and nothing else. An `Option` says only that a value is missing, not why, so there is no failure for
 `?` to carry; a caller that wants propagation matches and says what the absence means. There is no `Try`, no `Monad`, no
@@ -152,41 +206,50 @@ constructor it is.
 
 It adds no term to the calculus. `C[e?]`, where `C` is the answer written around it, elaborates to
 `match e { Ok(x) -> C[x], Err(y) -> Err(y) }` — the exhaustive two-arm `Result` match the surface already had —
-`02-core-calculus.md` §5. `e` is the scrutinee, which is what evaluates it once; `x` is unspellable, so nothing an
+`02-core-calculus.md` §2. `e` is the scrutinee, which is what evaluates it once; `x` is unspellable, so nothing an
 author writes can capture it; and several questions in one answer nest in the order they are written, so a program with
 more than one thing wrong with it reports the leftmost.
 
-Structural folds do not add syntax. `nat_fold(zero, step, count)`, `list_fold_from_start(zero, step, values)`,
-`list_fold_from_end(zero, step, values)`, and `option_fold(zero, some_case, value)` are ordinary calls to compiler-owned
-total builtins. A step argument is a named function or an anonymous one, whichever reads better at the call site. This
-gives musicians one call notation to learn and leaves `repeat n { body }` as the notation-facing fold over musical
-material.
+Structural folds do not add syntax. `nat_fold(zero, step, count)`, `list_fold_from_start(zero, step, values)`, and
+`list_fold_from_end(zero, step, values)` are ordinary calls to compiler-owned total builtins. A step argument is a named
+function or an anonymous one, whichever reads better at the call site. This gives musicians one call notation to learn
+and leaves `repeat n { body }` as the notation-facing fold over musical material. `option_fold` is gone: `Option` is an
+ordinary enum (§1.3), so the way to eliminate one is `match`.
 
 A list has two folds because Musa has demonstrated uses for both directional readings, and the direction is in the name
 rather than in the type: both have the identical signature, so a reader comparing two calls compares only the word that
 differs. `list_fold_from_start` accumulates left to right; `list_fold_from_end` is the catamorphism, and it is what
 reads a region into right-nested data without a closure chain. This does not claim that no other finite structure admits
-an order-sensitive traversal. `Nat`, `Option`, and generated nominal-data folds keep one canonical eliminator because no
-second primitive for them has earned admission; `02-core-calculus.md` §5.6 states that evidence boundary.
+an order-sensitive traversal. `Nat` and generated data folds keep one canonical eliminator because no second primitive
+for them has earned admission. The two list folds become the `Iterable` methods `fold_from_start` and `fold_from_end` in
+§1.6, which changes the notation and not the count: two directions, two names, one signature.
 
 The value types added here are `Bool`, `Nat`, `Ratio`, `Duration`, `Pitch`, `Interval`, `NoteName`, `Pc12`, `Scale`,
 `Key`, `Degree`, `ChordClass`, `Triad`, `Roman`, `Voicing`, `Row12`, `Analysis<A>`, and `EventTrack[C, A]`. Products,
-options, lists, and arrows are the constructors described in `02-core-calculus.md`. Declaration kinds are not types.
-Every type is spelled with a capital and every music statement keyword is not, which is what lets `key c major;` set a
-key and `Key` name the type of what it set without either word looking the other up (prompt 113). Six of these words —
-`pitch`, `music`, `scale`, `key`, `degree`, `frame` — are *also* music statement keywords, and one word doing two jobs
-in two grammars is a collision a parser can only paper over; a capital settles it in the lexer. `NoteName` is the letter
-and accidental as written, with no octave: a pitch class is octave *and* enharmonic equivalence (Open Music Theory 99),
-so a type in which C♯ and D♭ differ is a name rather than a class, and `Pc12` is the class it names.
+lists, and arrows are the constructors described in `02-core-calculus.md`; `Option<A>` and `Result<A, E>` are enums
+declared in `std` rather than grammar (§1.3). A `record`, `enum`, or `trait` declaration adds a type of its own, so this
+list is no longer closed by the compiler. Declaration kinds are not types. Every type is spelled with a capital and
+every music statement keyword is not, which is what lets `key c major;` set a key and `Key` name the type of what it set
+without either word looking the other up (prompt 113). Six of these words — `pitch`, `music`, `scale`, `key`, `degree`,
+`frame` — are *also* music statement keywords, and one word doing two jobs in two grammars is a collision a parser can
+only paper over; a capital settles it in the lexer. `NoteName` is the letter and accidental as written, with no octave:
+a pitch class is octave *and* enharmonic equivalence (Open Music Theory 99), so a type in which C♯ and D♭ differ is a
+name rather than a class, and `Pc12` is the class it names.
 
-A type parameter is angle-bracketed, so `[` keeps exactly one job — the list literal `[c4, d4]` and the list pattern
-`[x, ..xs]`, which are one idea seen from two sides. The ambiguity that makes `<>` expensive elsewhere cannot arise
-here: `Option`, `List`, and `Analysis` are the only parameterized types, all are keyword-headed, and there is no
-user-written type application at all, so the parser knows it is reading a type before it reaches the `<`. This is
-notation, not polymorphism — the language has no user parametric polymorphism and these constructors stay
-compiler-owned.
+**A type parameter is angle-bracketed, and now users write them.** `record`, `enum`, `trait`, `impl`, and `fn` all take
+`<A, B>`, and a type is applied as `List<Pitch>` or `Vec<A, n>`. That is a real change: the previous rule said `Option`,
+`List`, and `Analysis` were the only parameterized types and there was no user-written type application at all. The
+argument for `<>` survives the change intact, and the ambiguity that makes it expensive elsewhere still cannot arise:
 
-Three former spellings are **hard errors carrying an applicable fix**, on the same precedent as `use` in import position
+- **`<>` belongs to the type grammar and `[]` to the term grammar**, and the parser always knows which one it is in. So
+  `[` is free to serve the list literal `[c4, d4]`, the list pattern `[x, ..xs]`, and indexing `xs[i]` — three spellings
+  of one idea — without ever appearing in a type.
+- **There is no term-level type application.** Implicit arguments are inserted by elaboration (`02-core-calculus.md`
+  §2.1), never written, so a `<` in term position is always the comparison operator and `f<a>(b)` has exactly one
+  reading. This is the rule that keeps `<>` cheap, and it is why the language admits type parameters without admitting
+  the ambiguity they usually bring.
+
+Four former spellings are **hard errors carrying an applicable fix**, on the same precedent as `use` in import position
 and for the same reason — a language that accepts both spellings has a mixed corpus forever, and the fix machinery makes
 one spelling affordable:
 
@@ -195,10 +258,16 @@ one spelling affordable:
 | `fn f(x: τ) -> υ = e;` | `fn f(x: τ) -> υ { e }` | a function body is a block expression |
 | a lowercase type name, and `pitchclass` | `UpperCamelCase`, and `NoteName` | a type is spelled with a capital |
 | `option[τ]`, `list[τ]` | `Option<τ>`, `List<τ>` | a type parameter is angle-bracketed |
+| `data D { … }` | `record D { … }`, `enum D { … }` | a product and a sum are read differently and get different words |
+
+The last row is the only one whose fix is not mechanical: the tool offers `record` when the declaration has one case and
+`enum` when it has several, and a one-case declaration an author wants to stay nominal keeps `enum` (§1.2 says when that
+matters). `data` said neither thing, which is how `Pending` came to be an eight-field product spelled as a sum.
 
 The core literals introduced here are `true`, `false`, nonnegative decimal naturals, exact rational literals, products,
-finite lists, and `Some`/`None`. Existing pitch and interval literals are also expression atoms. Strings and
-floating-point values remain syntax of their owning declaration domains rather than core values.
+and finite lists. Existing pitch and interval literals are also expression atoms. `Some` and `None` are now enum
+constructors rather than literal syntax, and read identically. Strings and floating-point values remain syntax of their
+owning declaration domains rather than core values.
 
 A pitch-name literal is checked in its expected domain: `chord c# minor` supplies `NoteName`, while an argument to
 `Row12` supplies `Pc12`. Outside such an expected constructor position, write a type annotation. Converting an existing
@@ -249,6 +318,225 @@ let theme = music { c4/1 };
 Nothing about this changes what compiles. A deprecated name resolves, elaborates, and sounds exactly as it did; what
 changes is what an editor says about it. The alternative — a keyword or an attribute — would make a note to a reader
 into a fact about the language, and the compiler has nothing to do with it.
+
+### 1.2 Records
+
+A `record` declares named fields. It is constructed by naming them, read by projecting them, matched by naming the ones
+an arm cares about, and rebuilt by `with`:
+
+```musa
+record Pending {
+    read: Reading;
+    length: Length;
+    dots: Dots;
+    tying: Tying;
+    numbers: Numbers;
+    taken: Taken;
+    voiced: Voiced;
+    words: Words;
+}
+
+fn clear_body(state: Pending) -> Pending { state with { taken = Taken::NoBody } }
+
+fn refuse(state: Pending, why: Text) -> Pending { state with { read.refusal = Refusal::First(why) } }
+```
+
+Five rules fix it.
+
+- **Construction names every field**, in any order, and the declaration's order is the evaluation order. There is no
+  positional form. Eight fields written positionally is a line that says nothing about what is in it, and swapping two
+  of them is a type error only when their types happen to differ.
+- **Projection is the only way to read a field.** `state.dots` reads one field and mentions one field. A record pattern
+  is available where an arm wants several — `Pending { read = r, taken = t }` binds those two and says nothing about the
+  rest, and `Pending { read }` is the shorthand that binds a field to its own name. There is nothing to be exhaustive
+  about, so there is no `..`: a record has one shape.
+- **A record is its fields.** Two declarations with the same field names at the same types denote the same type, and one
+  is accepted where the other is expected. This follows from the core, where a record type *is* its fields
+  (`02-core-calculus.md` §1), and it is what makes dictionaries work in `10-traits.md`. An author who wants two
+  quantities kept apart declares them as one-case enums (§1.3), which are nominal because each declaration generates its
+  own family. The declared name is still what diagnostics say, so an error about `Pending` names `Pending`.
+- **Parameters and `where` are allowed and are ordinary**: `record Cell<A> where Eq<A> { at: Nat; value: A; }` requires
+  the constraint at every construction and carries it to every reader.
+- **It adds no term to the calculus.** A `record` declaration elaborates to a core dependent record type, a literal to
+  core record introduction, a projection to core projection, a pattern to the case tree of `02-core-calculus.md` §6.2,
+  and `with` to the `let`-and-literal rule of §1.
+
+The measurement this is answering is in the file above. `stdlib/src/adapters/staff.musa` declares `Pending` as an
+eight-field product with the only spelling the language had — a single-constructor `data` — and then destructures all
+eight fields at fourteen separate sites to read one or two. Where it wants to change a field of a field it cannot say
+so, so it rebuilds the inner value positionally instead: `later with { read = Reading(items, span, opens, hangs, stated,
+refusal), … }` is six positional arguments written to replace one of them. Path update is what that line is asking for,
+and `refuse` above is what it becomes.
+
+### 1.3 Enums, and constructors that live in a namespace
+
+An `enum` declares a nominal sum. Its cases may be empty, positional, or named:
+
+```musa
+enum Tying { Untied, TiedOn }
+
+enum TokenKind { PitchLiteral, Rational, Whitespace, LineComment, BlockComment }
+
+enum Reading<A> {
+    Done(A),
+    Refused { at: NodePath, why: Text },
+}
+```
+
+**Constructors live in the type's namespace**: `Tying::Untied`, `TokenKind::PitchLiteral`,
+`Reading::Refused { at = p, why = w }`. A bare constructor name is accepted exactly where the expected type is already
+known, which is the check direction and not a heuristic: in a checking position (`02-core-calculus.md` §2) the
+elaborator has the type, looks the name up in that type's namespace, and either finds it or reports that the type has no
+such case. In an inferring position the qualified form is required. Patterns are checked against the scrutinee's type,
+so arms write bare constructors and read as they always did.
+
+That rule is not cosmetic, and the evidence is a bug the compiler is still carrying. The staff adapter declares
+`Untied`, the staff *package* declares `Untied`, and because constructor names were flat within a module the two
+collided; `names_a_phase_type` in `crates/musa-compiler/src/core.rs` exists to work around what that collision did to
+the printer splice. Namespaced constructors delete the collision at its source, so the workaround goes when the last
+flat-constructor program does. It also changes what an import can do: a module brings the *type* into scope and the
+constructors arrive with it, so two imported enums with a case of the same name cannot conflict at all.
+
+**Enums are nominal, records are not**, and the difference is the core. Each `enum` declaration generates its own
+inductive family with its own constructors (`02-core-calculus.md` §1.1), so `enum Beats { Beats(Nat) }` and
+`enum Bars { Bars(Nat) }` are two types; two records with a single `Nat` field are one. Choosing between them is
+therefore a real choice and the document says which is which.
+
+**An enum may have no cases at all.** `enum Empty {}` declares the type with no closed inhabitant, which is the type
+`02-core-calculus.md` §5's consistency obligation is about and the one `P -> Empty` uses to say *not P*. A `match` on a
+value of it has no arms, and every arm it does not have is covered.
+
+`enum` declares parameters and no indices. The indexed form — the one `Vec<A, n>` and `Syntax<Cat>` need — is prompt
+135's, and this document does not fix its spelling. `Option<A>` and `Result<A, E>` become ordinary enums declared in
+`std` rather than grammar; `Some`, `None`, `Ok`, and `Err` read exactly as before under the bare-constructor rule, and
+`option_fold` is replaced by the `match` that was always underneath it.
+
+The dispatch table is the other measurement. `text_equal(kind, "PitchLiteral")` appears in the staff adapter at
+twenty-one sites over thirteen distinct string literals, and a misspelling in any of them is a comparison that is
+quietly false forever. `kind == TokenKind::PitchLiteral` is the same test with the misspelling turned into a resolution
+error, and `match kind { … }` over the declared cases is the same table with coverage checked.
+
+### 1.4 Traits and impls
+
+A `trait` declares methods over one or more type parameters; an `impl` supplies them at a type. `10-traits.md` owns
+coherence, the orphan rule, instance lookup, dictionary elaboration, and the explicit list of what is refused. This
+section is the grammar and the desugaring.
+
+```musa
+trait Eq<A> {
+    fn equal(x: A, y: A) -> Bool;
+}
+
+impl Eq<Tying> {
+    fn equal(x: Tying, y: Tying) -> Bool {
+        match (x, y) {
+            (Tying::Untied, Tying::Untied) -> true,
+            (Tying::TiedOn, Tying::TiedOn) -> true,
+            _ -> false,
+        }
+    }
+}
+
+fn is_untied(x: Tying) -> Bool { x == Tying::Untied }
+
+fn same<A>(x: A, y: A) -> Bool where Eq<A> { x == y }
+```
+
+- **A method with a `;` is required and a method with a block is derived.** A required method is a field of the trait's
+  dictionary and every impl supplies it. A derived method is written once at the trait, in terms of the required ones,
+  and **an impl may not replace it**. That is how "no specialization" is a mechanism rather than a rule: there is no
+  overridable definition to specialize.
+- **`where` states the constraints, and nothing is inferred into a signature.** A public generic signature that uses
+  `==` at a parameter says `where Eq<A>`; a missing constraint is an error at the signature, naming the method that
+  needed it.
+- **An `impl` block without a trait declares inherent items** in the type's namespace: `impl Duration { fn of(r: Ratio)
+  -> Result<Duration, RangeError> { … } }`. Which form a block is is decided by whether its head name resolves to a
+  trait or to a type, and a name that is neither is an error saying so.
+
+**It adds no term to the calculus.** A trait elaborates to a function from its parameters to a core record type — `Eq :
+(A : Type ℓ) → Type ℓ` with `Eq A = { equal : A → A → Bool }` — an impl to a definition of that type, a `where`
+constraint to an extra parameter holding the dictionary, and a use of a method to a projection from it. `x == y` inside
+`same` is `d.equal(x, y)` for the `d` the caller supplied, while the same operator inside `is_untied` is the global
+`Eq<Tying>` instance projected directly. The η rule on core records is what makes two elaborations of the same
+dictionary convertible, which is the property `10-traits.md`'s coherence argument rests on.
+
+### 1.5 Methods, paths, and operators
+
+`x.m(y)` resolves **by exact receiver and in one step**. The elaborator takes the head of `x`'s already-known concrete
+type, looks for `m` among that type's inherent items and among the methods of the traits whose dictionaries are in scope
+for that head, and finds exactly one candidate or reports the failure. Three things follow, and each is refused rather
+than left to a search:
+
+- A value whose type is a generic parameter `A` never acquires `.m` from anywhere. The caller writes the constraint or
+  the qualified path; otherwise adding a trait to a package would change what existing code means.
+- There is no auto-deref, no receiver coercion, and no fallback to a free function whose first parameter happens to fit.
+- Where the receiver's type is not yet known — an unsolved metavariable — the method call is postponed, and if the type
+  is still unknown at the end of the declaration it is the ordinary *unsolved metavariable* error, reported at the call.
+
+`T::x` names an item in `T`'s namespace: a constructor, an inherent function, or a trait method under
+`Trait::method(x)`. Explicit qualification is always available and always resolves, which is the escape hatch that makes
+the strictness above affordable. A `::` path is read left to right, and the capitalization rule §1 already fixed decides
+where the module prefix ends: lowercase segments are modules, the first capitalized segment names a type or a trait, and
+exactly one segment follows it. `std::tonal::TokenKind::PitchLiteral` has one reading.
+
+The `.` in an expression is projection or a method call. The `path` production's `.` — `bow.pressure`,
+`std.sound.basic_sine` — is a control address inside the sound declaration forms, which are staged rather than
+evaluated, and `Structure.member` (§6.1) is read at declaration time. The three never meet in one grammar.
+
+**Operators are surface syntax for trait methods**, and `10-traits.md` §5 is the table. `x == y` is `Eq::equal(x, y)`,
+`x < y` is `Ord::less(x, y)`, `x + y`, `x - y`, `x * y`, `x / y` are `Add`, `Sub`, `Mul`, `Div`, and `xs[i]` is
+`Index::at(xs, i)`. Two rules keep this from becoming overloading under another name.
+
+- **An operator resolves only when the concrete head type is known or a `where` supplies the dictionary.** There is no
+  search and no defaulting; an unresolved operator names the type it could not find an instance for.
+- **An operation that can fail keeps its failing shape.** `ratio_div` answers `Result` today and `x / y` answers
+  `Result` tomorrow; `xs[i]` answers `Option<A>` for a list, because a list index can be out of range. A partial
+  operator is how a total language quietly grows a hole, and the shape is the thing that stops it. A container whose
+  index type cannot be out of range may have a total instance; the language does not promise one here.
+
+Heterogeneous operations stay named functions on purpose. `position_shift(p, d)` adds a duration to a position and
+`duration_scale(d, r)` scales a duration by a rational; neither is `+` or `*`, because the traits are homogeneous and
+because these are exactly the two operations `02-core-calculus.md` §1.1 separates `Position` from `Duration` to keep
+distinguishable. An operator that quietly accepted a beat where a number of beats was meant would give back the one
+arithmetic error the two types exist to catch.
+
+### 1.6 Collections at the surface
+
+A list literal has a type: `[c4, d4, e4] : List<Pitch>`. The elements are checked against one type, and an empty `[]`
+takes its element type from the position it is written in — in an inferring position with nothing to take it from, it is
+refused, and the diagnostic names the annotation to write.
+
+Two traits carry the rest, and `10-traits.md` states them:
+
+```musa
+trait Iterable<C, A> {
+    fn fold_from_start<B>(source: C, zero: B, step: (B, A) -> B) -> B;
+    fn fold_from_end<B>(source: C, zero: B, step: (A, B) -> B) -> B;
+
+    fn map<D, B>(source: C, f: A -> B) -> D where Buildable<D, B> { … }
+    fn filter(source: C, keep: A -> Bool) -> C where Buildable<C, A> { … }
+    fn collect<D>(source: C) -> D where Buildable<D, A> { … }
+}
+
+trait Buildable<C, A> {
+    fn empty() -> C;
+    fn push(target: C, item: A) -> C;
+}
+```
+
+`fold_from_start` and `fold_from_end` are required; `map`, `filter`, and `collect` are derived, so a container earns all
+five by writing two. The methods are reached by exact receiver like any other: `xs.map(f)`, `xs.filter(keep)`,
+`xs.fold_from_end(zero, step)`.
+
+`collect` is where "no return-type-directed overloading" needs saying precisely. `let out: List<Nat> = xs.collect();`
+works because `D` is fixed by *checking* against the annotation, and a type argument fixed by checking is not a search.
+`xs.collect()` in an inferring position is refused, naming `D` as the thing it could not determine. The refused design
+is the other one: choosing which instance to use *because* of a return type nobody has written down yet, which makes
+elaboration depend on the order constraints are reached.
+
+This is the grammar and not the library. Prompt 141 owns `List`, its instances, the builders, and the length-indexed
+vector; nothing here promises what those look like. There is no comprehension in v1: a comprehension is sugar over `map`
+and `filter` (Peyton Jones 1987 ch. 7), and adding the sugar before the thing it sugars has a user is the wrong order.
 
 ## 2. Functions and music
 
@@ -617,3 +905,40 @@ recorded duration remains seconds and is never manufactured into a written-time 
 | sampled instrument | sample-map implementation of signature | behavioral conformance, not waveform equality |
 | beat-fitted loop | tempo-scheduled clip gesture | scheduled-lane equality |
 | fixed-duration cue | onset conversion plus immutable seconds duration | scheduled-media equality |
+
+### 9.1 The added forms, accepted and rejected
+
+The table above relates a corpus case to the equality it must satisfy. The forms §§1.2–1.6 add are not about equality
+between two programs; they are about which programs exist. Each therefore carries a pair — the accepted spelling with
+the core form it elaborates to, and the rejected one with what the diagnostic says. A rejection with no named diagnostic
+is a rule nobody can implement, which is why the third column is not optional.
+
+| Form | Accepted, and what it becomes | Rejected, and what the diagnostic names |
+| --- | --- | --- |
+| record declaration | `record Pending { read: Reading; … }` ⇝ a core record type | a field named twice — *duplicate field*, pointing at both |
+| record literal | `Pending { read = r, … }` ⇝ core record introduction | a literal missing a field, or naming one the record does not have — *missing field* / *no such field*, listing the declared set |
+| positional record construction | — | `Pending(r, l, d, …)` — *a record is constructed by naming its fields*, with the field list as the fix |
+| projection | `state.dots` ⇝ core projection | `state.dot` — *no such field*, naming the record and its fields |
+| record pattern | `Pending { read = r, taken = t }` ⇝ a case-tree binding | `Pending { .. }` — *a record pattern names the fields it binds*, since there is nothing to be exhaustive about |
+| path update | `state with { read.refusal = e }` ⇝ one `let` and one literal per segment | `state with { read = x, read.refusal = e }` — *one path is a prefix of the other*, pointing at both |
+| two records, same fields | one is accepted where the other is expected, by §1.2 | — (this is the priced consequence, and the fix a diagnostic would offer is `enum`) |
+| enum declaration | `enum Tying { Untied, TiedOn }` ⇝ an inductive family | a case named twice — *duplicate case*, pointing at both |
+| qualified constructor | `Tying::Untied` ⇝ the family's constructor | `Tying::Tied` — *no such case*, listing the declared cases |
+| bare constructor, checking | `let t: Tying = Untied;` ⇝ the same constructor | `let t = Untied;` — *bare constructor needs an expected type*, with the qualified form as the fix |
+| enum pattern | `match t { Untied -> …, TiedOn -> … }` ⇝ a case tree | a missing case — *non-exhaustive match*, naming the cases left out; an arm no constraint reaches — *unreachable arm* |
+| trait declaration | `trait Eq<A> { fn equal(x: A, y: A) -> Bool; }` ⇝ `Eq : (A : Type ℓ) → Type ℓ` over a record type | a required method with no parameter mentioning a trait parameter — *method does not use the trait's parameter* |
+| impl | `impl Eq<Tying> { … }` ⇝ a definition of `Eq Tying` | an impl omitting a required method — *missing method*; an impl supplying a derived one — *derived methods are not replaceable* |
+| coherence | one impl per trait and head type | a second `impl Eq<Tying>` anywhere in the program — *duplicate instance*, naming both declarations |
+| orphan rule | an impl in the trait's package or the head type's | either package's impl for two foreign names — *orphan instance*, naming the two packages that could hold it |
+| lookup termination | an instance whose `where` constraints are smaller than its head | one that is not — *instance context does not decrease*, at the declaration and never at a use |
+| `where` on a generic | `fn same<A>(x: A, y: A) -> Bool where Eq<A>` ⇝ a dictionary parameter | the same signature without the clause — *missing constraint*, naming `==` as what needed it |
+| operator at a known head | `x == y` ⇝ `d.equal(x, y)` | `x == y` at an unconstrained parameter — *no instance*, naming the type and the trait |
+| failing operator shape | `a / b : Result<Ratio, ArithmeticError>` | an author treating it as a `Ratio` — the ordinary type error, and the `?` or `match` as the fix |
+| indexing | `xs[i] : Option<A>` ⇝ `Index::at(xs, i)` | indexing a type with no instance — *no instance*, naming `Index` |
+| method call | `xs.map(f)` ⇝ the derived method applied to the dictionary | `x.m(y)` where `x : A` is a parameter — *method lookup needs a concrete type*, with the `where` or `Trait::m(x, y)` as the fix |
+| qualified path | `std::tonal::TokenKind::PitchLiteral` ⇝ that constructor | a lowercase segment after a capitalized one — *a type namespace holds one item*, pointing at the extra segment |
+| inherent constructor | `Duration::of(r) : Result<Duration, RangeError>` | an unqualified `of(r)` chosen by its result type — *unresolved name*, since return-type-directed overloading does not exist to find it |
+| list literal | `[c4, d4] : List<Pitch>` | `[]` in an inferring position — *element type unknown*, with the annotation as the fix |
+| `collect` | `let out: List<Nat> = xs.collect();` ⇝ `D` fixed by checking | `xs.collect()` in an inferring position — *unsolved metavariable*, naming `D` |
+| comprehension | — | `[f(x) for x in xs]` — *no comprehension*, with `xs.map(f)` as the fix |
+| former `data` | — | `data D { … }` — *a product and a sum get different words*, with `record` or `enum` as the applicable fix |
