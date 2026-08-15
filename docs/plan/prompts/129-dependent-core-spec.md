@@ -1,7 +1,7 @@
 ---
 id: 129
 slug: dependent-core-spec
-status: pending
+status: in-progress
 depends_on: [128]
 phase: 3
 ---
@@ -104,6 +104,13 @@ definition denotes a total function.
   checker reports failures in terms of normal forms the author never wrote, and because prompt 131's quotation needs a
   term's origin to be a fact rather than a reconstruction.
 
+**Two lines of `00-semantics.md` belong to this prompt, and the rest of that file does not.** §1's pipeline says "infer
+types (rank-1 Hindley–Milner, two classes)" and §2's judgment table says "with inferred principal types". This prompt is
+what makes both false, so it corrects both, in the commit that causes it — the same rule prompt 128 applied to
+`across-stages/`. Nothing else in that file moves: its representations, its two-column pipeline, and its declaration
+kinds are unaffected by a change of type discipline, and a prompt that rewrote them here would be doing 130's work
+early. Prompt 149's audit still owns whatever this leaves.
+
 **§5's obligation matrix is rewritten, not extended.** The new list: NbE soundness and completeness, decidability of
 conversion, type preservation, canonicity for the closed storable-data types, strong normalization, strict positivity
 implying consistency, coverage completeness, termination soundness, and the two carried-forward obligations above. Each
@@ -121,6 +128,8 @@ entry names what discharges it and which prompt owes it — 133 through 137 for 
   file exists to prevent.
 - `docs/rules/language/README.md`'s document map row for `02-core-calculus.md`, if its one-line contract no longer
   describes the file.
+- `docs/rules/language/00-semantics.md` §1's pipeline diagram and §2's judgment table, in the two places that name the
+  inference discipline this prompt replaces — and nowhere else in that file.
 - No other `docs/rules/language/` file changes. 130 and 131 own the surface, traits, and quotation.
 
 ## Check
