@@ -158,6 +158,8 @@ const PIECE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::DataKw,
     SyntaxKind::RecordKw,
     SyntaxKind::EnumKw,
+    SyntaxKind::TraitKw,
+    SyntaxKind::ImplKw,
 ];
 /// What ends a broken declaration at the file's lexical root.
 const ROOT_RECOVERY: &[SyntaxKind] = &[
@@ -169,9 +171,32 @@ const ROOT_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::DataKw,
     SyntaxKind::RecordKw,
     SyntaxKind::EnumKw,
+    SyntaxKind::TraitKw,
+    SyntaxKind::ImplKw,
     SyntaxKind::PieceKw,
     SyntaxKind::LibraryKw,
 ];
+/// Which grammar the written-pitch operators draw their operands from.
+///
+/// `01-surface.md` §1 puts `step`, `up`, and `down` above arithmetic, so
+/// `c4 up M3 + P5` transposes by the sum of two intervals. A music statement
+/// writes a *duration* after its pitch, where `/4` is that duration and `-`
+/// opens a negative rational, so a note's pitch takes its operands from level
+/// 1 and says arithmetic with parentheses.
+#[derive(Clone, Copy)]
+enum Operand {
+    /// Level 3 — the expression grammar.
+    Arithmetic,
+    /// Level 1 — a note statement's pitch.
+    Written,
+}
+
+/// `01-surface.md` §1's level 6 — non-associative, and `>` is not among them.
+const COMPARISON_OPERATORS: &[SyntaxKind] = &[SyntaxKind::EqualsEquals, SyntaxKind::Less];
+/// Level 3.
+const ADDITIVE_OPERATORS: &[SyntaxKind] = &[SyntaxKind::Plus, SyntaxKind::Minus];
+/// Level 2.
+const MULTIPLICATIVE_OPERATORS: &[SyntaxKind] = &[SyntaxKind::Star, SyntaxKind::Slash];
 /// The four front-matter keywords, which open statements of one shape.
 const FRONT_MATTER: &[SyntaxKind] = &[
     SyntaxKind::SubtitleKw,
@@ -692,6 +717,8 @@ impl<'a> Parser<'a> {
                 self.signature_decl();
             } else if self.at_type_decl() {
                 self.type_decl();
+            } else if self.at_trait_or_impl() {
+                self.trait_or_impl();
             } else if self.opens_any(&[SyntaxKind::StructureKw, SyntaxKind::ModuleKw]) {
                 self.structure_decl();
             } else if self.at(SyntaxKind::PrivateKw) {
@@ -785,6 +812,19 @@ impl<'a> Parser<'a> {
         self.opens_any(&[SyntaxKind::DataKw, SyntaxKind::RecordKw, SyntaxKind::EnumKw])
     }
 
+    /// Whether a `trait` or an `impl` opens here, `private` or not.
+    ///
+    /// Separate from [`Self::at_type_decl`] rather than folded into it,
+    /// because the two do not stand in the same places: `01-surface.md` §1's
+    /// `document` production admits a trait and an impl at a file's root, in a
+    /// piece, and in a library, and a structure's body holds bindings and
+    /// functions only. An instance declared inside a sealed structure would be
+    /// a coherence question — the table `10-traits.md` §2 keeps is one table
+    /// for the whole program — and admitting the syntax would be asking it.
+    fn at_trait_or_impl(&self) -> bool {
+        self.opens_any(&[SyntaxKind::TraitKw, SyntaxKind::ImplKw])
+    }
+
     /// A `private` standing in front of something it cannot mark.
     ///
     /// The word marks a *declaration*, and an `import`, a `make`, or a `mod` is
@@ -803,7 +843,9 @@ impl<'a> Parser<'a> {
                     "`private` does not mark this",
                     "only a declaration can be private",
                 )
-                .with_help("`private` stands before `let`, `fn`, `record`, `enum`, `data`, or `structure`"),
+                .with_help(
+                    "`private` stands before `let`, `fn`, `record`, `enum`, `data`, `trait`, `impl`, or `structure`",
+                ),
             );
         }
         self.bump(); // the marker, so the next dispatch sees what follows it
@@ -866,6 +908,7 @@ impl<'a> Parser<'a> {
         if self.at(SyntaxKind::Less) {
             self.type_params();
         }
+        self.where_clause();
         self.expect(SyntaxKind::LBrace, "`{`");
         while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
             if self.at(SyntaxKind::Identifier) {
@@ -905,6 +948,7 @@ impl<'a> Parser<'a> {
         if self.at(SyntaxKind::Less) {
             self.type_params();
         }
+        self.where_clause();
         self.expect(SyntaxKind::LBrace, "`{`");
         // An enum with no cases at all is admitted, and deliberately: `enum
         // Empty {}` is the type with no closed inhabitant, which is what
@@ -976,6 +1020,110 @@ impl<'a> Parser<'a> {
             }
         }
         self.expect(SyntaxKind::Greater, "`>`");
+        self.finish();
+    }
+
+    /// Whichever of `trait` and `impl` opens here.
+    ///
+    /// One dispatch for the two because they stand in the same places and are
+    /// halves of one mechanism: a trait declares the record and an impl
+    /// declares a value of it (`10-traits.md` §1).
+    fn trait_or_impl(&mut self) {
+        if self.opens(SyntaxKind::TraitKw) {
+            self.trait_decl();
+        } else {
+            self.impl_decl();
+        }
+    }
+
+    /// `trait Eq<A> where Storable<A> { fn equal(x: A, y: A) -> Bool; }`
+    ///
+    /// A trait's items are ordinary function declarations, and a `;` where the
+    /// body would be is how one says *required*: `10-traits.md` §1 makes a
+    /// trait a dependent record, so a method with a body is a field with a
+    /// default and a method without one is a field an instance must fill. They
+    /// share a node kind with every other function for that reason — asking
+    /// whether a method is required is asking whether it has a body, which is
+    /// one child lookup rather than a second declaration form to read.
+    fn trait_decl(&mut self) {
+        self.start(SyntaxKind::TraitDecl);
+        self.visibility();
+        self.bump(); // trait
+        self.expect(SyntaxKind::Identifier, "a trait name");
+        // Written and not optional: a trait with no parameter has nothing to
+        // dispatch on, which `10-traits.md` §9 refuses by name.
+        if self.at(SyntaxKind::Less) {
+            self.type_params();
+        } else {
+            self.expected("a type parameter, such as `<A>` — a trait dispatches on one");
+        }
+        self.where_clause();
+        self.expect(SyntaxKind::LBrace, "`{`");
+        while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
+            if self.at(SyntaxKind::FnKw) {
+                self.trait_method();
+            } else {
+                self.expected("a method, such as `fn equal(x: A, y: A) -> Bool;`");
+                self.recover(&[SyntaxKind::FnKw, SyntaxKind::RBrace]);
+            }
+        }
+        self.expect(SyntaxKind::RBrace, "`}`");
+        self.finish();
+    }
+
+    /// `impl<A> Eq<List<A>> where Eq<A> { fn equal(x, y) { … } }`, and
+    /// `impl Duration { … }` — the same declaration read two ways.
+    ///
+    /// The head is parsed as a type, because that is the one shape both forms
+    /// have: `Eq<List<A>>` and `Duration` are the same syntax, and which of
+    /// them is a constraint and which a type namespace is decided by what the
+    /// head *name* resolves to (`10-traits.md` §6), which the parser has no
+    /// way to know and no business guessing.
+    fn impl_decl(&mut self) {
+        self.start(SyntaxKind::ImplDecl);
+        self.visibility();
+        self.bump(); // impl
+        if self.at(SyntaxKind::Less) {
+            self.type_params();
+        }
+        self.type_expr();
+        self.where_clause();
+        self.expect(SyntaxKind::LBrace, "`{`");
+        while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
+            if self.opens(SyntaxKind::FnKw) {
+                self.fn_decl();
+            } else {
+                self.expected("a function, or `}`");
+                self.recover(&[SyntaxKind::FnKw, SyntaxKind::PrivateKw, SyntaxKind::RBrace]);
+            }
+        }
+        self.expect(SyntaxKind::RBrace, "`}`");
+        self.finish();
+    }
+
+    /// `where Eq<A>, Ord<B>` — the constraints a declaration carries, if it
+    /// wrote any.
+    ///
+    /// Written in one place for every declaration that takes one, because
+    /// `01-surface.md` §1 gives functions, records, enums, traits, and impls
+    /// the same clause: a constraint means the same thing wherever it is
+    /// written, and reading it in five places would be five chances to let one
+    /// of them drift.
+    fn where_clause(&mut self) {
+        if !self.at(SyntaxKind::WhereKw) {
+            return;
+        }
+        self.start(SyntaxKind::WhereClause);
+        self.bump(); // where
+        loop {
+            self.start(SyntaxKind::Constraint);
+            self.type_expr();
+            self.finish();
+            if !self.at(SyntaxKind::Comma) {
+                break;
+            }
+            self.bump();
+        }
         self.finish();
     }
 
@@ -1159,6 +1307,8 @@ impl<'a> Parser<'a> {
                 self.fn_decl();
             } else if self.at_type_decl() {
                 self.type_decl();
+            } else if self.at_trait_or_impl() {
+                self.trait_or_impl();
             } else if self.at(SyntaxKind::PrivateKw) {
                 self.misplaced_private();
             } else if self.at(SyntaxKind::ScoreKw) {
@@ -1269,6 +1419,8 @@ impl<'a> Parser<'a> {
                 self.signature_decl();
             } else if self.at_type_decl() {
                 self.type_decl();
+            } else if self.at_trait_or_impl() {
+                self.trait_or_impl();
             } else if self.opens_any(&[SyntaxKind::StructureKw, SyntaxKind::ModuleKw]) {
                 self.structure_decl();
             } else if self.at(SyntaxKind::PrivateKw) {
@@ -1504,20 +1656,52 @@ impl<'a> Parser<'a> {
     /// carrying the rewrite rather than a cascade about a missing `{`.
     fn fn_decl(&mut self) {
         self.start(SyntaxKind::FnDecl);
-        self.visibility();
-        self.bump();
-        self.expect(SyntaxKind::Identifier, "a function name");
-        self.param_list();
-        if self.at(SyntaxKind::Arrow) {
-            self.bump();
-            self.type_expr();
-        }
+        self.fn_signature();
         if self.at(SyntaxKind::Equals) {
             self.old_function_body();
         } else {
             self.block_expr();
         }
         self.finish();
+    }
+
+    /// A trait's method: the same declaration, with `;` where a body would be.
+    ///
+    /// The `;` is admitted *here* and not in [`Self::fn_decl`], so that a
+    /// bodiless `fn f() -> Nat;` written anywhere else still gets the one
+    /// complaint it got before. A required method is only meaningful where
+    /// something is required to fill it.
+    fn trait_method(&mut self) {
+        self.start(SyntaxKind::FnDecl);
+        self.fn_signature();
+        if self.at(SyntaxKind::Semicolon) {
+            self.bump();
+        } else if self.at(SyntaxKind::Equals) {
+            self.old_function_body();
+        } else {
+            self.block_expr();
+        }
+        self.finish();
+    }
+
+    /// Everything a function declaration writes before its body.
+    ///
+    /// Shared by [`Self::fn_decl`] and [`Self::trait_method`] because the two
+    /// differ in exactly one place, and a signature read in two functions
+    /// would be a signature that could come to mean two things.
+    fn fn_signature(&mut self) {
+        self.visibility();
+        self.bump(); // fn
+        self.expect(SyntaxKind::Identifier, "a function name");
+        if self.at(SyntaxKind::Less) {
+            self.type_params();
+        }
+        self.param_list();
+        if self.at(SyntaxKind::Arrow) {
+            self.bump();
+            self.type_expr();
+        }
+        self.where_clause();
     }
 
     /// The one complaint a file written against `fn f() -> τ = e;` gets.
@@ -1818,30 +2002,142 @@ impl<'a> Parser<'a> {
         );
     }
 
-    /// An ordinary expression. Calls bind tighter than the written-pitch
-    /// operators, and `step` binds tighter than `up`/`down`
-    /// (`01-surface.md` §1), so `p step 1 up m2` steps first.
+    /// An ordinary expression: `01-surface.md` §1's six levels of binding,
+    /// loosest first.
     ///
-    /// Both pitch operators are non-associative: `p up M2 down m2` needs
-    /// parentheses, and so does a second `step`.
+    /// The table is fixed and closed. There is no user-defined symbol and no
+    /// precedence declaration, because a table an import can extend is a table
+    /// that makes a program's *parse* depend on what it imported.
     fn expr(&mut self) {
         // Taken rather than read: the suppression is about *this* expression's
         // trailing `with`, and everything nested inside it — a call's
         // arguments, a parenthesized subexpression — is an ordinary place
-        // where a record update is exactly what `with` means.
+        // where a record update is exactly what `with` means. Every operand of
+        // this expression sees it, and only the rightmost can be followed by a
+        // `with` at all.
         let spoken_for = std::mem::take(&mut self.with_is_spoken_for);
+        self.comparison_expr(spoken_for);
+    }
+
+    /// A note statement's pitch: levels 1, 4, and 5, and not the arithmetic
+    /// between them.
+    ///
+    /// In a music statement a duration follows the pitch, so `/4` is that
+    /// duration and `-` is a negative rational rather than a subtraction.
+    /// `c5 up 2 /4` is therefore a transposed quarter note, and an author who
+    /// means arithmetic writes `(base + 2) up 2` — the parentheses being the
+    /// ordinary way to say that an expression is one operand.
+    fn written_pitch(&mut self) {
+        let spoken_for = std::mem::take(&mut self.with_is_spoken_for);
+        self.pitch_expr(spoken_for, Operand::Written);
+    }
+
+    /// Level 6 — `==` and `<`, non-associative.
+    ///
+    /// A chain is rejected rather than given a reading: `a == b == c` in a
+    /// language whose `==` answers `Bool` would otherwise compare a boolean
+    /// with `c`. `>` is not here — `10-traits.md` §5 gives `Ord` one method,
+    /// and `>` after a note is the accent mark.
+    fn comparison_expr(&mut self, spoken_for: bool) {
+        let checkpoint = self.events.len();
+        self.pitch_expr(spoken_for, Operand::Arithmetic);
+        if self.at_any(COMPARISON_OPERATORS) {
+            self.start_at(checkpoint, SyntaxKind::BinaryExpr);
+            self.bump();
+            self.pitch_expr(spoken_for, Operand::Arithmetic);
+            self.finish();
+        }
+    }
+
+    /// Level 5 — `up` and `down`, non-associative: `p up M2 down m2` needs
+    /// parentheses.
+    fn pitch_expr(&mut self, spoken_for: bool, operand: Operand) {
+        let checkpoint = self.events.len();
+        self.step_expr(spoken_for, operand);
+        if self.at_any(&[SyntaxKind::UpKw, SyntaxKind::DownKw]) {
+            self.start_at(checkpoint, SyntaxKind::PitchExpr);
+            self.bump();
+            self.step_expr(spoken_for, operand);
+            self.finish();
+        }
+    }
+
+    /// Level 4 — `step`, left-associative, so `p step 1 up m2` steps first.
+    fn step_expr(&mut self, spoken_for: bool, operand: Operand) {
+        let checkpoint = self.events.len();
+        self.pitch_operand(spoken_for, operand);
+        while self.at(SyntaxKind::StepKw) {
+            self.start_at(checkpoint, SyntaxKind::StepExpr);
+            self.bump();
+            // The direction is optional and defaults to up, which is what
+            // `c5 step 2` reads as on the page.
+            if self.at_any(&[SyntaxKind::UpKw, SyntaxKind::DownKw]) {
+                self.bump();
+            }
+            self.pitch_operand(spoken_for, operand);
+            self.finish();
+        }
+    }
+
+    /// Whichever grammar the written-pitch operators draw their operands from.
+    fn pitch_operand(&mut self, spoken_for: bool, operand: Operand) {
+        match operand {
+            Operand::Arithmetic => self.additive_expr(spoken_for),
+            Operand::Written => self.operand_expr(spoken_for),
+        }
+    }
+
+    /// Level 3 — `+` and `-`, left-associative.
+    fn additive_expr(&mut self, spoken_for: bool) {
+        let checkpoint = self.events.len();
+        self.multiplicative_expr(spoken_for);
+        while self.at_any(ADDITIVE_OPERATORS) {
+            self.start_at(checkpoint, SyntaxKind::BinaryExpr);
+            self.bump();
+            self.multiplicative_expr(spoken_for);
+            self.finish();
+        }
+    }
+
+    /// Level 2 — `*` and `/`, left-associative.
+    fn multiplicative_expr(&mut self, spoken_for: bool) {
+        let checkpoint = self.events.len();
+        self.operand_expr(spoken_for);
+        while self.at_any(MULTIPLICATIVE_OPERATORS) {
+            self.start_at(checkpoint, SyntaxKind::BinaryExpr);
+            self.bump();
+            self.operand_expr(spoken_for);
+            self.finish();
+        }
+    }
+
+    /// Level 1 — an atom and the postfixes that bind directly to it.
+    fn operand_expr(&mut self, spoken_for: bool) {
         let checkpoint = self.events.len();
         self.expr_atom();
-        // One loop for all three postfixes, so they compose in the order they
+        // One loop for all five postfixes, so they compose in the order they
         // are written and a reader never has to know which of them binds
         // tighter: `read(here)?` asks its question of the call's answer, and
         // `later? with { dots = more }` updates the payload the question
         // yielded. `p with { f = e } with { g = h }` is likewise two updates,
-        // the second of the first's result.
+        // the second of the first's result, and `xs[i].m(y)` is a method call
+        // on the element.
         loop {
             if self.at(SyntaxKind::LParen) {
                 self.start_at(checkpoint, SyntaxKind::ApplyExpr);
                 self.expr_arg_list();
+                self.finish();
+            } else if self.at_method_call() {
+                self.start_at(checkpoint, SyntaxKind::MethodCallExpr);
+                self.bump(); // `.`
+                self.bump(); // the method's name
+                self.expr_arg_list();
+                self.finish();
+            } else if self.at(SyntaxKind::LBracket) {
+                self.start_at(checkpoint, SyntaxKind::IndexExpr);
+                self.bump(); // `[`
+                self.expr();
+                self.expect(SyntaxKind::RBracket, "`]`");
                 self.finish();
             } else if self.at(SyntaxKind::WithKw) && !spoken_for {
                 self.start_at(checkpoint, SyntaxKind::RecordUpdateExpr);
@@ -1855,23 +2151,20 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
-        if self.at(SyntaxKind::StepKw) {
-            self.start_at(checkpoint, SyntaxKind::StepExpr);
-            self.bump();
-            // The direction is optional and defaults to up, which is what
-            // `c5 step 2` reads as on the page.
-            if self.at_any(&[SyntaxKind::UpKw, SyntaxKind::DownKw]) {
-                self.bump();
-            }
-            self.expr_atom();
-            self.finish();
-        }
-        if self.at_any(&[SyntaxKind::UpKw, SyntaxKind::DownKw]) {
-            self.start_at(checkpoint, SyntaxKind::PitchExpr);
-            self.bump();
-            self.expr_atom();
-            self.finish();
-        }
+    }
+
+    /// Whether the cursor is on the `.name(` that opens a method call on a
+    /// receiver no name could have spelled.
+    ///
+    /// Three tokens, because two would not tell a method call from a
+    /// projection: `held.region` reaches a field and `held.region(x)` calls a
+    /// method, and the `(` is the whole of the difference. A method call whose
+    /// receiver *is* a name is read by [`Self::name_or_record_literal`]
+    /// instead, for the reason written there.
+    fn at_method_call(&self) -> bool {
+        self.at(SyntaxKind::Dot)
+            && self.nth_significant(1) == Some(SyntaxKind::Identifier)
+            && self.nth_significant(2) == Some(SyntaxKind::LParen)
     }
 
     /// `with { field = expr, ... }` — the tail of a record update.
@@ -2042,6 +2335,17 @@ impl<'a> Parser<'a> {
             // projection starts is not a question the parser answers: it is a
             // question about what is *declared*, which is the same reason a
             // bare word in a pattern stays one token here.
+            //
+            // A method call on a *name* is read here too, and deliberately:
+            // `low.rise()` reaches a module's function and `x.equal(y)` calls
+            // a method, and the two are the same three tokens. Which one a
+            // file wrote is decided by what `low` and `x` denote, which is the
+            // same question this loop already declines to answer. So the name
+            // is read whole and the call is an application of it, and
+            // `10-traits.md` §6's exact-receiver lookup runs where the answer
+            // is known. [`SyntaxKind::MethodCallExpr`] is for the receivers a
+            // name cannot spell — `f(x).m(y)`, `xs[i].m(y)` — where there is
+            // no name for the segments to join onto.
             while self.at(SyntaxKind::Dot) && self.nth_significant(1) == Some(SyntaxKind::Identifier) {
                 self.bump();
                 self.bump();
@@ -3316,7 +3620,7 @@ impl<'a> Parser<'a> {
                 Some(SyntaxKind::UpKw | SyntaxKind::DownKw | SyntaxKind::StepKw)
             )
         {
-            self.expr();
+            self.written_pitch();
         } else {
             self.bump(); // simple pitch literal or pitch reference
         }

@@ -108,7 +108,10 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         SyntaxKind::Arrow => "->",
         SyntaxKind::PipeForward => "|>",
         SyntaxKind::Equals => "=",
+        SyntaxKind::EqualsEquals => "==",
         SyntaxKind::Minus => "-",
+        SyntaxKind::Plus => "+",
+        SyntaxKind::Star => "*",
         SyntaxKind::Tilde => "~",
         SyntaxKind::Dot => ".",
         SyntaxKind::Slash => "/",
@@ -127,6 +130,9 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         SyntaxKind::EnumKw => "enum",
         SyntaxKind::ModuleKw => "module",
         SyntaxKind::PrivateKw => "private",
+        SyntaxKind::TraitKw => "trait",
+        SyntaxKind::ImplKw => "impl",
+        SyntaxKind::WhereKw => "where",
         SyntaxKind::MakeKw => "make",
         SyntaxKind::AsKw => "as",
         SyntaxKind::PieceKw => "piece",
@@ -358,7 +364,14 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::KernelQuote
         | SyntaxKind::KernelHole
         | SyntaxKind::SyntaxRegion
-        | SyntaxKind::SyntaxGroup => panic!("`{kind:?}` is a node, not a token"),
+        | SyntaxKind::SyntaxGroup
+        | SyntaxKind::TraitDecl
+        | SyntaxKind::ImplDecl
+        | SyntaxKind::WhereClause
+        | SyntaxKind::Constraint
+        | SyntaxKind::BinaryExpr
+        | SyntaxKind::MethodCallExpr
+        | SyntaxKind::IndexExpr => panic!("`{kind:?}` is a node, not a token"),
     }
 }
 

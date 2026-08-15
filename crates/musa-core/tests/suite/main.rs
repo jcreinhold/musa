@@ -22,6 +22,7 @@ mod coverage_laws;
 mod elaboration_laws;
 mod family_laws;
 mod normalization_laws;
+mod operator_laws;
 mod provenance_laws;
 mod record_laws;
 mod termination_laws;

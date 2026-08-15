@@ -77,8 +77,22 @@ pub enum SyntaxKind {
     PipeForward,
     /// `=`
     Equals,
+    /// `==` — the `Eq` operator (`10-traits.md` §5).
+    ///
+    /// Its own token rather than two [`SyntaxKind::Equals`], because maximal
+    /// munch is what keeps `p with { n = m }` and `n == m` apart without a
+    /// lookahead rule: nothing in this language writes two `=` in a row and
+    /// means assignment twice.
+    EqualsEquals,
     /// `-` (signs are assembled by the parser, not the lexer)
     Minus,
+    /// `+` — the `Add` operator.
+    Plus,
+    /// `*` — the `Mul` operator.
+    ///
+    /// It has no musical reading, so unlike `-`, `/`, `<`, and `>` it arrives
+    /// with nothing to be told apart from.
+    Star,
     /// `~` — the tie mark, postfix on a note or chord statement.
     Tilde,
     /// `.` — the path separator in a modulation target, and the augmentation
@@ -298,6 +312,12 @@ pub enum SyntaxKind {
     ModuleKw,
     /// `private`, the one visibility marker (`01-surface.md` §1.3).
     PrivateKw,
+    /// `trait`
+    TraitKw,
+    /// `impl`
+    ImplKw,
+    /// `where`
+    WhereKw,
 
     /// A span the lexer could not recognize; emitted so the token stream
     /// stays lossless even for invalid input. Also used for parser error
@@ -698,6 +718,47 @@ pub enum SyntaxKind {
     /// packages do not extend the lexer, so this is the whole of the structure
     /// an adapter sees above the token stream.
     SyntaxGroup,
+    /// `trait Eq<A> { fn equal(x: A, y: A) -> Bool; }` — a record of methods.
+    ///
+    /// Its items are [`SyntaxKind::FnDecl`]s and not a kind of their own,
+    /// because a trait item *is* a function declaration: the one difference is
+    /// that a required method writes `;` where a derived one writes its body,
+    /// so `body()` returning `None` is what "required" means and every
+    /// accessor a function has still reads it.
+    TraitDecl,
+    /// `impl Eq<Tying> { … }`, or `impl Duration { … }` — one instance, or one
+    /// namespace of inherent items.
+    ///
+    /// One node for both, because nothing in the text decides which: whether
+    /// the head names a trait or a type is a question about what is
+    /// *declared*, answered where names resolve and not here
+    /// (`01-surface.md` §1.4).
+    ImplDecl,
+    /// `where Eq<A>, Ord<B>` — the constraints a declaration states.
+    WhereClause,
+    /// `Eq<A>` — one constraint: a trait name and the arguments it is asked at.
+    Constraint,
+    /// `x + y`, `x == y` — an operator and its two operands.
+    ///
+    /// Surface syntax with no core term behind it: `10-traits.md` §5 fixes
+    /// which trait method each operator spells, and the elaborator sees the
+    /// application a hand-written `Add::add(x, y)` would have produced. The
+    /// operator token stands between the two expression children.
+    BinaryExpr,
+    /// `xs.fold_from_end(zero, step)` — a call resolved by the receiver's type.
+    ///
+    /// The receiver is the first child, then the method's name, then the
+    /// [`SyntaxKind::ExprArgList`]. Told apart from a projection by the `(`
+    /// alone: `x.m` reads a field and `x.m(…)` calls a method, and nothing
+    /// else distinguishes them (`01-surface.md` §1.5).
+    MethodCallExpr,
+    /// `xs[i]` — `Index::at(xs, i)`.
+    ///
+    /// The container is the first child and the index the second. Its own node
+    /// rather than a [`SyntaxKind::BinaryExpr`] with a bracket for an operator,
+    /// because the brackets surround one operand instead of standing between
+    /// two.
+    IndexExpr,
 }
 
 impl SyntaxKind {

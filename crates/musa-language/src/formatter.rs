@@ -809,8 +809,9 @@ fn format_token(node: &SyntaxNode, token: &SyntaxToken, writer: &mut Writer) {
     } else if kind == SyntaxKind::LBracket {
         // `chord [` takes a space; `use sigh(` does not. A type parameter
         // never reaches here — it is written `Option<Pitch>`, and `[` means a
-        // list.
-        if writer.needs_word_space() {
+        // list. An index closes up to what it indexes, the way a call closes
+        // up to what it calls: `xs[i]`, never `xs [i]`.
+        if parent != SyntaxKind::IndexExpr && writer.needs_word_space() {
             writer.space();
         }
         writer.write(text);
@@ -836,6 +837,23 @@ fn format_token(node: &SyntaxNode, token: &SyntaxToken, writer: &mut Writer) {
             writer.indent_more();
             writer.end_line();
         }
+    } else if parent == SyntaxKind::MethodCallExpr {
+        // `f(x).m(y)` is one expression written in pieces, and neither the `.`
+        // nor the method's name takes a space in front of it: a method closes
+        // up to its receiver exactly the way a projection does, and the only
+        // reason this is said here rather than in the one-word list is that
+        // the receiver is a node and the list writes tokens.
+        writer.write(text);
+    } else if parent == SyntaxKind::BinaryExpr {
+        // An operator is a word between two operands and is written like one:
+        // `a + b`, `xs / 2`, `x == y`. Three of the six spellings — `/`, `<`,
+        // and `-` — close up to their neighbour everywhere else, because
+        // everywhere else they are part of a duration, a type parameter, or a
+        // sign. What tells the two apart is the node, so the node is what this
+        // asks.
+        writer.space();
+        writer.write(text);
+        writer.space();
     } else if matches!(
         kind,
         SyntaxKind::Slash
@@ -1650,6 +1668,11 @@ impl Writer {
                 | SyntaxKind::PipeForward
                 | SyntaxKind::Slash
                 | SyntaxKind::Less
+                // The operator spellings that appear nowhere but a
+                // `BinaryExpr`, which writes its own space on both sides.
+                | SyntaxKind::EqualsEquals
+                | SyntaxKind::Plus
+                | SyntaxKind::Star
         )
     }
 

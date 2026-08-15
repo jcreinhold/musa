@@ -70,7 +70,7 @@
 use std::sync::Arc;
 
 use crate::budget::Meter;
-use crate::class::Constraint;
+use crate::class::{Constraint, Head, Key, head_of};
 use crate::context::Cx;
 use crate::dictionary::{Postponed, Wanted};
 use crate::error::{CoreError, Malformed};
@@ -433,6 +433,7 @@ impl Elaborator {
             | RawShape::Pi { .. }
             | RawShape::App { .. }
             | RawShape::RecordType(_)
+            | RawShape::Method { .. }
             | RawShape::Project { .. }
             | RawShape::Update { .. }
             | RawShape::Id { .. }
@@ -658,6 +659,7 @@ impl Elaborator {
             // hand. So there is no inference rule, and an author who wants to
             // project out of a literal writes the type it should have.
             RawShape::Record(_) => Err(Refusal::Uninferable { at: here }.into()),
+            RawShape::Method { receiver, method } => self.method(scope, here, receiver, method),
             RawShape::Project { record, field } => self.projection(scope, here, record, field),
             RawShape::Update { record, updates } => self.update(scope, here, record, updates),
             RawShape::Id { ty, left, right } => self.identity(scope, here, ty, left, right),
@@ -853,6 +855,113 @@ impl Elaborator {
         Ok(Typed {
             term: Term::app(here, inferred.term, argument_term),
             ty: apply_closure(&mut self.meter, &codomain, argument_value)?,
+        })
+    }
+
+    /// `x.m` — `10-traits.md` §6's method syntax, resolved by exact receiver.
+    ///
+    /// Three steps and no search. The receiver is inferred, the head of its
+    /// type is read, and the traits that declare a method spelled `m` are
+    /// intersected with the ones that have a dictionary at that head. Exactly
+    /// one survivor is the call; none and two are the two refusals §6 names.
+    ///
+    /// What makes this a lookup rather than a search is that both operands are
+    /// tables: [`Classes::declaring_method`](crate::class::Classes::declaring_method)
+    /// is an index read and the dictionary test is the same keyed read §4 step 2
+    /// already was. Nothing is tried and undone, so nothing can be tried in a
+    /// different order and answer differently.
+    ///
+    /// The survivor is then elaborated as if the author had written
+    /// `Class.m(x)`: the same [`method_at`](crate::dictionary::method_at) a
+    /// qualified name goes through, applied to the receiver already in hand.
+    /// That is what makes "a method is a spelling" true of the elaboration and
+    /// not only of the prose — `x.m(y)` and `Class.m(x, y)` are one term.
+    fn method(&mut self, scope: &Scope, here: Origin, receiver: &Raw, method: &Name) -> Result<Typed, ElabError> {
+        let inferred = self.infer(scope, receiver)?;
+        let inferred = self.inserted(scope, inferred)?;
+        let unfolded = force(&mut self.meter, &inferred.ty)?;
+        let receiver_ty = unfolded.as_ref().unwrap_or(&inferred.ty);
+        let stated = scope.quote_type(&mut self.meter, receiver_ty)?;
+        // A local head is §6's generic parameter and `None` is a type with no
+        // name at its head. Neither is a key, and the message is the same
+        // because the repair is: write the trait.
+        let Some(Head::Rigid(head)) = head_of(&stated, scope.depth()) else {
+            return Err(Refusal::MethodOnVariable {
+                at: here,
+                method: Arc::clone(method),
+            }
+            .into());
+        };
+        let classes = scope.cx().classes().clone();
+        let candidates: Vec<Name> = classes
+            .declaring_method(method)
+            .iter()
+            .filter(|class| {
+                let key = Key::rigid(class, &head);
+                scope.discharged(&key).is_some() || classes.instance(&key).is_some()
+            })
+            .map(Arc::clone)
+            .collect();
+        let [class] = candidates.as_slice() else {
+            return Err(if candidates.is_empty() {
+                Refusal::NoMethodForType {
+                    at: here,
+                    head,
+                    method: Arc::clone(method),
+                }
+            } else {
+                Refusal::AmbiguousMethod {
+                    at: here,
+                    head,
+                    method: Arc::clone(method),
+                    classes: candidates,
+                }
+            }
+            .into());
+        };
+        let qualified: Name = Arc::from(format!("{class}.{method}"));
+        let Some((term, ty)) = crate::dictionary::method_at(self, scope, here, &qualified)? else {
+            return Err(Refusal::NoMethodForType {
+                at: here,
+                head,
+                method: Arc::clone(method),
+            }
+            .into());
+        };
+        self.receiving(scope, here, Typed { term, ty }, inferred)
+    }
+
+    /// A method applied to the receiver it was found for.
+    ///
+    /// The receiver is elaborated already, so this is [`Self::application`]
+    /// with its argument arriving as a term rather than as syntax — and it is a
+    /// separate function rather than a parameter on that one because the two
+    /// differ in what they do with the domain: there the argument is *checked*
+    /// against it, here the two types are unified, which is what solves the
+    /// trait arguments `method_at` left as metavariables.
+    fn receiving(&mut self, scope: &Scope, here: Origin, function: Typed, receiver: Typed) -> Result<Typed, ElabError> {
+        let function = self.inserted(scope, function)?;
+        let unfolded = force(&mut self.meter, &function.ty)?;
+        let function_ty = unfolded.as_ref().unwrap_or(&function.ty);
+        let Form::Pi {
+            plicity: Plicity::Explicit,
+            domain,
+            codomain,
+            ..
+        } = &function_ty.form
+        else {
+            return Err(Refusal::NotAFunction {
+                at: here,
+                ty: scope.quote_type(&mut self.meter, function_ty)?,
+            }
+            .into());
+        };
+        let (domain, codomain) = (Arc::clone(domain), codomain.clone());
+        self.unify_types(scope, here, &receiver.ty, &domain)?;
+        let value = scope.eval(&mut self.meter, &receiver.term)?;
+        Ok(Typed {
+            term: Term::app(here, function.term, receiver.term),
+            ty: apply_closure(&mut self.meter, &codomain, value)?,
         })
     }
 

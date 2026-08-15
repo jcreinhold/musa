@@ -784,6 +784,33 @@ static PRIVATE: KeywordDoc = doc!(
      ```musa\nprivate fn dotted_factor(dots: Dots) -> Ratio { … }\n\nenum Chord {\n    private \
      NamedChord(ChordSymbol, List<Spelling>),\n}\n```"
 );
+static TRAIT: KeywordDoc = doc!(
+    "trait",
+    "a set of methods a type can supply",
+    "A trait names methods a type may supply, so that one function can be written once and used at every type that \
+     supplies them. A method ending in `;` is required and every `impl` writes it; a method with a body is derived — \
+     written once here, in terms of the required ones, and not replaceable — which is how a container earns five \
+     operations by writing two.\n\n\
+     ```musa\ntrait Eq<A> {\n    fn equal(x: A, y: A) -> Bool;\n}\n```"
+);
+static IMPL: KeywordDoc = doc!(
+    "impl",
+    "supply a trait's methods at one type",
+    "`impl Trait<T> { … }` supplies a trait's required methods at `T`, which is what makes `==`, `+`, and the rest \
+     work there. `impl T { … }` with no trait names T's own namespace instead: the functions in it are reached as \
+     `T::f(x)` or as `x.f(…)`. There is exactly one impl of a trait for a type in the whole program, so a use never \
+     has to say which one it meant.\n\n\
+     ```musa\nimpl Eq<Tying> {\n    fn equal(x: Tying, y: Tying) -> Bool { … }\n}\n```"
+);
+static WHERE: KeywordDoc = doc!(
+    "where",
+    "the traits a type parameter has to supply",
+    "`where` states what a declaration needs of its type parameters, and nothing is inferred into a signature: a \
+     function that writes `x == y` at a parameter `A` says `where Eq<A>`, and one that omits it is told which method \
+     wanted it. The constraint is also what lets a method be called on a parameter at all — without it, `A` is just \
+     a type and has nothing on it.\n\n\
+     ```musa\nfn same<A>(x: A, y: A) -> Bool where Eq<A> { x == y }\n```"
+);
 
 /// The keyword's documentation, or `None` for anything that is not a
 /// keyword.
@@ -810,6 +837,9 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         SyntaxKind::ModuleKw => &MODULE,
         SyntaxKind::ModKw => &MOD,
         SyntaxKind::PrivateKw => &PRIVATE,
+        SyntaxKind::TraitKw => &TRAIT,
+        SyntaxKind::ImplKw => &IMPL,
+        SyntaxKind::WhereKw => &WHERE,
         SyntaxKind::MakeKw => &MAKE,
         SyntaxKind::AsKw => &AS,
         SyntaxKind::PieceKw => &PIECE,
@@ -1067,7 +1097,17 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::DataVariant
         | SyntaxKind::DataField
         | SyntaxKind::AppliedType
-        | SyntaxKind::DataMember => return None,
+        | SyntaxKind::DataMember
+        | SyntaxKind::EqualsEquals
+        | SyntaxKind::Plus
+        | SyntaxKind::Star
+        | SyntaxKind::TraitDecl
+        | SyntaxKind::ImplDecl
+        | SyntaxKind::WhereClause
+        | SyntaxKind::Constraint
+        | SyntaxKind::BinaryExpr
+        | SyntaxKind::MethodCallExpr
+        | SyntaxKind::IndexExpr => return None,
     };
     Some(doc)
 }
@@ -1110,6 +1150,9 @@ mod tests {
             SyntaxKind::EnumKw,
             SyntaxKind::ModuleKw,
             SyntaxKind::PrivateKw,
+            SyntaxKind::TraitKw,
+            SyntaxKind::ImplKw,
+            SyntaxKind::WhereKw,
             SyntaxKind::TransposeKw,
             SyntaxKind::UpKw,
             SyntaxKind::DownKw,

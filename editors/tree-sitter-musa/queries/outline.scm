@@ -25,6 +25,15 @@
 (enum_declaration
   name: (identifier) @name) @item
 
+(trait_declaration
+  name: (identifier) @name) @item
+
+; An instance has no name to outline. It is listed by the type it is an
+; instance for, which is the only thing that distinguishes one `impl` in a
+; file from the next.
+(impl_declaration
+  head: (type_expression) @name) @item
+
 ; A module file has no piece to outline, so its children are the outline. The
 ; name is matched by position, since `mod list;` names a module with a word
 ; the lexer writes as a type keyword.

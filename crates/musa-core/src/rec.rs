@@ -330,6 +330,10 @@ impl Rewrite<'_> {
                 domain: domain.as_ref().map(|ty| self.term(ty, bound)).transpose()?,
                 body: self.under(name, body, bound)?,
             },
+            RawShape::Method { receiver, method } => RawShape::Method {
+                receiver: self.term(receiver, bound)?,
+                method: Arc::clone(method),
+            },
             RawShape::App {
                 plicity,
                 function,

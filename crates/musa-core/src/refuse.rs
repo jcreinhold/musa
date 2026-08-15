@@ -525,6 +525,56 @@ pub enum Refusal {
         /// The trait.
         class: Name,
     },
+    /// `x.m(…)` where `x`'s type is not a declared type constructor.
+    ///
+    /// §6: a value of a generic parameter `A` never acquires a method, because
+    /// finding one would mean scanning every trait in scope and adding a trait
+    /// to a package would change what existing code means. The same is true of
+    /// a receiver whose type is a function type, a universe, or a record type
+    /// written out, and of one still unknown here — none of them is a name a
+    /// lookup could be keyed on.
+    ///
+    /// Qualification is the repair and always available (§6): `Add.add(x, y)`
+    /// says which trait, so it needs no receiver type to say it, and under a
+    /// `where` it resolves exactly as an operator does.
+    #[error("`.{method}` needs a receiver whose type is a declared type; write `Trait.{method}(…)` instead")]
+    MethodOnVariable {
+        /// The use.
+        at: Origin,
+        /// The method, as written.
+        method: Name,
+    },
+    /// `x.m(…)` where no trait with a dictionary at `x`'s head declares `m`.
+    ///
+    /// §6's "none is an error naming the type and the method". Told apart from
+    /// [`Self::UnresolvedInstance`] because no trait was named: the question was
+    /// which one, and the answer was that none of the candidates is in scope for
+    /// this head.
+    #[error("no method `{method}` for `{head}`")]
+    NoMethodForType {
+        /// The use.
+        at: Origin,
+        /// The head of the receiver's type.
+        head: Name,
+        /// The method, as written.
+        method: Name,
+    },
+    /// `x.m(…)` where two traits with a dictionary at `x`'s head declare `m`.
+    ///
+    /// §6's "two is an error naming both". Coherence cannot rule this out: it
+    /// keeps one instance per (trait, head) pair, and two *different* traits at
+    /// one head are exactly what a package that imports two libraries has.
+    #[error("`{method}` for `{head}` is declared by more than one trait")]
+    AmbiguousMethod {
+        /// The use.
+        at: Origin,
+        /// The head of the receiver's type.
+        head: Name,
+        /// The method, as written.
+        method: Name,
+        /// The traits that declare it, sorted.
+        classes: Vec<Name>,
+    },
     /// A constraint on a type no instance could ever be keyed on.
     ///
     /// §4 postpones a constraint whose head is not known *yet*; a function

@@ -89,6 +89,12 @@
   "data"
   "record"
   "enum"
+  ; `trait`, `impl`, and `where` (`10-traits.md` §2, §3, §4). A constraint is
+  ; part of the signature it constrains, so `where` keeps the company of the
+  ; word that opened the declaration.
+  "trait"
+  "impl"
+  "where"
   ; The one visibility marker (`01-surface.md` §1.3). It reads as a keyword of
   ; the declaration it stands before, because that is what it is.
   "private"
@@ -157,11 +163,18 @@
 
 ; --- Operators and punctuation ----------------------------------------------
 
+; `==`, `+`, and `*` join `-` here. All four are `TokenClass::Punctuation` in
+; the real highlighter, which draws no operator/punctuation line at all; this
+; reader draws one, and an arithmetic sign belongs on the side `-` is already
+; on. `/` stays below with the barline, because in `c4/4` it is a duration.
 [
   "->"
   "|>"
   "="
+  "=="
   "-"
+  "+"
+  "*"
   "~"
   "?"
 ] @operator
@@ -256,6 +269,11 @@
 ; that type's namespace rather than a type of its own, so it takes the
 ; vocabulary colour further down instead.
 (record_declaration name: (identifier) @type)
+
+; A trait names a type the same way a record does (`10-traits.md` §2), and an
+; instance names none: `impl Eq<Pitch>` writes its head as a type expression,
+; which the type rules above already paint.
+(trait_declaration name: (identifier) @type)
 (enum_declaration name: (identifier) @type)
 (record_literal_expression type: (identifier) @type)
 (path_expression type: (identifier) @type)
@@ -281,6 +299,12 @@
 (make_statement template: (identifier) @function)
 
 (application_expression (name_expression (identifier) @function))
+
+; A method call paints its method like the function it resolves to. The node
+; exists only where a name could not have been written — `f(x).m(y)`,
+; `xs[i].m(y)`, `(p).m(y)` — because `low.rise()` is a name until resolution
+; says otherwise, and the rule above has already painted that one.
+(method_call_expression method: (identifier) @function)
 (mobile_statement fragment: (identifier) @function)
 
 ; The studio's processors are the language's builtins.

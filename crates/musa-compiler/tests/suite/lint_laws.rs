@@ -276,6 +276,42 @@ fn a_waiver_lives_next_to_the_sin() {
     );
 }
 
+/// Guide §6: a field is read after its record and a case after its type, so a
+/// name that repeats the declaration says it twice.
+///
+/// The trait and inherent-impl halves of the same rule are unit tests in
+/// `lint.rs`: `trait` and `impl` are surface the checker does not resolve yet,
+/// so a fixture holding one cannot compile and this file's fixtures must.
+#[test]
+fn a_field_and_a_case_do_not_repeat_what_they_belong_to() {
+    let source = piece(
+        "record Duration {\n        duration_beats: Nat;\n    }\n\n    enum Decision {\n        DecisionYes,\n        No,\n    }",
+        "",
+    );
+    let helps: Vec<Option<String>> = coded(&source, Code::RedundantNamePrefix)
+        .into_iter()
+        .map(|lint| lint.help)
+        .collect();
+    assert_eq!(
+        helps,
+        vec![
+            Some("name it `beats` — a use already says `Duration` before the name arrives".to_owned()),
+            Some("name it `Yes` — a use already says `Decision` before the name arrives".to_owned()),
+        ],
+        "the field and the case, each named in its own convention, and not the case that reads clean"
+    );
+}
+
+/// The same declarations spelled the way §6 asks for.
+#[test]
+fn a_name_that_says_itself_once_is_silent() {
+    let source = piece(
+        "record Duration {\n        beats: Nat;\n    }\n\n    enum Decision {\n        Yes,\n        No,\n    }",
+        "",
+    );
+    assert!(coded(&source, Code::RedundantNamePrefix).is_empty());
+}
+
 #[test]
 fn the_examples_are_lint_clean() {
     let mut checked = 0_u32;

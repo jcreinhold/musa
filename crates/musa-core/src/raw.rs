@@ -295,6 +295,20 @@ pub enum RawShape {
     RecordType(Arc<[RawField]>),
     /// `{ f₁ = e₁, …, fₙ = eₙ }`, in the order the record type declares.
     Record(Arc<[RawField]>),
+    /// `x.m(…)` before its arguments — `10-traits.md` §6's method syntax.
+    ///
+    /// **Infers**, and holds no arguments: `x.m(y, z)` is this applied to `y`
+    /// and then to `z` through the ordinary [`Self::App`] rule, so plicity,
+    /// implicit insertion, and argument checking are the ones that were already
+    /// written. What is new here is only *which name* the call is to, and that
+    /// question needs the receiver's type, which is why the surface cannot
+    /// answer it and this shape exists.
+    Method {
+        /// `x`. Its inferred type's head is what the lookup is keyed on.
+        receiver: Raw,
+        /// `m`, unqualified. The trait it belongs to is what resolution finds.
+        method: Name,
+    },
     /// `e.f`.
     Project {
         /// The record.
@@ -604,6 +618,21 @@ impl Raw {
     #[must_use]
     pub fn record<'a>(origin: Origin, fields: impl IntoIterator<Item = (&'a str, Self)>) -> Self {
         Self::new(origin, RawShape::Record(collect(fields)))
+    }
+
+    /// `x.m` — the method `m` of whichever trait answers for `x`'s type.
+    ///
+    /// Arguments are applied to the result, so `x.m(y)` is
+    /// `Raw::app(origin, Raw::method(origin, x, "m"), y)`.
+    #[must_use]
+    pub fn method(origin: Origin, receiver: Self, method: impl Into<Name>) -> Self {
+        Self::new(
+            origin,
+            RawShape::Method {
+                receiver,
+                method: method.into(),
+            },
+        )
     }
 
     /// `record.field`.

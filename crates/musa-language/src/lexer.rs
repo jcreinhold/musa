@@ -205,8 +205,14 @@ enum RawToken {
     PipeForward,
     #[token("=")]
     Equals,
+    #[token("==")]
+    EqualsEquals,
     #[token("-")]
     Minus,
+    #[token("+")]
+    Plus,
+    #[token("*")]
+    Star,
     #[token("~")]
     Tilde,
     #[token(".")]
@@ -433,6 +439,12 @@ enum RawToken {
     ModKw,
     #[token("private", priority = 3)]
     PrivateKw,
+    #[token("trait", priority = 3)]
+    TraitKw,
+    #[token("impl", priority = 3)]
+    ImplKw,
+    #[token("where", priority = 3)]
+    WhereKw,
 }
 
 impl RawToken {
@@ -469,7 +481,10 @@ impl RawToken {
             | Self::Arrow
             | Self::PipeForward
             | Self::Equals
+            | Self::EqualsEquals
             | Self::Minus
+            | Self::Plus
+            | Self::Star
             | Self::Tilde
             | Self::Dot
             | Self::Slash
@@ -574,7 +589,10 @@ impl RawToken {
             | Self::EnumKw
             | Self::ModuleKw
             | Self::ModKw
-            | Self::PrivateKw => None,
+            | Self::PrivateKw
+            | Self::TraitKw
+            | Self::ImplKw
+            | Self::WhereKw => None,
         }
     }
 
@@ -608,7 +626,10 @@ impl RawToken {
             Self::Arrow => SyntaxKind::Arrow,
             Self::PipeForward => SyntaxKind::PipeForward,
             Self::Equals => SyntaxKind::Equals,
+            Self::EqualsEquals => SyntaxKind::EqualsEquals,
             Self::Minus => SyntaxKind::Minus,
+            Self::Plus => SyntaxKind::Plus,
+            Self::Star => SyntaxKind::Star,
             Self::Tilde => SyntaxKind::Tilde,
             Self::Dot => SyntaxKind::Dot,
             Self::Slash => SyntaxKind::Slash,
@@ -714,6 +735,9 @@ impl RawToken {
             Self::ModuleKw => SyntaxKind::ModuleKw,
             Self::ModKw => SyntaxKind::ModKw,
             Self::PrivateKw => SyntaxKind::PrivateKw,
+            Self::TraitKw => SyntaxKind::TraitKw,
+            Self::ImplKw => SyntaxKind::ImplKw,
+            Self::WhereKw => SyntaxKind::WhereKw,
         }
     }
 }

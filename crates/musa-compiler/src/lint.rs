@@ -16,8 +16,8 @@
 //! does not exist is noise), and every rule is silent on every file in
 //! `examples/` — which is a law in `tests/lint_laws.rs`, not a hope.
 
-use musa_language::ast::{AstNode as _, BarStmt, PieceDecl, VoiceItem};
-use musa_language::{ParsedDocument, SyntaxElement, SyntaxKind, SyntaxNode};
+use musa_language::ast::{AstNode, BarStmt, EnumDecl, ImplDecl, PieceDecl, RecordDecl, TraitDecl, VoiceItem};
+use musa_language::{ParsedDocument, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken};
 
 use crate::diagnose::{Code, Diagnostic};
 use crate::origin::SourceSpan;
@@ -41,7 +41,164 @@ pub(crate) fn lint(
     unassigned_patch(document, source, references, studio, &mut lints);
     redundant_marking(piece, source, &mut lints);
     copied_bars(piece, &mut lints);
+    redundant_name_prefix(document, &mut lints);
+    duplicate_constraint(document, &mut lints);
     lints
+}
+
+/// Guide §6: a name is read after the thing it belongs to, so a name that
+/// repeats it says it twice.
+///
+/// Four declarations, one rule. An inherent method is read after its receiver
+/// (`d.duration_of()`), a trait method after its trait (`Eq.eq_equal`), a record
+/// field after its record (`d.duration_beats`), and an enum case after its type
+/// (`Decision::DecisionYes`). In every one the prefix carries information the
+/// reader already has.
+///
+/// This is the shape `10-traits.md` §5's migration table invites: every
+/// `duration_of` and `chord_root` in the builtin registry is a name from a
+/// language with no receivers, and moving one across without dropping the prefix
+/// writes the old shape in the new spelling.
+///
+/// A **trait instance** is not checked, and that is the rule rather than an
+/// omission: an `impl Eq<T>`'s method names belong to the trait, and an impl
+/// that renamed one would not be implementing it. Only an `impl` whose head is a
+/// bare type name — `01-surface.md` §1.4's inherent block — is a place an author
+/// chooses the name.
+fn redundant_name_prefix(document: &ParsedDocument, lints: &mut Vec<Diagnostic>) {
+    let root = document.syntax();
+    let mut owned: Vec<(String, &'static str, Vec<SyntaxNode>)> = Vec::new();
+    for block in root.descendants().filter_map(ImplDecl::cast) {
+        let Some(head) = block.head().filter(|head| head.kind() == SyntaxKind::TypeName) else {
+            continue;
+        };
+        let written = normalized(&head);
+        if written.contains('<') || written.contains(':') {
+            continue;
+        }
+        owned.push((written, "type", named(block.methods())));
+    }
+    for declared in root.descendants().filter_map(TraitDecl::cast) {
+        let Some(name) = declared.name() else { continue };
+        owned.push((name, "trait", named(declared.methods())));
+    }
+    for declared in root.descendants().filter_map(RecordDecl::cast) {
+        let Some(name) = declared.name() else { continue };
+        owned.push((name, "record", named(declared.fields())));
+    }
+    for declared in root.descendants().filter_map(EnumDecl::cast) {
+        let Some(name) = declared.name() else { continue };
+        owned.push((name, "enum", named(declared.cases())));
+    }
+    for (owner, what, items) in owned {
+        for item in items {
+            let Some(spelled) = written_name(&item) else { continue };
+            let Some(rest) = shortened(&owner, spelled.text()) else {
+                continue;
+            };
+            if suppressed(&item, Code::RedundantNamePrefix) {
+                continue;
+            }
+            lints.push(
+                Diagnostic::warning(
+                    Code::RedundantNamePrefix,
+                    format!("this name repeats the {what} it belongs to"),
+                )
+                .at(token_span(&spelled), "declared here")
+                .help(format!(
+                    "name it `{rest}` — a use already says `{owner}` before the name arrives"
+                ))
+                .note("docs/rules/style-guide.md §6: a name is read after the thing it belongs to"),
+            );
+        }
+    }
+}
+
+/// The syntax nodes of a declaration's items, so that four kinds of item can
+/// share one loop.
+fn named<N: AstNode>(items: Vec<N>) -> Vec<SyntaxNode> {
+    items.into_iter().map(|item| item.syntax().clone()).collect()
+}
+
+/// The item's own name, which is its first identifier.
+///
+/// The token rather than its text, because the report points at the name being
+/// renamed: a node's range in this CST starts at its leading trivia, so a field
+/// underlined by its node would underline the blank line above it too.
+fn written_name(item: &SyntaxNode) -> Option<SyntaxToken> {
+    item.children_with_tokens()
+        .filter_map(SyntaxElement::into_token)
+        .find(|token| token.kind() == SyntaxKind::Identifier)
+}
+
+/// Exactly the span of one token.
+fn token_span(token: &SyntaxToken) -> SourceSpan {
+    let range = token.text_range();
+    SourceSpan::new(u32::from(range.start()), u32::from(range.end()))
+}
+
+/// What is left of `name` after the prefix that repeats `owner`, or `None`
+/// where there is no such prefix.
+///
+/// Two spellings, because two conventions meet here: a method or field is
+/// `snake_case` and repeats `Duration` as `duration_`, an enum case is
+/// `UpperCamelCase` and repeats it as `Duration`. A name that is *only* the
+/// prefix is left alone — `Duration::Duration` is a different mistake, and a
+/// rule that renamed it would have nothing to rename it to.
+fn shortened(owner: &str, name: &str) -> Option<String> {
+    let snake = format!("{}_", snake_case(owner));
+    if let Some(rest) = name.strip_prefix(&snake) {
+        return (!rest.is_empty()).then(|| rest.to_string());
+    }
+    let rest = name.strip_prefix(owner)?;
+    rest.chars()
+        .next()
+        .filter(char::is_ascii_uppercase)
+        .map(|_| rest.to_string())
+}
+
+/// `NoteName` → `note_name`, the spelling a function name would have.
+fn snake_case(name: &str) -> String {
+    let mut out = String::with_capacity(name.len().saturating_add(4));
+    for (position, letter) in name.chars().enumerate() {
+        if letter.is_uppercase() && position > 0 {
+            out.push('_');
+        }
+        out.extend(letter.to_lowercase());
+    }
+    out
+}
+
+/// Guide §4: a `where` clause that names one constraint twice.
+///
+/// Harmless to the elaborator — the second lookup answers what the first did,
+/// since coherence makes one instance per key — and exactly the kind of
+/// duplication §4 is about: it survives an edit that changes one copy, and then
+/// the reader has two clauses to reconcile that were never two facts.
+fn duplicate_constraint(document: &ParsedDocument, lints: &mut Vec<Diagnostic>) {
+    for clause in document
+        .syntax()
+        .descendants()
+        .filter(|node| node.kind() == SyntaxKind::WhereClause)
+    {
+        let mut seen: Vec<String> = Vec::new();
+        for constraint in clause.children().filter(|node| node.kind() == SyntaxKind::Constraint) {
+            let spelling = normalized(&constraint);
+            if !seen.contains(&spelling) {
+                seen.push(spelling);
+                continue;
+            }
+            if suppressed(&constraint, Code::DuplicateConstraint) {
+                continue;
+            }
+            lints.push(
+                Diagnostic::warning(Code::DuplicateConstraint, "this constraint is already written")
+                    .at(span_of(&constraint), "written twice")
+                    .help("delete it — one constraint is one dictionary, however many times it is asked for")
+                    .note("docs/rules/style-guide.md §4: say it once"),
+            );
+        }
+    }
 }
 
 /// Guide §1: a `motif` or `fragment` declared in this document and never
@@ -353,4 +510,74 @@ fn delete_lines(source: &str, node: &SyntaxNode) -> SourceSpan {
         .and_then(|tail| tail.find('\n'))
         .map_or(source.len(), |newline| end.saturating_add(newline).saturating_add(1));
     SourceSpan::new(line_start as u32, after as u32)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{duplicate_constraint, redundant_name_prefix};
+    use crate::diagnose::{Code, Diagnostic};
+
+    /// The two rules that read only the parse tree, exercised here rather than
+    /// through `compile`.
+    ///
+    /// `trait`, `impl`, and `where` are surface the checker does not resolve
+    /// yet — prompt 142 is the migration that connects them — so a fixture
+    /// holding one cannot compile, and `lint_laws.rs` asserts its fixtures do.
+    /// The rules themselves read the CST and nothing else, which is why they can
+    /// be asked here and answered honestly.
+    fn lints(body: &str) -> Vec<Diagnostic> {
+        let source = format!("library {{\n{body}}}\n");
+        let document = musa_language::parse(&source);
+        assert!(
+            document.errors().is_empty(),
+            "fixture must parse: {:?}",
+            document.errors()
+        );
+        let mut found = Vec::new();
+        redundant_name_prefix(&document, &mut found);
+        duplicate_constraint(&document, &mut found);
+        found
+    }
+
+    fn codes(body: &str) -> Vec<Code> {
+        lints(body).into_iter().map(|lint| lint.code).collect()
+    }
+
+    #[test]
+    fn a_trait_method_does_not_repeat_its_trait() {
+        assert_eq!(
+            codes("trait Eq<A> {\n    fn eq_equal(x: A, y: A) -> Bool;\n}\n"),
+            vec![Code::RedundantNamePrefix]
+        );
+        assert!(codes("trait Eq<A> {\n    fn equal(x: A, y: A) -> Bool;\n}\n").is_empty());
+    }
+
+    #[test]
+    fn an_inherent_method_does_not_repeat_its_type() {
+        assert_eq!(
+            codes("impl Duration {\n    fn duration_of(n: Nat) -> Nat { n }\n}\n"),
+            vec![Code::RedundantNamePrefix]
+        );
+        assert!(codes("impl Duration {\n    fn of(n: Nat) -> Nat { n }\n}\n").is_empty());
+    }
+
+    /// The instance's method names are the trait's, so renaming one would stop
+    /// implementing it — which is why the rule reads the head before it reads
+    /// the names.
+    #[test]
+    fn an_instance_is_left_alone() {
+        assert!(
+            codes("impl Eq<Duration> {\n    fn duration_equal(x: Nat, y: Nat) -> Nat { x }\n}\n").is_empty(),
+            "an impl of a trait names its methods after the trait, not after this rule"
+        );
+    }
+
+    #[test]
+    fn a_constraint_is_written_once() {
+        assert_eq!(
+            codes("fn f<A>(x: A) -> A where Eq<A>, Eq<A> { x }\n"),
+            vec![Code::DuplicateConstraint]
+        );
+        assert!(codes("fn f<A>(x: A) -> A where Eq<A>, Ord<A> { x }\n").is_empty());
+    }
 }

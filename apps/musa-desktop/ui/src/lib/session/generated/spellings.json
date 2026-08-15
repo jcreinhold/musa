@@ -372,6 +372,18 @@
     "keyword"
   ],
   [
+    "trait",
+    "keyword"
+  ],
+  [
+    "impl",
+    "keyword"
+  ],
+  [
+    "where",
+    "keyword"
+  ],
+  [
     "make",
     "keyword"
   ],
@@ -448,7 +460,19 @@
     "punctuation"
   ],
   [
+    "==",
+    "punctuation"
+  ],
+  [
     "-",
+    "punctuation"
+  ],
+  [
+    "+",
+    "punctuation"
+  ],
+  [
+    "*",
     "punctuation"
   ],
   [

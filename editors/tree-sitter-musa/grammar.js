@@ -86,12 +86,12 @@ const SYNTAX_WORDS = [
   'ending', 'fragment', 'mobile', 'improvise', 'over', 'let', 'fn', 'music',
   'kernel', 'Option', 'List', 'Result', 'match', 'Some', 'None', 'Ok',
   'Err', 'true', 'false', 'scale', 'degree', 'frame', 'in', 'step',
-  'chord', 'stack', 'private',
+  'chord', 'stack', 'private', 'trait', 'impl', 'where',
 ];
 
 const SYNTAX_MARKS = [
-  ';', ',', ':', '->', '|>', '=', '-', '~',
-  '.', '/', '|', '>', '<', '^', '#', '$',
+  ';', ',', ':', '->', '|>', '=', '==', '-', '+',
+  '*', '~', '.', '/', '|', '>', '<', '^', '#', '$',
 ];
 
 module.exports = grammar({
@@ -147,6 +147,8 @@ module.exports = grammar({
               $.data_declaration,
               $.record_declaration,
               $.enum_declaration,
+              $.trait_declaration,
+              $.impl_declaration,
               $.template_declaration,
               $.signature_declaration,
               $.structure_declaration,
@@ -264,6 +266,7 @@ module.exports = grammar({
         'record',
         field('name', $.identifier),
         optional($.type_parameter_list),
+        optional($.where_clause),
         '{',
         repeat($.field_declaration),
         '}',
@@ -281,6 +284,7 @@ module.exports = grammar({
         'enum',
         field('name', $.identifier),
         optional($.type_parameter_list),
+        optional($.where_clause),
         '{',
         optional(seq($.enum_case, repeat(seq(',', $.enum_case)), optional(','))),
         '}',
@@ -301,6 +305,57 @@ module.exports = grammar({
           ),
         ),
       ),
+
+    // Parser::trait_decl — `10-traits.md` §1's interface, which elaborates to
+    // a dependent record. Its methods are ordinary function declarations, and
+    // a `;` where a body would be is how one says *required*: a method with
+    // no body is a field an instance must fill, one with a body is a field it
+    // may replace.
+    trait_declaration: ($) =>
+      seq(
+        optional('private'),
+        'trait',
+        field('name', $.identifier),
+        $.type_parameter_list,
+        optional($.where_clause),
+        '{',
+        repeat($.trait_method),
+        '}',
+      ),
+
+    trait_method: ($) =>
+      seq(
+        'fn',
+        field('name', $.identifier),
+        optional($.type_parameter_list),
+        $.parameter_list,
+        optional(seq('->', field('result', $.type_expression))),
+        optional($.where_clause),
+        choice(';', field('body', $.block_expression)),
+      ),
+
+    // Parser::impl_decl — an instance (`impl Eq<Nat> { … }`) and a type's own
+    // namespace (`impl Duration { … }`), which are the same syntax. Which one
+    // a block is depends on whether the head's name resolves to a trait or to
+    // a type (§6), and no parser knows that.
+    impl_declaration: ($) =>
+      seq(
+        optional('private'),
+        'impl',
+        optional($.type_parameter_list),
+        field('head', $.type_expression),
+        optional($.where_clause),
+        '{',
+        repeat($.function_declaration),
+        '}',
+      ),
+
+    // Parser::where_clause — the constraints a declaration carries. One rule
+    // for every declaration that takes one, because a constraint means the
+    // same thing wherever it is written.
+    where_clause: ($) => seq('where', $.constraint, repeat(seq(',', $.constraint))),
+
+    constraint: ($) => $.type_expression,
 
     // Parser::type_params — the types a declaration abstracts over. A
     // parameter is a name and nothing else: it has no kind to write, because
@@ -346,6 +401,8 @@ module.exports = grammar({
             $.data_declaration,
             $.record_declaration,
             $.enum_declaration,
+            $.trait_declaration,
+            $.impl_declaration,
             $.score_declaration,
             $.performance_declaration,
             $.studio_declaration,
@@ -369,6 +426,8 @@ module.exports = grammar({
             $.data_declaration,
             $.record_declaration,
             $.enum_declaration,
+            $.trait_declaration,
+            $.impl_declaration,
             $.performance_declaration,
             $.studio_declaration,
             $.signature_declaration,
@@ -517,8 +576,10 @@ module.exports = grammar({
         optional('private'),
         'fn',
         field('name', $.identifier),
+        optional($.type_parameter_list),
         $.parameter_list,
         optional(seq('->', field('result', $.type_expression))),
+        optional($.where_clause),
         field('body', $.block_expression),
       ),
 
@@ -576,6 +637,9 @@ module.exports = grammar({
         $.music_expression,
         $.kernel_quote,
         $.application_expression,
+        $.method_call_expression,
+        $.index_expression,
+        $.binary_expression,
         $.pitch_expression,
         $.step_expression,
         $.scale_expression,
@@ -585,7 +649,63 @@ module.exports = grammar({
       ),
 
     application_expression: ($) =>
-      prec.left(2, seq($._primary_expression, repeat1($.expression_argument_list))),
+      prec.left(6, seq($._primary_expression, repeat1($.expression_argument_list))),
+
+    // `01-surface.md` §1's operator table, tightest last. Fixed and closed:
+    // there is no user-defined symbol and no precedence declaration, because
+    // a table an import can extend makes a program's parse depend on what it
+    // imported. `>` is absent — `10-traits.md` §5 gives `Ord` one method, and
+    // `>` after a note is the accent mark.
+    binary_expression: ($) =>
+      choice(
+        // Level 6. The hand parser makes this level *non-associative* and
+        // refuses `a == b == c`; this reader groups it to the left instead.
+        // The one divergence in the file, and deliberate: encoding
+        // non-associativity here costs a second visible node name for one
+        // concept, and what a highlighter loses by reading a program the
+        // compiler will reject is nothing. `Parser::comparison_expr` is the
+        // authority on the refusal, as it is on every other one.
+        prec.left(1, seq(field('left', $.expression), field('operator', choice('==', '<')), field('right', $.expression))),
+        prec.left(4, seq(field('left', $.expression), field('operator', choice('+', '-')), field('right', $.expression))),
+        prec.left(5, seq(field('left', $.expression), field('operator', choice('*', '/')), field('right', $.expression))),
+      ),
+
+    // Parser::at_method_call — `f(x).m(y)`. A method call whose receiver is a
+    // *name* is a name and a call instead: `low.rise()` reaches an aliased
+    // module and `x.equal(y)` calls a method, and the two are the same three
+    // tokens. Which was written is decided by what the first word denotes, so
+    // this node is for the receivers no name can spell.
+    method_call_expression: ($) =>
+      prec.left(
+        6,
+        seq(
+          field('receiver', $._computed_receiver),
+          '.',
+          field('method', $.identifier),
+          $.expression_argument_list,
+        ),
+      ),
+
+    _computed_receiver: ($) =>
+      choice(
+        $.method_call_expression,
+        $.index_expression,
+        $.application_expression,
+        $.question_expression,
+        $.record_update_expression,
+        $.record_literal_expression,
+        $.list_expression,
+        $.product_expression,
+        $.block_expression,
+        seq('(', $.expression, ')'),
+      ),
+
+    // `xs[i]` — `Index<C, I, A>.at` under §5's table, and postfix like a call.
+    index_expression: ($) =>
+      prec.left(
+        6,
+        seq(field('subject', choice($.method_call_expression, $.index_expression, $.application_expression, $._primary_expression)), '[', field('index', $.expression), ']'),
+      ),
 
     // Parser::expr — `p with { f = e }`, the record rebuilt. The subject may
     // itself be an update, which is how `p with { … } with { … }` chains, and
@@ -642,7 +762,7 @@ module.exports = grammar({
 
     pitch_expression: ($) =>
       prec.left(
-        1,
+        2,
         seq(
           $._pitch_operand,
           field('direction', choice('up', 'down')),
@@ -655,7 +775,7 @@ module.exports = grammar({
     // is applied to whatever it lands on.
     step_expression: ($) =>
       prec.left(
-        2,
+        3,
         seq($._pitch_operand, 'step', optional(field('direction', choice('up', 'down'))), field('steps', $._step_count)),
       ),
 

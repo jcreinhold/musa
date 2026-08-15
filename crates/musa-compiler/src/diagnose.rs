@@ -172,6 +172,16 @@ pub enum Code {
     UnconstrainedVariable,
     /// A constraint on a type no instance could ever be keyed on.
     UnkeyedConstraint,
+    /// `x.m(…)` where `x`'s type is not a declared type constructor.
+    MethodOnVariable,
+    /// `x.m(…)` where no trait with a dictionary at `x`'s head declares `m`.
+    NoMethodForType,
+    /// `x.m(…)` where two traits with a dictionary at `x`'s head declare `m`.
+    AmbiguousMethod,
+    /// A method, field, or case whose name repeats the declaration it belongs to.
+    RedundantNamePrefix,
+    /// A `where` clause naming one constraint twice.
+    DuplicateConstraint,
 }
 
 /// Writes each code's spelling once, and derives the roster from the same
@@ -254,6 +264,11 @@ code_table! {
     UnresolvedInstance => "unresolved-instance",
     UnconstrainedVariable => "unconstrained-variable",
     UnkeyedConstraint => "unkeyed-constraint",
+    MethodOnVariable => "method-on-variable",
+    NoMethodForType => "no-method-for-type",
+    AmbiguousMethod => "ambiguous-method",
+    RedundantNamePrefix => "redundant-name-prefix",
+    DuplicateConstraint => "duplicate-constraint",
 
 }
 

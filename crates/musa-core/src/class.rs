@@ -228,6 +228,15 @@ pub struct Instance {
 pub(crate) struct Classes {
     traits: HashMap<Name, Arc<Trait>>,
     instances: HashMap<Key, Arc<Instance>>,
+    /// Which traits declare a method of each unqualified name, sorted.
+    ///
+    /// §6's method syntax asks "which trait has an `m` for this head", and the
+    /// honest answer without this index is a scan of every trait in scope —
+    /// which is the shape of the search §9 refuses, even where the code that
+    /// performs it stops at the first hit. Kept beside the map it summarizes so
+    /// a use site reads one bucket, and rebuilt with it, since a trait
+    /// declaration is rare where a method call is not.
+    by_method: HashMap<Name, Vec<Name>>,
 }
 
 /// Every context starts with `Storable` in scope and nothing else.
@@ -239,10 +248,13 @@ pub(crate) struct Classes {
 impl Default for Classes {
     fn default() -> Self {
         let storable = crate::storable::class();
-        Self {
-            traits: HashMap::from([(Arc::clone(&storable.name), storable)]),
+        let mut built = Self {
+            traits: HashMap::new(),
             instances: HashMap::new(),
-        }
+            by_method: HashMap::new(),
+        };
+        built.insert(&storable);
+        built
     }
 }
 
@@ -274,11 +286,31 @@ impl Classes {
         self.instances.get(key)
     }
 
+    /// Which traits in scope declare a method spelled `method`.
+    ///
+    /// Sorted, so a report that names two of them names them in the same order
+    /// twice — a hash map's iteration order would make an ambiguity message
+    /// depend on the allocator.
+    pub(crate) fn declaring_method(&self, method: &str) -> &[Name] {
+        self.by_method.get(method).map_or(&[], Vec::as_slice)
+    }
+
     /// These classes with `declared` added.
     pub(crate) fn declaring_class(&self, declared: &Arc<Trait>) -> Self {
         let mut built = self.clone();
-        built.traits.insert(Arc::clone(&declared.name), Arc::clone(declared));
+        built.insert(declared);
         built
+    }
+
+    /// Record `declared` in both the name map and the method index.
+    fn insert(&mut self, declared: &Arc<Trait>) {
+        self.traits.insert(Arc::clone(&declared.name), Arc::clone(declared));
+        for (method, _) in declared.methods.iter() {
+            let bucket = self.by_method.entry(Arc::clone(method)).or_default();
+            if let Err(at) = bucket.binary_search(&declared.name) {
+                bucket.insert(at, Arc::clone(&declared.name));
+            }
+        }
     }
 
     /// These classes with `instance` added.

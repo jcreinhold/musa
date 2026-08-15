@@ -262,6 +262,23 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
         assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
         reached.insert(kind(&refusal));
     }
+    // §6's three are use sites again, but each needs a context of its own: one
+    // trait in scope for the head, none, and two. A single context cannot hold
+    // all three questions, which is why they arrive carrying theirs.
+    for crate::operator_laws::RefusedMethod {
+        name,
+        cx,
+        raw,
+        expected,
+    } in crate::operator_laws::refused_methods()
+    {
+        let Err(error) = infer(&cx, &raw) else {
+            panic!("{name}: elaboration accepted a program it must refuse");
+        };
+        let refusal = refusal(name, error);
+        assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
+        reached.insert(kind(&refusal));
+    }
     assert_eq!(
         reached,
         ALL_REFUSALS.iter().copied().collect(),
@@ -270,7 +287,7 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
 }
 
 /// Every refusal this crate can answer with.
-const ALL_REFUSALS: [&str; 39] = [
+const ALL_REFUSALS: [&str; 42] = [
     "unknown-name",
     "mismatch",
     "unsolved",
@@ -310,6 +327,9 @@ const ALL_REFUSALS: [&str; 39] = [
     "unresolved-instance",
     "unconstrained-variable",
     "unkeyed-constraint",
+    "method-on-variable",
+    "no-method-for-type",
+    "ambiguous-method",
 ];
 
 /// Which refusal this is, as a tag the coverage gate can compare.
@@ -357,6 +377,9 @@ fn kind(refusal: &Refusal) -> &'static str {
         Refusal::UnresolvedInstance { .. } => "unresolved-instance",
         Refusal::UnconstrainedVariable { .. } => "unconstrained-variable",
         Refusal::UnkeyedConstraint { .. } => "unkeyed-constraint",
+        Refusal::MethodOnVariable { .. } => "method-on-variable",
+        Refusal::NoMethodForType { .. } => "no-method-for-type",
+        Refusal::AmbiguousMethod { .. } => "ambiguous-method",
     }
 }
 

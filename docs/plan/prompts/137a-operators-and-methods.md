@@ -1,7 +1,7 @@
 ---
 id: 137a
 slug: operators-and-methods
-status: in-progress
+status: done
 depends_on: [137]
 phase: 3
 ---
@@ -51,10 +51,13 @@ snapshot of a desugaring.
 `Result` tomorrow. No partial operator, no panicking division, no silent saturation. A total language that grows one
 partial operator has stopped being one.
 
-**Exact-receiver lookup, enforced negatively.** `x.add(y)` resolves when `x`'s concrete type is known or a `where`
-constraint supplies the dictionary. A value of a generic parameter `A` never acquires a method from anywhere. The test
-that matters is the negative one: a generic function that calls `.add` on an unconstrained `A` must fail with a message
-telling the author to write the constraint, and that test is worth more than the ten positive ones.
+**Exact-receiver lookup, enforced negatively.** An *operator* resolves when its head is known or a `where` constraint
+supplies the dictionary — that is `01-surface.md` §1.5, and it works because `a + b` is `Add.add(a, b)`, which names its
+trait. *Method syntax* is stricter: a value of a generic parameter `A` never acquires a method from anywhere, `where`
+clause or not, because finding one would mean scanning every trait in scope (`10-traits.md` §6 and §9's eighth row). The
+test that matters is the negative one, and it is two tests: a generic function that writes `a + b` on an unconstrained
+`A` fails with a message telling the author to write the constraint, and one that writes `x.add(y)` on any `A` fails
+with a message telling the author to write `Add.add(x, y)`. Those are worth more than the ten positive ones.
 
 **`Duration::of(n)`, not return-type-directed overloading.** A type namespace is a path the author writes, so the
 elaborator never chooses an instance from the type a call is checked against. `Type::item` therefore parses as a path

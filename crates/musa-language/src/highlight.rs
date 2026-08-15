@@ -113,6 +113,9 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("module", SyntaxKind::ModuleKw),
     ("mod", SyntaxKind::ModKw),
     ("private", SyntaxKind::PrivateKw),
+    ("trait", SyntaxKind::TraitKw),
+    ("impl", SyntaxKind::ImplKw),
+    ("where", SyntaxKind::WhereKw),
     ("make", SyntaxKind::MakeKw),
     ("as", SyntaxKind::AsKw),
     ("Hz", SyntaxKind::UnitHz),
@@ -132,7 +135,10 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("->", SyntaxKind::Arrow),
     ("|>", SyntaxKind::PipeForward),
     ("=", SyntaxKind::Equals),
+    ("==", SyntaxKind::EqualsEquals),
     ("-", SyntaxKind::Minus),
+    ("+", SyntaxKind::Plus),
+    ("*", SyntaxKind::Star),
     ("~", SyntaxKind::Tilde),
     (".", SyntaxKind::Dot),
     ("/", SyntaxKind::Slash),
@@ -230,7 +236,10 @@ impl TokenClass {
             | SyntaxKind::Arrow
             | SyntaxKind::PipeForward
             | SyntaxKind::Equals
+            | SyntaxKind::EqualsEquals
             | SyntaxKind::Minus
+            | SyntaxKind::Plus
+            | SyntaxKind::Star
             | SyntaxKind::Tilde
             | SyntaxKind::Dot
             | SyntaxKind::Slash
@@ -304,6 +313,9 @@ impl TokenClass {
             | SyntaxKind::ModuleKw
             | SyntaxKind::ModKw
             | SyntaxKind::PrivateKw
+            | SyntaxKind::TraitKw
+            | SyntaxKind::ImplKw
+            | SyntaxKind::WhereKw
             | SyntaxKind::CrescendoKw
             | SyntaxKind::DiminuendoKw
             | SyntaxKind::ToKw
@@ -380,6 +392,13 @@ impl TokenClass {
             | SyntaxKind::ImportStmt
             | SyntaxKind::SyntaxRegion
             | SyntaxKind::SyntaxGroup
+            | SyntaxKind::TraitDecl
+            | SyntaxKind::ImplDecl
+            | SyntaxKind::WhereClause
+            | SyntaxKind::Constraint
+            | SyntaxKind::BinaryExpr
+            | SyntaxKind::MethodCallExpr
+            | SyntaxKind::IndexExpr
             | SyntaxKind::HairpinStmt
             | SyntaxKind::Duration
             | SyntaxKind::ArticulationList

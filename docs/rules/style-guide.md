@@ -54,7 +54,11 @@ fine. A `motif` makes the repetition a fact the compiler can check and the edito
 This is not an argument against repetition — music is repetition — but for writing it as repetition: `use`, `repeat`,
 and the transformer ladder are the spellings that keep the repetition true under edit.
 
-Enforced: `copied-bars` (three or more identical bars in one voice).
+A `where` clause is the same rule at the type level. `where Eq<A>, Eq<A>` asks for one dictionary twice, and coherence
+means the two lookups cannot disagree — so the second copy buys nothing and costs the next edit, which will change one
+of them.
+
+Enforced: `copied-bars` (three or more identical bars in one voice), `duplicate-constraint`.
 
 ## 5. A waiver lives next to the sin
 
@@ -75,7 +79,34 @@ construct that would not have fired is left for the reader to notice and remove.
 There is no project-level switch and no configuration file, on purpose: the source is canonical (roadmap §3), and a
 standard that can be switched off silently is a rumour of a standard.
 
-## 6. Candidate vocabulary says which layer it means
+## 6. A name is read after the thing it belongs to
+
+`impl Duration { fn duration_of(r: Ratio) -> Duration }` names the type twice, and the second time is at every call
+site: `d.duration_of()`. The receiver is already on the page when the name arrives, which is the whole difference
+between a method and the function it replaces — `duration_of(r)` had nothing to be read after, so its prefix was
+carrying the type information a receiver now carries.
+
+Four declarations, one rule, because in all four the prefix arrives second:
+
+| Written | Read as | Write instead |
+| --- | --- | --- |
+| `impl Duration { fn duration_of(…) }` | `d.duration_of()` | `fn of` |
+| `trait Eq<A> { fn eq_equal(…) }` | `Eq.eq_equal(x, y)` | `fn equal` |
+| `record Duration { duration_beats: Ratio; }` | `d.duration_beats` | `beats` |
+| `enum Decision<P> { DecisionYes(P) }` | `Decision::DecisionYes` | `Yes` |
+
+This is the exact shape `docs/rules/language/10-traits.md` §5's migration table invites. Every `chord_root`,
+`row12_retrograde`, and `duration_of` in the builtin registry is a name from a language with no receivers, and moving
+one across without dropping the prefix writes the old shape in the new spelling.
+
+Rename to the part that is not the prefix. Where that leaves a name too thin to stand alone, what the code wants is an
+inherent *function* rather than a method: `Duration::of(r)` reads because the path supplies what the receiver would
+have. A trait **instance** is not subject to this — those names belong to the trait, and an impl that renamed one would
+not be implementing it.
+
+Enforced: `redundant-name-prefix`.
+
+## 7. Candidate vocabulary says which layer it means
 
 **Candidate rule for prompts 93–168; it becomes governing only with prompt 169.** The additions in
 `docs/rules/language/` keep the musician-facing word when it names a musical intention and the technical word when the

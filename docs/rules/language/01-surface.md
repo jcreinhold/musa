@@ -463,9 +463,13 @@ one, and a stated answer for what its `match` coverage means.
 `enum`, `data`, or `structure` and hides the whole declaration; §4 of `04-templates-and-modules.md` states the boundary
 it hides behind and why it does not overlap with sealing. A marked declaration is nameable from a sibling definition in
 its own module and from nowhere else, including through an `import` alias and through a re-export, and marking one
-changes no program that did not name it. `trait` and `impl` take the marker in the grammar above, but what a hidden
-`impl` means for coherence is `10-traits.md`'s question and not this section's — a naming rule cannot settle whether the
-same expression may elaborate to two different dictionaries in two modules.
+changes no program that did not name it. `trait` and `impl` take the marker in the grammar above, and what it means for
+an `impl` is settled: **the marker hides the name, never the instance.** A private `impl` is still the one entry in the
+global table for its (trait, head) pair, still refuses a duplicate declared anywhere, and still answers every lookup
+that reaches that pair from any module. What `private` withholds is the ability to *write* the instance's own
+declaration name where one exists, which for an `impl` is nearly nothing — so the marker is admissible there and close
+to inert, and that is the point: coherence (`10-traits.md` §2) is a property of the program, and a visibility marker
+that could suspend it would let the same expression elaborate to two different dictionaries in two modules.
 
 Public by default is the opposite of Rust's choice and the opposite of what *A Philosophy of Software Design* ch. 5
 would argue for a fresh language, and the argument it loses to is specific rather than general: Musa's packages are

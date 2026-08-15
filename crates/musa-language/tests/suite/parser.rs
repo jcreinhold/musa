@@ -146,7 +146,7 @@ fn unclosed_brace_recovers_at_eof() {
 
 #[test]
 fn lex_error_token_recovers_and_continues() {
-    let source = "piece \"x\" {\n    score {\n        part p {\n            voice v {\n                c5 *;\n                d5/4\n            }\n        }\n    }\n}\n";
+    let source = "piece \"x\" {\n    score {\n        part p {\n            voice v {\n                c5 @;\n                d5/4\n            }\n        }\n    }\n}\n";
     let doc = parse(source);
     assert!(!doc.errors().is_empty());
     // The statement after the broken one still parses.
