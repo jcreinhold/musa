@@ -1,7 +1,7 @@
 ---
 id: 134
 slug: bidirectional-elaboration
-status: pending
+status: in-progress
 depends_on: [133a]
 phase: 3
 ---
@@ -49,6 +49,13 @@ now is cheaper than debugging a scope escape later, and it is the invariant ever
 constraint that is still blocked when elaboration ends is an error naming the term it came from. This is the line that
 keeps unification decidable and most-general, so the code should refuse loudly at the boundary rather than "try harder"
 — a heuristic here is search, and 130 already refused search.
+
+**Term metavariables only; level metavariables wait for the prompt that needs them.** §2.1 names three creation sites,
+and the third — a level position the surface did not write — is a metavariable of a *different sort*. Admitting it makes
+`Level` a sum that no longer computes, which is a change to every term, value, and quotation site in the crate, and
+nothing in this prompt can exercise it: the raw term carries a written level, so `Type` never arrives without one. The
+first thing that genuinely cannot write its own levels is a level-polymorphic family, so prompt 135 admits them
+alongside `data`. Until then a raw term states its levels and the crate has one sort of unknown.
 
 **Implicit arguments are inserted here and nowhere else.** A binder marked implicit produces a metavariable at each use;
 the core, per 129, has one Π and never learns about plicity. The one subtlety worth a doc comment is when insertion
@@ -107,6 +114,8 @@ Commit as `Elaborate bidirectionally, with metavariables`.
   owns that mechanism.
 - No higher-order unification outside the pattern fragment, no unification heuristic, no "try the obvious solution"
   fallback.
+- No level metavariables and no level solver. §2.1's third creation site is prompt 135's, for the reason in Design; a
+  raw term written here states the level of every `Type` it mentions.
 - No surface syntax, no parser change, no `.musa` file change.
 - No deletion of `crates/musa-compiler/src/infer.rs`. It stays until prompt 142.
 - No public `Value`. If this prompt proves the facade wrong, repair 133's facade as a repair commit and say what the

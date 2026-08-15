@@ -14,6 +14,9 @@ Give `musa-core` parameterized and indexed `data` declarations with strict posit
 dependent `match` compiled through case trees with coverage checking, and the checked well-founded termination rule that
 prompt 128 kept totality for. After this prompt the core is complete: everything above it is library code.
 
+Also **level metavariables**, which prompt 134 deferred to here: `data Vec (A : Type l)` is the first declaration that
+cannot write its own levels, so this is the prompt that has to solve them.
+
 ## Read
 
 - `docs/rules/language/02-core-calculus.md` §1 (families, parameters versus indices), §5's positivity, coverage, and
@@ -62,6 +65,12 @@ if 129's K survived the trial — uniqueness of identity proofs. When a split fo
 cannot be, the branch is *impossible* and is discharged rather than requiring a body. When the elaborator cannot decide
 either way, it says so with the constraint it was stuck on rather than guessing.
 
+**Levels stop being numbers here.** Prompt 134 left `Level` a computed natural because nothing could write a `Type`
+without saying which one; a family parameterized by `(A : Type l)` can, so §2.1's third creation site opens now. The
+change is not the solver — level constraints are first-order and a bare `?ℓ ≡ l` is the whole of the common case — it is
+that `succ` and `max` stop computing on an unsolved arm, so every place that reads a level has to force it first. Do
+this before the recursor generator, not after: a generated motive is exactly a term whose level nobody wrote.
+
 **Termination is a measure the checker sees.** Every recursive definition presents a measure into a well-founded order.
 The structural case — the measure is subterm size, supplied by the elaborator — must stay the ergonomic default, or
 every ordinary fold in `stdlib/` acquires an annotation and the language gets worse for the 95% case to serve the 5%.
@@ -78,6 +87,7 @@ suite carries one case per refusal.
 
 - Parameterized and indexed `data` in `musa-core`, with strict positivity, generated dependent recursors, case-tree
   compilation with coverage and unreachability reporting, index unification, and the well-founded termination checker.
+- Level metavariables and their solver, with `Level` forced wherever it is read.
 - New `Code` variants with `musa explain` text for: non-positive occurrence, incomplete match, unreachable branch,
   undecidable index constraint, and unchecked recursion.
 - `crates/musa-core/tests/suite/{family_laws.rs, coverage_laws.rs, termination_laws.rs}` and the compile-fail cases.
