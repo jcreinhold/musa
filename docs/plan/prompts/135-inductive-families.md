@@ -32,6 +32,9 @@ cannot write its own levels, so this is the prompt that has to solve them.
 - `crates/musa-compiler/tests/suite/literal_pattern_laws.rs` and prompt [127dca](127dca-text-patterns-match.md) —
   literal patterns already exist and have laws. Case-tree compilation has to keep them, and a literal is the one pattern
   that does not decompose into constructors.
+- Peyton Jones ch. 3 and ch. 6 — the enriched calculus and its transformations, which is the shape the termination rule
+  takes here: a recursive call is *rewritten* into an induction hypothesis before elaboration rather than checked after
+  it, so the check and the compilation are one pass and there is no fixed point left in the core to take on trust.
 - Peyton Jones ch. 4 and ch. 5 in full — structured types and the semantics of pattern matching, including the
   match-compilation algorithm and the treatment of overlapping and missing cases. This is the chapter this prompt is
   written from; cite it in the implementation's doc comments where the algorithm follows it and say where it does not,
@@ -99,8 +102,31 @@ this before the recursor generator, not after: a generated motive is exactly a t
 **Termination is a measure the checker sees.** Every recursive definition presents a measure into a well-founded order.
 The structural case — the measure is subterm size, supplied by the elaborator — must stay the ergonomic default, or
 every ordinary fold in `stdlib/` acquires an annotation and the language gets worse for the 95% case to serve the 5%.
-Mutual recursion uses a lexicographic combination. There is no `partial`, and a definition whose measure cannot be
-checked is refused with the recursive call that broke it.
+There is no `partial`, and a definition whose measure cannot be checked is refused with the recursive call that broke
+it.
+
+**The structural measure reads the recursive position off the definition's own `match`, and constrains nothing else.** A
+definition recurses on one argument; the `match` at the top of its body says which, by having that argument as a
+subject. A call is then a call on a *pattern binder in that column*, and it compiles to the induction hypothesis that
+branch was handed. The remaining arguments are unconstrained, and that is not laxity: the hypothesis is the answer for
+this branch's field at the indices that field has, so conversion decides the rest and a second check here would decide
+it twice.
+
+This replaces an earlier reading of the same rule — "exactly one argument differs from the binder in that position" —
+which implementation showed to be wrong rather than merely narrow. `count : (n : Nat) → Vec A n → Nat` recursing on the
+tail *must* pass a different index too, because `ys : Vec A k` and nothing else type-checks; under the one-argument rule
+no recursion over an indexed family is expressible at all, which would have made prompt 141's `Vec A n` unusable for the
+thing it exists for. The finding is recorded here rather than in the code alone because it is the kind of rule that
+reads plausible until a dependent type meets it.
+
+**Mutual recursion between definitions is deferred, with the condition for re-opening stated.** `rec` binds one name, so
+two definitions calling each other cannot be written; mutual recursion between *families* is what the generated mutual
+recursor already provides, and that is the case the musical library needs — a syntax tree and its list of children, an
+even/odd pair. The lexicographic combination this paragraph once promised is what mutual definitions would need, and
+§2.4 admits one. Re-opening is an ordinary repair of a later prompt, and the evidence is a program in `stdlib/` or
+`examples/` that needs two definitions in one recursive knot and cannot be written as one definition over a mutual
+family. A top-level `match` on two of the definition's own arguments is refused for the same reason and names the call,
+rather than being silently accepted as a measure nobody checked.
 
 **Laws.** Positivity refuses the classic negative occurrences. A generated recursor's β-rule holds (ι-reduction on each
 constructor). A compiled `match` is convertible to its recursor form. Coverage is complete: a match the checker accepts
