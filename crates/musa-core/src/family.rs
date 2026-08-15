@@ -88,7 +88,7 @@ use crate::list::List;
 use crate::origin::Origin;
 use crate::quote::{Depth, quote_type};
 use crate::term::{DbLevel, Index, Name, Shape, Term};
-use crate::value::{Env, Form, Neutral, Spine, Value};
+use crate::value::{Elim, Env, Form, Head, Neutral, Value};
 
 /// One binder of a telescope: a name and the type it stands at.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -472,10 +472,7 @@ impl Constant {
 
     /// This constant as a value: a rigid neutral, which is what a constant is.
     pub(crate) fn value(&self, origin: Origin) -> Value {
-        Value::neutral(Neutral {
-            origin,
-            spine: Spine::Const(self.clone()),
-        })
+        Value::neutral(Neutral::head(origin, Head::Const(self.clone())))
     }
 
     /// How many arguments saturate it.
@@ -890,21 +887,19 @@ fn index_arguments(ty: &Term, params: usize) -> Vec<Term> {
 
 /// The constant at the head of a blocked spine, and what has been applied to it.
 fn spine(neutral: &Neutral) -> Option<(Constant, Vec<Value>)> {
-    let mut arguments = Vec::new();
-    let mut at = neutral;
-    loop {
-        match &at.spine {
-            Spine::App { function, argument } => {
-                arguments.push(Value::clone(argument));
-                at = function;
-            }
-            Spine::Const(constant) => {
-                arguments.reverse();
-                return Some((constant.clone(), arguments));
-            }
-            Spine::Var(_, _) | Spine::Meta(_) | Spine::Project { .. } | Spine::J { .. } => return None,
-        }
+    let Head::Const(constant) = &neutral.head else {
+        return None;
+    };
+    let mut arguments = Vec::with_capacity(neutral.spine.len());
+    for elimination in &neutral.spine {
+        // A recursor is applied, never projected from and never eliminated at
+        // the identity type, so anything else means this is not a reduction.
+        let Elim::App { argument, .. } = elimination else {
+            return None;
+        };
+        arguments.push(Value::clone(argument));
     }
+    Some((constant.clone(), arguments))
 }
 
 /// ι at an inductive family, or `None` when the elimination stays blocked.

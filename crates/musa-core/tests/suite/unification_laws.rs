@@ -172,6 +172,10 @@ fn a_mismatch_inside_a_record_type_names_the_field() {
 /// λ's argument, because the solution would be read back where that argument does
 /// not exist. Refusing is the only honest answer — there is no smaller solution
 /// to fall back to.
+///
+/// The check now rides on the quotation that *writes* the solution rather than
+/// walking the finished term a second time, so this program is what says the
+/// fused check refuses where the two-pass one did.
 #[test]
 fn a_solution_that_would_escape_its_scope_is_refused_rather_than_captured() {
     // `let f : {X : Type 0} → ((y : {}) → X) → {} = λ{X}. λg. {}

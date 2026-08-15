@@ -10,7 +10,7 @@
 
 use musa_core::{Budget, CoreError, Cx, Index, Level, Origin, Term, convertible, convertible_types};
 
-use crate::fixtures::{Sample, corpus};
+use crate::fixtures::{Sample, corpus, corpus_at};
 
 /// Everything built here is written by the test rather than by an author, so
 /// one origin is enough; `provenance_laws.rs` is where origins are the subject.
@@ -209,4 +209,93 @@ fn exhaustion_is_not_a_negative_answer() {
         matches!(convertible_types(&narrow, &deep, &type0), Err(CoreError::Exhausted(_))),
         "a budget that runs out must say so rather than answering false"
     );
+}
+
+/// §3's conversion decides by walking values, and reading back is the failure
+/// path's job — so a conversion that says `true` never quoted a node.
+///
+/// Stated with the budget rather than with a counter, which is what makes it a
+/// law about the language's own accounting instead of an assertion about one
+/// implementation's call graph. Before this prompt `convertible` normalized both
+/// sides and compared, so every sample here would have exhausted; the ones that
+/// disagree still read back, because a mismatch's message *is* the two normal
+/// forms and §4's report is not optional.
+#[test]
+fn a_conversion_that_agrees_reads_nothing_back() {
+    let samples = corpus_at(Budget::LANGUAGE.without_quotation()).expect("the corpus builds without quoting");
+    for Sample {
+        name,
+        cx,
+        ty,
+        left,
+        right,
+        equal,
+    } in samples
+    {
+        if !equal {
+            continue;
+        }
+        assert_eq!(
+            convertible(&cx, &ty, &left, &right),
+            Ok(true),
+            "{name}: deciding this took a quoted node"
+        );
+    }
+}
+
+/// The naive conversion — normalize both sides completely and compare up to α —
+/// as a **test-local oracle**, and the second-path audit stated as a test.
+///
+/// This was `convertible`'s body until Finding G made the facade a call into the
+/// unifier. Keeping it here rather than deleting it is the point: it is §3 read
+/// literally, with no early exit, no type-directed dispatch, and nothing shared
+/// with the procedure it checks. Two implementations of one question are a
+/// hazard when both ship and a specification when only one does.
+///
+/// # Panics
+///
+/// If either side has no normal form, which the corpus guarantees it does.
+fn oracle(cx: &Cx, ty: &Term, left: &Term, right: &Term) -> bool {
+    let left = musa_core::normalize(cx, ty, left).expect("the corpus normalizes");
+    let right = musa_core::normalize(cx, ty, right).expect("the corpus normalizes");
+    left == right
+}
+
+/// The same, for two types.
+///
+/// # Panics
+///
+/// As [`oracle`].
+fn type_oracle(cx: &Cx, left: &Term, right: &Term) -> bool {
+    let left = musa_core::normalize_type(cx, left).expect("the corpus normalizes");
+    let right = musa_core::normalize_type(cx, right).expect("the corpus normalizes");
+    left == right
+}
+
+/// Conversion and the oracle agree on every sample, at terms and at types.
+#[test]
+fn conversion_agrees_with_the_naive_oracle() {
+    for Sample {
+        name,
+        cx,
+        ty,
+        left,
+        right,
+        ..
+    } in corpus()
+    {
+        assert_eq!(
+            convertible(&cx, &ty, &left, &right),
+            Ok(oracle(&cx, &ty, &left, &right)),
+            "{name}: the unifier and normalize-and-compare disagree"
+        );
+        // The types the samples are asked at are themselves a corpus of types,
+        // and comparing each with itself is the one question available without
+        // inventing a second one.
+        assert_eq!(
+            convertible_types(&cx, &ty, &ty),
+            Ok(type_oracle(&cx, &ty, &ty)),
+            "{name}: the type disagrees with itself"
+        );
+    }
 }

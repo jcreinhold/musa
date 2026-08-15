@@ -33,7 +33,7 @@ use crate::budget::Meter;
 use crate::error::{CoreError, Malformed};
 use crate::origin::Origin;
 use crate::term::{Field, Name, Plicity, Shape, Term};
-use crate::value::{Closure, Env, Form, Neutral, Spine, Telescope, Value};
+use crate::value::{Closure, Elim, Env, Form, Head, Neutral, Telescope, Value};
 
 /// Evaluate `term` in `env`.
 ///
@@ -60,12 +60,10 @@ pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, C
             // A meta is closed, so the environment says nothing about it: it is
             // either its solution, with that solution's own origins (§7), or a
             // flexible head waiting for one.
-            Shape::Meta(meta) => Ok(meta.solution().cloned().unwrap_or_else(|| {
-                Value::neutral(Neutral {
-                    origin: here,
-                    spine: Spine::Meta(meta.clone()),
-                })
-            })),
+            Shape::Meta(meta) => Ok(meta
+                .solution()
+                .cloned()
+                .unwrap_or_else(|| Value::neutral(Neutral::head(here, Head::Meta(meta.clone()))))),
             Shape::Pi {
                 plicity,
                 name,
@@ -232,55 +230,56 @@ pub(crate) fn force(meter: &mut Meter, value: &Value) -> Result<Option<Value>, C
     replay(meter, neutral).map(Some)
 }
 
-/// Whether the innermost head of a spine is a metavariable that now has a
-/// solution.
+/// Whether the head of a spine is a metavariable that now has a solution.
+///
+/// One field read rather than a walk to the deepest node: that is the whole
+/// point of storing the head beside the spine instead of under it.
 fn head_is_solved(neutral: &Neutral) -> bool {
-    match &neutral.spine {
-        Spine::Var(_, _) | Spine::Const(_) => false,
-        Spine::Meta(meta) => meta.is_solved(),
-        Spine::App { function, .. } => head_is_solved(function),
-        Spine::Project { record, .. } => head_is_solved(record),
-        Spine::J { proof, .. } => head_is_solved(proof),
+    match &neutral.head {
+        Head::Var(_, _) | Head::Const(_) => false,
+        Head::Meta(meta) => meta.is_solved(),
     }
 }
 
 /// Re-run a blocked spine against a head that is no longer blocked.
 fn replay(meter: &mut Meter, neutral: &Arc<Neutral>) -> Result<Value, CoreError> {
-    let here = neutral.origin;
-    match &neutral.spine {
-        Spine::Var(_, _) | Spine::Const(_) => Ok(Value::shared_neutral(neutral)),
-        Spine::Meta(meta) => Ok(meta
-            .solution()
-            .cloned()
-            .unwrap_or_else(|| Value::shared_neutral(neutral))),
-        Spine::App { function, argument } => {
-            let function = replay(meter, function)?;
-            apply(meter, here, function, Value::clone(argument))
-        }
-        Spine::Project { record, field } => {
-            let record = replay(meter, record)?;
-            project(meter, here, record, field)
-        }
-        Spine::J {
+    let Head::Meta(meta) = &neutral.head else {
+        return Ok(Value::shared_neutral(neutral));
+    };
+    let Some(solution) = meta.solution().cloned() else {
+        return Ok(Value::shared_neutral(neutral));
+    };
+    let mut answer = solution;
+    // Innermost first, which is the order the spine is stored in: `?α x .f`
+    // applies before it projects.
+    for elimination in &neutral.spine {
+        answer = eliminate(meter, answer, elimination)?;
+    }
+    Ok(answer)
+}
+
+/// Apply one elimination to a value that is no longer blocked.
+fn eliminate(meter: &mut Meter, target: Value, elimination: &Elim) -> Result<Value, CoreError> {
+    match elimination {
+        Elim::App { origin, argument } => apply(meter, *origin, target, Value::clone(argument)),
+        Elim::Project { origin, field } => project(meter, *origin, target, field),
+        Elim::J {
+            origin,
             ty,
             from,
             motive,
             base,
             to,
-            proof,
-        } => {
-            let proof = replay(meter, proof)?;
-            jay(
-                meter,
-                here,
-                Value::clone(ty),
-                Value::clone(from),
-                Value::clone(motive),
-                Value::clone(base),
-                Value::clone(to),
-                proof,
-            )
-        }
+        } => jay(
+            meter,
+            *origin,
+            Value::clone(ty),
+            Value::clone(from),
+            Value::clone(motive),
+            Value::clone(base),
+            Value::clone(to),
+            target,
+        ),
     }
 }
 
@@ -311,13 +310,13 @@ pub(crate) fn apply(meter: &mut Meter, here: Origin, function: Value, argument: 
         // recursor's target is its last argument, so this is the first moment the
         // elimination can know it has met a constructor.
         Form::Neutral(function) => {
-            let built = Neutral {
-                origin: here,
-                spine: Spine::App {
-                    function,
+            let built = Neutral::eliminated(
+                &function,
+                Elim::App {
+                    origin: here,
                     argument: Arc::new(argument),
                 },
-            };
+            );
             match crate::family::iota(meter, &built)? {
                 Some(reduced) => Ok(reduced),
                 None => Ok(Value::neutral(built)),
@@ -347,13 +346,13 @@ pub(crate) fn project(meter: &mut Meter, here: Origin, record: Value, field: &Na
             .find(|(name, _)| name == field)
             .map(|(_, value)| value.clone())
             .ok_or_else(|| Malformed::NoSuchField(Arc::clone(field)).into()),
-        Form::Neutral(record) => Ok(Value::neutral(Neutral {
-            origin: here,
-            spine: Spine::Project {
-                record,
+        Form::Neutral(record) => Ok(Value::neutral(Neutral::eliminated(
+            &record,
+            Elim::Project {
+                origin: here,
                 field: Arc::clone(field),
             },
-        })),
+        ))),
         Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) | Form::RecordType(_) | Form::Id { .. } | Form::Refl(_) => {
             Err(Malformed::NotARecord.into())
         }
@@ -382,17 +381,17 @@ pub(crate) fn jay(
     let proof = force(meter, &proof)?.unwrap_or(proof);
     match proof.form {
         Form::Refl(_) => Ok(base),
-        Form::Neutral(proof) => Ok(Value::neutral(Neutral {
-            origin: here,
-            spine: Spine::J {
+        Form::Neutral(proof) => Ok(Value::neutral(Neutral::eliminated(
+            &proof,
+            Elim::J {
+                origin: here,
                 ty: Arc::new(ty),
                 from: Arc::new(from),
                 motive: Arc::new(motive),
                 base: Arc::new(base),
                 to: Arc::new(to),
-                proof,
             },
-        })),
+        ))),
         Form::Universe(_)
         | Form::Pi { .. }
         | Form::Lam(_)
@@ -445,15 +444,38 @@ pub(crate) fn field_type(
 /// elimination applied to it, which means the caller built a term the
 /// elaborator would have refused.
 pub(crate) fn neutral_type(meter: &mut Meter, neutral: &Neutral) -> Result<Value, CoreError> {
-    meter.nested("neutral typing", |meter| match &neutral.spine {
-        Spine::Var(_, ty) => Ok(Value::clone(ty)),
-        // A meta is closed and carries its own type, which is why creating one
-        // has to build that type rather than remember a context.
-        Spine::Meta(meta) => Ok(meta.ty().clone()),
-        // A constant's type is its declaration's, assembled on demand rather
-        // than stored beside it — `family.rs` says why.
-        Spine::Const(constant) => constant.ty(meter),
-        Spine::App { function, argument } => match head_type(meter, function)?.form {
+    meter.nested("neutral typing", |meter| {
+        let mut ty = match &neutral.head {
+            Head::Var(_, ty) => Value::clone(ty),
+            // A meta is closed and carries its own type, which is why creating
+            // one has to build that type rather than remember a context.
+            Head::Meta(meta) => meta.ty().clone(),
+            // A constant's type is its declaration's, assembled on demand
+            // rather than stored beside it — `family.rs` says why.
+            Head::Const(constant) => constant.ty(meter)?,
+        };
+        // The prefix each elimination is applied to, grown in place. A
+        // projection's field type may mention the record it projects from, and
+        // `J`'s result type mentions the proof, so the walk has to be able to
+        // name what it has consumed so far.
+        let mut prefix = Neutral::head(neutral.origin, neutral.head.clone());
+        for elimination in &neutral.spine {
+            // A type written as a metavariable is blocked until that meta is
+            // solved; matching it unforced would answer `NotAFunction` for a
+            // term the elaborator had just proved well typed.
+            let head = force(meter, &ty)?.unwrap_or(ty);
+            ty = eliminated_type(meter, head, &prefix, elimination)?;
+            prefix.spine.push(elimination.clone());
+        }
+        Ok(ty)
+    })
+}
+
+/// The type of `prefix` eliminated by `elimination`, given the prefix's own
+/// type already forced.
+fn eliminated_type(meter: &mut Meter, head: Value, prefix: &Neutral, elimination: &Elim) -> Result<Value, CoreError> {
+    match elimination {
+        Elim::App { argument, .. } => match head.form {
             Form::Pi { codomain, .. } => apply_closure(meter, &codomain, Value::clone(argument)),
             Form::Universe(_)
             | Form::Lam(_)
@@ -463,9 +485,9 @@ pub(crate) fn neutral_type(meter: &mut Meter, neutral: &Neutral) -> Result<Value
             | Form::Refl(_)
             | Form::Neutral(_) => Err(Malformed::NotAFunction.into()),
         },
-        Spine::Project { record, field } => match head_type(meter, record)?.form {
+        Elim::Project { field, .. } => match head.form {
             Form::RecordType(telescope) => {
-                let subject = Value::shared_neutral(record);
+                let subject = Value::neutral(prefix.clone());
                 field_type(meter, &telescope, &subject, field)
             }
             Form::Universe(_)
@@ -476,21 +498,20 @@ pub(crate) fn neutral_type(meter: &mut Meter, neutral: &Neutral) -> Result<Value
             | Form::Refl(_)
             | Form::Neutral(_) => Err(Malformed::NotARecord.into()),
         },
-        Spine::J { motive, to, proof, .. } => {
-            let at_endpoint = apply(meter, neutral.origin, Value::clone(motive), Value::clone(to))?;
-            apply(meter, neutral.origin, at_endpoint, Value::shared_neutral(proof))
+        Elim::J { origin, motive, to, .. } => {
+            let at_endpoint = apply(meter, *origin, Value::clone(motive), Value::clone(to))?;
+            apply(meter, *origin, at_endpoint, Value::neutral(prefix.clone()))
         }
-    })
+    }
 }
 
-/// The type of a blocked elimination's head, unfolded far enough to be matched
-/// on.
+/// The type of a blocked elimination, unfolded far enough to be matched on.
 ///
-/// [`neutral_type`] decides what an elimination is legal by matching its head's
-/// type against [`Form::Pi`] or [`Form::RecordType`], and a type that was itself
-/// written as a metavariable is [`Form::Neutral`] until that meta is solved.
-/// Matching without forcing would answer [`Malformed::NotAFunction`] for a term
-/// the elaborator had just proved well typed.
+/// A caller decides what an elimination is legal by matching this against
+/// [`Form::Pi`] or [`Form::RecordType`], and a type that was itself written as a
+/// metavariable is [`Form::Neutral`] until that meta is solved. Matching without
+/// forcing would answer [`Malformed::NotAFunction`] for a term the elaborator
+/// had just proved well typed.
 ///
 /// # Errors
 ///

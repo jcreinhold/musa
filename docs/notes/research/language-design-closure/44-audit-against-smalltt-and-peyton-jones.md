@@ -7,7 +7,7 @@ bidirectional elaboration with metavariables, inductive families, dependent `mat
 writing — records and enums. Two references sit outside the repository that the design has been claiming kinship with:
 
 - **`~/Code/smalltt`** — András Kovács' reference implementation of a small dependently typed language, whose README is
-  an argument about *how to make elaboration fast* rather than a specification of what to elaborate.
+  an argument about _how to make elaboration fast_ rather than a specification of what to elaborate.
 - **Peyton Jones, _The Implementation of Functional Programming Languages_** (1987) — chapters 3–6: the enriched lambda
   calculus, structured types, the semantics of pattern matching, and its efficient compilation. Several prompts already
   cite it by chapter, and [`case.rs`](../../../../crates/musa-core/src/case.rs)'s module header names ch. 5 as its
@@ -27,14 +27,14 @@ Nothing here governs. `docs/rules/` governs; this is evidence for a later repair
 The measurable one is not a micro-optimization. `match` duplicates an arm's body once per case-tree leaf the arm
 reaches, and elaboration re-typechecks each copy. Peyton Jones §5.4.1 names this exact failure — it is his `unwieldy`
 example — and the fix he gives (the fat bar) is the one thing [`case.rs`](../../../../crates/musa-core/src/case.rs)'s
-header explicitly declines. The decline is correct; the *replacement* was never supplied. Measured below: elaborated
+header explicitly declines. The decline is correct; the _replacement_ was never supplied. Measured below: elaborated
 term size and elaboration time both grow by **2.2× per matched column**, reaching 14.9 MB and 45 ms at ten columns for a
 program whose source is eleven lines.
 
 The remaining four ad hoc divergences are all one design decision seen from four sides: **musa-core has no notion of a
 top-level definition, so it has no unfolding control**, and every technique smalltt spends its README on — glued
 evaluation, approximate conversion, the three quotation modes, approximate occurs checking — is a technique for deciding
-*when not to unfold*. None of them can be implemented in a core that cannot fold anything. Prompt 142 hands that core
+_when not to unfold_. None of them can be implemented in a core that cannot fold anything. Prompt 142 hands that core
 the standard library.
 
 ---
@@ -70,7 +70,7 @@ case analysis) from product types (which need only selectors, and whose patterns
 That is the correct reading, and — since prompt 136 makes records structural — it is also the only reading available,
 because a structural record has no constructor to name.
 
-**Opening only the *named* fields is a real improvement on the book.** The code argues it: opening every declared field
+**Opening only the _named_ fields is a real improvement on the book.** The code argues it: opening every declared field
 would put a wildcard column in the matrix for each field the author declined to mention. ch. 5 has no equivalent because
 its patterns are positional.
 
@@ -83,7 +83,7 @@ the column's type rather than by the spelling — the same discipline `parser.rs
 
 `narrowed` copies each surviving row into every constructor branch, and `leaf` calls
 `self.elaborator.check_open(&inner, &arm.body, goal)` on whichever row wins. An arm whose pattern in a split column is a
-variable therefore survives into *every* branch of that split, and its body is elaborated once per leaf it reaches — not
+variable therefore survives into _every_ branch of that split, and its body is elaborated once per leaf it reaches — not
 merely emitted twice, but **type-checked** twice, at a different (refined) goal each time.
 
 Peyton Jones §5.4.1 opens on precisely this:
@@ -134,14 +134,14 @@ copying `other` or adding a runtime pattern-failure value."
 ordered fallbacks".
 
 Prompt 135 built the case compiler and took option (c) — permit duplication — without bounding it and without recording
-the choice. The decision was not overturned; it was lost. Note 42 superseded that whole design line for a *different*
+the choice. The decision was not overturned; it was lost. Note 42 superseded that whole design line for a _different_
 reason (the dependent core), and the join-point decision went with it unexamined even though nothing about a dependent
 core argues against it.
 
 That matters for the classification. This is not a cost the project accepted and can now weigh; it is a cost the project
 twice decided not to pay, and then paid silently. And the answer §2 proposes below — a `let`-bound function per arm — is
 note 26's join point, spelled in a calculus that has no labels: a join point that can only be entered by a tail jump
-*is* a let-bound function that is only ever applied in tail position, and in a dependent core it is the version that
+_is_ a let-bound function that is only ever applied in tail position, and in a dependent core it is the version that
 typechecks.
 
 ### The measurement
@@ -177,7 +177,7 @@ Exponential, base ≈ 2.2, in both size and time. Eleven lines of source produce
 
 A second shape — one specific arm and one catch-all, `Zero…Zero` against `z…z` — grows **linearly** (20 KB → 143 KB from
 1 to 6 columns). That is worth stating because it bounds the finding honestly: the blow-up needs several arms that each
-constrain a *different* column, which is what makes each split leave every other arm alive. A dispatch table on one
+constrain a _different_ column, which is what makes each split leave every other arm alive. A dispatch table on one
 column — `staff.musa`'s fifteen notation keywords — is one split and duplicates nothing.
 
 But the shape that does blow up is not exotic. It is "several special cases plus a default", which is what
@@ -189,7 +189,7 @@ But the shape that does blow up is not exotic. It is "several special cases plus
 **Elaborate each arm body exactly once, and let the leaves reference it.**
 
 For each arm, bind its body as a function of the arm's own pattern variables, elaborate that function once, and have
-every leaf the arm reaches *apply* it rather than re-elaborate it:
+every leaf the arm reaches _apply_ it rather than re-elaborate it:
 
 ```
 let arm₂ = (λ (z₀ : A₀) … (z_{k-1} : A_{k-1}). body) in
@@ -200,7 +200,7 @@ The dependent typing works out, and the reason is precise: an arm reaches more t
 in the split column is a variable, and that variable's binder is exactly the abstraction that makes the body uniform
 across the constructors the variable covers. Where the goal is `P x` and the arm binds `z := x`, the hoisted body has
 type `Π (z : A). P z`; the `Succ` leaf applies it to `Succ k′` and gets `P (Succ k′)`, which is that leaf's refined goal
-by construction. An arm whose pattern in the split column is a *constructor* reaches exactly one leaf and needs no
+by construction. An arm whose pattern in the split column is a _constructor_ reaches exactly one leaf and needs no
 hoisting — so hoisting the variable-pattern arms is both sufficient and always well-typed.
 
 This is ch. 6's let-bound right-hand side, not an invention: it is what the fat bar was doing structurally, minus the
@@ -209,13 +209,13 @@ avoid the same blow-up.
 
 Two consequences worth naming:
 
-- `Refusal::UnreachableBranch` gets *easier*, not harder: an arm is unreachable exactly when its `let` is never applied,
+- `Refusal::UnreachableBranch` gets _easier_, not harder: an arm is unreachable exactly when its `let` is never applied,
   which is one check on the finished tree rather than the current `selected` flag set at each leaf.
 - The `let` must be bound outside the recursor application, so it is a `Term::bind` at the top of `compile`'s result
   with the arm functions in arm order. Origins are unaffected — each `let` carries the arm's own origin, which is more
   faithful to §7 than today's N copies of one body all carrying the same one.
 
-**Where it lands.** The *implementation* repair needs no amendment: `02-core-calculus.md` §6.2 fixes the meaning of
+**Where it lands.** The _implementation_ repair needs no amendment: `02-core-calculus.md` §6.2 fixes the meaning of
 `match`, and the meaning does not change — the hoisted tree is convertible with the duplicated one, which is exactly the
 law [`coverage_laws.rs`](../../../../crates/musa-core/tests/suite/coverage_laws.rs) already states. It should be a new
 prompt between 136 and 137, ahead of 142's cutover; folding it into prompt 144 (`diagnostics-and-performance`) is worse,
@@ -229,7 +229,7 @@ form the code does —
 
 — and that sentence is what a future reader will re-derive the duplication from. Correcting it is a change to a
 governing document, which is the prompt README's amendment procedure and the user's call, not a step in a batch run. The
-sentence is not *false*; it is a true reason for declining one of the fat bar's two jobs, presented as a reason for
+sentence is not _false_; it is a true reason for declining one of the fat bar's two jobs, presented as a reason for
 declining both. The minimal honest repair is one added clause naming §5.4.1's second job and the let-bound arm as its
 replacement.
 
@@ -238,14 +238,14 @@ replacement.
 **Ad hoc, but small.**
 
 `testable` scans columns left to right and picks the first column any row tests. ch. 5 is more naive still — it always
-processes column 1 — so this is already an improvement. But it can split a column no *relevant* row needs: given rows
+processes column 1 — so this is already an improvement. But it can split a column no _relevant_ row needs: given rows
 whose first is all-variables in the remaining columns, the search still finds a later row's constructor and splits.
 Maranget's necessity heuristic (choose a column that every row reaching this node must test) is the standard answer and
 would shrink the trees Finding A duplicates into.
 
 **Correct long-term design:** score columns by necessity, break ties leftmost. It is a strictly local change to
 `testable` and it does not alter what a `match` means, so it is a cheap follow-on to Finding A's prompt — but it is a
-*heuristic*, and Finding A's fix makes the residual cost linear rather than exponential, so it is not urgent on its own.
+_heuristic_, and Finding A's fix makes the residual cost linear rather than exponential, so it is not urgent on its own.
 
 ## §4 ch. 3 and ch. 6 — the enriched calculus
 
@@ -273,13 +273,13 @@ never leaves the crate. That is smalltt's central structural decision and musa-c
 
 **A designed-in cliff, arriving at prompt 142.**
 
-smalltt's README spends its longest section on **glued evaluation**: a top-level definition evaluates to a *pair* of
+smalltt's README spends its longest section on **glued evaluation**: a top-level definition evaluates to a _pair_ of
 values, one where the definition stays folded and one where it is unfolded, so conversion can try the folded one first
 and unification can produce solutions that mention `Nat` rather than the 400-node normal form of `Nat`.
 
 musa-core has no top-level definition scope at all. `Spine::Const` covers families, constructors and recursors — all
 rigid — and everything else is either a context assumption or a `let`, and `let` is δ-transparent through
-`Scope::define`. There is nothing that *could* be held folded, so there is nothing glued evaluation would buy today. The
+`Scope::define`. There is nothing that _could_ be held folded, so there is nothing glued evaluation would buy today. The
 implementation is not wrong for its current inputs.
 
 It becomes wrong at **prompt 142**, which points the whole standard library at this core. Every stdlib definition will
@@ -290,17 +290,17 @@ normal forms rather than the names the author wrote.
 **Correct long-term design.** Give the core a definition scope whose values are smalltt's `G`: a pair of the least- and
 most-reduced value. Concretely:
 
-1. `Spine::Def(DefId)` as a *flexible-rigid* head — it never blocks like a variable and never computes like a meta, it
+1. `Spine::Def(DefId)` as a _flexible-rigid_ head — it never blocks like a variable and never computes like a meta, it
    unfolds on demand.
 2. Conversion tries the folded comparison first (two `Def` heads with the same id and convertible spines answer `true`
    without unfolding either), and unfolds only on disagreement. This is smalltt's speculation, and it is Finding E's
    prerequisite.
-3. Quotation for *diagnostics* stops at folded heads; quotation for meta solutions does not.
+3. Quotation for _diagnostics_ stops at folded heads; quotation for meta solutions does not.
 
 This is squarely a prompt-144 concern and 144's own Design should name it, because 144 re-measures the P1/P2 budget
 against exactly the workload that exposes it.
 
-## §7 Finding D — conversion has no approximate mode, and no structural rule at Π or at record types for *terms*
+## §7 Finding D — conversion has no approximate mode, and no structural rule at Π or at record types for _terms_
 
 **Ad hoc. The stated justification argues correctness, not cost, and its premise is wrong for the roadmap.**
 
@@ -319,13 +319,13 @@ _ => Self::by_reading_back(meter, depth, at, left, right),
 Three things are wrong with this.
 
 1. **"A structural walk would gain nothing" is a claim about the answer, and the objection is about the cost.**
-   `by_reading_back` fully normalizes *both* sides and allocates two complete normal forms before comparing a single
+   `by_reading_back` fully normalizes _both_ sides and allocates two complete normal forms before comparing a single
    node. A structural walk opens both closures at one fresh variable and can fail on the first field — the standard
    fail-fast that every NbE conversion checker has. smalltt's `conv` has the `VLam`/`VLam` case for this reason, and it
    also has `VLam`/other with η-expansion so a lambda and a neutral never need quoting either.
 2. **The premise — that a lambda or record "stands here only as an eliminated argument" — is false for musa's own
    roadmap.** `10-traits.md` elaborates dictionaries to records. After prompt 137, comparing two dictionaries is
-   comparing two record *values*, and it will be one of the most frequent conversions the checker performs. Each one
+   comparing two record _values_, and it will be one of the most frequent conversions the checker performs. Each one
    will normalize two dictionaries end to end.
 3. **`step` never dispatches on the type**, so η at Π and at record types is performed only by quotation. Two functions
    compared at a function type, neither of them a `Lam` in `Form`, reach `by_reading_back` as well.
@@ -335,7 +335,7 @@ Three things are wrong with this.
 - **Structural arms.** `Lam`/`Lam` opens both closures at one fresh variable and recurses at the codomain. `Record`/
   `Record` walks fields in telescope order. Add the η arms: at `At::Term(ty)` with `ty` a Π, open both sides under a
   fresh variable whatever their forms; with `ty` a record type, compare field by field. `by_reading_back` then becomes
-  what it should be — the *diagnostic* path, run only once conversion has already failed, to build the message.
+  what it should be — the _diagnostic_ path, run only once conversion has already failed, to build the message.
 - **Approximate conversion**, smalltt's rigid/flex/full three-state speculation with one-shot backtracking, layered on
   Finding C's `Def` heads. This one is only worth building after there are definitions to fold, so it belongs to the
   same prompt as C.
@@ -356,10 +356,10 @@ output. Two costs follow.
   solution keeps folded heads wherever the occurs check does not force unfolding. It also keeps **eta-short** solutions
   for the same reason.
 - **The occurs check is a second traversal.** `restrict` re-walks the quoted term after quotation has already walked the
-  value. smalltt fuses the two — quotation *is* the occurs check — and caches an approximate occurs result per
+  value. smalltt fuses the two — quotation _is_ the occurs check — and caches an approximate occurs result per
   metavariable so a repeated check is a lookup.
 
-**Correct long-term design.** Fuse scope restriction into quotation as a quotation *mode*, and keep the fully-unfolded
+**Correct long-term design.** Fuse scope restriction into quotation as a quotation _mode_, and keep the fully-unfolded
 walk as the fallback taken only when the approximate one reports a possible occurrence. Add smalltt's per-meta cache.
 This depends on Finding C — there is no point in a flexible quote mode until there is something foldable to keep folded
 — so it is one prompt with C and D, not three.
@@ -382,7 +382,7 @@ pub(crate) enum Spine {
 }
 ```
 
-The head — `Var`, `Const` or `Meta` — sits at the *deepest* position of a left-nested chain. Consequences:
+The head — `Var`, `Const` or `Meta` — sits at the _deepest_ position of a left-nested chain. Consequences:
 
 - Finding the head of `f x y z` is three `Arc<Neutral>` hops. `flexible_head` does this on both sides of **every**
   unification step, and `force`'s `head_is_solved` does it again before that.
@@ -418,11 +418,11 @@ pub fn convertible(cx: &Cx, ty: &Term, left: &Term, right: &Term) -> Result<bool
 ```
 
 This normalizes both sides completely and compares normal forms — the most expensive decision procedure available, and a
-*second* implementation of a question `Unifier` already answers value-directed with early exit. The repo's own
+_second_ implementation of a question `Unifier` already answers value-directed with early exit. The repo's own
 second-path audits (prompt 133's, and prompt 148's to come) forbid exactly this shape.
 
 It is latent: a search finds no caller outside musa-core's own law suites, and stating the laws through the naive
-procedure is arguably the *right* thing for a specification test — it is the definition, checked against the
+procedure is arguably the _right_ thing for a specification test — it is the definition, checked against the
 implementation. The trap is the first external caller, which prompt 142 will supply.
 
 **Correct long-term design.** Keep one procedure. `convertible` becomes a thin call into the unifier's conversion with
@@ -437,7 +437,7 @@ before 142 hands it a caller.
 [`value.rs`](../../../../crates/musa-core/src/value.rs)'s header argues it: quotation is type-directed because it
 performs η at Π and at records, so quoting a blocked application's argument needs that argument's type, so a neutral
 must be able to say its type. Without it `f g` and `f (λx. g x)` quote differently and conversion answers `false` for
-two terms §3 calls equal. That argument is sound and the alternative — type-directed *conversion* without quoting, as
+two terms §3 calls equal. That argument is sound and the alternative — type-directed _conversion_ without quoting, as
 Agda does — is a larger change than it looks, because §7's origin obligations are stated over quoted normal forms.
 
 The cost is real and should be recorded rather than fixed: every neutral variable holds an `Arc<Value>` it usually does
@@ -459,7 +459,7 @@ the type live on the `Head` rather than on every node of the chain, which is mos
 | G | `convertible` normalizes both sides — a second path | ad hoc, latent | One procedure; the naive one becomes a test-local oracle | before 142; audited at 148 |
 | H | Neutral variables carry their types | **backed** | Keep; move the type onto `Head` when F lands | recorded only |
 
-## What this does *not* find
+## What this does _not_ find
 
 Worth stating, because a thorough audit that finds only problems is not thorough.
 
@@ -478,3 +478,42 @@ measurement on **real** input — which does not exist until prompt 142 puts the
 If 142's corpus contains no multi-subject `match` with several partially-constraining arms, Finding A is a latent hazard
 rather than a present cost, and the hoisting prompt can wait for 144. Note 43's rewrite of `document_read` and of the
 studio adapter's `validate` predicts otherwise, and those two programs are the cheapest available test.
+
+## Closing: what prompt 136b discharged, and what the measurement became
+
+Written after the fact, because an audit that keeps claiming a cost that is gone has stopped being evidence.
+
+**Discharged.** Findings B, D, E, F, and G landed in prompt 136b. Neutrals are head-plus-vector, so the head is one
+field access away and a spine-length disagreement is one comparison; conversion has structural `Lam`/`Lam` and
+`Record`/`Record` arms and dispatches η on the type, with reading back demoted to the path that builds a mismatch's
+message; scope restriction and the occurs check ride on the quotation that writes a solution rather than walking the
+finished term again; `testable` consults only the first row; and `convertible` is one call into the unifier with solving
+disabled, with normalize-and-compare kept in `conversion_laws.rs` as the oracle it is checked against. Finding H is
+mostly paid off by F, because a neutral's type now lives once on the head rather than on every node of a chain.
+
+**Two findings turned out to be one.** §2 and §3 were written as one change on the theory that B decides how many leaves
+A has to serve. B decided the whole question. On the interleaved program §2 measured — 2.2× per column, 3 columns at
+55,942 characters and 10 at 14,928,160 — the first-row rule leaves this:
+
+| columns | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| term size (chars) | 20,264 | 26,279 | 34,594 | 45,211 | 58,132 | 73,361 | 90,893 | 110,729 |
+
+That is `22,138 + 1,384·k²` to within a percent, every column elaborates in under 3 ms, and each arm on that program is
+now elaborated exactly once. The shape §2's "second shape" bound — one specific arm plus a catch-all — is unaffected by
+B and still grows linearly in the leaves the catch-all reaches (20,264 at one column to 203,517 at eight), which is what
+is left of Finding A.
+
+**§2's proposed condition for hoisting is wrong.** "An arm is hoistable iff the types of the variables it binds, and the
+goal its body answers, are all expressible at the match's own depth" inspects the abstraction's interface, and what
+breaks is the body. A leaf binds its pattern variables with `define`, so an arm body may rely on the binder _reducing_;
+a λ binder is an assumption, and the hoisted body is checked in a strictly weaker context than any of its leaves.
+`coverage_laws.rs`'s `a_pattern_binder_is_a_definition_at_every_leaf_it_reaches` is the counterexample and is now a
+permanent law: every binder in it is a `Nat` and its goal is a `Nat`, so the condition admits it, and the abstraction it
+would build does not typecheck. The sound shape is speculative — build the abstraction, elaborate once, fall back per
+leaf, report only the per-leaf refusal — and it needs a plan pass first, because splitting an indexed family refines the
+binder types too.
+
+**So the answer to "the one thing that would change the verdict" is: it changed.** Finding A is a latent constant factor
+rather than a present cost, and it goes to prompt 144 with Finding C, which is where this note's last section said it
+should go if the measurement moved. Six items are waiting there, and 144's Design names each one.

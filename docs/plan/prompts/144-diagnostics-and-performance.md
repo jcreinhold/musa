@@ -31,6 +31,16 @@ of the compiler holds, and bring P1 and P2 back inside `06-performance.md`'s 10%
   charged.
 - `docs/rules/desktop/` on states and voice: a diagnostic is interface text, and the desktop specification already says
   what Musa sounds like when it refuses.
+- [`docs/notes/research/language-design-closure/44-audit-against-smalltt-and-peyton-jones.md`](../../notes/research/language-design-closure/44-audit-against-smalltt-and-peyton-jones.md)
+  in full, and its closing section. Prompt 136b removed the audit's ad hoc divergences and left this prompt six items it
+  could not decide without real code going through the checker. They are named in **Design** below and each is cited
+  there; do not rediscover them by reading the code.
+- `~/Code/smalltt`'s README on glued evaluation, approximate conversion, the three quotation modes, and approximate
+  occurs checking — the techniques the items below are, stated by the implementation this core was audited against.
+- Peyton Jones ch. 5 §5.4.1 and ch. 6's let-bound right-hand side, for Finding A, plus
+  [`crates/musa-core/src/case.rs`](../../../crates/musa-core/src/case.rs) and the law
+  `a_pattern_binder_is_a_definition_at_every_leaf_it_reaches` in `coverage_laws.rs`, which is the program that falsified
+  the hoisting condition 136b was going to ship.
 
 ## Design
 
@@ -66,6 +76,37 @@ forms of definitions, resolving known-concrete instances at elaboration time (pr
 and avoiding re-normalization when checking against a type already in normal form. Each is measured independently, and a
 change that does not move the number is reverted rather than kept because it seemed principled.
 
+**The six items prompt 136b left here, and what each one waits on.** Note 44 audited `musa-core` against smalltt and
+Peyton Jones and found seven divergences. 136b removed the ad hoc ones; these are the ones it could not, and the reason
+is the same for all six: none of them can be _priced_ until prompt 142 points the standard library at this checker, and
+five of them cannot be _built_ until there is a top-level definition scope to hold folded.
+
+- **Glued evaluation (Finding C).** `musa-core` evaluates one way and unfolds everything it meets. smalltt keeps a
+  definition's folded and unfolded forms side by side so that conversion can try the cheap comparison first and unfold
+  only where it must. Nothing is foldable in the core today — there is no definition scope — so this becomes a real
+  divergence exactly at 142 and not before. It is the prerequisite for the next three.
+- **`Head::Def` and the `G` pair (Finding C's representation).** The head that carries both forms, which is what makes
+  everything below expressible.
+- **Approximate conversion (Finding D's remainder).** 136b gave conversion structural and η arms with early exit;
+  smalltt's rigid/flex/full distinction is a further refinement that only pays where heads can stay folded.
+- **The flexible quotation mode (Finding E's remainder).** `rigidQuote`/`flexQuote`/`fullCheck` keep folded heads folded
+  during read-back, for the same reason.
+- **The per-metavariable occurs cache (Finding E's remainder).** 136b fused the occurs check into the quotation that
+  writes a solution, and a cache saves nothing against a walk that must visit every node anyway. It saves work at
+  exactly the moment quotation may stop at a folded definition, which is glued evaluation's moment.
+- **Hoisting a `match` arm's body (Finding A).** An arm whose pattern in a split column is a variable survives into
+  every branch of that split, and its body is type-checked once per leaf it reaches. Peyton Jones §5.4.1 is that failure
+  and ch. 6's let-bound right-hand side is the answer: `let armᵢ = λ (x⃗ : T⃗). body in <tree whose leaves are armᵢ v⃗>`.
+  **The condition note 44 proposed for when this is safe is wrong**, and 136b proved it: a leaf binds its pattern
+  variables with `define`, so an arm body may rely on the binder _reducing_, while a λ binder is an assumption. The
+  witness has every binder at `Nat` and a goal of `Nat` — nothing dependent anywhere — and its abstraction does not
+  typecheck. The sound shape is speculative: split `case.rs`'s `solve` into a plan pass and an emit pass, establish that
+  the arm's binder telescope is the same at every leaf (splitting refines `Vec A n`, so it often is not), build the
+  abstraction, elaborate the body against it once, and fall back to per-leaf elaboration where that is refused —
+  reporting the per-leaf refusal, never the hoisted one. 136b's first-row column-selection rule already removed the
+  exponential this was urgent for, so what is left is a linear constant factor on the leaves a non-first-row arm
+  reaches: measure it on 142's output before building any of the above, and record the number either way.
+
 **Update the recorded baseline, honestly.** `06-performance.md` records both the pre-migration baseline and the current
 numbers. If something is genuinely slower and the 10% gate is exceeded, the prompt's output is either a mitigation or an
 argued amendment to the budget — with the musician-facing B1/B2 numbers as the check that the argument is acceptable —
@@ -79,6 +120,11 @@ and never a quietly raised threshold.
 - `docs/rules/language/06-performance.md` updated with post-migration P1/P2 rows and, if the gate was exceeded, the
   argument and its resolution.
 - `docs/rules/desktop/06-performance.md`'s B1/B2 confirmed still met, measured rather than assumed.
+- A verdict on each of note 44's six remaining items, measured on 142's output rather than argued: glued evaluation and
+  `Head::Def`, approximate conversion, the flexible quotation mode, the per-metavariable occurs cache, and the hoisting
+  of `match` arm bodies. Building one is an outcome; declining one with a number attached is equally an outcome, and
+  leaving one unmeasured is not.
+- A closing line in note 44 for each item this prompt settles, so the audit ends rather than being inherited again.
 - `docs/plan/code-map/` rows.
 
 ## Check

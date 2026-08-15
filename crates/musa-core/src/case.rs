@@ -8,6 +8,25 @@
 //! it to a fall-through, and the rows a split reaches are exactly the rows that
 //! could still match.
 //!
+//! # Which column is split, and whether one is split at all
+//!
+//! The **first** row decides. If it has a variable in every remaining column it
+//! matches whatever the subjects are, no later row at that node can be reached,
+//! and the leaf is the answer; otherwise the column is the leftmost the first
+//! row tests. That is Maranget's necessity condition specialized to a `match`
+//! whose arms are ordered and do not fall through — testing a column the first
+//! row does not need duplicates that row's body into every branch and asks the
+//! same question again in each, which is exponential in the columns and answers
+//! nothing. Scanning *every* row for a constructor, which is what this did
+//! before, is the version of the rule for an unordered set of equations.
+//!
+//! An arm's body is still elaborated once per leaf it reaches, which is
+//! Peyton Jones §5.4.1's remaining cost. The obvious repair — hoist the body
+//! into a `let`-bound function the leaves apply — is not obviously correct here,
+//! because a leaf binds its pattern variables by *definition* and a λ binder is
+//! an assumption. `coverage_laws.rs` holds the program that shows the
+//! difference, and prompt 144 owns the change.
+//!
 //! Two things ch. 5 does not have, because its language is not dependent:
 //!
 //! # The goal type changes as the tree descends
@@ -205,20 +224,38 @@ impl Tree<'_, '_> {
         }
     }
 
-    /// The leftmost column some row tests, and what it tests it with.
+    /// The leftmost column the **first** row tests, and what it tests it with.
+    ///
+    /// The first row, not any row, and that is Maranget's necessity condition
+    /// specialized to an ordered `match`. A row whose every remaining pattern is
+    /// a variable matches whatever the subjects are, so if the first row is that
+    /// row it is the answer and no later row at this node can be reached — there
+    /// is nothing a test could decide. Scanning every row instead finds a later
+    /// row's constructor and splits on it, which duplicates the first row's body
+    /// into each branch and asks the same question again in every one; several
+    /// arms each constraining a different column made that exponential.
+    ///
+    /// Coverage is unaffected: a row that matches everything covers everything.
+    /// Reachability is not — the rows this steps over are exactly the rows an
+    /// earlier arm already covers, and `unselected` reports them, which is the
+    /// verdict they had coming.
     ///
     /// One search rather than two, because "leftmost" has to be decided across
     /// both kinds: a matrix whose first column is opened and whose second is
     /// split must open first, or the split would be against subjects the open
     /// has not produced yet.
     fn testable(problem: &Problem<'_>) -> Option<Test> {
-        (0..problem.columns.len()).find_map(|column| {
-            problem.rows.iter().find_map(|row| match row.patterns.get(column)? {
+        problem
+            .rows
+            .first()?
+            .patterns
+            .iter()
+            .enumerate()
+            .find_map(|(column, pattern)| match pattern {
                 RawPattern::Constructor { .. } => Some(Test::Split(column)),
                 RawPattern::Record { .. } => Some(Test::Open(column)),
                 RawPattern::Bind { .. } => None,
             })
-        })
     }
 
     /// The problem with a record column replaced by the fields its patterns
@@ -1104,14 +1141,13 @@ fn subject(elaborator: &mut Elaborator, scope: &Scope, raw: &Raw) -> Result<Subj
 /// The de Bruijn level a value is, when it is a variable.
 fn variable(value: &Value) -> Option<u32> {
     match &value.form {
-        crate::value::Form::Neutral(neutral) => match &neutral.spine {
-            crate::value::Spine::Var(level, _) => Some(level.0),
-            crate::value::Spine::App { .. }
-            | crate::value::Spine::Const(_)
-            | crate::value::Spine::Meta(_)
-            | crate::value::Spine::Project { .. }
-            | crate::value::Spine::J { .. } => None,
+        // A *bare* variable: a spine means something was applied to it, and
+        // `f x` is not the variable `f`.
+        crate::value::Form::Neutral(neutral) if neutral.spine.is_empty() => match &neutral.head {
+            crate::value::Head::Var(level, _) => Some(level.0),
+            crate::value::Head::Const(_) | crate::value::Head::Meta(_) => None,
         },
+        crate::value::Form::Neutral(_) => None,
         crate::value::Form::Universe(_)
         | crate::value::Form::Pi { .. }
         | crate::value::Form::Lam { .. }

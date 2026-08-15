@@ -121,6 +121,7 @@ use crate::elab::Elaborator;
 use crate::eval::eval;
 use crate::quote::{quote, quote_type};
 use crate::scope::Scope;
+use crate::unify::Unifier;
 
 /// Elaborate a `data` declaration group, in context `cx`.
 ///
@@ -220,8 +221,14 @@ pub fn normalize_type(cx: &Cx, ty: &Term) -> Result<Term, CoreError> {
 
 /// Whether `left` and `right` are definitionally equal at type `ty`.
 ///
-/// β, η at Π and at records, δ, and ι, decided by normalizing both sides and
-/// comparing up to α (§3).
+/// β, η at Π and at records, δ, and ι (§3), decided by the same procedure the
+/// checker's `Switch` rule calls — a type-directed walk over both values that
+/// stops at the first node they disagree on, with every metavariable treated as
+/// an opaque head rather than an unknown to solve for. Normalizing both sides
+/// and comparing was the same answer computed the most expensive way available,
+/// and it was a second implementation of a question the unifier already
+/// answers; `conversion_laws.rs` keeps that version as the oracle this one is
+/// checked against.
 ///
 /// The answer is a `bool` *inside* a `Result` rather than a bare `bool`, and
 /// that is §4's three-outcome law rather than Rust habit: `Ok(false)` means the
@@ -233,7 +240,11 @@ pub fn normalize_type(cx: &Cx, ty: &Term) -> Result<Term, CoreError> {
 ///
 /// As [`normalize`].
 pub fn convertible(cx: &Cx, ty: &Term, left: &Term, right: &Term) -> Result<bool, CoreError> {
-    Ok(normalize(cx, ty, left)? == normalize(cx, ty, right)?)
+    let mut meter = cx.meter();
+    let ty = eval(&mut meter, cx.env(), ty)?;
+    let left = eval(&mut meter, cx.env(), left)?;
+    let right = eval(&mut meter, cx.env(), right)?;
+    decided(Unifier::deciding().unify(&mut meter, cx.depth(), Origin::UNKNOWN, &ty, &left, &right))
 }
 
 /// Whether two *types* are definitionally equal.
@@ -242,5 +253,24 @@ pub fn convertible(cx: &Cx, ty: &Term, left: &Term, right: &Term) -> Result<bool
 ///
 /// As [`normalize`].
 pub fn convertible_types(cx: &Cx, left: &Term, right: &Term) -> Result<bool, CoreError> {
-    Ok(normalize_type(cx, left)? == normalize_type(cx, right)?)
+    let mut meter = cx.meter();
+    let left = eval(&mut meter, cx.env(), left)?;
+    let right = eval(&mut meter, cx.env(), right)?;
+    decided(Unifier::deciding().unify_types(&mut meter, cx.depth(), Origin::UNKNOWN, &left, &right))
+}
+
+/// A conversion question's answer, read off what the unifier did.
+///
+/// The one place §4's three outcomes are folded back into two: a refusal *is*
+/// the negative answer, so it becomes `Ok(false)`, while exhaustion stays an
+/// error because the question was not answered. The mismatch's own report — the
+/// pair of subterms and the path to them — is what the checker prints and what
+/// a `bool` has no room for, so it is dropped here rather than never built.
+fn decided(outcome: Result<(), ElabError>) -> Result<bool, CoreError> {
+    match outcome {
+        Ok(()) => Ok(true),
+        Err(ElabError::Refused(_)) => Ok(false),
+        Err(ElabError::Exhausted(exhausted)) => Err(CoreError::Exhausted(exhausted)),
+        Err(ElabError::Malformed(malformed)) => Err(CoreError::Malformed(malformed)),
+    }
 }

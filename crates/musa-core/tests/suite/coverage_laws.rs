@@ -470,3 +470,160 @@ fn a_match_is_refused_for_the_reason_it_is_wrong() {
         assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
     }
 }
+
+/// `Nat → … → Nat`, with `columns` arguments.
+fn nat_arrows(cx: &Cx, columns: usize) -> Term {
+    let written = (0..columns).fold(var("Nat"), |built, _| arrow(var("Nat"), built));
+    core(cx, "Nat → … → Nat", &written)
+}
+
+/// Note 44's interleaved-column program: one arm per column that constrains
+/// *that* column and nothing else, and a catch-all.
+///
+/// ```text
+/// λ x₀ … x_{k-1}. match x₀, …, x_{k-1} {
+///   Zero, y, …, y  => 0,
+///   y, Zero, …, y  => 0,
+///   …
+///   y, …, y, Zero  => 0,
+///   z₀, …, z_{k-1} => 30,
+/// }
+/// ```
+fn interleaved(columns: usize) -> Raw {
+    let mut arms = Vec::with_capacity(columns.saturating_add(1));
+    for constrained in 0..columns {
+        let patterns = (0..columns)
+            .map(|column| {
+                if column == constrained {
+                    con("Nat.Zero", [])
+                } else {
+                    bind("y")
+                }
+            })
+            .collect();
+        arms.push(arm(patterns, number(0)));
+    }
+    arms.push(arm((0..columns).map(|_| bind("z")).collect(), number(30)));
+    let body = matching((0..columns).map(|column| var(&subject(column))), arms);
+    (0..columns)
+        .rev()
+        .fold(body, |built, column| Raw::lam(WRITTEN, subject(column), built))
+}
+
+/// The name of the interleaved program's `column`th subject.
+fn subject(column: usize) -> String {
+    format!("x{column}")
+}
+
+/// The elaborated size of a `match`, as a proxy a law can compare across widths.
+fn interleaved_size(cx: &Cx, columns: usize) -> usize {
+    let ty = nat_arrows(cx, columns);
+    let compiled = musa_core::check(cx, &ty, &interleaved(columns)).expect("the interleaved program elaborates");
+    musa_core::well_typed(cx, &ty, &compiled).expect("and re-checks from the core rules alone");
+    format!("{compiled:?}").len()
+}
+
+/// §6.2's column selection is *necessary*, so a program whose arms each
+/// constrain a different column grows polynomially rather than exponentially.
+///
+/// Note 44 measured this exact program at 2.2× per added column in both term
+/// size and elaboration time, because `testable` scanned every row for a
+/// constructor and split a column the first row did not need — duplicating that
+/// row's body into each branch and asking the same question again in both. The
+/// first row decides now, so a row that matches everything ends the search.
+///
+/// Stated as a ratio rather than a byte count: what the law fixes is the
+/// *growth*, and a pinned size would be a fact about `Debug` formatting. The
+/// bound is set at doubling the columns rather than at any particular exponent,
+/// because what makes the program tractable is that adding a column multiplies
+/// nothing — the measured series is quadratic, and a quadratic doubling is 4×.
+#[test]
+fn an_interleaved_match_grows_polynomially_in_its_columns() {
+    let cx = nat_vec_context();
+    let narrow = interleaved_size(&cx, 3);
+    let wide = interleaved_size(&cx, 6);
+    let ratio = (wide as f64) / (narrow as f64);
+    assert!(
+        ratio < 4.0,
+        "3 columns: {narrow} chars, 6 columns: {wide} chars — {ratio:.2}× across a doubling is not polynomial growth"
+    );
+}
+
+/// A pattern's binder is a **definition**, and an arm that reaches two leaves
+/// gets a different one at each.
+///
+/// `b` is bound by a variable pattern, so each branch it survives into gives it
+/// that branch's constructor, and the third arm's body relies on the value
+/// reducing: `Succ (pred b)` is `b` only where `b` is a literal successor. It
+/// does reach two leaves — `y = Succ j` under `x = Zero`, and under
+/// `x = Succ p` — and the equation holds at both.
+///
+/// The law is here because it *bounds* Finding A. Hoisting an arm's body into a
+/// `let`-bound function abstracts its binders, and a λ binder is an assumption
+/// where a leaf's binder is a definition. Nothing about this program's binder
+/// types or its goal is dependent — every one of them is `Nat`, expressible at
+/// the match's own depth — so the hoisting condition note 44 proposed admits it,
+/// and the abstraction it would build does not typecheck.
+#[test]
+fn a_pattern_binder_is_a_definition_at_every_leaf_it_reaches() {
+    let cx = nat_vec_context();
+    // `pred n`, written out as the recursor it is.
+    let predecessor = |subject: Raw| {
+        apply(
+            var("Nat.elim"),
+            [
+                Raw::lam(WRITTEN, "_", var("Nat")),
+                var("Nat.Zero"),
+                Raw::lam(WRITTEN, "n", Raw::lam(WRITTEN, "ih", var("n"))),
+                subject,
+            ],
+        )
+    };
+    // `(n : Nat) → Id Nat n (Succ (pred n)) → Nat`: a consumer that can only be
+    // applied where its argument is known to be a successor.
+    let consumer = Raw::pi(
+        WRITTEN,
+        "n",
+        var("Nat"),
+        arrow(
+            Raw::identity(
+                WRITTEN,
+                var("Nat"),
+                var("n"),
+                apply(var("Nat.Succ"), [predecessor(var("n"))]),
+            ),
+            var("Nat"),
+        ),
+    );
+    let goal = arrow(consumer, arrow(var("Nat"), arrow(var("Nat"), var("Nat"))));
+    let ty = core(
+        &cx,
+        "((n : Nat) → Id Nat n (Succ (pred n)) → Nat) → Nat → Nat → Nat",
+        &goal,
+    );
+    let by_match = Raw::lam(
+        WRITTEN,
+        "f",
+        Raw::lam(
+            WRITTEN,
+            "x",
+            Raw::lam(
+                WRITTEN,
+                "y",
+                matching(
+                    [var("x"), var("y")],
+                    vec![
+                        arm(vec![con("Nat.Zero", []), con("Nat.Zero", [])], number(0)),
+                        arm(vec![con("Nat.Succ", [bind("p")]), con("Nat.Zero", [])], number(0)),
+                        arm(
+                            vec![bind("a"), bind("b")],
+                            apply(var("f"), [var("b"), Raw::refl(WRITTEN, var("b"))]),
+                        ),
+                    ],
+                ),
+            ),
+        ),
+    );
+    let compiled = musa_core::check(&cx, &ty, &by_match).expect("the third arm checks at both leaves it reaches");
+    musa_core::well_typed(&cx, &ty, &compiled).expect("and re-checks from the core rules alone");
+}

@@ -20,9 +20,9 @@
 //! context: `?α x₀ x₁ … xₙ₋₁`, in order, with no repeats. That is the pattern
 //! condition, established by construction rather than tested for. What is left
 //! is the other half — that the right-hand side mentions no variable bound
-//! *after* the metavariable was created — and [`restrict`] checks it on the
-//! quoted term, in one walk that also performs the occurs check and the index
-//! shift.
+//! *after* the metavariable was created — and [`crate::quote::quote_solution`]
+//! decides it while writing the solution, in the same walk that performs the
+//! occurs check and the index shift.
 //!
 //! # Why solving quotes at a type
 //!
@@ -36,13 +36,13 @@ use std::sync::Arc;
 
 use crate::budget::Meter;
 use crate::error::CoreError;
-use crate::eval::{apply_closure, eval, force, head_type};
+use crate::eval::{apply, apply_closure, eval, field_type, force, head_type, project};
 use crate::meta::Meta;
 use crate::origin::Origin;
-use crate::quote::{Depth, quote, quote_type};
+use crate::quote::{Depth, quote, quote_solution, quote_type};
 use crate::refuse::{ElabError, Mismatch, PathStep, Refusal};
-use crate::term::{DbLevel, Field, Index, Shape, Term};
-use crate::value::{Env, Form, Neutral, Spine, Telescope, Value};
+use crate::term::{DbLevel, Field, Term};
+use crate::value::{Closure, Elim, Env, Form, Head, Neutral, Telescope, Value};
 
 /// What a pair of values is being compared at.
 ///
@@ -56,7 +56,7 @@ enum At<'a> {
     Term(&'a Value),
 }
 
-impl At<'_> {
+impl<'a> At<'a> {
     fn quote(self, meter: &mut Meter, depth: u32, value: &Value) -> Result<Term, CoreError> {
         match self {
             Self::Type => quote_type(meter, Depth(depth), value),
@@ -68,6 +68,14 @@ impl At<'_> {
         match self {
             Self::Type => None,
             Self::Term(ty) => Some(ty.clone()),
+        }
+    }
+
+    /// The type the two sides inhabit, or `None` when they are types.
+    const fn subject(self) -> Option<&'a Value> {
+        match self {
+            Self::Type => None,
+            Self::Term(ty) => Some(ty),
         }
     }
 }
@@ -98,9 +106,34 @@ pub(crate) struct Unifier {
     /// hold: solutions are write-once (§2.1) and metavariables are finite, so
     /// this can rise only finitely often.
     solved: u64,
+    /// Whether this unifier answers a question rather than making one true.
+    ///
+    /// Set by [`Self::deciding`], and read in exactly one place. `false` is the
+    /// elaborating unifier, which is what `Default` should give.
+    deciding: bool,
 }
 
 impl Unifier {
+    /// A unifier that decides §3's conversion instead of solving for it.
+    ///
+    /// Definitional equality *is* unification's rigid fragment — the same
+    /// type-directed walk with η and early exit, over a term language where a
+    /// metavariable is an opaque head rather than an unknown to determine. So
+    /// [`crate::convertible`] is this constructor and not a second procedure:
+    /// normalizing both sides and comparing is the same answer computed the
+    /// most expensive way available, and two implementations of one question
+    /// are two things to keep in agreement.
+    ///
+    /// Nothing is postponed in this mode, because postponing is what a solver
+    /// does when it does not yet know: a decision procedure that cannot solve
+    /// has already learned everything it will.
+    pub(crate) fn deciding() -> Self {
+        Self {
+            deciding: true,
+            ..Self::default()
+        }
+    }
+
     /// Make `left` and `right` equal as types, solving what that requires.
     ///
     /// # Errors
@@ -185,7 +218,7 @@ impl Unifier {
         // The nesting charge is what keeps unification inside §4.1's limit, and
         // it can only report a [`CoreError`], so the step's own answer travels
         // back inside its `Ok`.
-        meter.nested("unification", |meter| {
+        meter.nested::<Step, CoreError>("unification", |meter| {
             meter.step("unification")?;
             let unfolded_left = force(meter, left)?;
             let left = unfolded_left.as_ref().unwrap_or(left);
@@ -218,6 +251,11 @@ impl Unifier {
         left: &Value,
         right: &Value,
     ) -> Result<Flexible, CoreError> {
+        if self.deciding {
+            // Every metavariable is a rigid head here, so `neutrals` compares
+            // two of them by identity and refuses a meta against anything else.
+            return Ok(Flexible::Rigid);
+        }
         let left_meta = flexible_head(left);
         let right_meta = flexible_head(right);
         // The same unknown on both sides is already equal, and solving it
@@ -254,11 +292,10 @@ impl Unifier {
         rigid: &Value,
     ) -> Result<bool, CoreError> {
         meter.metavariable("unification")?;
-        let body = at.quote(meter, depth, rigid)?;
-        let arity = meta.arity();
-        let Some(body) = restrict(&body, meta, arity, depth, 0) else {
+        let Some(body) = quote_solution(meter, Depth(depth), at.subject(), rigid, meta)? else {
             return Ok(false);
         };
+        let arity = meta.arity();
         let origin = meta.origin();
         let mut abstracted = body;
         for _ in 0..arity {
@@ -283,6 +320,36 @@ impl Unifier {
         left: &Value,
         right: &Value,
     ) -> Step {
+        // η first, and read off the *type*, because §3 puts η at Π and at record
+        // types — so it is the type that decides, whatever forms the two sides
+        // happen to have. This is what makes `f` and `λx. f x` agree without
+        // either being quoted, and it is why a λ or a record literal never
+        // reaches the match below on a well-typed pair.
+        //
+        // Two neutrals are the one pair this skips. Expanding them adds the same
+        // elimination to both spines and then compares the spines, which is the
+        // answer [`Self::neutrals`] gives directly — with a message that names
+        // the heads that disagreed rather than the expansion.
+        if let At::Term(ty) = at
+            && !matches!((&left.form, &right.form), (Form::Neutral(_), Form::Neutral(_)))
+        {
+            let unfolded = force(meter, ty)?;
+            let ty = unfolded.as_ref().unwrap_or(ty);
+            match &ty.form {
+                Form::Pi { domain, codomain, .. } => {
+                    return self.under_binder(meter, depth, origin, domain, codomain, left, right);
+                }
+                Form::RecordType(telescope) => {
+                    return self.field_by_field(meter, depth, origin, telescope, left, right);
+                }
+                Form::Universe(_) | Form::Lam(_) | Form::Record(_) | Form::Id { .. } | Form::Refl(_) => {}
+                // A type that is still a metavariable says nothing yet, and a λ
+                // under it would be one the elaborator has not pinned down. The
+                // match below reads both sides back, which is the honest answer
+                // and not a success path.
+                Form::Neutral(_) => {}
+            }
+        }
         match (&left.form, &right.form) {
             // Two universes agree when their levels can be made the same, which
             // is where a level metavariable is solved. `determine` refuses
@@ -356,12 +423,73 @@ impl Unifier {
                     .map_err(|failure| failure.under(PathStep::Witness))
             }
             (Form::Neutral(one), Form::Neutral(other)) => self.neutrals(meter, depth, origin, one, other),
-            // Everything else — including a lambda or a record literal, which
-            // stand here only as an eliminated argument — is decided by reading
-            // both sides back. Quotation is η-long, so that is exactly the
-            // conversion §3 specifies, and a structural walk would gain nothing.
+            // Two different forms, which is a disagreement: reading both sides
+            // back is how the message says so. The one pair that is not already
+            // decided by the time it lands here is a λ or a record literal whose
+            // type is still unknown, and quotation refuses that rather than
+            // guessing.
             _ => Self::by_reading_back(meter, depth, at, left, right),
         }
+    }
+
+    /// Both sides at a function type: compare them applied to one fresh
+    /// variable.
+    ///
+    /// The `Lam`/`Lam` case is *this* case — [`apply`] answers a lambda by
+    /// opening its closure — so there is no second arm for it, and none for a
+    /// lambda meeting a neutral either.
+    fn under_binder(
+        &mut self,
+        meter: &mut Meter,
+        depth: u32,
+        origin: Origin,
+        domain: &Arc<Value>,
+        codomain: &Closure,
+        left: &Value,
+        right: &Value,
+    ) -> Step {
+        let variable = Value::var(Origin::UNKNOWN, DbLevel(depth), Arc::clone(domain));
+        let body_type = apply_closure(meter, codomain, variable.clone())?;
+        let left_body = apply(meter, left.origin, left.clone(), variable.clone())?;
+        let right_body = apply(meter, right.origin, right.clone(), variable)?;
+        self.step(
+            meter,
+            depth.saturating_add(1),
+            At::Term(&body_type),
+            origin,
+            &left_body,
+            &right_body,
+        )
+        .map_err(|failure| failure.under(PathStep::Body))
+    }
+
+    /// Both sides at a record type: compare their projections, in telescope
+    /// order, stopping at the first field that disagrees.
+    ///
+    /// The `Record`/`Record` case is *this* case — [`project`] answers a literal
+    /// by reading the field out — so a literal, a neutral, and one of each are
+    /// all decided here.
+    fn field_by_field(
+        &mut self,
+        meter: &mut Meter,
+        depth: u32,
+        origin: Origin,
+        telescope: &Telescope,
+        left: &Value,
+        right: &Value,
+    ) -> Step {
+        for Field { name, term: _ } in telescope.fields.iter() {
+            // The field's type is read off the *left* subject, as it is in
+            // [`Self::record_types`] and for the same reason: every earlier
+            // field has just been made equal, so either subject gives the same
+            // type.
+            let ty = field_type(meter, telescope, left, name)?;
+            let mine = project(meter, left.origin, left.clone(), name)?;
+            let theirs = project(meter, right.origin, right.clone(), name)?;
+            self.step(meter, depth, At::Term(&ty), origin, &mine, &theirs)
+                .map_err(|failure| failure.under(PathStep::Field(Arc::clone(name))))?;
+        }
+        Ok(())
     }
 
     fn record_types(
@@ -409,43 +537,122 @@ impl Unifier {
         one: &Arc<Neutral>,
         other: &Arc<Neutral>,
     ) -> Step {
-        match (&one.spine, &other.spine) {
-            (Spine::Var(level, _), Spine::Var(other_level, _)) if level.0 == other_level.0 => Ok(()),
+        let heads_agree = match (&one.head, &other.head) {
+            (Head::Var(level, _), Head::Var(other_level, _)) => level.0 == other_level.0,
             // Rigid like a variable, and decided the same way: a constant is its
             // name, so there is nothing under it to unify.
-            (Spine::Const(left), Spine::Const(right)) if left == right => Ok(()),
-            (
-                Spine::App {
-                    function: left_function,
-                    argument: left_argument,
-                },
-                Spine::App {
-                    function: right_function,
-                    argument: right_argument,
-                },
-            ) => {
-                self.neutrals(meter, depth, origin, left_function, right_function)
-                    .map_err(|failure| failure.under(PathStep::Function))?;
-                let Form::Pi { domain, .. } = head_type(meter, left_function)?.form else {
-                    return Err(blocked_mismatch(meter, depth, one, other)?);
-                };
-                self.step(meter, depth, At::Term(&domain), origin, left_argument, right_argument)
-                    .map_err(|failure| failure.under(PathStep::Argument))
-            }
-            (
-                Spine::Project {
-                    record: left_record,
-                    field: left_field,
-                },
-                Spine::Project {
-                    record: right_record,
-                    field: right_field,
-                },
-            ) if left_field == right_field => self
-                .neutrals(meter, depth, origin, left_record, right_record)
-                .map_err(|failure| failure.under(PathStep::Projected)),
-            _ => Err(blocked_mismatch(meter, depth, one, other)?),
+            (Head::Const(left), Head::Const(right)) => left == right,
+            // Two metavariables reach this only in [`Self::deciding`] mode,
+            // where §3 is being *asked* rather than made true and an unsolved
+            // metavariable is as rigid as a variable: the same one is equal to
+            // itself, and two different ones are two different unknowns. The
+            // elaborating unifier never arrives here with one, because
+            // `flexible` answers `Solved` for a meta against itself and
+            // `Postpone` for two different ones.
+            (Head::Meta(left), Head::Meta(right)) => left == right,
+            // Two different kinds of head, which never agree.
+            (Head::Meta(_) | Head::Var(_, _) | Head::Const(_), _) => false,
+        };
+        // One comparison decides a length disagreement, before any argument is
+        // compared. The chain representation had to walk both to find out.
+        if !heads_agree || one.spine.len() != other.spine.len() {
+            return Err(blocked_mismatch(meter, depth, one, other)?);
         }
+        let mut prefix = Neutral::head(one.origin, one.head.clone());
+        for (mine, theirs) in one.spine.iter().zip(other.spine.iter()) {
+            match (mine, theirs) {
+                (
+                    Elim::App {
+                        argument: left_argument,
+                        ..
+                    },
+                    Elim::App {
+                        argument: right_argument,
+                        ..
+                    },
+                ) => {
+                    let Form::Pi { domain, .. } = head_type(meter, &prefix)?.form else {
+                        return Err(blocked_mismatch(meter, depth, one, other)?);
+                    };
+                    self.step(meter, depth, At::Term(&domain), origin, left_argument, right_argument)
+                        .map_err(|failure| failure.under(PathStep::Argument))?;
+                }
+                (Elim::Project { field: left_field, .. }, Elim::Project { field: right_field, .. })
+                    if left_field == right_field => {}
+                (
+                    Elim::J {
+                        origin: here,
+                        ty: left_ty,
+                        from: left_from,
+                        motive: left_motive,
+                        base: left_base,
+                        to: left_to,
+                    },
+                    Elim::J {
+                        ty: right_ty,
+                        from: right_from,
+                        motive: right_motive,
+                        base: right_base,
+                        to: right_to,
+                        ..
+                    },
+                ) => {
+                    self.step(meter, depth, At::Type, origin, left_ty, right_ty)?;
+                    self.step(meter, depth, At::Term(left_ty), origin, left_from, right_from)?;
+                    self.step(meter, depth, At::Term(left_ty), origin, left_to, right_to)?;
+                    self.motives(meter, depth, origin, left_ty, left_from, left_motive, right_motive)?;
+                    // The base case's type is the motive at `(from, from, refl
+                    // from)`, computed the same way quotation computes it.
+                    let base_type = {
+                        let at_from = apply(meter, *here, Value::clone(left_motive), Value::clone(left_from))?;
+                        let reflexive = Value::new(left_from.origin, Form::Refl(Arc::clone(left_from)));
+                        apply(meter, *here, at_from, reflexive)?
+                    };
+                    self.step(meter, depth, At::Term(&base_type), origin, left_base, right_base)?;
+                }
+                (Elim::App { .. } | Elim::Project { .. } | Elim::J { .. }, _) => {
+                    return Err(blocked_mismatch(meter, depth, one, other)?);
+                }
+            }
+            prefix.spine.push(mine.clone());
+        }
+        Ok(())
+    }
+
+    /// Compare two `J` motives at the shape `(y : A) → Id A x y → Type l`.
+    ///
+    /// The motive's Π type is never built as a value — `l` is recorded nowhere
+    /// — so this does what quotation does with the same problem: apply both to
+    /// two fresh variables whose types *are* known, and compare the results as
+    /// types. η at Π says that decides it.
+    fn motives(
+        &mut self,
+        meter: &mut Meter,
+        depth: u32,
+        origin: Origin,
+        ty: &Arc<Value>,
+        from: &Arc<Value>,
+        one: &Value,
+        other: &Value,
+    ) -> Step {
+        let endpoint = Value::var(Origin::UNKNOWN, DbLevel(depth), Arc::clone(ty));
+        let identity = Arc::new(Value::new(
+            one.origin,
+            Form::Id {
+                ty: Arc::clone(ty),
+                left: Arc::clone(from),
+                right: Arc::new(endpoint.clone()),
+            },
+        ));
+        let under = depth.saturating_add(1);
+        let witness = Value::var(Origin::UNKNOWN, DbLevel(under), identity);
+        let mut opened = |motive: &Value| -> Result<Value, CoreError> {
+            let at_endpoint = apply(meter, motive.origin, motive.clone(), endpoint.clone())?;
+            apply(meter, motive.origin, at_endpoint, witness.clone())
+        };
+        let (left, right) = (opened(one)?, opened(other)?);
+        self.step(meter, under.saturating_add(1), At::Type, origin, &left, &right)
+            .map_err(|failure| failure.under(PathStep::Body))
     }
 
     /// The last resort: read both sides back and compare up to α.
@@ -557,141 +764,15 @@ fn blocked_mismatch(
 
 /// The unsolved metavariable at the head of a blocked elimination, if there is
 /// one.
+///
+/// Asked on both sides of every step, which is why the head is a field rather
+/// than the deepest node of a chain.
 fn flexible_head(value: &Value) -> Option<&Meta> {
     let Form::Neutral(neutral) = &value.form else {
         return None;
     };
-    let mut here = neutral;
-    loop {
-        match &here.spine {
-            Spine::Var(_, _) | Spine::Const(_) => return None,
-            Spine::Meta(meta) => return Some(meta),
-            Spine::App { function, .. } => here = function,
-            Spine::Project { record, .. } => here = record,
-            Spine::J { proof, .. } => here = proof,
-        }
+    match &neutral.head {
+        Head::Var(_, _) | Head::Const(_) => None,
+        Head::Meta(meta) => Some(meta),
     }
-}
-
-/// Move `term` from a context of `depth` binders into `meta`'s own, refusing
-/// when that is not possible.
-///
-/// One walk doing the three things §2.1 asks for, because they are the same
-/// walk: the **scope check** (no variable bound after `meta` was created), the
-/// **occurs check** (`meta` does not appear in its own solution), and the index
-/// shift that makes the result a term in a context of `arity` binders rather
-/// than `depth` of them.
-///
-/// `bound` counts the binders entered *inside* `term`; a variable below it is
-/// local and never moves.
-fn restrict(term: &Term, meta: &Meta, arity: u32, depth: u32, bound: u32) -> Option<Term> {
-    let dropped = depth.checked_sub(arity)?;
-    let origin = term.origin();
-    let shape = match term.shape() {
-        Shape::Var(index) => {
-            if index.0 < bound {
-                return Some(term.clone());
-            }
-            // Out of scope: this variable was bound after the metavariable was
-            // created, so a solution abstracting only its context cannot mention
-            // it. `checked_sub` failing and the `< bound` test are the same
-            // condition seen from two sides.
-            let shifted = index.0.checked_sub(dropped)?;
-            if shifted < bound {
-                return None;
-            }
-            Shape::Var(Index(shifted))
-        }
-        Shape::Meta(found) => {
-            if found == meta {
-                return None;
-            }
-            Shape::Meta(found.clone())
-        }
-        Shape::Universe(level) => Shape::Universe(level.resolved()),
-        // Closed and mentioning no binder, so it moves between contexts
-        // untouched — the same reason a solved metavariable's body does.
-        Shape::Const(constant) => Shape::Const(constant.clone()),
-        Shape::Pi {
-            plicity,
-            name,
-            domain,
-            codomain,
-        } => Shape::Pi {
-            plicity: *plicity,
-            name: Arc::clone(name),
-            domain: restrict(domain, meta, arity, depth, bound)?,
-            codomain: restrict(codomain, meta, arity, depth, bound.saturating_add(1))?,
-        },
-        Shape::Lam { name, body } => Shape::Lam {
-            name: Arc::clone(name),
-            body: restrict(body, meta, arity, depth, bound.saturating_add(1))?,
-        },
-        Shape::App { function, argument } => Shape::App {
-            function: restrict(function, meta, arity, depth, bound)?,
-            argument: restrict(argument, meta, arity, depth, bound)?,
-        },
-        // A record *type* is a telescope, so field `i` is read under `i` more
-        // binders; a record *value* binds nothing.
-        Shape::RecordType(fields) => Shape::RecordType(restrict_telescope(fields, meta, arity, depth, bound)?),
-        Shape::Record(fields) => Shape::Record(restrict_fields(fields, meta, arity, depth, bound)?),
-        Shape::Project { record, field } => Shape::Project {
-            record: restrict(record, meta, arity, depth, bound)?,
-            field: Arc::clone(field),
-        },
-        Shape::Id { ty, left, right } => Shape::Id {
-            ty: restrict(ty, meta, arity, depth, bound)?,
-            left: restrict(left, meta, arity, depth, bound)?,
-            right: restrict(right, meta, arity, depth, bound)?,
-        },
-        Shape::Refl(value) => Shape::Refl(restrict(value, meta, arity, depth, bound)?),
-        Shape::J {
-            ty,
-            from,
-            motive,
-            base,
-            to,
-            proof,
-        } => Shape::J {
-            ty: restrict(ty, meta, arity, depth, bound)?,
-            from: restrict(from, meta, arity, depth, bound)?,
-            motive: restrict(motive, meta, arity, depth, bound)?,
-            base: restrict(base, meta, arity, depth, bound)?,
-            to: restrict(to, meta, arity, depth, bound)?,
-            proof: restrict(proof, meta, arity, depth, bound)?,
-        },
-        Shape::Let { name, ty, value, body } => Shape::Let {
-            name: Arc::clone(name),
-            ty: restrict(ty, meta, arity, depth, bound)?,
-            value: restrict(value, meta, arity, depth, bound)?,
-            body: restrict(body, meta, arity, depth, bound.saturating_add(1))?,
-        },
-    };
-    Some(Term::new(origin, shape))
-}
-
-fn restrict_fields(fields: &[Field], meta: &Meta, arity: u32, depth: u32, bound: u32) -> Option<Arc<[Field]>> {
-    fields
-        .iter()
-        .map(|Field { name, term }| {
-            Some(Field {
-                name: Arc::clone(name),
-                term: restrict(term, meta, arity, depth, bound)?,
-            })
-        })
-        .collect()
-}
-
-fn restrict_telescope(fields: &[Field], meta: &Meta, arity: u32, depth: u32, bound: u32) -> Option<Arc<[Field]>> {
-    fields
-        .iter()
-        .enumerate()
-        .map(|(position, Field { name, term })| {
-            let under = bound.saturating_add(u32::try_from(position).unwrap_or(u32::MAX));
-            Some(Field {
-                name: Arc::clone(name),
-                term: restrict(term, meta, arity, depth, under)?,
-            })
-        })
-        .collect()
 }

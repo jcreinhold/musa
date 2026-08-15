@@ -37,7 +37,7 @@
 //! from. A normal form is written by `quote` out of a value, so a value that had
 //! dropped its origin could not put one back. Values and neutrals therefore have
 //! the same shape as [`Term`] does — provenance in a wrapper, everything else in
-//! a [`Form`] or a [`Spine`].
+//! a [`Form`], a [`Head`], or an [`Elim`].
 
 use std::sync::Arc;
 
@@ -105,18 +105,36 @@ pub(crate) enum Form {
     Neutral(Arc<Neutral>),
 }
 
-/// An elimination blocked on a variable.
+/// An elimination blocked on its head: what it is blocked on, and what has been
+/// applied to it since.
 ///
-/// Each node carries its own origin because each becomes its own node of a
-/// quoted normal form: the spine of `f x y` reads back as three terms, and §7
-/// wants each of them to say where it came from.
+/// **A head and a vector, not a chain.** The obvious encoding — one node per
+/// elimination, each holding the neutral it eliminates — puts the head at the
+/// *deepest* position, so finding it is one hop per argument. Unification asks
+/// for the head of both sides at every step and forcing asks again before that,
+/// so the question that is asked most often was the one that cost the most.
+/// Here the head is a field: `f x y z` is one allocation with a three-element
+/// spine, a length mismatch is decided before any argument is compared, and
+/// [`Head::Var`]'s type is stored once instead of once per node. Note 44 §9 is
+/// the audit that named this, and smalltt is where the shape comes from.
+///
+/// **Each elimination still carries its own origin.** §7 wants every node of a
+/// quoted normal form to say where it came from, and the spine of `f x y` reads
+/// back as three terms — a fact about quotation, not about how many allocations
+/// the value needs. [`Self::origin`] is the head's; the value's is the outermost
+/// elimination's, which [`Self::outer_origin`] answers.
+#[derive(Clone)]
 pub(crate) struct Neutral {
+    /// Where the *head* was written.
     pub(crate) origin: Origin,
-    pub(crate) spine: Spine,
+    pub(crate) head: Head,
+    /// What has been applied to the head, innermost first.
+    pub(crate) spine: Vec<Elim>,
 }
 
-/// What a blocked elimination is blocked on, and what has been applied to it.
-pub(crate) enum Spine {
+/// What a blocked elimination is blocked on.
+#[derive(Clone)]
+pub(crate) enum Head {
     /// A variable, with the type it was assumed at.
     Var(DbLevel, Arc<Value>),
     /// A declared constant. Rigid, like a variable: a family and a constructor
@@ -132,23 +150,72 @@ pub(crate) enum Spine {
     /// variable can never compute, while this one computes the moment the meta
     /// is solved, which is exactly the distinction unification turns on.
     Meta(Meta),
+}
+
+/// One elimination applied to a blocked head.
+#[derive(Clone)]
+pub(crate) enum Elim {
     App {
-        function: Arc<Neutral>,
+        origin: Origin,
         argument: Arc<Value>,
     },
     Project {
-        record: Arc<Neutral>,
+        origin: Origin,
         field: Name,
     },
-    /// `J` blocked on a proof that is not `refl`.
+    /// `J` blocked on a proof that is not `refl`. The proof is what the spine
+    /// leads to, so it is not stored here.
     J {
+        origin: Origin,
         ty: Arc<Value>,
         from: Arc<Value>,
         motive: Arc<Value>,
         base: Arc<Value>,
         to: Arc<Value>,
-        proof: Arc<Neutral>,
     },
+}
+
+impl Elim {
+    /// Where this elimination was written.
+    pub(crate) const fn origin(&self) -> Origin {
+        match self {
+            Self::App { origin, .. } | Self::Project { origin, .. } | Self::J { origin, .. } => *origin,
+        }
+    }
+}
+
+impl Neutral {
+    /// A bare head with nothing applied to it.
+    pub(crate) const fn head(origin: Origin, head: Head) -> Self {
+        Self {
+            origin,
+            head,
+            spine: Vec::new(),
+        }
+    }
+
+    /// This neutral with one more elimination on the end.
+    ///
+    /// Takes the shared neutral rather than an owned one because every caller
+    /// has one: eliminating a blocked value is what [`crate::eval::apply`],
+    /// [`crate::eval::project`], and [`crate::eval::jay`] each do to a value
+    /// they were handed.
+    pub(crate) fn eliminated(neutral: &Self, elimination: Elim) -> Self {
+        let mut spine = Vec::with_capacity(neutral.spine.len().saturating_add(1));
+        spine.extend(neutral.spine.iter().cloned());
+        spine.push(elimination);
+        Self {
+            origin: neutral.origin,
+            head: neutral.head.clone(),
+            spine,
+        }
+    }
+
+    /// Where the whole elimination was written: the outermost one, or the head
+    /// when nothing has been applied.
+    pub(crate) fn outer_origin(&self) -> Origin {
+        self.spine.last().map_or(self.origin, Elim::origin)
+    }
 }
 
 impl Value {
@@ -163,19 +230,16 @@ impl Value {
     /// the two would be the same fact stored twice, and the copies would be free
     /// to disagree.
     pub(crate) fn neutral(neutral: Neutral) -> Self {
-        Self::new(neutral.origin, Form::Neutral(Arc::new(neutral)))
+        Self::new(neutral.outer_origin(), Form::Neutral(Arc::new(neutral)))
     }
 
     /// An already-shared blocked elimination, as a value.
     pub(crate) fn shared_neutral(neutral: &Arc<Neutral>) -> Self {
-        Self::new(neutral.origin, Form::Neutral(Arc::clone(neutral)))
+        Self::new(neutral.outer_origin(), Form::Neutral(Arc::clone(neutral)))
     }
 
     /// A fresh variable at `level`, assumed at `ty`.
     pub(crate) fn var(origin: Origin, level: DbLevel, ty: Arc<Self>) -> Self {
-        Self::neutral(Neutral {
-            origin,
-            spine: Spine::Var(level, ty),
-        })
+        Self::neutral(Neutral::head(origin, Head::Var(level, ty)))
     }
 }

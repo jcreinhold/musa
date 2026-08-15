@@ -109,6 +109,22 @@ impl Budget {
         retries: u64::MAX,
     };
 
+    /// This budget with quotation forbidden outright.
+    ///
+    /// §3's conversion decides by walking two *values*, and the only thing that
+    /// reads a value back is the path that builds a mismatch's message. This
+    /// exists so that can be stated as a law rather than left as a comment: a
+    /// conversion that answers `true` under this budget read nothing back, and
+    /// one that exhausts did. `conversion_laws.rs` is the caller, and prompt 144
+    /// is the one that turns the measurement into a real limit.
+    #[must_use]
+    pub const fn without_quotation(self) -> Self {
+        Self {
+            quoted_nodes: 0,
+            ..self
+        }
+    }
+
     /// The language budget with every limit divided by `divisor`.
     ///
     /// This exists for one caller and it is a real one: §4's independence law
@@ -239,15 +255,20 @@ impl Meter {
     /// to be given back on *every* way out, and an evaluator whose arms are
     /// mostly `?` has more ways out than a reader can check.
     ///
+    /// Generic in the error so that a caller with its own failure type — one
+    /// that carries a [`CoreError`] alongside an answer of its own — can nest
+    /// without wrapping its result in a second `Result` to get past this
+    /// signature.
+    ///
     /// # Errors
     ///
     /// [`CoreError::Exhausted`] at the nesting limit, or whatever `body`
     /// returns.
-    pub(crate) fn nested<T>(
+    pub(crate) fn nested<T, E: From<CoreError>>(
         &mut self,
         operation: &'static str,
-        body: impl FnOnce(&mut Self) -> Result<T, CoreError>,
-    ) -> Result<T, CoreError> {
+        body: impl FnOnce(&mut Self) -> Result<T, E>,
+    ) -> Result<T, E> {
         self.nesting = self.charge(Metric::Nesting, operation, self.nesting)?;
         let value = body(self);
         self.nesting = self.nesting.saturating_sub(1);
@@ -294,7 +315,7 @@ mod tests {
     fn nesting_is_the_one_metric_that_is_given_back() {
         let mut meter = Meter::new(Budget::LANGUAGE);
         for _ in 0..1_000 {
-            let entered = meter.nested("test", |_| Ok(()));
+            let entered = meter.nested::<(), CoreError>("test", |_| Ok(()));
             assert!(entered.is_ok(), "a thousand siblings are one level, not a thousand");
         }
     }
