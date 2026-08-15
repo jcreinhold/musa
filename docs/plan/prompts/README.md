@@ -291,6 +291,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 134 | bidirectional-elaboration | 3 | Elaborate bidirectionally, with metavariables |
 | 135 | inductive-families | 3 | Add inductive families, dependent match, and termination checking |
 | 136 | records-and-enums | 3 | Give the language records and namespaced enums |
+| 136a | module-visibility | 3 | Let a package hide what it maintains |
 | 137 | traits-and-operators | 3 | Add traits, dictionaries, operators, and methods |
 | 138 | typed-syntax | 3 | Give syntax a category, and the phase API its types |
 | 139 | quotation | 3 | Implement quotation, splicing, and automatic provenance |
@@ -601,11 +602,16 @@ records, inductive families, an identity type, conversion by normalization-by-ev
 with metavariables. 130 says what an author types — records with nested update, namespaced enums, coherent
 dictionary-elaborated traits with no search, operators and methods under exact-receiver lookup. 131 adds `Syntax<Cat>`,
 `quote at here { … }` with splicing, provenance the elaborator computes rather than the author allocating by hand, and
-the inverse pattern form. 132 then trials all of it on paper against nine complete programs before a line is
-implemented, and records the predicted size of the staff rewrite as the gate that rewrite is measured by. Ranks 133–149
-carry the implementation — the core crate, elaboration, families, records and enums, traits, typed syntax, quotation and
-patterns, collections, one surface cutover rather than two, the builtin collapse, the staff and studio rewrites, and the
-conformance audit — and each is written when the prompt before it has made its design real.
+the inverse pattern form. 132 then trials all of it on paper against ten complete programs before a line is implemented.
+No falsifier fires; eight corrections do, of which the largest are that K is dropped as an axiom because no program
+unifies an index, that seven of the fourteen phase operations go rather than only the role integers, and that the
+dispatch table has a third half no type system removes. It predicts the staff rewrite at 2,050 ± 100 lines, argues that
+the line count measures the file rather than the language, and proposes a table of counts in its place. It also finds
+the one gap the pass did not cover — a package cannot hide a constructor, so an invariant maintained by a smart
+constructor is decoration — which is 136a. Ranks 133–149 carry the implementation — the core crate, elaboration,
+families, records and enums, visibility, traits, typed syntax, quotation and patterns, collections, one surface cutover
+rather than two, the builtin collapse, the staff and studio rewrites, and the conformance audit — and each is written
+when the prompt before it has made its design real.
 
 **154–160 build musical sound on that core.** 154 makes the primitive vocabulary discoverable from one catalogue; 155
 keeps written quantities exact; and 155a's payload rule is revised for the new storable-data boundary. 156 defines
