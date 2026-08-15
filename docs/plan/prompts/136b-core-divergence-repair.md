@@ -1,7 +1,7 @@
 ---
 id: 136b
 slug: core-divergence-repair
-status: pending
+status: in-progress
 depends_on: [136]
 phase: 3
 ---
@@ -22,7 +22,7 @@ left to be rediscovered.
   in full: the seven findings, their classification, the measurement and the second shape that bounds it, and the stated
   long-term design for each. It governs nothing — it is the evidence this prompt implements.
 - Peyton Jones ch. 5 §5.4.1 (`unwieldy`: only the constructor rule duplicates right-hand sides), §5.5 (uniformity, and
-  what it implies about order-independence), and ch. 6's let-bound right-hand side. The fat bar's *second* job is what
+  what it implies about order-independence), and ch. 6's let-bound right-hand side. The fat bar's _second_ job is what
   this prompt supplies; its first job stays declined, for the reason [`case.rs`](../../../crates/musa-core/src/case.rs)
   already gives.
 - Notes [24 §H5](../../notes/research/language-design-closure/24-pipeline-and-syntax-review.md),
@@ -31,7 +31,7 @@ left to be rediscovered.
   before, chose join points in writing, and then lost the decision when note 42 superseded that design line for an
   unrelated reason. What this prompt builds is that decision, spelled in a calculus with no labels.
 - `~/Code/smalltt`'s README on approximate conversion, the three quotation modes, approximate occurs checking, and
-  head-plus-vector spines — and on glued evaluation, which is the one this prompt does *not* build.
+  head-plus-vector spines — and on glued evaluation, which is the one this prompt does _not_ build.
 - `crates/musa-core/src/{value.rs, eval.rs, quote.rs, unify.rs, case.rs, lib.rs}` — the six files that change, and the
   header arguments in each that are being amended rather than ignored.
 - `docs/rules/language/02-core-calculus.md` §3 (definitional equality, η at Π and at records) and §6.2 (the case
@@ -63,7 +63,7 @@ Doing F first is not sequencing for its own sake: D adds arms that read spines a
 them, and building either against the linked list means writing it twice.
 
 **D: conversion gets structural and η arms, and reading back becomes the diagnostic path.** `Unifier::rigid` has no
-`Lam`/`Lam` arm and no `Record`/`Record` arm, and falls through to `by_reading_back`, which normalizes *both* sides
+`Lam`/`Lam` arm and no `Record`/`Record` arm, and falls through to `by_reading_back`, which normalizes _both_ sides
 completely and allocates two whole normal forms before comparing one node. The comment defending it says a structural
 walk "would gain nothing", which is a claim about the answer where the objection is about the cost, and it rests on a
 premise — that a lambda or record literal "stands here only as an eliminated argument" — that prompt 137 falsifies:
@@ -82,18 +82,25 @@ prints. That is a demotion, not a deletion — the message is §3's own statemen
 **E: scope restriction is a quotation mode, not a second traversal.** `Unifier::attempt` quotes the solution and then
 calls `restrict` over the resulting `Term` to perform the occurs check and the scope check, walking the same structure
 twice and building the intermediate term even when the check fails on its first node. Fuse them: quotation takes the
-metavariable and the permitted scope, and refuses in place. Add smalltt's per-metavariable occurs cache, so a
-metavariable already known not to occur in a spine answers by lookup. The *fully unfolded* fallback stays as the path
-taken when the approximate answer is "possibly occurs" — it is the honest answer, not a slower one.
+metavariable and the permitted scope, and refuses in place.
 
 The three quotation modes (`rigidQuote`/`flexQuote`/`fullCheck`) are **not** built here. They exist to keep folded heads
 folded, and there is nothing foldable in this core yet; see the handoff below.
 
+**And neither is smalltt's per-metavariable occurs cache**, which this prompt asked for before the fusion was written
+out. The cache answers "does `?α` occur in this value" by lookup instead of by traversal — and once the check rides on
+the walk that _writes the solution_, there is no traversal to skip: quotation visits every node of the term it is
+building whether or not the answer is already known. smalltt's cache pays off because its occurs check is a separate
+approximate pass that stops at folded definitions; musa-core has no definition scope, `force` unfolds a solved
+metavariable before quotation matches on it, and so the solution's every node is written out anyway. The cache becomes
+able to save work at exactly the moment glued evaluation lands, and for exactly the same reason — so it goes to prompt
+144 with Finding C rather than being built here as a lookup that can never hit.
+
 **A and B: each arm body is elaborated once, and only a necessary column is split.** These are one change because B
 decides how many leaves A has to serve.
 
-*B is the smaller half and the larger win on the measured program.* `testable` scans **every** row for a constructor
-pattern and splits the leftmost column any of them tests. But a `match` is ordered: if the *first* row of a matrix has a
+_B is the smaller half and the larger win on the measured program._ `testable` scans **every** row for a constructor
+pattern and splits the leftmost column any of them tests. But a `match` is ordered: if the _first_ row of a matrix has a
 variable in every remaining column, that row matches whatever the subjects are, and no later row at that node can be
 reached — so there is nothing to test and the leaf is the answer. Today the search finds a later row's constructor and
 splits anyway, and note 44's program is exactly that shape, which is why its tree is exponential. The repair is one
@@ -102,10 +109,10 @@ whether to test at all, and the column is the leftmost the first row tests.** Co
 matches everything covers everything — and `unselected` already reports arms that no leaf selects, which is the correct
 verdict for the rows this rule steps over.
 
-*A is what remains after B.* An arm whose pattern in a split column is a variable survives into every branch of that
+_A is what remains after B._ An arm whose pattern in a split column is a variable survives into every branch of that
 split, and `leaf` calls `check_open` on its body once per leaf it reaches — not merely emitting it twice but
 **type-checking** it twice. Peyton Jones §5.4.1 is this exact failure and the fat bar is his answer to it; the fat bar's
-*other* job, letting an equation fail into the next, is the one musa correctly declines, and declining the mechanism
+_other_ job, letting an equation fail into the next, is the one musa correctly declines, and declining the mechanism
 took both. The replacement is ch. 6's let-bound right-hand side, which is note 26 §2.4's join point spelled without
 labels:
 
@@ -115,7 +122,7 @@ let armᵢ = λ (x⃗ : T⃗). body in  <case tree, whose leaves are `armᵢ v�
 
 An arm is hoisted when its body is **uniform** across the leaves it reaches, and the test for that is exact rather than
 heuristic: an arm is hoistable iff the types of the variables it binds, and the goal its body answers, are all
-expressible at the match's *own* depth. Attempting to quote them there is the check — a type or goal that mentions a
+expressible at the match's _own_ depth. Attempting to quote them there is the check — a type or goal that mentions a
 variable the tree introduced cannot be quoted at that depth, and that is precisely the dependent case where two leaves
 genuinely need two different functions. Non-indexed families, records, every enum, and every non-dependent match on an
 indexed one pass; a match whose motive really does depend on the subject falls back to elaborating in place, which is
@@ -139,16 +146,17 @@ into the law suites as a **test-local oracle**, where its naivety is the point: 
 implementation. The same applies to `convertible_types`.
 
 **What is deliberately left to prompt 144, and why.** Finding C — no glued evaluation — is not ad hoc: musa-core has no
-top-level definition scope, so there is nothing that *could* be held folded, and every smalltt technique that is missing
+top-level definition scope, so there is nothing that _could_ be held folded, and every smalltt technique that is missing
 is a technique for deciding when not to unfold. It becomes wrong at prompt 142, which points the standard library at
-this core. Three items ride on it and cannot be built before it: `Spine::Def` and the `G` pair, D's approximate
-rigid/flex/full conversion, and E's flexible quotation mode. This prompt's documents half is to repair 144's **Read**,
-**Design**, and **Target** so 144 owns them by name and by citation, rather than leaving a future reader to rediscover
-the audit. That is a repair of a pending prompt, which the prompt README's §6 makes ordinary.
+this core. Four items ride on it and cannot be built before it: `Spine::Def` and the `G` pair, D's approximate
+rigid/flex/full conversion, E's flexible quotation mode, and E's per-metavariable occurs cache. This prompt's documents
+half is to repair 144's **Read**, **Design**, and **Target** so 144 owns them by name and by citation, rather than
+leaving a future reader to rediscover the audit. That is a repair of a pending prompt, which the prompt README's §6
+makes ordinary.
 
 **What would falsify this prompt.** If the hoisting condition turns out to admit an arm whose abstraction does not
 typecheck, the condition is wrong and the prompt is repaired before any code ships — not patched with a special case. If
-B's first-row rule changes which programs are accepted, the rule is wrong: it may change the *shape* of a tree and it
+B's first-row rule changes which programs are accepted, the rule is wrong: it may change the _shape_ of a tree and it
 may change which arms are reported unreachable, but never whether a `match` is exhaustive.
 
 ## Target
@@ -157,24 +165,25 @@ may change which arms are reported unreachable, but never whether a `match` is e
   above and per-`Elim` origins.
 - `crates/musa-core/src/unify.rs`: structural `Lam`/`Lam` and `Record`/`Record` arms, η dispatch on the type at Π and at
   record types, and `by_reading_back` reachable only on the failure path.
-- `crates/musa-core/src/quote.rs` and `unify.rs`: scope restriction and the occurs check fused into quotation, with a
-  per-metavariable occurs cache and the unfolded walk as the fallback.
+- `crates/musa-core/src/quote.rs` and `unify.rs`: scope restriction and the occurs check fused into quotation, and
+  `restrict` deleted rather than kept beside it.
 - `crates/musa-core/src/case.rs`: the plan/emit split, first-row column selection, and hoisted arm bodies.
 - `crates/musa-core/src/lib.rs`: `convertible` and `convertible_types` as one procedure with the unifier.
 - Laws in `crates/musa-core/tests/suite/`:
-  - **each arm body is elaborated exactly once per distinct binding telescope**, counted rather than inferred, and once
-    per arm for the whole corpus;
-  - note 44's interleaved-column program elaborates with a term size and an elaboration time that grow **linearly** in
-    the number of columns, stated as a ratio law so it is not a pinned byte count;
-  - an arm no leaf applies is still `Refusal::UnreachableBranch`, at the same origin;
-  - conversion answers what it answered before on the whole `fixtures::corpus`, including the η samples, with
-    `by_reading_back` never reached on a success;
-  - a metavariable solution that would capture a variable is still refused, and the fused check refuses at the same
-    programs the two-pass one did;
-  - `convertible` and the test-local oracle agree on every sample — the second-path audit stated as a test rather than
-    as a prohibition.
+    - **each arm body is elaborated exactly once per distinct binding telescope**, counted rather than inferred, and once
+      per arm for the whole corpus;
+    - note 44's interleaved-column program elaborates with a term size and an elaboration time that grow **linearly** in
+      the number of columns, stated as a ratio law so it is not a pinned byte count;
+    - an arm no leaf applies is still `Refusal::UnreachableBranch`, at the same origin;
+    - conversion answers what it answered before on the whole `fixtures::corpus`, including the η samples, with
+      `by_reading_back` never reached on a success;
+    - a metavariable solution that would capture a variable is still refused, and the fused check refuses at the same
+      programs the two-pass one did;
+    - `convertible` and the test-local oracle agree on every sample — the second-path audit stated as a test rather than
+      as a prohibition.
 - `docs/plan/prompts/144-diagnostics-and-performance.md`: **Read**, **Design**, and **Target** naming Finding C, the
-  `Def` head and the `G` pair, approximate conversion, and the flexible quotation mode, each cited to note 44.
+  `Def` head and the `G` pair, approximate conversion, the flexible quotation mode, and the per-metavariable occurs
+  cache, each cited to note 44.
 - `docs/plan/code-map/` rows updated for what changed.
 - `docs/notes/research/language-design-closure/44-…md`: a short closing section recording which findings this prompt
   discharged and what the measurement became. The note is evidence; leaving it claiming a cost that is gone would make
