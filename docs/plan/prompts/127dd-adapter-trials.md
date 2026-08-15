@@ -1,12 +1,16 @@
 ---
 id: 127dd
 slug: adapter-trials
-status: pending
+status: superseded
 depends_on: [127dcg]
 phase: 3
 ---
 
 # Freeze the Adapter Rules and Carry Them Through Hostile Review
+
+> **Superseded by prompt [147](147-adapter-freeze.md).** This file is kept rather than deleted because completed prompts
+> and research notes link to it. Its nine proof obligations are prompt 147's outline; what changed is that quotation and
+> syntax patterns replaced the phase API these obligations were written against. Do not execute this prompt.
 
 ## Task
 

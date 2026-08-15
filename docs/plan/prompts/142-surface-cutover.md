@@ -13,18 +13,18 @@ phase: 3
 Close the seam. Wire `musa-compiler` to `musa-core`, migrate `stdlib/`, `examples/`, and every fixture corpus onto the
 new language, delete contextual `Music` and the rank-1 Hindley–Milner checker along with every superseded checking path,
 and discharge `docs/plan/clean-break-ledger.md`. This is the one migration, and it is green at the end rather than in
-the middle. It absorbs prompt 127e, whose file is deleted rather than repaired.
+the middle. It absorbs prompt 127e, whose file stays as a superseded record rather than being repaired.
 
 ## Read
 
 - `docs/plan/clean-break-ledger.md` in full — every source spelling, Rust API, serialized form, fixture, and test name
   it names as deleted rather than aliased. This prompt discharges the rows it owns and leaves the machine rows to
   150–153.
-- The deleted prompt 127e's Task and Design as they stood at commit `HEAD` when it was removed (`git log --diff-filter=D
-  -- docs/plan/prompts/127e-source-language-clean-break.md`). Everything it specified is this prompt's obligation:
-  contextual `Music` goes, notation becomes ordinary values, and placement comes from the enclosing voice's left fold.
-  Absorbing it was right because migrating `stdlib/` twice — once onto the old core's replacement, once onto the new
-  language — would have been the same files rewritten for two different reasons within ten prompts.
+- The superseded prompt [127e](127e-source-language-clean-break.md), whose whole Task this prompt absorbs. Everything it
+  specifies is this prompt's obligation: contextual `Music` goes, notation becomes ordinary values, and placement comes
+  from the enclosing voice's left fold. Absorbing it was right because migrating `stdlib/` twice — once onto the old
+  core's replacement, once onto the new language — would have been the same files rewritten for two different reasons
+  within ten prompts.
 - `crates/musa-compiler/src/infer.rs` and the checking paths in `core.rs` — what is deleted, and what has to keep
   working because something other than the checker uses it.
 - `crates/musa-compiler/tests/suite/elaboration_compatibility.rs`, especially

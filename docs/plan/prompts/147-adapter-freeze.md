@@ -17,10 +17,10 @@ exists: quotation and syntax patterns changed what has to be proved.
 
 ## Read
 
-- The deleted prompt 127dd's Design and Target as they stood when it was removed (`git log --diff-filter=D --
-  docs/plan/prompts/127dd-adapter-trials.md`). Its nine proof obligations are the outline; what changed is that two of
-  them now have different mechanisms underneath. Absorbing it was right because freezing rules about a phase API that
-  prompts 138–140 then replaced would have frozen the wrong thing.
+- The superseded prompt [127dd](127dd-adapter-trials.md), whose whole Task this prompt absorbs. Its nine proof
+  obligations are the outline; what changed is that two of them now have different mechanisms underneath. Absorbing it
+  was right because freezing rules about a phase API that prompts 138–140 then replaced would have frozen the wrong
+  thing.
 - `docs/notes/research/language-design-closure/26-language-design-decision.md` §§9–10 — the admission conditions, the
   nine proof obligations, and the promotion gate.
 - `34-proof-review.md`, `35-proof-repair.md`, `36-final-proof-review.md`, and `37-final-blocker.md` — what the previous

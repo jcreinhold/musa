@@ -3,9 +3,9 @@
 **Status: directive.** Written by prompt 127a as part of the amendment that made the event track and the machine the two
 core values (`../rules/constitution.md`, `../rules/README.md`).
 
-This page names every source spelling, Rust API, serialized form, fixture, and test name that prompts 127b–127e and
-150–153 **delete** rather than keep working through an alias, a deprecation shim, or a compatibility reader. It exists
-so that "clean break" is a checkable list rather than an intention.
+This page names every source spelling, Rust API, serialized form, fixture, and test name that prompts 127b–127d, 142,
+and 150–153 **delete** rather than keep working through an alias, a deprecation shim, or a compatibility reader. It
+exists so that "clean break" is a checkable list rather than an intention.
 
 ## Why a ledger rather than aliases
 
@@ -26,9 +26,9 @@ best-effort translation.
 
 | Deleted spelling | Replacement | Deleted by |
 | --- | --- | --- |
-| the type name `Music` | `EventTrack[WrittenTime, ScoreFact]`, written out | 127e |
-| the type name `ContextualMusic` and the contextual-instantiation judgment | ordinary values; placement by the enclosing voice's left fold | 127e |
-| `music { … }` as a contextual-value constructor | an ordinary expression of event-track type | 127e |
+| the type name `Music` | `EventTrack[WrittenTime, ScoreFact]`, written out | 142 |
+| the type name `ContextualMusic` and the contextual-instantiation judgment | ordinary values; placement by the enclosing voice's left fold | 142 |
+| `music { … }` as a contextual-value constructor | an ordinary expression of event-track type | 142 |
 | `overlay(a, b)` | `together(a, b)` | 127c |
 | `sequence(a, b)` / the `;` sequencing spelling in kernel documents | `follow(a, b)` | 127c |
 | `timeline d { … }` in kernel documents | `track d { … }` | 127c |
@@ -54,8 +54,8 @@ best-effort translation.
 | `SecondTime` as a coordinate tag | `PhysicalTime` | 127c |
 | `PrimitiveOwnership<Builtin>` and `primitive` naming a compiler-owned operation | `BuiltinOwnership<Builtin>`; compiler-owned operations are *builtins*, registered units are *primitives* | 127b, discharged by 127ca |
 | `Scheduled<A>` | `Schedule<A>`, matching the existing `ScheduleError` | 151 |
-| `musa_compiler::core::Music`, `MusicOperation`, `MusicRole` | ordinary values of ordinary types | 127e |
-| the private `close` and `instantiate_music` elaboration path, and the fragment type they close | building and closing over ordinary values | 127e |
+| `musa_compiler::core::Music`, `MusicOperation`, `MusicRole` | ordinary values of ordinary types | 142 |
+| the private `close` and `instantiate_music` elaboration path, and the fragment type they close | building and closing over ordinary values | 142 |
 | `musa_audio::compile_graph` and public `StudioGraphSpec` as a semantic alternative | machine construction and `prepare_audio(format, machine)` | 152 |
 | `RenderPlan` / `PreparedExecution` as the public prepared artifact | `PreparedMachine` | 150, 152 |
 | a caller- or preparation-chosen "semantic step" option | one audio step is one sample frame; batching is a checked `batch(n)` contract | 152 |
@@ -79,8 +79,8 @@ document's version says so.
 | Deleted or rewritten fixture set | Deleted by |
 | --- | --- |
 | all 24 files in `examples/kernel/*.musa.kernel` — regenerated at `% musa-kernel-2` with `track`, `follow`, `together`, and durations | 127c |
-| every `.musa` example and stdlib source that spells the type `Music` or calls `overlay`/`sequence` | 127e |
-| the insta snapshots under `crates/musa-kernel` and `crates/musa-compiler` that pin the old kernel text | 127c, 127e |
+| every `.musa` example and stdlib source that spells the type `Music` or calls `overlay`/`sequence` | 142 |
+| the insta snapshots under `crates/musa-kernel` and `crates/musa-compiler` that pin the old kernel text | 127c, 142 |
 | studio fixtures whose expected output depends on host-block-defined feedback or modulation | 152 |
 
 Goldens are rewritten in the same prompt that breaks them, never left failing across a prompt boundary
@@ -124,7 +124,7 @@ These survive the break unchanged, and a prompt that removes one is wrong:
 
 ## 7. How a prompt discharges its rows
 
-A prompt in 127b–127e and 150–153 is not done while a row it owns still resolves in the workspace. The check is
+A prompt in 127b–127d, 142, and 150–153 is not done while a row it owns still resolves in the workspace. The check is
 mechanical: after the prompt's commit, searching the workspace for the deleted spelling returns only this ledger and the
 research record. If it returns code, a fixture, or a governing document, the break is incomplete.
 

@@ -41,11 +41,16 @@ and is the right insertion when the ranks that would move include finished work;
 ---
 id: NN
 slug: short-name
-status: pending        # pending | in-progress | done
+status: pending        # pending | in-progress | done | superseded
 depends_on: [NN, ...]  # earlier prompt ids
 phase: 1               # roadmap phase this feature belongs to
 ---
 ```
+
+`superseded` means a later prompt absorbed this one's whole Task. The file stays — completed prompts, research notes,
+and the ledger link to it, and a dangling link buys nothing that deleting the file was worth — but it carries a banner
+naming the prompt that absorbed it and is never executed. Its row stays in the sequence overview so the table remains a
+complete index of the directory.
 
 Body sections (a prompt omits a section when it has nothing to add):
 
@@ -274,9 +279,9 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 127dcfag | staff-retrial | 3 | Rewrite staff expansion on the repaired API and measure what changed |
 | 127dcfah | printed-literals | 3 | Give the language the two operations a printer needs |
 | 127dcfb | staff-edit-print | 3 | Make the staff adapter generative |
-| 127dcg | studio-trial | 3 | Write the studio adapter as an unprivileged package |
-| 127dd | adapter-trials | 3 | Freeze the adapter rules and carry them through hostile review |
-| 127e | source-language-clean-break | 3 | Delete contextual `Music` and migrate notation to ordinary values |
+| 127dcg | studio-trial | 3 | *superseded by 146* — write the studio adapter as an unprivileged package |
+| 127dd | adapter-trials | 3 | *superseded by 147* — freeze the adapter rules and carry them through hostile review |
+| 127e | source-language-clean-break | 3 | *superseded by 142* — delete contextual `Music` and migrate notation |
 | 128 | core-amendment | 3 | Amend the core to admit a dependent foundation |
 | 129 | dependent-core-spec | 3 | Specify the dependent core |
 | 130 | trait-and-surface-spec | 3 | Specify records, enums, traits, and their surface |
@@ -545,7 +550,7 @@ running signals do not. 127 measures that implementation. Later research found t
 is open-ended, but the typed machine that produces its next frame is finite data. Treating the two as the same thing had
 pushed the machine description out of the language for the wrong reason.
 
-**127a–127e and 150–153 make the clean correction.** 127a amends the governing documents before code changes. 127aa–127b
+**127a–127d and 150–153 make the clean correction.** 127a amends the governing documents before code changes. 127aa–127b
 then install one small, strict, total, HM-inferred language with complete calls and a checked storable-data boundary, in
 five steps that each leave the workspace green: inference and the two kinds of type variable (127aa), `text`, sums and
 `Result` (127ab), library-declared finite data (127ac), complete calls and the corpus migration (127ad), and the typed
@@ -574,18 +579,18 @@ standing in for (127dcfac), and `Result`-specific `?`, which flattens a six-fram
 monad (127dcfad) — the traversal repair those four leave behind: a paper trial of an inherited-context recursor over
 sealed steps (127dcfae), its implementation and the rules amendment that precedes it (127dcfaf), and the staff rewrite
 that measures which repair removed what (127dcfag), the last thing the language was missing, found by trying to write
-the printer and discovering that nothing in the language builds a text at all (127dcfah), and the studio trial (127dcg),
-all of them carrying real musical load without privilege, and the freeze and hostile review that turn them into a proved
-claim (127dd). The ergonomics land before the traversal deliberately: with them in hand, an improvement measured after
-the recursor cannot be an improvement `foldr`, `if`, record update, or `?` had already made. 127dcfaf supersedes 127da's
-rule that a fold is the only way into a syntax value — an adapter may now look at a node before choosing whether, in
-what order, and under what context to read its children — while leaving derived paths, unreadable `SourceInfo`, and the
-builder facade exactly where 127da put them. The second blocker — a lowered match with no executable meaning — closes by
-*not* adding a decision-tree target: source `match` remains the one evaluator. 127e then deletes contextual `Music`;
-notation becomes a source-mapped adapter into ordinary inferred terms. 150 gives each machine one exact next step. 151
-makes the time-to-frame policy explicit. 152 makes one sample frame the reference meaning of audio and treats host
-blocks only as checked batching. 153 proves and audits the complete path before any later sound prompt may run. Old
-syntax, APIs, and serialized forms are removed, not kept behind aliases.
+the printer and discovering that nothing in the language builds a text at all (127dcfah). The studio trial and the
+freeze that were to follow — 127dcg and 127dd — are superseded by 146 and 147, which do the same work on the language
+the pass below installs. The ergonomics land before the traversal deliberately: with them in hand, an improvement
+measured after the recursor cannot be an improvement `foldr`, `if`, record update, or `?` had already made. 127dcfaf
+supersedes 127da's rule that a fold is the only way into a syntax value — an adapter may now look at a node before
+choosing whether, in what order, and under what context to read its children — while leaving derived paths, unreadable
+`SourceInfo`, and the builder facade exactly where 127da put them. The second blocker — a lowered match with no
+executable meaning — closes by *not* adding a decision-tree target: source `match` remains the one evaluator. Deleting
+contextual `Music` was 127e's job and is now 142's, folded into the one migration rather than done twice. 150 gives each
+machine one exact next step. 151 makes the time-to-frame policy explicit. 152 makes one sample frame the reference
+meaning of audio and treats host blocks only as checked batching. 153 proves and audits the complete path before any
+later sound prompt may run. Old syntax, APIs, and serialized forms are removed, not kept behind aliases.
 
 **128–149 rebuild the surface language on a dependent core, and 150–153 wait for them.** The staff adapter is the
 evidence: 2,158 lines of Musa for a notation reader, most of it compensating for a language that cannot build a list,

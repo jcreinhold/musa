@@ -63,7 +63,7 @@ Judgments are in [`02-core-calculus.md`](../../rules/language/02-core-calculus.m
 - **Reusable material is an ordinary value.** Prompt 127a deleted the contextual `Music` type: a fragment is a value of
   type `EventTrack[WrittenTime, ScoreFact]`, a motif is a function returning one, and placement is applied by the
   enclosing voice's left fold rather than read from an ambient context (`../../rules/language/00-semantics.md` §3). The
-  code still spells the old type; prompt 127e removes it.
+  code still spells the old type; prompt 142 removes it.
 - **A nullary `fn` is a function.** `fn f() -> T` has type `() -> T` and is called `f()`, and the record an editor shows
   says so rather than spelling it `let f: T`. There is one deliberate exception, and it is the motif affordance: a bare
   reference to a nullary `() -> EventTrack[WrittenTime, ScoreFact]` function *where a track is expected* is applied, so
@@ -80,7 +80,7 @@ default. `examples/broken/no-scale-in-force.musa` is the shape of that failure.
 `examples/canon-functions.musa` is two notes and a transformation, and it exercises the whole path.
 
 **This trace is the post-127c output.** The temporal spellings are current — `EventTrack`, `track`, `follow`,
-`together`, `% musa-kernel-2`. The type name `Music` is not: prompt 127e replaces it, and the pairs still owed are in
+`together`, `% musa-kernel-2`. The type name `Music` is not: prompt 142 replaces it, and the pairs still owed are in
 [`../clean-break-ledger.md`](../clean-break-ledger.md). What the trace *shows* about provenance, sharing, and exact time
 is unchanged by either rename.
 

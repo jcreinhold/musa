@@ -1,12 +1,17 @@
 ---
 id: 127e
 slug: source-language-clean-break
-status: pending
+status: superseded
 depends_on: [127dd]
 phase: 3
 ---
 
 # Delete Contextual Music and Cut the Surface Over
+
+> **Superseded by prompt [142](142-surface-cutover.md).** This file is kept rather than deleted because completed
+> prompts, research notes, and the clean-break ledger link to it. Everything it specifies — deleting contextual `Music`,
+> moving notation onto ordinary values, placement by the enclosing voice's left fold — is prompt 142's obligation,
+> carried out as part of one migration rather than two. Do not execute this prompt.
 
 ## Task
 

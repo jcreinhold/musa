@@ -2,7 +2,7 @@
 id: 153
 slug: core-calculus-conformance
 status: pending
-depends_on: [127e, 152]
+depends_on: [149, 152]
 phase: 3
 ---
 

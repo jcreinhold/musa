@@ -17,11 +17,11 @@ prompt absorbs 127dcg, whose file is deleted rather than repaired.
 
 ## Read
 
-- The deleted prompt 127dcg's Design and Target as they stood when it was removed (`git log --diff-filter=D --
-  docs/plan/prompts/127dcg-studio-trial.md`). Its eight-item coverage list, its division between what expansion checks
-  and what `validate` checks, its four required diagnostics, and its `3/10` → `2/5` edit are this prompt's obligations
-  verbatim. Absorbing it was right because writing the studio adapter on the old language and then rewriting it on the
-  new one within four prompts would be the same file written twice for no additional evidence.
+- The superseded prompt [127dcg](127dcg-studio-trial.md), whose whole Task this prompt absorbs. Its eight-item coverage
+  list, its division between what expansion checks and what `validate` checks, its four required diagnostics, and its
+  `3/10` → `2/5` edit are this prompt's obligations verbatim. Absorbing it was right because writing the studio adapter
+  on the old language and then rewriting it on the new one within four prompts would be the same file written twice for
+  no additional evidence.
 - `docs/notes/research/language-design-closure/27-adapter-trials.md` §3 in full — the source block, `PortKind`,
   `StudioDecl`, `StudioDescription`, and §4's table, which is the claim this prompt has to make true: the two adapters
   differ in every musical row and in no compiler-facing row.

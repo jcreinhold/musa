@@ -32,8 +32,9 @@ prompt repairs 129–131 and stops; implementation does not begin on a design th
 - `docs/notes/research/language-design-closure/27-adapter-trials.md` and note 28's five programs — the existing trial
   corpus, so the new language is measured on programs chosen before it existed rather than on programs chosen to suit
   it.
-- `stdlib/src/adapters/studio.musa` (or prompt [127dcg](127dcg-studio-trial.md)'s design if the file does not exist
-  yet), specifically `validate` — the second adapter, which is what keeps the design from being fitted to staff.
+- `stdlib/src/adapters/studio.musa` (or the superseded prompt [127dcg](127dcg-studio-trial.md)'s design if the file does
+  not exist yet), specifically `validate` — the second adapter, which is what keeps the design from being fitted to
+  staff.
 - Peyton Jones ch. 3 and ch. 5, for the shape a translation from surface to core is expected to take. Every rewritten
   program in this trial is one, and a program whose desugaring cannot be written down is a specification defect.
 

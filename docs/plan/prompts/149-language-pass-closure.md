@@ -46,11 +46,17 @@ numbers; `docs/rules/desktop/`'s error-and-states voice against the diagnostics 
 style-guide rules against what prompt 143 moved out of the compiler. Check each explicitly rather than trusting a
 link-checker to notice, because a document can be internally consistent, well-linked, and wrong.
 
+**A stale cross-reference is not an amendment.** `docs/rules/kernel/06-surface-elaboration.md` and
+`docs/rules/across-stages/05-metatheory.md` name prompt ranks that this pass superseded; correcting a pointer to say
+which prompt now owns the work changes no decision and is an ordinary repair. Changing what one of those documents
+*claims* is an amendment. Keep the two apart in the diff, and if a single edit is both, it is an amendment.
+
 **Where a governing document is genuinely falsified, stop.** This prompt may repair `docs/plan/`, `docs/book/`,
 `docs/plan/code-map/`, and `AGENTS.md` freely, and may repair `docs/rules/language/` as its own candidate specification.
-It may **not** amend `docs/rules/constitution.md`, `obligations.md`, `kernel/`, `across-stages/`, or `desktop/`. If one
-of those is falsified, the finding is published and the decision is handed back — the same rule prompts 147 and 148
-worked under, and the reason prompt 128 exists as a separate prompt at all.
+It may repair stale prompt-rank pointers anywhere. It may **not** amend a claim in `docs/rules/constitution.md`,
+`obligations.md`, `kernel/`, `across-stages/`, or `desktop/`. If one of those is falsified, the finding is published and
+the decision is handed back — the same rule prompts 147 and 148 worked under, and the reason prompt 128 exists as a
+separate prompt at all.
 
 **The ledger closes or says what is left.** `docs/plan/clean-break-ledger.md` names deletions owned by prompts that no
 longer exist and by prompts that have not run. Mark each row discharged, reassigned to 150–153, or — if a row turned out

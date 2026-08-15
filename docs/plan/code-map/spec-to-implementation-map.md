@@ -8,7 +8,7 @@ carry their pre-127a spellings, and the pairs are in [`../clean-break-ledger.md`
 | --- | --- | --- | --- |
 | Total non-recursive source expressions | `musa-compiler` | implemented for the current value types and folds | whole-language conformance tests |
 | User-defined nominal data, private constructors, and abstract type members | `musa-compiler` | absent; research candidate still incomplete after review 54 | repair active package-version selection, then review again |
-| Building and closing a fragment into a core term | compiler to kernel | implemented, but over the deleted contextual `music` type | prompt 127e rebuilds it over ordinary values; differential and closure tests |
+| Building and closing a fragment into a core term | compiler to kernel | implemented, but over the deleted contextual `music` type | prompt 142 rebuilds it over ordinary values; differential and closure tests |
 | Finite `EventTrack<C,A>` operations, including unequal-duration `together` | `musa-kernel` | implemented at the old names and without the coordinate index | prompts 127b–127c; current 62 kernel tests and final conformance audit |
 | Versioned exact bytes for event-track equality | `musa-kernel` | implemented; the coordinate tag is not yet in the encoding | prompt 127c, then a migration test when a persisted reader is added |
 | `Machine<K,A,B>` as a core value of the source language | `musa-compiler`/`musa-audio` | absent | prompts 150–152 |
@@ -26,8 +26,8 @@ carry their pre-127a spellings, and the pairs are in [`../clean-break-ledger.md`
 
 ## Recommended implementation order
 
-1. Carry out the clean break of prompts 127b–127e and 150–153: the event-track rename and coordinate index, the deletion
-   of the contextual `music` type, machines as core values, and `schedule`.
+1. Carry out the clean break of prompts 127b–127d, 142, and 150–153: the event-track rename and coordinate index, the
+   deletion of the contextual `music` type, machines as core values, and `schedule`.
 2. Finish or reject the small source-language design for theory-owned data. Do not implement it while stable package
    selection remains undefined.
 3. Add the gesture event track using the now-implemented payload admission rule.
