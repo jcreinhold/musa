@@ -1947,23 +1947,23 @@ musa/
 ## 15.1 Dependency direction
 
 ```text
-musa-language   musa-core
-      │             │
-      └──────┬──────┘
-             ▼
-        musa-compiler
-         │       │
-         ▼       ▼
-      render    audio
-                   │
-                   ▼
-                 engine
-             \      │      /
-              \     ▼     /
-                project
-                │   │   │
-                ▼   ▼   ▼
-               cli desktop lsp
+musa-language   musa-core   musa-kernel
+      │             │            │
+      └─────────────┼────────────┘
+                    ▼
+              musa-compiler
+               │       │
+               ▼       ▼
+            render    audio
+                         │
+                         ▼
+                       engine
+                   \      │      /
+                    \     ▼     /
+                      project
+                      │   │   │
+                      ▼   ▼   ▼
+                     cli desktop lsp
 ```
 
 No dependency points upward.
@@ -1973,6 +1973,7 @@ In particular:
 - compiler does not depend on rendering;
 - compiler does not depend on audio;
 - the core does not depend on the compiler, on `musa-language`, or on anything musical (§15.12);
+- the temporal kernel is a leaf on the same terms, and its payloads stay opaque to it (§15.13);
 - audio does not depend on the GUI;
 - render does not know about source-editor widgets;
 - the frontend does not know about CPAL or FunDSP;
@@ -2363,6 +2364,49 @@ pub fn normalize(term: &Term) -> Term;
 representation, so exposing it would make every later change to evaluation a breaking change for `musa-compiler`;
 callers get `Term` back through `quote`. Prompt 133 states the argument in full, because the pressure to leak `Value`
 arrives with the first caller that wants to inspect a normal form.
+
+
+## 15.13 `musa-kernel`
+
+The finite temporal kernel a checked program elaborates into, and the workspace's other **leaf**: it depends on no other
+Musa crate, and it knows nothing about pitch, notation, instruments, or audio. The division with §15.12 is that
+`musa-core` is the calculus a term is *checked* in, and `musa-kernel` is the denotation a checked term *means* — an
+ambient duration `d ∈ ℚ≥0` and a finite multiset of occurrences `(s, e, a)` with `0 ≤ s ≤ e ≤ d`. Both sit below
+`musa-compiler` for the same reason: the part that has to be provably right is smaller than the part that has to be
+convenient, and it stays that way only if it cannot reach the rest of the workspace.
+
+Owns:
+
+- exact ambient musical time, tagged by coordinate, so written and performed time are separate types that never combine;
+- typed occurrences over opaque payloads;
+- the `EventTrack` basis — `empty`, `event`, `follow`, `together`, `map_payloads`, `duration`;
+- normalization, semantic equality, and the semantic hash;
+- the versioned exact byte encoding those last three rest on.
+
+Dependencies:
+
+```text
+num-rational
+thiserror
+```
+
+Shorter even than §15.12's, and for a stricter reason: `docs/rules/kernel/` names what may never enter — musical
+semantics, since payloads are opaque; provenance interpretation, since provenance rides inside payloads; floats for
+symbolic time; an object that represents silence, since uncovered time is silent by absence; and anything from the sound
+layer.
+
+Public interface:
+
+```rust
+pub fn empty<C: Coordinate, A>(duration: Duration<C>) -> EventTrack<C, A>;
+pub fn event<C: Coordinate, A>(duration: Duration<C>, payload: A) -> Result<EventTrack<C, A>, KernelError>;
+pub fn follow<C: Coordinate, A>(parts: Vec<EventTrack<C, A>>) -> EventTrack<C, A>;
+pub fn together<C: Coordinate, A>(parts: Vec<EventTrack<C, A>>) -> EventTrack<C, A>;
+```
+
+The basis is six operations and stays six. A surface convenience that cannot be elaborated from them is a change to the
+elaboration specification, never a seventh constructor here — `docs/rules/kernel/00-purpose.md` §26 owns the facade, and
+the code-map's implementor reference §2 states the same rule from the compiler's side.
 
 
 ---
