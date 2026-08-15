@@ -1955,9 +1955,9 @@ musa-language   musa-core   musa-kernel
                │       │
                ▼       ▼
             render    audio
-                         │
-                         ▼
-                       engine
+             │           │
+             ▼           ▼
+           wasm        engine
                    \      │      /
                     \     ▼     /
                       project
@@ -1978,7 +1978,9 @@ In particular:
 - render does not know about source-editor widgets;
 - the frontend does not know about CPAL or FunDSP;
 - the language server is the one shell with a second edge, to `musa-language` (§15.11): highlighting and completion must
-  answer on half-typed source, which the session's facts — the last *valid* compile's — cannot describe.
+  answer on half-typed source, which the session's facts — the last *valid* compile's — cannot describe;
+- the wasm shell sits on `musa-render` and, like the CLI, on `musa-compiler` directly (§15.14), and nothing in the
+  workspace depends on it — `packages/*` consumes its built artifact from TypeScript, below Cargo entirely.
 
 ## 15.2 `musa-language`
 
@@ -2407,6 +2409,51 @@ pub fn together<C: Coordinate, A>(parts: Vec<EventTrack<C, A>>) -> EventTrack<C,
 The basis is six operations and stays six. A surface convenience that cannot be elaborated from them is a change to the
 elaboration specification, never a seventh constructor here — `docs/rules/kernel/00-purpose.md` §26 owns the facade, and
 the code-map's implementor reference §2 states the same rule from the compiler's side.
+
+
+## 15.14 `musa-wasm`
+
+The fourth shell, and the only one that is not a program: a WebAssembly module carrying the whole semantic pipeline —
+parse, compile, notation plan, MEI — into the browser for `@musa/web`. Like `musa` and `musa-lsp` it adds no semantics
+of its own. Unlike them it has no session, and that is why it sits on `musa-compiler` and `musa-render` directly instead
+of on `musa-project`: a web snippet is one self-contained string, with no file to open, no revision history to keep, and
+no audio device to hold.
+
+Owns:
+
+- the wasm-crossing diagnostic type;
+- the boundary functions — `typeset`, `validate`, and the panic hook;
+- nothing else. Not notation planning, not DOM or worker code, not audio, not filesystem access.
+
+Dependencies:
+
+```text
+musa-compiler
+musa-render
+wasm-bindgen
+serde
+serde-wasm-bindgen
+console_error_panic_hook
+```
+
+No `tracing`: the browser has no stderr, and a shell that adds nothing to the pipeline has nothing of its own to report.
+
+Public interface:
+
+```rust
+#[wasm_bindgen] pub fn typeset(source: &str) -> Result<JsValue, JsValue>;
+#[wasm_bindgen] pub fn validate(source: &str) -> Result<JsValue, JsValue>;
+```
+
+`crate-type = ["cdylib", "rlib"]`, so the logic behind those two wrappers is exercised by ordinary native tests and the
+boundary is the only part that needs a browser. The `Result` is about the crossing, not the music: a serialization
+failure rejects, while a source that does not compile is a perfectly ordinary *result* carrying diagnostics. Spans cross
+as byte offsets, because the page already holds the source and can compute line and column from it losslessly — sending
+both would be information duplicated rather than hidden.
+
+Below it, and outside the Cargo workspace entirely, sits the pnpm workspace: `packages/musa-engrave`, which holds
+Verovio behind the `Engraver` interface and is shared with the desktop UI, and `packages/musa-web`, published as
+`@musa/web`. They consume the built artifact; no crate depends on them, and the two build systems check separately.
 
 
 ---
