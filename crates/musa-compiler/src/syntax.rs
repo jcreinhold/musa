@@ -242,18 +242,327 @@ impl SourceInfo {
     }
 }
 
+/// How a syntax value parses — `../rules/language/11-quotation.md` §1's index.
+///
+/// **Two cases, not four.** Prompt 131 wrote `Item` and `Pattern` beside them
+/// and prompt 132's trial found that no program constructs either. `Item` comes
+/// back when an adapter expands a region into declarations rather than into an
+/// expression, which no planned adapter does; re-adding it is a case here and
+/// its round-trip test.
+///
+/// The index is a claim about how the tree parses, and the representation is
+/// the same either way. A refined claim is introduced only by an operation that
+/// establishes it — today, [`as_expression`]'s checked parse — and it is
+/// forgotten wherever it is not needed, which is one acceptance rule in the
+/// checker rather than a `forget` an author writes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) enum Cat {
+    /// The real parser read this tree as an expression.
+    Expr,
+    /// Nothing is claimed about how this tree parses.
+    TokenTree,
+}
+
+impl Cat {
+    /// The name this category is written by, inside `Syntax<…>`.
+    pub(crate) const fn name(self) -> &'static str {
+        match self {
+            Self::Expr => "Expr",
+            Self::TokenTree => "TokenTree",
+        }
+    }
+
+    /// The category a written name denotes.
+    pub(crate) fn named(text: &str) -> Option<Self> {
+        [Self::Expr, Self::TokenTree]
+            .into_iter()
+            .find(|candidate| candidate.name() == text)
+    }
+
+    /// Whether a position of this category accepts a value of `theirs`.
+    ///
+    /// §1's forgetting rule, and the whole of it: a token-tree position accepts
+    /// anything, because a token-tree position is precisely one that has not
+    /// been parsed as anything more specific, and every other position requires
+    /// its own category exactly. Directional on purpose — the reverse is the
+    /// uncertified splice the index exists to refuse.
+    pub(crate) fn accepts(self, theirs: Self) -> bool {
+        self == Self::TokenTree || self == theirs
+    }
+}
+
+/// The lexer's own token kinds, under the names an adapter writes them by.
+///
+/// The phase's `TokenKind` *is* [`musa_language::SyntaxKind`] rather than a
+/// parallel enum, so there is no second set of cases to fall out of step with
+/// the lexer's. What this adds is the spelling, and the spelling cannot
+/// disagree with the kind because `stringify!` writes it from the same
+/// identifier. The one thing the macro cannot say is that the list is
+/// *complete*, so a drift test says it: every kind the lexer can produce
+/// appears here, and no parser node kind does.
+macro_rules! token_kinds {
+    ($($case:ident),* $(,)?) => {
+        pub(crate) const TOKEN_KINDS: &[(&str, musa_language::SyntaxKind)] =
+            &[$((stringify!($case), musa_language::SyntaxKind::$case)),*];
+    };
+}
+
+token_kinds!(
+    Whitespace,
+    LineComment,
+    BlockComment,
+    Identifier,
+    Integer,
+    Float,
+    Rational,
+    String,
+    PitchLiteral,
+    IntervalLiteral,
+    UnitHz,
+    UnitMs,
+    UnitS,
+    UnitDb,
+    UnitBpm,
+    LBrace,
+    RBrace,
+    LBracket,
+    RBracket,
+    LParen,
+    RParen,
+    Semicolon,
+    Comma,
+    Colon,
+    Arrow,
+    PipeForward,
+    Equals,
+    EqualsEquals,
+    Minus,
+    Plus,
+    Star,
+    Tilde,
+    Dot,
+    Slash,
+    Pipe,
+    Greater,
+    Less,
+    Caret,
+    Hash,
+    Dollar,
+    Question,
+    PieceKw,
+    TempoKw,
+    MeterKw,
+    KeyKw,
+    SubtitleKw,
+    ComposerKw,
+    ArrangerKw,
+    CopyrightKw,
+    MotifKw,
+    ScoreKw,
+    PartKw,
+    VoiceKw,
+    ClefKw,
+    UseKw,
+    ImportKw,
+    SyntaxKw,
+    ModKw,
+    TransposeKw,
+    DownKw,
+    UpKw,
+    RestKw,
+    RepeatKw,
+    SlurKw,
+    DynamicKw,
+    TupletKw,
+    PerformanceKw,
+    ProfileKw,
+    MarkKw,
+    GrooveKw,
+    GraceKw,
+    StudioKw,
+    PatchKw,
+    ModulateKw,
+    BusKw,
+    AssignKw,
+    RouteKw,
+    SendKw,
+    MasterKw,
+    AtKw,
+    OutputKw,
+    PitchKw,
+    StretchKw,
+    RetrogradeKw,
+    InvertKw,
+    AroundKw,
+    WithKw,
+    NoteKw,
+    PhraseKw,
+    SectionKw,
+    HarmonyKw,
+    LibraryKw,
+    CrescendoKw,
+    DiminuendoKw,
+    ToKw,
+    BarKw,
+    AssertKw,
+    SenzaKw,
+    EndingKw,
+    FragmentKw,
+    MobileKw,
+    ImproviseKw,
+    OverKw,
+    LetKw,
+    FnKw,
+    MusicKw,
+    KernelKw,
+    OptionKw,
+    ListKw,
+    ResultKw,
+    MatchKw,
+    IfKw,
+    ElseKw,
+    SomeKw,
+    NoneKw,
+    OkKw,
+    ErrKw,
+    TrueKw,
+    FalseKw,
+    ScaleKw,
+    DegreeKw,
+    FrameKw,
+    InKw,
+    StepKw,
+    ChordKw,
+    StackKw,
+    TemplateKw,
+    MakeKw,
+    AsKw,
+    SignatureKw,
+    StructureKw,
+    DataKw,
+    RecordKw,
+    EnumKw,
+    ModuleKw,
+    PrivateKw,
+    TraitKw,
+    ImplKw,
+    WhereKw,
+    Error,
+);
+
+/// The token kind `TokenKind.<case>` names.
+///
+/// A linear scan, because it runs once per name an adapter writes and the
+/// alternative is a second ordering to keep in step with the first.
+pub(crate) fn token_kind_named(case: &str) -> Option<musa_language::SyntaxKind> {
+    TOKEN_KINDS
+        .iter()
+        .find(|(name, _)| *name == case)
+        .map(|(_, kind)| *kind)
+}
+
 /// The four delimiters the fixed grouper knows.
 ///
-/// Spellings rather than an enum inside [`Syntax`], because a transformer
-/// writes one as text and the check that it names a real delimiter belongs at
-/// the gate with the other well-formedness questions — which keeps every
-/// builder total.
-pub(crate) const DELIMITERS: [(&str, &str, &str); 4] = [
-    ("parentheses", "(", ")"),
-    ("brackets", "[", "]"),
-    ("braces", "{", "}"),
-    ("layout", "", ""),
-];
+/// A type rather than the spellings it used to be. A transformer named one as
+/// text and the gate checked afterwards that the text named something real;
+/// now there is nothing to check, because the only values are these four and
+/// the phase offers them by name (`../rules/language/11-quotation.md` §4).
+/// `syntax_group`'s ownership entry claimed to hide "the fixed grouper's
+/// delimiter set", and this is what hides it instead.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) enum Delimiter {
+    Parentheses,
+    Brackets,
+    Braces,
+    /// No delimiter at all — siblings held together by their layout.
+    Layout,
+}
+
+impl Delimiter {
+    /// Every delimiter, in the order the grouper tries them.
+    ///
+    /// [`Self::Layout`] is last and is the fallback: its pair is empty, so it
+    /// matches every node and would swallow the other three if it were tried
+    /// first.
+    pub(crate) const ALL: [Self; 4] = [Self::Parentheses, Self::Brackets, Self::Braces, Self::Layout];
+
+    /// The name the phase spells this delimiter by, after `Delimiter.`.
+    pub(crate) const fn name(self) -> &'static str {
+        match self {
+            Self::Parentheses => "Parentheses",
+            Self::Brackets => "Brackets",
+            Self::Braces => "Braces",
+            Self::Layout => "Layout",
+        }
+    }
+
+    /// The text that opens and closes a group of this delimiter, both empty
+    /// for [`Self::Layout`].
+    pub(crate) const fn pair(self) -> (&'static str, &'static str) {
+        match self {
+            Self::Parentheses => ("(", ")"),
+            Self::Brackets => ("[", "]"),
+            Self::Braces => ("{", "}"),
+            Self::Layout => ("", ""),
+        }
+    }
+
+    /// The delimiter `Delimiter.<case>` names.
+    pub(crate) fn named(case: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|candidate| candidate.name() == case)
+    }
+
+    /// The byte this delimiter encodes as, for a syntax value's exact bytes.
+    pub(crate) const fn tag(self) -> u8 {
+        match self {
+            Self::Parentheses => 0,
+            Self::Brackets => 1,
+            Self::Braces => 2,
+            Self::Layout => 3,
+        }
+    }
+}
+
+/// How a node was derived, when it was derived rather than read.
+///
+/// `../rules/language/11-quotation.md` §3's triple, and the name for what
+/// [`NodePath::built`] has computed all along: the `origin` is the path a
+/// builder was pointed at, the `quotation` separates two construction sites
+/// that read one input node, and the `path` is the position within what that
+/// site built. It is not a third case of [`SourceInfo`] and not a second
+/// derivation graph — a derived node is [`SourceInfo::Generated`], and this is
+/// *how* its path is computed.
+///
+/// **The identity law**: two derived nodes are one node exactly when their
+/// origin, quotation, and path are all equal, and nothing else makes two
+/// equal. Uniqueness is then structural rather than a convention an author
+/// keeps, which is what `check_expression`'s duplicate-path gate turns from a
+/// check on an author into evidence about the compiler.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct Derived {
+    /// The node this was built from.
+    pub(crate) origin: NodePath,
+    /// Which construction site built it.
+    pub(crate) quotation: u32,
+    /// Where inside that site's own tree it sits.
+    pub(crate) path: Vec<u32>,
+}
+
+impl Derived {
+    /// The path this derivation names.
+    ///
+    /// Total, and injective in all three components: the steps a
+    /// [`NodePath`] holds are [`PathStep::Built`] only, which is disjoint from
+    /// the [`PathStep::Child`] steps reading produces, so a derived path can
+    /// never collide with the structural path of an input node either.
+    pub(crate) fn path(&self) -> NodePath {
+        let mut built = self.origin.clone();
+        for step in &self.path {
+            built = built.built(self.quotation, *step);
+        }
+        built
+    }
+}
 
 /// A finite syntax value.
 ///
@@ -269,9 +578,14 @@ pub(crate) enum Syntax {
     /// fold and a node to point a diagnostic at.
     Missing(SourceInfo),
     /// A token, by the kind the reader gave it and its exact text.
+    ///
+    /// The kind *is* the lexer's own, rather than a name printed from it and
+    /// compared back as text. That is what makes the phase's `TokenKind` a
+    /// generated type rather than a second table to keep in step: there is no
+    /// second table.
     Token {
         info: SourceInfo,
-        kind: String,
+        kind: musa_language::SyntaxKind,
         text: String,
     },
     /// A name, with the hygiene scopes it carries.
@@ -283,7 +597,7 @@ pub(crate) enum Syntax {
     /// A delimited or layout group and its children, in source order.
     Group {
         info: SourceInfo,
-        delimiter: String,
+        delimiter: Delimiter,
         children: Vec<Self>,
     },
 }
@@ -400,7 +714,7 @@ impl Syntax {
             Self::Token { info, kind, text } => {
                 out.push(1);
                 info.write_into(out);
-                push_text(out, kind);
+                out.extend_from_slice(&u16::from(*kind).to_be_bytes());
                 push_text(out, text);
             }
             Self::Identifier { info, name, scopes } => {
@@ -419,7 +733,7 @@ impl Syntax {
             } => {
                 out.push(3);
                 info.write_into(out);
-                push_text(out, delimiter);
+                out.push(delimiter.tag());
                 push_len(out, children.len());
                 for child in children {
                     child.write_into(out);
@@ -434,11 +748,13 @@ impl Syntax {
         let size = |text: &str| u64::try_from(text.len()).unwrap_or(u64::MAX);
         match self {
             Self::Missing(_) => (1, 0),
-            Self::Token { kind, text, .. } => (1, size(kind).saturating_add(size(text))),
+            // A kind and a delimiter are two bytes and one, now that neither
+            // is a string. Charging them their stored size rather than their
+            // spelling's is the same rule prompt 127dcec set — a value is
+            // charged what it occupies — applied to a value that shrank.
+            Self::Token { text, .. } => (1, size(text).saturating_add(2)),
             Self::Identifier { name, .. } => (1, size(name)),
-            Self::Group {
-                delimiter, children, ..
-            } => children.iter().fold((1, size(delimiter)), |(nodes, bytes), child| {
+            Self::Group { children, .. } => children.iter().fold((1, 1), |(nodes, bytes), child| {
                 let (theirs, their_bytes) = child.shape();
                 (nodes.saturating_add(theirs), bytes.saturating_add(their_bytes))
             }),
@@ -470,15 +786,16 @@ fn read_node(node: &musa_language::SyntaxNode, path: &NodePath) -> Syntax {
         });
     }
     let mut pieces: Vec<musa_language::SyntaxElement> = node.children_with_tokens().collect();
-    let mut delimiter = "layout";
-    for (name, open, close) in DELIMITERS {
+    let mut delimiter = Delimiter::Layout;
+    for candidate in Delimiter::ALL {
+        let (open, close) = candidate.pair();
         if open.is_empty() {
             continue;
         }
         let opens = pieces.first().and_then(token_text).is_some_and(|text| text == open);
         let closes = pieces.last().and_then(token_text).is_some_and(|text| text == close);
         if opens && closes && pieces.len() >= 2 {
-            delimiter = name;
+            delimiter = candidate;
             pieces.pop();
             pieces.remove(0);
             break;
@@ -500,7 +817,7 @@ fn read_node(node: &musa_language::SyntaxNode, path: &NodePath) -> Syntax {
             span,
             path: path.clone(),
         },
-        delimiter: delimiter.to_owned(),
+        delimiter,
         children,
     }
 }
@@ -513,7 +830,6 @@ fn read_token(token: &musa_language::SyntaxToken, path: NodePath) -> Syntax {
         ),
         path,
     };
-    let kind = format!("{:?}", token.kind());
     if token.kind() == musa_language::SyntaxKind::Identifier {
         return Syntax::Identifier {
             info,
@@ -523,7 +839,7 @@ fn read_token(token: &musa_language::SyntaxToken, path: NodePath) -> Syntax {
     }
     Syntax::Token {
         info,
-        kind,
+        kind: token.kind(),
         text: token.text().to_owned(),
     }
 }
@@ -548,8 +864,6 @@ pub(crate) enum NotAnExpression {
     /// Two binders were declared at one binding path, so one name would have
     /// two declarations and every reference would be ambiguous.
     ConflictingBinder,
-    /// A group named a delimiter the fixed grouper does not have.
-    UnknownDelimiter(String),
 }
 
 impl std::fmt::Display for NotAnExpression {
@@ -557,18 +871,22 @@ impl std::fmt::Display for NotAnExpression {
         match self {
             Self::DuplicatePath => out.write_str("two nodes were built at one path"),
             Self::ConflictingBinder => out.write_str("two binders were declared at one binding path"),
-            Self::UnknownDelimiter(delimiter) => write!(out, "`{delimiter}` is not a delimiter"),
         }
     }
 }
 
 /// The gate a transformer's output passes through.
 ///
-/// Three well-formedness questions, all of them about the *output* rather than
-/// about what it will later mean: every generated node sits at its own path,
-/// every binding is declared once, and every group names a real delimiter.
-/// Whether the result resolves, type-checks, or is musically sensible is asked
-/// afterwards by the ordinary passes, in the ordinary way.
+/// Two well-formedness questions, both about the *output* rather than about
+/// what it will later mean: every generated node sits at its own path, and
+/// every binding is declared once. Whether the result resolves, type-checks, or
+/// is musically sensible is asked afterwards by the ordinary passes, in the
+/// ordinary way.
+///
+/// It asked a third until [`Delimiter`] became a type. "This group names a real
+/// delimiter" was a question because a transformer wrote the name as text; now
+/// there is no text and no unreal delimiter to name, so the question is
+/// answered where the value is made rather than checked after the fact.
 ///
 /// Only generated nodes are checked for path collisions. An input node keeps
 /// its original source information wherever it is preserved, and preserving one
@@ -577,11 +895,6 @@ pub(crate) fn check_expression(root: &Syntax) -> Result<(), NotAnExpression> {
     let mut built: Vec<&NodePath> = Vec::new();
     let mut binders: Vec<&NodePath> = Vec::new();
     walk(root, &mut |node| {
-        if let Syntax::Group { delimiter, .. } = node
-            && !DELIMITERS.iter().any(|(name, _, _)| name == delimiter)
-        {
-            return Err(NotAnExpression::UnknownDelimiter(delimiter.clone()));
-        }
         let SourceInfo::Generated(path) = node.info() else {
             // An input node keeps its original source information wherever it
             // is preserved, and preserving one twice is a transformer
@@ -612,6 +925,28 @@ pub(crate) fn check_expression(root: &Syntax) -> Result<(), NotAnExpression> {
     })
 }
 
+/// Read `text` the way the composer's own source is read.
+///
+/// Wrapping it in a piece and a binding is what makes "is this one expression"
+/// a question the ordinary parser answers rather than a second grammar this
+/// module would have to keep in step with the first. One wrapping, so the two
+/// callers cannot disagree about what they asked.
+pub(crate) fn read_expression(text: &str) -> musa_language::ParsedDocument {
+    musa_language::parse(&format!("piece \"expansion\" {{\n    let it = {text};\n}}\n"))
+}
+
+/// Whether `node` stands where an expression stands.
+///
+/// This is `as_expression`'s whole content, and it is deliberately not a
+/// structural test: the index's claim is that the tree *parses* as an
+/// expression, so the only thing that can establish it is the parser. Printing
+/// and reading back is what discharges the round-trip law rather than asserting
+/// it — a structural approximation would be a second answer to a question the
+/// parser already answers, and the two would drift.
+pub(crate) fn parses_as_expression(node: &Syntax) -> bool {
+    read_expression(&print(node).text).errors().is_empty()
+}
+
 fn walk<'a>(
     node: &'a Syntax,
     visit: &mut impl FnMut(&'a Syntax) -> Result<(), NotAnExpression>,
@@ -627,10 +962,10 @@ fn walk<'a>(
 
 /// Build a token at `at`.
 ///
-/// Total, like every builder here: whether `kind` is a token kind the reader
-/// uses is a well-formedness question, and well-formedness is asked once, at
-/// [`check_expression`], rather than at each of five construction sites.
-pub(crate) fn token(at: NodePath, kind: String, text: String) -> Syntax {
+/// Total, like every builder here, and now total for a better reason than
+/// "the gate asks later": `kind` is the lexer's own kind, so there is no
+/// spelling that names no token.
+pub(crate) fn token(at: NodePath, kind: musa_language::SyntaxKind, text: String) -> Syntax {
     Syntax::Token {
         info: SourceInfo::Generated(at),
         kind,
@@ -653,7 +988,7 @@ pub(crate) fn identifier(at: NodePath, name: String) -> Syntax {
 }
 
 /// Build a group at `at`.
-pub(crate) fn group(at: NodePath, delimiter: String, children: Vec<Syntax>) -> Syntax {
+pub(crate) fn group(at: NodePath, delimiter: Delimiter, children: Vec<Syntax>) -> Syntax {
     Syntax::Group {
         info: SourceInfo::Generated(at),
         delimiter,
@@ -758,18 +1093,15 @@ fn write_syntax(node: &Syntax, marks: &mut Vec<Vec<u8>>, out: &mut Printed) {
         Syntax::Group {
             delimiter, children, ..
         } => {
-            let pair = DELIMITERS
-                .iter()
-                .find(|(name, _, _)| name == delimiter)
-                .map_or(("layout", "", ""), |entry| *entry);
-            out.text.push_str(pair.1);
+            let (open, close) = delimiter.pair();
+            out.text.push_str(open);
             for (index, child) in children.iter().enumerate() {
                 if index > 0 {
                     out.text.push(' ');
                 }
                 write_syntax(child, marks, out);
             }
-            out.text.push_str(pair.2);
+            out.text.push_str(close);
         }
     }
 }
@@ -859,7 +1191,7 @@ mod tests {
     /// with its own builder role.
     fn rebuild() -> String {
         transformer(
-            r#"syntax_token(syntax_built(here, 0, 0), "Missing", "")"#,
+            r#"syntax_token(syntax_built(here, 0, 0), TokenKind.Error, "")"#,
             r"syntax_token(syntax_built(here, 1, 0), kind, text)",
             r"syntax_identifier(syntax_built(here, 2, 0), name)",
             r"syntax_group(syntax_built(here, 3, 0), delimiter, children)",
@@ -924,12 +1256,12 @@ mod tests {
         // which is exactly the operation `34-proof-review.md` found could not
         // be both fresh and deterministic.
         let twice = r#"syntax_group(syntax_built(here, 3, 0), delimiter,
-            [syntax_token(syntax_built(here, 4, 0), "Nat", "1"),
-             syntax_token(syntax_built(here, 4, 0), "Nat", "1")])"#;
+            [syntax_token(syntax_built(here, 4, 0), TokenKind.Integer, "1"),
+             syntax_token(syntax_built(here, 4, 0), TokenKind.Integer, "1")])"#;
         assert_eq!(
             expand_region(
                 &transformer(
-                    r#"syntax_token(syntax_built(here, 0, 0), "Missing", "")"#,
+                    r#"syntax_token(syntax_built(here, 0, 0), TokenKind.Error, "")"#,
                     r"syntax_token(syntax_built(here, 1, 0), kind, text)",
                     r"syntax_identifier(syntax_built(here, 2, 0), name)",
                     twice,
@@ -950,7 +1282,7 @@ mod tests {
             [syntax_binder(syntax_binding(here, 5), "voice"),
              syntax_reference(syntax_built(here, 6, 0), syntax_binding(here, 5), "voice")])"#;
         let produced = run(&transformer(
-            r#"syntax_token(syntax_built(here, 0, 0), "Missing", "")"#,
+            r#"syntax_token(syntax_built(here, 0, 0), TokenKind.Error, "")"#,
             r"syntax_token(syntax_built(here, 1, 0), kind, text)",
             r"syntax_identifier(syntax_built(here, 2, 0), name)",
             bound,
@@ -978,7 +1310,7 @@ mod tests {
             [syntax_binder(syntax_binding(here, 5), "voice"),
              syntax_binder(syntax_binding(here, 6), "voice")])"#;
         let produced = run(&transformer(
-            r#"syntax_token(syntax_built(here, 0, 0), "Missing", "")"#,
+            r#"syntax_token(syntax_built(here, 0, 0), TokenKind.Error, "")"#,
             r"syntax_token(syntax_built(here, 1, 0), kind, text)",
             r"syntax_identifier(syntax_built(here, 2, 0), name)",
             two,
@@ -1006,10 +1338,10 @@ mod tests {
         // `syntax_at` is how a transformer carries input through: it turns a
         // path the fold revealed back into the node, unchanged.
         let carry = r#"syntax_group(syntax_built(here, 3, 0), delimiter,
-            [option_fold(syntax_token(syntax_built(here, 7, 0), "Missing", ""), fn (node) { node },
+            [option_fold(syntax_token(syntax_built(here, 7, 0), TokenKind.Error, ""), fn (node) { node },
                          syntax_at(region, here))])"#;
         let produced = run(&transformer(
-            r#"syntax_token(syntax_built(here, 0, 0), "Missing", "")"#,
+            r#"syntax_token(syntax_built(here, 0, 0), TokenKind.Error, "")"#,
             r"syntax_token(syntax_built(here, 1, 0), kind, text)",
             r"syntax_identifier(syntax_built(here, 2, 0), name)",
             carry,
@@ -1028,12 +1360,12 @@ mod tests {
     fn a_conflicting_binder_is_refused_by_name() {
         let conflict = r#"syntax_group(syntax_built(here, 3, 0), delimiter,
             [syntax_binder(syntax_binding(here, 5), "x"),
-             syntax_group(syntax_built(here, 8, 0), "parentheses",
+             syntax_group(syntax_built(here, 8, 0), Delimiter.Parentheses,
                  [syntax_binder(syntax_binding(here, 5), "x")])])"#;
         assert_eq!(
             expand_region(
                 &transformer(
-                    r#"syntax_token(syntax_built(here, 0, 0), "Missing", "")"#,
+                    r#"syntax_token(syntax_built(here, 0, 0), TokenKind.Error, "")"#,
                     r"syntax_token(syntax_built(here, 1, 0), kind, text)",
                     r"syntax_identifier(syntax_built(here, 2, 0), name)",
                     conflict,
@@ -1047,22 +1379,116 @@ mod tests {
     }
 
     #[test]
-    fn a_group_that_names_no_real_delimiter_is_refused() {
-        assert_eq!(
-            expand_region(
-                &transformer(
-                    r#"syntax_token(syntax_built(here, 0, 0), "Missing", "")"#,
-                    r"syntax_token(syntax_built(here, 1, 0), kind, text)",
-                    r"syntax_identifier(syntax_built(here, 2, 0), name)",
-                    r#"syntax_group(syntax_built(here, 3, 0), "angle", children)"#,
-                ),
-                REGION,
-                expansion(),
+    fn a_group_that_names_no_real_delimiter_does_not_check() {
+        // The question moved. It used to be asked of a finished expansion, by
+        // the gate, because a transformer named a delimiter as text; now
+        // `Delimiter` is a type whose only values are the four, so a name that
+        // is not one of them is refused where it is *written* — and the whole
+        // expansion never runs.
+        let written = expand_region(
+            &transformer(
+                r#"syntax_token(syntax_built(here, 0, 0), TokenKind.Error, "")"#,
+                r"syntax_token(syntax_built(here, 1, 0), kind, text)",
+                r"syntax_identifier(syntax_built(here, 2, 0), name)",
+                r"syntax_group(syntax_built(here, 3, 0), Delimiter.Curly, children)",
             ),
-            Err(ExpansionFailure::NotAnExpression(NotAnExpression::UnknownDelimiter(
-                "angle".to_owned()
-            ))),
-            "a delimiter the fixed grouper does not have was accepted"
+            REGION,
+            expansion(),
+        );
+        assert!(
+            matches!(written, Err(ExpansionFailure::NotATransformer(_))),
+            "a delimiter the fixed grouper does not have was accepted: {written:?}"
+        );
+    }
+
+    #[test]
+    fn a_token_kind_the_lexer_does_not_have_does_not_check() {
+        let written = expand_region(
+            &transformer(
+                r#"syntax_token(syntax_built(here, 0, 0), TokenKind.Zither, "")"#,
+                r"syntax_token(syntax_built(here, 1, 0), kind, text)",
+                r"syntax_identifier(syntax_built(here, 2, 0), name)",
+                r"syntax_group(syntax_built(here, 3, 0), delimiter, children)",
+            ),
+            REGION,
+            expansion(),
+        );
+        assert!(
+            matches!(written, Err(ExpansionFailure::NotATransformer(_))),
+            "a token kind the lexer never produces was accepted: {written:?}"
+        );
+    }
+
+    #[test]
+    fn every_token_kind_the_lexer_produces_is_nameable() {
+        // The drift law. `TokenKind` *is* the lexer's own kind, so the case set
+        // cannot disagree about what a kind means; what a hand-written list can
+        // still do is fall behind, and a kind the lexer produces that the phase
+        // cannot name would be a silent gap in an adapter's dispatch.
+        for kind in musa_language::SyntaxKind::all() {
+            let named = TOKEN_KINDS.iter().any(|(_, candidate)| *candidate == kind);
+            assert_eq!(
+                named,
+                musa_language::TokenClass::of(kind).is_some(),
+                "`{kind:?}` is a token kind the phase cannot name, or a node kind it can"
+            );
+        }
+    }
+
+    #[test]
+    fn a_named_token_kind_is_the_kind_it_names() {
+        for (name, kind) in TOKEN_KINDS {
+            assert_eq!(token_kind_named(name), Some(*kind), "`{name}` named another kind");
+        }
+        assert_eq!(token_kind_named("Zither"), None, "an invented name found a kind");
+        for delimiter in Delimiter::ALL {
+            assert_eq!(
+                Delimiter::named(delimiter.name()),
+                Some(delimiter),
+                "`{}` named another delimiter",
+                delimiter.name()
+            );
+        }
+        assert_eq!(Delimiter::named("Curly"), None, "an invented name found a delimiter");
+    }
+
+    #[test]
+    fn a_derivation_is_its_three_components_and_nothing_else() {
+        // The identity law, minted directly rather than through an expansion,
+        // so that what is under test is the representation and not one
+        // transformer's use of it.
+        let origin = NodePath::root(expansion());
+        let derived = Derived {
+            origin: origin.clone(),
+            quotation: 3,
+            path: vec![0, 1],
+        };
+        assert_eq!(derived.path(), derived.path(), "one derivation gave two paths");
+        for other in [
+            Derived {
+                origin: origin.child(0),
+                ..derived.clone()
+            },
+            Derived {
+                quotation: 4,
+                ..derived.clone()
+            },
+            Derived {
+                path: vec![0, 2],
+                ..derived.clone()
+            },
+        ] {
+            assert_ne!(
+                other.path(),
+                derived.path(),
+                "two derivations that differ in one component gave one path"
+            );
+        }
+        // And a derived path is never an input node's path, whatever the
+        // components are: the steps are disjoint by construction.
+        assert!(
+            read().at(&derived.path()).is_none(),
+            "a derived path addressed an input node"
         );
     }
 
@@ -1074,12 +1500,12 @@ mod tests {
         // is a `Result`, so it is taken apart by the one match evaluator every
         // other sum in the language is taken apart by.
         let gated = r#"syntax_group(syntax_built(here, 3, 0), delimiter,
-            [match checked_expression(syntax_token(syntax_built(here, 4, 0), "Nat", "1")) {
+            [match checked_expression(syntax_token(syntax_built(here, 4, 0), TokenKind.Integer, "1")) {
                 Ok(node) -> node,
-                Err(message) -> syntax_token(syntax_built(here, 5, 0), "Refused", message),
+                Err(message) -> syntax_token(syntax_built(here, 5, 0), TokenKind.Error, message),
              }])"#;
         let produced = run(&transformer(
-            r#"syntax_token(syntax_built(here, 0, 0), "Missing", "")"#,
+            r#"syntax_token(syntax_built(here, 0, 0), TokenKind.Error, "")"#,
             r"syntax_token(syntax_built(here, 1, 0), kind, text)",
             r"syntax_identifier(syntax_built(here, 2, 0), name)",
             gated,
@@ -1090,6 +1516,10 @@ mod tests {
         let Some(Syntax::Token { kind, .. }) = children.first() else {
             panic!("the gate answered with nothing");
         };
-        assert_eq!(kind, "Nat", "the gate refused a fragment it should have accepted");
+        assert_eq!(
+            *kind,
+            musa_language::SyntaxKind::Integer,
+            "the gate refused a fragment it should have accepted"
+        );
     }
 }

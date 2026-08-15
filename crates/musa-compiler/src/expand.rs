@@ -997,8 +997,7 @@ fn stopped_or_refused(failure: &crate::core::ExpansionFailure, path: &str, site:
 /// thing that *is* an expression and still may not be emitted is another
 /// region, so that is asked separately.
 fn ordinary_expression(text: &str, site: SourceSpan) -> Result<(), Box<Diagnostic>> {
-    let wrapped = format!("piece \"expansion\" {{\n    let it = {text};\n}}\n");
-    let parsed = musa_language::parse(&wrapped);
+    let parsed = crate::syntax::read_expression(text);
     if !parsed.errors().is_empty() {
         return Err(Box::new(refusal(
             site,
@@ -1157,7 +1156,7 @@ mod tests {
     /// A transformer that answers `Ok` with `emitted`, whatever the region held.
     fn answering(emitted: &str) -> String {
         format!(
-            "fn (region) {{ Ok(syntax_fold_from_leaves(fn (here) {{ syntax_token(syntax_built(here, 0, 0), \"Missing\", \"\") }}, \
+            "fn (region) {{ Ok(syntax_fold_from_leaves(fn (here) {{ syntax_token(syntax_built(here, 0, 0), TokenKind.Error, \"\") }}, \
              fn (here, kind, text) {{ syntax_token(syntax_built(here, 1, 0), kind, text) }}, \
              fn (here, name) {{ syntax_identifier(syntax_built(here, 2, 0), name) }}, \
              fn (here, delimiter, children) {{ {emitted} }}, region)) }}"
@@ -1281,10 +1280,10 @@ mod tests {
     #[test]
     fn a_declaration_an_import_or_a_module_is_not_an_expression_and_is_refused() {
         for emitted in [
-            r#"syntax_token(syntax_built(here, 4, 0), "ImportKw", "import \"x.musa\";")"#,
-            r#"syntax_token(syntax_built(here, 4, 0), "LetKw", "let generated = 3;")"#,
-            r#"syntax_token(syntax_built(here, 4, 0), "ModKw", "mod generated;")"#,
-            r#"syntax_token(syntax_built(here, 4, 0), "DataKw", "data Generated { One }")"#,
+            r#"syntax_token(syntax_built(here, 4, 0), TokenKind.ImportKw, "import \"x.musa\";")"#,
+            r#"syntax_token(syntax_built(here, 4, 0), TokenKind.LetKw, "let generated = 3;")"#,
+            r#"syntax_token(syntax_built(here, 4, 0), TokenKind.ModKw, "mod generated;")"#,
+            r#"syntax_token(syntax_built(here, 4, 0), TokenKind.DataKw, "data Generated { One }")"#,
         ] {
             let printed = answer(&answering(emitted), "c4").expect("the transformer answers");
             let refusal = ordinary_expression(&printed.text, SourceSpan::new(0, 1))
@@ -1300,7 +1299,7 @@ mod tests {
     #[test]
     fn an_adapter_may_not_emit_another_region() {
         let printed = answer(
-            &answering(r#"syntax_token(syntax_built(here, 4, 0), "SyntaxKw", "syntax doubled { c4 }")"#),
+            &answering(r#"syntax_token(syntax_built(here, 4, 0), TokenKind.SyntaxKw, "syntax doubled { c4 }")"#),
             "c4",
         )
         .expect("the transformer answers");
@@ -1328,7 +1327,7 @@ mod tests {
     fn a_region_that_binds_and_uses_one_name_keeps_them_together_and_apart() {
         // One binding, written twice: the binder and the reference ask for the
         // same binding path, so they must print as one name.
-        let bound = r#"syntax_group(syntax_built(here, 3, 0), "parentheses",
+        let bound = r#"syntax_group(syntax_built(here, 3, 0), Delimiter.Parentheses,
             [syntax_binder(syntax_binding(here, 5), "each"),
              syntax_reference(syntax_built(here, 6, 0), syntax_binding(here, 5), "each"),
              syntax_reference(syntax_built(here, 7, 0), syntax_binding(here, 8), "each")])"#;
@@ -1446,7 +1445,7 @@ mod tests {
         // which of the two cases it is rather than quietly degrading.
         // Every step of this fold refuses with a node it just built, so
         // whichever node reaches the top carries `Generated` and nothing else.
-        let refused = r#"Err((syntax_token(syntax_built(here, 9, 0), "Missing", ""), "nothing here is mine"))"#;
+        let refused = r#"Err((syntax_token(syntax_built(here, 9, 0), TokenKind.Error, ""), "nothing here is mine"))"#;
         let refusing = format!(
             "fn (region) {{ syntax_fold_from_leaves(fn (here) {{ {refused} }}, fn (here, kind, text) {{ {refused} }}, \
              fn (here, name) {{ {refused} }}, fn (here, delimiter, children) {{ {refused} }}, region) }}"
@@ -1632,7 +1631,7 @@ mod tests {
         // learn one it was not given.
         let built = answer(
             &answering(
-                r#"option_fold(syntax_token(syntax_built(here, 9, 0), "Integer", "404"), fn (node) { node }, syntax_anchor(region, syntax_built(here, 0, 0), syntax_built(here, 10, 0)))"#,
+                r#"option_fold(syntax_token(syntax_built(here, 9, 0), TokenKind.Integer, "404"), fn (node) { node }, syntax_anchor(region, syntax_built(here, 0, 0), syntax_built(here, 10, 0)))"#,
             ),
             "{ c4 }",
         )
@@ -1644,7 +1643,7 @@ mod tests {
         );
         let given = answer(
             &answering(
-                r#"option_fold(syntax_token(syntax_built(here, 9, 0), "Integer", "404"), fn (node) { node }, syntax_anchor(region, here, syntax_built(here, 10, 0)))"#,
+                r#"option_fold(syntax_token(syntax_built(here, 9, 0), TokenKind.Integer, "404"), fn (node) { node }, syntax_anchor(region, here, syntax_built(here, 10, 0)))"#,
             ),
             "{ c4 }",
         )
@@ -1829,10 +1828,10 @@ mod tests {
 
     let expand = fn (region) {
         Ok(syntax_fold_from_leaves(
-            fn (here) { syntax_token(syntax_built(here, 0, 0), "Missing", "") },
+            fn (here) { syntax_token(syntax_built(here, 0, 0), TokenKind.Error, "") },
             fn (here, kind, text) { syntax_token(syntax_built(here, 1, 0), kind, text) },
             fn (here, name) { syntax_identifier(syntax_built(here, 2, 0), name) },
-            fn (here, delimiter, children) { syntax_group(syntax_built(here, 3, 0), "layout", children) },
+            fn (here, delimiter, children) { syntax_group(syntax_built(here, 3, 0), Delimiter.Layout, children) },
             region
         ))
     };
@@ -1933,14 +1932,14 @@ mod tests {
         // `unreached` is the control: it belongs to the phase, the printer never
         // names it, and it must not be spliced. If reaching were "the whole
         // module" rather than "what the printer names", this fixture would not
-        // check at all, because `Syntax` has no ordinary reading.
+        // check at all, because `Syntax<TokenTree>` has no ordinary reading.
         const CLEFS: &str = r#"library {
     let level = "generative";
 
     let expand = fn (region) { Ok(region) };
     let edit = fn (region, command, anchor, argument) { Err("`clefs` serves no command") };
 
-    let unreached = fn (region: Syntax) -> Syntax { region };
+    let unreached = fn (region: Syntax<TokenTree>) -> Syntax<TokenTree> { region };
 
     let named = fn (written: Clef) -> Text {
         match written {
@@ -2073,7 +2072,7 @@ mod tests {
     fn recursing(initial: &str, group: &str) -> String {
         format!(
             "fn (region) {{ Ok(recurse_syntax(\
-             fn (c, here) {{ syntax_token(syntax_built(here, 0, 0), \"Missing\", \"\") }}, \
+             fn (c, here) {{ syntax_token(syntax_built(here, 0, 0), TokenKind.Error, \"\") }}, \
              fn (c, here, kind, text) {{ syntax_token(syntax_built(here, 1, 0), kind, text) }}, \
              fn (c, here, name) {{ syntax_identifier(syntax_built(here, 2, 0), c) }}, \
              fn (c, here, delimiter, kids) {{ {group} }}, \
@@ -2117,7 +2116,7 @@ mod tests {
         let root = crate::syntax::NodePath::root(crate::syntax::ExpansionPath::at(vec![0]));
         let mut subject = crate::syntax::identifier(root.clone(), "a".to_owned());
         for _ in 0..levels {
-            subject = crate::syntax::group(root.clone(), "round".to_owned(), vec![subject]);
+            subject = crate::syntax::group(root.clone(), crate::syntax::Delimiter::Parentheses, vec![subject]);
         }
         subject
     }
@@ -2184,7 +2183,7 @@ mod tests {
             r#"syntax_group(syntax_built(here, 3, 0), delimiter, map(fn (kid) { run_syntax_step("", kid) }, kids))"#,
         );
         let fold = "fn (region) { Ok(syntax_fold_from_leaves(\
-             fn (here) { syntax_token(syntax_built(here, 0, 0), \"Missing\", \"\") }, \
+             fn (here) { syntax_token(syntax_built(here, 0, 0), TokenKind.Error, \"\") }, \
              fn (here, kind, text) { syntax_token(syntax_built(here, 1, 0), kind, text) }, \
              fn (here, name) { syntax_identifier(syntax_built(here, 2, 0), \"\") }, \
              fn (here, delimiter, children) { syntax_group(syntax_built(here, 3, 0), delimiter, children) }, \
@@ -2262,7 +2261,7 @@ mod tests {
     const TWICE_OVER: &str = r#"syntax_group(syntax_built(here, 3, 0), delimiter,
          map(fn (kid) {
            option_fold(
-             syntax_token(syntax_built(here, 8, 0), "Missing", ""),
+             syntax_token(syntax_built(here, 8, 0), TokenKind.Error, ""),
              fn (node) { run_syntax_step("second", kid) },
              Some(run_syntax_step("first", kid)))
          }, kids))"#;
@@ -2280,12 +2279,12 @@ mod tests {
         // `inner`. They do not, and no ownership check is what stops it —
         // there is no operation that would let the inner traversal try.
         let hostile = r#"fn (region) { Ok(recurse_syntax(
-            fn (c, here) { syntax_token(syntax_built(here, 0, 0), "Missing", "") },
+            fn (c, here) { syntax_token(syntax_built(here, 0, 0), TokenKind.Error, "") },
             fn (c, here, kind, text) { syntax_token(syntax_built(here, 1, 0), kind, text) },
             fn (c, here, name) { syntax_identifier(syntax_built(here, 2, 0), "outer") },
             fn (c, here, delimiter, kids) {
                 recurse_syntax(
-                    fn (d, spot) { syntax_token(syntax_built(here, 4, 0), "Missing", "") },
+                    fn (d, spot) { syntax_token(syntax_built(here, 4, 0), TokenKind.Error, "") },
                     fn (d, spot, kind, text) { syntax_token(syntax_built(here, 5, 0), kind, text) },
                     fn (d, spot, name) { syntax_identifier(syntax_built(here, 6, 0), "inner") },
                     fn (d, spot, delimiter, others) {

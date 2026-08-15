@@ -767,4 +767,18 @@ impl SyntaxKind {
     pub fn is_trivia(self) -> bool {
         matches!(self, Self::Whitespace | Self::LineComment | Self::BlockComment)
     }
+
+    /// Every kind, in declaration order.
+    ///
+    /// The enum is the list: `FromPrimitive` answers [`Self::Error`] for a
+    /// number no variant has, and `Error`'s own number round-trips, so the
+    /// first number that does not round-trip is one past the last variant.
+    /// Nothing is written down a second time, which is what lets a consumer
+    /// check its own coverage of the lexer without a table to keep in step.
+    pub fn all() -> impl Iterator<Item = Self> {
+        (0..u16::MAX).map_while(|raw| {
+            let kind = Self::from(raw);
+            (u16::from(kind) == raw).then_some(kind)
+        })
+    }
 }

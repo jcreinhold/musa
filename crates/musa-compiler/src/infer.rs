@@ -126,11 +126,14 @@ pub(crate) fn member_types(ty: &Type) -> Vec<&Type> {
         | Type::PcSet12
         | Type::Row12
         | Type::Step(_)
-        // A syntax value, a node path, and a binding path are leaves: each is
-        // an opaque finite value with nothing inside it that unifies.
-        | Type::Syntax
+        // The phase's own types are leaves: each is an opaque finite value
+        // with nothing inside it that unifies, and `Syntax<Cat>`'s argument is
+        // a category rather than a type, so it has no member either.
+        | Type::Syntax(_)
         | Type::NodePath
         | Type::BindingPath
+        | Type::TokenKind
+        | Type::Delimiter
         | Type::Music => Vec::new(),
     }
 }
@@ -184,9 +187,11 @@ pub(crate) fn rebuilt(ty: &Type, mut member: impl FnMut(&Type) -> Type) -> Type 
         | Type::PcSet12
         | Type::Row12
         | Type::Step(_)
-        | Type::Syntax
+        | Type::Syntax(_)
         | Type::NodePath
         | Type::BindingPath
+        | Type::TokenKind
+        | Type::Delimiter
         | Type::Music => ty.clone(),
     }
 }
@@ -546,11 +551,18 @@ impl Unifier {
 /// unifier — evaluation checking a closure's argument, a module matching a
 /// signature — restate that proof instead of re-deciding it.
 ///
+/// A syntax category admits any other for the same reason, one level down.
+/// `Syntax<Expr>` is a claim about how a tree parses, established while
+/// checking and then *erased*: the value is the tree and nothing else, so a
+/// syntax value asked what type it has can only answer with the weakest
+/// category. Comparing categories here would not re-decide the claim, it would
+/// contradict it — see [`crate::core::Value::ty`].
+///
 /// Everywhere else it is equality, which is the whole point: nothing else is
-/// weakened by allowing this one thing.
+/// weakened by allowing these two things.
 pub(crate) fn admits(declared: &Type, found: &Type) -> bool {
     match (declared, found) {
-        (Type::Var(_), _) | (_, Type::Var(_)) => true,
+        (Type::Var(_), _) | (_, Type::Var(_)) | (Type::Syntax(_), Type::Syntax(_)) => true,
         (Type::Product(ours), Type::Product(theirs)) => {
             ours.len() == theirs.len() && ours.iter().zip(theirs).all(|(ours, theirs)| admits(ours, theirs))
         }

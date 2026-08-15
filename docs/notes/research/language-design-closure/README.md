@@ -175,6 +175,16 @@ ship.
     conversion path. Repairing §6.2's stated reason for declining the fat bar would be an amendment, and is left to the
     user.
 
+46. [45-phase-registry-survey.md](45-phase-registry-survey.md) is prompt 138's survey of the phase registry once
+    `Syntax` has a category and the kind and delimiter arguments have real types: all seventeen entries, each with its
+    signature, what it still hides, and whether prompt 139, prompt 143, or nothing at all deletes it. Two entries lost a
+    claim to the retyping — `syntax_group` no longer hides the delimiter set, and `checked_expression` no longer asks
+    whether a group names a real one — which leaves thirteen builders hiding the same one fact, and is the measured form
+    of `11-quotation.md` §5's argument for replacing all of them with one quote. It records where §5's fourteen-entry
+    table now needs a count repaired, and one thing the prompt did not predict: a syntax value cannot say what category
+    it has, because the category is a claim the checker erased, so the evaluator's `admits` check has to be told not to
+    compare them.
+
 The proof gate failed for the design notes 19–41 pursued, and nothing in *those* notes moved to `docs/rules/` or into
 implementation prompts. Note 42 is the exception and says why: it is an amendment taken under
 [`docs/rules/README.md`](../../../rules/README.md)'s procedure, on engineering evidence those notes did not weigh, and

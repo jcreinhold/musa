@@ -57,6 +57,7 @@ mod staff_expansion_laws;
 mod staff_package_laws;
 mod staff_writing_laws;
 mod studio_laws;
+mod syntax_category_laws;
 mod template_laws;
 mod tonal_analysis_validation;
 mod tonal_harmony_construction_laws;

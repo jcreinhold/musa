@@ -562,14 +562,33 @@ pub(crate) enum Type {
         input: Box<Self>,
         output: Box<Self>,
     },
-    /// A finite syntax value ([`crate::syntax::Syntax`]).
+    /// A finite syntax value ([`crate::syntax::Syntax`]), by how it parses.
     ///
     /// Phase-local: `../rules/language/02-core-calculus.md` §5 closes the
     /// source type grammar and says the source language has no syntax value,
-    /// and this does not widen it. There is no written spelling for this type —
-    /// [`named_type`] does not read one — so it cannot be annotated, and the
-    /// operations over it are offered only where a transformer is checked.
-    Syntax,
+    /// and this does not widen it. The spelling `Syntax<Expr>` is read only
+    /// where a transformer is checked, and the operations over it are offered
+    /// only there.
+    ///
+    /// The index is a claim about how the tree parses, not about how it is
+    /// built: the representation is unchanged, and `Syntax` is that
+    /// representation with nothing claimed about it
+    /// (`../rules/language/11-quotation.md` §1). Forgetting the claim is
+    /// [`Checker::reconcile`]'s acceptance rule and not an operation, and
+    /// establishing one is `as_expression`'s checked parse.
+    Syntax(crate::syntax::Cat),
+    /// How the lexer classified one token ([`musa_language::SyntaxKind`]).
+    ///
+    /// Phase-local, and *generated*: its values are the lexer's own kinds, so
+    /// there is no second table for a new token kind to be missing from. It
+    /// replaces the `Text` that `syntax_token` took and every
+    /// `text_equal(kind, "…")` an adapter wrote against it.
+    TokenKind,
+    /// How one group is delimited ([`crate::syntax::Delimiter`]).
+    ///
+    /// Phase-local, four values, and what `syntax_group` used to claim to hide
+    /// as "the fixed grouper's delimiter set".
+    Delimiter,
     /// Where one node sits ([`crate::syntax::NodePath`]).
     NodePath,
     /// Which name a binder declares ([`crate::syntax::BindingPath`]).
@@ -655,11 +674,14 @@ impl std::fmt::Display for Type {
             Self::Step(tag) => write!(out, "{tag}"),
             Self::Primitive { step, input, output } => write!(out, "Primitive<{step}, {input}, {output}>"),
             Self::Machine { step, input, output } => write!(out, "Machine<{step}, {input}, {output}>"),
-            // These three print but do not read back: they name themselves in a
-            // transformer's diagnostics, and no source anywhere may write one.
-            Self::Syntax => out.write_str("Syntax"),
+            // These print in a transformer's diagnostics in the spelling an
+            // adapter writes them, and nowhere else: ordinary source may write
+            // none of them, because they are read only where `in_phase` holds.
+            Self::Syntax(category) => write!(out, "Syntax<{}>", category.name()),
             Self::NodePath => out.write_str("NodePath"),
             Self::BindingPath => out.write_str("BindingPath"),
+            Self::TokenKind => out.write_str("TokenKind"),
+            Self::Delimiter => out.write_str("Delimiter"),
             Self::SyntaxStep { context, answer } => write!(out, "SyntaxStep<{context}, {answer}>"),
             Self::Function(parameters, result) => {
                 if parameters.len() == 1 {
@@ -1248,9 +1270,9 @@ fn encode_exactly(value: &Value, bytes: &mut Vec<u8>) -> Option<()> {
                 encode_exactly(member, bytes)?;
             }
         }
-        // The three phase-local values encode exactly, because two syntax
-        // values are the same value exactly when they were written the same
-        // way and carry the same derived paths. Their own writers frame every
+        // The phase-local values encode exactly, because two syntax values are
+        // the same value exactly when they were written the same way and carry
+        // the same derived paths. Their own writers frame every
         // variable-length part for the same reason the cases above do.
         Value::Syntax(held) => {
             bytes.push(8);
@@ -1269,6 +1291,16 @@ fn encode_exactly(value: &Value, bytes: &mut Vec<u8>) -> Option<()> {
             let mut written = Vec::new();
             held.write_into(&mut written);
             framed(bytes, &written);
+        }
+        // Both are finite tags whose whole content is which case they are, so
+        // the lexer's own discriminant and the delimiter's are the encoding.
+        Value::TokenKind(held) => {
+            bytes.push(12);
+            bytes.extend_from_slice(&u16::from(*held).to_be_bytes());
+        }
+        Value::Delimiter(held) => {
+            bytes.push(13);
+            bytes.push(held.tag());
         }
         Value::Pitch(_)
         | Value::PitchClass(_)
@@ -1826,6 +1858,20 @@ enum SyntaxOp {
     Binder,
     /// `syntax_reference(path, binding, name)` — a use of one.
     Reference,
+    /// `token_kind_equal(one, other)` — whether two token kinds are one kind.
+    KindEqual,
+    /// `delimiter_equal(one, other)` — whether two delimiters are one.
+    DelimiterEqual,
+    /// `as_expression(subject)` — the checked parse
+    /// (`../rules/language/11-quotation.md` §1).
+    ///
+    /// The one operation that establishes the finer claim, and the reason the
+    /// index is worth having: an adapter that lifts a node out of the
+    /// composer's own region holds a tree nobody parsed and has to put it where
+    /// an expression stands. Answering here is what puts the diagnostic on the
+    /// composer's line rather than on the region, after a malformed tree has
+    /// already reached the gate.
+    AsExpression,
     /// `checked_expression(subject)` — the gate, answering with the value or
     /// with what is wrong with it.
     Checked,
@@ -1856,8 +1902,14 @@ impl SyntaxOp {
     /// How many arguments this operation is written with.
     const fn arity(self) -> usize {
         match self {
-            Self::Checked | Self::Number => 1,
-            Self::At | Self::Binding | Self::Identifier | Self::Binder | Self::Run => 2,
+            Self::Checked | Self::Number | Self::AsExpression => 1,
+            Self::At
+            | Self::Binding
+            | Self::Identifier
+            | Self::Binder
+            | Self::Run
+            | Self::KindEqual
+            | Self::DelimiterEqual => 2,
             Self::Anchor | Self::Built | Self::Token | Self::Group | Self::Reference => 3,
             Self::Fold => 5,
             Self::Recurse => 6,
@@ -1890,7 +1942,13 @@ impl SyntaxOp {
     /// monomorphic, because a builder's argument and result types are decided
     /// by which builder it is.
     fn instantiate(self, unifier: &mut Unifier) -> Type {
-        let syntax = || Type::Syntax;
+        // Every operation here reads and builds at `TokenTree`: reading claims
+        // nothing about a node it descends into, and a builder's result is a
+        // tree nobody has parsed. `Expr` is reached only by `as_expression` and
+        // by the gate, which are the two operations that run the real parser
+        // (`../rules/language/11-quotation.md` §1).
+        let syntax = || Type::Syntax(crate::syntax::Cat::TokenTree);
+        let expression = || Type::Syntax(crate::syntax::Cat::Expr);
         let path = || Type::NodePath;
         match self {
             Self::Fold => {
@@ -1899,9 +1957,9 @@ impl SyntaxOp {
                 Type::Function(
                     vec![
                         step(vec![path()]),
-                        step(vec![path(), Type::Text, Type::Text]),
+                        step(vec![path(), Type::TokenKind, Type::Text]),
                         step(vec![path(), Type::Text]),
-                        step(vec![path(), Type::Text, Type::List(Box::new(to.clone()))]),
+                        step(vec![path(), Type::Delimiter, Type::List(Box::new(to.clone()))]),
                         syntax(),
                     ],
                     Box::new(to),
@@ -1927,9 +1985,9 @@ impl SyntaxOp {
                 Type::Function(
                     vec![
                         branch(vec![path()]),
-                        branch(vec![path(), Type::Text, Type::Text]),
+                        branch(vec![path(), Type::TokenKind, Type::Text]),
                         branch(vec![path(), Type::Text]),
-                        branch(vec![path(), Type::Text, Type::List(Box::new(sealed))]),
+                        branch(vec![path(), Type::Delimiter, Type::List(Box::new(sealed))]),
                         context,
                         syntax(),
                     ],
@@ -1948,14 +2006,14 @@ impl SyntaxOp {
                 };
                 Type::Function(vec![context, sealed], Box::new(to))
             }
-            Self::At => Type::Function(vec![syntax(), path()], Box::new(Type::Option(Box::new(Type::Syntax)))),
+            Self::At => Type::Function(vec![syntax(), path()], Box::new(Type::Option(Box::new(syntax())))),
             // Three arguments and not two: the node it is *about*, and the
             // place the node it hands back stands in. The answer is optional
             // for `syntax_at`'s reason — an adapter anchors a node it holds,
             // and a path it derived addresses no input node at all.
             Self::Anchor => Type::Function(
                 vec![syntax(), path(), path()],
-                Box::new(Type::Option(Box::new(Type::Syntax))),
+                Box::new(Type::Option(Box::new(syntax()))),
             ),
             // `Option` because a node that is not a numeric token is not a
             // number, and `Ratio` because one operation covering both numeric
@@ -1963,20 +2021,33 @@ impl SyntaxOp {
             Self::Number => Type::Function(vec![syntax()], Box::new(Type::Option(Box::new(Type::Ratio)))),
             Self::Built => Type::Function(vec![path(), Type::Nat, Type::Nat], Box::new(Type::NodePath)),
             Self::Binding => Type::Function(vec![path(), Type::Nat], Box::new(Type::BindingPath)),
-            Self::Token => Type::Function(vec![path(), Type::Text, Type::Text], Box::new(Type::Syntax)),
-            Self::Identifier => Type::Function(vec![path(), Type::Text], Box::new(Type::Syntax)),
+            Self::Token => Type::Function(vec![path(), Type::TokenKind, Type::Text], Box::new(syntax())),
+            Self::Identifier => Type::Function(vec![path(), Type::Text], Box::new(syntax())),
             Self::Group => Type::Function(
-                vec![path(), Type::Text, Type::List(Box::new(Type::Syntax))],
-                Box::new(Type::Syntax),
+                vec![path(), Type::Delimiter, Type::List(Box::new(syntax()))],
+                Box::new(syntax()),
             ),
-            Self::Binder => Type::Function(vec![Type::BindingPath, Type::Text], Box::new(Type::Syntax)),
-            Self::Reference => Type::Function(vec![path(), Type::BindingPath, Type::Text], Box::new(Type::Syntax)),
+            Self::Binder => Type::Function(vec![Type::BindingPath, Type::Text], Box::new(syntax())),
+            Self::Reference => Type::Function(vec![path(), Type::BindingPath, Type::Text], Box::new(syntax())),
+            // Two comparisons, and only two: the phase's own types have no
+            // `match`, and equality against a named constant is the whole of
+            // what an adapter asks of a kind or a delimiter. They are members
+            // of the `text_equal`/`nat_equal` family, and prompt 143 collapses
+            // that family behind `Eq` with these inside it.
+            Self::KindEqual => Type::Function(vec![Type::TokenKind, Type::TokenKind], Box::new(Type::Bool)),
+            Self::DelimiterEqual => Type::Function(vec![Type::Delimiter, Type::Delimiter], Box::new(Type::Bool)),
+            // The checked parse, and the only introduction form for `Expr`
+            // that does not go through a quote. `Option` rather than `Result`
+            // because there is one way to fail — this tree is not an
+            // expression — and the parser's own diagnostic belongs on the
+            // composer's line, not in an adapter's error value.
+            Self::AsExpression => Type::Function(vec![syntax()], Box::new(Type::Option(Box::new(expression())))),
             // The gate says which of several things is wrong, so it answers
             // with a `Result` rather than an `Option`, exactly as a δ-builtin
             // with more than one way to fail does.
             Self::Checked => Type::Function(
                 vec![syntax()],
-                Box::new(Type::Sum(Box::new(Type::Syntax), Box::new(Type::Text))),
+                Box::new(Type::Sum(Box::new(expression()), Box::new(Type::Text))),
             ),
         }
     }
@@ -1998,7 +2069,7 @@ struct BuiltinOwnership<T, F = Family> {
 /// looked up when ordinary source reads a name. Each entry says what it hides,
 /// for the same reason the source entries do — an operation earns a place in a
 /// compiler-owned registry by hiding something a library could not.
-const SYNTAX_OWNERSHIP: [BuiltinOwnership<SyntaxOp, PhaseFamily>; 14] = [
+const SYNTAX_OWNERSHIP: [BuiltinOwnership<SyntaxOp, PhaseFamily>; 17] = [
     BuiltinOwnership {
         operation: SyntaxOp::Recurse,
         spelling: "recurse_syntax",
@@ -2065,7 +2136,10 @@ const SYNTAX_OWNERSHIP: [BuiltinOwnership<SyntaxOp, PhaseFamily>; 14] = [
     BuiltinOwnership {
         operation: SyntaxOp::Group,
         spelling: "syntax_group",
-        hidden_information: "generated source information and the fixed grouper's delimiter set",
+        // It used to claim the delimiter set as well. `Delimiter` hides that
+        // now, and a builder that hides only its source information is what
+        // prompt 143 collapses.
+        hidden_information: "generated source information, which an adapter can carry but not forge",
         family: PhaseFamily::Builder,
     },
     BuiltinOwnership {
@@ -2081,9 +2155,32 @@ const SYNTAX_OWNERSHIP: [BuiltinOwnership<SyntaxOp, PhaseFamily>; 14] = [
         family: PhaseFamily::Builder,
     },
     BuiltinOwnership {
+        operation: SyntaxOp::KindEqual,
+        spelling: "token_kind_equal",
+        hidden_information: "which of the lexer's kinds two tokens were given, which the phase has no other way to \
+                             compare now that a kind is not text",
+        family: PhaseFamily::Builder,
+    },
+    BuiltinOwnership {
+        operation: SyntaxOp::DelimiterEqual,
+        spelling: "delimiter_equal",
+        hidden_information: "which of the fixed grouper's four delimiters a group carries, for the same reason",
+        family: PhaseFamily::Builder,
+    },
+    BuiltinOwnership {
+        operation: SyntaxOp::AsExpression,
+        spelling: "as_expression",
+        hidden_information: "the real parser, run over a tree the adapter holds, which is the only thing that can \
+                             establish that the tree parses as an expression",
+        family: PhaseFamily::Builder,
+    },
+    BuiltinOwnership {
         operation: SyntaxOp::Checked,
         spelling: "checked_expression",
-        hidden_information: "output well-formedness: unique generated paths, one binder per binding, real delimiters",
+        // It used to claim the delimiter set here too, in the shape of "this
+        // group names a real delimiter". `Delimiter` answers that where the
+        // value is made, so what is left is output well-formedness alone.
+        hidden_information: "output well-formedness: unique generated paths, and one binder per binding",
         family: PhaseFamily::Builder,
     },
 ];
@@ -3373,7 +3470,15 @@ enum Value {
     },
     /// A finite syntax value. Phase-local: no ordinary source expression can
     /// produce one, because no operation that returns one is in scope there.
+    ///
+    /// The category it satisfies is in its *type* and not here. A value that
+    /// carried its own category would let two positions disagree about one
+    /// node, and the index is a claim a position makes.
     Syntax(Box<crate::syntax::Syntax>),
+    /// One of the lexer's token kinds, named by the phase.
+    TokenKind(musa_language::SyntaxKind),
+    /// One of the four delimiters, named by the phase.
+    Delimiter(crate::syntax::Delimiter),
     /// Where one node sits, as a path from an expansion's root.
     NodePath(Box<crate::syntax::NodePath>),
     /// Which name a binder declares and a reference means.
@@ -3820,9 +3925,15 @@ impl Value {
                 output: Box::new(descriptor.output().ty()),
             },
             Self::Machine { ty, .. } => ty.clone(),
-            Self::Syntax(_) => Type::Syntax,
+            // A tree on its own carries no certification, so the honest
+            // category is the weakest one: `Expr` is a claim the parser makes
+            // about a tree and not a fact the value holds, which is exactly
+            // why `as_expression` exists rather than an inspection here.
+            Self::Syntax(_) => Type::Syntax(crate::syntax::Cat::TokenTree),
             Self::NodePath(_) => Type::NodePath,
             Self::BindingPath(_) => Type::BindingPath,
+            Self::TokenKind(_) => Type::TokenKind,
+            Self::Delimiter(_) => Type::Delimiter,
             Self::Closure(closure) => Type::Function(
                 closure
                     .parameters
@@ -3949,6 +4060,8 @@ impl Value {
                 held.write_into(&mut written);
                 bytes_witness(&written)
             }
+            Self::TokenKind(held) => u64::from(u16::from(*held)),
+            Self::Delimiter(held) => u64::from(held.tag()),
             // The child it seals, and the algebra it holds, each read the way
             // they would be read alone. A step is never a completed phase
             // result — it is not storable data — so this is reached only where
@@ -4769,6 +4882,8 @@ fn check_and_evaluate_metered(
             | Value::Syntax(_)
             | Value::NodePath(_)
             | Value::BindingPath(_)
+            | Value::TokenKind(_)
+            | Value::Delimiter(_)
             | Value::SyntaxStep(_)
             | Value::Builtin(_) => None,
         })
@@ -5276,9 +5391,11 @@ fn function_result(ty: &Type) -> Option<&Type> {
         | Type::Sum(_, _)
         | Type::Option(_)
         | Type::Nominal(_, _)
-        | Type::Syntax
+        | Type::Syntax(_)
         | Type::NodePath
         | Type::BindingPath
+        | Type::TokenKind
+        | Type::Delimiter
         | Type::SyntaxStep { .. }
         | Type::List(_) => None,
     }
@@ -5366,13 +5483,40 @@ pub(crate) fn function_type(scope: &TypeScope<'_>, declaration: &FnDecl) -> Opti
 /// holds, which is the same boundary [`Reading::Expansion`] draws for the
 /// phase's operations — one line between the two languages rather than two.
 ///
-/// The three here take no arguments. `SyntaxStep<C, A>` does, so it is read
-/// where the other applied forms are, under the same `in_phase` gate.
+/// The four here take no arguments. `Syntax<Cat>` and `SyntaxStep<C, A>` do, so
+/// they are read where the other applied forms are, under the same `in_phase`
+/// gate.
+///
+/// `Syntax` is deliberately absent from the bare list. It takes a category, so
+/// the bare word names no type — the same reason `Duration` is absent from
+/// [`named_type`], and for the same reason an adapter that writes it is told
+/// what to write instead rather than being handed one category by default.
 fn phase_type(text: &str) -> Option<Type> {
     match text {
-        "Syntax" => Some(Type::Syntax),
         "NodePath" => Some(Type::NodePath),
         "BindingPath" => Some(Type::BindingPath),
+        "TokenKind" => Some(Type::TokenKind),
+        "Delimiter" => Some(Type::Delimiter),
+        _ => None,
+    }
+}
+
+/// The value a written name denotes in an adapter module, and nowhere else.
+///
+/// The mirror of [`phase_type`], one level down: `TokenKind.PitchLiteral` and
+/// `Delimiter.Braces` are compiler-owned constants of the phase's two tag
+/// types. They are spelled with a dot because [`qualified_name`] already folds
+/// `A.b` into one flat name, so naming them costs no namespacing feature in a
+/// checker that has none — and because nothing an adapter declares can contain
+/// a dot, no `data` of its own can collide with one.
+///
+/// The case sets are the lexer's own and the grouper's own, so a token kind
+/// this could not name would be a kind the lexer does not produce.
+fn phase_value(name: &str) -> Option<Value> {
+    let (namespace, case) = name.split_once('.')?;
+    match namespace {
+        "TokenKind" => crate::syntax::token_kind_named(case).map(Value::TokenKind),
+        "Delimiter" => crate::syntax::Delimiter::named(case).map(Value::Delimiter),
         _ => None,
     }
 }
@@ -5436,6 +5580,20 @@ fn lower_type(mut resolver: Option<&mut Resolver>, scope: &TypeScope<'_>, node: 
             && let Some(named) = phase_type(text)
         {
             return Some(named);
+        }
+        // `Syntax` alone names no type now that it takes a category, and the
+        // adapter that wrote it is told which two words are available rather
+        // than handed `TokenTree` by default. A silent default would be the
+        // untyped `Syntax` back under the new spelling.
+        if scope.in_phase() && text == "Syntax" {
+            if let Some(resolver) = resolver.as_deref_mut() {
+                resolver.report(
+                    Diagnostic::error(Code::WrongArity, "`Syntax` takes a category")
+                        .at(crate::resolve::trimmed_span(node), "written with none")
+                        .help("write `Syntax`, or `Syntax<Expr>` for a tree that parses as an expression"),
+                );
+            }
+            return None;
         }
         // A step tag is a type so that `K` unifies like any other index, but
         // it is not a *value* type: nothing inhabits it, and the only place it
@@ -5515,6 +5673,17 @@ fn lower_type(mut resolver: Option<&mut Resolver>, scope: &TypeScope<'_>, node: 
         if matches!(written, "Duration" | "Position") {
             let arguments: Vec<SyntaxNode> = parts.collect();
             return coordinate_type(resolver.as_deref_mut(), node, written, &arguments);
+        }
+        // `Syntax<Cat>` takes a category, which is a claim about how the tree
+        // parses rather than a type: nothing inhabits `Expr`, and the only
+        // place the word can be written is here. It is read from the argument
+        // node's own text, before the arguments are lowered, for exactly the
+        // reason a coordinate is — that keeps the category out of [`Type`]'s
+        // argument position, so there is no non-value type to carry through
+        // unification and no way to write `List<Expr>`.
+        if written == "Syntax" && scope.in_phase() {
+            let arguments: Vec<SyntaxNode> = parts.collect();
+            return category_type(resolver.as_deref_mut(), node, &arguments);
         }
         let arguments: Option<Vec<_>> = parts
             .collect::<Vec<_>>()
@@ -5649,6 +5818,38 @@ fn coordinate_type(
         "Position" => Type::Position(coordinate),
         _ => Type::Duration(coordinate),
     })
+}
+
+/// `Syntax<Cat>`, read from what was written.
+///
+/// The argument is a category word rather than a type, read from the node's own
+/// text for the same reason [`coordinate_type`]'s is. There are two, `Expr` and
+/// `TokenTree`, and a third would be a language change rather than a name an
+/// adapter may invent — which is why an unknown one is an error here and not an
+/// unsolved constraint later.
+fn category_type(mut resolver: Option<&mut Resolver>, node: &SyntaxNode, arguments: &[SyntaxNode]) -> Option<Type> {
+    let complain = |resolver: Option<&mut Resolver>, message: String| {
+        if let Some(resolver) = resolver {
+            resolver.report(
+                Diagnostic::error(Code::WrongArity, message)
+                    .at(crate::resolve::trimmed_span(node), "written here")
+                    .help("the categories are `Expr` and `TokenTree`".to_owned()),
+            );
+        }
+    };
+    let [argument] = arguments else {
+        complain(
+            resolver.as_deref_mut(),
+            format!("`Syntax` takes one category, not {}", arguments.len()),
+        );
+        return None;
+    };
+    let text = argument.to_string();
+    let Some(category) = crate::syntax::Cat::named(text.trim()) else {
+        complain(resolver, format!("`{}` is not a syntax category", text.trim()));
+        return None;
+    };
+    Some(Type::Syntax(category))
 }
 
 /// `Machine<K, A, B>` or `Primitive<K, A, B>`, read from what was written.
@@ -5943,7 +6144,22 @@ impl Checker<'_> {
     /// Both types are resolved before they are quoted, so a diagnostic names
     /// what the substitution knows rather than the variable that stood in
     /// for it.
+    ///
+    /// It is also the one place a *direction* exists, which is why
+    /// `11-quotation.md` §1's forgetting rule lands here and nowhere else. A
+    /// `TokenTree` position accepts a tree of any category, because a
+    /// token-tree position is precisely one that has not been parsed as
+    /// anything more specific; the reverse — a `Syntax<Expr>` position taking
+    /// an uncertified tree — is the splice the index exists to refuse.
+    /// [`Unifier::unify`] is symmetric, so putting the rule there would admit
+    /// both directions and the index would certify nothing.
     fn reconcile(&mut self, expected: &Type, found: &Type, span: SourceSpan) -> Option<()> {
+        if let Type::Syntax(wanted) = self.unifier.resolve(expected)
+            && let Type::Syntax(held) = self.unifier.resolve(found)
+            && wanted.accepts(held)
+        {
+            return Some(());
+        }
         let Err(mismatch) = self.unifier.unify(found, expected) else {
             return Some(());
         };
@@ -6664,6 +6880,21 @@ impl Checker<'_> {
             );
             self.failed = true;
             return None;
+        }
+        // A phase constant, and only where the phase environment is in scope.
+        // `qualified_name` has already folded `TokenKind.PitchLiteral` into one
+        // flat name, which is why naming these takes no namespacing feature in
+        // a checker that has none: they are compiler-owned constants whose
+        // spelling happens to contain a dot, so nothing an adapter declares can
+        // collide with one and ordinary source cannot reach them at all.
+        if self.reading == Reading::Expansion
+            && let Some(value) = phase_value(&written)
+        {
+            return Some(Expr {
+                ty: value.ty(),
+                kind: ExprKind::Literal(value),
+                span,
+            });
         }
         match self.projection(&written, span) {
             Projected::Made(expr) => return Some(*expr),
@@ -7845,6 +8076,8 @@ impl Checker<'_> {
             | Value::Syntax(_)
             | Value::NodePath(_)
             | Value::BindingPath(_)
+            | Value::TokenKind(_)
+            | Value::Delimiter(_)
             | Value::SyntaxStep(_)
             | Value::Builtin(_) => Coverage::Literal(literal_key(&value)),
         };
@@ -8423,9 +8656,11 @@ fn uncovered(world: &World, target: &Type, coverage: &IndexSet<Coverage>) -> Opt
         | Type::Primitive { .. }
         | Type::Machine { .. }
         | Type::Product(_)
-        | Type::Syntax
+        | Type::Syntax(_)
         | Type::NodePath
         | Type::BindingPath
+        | Type::TokenKind
+        | Type::Delimiter
         | Type::SyntaxStep { .. }
         | Type::Function(_, _) => Some("_".to_owned()),
     }
@@ -8472,6 +8707,8 @@ fn literal_key(value: &Value) -> String {
         | Value::Syntax(_)
         | Value::NodePath(_)
         | Value::BindingPath(_)
+        | Value::TokenKind(_)
+        | Value::Delimiter(_)
         | Value::SyntaxStep(_)
         | Value::Builtin(_) => "constructor".to_owned(),
     }
@@ -8787,6 +9024,8 @@ fn eval_nested(expression: &Expr, environment: &IndexMap<String, Value>, meter: 
                 | Value::Syntax(_)
                 | Value::NodePath(_)
                 | Value::BindingPath(_)
+                | Value::TokenKind(_)
+                | Value::Delimiter(_)
                 | Value::SyntaxStep(_)
                 | Value::Music(_) => None,
             }
@@ -8832,6 +9071,8 @@ fn eval_nested(expression: &Expr, environment: &IndexMap<String, Value>, meter: 
                 | Value::Syntax(_)
                 | Value::NodePath(_)
                 | Value::BindingPath(_)
+                | Value::TokenKind(_)
+                | Value::Delimiter(_)
                 | Value::SyntaxStep(_)
                 | Value::Builtin(_) => None,
             }
@@ -8919,6 +9160,8 @@ fn eval_nested(expression: &Expr, environment: &IndexMap<String, Value>, meter: 
                     | Value::Syntax(_)
                     | Value::NodePath(_)
                     | Value::BindingPath(_)
+                    | Value::TokenKind(_)
+                    | Value::Delimiter(_)
                     | Value::SyntaxStep(_)
                     | Value::Builtin(_) => return None,
                 };
@@ -10017,6 +10260,8 @@ fn eval_builtin(
                     | Value::Syntax(_)
                     | Value::NodePath(_)
                     | Value::BindingPath(_)
+                    | Value::TokenKind(_)
+                    | Value::Delimiter(_)
                     | Value::SyntaxStep(_)
                     | Value::Builtin(_) => None,
                 })
@@ -10377,6 +10622,20 @@ fn eval_syntax(
             None
         }
     };
+    let token_kind = |value: &Value| {
+        if let Value::TokenKind(held) = value {
+            Some(*held)
+        } else {
+            None
+        }
+    };
+    let delimiter = |value: &Value| {
+        if let Value::Delimiter(held) = value {
+            Some(*held)
+        } else {
+            None
+        }
+    };
     let index = |value: &Value| u32::try_from(nat_value(value)?).ok();
     let built = |node: crate::syntax::Syntax, meter: &mut WorkMeter| {
         let (nodes, bytes) = node.shape();
@@ -10415,16 +10674,24 @@ fn eval_syntax(
             // getting stuck, so the transformer sees one absence and not two
             // kinds of silence.
             let found = match syntax(values.first()?)? {
-                crate::syntax::Syntax::Token { ref kind, ref text, .. } => match kind.as_str() {
-                    "Integer" => text.parse::<i64>().ok().map(Ratio::from_integer),
-                    "Rational" => text
-                        .split_once('/')
-                        .and_then(|(numerator, denominator)| {
-                            Some((numerator.parse::<i128>().ok()?, denominator.parse::<i128>().ok()?))
-                        })
-                        .and_then(|(numerator, denominator)| exact_ratio(numerator, denominator)),
-                    _ => None,
-                },
+                // Asked as two questions rather than as a match on the kind:
+                // the lexer has some three hundred kinds and two of them are
+                // numbers, so naming the other two hundred and ninety-eight as
+                // "not a number" would be a list nobody could read and nobody
+                // would maintain.
+                crate::syntax::Syntax::Token { kind, ref text, .. } => {
+                    if kind == musa_language::SyntaxKind::Integer {
+                        text.parse::<i64>().ok().map(Ratio::from_integer)
+                    } else if kind == musa_language::SyntaxKind::Rational {
+                        text.split_once('/')
+                            .and_then(|(numerator, denominator)| {
+                                Some((numerator.parse::<i128>().ok()?, denominator.parse::<i128>().ok()?))
+                            })
+                            .and_then(|(numerator, denominator)| exact_ratio(numerator, denominator))
+                    } else {
+                        None
+                    }
+                }
                 crate::syntax::Syntax::Missing(_)
                 | crate::syntax::Syntax::Identifier { .. }
                 | crate::syntax::Syntax::Group { .. } => None,
@@ -10439,7 +10706,10 @@ fn eval_syntax(
                 let (nodes, bytes) = found.shape();
                 meter.preflight_construct(operation.spelling(), nodes, bytes, expression.span)?;
             }
-            Some(optional(Type::Syntax, found.map(|node| Value::Syntax(Box::new(node)))))
+            Some(optional(
+                Type::Syntax(crate::syntax::Cat::TokenTree),
+                found.map(|node| Value::Syntax(Box::new(node))),
+            ))
         }
         // The number is built into a token rather than handed over as a `Nat`:
         // a transformer's answer is an expression, and the only way a number
@@ -10452,21 +10722,37 @@ fn eval_syntax(
             let here = path(values.get(2)?)?;
             let found = subject
                 .anchor(&wanted)
-                .map(|anchor| crate::syntax::token(here, "Integer".to_owned(), anchor.to_string()));
+                .map(|anchor| crate::syntax::token(here, musa_language::SyntaxKind::Integer, anchor.to_string()));
             let held = match found {
                 Some(node) => Some(built(node, meter)?),
                 None => None,
             };
-            Some(optional(Type::Syntax, held))
+            Some(optional(Type::Syntax(crate::syntax::Cat::TokenTree), held))
         }
+        // Written through [`crate::syntax::Derived`] rather than through
+        // `NodePath::built` directly, because the triple is what a derived path
+        // *is*: the origin the builder was pointed at, the construction site
+        // that read it, and the position within what that site built. The role
+        // integer an adapter passes today is the quotation prompt 139's quote
+        // supplies for it, so the representation is already the one that
+        // survives.
         SyntaxOp::Built => Some(Value::NodePath(Box::new(
-            path(values.first()?)?.built(index(values.get(1)?)?, index(values.get(2)?)?),
+            crate::syntax::Derived {
+                origin: path(values.first()?)?,
+                quotation: index(values.get(1)?)?,
+                path: vec![index(values.get(2)?)?],
+            }
+            .path(),
         ))),
         SyntaxOp::Binding => Some(Value::BindingPath(Box::new(
             path(values.first()?)?.binding(index(values.get(1)?)?),
         ))),
         SyntaxOp::Token => built(
-            crate::syntax::token(path(values.first()?)?, text(values.get(1)?)?, text(values.get(2)?)?),
+            crate::syntax::token(
+                path(values.first()?)?,
+                token_kind(values.get(1)?)?,
+                text(values.get(2)?)?,
+            ),
             meter,
         ),
         SyntaxOp::Identifier => built(
@@ -10479,7 +10765,7 @@ fn eval_syntax(
             };
             let children = children.iter().map(syntax).collect::<Option<Vec<_>>>()?;
             built(
-                crate::syntax::group(path(values.first()?)?, text(values.get(1)?)?, children),
+                crate::syntax::group(path(values.first()?)?, delimiter(values.get(1)?)?, children),
                 meter,
             )
         }
@@ -10491,6 +10777,20 @@ fn eval_syntax(
             crate::syntax::reference(path(values.first()?)?, &binding(values.get(1)?)?, text(values.get(2)?)?),
             meter,
         ),
+        SyntaxOp::KindEqual => Some(Value::Bool(token_kind(values.first()?)? == token_kind(values.get(1)?)?)),
+        SyntaxOp::DelimiterEqual => Some(Value::Bool(delimiter(values.first()?)? == delimiter(values.get(1)?)?)),
+        // The claim is established by running the real parser, which is the
+        // only thing that can establish it. Nothing about the value changes —
+        // the index is a claim about how the tree parses, and this is the
+        // question being asked.
+        SyntaxOp::AsExpression => {
+            let subject = syntax(values.first()?)?;
+            let parses = crate::syntax::parses_as_expression(&subject);
+            Some(optional(
+                Type::Syntax(crate::syntax::Cat::Expr),
+                parses.then(|| Value::Syntax(Box::new(subject))),
+            ))
+        }
         // The gate answers with a value either way, which is what keeps it
         // total: a transformer that builds badly gets a `Result` back and
         // decides what to say about it.
@@ -10501,7 +10801,7 @@ fn eval_syntax(
                 Err(refusal) => Value::Text(refusal.to_string()),
             };
             Some(Value::Sum {
-                value_type: Type::Syntax,
+                value_type: Type::Syntax(crate::syntax::Cat::Expr),
                 error_type: Type::Text,
                 error: matches!(held, Value::Text(_)),
                 held: Box::new(held),
@@ -10599,7 +10899,7 @@ fn recurse_syntax_nested(
     let branch = match subject {
         crate::syntax::Syntax::Missing(_) => algebra.first()?,
         crate::syntax::Syntax::Token { kind, text, .. } => {
-            arguments.push(Value::Text(kind.clone()));
+            arguments.push(Value::TokenKind(*kind));
             arguments.push(Value::Text(text.clone()));
             algebra.get(1)?
         }
@@ -10610,7 +10910,7 @@ fn recurse_syntax_nested(
         crate::syntax::Syntax::Group {
             delimiter, children, ..
         } => {
-            arguments.push(Value::Text(delimiter.clone()));
+            arguments.push(Value::Delimiter(*delimiter));
             // The member type comes from the operation's own scheme and not
             // from the first value: a list whose member type was guessed from
             // what it happens to hold would be a different type when the group
@@ -10821,6 +11121,8 @@ fn fold_value_nested(
         | Value::Syntax(_)
         | Value::NodePath(_)
         | Value::BindingPath(_)
+        | Value::TokenKind(_)
+        | Value::Delimiter(_)
         | Value::SyntaxStep(_)
         | Value::Music(_) => None,
     }
@@ -11001,6 +11303,8 @@ fn wiring_shape(value: &Value) -> (u64, u64) {
         | Value::Syntax(_)
         | Value::NodePath(_)
         | Value::BindingPath(_)
+        | Value::TokenKind(_)
+        | Value::Delimiter(_)
         | Value::SyntaxStep(_) => 0,
     };
     let cells = u64::try_from(fields).unwrap_or(u64::MAX).saturating_add(1);
@@ -11056,6 +11360,8 @@ fn value_shape(value: &Value) -> (u64, u64) {
         Value::Syntax(held) => held.shape(),
         Value::NodePath(held) => held.shape(),
         Value::BindingPath(held) => held.shape(),
+        // A tag and nothing under it.
+        Value::TokenKind(_) | Value::Delimiter(_) => (1, 1),
         // One cell and nothing under it. A step constructs nothing: its child
         // is already a node of the subject and its algebra is already in the
         // environment, both charged where they arrived. What minting costs is
@@ -11726,22 +12032,31 @@ fn read_adapter_module_metered(
 /// `expand`'s error half is how it refuses, and an adapter that never refuses
 /// would otherwise leave that half open and be told its own module does not say
 /// what it holds — a complaint about a type that was never the module's.
+///
+/// Every `Syntax` here is `Syntax`, on both sides. The argument is
+/// the composer's own region, about which nothing is claimed; the answer is at
+/// `TokenTree` because step 5 of the fixed order prints it and reads it with the
+/// real parser regardless, so asking the adapter for `Syntax<Expr>` would be
+/// asking it to prove what the phase re-establishes on the next line. The index
+/// earns its keep inside an adapter, at the splice boundary `as_expression`
+/// decides, and not at this signature.
 fn phase_operations() -> IndexMap<String, Type> {
+    let syntax = || Type::Syntax(crate::syntax::Cat::TokenTree);
     IndexMap::from([
         (
             "expand".to_owned(),
             Type::Function(
-                vec![Type::Syntax],
+                vec![syntax()],
                 Box::new(Type::Sum(
-                    Box::new(Type::Syntax),
-                    Box::new(Type::Product(vec![Type::Syntax, Type::Text])),
+                    Box::new(syntax()),
+                    Box::new(Type::Product(vec![syntax(), Type::Text])),
                 )),
             ),
         ),
         (
             "edit".to_owned(),
             Type::Function(
-                vec![Type::Syntax, Type::Text, Type::Nat, Type::Text],
+                vec![syntax(), Type::Text, Type::Nat, Type::Text],
                 Box::new(Type::Sum(
                     Box::new(Type::List(Box::new(Type::Product(vec![Type::Nat, Type::Text])))),
                     Box::new(Type::Text),
@@ -11896,7 +12211,7 @@ fn printer_source(library: &SyntaxNode) -> Option<Printer> {
 fn names_a_phase_type(names: &IndexSet<String>) -> bool {
     names
         .iter()
-        .any(|name| phase_type(name).is_some() || name == "SyntaxStep")
+        .any(|name| phase_type(name).is_some() || matches!(name.as_str(), "Syntax" | "SyntaxStep"))
 }
 
 /// Everything between `let print =` and its `;`, and nothing else: the name,
@@ -13288,6 +13603,8 @@ mod tests {
             | Value::Syntax(_)
             | Value::NodePath(_)
             | Value::BindingPath(_)
+            | Value::TokenKind(_)
+            | Value::Delimiter(_)
             | Value::SyntaxStep(_)
             | Value::Builtin(_) => return None,
         })
@@ -13506,10 +13823,10 @@ mod tests {
 
     data Seen {
         Nothing,
-        One(node: Syntax),
+        One(node: Syntax<TokenTree>),
     }
 
-    let held = fn (node: Syntax) { One(node) };
+    let held = fn (node: Syntax<TokenTree>) { One(node) };
 
     let first = fn (found: Seen, later: Seen) {
         match found {
@@ -13686,7 +14003,7 @@ mod tests {
     fn the_phase_registry_is_separate_and_classified() {
         assert_eq!(
             SYNTAX_OWNERSHIP.len(),
-            14,
+            17,
             "a new phase operation must enter the phase registry"
         );
         let spellings = SYNTAX_OWNERSHIP
@@ -13776,7 +14093,7 @@ mod tests {
         // No constructor: the name is a type and not a term.
         assert!(
             adapter_refusals(&adapter_module(
-                "    let forged = fn (node: Syntax) { SyntaxStep(node) };"
+                "    let forged = fn (node: Syntax<TokenTree>) { SyntaxStep(node) };"
             ))
             .iter()
             .any(|message| message.contains("cannot find `SyntaxStep`")),
@@ -13996,9 +14313,11 @@ mod tests {
             // holding an arrow is refused where the declaration is written.
             | Type::Nominal(_, _)
             | Type::Step(_)
-            | Type::Syntax
+            | Type::Syntax(_)
             | Type::NodePath
             | Type::BindingPath
+            | Type::TokenKind
+            | Type::Delimiter
             | Type::Music => false,
         }
     }
