@@ -12,9 +12,9 @@ phase: 3
 
 Note 44 audited `musa-core` against smalltt and Peyton Jones ch. 3–6 and found seven divergences, five of them ad hoc —
 departures that were never argued, or were argued against a different question than the one they answer. One is measured
-today at 2.2× per matched column in both term size and elaboration time. Remove every ad hoc divergence that does not
-need a top-level definition scope, and hand the ones that do to prompt 144 with the argument written down rather than
-left to be rediscovered.
+today at 2.2× per matched column in both term size and elaboration time. Remove every ad hoc divergence that can be
+removed without what prompt 142 supplies — a top-level definition scope, and real code to price a change against — and
+hand the ones that cannot to prompt 144 with the argument written down rather than left to be rediscovered.
 
 ## Read
 
@@ -96,8 +96,8 @@ metavariable before quotation matches on it, and so the solution's every node is
 able to save work at exactly the moment glued evaluation lands, and for exactly the same reason — so it goes to prompt
 144 with Finding C rather than being built here as a lookup that can never hit.
 
-**A and B: each arm body is elaborated once, and only a necessary column is split.** These are one change because B
-decides how many leaves A has to serve.
+**A and B: only a necessary column is split, and that is enough.** These were written as one change because B decides
+how many leaves A has to serve; B turned out to decide the whole question.
 
 _B is the smaller half and the larger win on the measured program._ `testable` scans **every** row for a constructor
 pattern and splits the leftmost column any of them tests. But a `match` is ordered: if the _first_ row of a matrix has a
@@ -109,34 +109,37 @@ whether to test at all, and the column is the leftmost the first row tests.** Co
 matches everything covers everything — and `unselected` already reports arms that no leaf selects, which is the correct
 verdict for the rows this rule steps over.
 
-_A is what remains after B._ An arm whose pattern in a split column is a variable survives into every branch of that
-split, and `leaf` calls `check_open` on its body once per leaf it reaches — not merely emitting it twice but
-**type-checking** it twice. Peyton Jones §5.4.1 is this exact failure and the fat bar is his answer to it; the fat bar's
-_other_ job, letting an equation fail into the next, is the one musa correctly declines, and declining the mechanism
-took both. The replacement is ch. 6's let-bound right-hand side, which is note 26 §2.4's join point spelled without
-labels:
+_A does not land here, and B is why._ The plan was ch. 6's let-bound right-hand side — note 26 §2.4's join point spelled
+without labels:
 
 ```
 let armᵢ = λ (x⃗ : T⃗). body in  <case tree, whose leaves are `armᵢ v⃗`>
 ```
 
-An arm is hoisted when its body is **uniform** across the leaves it reaches, and the test for that is exact rather than
-heuristic: an arm is hoistable iff the types of the variables it binds, and the goal its body answers, are all
-expressible at the match's _own_ depth. Attempting to quote them there is the check — a type or goal that mentions a
-variable the tree introduced cannot be quoted at that depth, and that is precisely the dependent case where two leaves
-genuinely need two different functions. Non-indexed families, records, every enum, and every non-dependent match on an
-indexed one pass; a match whose motive really does depend on the subject falls back to elaborating in place, which is
-what it does today. Nothing is ever emitted ill-typed: hoisting happens only where the abstraction typechecks by
-construction.
+hoisted wherever the arm's body is **uniform** across the leaves it reaches, with note 44's test for uniformity: an arm
+is hoistable iff the types of the variables it binds, and the goal its body answers, are all expressible at the match's
+_own_ depth. That condition is **wrong**, and this prompt's falsifier clause is what caught it. The condition looks at
+the abstraction's interface; what breaks is the body. A leaf binds its pattern variables with `define`, so `b` at a leaf
+is not a `Nat` — it is `Succ j`, and the body may rely on that reducing. A λ binder is an assumption, so the hoisted
+body is checked in a strictly weaker context than any leaf's. `coverage_laws.rs`'s
+`a_pattern_binder_is_a_definition_at_every_leaf_it_reaches` is the witness: every binder type in it is `Nat` and its
+goal is `Nat`, so the condition admits it, and `λ (a b : Nat). f b refl` does not typecheck because opaque `b` is not
+`Succ (pred b)`.
 
-Separating the decision from the emission is what makes this possible, and it is a boundary `case.rs` already wants:
-today `solve` plans the tree and elaborates bodies in the same pass, so it cannot know how many leaves an arm has until
-it has already paid for them. Split it into a **plan** — `Split { constant, motives, branches } | Open | Leaf { arm,
-bindings }` — and an **emit** pass over the plan. `unselected` becomes a property of the plan rather than a flag set at
-each leaf, which is what note 44 predicts: "an arm is unreachable exactly when its `let` is never applied".
+The exact condition is "the abstraction typechecks", which is not decided by inspection but by attempting it, so the
+sound shape is speculative: build the abstraction, elaborate the body against it once, fall back to per-leaf elaboration
+where it is refused, and report only the per-leaf refusal. Two further costs come with that shape. An arm's binder
+_types_ are not uniform across leaves either once a family is indexed — splitting refines `Vec A n` to `Vec A (Succ k)`
+— so a plan pass has to establish telescope uniformity before an abstraction can even be formed. And a refused hoist
+costs `1 + N` elaborations where today's costs `N`.
 
-Each hoisted `let` carries its own arm's origin, which is more faithful to §7 than today's N copies of one body all
-carrying the same one.
+None of that is unbuildable; it is a larger and more delicate change than a prompt about removing ad hoc divergences
+should carry, and B has removed the reason it was urgent. Note 44 measured 2.2× per column — 3 columns at 55,942
+characters, 10 at 14,928,160 — and argued A had to land before prompt 142 pointed the standard library at this compiler.
+After the first-row rule that program is polynomial (3 columns at 34,594 characters, 6 at 73,361, ~1,384·k² + 22,138),
+each arm on it is elaborated exactly once, and every measured column is under 3 ms. What is left of A is a linear
+constant factor on the leaves a non-first-row arm reaches, whose worth can only be judged against real code. That is
+prompt 142's output and prompt 144's question, which is where Finding C already went for the same reason.
 
 **G: one conversion procedure.** `convertible` normalizes both sides completely and compares — the most expensive
 decision available, and a second implementation of a question the unifier already answers value-directed with early
@@ -149,15 +152,17 @@ implementation. The same applies to `convertible_types`.
 top-level definition scope, so there is nothing that _could_ be held folded, and every smalltt technique that is missing
 is a technique for deciding when not to unfold. It becomes wrong at prompt 142, which points the standard library at
 this core. Four items ride on it and cannot be built before it: `Spine::Def` and the `G` pair, D's approximate
-rigid/flex/full conversion, E's flexible quotation mode, and E's per-metavariable occurs cache. This prompt's documents
-half is to repair 144's **Read**, **Design**, and **Target** so 144 owns them by name and by citation, rather than
-leaving a future reader to rediscover the audit. That is a repair of a pending prompt, which the prompt README's §6
-makes ordinary.
+rigid/flex/full conversion, E's flexible quotation mode, and E's per-metavariable occurs cache. **Finding A joins
+them**, for a different reason argued above — not that it cannot be built, but that what remains of it after B is a
+constant factor no one can price until real code goes through this compiler. This prompt's documents half is to repair
+144's **Read**, **Design**, and **Target** so 144 owns all six by name and by citation, rather than leaving a future
+reader to rediscover the audit. That is a repair of a pending prompt, which the prompt README's §6 makes ordinary.
 
-**What would falsify this prompt.** If the hoisting condition turns out to admit an arm whose abstraction does not
-typecheck, the condition is wrong and the prompt is repaired before any code ships — not patched with a special case. If
-B's first-row rule changes which programs are accepted, the rule is wrong: it may change the _shape_ of a tree and it
-may change which arms are reported unreachable, but never whether a `match` is exhaustive.
+**What would falsify this prompt.** The hoisting clause fired, and above is what it produced: the condition admitted an
+arm whose abstraction does not typecheck, so A was repaired out of this prompt rather than patched with a special case,
+and the program that caught it stays behind as a law. The other clause still stands: if B's first-row rule changes which
+programs are accepted, the rule is wrong — it may change the _shape_ of a tree and it may change which arms are reported
+unreachable, but never whether a `match` is exhaustive.
 
 ## Target
 
@@ -167,13 +172,13 @@ may change which arms are reported unreachable, but never whether a `match` is e
   record types, and `by_reading_back` reachable only on the failure path.
 - `crates/musa-core/src/quote.rs` and `unify.rs`: scope restriction and the occurs check fused into quotation, and
   `restrict` deleted rather than kept beside it.
-- `crates/musa-core/src/case.rs`: the plan/emit split, first-row column selection, and hoisted arm bodies.
+- `crates/musa-core/src/case.rs`: first-row column selection.
 - `crates/musa-core/src/lib.rs`: `convertible` and `convertible_types` as one procedure with the unifier.
 - Laws in `crates/musa-core/tests/suite/`:
-    - **each arm body is elaborated exactly once per distinct binding telescope**, counted rather than inferred, and once
-      per arm for the whole corpus;
-    - note 44's interleaved-column program elaborates with a term size and an elaboration time that grow **linearly** in
-      the number of columns, stated as a ratio law so it is not a pinned byte count;
+    - note 44's interleaved-column program elaborates with a term size that grows **polynomially** in the number of
+      columns, stated as a ratio law so it is not a pinned byte count;
+    - an arm reaching two leaves gets each leaf's _definition_ for the variables it binds — the program that falsified
+      A's hoisting condition, kept behind as the bound on what prompt 144 may do to `case.rs`;
     - an arm no leaf applies is still `Refusal::UnreachableBranch`, at the same origin;
     - conversion answers what it answered before on the whole `fixtures::corpus`, including the η samples, with
       `by_reading_back` never reached on a success;
@@ -182,8 +187,8 @@ may change which arms are reported unreachable, but never whether a `match` is e
     - `convertible` and the test-local oracle agree on every sample — the second-path audit stated as a test rather than
       as a prohibition.
 - `docs/plan/prompts/144-diagnostics-and-performance.md`: **Read**, **Design**, and **Target** naming Finding C, the
-  `Def` head and the `G` pair, approximate conversion, the flexible quotation mode, and the per-metavariable occurs
-  cache, each cited to note 44.
+  `Def` head and the `G` pair, approximate conversion, the flexible quotation mode, the per-metavariable occurs cache,
+  and Finding A with the falsifier this prompt found and the speculative shape that answers it, each cited to note 44.
 - `docs/plan/code-map/` rows updated for what changed.
 - `docs/notes/research/language-design-closure/44-…md`: a short closing section recording which findings this prompt
   discharged and what the measurement became. The note is evidence; leaving it claiming a cost that is gone would make
@@ -212,8 +217,9 @@ Commit as `Remove the ad hoc divergences from the dependent core`.
   document and the amendment procedure in `docs/rules/README.md` is the user's call, not a step in a batch run. The
   implementation repair needs no amendment: the hoisted tree is convertible with the duplicated one, which is the law
   `coverage_laws.rs` already states.
-- No glued evaluation, no `Spine::Def`, no definition scope, no approximate conversion, and no flexible quotation mode.
-  Prompt 144, which this prompt repairs to say so.
+- No glued evaluation, no `Spine::Def`, no definition scope, no approximate conversion, no flexible quotation mode, and
+  **no hoisting of arm bodies** — no plan/emit split of `case.rs` either, since its only caller was the hoist. Prompt
+  144, which this prompt repairs to say so.
 - No behaviour change. The same programs elaborate, to convertible terms, with the same refusals at the same origins.
   The one permitted difference is which arm a `Refusal::UnreachableBranch` names when B's rule steps over rows an
   exhaustive earlier arm already covered — and that difference is a law here, not a side effect.
