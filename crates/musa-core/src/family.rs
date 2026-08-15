@@ -81,6 +81,7 @@
 use std::sync::Arc;
 
 use crate::budget::Meter;
+use crate::class::PackageId;
 use crate::error::CoreError;
 use crate::eval::{apply, eval, force};
 use crate::level::Level;
@@ -164,6 +165,10 @@ pub struct Group {
     /// named one. Stamped once at [`crate::declare`] rather than asked for
     /// again, because a group is immutable and a second answer could disagree.
     pub(crate) module: Option<ModuleId>,
+    /// The package it was written in, stamped the same way and for §3's orphan
+    /// rule: an `impl` is at home if it shares a package with the *declaration*
+    /// of its head type, and this is where that package is recorded.
+    pub(crate) package: Option<PackageId>,
 }
 
 /// A type that turned out to be a family applied to its arguments.

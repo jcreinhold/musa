@@ -70,7 +70,9 @@
 use std::sync::Arc;
 
 use crate::budget::Meter;
+use crate::class::Constraint;
 use crate::context::Cx;
+use crate::dictionary::{Postponed, Wanted};
 use crate::error::{CoreError, Malformed};
 use crate::eval::{apply, apply_closure, eval, field_type, force};
 use crate::level::{Level, LevelMeta};
@@ -114,6 +116,14 @@ pub(crate) struct Elaborator {
     /// level and not a value, so it cannot live in [`Meta`]. What it shares is
     /// the report, which is why the origin travels with it.
     levels: Vec<(LevelMeta, Origin)>,
+    /// The constraints `10-traits.md` §4 postponed, each with the hole it left.
+    ///
+    /// Postponement is only half a mechanism without this list: a constraint
+    /// whose head was unknown when it was written is one whose head some *later*
+    /// part of the same declaration usually determines, and nothing would go
+    /// back and look. [`Self::settled`] is where they are retried, which is the
+    /// same place the report about the ones that stayed blocked is made.
+    postponed: Vec<Postponed>,
 }
 
 impl Elaborator {
@@ -123,7 +133,47 @@ impl Elaborator {
             unifier: Unifier::default(),
             metas: Vec::new(),
             levels: Vec::new(),
+            postponed: Vec::new(),
         }
+    }
+
+    /// Record a constraint §4 postponed, and the hole standing for its
+    /// dictionary.
+    pub(crate) fn postpone(
+        &mut self,
+        scope: &Scope,
+        needed: &Constraint,
+        hole: &Term,
+        ty: &Value,
+        wanted: Option<Wanted>,
+    ) {
+        self.postponed.push(Postponed {
+            scope: scope.clone(),
+            needed: needed.clone(),
+            hole: hole.clone(),
+            ty: ty.clone(),
+            wanted,
+        });
+    }
+
+    /// Every postponed constraint, leaving none behind.
+    pub(crate) fn waiting(&mut self) -> Vec<Postponed> {
+        core::mem::take(&mut self.postponed)
+    }
+
+    /// Put back the constraints a retry could not answer.
+    pub(crate) fn keep_waiting(&mut self, blocked: Vec<Postponed>) {
+        self.postponed.extend(blocked);
+    }
+
+    /// `term` with every solved metavariable replaced by its solution.
+    ///
+    /// Reached by evaluating and quoting rather than by walking the syntax,
+    /// because that is the only substitution this crate performs (`lib.rs`) and
+    /// a second one would be free to disagree with it.
+    pub(crate) fn resolved(&mut self, scope: &Scope, term: &Term) -> Result<Term, ElabError> {
+        let value = scope.eval(&mut self.meter, term)?;
+        Ok(scope.quote_type(&mut self.meter, &value)?)
     }
 
     /// Elaborate `raw` against the type `ty`, and finish.
@@ -146,8 +196,15 @@ impl Elaborator {
         ))
     }
 
+    /// Answer every postponed constraint that can now be answered, then refuse
+    /// if any metavariable — of either sort — is still undetermined.
+    pub(crate) fn settled(&mut self) -> Result<(), ElabError> {
+        crate::dictionary::discharge(self)?;
+        self.unsolved()
+    }
+
     /// Refuse if any metavariable — of either sort — is still undetermined.
-    pub(crate) fn settled(&self) -> Result<(), ElabError> {
+    fn unsolved(&self) -> Result<(), ElabError> {
         if let Some(unsolved) = self.metas.iter().find(|meta| !meta.is_solved()) {
             return Err(Refusal::Unsolved {
                 site: unsolved.source(),
@@ -213,6 +270,12 @@ impl Elaborator {
     /// the level is one per *use site* and this is what a use site is.
     fn constant(&mut self, scope: &Scope, here: Origin, name: &Name) -> Result<Typed, ElabError> {
         let Some(found) = scope.declared(name) else {
+            // `Class.method` before the general report, and only after binders
+            // and declarations: a trait's methods live in the trait's namespace,
+            // so nothing here can shadow a name an author declared themselves.
+            if let Some((term, ty)) = crate::dictionary::method_at(self, scope, here, name)? {
+                return Ok(Typed { term, ty });
+            }
             return Err(self.unresolved(scope, here, name));
         };
         // Found, and possibly not for this reader. The check is here rather
@@ -1165,8 +1228,49 @@ impl Elaborator {
         })
     }
 
+    /// Make two types equal, solving whatever metavariables that determines.
+    ///
+    /// The one door to the unifier from outside this module, so that
+    /// [`dictionary`](crate::dictionary) — which recovers an instance's
+    /// parameters by unifying its written arguments against the ones asked
+    /// for — uses the unifier 134 built rather than a second matcher beside it.
+    ///
+    /// # Errors
+    ///
+    /// [`Refusal::Mismatch`] when they cannot be made equal, or exhaustion.
+    pub(crate) fn unify_at(
+        &mut self,
+        scope: &Scope,
+        at: Origin,
+        ty: &Value,
+        left: &Value,
+        right: &Value,
+    ) -> Result<(), ElabError> {
+        self.unifier.unify(&mut self.meter, scope.depth(), at, ty, left, right)
+    }
+
+    /// # Errors
+    ///
+    /// [`Refusal::Mismatch`] when they cannot be made equal, or exhaustion.
+    pub(crate) fn unify_types(
+        &mut self,
+        scope: &Scope,
+        at: Origin,
+        left: &Value,
+        right: &Value,
+    ) -> Result<(), ElabError> {
+        self.unifier
+            .unify_types(&mut self.meter, scope.depth(), at, left, right)
+    }
+
     /// A new metavariable, written applied to every binder in scope.
-    fn fresh_meta(&mut self, scope: &Scope, origin: Origin, source: MetaSource, ty: &Value) -> Result<Term, ElabError> {
+    pub(crate) fn fresh_meta(
+        &mut self,
+        scope: &Scope,
+        origin: Origin,
+        source: MetaSource,
+        ty: &Value,
+    ) -> Result<Term, ElabError> {
         self.meter.metavariable("elaboration")?;
         let stated = scope.quote_type(&mut self.meter, ty)?;
         // Closed, and applied to the identity spine of its context: §2.1's scope

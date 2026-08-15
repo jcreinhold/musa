@@ -31,7 +31,11 @@
 //!
 //! # What it does not have
 //!
-//! No traits, no operators, no method syntax — prompt 137.
+//! No operators and no method syntax. `10-traits.md` §5 and §6 make both of them
+//! *surface* spellings for terms this type can already hold: `x == y` is
+//! `Eq.equal x y` and `x.m(y)` is a name and an application, so the elaborator
+//! never learns an operator table and the surface never has to explain one to
+//! this crate.
 
 use std::sync::Arc;
 
@@ -107,6 +111,105 @@ pub struct RawData {
     pub params: Vec<RawBinder>,
     /// The families, in declaration order.
     pub families: Vec<RawFamily>,
+}
+
+/// One constraint, before elaboration: a trait applied to type arguments.
+///
+/// `Eq<A>` in a `where` clause, in a trait's own context, or as an `impl`'s
+/// head. One type rather than three, because `10-traits.md` §4's lookup is the
+/// same question in all three positions — the difference is what is done with
+/// the dictionary, not how the constraint is read.
+#[derive(Clone, Debug)]
+pub struct RawConstraint {
+    /// Where it was written.
+    pub origin: Origin,
+    /// The trait's name.
+    pub name: Name,
+    /// One argument per trait parameter, in declaration order.
+    pub args: Vec<Raw>,
+}
+
+/// One method of a trait declaration.
+///
+/// [`RawMethod::body`] is what separates §1's two kinds. A method **declared
+/// with `;`** is required: it is a field of the dictionary and an impl supplies
+/// it. A method **declared with a block** is derived: it is an ordinary function
+/// of the dictionary, defined once here, and an impl may not replace it. That
+/// is why §9 can refuse specialization as a *mechanism* rather than as a rule —
+/// there is no overridable definition to specialize.
+#[derive(Clone, Debug)]
+pub struct RawMethod {
+    /// Where it was written.
+    pub origin: Origin,
+    /// Its name, unqualified: the trait qualifies it.
+    pub name: Name,
+    /// Its type, read under the trait's parameters.
+    pub ty: Raw,
+    /// Its definition, when the trait derives it.
+    ///
+    /// Read under the trait's parameters, a binder for the dictionary, and the
+    /// trait's own methods — a derived method is written in terms of the
+    /// required ones, which is the whole reason for the form.
+    pub body: Option<Raw>,
+}
+
+/// A `trait` declaration, before elaboration.
+#[derive(Clone, Debug)]
+pub struct RawTrait {
+    /// Where it was written.
+    pub origin: Origin,
+    /// Its name.
+    pub name: Name,
+    /// Whether `private` was written before it (`01-surface.md` §1.3).
+    pub visibility: Visibility,
+    /// Its parameters. The first is the head every instance is keyed on; §1
+    /// refuses a trait none of whose parameters its head determines.
+    pub params: Vec<RawBinder>,
+    /// Its own constraints — `trait Ord<A> where Eq<A>` — read under the
+    /// parameters. Each becomes a field of the dictionary, so reaching `Eq`
+    /// from `Ord` is one projection and never a second lookup.
+    pub context: Vec<RawConstraint>,
+    /// Its methods, in declaration order.
+    pub methods: Vec<RawMethod>,
+}
+
+/// An `impl` declaration, before elaboration.
+#[derive(Clone, Debug)]
+pub struct RawImpl {
+    /// Where it was written.
+    pub origin: Origin,
+    /// The trait being implemented.
+    pub name: Name,
+    /// The type variables the instance abstracts over — `impl<A> Eq<List<A>>`.
+    pub params: Vec<RawBinder>,
+    /// The head arguments, read under those parameters.
+    pub args: Vec<Raw>,
+    /// Its `where` clause, read under the same parameters. §4's measure is
+    /// checked here, at the declaration, and never at a use site.
+    pub context: Vec<RawConstraint>,
+    /// The required methods it supplies, in any order: they are matched to the
+    /// trait's fields by name, since an impl that had to repeat the
+    /// declaration's order would be restating what the trait already said.
+    pub methods: Vec<RawDefinition>,
+}
+
+/// One method an `impl` supplies: a name and a value, and no type.
+///
+/// A separate type from [`RawMethod`] rather than that one with its type field
+/// unused, because the difference is the point: a trait *declares* a method and
+/// so writes its type, and an impl *defines* one and so writes only what it is.
+/// The type comes from the trait's dictionary field, which is what makes an
+/// instance's methods checked against the declaration rather than merely beside
+/// it — and what leaves an impl no place to write a type that disagrees.
+#[derive(Clone, Debug)]
+pub struct RawDefinition {
+    /// Where it was written.
+    pub origin: Origin,
+    /// Which method it defines.
+    pub name: Name,
+    /// Its value, read under the instance's parameters and its `where`
+    /// dictionaries.
+    pub value: Raw,
 }
 
 /// One field of a raw record type or record literal.

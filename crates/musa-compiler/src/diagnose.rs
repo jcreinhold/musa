@@ -142,6 +142,36 @@ pub enum Code {
     MixedVisibility,
     /// A `match` on a type whose constructors are private here.
     AbstractMatch,
+    /// A `trait` named `Storable`, whose instances the elaborator generates.
+    ReservedClass,
+    /// A `trait` with no parameters, so nothing can be an instance of it.
+    HeadlessClass,
+    /// A `trait` declaring one method name twice.
+    DuplicateMethod,
+    /// A trait applied to the wrong number of arguments.
+    ClassArity,
+    /// A source `impl Storable`, behind any spelling.
+    HandWrittenStorable,
+    /// An `impl` whose head argument is a bare type variable.
+    BlanketInstance,
+    /// A second `impl` for a key another already answers.
+    DuplicateInstance,
+    /// An `impl` in a package that declares neither its trait nor its head.
+    OrphanInstance,
+    /// An instance whose context the termination measure cannot see decrease.
+    UnboundedInstance,
+    /// An `impl` supplying a method its trait derives.
+    DerivedMethod,
+    /// An `impl` supplying a method its trait does not declare.
+    NoSuchMethod,
+    /// An `impl` leaving a required method undefined.
+    MissingMethod,
+    /// A constraint no instance and no enclosing `where` answers.
+    UnresolvedInstance,
+    /// A constraint on a type variable no enclosing `where` supplies.
+    UnconstrainedVariable,
+    /// A constraint on a type no instance could ever be keyed on.
+    UnkeyedConstraint,
 }
 
 /// Writes each code's spelling once, and derives the roster from the same
@@ -209,6 +239,22 @@ code_table! {
     PrivateName => "private-name",
     MixedVisibility => "mixed-visibility",
     AbstractMatch => "abstract-match",
+    ReservedClass => "reserved-class",
+    HeadlessClass => "headless-class",
+    DuplicateMethod => "duplicate-method",
+    ClassArity => "class-arity",
+    HandWrittenStorable => "hand-written-storable",
+    BlanketInstance => "blanket-instance",
+    DuplicateInstance => "duplicate-instance",
+    OrphanInstance => "orphan-instance",
+    UnboundedInstance => "unbounded-instance",
+    DerivedMethod => "derived-method",
+    NoSuchMethod => "no-such-method",
+    MissingMethod => "missing-method",
+    UnresolvedInstance => "unresolved-instance",
+    UnconstrainedVariable => "unconstrained-variable",
+    UnkeyedConstraint => "unkeyed-constraint",
+
 }
 
 impl Code {

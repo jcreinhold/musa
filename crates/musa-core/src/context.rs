@@ -17,9 +17,10 @@
 //! context and leave the old one usable — because an elaborator descends into
 //! two branches from one context and neither may see the other's binders.
 
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use crate::budget::{Budget, Meter};
+use crate::class::{Classes, Instance, PackageId, Trait};
 use crate::error::CoreError;
 use crate::eval::eval;
 use crate::family::{Constant, Found, Group};
@@ -59,6 +60,20 @@ pub struct Cx {
     /// invisible to a caller that has no packages — see
     /// [`crate::visibility`]. This crate never mints one.
     module: Option<ModuleId>,
+    /// The package a term elaborated here is written in, for §3's orphan rule.
+    ///
+    /// [`ModuleId`]'s bargain at the wider boundary, and `None` is inside every
+    /// package for the same reason. See [`PackageId`].
+    package: Option<PackageId>,
+    /// The traits and instances in scope.
+    ///
+    /// Behind an [`Arc`] rather than held by value, and that is not incidental:
+    /// a context is cloned on every binder push, the tables behind this are two
+    /// `HashMap`s, and copying them per binder would make elaboration's cost
+    /// depend on how many traits a program declares. `None` is the empty
+    /// table — which is what every caller that declares no traits has, so they
+    /// pay one null check rather than an allocation.
+    classes: Option<Arc<Classes>>,
     depth: u32,
     budget: Budget,
 }
@@ -82,6 +97,8 @@ impl Cx {
             types: List::EMPTY,
             declared: List::EMPTY,
             module: None,
+            package: None,
+            classes: None,
             depth: 0,
             budget,
         }
@@ -101,6 +118,8 @@ impl Cx {
             types: List::EMPTY,
             declared: self.declared.clone(),
             module: self.module,
+            package: self.package,
+            classes: self.classes.clone(),
             depth: 0,
             budget: self.budget,
         }
@@ -126,12 +145,74 @@ impl Cx {
         self.module
     }
 
+    /// This context, elaborating inside the package the caller numbers
+    /// `package`.
+    ///
+    /// What §3's orphan rule compares. A context that never says this is inside
+    /// every package, so an impl declared in one is never an orphan — which is
+    /// what leaves every caller that has no packages, and every test written
+    /// before this rule existed, unchanged.
+    #[must_use]
+    pub fn in_package(&self, package: PackageId) -> Self {
+        Self {
+            package: Some(package),
+            ..self.clone()
+        }
+    }
+
+    /// The package terms elaborated here are written in, if the caller named
+    /// one.
+    pub(crate) const fn package(&self) -> Option<PackageId> {
+        self.package
+    }
+
+    /// The traits and instances in scope.
+    pub(crate) fn classes(&self) -> &Classes {
+        static EMPTY: OnceLock<Classes> = OnceLock::new();
+        self.classes
+            .as_deref()
+            .unwrap_or_else(|| EMPTY.get_or_init(Classes::default))
+    }
+
+    /// This context with `declared` in scope as a trait.
+    #[must_use]
+    pub fn declaring_class(&self, declared: &Arc<Trait>) -> Self {
+        Self {
+            classes: Some(Arc::new(self.classes().declaring_class(declared))),
+            ..self.clone()
+        }
+    }
+
+    /// This context with `instance` in scope, answering the key it was
+    /// declared for.
+    ///
+    /// Coherence was decided when the instance was elaborated, not here: this
+    /// takes an [`Instance`] that [`declare_impl`](crate::declare_impl) already
+    /// produced, and that function is where a second one for the same key was
+    /// refused.
+    #[must_use]
+    pub fn declaring_instance(&self, instance: &Arc<Instance>) -> Self {
+        Self {
+            classes: Some(Arc::new(self.classes().declaring_instance(instance))),
+            ..self.clone()
+        }
+    }
+
     /// This context with `group`'s families, constructors, and recursors in
     /// scope.
     #[must_use]
     pub fn declaring(&self, group: &Arc<Group>) -> Self {
+        // `02-core-calculus.md` §1.2: the group's `Storable` instances arrive
+        // with the group and by no other route. They are generated here rather
+        // than stored on the [`Group`] because an instance's head *is* the
+        // family — `Constant` holds the group it came from — and a group holding
+        // its own instances would be a cycle of `Arc`s that never frees.
+        let generated = crate::storable::instances(self.classes(), group);
         Self {
             declared: self.declared.push(Arc::clone(group)),
+            classes: (!generated.is_empty())
+                .then(|| Arc::new(self.classes().declaring_instances(&generated)))
+                .or_else(|| self.classes.clone()),
             ..self.clone()
         }
     }
@@ -288,6 +369,8 @@ impl Cx {
             types: self.types.push(ty),
             declared: self.declared.clone(),
             module: self.module,
+            package: self.package,
+            classes: self.classes.clone(),
             depth: self.depth.saturating_add(1),
             budget: self.budget,
         }

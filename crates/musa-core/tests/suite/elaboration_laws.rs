@@ -245,6 +245,23 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
         assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
         reached.insert(kind(&refusal));
     }
+    // Traits and instances are refused at a *declaration* rather than at a term
+    // checked against a type, so they carry their outcome rather than a program:
+    // §4 makes that the rule, and a suite that reached these through a use site
+    // would be testing the opposite of it.
+    for crate::trait_laws::RefusedDeclaration {
+        name,
+        outcome,
+        expected,
+    } in crate::trait_laws::refused_declarations()
+    {
+        let Err(error) = outcome else {
+            panic!("{name}: elaboration accepted a declaration it must refuse");
+        };
+        let refusal = refusal(name, error);
+        assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
+        reached.insert(kind(&refusal));
+    }
     assert_eq!(
         reached,
         ALL_REFUSALS.iter().copied().collect(),
@@ -253,7 +270,7 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
 }
 
 /// Every refusal this crate can answer with.
-const ALL_REFUSALS: [&str; 24] = [
+const ALL_REFUSALS: [&str; 39] = [
     "unknown-name",
     "mismatch",
     "unsolved",
@@ -278,6 +295,21 @@ const ALL_REFUSALS: [&str; 24] = [
     "private",
     "mixed-visibility",
     "abstract-match",
+    "reserved-class",
+    "headless-class",
+    "duplicate-method",
+    "class-arity",
+    "hand-written-storable",
+    "blanket-instance",
+    "duplicate-instance",
+    "orphan-instance",
+    "unbounded-instance",
+    "derived-method",
+    "no-such-method",
+    "missing-method",
+    "unresolved-instance",
+    "unconstrained-variable",
+    "unkeyed-constraint",
 ];
 
 /// Which refusal this is, as a tag the coverage gate can compare.
@@ -310,6 +342,21 @@ fn kind(refusal: &Refusal) -> &'static str {
         Refusal::Private { .. } => "private",
         Refusal::MixedVisibility { .. } => "mixed-visibility",
         Refusal::AbstractMatch { .. } => "abstract-match",
+        Refusal::ReservedClass { .. } => "reserved-class",
+        Refusal::HeadlessClass { .. } => "headless-class",
+        Refusal::DuplicateMethod { .. } => "duplicate-method",
+        Refusal::ClassArity { .. } => "class-arity",
+        Refusal::HandWrittenStorable { .. } => "hand-written-storable",
+        Refusal::BlanketInstance { .. } => "blanket-instance",
+        Refusal::DuplicateInstance { .. } => "duplicate-instance",
+        Refusal::OrphanInstance { .. } => "orphan-instance",
+        Refusal::UnboundedInstance { .. } => "unbounded-instance",
+        Refusal::DerivedMethod { .. } => "derived-method",
+        Refusal::NoSuchMethod { .. } => "no-such-method",
+        Refusal::MissingMethod { .. } => "missing-method",
+        Refusal::UnresolvedInstance { .. } => "unresolved-instance",
+        Refusal::UnconstrainedVariable { .. } => "unconstrained-variable",
+        Refusal::UnkeyedConstraint { .. } => "unkeyed-constraint",
     }
 }
 

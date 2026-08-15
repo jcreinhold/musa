@@ -350,6 +350,196 @@ pub enum Refusal {
         /// The term.
         at: Origin,
     },
+    /// A `trait` declaration using a name this crate generates instances for.
+    ///
+    /// `Storable` is the one trait `02-core-calculus.md` §1.2 reserves, and
+    /// reserving the *word* rather than only the declaration is what closes the
+    /// spelling: an author who declares their own `Storable` would otherwise
+    /// shadow the generated instances with hand-written ones and the kernel
+    /// payload boundary would have a hole in it.
+    #[error("`{class}` is generated for every storable type and cannot be declared")]
+    ReservedClass {
+        /// The declaration.
+        at: Origin,
+        /// The name it used.
+        class: Name,
+    },
+    /// A `trait` with no parameters.
+    ///
+    /// `10-traits.md` §1: the first parameter is the head, and lookup is keyed
+    /// on it. A trait with none has nothing to key on, so it could only ever be
+    /// a global value wearing a trait's syntax.
+    #[error("`{class}` has no parameters, so nothing can be an instance of it")]
+    HeadlessClass {
+        /// The declaration.
+        at: Origin,
+        /// Its name.
+        class: Name,
+    },
+    /// A trait declaring one method name twice.
+    #[error("`{class}` declares `{method}` twice")]
+    DuplicateMethod {
+        /// The second declaration.
+        at: Origin,
+        /// The first.
+        previous: Origin,
+        /// The trait.
+        class: Name,
+        /// The method.
+        method: Name,
+    },
+    /// A trait or instance applied to the wrong number of arguments.
+    #[error("`{class}` takes {wanted} argument(s), and {written} were written")]
+    ClassArity {
+        /// Where it was written.
+        at: Origin,
+        /// The trait.
+        class: Name,
+        /// How many parameters it has.
+        wanted: usize,
+        /// How many arguments were written.
+        written: usize,
+    },
+    /// A source `impl Storable`, behind any spelling.
+    ///
+    /// Its own variant rather than [`Self::ReservedClass`] because it is the
+    /// refusal §3 calls the single exception in the system, and the sentence an
+    /// author needs is about *why* they cannot write it rather than about the
+    /// name being taken.
+    #[error("`Storable` instances are generated from the declaration and are never written")]
+    HandWrittenStorable {
+        /// The declaration.
+        at: Origin,
+    },
+    /// An `impl` whose head argument is a bare type variable.
+    ///
+    /// `10-traits.md` §9's blanket-instance refusal. A head that is a variable
+    /// matches everything, so it is not a key — admitting one would make every
+    /// lookup that missed fall back to it, which is the search §4 forbids.
+    #[error("`{class}` is implemented here for every type, which would make lookup a search")]
+    BlanketInstance {
+        /// The declaration.
+        at: Origin,
+        /// The trait.
+        class: Name,
+    },
+    /// A second `impl` answering a key another already answers.
+    ///
+    /// §2's coherence, reported at the *second* declaration and naming the
+    /// first, because that is the pair an author has to choose between.
+    #[error("`{class}` is already implemented for `{head}`")]
+    DuplicateInstance {
+        /// The second declaration.
+        at: Origin,
+        /// The first.
+        previous: Origin,
+        /// The trait.
+        class: Name,
+        /// The head type both answer for.
+        head: Name,
+    },
+    /// An `impl` in a package that declares neither its trait nor its head type.
+    #[error("`{class}` for `{head}` belongs in the package that declares one of them")]
+    OrphanInstance {
+        /// The declaration.
+        at: Origin,
+        /// The trait.
+        class: Name,
+        /// The head type.
+        head: Name,
+    },
+    /// An instance whose context §4's measure cannot see decrease.
+    ///
+    /// Checked at the declaration and never at a use, because a use site is the
+    /// wrong place to learn that a library cannot answer: the author reading the
+    /// message is not the author who can fix it.
+    #[error("resolving `{class}` here need not terminate, because {reason}")]
+    UnboundedInstance {
+        /// The constraint.
+        at: Origin,
+        /// The trait it constrains.
+        class: Name,
+        /// Which half of the measure failed.
+        reason: &'static str,
+    },
+    /// An `impl` supplying a method the trait derives.
+    ///
+    /// §1: a derived method is written once, in the trait. An impl that could
+    /// replace one would make two dictionaries for the same instance
+    /// distinguishable, which is what coherence exists to prevent.
+    #[error("`{class}` derives `{method}`, so an instance does not define it")]
+    DerivedMethod {
+        /// The definition.
+        at: Origin,
+        /// The trait.
+        class: Name,
+        /// The method.
+        method: Name,
+    },
+    /// An `impl` supplying a method the trait does not declare.
+    #[error("`{class}` has no method `{method}`")]
+    NoSuchMethod {
+        /// The definition.
+        at: Origin,
+        /// The trait.
+        class: Name,
+        /// The name written.
+        method: Name,
+        /// The methods it does have, in declaration order.
+        methods: Vec<Name>,
+    },
+    /// An `impl` leaving a required method undefined.
+    #[error("this instance of `{class}` does not define `{method}`")]
+    MissingMethod {
+        /// The declaration.
+        at: Origin,
+        /// The trait.
+        class: Name,
+        /// The method not defined.
+        method: Name,
+    },
+    /// A constraint no instance and no enclosing `where` answers.
+    ///
+    /// The one refusal here that an ordinary author sees often, so it says both
+    /// halves of the key: an author fixes it either by writing the instance or
+    /// by adding the constraint to the signature they are inside.
+    #[error("nothing implements `{class}` for `{head}`")]
+    UnresolvedInstance {
+        /// The use.
+        at: Origin,
+        /// The trait.
+        class: Name,
+        /// The head its first argument has, as written.
+        head: Name,
+    },
+    /// A constraint on a type variable that no enclosing `where` supplies.
+    ///
+    /// Told apart from [`Self::UnresolvedInstance`] because the fix is
+    /// different and the checker knows which one it is: a variable can never
+    /// acquire a global instance, so the only repair is a constraint on the
+    /// signature.
+    #[error("`{class}` is not available for this type variable; constrain it with `where {class}`")]
+    UnconstrainedVariable {
+        /// The use.
+        at: Origin,
+        /// The trait.
+        class: Name,
+    },
+    /// A constraint on a type no instance could ever be keyed on.
+    ///
+    /// §4 postpones a constraint whose head is not known *yet*; a function
+    /// type, a universe, or a record type is as known as it will ever be, and
+    /// none of them is a declared name a key can hold. Told apart from
+    /// [`Self::UnresolvedInstance`] because there is no instance anyone could
+    /// write to repair it — which is exactly what `02-core-calculus.md` §1.2
+    /// says about `Storable` and an arrow.
+    #[error("`{class}` cannot be implemented for this type: only a declared type has instances")]
+    UnkeyedConstraint {
+        /// The use.
+        at: Origin,
+        /// The trait.
+        class: Name,
+    },
 }
 
 /// Two types that could not be made equal, and where the disagreement is.

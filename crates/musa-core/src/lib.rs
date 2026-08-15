@@ -83,8 +83,10 @@
 
 mod budget;
 mod case;
+mod class;
 mod context;
 mod declare;
+mod dictionary;
 mod elab;
 mod error;
 mod eval;
@@ -99,19 +101,24 @@ mod rec;
 mod recheck;
 mod refuse;
 mod scope;
+mod storable;
 mod term;
 mod unify;
 mod value;
 mod visibility;
 
 pub use crate::budget::{Budget, Metric, ResourceError};
+pub use crate::class::{Instance, PackageId, Trait};
 pub use crate::context::Cx;
 pub use crate::error::{CoreError, Malformed};
 pub use crate::family::{Binder, Constant, Constructor, Declared, Group};
 pub use crate::level::Level;
 pub use crate::meta::{Meta, MetaSource};
 pub use crate::origin::Origin;
-pub use crate::raw::{Raw, RawArm, RawBinder, RawConstructor, RawData, RawFamily, RawField, RawPattern, RawShape};
+pub use crate::raw::{
+    Raw, RawArm, RawBinder, RawConstraint, RawConstructor, RawData, RawDefinition, RawFamily, RawField, RawImpl,
+    RawMethod, RawPattern, RawShape, RawTrait,
+};
 pub use crate::recheck::well_typed;
 pub use crate::refuse::{ElabError, Mismatch, PathStep, Refusal};
 pub use crate::term::{DbLevel, Field, Index, Name, Plicity, Shape, Term};
@@ -145,6 +152,42 @@ use crate::unify::Unifier;
 /// arguments are ordinary elaboration and fail in the ordinary ways.
 pub fn declare(cx: &Cx, data: &RawData) -> Result<Arc<Group>, ElabError> {
     crate::declare::declare(cx, data)
+}
+
+/// Elaborate a `trait` declaration, in context `cx`.
+///
+/// The result is a dictionary *record type* wrapped in whatever the declaration
+/// said about it, and a caller brings it into scope with
+/// [`Cx::declaring_class`]. It never sees the record: `10-traits.md` §1 makes a
+/// trait a record of methods, but a caller that assembled that record itself
+/// could assemble one the derived methods do not fit.
+///
+/// # Errors
+///
+/// [`Refusal::ReservedClass`] for a trait named `Storable`,
+/// [`Refusal::HeadlessClass`] for one with no parameters,
+/// [`Refusal::DuplicateMethod`] for a repeated name, and otherwise as
+/// [`check`] — a trait's parameters, constraints, and method types are ordinary
+/// elaboration and fail in the ordinary ways.
+pub fn declare_trait(cx: &Cx, raw: &RawTrait) -> Result<Arc<Trait>, ElabError> {
+    crate::dictionary::declare_trait(cx, raw)
+}
+
+/// Elaborate an `impl` declaration, in context `cx`.
+///
+/// Every check `10-traits.md` makes at a declaration happens here and none
+/// happens at a use site, which is §4's rule and not an implementation choice:
+/// the author reading a use-site failure is not the author who can fix it.
+///
+/// # Errors
+///
+/// [`Refusal::DuplicateInstance`] naming both declarations,
+/// [`Refusal::OrphanInstance`], [`Refusal::UnboundedInstance`],
+/// [`Refusal::BlanketInstance`], [`Refusal::HandWrittenStorable`], the method
+/// mismatches [`Refusal::DerivedMethod`], [`Refusal::NoSuchMethod`] and
+/// [`Refusal::MissingMethod`], and otherwise as [`check`].
+pub fn declare_impl(cx: &Cx, raw: &RawImpl) -> Result<Arc<Instance>, ElabError> {
+    crate::dictionary::declare_impl(cx, raw)
 }
 
 /// Elaborate `raw` against the type `ty`, in context `cx`.

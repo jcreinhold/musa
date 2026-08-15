@@ -16,6 +16,7 @@
 #![allow(clippy::panic)]
 
 mod budget_laws;
+mod coherence_laws;
 mod conversion_laws;
 mod coverage_laws;
 mod elaboration_laws;
@@ -24,6 +25,7 @@ mod normalization_laws;
 mod provenance_laws;
 mod record_laws;
 mod termination_laws;
+mod trait_laws;
 mod unification_laws;
 mod visibility_laws;
 

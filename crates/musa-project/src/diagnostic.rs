@@ -595,6 +595,51 @@ pub fn explain(code: &str) -> Option<&'static str> {
              repair is a function the package exports, not a marker \
              removed."
         }
+        musa_compiler::Code::ReservedClass => {
+            "A `trait` was declared with the name `Storable`.\n\nStorability is a structural fact about a type, not a claim anyone may assert: `Storable` holds exactly when a type contains no function at any depth and has a versioned exact encoding, and the elaborator generates the instance or the type simply does not have one. The *word* is reserved and not only the instances, because a second trait spelled `Storable` would shadow the generated ones with hand-written ones, and the kernel payload boundary would have a hole in it.\n\nA signature may require the constraint; nothing may supply it."
+        }
+        musa_compiler::Code::HeadlessClass => {
+            "A `trait` was declared with no parameters.\n\nInstance lookup is keyed on the trait and the head constructor of its first argument, so a trait with no parameters has nothing to key on. What such a declaration describes is a record of global values, and `record` is the word for that.\n\nAdd the parameter the methods are about: `trait Eq<A>` rather than `trait Eq`."
+        }
+        musa_compiler::Code::DuplicateMethod => {
+            "A `trait` declares one method name twice.\n\nThe dictionary a trait elaborates to is a record, and a record has one field per name. Two methods spelled alike would leave every use site with a choice nothing in the language could settle.\n\nThe report names both declarations. Rename one, or delete it if the second was meant to replace the first."
+        }
+        musa_compiler::Code::ClassArity => {
+            "A trait was written with the wrong number of arguments.\n\nA trait's parameters are fixed by its declaration, and each argument is checked at the type the corresponding parameter was declared with — so a missing one cannot be inferred from the others and an extra one has nowhere to go.\n\nThe report says how many the trait takes and how many were written."
+        }
+        musa_compiler::Code::HandWrittenStorable => {
+            "An `impl Storable` was written.\n\n`Storable` is the one trait whose instances the elaborator generates and no program supplies. This is the deliberate exception to the rule that instances are declarations, and it is an exception in the safe direction: the set of instances is smaller than an author could write, never larger.\n\nIf a type should be storable and is not, the repair is in the type — a field holding a function, at any depth, is what makes it unstorable — and never in an instance asserting otherwise."
+        }
+        musa_compiler::Code::BlanketInstance => {
+            "An `impl` was written whose head argument is a bare type variable.\n\nSuch an instance matches every type, so it is not a key: every lookup that found nothing would fall back to it, and the single table read that makes resolution predictable would become a search with a default.\n\nWrite the instance at each head it is actually for. If that is genuinely every type, what the code wants is an ordinary polymorphic function, not an instance."
+        }
+        musa_compiler::Code::DuplicateInstance => {
+            "Two `impl` declarations answer for the same trait and head type.\n\nAt most one instance per (trait, head) pair is what makes a use site mean the same thing everywhere it appears — including inside a generic function compiled once and used at many types. With two, the same expression could elaborate to two different dictionaries depending on what happened to be in scope.\n\nThe report names both declarations. Delete one, or narrow one to a head the other does not cover."
+        }
+        musa_compiler::Code::OrphanInstance => {
+            "An `impl` was written in a package that declares neither its trait nor its head type.\n\nCoherence has to hold across packages that never see each other, and the only way to check that locally is to require every instance to live with one of the two things it mentions. Otherwise two unrelated packages could each add an instance for the same pair, and a program that depended on both would be rejected for a conflict neither author could have known about.\n\nMove the instance into the package that declares the trait or the one that declares the type. Where neither is yours, the usual repair is a wrapper type in your own package."
+        }
+        musa_compiler::Code::UnboundedInstance => {
+            "An instance was declared whose `where` clause need not terminate.\n\nResolving a constraint may need the instance's own constraints resolved first, so an instance whose context is not smaller than its head can recurse forever. Two things are checked, both at the declaration: each constraint's first argument must be strictly smaller than the head, and no type variable may occur in it more often than it occurs in the head. The second is what refuses `impl<A> C<F<A>> where D<G<A, A>>`, whose argument is smaller and still duplicates its variable.\n\nThis is checked where the instance is written and never where it is used, because the author reading a use-site failure is not the author who can fix it."
+        }
+        musa_compiler::Code::DerivedMethod => {
+            "An `impl` defines a method its trait derives.\n\nA derived method is written once, in the trait, in terms of the required ones. An instance that could replace it would make two dictionaries for the same instance distinguishable, which is what coherence exists to prevent — and it is why specialization is refused as a mechanism rather than as a rule.\n\nDelete the definition. If the derived version is wrong for this type, the method belongs in the required set."
+        }
+        musa_compiler::Code::NoSuchMethod => {
+            "An `impl` defines a method its trait does not declare.\n\nUsually a spelling: the report lists the methods the trait does have.\n\nAn instance cannot add a method of its own, because a use site reaches a method through the trait and would have no way to know this instance has one. A function on the concrete type is the way to add behaviour to one type."
+        }
+        musa_compiler::Code::MissingMethod => {
+            "An `impl` leaves a required method undefined.\n\nEvery required method is a field of the dictionary, and a record with a missing field is not a value of its type. There is no default to fall back to: a trait that wants one declares the method derived, with a body, and then no instance defines it at all.\n\nThe report names the method."
+        }
+        musa_compiler::Code::UnresolvedInstance => {
+            "Nothing implements this trait for this type.\n\nResolution is one table read, so this is the whole answer: no instance is declared for the trait and the head type named, and no enclosing `where` supplies one. There is no search, no default, and no second attempt.\n\nTwo repairs, and the report gives both halves of the key so the choice is clear: write the instance, or — if the code is generic and this type is a parameter — add the constraint to the enclosing signature."
+        }
+        musa_compiler::Code::UnkeyedConstraint => {
+            "A trait was needed for a type that cannot have instances.\n\nAn instance is filed under the name at the head of its first argument, so a type with no name at its head — a function type, a universe, a record type written out — is one no `impl` could ever answer. This is not a missing library: nobody can write the instance.\n\nFor `Storable` this is the rule rather than an accident. `02-core-calculus.md` §1.2 says a function is never storable and neither is anything holding one, so a signature that asks to store a function is asking for something the language does not have. Store the data the function was built from, or the name of the process, and rebuild it.\n\nFor any other trait, the repair is to name the type: declare it, and implement the trait for the name."
+        }
+        musa_compiler::Code::UnconstrainedVariable => {
+            "A trait was needed for a type variable that nothing constrains.\n\nA type variable can never acquire a global instance: it stands for a type the caller chooses, and the instance would have to be chosen with it. So unlike an unresolved instance, there is exactly one repair, and it is on the signature this code is inside rather than in a library somewhere.\n\nAdd the constraint — `where Eq<A>` — and the dictionary becomes an argument the caller supplies. That is also what makes the function's behaviour a consequence of its own signature, which is why the constraint is written rather than inferred."
+        }
     })
 }
 

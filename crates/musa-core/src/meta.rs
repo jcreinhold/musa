@@ -55,6 +55,14 @@ pub enum MetaSource {
     BinderType,
     /// A universe whose level the surface did not write.
     UniverseLevel,
+    /// A dictionary for a constraint whose head was not yet known.
+    ///
+    /// `10-traits.md` §4 postpones such a constraint rather than guessing, and
+    /// the hole it leaves is an ordinary metavariable — so a constraint still
+    /// blocked when a declaration ends is reported by the machinery that
+    /// already reports an unsolved hole, and nothing was built for
+    /// postponement.
+    Dictionary,
 }
 
 impl MetaSource {
@@ -69,6 +77,7 @@ impl MetaSource {
             Self::ImplicitArgument => "an implicit argument",
             Self::BinderType => "the type of a binder",
             Self::UniverseLevel => "the level of a universe",
+            Self::Dictionary => "the instance a constraint needs",
         }
     }
 }

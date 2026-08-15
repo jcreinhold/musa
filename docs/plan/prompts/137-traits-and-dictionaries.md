@@ -1,7 +1,7 @@
 ---
 id: 137
 slug: traits-and-dictionaries
-status: in-progress
+status: done
 depends_on: [136]
 phase: 3
 ---

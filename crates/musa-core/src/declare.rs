@@ -111,6 +111,7 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<Arc<Group>, ElabError> 
         params: Arc::from(params),
         families: Arc::from(families),
         module: cx.module(),
+        package: cx.package(),
     }))
 }
 
