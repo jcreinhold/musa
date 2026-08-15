@@ -155,6 +155,49 @@ pub struct Group {
     pub(crate) families: Arc<[Declared]>,
 }
 
+/// A type that turned out to be a family applied to its arguments.
+///
+/// What splitting a `match` subject needs and nothing more: which family, at
+/// which parameters, at which indices. Parameters and indices are separated here
+/// rather than handed over as one spine, because every rule downstream treats
+/// them differently — a motive quantifies over the indices and never over the
+/// parameters (§1.1).
+pub(crate) struct Element {
+    pub(crate) group: Arc<Group>,
+    pub(crate) family: u32,
+    pub(crate) params: Vec<Value>,
+    pub(crate) indices: Vec<Value>,
+}
+
+/// The family `ty` is the type of elements of, if it is one.
+///
+/// # Errors
+///
+/// As [`force`], from unfolding the type far enough to see its head.
+pub(crate) fn element(meter: &mut Meter, ty: &Value) -> Result<Option<Element>, CoreError> {
+    let ty = force(meter, ty)?.unwrap_or_else(|| ty.clone());
+    let Form::Neutral(neutral) = &ty.form else {
+        return Ok(None);
+    };
+    let Some((constant, mut arguments)) = spine(neutral) else {
+        return Ok(None);
+    };
+    let Role::Family = constant.role else {
+        return Ok(None);
+    };
+    let params = usize::try_from(constant.group.params()).unwrap_or(usize::MAX);
+    if arguments.len() < params {
+        return Ok(None);
+    }
+    let indices = arguments.split_off(params);
+    Ok(Some(Element {
+        group: Arc::clone(&constant.group),
+        family: constant.family,
+        params: arguments,
+        indices,
+    }))
+}
+
 /// Which of a declaration's three constants this is.
 #[derive(Clone, Debug)]
 pub(crate) enum Role {
@@ -356,6 +399,33 @@ impl Declared {
 }
 
 impl Constant {
+    /// One of a group's families, as the type constructor it is.
+    pub(crate) fn family(group: &Arc<Group>, family: u32) -> Self {
+        Self {
+            group: Arc::clone(group),
+            family,
+            role: Role::Family,
+        }
+    }
+
+    /// One of a group's constructors.
+    pub(crate) fn constructor(group: &Arc<Group>, family: u32, which: u32) -> Self {
+        Self {
+            group: Arc::clone(group),
+            family,
+            role: Role::Constructor(which),
+        }
+    }
+
+    /// A family's generated recursor, eliminating into `level`.
+    pub(crate) fn recursor(group: &Arc<Group>, family: u32, level: Level) -> Self {
+        Self {
+            group: Arc::clone(group),
+            family,
+            role: Role::Recursor(level),
+        }
+    }
+
     /// Its name, qualified by the family it belongs to.
     ///
     /// A constructor is `Vec.Cons` and a recursor is `Vec.elim`, so two families
@@ -554,7 +624,7 @@ impl<'a> Telescope<'a> {
     /// What makes a method's or a motive's Π chain nest inside the recursor's
     /// without either one's indices being wrong — both are quoted at the depth
     /// they actually stand at.
-    fn nested(&self) -> Telescope<'a> {
+    fn nested(&self) -> Self {
         Telescope {
             group: self.group,
             origin: self.origin,
@@ -607,7 +677,7 @@ impl<'a> Telescope<'a> {
     }
 
     fn motive_type(
-        &mut self,
+        &self,
         meter: &mut Meter,
         params: &[Introduced],
         which: u32,
@@ -645,7 +715,7 @@ impl<'a> Telescope<'a> {
 
     /// `(a⃗ : Fields) → (ih⃗) → P_j idx⃗ (c p⃗ a⃗)`.
     fn method_type(
-        &mut self,
+        &self,
         meter: &mut Meter,
         params: &[Introduced],
         motives: &[At],
@@ -685,7 +755,7 @@ impl<'a> Telescope<'a> {
     /// is the one place they are written; the constructor's own result indices
     /// describe a different value.
     fn hypothesis(
-        &mut self,
+        &self,
         meter: &mut Meter,
         motives: &[At],
         family: u32,
@@ -703,7 +773,7 @@ impl<'a> Telescope<'a> {
     }
 
     /// Quote stored terms at the depth this telescope has reached.
-    fn quoted(&mut self, meter: &mut Meter, terms: &[Term]) -> Result<Vec<Term>, CoreError> {
+    fn quoted(&self, meter: &mut Meter, terms: &[Term]) -> Result<Vec<Term>, CoreError> {
         terms
             .iter()
             .map(|term| {

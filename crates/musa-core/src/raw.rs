@@ -215,6 +215,88 @@ pub enum RawShape {
         /// `A`.
         ty: Raw,
     },
+    /// `match e₁, …, eₘ { p⃗ → b, … }`, compiled to a case tree and then to the
+    /// generated recursors (§6.2).
+    ///
+    /// **Checks only.** The motive a split builds is the goal type abstracted
+    /// over the subject, so a `match` with no goal has nothing to abstract —
+    /// and inferring one from the first arm would make a program's type depend
+    /// on the order its arms are written in.
+    Match {
+        /// The terms being scrutinized, left to right.
+        subjects: Arc<[Raw]>,
+        /// The arms, in the order written. Earlier arms win, and there is no
+        /// fall-through: §6.2 declines Peyton Jones ch. 5's `FAIL`/fat-bar
+        /// because an arm that could fail into the next one is what guards
+        /// reintroduce and coverage cannot survive.
+        arms: Arc<[RawArm]>,
+    },
+    /// `rec f : A = e`, a definition that may call itself.
+    ///
+    /// The whole form elaborates to a term of type `A`, with `f` in scope inside
+    /// `e`. §2.4's measure is structural and the elaborator supplies it: a
+    /// recursive call becomes the induction hypothesis the split that reached it
+    /// already provides, and a call that has no hypothesis to become is
+    /// [`Refusal::UncheckedRecursion`](crate::Refusal::UncheckedRecursion).
+    Rec {
+        /// The name the definition calls itself by.
+        name: Name,
+        /// `A`, always written: a recursive definition has no principal type to
+        /// infer, since inferring one would need the definition it is defining.
+        ty: Raw,
+        /// `e`.
+        body: Raw,
+    },
+}
+
+/// One arm of a [`RawShape::Match`]: a pattern per subject, and a body.
+#[derive(Clone, Debug)]
+pub struct RawArm {
+    /// One pattern per subject, in subject order.
+    pub patterns: Vec<RawPattern>,
+    /// What the arm answers.
+    pub body: Raw,
+}
+
+/// A pattern, which nests.
+///
+/// §6.2 replaced the depth-one rule deliberately: an index is only worth having
+/// if matching one constructor tells you something about another position, and a
+/// pattern that cannot look through two constructors cannot say what a family is
+/// indexed for.
+#[derive(Clone, Debug)]
+pub enum RawPattern {
+    /// A name that matches anything and binds it. `_` is spelled as an ordinary
+    /// binder whose name nothing refers to.
+    Bind {
+        /// Where it was written.
+        origin: Origin,
+        /// The name the body refers to it by.
+        name: Name,
+    },
+    /// A constructor, with one sub-pattern per field.
+    ///
+    /// Parameters are **not** written: they are fixed by the scrutinee's type,
+    /// so a pattern that repeated them would be asking the author to restate
+    /// what the type already said.
+    Constructor {
+        /// Where it was written.
+        origin: Origin,
+        /// The constructor's name, as the declaration gives it: `Nat.Succ`.
+        name: Name,
+        /// One sub-pattern per field, in field order.
+        fields: Vec<Self>,
+    },
+}
+
+impl RawPattern {
+    /// Where the pattern was written.
+    #[must_use]
+    pub const fn origin(&self) -> Origin {
+        match *self {
+            Self::Bind { origin, .. } | Self::Constructor { origin, .. } => origin,
+        }
+    }
 }
 
 impl Raw {
@@ -434,6 +516,52 @@ impl Raw {
     #[must_use]
     pub fn annot(origin: Origin, term: Self, ty: Self) -> Self {
         Self::new(origin, RawShape::Annot { term, ty })
+    }
+
+    /// `match subjects… { arms… }`.
+    #[must_use]
+    pub fn match_on(origin: Origin, subjects: impl IntoIterator<Item = Self>, arms: Vec<RawArm>) -> Self {
+        Self::new(
+            origin,
+            RawShape::Match {
+                subjects: subjects.into_iter().collect(),
+                arms: Arc::from(arms),
+            },
+        )
+    }
+
+    /// `rec name : ty = body`.
+    #[must_use]
+    pub fn rec(origin: Origin, name: impl Into<Name>, ty: Self, body: Self) -> Self {
+        Self::new(
+            origin,
+            RawShape::Rec {
+                name: name.into(),
+                ty,
+                body,
+            },
+        )
+    }
+}
+
+impl RawPattern {
+    /// A pattern that matches anything and binds it.
+    #[must_use]
+    pub fn bind(origin: Origin, name: impl Into<Name>) -> Self {
+        Self::Bind {
+            origin,
+            name: name.into(),
+        }
+    }
+
+    /// A constructor pattern, with one sub-pattern per field.
+    #[must_use]
+    pub fn constructor(origin: Origin, name: impl Into<Name>, fields: impl IntoIterator<Item = Self>) -> Self {
+        Self::Constructor {
+            origin,
+            name: name.into(),
+            fields: fields.into_iter().collect(),
+        }
     }
 }
 

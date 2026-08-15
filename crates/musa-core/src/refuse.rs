@@ -179,6 +179,59 @@ pub enum Refusal {
         /// How many the constructor wrote.
         found: usize,
     },
+    /// A pattern named something that is not a constructor of the type the
+    /// subject it stands against has.
+    ///
+    /// One refusal rather than two, because "this type has no constructors at
+    /// all" and "this type has constructors and not that one" are the same
+    /// sentence to the author: the name they wrote does not build this.
+    #[error("`{name}` is not a constructor of the type this pattern matches")]
+    NoSuchConstructor {
+        /// The pattern.
+        at: Origin,
+        /// The name it wrote.
+        name: Name,
+        /// The type the subject turned out to have.
+        ty: Term,
+    },
+    /// A `match` left a constructor with no arm, at a subject the index
+    /// constraints leave reachable (§6.2).
+    #[error("this match has no arm for `{constructor}`")]
+    IncompleteMatch {
+        /// The match.
+        at: Origin,
+        /// A constructor no arm covers. One rather than all of them, because
+        /// coverage is decided while the tree is built and the first gap is
+        /// where the author's model went wrong.
+        constructor: Name,
+    },
+    /// An arm no case the tree reaches can ever select.
+    #[error("no value reaches this arm; an earlier one already covers it")]
+    UnreachableBranch {
+        /// The arm.
+        at: Origin,
+    },
+    /// A subject whose type fixes an index to something other than a variable.
+    ///
+    /// The rule that would refine it is `02-core-calculus.md` §1.4's deletion,
+    /// which requires K and is therefore not in this checker until a program
+    /// needs it. The index is named because the edit is at the *subject's type*
+    /// — generalize the index and match on it too — and not at the match.
+    #[error("this match's subject fixes an index, which needs a unification rule this checker does not have")]
+    ForcedIndex {
+        /// The subject.
+        at: Origin,
+        /// The index argument that is not a variable.
+        index: Term,
+    },
+    /// A recursive call the structural measure could not see decrease (§2.4).
+    #[error("`{name}` calls itself on something this checker cannot see decrease")]
+    UncheckedRecursion {
+        /// The call.
+        at: Origin,
+        /// The definition being defined.
+        name: Name,
+    },
     /// An introduction form stood where a type had to be synthesized.
     ///
     /// §2's discipline in one variant: introduction forms *check*, so a record

@@ -440,6 +440,102 @@ pub fn explain(code: &str) -> Option<&'static str> {
              and each carries the source node it came from so the message can \
              point at text even when neither side is text."
         }
+        musa_compiler::Code::NonPositiveOccurrence => {
+            "A `data` declaration mentions the family it is declaring in a \
+             place that would make the family unsound.\n\n\
+             A constructor may take arguments of the family being declared — \
+             that is what makes it recursive — but only *positively*: to the \
+             right of every arrow it passes through. An occurrence to the left \
+             of an arrow, as in `Bad (f : Bad -> Nat)`, lets a value of the \
+             type consume itself, and a type that can do that can be given a \
+             looping inhabitant with no recursion written anywhere. Musa is \
+             total, so admitting one would make every proof in the language \
+             worth nothing.\n\n\
+             The check is conservative by construction: a declaration it \
+             cannot see through is refused rather than admitted, because the \
+             cost of being wrong is not a bad error message but an unsound \
+             language. It runs on the whole mutually recursive group, so an \
+             occurrence that is positive in its own constructor and negative \
+             through a sibling is still caught.\n\n\
+             The report names the occurrence and the constructor it sits in. \
+             \"Not strictly positive\" without a location is the least \
+             actionable thing a type checker can say."
+        }
+        musa_compiler::Code::IncompleteMatch => {
+            "A `match` leaves a constructor of the family it splits on with no \
+             branch.\n\n\
+             The report names the missing constructors. A match compiles to \
+             the family's recursor, which needs one method per constructor, so \
+             this is not a policy that could have gone the other way: there is \
+             no term to build until every branch exists. Nothing is filled in \
+             with a failure case, because a total language has no failure case \
+             to fill it with.\n\n\
+             A nested pattern reports the constructor it is missing at the \
+             position it is missing it, rather than reporting the outer \
+             family, since the outer split already succeeded.\n\n\
+             `non-exhaustive-match` is the same mistake in a finite match over \
+             literals and shapes; this one is about an inductive family."
+        }
+        musa_compiler::Code::UnreachableBranch => {
+            "A `match` arm can never be selected, because an earlier arm \
+             already covers everything it would.\n\n\
+             This is reported rather than quietly dropped. An arm that cannot \
+             run is usually a mistaken mental model — a catch-all written \
+             above the specific case it was meant to fall through to, or two \
+             arms whose patterns the author believed were different. Telling \
+             the author is worth more than the arm.\n\n\
+             It is a property of the pattern matrix alone. Under the index \
+             rule musa implements, no branch is unreachable *because of* an \
+             index: a constructor's chosen index always meets a variable, so \
+             there is no impossible branch to discharge. If an arm is \
+             unreachable, an earlier arm covers it, and the report names \
+             which one."
+        }
+        musa_compiler::Code::ForcedIndex => {
+            "A `match` scrutinee's index is not a distinct variable, and index \
+             refinement is defined only for that shape.\n\n\
+             Splitting refines indices by *generalizing* them into the \
+             recursor's motive: `xs : Vec A n` at a variable `n` becomes a \
+             motive quantified over `n`, and each constructor's own index then \
+             refines it in that constructor's branch. The motive is the \
+             refinement, and it needs no equality proof, no injectivity \
+             lemma, and no deletion rule.\n\n\
+             At `Vec A (succ n)` there is no variable to generalize, so the \
+             refinement has nothing to work with. Making the remaining branch \
+             usable would need the deletion rule, which requires K — an axiom \
+             musa has not adopted, and which a paper trial found no musa \
+             program needs. Refusing here is that decision checked at the \
+             rule rather than at each of its uses.\n\n\
+             The report names the index it was stuck on. The fix is to \
+             scrutinize at a variable and let the branch supply the shape: \
+             match on the vector, not on a vector already known to be \
+             non-empty. The same index written twice — `Vec A n n` — is \
+             refused for the same reason: the second is no longer distinct."
+        }
+        musa_compiler::Code::UncheckedRecursion => {
+            "A recursive call the termination rule cannot see is smaller.\n\n\
+             Musa is total, and a `rec` definition is admitted by rewriting \
+             each recursive call into the induction hypothesis its branch was \
+             handed — so the check and the compilation are one step, and there \
+             is no fixed point left over to take on trust. A call the rewrite \
+             cannot make is a call there is no hypothesis for.\n\n\
+             The rule reads the recursive position off the definition's own \
+             top-level `match`: the argument that `match` scrutinizes is the \
+             one the recursion is on, and a call passes a pattern binder from \
+             that column in that position. The remaining arguments are \
+             unconstrained — the hypothesis already answers for that field at \
+             the indices it has, so conversion decides the rest.\n\n\
+             What this refuses: passing the argument the definition was \
+             given, rather than a piece of it; passing something no `match` \
+             made smaller; scrutinizing two of the definition's arguments at \
+             the top level, so nothing says which one the recursion is on; and \
+             using the definition as a value, where there is no call to \
+             rewrite.\n\n\
+             There is no escape hatch. No `partial`, no assume-it-terminates \
+             flag: musa runs adapters at compile time and re-typesets per \
+             keystroke, so a definition that might not stop is a compiler and \
+             editor that might not stop."
+        }
     })
 }
 

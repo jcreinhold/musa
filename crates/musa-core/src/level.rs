@@ -364,7 +364,26 @@ fn merge(left: &[Arm], right: &[Arm]) -> Vec<Arm> {
 /// whose `OnceLock` is identity rather than a value: two arms are the same arm
 /// when they name the same metavariable at the same offset.
 impl PartialEq for Level {
+    /// Equality is on the **resolved** level, not the written one.
+    ///
+    /// A level is built once and read many times, and an arm may have been
+    /// solved in between — so `?ℓ` solved to `0` and a written `0` are one
+    /// level, and comparing the representations would make them two. That
+    /// matters wherever a term carries a level a use site chose: a `match`
+    /// compiles to a recursor at a solved metavariable and the same recursor
+    /// written by hand carries the numeral, and §3 calls those convertible.
+    ///
+    /// The resolution is cheap where nothing was solved — [`Level::resolved`]
+    /// answers a clone without walking — which is every comparison in a
+    /// program that wrote its levels down.
     fn eq(&self, other: &Self) -> bool {
+        Self::same(&self.resolved(), &other.resolved())
+    }
+}
+
+impl Level {
+    /// Whether two *resolved* levels are the same normal form.
+    fn same(&self, other: &Self) -> bool {
         if self.constant != other.constant {
             return false;
         }
@@ -385,9 +404,12 @@ impl PartialEq for Level {
 impl Eq for Level {}
 
 impl std::hash::Hash for Level {
+    /// Resolved first, for the reason [`PartialEq`] is: a hash that disagreed
+    /// with equality would put one level in two buckets.
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.constant.hash(state);
-        if let Some(arms) = self.vars.as_ref() {
+        let resolved = self.resolved();
+        resolved.constant.hash(state);
+        if let Some(arms) = resolved.vars.as_ref() {
             for arm in arms.iter() {
                 arm.var.id.hash(state);
                 arm.offset.hash(state);
@@ -487,8 +509,7 @@ mod tests {
     /// injective, so `?ℓ` is `0` and nothing was guessed to get there.
     #[test]
     fn a_shifted_metavariable_is_determined_against_a_closed_level() {
-        let meta = LevelMeta::new(0);
-        let variable = Level::variable(meta.clone());
+        let variable = Level::variable(LevelMeta::new(0));
         assert!(variable.succ().determine(&Level::ZERO.succ()));
         assert_eq!(variable.resolved(), Level::ZERO);
     }
@@ -527,7 +548,7 @@ mod tests {
     #[test]
     fn resolving_follows_a_chain_of_solutions() {
         let (first, second) = (LevelMeta::new(0), LevelMeta::new(1));
-        let (one, two) = (Level::variable(first), Level::variable(second.clone()));
+        let (one, two) = (Level::variable(first), Level::variable(second));
         assert!(one.determine(&two));
         assert!(two.determine(&Level::ZERO.succ()));
         assert_eq!(one.resolved(), Level::ZERO.succ());

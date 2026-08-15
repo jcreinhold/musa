@@ -292,7 +292,11 @@ fn a_universe_written_without_a_level_is_solved_by_the_one_it_meets() {
 /// decided.
 #[test]
 fn a_universe_level_nothing_determines_is_refused_rather_than_defaulted() {
-    let refusal = refuse("a bare universe with nothing to fix its level", &Raw::any_universe(WRITTEN), None);
+    let refusal = refuse(
+        "a bare universe with nothing to fix its level",
+        &Raw::any_universe(WRITTEN),
+        None,
+    );
     let Refusal::Unsolved { site, created, .. } = &refusal else {
         panic!("expected an unsolved level, got `{refusal}`");
     };

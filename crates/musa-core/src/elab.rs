@@ -190,6 +190,18 @@ impl Elaborator {
         self.check(scope, raw, ty)
     }
 
+    /// Elaborate `raw` and answer its type as a **value**, without finishing.
+    ///
+    /// The type is not read back, unlike [`Self::run_infer`]'s: a `match`
+    /// subject's type is immediately taken apart into the family it names, and
+    /// quoting it only to evaluate it again would be work performed to be
+    /// undone.
+    pub(crate) fn infer_open(&mut self, scope: &Scope, raw: &Raw) -> Result<(Term, Value), ElabError> {
+        let inferred = self.infer(scope, raw)?;
+        let inferred = self.inserted(scope, inferred)?;
+        Ok((inferred.term, inferred.ty))
+    }
+
     /// A name no binder in scope answers to, which a declaration may.
     ///
     /// Constants are looked up *after* binders rather than merged with them, so
@@ -290,6 +302,17 @@ impl Elaborator {
                     self.check(&bound.scope, body, ty)?,
                 )))
             }
+            // §6.2: a `match` checks and never infers. The motive a split
+            // builds is the goal abstracted over the subject, so there is
+            // nothing to abstract without one — and reading the type off the
+            // first arm would make a program's type depend on the order its
+            // arms are written in.
+            RawShape::Match { subjects, arms } => crate::case::compile(self, scope, here, subjects, arms, ty).map(Some),
+            RawShape::Rec {
+                name,
+                ty: written,
+                body,
+            } => crate::rec::define(self, scope, here, name, written, body, ty).map(Some),
             RawShape::Var(_)
             | RawShape::Universe(_)
             | RawShape::Pi { .. }
@@ -541,6 +564,11 @@ impl Elaborator {
                     ty: ty_value,
                 })
             }
+            // §6.2's `match` and §2.4's `rec` check and never infer, for the
+            // same reason a record literal does not: the type is what decides
+            // the elaboration, and guessing it from an arm or from a body would
+            // make the answer depend on which one was written first.
+            RawShape::Match { .. } | RawShape::Rec { .. } => Err(Refusal::Uninferable { at: here }.into()),
         }
     }
 

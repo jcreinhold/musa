@@ -13,14 +13,14 @@ use musa_core::{Cx, Group, Level, Raw, RawBinder, RawConstructor, RawData, RawFa
 
 use crate::programs::{WRITTEN, refusal};
 
-fn binder(name: &str, ty: Raw) -> RawBinder {
+pub(crate) fn binder(name: &str, ty: Raw) -> RawBinder {
     RawBinder {
         name: Arc::from(name),
         ty,
     }
 }
 
-fn constructor(name: &str, fields: Vec<RawBinder>, indices: Vec<Raw>) -> RawConstructor {
+pub(crate) fn constructor(name: &str, fields: Vec<RawBinder>, indices: Vec<Raw>) -> RawConstructor {
     RawConstructor {
         name: Arc::from(name),
         fields,
@@ -28,7 +28,7 @@ fn constructor(name: &str, fields: Vec<RawBinder>, indices: Vec<Raw>) -> RawCons
     }
 }
 
-fn family(name: &str, indices: Vec<RawBinder>, constructors: Vec<RawConstructor>) -> RawFamily {
+pub(crate) fn family(name: &str, indices: Vec<RawBinder>, constructors: Vec<RawConstructor>) -> RawFamily {
     RawFamily {
         name: Arc::from(name),
         indices,
@@ -36,7 +36,7 @@ fn family(name: &str, indices: Vec<RawBinder>, constructors: Vec<RawConstructor>
     }
 }
 
-fn data(params: Vec<RawBinder>, families: Vec<RawFamily>) -> RawData {
+pub(crate) fn data(params: Vec<RawBinder>, families: Vec<RawFamily>) -> RawData {
     RawData {
         origin: WRITTEN,
         params,
@@ -44,17 +44,17 @@ fn data(params: Vec<RawBinder>, families: Vec<RawFamily>) -> RawData {
     }
 }
 
-fn var(name: &str) -> Raw {
+pub(crate) fn var(name: &str) -> Raw {
     Raw::var(WRITTEN, name)
 }
 
-fn apply(head: Raw, arguments: impl IntoIterator<Item = Raw>) -> Raw {
+pub(crate) fn apply(head: Raw, arguments: impl IntoIterator<Item = Raw>) -> Raw {
     arguments
         .into_iter()
         .fold(head, |function, argument| Raw::app(WRITTEN, function, argument))
 }
 
-fn type0() -> Raw {
+pub(crate) fn type0() -> Raw {
     Raw::universe(WRITTEN, Level::ZERO)
 }
 
@@ -86,7 +86,7 @@ pub(crate) fn nat_context() -> (Cx, Arc<Group>) {
 }
 
 /// `data Vec (A : Type 0) : (n : Nat) → Type 0`, over an already-declared `Nat`.
-fn vec() -> RawData {
+pub(crate) fn vec() -> RawData {
     data(
         vec![binder("A", type0())],
         vec![family(
@@ -169,7 +169,12 @@ fn the_generated_recursor_eliminates_into_the_motive() {
                         at(3, succ(Term::var(WRITTEN, musa_core::Index(1)))),
                     ),
                 ),
-                Term::pi(WRITTEN, "t", core_nat(&cx), at(3, Term::var(WRITTEN, musa_core::Index(0)))),
+                Term::pi(
+                    WRITTEN,
+                    "t",
+                    core_nat(&cx),
+                    at(3, Term::var(WRITTEN, musa_core::Index(0))),
+                ),
             ),
         ),
     );
@@ -188,8 +193,18 @@ fn the_generated_recursor_eliminates_into_the_motive() {
             Term::pi(
                 WRITTEN,
                 "Succ",
-                Term::pi(WRITTEN, "n", core_nat(&cx), at(2, succ(Term::var(WRITTEN, musa_core::Index(0))))),
-                Term::pi(WRITTEN, "t", core_nat(&cx), at(3, Term::var(WRITTEN, musa_core::Index(0)))),
+                Term::pi(
+                    WRITTEN,
+                    "n",
+                    core_nat(&cx),
+                    at(2, succ(Term::var(WRITTEN, musa_core::Index(0)))),
+                ),
+                Term::pi(
+                    WRITTEN,
+                    "t",
+                    core_nat(&cx),
+                    at(3, Term::var(WRITTEN, musa_core::Index(0))),
+                ),
             ),
         ),
     );
@@ -546,7 +561,7 @@ fn core_nat(cx: &Cx) -> Term {
 /// # Panics
 ///
 /// If the name is not in scope, which is a defect in the test that asked.
-fn core_constant(cx: &Cx, name: &str) -> Term {
+pub(crate) fn core_constant(cx: &Cx, name: &str) -> Term {
     musa_core::infer(cx, &var(name))
         .unwrap_or_else(|error| panic!("{name}: {error}"))
         .0

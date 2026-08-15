@@ -60,31 +60,49 @@ use crate::value::{Closure, Form, Telescope, Value};
 /// limit, and [`ElabError::Malformed`] when the term is not one this crate could
 /// have produced — a leftover metavariable among them.
 pub fn well_typed(cx: &Cx, ty: &Term, term: &Term) -> Result<(), ElabError> {
-    let mut checker = Checker { meter: cx.meter() };
-    let ty = eval(&mut checker.meter, cx.env(), ty)?;
-    checker.check(cx, term, &ty)
+    let mut meter = cx.meter();
+    let ty = eval(&mut meter, cx.env(), ty)?;
+    Checker { meter: &mut meter }.check(cx, term, &ty)
 }
 
-struct Checker {
-    meter: Meter,
+/// The universe a type inhabits, from the core rules alone.
+///
+/// The one part of the re-checker elaboration itself uses. [`crate::case`] needs
+/// it because §1.3 admits no universe polymorphism: a recursor's motive level is
+/// chosen per use site, and a `match`'s use site has no choice to make — the
+/// motive's body *is* the goal, so the level is the goal's and asking is the
+/// only way to learn it.
+///
+/// The meter is borrowed rather than made fresh, because a second one would let
+/// a nested question spend a budget §4 has already accounted for.
+///
+/// # Errors
+///
+/// [`Refusal::NotAType`] when `ty` is not one, and otherwise as [`well_typed`].
+pub(crate) fn universe_of(meter: &mut Meter, cx: &Cx, ty: &Term) -> Result<Level, ElabError> {
+    Checker { meter }.universe(cx, ty)
 }
 
-impl Checker {
+struct Checker<'a> {
+    meter: &'a mut Meter,
+}
+
+impl Checker<'_> {
     /// `Γ ⊢ term ⇐ ty`.
     fn check(&mut self, cx: &Cx, term: &Term, ty: &Value) -> Result<(), ElabError> {
-        let unfolded = force(&mut self.meter, ty)?;
+        let unfolded = force(self.meter, ty)?;
         let ty = unfolded.as_ref().unwrap_or(ty);
         let here = term.origin();
         match (term.shape(), &ty.form) {
             (Shape::Lam { name: _, body }, Form::Pi { domain, codomain, .. }) => {
                 let variable = Value::var(here, DbLevel(cx.depth()), Arc::clone(domain));
-                let body_ty = apply_closure(&mut self.meter, codomain, variable)?;
+                let body_ty = apply_closure(self.meter, codomain, variable)?;
                 self.check(&cx.assumed(here, Arc::clone(domain)), body, &body_ty)
             }
             (Shape::Record(fields), Form::RecordType(telescope)) => self.literal(cx, here, fields, telescope),
             (Shape::Refl(witness), Form::Id { ty: at, left, right }) => {
                 self.check(cx, witness, at)?;
-                let value = eval(&mut self.meter, cx.env(), witness)?;
+                let value = eval(self.meter, cx.env(), witness)?;
                 for endpoint in [left.as_ref(), right.as_ref()] {
                     self.same(cx, here, at, &value, endpoint)?;
                 }
@@ -114,7 +132,7 @@ impl Checker {
             // A constant's type is decided by its declaration, and the
             // declaration was checked when it was made. Re-checking it here would
             // re-run strict positivity at every occurrence of `Nat`.
-            Shape::Const(constant) => Ok(constant.ty(&mut self.meter)?),
+            Shape::Const(constant) => Ok(constant.ty(self.meter)?),
             Shape::Universe(level) => Ok(Value::new(here, Form::Universe(level.succ()))),
             Shape::Pi {
                 plicity: _,
@@ -123,7 +141,7 @@ impl Checker {
                 codomain,
             } => {
                 let domain_level = self.universe(cx, domain)?;
-                let domain_value = eval(&mut self.meter, cx.env(), domain)?;
+                let domain_value = eval(self.meter, cx.env(), domain)?;
                 let inner = cx.assumed(here, Arc::new(domain_value));
                 let codomain_level = self.universe(&inner, codomain)?;
                 Ok(Value::new(here, Form::Universe(domain_level.max(&codomain_level))))
@@ -136,15 +154,15 @@ impl Checker {
                 let function_ty = self.infer(cx, function)?;
                 let (domain, codomain) = self.function_parts(cx, here, &function_ty)?;
                 self.check(cx, argument, &domain)?;
-                let value = eval(&mut self.meter, cx.env(), argument)?;
-                Ok(apply_closure(&mut self.meter, &codomain, value)?)
+                let value = eval(self.meter, cx.env(), argument)?;
+                Ok(apply_closure(self.meter, &codomain, value)?)
             }
             Shape::RecordType(fields) => {
                 let mut level = Level::ZERO;
                 let mut inner = cx.clone();
                 for field in fields.iter() {
                     level = level.max(&self.universe(&inner, &field.term)?);
-                    let value = eval(&mut self.meter, inner.env(), &field.term)?;
+                    let value = eval(self.meter, inner.env(), &field.term)?;
                     inner = inner.assumed(field.term.origin(), Arc::new(value));
                 }
                 Ok(Value::new(here, Form::Universe(level)))
@@ -152,12 +170,12 @@ impl Checker {
             Shape::Record(_) => Err(Refusal::Uninferable { at: here }.into()),
             Shape::Project { record, field } => {
                 let record_ty = self.infer(cx, record)?;
-                let unfolded = force(&mut self.meter, &record_ty)?;
+                let unfolded = force(self.meter, &record_ty)?;
                 let record_ty = unfolded.as_ref().unwrap_or(&record_ty);
                 let Form::RecordType(telescope) = &record_ty.form else {
                     return Err(Refusal::NotARecord {
                         at: here,
-                        ty: quote_type(&mut self.meter, cx.quoting_depth(), record_ty)?,
+                        ty: quote_type(self.meter, cx.quoting_depth(), record_ty)?,
                     }
                     .into());
                 };
@@ -169,19 +187,19 @@ impl Checker {
                     .into());
                 }
                 let telescope = telescope.clone();
-                let subject = eval(&mut self.meter, cx.env(), record)?;
-                Ok(field_type(&mut self.meter, &telescope, &subject, field)?)
+                let subject = eval(self.meter, cx.env(), record)?;
+                Ok(field_type(self.meter, &telescope, &subject, field)?)
             }
             Shape::Id { ty, left, right } => {
                 let level = self.universe(cx, ty)?;
-                let at = eval(&mut self.meter, cx.env(), ty)?;
+                let at = eval(self.meter, cx.env(), ty)?;
                 self.check(cx, left, &at)?;
                 self.check(cx, right, &at)?;
                 Ok(Value::new(here, Form::Universe(level)))
             }
             Shape::Refl(witness) => {
                 let at = self.infer(cx, witness)?;
-                let value = eval(&mut self.meter, cx.env(), witness)?;
+                let value = eval(self.meter, cx.env(), witness)?;
                 Ok(Value::new(
                     here,
                     Form::Id {
@@ -207,9 +225,9 @@ impl Checker {
                 body,
             } => {
                 self.universe(cx, ty)?;
-                let ty_value = eval(&mut self.meter, cx.env(), ty)?;
+                let ty_value = eval(self.meter, cx.env(), ty)?;
                 self.check(cx, value, &ty_value)?;
-                let bound = eval(&mut self.meter, cx.env(), value)?;
+                let bound = eval(self.meter, cx.env(), value)?;
                 self.infer(&cx.defined(Arc::new(ty_value), bound), body)
             }
         }
@@ -219,21 +237,21 @@ impl Checker {
     fn elimination(&mut self, cx: &Cx, here: Origin, parts: [&Term; 6]) -> Result<Value, ElabError> {
         let [ty, from, motive, base, to, proof] = parts;
         self.universe(cx, ty)?;
-        let ty_value = eval(&mut self.meter, cx.env(), ty)?;
+        let ty_value = eval(self.meter, cx.env(), ty)?;
 
         self.check(cx, from, &ty_value)?;
-        let from_value = eval(&mut self.meter, cx.env(), from)?;
+        let from_value = eval(self.meter, cx.env(), from)?;
 
         self.motive(cx, here, motive, &ty_value, &from_value)?;
-        let motive_value = eval(&mut self.meter, cx.env(), motive)?;
+        let motive_value = eval(self.meter, cx.env(), motive)?;
 
         let refl_from = Value::new(here, Form::Refl(Arc::new(from_value.clone())));
-        let at_from = apply(&mut self.meter, here, motive_value.clone(), from_value.clone())?;
-        let base_ty = apply(&mut self.meter, here, at_from, refl_from)?;
+        let at_from = apply(self.meter, here, motive_value.clone(), from_value.clone())?;
+        let base_ty = apply(self.meter, here, at_from, refl_from)?;
         self.check(cx, base, &base_ty)?;
 
         self.check(cx, to, &ty_value)?;
-        let to_value = eval(&mut self.meter, cx.env(), to)?;
+        let to_value = eval(self.meter, cx.env(), to)?;
 
         let proof_ty = Value::new(
             here,
@@ -244,10 +262,10 @@ impl Checker {
             },
         );
         self.check(cx, proof, &proof_ty)?;
-        let proof_value = eval(&mut self.meter, cx.env(), proof)?;
+        let proof_value = eval(self.meter, cx.env(), proof)?;
 
-        let at_to = apply(&mut self.meter, here, motive_value, to_value)?;
-        Ok(apply(&mut self.meter, here, at_to, proof_value)?)
+        let at_to = apply(self.meter, here, motive_value, to_value)?;
+        Ok(apply(self.meter, here, at_to, proof_value)?)
     }
 
     /// Require that `motive` is a `(y : subject) → Id subject from y → Type l`.
@@ -292,7 +310,7 @@ impl Checker {
         self.same_types(cx, at, subject, &endpoint_domain)?;
         let endpoint = Value::var(at, DbLevel(cx.depth()), Arc::new(Value::clone(subject)));
         let under = cx.assumed(at, Arc::new(Value::clone(subject)));
-        let after_endpoint = apply_closure(&mut self.meter, &endpoint_codomain, endpoint.clone())?;
+        let after_endpoint = apply_closure(self.meter, &endpoint_codomain, endpoint.clone())?;
         let (proof_domain, proof_codomain) = self.function_parts(&under, at, &after_endpoint)?;
         let expected_proof = Value::new(
             at,
@@ -305,13 +323,13 @@ impl Checker {
         self.same_types(&under, at, &expected_proof, &proof_domain)?;
         let witness = Value::var(at, DbLevel(under.depth()), Arc::new(proof_domain));
         let inside = under.assumed(at, Arc::new(expected_proof));
-        let result = apply_closure(&mut self.meter, &proof_codomain, witness)?;
-        let unfolded = force(&mut self.meter, &result)?;
+        let result = apply_closure(self.meter, &proof_codomain, witness)?;
+        let unfolded = force(self.meter, &result)?;
         let result = unfolded.as_ref().unwrap_or(&result);
         let Form::Universe(_) = result.form else {
             return Err(Refusal::NotAType {
                 at,
-                ty: quote_type(&mut self.meter, inside.quoting_depth(), result)?,
+                ty: quote_type(self.meter, inside.quoting_depth(), result)?,
             }
             .into());
         };
@@ -335,9 +353,9 @@ impl Checker {
         }
         let mut env = telescope.env.clone();
         for (written, declared) in fields.iter().zip(telescope.fields.iter()) {
-            let field_ty = eval(&mut self.meter, &env, &declared.term)?;
+            let field_ty = eval(self.meter, &env, &declared.term)?;
             self.check(cx, &written.term, &field_ty)?;
-            env = env.push(eval(&mut self.meter, cx.env(), &written.term)?);
+            env = env.push(eval(self.meter, cx.env(), &written.term)?);
         }
         Ok(())
     }
@@ -345,12 +363,12 @@ impl Checker {
     /// The level of a term standing in type position.
     fn universe(&mut self, cx: &Cx, term: &Term) -> Result<Level, ElabError> {
         let ty = self.infer(cx, term)?;
-        let unfolded = force(&mut self.meter, &ty)?;
+        let unfolded = force(self.meter, &ty)?;
         let ty = unfolded.as_ref().unwrap_or(&ty);
         let Form::Universe(level) = &ty.form else {
             return Err(Refusal::NotAType {
                 at: term.origin(),
-                ty: quote_type(&mut self.meter, cx.quoting_depth(), ty)?,
+                ty: quote_type(self.meter, cx.quoting_depth(), ty)?,
             }
             .into());
         };
@@ -359,12 +377,12 @@ impl Checker {
 
     /// Take a Π type apart, refusing what is not one.
     fn function_parts(&mut self, cx: &Cx, at: Origin, ty: &Value) -> Result<(Value, Closure), ElabError> {
-        let unfolded = force(&mut self.meter, ty)?;
+        let unfolded = force(self.meter, ty)?;
         let ty = unfolded.as_ref().unwrap_or(ty);
         let Form::Pi { domain, codomain, .. } = &ty.form else {
             return Err(Refusal::NotAFunction {
                 at,
-                ty: quote_type(&mut self.meter, cx.quoting_depth(), ty)?,
+                ty: quote_type(self.meter, cx.quoting_depth(), ty)?,
             }
             .into());
         };
@@ -373,15 +391,15 @@ impl Checker {
 
     /// Conversion at the level of types: both sides read back, compared up to α.
     fn same_types(&mut self, cx: &Cx, at: Origin, expected: &Value, found: &Value) -> Result<(), ElabError> {
-        let expected = quote_type(&mut self.meter, cx.quoting_depth(), expected)?;
-        let found = quote_type(&mut self.meter, cx.quoting_depth(), found)?;
+        let expected = quote_type(self.meter, cx.quoting_depth(), expected)?;
+        let found = quote_type(self.meter, cx.quoting_depth(), found)?;
         Self::agree(at, expected, found)
     }
 
     /// Conversion at a type.
     fn same(&mut self, cx: &Cx, at: Origin, ty: &Value, expected: &Value, found: &Value) -> Result<(), ElabError> {
-        let expected = quote(&mut self.meter, cx.quoting_depth(), ty, expected)?;
-        let found = quote(&mut self.meter, cx.quoting_depth(), ty, found)?;
+        let expected = quote(self.meter, cx.quoting_depth(), ty, expected)?;
+        let found = quote(self.meter, cx.quoting_depth(), ty, found)?;
         Self::agree(at, expected, found)
     }
 

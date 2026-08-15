@@ -184,6 +184,29 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
         assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
         reached.insert(kind(&refusal));
     }
+    // A `match` and a `rec` are programs too, and five refusals are reached only
+    // by one. Both corpora are checked in their own suites as well; here they
+    // are what keeps the gate from being satisfied by whichever half of the
+    // language this file happens to hold.
+    let declared = crate::coverage_laws::nat_vec_context();
+    let written: Vec<(&str, Raw, Raw, fn(&Refusal) -> bool)> = crate::coverage_laws::refused_matches()
+        .into_iter()
+        .map(|refused| (refused.name, refused.raw, refused.ty, refused.expected))
+        .chain(
+            crate::termination_laws::refused_definitions()
+                .into_iter()
+                .map(|refused| (refused.name, refused.raw, refused.ty, refused.expected)),
+        )
+        .collect();
+    for (name, raw, ty, expected) in written {
+        let (ty, _) = infer(&declared, &ty).unwrap_or_else(|error| panic!("{name}: {error}"));
+        let Err(error) = check(&declared, &ty, &raw) else {
+            panic!("{name}: elaboration accepted a program it must refuse");
+        };
+        let refusal = refusal(name, error);
+        assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
+        reached.insert(kind(&refusal));
+    }
     assert_eq!(
         reached,
         ALL_REFUSALS.iter().copied().collect(),
@@ -192,7 +215,7 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
 }
 
 /// Every refusal this crate can answer with.
-const ALL_REFUSALS: [&str; 12] = [
+const ALL_REFUSALS: [&str; 17] = [
     "unknown-name",
     "mismatch",
     "unsolved",
@@ -205,6 +228,11 @@ const ALL_REFUSALS: [&str; 12] = [
     "uninferable",
     "non-positive",
     "index-count",
+    "no-such-constructor",
+    "incomplete-match",
+    "unreachable-branch",
+    "forced-index",
+    "unchecked-recursion",
 ];
 
 /// Which refusal this is, as a tag the coverage gate can compare.
@@ -225,6 +253,11 @@ fn kind(refusal: &Refusal) -> &'static str {
         Refusal::Uninferable { .. } => "uninferable",
         Refusal::NonPositive { .. } => "non-positive",
         Refusal::IndexCount { .. } => "index-count",
+        Refusal::NoSuchConstructor { .. } => "no-such-constructor",
+        Refusal::IncompleteMatch { .. } => "incomplete-match",
+        Refusal::UnreachableBranch { .. } => "unreachable-branch",
+        Refusal::ForcedIndex { .. } => "forced-index",
+        Refusal::UncheckedRecursion { .. } => "unchecked-recursion",
     }
 }
 

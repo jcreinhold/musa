@@ -1,0 +1,953 @@
+//! Compiling `match` to a case tree, and the case tree to generated recursors.
+//!
+//! §6.2 fixes the algorithm's shape and its sources: Peyton Jones ch. 5's
+//! variable, constructor, empty, and mixture rules, with the `FAIL`/fat-bar
+//! mechanism **not** adopted. The fat-bar exists so an equation can fail into the
+//! next one, and Musa's arms do not fall through — so the mixture rule here
+//! *expands* a variable pattern into one row per constructor instead of deferring
+//! it to a fall-through, and the rows a split reaches are exactly the rows that
+//! could still match.
+//!
+//! Two things ch. 5 does not have, because its language is not dependent:
+//!
+//! # The goal type changes as the tree descends
+//!
+//! A split emits `N.elim`, and a recursor's methods are typed at a **motive**.
+//! The motive is the goal with the subject and the subject's index arguments
+//! abstracted, so the method for `Cons` is typed at the goal with `n := succ k`
+//! without anyone unifying anything — the abstraction *is* the refinement, and it
+//! is §1.4's solution rule and nothing wider. A subject whose index argument is
+//! not a variable is [`Refusal::ForcedIndex`]; the prompt's Design argues that
+//! narrowing from §1.4's finding that no program unifies an index at all.
+//!
+//! Abstraction is performed the way everything in this crate weakens: the goal is
+//! read back as a term, evaluated again in an environment where the abstracted
+//! variables stand for the motive's binders, and read back at the deeper depth.
+//! There is no substitution function here either (§1).
+//!
+//! # Coverage is decided while the tree is built
+//!
+//! A split asks every constructor of the family for an arm. One with no arm is
+//! [`Refusal::IncompleteMatch`], named. An arm that no leaf ever selects is
+//! [`Refusal::UnreachableBranch`], reported once at the end rather than at each
+//! leaf — a row is duplicated across branches by the mixture rule, so "this row
+//! lost here" is not evidence about the arm.
+//!
+//! # Mutual families
+//!
+//! `N.elim` takes a motive and methods for **every** family of its group, not
+//! just the one being matched. The siblings get the motive `λ i⃗ x. G → G`, whose
+//! methods are the identity — trivially inhabited at the goal's universe, which
+//! `{}` would not be, since §1 makes universes non-cumulative. The cost is that a
+//! `match` on one family of a mutual group cannot recurse into another: the
+//! induction hypothesis for a sibling's field lands at `G → G` rather than at
+//! `G`, and [`crate::rec`] refuses such a call rather than mis-typing it.
+
+use std::sync::{Arc, OnceLock};
+
+use crate::elab::Elaborator;
+use crate::error::CoreError;
+use crate::eval::{apply, eval};
+use crate::family::{Constant, Element, element};
+use crate::level::Level;
+use crate::list::List;
+use crate::origin::Origin;
+use crate::quote::{Depth, quote, quote_type};
+use crate::raw::{Raw, RawArm, RawPattern};
+use crate::refuse::{ElabError, Refusal};
+use crate::scope::Scope;
+use crate::term::{DbLevel, Index, Name, Shape, Term};
+use crate::value::{Env, Value};
+
+/// Elaborate `match subjects… { arms… }` against `goal`.
+///
+/// # Errors
+///
+/// [`Refusal::NoSuchConstructor`], [`Refusal::IncompleteMatch`],
+/// [`Refusal::UnreachableBranch`], and [`Refusal::ForcedIndex`] for the ways a
+/// match is wrong, and otherwise as [`crate::check`] — an arm's body is ordinary
+/// elaboration.
+pub(crate) fn compile(
+    elaborator: &mut Elaborator,
+    scope: &Scope,
+    here: Origin,
+    subjects: &[Raw],
+    arms: &[RawArm],
+    goal: &Value,
+) -> Result<Term, ElabError> {
+    let mut columns = Vec::with_capacity(subjects.len());
+    for raw in subjects {
+        columns.push(subject(elaborator, scope, raw)?);
+    }
+    let mut rows = Vec::with_capacity(arms.len());
+    for (which, arm) in arms.iter().enumerate() {
+        if arm.patterns.len() != columns.len() {
+            return Err(Refusal::IncompleteMatch {
+                at: arm.body.origin(),
+                constructor: Arc::from("a pattern for every subject"),
+            }
+            .into());
+        }
+        rows.push(Row {
+            patterns: arm.patterns.iter().collect(),
+            bindings: Vec::new(),
+            arm: which,
+        });
+    }
+
+    let mut tree = Tree {
+        elaborator,
+        here,
+        arms,
+        selected: vec![false; arms.len()],
+    };
+    let term = tree.solve(
+        scope,
+        &Problem {
+            columns,
+            rows,
+            goal: Arc::new(goal.clone()),
+        },
+    )?;
+    if let Some(arm) = tree.unselected() {
+        return Err(Refusal::UnreachableBranch { at: arm }.into());
+    }
+    Ok(term)
+}
+
+/// One subject, as the tree carries it.
+///
+/// A *value*, not a term: a subject outlives several splits and every split is at
+/// a deeper context than the last, so a term would need shifting at each one.
+/// Values are de Bruijn-levelled, so this one is written down once.
+struct Subject {
+    value: Value,
+    ty: Arc<Value>,
+    /// Where the author wrote it, for a refusal about its type.
+    at: Origin,
+}
+
+/// One row of the pattern matrix.
+struct Row<'a> {
+    /// One pattern per remaining column.
+    patterns: Vec<&'a RawPattern>,
+    /// The names a variable pattern bound, and what they stand for.
+    ///
+    /// Carried rather than applied immediately, because a variable pattern is
+    /// consumed at a split that may still be several levels above the leaf where
+    /// its body is elaborated.
+    bindings: Vec<(Name, Value, Arc<Value>)>,
+    /// Which arm this row came from.
+    arm: usize,
+}
+
+/// The matrix, the subjects it is against, and the type its bodies answer.
+struct Problem<'a> {
+    columns: Vec<Subject>,
+    rows: Vec<Row<'a>>,
+    goal: Arc<Value>,
+}
+
+/// The state one `match` is compiled in.
+struct Tree<'a, 'b> {
+    elaborator: &'a mut Elaborator,
+    /// Where the `match` was written, which every generated node carries (§7).
+    here: Origin,
+    arms: &'b [RawArm],
+    /// Whether each arm was selected at some leaf.
+    selected: Vec<bool>,
+}
+
+impl Tree<'_, '_> {
+    /// The first arm no leaf selected.
+    fn unselected(&self) -> Option<Origin> {
+        self.selected
+            .iter()
+            .position(|selected| !selected)
+            .and_then(|which| self.arms.get(which))
+            .map(|arm| arm.body.origin())
+    }
+
+    /// Compile a matrix.
+    fn solve(&mut self, scope: &Scope, problem: &Problem<'_>) -> Result<Term, ElabError> {
+        let Some(first) = problem.rows.first() else {
+            // Reached only where a split found no arm for a constructor, which
+            // names it; a matrix that starts empty is refused at `compile`.
+            return Err(Refusal::IncompleteMatch {
+                at: self.here,
+                constructor: Arc::from("every constructor"),
+            }
+            .into());
+        };
+        match Self::splittable(problem) {
+            Some(column) => self.split(scope, problem, column),
+            // Peyton Jones ch. 5's variable rule, and its empty rule: with no
+            // constructor left to test, the first row wins outright — there is
+            // nothing for a later row to be tried *after*.
+            None => self.leaf(scope, first, &problem.columns, &problem.goal),
+        }
+    }
+
+    /// The leftmost column some row tests with a constructor.
+    fn splittable(problem: &Problem<'_>) -> Option<usize> {
+        (0..problem.columns.len()).find(|column| {
+            problem
+                .rows
+                .iter()
+                .any(|row| matches!(row.patterns.get(*column), Some(RawPattern::Constructor { .. })))
+        })
+    }
+
+    /// Elaborate a row's body, with the names its patterns bound in scope.
+    fn leaf(&mut self, scope: &Scope, row: &Row<'_>, columns: &[Subject], goal: &Value) -> Result<Term, ElabError> {
+        let Some(arm) = self.arms.get(row.arm) else {
+            return Err(Refusal::IncompleteMatch {
+                at: self.here,
+                constructor: Arc::from("every constructor"),
+            }
+            .into());
+        };
+        if let Some(selected) = self.selected.get_mut(row.arm) {
+            *selected = true;
+        }
+        // A pattern's binder is a *definition* rather than an assumption: it
+        // stands for a value the context already holds, and defining it is what
+        // makes `xs` in the body and the field it names convertible without a
+        // rule that says so.
+        //
+        // Every binding is also a binder, so the body is elaborated deeper than
+        // the method's own λs and has to come back out under one `let` each. A
+        // scope extended without the matching `let` would read back at the wrong
+        // depth — the classic way to answer an induction hypothesis where the
+        // author wrote the field.
+        let mut inner = scope.clone();
+        let mut bound = Vec::with_capacity(row.bindings.len().saturating_add(columns.len()));
+        // ch. 5's variable rule at the leaf: a column no split consumed still
+        // has a pattern in it, and with nothing left to test that pattern is a
+        // variable. It names the subject the column stands for — which, after a
+        // split, is a field of the constructor that branch matched.
+        let left: Vec<(Name, Value, Arc<Value>)> = row
+            .patterns
+            .iter()
+            .zip(columns)
+            .filter_map(|(pattern, subject)| match pattern {
+                RawPattern::Bind { name, .. } => {
+                    Some((Arc::clone(name), subject.value.clone(), Arc::clone(&subject.ty)))
+                }
+                RawPattern::Constructor { .. } => None,
+            })
+            .collect();
+        for (name, value, ty) in row.bindings.iter().chain(left.iter()) {
+            let meter = self.elaborator.meter();
+            let ty_term = inner.quote_type(meter, ty)?;
+            let value_term = quote(meter, Depth(inner.depth()), ty, value)?;
+            bound.push((Arc::clone(name), ty_term, value_term));
+            inner = inner.define(Arc::clone(name), Arc::clone(ty), value.clone());
+        }
+        let mut term = self.elaborator.check_open(&inner, &arm.body, goal)?;
+        for (name, ty, value) in bound.into_iter().rev() {
+            term = Term::bind(self.here, name, ty, value, term);
+        }
+        Ok(term)
+    }
+
+    /// Split on one column: emit the family's recursor, one method per
+    /// constructor of every family in its group.
+    fn split(&mut self, scope: &Scope, problem: &Problem<'_>, column: usize) -> Result<Term, ElabError> {
+        let Some(subject) = problem.columns.get(column) else {
+            return Err(Refusal::IncompleteMatch {
+                at: self.here,
+                constructor: Arc::from("every constructor"),
+            }
+            .into());
+        };
+        let at = subject.at;
+        let Some(found) = element(self.elaborator.meter(), &subject.ty)? else {
+            return Err(self.not_a_constructor(scope, problem, column, at)?);
+        };
+        self.belong(scope, problem, column, &found)?;
+        let split = Split::read(self, scope, subject, &found, &problem.goal, at)?;
+        let motives = self.motives(scope, problem, &split, column)?;
+
+        let mut applied = Constant::recursor(&found.group, found.family, split.level.clone()).term(self.here);
+        for param in &split.params {
+            applied = Term::app(self.here, applied, param.clone());
+        }
+        for motive in &motives {
+            applied = Term::app(self.here, applied, motive.term.clone());
+        }
+        for family in 0..found.group.arity() {
+            let count = found
+                .group
+                .family_at(family)
+                .map_or(0, |declared| declared.constructors.len());
+            for which in 0..count {
+                let which = u32::try_from(which).unwrap_or(u32::MAX);
+                let method = self.method(scope, problem, &split, &motives, column, family, which)?;
+                applied = Term::app(self.here, applied, method);
+            }
+        }
+        for index in &split.indices {
+            applied = Term::app(self.here, applied, index.clone());
+        }
+        Ok(Term::app(self.here, applied, split.target.clone()))
+    }
+
+    /// The refusal a subject whose type is not a family owes, named after the
+    /// constructor the author actually wrote.
+    fn not_a_constructor(
+        &mut self,
+        scope: &Scope,
+        problem: &Problem<'_>,
+        column: usize,
+        at: Origin,
+    ) -> Result<ElabError, CoreError> {
+        let (name, origin) = problem
+            .rows
+            .iter()
+            .find_map(|row| match row.patterns.get(column) {
+                Some(RawPattern::Constructor { origin, name, .. }) => Some((Arc::clone(name), *origin)),
+                Some(RawPattern::Bind { .. }) | None => None,
+            })
+            .unwrap_or_else(|| (Arc::from("?"), at));
+        let ty = problem
+            .columns
+            .get(column)
+            .map(|subject| scope.quote_type(self.elaborator.meter(), &subject.ty))
+            .transpose()?
+            .unwrap_or_else(|| Term::universe(at, Level::ZERO));
+        Ok(Refusal::NoSuchConstructor { at: origin, name, ty }.into())
+    }
+
+    /// Refuse a pattern naming a constructor of some other family.
+    ///
+    /// Asked once of the column rather than branch by branch: a pattern that
+    /// matches nothing would otherwise surface as whichever real constructor
+    /// found no arm, which names the wrong thing entirely — the author wrote a
+    /// name, and the name is what is wrong.
+    fn belong(
+        &mut self,
+        scope: &Scope,
+        problem: &Problem<'_>,
+        column: usize,
+        found: &Element,
+    ) -> Result<(), ElabError> {
+        let count = found
+            .group
+            .family_at(found.family)
+            .map_or(0, |declared| declared.constructors.len());
+        let known: Vec<Name> = (0..count)
+            .map(|which| {
+                let which = u32::try_from(which).unwrap_or(u32::MAX);
+                Constant::constructor(&found.group, found.family, which).name()
+            })
+            .collect();
+        for row in &problem.rows {
+            let Some(RawPattern::Constructor { origin, name, .. }) = row.patterns.get(column).copied() else {
+                continue;
+            };
+            if known.iter().any(|constructor| **constructor == **name) {
+                continue;
+            }
+            let ty = match problem.columns.get(column) {
+                Some(subject) => scope.quote_type(self.elaborator.meter(), &subject.ty)?,
+                None => Term::universe(*origin, Level::ZERO),
+            };
+            return Err(Refusal::NoSuchConstructor {
+                at: *origin,
+                name: Arc::clone(name),
+                ty,
+            }
+            .into());
+        }
+        Ok(())
+    }
+
+    /// One motive per family of the group.
+    ///
+    /// The family being split gets the goal, abstracted over the subject and its
+    /// index variables; every other family gets `G → G`, which is inhabited at
+    /// the goal's universe by the identity and says nothing.
+    fn motives(
+        &mut self,
+        scope: &Scope,
+        problem: &Problem<'_>,
+        split: &Split,
+        column: usize,
+    ) -> Result<Vec<Motive>, ElabError> {
+        let depth = scope.depth();
+        let mut built = Vec::new();
+        for family in 0..split.element.group.arity() {
+            let indices = split
+                .element
+                .group
+                .family_at(family)
+                .map_or(0, |declared| declared.indices.len());
+            let indices = u32::try_from(indices).unwrap_or(u32::MAX);
+            let body = if family == split.element.family {
+                self.abstracted(scope, problem, split, column, depth.saturating_add(indices))?
+            } else {
+                // `Π (_ : G). G`, not `{}`: universes are not cumulative (§1),
+                // so the empty record inhabits `Type 0` and nothing above it.
+                let under = depth.saturating_add(indices).saturating_add(1);
+                let domain = quote_type(self.elaborator.meter(), Depth(under), &problem.goal)?;
+                let codomain = quote_type(self.elaborator.meter(), Depth(under.saturating_add(1)), &problem.goal)?;
+                Term::pi(self.here, "impossible", domain, codomain)
+            };
+            let mut term = Term::lam(self.here, "target", body);
+            for _ in 0..indices {
+                term = Term::lam(self.here, "index", term);
+            }
+            let value = scope.eval(self.elaborator.meter(), &term)?;
+            built.push(Motive { term, value });
+        }
+        Ok(built)
+    }
+
+    /// The goal, read again with the subject and its index variables standing for
+    /// the motive's binders.
+    ///
+    /// `under` is the depth the index binders end at; the target binder is one
+    /// deeper. Performed by evaluation rather than by substitution, which is what
+    /// §1's "reduction is never performed on syntax" leaves available.
+    fn abstracted(
+        &mut self,
+        scope: &Scope,
+        problem: &Problem<'_>,
+        split: &Split,
+        column: usize,
+        under: u32,
+    ) -> Result<Term, ElabError> {
+        let depth = scope.depth();
+        let goal = quote_type(self.elaborator.meter(), Depth(depth), &problem.goal)?;
+        let mut replacements: Vec<(u32, Value)> = Vec::new();
+        for (position, level) in split.pattern.iter().enumerate() {
+            let position = u32::try_from(position).unwrap_or(u32::MAX);
+            replacements.push((
+                *level,
+                Value::var(
+                    self.here,
+                    DbLevel(depth.saturating_add(position)),
+                    Arc::new(Value::new(self.here, crate::value::Form::Universe(Level::ZERO))),
+                ),
+            ));
+        }
+        if let Some(subject) = problem.columns.get(column)
+            && let Some(level) = variable(&subject.value)
+        {
+            replacements.push((level, Value::var(self.here, DbLevel(under), Arc::clone(&subject.ty))));
+        }
+        let env = rebound(scope.env(), depth, &replacements);
+        let value = eval(self.elaborator.meter(), &env, &goal)?;
+        Ok(quote_type(
+            self.elaborator.meter(),
+            Depth(under.saturating_add(1)),
+            &value,
+        )?)
+    }
+
+    /// One method: the sub-matrix for a constructor, under its fields and
+    /// induction hypotheses.
+    fn method(
+        &mut self,
+        scope: &Scope,
+        problem: &Problem<'_>,
+        split: &Split,
+        motives: &[Motive],
+        column: usize,
+        family: u32,
+        which: u32,
+    ) -> Result<Term, ElabError> {
+        let group = Arc::clone(&split.element.group);
+        let Some(rule) = group
+            .family_at(family)
+            .and_then(|declared| declared.constructor_at(which))
+        else {
+            return Err(Refusal::IncompleteMatch {
+                at: self.here,
+                constructor: Arc::from("?"),
+            }
+            .into());
+        };
+
+        // The declaration context, the parameters, and then each field as it is
+        // assumed: the environment a stored field type is read in.
+        let mut reading = crate::family::Group::declarations(&group);
+        for param in &split.element.params {
+            reading = reading.push(param.clone());
+        }
+        let mut inner = scope.clone();
+        let mut fields = Vec::with_capacity(rule.fields.len());
+        for binder in rule.fields.iter() {
+            let ty = Arc::new(eval(self.elaborator.meter(), &reading, &binder.ty)?);
+            let value = inner.fresh_var(self.here, Arc::clone(&ty));
+            inner = inner.assume(Some(Arc::clone(&binder.name)), self.here, Arc::clone(&ty));
+            reading = reading.push(value.clone());
+            fields.push(Subject {
+                value,
+                ty,
+                at: self.here,
+            });
+        }
+        // The hypotheses come after every field, which is the order
+        // [`crate::family`] assembles the method type in.
+        //
+        // The λ binder is named after the *declaration's* field, because a method
+        // is one term serving every row. What a row's body may write is named
+        // after that row's own pattern instead, and [`Self::narrowed`] binds the
+        // two together — so `Succ k` gives `k#ih` and `Succ j` gives `j#ih` from
+        // the same method, and a `match` nested inside an arm cannot shadow an
+        // outer hypothesis except the way an author's own shadowing does.
+        let mut hypotheses = Vec::with_capacity(rule.recursive.len());
+        for (position, _) in rule.recursive.iter() {
+            let position = usize::try_from(*position).unwrap_or(usize::MAX);
+            let (Some(field), Some(binder)) = (fields.get(position), rule.fields.get(position)) else {
+                continue;
+            };
+            let ty = self.hypothesis(motives, field)?;
+            let value = inner.fresh_var(self.here, Arc::clone(&ty));
+            inner = inner.assume(Some(hypothesis_name(&binder.name)), self.here, Arc::clone(&ty));
+            hypotheses.push((
+                position,
+                Subject {
+                    value,
+                    ty,
+                    at: self.here,
+                },
+            ));
+        }
+
+        // What this method knows its subject to be. §6.2's variable rule expands
+        // rather than defers, so a variable pattern in the split column has to
+        // name something, and this is what it names.
+        let built = self.built(&group, family, which, &split.element.params, &fields)?;
+
+        let body = if family == split.element.family {
+            let goal = self.method_goal(motives, family, &built)?;
+            let rows = Self::narrowed(problem, column, family, which, &group, &fields, &hypotheses, &built)?;
+            if rows.is_empty() {
+                return Err(Refusal::IncompleteMatch {
+                    at: self.here,
+                    constructor: Constant::constructor(&group, family, which).name(),
+                }
+                .into());
+            }
+            let mut columns = Vec::with_capacity(problem.columns.len().saturating_add(fields.len()));
+            for (position, subject) in problem.columns.iter().enumerate() {
+                if position == column {
+                    for field in &fields {
+                        columns.push(Subject {
+                            value: field.value.clone(),
+                            ty: Arc::clone(&field.ty),
+                            at: field.at,
+                        });
+                    }
+                } else {
+                    columns.push(Subject {
+                        value: subject.value.clone(),
+                        ty: Arc::clone(&subject.ty),
+                        at: subject.at,
+                    });
+                }
+            }
+            self.solve(
+                &inner,
+                &Problem {
+                    columns,
+                    rows,
+                    goal: Arc::new(goal),
+                },
+            )?
+        } else {
+            // A sibling family's motive is `G → G`, so its method is the
+            // identity and says nothing about a value nobody matched.
+            Term::lam(self.here, "impossible", Term::var(self.here, Index(0)))
+        };
+
+        let mut term = body;
+        for (position, _) in rule.recursive.iter().rev() {
+            let name = rule
+                .fields
+                .get(usize::try_from(*position).unwrap_or(usize::MAX))
+                .map_or_else(|| Arc::from("hypothesis"), |binder| hypothesis_name(&binder.name));
+            term = Term::lam(self.here, name, term);
+        }
+        for binder in rule.fields.iter().rev() {
+            term = Term::lam(self.here, Arc::clone(&binder.name), term);
+        }
+        Ok(term)
+    }
+
+    /// The type of the induction hypothesis for a recursive field.
+    fn hypothesis(&mut self, motives: &[Motive], field: &Subject) -> Result<Arc<Value>, ElabError> {
+        let Some(found) = element(self.elaborator.meter(), &field.ty)? else {
+            return Err(Refusal::IncompleteMatch {
+                at: self.here,
+                constructor: Arc::from("?"),
+            }
+            .into());
+        };
+        let Some(motive) = motives.get(usize::try_from(found.family).unwrap_or(usize::MAX)) else {
+            return Err(Refusal::IncompleteMatch {
+                at: self.here,
+                constructor: Arc::from("?"),
+            }
+            .into());
+        };
+        let mut applied = motive.value.clone();
+        for index in &found.indices {
+            applied = apply(self.elaborator.meter(), self.here, applied, index.clone())?;
+        }
+        Ok(Arc::new(apply(
+            self.elaborator.meter(),
+            self.here,
+            applied,
+            field.value.clone(),
+        )?))
+    }
+
+    /// The subject a method is the method *for*: `c p⃗ a⃗`, at the type that
+    /// constructor chose, with the index arguments it chose.
+    ///
+    /// Assembled once and used twice — for the method's goal and for whatever a
+    /// variable pattern in the split column binds — because two assemblies of
+    /// "what this branch knows its subject to be" could disagree and one cannot.
+    fn built(
+        &mut self,
+        group: &Arc<crate::family::Group>,
+        family: u32,
+        which: u32,
+        params: &[Value],
+        fields: &[Subject],
+    ) -> Result<Built, ElabError> {
+        let Some(rule) = group
+            .family_at(family)
+            .and_then(|declared| declared.constructor_at(which))
+        else {
+            return Err(Refusal::IncompleteMatch {
+                at: self.here,
+                constructor: Arc::from("?"),
+            }
+            .into());
+        };
+        // The declaration context, the parameters, then the fields: the
+        // environment a chosen index argument is written in.
+        let mut reading = crate::family::Group::declarations(group);
+        for param in params {
+            reading = reading.push(param.clone());
+        }
+        for field in fields {
+            reading = reading.push(field.value.clone());
+        }
+        let mut indices = Vec::with_capacity(rule.indices.len());
+        for chosen in rule.indices.iter() {
+            indices.push(eval(self.elaborator.meter(), &reading, chosen)?);
+        }
+
+        let mut value = Constant::constructor(group, family, which).value(self.here);
+        let mut ty = Constant::family(group, family).value(self.here);
+        for param in params {
+            value = apply(self.elaborator.meter(), self.here, value, param.clone())?;
+            ty = apply(self.elaborator.meter(), self.here, ty, param.clone())?;
+        }
+        for field in fields {
+            value = apply(self.elaborator.meter(), self.here, value, field.value.clone())?;
+        }
+        for index in &indices {
+            ty = apply(self.elaborator.meter(), self.here, ty, index.clone())?;
+        }
+        Ok(Built {
+            value,
+            ty: Arc::new(ty),
+            indices,
+        })
+    }
+
+    /// The goal a constructor's method answers: the motive at that
+    /// constructor's chosen indices, and at the constructor itself.
+    ///
+    /// Computed rather than derived: this is `P idx_c (c p⃗ a⃗)` evaluated, which
+    /// is exactly the type [`crate::family`] assembled the method at. Two
+    /// computations of it could disagree; one cannot.
+    fn method_goal(&mut self, motives: &[Motive], family: u32, built: &Built) -> Result<Value, ElabError> {
+        let Some(motive) = motives.get(usize::try_from(family).unwrap_or(usize::MAX)) else {
+            return Err(Refusal::IncompleteMatch {
+                at: self.here,
+                constructor: Arc::from("?"),
+            }
+            .into());
+        };
+        let mut applied = motive.value.clone();
+        for index in &built.indices {
+            applied = apply(self.elaborator.meter(), self.here, applied, index.clone())?;
+        }
+        Ok(apply(self.elaborator.meter(), self.here, applied, built.value.clone())?)
+    }
+
+    /// The rows that survive a split, with the split column replaced by the
+    /// constructor's fields.
+    ///
+    /// This is ch. 5's mixture rule without the fat bar: a variable pattern in
+    /// the split column matches *every* constructor, so it is expanded into one
+    /// row per constructor with a binder per field, rather than left to fall
+    /// through into a default.
+    fn narrowed<'a>(
+        problem: &Problem<'a>,
+        column: usize,
+        family: u32,
+        which: u32,
+        group: &Arc<crate::family::Group>,
+        fields: &[Subject],
+        hypotheses: &[(usize, Subject)],
+        built: &Built,
+    ) -> Result<Vec<Row<'a>>, ElabError> {
+        let wanted = Constant::constructor(group, family, which).name();
+        let mut rows = Vec::new();
+        for row in &problem.rows {
+            let Some(pattern) = row.patterns.get(column) else {
+                continue;
+            };
+            let mut bindings = row.bindings.clone();
+            let inner: Vec<&RawPattern> = match pattern {
+                RawPattern::Constructor { name, fields: sub, .. } => {
+                    if **name != *wanted {
+                        continue;
+                    }
+                    if sub.len() != fields.len() {
+                        return Err(Refusal::NoSuchConstructor {
+                            at: pattern.origin(),
+                            name: Arc::clone(name),
+                            ty: Term::universe(pattern.origin(), Level::ZERO),
+                        }
+                        .into());
+                    }
+                    // One name per recursive field the row's pattern named, so
+                    // that a body may write the hypothesis for `xs` as `xs#ih`
+                    // without this module and [`crate::rec`] sharing a counter.
+                    for (position, hypothesis) in hypotheses {
+                        if let Some(RawPattern::Bind { name, .. }) = sub.get(*position) {
+                            bindings.push((
+                                hypothesis_name(name),
+                                hypothesis.value.clone(),
+                                Arc::clone(&hypothesis.ty),
+                            ));
+                        }
+                    }
+                    sub.iter().collect()
+                }
+                RawPattern::Bind { name, .. } => {
+                    // What the variable stood for, as this branch knows it: the
+                    // constructor rather than the subject one level up, so a
+                    // body that uses the name is reading the refined value.
+                    bindings.push((Arc::clone(name), built.value.clone(), Arc::clone(&built.ty)));
+                    // ch. 5's variable rule: it matches this constructor as it
+                    // matches every other, and the fields it did not name are
+                    // matched by wildcards rather than by nothing.
+                    vec![wildcard(); fields.len()]
+                }
+            };
+            let mut patterns = Vec::with_capacity(row.patterns.len().saturating_add(fields.len()));
+            for (position, held) in row.patterns.iter().enumerate() {
+                if position == column {
+                    patterns.extend(inner.iter().copied());
+                } else {
+                    patterns.push(held);
+                }
+            }
+            rows.push(Row {
+                patterns,
+                bindings,
+                arm: row.arm,
+            });
+        }
+        Ok(rows)
+    }
+}
+
+/// What the induction hypothesis for the field named `field` is called.
+///
+/// Derived from the field's name rather than fresh, and spelled with a character
+/// no identifier may hold, so that [`crate::rec`] can rewrite a recursive call
+/// into a reference to it without this module and that one agreeing on a
+/// counter. A name the source cannot write is a name a program cannot capture.
+pub(crate) fn hypothesis_name(field: &str) -> Name {
+    Arc::from(format!("{field}#ih"))
+}
+
+/// The pattern an expanded variable leaves in each field position.
+///
+/// One shared value rather than one per position: a variable pattern names the
+/// whole subject and none of the fields, so nothing the body writes can refer to
+/// these and they need no distinct identity. `'static` because a [`Row`] borrows
+/// its patterns from the arms, and this one belongs to no arm.
+fn wildcard() -> &'static RawPattern {
+    static WILDCARD: OnceLock<RawPattern> = OnceLock::new();
+    WILDCARD.get_or_init(|| RawPattern::bind(Origin::UNKNOWN, "_"))
+}
+
+/// What a method knows its subject to be: `c p⃗ a⃗`, its type, and the index
+/// arguments that constructor chose.
+struct Built {
+    value: Value,
+    ty: Arc<Value>,
+    indices: Vec<Value>,
+}
+
+/// A motive, as both the term the recursor is applied to and the value the
+/// method goals are computed from.
+struct Motive {
+    term: Term,
+    value: Value,
+}
+
+/// What reading a subject's type told the splitter.
+struct Split {
+    element: Element,
+    /// The parameters, as terms at the splitting depth.
+    params: Vec<Term>,
+    /// The index arguments, as terms at the splitting depth.
+    indices: Vec<Term>,
+    /// The de Bruijn level each index argument is, in index order.
+    ///
+    /// Every one of them: §1.4's solution rule needs each index to be a distinct
+    /// variable, and [`Split::read`] refuses anything else.
+    pattern: Vec<u32>,
+    /// The subject itself, as a term at the splitting depth.
+    target: Term,
+    /// The universe the motives land in.
+    level: Level,
+}
+
+impl Split {
+    fn read(
+        tree: &mut Tree<'_, '_>,
+        scope: &Scope,
+        subject: &Subject,
+        found: &Element,
+        goal: &Value,
+        at: Origin,
+    ) -> Result<Self, ElabError> {
+        let depth = scope.depth();
+        let meter = tree.elaborator.meter();
+        let ty = quote_type(meter, Depth(depth), &subject.ty)?;
+        let (_, arguments) = spine(&ty);
+        let params = usize::try_from(found.group.params()).unwrap_or(usize::MAX);
+        let indices: Vec<Term> = arguments.get(params..).unwrap_or_default().to_vec();
+        let mut pattern = Vec::with_capacity(indices.len());
+        for index in &indices {
+            let Shape::Var(steps_out) = index.shape() else {
+                return Err(Refusal::ForcedIndex {
+                    at,
+                    index: index.clone(),
+                }
+                .into());
+            };
+            let Some(level) = depth.checked_sub(1).and_then(|last| last.checked_sub(steps_out.0)) else {
+                return Err(Refusal::ForcedIndex {
+                    at,
+                    index: index.clone(),
+                }
+                .into());
+            };
+            // Non-linear index arguments — `Vec A n n` — would need the deletion
+            // rule, which is the one §1.4 says requires K.
+            if pattern.contains(&level) {
+                return Err(Refusal::ForcedIndex {
+                    at,
+                    index: index.clone(),
+                }
+                .into());
+            }
+            pattern.push(level);
+        }
+        let target = quote(meter, Depth(depth), &subject.ty, &subject.value)?;
+        // The motive's universe, which this use site does not get to choose:
+        // §1.3 has no universe polymorphism, so a recursor takes a level per
+        // use, and the motive here is the goal with binders in front of it. A
+        // metavariable would be a level nothing ever solves.
+        let quoted = scope.quote_type(meter, goal)?;
+        let level = crate::recheck::universe_of(meter, scope.cx(), &quoted)?;
+        Ok(Self {
+            element: Element {
+                group: Arc::clone(&found.group),
+                family: found.family,
+                params: found.params.clone(),
+                indices: found.indices.clone(),
+            },
+            params: arguments.get(..params).unwrap_or_default().to_vec(),
+            indices,
+            pattern,
+            target,
+            level,
+        })
+    }
+}
+
+/// Elaborate one subject, and keep it as a value.
+fn subject(elaborator: &mut Elaborator, scope: &Scope, raw: &Raw) -> Result<Subject, ElabError> {
+    let (term, ty) = elaborator.infer_open(scope, raw)?;
+    let value = scope.eval(elaborator.meter(), &term)?;
+    Ok(Subject {
+        value,
+        ty: Arc::new(ty),
+        at: raw.origin(),
+    })
+}
+
+/// The de Bruijn level a value is, when it is a variable.
+fn variable(value: &Value) -> Option<u32> {
+    match &value.form {
+        crate::value::Form::Neutral(neutral) => match &neutral.spine {
+            crate::value::Spine::Var(level, _) => Some(level.0),
+            crate::value::Spine::App { .. }
+            | crate::value::Spine::Const(_)
+            | crate::value::Spine::Meta(_)
+            | crate::value::Spine::Project { .. }
+            | crate::value::Spine::J { .. } => None,
+        },
+        crate::value::Form::Universe(_)
+        | crate::value::Form::Pi { .. }
+        | crate::value::Form::Lam { .. }
+        | crate::value::Form::RecordType(_)
+        | crate::value::Form::Record(_)
+        | crate::value::Form::Id { .. }
+        | crate::value::Form::Refl(_) => None,
+    }
+}
+
+/// `env` with the entries naming these levels replaced.
+///
+/// The environment is innermost-first and a level counts from the outside, which
+/// is the one subtraction this file performs and the reason it is performed
+/// here rather than at four call sites.
+fn rebound(env: &Env, depth: u32, replacements: &[(u32, Value)]) -> Env {
+    let mut entries: Vec<Value> = env.iter().cloned().collect();
+    for (level, value) in replacements {
+        let Some(position) = depth
+            .checked_sub(1)
+            .and_then(|last| last.checked_sub(*level))
+            .and_then(|steps| usize::try_from(steps).ok())
+        else {
+            continue;
+        };
+        if let Some(entry) = entries.get_mut(position) {
+            *entry = value.clone();
+        }
+    }
+    entries
+        .iter()
+        .rev()
+        .fold(List::EMPTY, |built, entry| built.push(entry.clone()))
+}
+
+/// The head of an application spine, and what is applied to it.
+fn spine(term: &Term) -> (&Term, Vec<Term>) {
+    let mut arguments = Vec::new();
+    let mut head = term;
+    while let Shape::App { function, argument } = head.shape() {
+        arguments.push(argument.clone());
+        head = function;
+    }
+    arguments.reverse();
+    (head, arguments)
+}

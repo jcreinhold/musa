@@ -318,15 +318,15 @@ type Occurrence = Result<Option<u32>, Origin>;
 
 fn occurrence(ty: &Term, arity: u32, depth: u32) -> Occurrence {
     let (head, arguments) = spine(ty);
-    if let Shape::Var(index) = head.shape() {
-        if let Some(family) = declared_by(arity, depth, *index) {
-            for argument in &arguments {
-                if let Some(at) = mentions(argument, arity, depth, 0) {
-                    return Err(at);
-                }
+    if let Shape::Var(index) = head.shape()
+        && let Some(family) = declared_by(arity, depth, *index)
+    {
+        for argument in &arguments {
+            if let Some(at) = mentions(argument, arity, depth, 0) {
+                return Err(at);
             }
-            return Ok(Some(family));
         }
+        return Ok(Some(family));
     }
     match mentions(ty, arity, depth, 0) {
         Some(at) => Err(at),

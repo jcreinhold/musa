@@ -17,10 +17,12 @@
 
 mod budget_laws;
 mod conversion_laws;
+mod coverage_laws;
 mod elaboration_laws;
 mod family_laws;
 mod normalization_laws;
 mod provenance_laws;
+mod termination_laws;
 mod unification_laws;
 
 /// The terms every law suite is stated over.

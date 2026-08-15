@@ -92,6 +92,16 @@ impl Scope {
         }
     }
 
+    /// The context these binders make up.
+    ///
+    /// Handed over for the one caller that asks the *core rules* a question
+    /// mid-elaboration rather than an elaboration one — [`crate::case`] asking
+    /// which universe a goal inhabits. Every scope extension extends this too,
+    /// so the two never disagree about what is in scope.
+    pub(crate) const fn cx(&self) -> &Cx {
+        &self.cx
+    }
+
     /// How many binders are in scope.
     pub(crate) const fn depth(&self) -> u32 {
         self.cx.depth()

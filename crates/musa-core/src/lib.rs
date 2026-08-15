@@ -2,18 +2,22 @@
 //! (`docs/rules/language/02-core-calculus.md`), and a **leaf**: it depends on
 //! no other Musa crate and knows nothing about pitch, time, notation, or audio.
 //!
-//! Owns, as of prompt 133: core terms, typing contexts, universes with their
-//! levels, dependent function types, primitive dependent records with η, the
-//! identity type with `refl` and `J`, non-recursive `let`, and definitional
-//! equality decided by normalization by evaluation under a deterministic
-//! budget.
+//! Owns: core terms, typing contexts, universes with their levels, dependent
+//! function types, primitive dependent records with η, the identity type with
+//! `refl` and `J`, non-recursive `let`, and definitional equality decided by
+//! normalization by evaluation under a deterministic budget (prompt 133);
+//! bidirectional elaboration with contextual metavariables, pattern-fragment
+//! unification, and implicit arguments (prompt 134); and parameterized and
+//! indexed inductive families with strict positivity, generated dependent
+//! recursors, dependent `match` compiled to them through case trees with
+//! coverage, and the checked termination rule (prompt 135).
 //!
-//! Absent by design and named so nobody looks for them: bidirectional
-//! elaboration, metavariables, and unification are prompt 134's; inductive
-//! families, dependent `match`, coverage, and the termination checker are
-//! prompt 135's. `Storable`, traits, `Syntax`, and every musical type belong to
-//! stages above this one and must never arrive here — a core that knows what a
-//! duration is has stopped being the part that has to be provably right.
+//! **The core is complete: everything above it is library code.** Records,
+//! enums, traits, `Syntax<Cat>`, and the collections are elaborated *into* this
+//! calculus by later prompts and add nothing to it. `Storable` and every
+//! musical type belong to stages above this one and must never arrive here — a
+//! core that knows what a duration is has stopped being the part that has to be
+//! provably right.
 //!
 //! # The facade, and the one thing it will not show you
 //!
@@ -70,12 +74,15 @@
 //!
 //! # What this crate does not do
 //!
-//! It does not type-check. A term that projects a field from a function is not
-//! refused, it is [`CoreError::Malformed`] — a caller defect, reported rather
-//! than panicked on, because a total language that aborts has replaced a
-//! diagnostic with a crash.
+//! [`normalize`] and [`convertible`] do not type-check what they are given.
+//! Typing is [`check`], [`infer`], and [`well_typed`]; a term that reaches the
+//! evaluator having projected a field from a function is not refused, it is
+//! [`CoreError::Malformed`] — a caller defect, reported rather than panicked
+//! on, because a total language that aborts has replaced a diagnostic with a
+//! crash.
 
 mod budget;
+mod case;
 mod context;
 mod declare;
 mod elab;
@@ -88,6 +95,7 @@ mod meta;
 mod origin;
 mod quote;
 mod raw;
+mod rec;
 mod recheck;
 mod refuse;
 mod scope;
@@ -102,7 +110,7 @@ pub use crate::family::{Binder, Constant, Constructor, Declared, Group};
 pub use crate::level::Level;
 pub use crate::meta::{Meta, MetaSource};
 pub use crate::origin::Origin;
-pub use crate::raw::{Raw, RawBinder, RawConstructor, RawData, RawFamily, RawField, RawShape};
+pub use crate::raw::{Raw, RawArm, RawBinder, RawConstructor, RawData, RawFamily, RawField, RawPattern, RawShape};
 pub use crate::recheck::well_typed;
 pub use crate::refuse::{ElabError, Mismatch, PathStep, Refusal};
 pub use crate::term::{DbLevel, Field, Index, Name, Plicity, Shape, Term};

@@ -108,6 +108,29 @@ pub enum Code {
     /// wrote, which is why it has its own explanation and its own policy on how
     /// much of one to print.
     ConversionMismatch,
+    /// A `data` declaration whose constructor mentions the family being
+    /// declared somewhere strict positivity does not allow.
+    NonPositiveOccurrence,
+    /// A dependent `match` that leaves a constructor of the family it splits
+    /// on with no branch.
+    ///
+    /// Distinct from [`Self::NonExhaustiveMatch`], which the rank-1 checker
+    /// raises about a finite match over a closed set of literals and shapes.
+    /// This one is decided while compiling the match to a recursor, so what it
+    /// names is a constructor of an inductive family.
+    IncompleteMatch,
+    /// A dependent `match` arm an earlier arm already covers.
+    ///
+    /// Distinct from [`Self::UnreachablePattern`] for the same reason
+    /// [`Self::IncompleteMatch`] is distinct from
+    /// [`Self::NonExhaustiveMatch`]: it is a property of the case tree, not of
+    /// the rank-1 pattern list.
+    UnreachableBranch,
+    /// A `match` whose scrutinee's index is not a distinct variable, which is
+    /// the one shape index refinement is defined for.
+    ForcedIndex,
+    /// A recursive call the termination rule cannot see is smaller.
+    UncheckedRecursion,
 }
 
 /// Writes each code's spelling once, and derives the roster from the same
@@ -167,6 +190,11 @@ code_table! {
     Expansion => "expansion",
     UnsolvedMetavariable => "unsolved-metavariable",
     ConversionMismatch => "conversion-mismatch",
+    NonPositiveOccurrence => "non-positive-occurrence",
+    IncompleteMatch => "incomplete-match",
+    UnreachableBranch => "unreachable-branch",
+    ForcedIndex => "forced-index",
+    UncheckedRecursion => "unchecked-recursion",
 }
 
 impl Code {
