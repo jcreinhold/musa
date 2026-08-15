@@ -187,6 +187,32 @@ fail and there is nothing to distinguish it from.
 There are no arithmetic operators. `a + b` is not written in this language; the operations above are named because the
 grammar has no binary-expression form, and `-` and `/` already spell durations and pitches.
 
+## Writing a value down
+
+A text is built in exactly one way, and taken apart in none:
+
+| Operation | Answers |
+| --- | --- |
+| `text_join` | `Text` |
+| `nat_literal` | `Text` |
+| `pitch_literal`, `key_literal` | `Text` |
+| `ratio_literal`, `interval_literal` | `Option<Text>` |
+
+`text_join` runs a list of texts together in the order they are given. The five spellings answer with **the source
+literal that names the value** — `4`, `3/8`, `c5`, `key d major`, `M2` — so the one law they share is that reading back
+what they wrote gives the value they were handed. That is what makes them the reader's inverse rather than a
+presentation: how a *theory* displays a pitch is a package's business, and this is only how the language writes one
+down.
+
+Two of them answer `Option` because the grammar's literals run out before the values do. There is no negative numeric
+literal, so an exact rational below zero has no spelling; written interval names cover a grid, and an interval outside
+it — including any descending one, which the reader spells with a `down` no single token carries — has none either. Both
+answer nothing rather than writing text the reader would refuse.
+
+There is no `text_length`, no indexing, no substring, and no split. A program can compare two texts and build one; it
+cannot take one apart. Building is what writing a region needs, and reading a text is a capability nothing has asked
+for.
+
 ## Chords and voicings
 
 A chord class is content; a voicing is a realization of it. The two are separate types on purpose.

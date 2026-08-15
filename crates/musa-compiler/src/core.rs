@@ -968,6 +968,36 @@ enum Builtin {
     RatioLess,
     RatioEqual,
     TextEqual,
+    /// `text_join(pieces)` — the pieces of a text, run together into one.
+    ///
+    /// The only operation that *builds* a text, and the whole reason a printer
+    /// can be written at all (`26-language-design-decision.md` §4). A join of a
+    /// list rather than a binary concatenation because a printer assembles a
+    /// sequence and wants one answer: folding a pair-wise concatenation over
+    /// `n` pieces allocates `n` intermediate texts and charges the §4 byte
+    /// meter `O(n²)` for a result of size `O(n)`.
+    TextJoin,
+    /// `nat_literal(count)` — the source literal that names a whole number.
+    NatLiteral,
+    /// `ratio_literal(value)` — the source literal that names an exact
+    /// rational, or nothing when it has none.
+    ///
+    /// Nothing below zero. The grammar has no negative numeric literal, and a
+    /// spelling the reader would not read back is not a literal — which is the
+    /// one law this family has.
+    RatioLiteral,
+    /// `pitch_literal(pitch)` — the source literal that names a written pitch.
+    PitchLiteral,
+    /// `key_literal(key)` — the source literal that names a key.
+    KeyLiteral,
+    /// `interval_literal(interval)` — the source literal that names a written
+    /// interval, or nothing when it has none.
+    ///
+    /// Written interval names run out: a size and quality outside the named
+    /// grid has no literal, and D2 puts that in the result type rather than in
+    /// a fabricated pair. It is also the one honest `PrintLoss` a printer of
+    /// notation has.
+    IntervalLiteral,
     NatAdd,
     NatMul,
     NatSub,
@@ -2086,6 +2116,9 @@ const PC12: Shape = Shape::Base(Base::Pc12);
 const PCSET12: Shape = Shape::Base(Base::PcSet12);
 const ROW12: Shape = Shape::Base(Base::Row12);
 
+const TEXTS: Shape = Shape::List(&TEXT);
+const MAYBE_TEXT: Shape = Shape::Option(&TEXT);
+
 const NATS: Shape = Shape::List(&NAT);
 const PITCHES: Shape = Shape::List(&PITCH);
 const INTERVALS: Shape = Shape::List(&INTERVAL);
@@ -2145,7 +2178,7 @@ const fn delta(arguments: &'static [Shape], result: Shape) -> Family {
     Family::Delta { arguments, result }
 }
 
-const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 111] = [
+const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 117] = [
     BuiltinOwnership {
         operation: Builtin::NatFold,
         spelling: "nat_fold",
@@ -2235,6 +2268,47 @@ const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 111] = [
         spelling: "text_equal",
         hidden_information: "the encoding two texts are compared in, which no source expression can inspect",
         family: delta(&[TEXT, TEXT], BOOL),
+    },
+    BuiltinOwnership {
+        operation: Builtin::TextJoin,
+        spelling: "text_join",
+        hidden_information: "how a text is stored and grown, which no source expression can inspect — a program can \
+                             build a text and compare two, and has no operation that takes one apart",
+        family: delta(&[TEXTS], TEXT),
+    },
+    BuiltinOwnership {
+        operation: Builtin::NatLiteral,
+        spelling: "nat_literal",
+        hidden_information: "the reader's own numeral grammar, which this is the inverse of rather than a second copy \
+                             of",
+        family: delta(&[NAT], TEXT),
+    },
+    BuiltinOwnership {
+        operation: Builtin::RatioLiteral,
+        spelling: "ratio_literal",
+        hidden_information: "the reduced form an exact rational is written in, and the reader's numeral grammar this \
+                             is the inverse of",
+        family: delta(&[RATIO], MAYBE_TEXT),
+    },
+    BuiltinOwnership {
+        operation: Builtin::PitchLiteral,
+        spelling: "pitch_literal",
+        hidden_information: "the reader's pitch-literal grammar — letter, accidental run, and octave — which this is \
+                             the inverse of and which no theory's presentation of a pitch is",
+        family: delta(&[PITCH], TEXT),
+    },
+    BuiltinOwnership {
+        operation: Builtin::KeyLiteral,
+        spelling: "key_literal",
+        hidden_information: "the reader's key-literal grammar, which this is the inverse of",
+        family: delta(&[KEY], TEXT),
+    },
+    BuiltinOwnership {
+        operation: Builtin::IntervalLiteral,
+        spelling: "interval_literal",
+        hidden_information: "which sizes and qualities the written interval grammar names, which is where this runs \
+                             out and says so",
+        family: delta(&[INTERVAL], MAYBE_TEXT),
     },
     BuiltinOwnership {
         operation: Builtin::NatAdd,
@@ -2832,6 +2906,12 @@ impl Builtin {
             Self::RatioLess => "ratio_less",
             Self::RatioEqual => "ratio_equal",
             Self::TextEqual => "text_equal",
+            Self::TextJoin => "text_join",
+            Self::NatLiteral => "nat_literal",
+            Self::RatioLiteral => "ratio_literal",
+            Self::PitchLiteral => "pitch_literal",
+            Self::KeyLiteral => "key_literal",
+            Self::IntervalLiteral => "interval_literal",
             Self::NatAdd => "nat_add",
             Self::NatMul => "nat_mul",
             Self::NatSub => "nat_sub",
@@ -2970,8 +3050,8 @@ impl Builtin {
 
     /// A track builtin's parameters, or `None` where the operation is not one.
     ///
-    /// The other seventy-one state their types in the registry instead, where the checker
-    /// reads them; they never become a [`Value`], so there is no arrow to give them here.
+    /// The others state their types in the registry instead, where the checker reads them;
+    /// they never become a [`Value`], so there is no arrow to give them here.
     fn parameters(self) -> Option<Vec<Type>> {
         match self {
             Self::Transpose => Some(vec![Type::Interval, Type::Music]),
@@ -3000,6 +3080,12 @@ impl Builtin {
             | Self::RatioLess
             | Self::RatioEqual
             | Self::TextEqual
+            | Self::TextJoin
+            | Self::NatLiteral
+            | Self::RatioLiteral
+            | Self::PitchLiteral
+            | Self::KeyLiteral
+            | Self::IntervalLiteral
             | Self::NatAdd
             | Self::NatMul
             | Self::NatSub
@@ -9032,6 +9118,12 @@ fn apply_builtin(builtin: Builtin, provided: Vec<Value>, span: SourceSpan) -> Op
         | Builtin::RatioLess
         | Builtin::RatioEqual
         | Builtin::TextEqual
+        | Builtin::TextJoin
+        | Builtin::NatLiteral
+        | Builtin::RatioLiteral
+        | Builtin::PitchLiteral
+        | Builtin::KeyLiteral
+        | Builtin::IntervalLiteral
         | Builtin::NatAdd
         | Builtin::NatMul
         | Builtin::NatSub
@@ -9284,6 +9376,36 @@ fn ratio_arithmetic(operation: Exact, values: &[Value]) -> Option<Value> {
     })
 }
 
+/// The source literal that names an exact rational, or nothing.
+///
+/// `p/q`, and `p` where the denominator is one, which is how the reader writes
+/// a whole note. Nothing below zero: the grammar has no negative numeric
+/// literal, so a `-7/6` spelled here would be text the reader would not read
+/// back, and this family's one law is that it does.
+fn written_rational(value: Ratio<i64>) -> Option<String> {
+    if value < Ratio::ZERO {
+        return None;
+    }
+    Some(if *value.denom() == 1 {
+        value.numer().to_string()
+    } else {
+        format!("{}/{}", value.numer(), value.denom())
+    })
+}
+
+/// The source literal that names a written interval, or nothing.
+///
+/// Checked by reading it back rather than by enumerating which intervals have
+/// names, because the reader is the authority on that and a second copy of its
+/// grid here would be a second answer to drift from the first. Two kinds of
+/// interval fall out: one whose size and quality the written grid does not
+/// name, and a descending one, which the reader spells with a `down` the
+/// literal grammar has no token for.
+fn written_interval(interval: Interval) -> Option<String> {
+    let spelling = interval.to_string();
+    (Interval::parse(&spelling, false) == Some(interval)).then_some(spelling)
+}
+
 fn eval_builtin(
     builtin: Builtin,
     arguments: &[Expr],
@@ -9472,6 +9594,61 @@ fn eval_builtin(
                 return None;
             };
             Some(Value::Bool(left == right))
+        }
+        // The size is known before a byte of it exists, so it is charged
+        // before a byte of it exists (§5.8's D4). A join is the one operation
+        // whose answer can be larger than any one argument, which is exactly
+        // why it preflights rather than trusting the charge that follows
+        // construction.
+        Builtin::TextJoin => {
+            let Value::List { values: pieces, .. } = values.first()? else {
+                return None;
+            };
+            let mut size: u64 = 0;
+            for piece in pieces {
+                let Value::Text(piece) = piece else { return None };
+                size = size.saturating_add(u64::try_from(piece.len()).unwrap_or(u64::MAX));
+            }
+            meter.preflight_construct("text_join", 1, size, expression.span)?;
+            let mut joined = String::with_capacity(usize::try_from(size).ok()?);
+            for piece in pieces {
+                let Value::Text(piece) = piece else { return None };
+                joined.push_str(piece);
+            }
+            Some(Value::Text(joined))
+        }
+        Builtin::NatLiteral => Some(Value::Text(nat_value(values.first()?)?.to_string())),
+        Builtin::RatioLiteral => Some(Value::Option {
+            member: Type::Text,
+            value: written_rational(ratio_value(values.first()?)?).map(|text| Box::new(Value::Text(text))),
+        }),
+        Builtin::PitchLiteral => {
+            let Value::Pitch(pitch) = values.first()? else {
+                return None;
+            };
+            Some(Value::Text(pitch.to_string()))
+        }
+        Builtin::KeyLiteral => {
+            let Value::Key(key) = values.first()? else {
+                return None;
+            };
+            Some(Value::Text(format!(
+                "key {} {}",
+                key.tonic(),
+                match key.mode() {
+                    crate::score::Mode::Major => "major",
+                    crate::score::Mode::Minor => "minor",
+                }
+            )))
+        }
+        Builtin::IntervalLiteral => {
+            let Value::Interval(interval) = values.first()? else {
+                return None;
+            };
+            Some(Value::Option {
+                member: Type::Text,
+                value: written_interval(*interval).map(|text| Box::new(Value::Text(text))),
+            })
         }
         Builtin::NatAdd | Builtin::NatMul => {
             let (left, right) = (nat_value(values.first()?)?, nat_value(values.get(1)?)?);
@@ -12767,7 +12944,7 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(
             entries.len(),
-            111,
+            117,
             "new compiler operations must enter the ownership registry"
         );
         let unique = entries.iter().map(|(spelling, _)| *spelling).collect::<IndexSet<_>>();
@@ -13072,7 +13249,7 @@ mod tests {
         );
         assert_eq!(
             delta + eliminator + track + machine,
-            111,
+            117,
             "a new compiler operation must be classified before it is admitted"
         );
     }
@@ -14401,6 +14578,149 @@ mod tests {
                 .map(|entry| entry.spelling)
                 .collect::<Vec<_>>()
         );
+    }
+
+    /// Whether two values of a base type this family spells are the same one.
+    ///
+    /// [`Value`] is not comparable in general — a closure and a music value have
+    /// no equality worth having — so the round-trip law states its own, over
+    /// exactly the five domains that have a literal.
+    fn same_literal(left: &Value, right: &Value) -> bool {
+        match (left, right) {
+            (&Value::Nat(left), &Value::Nat(right)) => left == right,
+            (&Value::Ratio(left), &Value::Ratio(right)) => left == right,
+            (&Value::Pitch(left), &Value::Pitch(right)) => left == right,
+            (&Value::Key(left), &Value::Key(right)) => left == right,
+            (&Value::Interval(left), &Value::Interval(right)) => left == right,
+            _ => false,
+        }
+    }
+
+    /// The text a spelling answered, or `None` where it answered nothing.
+    fn spelt(answer: &Value) -> Option<String> {
+        let held = if let Value::Option { value, .. } = answer {
+            value.as_deref()?
+        } else {
+            answer
+        };
+        if let Value::Text(text) = held {
+            Some(text.clone())
+        } else {
+            None
+        }
+    }
+
+    /// Every literal spelling is the reader's inverse.
+    ///
+    /// The one law this family has, and what makes it a family rather than five
+    /// conveniences: what a spelling answers, the reader reads back as the value
+    /// it was handed. There is no second authority on how the language writes a
+    /// pitch down — the lexer is it — so a spelling that does not round-trip is
+    /// wrong in the only sense available, and a spelling that has no literal
+    /// says nothing rather than inventing one.
+    #[test]
+    fn a_literal_spelling_is_read_back_as_the_value_it_names() {
+        let mut pool = sample_seeds();
+        // Beyond the seeds: a pitch whose accidental runs past one character,
+        // a pitch below octave zero, and the largest whole number there is —
+        // the three places a spelling would be tempted to round.
+        pool.extend(
+            values(
+                "piece \"law\" { \
+                 let sharp: Pitch = f##3; \
+                 let flat: Pitch = bbb6; \
+                 let low: Pitch = a-1; \
+                 let wide: Interval = A11; \
+                 let big: Nat = 18446744073709551615; \
+                 }",
+            )
+            .expect("the extra seeds must compile")
+            .into_values(),
+        );
+        let mut checked = 0_usize;
+        for (builtin, ty) in [
+            (Builtin::NatLiteral, Type::Nat),
+            (Builtin::RatioLiteral, Type::Ratio),
+            (Builtin::PitchLiteral, Type::Pitch),
+            (Builtin::KeyLiteral, Type::Key),
+            (Builtin::IntervalLiteral, Type::Interval),
+        ] {
+            for value in pool.iter().filter(|value| value_type(value).as_ref() == Some(&ty)) {
+                let answer = apply(builtin, &[(ty.clone(), value.clone())])
+                    .unwrap_or_else(|| panic!("`{}` answered nothing at all", builtin.name()));
+                let Some(spelling) = spelt(&answer) else {
+                    continue;
+                };
+                let source = format!("piece \"law\" {{ let it: {ty} = {spelling}; }}");
+                let read = values(&source)
+                    .and_then(|bindings| bindings.get("it").cloned())
+                    .unwrap_or_else(|| panic!("`{}` wrote `{spelling}`, which the reader rejects", builtin.name()));
+                assert!(
+                    same_literal(&read, value),
+                    "`{}` wrote `{spelling}`, which the reader reads back as a different {ty}",
+                    builtin.name()
+                );
+                checked += 1;
+            }
+        }
+        assert!(
+            checked > 20,
+            "the law must actually exercise the spellings, saw {checked} round trips"
+        );
+    }
+
+    /// A value with no literal is nothing, and the two that have none are named.
+    ///
+    /// D2 in the one place this family can fail it. A spelling that answered
+    /// something anyway would be text the reader will not read, which is the
+    /// only way this family goes wrong; a printer that then wrote it down would
+    /// produce a region nobody can open.
+    #[test]
+    fn a_value_the_grammar_has_no_literal_for_is_spelt_as_nothing() {
+        let bindings = values(
+            "piece \"law\" { \
+             fn or_else(value: Result<Ratio, Text>, fallback: Ratio) -> Ratio { \
+             match value { Ok(held) -> held, Err(why) -> fallback } \
+             } \
+             let below: Option<Text> = ratio_literal(or_else(ratio_sub(1/3, 3/2), 0)); \
+             let descending: Option<Text> = interval_literal(interval_inverse(P5)); \
+             let ordinary: Option<Text> = ratio_literal(3/8); \
+             }",
+        )
+        .expect("the law piece must compile");
+        for name in ["below", "descending"] {
+            assert!(
+                matches!(bindings.get(name), Some(Value::Option { value: None, .. })),
+                "`{name}` has no literal naming it, so its spelling is nothing"
+            );
+        }
+        assert!(
+            matches!(bindings.get("ordinary"), Some(Value::Option { value: Some(_), .. })),
+            "and the law is not vacuous: an exact rational the grammar writes is spelt"
+        );
+    }
+
+    /// `text_join` is the only operation that builds a text, over the three
+    /// shapes a printer hands it.
+    #[test]
+    fn joining_texts_runs_them_together_in_the_order_they_are_given() {
+        let bindings = values(
+            "piece \"law\" { \
+             let none: Text = text_join([]); \
+             let one: Text = text_join([\"c5\"]); \
+             let many: Text = text_join([\"c5\", \"(\", ratio_or(3/8), \")\"]); \
+             fn ratio_or(value: Ratio) -> Text { \
+             option_fold(\"?\", fn (held: Text) -> Text { held }, ratio_literal(value)) \
+             } \
+             }",
+        )
+        .expect("the law piece must compile");
+        for (name, expected) in [("none", ""), ("one", "c5"), ("many", "c5(3/8)")] {
+            assert!(
+                matches!(bindings.get(name), Some(Value::Text(held)) if held == expected),
+                "`{name}` should join to `{expected}`"
+            );
+        }
     }
 
     #[test]

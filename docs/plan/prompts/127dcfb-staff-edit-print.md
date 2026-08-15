@@ -59,7 +59,11 @@ that a promise rather than a label.
   the round-trip law over the trial block; and a stated loss on a document the staff spelling cannot write, naming what
   it could not spell.
 - `docs/book/src/reference/stdlib.md` recording that the staff adapter is generative, alongside `doubled`'s editable.
-- The privilege statement in the adapter's comments extended to anything `edit` or `print` wanted and did not get.
+- The privilege statement in the adapter's comments extended to anything `edit` or `print` wanted and did not get, and
+  revised where 127dcfah changed the answer. Two of its bullets are now out of date: "a number it computed cannot be
+  written back as a numeral" names an operation that exists (`nat_literal`), and "a region is reformatted generically
+  until this adapter can print one" is what this prompt closes. Say what is still true — that `expand` does not use the
+  spellings, and that whether it should is prompt 127dd's to weigh — rather than deleting the bullets.
 
 ## Check
 

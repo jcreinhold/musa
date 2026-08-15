@@ -1,7 +1,7 @@
 ---
 id: 127dcfah
 slug: printed-literals
-status: pending
+status: done
 depends_on: [127dcfag]
 phase: 3
 ---
@@ -57,7 +57,7 @@ the list, and a parameter every caller passes `""` is a knob rather than an inte
 
 ```text
 nat_literal      : Nat      -> Text
-ratio_literal    : Ratio    -> Text
+ratio_literal    : Ratio    -> Option<Text>
 pitch_literal    : Pitch    -> Text
 key_literal      : Key      -> Text
 interval_literal : Interval -> Option<Text>
@@ -67,11 +67,17 @@ The rule is a single rule and it is checkable: **reading back what one of these 
 That is what makes the family the reader's inverse rather than a presentation, and it is what the law suite asserts, per
 operation, over a generated sample. A spelling that does not round-trip is wrong in the only sense the family has.
 
-`interval_literal` is the one that answers an `Option`, because written interval names run out: an interval whose
-generic size and quality have no name falls outside the literal grammar, and D2 requires the partiality to sit in the
+Two answer an `Option`, because the grammar's literals run out before the values do. `ratio_literal` has nothing to
+write below zero: there is no negative numeric literal, and `ratio_sub(1/3, 3/2)` reaches one. `interval_literal` runs
+out twice over — an interval outside the named size-and-quality grid has no spelling, and neither does a descending one,
+which the reader writes with a `down` that no single literal token carries. D2 requires that partiality to sit in the
 result type rather than in a stuck term or a fabricated pair. It is also what gives prompt 127dcfb's `PrintLoss` a
 subject that is real rather than staged — a document a staff genuinely cannot write down, rather than one arranged to be
 unwritable.
+
+Which of the five are partial is settled by the law and not declared ahead of it: the implementation spells the value
+and reads it back, and answers nothing where the reader will not take it. That is why `interval_literal` needs no second
+copy of the reader's interval grid to consult.
 
 **Nothing here reads a text.** No length, no index, no substring, no split, no ordering. A program can compare two texts
 and can build one; it cannot take one apart. That asymmetry is deliberate and it is the same rule as the phase's: an
@@ -80,9 +86,10 @@ was handed from the other side. Writing is the capability a printer needs; readi
 
 **The D1–D4 discharge**, in one paragraph each in the registry's own doc comments, since the registry is where §5.8 says
 the premises live. D1: no new base type, and `Text` is already inert. D2: every operation is total on closed values of
-its argument types, with the one partial case in an `option`. D3: the answer is a function of the argument value alone.
-D4: the answer's byte count is bounded by the sum of the argument's, charged to the output budget before construction
-begins — which for `text_join` is the sum of its pieces and for a spelling is a bound on the value's own size.
+its argument types, with the two partial cases in an `option`. D3: the answer is a function of the argument value alone.
+D4: the answer's byte count is bounded by the sum of the argument's, charged to §4's constructed-bytes meter before
+construction begins — which for `text_join` means preflighting the sum of its pieces, and for a spelling is a bound on
+the value's own size that the ordinary charge on a built value already covers.
 
 ## Target
 

@@ -95,9 +95,11 @@ library {
     // Editable and not generative, and the reason is worth writing down. A
     // region of this adapter produces `(Music, Nat)`, and a printer would have
     // to write a musical value back as source text — which the source language
-    // gives it no way to do. There are no text operations: a printer can write
-    // the literals it holds and can pass along a text it was handed, and that
-    // is all. Spelling a value it did not already have the words for is the
+    // gives it no way to do. The spellings of prompt 127dcfah are the reader's
+    // inverse over the five domains that *have* a literal — a whole number, an
+    // exact rational, a pitch, a key, an interval — and a `Music` is not one of
+    // them: what names it is the expression that built it, and no operation
+    // hands that back. Spelling a value the language has no literal for is the
     // staff adapter's problem, and prompt 127dcf is where it is solved.
     let level = "editable";
 
