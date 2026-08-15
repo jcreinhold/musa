@@ -365,6 +365,7 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::KernelQuote
         | SyntaxKind::KernelHole
         | SyntaxKind::QuoteExpr
+        | SyntaxKind::QuotePattern
         | SyntaxKind::Splice
         | SyntaxKind::SequenceSplice
         | SyntaxKind::SyntaxRegion

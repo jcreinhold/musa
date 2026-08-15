@@ -2930,6 +2930,22 @@ impl QuoteExpr {
     }
 }
 
+/// `quote { … }` in a pattern — the inverse form
+/// (`docs/rules/language/11-quotation.md` §4).
+///
+/// One part, where [`QuoteExpr`] has two. The anchor is missing because a
+/// pattern derives nothing: there is no node to be the origin of, so there is
+/// no place for one to be named.
+pub struct QuotePattern(SyntaxNode);
+wrapper!(QuotePattern, SyntaxKind::QuotePattern);
+
+impl QuotePattern {
+    /// The quoted shape itself, between the braces.
+    pub fn body(&self) -> Option<SyntaxNode> {
+        self.0.children().next()
+    }
+}
+
 /// `$x` or `${ e }` — one value spliced where one node stands.
 pub struct Splice(SyntaxNode);
 wrapper!(Splice, SyntaxKind::Splice);

@@ -1089,6 +1089,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::KernelQuote
         | SyntaxKind::KernelHole
         | SyntaxKind::QuoteExpr
+        | SyntaxKind::QuotePattern
         | SyntaxKind::Splice
         | SyntaxKind::SequenceSplice
         | SyntaxKind::ScaleExpr

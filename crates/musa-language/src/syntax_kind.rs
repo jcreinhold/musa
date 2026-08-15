@@ -609,6 +609,15 @@ pub enum SyntaxKind {
     /// reports parse errors exactly as the file around it does. What the
     /// quote adds inside its body is the two splice forms and nothing else.
     QuoteExpr,
+    /// `quote { … }` in a pattern — the inverse form
+    /// (`docs/rules/language/11-quotation.md` §4).
+    ///
+    /// No anchor, and that absence is the form's whole claim: building syntax
+    /// derives an identity from the node it was pointed at, and matching
+    /// derives nothing because it makes nothing. The body is read by the same
+    /// [`Self::QuoteExpr`] body production, so one grammar answers what an
+    /// expression is in both directions.
+    QuotePattern,
     /// `$x` or `${ e }` — one value spliced where one node stands.
     Splice,
     /// `$..xs` — a list of values spliced where a sequence stands.

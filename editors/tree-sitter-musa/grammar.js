@@ -949,6 +949,10 @@ module.exports = grammar({
 
     pattern: ($) =>
       choice(
+        // `quote { $head($..args) }` — quotation as a pattern
+        // (`docs/rules/language/11-quotation.md` §4). No anchor: a pattern
+        // builds nothing, so there is no node for one to be derived from.
+        $.quote_pattern,
         $.identifier,
         $.integer,
         $.rational,
@@ -1026,6 +1030,8 @@ module.exports = grammar({
     // crate.
     quote_expression: ($) =>
       seq('quote', 'at', field('anchor', $._primary_expression), '{', field('body', $.expression), '}'),
+
+    quote_pattern: ($) => seq('quote', '{', field('body', $.expression), '}'),
 
     // `$x` and `${ e }` — one value where one node stands.
     //

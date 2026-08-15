@@ -1,0 +1,256 @@
+// Prompt 132's staff-dispatch program, compiling.
+//
+// `docs/notes/research/language-design-closure/43-dependent-language-trial.md`
+// §2 rewrote `stdlib/src/adapters/staff.musa`'s dispatch table on the new
+// language and found it has three halves rather than the two
+// `docs/rules/language/11-quotation.md` §4 predicted. This file is that
+// program, run: the same three questions, asked the same three ways, over a
+// real region.
+//
+// The finding prompt 140 is accountable for is a negative one, and it is why
+// this fixture stands beside `staff-construction.musa` rather than inside it:
+//
+// > **No quote pattern appears anywhere in the staff adapter.**
+//
+// The reason is one sentence and it settles what §4 left open. A quote pattern
+// is written in *Musa*, and the token tree this adapter reads is *staff*
+// notation, so a pattern can only describe the shapes the two grammars happen
+// to share. `bar (4, 4) { c5/1 }` is three siblings of a layout group and Musa
+// has no form of that shape; `bar` and `slur` are both `Identifier`, so no
+// token kind separates them. What is left for a pattern is the bare
+// identifier — `quote { bar }` — and fifteen of those would be fifteen string
+// literals wearing a different hat, with the same failure the `text_equal`
+// chain already has: `quote { bra }` quotes a perfectly good identifier, so a
+// misspelling stays an arm that silently never matches.
+//
+// So what is observable here is which question each half asks:
+//
+// - **shape** — a typed `Delimiter`, in `entered`. Musa's grammar has this one
+//   and a quote pattern could describe it; a comparison against the delimiter
+//   the reader was handed says it more directly and is what the adapter does.
+// - **token kind** — a typed `TokenKind`, in `body_token` and `trivial`. This
+//   is the half prompt 138 retired, and none of it is text.
+// - **notation keyword** — `staff_word`, one lookup, and one exhaustive
+//   `match` in `word_read`. Neither quotation nor prompt 138 removes this one:
+//   the fifteen spellings are the notation's own words and only text can say
+//   them. What the rewrite buys is not brevity but coverage — a sixteenth
+//   staff word does not compile until `word_read` reads it, which the `_ ->`
+//   arm of the string version never did — and containment: every `text_equal`
+//   in this file is inside `staff_word`.
+//
+// Three places read differently from the trial's page, and all three are the
+// repo rather than the program:
+//
+// - The trial writes `enum StaffWord` and `StaffWord::Rest`. Enums are
+//   `musa-core`'s and reach the expansion phase at prompt 142; until then the
+//   phase spells them `data` and names a case by its constructor, which is
+//   what `staff.musa` spells them today. Nothing about the dispatch changes.
+// - The trial writes `match kind { TokenKind::Tilde -> … }`. `TokenKind` and
+//   `Delimiter` are compared rather than matched until prompt 143 collapses
+//   the builtin registry, so those two halves are chains over
+//   `token_kind_equal` and `delimiter_equal`. The distinction the trial draws
+//   — a *named* kind rather than its spelling — is the same either way.
+// - `Pending` is not threaded through. The trial's arms carry the reader's
+//   state between them and §3 is where that record is designed. What is under
+//   test here is which question each half asks and whether the answers are
+//   exhaustive, not what a reader accumulates from them.
+library {
+    let level = "readable";
+
+    // ------------------------------------------------ half three: the keyword
+
+    // Every word the staff spelling has. A word either opens a form or states
+    // one of the six facts a document carries in its head.
+    data StaffWord {
+        Rest,
+        Bar,
+        Pickup,
+        Slur,
+        Tuplet,
+        Grace,
+        Repeat,
+        Ending,
+        Time,
+        Meter,
+        Instrument,
+        Transposing,
+        Clef,
+        Spelling,
+        Key,
+    }
+
+    // The one place a staff keyword is spelled, and so the only place a
+    // misspelling can hide. Fifteen literals, once each, against the
+    // twenty-one `text_equal` sites over thirteen literals the string version
+    // spread through the reader.
+    fn staff_word(spelling: Text) -> Option<StaffWord> {
+        if text_equal(spelling, "rest") {
+            Some(Rest)
+        } else if text_equal(spelling, "bar") {
+            Some(Bar)
+        } else if text_equal(spelling, "pickup") {
+            Some(Pickup)
+        } else if text_equal(spelling, "slur") {
+            Some(Slur)
+        } else if text_equal(spelling, "tuplet") {
+            Some(Tuplet)
+        } else if text_equal(spelling, "grace") {
+            Some(Grace)
+        } else if text_equal(spelling, "repeat") {
+            Some(Repeat)
+        } else if text_equal(spelling, "ending") {
+            Some(Ending)
+        } else if text_equal(spelling, "time") {
+            Some(Time)
+        } else if text_equal(spelling, "meter") {
+            Some(Meter)
+        } else if text_equal(spelling, "instrument") {
+            Some(Instrument)
+        } else if text_equal(spelling, "transposing") {
+            Some(Transposing)
+        } else if text_equal(spelling, "clef") {
+            Some(Clef)
+        } else if text_equal(spelling, "spelling") {
+            Some(Spelling)
+        } else if text_equal(spelling, "key") {
+            Some(Key)
+        } else {
+            None
+        }
+    }
+
+    // The dispatch itself, and the arm count is the finding: fifteen spellings
+    // reach nine readers, because `bar` and `pickup` are one form with two
+    // names, as are `repeat` and `ending`, and `clef` and `spelling`.
+    //
+    // This `match` is exhaustive over a declared type. Add a sixteenth
+    // constructor to `StaffWord` and this stops compiling until it is read —
+    // which is the whole reason the lookup is worth writing, since it is not
+    // shorter than the chain it replaced.
+    fn word_read(here: NodePath, word: StaffWord) -> Syntax<Expr> {
+        match word {
+            Rest -> rest_read(here),
+            Bar -> bar_read(here),
+            Pickup -> bar_read(here),
+            Slur -> slur_read(here),
+            Tuplet -> tuplet_read(here),
+            Grace -> grace_read(here),
+            Repeat -> repeated_read(here),
+            Ending -> repeated_read(here),
+            Time -> time_header(here),
+            Meter -> meter_header(here),
+            Instrument -> literal_header(here),
+            Transposing -> literal_header(here),
+            Clef -> named_header(here),
+            Spelling -> named_header(here),
+            Key -> key_header(here),
+        }
+    }
+
+    // The nine readers. Each one stands where the trial's does and answers
+    // with the form its word opens; what the real reader threads through them
+    // is `Pending`, which is prompt 142's.
+    fn rest_read(here: NodePath) -> Syntax<Expr> { quote at here { Rested } }
+
+    fn bar_read(here: NodePath) -> Syntax<Expr> { quote at here { Barred } }
+
+    fn slur_read(here: NodePath) -> Syntax<Expr> { quote at here { Slurred } }
+
+    fn tuplet_read(here: NodePath) -> Syntax<Expr> { quote at here { Tupleted } }
+
+    fn grace_read(here: NodePath) -> Syntax<Expr> { quote at here { Graced } }
+
+    fn repeated_read(here: NodePath) -> Syntax<Expr> { quote at here { Repeated } }
+
+    fn time_header(here: NodePath) -> Syntax<Expr> { quote at here { Timed } }
+
+    fn meter_header(here: NodePath) -> Syntax<Expr> { quote at here { Metered } }
+
+    fn literal_header(here: NodePath) -> Syntax<Expr> { quote at here { Stated } }
+
+    fn named_header(here: NodePath) -> Syntax<Expr> { quote at here { Named } }
+
+    fn key_header(here: NodePath) -> Syntax<Expr> { quote at here { Keyed } }
+
+    // A word this notation does not have. The string version reached its `_ ->`
+    // arm here too — the difference is that this is the only arm that can be
+    // reached by accident, and it is one arm rather than the default of a
+    // fifteen-way chain.
+    fn named_read(here: NodePath, spelling: Text) -> Syntax<Expr> {
+        match staff_word(spelling) {
+            None -> quote at here { Unknown },
+            Some(word) -> word_read(here, word),
+        }
+    }
+
+    // --------------------------------------------- half two: the token kind
+
+    // Was: three `text_equal` calls against `"Whitespace"`, `"LineComment"`,
+    // and `"BlockComment"`.
+    fn trivial(kind: TokenKind) -> Bool {
+        if token_kind_equal(kind, TokenKind.Whitespace) {
+            true
+        } else if token_kind_equal(kind, TokenKind.LineComment) {
+            true
+        } else {
+            token_kind_equal(kind, TokenKind.BlockComment)
+        }
+    }
+
+    // Was: `match kind { "Tilde" -> …, "Dot" -> …, "Integer" -> …, … }` over
+    // the kind's *spelling*. A kind is now a value of a declared type, and
+    // `word_read` is where anything that is none of these goes — which is the
+    // seam between this half and the last one.
+    fn body_token(here: NodePath, kind: TokenKind, spelling: Text) -> Syntax<Expr> {
+        if trivial(kind) {
+            quote at here { NoItems }
+        } else if token_kind_equal(kind, TokenKind.Tilde) {
+            quote at here { Tied }
+        } else if token_kind_equal(kind, TokenKind.Dot) {
+            quote at here { Dotted }
+        } else if token_kind_equal(kind, TokenKind.Integer) {
+            quote at here { Numbered }
+        } else if token_kind_equal(kind, TokenKind.PitchLiteral) {
+            quote at here { Sung }
+        } else if token_kind_equal(kind, TokenKind.Slash) {
+            quote at here { NoItems }
+        } else if token_kind_equal(kind, TokenKind.Comma) {
+            quote at here { NoItems }
+        } else {
+            named_read(here, spelling)
+        }
+    }
+
+    // ----------------------------------------------- half one: the shape
+
+    // The one half a quote pattern could describe, written as the comparison
+    // it is. Three delimiters, three places a reader can be: braces hold a
+    // body, parentheses hold what a form states, brackets hold a chord's
+    // pitches.
+    fn entered(here: NodePath, delimiter: Delimiter, children: List<Syntax<Expr>>) -> Syntax<Expr> {
+        if delimiter_equal(delimiter, Delimiter.Braces) {
+            quote at here { Body([$..children]) }
+        } else if delimiter_equal(delimiter, Delimiter.Parentheses) {
+            quote at here { Stating([$..children]) }
+        } else {
+            quote at here { Voiced([$..children]) }
+        }
+    }
+
+    // ------------------------------------------------------- the traversal
+
+    // The region, read the way the staff adapter reads one. Every node is
+    // asked exactly one of the three questions, and which one it is asked is
+    // decided by the traversal rather than by a pattern over its shape.
+    fn built(region: Syntax<TokenTree>) -> Syntax<Expr> {
+        syntax_fold_from_leaves(
+            fn (here) { quote at here { NoItems } },
+            fn (here, kind, text) { body_token(here, kind, text) },
+            fn (here, name) { named_read(here, name) },
+            fn (here, delimiter, children) { entered(here, delimiter, children) },
+            region,
+        )
+    }
+
+    let expand = fn (region) { Ok(built(region)) };
+}

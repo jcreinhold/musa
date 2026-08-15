@@ -151,4 +151,107 @@ library {
                       (list_expression
                         (expression
                           (sequence_splice
-                            (identifier)))))))))))))))
+                            (name_expression
+                              (identifier))))))))))))))))
+
+==================
+quote { … } as a pattern: the same body, the other direction
+==================
+
+library {
+  fn braced(here: NodePath, node: Syntax<TokenTree>) -> Syntax<Expr> {
+    match node {
+      quote { { $inside } } -> quote at here { $inside },
+      quote { f($a, $..others) } -> quote at here { $a },
+      _ -> quote at here { 0 },
+    }
+  }
+}
+
+---
+
+(source_file
+  (library_declaration
+    (function_declaration
+      (identifier)
+      (parameter_list
+        (parameter
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier))))
+        (parameter
+          (identifier)
+          (type_expression
+            (applied_type
+              (type_name
+                (identifier))
+              (type_expression
+                (type_name
+                  (identifier)))))))
+      (type_expression
+        (applied_type
+          (type_name
+            (identifier))
+          (type_expression
+            (type_name
+              (identifier)))))
+      (block_expression
+        (expression
+          (match_expression
+            (expression
+              (name_expression
+                (identifier)))
+            (match_arm
+              (pattern
+                (quote_pattern
+                  (expression
+                    (block_expression
+                      (expression
+                        (splice
+                          (name_expression
+                            (identifier))))))))
+              (expression
+                (quote_expression
+                  (name_expression
+                    (identifier))
+                  (expression
+                    (splice
+                      (name_expression
+                        (identifier)))))))
+            (match_arm
+              (pattern
+                (quote_pattern
+                  (expression
+                    (application_expression
+                      (name_expression
+                        (identifier))
+                      (expression_argument_list
+                        (expression_argument
+                          (expression
+                            (splice
+                              (name_expression
+                                (identifier)))))
+                        (expression_argument
+                          (expression
+                            (sequence_splice
+                              (name_expression
+                                (identifier))))))))))
+              (expression
+                (quote_expression
+                  (name_expression
+                    (identifier))
+                  (expression
+                    (splice
+                      (name_expression
+                        (identifier)))))))
+            (match_arm
+              (pattern
+                (identifier))
+              (expression
+                (quote_expression
+                  (name_expression
+                    (identifier))
+                  (expression
+                    (literal_expression
+                      (integer))))))))))))

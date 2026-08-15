@@ -1,7 +1,7 @@
 ---
 id: 140
 slug: syntax-patterns
-status: in-progress
+status: done
 depends_on: [139]
 phase: 3
 ---

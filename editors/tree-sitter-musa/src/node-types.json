@@ -3091,6 +3091,10 @@
           "named": true
         },
         {
+          "type": "quote_pattern",
+          "named": true
+        },
+        {
           "type": "rational",
           "named": true
         },
@@ -3626,6 +3630,22 @@
     }
   },
   {
+    "type": "quote_pattern",
+    "named": true,
+    "fields": {
+      "body": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "expression",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "record_declaration",
     "named": true,
     "fields": {
@@ -4069,7 +4089,7 @@
         "required": true,
         "types": [
           {
-            "type": "identifier",
+            "type": "name_expression",
             "named": true
           }
         ]

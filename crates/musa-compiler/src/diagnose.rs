@@ -194,6 +194,18 @@ pub enum Code {
     /// A name written literally in a quote that the printer's own renaming
     /// could produce, so a binder the quote introduces would capture it.
     QuotedCapture,
+    /// Two `$..xs` written among one group's children, which would make where
+    /// the first run ends a guess.
+    AmbiguousSpread,
+    /// A quote pattern written against a value that has no category.
+    ///
+    /// Distinct from [`Self::SpliceCategory`], which is a splice of the wrong
+    /// category into a position that has one: here there is no category at
+    /// all, because the value being matched is not syntax.
+    PatternCategory,
+    /// A name a quote pattern wrote literally, used in the arm as though the
+    /// pattern had bound it.
+    QuotedLiteralName,
 }
 
 /// Writes each code's spelling once, and derives the roster from the same
@@ -284,6 +296,9 @@ code_table! {
     SpliceCategory => "splice-category",
     UnspreadSequence => "unspread-sequence",
     QuotedCapture => "quoted-capture",
+    AmbiguousSpread => "ambiguous-spread",
+    PatternCategory => "pattern-category",
+    QuotedLiteralName => "quoted-literal-name",
 }
 
 impl Code {

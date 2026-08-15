@@ -10,7 +10,7 @@
 //! "no sublanguage by subtraction".
 #![allow(clippy::expect_used, clippy::indexing_slicing, clippy::panic)]
 
-use musa_language::ast::{AstNode, QuoteExpr, SequenceSplice, Splice};
+use musa_language::ast::{AstNode, QuoteExpr, QuotePattern, SequenceSplice, Splice};
 use musa_language::{BarSpacing, ParsedDocument, SyntaxKind, format, parse};
 
 /// The three spellings of a splice, in the positions the staff adapter's
@@ -181,4 +181,78 @@ fn the_quote_forms_round_trip_and_format_to_a_fixpoint() {
     assert!(once.contains("${ anchored(region, here) }"), "{once}");
     assert!(once.contains("$event, $items"), "{once}");
     assert!(once.contains("[$..xs]"), "{once}");
+}
+
+/// §4's inverse form, in the two shapes the specification's own examples have.
+///
+/// The same program the tree-sitter corpus reads, so the two grammars are held
+/// to one text rather than to two paraphrases of one intention.
+const PATTERNS: &str = r"library {
+    fn braced(here: NodePath, node: Syntax<TokenTree>) -> Syntax<Expr> {
+        match node {
+            quote { { $inside } } -> quote at here { $inside },
+            quote { f($a, $..others) } -> quote at here { $a },
+            _ -> quote at here { 0 },
+        }
+    }
+}
+";
+
+#[test]
+fn a_quote_pattern_holds_a_body_and_no_anchor() {
+    // §4: a pattern derives no identity, because it builds nothing for one to
+    // be derived from. So the absence of the anchor is the form's whole claim,
+    // and it is checked as an absence: one child node, which is the body.
+    let document = parsed(PATTERNS);
+    let patterns = nodes(&document, SyntaxKind::QuotePattern);
+    assert_eq!(patterns.len(), 2, "two quote patterns were written");
+    for found in &patterns {
+        assert_eq!(
+            found.children().count(),
+            1,
+            "a quote pattern holds the body and nothing else"
+        );
+        let pattern = QuotePattern::cast(found.clone()).expect("a quote pattern casts");
+        assert!(pattern.body().is_some(), "a quote pattern has a body");
+    }
+}
+
+#[test]
+fn a_pattern_body_parses_into_what_the_same_text_parses_into_anywhere_else() {
+    // The law that makes the two directions one form: the pattern's body goes
+    // through the same production a quote's body does, which is the same one
+    // ordinary source does. A pattern dialect would be a third grammar to keep
+    // in step, and there is not one.
+    let quoted = parsed(
+        "library {\n    fn f(node: Syntax<Expr>) -> Nat {\n        match node {\n            quote { Sounded(one, two) } -> 1,\n            _ -> 0,\n        }\n    }\n}\n",
+    );
+    let plain = parsed("library {\n    let it = Sounded(one, two);\n}\n");
+    let inside = QuotePattern::cast(nodes(&quoted, SyntaxKind::QuotePattern).remove(0))
+        .expect("a quote pattern casts")
+        .body()
+        .expect("the pattern has a body");
+    let outside = nodes(&plain, SyntaxKind::ApplyExpr).remove(0);
+    assert_eq!(
+        shape(&inside),
+        shape(&outside),
+        "a pattern body and ordinary source disagree about what an expression is"
+    );
+}
+
+#[test]
+fn the_pattern_form_round_trips_and_formats_to_a_fixpoint() {
+    let once = format(&parsed(PATTERNS), BarSpacing::Compact).text().to_owned();
+    let twice = format(&parsed(&once), BarSpacing::Compact).text().to_owned();
+    assert_eq!(once, twice, "formatting a formatted quote pattern moved it");
+    // What the printed form has to preserve is the tree, not the line breaks:
+    // the formatter opens a quote body the way it opens any other braced one,
+    // and a substring assertion here would be a law about that policy rather
+    // than about the pattern. So the printed text is parsed back and the two
+    // patterns are compared to the ones that were written.
+    let before = parsed(PATTERNS);
+    let after = parsed(&once);
+    let written: Vec<String> = nodes(&before, SyntaxKind::QuotePattern).iter().map(shape).collect();
+    let printed: Vec<String> = nodes(&after, SyntaxKind::QuotePattern).iter().map(shape).collect();
+    assert_eq!(written.len(), 2, "two quote patterns were written");
+    assert_eq!(written, printed, "a formatted quote pattern parsed back differently");
 }

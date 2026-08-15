@@ -2599,6 +2599,7 @@ impl<'a> Parser<'a> {
     fn pattern(&mut self) {
         self.start(SyntaxKind::Pattern);
         match self.current() {
+            Some(SyntaxKind::QuoteKw) => self.quote_pattern(),
             Some(SyntaxKind::Identifier) if self.at_word("none") => {
                 self.respelled_constructor();
                 self.bump();
@@ -2852,6 +2853,25 @@ impl<'a> Parser<'a> {
         self.bump(); // quote
         self.expect(SyntaxKind::AtKw, "`at`");
         self.operand_expr(true);
+        self.expect(SyntaxKind::LBrace, "`{`");
+        self.quote_depth = self.quote_depth.saturating_add(1);
+        self.expr();
+        self.quote_depth = self.quote_depth.saturating_sub(1);
+        self.expect(SyntaxKind::RBrace, "`}`");
+        self.finish();
+    }
+
+    /// `quote { … }` in a pattern — the inverse form
+    /// (`docs/rules/language/11-quotation.md` §4).
+    ///
+    /// The same body production as [`Self::quote_expr`], and no anchor. A
+    /// pattern derives no identity because it builds nothing, so there is
+    /// nothing for an `at` to point at; writing one would be a value the form
+    /// has no use for, and reading it would be the one thing §4 forbids —
+    /// a pattern that could speak about where a node came from.
+    fn quote_pattern(&mut self) {
+        self.start(SyntaxKind::QuotePattern);
+        self.bump(); // quote
         self.expect(SyntaxKind::LBrace, "`{`");
         self.quote_depth = self.quote_depth.saturating_add(1);
         self.expr();

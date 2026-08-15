@@ -750,6 +750,7 @@ fn format_token(node: &SyntaxNode, token: &SyntaxToken, writer: &mut Writer) {
             parent,
             SyntaxKind::BlockExpr
                 | SyntaxKind::QuoteExpr
+                | SyntaxKind::QuotePattern
                 | SyntaxKind::DataDecl
                 | SyntaxKind::RecordUpdateExpr
                 | SyntaxKind::RecordDecl
@@ -781,6 +782,7 @@ fn format_token(node: &SyntaxNode, token: &SyntaxToken, writer: &mut Writer) {
                 SyntaxKind::MusicExpr
                     | SyntaxKind::MatchExpr
                     | SyntaxKind::QuoteExpr
+                    | SyntaxKind::QuotePattern
                     | SyntaxKind::RecordUpdateExpr
                     | SyntaxKind::RecordLiteralExpr
                     | SyntaxKind::RecordPattern

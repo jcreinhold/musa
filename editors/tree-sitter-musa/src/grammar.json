@@ -4632,6 +4632,10 @@
       "members": [
         {
           "type": "SYMBOL",
+          "name": "quote_pattern"
+        },
+        {
+          "type": "SYMBOL",
           "name": "identifier"
         },
         {
@@ -5263,6 +5267,31 @@
         }
       ]
     },
+    "quote_pattern": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "quote"
+        },
+        {
+          "type": "STRING",
+          "value": "{"
+        },
+        {
+          "type": "FIELD",
+          "name": "body",
+          "content": {
+            "type": "SYMBOL",
+            "name": "expression"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "}"
+        }
+      ]
+    },
     "splice": {
       "type": "CHOICE",
       "members": [
@@ -5330,7 +5359,7 @@
           "name": "name",
           "content": {
             "type": "SYMBOL",
-            "name": "identifier"
+            "name": "name_expression"
           }
         }
       ]

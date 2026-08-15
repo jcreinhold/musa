@@ -3356,6 +3356,20 @@ enum Pattern {
         variant: usize,
         fields: Vec<String>,
     },
+    /// `quote { $head($..args) }` — one shape, and the names its holes bind
+    /// (`11-quotation.md` §4).
+    ///
+    /// The template is the same one a quote that *builds* would use, because
+    /// the two forms read one body with one grammar; what differs is that
+    /// [`crate::syntax::instantiate`] fills the holes and
+    /// [`crate::syntax::matched`] reads them.
+    Syntax {
+        template: crate::syntax::Template,
+        /// The name each hole binds, and whether it binds a run.
+        holes: Vec<(String, bool)>,
+        /// The category a bound node carries, which is the scrutinee's.
+        member: Type,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -3374,6 +3388,16 @@ enum Coverage {
     /// declaration — the name would be ambiguous across declarations, and the
     /// index is what the exhaustiveness check counts.
     Constructor(usize),
+    /// One shape a quote pattern tests for.
+    ///
+    /// It sits beside [`Self::Literal`] and behaves exactly as one: a shape
+    /// constrains rather than enumerates, so no set of them ever exhausts the
+    /// token trees and a match made of them needs the catch-all arm where the
+    /// adapter says what it reads (`11-quotation.md` §4). What it does buy is
+    /// the other half — two arms written with the same shape collide here, and
+    /// the second is reported unreachable by the check every other pattern
+    /// already goes through.
+    Shape(String),
 }
 
 #[derive(Clone)]
@@ -6443,7 +6467,9 @@ impl Checker<'_> {
         self.resolver.next_quotation = quotation.saturating_add(1);
 
         let mut walk = QuoteWalk {
+            matching: false,
             splices: Vec::new(),
+            bound: Vec::new(),
             scope: Vec::new(),
         };
         let template = self.quote_template(&quote.body()?, &mut crate::syntax::template_root(), &mut walk, false)?;
@@ -6506,16 +6532,58 @@ impl Checker<'_> {
             .filter(|piece| !(separated && piece.kind() == SyntaxKind::Comma))
             .collect();
         let (delimiter, pieces) = crate::syntax::delimited(pieces);
+        // Where a spread may stand, which is the one rule the two directions
+        // do not share. Building a run needs the separator its position
+        // supplies, so only a comma-separated position has room for one.
+        // Matching one needs no separator and only a run to bind, so any group
+        // that survives [`crate::syntax::matched`]'s peeling will do — and a
+        // layout group holding one node does not survive it, which is why the
+        // body of `quote { $..xs }` is still a position that holds one node.
+        let spreads = if walk.matching {
+            delimiter != crate::syntax::Delimiter::Layout || pieces.len() >= 2
+        } else {
+            separated
+        };
         let binders = binder_positions(node, &pieces);
         let mut children = Vec::with_capacity(pieces.len());
+        let mut spread_here = false;
         for (index, piece) in pieces.iter().enumerate() {
             path.push(u32::try_from(index).unwrap_or(u32::MAX));
             let child = match piece {
-                SyntaxElement::Node(inner) => self.quote_template(&spread_argument(inner), path, walk, separated),
-                SyntaxElement::Token(token) => self.quote_token(token, path, walk, binders.contains(&index)),
+                SyntaxElement::Node(inner) => self.quote_template(&spread_argument(inner), path, walk, spreads),
+                // A pattern writes no binder, so it needs no hygiene: it
+                // builds nothing for a generated name to stand in, and §4 has
+                // it compare names rather than scopes.
+                SyntaxElement::Token(token) => {
+                    self.quote_token(token, path, walk, !walk.matching && binders.contains(&index))
+                }
             };
             path.pop();
-            children.push(child?);
+            let child = child?;
+            // One spread per group, checked where the group is: two would
+            // leave the split between them undetermined, and choosing it would
+            // be a search over where the author meant one run to end
+            // (`11-quotation.md` §4).
+            if matches!(child, crate::syntax::Template::Sequence(_)) {
+                if spread_here {
+                    self.resolver.report(
+                        Diagnostic::error(Code::AmbiguousSpread, "two spreads stand in one position")
+                            .at(
+                                SourceSpan::new(
+                                    u32::from(piece.text_range().start()),
+                                    u32::from(piece.text_range().end()),
+                                ),
+                                "this is the second one",
+                            )
+                            .help("bind the run with one `$..xs` and take it apart afterwards")
+                            .note("with two, where the first run ends is a guess, and this language does not search"),
+                    );
+                    self.failed = true;
+                    return None;
+                }
+                spread_here = true;
+            }
+            children.push(child);
         }
         if framed {
             walk.scope.truncate(frame);
@@ -6603,14 +6671,35 @@ impl Checker<'_> {
         let span = crate::resolve::trimmed_span(node);
         let sequence = node.kind() == SyntaxKind::SequenceSplice;
         if sequence && !spreadable {
+            // Two directions, two faults, and the *message* carries which —
+            // not the note. An adapter's diagnostics reach their author through
+            // [`crate::expand`]'s level check, which keeps the message and
+            // drops everything around it, so a distinction written only in a
+            // note is a distinction no adapter author ever reads.
+            let (complaint, advice, why) = if walk.matching {
+                (
+                    "nothing here holds a run to bind",
+                    "write `$x` for the one node, or put the spread among a group's children",
+                    "a spread binds a run of siblings, and this position has no siblings to run",
+                )
+            } else {
+                (
+                    "nothing here spreads a sequence",
+                    "write `$x` for the one node, or move the spread into an argument list, `[…]`, or `(…, …)`",
+                    "a spread needs the position's own separator, and only a comma-separated one has it",
+                )
+            };
             self.resolver.report(
-                Diagnostic::error(Code::UnspreadSequence, "nothing here spreads a sequence")
+                Diagnostic::error(Code::UnspreadSequence, complaint)
                     .at(span, "this position holds one node")
-                    .help("write `$x` for the one node, or move the spread into an argument list, `[…]`, or `(…, …)`")
-                    .note("a spread needs the position's own separator, and only a comma-separated one has it"),
+                    .help(advice)
+                    .note(why),
             );
             self.failed = true;
             return None;
+        }
+        if walk.matching {
+            return self.pattern_splice(node, walk, sequence, span);
         }
         // Both forms hold one expression — `$..xs` wraps its name the way `$x`
         // does — so there is one path here and no second way to reach a
@@ -6637,6 +6726,51 @@ impl Checker<'_> {
         self.reconcile(&wanted, &found, span)?;
         let hole = walk.splices.len();
         walk.splices.push(expression);
+        Some(if sequence {
+            crate::syntax::Template::Sequence(hole)
+        } else {
+            crate::syntax::Template::Splice(hole)
+        })
+    }
+
+    /// One `$x` or `$..xs` in a pattern, where a splice declares rather than
+    /// computes.
+    ///
+    /// `11-quotation.md` §4: a pattern quote binds only splice variables. So
+    /// the two spellings that name something are the two the form admits, and
+    /// `${ e }` is not one of them — a braced splice holds an expression to be
+    /// evaluated, and a pattern has nothing to evaluate it for. Refusing it
+    /// here rather than in the grammar keeps one splice production for both
+    /// directions, which is what stops the two from drifting.
+    ///
+    /// The bound type is the *scrutinee's* category, supplied by the caller,
+    /// because a pattern is read at the category the position carries and
+    /// binds the claims that position already has.
+    fn pattern_splice(
+        &mut self,
+        node: &SyntaxNode,
+        walk: &mut QuoteWalk,
+        sequence: bool,
+        span: SourceSpan,
+    ) -> Option<crate::syntax::Template> {
+        if node
+            .children_with_tokens()
+            .any(|piece| piece.kind() == SyntaxKind::LBrace)
+        {
+            self.resolver.report(
+                Diagnostic::error(Code::Misplaced, "a pattern has nothing to evaluate")
+                    .at(span, "`${ … }` splices a value, and this position binds a name")
+                    .help("write `$name` for the node this position holds")
+                    .note("a quote that matches reads its holes; only a quote that builds fills them"),
+            );
+            self.failed = true;
+            return None;
+        }
+        let name = child_of(node, |kind| kind == SyntaxKind::NameExpr)
+            .and_then(|held| significant_tokens(&held).next())
+            .map(|token| token.text().to_owned())?;
+        let hole = walk.bound.len();
+        walk.bound.push((name, sequence));
         Some(if sequence {
             crate::syntax::Template::Sequence(hole)
         } else {
@@ -8132,6 +8266,7 @@ impl Checker<'_> {
         for arm in node.children().filter(|child| child.kind() == SyntaxKind::MatchArm) {
             let pattern_node = arm.children().find(|child| child.kind() == SyntaxKind::Pattern)?;
             let (pattern, covered, bindings) = self.check_pattern(&pattern_node, &scrutinee.ty)?;
+            self.report_quoted_literals(&pattern_node, &arm, &bindings);
             if catch_all
                 || uncovered(self.world, &scrutinee.ty, &coverage).is_none()
                 || !coverage.insert(covered.clone())
@@ -8177,11 +8312,90 @@ impl Checker<'_> {
         })
     }
 
+    /// Report a name this arm's pattern quoted literally and its body then
+    /// used as though the pattern had bound it.
+    ///
+    /// `11-quotation.md` §4: a pattern quote binds only splice variables, and
+    /// everything else in it is a literal to be matched. That rule is what
+    /// stops a typo in a token from silently becoming a wildcard, and this is
+    /// the other side of it — without this, `quote { $head(args) }` would
+    /// report `args` as a name nobody declared, which is true and says nothing
+    /// about the `$` that was left off.
+    ///
+    /// A name the arm can already resolve is not reported: `quote { Sounded($a) } -> Sounded(a)`
+    /// quotes a constructor and then calls it, which is the ordinary way to
+    /// rebuild what was matched.
+    fn report_quoted_literals(&mut self, pattern: &SyntaxNode, arm: &SyntaxNode, bindings: &IndexMap<String, Type>) {
+        let Some(quote) = pattern
+            .children()
+            .find(|child| child.kind() == SyntaxKind::QuotePattern)
+        else {
+            return;
+        };
+        let quoted: Vec<String> = quote
+            .descendants_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .filter(|token| token.kind() == SyntaxKind::Identifier)
+            // A splice's own name is the binding, not a literal.
+            .filter(|token| {
+                !token
+                    .parent()
+                    .and_then(|held| held.parent())
+                    .is_some_and(|held| matches!(held.kind(), SyntaxKind::Splice | SyntaxKind::SequenceSplice))
+            })
+            .map(|token| token.text().to_owned())
+            .collect();
+        let Some(body) = child_of(arm, is_expr_node) else {
+            return;
+        };
+        for token in body
+            .descendants_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .filter(|token| token.kind() == SyntaxKind::Identifier)
+            .filter(|token| token.parent().is_some_and(|held| held.kind() == SyntaxKind::NameExpr))
+        {
+            let name = token.text();
+            // Everything a name could already be. The report is for the one
+            // case where it is none of them, because a name that resolves is a
+            // program that means something and this is not the pass that
+            // decides whether it means the right thing.
+            if !quoted.iter().any(|literal| literal == name)
+                || bindings.contains_key(name)
+                || self.locals.contains_key(name)
+                || self.symbols.contains_key(name)
+                || self.world.is_constructor(name)
+                || Builtin::named(name).is_some()
+                || SyntaxOp::named(name).is_some()
+            {
+                continue;
+            }
+            self.resolver.report(
+                Diagnostic::error(
+                    Code::QuotedLiteralName,
+                    format!("the pattern matched `{name}` literally rather than binding it"),
+                )
+                .at(
+                    SourceSpan::new(
+                        u32::from(token.text_range().start()),
+                        u32::from(token.text_range().end()),
+                    ),
+                    "nothing declares this name",
+                )
+                .help(format!("write `${name}` in the pattern to bind what stands there"))
+                .note("a quote pattern binds only its splices; every other word in it is matched as written"),
+            );
+            self.failed = true;
+        }
+    }
+
     fn check_pattern(
         &mut self,
         node: &SyntaxNode,
         target: &Type,
     ) -> Option<(Pattern, Coverage, IndexMap<String, Type>)> {
+        if let Some(quote) = node.children().find(|child| child.kind() == SyntaxKind::QuotePattern) {
+            return self.syntax_pattern(&quote, target);
+        }
         let tokens: Vec<_> = significant_tokens(node).collect();
         let first = tokens.first()?;
         let span = crate::resolve::trimmed_span(node);
@@ -8360,6 +8574,97 @@ impl Checker<'_> {
             | Value::Builtin(_) => Coverage::Literal(literal_key(&value)),
         };
         Some((Pattern::Literal(value), covered, bindings))
+    }
+
+    /// `quote { … }` as a pattern — `11-quotation.md` §4.
+    ///
+    /// The second of the two descents into a syntax value `00-semantics.md` §2
+    /// admits, and what makes it controlled is that it is not a traversal: one
+    /// level of a shape the source grammar already has, binding sub-syntax
+    /// that carries its own path and reveals no `SourceInfo`, no scope, and no
+    /// algebra. Anything deeper is another `match` an author wrote, or the
+    /// recursor.
+    ///
+    /// It goes through [`Self::check_pattern`]'s ordinary answer — a pattern, a
+    /// coverage, and the bindings — so the case tree, the unreachability check
+    /// and the exhaustiveness report treat it exactly as they treat every other
+    /// pattern. There is no second matcher and no second set of rules for a
+    /// `match` that happens to be about syntax.
+    fn syntax_pattern(
+        &mut self,
+        node: &SyntaxNode,
+        target: &Type,
+    ) -> Option<(Pattern, Coverage, IndexMap<String, Type>)> {
+        let span = crate::resolve::trimmed_span(node);
+        if self.reading != Reading::Expansion {
+            self.resolver.report(
+                Diagnostic::error(Code::Misplaced, "a quote is an adapter's form")
+                    .at(span, "this matches syntax, and a piece is not written in syntax")
+                    .note("`Syntax<Cat>` exists in the expansion phase; a piece can neither name one nor obtain one"),
+            );
+            self.failed = true;
+            return None;
+        }
+        // A pattern is read at the scrutinee's category (§4), so the category
+        // has to be known here — and a resolved variable knows none. Nothing
+        // downstream would settle it either, because the pattern is what would
+        // have to, and a pattern that guessed would decide what its own
+        // bindings claim.
+        let Type::Syntax(cat) = self.unifier.resolve(target) else {
+            self.resolver.report(
+                Diagnostic::error(
+                    Code::PatternCategory,
+                    format!(
+                        "a quote pattern matches a syntax value, and this is a `{}`",
+                        crate::infer::plain_one(target)
+                    ),
+                )
+                .at(span, "the scrutinee's type is what the pattern is read at")
+                .help("match a `Syntax<Expr>` or a `Syntax<TokenTree>`; every other type has its own patterns")
+                .note("the pattern is read at the scrutinee's category, so a value with no category says nothing"),
+            );
+            self.failed = true;
+            return None;
+        };
+        let mut walk = QuoteWalk {
+            matching: true,
+            splices: Vec::new(),
+            bound: Vec::new(),
+            scope: Vec::new(),
+        };
+        let body = musa_language::ast::QuotePattern::cast(node.clone())?.body()?;
+        let template = self.quote_template(&body, &mut crate::syntax::template_root(), &mut walk, false)?;
+        let member = Type::Syntax(cat);
+        let mut bindings = IndexMap::new();
+        for (name, sequence) in &walk.bound {
+            let held = if *sequence {
+                Type::List(Box::new(member.clone()))
+            } else {
+                member.clone()
+            };
+            if bindings.insert(name.clone(), held).is_some() {
+                self.resolver.report(
+                    Diagnostic::error(Code::DuplicateName, format!("pattern binding `{name}` is repeated"))
+                        .at(span, "bind each hole once")
+                        .note("two holes of one name would be two nodes, and nothing here says they are the same node"),
+                );
+                self.failed = true;
+                return None;
+            }
+        }
+        // The shape is the coverage, spelled from the template itself: two
+        // arms written with the same shape produce the same key and collide,
+        // and two different shapes never do.
+        let covered = Coverage::Shape(format!("{template:?}"));
+        Some((
+            Pattern::Syntax {
+                template,
+                holes: walk.bound,
+                member,
+            },
+            covered,
+            bindings,
+        ))
     }
 
     fn pattern_literal(&mut self, token: &SyntaxToken, target: &Type, span: SourceSpan) -> Option<Value> {
@@ -11487,6 +11792,32 @@ fn match_pattern(pattern: &Pattern, value: &Value) -> Option<IndexMap<String, Va
                 false
             }
         }
+        // One shape, matched by the inverse of the operation that builds one.
+        // Nothing here reads where a node came from, which is §4's second rule
+        // holding at run time and not only in the checker.
+        Pattern::Syntax {
+            template,
+            holes,
+            member,
+        } => {
+            let Value::Syntax(node) = value else {
+                return None;
+            };
+            let filled = crate::syntax::matched(template, node, holes.len())?;
+            for ((name, _), held) in holes.iter().zip(filled) {
+                bindings.insert(
+                    name.clone(),
+                    match held {
+                        crate::syntax::Spliced::One(one) => Value::Syntax(Box::new(one)),
+                        crate::syntax::Spliced::Many(run) => Value::List {
+                            member: member.clone(),
+                            values: run.into_iter().map(|held| Value::Syntax(Box::new(held))).collect(),
+                        },
+                    },
+                );
+            }
+            true
+        }
         Pattern::EmptyList => matches!(value, Value::List { values, .. } if values.is_empty()),
         Pattern::Cons { head, tail } => {
             if let Value::List { member, values } = value
@@ -12101,8 +12432,23 @@ fn is_expr_node(kind: SyntaxKind) -> bool {
 /// through every node and neither is ever passed without the other: the splices
 /// in the order the body writes them, and the binders currently in scope with
 /// the template position each was declared at.
+/// One walk of a quote's body, and what it collects on the way.
+///
+/// The two quotation forms share this walk because they share a grammar: a
+/// quote that builds and a quote that matches read the same body with the same
+/// parser, and only what a `$` *means* differs. So `matching` decides which of
+/// the two hole vectors is filled — exactly one of them ever is — rather than
+/// there being two walks to keep in step.
 struct QuoteWalk {
+    /// Whether this body is a pattern (`11-quotation.md` §4) rather than a
+    /// construction.
+    matching: bool,
+    /// A construction's holes: the expression whose value stands in each.
     splices: Vec<Expr>,
+    /// A pattern's holes: the name each binds, and whether it binds a run.
+    bound: Vec<(String, bool)>,
+    /// The binders the body itself writes, for hygiene. Always empty in a
+    /// pattern: a pattern writes no binder, because it writes nothing.
     scope: Vec<(String, Vec<u32>)>,
 }
 
