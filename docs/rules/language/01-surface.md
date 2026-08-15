@@ -11,7 +11,8 @@ The normative schematic grammar is:
 
 ```ebnf
 type         := type-name type-args? | "(" type ")" | "(" type "," type ("," type)* ")"
-              | type "->" type
+              | fn-type
+fn-type      := type "->" type | "(" (type ("," type)*)? ")" "->" type
 type-name    := (module-path "::")? IDENT
 type-args    := "<" type ("," type)* ">"
 type-params  := "<" IDENT ("," IDENT)* ">"
@@ -41,7 +42,7 @@ method-call  := expr "." IDENT "(" args? ")"
 index        := expr "[" expr "]"
 operation    := expr binary-op expr
 binary-op    := "==" | "<" | "+" | "-" | "*" | "/"
-record-literal := type-name "{" field-init ("," field-init)* ","? "}"
+record-literal := (type-name | qualified) "{" field-init ("," field-init)* ","? "}"
 field-init   := IDENT "=" expr
 match        := "match" expr "{" match-arm ("," match-arm)* ","? "}"
 match-arm    := pattern "->" expr
@@ -54,7 +55,7 @@ pattern      := "_" | literal | IDENT | constructor-pattern | record-pattern
               | "[" "]" | "[" pattern "," ".." IDENT "]"
               | "(" pattern "," pattern ("," pattern)* ")"
 constructor-pattern := (type-name "::")? IDENT ("(" pattern ("," pattern)* ")")?
-record-pattern := type-name "{" field-pattern ("," field-pattern)* ","? "}"
+record-pattern := (type-name | qualified) "{" field-pattern ("," field-pattern)* ","? "}"
 field-pattern := IDENT ("=" pattern)?
 music-expr   := "music" "{" music-statement* "}"
 music-use    := "use" expr ";"
@@ -90,7 +91,15 @@ mod-decl     := "mod" IDENT ";"
 module-file  := mod-decl*
 ```
 
-Function arrows associate right. Expression forms bind as follows, tightest first:
+Function arrows associate right, and a function type may name more than one parameter. `(B, A) -> B` is a function of
+two arguments, not a function of one pair: a parenthesized type list immediately followed by `->` is a parameter list,
+and that reading wins over the product reading, which is only reachable where no arrow follows. `A -> B` remains the
+one-parameter shorthand, and a function *over a pair* is written `((A, B)) -> C`. This is not a convenience. A call is
+complete (`02-core-calculus.md` §1.3), so a two-argument step function has a two-parameter type and there has to be a
+way to write it down; §1.6's own `fold_from_start` declaration needs one, and note 40 §2 recorded the same gap for the
+recursor's four-argument branches.
+
+Expression forms bind as follows, tightest first:
 
 | Level | Forms | Associativity |
 | --- | --- | --- |
@@ -390,6 +399,12 @@ elaborator has the type, looks the name up in that type's namespace, and either 
 such case. In an inferring position the qualified form is required. Patterns are checked against the scrutinee's type,
 so arms write bare constructors and read as they always did.
 
+A named-field case is written with a *qualified* head in both literal and pattern position, which is why
+`record-literal` and `record-pattern` take `(type-name | qualified)` rather than `type-name`. `Reading::Refused` is not
+a type name and §1.5's path rule forbids reading it as one — a capitalized segment ends a module path — so the head
+production has to admit it explicitly. The bare form `Refused { at = p, why = w }` is accepted in checking position
+under the same rule as every other constructor.
+
 That rule is not cosmetic, and the evidence is a bug the compiler is still carrying. The staff adapter declares
 `Untied`, the staff *package* declares `Untied`, and because constructor names were flat within a module the two
 collided; `names_a_phase_type` in `crates/musa-compiler/src/core.rs` exists to work around what that collision did to
@@ -656,7 +671,12 @@ let close: Option<Voicing> = close_position(sonority, c4);
 let open: Option<Voicing> = drop_position(sonority, c3, 2);
 
 fn sound(chosen: Voicing) -> EventTrack[WrittenTime, ScoreFact] { play(chosen, 1/2) }
-fn sounded(chosen: Option<Voicing>) -> EventTrack[WrittenTime, ScoreFact] { option_fold(music { rest/2 }, sound, chosen) }
+fn sounded(chosen: Option<Voicing>) -> EventTrack[WrittenTime, ScoreFact] {
+    match chosen {
+        Some(voicing) -> sound(voicing),
+        None -> music { rest/2 },
+    }
+}
 let close_bar = sounded(close);
 let open_bar = sounded(open);
 

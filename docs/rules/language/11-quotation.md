@@ -23,41 +23,52 @@ rather than assumed.
 
 ## 1. `Syntax<Cat>` is an indexed family
 
-`Cat` is an ordinary four-case enum, and `Syntax` is an inductive family indexed by it (`02-core-calculus.md` §1.1):
+`Cat` is an ordinary two-case enum, and `Syntax` is an inductive family indexed by it (`02-core-calculus.md` §1.1):
 
 ```text
-enum Cat { Expr, Item, Pattern, TokenTree }
+enum Cat { Expr, TokenTree }
 
 Syntax : (c : Cat) → Type        % the constructors are compiler-owned (127da's builder facade)
 ```
 
 The representation does not change. A syntax value is still the lossless token tree prompt 127da declared — `Missing`,
 `Token`, `Identifier`, `Group` over a `SourceInfo` with no eliminator — and `Syntax<TokenTree>` is that tree with
-nothing claimed about it. **The index is a claim about how the tree parses**, and the three refined categories say that
-the real parser read this tree as an expression, an item, or a pattern.
+nothing claimed about it. **The index is a claim about how the tree parses**, and `Expr` says that the real parser read
+this tree as an expression.
+
+**Two cases, not four.** Prompt 131 wrote `Item` and `Pattern` beside them and prompt 132's trial found that no program
+constructs either: both trialled adapters build expressions and read token trees, and each unused case carries its own
+share of the round-trip obligation below. `Item` comes back when an adapter expands a region into declarations rather
+than into an expression, which no planned adapter does; re-adding it is an enum case and its round-trip test.
 
 Two rules follow, and between them they are the whole discipline:
 
 - **A refined claim is introduced only by an operation that establishes it.** The constructors are compiler-owned, so
   there is no way to assert `Syntax<Expr>` about a tree nobody parsed. The introduction forms are §2's quote, whose body
-  the real parser read at that category, and §4's pattern, which re-establishes a claim by matching a shape that carries
-  it.
+  the real parser read at that category; §4's pattern, which re-establishes a claim by matching a shape that carries it;
+  and a **checked parse**, `as_expression : Syntax<TokenTree> -> Option<Syntax<Expr>>`, which runs the real parser over
+  a tree the adapter already holds and answers `None` when it is not an expression.
 - **A claim is forgotten wherever it is not needed.** A position of category `TokenTree` accepts a value of any
   category, because a token-tree position is precisely one that has not been parsed as anything more specific. Every
   other position requires its own category exactly. This is one acceptance rule rather than a `forget` operation the
   author writes, and it is why splicing an expression into an argument list needs no ceremony.
 
-**What the index buys, stated as the thing it replaces.** Today `Syntax` is one untyped type, so an adapter that builds
-something in expression position and gets it wrong learns at expansion time, from `checked_expression`, in the
-composer's editor. With the index the same mistake is a type error in the adapter, at the line that made it, before the
-adapter ships. That is the first real use of 129's indexed families, and it is deliberately the first: prompt 132's
-paper trial rewrites this adapter on paper, and if the index does not pay for itself there, it is dropped before any
-code is written.
+**What the index buys, and where.** Prompt 131 argued it at *construction*: an adapter that builds something in
+expression position and gets it wrong would learn at the line that made it rather than at expansion time. Prompt 132's
+trial found that argument does not survive its own conclusion — once construction goes through §2's quote, the parser
+has already read the body, so a constructed node cannot be miscategorized and the index catches nothing there.
+
+**What it buys is the splice boundary**, and that is a real thing to buy. An adapter that lifts a node out of the
+composer's own region holds a `Syntax<TokenTree>` and must put it where an expression stands; `bar (4, 4) { { } }` puts
+a brace group where a pitch belongs. `as_expression` is where that is decided, so the diagnostic lands on the composer's
+line instead of on the region after a malformed tree has reached `checked_expression`. This is also why splicing the
+composer's node is *preferable* to rebuilding one from its text: the spliced node keeps its `Original` source
+information (§3), so Origin, `edit`, and `print` all point back at what was written.
 
 **The obligation the index creates**, owed by prompts 138 and 147: every value of `Syntax<Expr>` prints as source that
-the parser reads back as an expression, and likewise for `Item` and `Pattern`. The index is a certificate, and a
-certificate nobody checks is a comment. Until that is discharged, the index is a claim the elaborator makes and the
-implementation is believed to keep.
+the parser reads back as an expression, and `as_expression` answers `Some` exactly when it does. The index is a
+certificate, and a certificate nobody checks is a comment. Until that is discharged, the index is a claim the elaborator
+makes and the implementation is believed to keep.
 
 ## 2. `quote at here { … }`
 
@@ -79,8 +90,21 @@ would make an ambiguous body's meaning depend on the order the elaborator tried.
 
 **Splicing.**
 
-- `$x` splices one value where one node stands. The position's category must accept `x`'s (§1), and a mismatch is a
-  compile-time error naming both categories and pointing at the splice.
+```ebnf
+splice := "$" IDENT | "${" expr "}" | "$.." IDENT
+```
+
+- `${ e }` splices the value of one expression where one node stands, and `$x` is its shorthand for the case where that
+  expression is a name. The position's category must accept the value's (§1), and a mismatch is a compile-time error
+  naming both categories and pointing at the splice.
+- The expression form is not a convenience. A block holds exactly one expression and there is no `let` inside it
+  (`01-surface.md` §1), so a splice argument that is *computed* — `${ dot_count(here, dots) }`,
+  `${ stated_field(region, here, read.head.beats, "…")? } ` — has nowhere else to be written. Fifteen of the twenty
+  construction sites in the staff adapter splice a computed value, and a helper function per site would be `call7` with
+  better parameter names. `${ e }` is also the spelling `01-surface.md` §7 already fixed for the kernel quote's holes,
+  so the two quotations agree here rather than differing (§6).
+- `?` inside a splice leaves the enclosing *function*, exactly as `01-surface.md` §1 says: a quote is not a function
+  boundary and a splice is not an argument to one.
 - `$..xs` splices a `List<Syntax<c>>` where a sequence is grammatical — an argument list, a group's contents, a run of
   items or statements. Where a sequence is not grammatical it is refused, naming the position.
 - A splice stands where a **whole node** stands and never inside one. There is no way to build the identifier `abc` out
@@ -137,7 +161,9 @@ says an adapter expansion record is a source of `Generated` steps and nothing mo
 the anchor is the source root. So `../across-stages/04-identity-and-realization.md` needs no amendment, and this
 document records that it checked rather than leaving the reader to infer it.
 
-`checked_expression` keeps its duplicate-path gate, and its job changes. It used to catch an author who reused a role
+`checked_expression` keeps its duplicate-path gate, and its job changes twice. Its parse half generalizes to §1's
+`as_expression`, which runs at any node rather than only over a whole result, so the "this is not an expression"
+diagnostic can land on the composer's line. Its duplicate-path half stays and used to catch an author who reused a role
 integer; now the derivation makes that unreachable, so what it catches is a compiler defect. Keeping it is not
 belt-and-braces: it is the test that makes "unique by construction" a claim with evidence rather than an assertion, and
 prompt 148's audit consumes it.
@@ -172,11 +198,30 @@ arm above is not defensive style; it is the arm coverage requires, and it is whe
 At most one `$..xs` may appear in one sequence pattern. Two would make matching a search for a split point, and choosing
 the split would be a guess about the author's intent.
 
-**What this deletes, precisely.** The staff adapter's dispatch table has two halves and this form removes one of them.
-Shape decisions — is this a call, a bracketed list, a block, an operator application — become patterns, and the
-`text_equal(kind, …)` chain over them goes. Leaf-token decisions — is this token a `PitchLiteral` or a `Rational` —
-become `==` against prompt 138's typed `TokenKind`, which this document may name and does not define. Neither half alone
-finishes the job, and saying which is which is what stops prompt 145 from being surprised by the remainder.
+**What this deletes, precisely, and what it does not.** The staff adapter's dispatch table has **three** halves.
+
+1. **Shape decisions** — is this a call, a bracketed list, a block, an operator application — become patterns, and the
+   `text_equal` chain over them goes.
+2. **Leaf-token decisions** — is this token a `PitchLiteral` or a `Rational` — become `==` against prompt 138's typed
+   `TokenKind` and `Delimiter`, which this document may name and does not define.
+3. **Notation keywords** — `bar`, `rest`, `slur`, `clef`, fifteen of them — are neither, and **nothing here removes
+   them.** They are not shapes: `bar (4, 4) { c5/1 }` is three siblings of a layout group and Musa's grammar has no form
+   that matches it, so a quote pattern written at `Expr` cannot describe it. They are not token kinds: `bar` and `slur`
+   are both `Identifier`.
+
+Prompt 131 wrote "two halves" and prompt 132's trial found the third. The answer for it is not a quote pattern —
+`quote { bra }` is a perfectly good quote of a perfectly good identifier, so a misspelling stays an arm that silently
+never matches, which is the failure the `text_equal` chain already has. The answer is an ordinary `enum` of the
+notation's words and one `Text`-to-case lookup, which centralizes every literal in one function and makes the dispatch
+that reads it coverage-checked. That is `01-surface.md` §1.3's enum doing its job, not this form.
+
+Saying which half is which is what stops prompt 145 from being surprised by the remainder, and the trial's measurement
+is that the dispatch table shrinks by about a sixth rather than by a half.
+
+**The trial found no quote pattern in either adapter**, for a reason worth recording here rather than discovering twice:
+a quote pattern is written in Musa, and the notation both adapters read is not Musa. The form is for an adapter over
+Musa syntax — a template dialect, a lint, a structured edit — and prompt 147's freeze is where an absent user is
+decided.
 
 ## 5. The single-descent rule, satisfied rather than weakened
 
@@ -216,6 +261,14 @@ the four properties above are what discharge them for this form.
 | the role-integer argument to `syntax_built`, and twenty-seven hand-allocated values | §3's computed `Derived { origin, quotation, path }` |
 | string dispatch on shapes, in the `text_equal` chain | §4's quote patterns |
 | string dispatch on token kinds and delimiters | prompt 138's typed `TokenKind` and `Delimiter` |
+| the phase operations `syntax_built`, `syntax_token`, `syntax_identifier`, `syntax_group` | the quote, which is the only construction form left |
+| the phase operations `syntax_binder`, `syntax_reference`, `syntax_binding` | §2's hygiene rule, which is structural; no shipped adapter calls any of the three |
+
+Seven of the fourteen phase operations therefore go, leaving `recurse_syntax`, `run_syntax_step`,
+`syntax_fold_from_leaves`, `syntax_at`, `syntax_anchor`, `syntax_number`, and `as_expression`. `syntax_anchor` also
+loses its third argument, because the `SourceInfo` it took is what §3 computes. Prompt 139 owns the deletions; the
+binding three come back when an adapter introduces a name the composer can see and refer to, which neither the staff nor
+the studio adapter does.
 
 ## 6. Two quotations, one discipline, and they are not merged
 
@@ -226,7 +279,7 @@ Musa has two quotation forms and they stay two:
 | Stage | elaboration | the expansion phase |
 | Builds | a closed event-track term | `Syntax<Cat>` |
 | Holes hold | host **values**, instantiated into a term with no functions | **syntax**, spliced into syntax |
-| Hole spelling | `${e}` | `$x`, `$..xs` |
+| Hole spelling | `${e}` | `${e}`, with `$x` as its shorthand, and `$..xs` for a sequence |
 
 Four rules are shared, and this is the one place they are stated together:
 

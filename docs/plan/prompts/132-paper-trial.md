@@ -1,7 +1,7 @@
 ---
 id: 132
 slug: paper-trial
-status: pending
+status: done
 depends_on: [129, 130, 131]
 phase: 3
 ---

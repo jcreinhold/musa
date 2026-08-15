@@ -248,8 +248,9 @@ floats live inside registered primitives at the DSP edge, outside the source lan
 The law relating the two is stated and, for a `DecEq` instance, provable rather than assumed: `equal(x, y)` answers
 `true` exactly when `Id A x y` is inhabited. Where an instance supplies only `Eq`, the law is prose and the law suites
 check it on the concrete instances. Where it supplies `DecEq`, the law falls out of `decide`, and Hedberg's theorem —
-decidable equality implies uniqueness of identity proofs — is the reason admitting K in §1.4 of the core costs nothing
-for the types Musa actually declares. `citations.md` §13.2 carries the reference.
+decidable equality implies uniqueness of identity proofs — is the reason `02-core-calculus.md` §1.4 does **not** admit K
+as an axiom: for the types Musa actually declares, `DecEq` already supplies it. `citations.md` §13.2 carries the
+reference.
 
 ## 8. Iterating and building
 

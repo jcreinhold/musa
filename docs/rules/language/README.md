@@ -29,6 +29,16 @@ rewrote `01-surface.md` and added `10-traits.md`; prompt 131 added `11-quotation
 admit a second, controlled descent into a syntax value. The record is
 [`../../notes/research/language-design-closure/42-dependent-core-decision.md`](../../notes/research/language-design-closure/42-dependent-core-decision.md).
 
+Prompt 132 then trialled all four on ten complete programs before any code implemented them, and corrected them where a
+program contradicted them:
+[`../../notes/research/language-design-closure/43-dependent-language-trial.md`](../../notes/research/language-design-closure/43-dependent-language-trial.md)
+§13 lists each correction with the program that forced it. The load-bearing ones: `02-core-calculus.md` §1.4 **no longer
+admits K as an axiom**, because no program unifies an index and `DecEq` supplies K as a theorem for every family Musa
+declares; `11-quotation.md`'s `Cat` has two cases rather than four and gains a checked-parse introduction form;
+`01-surface.md`'s type grammar gains a multi-parameter function type, and its record literal and pattern heads admit a
+qualified name so a named-field enum case can be written at all. The trial also predicts prompt 145's rewrite will *not*
+clear its stated line-count gate, and says why the gate is the wrong measurement.
+
 ## Document map
 
 | File | Contract |

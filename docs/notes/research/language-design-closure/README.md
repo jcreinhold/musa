@@ -144,6 +144,20 @@ ship.
     that note 39 §8.1's first reason — no *musical* operation needs a value in a type — is not refuted but was answering
     a different question. Prompt 145's rewrite of the same file is the gate that decides whether it was right.
 
+44. [43-dependent-language-trial.md](43-dependent-language-trial.md) trials the language prompts 129–131 specified on
+    ten complete programs before any code implements it: the staff adapter's emitting section, its twenty call sites,
+    its printer, its dispatch table, `Pending`, `document_read`'s `call7`, note 28's five programs, and the studio
+    adapter's `validate`. No falsifier fires and eight things change. Quotation is a larger win than prompt 131 claimed
+    — the fourteen phase operations become **seven**, not merely the role integers — but the dispatch table has *three*
+    halves rather than two, and the third is fifteen notation keywords no type system can remove. `Syntax<Cat>` earns
+    its keep only at the splice boundary and needs a third introduction form, a checked parse; `Cat` loses two unused
+    cases. **K is dropped**, discharging `02-core-calculus.md` §1.4's nomination of this prompt: no program unifies an
+    index, and Hedberg gives K as a theorem for every type the corpus declares. Three specified spellings turn out to be
+    unwritable in the grammar that specifies them. It predicts prompt 145's rewrite lands at 2,050 ± 100 lines — a 14%
+    reduction that **does not clear the bar**, argues the line count measures the file rather than the language, and
+    proposes a ten-row table of counts in its place. It records one gap the pass does not cover: hidden constructors
+    have no spelling, and no prompt from 133 to 149 adds one.
+
 The proof gate failed for the design notes 19–41 pursued, and nothing in *those* notes moved to `docs/rules/` or into
 implementation prompts. Note 42 is the exception and says why: it is an amendment taken under
 [`docs/rules/README.md`](../../../rules/README.md)'s procedure, on engineering evidence those notes did not weigh, and

@@ -239,8 +239,8 @@ verified by `scripts/check-docs.sh`: the corpus is outside the repository and is
 | dependent pattern matching, index unification, and coverage | Coquand (1992), "Pattern matching with dependent types"; Goguen, McBride, and McKinna (2006), "Eliminating dependent pattern matching" |
 | strict positivity as the admission condition for an inductive family | Coquand and Paulin (1990), "Inductively defined types" |
 | the predicative universe hierarchy and its consistency consequence | Martin-Löf (1984), *Intuitionistic Type Theory* |
-| K, uniqueness of identity proofs, and what admitting it forecloses | Streicher (1993), "Investigations into intensional type theory"; Hofmann and Streicher (1998), "The groupoid interpretation of type theory" |
-| decidable equality implies UIP, which is why K is not an extra assumption for the families Musa declares | Hedberg (1998), "A coherence theorem for Martin-Löf's type theory" |
+| K, uniqueness of identity proofs, and what admitting it as an axiom would foreclose — which `02-core-calculus.md` §1.4 declines to do | Streicher (1993), "Investigations into intensional type theory"; Hofmann and Streicher (1998), "The groupoid interpretation of type theory" |
+| decidable equality implies UIP, which is why `DecEq` supplies K as a theorem for every family Musa declares and no axiom is needed | Hedberg (1998), "A coherence theorem for Martin-Löf's type theory" |
 | well-founded recursion as the general form of a terminating definition, with structural decrease as its special case | Nordström (1988), "Terminating general recursion" |
 | dictionary-passing elaboration of a class-like construct, which `10-traits.md` builds on | Wadler and Blott (1989), "How to make ad-hoc polymorphism less ad hoc" |
 | coherence, and the design space that overlap, specialization, and defaulting sit in — Musa refuses all three and `10-traits.md` §9 says why | Peyton Jones, Jones, and Meijer (1997), "Type classes: an exploration of the design space" |

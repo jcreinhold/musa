@@ -41,7 +41,7 @@ e  ::= x                                    % variable
      | elim_N …                             % the generated dependent recursor of a family
      | Id e e e                             % identity: `Id A x y`
      | refl e                               % its sole constructor
-     | J … | K …                            % its dependent eliminator, and uniqueness of identity proofs (§1.4)
+     | J …                                  % its dependent eliminator; K is derived, not primitive (§1.4)
      | let x : e = e in e                   % non-recursive local binding
      | ?α[σ]                                % a metavariable under an explicit substitution (elaboration only, §2)
 ```
@@ -223,19 +223,31 @@ the number itself.
 ### 1.4 Identity, and the K decision
 
 `Id A x y` is the identity type, `refl` its sole constructor, and `J` its dependent eliminator. **Uniqueness of identity
-proofs is admitted**: every `p : Id A x y` is convertible with `refl`, equivalently `K` is available.
+proofs is not admitted as an axiom.** K is a theorem where a program needs it, derived from decidable equality, and not
+a rule of the core.
 
-This is a real commitment and is written down as one. Musa is a set-level theory with no higher-inductive and no
-univalent ambitions, and admitting K buys the thing indexed families need: together with constructor injectivity and
-disjointness it makes index unification for families like `Vec A n` and `Syntax<Cat>` decidable and complete on the
-fragment `match` actually generates. What it forecloses is any later interpretation in which a type may have non-trivial
-paths — univalence, higher inductive types, and internal parametricity in the cubical sense are all inconsistent with K
-and are therefore not reachable from here by extension. That is not a cost this project pays, because none of them is on
-any roadmap, but it *is* a door that closes, and note 39 §8.2 already warned against importing adjacent dependent
-foundations by analogy.
+Prompt 129 wrote the other decision, and prompt 132 was nominated in this section as the place it could be cheaply
+undone. The trial's answer is that **no program unifies an index at all.** `Syntax<Cat>` appears only at closed index
+constructors, so a `match` on a syntax value never learns anything about its index; `Vec A n` has no user in ten
+programs, because the two fixed-arity things the staff adapter has read better as enums with named cases. K was
+therefore admitted for a use nothing exercises.
 
-**Prompt 132 is where this can still be cheaply undone.** The trial rewrites index-unifying programs for `Vec` and
-`Syntax<Cat>`; if they go through without K, the K decision is dropped there rather than discovered during prompt 135.
+The reason it can go without loss is `10-traits.md` §7's, which was written as a remark and is the argument: for every
+type these programs declare, K is a *theorem*. Each is a finite inductive family over base types with decidable
+equality, and Hedberg's theorem gives uniqueness of identity proofs from decidable equality — so `DecEq A` supplies
+exactly what an index-unifying `match` on `Syntax<c>` would have needed, at `DecEq Cat`, over two closed cases.
+
+Two consequences follow and prompt 135 is held to both. The coverage checker may not use a unification rule that
+requires K until a program requires one, which costs nothing today and is checkable at the rule rather than at its uses.
+And what admitting K globally would have foreclosed stays open rather than closed: univalence, higher inductive types,
+and internal parametricity in the cubical sense are inconsistent with K as an axiom and are merely absent without it.
+None is on any roadmap, which is why prompt 129 was willing to pay; the trial found the payment unnecessary, and note 39
+§8.2's warning against importing adjacent dependent foundations by analogy is better served by not importing the axiom
+either.
+
+**Re-opening is an ordinary amendment**, with the evidence it needs stated in advance: an indexed family whose index
+type has no `DecEq`, and a `match` on it that needs the deletion rule. Prompt 141's `Vec A n` is the first candidate and
+probably is not one, since `Nat` has `DecEq`.
 
 ## 2. Static semantics: bidirectional elaboration
 
@@ -681,6 +693,7 @@ moved would be the result.
 
 The theoretical provenance of this calculus — every construction, and the chapter or paper it comes from — is
 [`citations.md`](citations.md) §13. The short form: nothing here is novel. Universes, Π, dependent records, families,
-`Id`, K, NbE, bidirectional elaboration, and pattern unification are all standard, and Musa's own contributions are the
-`Storable` constraint, the three-outcome budget law, the phase environment of §5.9, and the refusals — no cumulativity,
-no `partial`, no CBPV, no signed integer — each of which is priced somewhere in that section.
+`Id`, Hedberg's theorem, NbE, bidirectional elaboration, and pattern unification are all standard, and Musa's own
+contributions are the `Storable` constraint, the three-outcome budget law, the phase environment of §5.9, and the
+refusals — no cumulativity, no `partial`, no CBPV, no signed integer, no K as an axiom — each of which is priced
+somewhere in that section.
