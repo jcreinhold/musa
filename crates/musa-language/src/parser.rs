@@ -156,6 +156,8 @@ const PIECE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::LetKw,
     SyntaxKind::FnKw,
     SyntaxKind::DataKw,
+    SyntaxKind::RecordKw,
+    SyntaxKind::EnumKw,
 ];
 /// What ends a broken declaration at the file's lexical root.
 const ROOT_RECOVERY: &[SyntaxKind] = &[
@@ -165,6 +167,8 @@ const ROOT_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::SignatureKw,
     SyntaxKind::StructureKw,
     SyntaxKind::DataKw,
+    SyntaxKind::RecordKw,
+    SyntaxKind::EnumKw,
     SyntaxKind::PieceKw,
     SyntaxKind::LibraryKw,
 ];
@@ -651,8 +655,8 @@ impl<'a> Parser<'a> {
                 self.template_decl();
             } else if self.at(SyntaxKind::SignatureKw) {
                 self.signature_decl();
-            } else if self.at(SyntaxKind::DataKw) {
-                self.data_decl();
+            } else if self.at_type_decl() {
+                self.type_decl();
             } else if self.at_any(&[SyntaxKind::StructureKw, SyntaxKind::ModuleKw]) {
                 self.structure_decl();
             } else if self.at(SyntaxKind::MakeKw) {
@@ -735,6 +739,130 @@ impl<'a> Parser<'a> {
             }
         }
         self.expect(SyntaxKind::RBrace, "`}`");
+        self.finish();
+    }
+
+    /// Whether a type declaration opens here.
+    fn at_type_decl(&self) -> bool {
+        self.at_any(&[SyntaxKind::DataKw, SyntaxKind::RecordKw, SyntaxKind::EnumKw])
+    }
+
+    /// Whichever of `data`, `record`, and `enum` opens here.
+    ///
+    /// One dispatch for the three because they stand in exactly the same
+    /// places: a type is declared at a file's root, in a piece, in a library,
+    /// and in a structure, and which of the three words opens it changes what
+    /// the type *is* rather than where it may be written.
+    fn type_decl(&mut self) {
+        if self.at(SyntaxKind::RecordKw) {
+            self.record_decl();
+        } else if self.at(SyntaxKind::EnumKw) {
+            self.enum_decl();
+        } else {
+            self.data_decl();
+        }
+    }
+
+    /// `record Pending { read: Reading; dots: Dots; }` — named fields, and
+    /// nothing else.
+    ///
+    /// Fields end in `;` rather than `,` because a field declaration is a
+    /// declaration and every other one in this language ends in `;`. An enum's
+    /// *cases* are comma-separated, which is the visible difference between
+    /// reading a record and reading a sum.
+    fn record_decl(&mut self) {
+        self.start(SyntaxKind::RecordDecl);
+        self.bump(); // record
+        self.expect(SyntaxKind::Identifier, "a type name");
+        if self.at(SyntaxKind::Less) {
+            self.type_params();
+        }
+        self.expect(SyntaxKind::LBrace, "`{`");
+        while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
+            if self.at(SyntaxKind::Identifier) {
+                self.field_decl();
+            } else {
+                self.expected("a field, such as `dots: Dots;`");
+                self.recover(&[SyntaxKind::Identifier, SyntaxKind::RBrace]);
+            }
+        }
+        self.expect(SyntaxKind::RBrace, "`}`");
+        self.finish();
+    }
+
+    /// `read: Reading;` — one declared field.
+    fn field_decl(&mut self) {
+        self.start(SyntaxKind::FieldDecl);
+        self.bump(); // the field's name
+        self.expect(SyntaxKind::Colon, "`:`");
+        self.type_expr();
+        self.expect(SyntaxKind::Semicolon, "`;`");
+        self.finish();
+    }
+
+    /// `enum Reading<A> { Done(A), Refused { at: NodePath, why: Text }, }` —
+    /// a nominal sum whose cases live in its namespace.
+    ///
+    /// A case may carry nothing, a positional list of types, or named fields.
+    /// The positional form names types and not fields, which is the difference
+    /// from `data`: `data` made every constructor argument a projectable field,
+    /// and §1.3 does not, because a case with fields worth naming is written in
+    /// the named form where the names are the interface.
+    fn enum_decl(&mut self) {
+        self.start(SyntaxKind::EnumDecl);
+        self.bump(); // enum
+        self.expect(SyntaxKind::Identifier, "a type name");
+        if self.at(SyntaxKind::Less) {
+            self.type_params();
+        }
+        self.expect(SyntaxKind::LBrace, "`{`");
+        // An enum with no cases at all is admitted, and deliberately: `enum
+        // Empty {}` is the type with no closed inhabitant, which is what
+        // `P -> Empty` needs to say *not P* (§1.3).
+        while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
+            if self.at(SyntaxKind::Identifier) {
+                self.enum_case();
+                if self.at(SyntaxKind::Comma) {
+                    self.bump();
+                } else {
+                    break;
+                }
+            } else {
+                self.expected("a case name, or `}`");
+                self.recover(&[SyntaxKind::Identifier, SyntaxKind::RBrace]);
+            }
+        }
+        self.expect(SyntaxKind::RBrace, "`}`");
+        self.finish();
+    }
+
+    /// One case of an enum: empty, positional, or named.
+    fn enum_case(&mut self) {
+        self.start(SyntaxKind::EnumCase);
+        self.bump(); // the case's name
+        if self.at(SyntaxKind::LParen) {
+            self.bump();
+            while !self.at(SyntaxKind::RParen) && self.current().is_some() {
+                self.type_expr();
+                if self.at(SyntaxKind::Comma) {
+                    self.bump();
+                } else {
+                    break;
+                }
+            }
+            self.expect(SyntaxKind::RParen, "`)`");
+        } else if self.at(SyntaxKind::LBrace) {
+            self.bump();
+            while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
+                if self.at(SyntaxKind::Identifier) {
+                    self.field_decl();
+                } else {
+                    self.expected("a field, such as `why: Text;`");
+                    self.recover(&[SyntaxKind::Identifier, SyntaxKind::RBrace]);
+                }
+            }
+            self.expect(SyntaxKind::RBrace, "`}`");
+        }
         self.finish();
     }
 
@@ -831,14 +959,16 @@ impl<'a> Parser<'a> {
                 self.let_decl();
             } else if self.at(SyntaxKind::FnKw) {
                 self.fn_decl();
-            } else if self.at(SyntaxKind::DataKw) {
-                self.data_decl();
+            } else if self.at_type_decl() {
+                self.type_decl();
             } else {
-                self.expected("`let`, `fn`, `data`, or `}`");
+                self.expected("`let`, `fn`, `data`, `record`, `enum`, or `}`");
                 self.recover(&[
                     SyntaxKind::LetKw,
                     SyntaxKind::FnKw,
                     SyntaxKind::DataKw,
+                    SyntaxKind::RecordKw,
+                    SyntaxKind::EnumKw,
                     SyntaxKind::RBrace,
                 ]);
             }
@@ -932,8 +1062,8 @@ impl<'a> Parser<'a> {
                 self.let_decl();
             } else if self.at(SyntaxKind::FnKw) {
                 self.fn_decl();
-            } else if self.at(SyntaxKind::DataKw) {
-                self.data_decl();
+            } else if self.at_type_decl() {
+                self.type_decl();
             } else if self.at(SyntaxKind::ScoreKw) {
                 self.score_decl();
             } else if self.at(SyntaxKind::PerformanceKw) {
@@ -1040,8 +1170,8 @@ impl<'a> Parser<'a> {
                 self.studio_decl();
             } else if self.at(SyntaxKind::SignatureKw) {
                 self.signature_decl();
-            } else if self.at(SyntaxKind::DataKw) {
-                self.data_decl();
+            } else if self.at_type_decl() {
+                self.type_decl();
             } else if self.at_any(&[SyntaxKind::StructureKw, SyntaxKind::ModuleKw]) {
                 self.structure_decl();
             } else if self.at(SyntaxKind::TemplateKw)
@@ -1672,17 +1802,27 @@ impl<'a> Parser<'a> {
         self.expect(SyntaxKind::RBrace, "`}`");
     }
 
-    /// `field = expr` — one field of a record update.
+    /// `read.refusal = why` — one replaced place of a record update.
+    ///
+    /// The left-hand side is a path of field names, not an expression. `p with
+    /// { f(x).g = y }` is a syntax error rather than a puzzle: a replacement
+    /// names a place in the record, and an expression that computes one names
+    /// no place to put the answer back.
     fn field_update(&mut self) {
         self.start(SyntaxKind::FieldUpdate);
-        if self.at(SyntaxKind::Identifier) {
-            self.bump();
-        } else {
+        if !self.at(SyntaxKind::Identifier) {
             self.expected("a field name");
             self.recover(&[SyntaxKind::Comma, SyntaxKind::RBrace]);
             self.finish();
             return;
         }
+        self.start(SyntaxKind::FieldPath);
+        self.bump();
+        while self.at(SyntaxKind::Dot) {
+            self.bump();
+            self.expect(SyntaxKind::Identifier, "a field name");
+        }
+        self.finish();
         self.expect(SyntaxKind::Equals, "`=`");
         self.expr();
         self.finish();
@@ -1735,18 +1875,7 @@ impl<'a> Parser<'a> {
                 | SyntaxKind::StretchKw
                 | SyntaxKind::RetrogradeKw
                 | SyntaxKind::InvertKw,
-            ) => {
-                self.start(SyntaxKind::NameExpr);
-                self.bump();
-                // `Module.member` — one name in two words. A dot only ever
-                // reads this way here: a dotted duration follows a rational,
-                // never a name.
-                if self.at(SyntaxKind::Dot) && self.nth_significant(1) == Some(SyntaxKind::Identifier) {
-                    self.bump();
-                    self.bump();
-                }
-                self.finish();
-            }
+            ) => self.name_or_record_literal(),
             Some(
                 SyntaxKind::Integer
                 | SyntaxKind::Rational
@@ -1775,6 +1904,87 @@ impl<'a> Parser<'a> {
             Some(SyntaxKind::ChordKw) => self.chord_expr(),
             _ => self.expected("an expression"),
         }
+    }
+
+    /// A written name, a `::` path, or a record literal headed by either.
+    ///
+    /// The three are one function because they are one prefix: nothing decides
+    /// between them until the tokens after the name have been read, and reading
+    /// them here means the head is written down once.
+    fn name_or_record_literal(&mut self) {
+        let checkpoint = self.events.len();
+        self.bump(); // the name
+        if self.at_path_separator() {
+            // `Tying::Untied`, `std::tonal::TokenKind::PitchLiteral`. The
+            // parser counts no segments: §1.5's capitalization rule decides
+            // where the module prefix ends, and that is a question about what
+            // the names denote.
+            while self.at_path_separator() {
+                self.bump();
+                self.bump();
+                if self.at_any(MODULE_NAME) {
+                    self.bump();
+                } else {
+                    self.expected("a name in the type's namespace");
+                    break;
+                }
+            }
+            self.start_at(checkpoint, SyntaxKind::PathExpr);
+        } else {
+            // `Module.member` — one name in two words. A dot only ever
+            // reads this way here: a dotted duration follows a rational,
+            // never a name.
+            if self.at(SyntaxKind::Dot) && self.nth_significant(1) == Some(SyntaxKind::Identifier) {
+                self.bump();
+                self.bump();
+            }
+            self.start_at(checkpoint, SyntaxKind::NameExpr);
+        }
+        self.finish();
+        if self.at_field_init() {
+            self.start_at(checkpoint, SyntaxKind::RecordLiteralExpr);
+            self.field_init_list();
+            self.finish();
+        }
+    }
+
+    /// Whether the cursor is on the two `:` tokens that spell `::`.
+    fn at_path_separator(&self) -> bool {
+        self.at(SyntaxKind::Colon) && self.nth_significant(1) == Some(SyntaxKind::Colon)
+    }
+
+    /// Whether a record literal's brace opens here, rather than a block or the
+    /// brace of an enclosing form.
+    ///
+    /// Three tokens of lookahead rather than a capitalization test or a
+    /// suppression flag, because the question has an answer and this is it: a
+    /// record literal writes at least one `field = value` — §1.2 gives it no
+    /// empty form — and nothing else in this language puts `=` directly after
+    /// a brace. So `match p { … }`, `if p { … }`, and a name that merely
+    /// happens to precede a block are all read correctly, and no author has to
+    /// learn a list of positions where a literal is suppressed.
+    fn at_field_init(&self) -> bool {
+        self.at(SyntaxKind::LBrace)
+            && self.nth_significant(1) == Some(SyntaxKind::Identifier)
+            && self.nth_significant(2) == Some(SyntaxKind::Equals)
+    }
+
+    /// `{ read = r, dots = d }` — the fields of a record literal.
+    fn field_init_list(&mut self) {
+        self.bump(); // `{`
+        while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
+            self.start(SyntaxKind::FieldInit);
+            self.expect(SyntaxKind::Identifier, "a field name");
+            self.expect(SyntaxKind::Equals, "`=`");
+            self.expr();
+            self.finish();
+            if self.at(SyntaxKind::Comma) {
+                self.bump();
+            } else {
+                break;
+            }
+        }
+        self.expect(SyntaxKind::RBrace, "`}`");
     }
 
     /// `fn (x: τ, …) -> τ { e }` — an anonymous function.
@@ -1975,6 +2185,35 @@ impl<'a> Parser<'a> {
                 self.expect(SyntaxKind::Identifier, "a binding name");
                 self.expect(SyntaxKind::RParen, "`)`");
             }
+            // `Tying::Untied`, `Reading::Refused { why = w }` — a case named
+            // in its type's namespace. The bare spelling is the arm below and
+            // means the same thing: which of the two a word is is a question
+            // about what is declared, and §1.3 has the checker answer it
+            // against the scrutinee's type rather than the parser guess.
+            Some(SyntaxKind::Identifier) if self.at_path_separator_next() => {
+                self.bump();
+                while self.at_path_separator() {
+                    self.bump();
+                    self.bump();
+                    if self.at_any(MODULE_NAME) {
+                        self.bump();
+                    } else {
+                        self.expected("a case name");
+                        break;
+                    }
+                }
+                if self.at(SyntaxKind::LParen) {
+                    self.constructor_bindings();
+                } else if self.at(SyntaxKind::LBrace) {
+                    self.record_pattern();
+                }
+            }
+            // `Pending { read = r, taken }` — a record pattern, naming the
+            // fields this arm cares about and nothing about the rest.
+            Some(SyntaxKind::Identifier) if self.nth_significant(1) == Some(SyntaxKind::LBrace) => {
+                self.bump();
+                self.record_pattern();
+            }
             // `Sounded(pitch, held)` — a declared constructor, taking one
             // binding per field. A bare name is still one token here, because
             // whether `Silence` is a constructor or a binding is a question
@@ -1982,16 +2221,7 @@ impl<'a> Parser<'a> {
             // type being matched.
             Some(SyntaxKind::Identifier) if self.nth_significant(1) == Some(SyntaxKind::LParen) => {
                 self.bump();
-                self.bump(); // `(`
-                while !self.at(SyntaxKind::RParen) && self.current().is_some() {
-                    self.expect(SyntaxKind::Identifier, "a binding name");
-                    if self.at(SyntaxKind::Comma) {
-                        self.bump();
-                    } else {
-                        break;
-                    }
-                }
-                self.expect(SyntaxKind::RParen, "`)`");
+                self.constructor_bindings();
             }
             Some(
                 SyntaxKind::Identifier
@@ -2034,6 +2264,62 @@ impl<'a> Parser<'a> {
             }
             _ => self.expected("a match pattern"),
         }
+        self.finish();
+    }
+
+    /// Whether `::` follows the token at the cursor.
+    fn at_path_separator_next(&self) -> bool {
+        self.nth_significant(1) == Some(SyntaxKind::Colon) && self.nth_significant(2) == Some(SyntaxKind::Colon)
+    }
+
+    /// `(pitch, held)` — one binding per field of a constructor pattern.
+    ///
+    /// Bindings and not patterns: nested patterns are what
+    /// `02-core-calculus.md` §6.2's case tree admits and what the surface will
+    /// grow, but widening this position is a change to every existing `match`
+    /// in the tree and belongs with the migration that reads them.
+    fn constructor_bindings(&mut self) {
+        self.bump(); // `(`
+        while !self.at(SyntaxKind::RParen) && self.current().is_some() {
+            self.expect(SyntaxKind::Identifier, "a binding name");
+            if self.at(SyntaxKind::Comma) {
+                self.bump();
+            } else {
+                break;
+            }
+        }
+        self.expect(SyntaxKind::RParen, "`)`");
+    }
+
+    /// `{ read = r, taken }` — the fields a record pattern names.
+    ///
+    /// The head is already read. A field's sub-position holds another pattern,
+    /// which is what makes `Pending { read = Reading { refusal = why } }`
+    /// writable; the shorthand `taken` binds a field to its own name, and is
+    /// the form an arm that only wants the value writes.
+    fn record_pattern(&mut self) {
+        self.start(SyntaxKind::RecordPattern);
+        self.bump(); // `{`
+        while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
+            if !self.at(SyntaxKind::Identifier) {
+                self.expected("a field name");
+                self.recover(&[SyntaxKind::Comma, SyntaxKind::RBrace]);
+                continue;
+            }
+            self.start(SyntaxKind::FieldPattern);
+            self.bump();
+            if self.at(SyntaxKind::Equals) {
+                self.bump();
+                self.pattern();
+            }
+            self.finish();
+            if self.at(SyntaxKind::Comma) {
+                self.bump();
+            } else {
+                break;
+            }
+        }
+        self.expect(SyntaxKind::RBrace, "`}`");
         self.finish();
     }
 

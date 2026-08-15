@@ -145,6 +145,63 @@ pub enum Refusal {
         /// The fields the literal writes, in the order written.
         found: Vec<Name>,
     },
+    /// A record type declares one field name twice.
+    ///
+    /// A telescope with two `f`s is not merely confusing: the second shadows the
+    /// first, so one of the two is a field no projection can ever reach and no
+    /// literal can decline to write.
+    #[error("this record type declares `{field}` twice")]
+    DuplicateField {
+        /// The second declaration.
+        at: Origin,
+        /// The first, so the report can point at both.
+        previous: Origin,
+        /// The name declared twice.
+        field: Name,
+    },
+    /// A family declares one constructor name twice.
+    #[error("`{family}` declares `{case}` twice")]
+    DuplicateCase {
+        /// The second declaration.
+        at: Origin,
+        /// The first, so the report can point at both.
+        previous: Origin,
+        /// The family declaring it.
+        family: Name,
+        /// The name declared twice.
+        case: Name,
+    },
+    /// Two replacements in one update where one path is a prefix of the other.
+    ///
+    /// Refused rather than ordered, because both orders are defensible and
+    /// neither is what the author meant: `p with { read = x, read.refusal = e }`
+    /// either replaces `read` and then edits the replacement, or edits the old
+    /// `read` and then discards it. An update whose meaning depends on which is
+    /// a rule nobody should have to remember.
+    #[error("this replacement's path is covered by another in the same update")]
+    OverlappingUpdate {
+        /// The later replacement.
+        at: Origin,
+        /// The one whose path is a prefix of it, or which it is a prefix of.
+        previous: Origin,
+    },
+    /// A constructor written bare where nothing said which type it builds.
+    ///
+    /// `01-surface.md` §1.3 admits the bare form in a *checking* position, where
+    /// the expected type names the family whose namespace the name is read in.
+    /// In an inferring position there is no such type, and choosing among the
+    /// families that happen to declare the name would make a program mean
+    /// whatever was declared last.
+    #[error("`{name}` is a constructor, and nothing here says of which type")]
+    BareConstructor {
+        /// The name.
+        at: Origin,
+        /// What was written.
+        name: Name,
+        /// The families that declare a case of this name, so the report can
+        /// offer the qualified form the author meant.
+        families: Vec<Name>,
+    },
     /// A term stood in type position whose own type is not a universe.
     #[error("this stands where a type is needed, but it is not one")]
     NotAType {
@@ -185,14 +242,18 @@ pub enum Refusal {
     /// One refusal rather than two, because "this type has no constructors at
     /// all" and "this type has constructors and not that one" are the same
     /// sentence to the author: the name they wrote does not build this.
-    #[error("`{name}` is not a constructor of the type this pattern matches")]
+    #[error("`{name}` is not one of this type's constructors")]
     NoSuchConstructor {
-        /// The pattern.
+        /// The pattern, or the qualified name.
         at: Origin,
         /// The name it wrote.
         name: Name,
-        /// The type the subject turned out to have.
+        /// The type the name was looked up in: the subject's type at a pattern,
+        /// the family itself at a qualified name.
         ty: Term,
+        /// The constructors that type does declare, so the report can offer them
+        /// rather than only deny the one asked for.
+        cases: Vec<Name>,
     },
     /// A `match` left a constructor with no arm, at a subject the index
     /// constraints leave reachable (§6.2).

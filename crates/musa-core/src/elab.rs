@@ -77,10 +77,10 @@ use crate::level::{Level, LevelMeta};
 use crate::meta::{Meta, MetaSource};
 use crate::origin::Origin;
 use crate::quote::{Depth, quote};
-use crate::raw::{Raw, RawField, RawShape};
+use crate::raw::{Raw, RawField, RawShape, RawUpdate};
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
-use crate::term::{DbLevel, Field, Name, Plicity, Shape, Term};
+use crate::term::{DbLevel, Field, Index, Name, Plicity, Shape, Term};
 use crate::unify::Unifier;
 use crate::value::{Closure, Env, Form, Telescope, Value};
 
@@ -213,11 +213,7 @@ impl Elaborator {
     /// the level is one per *use site* and this is what a use site is.
     fn constant(&mut self, scope: &Scope, here: Origin, name: &Name) -> Result<Typed, ElabError> {
         let Some(found) = scope.declared(name) else {
-            return Err(Refusal::UnknownName {
-                name: Arc::clone(name),
-                at: here,
-            }
-            .into());
+            return Err(self.unresolved(scope, here, name));
         };
         let level = if found.is_recursor() {
             self.fresh_level(here)?
@@ -230,6 +226,43 @@ impl Elaborator {
             term: constant.term(here),
             ty,
         })
+    }
+
+    /// Why a name resolved to nothing, as precisely as the context can say.
+    ///
+    /// Three different mistakes wear the same spelling, and telling them apart
+    /// is the whole value of the report. `Tying.Tied` reached a namespace that
+    /// exists and has no such case; a bare `Untied` is a case of something, and
+    /// this position does not say of what; anything else is a name nobody
+    /// declared.
+    fn unresolved(&mut self, scope: &Scope, here: Origin, name: &Name) -> ElabError {
+        if let Some(family) = scope.cx().stranger(name) {
+            let ty = match family.ty_term(&mut self.meter) {
+                Ok(ty) => ty,
+                Err(error) => return error.into(),
+            };
+            return Refusal::NoSuchConstructor {
+                at: here,
+                name: Arc::clone(name),
+                ty,
+                cases: family.cases(),
+            }
+            .into();
+        }
+        let families = scope.cx().cases(name);
+        if !families.is_empty() {
+            return Refusal::BareConstructor {
+                at: here,
+                name: Arc::clone(name),
+                families,
+            }
+            .into();
+        }
+        Refusal::UnknownName {
+            name: Arc::clone(name),
+            at: here,
+        }
+        .into()
     }
 
     /// A universe at a level nobody wrote — §2.1's third creation site.
@@ -313,16 +346,51 @@ impl Elaborator {
                 ty: written,
                 body,
             } => crate::rec::define(self, scope, here, name, written, body, ty).map(Some),
-            RawShape::Var(_)
-            | RawShape::Universe(_)
+            // §1.3's bare constructor. Only in this direction, and that is the
+            // rule rather than a fallback: here the expected type names the
+            // family whose namespace the word is read in, and where it does not
+            // there is nothing to read it in.
+            RawShape::Var(name) => match self.bare(scope, here, name, ty)? {
+                Some(term) => Ok(Some(term)),
+                None => self.abstracted(scope, raw, ty),
+            },
+            RawShape::Universe(_)
             | RawShape::Pi { .. }
             | RawShape::App { .. }
             | RawShape::RecordType(_)
             | RawShape::Project { .. }
+            | RawShape::Update { .. }
             | RawShape::Id { .. }
             | RawShape::J { .. }
             | RawShape::Annot { .. } => self.abstracted(scope, raw, ty),
         }
+    }
+
+    /// `Untied ⇐ Tying`, when nothing nearer already means `Untied`.
+    ///
+    /// Answers `None` when the name is bound, is declared in its own right, is
+    /// already qualified, or when the expected type is not a family with a case
+    /// of that name — every one of which is a term with an ordinary rule, and
+    /// none of which this may take over.
+    fn bare(&mut self, scope: &Scope, here: Origin, name: &Name, ty: &Value) -> Result<Option<Term>, ElabError> {
+        if name.contains('.') || scope.lookup(name).is_some() || scope.declared(name).is_some() {
+            return Ok(None);
+        }
+        let Some(element) = crate::family::element(&mut self.meter, ty)? else {
+            return Ok(None);
+        };
+        let Some(declared) = element.group.family_at(element.family) else {
+            return Ok(None);
+        };
+        if !declared
+            .constructors
+            .iter()
+            .any(|constructor| *constructor.name == **name)
+        {
+            return Ok(None);
+        }
+        let qualified = Raw::var(here, format!("{}.{name}", declared.name));
+        self.check(scope, &qualified, ty).map(Some)
     }
 
     /// Wrap `raw` in an implicit λ when the type it is checked against wants
@@ -516,6 +584,7 @@ impl Elaborator {
             // project out of a literal writes the type it should have.
             RawShape::Record(_) => Err(Refusal::Uninferable { at: here }.into()),
             RawShape::Project { record, field } => self.projection(scope, here, record, field),
+            RawShape::Update { record, updates } => self.update(scope, here, record, updates),
             RawShape::Id { ty, left, right } => self.identity(scope, here, ty, left, right),
             RawShape::Refl(witness) => {
                 let inferred = self.infer(scope, witness)?;
@@ -717,7 +786,15 @@ impl Elaborator {
         let mut level = Level::ZERO;
         let mut inner = scope.clone();
         let mut elaborated = Vec::with_capacity(fields.len());
-        for field in fields {
+        for (position, field) in fields.iter().enumerate() {
+            if let Some(previous) = fields.iter().take(position).find(|earlier| earlier.name == field.name) {
+                return Err(Refusal::DuplicateField {
+                    at: field.term.origin(),
+                    previous: previous.term.origin(),
+                    field: Arc::clone(&field.name),
+                }
+                .into());
+            }
             let (term, field_level) = self.check_type(&inner, &field.term)?;
             level = level.max(&field_level);
             let value = inner.eval(&mut self.meter, &term)?;
@@ -759,6 +836,149 @@ impl Elaborator {
             ty: field_type(&mut self.meter, &telescope, &subject, field)?,
             term: Term::project(here, inferred.term, Arc::clone(field)),
         })
+    }
+
+    /// `e with { p⃗ = v, … } ⇒ A`, where `A` is `e`'s own type.
+    ///
+    /// The update is a rebuild, not a mutation: every field the paths do not
+    /// name is carried over by projection, and every field they do is checked at
+    /// the type the telescope gives it *after* the fields before it have been
+    /// replaced. That is what makes an incoherent update — changing `n` in
+    /// `{ n : Nat, xs : Vec A n }` and keeping `xs` — an ordinary type error
+    /// rather than a rule this function has to state.
+    fn update(&mut self, scope: &Scope, here: Origin, record: &Raw, updates: &[RawUpdate]) -> Result<Typed, ElabError> {
+        overlapping(updates)?;
+        let inferred = self.infer(scope, record)?;
+        let inferred = self.inserted(scope, inferred)?;
+        let unfolded = force(&mut self.meter, &inferred.ty)?;
+        let record_ty = Value::clone(unfolded.as_ref().unwrap_or(&inferred.ty));
+        let Form::RecordType(telescope) = &record_ty.form else {
+            return Err(Refusal::NotARecord {
+                at: record.origin(),
+                ty: scope.quote_type(&mut self.meter, &record_ty)?,
+            }
+            .into());
+        };
+        let telescope = telescope.clone();
+        let ty_term = scope.quote_type(&mut self.meter, &record_ty)?;
+        let subject = scope.eval(&mut self.meter, &inferred.term)?;
+        // §9.1's "one `let` per segment". Without it the subject is written once
+        // per field it carries over, and a record of eight fields updated at one
+        // of them would evaluate the thing being updated eight times.
+        let name: Name = Arc::from("with");
+        let inner = scope.define(Arc::clone(&name), Arc::new(record_ty.clone()), subject.clone());
+        let replacements: Vec<Replacement<'_>> = updates.iter().map(Replacement::of).collect();
+        let literal = self.rebuilt(
+            &inner,
+            here,
+            &Term::var(here, Index(0)),
+            &subject,
+            &telescope,
+            &replacements,
+        )?;
+        Ok(Typed {
+            term: Term::bind(here, name, ty_term, inferred.term, literal),
+            ty: record_ty,
+        })
+    }
+
+    /// The literal one segment of an update rebuilds.
+    ///
+    /// `subject` denotes the record being rebuilt *in `scope`*, and `value` is
+    /// what it evaluates to. They are separate arguments because the term is a
+    /// variable the caller just bound and the value is the record it was bound
+    /// to: the type of a field carried over is read off the second, and the term
+    /// that carries it over is a projection of the first.
+    fn rebuilt(
+        &mut self,
+        scope: &Scope,
+        here: Origin,
+        subject: &Term,
+        value: &Value,
+        telescope: &Telescope,
+        updates: &[Replacement<'_>],
+    ) -> Result<Term, ElabError> {
+        for update in updates {
+            let Some(head) = update.path.first() else { continue };
+            if !telescope.fields.iter().any(|declared| declared.name == *head) {
+                return Err(Refusal::NoSuchField {
+                    at: update.origin,
+                    field: Arc::clone(head),
+                }
+                .into());
+            }
+        }
+        let mut env = telescope.env.clone();
+        let mut fields = Vec::with_capacity(telescope.fields.len());
+        for declared in telescope.fields.iter() {
+            let expected = eval(&mut self.meter, &env, &declared.term)?;
+            let mine: Vec<Replacement<'_>> = updates
+                .iter()
+                .filter(|update| update.path.first() == Some(&declared.name))
+                .filter_map(Replacement::rest)
+                .collect();
+            let term = match mine.split_first() {
+                // Carried over. Its type is read at the *old* record and the
+                // literal wants it at the new one, so the two are unified rather
+                // than assumed equal — that is where a dependent field whose
+                // type an earlier replacement invalidated reports.
+                None => {
+                    let term = Term::project(here, subject.clone(), Arc::clone(&declared.name));
+                    let found = field_type(&mut self.meter, telescope, value, &declared.name)?;
+                    self.unifier
+                        .unify_types(&mut self.meter, scope.depth(), here, &expected, &found)?;
+                    term
+                }
+                // The path ends here: the new value is checked at the field's
+                // type, like any other field of any other literal.
+                Some((update, rest)) if update.path.is_empty() && rest.is_empty() => {
+                    self.check(scope, update.value, &expected)?
+                }
+                Some(_) => self.deeper(scope, here, subject, &declared.name, &expected, &mine)?,
+            };
+            env = env.push(scope.eval(&mut self.meter, &term)?);
+            fields.push(Field {
+                name: Arc::clone(&declared.name),
+                term,
+            });
+        }
+        Ok(Term::new(here, Shape::Record(fields.into())))
+    }
+
+    /// One field of an update whose paths reach through it.
+    fn deeper(
+        &mut self,
+        scope: &Scope,
+        here: Origin,
+        subject: &Term,
+        field: &Name,
+        expected: &Value,
+        updates: &[Replacement<'_>],
+    ) -> Result<Term, ElabError> {
+        let unfolded = force(&mut self.meter, expected)?;
+        let field_ty = Value::clone(unfolded.as_ref().unwrap_or(expected));
+        let Form::RecordType(inner) = &field_ty.form else {
+            let at = updates.first().map_or(here, |update| update.origin);
+            return Err(Refusal::NotARecord {
+                at,
+                ty: scope.quote_type(&mut self.meter, &field_ty)?,
+            }
+            .into());
+        };
+        let inner = inner.clone();
+        let projected = Term::project(here, subject.clone(), Arc::clone(field));
+        let projected_value = scope.eval(&mut self.meter, &projected)?;
+        let ty_term = scope.quote_type(&mut self.meter, &field_ty)?;
+        let under = scope.define(Arc::clone(field), Arc::new(field_ty), projected_value.clone());
+        let body = self.rebuilt(
+            &under,
+            here,
+            &Term::var(here, Index(0)),
+            &projected_value,
+            &inner,
+            updates,
+        )?;
+        Ok(Term::bind(here, Arc::clone(field), ty_term, projected, body))
     }
 
     /// `Id A x y ⇒ Type l`.
@@ -953,6 +1173,54 @@ struct Bound {
     scope: Scope,
     ty_term: Term,
     value_term: Term,
+}
+
+/// One replacement of an update, as the rebuild of one segment sees it.
+///
+/// The path shortens by a segment at each level, which is why this borrows the
+/// [`RawUpdate`]'s rather than owning a copy: the recursion is over suffixes of
+/// one path and nothing needs a second.
+#[derive(Clone, Copy)]
+struct Replacement<'a> {
+    origin: Origin,
+    path: &'a [Name],
+    value: &'a Raw,
+}
+
+impl<'a> Replacement<'a> {
+    /// The whole replacement, at the outermost record.
+    fn of(update: &'a RawUpdate) -> Self {
+        Self {
+            origin: update.origin,
+            path: &update.path,
+            value: &update.value,
+        }
+    }
+
+    /// The same replacement, one segment further in.
+    fn rest(&self) -> Option<Self> {
+        Some(Self {
+            path: self.path.split_first()?.1,
+            ..*self
+        })
+    }
+}
+
+/// Refuse an update where one path is a prefix of another.
+fn overlapping(updates: &[RawUpdate]) -> Result<(), ElabError> {
+    for (position, update) in updates.iter().enumerate() {
+        for earlier in updates.iter().take(position) {
+            let shorter = earlier.path.len().min(update.path.len());
+            if earlier.path.iter().take(shorter).eq(update.path.iter().take(shorter)) {
+                return Err(Refusal::OverlappingUpdate {
+                    at: update.origin,
+                    previous: earlier.origin,
+                }
+                .into());
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Replace every metavariable in an elaborated term by what it stands for.

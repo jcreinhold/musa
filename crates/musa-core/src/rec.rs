@@ -345,6 +345,20 @@ impl Rewrite<'_> {
                 record: self.term(record, bound)?,
                 field: Arc::clone(field),
             },
+            RawShape::Update { record, updates } => {
+                let mut rewritten = Vec::with_capacity(updates.len());
+                for update in updates.iter() {
+                    rewritten.push(crate::raw::RawUpdate {
+                        origin: update.origin,
+                        path: update.path.clone(),
+                        value: self.term(&update.value, bound)?,
+                    });
+                }
+                RawShape::Update {
+                    record: self.term(record, bound)?,
+                    updates: Arc::from(rewritten),
+                }
+            }
             RawShape::Id { ty, left, right } => RawShape::Id {
                 ty: self.term(ty, bound)?,
                 left: self.term(left, bound)?,
@@ -489,6 +503,11 @@ fn binders(pattern: &RawPattern, into: &mut Vec<Name>) {
         RawPattern::Bind { name, .. } => into.push(Arc::clone(name)),
         RawPattern::Constructor { fields, .. } => {
             for field in fields {
+                binders(field, into);
+            }
+        }
+        RawPattern::Record { fields, .. } => {
+            for (_, field) in fields {
                 binders(field, into);
             }
         }

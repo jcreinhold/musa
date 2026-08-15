@@ -745,6 +745,31 @@ static DATA: KeywordDoc = doc!(
      ```musa\ndata Motive {\n    Silence,\n    Sounded(pitch: Pitch, held: Duration),\n}\n```"
 );
 
+static RECORD: KeywordDoc = doc!(
+    "record",
+    "declare a type of named fields",
+    "A `record` declaration names fields and their types. It is constructed by naming every field, read by \
+     projecting one, matched by naming the ones an arm cares about, and rebuilt by `with` — including along a path, \
+     so changing a field of a field is one line rather than a rebuilt inner value.\n\n\
+     A record *is* its fields: two declarations with the same field names at the same types are one type, and one is \
+     accepted where the other is expected. Where two quantities have to stay apart, declare them as one-case `enum`s \
+     instead, because each `enum` generates its own type.\n\n\
+     ```musa\nrecord Pending {\n    read: Reading;\n    dots: Dots;\n}\n\nfn refuse(p: Pending, why: Text) -> \
+     Pending { p with { read.refusal = why } }\n```"
+);
+
+static ENUM: KeywordDoc = doc!(
+    "enum",
+    "declare a type of alternatives",
+    "An `enum` declares alternatives, one case at a time. A case may carry nothing, a positional list of types, or \
+     named fields, and `match` over the declared cases is how a reader takes one apart with coverage checked.\n\n\
+     Cases live in the type's namespace — `Tying::Untied` — so two enums may declare a case of the same name without \
+     colliding. The bare spelling is accepted wherever the expected type is already known, which is where the type \
+     says which namespace the word is read in.\n\n\
+     ```musa\nenum Tying { Untied, TiedOn }\n\nenum Reading<A> {\n    Done(A),\n    Refused { at: NodePath, why: \
+     Text },\n}\n```"
+);
+
 /// The keyword's documentation, or `None` for anything that is not a
 /// keyword.
 ///
@@ -765,6 +790,8 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         SyntaxKind::SignatureKw => &SIGNATURE,
         SyntaxKind::StructureKw => &STRUCTURE,
         SyntaxKind::DataKw => &DATA,
+        SyntaxKind::RecordKw => &RECORD,
+        SyntaxKind::EnumKw => &ENUM,
         SyntaxKind::ModuleKw => &MODULE,
         SyntaxKind::ModKw => &MOD,
         SyntaxKind::MakeKw => &MAKE,
@@ -991,6 +1018,16 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::IfExpr
         | SyntaxKind::RecordUpdateExpr
         | SyntaxKind::FieldUpdate
+        | SyntaxKind::FieldPath
+        | SyntaxKind::RecordLiteralExpr
+        | SyntaxKind::FieldInit
+        | SyntaxKind::PathExpr
+        | SyntaxKind::RecordPattern
+        | SyntaxKind::FieldPattern
+        | SyntaxKind::RecordDecl
+        | SyntaxKind::FieldDecl
+        | SyntaxKind::EnumDecl
+        | SyntaxKind::EnumCase
         | SyntaxKind::QuestionExpr
         | SyntaxKind::Pattern
         | SyntaxKind::MusicExpr
@@ -1053,6 +1090,8 @@ mod tests {
             SyntaxKind::ModKw,
             SyntaxKind::StructureKw,
             SyntaxKind::DataKw,
+            SyntaxKind::RecordKw,
+            SyntaxKind::EnumKw,
             SyntaxKind::ModuleKw,
             SyntaxKind::TransposeKw,
             SyntaxKind::UpKw,

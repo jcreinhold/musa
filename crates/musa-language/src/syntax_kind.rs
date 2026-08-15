@@ -289,6 +289,10 @@ pub enum SyntaxKind {
     StructureKw,
     /// `data`
     DataKw,
+    /// `record`
+    RecordKw,
+    /// `enum`
+    EnumKw,
     /// `module`, which no longer declares one. Lexed so the migration
     /// diagnostic can point at the word and carry the word that replaces it.
     ModuleKw,
@@ -540,14 +544,15 @@ pub enum SyntaxKind {
     IfExpr,
     /// `subject with { field = expr, ... }`.
     ///
-    /// Surface syntax with no core term behind it: the compiler elaborates it
-    /// to the nominal constructor the declaration already generates, applied
-    /// to the written right-hand sides and to the subject's other fields
-    /// (`docs/rules/language/02-core-calculus.md` §5). The subject is the
-    /// first child; the rest are the `FieldUpdate`s, in the order they were
-    /// written.
+    /// Surface syntax with no core term behind it: it elaborates to one `let`
+    /// binding the subject and one record literal per path segment, so the
+    /// subject is evaluated once however many fields are carried over
+    /// (`docs/rules/language/01-surface.md` §9.1). The subject is the first
+    /// child; the rest are the `FieldUpdate`s, in the order they were written.
     RecordUpdateExpr,
-    /// `field = expr` — one replaced field of a record update.
+    /// `read.refusal = why` — one replaced field of a record update: a
+    /// [`SyntaxKind::FieldPath`] and the expression that replaces what it
+    /// names.
     FieldUpdate,
     /// `subject?` — propagate a `Result`'s failure out of the function.
     ///
@@ -617,6 +622,60 @@ pub enum SyntaxKind {
     DataVariant,
     /// `pitch: Pitch` — one named field of one constructor.
     DataField,
+    /// `record Pending { read: Reading; dots: Dots; }` — a declaration of
+    /// named fields.
+    ///
+    /// Structural, not nominal: `01-surface.md` §1.2 says a record *is* its
+    /// fields, so the declared name is what diagnostics say and not what makes
+    /// the type. Two declarations with the same fields at the same types
+    /// denote one type, which is why this is a different node from
+    /// [`SyntaxKind::EnumDecl`] rather than a one-case spelling of it.
+    RecordDecl,
+    /// `read: Reading;` — one field of a [`SyntaxKind::RecordDecl`], or of an
+    /// enum case that names its fields.
+    FieldDecl,
+    /// `enum Tying { Untied, TiedOn }` — a nominal sum.
+    ///
+    /// Each declaration generates its own family, so two enums may declare a
+    /// case of the same name without colliding (`01-surface.md` §1.3). That is
+    /// the whole difference from [`SyntaxKind::RecordDecl`] above.
+    EnumDecl,
+    /// `Refused { at: NodePath, why: Text }` — one case of an enum.
+    ///
+    /// Empty, positional, or named. A positional case holds types and no field
+    /// names; a named case holds [`SyntaxKind::FieldDecl`]s.
+    EnumCase,
+    /// `Pending { read = r, dots = d }` — a record literal.
+    ///
+    /// The head is the written type or qualified constructor; the rest are the
+    /// [`SyntaxKind::FieldInit`]s, in the order they were written. There is no
+    /// positional form: `01-surface.md` §1.2 refuses one, because eight fields
+    /// written positionally is a line that says nothing about what is in it.
+    RecordLiteralExpr,
+    /// `read = r` — one field of a [`SyntaxKind::RecordLiteralExpr`].
+    FieldInit,
+    /// `Tying::Untied`, `std::tonal::TokenKind::PitchLiteral` — a name in a
+    /// type's namespace.
+    ///
+    /// Read left to right under §1.5's capitalization rule: lowercase segments
+    /// are modules, the first capitalized segment names the type, and exactly
+    /// one segment follows it.
+    PathExpr,
+    /// `Pending { read = r, taken }` — a record pattern.
+    ///
+    /// It names the fields an arm cares about and says nothing about the rest.
+    /// There is nothing to be exhaustive about and so no `..`: a record has one
+    /// shape.
+    RecordPattern,
+    /// `read = r`, or the `taken` shorthand that binds a field to its own
+    /// name — one field of a [`SyntaxKind::RecordPattern`].
+    FieldPattern,
+    /// `read.refusal` — the path a [`SyntaxKind::FieldUpdate`] replaces.
+    ///
+    /// A path of field names and nothing else. `p with { f(x).g = y }` is a
+    /// syntax error rather than a puzzle, because a replacement names a place
+    /// in the record rather than an expression that computes one.
+    FieldPath,
     /// `Tree<Nat>` — a declared type, applied to its arguments. A bare
     /// `Motive` is a [`SyntaxKind::TypeName`]; this is the applied form, which
     /// only a parameterized declaration can be written in.

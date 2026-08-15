@@ -22,6 +22,7 @@ mod elaboration_laws;
 mod family_laws;
 mod normalization_laws;
 mod provenance_laws;
+mod record_laws;
 mod termination_laws;
 mod unification_laws;
 

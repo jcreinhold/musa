@@ -22,11 +22,11 @@ use std::sync::Arc;
 use crate::budget::{Budget, Meter};
 use crate::error::CoreError;
 use crate::eval::eval;
-use crate::family::{Found, Group};
+use crate::family::{Constant, Found, Group};
 use crate::list::List;
 use crate::origin::Origin;
 use crate::quote::Depth;
-use crate::term::{DbLevel, Index, Term};
+use crate::term::{DbLevel, Index, Name, Term};
 use crate::value::{Env, Value};
 
 /// The binders a term is read under, and the budget its conversions run in.
@@ -109,6 +109,43 @@ impl Cx {
     /// What a declared name refers to here, most recent declaration first.
     pub(crate) fn declared(&self, name: &str) -> Option<Found> {
         self.declared.iter().find_map(|group| Found::named(group, name))
+    }
+
+    /// The family a qualified name reaches into that has no such member.
+    ///
+    /// `Tying.Tied` where `Tying` is declared and `Tied` is not one of its
+    /// cases. Told apart from an unknown name because the two are different
+    /// mistakes: one is a name nobody declared, the other is a case this type
+    /// does not have, and only the second can list the cases it does.
+    pub(crate) fn stranger(&self, name: &str) -> Option<Constant> {
+        let (family, case) = name.split_once('.')?;
+        if case.is_empty() || case.contains('.') || self.declared(name).is_some() {
+            return None;
+        }
+        match self.declared(family)? {
+            Found::Rigid(constant) if constant.is_family() => Some(constant),
+            Found::Rigid(_) | Found::Recursor(..) => None,
+        }
+    }
+
+    /// The families in scope that declare a case named `case`, most recent
+    /// declaration first.
+    ///
+    /// What a bare constructor could have meant. Plural because two enums may
+    /// share a case spelling — `01-surface.md` §1.3 makes that legal on purpose
+    /// — so the answer to "which did you mean" is a list and never a guess.
+    pub(crate) fn cases(&self, case: &str) -> Vec<Name> {
+        self.declared
+            .iter()
+            .flat_map(|group| group.families.iter())
+            .filter(|declared| {
+                declared
+                    .constructors
+                    .iter()
+                    .any(|constructor| *constructor.name == *case)
+            })
+            .map(|declared| Arc::from(format!("{}.{case}", declared.name)))
+            .collect()
     }
 
     /// This context extended by an assumption at type `ty`, written at

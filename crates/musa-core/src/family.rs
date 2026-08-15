@@ -426,6 +426,26 @@ impl Constant {
         }
     }
 
+    /// Whether this is the family itself rather than one of its members.
+    pub(crate) const fn is_family(&self) -> bool {
+        matches!(self.role, Role::Family)
+    }
+
+    /// The cases this family declares, in declaration order.
+    ///
+    /// What a diagnostic lists when a name reached into the namespace and found
+    /// nothing: the answer to "no such case" is the cases there are.
+    pub(crate) fn cases(&self) -> Vec<Name> {
+        let Some(declared) = self.group.family_at(self.family) else {
+            return Vec::new();
+        };
+        declared
+            .constructors
+            .iter()
+            .map(|constructor| Arc::from(format!("{}.{}", declared.name, constructor.name)))
+            .collect()
+    }
+
     /// Its name, qualified by the family it belongs to.
     ///
     /// A constructor is `Vec.Cons` and a recursor is `Vec.elim`, so two families

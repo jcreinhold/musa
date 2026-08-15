@@ -123,6 +123,8 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         SyntaxKind::SignatureKw => "signature",
         SyntaxKind::StructureKw => "structure",
         SyntaxKind::DataKw => "data",
+        SyntaxKind::RecordKw => "record",
+        SyntaxKind::EnumKw => "enum",
         SyntaxKind::ModuleKw => "module",
         SyntaxKind::MakeKw => "make",
         SyntaxKind::AsKw => "as",
@@ -339,6 +341,16 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::TypeParam
         | SyntaxKind::DataVariant
         | SyntaxKind::DataField
+        | SyntaxKind::RecordDecl
+        | SyntaxKind::FieldDecl
+        | SyntaxKind::EnumDecl
+        | SyntaxKind::EnumCase
+        | SyntaxKind::RecordLiteralExpr
+        | SyntaxKind::FieldInit
+        | SyntaxKind::PathExpr
+        | SyntaxKind::RecordPattern
+        | SyntaxKind::FieldPattern
+        | SyntaxKind::FieldPath
         | SyntaxKind::AppliedType
         | SyntaxKind::DataMember
         | SyntaxKind::PitchExpr

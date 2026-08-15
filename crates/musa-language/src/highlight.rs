@@ -108,6 +108,8 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("signature", SyntaxKind::SignatureKw),
     ("structure", SyntaxKind::StructureKw),
     ("data", SyntaxKind::DataKw),
+    ("record", SyntaxKind::RecordKw),
+    ("enum", SyntaxKind::EnumKw),
     ("module", SyntaxKind::ModuleKw),
     ("mod", SyntaxKind::ModKw),
     ("make", SyntaxKind::MakeKw),
@@ -296,6 +298,8 @@ impl TokenClass {
             | SyntaxKind::SignatureKw
             | SyntaxKind::StructureKw
             | SyntaxKind::DataKw
+            | SyntaxKind::RecordKw
+            | SyntaxKind::EnumKw
             | SyntaxKind::ModuleKw
             | SyntaxKind::ModKw
             | SyntaxKind::CrescendoKw
@@ -460,6 +464,16 @@ impl TokenClass {
             | SyntaxKind::TypeParam
             | SyntaxKind::DataVariant
             | SyntaxKind::DataField
+            | SyntaxKind::RecordDecl
+            | SyntaxKind::FieldDecl
+            | SyntaxKind::EnumDecl
+            | SyntaxKind::EnumCase
+            | SyntaxKind::RecordLiteralExpr
+            | SyntaxKind::FieldInit
+            | SyntaxKind::PathExpr
+            | SyntaxKind::RecordPattern
+            | SyntaxKind::FieldPattern
+            | SyntaxKind::FieldPath
             | SyntaxKind::AppliedType
             | SyntaxKind::DataMember => return None,
         };

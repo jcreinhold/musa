@@ -209,7 +209,24 @@ fn constructors(
 ) -> Result<Built, ElabError> {
     let mut built = Vec::with_capacity(family.constructors.len());
     let mut level = Level::ZERO;
-    for constructor in &family.constructors {
+    for (position, constructor) in family.constructors.iter().enumerate() {
+        // Checked here rather than at the group, because a name is only
+        // ambiguous within the namespace that qualifies it: two families may
+        // each declare an `Untied` and neither shadows the other (§1.3).
+        if let Some(previous) = family
+            .constructors
+            .iter()
+            .take(position)
+            .find(|earlier| earlier.name == constructor.name)
+        {
+            return Err(Refusal::DuplicateCase {
+                at: constructor.origin,
+                previous: previous.origin,
+                family: Arc::clone(&family.name),
+                case: Arc::clone(&constructor.name),
+            }
+            .into());
+        }
         let (fields, levels, inner) = telescope_fields(elaborator, scope, constructor)?;
         let mut recursive = Vec::new();
         for (position, binder) in fields.iter().enumerate() {

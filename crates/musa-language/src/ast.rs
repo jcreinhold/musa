@@ -2240,6 +2240,103 @@ impl DataDecl {
     }
 }
 
+/// `record Pending { read: Reading; dots: Dots; }` — a declaration of named
+/// fields.
+pub struct RecordDecl(SyntaxNode);
+wrapper!(RecordDecl, SyntaxKind::RecordDecl);
+
+impl RecordDecl {
+    /// Every `record` declaration among this node's children, in source order.
+    pub fn all_at_root(node: &SyntaxNode) -> Vec<Self> {
+        children(node)
+    }
+
+    /// The type's name.
+    ///
+    /// What diagnostics say, and nothing more: a record *is* its fields
+    /// (`01-surface.md` §1.2), so two declarations with the same fields at the
+    /// same types denote one type whatever they are called.
+    pub fn name(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
+    }
+
+    /// The names of its type parameters, in source order.
+    pub fn parameters(&self) -> Vec<String> {
+        type_parameters(&self.0)
+    }
+
+    /// Its fields, in declaration order — which is the order they are
+    /// evaluated in and the order a telescope reads them.
+    pub fn fields(&self) -> Vec<FieldDecl> {
+        children(&self.0)
+    }
+}
+
+/// `read: Reading;` — one declared field of a record or of a named enum case.
+pub struct FieldDecl(SyntaxNode);
+wrapper!(FieldDecl, SyntaxKind::FieldDecl);
+
+impl FieldDecl {
+    /// The field's name.
+    pub fn name(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
+    }
+
+    /// Its written type.
+    pub fn ty(&self) -> Option<TypeExpr> {
+        child(&self.0)
+    }
+}
+
+/// `enum Tying { Untied, TiedOn }` — a nominal sum.
+pub struct EnumDecl(SyntaxNode);
+wrapper!(EnumDecl, SyntaxKind::EnumDecl);
+
+impl EnumDecl {
+    /// Every `enum` declaration among this node's children, in source order.
+    pub fn all_at_root(node: &SyntaxNode) -> Vec<Self> {
+        children(node)
+    }
+
+    /// The type's name, which is also the namespace its cases live in.
+    pub fn name(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
+    }
+
+    /// The names of its type parameters, in source order.
+    pub fn parameters(&self) -> Vec<String> {
+        type_parameters(&self.0)
+    }
+
+    /// Its cases, in source order. An enum may have none.
+    pub fn cases(&self) -> Vec<EnumCase> {
+        children(&self.0)
+    }
+}
+
+/// `Refused { at: NodePath, why: Text }` — one case of an enum.
+pub struct EnumCase(SyntaxNode);
+wrapper!(EnumCase, SyntaxKind::EnumCase);
+
+impl EnumCase {
+    /// The case's name, unqualified: the type it belongs to is the enclosing
+    /// declaration, and writing it again here would be writing it twice.
+    pub fn name(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
+    }
+
+    /// The types a positional case carries, in source order. Empty for an
+    /// empty case and for one that names its fields.
+    pub fn positional(&self) -> Vec<TypeExpr> {
+        children(&self.0)
+    }
+
+    /// The fields a named case declares, in source order.
+    pub fn named(&self) -> Vec<FieldDecl> {
+        children(&self.0)
+    }
+}
+
 /// `data Motive;` — a signature member naming a type without its
 /// constructors.
 pub struct DataMember(SyntaxNode);
@@ -2362,6 +2459,46 @@ wrapper!(MatchArm, SyntaxKind::MatchArm);
 pub struct Pattern(SyntaxNode);
 wrapper!(Pattern, SyntaxKind::Pattern);
 
+impl Pattern {
+    /// The record pattern this is, if it is one.
+    ///
+    /// A record pattern is the one shape that is *not* a case analysis — a
+    /// record has one shape, so naming its fields opens them rather than
+    /// choosing among alternatives — and a reader asking which arms split on a
+    /// constructor needs to be able to tell.
+    pub fn record(&self) -> Option<RecordPattern> {
+        child(&self.0)
+    }
+}
+
+/// `Pending { read = r, taken }` — a record pattern.
+pub struct RecordPattern(SyntaxNode);
+wrapper!(RecordPattern, SyntaxKind::RecordPattern);
+
+impl RecordPattern {
+    /// The fields it names, in written order. It says nothing about the rest.
+    pub fn fields(&self) -> Vec<FieldPattern> {
+        children(&self.0)
+    }
+}
+
+/// `read = r`, or the `taken` shorthand — one field of a [`RecordPattern`].
+pub struct FieldPattern(SyntaxNode);
+wrapper!(FieldPattern, SyntaxKind::FieldPattern);
+
+impl FieldPattern {
+    /// The field's name.
+    pub fn name(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
+    }
+
+    /// The pattern the field is matched against, or `None` for the shorthand
+    /// that binds the field to its own name.
+    pub fn pattern(&self) -> Option<Pattern> {
+        child(&self.0)
+    }
+}
+
 /// `if condition { consequent } else { alternative }`.
 ///
 /// Surface syntax the compiler elaborates to the two-arm boolean match, so
@@ -2373,18 +2510,107 @@ wrapper!(Pattern, SyntaxKind::Pattern);
 pub struct IfExpr(SyntaxNode);
 wrapper!(IfExpr, SyntaxKind::IfExpr);
 
-/// `subject with { field = expr, ... }`.
+/// `subject with { read.refusal = why, ... }`.
 ///
-/// Surface syntax the compiler elaborates to the declaration's own
-/// constructor, so nothing downstream of elaboration has an update. The
+/// Surface syntax the compiler elaborates to one `let` and one record literal
+/// per path segment, so nothing downstream of elaboration has an update. The
 /// subject is the first expression child; the [`FieldUpdate`]s follow it in
 /// written order, which is the order their diagnostics come in.
 pub struct RecordUpdateExpr(SyntaxNode);
 wrapper!(RecordUpdateExpr, SyntaxKind::RecordUpdateExpr);
 
-/// `field = expr` — one replaced field of a [`RecordUpdateExpr`].
+/// `read.refusal = why` — one replaced place of a [`RecordUpdateExpr`].
 pub struct FieldUpdate(SyntaxNode);
 wrapper!(FieldUpdate, SyntaxKind::FieldUpdate);
+
+impl FieldUpdate {
+    /// The path this replaces, outermost field first.
+    ///
+    /// Handed over rather than left to be re-derived: the parser has already
+    /// decided which identifiers before the `=` are the path, and a consumer
+    /// that filtered tokens itself would have to know that the ones after it
+    /// are not.
+    pub fn path(&self) -> Vec<String> {
+        child::<FieldPath>(&self.0)
+            .map(|path| path.segments())
+            .unwrap_or_default()
+    }
+
+    /// The expression the path's field is replaced by.
+    pub fn value(&self) -> Option<SyntaxNode> {
+        self.0.children().find(|child| child.kind() != SyntaxKind::FieldPath)
+    }
+}
+
+/// `read.refusal` — the path one [`FieldUpdate`] replaces.
+pub struct FieldPath(SyntaxNode);
+wrapper!(FieldPath, SyntaxKind::FieldPath);
+
+impl FieldPath {
+    /// The field names, outermost first. Never empty in a tree that parsed.
+    pub fn segments(&self) -> Vec<String> {
+        self.0
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .filter(|token| token.kind() == SyntaxKind::Identifier)
+            .map(|token| token.text().to_string())
+            .collect()
+    }
+}
+
+/// `Pending { read = r, dots = d }` — a record literal.
+///
+/// There is no positional form: construction names every field, in any order,
+/// and the declaration's order is the evaluation order (`01-surface.md` §1.2).
+pub struct RecordLiteralExpr(SyntaxNode);
+wrapper!(RecordLiteralExpr, SyntaxKind::RecordLiteralExpr);
+
+impl RecordLiteralExpr {
+    /// The written head: the type name, or the qualified case of an enum.
+    pub fn head(&self) -> Option<SyntaxNode> {
+        self.0
+            .children()
+            .find(|child| matches!(child.kind(), SyntaxKind::NameExpr | SyntaxKind::PathExpr))
+    }
+
+    /// Its fields, in written order.
+    pub fn fields(&self) -> Vec<FieldInit> {
+        children(&self.0)
+    }
+}
+
+/// `read = r` — one field of a [`RecordLiteralExpr`].
+pub struct FieldInit(SyntaxNode);
+wrapper!(FieldInit, SyntaxKind::FieldInit);
+
+impl FieldInit {
+    /// The field's name.
+    pub fn name(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
+    }
+
+    /// The expression it is given.
+    pub fn value(&self) -> Option<SyntaxNode> {
+        self.0.children().next()
+    }
+}
+
+/// `Tying::Untied` — a name in a type's namespace.
+pub struct PathExpr(SyntaxNode);
+wrapper!(PathExpr, SyntaxKind::PathExpr);
+
+impl PathExpr {
+    /// The segments, left to right. §1.5's capitalization rule is what decides
+    /// where the module prefix ends; the parser counted nothing.
+    pub fn segments(&self) -> Vec<String> {
+        self.0
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .filter(|token| !token.kind().is_trivia() && token.kind() != SyntaxKind::Colon)
+            .map(|token| token.text().to_string())
+            .collect()
+    }
+}
 
 /// `subject?` — propagate a `Result`'s failure out of the function.
 ///

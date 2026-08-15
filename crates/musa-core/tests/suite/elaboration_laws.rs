@@ -207,6 +207,26 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
         assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
         reached.insert(kind(&refusal));
     }
+    // Records and enums are programs too, and four refusals are reached only by
+    // one. They need their own context rather than joining the loop above: the
+    // collision they are about is two families declaring one case name, which no
+    // other corpus has a reason to declare.
+    let writing = crate::record_laws::tying_context();
+    for crate::record_laws::RefusedRecord {
+        name,
+        raw,
+        ty,
+        expected,
+    } in crate::record_laws::refused_records()
+    {
+        let (ty, _) = infer(&writing, &ty).unwrap_or_else(|error| panic!("{name}: {error}"));
+        let Err(error) = check(&writing, &ty, &raw) else {
+            panic!("{name}: elaboration accepted a program it must refuse");
+        };
+        let refusal = refusal(name, error);
+        assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
+        reached.insert(kind(&refusal));
+    }
     assert_eq!(
         reached,
         ALL_REFUSALS.iter().copied().collect(),
@@ -215,7 +235,7 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
 }
 
 /// Every refusal this crate can answer with.
-const ALL_REFUSALS: [&str; 17] = [
+const ALL_REFUSALS: [&str; 21] = [
     "unknown-name",
     "mismatch",
     "unsolved",
@@ -233,6 +253,10 @@ const ALL_REFUSALS: [&str; 17] = [
     "unreachable-branch",
     "forced-index",
     "unchecked-recursion",
+    "duplicate-field",
+    "duplicate-case",
+    "overlapping-update",
+    "bare-constructor",
 ];
 
 /// Which refusal this is, as a tag the coverage gate can compare.
@@ -258,6 +282,10 @@ fn kind(refusal: &Refusal) -> &'static str {
         Refusal::UnreachableBranch { .. } => "unreachable-branch",
         Refusal::ForcedIndex { .. } => "forced-index",
         Refusal::UncheckedRecursion { .. } => "unchecked-recursion",
+        Refusal::DuplicateField { .. } => "duplicate-field",
+        Refusal::DuplicateCase { .. } => "duplicate-case",
+        Refusal::OverlappingUpdate { .. } => "overlapping-update",
+        Refusal::BareConstructor { .. } => "bare-constructor",
     }
 }
 

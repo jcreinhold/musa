@@ -22,6 +22,7 @@ pub(crate) fn binder(name: &str, ty: Raw) -> RawBinder {
 
 pub(crate) fn constructor(name: &str, fields: Vec<RawBinder>, indices: Vec<Raw>) -> RawConstructor {
     RawConstructor {
+        origin: WRITTEN,
         name: Arc::from(name),
         fields,
         indices,
@@ -505,6 +506,21 @@ pub(crate) fn refused_declarations() -> Vec<RefusedData> {
                 )],
             ),
         ),
+        RefusedData {
+            name: "a family declaring one case name twice",
+            declaration: data(
+                Vec::new(),
+                vec![family(
+                    "Tying",
+                    Vec::new(),
+                    vec![
+                        constructor("Untied", Vec::new(), Vec::new()),
+                        constructor("Untied", vec![binder("n", var("Nat"))], Vec::new()),
+                    ],
+                )],
+            ),
+            expected: |refusal: &Refusal| matches!(*refusal, Refusal::DuplicateCase { .. }),
+        },
         RefusedData {
             name: "an index the constructor did not choose",
             declaration: data(

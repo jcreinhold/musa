@@ -47,7 +47,7 @@ use std::sync::{Arc, OnceLock};
 
 use crate::elab::Elaborator;
 use crate::error::CoreError;
-use crate::eval::{apply, eval};
+use crate::eval::{apply, eval, field_type, force, project};
 use crate::family::{Constant, Element, element};
 use crate::level::Level;
 use crate::list::List;
@@ -57,7 +57,7 @@ use crate::raw::{Raw, RawArm, RawPattern};
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
 use crate::term::{DbLevel, Index, Name, Shape, Term};
-use crate::value::{Env, Value};
+use crate::value::{Env, Form, Value};
 
 /// Elaborate `match subjects… { arms… }` against `goal`.
 ///
@@ -141,6 +141,14 @@ struct Row<'a> {
     arm: usize,
 }
 
+/// What the leftmost tested column asks for.
+enum Test {
+    /// A case analysis on a family: emit its recursor.
+    Split(usize),
+    /// A record, whose one shape means the column becomes its fields.
+    Open(usize),
+}
+
 /// The matrix, the subjects it is against, and the type its bodies answer.
 struct Problem<'a> {
     columns: Vec<Subject>,
@@ -179,8 +187,17 @@ impl Tree<'_, '_> {
             }
             .into());
         };
-        match Self::splittable(problem) {
-            Some(column) => self.split(scope, problem, column),
+        match Self::testable(problem) {
+            Some(Test::Split(column)) => self.split(scope, problem, column),
+            // A record has one shape, so opening a column is not a case
+            // analysis and emits no term: the column becomes one column per
+            // field it names, and the same matrix is solved again. That is ch.
+            // 5's constructor rule at a type with a single constructor, which is
+            // what a record is.
+            Some(Test::Open(column)) => {
+                let opened = self.opened(scope, problem, column)?;
+                self.solve(scope, &opened)
+            }
             // Peyton Jones ch. 5's variable rule, and its empty rule: with no
             // constructor left to test, the first row wins outright — there is
             // nothing for a later row to be tried *after*.
@@ -188,14 +205,166 @@ impl Tree<'_, '_> {
         }
     }
 
-    /// The leftmost column some row tests with a constructor.
-    fn splittable(problem: &Problem<'_>) -> Option<usize> {
-        (0..problem.columns.len()).find(|column| {
-            problem
-                .rows
-                .iter()
-                .any(|row| matches!(row.patterns.get(*column), Some(RawPattern::Constructor { .. })))
+    /// The leftmost column some row tests, and what it tests it with.
+    ///
+    /// One search rather than two, because "leftmost" has to be decided across
+    /// both kinds: a matrix whose first column is opened and whose second is
+    /// split must open first, or the split would be against subjects the open
+    /// has not produced yet.
+    fn testable(problem: &Problem<'_>) -> Option<Test> {
+        (0..problem.columns.len()).find_map(|column| {
+            problem.rows.iter().find_map(|row| match row.patterns.get(column)? {
+                RawPattern::Constructor { .. } => Some(Test::Split(column)),
+                RawPattern::Record { .. } => Some(Test::Open(column)),
+                RawPattern::Bind { .. } => None,
+            })
         })
+    }
+
+    /// The problem with a record column replaced by the fields its patterns
+    /// name.
+    ///
+    /// Only the named fields, not every declared one: a record pattern says what
+    /// it binds, and opening the rest would put a column of wildcards in the
+    /// matrix for every field the author declined to mention.
+    fn opened<'a>(&mut self, scope: &Scope, problem: &Problem<'a>, column: usize) -> Result<Problem<'a>, ElabError> {
+        let Some(subject) = problem.columns.get(column) else {
+            return Err(Refusal::IncompleteMatch {
+                at: self.here,
+                constructor: Arc::from("a pattern for every subject"),
+            }
+            .into());
+        };
+        let at = problem
+            .rows
+            .iter()
+            .find_map(|row| match row.patterns.get(column)? {
+                pattern @ RawPattern::Record { .. } => Some(pattern.origin()),
+                RawPattern::Bind { .. } | RawPattern::Constructor { .. } => None,
+            })
+            .unwrap_or(subject.at);
+        let meter = self.elaborator.meter();
+        let unfolded = force(meter, &subject.ty)?;
+        let record_ty = Value::clone(unfolded.as_ref().unwrap_or(&subject.ty));
+        let Form::RecordType(telescope) = &record_ty.form else {
+            return Err(Refusal::NotARecord {
+                at,
+                ty: scope.quote_type(meter, &record_ty)?,
+            }
+            .into());
+        };
+        let telescope = telescope.clone();
+        let names = Self::opening(problem, column, &telescope)?;
+
+        let mut columns = Vec::with_capacity(problem.columns.len().saturating_add(names.len()));
+        let mut opened = Vec::with_capacity(names.len());
+        for name in &names {
+            let meter = self.elaborator.meter();
+            opened.push(Subject {
+                value: project(meter, subject.at, subject.value.clone(), name)?,
+                ty: Arc::new(field_type(meter, &telescope, &subject.value, name)?),
+                at: subject.at,
+            });
+        }
+        for (position, held) in problem.columns.iter().enumerate() {
+            if position == column {
+                columns.append(&mut opened);
+            } else {
+                columns.push(Subject {
+                    value: held.value.clone(),
+                    ty: Arc::clone(&held.ty),
+                    at: held.at,
+                });
+            }
+        }
+
+        let mut rows = Vec::with_capacity(problem.rows.len());
+        for row in &problem.rows {
+            let Some(pattern) = row.patterns.get(column) else {
+                continue;
+            };
+            let mut bindings = row.bindings.clone();
+            let inner: Vec<&RawPattern> = match pattern {
+                RawPattern::Record { fields, .. } => names
+                    .iter()
+                    .map(|name| match fields.iter().find(|(field, _)| field == name) {
+                        Some((_, sub)) => sub,
+                        // A field this column opened that this row did not
+                        // name: matched by a wildcard, exactly as at a split.
+                        None => wildcard(),
+                    })
+                    .collect(),
+                // A variable names the whole record and none of its fields, as
+                // it does at a constructor split.
+                RawPattern::Bind { name, .. } => {
+                    bindings.push((Arc::clone(name), subject.value.clone(), Arc::clone(&subject.ty)));
+                    vec![wildcard(); names.len()]
+                }
+                RawPattern::Constructor { origin, name, .. } => {
+                    return Err(Refusal::NoSuchConstructor {
+                        at: *origin,
+                        name: Arc::clone(name),
+                        ty: scope.quote_type(self.elaborator.meter(), &record_ty)?,
+                        cases: Vec::new(),
+                    }
+                    .into());
+                }
+            };
+            let mut patterns = Vec::with_capacity(row.patterns.len().saturating_add(names.len()));
+            for (position, held) in row.patterns.iter().enumerate() {
+                if position == column {
+                    patterns.extend(inner.iter().copied());
+                } else {
+                    patterns.push(held);
+                }
+            }
+            rows.push(Row {
+                patterns,
+                bindings,
+                arm: row.arm,
+            });
+        }
+        Ok(Problem {
+            columns,
+            rows,
+            goal: Arc::clone(&problem.goal),
+        })
+    }
+
+    /// The fields a record column opens, in telescope order.
+    fn opening(
+        problem: &Problem<'_>,
+        column: usize,
+        telescope: &crate::value::Telescope,
+    ) -> Result<Vec<Name>, ElabError> {
+        for row in &problem.rows {
+            let Some(RawPattern::Record { origin, fields }) = row.patterns.get(column).copied() else {
+                continue;
+            };
+            for (field, _) in fields {
+                if !telescope.fields.iter().any(|declared| declared.name == *field) {
+                    return Err(Refusal::NoSuchField {
+                        at: *origin,
+                        field: Arc::clone(field),
+                    }
+                    .into());
+                }
+            }
+        }
+        // Telescope order, not the order the first pattern happened to write:
+        // a later field's type may mention an earlier field's value, so the
+        // columns have to stand in the order the type does.
+        Ok(telescope
+            .fields
+            .iter()
+            .map(|declared| Arc::clone(&declared.name))
+            .filter(|name| {
+                problem.rows.iter().any(|row| {
+                    matches!(row.patterns.get(column), Some(RawPattern::Record { fields, .. })
+                        if fields.iter().any(|(field, _)| field == name))
+                })
+            })
+            .collect())
     }
 
     /// Elaborate a row's body, with the names its patterns bound in scope.
@@ -234,7 +403,7 @@ impl Tree<'_, '_> {
                 RawPattern::Bind { name, .. } => {
                     Some((Arc::clone(name), subject.value.clone(), Arc::clone(&subject.ty)))
                 }
-                RawPattern::Constructor { .. } => None,
+                RawPattern::Constructor { .. } | RawPattern::Record { .. } => None,
             })
             .collect();
         for (name, value, ty) in row.bindings.iter().chain(left.iter()) {
@@ -307,7 +476,7 @@ impl Tree<'_, '_> {
             .iter()
             .find_map(|row| match row.patterns.get(column) {
                 Some(RawPattern::Constructor { origin, name, .. }) => Some((Arc::clone(name), *origin)),
-                Some(RawPattern::Bind { .. }) | None => None,
+                Some(RawPattern::Bind { .. } | RawPattern::Record { .. }) | None => None,
             })
             .unwrap_or_else(|| (Arc::from("?"), at));
         let ty = problem
@@ -316,7 +485,15 @@ impl Tree<'_, '_> {
             .map(|subject| scope.quote_type(self.elaborator.meter(), &subject.ty))
             .transpose()?
             .unwrap_or_else(|| Term::universe(at, Level::ZERO));
-        Ok(Refusal::NoSuchConstructor { at: origin, name, ty }.into())
+        // No cases to list: the subject's type is not a family, so there is no
+        // declaration to read them off.
+        Ok(Refusal::NoSuchConstructor {
+            at: origin,
+            name,
+            ty,
+            cases: Vec::new(),
+        }
+        .into())
     }
 
     /// Refuse a pattern naming a constructor of some other family.
@@ -342,23 +519,38 @@ impl Tree<'_, '_> {
                 Constant::constructor(&found.group, found.family, which).name()
             })
             .collect();
+        let ty = match problem.columns.get(column) {
+            Some(subject) => scope.quote_type(self.elaborator.meter(), &subject.ty)?,
+            None => Term::universe(self.here, Level::ZERO),
+        };
         for row in &problem.rows {
-            let Some(RawPattern::Constructor { origin, name, .. }) = row.patterns.get(column).copied() else {
-                continue;
-            };
-            if known.iter().any(|constructor| **constructor == **name) {
-                continue;
+            match row.patterns.get(column).copied() {
+                Some(RawPattern::Constructor { origin, name, .. }) => {
+                    if known.iter().any(|constructor| selects(constructor, name)) {
+                        continue;
+                    }
+                    return Err(Refusal::NoSuchConstructor {
+                        at: *origin,
+                        name: Arc::clone(name),
+                        ty,
+                        cases: known,
+                    }
+                    .into());
+                }
+                // A record pattern against a family. Reported as what it is —
+                // the subject is not a record — rather than as a constructor
+                // nobody wrote.
+                Some(pattern @ RawPattern::Record { .. }) => {
+                    return Err(Refusal::NotARecord {
+                        at: pattern.origin(),
+                        ty,
+                    }
+                    .into());
+                }
+                // A variable, or a row that ends before this column: neither
+                // names a constructor, so neither can name a wrong one.
+                Some(RawPattern::Bind { .. }) | None => {}
             }
-            let ty = match problem.columns.get(column) {
-                Some(subject) => scope.quote_type(self.elaborator.meter(), &subject.ty)?,
-                None => Term::universe(*origin, Level::ZERO),
-            };
-            return Err(Refusal::NoSuchConstructor {
-                at: *origin,
-                name: Arc::clone(name),
-                ty,
-            }
-            .into());
         }
         Ok(())
     }
@@ -710,7 +902,7 @@ impl Tree<'_, '_> {
             let mut bindings = row.bindings.clone();
             let inner: Vec<&RawPattern> = match pattern {
                 RawPattern::Constructor { name, fields: sub, .. } => {
-                    if **name != *wanted {
+                    if !selects(&wanted, name) {
                         continue;
                     }
                     if sub.len() != fields.len() {
@@ -718,6 +910,7 @@ impl Tree<'_, '_> {
                             at: pattern.origin(),
                             name: Arc::clone(name),
                             ty: Term::universe(pattern.origin(), Level::ZERO),
+                            cases: vec![Arc::clone(&wanted)],
                         }
                         .into());
                     }
@@ -745,6 +938,9 @@ impl Tree<'_, '_> {
                     // matched by wildcards rather than by nothing.
                     vec![wildcard(); fields.len()]
                 }
+                // Refused by `belong` before any split runs, so a column that
+                // reached here has none.
+                RawPattern::Record { .. } => continue,
             };
             let mut patterns = Vec::with_capacity(row.patterns.len().saturating_add(fields.len()));
             for (position, held) in row.patterns.iter().enumerate() {
@@ -762,6 +958,17 @@ impl Tree<'_, '_> {
         }
         Ok(rows)
     }
+}
+
+/// Whether a pattern's name selects the constructor spelled `qualified`.
+///
+/// The qualified spelling always does. So does the bare one, and that is
+/// `01-surface.md` §1.3's rule rather than a convenience: a pattern is read
+/// against the subject's type, and the subject's type is what qualifies the
+/// name. Two families may each declare an `Untied` for exactly this reason —
+/// the one meant is the one the column is being split on.
+fn selects(qualified: &str, written: &str) -> bool {
+    qualified == written || qualified.rsplit_once('.').is_some_and(|(_, case)| case == written)
 }
 
 /// What the induction hypothesis for the field named `field` is called.

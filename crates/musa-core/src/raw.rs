@@ -59,6 +59,9 @@ pub struct RawBinder {
 /// forgotten.
 #[derive(Clone, Debug)]
 pub struct RawConstructor {
+    /// Where it was written. A case may have no fields and no indices, so it is
+    /// the only thing a diagnostic about the case itself can point at.
+    pub origin: Origin,
     /// Its name, unqualified: the family qualifies it.
     pub name: Name,
     /// Its arguments, read under the family names and the group's parameters.
@@ -105,6 +108,23 @@ pub struct RawField {
     pub name: Name,
     /// Its type in a record type, or its value in a literal.
     pub term: Raw,
+}
+
+/// One replaced field of a [`RawShape::Update`]: which field, and its new value.
+///
+/// The field is a *path* rather than an expression, so `p with { f(x).g = y }`
+/// is not a term this type can hold. `01-surface.md` §1.2 fixes that at the
+/// grammar and the reason is here too: an update rebuilds the record along the
+/// path it names, and there is nothing to rebuild along a call.
+#[derive(Clone, Debug)]
+pub struct RawUpdate {
+    /// Where the replacement was written.
+    pub origin: Origin,
+    /// The path from the record to the field being replaced, outermost first.
+    /// Never empty.
+    pub path: Vec<Name>,
+    /// The field's new value.
+    pub value: Raw,
 }
 
 /// A term before elaboration: what it is, and where it was written.
@@ -170,6 +190,21 @@ pub enum RawShape {
         record: Raw,
         /// The field's name.
         field: Name,
+    },
+    /// `e with { p⃗ = v, … }` — the record `e` with the fields those paths name
+    /// replaced, and every other field carried over.
+    ///
+    /// **Infers.** The record being updated has a type already, and the answer
+    /// has the same one, so there is nothing for a checking rule to supply. It
+    /// elaborates to one `let` and one literal per path segment
+    /// (`01-surface.md` §9.1): the `let` is what keeps the subject from being
+    /// evaluated once per field it carries over.
+    Update {
+        /// The record being rebuilt.
+        record: Raw,
+        /// The replacements, in the order written. Never empty: `p with { }`
+        /// says nothing `p` does not.
+        updates: Arc<[RawUpdate]>,
     },
     /// `Id A x y`.
     Id {
@@ -282,10 +317,26 @@ pub enum RawPattern {
     Constructor {
         /// Where it was written.
         origin: Origin,
-        /// The constructor's name, as the declaration gives it: `Nat.Succ`.
+        /// The constructor's name, either as the declaration gives it —
+        /// `Nat.Succ` — or bare. A bare name is looked up in the namespace of
+        /// the family the column being split belongs to, which is `01-surface.md`
+        /// §1.3's rule and not a fallback: a pattern is checked against the
+        /// subject's type, so the type is already known where the name is read.
         name: Name,
         /// One sub-pattern per field, in field order.
         fields: Vec<Self>,
+    },
+    /// A record, with a sub-pattern for the fields it names.
+    ///
+    /// It binds rather than selects: a record has one shape, so there is nothing
+    /// to be exhaustive about and no `..` to write. A field the pattern does not
+    /// name is simply not bound, which is what the absence of `..` means here.
+    Record {
+        /// Where it was written.
+        origin: Origin,
+        /// The fields it names, in the order written, each with the pattern its
+        /// value stands against.
+        fields: Vec<(Name, Self)>,
     },
 }
 
@@ -294,7 +345,7 @@ impl RawPattern {
     #[must_use]
     pub const fn origin(&self) -> Origin {
         match *self {
-            Self::Bind { origin, .. } | Self::Constructor { origin, .. } => origin,
+            Self::Bind { origin, .. } | Self::Constructor { origin, .. } | Self::Record { origin, .. } => origin,
         }
     }
 }
@@ -456,6 +507,25 @@ impl Raw {
         )
     }
 
+    /// `record with { path = value, … }`, one path per replacement.
+    #[must_use]
+    pub fn update<'a>(origin: Origin, record: Self, updates: impl IntoIterator<Item = (&'a [&'a str], Self)>) -> Self {
+        Self::new(
+            origin,
+            RawShape::Update {
+                record,
+                updates: updates
+                    .into_iter()
+                    .map(|(path, value)| RawUpdate {
+                        origin: value.origin(),
+                        path: path.iter().map(|segment| Arc::from(*segment)).collect(),
+                        value,
+                    })
+                    .collect(),
+            },
+        )
+    }
+
     /// `Id ty left right`.
     #[must_use]
     pub fn identity(origin: Origin, ty: Self, left: Self, right: Self) -> Self {
@@ -561,6 +631,18 @@ impl RawPattern {
             origin,
             name: name.into(),
             fields: fields.into_iter().collect(),
+        }
+    }
+
+    /// A record pattern binding the fields it names.
+    #[must_use]
+    pub fn record<'a>(origin: Origin, fields: impl IntoIterator<Item = (&'a str, Self)>) -> Self {
+        Self::Record {
+            origin,
+            fields: fields
+                .into_iter()
+                .map(|(name, pattern)| (Arc::from(name), pattern))
+                .collect(),
         }
     }
 }
