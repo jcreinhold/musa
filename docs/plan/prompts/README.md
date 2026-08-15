@@ -293,6 +293,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 135 | inductive-families | 3 | Add inductive families, dependent match, and termination checking |
 | 136 | records-and-enums | 3 | Give the language records and namespaced enums |
 | 136a | module-visibility | 3 | Let a package hide what it maintains |
+| 136b | core-divergence-repair | 3 | Remove the ad hoc divergences from the dependent core |
 | 137 | traits-and-operators | 3 | Add traits, dictionaries, operators, and methods |
 | 138 | typed-syntax | 3 | Give syntax a category, and the phase API its types |
 | 139 | quotation | 3 | Implement quotation, splicing, and automatic provenance |
