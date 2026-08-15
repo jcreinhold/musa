@@ -22,6 +22,7 @@ use std::sync::Arc;
 use crate::budget::{Budget, Meter};
 use crate::error::CoreError;
 use crate::eval::eval;
+use crate::origin::Origin;
 use crate::quote::Depth;
 use crate::term::{DbLevel, Term};
 use crate::value::{Env, Value};
@@ -55,7 +56,8 @@ impl Cx {
         }
     }
 
-    /// This context extended by an assumption at type `ty`.
+    /// This context extended by an assumption at type `ty`, written at
+    /// `binder`.
     ///
     /// The binder has no name here, and that is not an omission. α-equivalence
     /// is decided by de Bruijn index, quotation takes the names it writes from
@@ -63,14 +65,20 @@ impl Cx {
     /// copy free to disagree with those. Prompt 134 attaches names where they
     /// are read — in a diagnostic.
     ///
+    /// It does have an [`Origin`], and that *is* load-bearing: an assumption has
+    /// no value to take one from, so unless the binder supplies it every
+    /// occurrence of the variable in a normal form would point nowhere.
+    /// [`Self::define`] needs no such argument, because its value already
+    /// carries origins of its own.
+    ///
     /// # Errors
     ///
     /// [`CoreError::Exhausted`] or [`CoreError::Malformed`] from evaluating
     /// `ty`, which is read in *this* context and so must be closed under it.
-    pub fn assume(&self, ty: &Term) -> Result<Self, CoreError> {
+    pub fn assume(&self, binder: Origin, ty: &Term) -> Result<Self, CoreError> {
         let mut meter = Meter::new(self.budget);
         let ty = eval(&mut meter, &self.env, ty)?;
-        Ok(self.pushed(Value::var(DbLevel(self.depth), Arc::new(ty))))
+        Ok(self.pushed(Value::var(binder, DbLevel(self.depth), Arc::new(ty))))
     }
 
     /// This context extended by a definition of `value` at type `ty`.

@@ -9,9 +9,12 @@
 //! obligation and prompt 135's termination checker owes for the recursive
 //! definitions this crate does not yet have.
 
-use musa_core::{Cx, Index, Level, Term, normalize, normalize_type};
+use musa_core::{Cx, Index, Level, Origin, Shape, Term, normalize, normalize_type};
 
 use crate::fixtures::{Sample, corpus};
+
+/// As in `conversion_laws.rs`: origins are this file's *input*, not its subject.
+const HERE: Origin = Origin::node(910);
 
 /// §5, evaluation is deterministic.
 ///
@@ -68,23 +71,29 @@ fn a_normal_form_contains_no_redex() {
 #[test]
 fn normal_forms_are_eta_long() {
     let cx = Cx::new();
-    let a = cx.assume(&Term::Universe(Level::ZERO)).expect("A : Type 0");
+    let a = cx.assume(HERE, &Term::universe(HERE, Level::ZERO)).expect("A : Type 0");
 
-    let arrow = Term::pi("z", Term::Var(Index(0)), Term::Var(Index(1)));
-    let f = a.assume(&arrow).expect("f : A → A");
-    let arrow_in_f = Term::pi("z", Term::Var(Index(1)), Term::Var(Index(2)));
-    let function = normalize(&f, &arrow_in_f, &Term::Var(Index(0))).expect("f normalizes");
+    let arrow = Term::pi(HERE, "z", Term::var(HERE, Index(0)), Term::var(HERE, Index(1)));
+    let f = a.assume(HERE, &arrow).expect("f : A → A");
+    let arrow_in_f = Term::pi(HERE, "z", Term::var(HERE, Index(1)), Term::var(HERE, Index(2)));
+    let function = normalize(&f, &arrow_in_f, &Term::var(HERE, Index(0))).expect("f normalizes");
     assert!(
-        matches!(function, Term::Lam { .. }),
+        matches!(*function.shape(), Shape::Lam { .. }),
         "a variable at a function type reads back as a lambda, not as itself"
     );
 
-    let pair_type = Term::record_type([("fst", Term::Var(Index(0))), ("snd", Term::Var(Index(1)))]);
-    let r = a.assume(&pair_type).expect("r : { fst : A, snd : A }");
-    let pair_in_r = Term::record_type([("fst", Term::Var(Index(1))), ("snd", Term::Var(Index(2)))]);
-    let record = normalize(&r, &pair_in_r, &Term::Var(Index(0))).expect("r normalizes");
+    let pair_type = Term::record_type(
+        HERE,
+        [("fst", Term::var(HERE, Index(0))), ("snd", Term::var(HERE, Index(1)))],
+    );
+    let r = a.assume(HERE, &pair_type).expect("r : { fst : A, snd : A }");
+    let pair_in_r = Term::record_type(
+        HERE,
+        [("fst", Term::var(HERE, Index(1))), ("snd", Term::var(HERE, Index(2)))],
+    );
+    let record = normalize(&r, &pair_in_r, &Term::var(HERE, Index(0))).expect("r normalizes");
     assert!(
-        matches!(record, Term::Record(_)),
+        matches!(*record.shape(), Shape::Record(_)),
         "a variable at a record type reads back as a literal holding its projections"
     );
 }
@@ -97,15 +106,15 @@ fn normal_forms_are_eta_long() {
 #[test]
 fn alpha_equivalent_terms_normalize_to_the_same_term() {
     let cx = Cx::new();
-    let a = cx.assume(&Term::Universe(Level::ZERO)).expect("A : Type 0");
-    let arrow = Term::pi("z", Term::Var(Index(0)), Term::Var(Index(1)));
+    let a = cx.assume(HERE, &Term::universe(HERE, Level::ZERO)).expect("A : Type 0");
+    let arrow = Term::pi(HERE, "z", Term::var(HERE, Index(0)), Term::var(HERE, Index(1)));
 
-    let by_one_name = normalize(&a, &arrow, &Term::lam("first", Term::Var(Index(0)))).expect("normalizes");
-    let by_another = normalize(&a, &arrow, &Term::lam("second", Term::Var(Index(0)))).expect("normalizes");
+    let by_one_name = normalize(&a, &arrow, &Term::lam(HERE, "first", Term::var(HERE, Index(0)))).expect("normalizes");
+    let by_another = normalize(&a, &arrow, &Term::lam(HERE, "second", Term::var(HERE, Index(0)))).expect("normalizes");
     assert_eq!(by_one_name, by_another);
     assert_eq!(
         by_one_name,
-        Term::lam("z", Term::Var(Index(0))),
+        Term::lam(HERE, "z", Term::var(HERE, Index(0))),
         "the name that survives is the function type's, which is the one a reader was shown"
     );
 }
@@ -115,23 +124,32 @@ fn alpha_equivalent_terms_normalize_to_the_same_term() {
 #[test]
 fn definitions_are_unfolded() {
     let cx = Cx::new();
-    let type0 = Term::Universe(Level::ZERO);
-    let a = cx.assume(&type0).expect("A : Type 0");
-    let x = a.assume(&Term::Var(Index(0))).expect("x : A");
+    let type0 = Term::universe(HERE, Level::ZERO);
+    let a = cx.assume(HERE, &type0).expect("A : Type 0");
+    let x = a.assume(HERE, &Term::var(HERE, Index(0))).expect("x : A");
 
     let through_let = normalize(
         &x,
-        &Term::Var(Index(1)),
-        &Term::bind("z", Term::Var(Index(1)), Term::Var(Index(0)), Term::Var(Index(0))),
+        &Term::var(HERE, Index(1)),
+        &Term::bind(
+            HERE,
+            "z",
+            Term::var(HERE, Index(1)),
+            Term::var(HERE, Index(0)),
+            Term::var(HERE, Index(0)),
+        ),
     )
     .expect("normalizes");
-    assert_eq!(through_let, Term::Var(Index(0)), "let x = v in x is v");
+    assert_eq!(through_let, Term::var(HERE, Index(0)), "let x = v in x is v");
 
-    let defined = x.define(&Term::Var(Index(1)), &Term::Var(Index(0))).expect("d := x");
-    let through_context = normalize(&defined, &Term::Var(Index(2)), &Term::Var(Index(0))).expect("normalizes");
+    let defined = x
+        .define(&Term::var(HERE, Index(1)), &Term::var(HERE, Index(0)))
+        .expect("d := x");
+    let through_context =
+        normalize(&defined, &Term::var(HERE, Index(2)), &Term::var(HERE, Index(0))).expect("normalizes");
     assert_eq!(
         through_context,
-        Term::Var(Index(1)),
+        Term::var(HERE, Index(1)),
         "a defined variable reads back as what it was defined to be"
     );
 }
@@ -142,18 +160,18 @@ fn definitions_are_unfolded() {
 /// make this fail to compile, because a new form of redex that nobody taught
 /// this function about would silently pass every test above.
 fn is_normal(term: &Term) -> bool {
-    match term {
-        Term::Var(_) | Term::Universe(_) => true,
-        Term::Pi { domain, codomain, .. } => is_normal(domain) && is_normal(codomain),
-        Term::Lam { body, .. } => is_normal(body),
-        Term::App { function, argument } => {
-            !matches!(**function, Term::Lam { .. }) && is_normal(function) && is_normal(argument)
+    match term.shape() {
+        Shape::Var(_) | Shape::Universe(_) => true,
+        Shape::Pi { domain, codomain, .. } => is_normal(domain) && is_normal(codomain),
+        Shape::Lam { body, .. } => is_normal(body),
+        Shape::App { function, argument } => {
+            !matches!(*function.shape(), Shape::Lam { .. }) && is_normal(function) && is_normal(argument)
         }
-        Term::RecordType(fields) | Term::Record(fields) => fields.iter().all(|field| is_normal(&field.term)),
-        Term::Project { record, field: _ } => !matches!(**record, Term::Record(_)) && is_normal(record),
-        Term::Id { ty, left, right } => is_normal(ty) && is_normal(left) && is_normal(right),
-        Term::Refl(value) => is_normal(value),
-        Term::J {
+        Shape::RecordType(fields) | Shape::Record(fields) => fields.iter().all(|field| is_normal(&field.term)),
+        Shape::Project { record, field: _ } => !matches!(*record.shape(), Shape::Record(_)) && is_normal(record),
+        Shape::Id { ty, left, right } => is_normal(ty) && is_normal(left) && is_normal(right),
+        Shape::Refl(value) => is_normal(value),
+        Shape::J {
             ty,
             from,
             motive,
@@ -161,7 +179,7 @@ fn is_normal(term: &Term) -> bool {
             to,
             proof,
         } => {
-            !matches!(**proof, Term::Refl(_))
+            !matches!(*proof.shape(), Shape::Refl(_))
                 && is_normal(ty)
                 && is_normal(from)
                 && is_normal(motive)
@@ -169,6 +187,6 @@ fn is_normal(term: &Term) -> bool {
                 && is_normal(to)
                 && is_normal(proof)
         }
-        Term::Let { .. } => false,
+        Shape::Let { .. } => false,
     }
 }

@@ -31,10 +31,18 @@
 //! function and the type on the variable is its base case. Without it, `f g`
 //! and `f (λx. g x)` would quote to different terms and conversion would answer
 //! `false` for two terms §3 says are equal.
+//!
+//! **A value carries an origin, because quotation has to give one back.** §7
+//! says the normal form of a term carries the origins of the terms it was built
+//! from. A normal form is written by `quote` out of a value, so a value that had
+//! dropped its origin could not put one back. Values and neutrals therefore have
+//! the same shape as [`Term`] does — provenance in a wrapper, everything else in
+//! a [`Form`] or a [`Spine`].
 
 use std::sync::Arc;
 
 use crate::level::Level;
+use crate::origin::Origin;
 use crate::term::{DbLevel, Field, Name, Term};
 
 /// An immutable environment: the values of the binders in scope, innermost
@@ -83,7 +91,7 @@ impl Env {
 #[derive(Clone)]
 pub(crate) struct Closure {
     pub(crate) env: Env,
-    pub(crate) body: Arc<Term>,
+    pub(crate) body: Term,
 }
 
 /// A record type as a telescope: the fields in order, read in one environment,
@@ -94,13 +102,20 @@ pub(crate) struct Telescope {
     pub(crate) env: Env,
 }
 
-/// A semantic value.
+/// A semantic value: what it is, and where the term that produced it came from.
 #[derive(Clone)]
-pub(crate) enum Value {
+pub(crate) struct Value {
+    pub(crate) origin: Origin,
+    pub(crate) form: Form,
+}
+
+/// What a value is.
+#[derive(Clone)]
+pub(crate) enum Form {
     Universe(Level),
     Pi {
         name: Name,
-        domain: Arc<Self>,
+        domain: Arc<Value>,
         codomain: Closure,
     },
     /// A lambda, and no name: quotation writes a binder's name from the Π it
@@ -108,26 +123,36 @@ pub(crate) enum Value {
     /// free to disagree with the one that gets printed.
     Lam(Closure),
     RecordType(Telescope),
-    Record(Arc<[(Name, Self)]>),
+    Record(Arc<[(Name, Value)]>),
     Id {
-        ty: Arc<Self>,
-        left: Arc<Self>,
-        right: Arc<Self>,
+        ty: Arc<Value>,
+        left: Arc<Value>,
+        right: Arc<Value>,
     },
-    Refl(Arc<Self>),
+    Refl(Arc<Value>),
     Neutral(Arc<Neutral>),
 }
 
 /// An elimination blocked on a variable.
-pub(crate) enum Neutral {
+///
+/// Each node carries its own origin because each becomes its own node of a
+/// quoted normal form: the spine of `f x y` reads back as three terms, and §7
+/// wants each of them to say where it came from.
+pub(crate) struct Neutral {
+    pub(crate) origin: Origin,
+    pub(crate) spine: Spine,
+}
+
+/// What a blocked elimination is blocked on, and what has been applied to it.
+pub(crate) enum Spine {
     /// A variable, with the type it was assumed at.
     Var(DbLevel, Arc<Value>),
     App {
-        function: Arc<Self>,
+        function: Arc<Neutral>,
         argument: Arc<Value>,
     },
     Project {
-        record: Arc<Self>,
+        record: Arc<Neutral>,
         field: Name,
     },
     /// `J` blocked on a proof that is not `refl`.
@@ -137,13 +162,35 @@ pub(crate) enum Neutral {
         motive: Arc<Value>,
         base: Arc<Value>,
         to: Arc<Value>,
-        proof: Arc<Self>,
+        proof: Arc<Neutral>,
     },
 }
 
 impl Value {
+    /// A value of form `form`, from a term that came from `origin`.
+    pub(crate) const fn new(origin: Origin, form: Form) -> Self {
+        Self { origin, form }
+    }
+
+    /// A blocked elimination, as a value.
+    ///
+    /// The origin comes from the neutral rather than from a second argument:
+    /// the two would be the same fact stored twice, and the copies would be free
+    /// to disagree.
+    pub(crate) fn neutral(neutral: Neutral) -> Self {
+        Self::new(neutral.origin, Form::Neutral(Arc::new(neutral)))
+    }
+
+    /// An already-shared blocked elimination, as a value.
+    pub(crate) fn shared_neutral(neutral: &Arc<Neutral>) -> Self {
+        Self::new(neutral.origin, Form::Neutral(Arc::clone(neutral)))
+    }
+
     /// A fresh variable at `level`, assumed at `ty`.
-    pub(crate) fn var(level: DbLevel, ty: Arc<Self>) -> Self {
-        Self::Neutral(Arc::new(Neutral::Var(level, ty)))
+    pub(crate) fn var(origin: Origin, level: DbLevel, ty: Arc<Self>) -> Self {
+        Self::neutral(Neutral {
+            origin,
+            spine: Spine::Var(level, ty),
+        })
     }
 }

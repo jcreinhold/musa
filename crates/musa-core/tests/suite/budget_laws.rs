@@ -9,9 +9,12 @@
 //! deterministic rather than flaky-by-construction. That is the property being
 //! protected — a timeout here would make acceptance a property of the host.
 
-use musa_core::{Budget, CoreError, Cx, Level, Metric, Term, convertible, convertible_types, normalize_type};
+use musa_core::{Budget, CoreError, Cx, Level, Metric, Origin, Term, convertible, convertible_types, normalize_type};
 
 use crate::fixtures::{Sample, corpus, corpus_at};
+
+/// As in `conversion_laws.rs`: origins are this file's *input*, not its subject.
+const HERE: Origin = Origin::node(920);
 
 /// The divisors the independence law is checked at.
 ///
@@ -86,8 +89,8 @@ fn the_language_budget_answers_every_question_in_the_corpus() {
 fn exhaustion_names_the_same_operation_and_metric_every_time() {
     let narrow = Cx::with_budget(Budget::LANGUAGE.scaled(200_000));
     let deep = nested_lets(64);
-    let first = convertible_types(&narrow, &deep, &Term::Universe(Level::ZERO));
-    let second = convertible_types(&narrow, &deep, &Term::Universe(Level::ZERO));
+    let first = convertible_types(&narrow, &deep, &Term::universe(HERE, Level::ZERO));
+    let second = convertible_types(&narrow, &deep, &Term::universe(HERE, Level::ZERO));
     match (first, second) {
         (Err(CoreError::Exhausted(one)), Err(CoreError::Exhausted(two))) => {
             assert_eq!(one.operation, two.operation);
@@ -108,7 +111,7 @@ fn exhaustion_names_the_same_operation_and_metric_every_time() {
 #[test]
 fn exhaustion_is_monotone_in_the_budget() {
     let deep = nested_lets(200);
-    let type0 = Term::Universe(Level::ZERO);
+    let type0 = Term::universe(HERE, Level::ZERO);
     let mut exhausted = false;
     for divisor in DIVISORS {
         let cx = Cx::with_budget(Budget::LANGUAGE.scaled(divisor));
@@ -133,15 +136,15 @@ fn exhaustion_is_monotone_in_the_budget() {
 #[test]
 fn a_wide_term_is_not_a_deep_one() {
     let names: Vec<String> = (0..300).map(|field| format!("f{field}")).collect();
-    let one_up = Term::Universe(Level::ZERO.succ());
-    let type0 = Term::Universe(Level::ZERO);
-    let wide = Term::record_type(names.iter().map(|name| (name.as_str(), one_up.clone())));
+    let one_up = Term::universe(HERE, Level::ZERO.succ());
+    let type0 = Term::universe(HERE, Level::ZERO);
+    let wide = Term::record_type(HERE, names.iter().map(|name| (name.as_str(), one_up.clone())));
 
     let cx = Cx::new();
     let normal = normalize_type(&cx, &wide).expect("width is not depth");
     assert_eq!(normal, wide);
 
-    let value = Term::record(names.iter().map(|name| (name.as_str(), type0.clone())));
+    let value = Term::record(HERE, names.iter().map(|name| (name.as_str(), type0.clone())));
     assert_eq!(convertible(&cx, &wide, &value, &value), Ok(true));
 }
 
@@ -167,8 +170,8 @@ fn a_term_nested_past_the_limit_is_refused() {
 /// without needing a context, which is what makes it the right shape for
 /// measuring the meter rather than the language.
 fn nested_lets(depth: u32) -> Term {
-    let type0 = Term::Universe(Level::ZERO);
+    let type0 = Term::universe(HERE, Level::ZERO);
     (0..depth).fold(type0.clone(), |body, _| {
-        Term::bind("z", type0.clone(), type0.clone(), body)
+        Term::bind(HERE, "z", type0.clone(), type0.clone(), body)
     })
 }

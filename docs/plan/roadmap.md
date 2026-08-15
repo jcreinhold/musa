@@ -2337,6 +2337,7 @@ Owns:
 - core terms, values, and typing contexts;
 - universes and their constraints;
 - normalization by evaluation: `eval`, `quote`, and conversion;
+- the origin every term carries, preserved by evaluation and by quotation and invisible to conversion (§7);
 - bidirectional elaboration, metavariables, and pattern-fragment unification;
 - inductive families, strict positivity, and dependent match with coverage;
 - the well-founded termination checker;
@@ -2363,9 +2364,14 @@ pub fn normalize_type(cx: &Cx, ty: &Term) -> Result<Term, CoreError>;
 pub fn convertible(cx: &Cx, ty: &Term, left: &Term, right: &Term) -> Result<bool, CoreError>;
 pub fn convertible_types(cx: &Cx, left: &Term, right: &Term) -> Result<bool, CoreError>;
 pub fn elaborate(raw: &RawTerm, expected: Option<&Term>) -> Result<Elaborated, CoreError>; // prompt 134
+
+impl Cx {
+    pub fn assume(&self, binder: Origin, ty: &Term) -> Result<Cx, CoreError>;
+    pub fn define(&self, ty: &Term, value: &Term) -> Result<Cx, CoreError>;
+}
 ```
 
-Three things the first sketch of this block left out, each of which prompt 133 found by building it:
+Four things the first sketch of this block left out, each of which prompts 133 and 133a found by building it:
 
 - **A context, not a bare term.** A term means nothing without the binders it is read under, and quotation needs the
   depth of those binders to turn the level it invents into the index that names it. `Cx` carries them and the budget
@@ -2377,6 +2383,10 @@ Three things the first sketch of this block left out, each of which prompt 133 f
   `convertible_types` exist rather than being reached by inventing a level.
 - **`Result`, not `bool`.** §4's outcomes are three. `Ok(false)` is "these differ" and `Err(Exhausted)` is "nobody found
   out"; a `bool` could not tell them apart, and a resource limit would silently decide a program's meaning.
+- **An origin on every term, and on every assumption.** §7 makes provenance a property of the representation, so a
+  `Term` is a shape and an `Origin` and `Term`'s equality ignores the second half. `assume` takes one because an
+  assumption has no value to take an origin from: without it, every occurrence of a variable in a normal form would
+  point nowhere. `define` needs none, because the value it is given already carries origins of its own.
 
 `Value` — the semantic domain NbE evaluates into — stays private. It contains closures over the evaluator's own
 representation, so exposing it would make every later change to evaluation a breaking change for `musa-compiler`;

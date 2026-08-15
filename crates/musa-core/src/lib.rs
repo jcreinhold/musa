@@ -61,6 +61,12 @@
 //!   semantics obliged to agree with the first by a law nobody could state.
 //! - **The budget may end an operation and may never change one that
 //!   finished** (§4). Exhaustion is its own outcome, not a negative answer.
+//! - **Every term carries an [`Origin`], and no comparison looks at it** (§7).
+//!   Provenance is a property of the representation, preserved by evaluation and
+//!   by quotation, so a diagnostic about a normal form can still point at
+//!   source. It is excluded from equality by [`Term`]'s own `PartialEq`, because
+//!   a compiler that type-checked differently after a file was moved would be
+//!   the alternative.
 //!
 //! # What this crate does not do
 //!
@@ -74,6 +80,7 @@ mod context;
 mod error;
 mod eval;
 mod level;
+mod origin;
 mod quote;
 mod term;
 mod value;
@@ -82,7 +89,8 @@ pub use crate::budget::{Budget, Metric, ResourceError};
 pub use crate::context::Cx;
 pub use crate::error::{CoreError, Malformed};
 pub use crate::level::Level;
-pub use crate::term::{DbLevel, Field, Index, Name, Term};
+pub use crate::origin::Origin;
+pub use crate::term::{DbLevel, Field, Index, Name, Shape, Term};
 
 use crate::eval::eval;
 use crate::quote::{quote, quote_type};

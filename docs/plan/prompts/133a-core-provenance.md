@@ -1,7 +1,7 @@
 ---
 id: 133a
 slug: core-provenance
-status: pending
+status: done
 depends_on: [133]
 phase: 3
 ---

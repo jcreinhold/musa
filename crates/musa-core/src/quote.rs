@@ -27,14 +27,24 @@
 //!   is a universe and tells η nothing.
 //! - [`quote_neutral`] reads a blocked elimination back, recovering each
 //!   argument's type from the spine through [`crate::eval::neutral_type`].
+//!
+//! **Every node written here carries an origin, and §7 fixes which one.** A node
+//! that reads a value back takes that *value's* origin — never the type's, which
+//! belongs to a different term and would point a reader at the signature when
+//! the mistake is in the expression. Where quotation η-expands, "the expansion
+//! carries the origin of the term it expanded", so the λ written at a Π and the
+//! literal written at a record type both take the expanded value's origin. The
+//! variables quotation invents have no surface node at all and take
+//! [`Origin::UNKNOWN`] rather than a plausible-looking guess.
 
 use std::sync::Arc;
 
 use crate::budget::Meter;
 use crate::error::{CoreError, Malformed};
 use crate::eval::{apply, apply_closure, field_type, neutral_type, project};
+use crate::origin::Origin;
 use crate::term::{DbLevel, Field, Term};
-use crate::value::{Neutral, Telescope, Value};
+use crate::value::{Form, Neutral, Spine, Telescope, Value};
 
 /// How many binders are in scope while quoting.
 ///
@@ -62,53 +72,55 @@ impl Depth {
 pub(crate) fn quote(meter: &mut Meter, depth: Depth, ty: &Value, value: &Value) -> Result<Term, CoreError> {
     meter.nested("quotation", |meter| {
         meter.quoted_node("quotation")?;
-        match ty {
+        let here = value.origin;
+        match &ty.form {
             // η at Π: a lambda, whether or not the value is one.
-            Value::Pi { name, domain, codomain } => {
-                let variable = Value::var(depth.fresh(), Arc::clone(domain));
+            Form::Pi { name, domain, codomain } => {
+                let variable = Value::var(Origin::UNKNOWN, depth.fresh(), Arc::clone(domain));
                 let body_type = apply_closure(meter, codomain, variable.clone())?;
-                let body = apply(meter, value.clone(), variable)?;
-                Ok(Term::Lam {
-                    name: Arc::clone(name),
-                    body: Arc::new(quote(meter, depth.under_binder(), &body_type, &body)?),
-                })
+                let body = apply(meter, here, value.clone(), variable)?;
+                Ok(Term::lam(
+                    here,
+                    Arc::clone(name),
+                    quote(meter, depth.under_binder(), &body_type, &body)?,
+                ))
             }
             // η at records: a literal holding every projection.
-            Value::RecordType(telescope) => {
+            Form::RecordType(telescope) => {
                 let mut fields = Vec::with_capacity(telescope.fields.len());
                 for Field { name, term: _ } in telescope.fields.iter() {
                     let field_ty = field_type(meter, telescope, value, name)?;
-                    let field_value = project(meter, value.clone(), name)?;
+                    let field_value = project(meter, here, value.clone(), name)?;
                     fields.push(Field {
                         name: Arc::clone(name),
                         term: quote(meter, depth, &field_ty, &field_value)?,
                     });
                 }
-                Ok(Term::Record(fields.into()))
+                Ok(Term::new(here, crate::term::Shape::Record(fields.into())))
             }
-            Value::Universe(_) => quote_type(meter, depth, value),
-            Value::Id { ty: at, .. } => match value {
-                Value::Refl(witness) => Ok(Term::Refl(Arc::new(quote(meter, depth, at, witness)?))),
-                Value::Neutral(neutral) => quote_neutral(meter, depth, neutral),
-                Value::Universe(_)
-                | Value::Pi { .. }
-                | Value::Lam { .. }
-                | Value::RecordType(_)
-                | Value::Record(_)
-                | Value::Id { .. } => Err(Malformed::NotAnIdentity.into()),
+            Form::Universe(_) => quote_type(meter, depth, value),
+            Form::Id { ty: at, .. } => match &value.form {
+                Form::Refl(witness) => Ok(Term::refl(here, quote(meter, depth, at, witness)?)),
+                Form::Neutral(neutral) => quote_neutral(meter, depth, neutral),
+                Form::Universe(_)
+                | Form::Pi { .. }
+                | Form::Lam(_)
+                | Form::RecordType(_)
+                | Form::Record(_)
+                | Form::Id { .. } => Err(Malformed::NotAnIdentity.into()),
             },
             // A neutral type has no η, so whatever inhabits it is neutral too.
-            Value::Neutral(_) => match value {
-                Value::Neutral(neutral) => quote_neutral(meter, depth, neutral),
-                Value::Universe(_)
-                | Value::Pi { .. }
-                | Value::Lam { .. }
-                | Value::RecordType(_)
-                | Value::Record(_)
-                | Value::Id { .. }
-                | Value::Refl(_) => quote_type(meter, depth, value),
+            Form::Neutral(_) => match &value.form {
+                Form::Neutral(neutral) => quote_neutral(meter, depth, neutral),
+                Form::Universe(_)
+                | Form::Pi { .. }
+                | Form::Lam(_)
+                | Form::RecordType(_)
+                | Form::Record(_)
+                | Form::Id { .. }
+                | Form::Refl(_) => quote_type(meter, depth, value),
             },
-            Value::Lam { .. } | Value::Record(_) | Value::Refl(_) => Err(Malformed::NotAType.into()),
+            Form::Lam(_) | Form::Record(_) | Form::Refl(_) => Err(Malformed::NotAType.into()),
         }
     })
 }
@@ -122,25 +134,28 @@ pub(crate) fn quote(meter: &mut Meter, depth: Depth, ty: &Value, value: &Value) 
 pub(crate) fn quote_type(meter: &mut Meter, depth: Depth, value: &Value) -> Result<Term, CoreError> {
     meter.nested("quotation", |meter| {
         meter.quoted_node("quotation")?;
-        match value {
-            Value::Universe(level) => Ok(Term::Universe(*level)),
-            Value::Pi { name, domain, codomain } => {
-                let variable = Value::var(depth.fresh(), Arc::clone(domain));
+        let here = value.origin;
+        match &value.form {
+            Form::Universe(level) => Ok(Term::universe(here, *level)),
+            Form::Pi { name, domain, codomain } => {
+                let variable = Value::var(Origin::UNKNOWN, depth.fresh(), Arc::clone(domain));
                 let opened = apply_closure(meter, codomain, variable)?;
-                Ok(Term::Pi {
-                    name: Arc::clone(name),
-                    domain: Arc::new(quote_type(meter, depth, domain)?),
-                    codomain: Arc::new(quote_type(meter, depth.under_binder(), &opened)?),
-                })
+                Ok(Term::pi(
+                    here,
+                    Arc::clone(name),
+                    quote_type(meter, depth, domain)?,
+                    quote_type(meter, depth.under_binder(), &opened)?,
+                ))
             }
-            Value::RecordType(telescope) => quote_telescope(meter, depth, telescope),
-            Value::Id { ty, left, right } => Ok(Term::Id {
-                ty: Arc::new(quote_type(meter, depth, ty)?),
-                left: Arc::new(quote(meter, depth, ty, left)?),
-                right: Arc::new(quote(meter, depth, ty, right)?),
-            }),
-            Value::Neutral(neutral) => quote_neutral(meter, depth, neutral),
-            Value::Lam { .. } | Value::Record(_) | Value::Refl(_) => Err(Malformed::NotAType.into()),
+            Form::RecordType(telescope) => quote_telescope(meter, here, depth, telescope),
+            Form::Id { ty, left, right } => Ok(Term::identity(
+                here,
+                quote_type(meter, depth, ty)?,
+                quote(meter, depth, ty, left)?,
+                quote(meter, depth, ty, right)?,
+            )),
+            Form::Neutral(neutral) => quote_neutral(meter, depth, neutral),
+            Form::Lam(_) | Form::Record(_) | Form::Refl(_) => Err(Malformed::NotAType.into()),
         }
     })
 }
@@ -150,20 +165,20 @@ pub(crate) fn quote_type(meter: &mut Meter, depth: Depth, value: &Value) -> Resu
 /// Unlike [`quote`]'s record case, the earlier fields become *variables* rather
 /// than projections, because a record type binds them and a record value only
 /// has them.
-fn quote_telescope(meter: &mut Meter, depth: Depth, telescope: &Telescope) -> Result<Term, CoreError> {
+fn quote_telescope(meter: &mut Meter, here: Origin, depth: Depth, telescope: &Telescope) -> Result<Term, CoreError> {
     let mut env = telescope.env.clone();
-    let mut here = depth;
+    let mut at = depth;
     let mut fields = Vec::with_capacity(telescope.fields.len());
     for Field { name, term } in telescope.fields.iter() {
         let field_ty = crate::eval::eval(meter, &env, term)?;
         fields.push(Field {
             name: Arc::clone(name),
-            term: quote_type(meter, here, &field_ty)?,
+            term: quote_type(meter, at, &field_ty)?,
         });
-        env = env.extend(Value::var(here.fresh(), Arc::new(field_ty)));
-        here = here.under_binder();
+        env = env.extend(Value::var(Origin::UNKNOWN, at.fresh(), Arc::new(field_ty)));
+        at = at.under_binder();
     }
-    Ok(Term::RecordType(fields.into()))
+    Ok(Term::new(here, crate::term::Shape::RecordType(fields.into())))
 }
 
 /// Read a blocked elimination back.
@@ -174,32 +189,35 @@ fn quote_telescope(meter: &mut Meter, depth: Depth, telescope: &Telescope) -> Re
 fn quote_neutral(meter: &mut Meter, depth: Depth, neutral: &Neutral) -> Result<Term, CoreError> {
     meter.nested("quotation", |meter| {
         meter.quoted_node("quotation")?;
-        match neutral {
-            Neutral::Var(level, _) => level
+        let here = neutral.origin;
+        match &neutral.spine {
+            Spine::Var(level, _) => level
                 .to_index(depth.0)
-                .map(Term::Var)
+                .map(|index| Term::var(here, index))
                 .ok_or_else(|| Malformed::EscapedVariable.into()),
-            Neutral::App { function, argument } => {
-                let domain = match neutral_type(meter, function)? {
-                    Value::Pi { domain, .. } => domain,
-                    Value::Universe(_)
-                    | Value::Lam { .. }
-                    | Value::RecordType(_)
-                    | Value::Record(_)
-                    | Value::Id { .. }
-                    | Value::Refl(_)
-                    | Value::Neutral(_) => return Err(Malformed::NotAFunction.into()),
+            Spine::App { function, argument } => {
+                let domain = match neutral_type(meter, function)?.form {
+                    Form::Pi { domain, .. } => domain,
+                    Form::Universe(_)
+                    | Form::Lam(_)
+                    | Form::RecordType(_)
+                    | Form::Record(_)
+                    | Form::Id { .. }
+                    | Form::Refl(_)
+                    | Form::Neutral(_) => return Err(Malformed::NotAFunction.into()),
                 };
-                Ok(Term::App {
-                    function: Arc::new(quote_neutral(meter, depth, function)?),
-                    argument: Arc::new(quote(meter, depth, &domain, argument)?),
-                })
+                Ok(Term::app(
+                    here,
+                    quote_neutral(meter, depth, function)?,
+                    quote(meter, depth, &domain, argument)?,
+                ))
             }
-            Neutral::Project { record, field } => Ok(Term::Project {
-                record: Arc::new(quote_neutral(meter, depth, record)?),
-                field: Arc::clone(field),
-            }),
-            Neutral::J {
+            Spine::Project { record, field } => Ok(Term::project(
+                here,
+                quote_neutral(meter, depth, record)?,
+                Arc::clone(field),
+            )),
+            Spine::J {
                 ty,
                 from,
                 motive,
@@ -208,17 +226,19 @@ fn quote_neutral(meter: &mut Meter, depth: Depth, neutral: &Neutral) -> Result<T
                 proof,
             } => {
                 let base_type = {
-                    let at_from = apply(meter, Value::clone(motive), Value::clone(from))?;
-                    apply(meter, at_from, Value::Refl(Arc::clone(from)))?
+                    let at_from = apply(meter, here, Value::clone(motive), Value::clone(from))?;
+                    let reflexive = Value::new(from.origin, Form::Refl(Arc::clone(from)));
+                    apply(meter, here, at_from, reflexive)?
                 };
-                Ok(Term::J {
-                    ty: Arc::new(quote_type(meter, depth, ty)?),
-                    from: Arc::new(quote(meter, depth, ty, from)?),
-                    motive: Arc::new(quote_motive(meter, depth, ty, from, motive)?),
-                    base: Arc::new(quote(meter, depth, &base_type, base)?),
-                    to: Arc::new(quote(meter, depth, ty, to)?),
-                    proof: Arc::new(quote_neutral(meter, depth, proof)?),
-                })
+                Ok(Term::jay(
+                    here,
+                    quote_type(meter, depth, ty)?,
+                    quote(meter, depth, ty, from)?,
+                    quote_motive(meter, depth, ty, from, motive)?,
+                    quote(meter, depth, &base_type, base)?,
+                    quote(meter, depth, ty, to)?,
+                    quote_neutral(meter, depth, proof)?,
+                ))
             }
         }
     })
@@ -238,21 +258,23 @@ fn quote_motive(
     from: &Arc<Value>,
     motive: &Value,
 ) -> Result<Term, CoreError> {
-    let endpoint = Value::var(depth.fresh(), Arc::clone(ty));
+    let here = motive.origin;
+    let endpoint = Value::var(Origin::UNKNOWN, depth.fresh(), Arc::clone(ty));
     let under_endpoint = depth.under_binder();
-    let identity = Arc::new(Value::Id {
-        ty: Arc::clone(ty),
-        left: Arc::clone(from),
-        right: Arc::new(endpoint.clone()),
-    });
-    let witness = Value::var(under_endpoint.fresh(), identity);
-    let at_endpoint = apply(meter, motive.clone(), endpoint)?;
-    let body = apply(meter, at_endpoint, witness)?;
-    Ok(Term::Lam {
-        name: Arc::from("y"),
-        body: Arc::new(Term::Lam {
-            name: Arc::from("e"),
-            body: Arc::new(quote_type(meter, under_endpoint.under_binder(), &body)?),
-        }),
-    })
+    let identity = Arc::new(Value::new(
+        here,
+        Form::Id {
+            ty: Arc::clone(ty),
+            left: Arc::clone(from),
+            right: Arc::new(endpoint.clone()),
+        },
+    ));
+    let witness = Value::var(Origin::UNKNOWN, under_endpoint.fresh(), identity);
+    let at_endpoint = apply(meter, here, motive.clone(), endpoint)?;
+    let body = apply(meter, here, at_endpoint, witness)?;
+    Ok(Term::lam(
+        here,
+        "y",
+        Term::lam(here, "e", quote_type(meter, under_endpoint.under_binder(), &body)?),
+    ))
 }

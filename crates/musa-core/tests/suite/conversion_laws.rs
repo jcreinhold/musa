@@ -8,9 +8,13 @@
 //! completeness of `NbE` against the declarative rules, decidability, subject
 //! reduction, canonicity — which no example-based suite can supply.
 
-use musa_core::{Budget, CoreError, Cx, Level, Term, convertible, convertible_types};
+use musa_core::{Budget, CoreError, Cx, Index, Level, Origin, Term, convertible, convertible_types};
 
 use crate::fixtures::{Sample, corpus};
+
+/// Everything built here is written by the test rather than by an author, so
+/// one origin is enough; `provenance_laws.rs` is where origins are the subject.
+const HERE: Origin = Origin::node(900);
 
 /// §5.1, conversion is decidable and an equivalence — the reflexive half.
 #[test]
@@ -135,8 +139,8 @@ fn conversion_agrees_with_normalization() {
 #[test]
 fn conversion_at_universes_is_equality_and_not_inclusion() {
     let cx = Cx::new();
-    let zero = Term::Universe(Level::ZERO);
-    let one = Term::Universe(Level::ZERO.succ());
+    let zero = Term::universe(HERE, Level::ZERO);
+    let one = Term::universe(HERE, Level::ZERO.succ());
     assert_eq!(convertible_types(&cx, &zero, &zero), Ok(true));
     assert_eq!(
         convertible_types(&cx, &zero, &one),
@@ -153,10 +157,10 @@ fn conversion_at_universes_is_equality_and_not_inclusion() {
 #[test]
 fn conversion_ignores_binder_names() {
     let cx = Cx::new();
-    let a = cx.assume(&Term::Universe(Level::ZERO)).expect("A : Type 0");
-    let arrow = Term::pi("z", Term::Var(musa_core::Index(0)), Term::Var(musa_core::Index(1)));
-    let by_one_name = Term::lam("first", Term::Var(musa_core::Index(0)));
-    let by_another = Term::lam("second", Term::Var(musa_core::Index(0)));
+    let a = cx.assume(HERE, &Term::universe(HERE, Level::ZERO)).expect("A : Type 0");
+    let arrow = Term::pi(HERE, "z", Term::var(HERE, Index(0)), Term::var(HERE, Index(1)));
+    let by_one_name = Term::lam(HERE, "first", Term::var(HERE, Index(0)));
+    let by_another = Term::lam(HERE, "second", Term::var(HERE, Index(0)));
     assert_eq!(convertible(&a, &arrow, &by_one_name, &by_another), Ok(true));
 }
 
@@ -168,18 +172,18 @@ fn conversion_ignores_binder_names() {
 #[test]
 fn a_malformed_term_is_reported_rather_than_aborting() {
     let cx = Cx::new();
-    let unbound = Term::Var(musa_core::Index(0));
-    let type0 = Term::Universe(Level::ZERO);
+    let unbound = Term::var(HERE, Index(0));
+    let type0 = Term::universe(HERE, Level::ZERO);
     assert!(
         matches!(musa_core::normalize_type(&cx, &unbound), Err(CoreError::Malformed(_))),
         "a variable with no binder is a defect with a name"
     );
 
-    let a = cx.assume(&type0).expect("A : Type 0");
-    let projected_function = Term::project(Term::lam("z", Term::Var(musa_core::Index(0))), "fst");
+    let a = cx.assume(HERE, &type0).expect("A : Type 0");
+    let projected_function = Term::project(HERE, Term::lam(HERE, "z", Term::var(HERE, Index(0))), "fst");
     assert!(
         matches!(
-            musa_core::normalize(&a, &Term::Var(musa_core::Index(0)), &projected_function),
+            musa_core::normalize(&a, &Term::var(HERE, Index(0)), &projected_function),
             Err(CoreError::Malformed(_))
         ),
         "a function has no fields"
@@ -195,9 +199,9 @@ fn a_malformed_term_is_reported_rather_than_aborting() {
 fn exhaustion_is_not_a_negative_answer() {
     let generous = Cx::with_budget(Budget::LANGUAGE);
     let narrow = Cx::with_budget(Budget::LANGUAGE.scaled(200_000));
-    let type0 = Term::Universe(Level::ZERO);
+    let type0 = Term::universe(HERE, Level::ZERO);
     let deep = (0..64).fold(type0.clone(), |body, _| {
-        Term::bind("z", type0.clone(), type0.clone(), body)
+        Term::bind(HERE, "z", type0.clone(), type0.clone(), body)
     });
 
     assert_eq!(convertible_types(&generous, &deep, &type0), Ok(true));
