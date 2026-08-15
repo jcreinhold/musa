@@ -636,6 +636,7 @@ module.exports = grammar({
         $.question_expression,
         $.music_expression,
         $.kernel_quote,
+        $.quote_expression,
         $.application_expression,
         $.method_call_expression,
         $.index_expression,
@@ -847,6 +848,8 @@ module.exports = grammar({
     _primary_expression: ($) =>
       choice(
         $.syntax_region,
+        $.splice,
+        $.sequence_splice,
         $.record_literal_expression,
         $.path_expression,
         $.name_expression,
@@ -1016,6 +1019,29 @@ module.exports = grammar({
     // drift law compares these leaves against musa-language's token stream, and
     // a body scanned as one opaque blob would fail it. So the body is a run of
     // the same tokens the rest of the file is made of.
+    // `quote at here { … }` — the other quotation
+    // (`docs/rules/language/11-quotation.md` §2). Its body is `$.expression`
+    // and not a token run, because the body *is* this grammar: that is the
+    // whole difference from `kernel_quote`, whose interior belongs to another
+    // crate.
+    quote_expression: ($) =>
+      seq('quote', 'at', field('anchor', $._primary_expression), '{', field('body', $.expression), '}'),
+
+    // `$x` and `${ e }` — one value where one node stands.
+    //
+    // The hand parser admits a splice only inside a quote body, and its
+    // `quote_depth` is the whole of that rule (Parser::splice). A
+    // context-free grammar cannot say "only there" without a second copy of
+    // every expression rule underneath it, which is the duplication the
+    // shared grammar exists not to have — so a splice stands wherever a node
+    // stands here, and `$x` written outside a quote is a program this file
+    // highlights and the compiler refuses.
+    splice: ($) =>
+      choice(seq('$', field('value', $.name_expression)), seq('$', '{', field('value', $.expression), '}')),
+
+    // `$..xs` — a list of values where a sequence stands.
+    sequence_splice: ($) => seq('$', '.', '.', field('name', $.name_expression)),
+
     kernel_quote: ($) =>
       seq(
         'kernel',

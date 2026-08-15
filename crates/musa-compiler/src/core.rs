@@ -934,6 +934,27 @@ enum ExprKind {
     },
     Music(CheckedMusic),
     KernelQuote(CheckedQuote),
+    SyntaxQuote(CheckedSyntaxQuote),
+}
+
+/// `quote at here { … }`, read once at its definition.
+///
+/// The other quotation, and separate from [`CheckedQuote`] for the reason
+/// `11-quotation.md` §6 gives: a kernel quote's interior is *recognized* and
+/// handed to `musa-kernel`, while this one's is *read*, by the same parser the
+/// file around it went through. What they share is only the word.
+#[derive(Clone)]
+struct CheckedSyntaxQuote {
+    /// The node every node this builds is derived from — `at here`.
+    anchor: Box<Expr>,
+    /// Which construction site this is, from the resolver's counter. The middle
+    /// component of every [`crate::syntax::Derived`] path the quote mints.
+    quotation: u32,
+    /// The body's shape, with a hole per splice.
+    template: crate::syntax::Template,
+    /// Each splice's expression, in the order the body writes them: checked at
+    /// `Syntax<Expr>` for `$x` and at `List<Syntax<Expr>>` for `$..xs`.
+    splices: Vec<Expr>,
 }
 
 /// A quotation, read once at its definition.
@@ -4171,6 +4192,11 @@ fn settle_expr(unifier: &Unifier, expr: &mut Expr) -> Option<(SourceSpan, Type)>
     expr.ty = unifier.resolve(&expr.ty);
     let under = match &mut expr.kind {
         ExprKind::Literal(_) | ExprKind::Name(_) | ExprKind::Music(_) | ExprKind::KernelQuote(_) => None,
+        // A quote's own type is `Syntax<Expr>` and never a variable, but
+        // its anchor and its splices are ordinary expressions whose types
+        // the substitution may have settled since they were checked.
+        ExprKind::SyntaxQuote(quote) => settle_expr(unifier, &mut quote.anchor)
+            .or_else(|| quote.splices.iter_mut().find_map(|splice| settle_expr(unifier, splice))),
         ExprKind::Product(members) | ExprKind::List(members) => {
             members.iter_mut().find_map(|member| settle_expr(unifier, member))
         }
@@ -6122,6 +6148,8 @@ impl Checker<'_> {
             self.music_expression(node)
         } else if kind == SyntaxKind::KernelQuote {
             self.kernel_quote(node)
+        } else if kind == SyntaxKind::QuoteExpr {
+            self.syntax_quote(node, expected)
         } else {
             None
         }?;
@@ -6363,6 +6391,256 @@ impl Checker<'_> {
             }),
             ty: Type::Music,
             span,
+        })
+    }
+
+    /// Check `quote at here { … }` — the syntax quotation
+    /// (`11-quotation.md` §2).
+    ///
+    /// Four things happen here and nothing else does. The reading is checked,
+    /// because a quote is phase machinery and a piece may not name one. The
+    /// *expected* category is read, because a quote is a checking form: trying
+    /// each category until one parses would be a search, and it would make an
+    /// ambiguous body's meaning depend on the order the elaborator tried. The
+    /// anchor is checked at `NodePath`, because it is the one part of the
+    /// derived identity an author writes. And the body is walked into a
+    /// [`crate::syntax::Template`], which is where the splices are checked and
+    /// the binders are found.
+    ///
+    /// The body itself is not parsed here — it was parsed by the ordinary
+    /// parser, with the file around it, which is the whole design (§2). So a
+    /// body that is not an expression is already a parse error at the position
+    /// inside the quote, in the parser's own words, and this function never
+    /// sees it.
+    fn syntax_quote(&mut self, node: &SyntaxNode, expected: Option<&Type>) -> Option<Expr> {
+        let span = crate::resolve::trimmed_span(node);
+        if self.reading != Reading::Expansion {
+            self.resolver.report(
+                Diagnostic::error(Code::Misplaced, "a quote is an adapter's form")
+                    .at(span, "this builds syntax, and a piece is not written in syntax")
+                    .note("`Syntax<Cat>` exists in the expansion phase; a piece can neither name one nor obtain one"),
+            );
+            self.failed = true;
+            return None;
+        }
+        let quote = musa_language::ast::QuoteExpr::cast(node.clone())?;
+        // A checking form, and this is the check. A resolved variable is an
+        // inferring position as much as an absent expectation is: nothing
+        // downstream would settle it, because the quote is what would have to.
+        if !matches!(expected.map(|ty| self.unifier.resolve(ty)), Some(Type::Syntax(_))) {
+            self.resolver.report(
+                Diagnostic::error(Code::TypeMismatch, "a quote needs an expected category")
+                    .at(span, "nothing here says what this quote builds")
+                    .help("annotate the position: `let e: Syntax<Expr> = quote at … { … };`")
+                    .note("a quote is checked against a category, never guessed at by trying each one"),
+            );
+            self.failed = true;
+            return None;
+        }
+
+        let anchor = self.check(&quote.anchor()?, Some(&Type::NodePath))?;
+        let quotation = self.resolver.next_quotation;
+        self.resolver.next_quotation = quotation.saturating_add(1);
+
+        let mut walk = QuoteWalk {
+            splices: Vec::new(),
+            scope: Vec::new(),
+        };
+        let template = self.quote_template(&quote.body()?, &mut crate::syntax::template_root(), &mut walk, false)?;
+        Some(Expr {
+            kind: ExprKind::SyntaxQuote(CheckedSyntaxQuote {
+                anchor: Box::new(anchor),
+                quotation,
+                template,
+                splices: walk.splices,
+            }),
+            // Always `Expr`: the body went through the expression production,
+            // so that is the claim this quote can make. A `Syntax<TokenTree>`
+            // position takes it by §1's forgetting rule, which lives in
+            // [`Self::reconcile`] and is applied by the caller.
+            ty: Type::Syntax(crate::syntax::Cat::Expr),
+            span,
+        })
+    }
+
+    /// One node of a quote's body, as the shape it will build.
+    ///
+    /// `path` is where this node sits in the template, which is what its
+    /// derived identity is computed from; `spreadable` is whether the position
+    /// this node stands in admits a run of siblings rather than one node.
+    ///
+    /// Trivia is dropped. A read region keeps it because its text has to come
+    /// back; a quote's does not — the printer re-spaces every expansion, and a
+    /// comment written inside a quote belongs to the adapter's source rather
+    /// than to what it builds.
+    fn quote_template(
+        &mut self,
+        node: &SyntaxNode,
+        path: &mut Vec<u32>,
+        walk: &mut QuoteWalk,
+        spreadable: bool,
+    ) -> Option<crate::syntax::Template> {
+        if node.kind() == SyntaxKind::Error {
+            return Some(crate::syntax::Template::Missing);
+        }
+        if matches!(node.kind(), SyntaxKind::Splice | SyntaxKind::SequenceSplice) {
+            return self.quote_splice(node, walk, spreadable);
+        }
+        // A binder is found before the body that refers to it, because the
+        // grammar puts it first: a lambda's parameters precede its body and a
+        // pattern precedes its arm. So one left-to-right walk with a scope
+        // stack is enough, and no second pass is needed to tie a use to its
+        // declaration.
+        let framed = matches!(node.kind(), SyntaxKind::LambdaExpr | SyntaxKind::MatchArm);
+        let frame = walk.scope.len();
+        let separated = matches!(
+            node.kind(),
+            SyntaxKind::ExprArgList | SyntaxKind::ListExpr | SyntaxKind::ProductExpr
+        );
+        let pieces: Vec<SyntaxElement> = node
+            .children_with_tokens()
+            .filter(|piece| !piece.kind().is_trivia())
+            // A separated position supplies its own commas
+            // ([`crate::syntax::Template::Group::separated`]), so the ones
+            // written here are not children of it.
+            .filter(|piece| !(separated && piece.kind() == SyntaxKind::Comma))
+            .collect();
+        let (delimiter, pieces) = crate::syntax::delimited(pieces);
+        let binders = binder_positions(node, &pieces);
+        let mut children = Vec::with_capacity(pieces.len());
+        for (index, piece) in pieces.iter().enumerate() {
+            path.push(u32::try_from(index).unwrap_or(u32::MAX));
+            let child = match piece {
+                SyntaxElement::Node(inner) => self.quote_template(&spread_argument(inner), path, walk, separated),
+                SyntaxElement::Token(token) => self.quote_token(token, path, walk, binders.contains(&index)),
+            };
+            path.pop();
+            children.push(child?);
+        }
+        if framed {
+            walk.scope.truncate(frame);
+        }
+        Some(crate::syntax::Template::Group {
+            delimiter,
+            separated,
+            children,
+        })
+    }
+
+    /// One token of a quote's body.
+    fn quote_token(
+        &mut self,
+        token: &SyntaxToken,
+        path: &[u32],
+        walk: &mut QuoteWalk,
+        binds: bool,
+    ) -> Option<crate::syntax::Template> {
+        if token.kind() != SyntaxKind::Identifier {
+            return Some(crate::syntax::Template::Token {
+                kind: token.kind(),
+                text: token.text().to_owned(),
+            });
+        }
+        let name = token.text();
+        if looks_generated(name) {
+            self.resolver.report(
+                Diagnostic::error(
+                    Code::QuotedCapture,
+                    format!("`{name}` is spelled like a name this quote could generate"),
+                )
+                .at(
+                    SourceSpan::new(
+                        u32::from(token.text_range().start()),
+                        u32::from(token.text_range().end()),
+                    ),
+                    "a `_g` and a number is how a quoted binder is renamed on the way out",
+                )
+                .help("rename it; the suffix belongs to the compiler")
+                .note("hygiene works by renaming, so a name that could be a renaming defeats it"),
+            );
+            self.failed = true;
+            return None;
+        }
+        let hygiene = if binds {
+            walk.scope.push((name.to_owned(), path.to_vec()));
+            crate::syntax::Hygiene::Binder
+        } else if let Some((_, declared)) = walk
+            .scope
+            .iter()
+            .rev()
+            // Only a name *used as an expression* refers to a binding. A field
+            // label, a method name, and a record's field are identifiers in
+            // other positions, and renaming one because a nearby lambda took a
+            // parameter by that name would change what the quote says.
+            .find(|(bound, _)| bound == name && token.parent().is_some_and(|held| held.kind() == SyntaxKind::NameExpr))
+        {
+            crate::syntax::Hygiene::Bound(declared.clone())
+        } else {
+            crate::syntax::Hygiene::Free
+        };
+        Some(crate::syntax::Template::Identifier {
+            name: name.to_owned(),
+            hygiene,
+        })
+    }
+
+    /// One `$x`, `${ e }`, or `$..xs`.
+    ///
+    /// The category is checked by inferring the splice's own type and then
+    /// asking whether it is the one the position demands, rather than by
+    /// checking against that type directly. Both refuse the same programs; the
+    /// difference is the report. A splice of a `Syntax<TokenTree>` into an
+    /// expression position is not an author writing the wrong type — it is a
+    /// claim that has not been established — so it names two categories and
+    /// sends the reader to `as_expression`, which is the operation that
+    /// establishes it.
+    fn quote_splice(
+        &mut self,
+        node: &SyntaxNode,
+        walk: &mut QuoteWalk,
+        spreadable: bool,
+    ) -> Option<crate::syntax::Template> {
+        let span = crate::resolve::trimmed_span(node);
+        let sequence = node.kind() == SyntaxKind::SequenceSplice;
+        if sequence && !spreadable {
+            self.resolver.report(
+                Diagnostic::error(Code::UnspreadSequence, "nothing here spreads a sequence")
+                    .at(span, "this position holds one node")
+                    .help("write `$x` for the one node, or move the spread into an argument list, `[…]`, or `(…, …)`")
+                    .note("a spread needs the position's own separator, and only a comma-separated one has it"),
+            );
+            self.failed = true;
+            return None;
+        }
+        // Both forms hold one expression — `$..xs` wraps its name the way `$x`
+        // does — so there is one path here and no second way to reach a
+        // spliced name.
+        let expression = self.check(&child_of(node, is_expr_node)?, None)?;
+        let member = Type::Syntax(crate::syntax::Cat::Expr);
+        let wanted = if sequence { Type::List(Box::new(member)) } else { member };
+        let found = self.unifier.resolve(&expression.ty);
+        if let Some(held) = splice_category(&found)
+            && held != crate::syntax::Cat::Expr
+        {
+            self.resolver.report(
+                Diagnostic::error(
+                    Code::SpliceCategory,
+                    format!("this splices `{}` where `Expr` is demanded", held.name()),
+                )
+                .at(span, format!("this has category `{}`", held.name()))
+                .help("`as_expression` runs the parser and answers `Some` exactly when the tree is an expression")
+                .note("the index is a claim about how a tree parses, so it is established rather than annotated"),
+            );
+            self.failed = true;
+            return None;
+        }
+        self.reconcile(&wanted, &found, span)?;
+        let hole = walk.splices.len();
+        walk.splices.push(expression);
+        Some(if sequence {
+            crate::syntax::Template::Sequence(hole)
+        } else {
+            crate::syntax::Template::Splice(hole)
         })
     }
 
@@ -9204,6 +9482,39 @@ fn eval_nested(expression: &Expr, environment: &IndexMap<String, Value>, meter: 
                 })),
             }))
         }
+        // The whole of a quote's runtime: evaluate the anchor, evaluate each
+        // splice, and put the two together. Nothing is parsed, nothing is
+        // looked up by name, and no identity is allocated — the template was
+        // read once at the definition and the derivation is a function of the
+        // anchor, the quotation, and the position.
+        ExprKind::SyntaxQuote(quote) => {
+            let Value::NodePath(origin) = eval(&quote.anchor, environment, meter)? else {
+                return None;
+            };
+            let mut spliced = Vec::with_capacity(quote.splices.len());
+            for splice in &quote.splices {
+                let value = eval(splice, environment, meter)?;
+                if let Value::Syntax(node) = value {
+                    spliced.push(crate::syntax::Spliced::One(*node));
+                    continue;
+                }
+                let Value::List { values, .. } = value else {
+                    return None;
+                };
+                let mut nodes = Vec::with_capacity(values.len());
+                for member in values {
+                    let Value::Syntax(node) = member else {
+                        return None;
+                    };
+                    nodes.push(*node);
+                }
+                spliced.push(crate::syntax::Spliced::Many(nodes));
+            }
+            let built = crate::syntax::instantiate(&quote.template, &origin, quote.quotation, &spliced)?;
+            let (nodes, bytes) = built.shape();
+            meter.preflight_construct("quote", nodes, bytes, expression.span)?;
+            Some(Value::Syntax(Box::new(built)))
+        }
     }?;
     let (nodes, bytes) = charged_shape(&expression.kind, &value);
     // A polymorphic function's body has the *declaration's* type, which is a
@@ -9258,7 +9569,8 @@ fn pitch_term(expression: &Expr, environment: &IndexMap<String, Value>, meter: &
         | ExprKind::Construct { .. }
         | ExprKind::Fold { .. }
         | ExprKind::Music(_)
-        | ExprKind::KernelQuote(_) => {
+        | ExprKind::KernelQuote(_)
+        | ExprKind::SyntaxQuote(_) => {
             let Value::Pitch(pitch) = eval(expression, environment, meter)? else {
                 return None;
             };
@@ -11262,7 +11574,8 @@ fn charged_shape(kind: &ExprKind, value: &Value) -> (u64, u64) {
         | ExprKind::Step { .. }
         | ExprKind::Builtin { .. }
         | ExprKind::Music(_)
-        | ExprKind::KernelQuote(_) => value_shape(value),
+        | ExprKind::KernelQuote(_)
+        | ExprKind::SyntaxQuote(_) => value_shape(value),
     }
 }
 
@@ -11778,7 +12091,89 @@ fn is_expr_node(kind: SyntaxKind) -> bool {
             | SyntaxKind::QuestionExpr
             | SyntaxKind::MusicExpr
             | SyntaxKind::KernelQuote
+            | SyntaxKind::QuoteExpr
     )
+}
+
+/// What one quote's body walk carries down it.
+///
+/// Two accumulators rather than two parameters, because they are threaded
+/// through every node and neither is ever passed without the other: the splices
+/// in the order the body writes them, and the binders currently in scope with
+/// the template position each was declared at.
+struct QuoteWalk {
+    splices: Vec<Expr>,
+    scope: Vec<(String, Vec<u32>)>,
+}
+
+/// Which of a node's pieces are binders it declares.
+///
+/// The two positions the grammar marks unambiguously, and no others. A `Param`
+/// declares its own name — the identifier before the annotation — and a
+/// `Pattern` declares the names *after* its head. What a lone pattern head is
+/// cannot be decided here: [`Checker::check_pattern`] reads it as a constructor
+/// when the scrutinee's type has one by that name and as a binding otherwise,
+/// and the scrutinee's type belongs to the expansion site, which the adapter's
+/// own checker cannot see. So a lone head is written plain, and the residue is
+/// a quote whose `match e { x -> … }` can shadow a composer's `x` — narrow, and
+/// stated rather than quietly claimed as covered.
+fn binder_positions(node: &SyntaxNode, pieces: &[SyntaxElement]) -> Vec<usize> {
+    let identifiers = || {
+        pieces
+            .iter()
+            .enumerate()
+            .filter(|(_, piece)| piece.kind() == SyntaxKind::Identifier)
+            .map(|(index, _)| index)
+    };
+    if node.kind() == SyntaxKind::Param {
+        return identifiers().take(1).collect();
+    }
+    if node.kind() == SyntaxKind::Pattern {
+        return identifiers().skip(1).collect();
+    }
+    Vec::new()
+}
+
+/// An `ExprArg` that holds nothing but a spread, seen through.
+///
+/// The wrapper is the parser's node for "one argument", and a spread is not one
+/// argument — it is however many the list has. Leaving the wrapper in place
+/// would put the run inside a group of its own, and the commas the argument
+/// list supplies would go around that group rather than between its elements.
+fn spread_argument(node: &SyntaxNode) -> SyntaxNode {
+    if node.kind() != SyntaxKind::ExprArg {
+        return node.clone();
+    }
+    let mut inside = node.children_with_tokens().filter(|piece| !piece.kind().is_trivia());
+    match (inside.next(), inside.next()) {
+        (Some(SyntaxElement::Node(only)), None) if only.kind() == SyntaxKind::SequenceSplice => only,
+        _ => node.clone(),
+    }
+}
+
+/// Whether a name is spelled the way the printer renames a generated binder.
+///
+/// `crate::syntax::print` appends `_g` and the scope's ordinal, so a name
+/// ending that way is one the printer could have written — and a quote that
+/// writes it by hand would be a name a generated binder could capture. The test
+/// is on the spelling because the collision is on the spelling: the printed
+/// text is where hygiene has to survive, and there the scopes are gone.
+fn looks_generated(name: &str) -> bool {
+    let Some((head, tail)) = name.rsplit_once("_g") else {
+        return false;
+    };
+    !head.is_empty() && !tail.is_empty() && tail.bytes().all(|byte| byte.is_ascii_digit())
+}
+
+/// The category a splice's type claims, when it claims one.
+fn splice_category(ty: &Type) -> Option<crate::syntax::Cat> {
+    if let Type::Syntax(category) = ty {
+        return Some(*category);
+    }
+    if let Type::List(member) = ty {
+        return splice_category(member);
+    }
+    None
 }
 
 fn significant_tokens(node: &SyntaxNode) -> impl Iterator<Item = SyntaxToken> + '_ {

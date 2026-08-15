@@ -100,6 +100,9 @@
   "private"
   "music"
   "kernel"
+  ; The other quotation's word, and the `at` that names its anchor
+  ; (`docs/rules/language/11-quotation.md` §2).
+  "quote"
   "import"
   ; `syntax`, in both places it is written: the header statement that names
   ; which package reads a region, and the region itself. The word is the one
@@ -374,3 +377,15 @@
 (kernel_quote coordinate: (identifier) @type)
 (kernel_quote payload: (identifier) @type)
 (kernel_hole "$" @punctuation.special)
+
+; --- A syntax quote ---------------------------------------------------------
+;
+; The opposite of the kernel quote's treatment, and for the opposite reason:
+; the body here *is* this grammar, so everything in it is already coloured by
+; the rules above and re-stating them would be the second copy. What is marked
+; is the seam: the `$` of each splice, which is the one character that means
+; something different inside a quote than outside one. `quote` and `at` are in
+; the keyword list above with every other word of the language.
+(splice "$" @punctuation.special)
+(sequence_splice "$" @punctuation.special)
+(sequence_splice "." @punctuation.special)

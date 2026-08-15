@@ -538,6 +538,14 @@ static KERNEL: KeywordDoc = doc!(
     "A `kernel` quote writes a composition term directly, with `${...}` splicing typed `Music` into it. What the quote guarantees is exact extent, closure, and payload typing; what it does not guarantee is that a surface claim made inside a hole still holds after the quote's own `shift`, `scale`, or `restrict` moved it.\n\n\
      ```musa\nlet doubled: Music = kernel EventTrack[WrittenTime, ScoreFact] {\n    let s = ${subject} in together { s; shift by 1/2 s; }\n};\n```"
 );
+static QUOTE: KeywordDoc = doc!(
+    "quote",
+    "a syntax quotation, written where an adapter builds",
+    "`quote at here { ... }` builds syntax by writing it. The body is read by the ordinary parser, `$x` and \
+     `${...}` splice one value where one node stands, `$..xs` splices a list where a sequence stands, and the \
+     identity of every node written literally is computed rather than allocated.\n\n\
+     ```musa\nquote at here { Sounded(${ anchored(region, here) }, $event, $items) }\n```"
+);
 static OPTION: KeywordDoc = doc!(
     "Option",
     "a type that may contain one value",
@@ -907,6 +915,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         SyntaxKind::FnKw => &FN,
         SyntaxKind::MusicKw => &MUSIC,
         SyntaxKind::KernelKw => &KERNEL,
+        SyntaxKind::QuoteKw => &QUOTE,
         SyntaxKind::OptionKw => &OPTION,
         SyntaxKind::ListKw => &LIST,
         SyntaxKind::ResultKw => &RESULT,
@@ -1079,6 +1088,9 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::MusicExpr
         | SyntaxKind::KernelQuote
         | SyntaxKind::KernelHole
+        | SyntaxKind::QuoteExpr
+        | SyntaxKind::Splice
+        | SyntaxKind::SequenceSplice
         | SyntaxKind::ScaleExpr
         | SyntaxKind::KeyExpr
         | SyntaxKind::StepExpr
@@ -1197,6 +1209,7 @@ mod tests {
             SyntaxKind::LetKw,
             SyntaxKind::FnKw,
             SyntaxKind::MusicKw,
+            SyntaxKind::QuoteKw,
             SyntaxKind::OptionKw,
             SyntaxKind::ListKw,
             SyntaxKind::MatchKw,

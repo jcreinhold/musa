@@ -312,6 +312,16 @@ struct Parser<'a> {
     /// `use` takes music, and a record is not music, so the suppressed reading
     /// was never a program. Parentheses restore it if one is ever wanted.
     with_is_spoken_for: bool,
+    /// How many quote bodies enclose the position being parsed.
+    ///
+    /// `$` is part of a quote's grammar and has no meaning outside one
+    /// (`docs/rules/language/11-quotation.md` §2), so this is what decides
+    /// whether the character opens a splice or is a stray token. It counts
+    /// rather than flags because a quote may nest inside a splice, and it
+    /// drops back to zero while a splice's own expression is read — the
+    /// expression is host code, and a `$` in it belongs to whatever quote is
+    /// written *there*.
+    quote_depth: u32,
 }
 
 impl<'a> Parser<'a> {
@@ -326,6 +336,7 @@ impl<'a> Parser<'a> {
             bar_depth: 0,
             in_pipe_bar: false,
             with_is_spoken_for: false,
+            quote_depth: 0,
         }
     }
 
@@ -2293,6 +2304,8 @@ impl<'a> Parser<'a> {
             Some(SyntaxKind::IfKw) => self.if_expr(),
             Some(SyntaxKind::MusicKw) => self.music_expr(),
             Some(SyntaxKind::KernelKw) => self.kernel_quote(),
+            Some(SyntaxKind::QuoteKw) => self.quote_expr(),
+            Some(SyntaxKind::Dollar) if self.quote_depth > 0 => self.splice(),
             Some(SyntaxKind::ScaleKw) => self.scale_expr(),
             Some(SyntaxKind::KeyKw) => self.key_expr(),
             Some(SyntaxKind::ChordKw) => self.chord_expr(),
@@ -2812,6 +2825,85 @@ impl<'a> Parser<'a> {
         self.expect(SyntaxKind::LBrace, "`{`");
         self.expr();
         self.expect(SyntaxKind::RBrace, "`}`");
+        self.finish();
+    }
+
+    /// `quote at here { … }` — the other quotation, whose body this parser
+    /// reads (`docs/rules/language/11-quotation.md` §2).
+    ///
+    /// The whole of the difference from [`Self::kernel_quote`] is right here:
+    /// that one counts braces and hands the interior along as text, because
+    /// the interior is another crate's grammar. This one calls
+    /// [`Self::expr`], because the interior is *this* grammar. A quote that
+    /// did not share the parser would be a second grammar to keep in step
+    /// with the first, and it is the sublanguage-by-subtraction `AGENTS.md`
+    /// forbids: everything the dialect lacked would be paid by every adapter
+    /// author instead of once here. Sharing it is also what makes the body
+    /// formatted, highlighted, and diagnosed by the machinery the file around
+    /// it uses, with no second answer to what an expression is.
+    ///
+    /// The anchor is read at the operand level rather than by [`Self::expr`],
+    /// so that the brace after it opens the body and cannot be mistaken for
+    /// anything else. `here`, `spot`, `read.head.spot` and `anchor_of(x)` are
+    /// all operands; an anchor that needed arithmetic is written in a `let`
+    /// above, which is where a computed value belongs anyway.
+    fn quote_expr(&mut self) {
+        self.start(SyntaxKind::QuoteExpr);
+        self.bump(); // quote
+        self.expect(SyntaxKind::AtKw, "`at`");
+        self.operand_expr(true);
+        self.expect(SyntaxKind::LBrace, "`{`");
+        self.quote_depth = self.quote_depth.saturating_add(1);
+        self.expr();
+        self.quote_depth = self.quote_depth.saturating_sub(1);
+        self.expect(SyntaxKind::RBrace, "`}`");
+        self.finish();
+    }
+
+    /// `$x`, `${ e }`, or `$..xs` — one splice, where one node stands.
+    ///
+    /// All three are read here because all three are one decision made after
+    /// the `$`, and reading them apart would mean three lookahead tests where
+    /// the character has already said what is coming. `$..xs` is a node like
+    /// the others as far as the grammar is concerned; whether the position it
+    /// stands in admits a *sequence* is a question about that position, and
+    /// the elaborator asks it where the position is known.
+    ///
+    /// The splice's own expression is read with the quote closed, because it
+    /// is host code: `${ dot_count(here, dots) }` is an ordinary call, and a
+    /// `$` written inside it belongs to whatever quote is written *there*.
+    fn splice(&mut self) {
+        let sequence =
+            self.nth_significant(1) == Some(SyntaxKind::Dot) && self.nth_significant(2) == Some(SyntaxKind::Dot);
+        self.start(if sequence {
+            SyntaxKind::SequenceSplice
+        } else {
+            SyntaxKind::Splice
+        });
+        self.bump(); // $
+        if sequence {
+            self.bump(); // .
+            self.bump(); // .
+            // Wrapped, exactly as the shorthand below is: a spread names a
+            // list, and a list is an ordinary value of the enclosing scope.
+            // Both splice forms therefore hold one expression, and nothing
+            // downstream needs a second way to reach a spliced name.
+            self.start(SyntaxKind::NameExpr);
+            self.expect(SyntaxKind::Identifier, "the name of a list to splice");
+            self.finish();
+        } else if self.at(SyntaxKind::LBrace) {
+            let outer = std::mem::take(&mut self.quote_depth);
+            self.bump();
+            self.expr();
+            self.expect(SyntaxKind::RBrace, "`}`");
+            self.quote_depth = outer;
+        } else {
+            // The shorthand, and the reason it is only a shorthand: a name is
+            // the one expression that needs no braces to say where it ends.
+            self.start(SyntaxKind::NameExpr);
+            self.expect(SyntaxKind::Identifier, "a name to splice, or `{`");
+            self.finish();
+        }
         self.finish();
     }
 

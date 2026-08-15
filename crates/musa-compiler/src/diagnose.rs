@@ -182,6 +182,18 @@ pub enum Code {
     RedundantNamePrefix,
     /// A `where` clause naming one constraint twice.
     DuplicateConstraint,
+    /// A `$…` splice whose value is not of the category its position demands.
+    ///
+    /// Distinct from [`Self::TypeMismatch`] because both sides are `Syntax`
+    /// and what differs is the index — a claim about how a tree parses, not a
+    /// type the author wrote out — so the report names two categories rather
+    /// than two types, and its repair is a parse rather than an annotation.
+    SpliceCategory,
+    /// A `$..xs` written where the grammar admits one node and not a run.
+    UnspreadSequence,
+    /// A name written literally in a quote that the printer's own renaming
+    /// could produce, so a binder the quote introduces would capture it.
+    QuotedCapture,
 }
 
 /// Writes each code's spelling once, and derives the roster from the same
@@ -269,7 +281,9 @@ code_table! {
     AmbiguousMethod => "ambiguous-method",
     RedundantNamePrefix => "redundant-name-prefix",
     DuplicateConstraint => "duplicate-constraint",
-
+    SpliceCategory => "splice-category",
+    UnspreadSequence => "unspread-sequence",
+    QuotedCapture => "quoted-capture",
 }
 
 impl Code {

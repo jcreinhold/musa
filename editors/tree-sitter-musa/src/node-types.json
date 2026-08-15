@@ -56,6 +56,14 @@
           "named": true
         },
         {
+          "type": "sequence_splice",
+          "named": true
+        },
+        {
+          "type": "splice",
+          "named": true
+        },
+        {
           "type": "syntax_region",
           "named": true
         }
@@ -1028,6 +1036,10 @@
           "named": true
         },
         {
+          "type": "quote_expression",
+          "named": true
+        },
+        {
           "type": "record_literal_expression",
           "named": true
         },
@@ -1041,6 +1053,14 @@
         },
         {
           "type": "scale_expression",
+          "named": true
+        },
+        {
+          "type": "sequence_splice",
+          "named": true
+        },
+        {
+          "type": "splice",
           "named": true
         },
         {
@@ -1737,6 +1757,14 @@
           },
           {
             "type": "result_expression",
+            "named": true
+          },
+          {
+            "type": "sequence_splice",
+            "named": true
+          },
+          {
+            "type": "splice",
             "named": true
           },
           {
@@ -3496,7 +3524,101 @@
             "named": true
           },
           {
+            "type": "sequence_splice",
+            "named": true
+          },
+          {
+            "type": "splice",
+            "named": true
+          },
+          {
             "type": "syntax_region",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "quote_expression",
+    "named": true,
+    "fields": {
+      "anchor": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "(",
+            "named": false
+          },
+          {
+            "type": ")",
+            "named": false
+          },
+          {
+            "type": "block_expression",
+            "named": true
+          },
+          {
+            "type": "expression",
+            "named": true
+          },
+          {
+            "type": "lambda_expression",
+            "named": true
+          },
+          {
+            "type": "list_expression",
+            "named": true
+          },
+          {
+            "type": "literal_expression",
+            "named": true
+          },
+          {
+            "type": "name_expression",
+            "named": true
+          },
+          {
+            "type": "option_expression",
+            "named": true
+          },
+          {
+            "type": "path_expression",
+            "named": true
+          },
+          {
+            "type": "product_expression",
+            "named": true
+          },
+          {
+            "type": "record_literal_expression",
+            "named": true
+          },
+          {
+            "type": "result_expression",
+            "named": true
+          },
+          {
+            "type": "sequence_splice",
+            "named": true
+          },
+          {
+            "type": "splice",
+            "named": true
+          },
+          {
+            "type": "syntax_region",
+            "named": true
+          }
+        ]
+      },
+      "body": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "expression",
             "named": true
           }
         ]
@@ -3648,6 +3770,14 @@
           },
           {
             "type": "result_expression",
+            "named": true
+          },
+          {
+            "type": "sequence_splice",
+            "named": true
+          },
+          {
+            "type": "splice",
             "named": true
           },
           {
@@ -3931,6 +4061,22 @@
     }
   },
   {
+    "type": "sequence_splice",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "setting_statement",
     "named": true,
     "fields": {
@@ -4180,6 +4326,26 @@
           "named": true
         }
       ]
+    }
+  },
+  {
+    "type": "splice",
+    "named": true,
+    "fields": {
+      "value": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "expression",
+            "named": true
+          },
+          {
+            "type": "name_expression",
+            "named": true
+          }
+        ]
+      }
     }
   },
   {
@@ -5443,6 +5609,10 @@
   },
   {
     "type": "profile",
+    "named": false
+  },
+  {
+    "type": "quote",
     "named": false
   },
   {

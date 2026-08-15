@@ -2901,6 +2901,65 @@ impl KernelHole {
     }
 }
 
+/// `quote at here { … }` — a syntax quotation
+/// (`docs/rules/language/11-quotation.md` §2).
+///
+/// Two parts and no third: the anchor a caller evaluates, and the body a
+/// caller *reads as a tree*. There is deliberately no accessor for "the
+/// splices", the way [`KernelQuote::holes`] has one — a splice's meaning
+/// depends on where in the body it stands, so a flat list of them would be a
+/// list with the one fact about each of them removed.
+pub struct QuoteExpr(SyntaxNode);
+wrapper!(QuoteExpr, SyntaxKind::QuoteExpr);
+
+impl QuoteExpr {
+    /// The expression after `at`: the node this quote's output is derived
+    /// from.
+    ///
+    /// By position rather than by kind, because a quote has exactly two child
+    /// nodes and they are these two. Asking "which kinds are expressions"
+    /// would be a second list of the grammar's expression forms, kept beside
+    /// the parser's and drifting from it.
+    pub fn anchor(&self) -> Option<SyntaxNode> {
+        self.0.children().next()
+    }
+
+    /// The quoted expression itself, between the braces.
+    pub fn body(&self) -> Option<SyntaxNode> {
+        self.0.children().nth(1)
+    }
+}
+
+/// `$x` or `${ e }` — one value spliced where one node stands.
+pub struct Splice(SyntaxNode);
+wrapper!(Splice, SyntaxKind::Splice);
+
+impl Splice {
+    /// The host expression whose value is spliced.
+    ///
+    /// The same accessor for both spellings, because `$x` *is* `${ x }` with
+    /// the braces left off: the shorthand parses a [`SyntaxKind::NameExpr`]
+    /// here, so nothing downstream has to know which was written.
+    pub fn expr(&self) -> Option<SyntaxNode> {
+        self.0.children().next()
+    }
+}
+
+/// `$..xs` — a list of values spliced where a sequence stands.
+pub struct SequenceSplice(SyntaxNode);
+wrapper!(SequenceSplice, SyntaxKind::SequenceSplice);
+
+impl SequenceSplice {
+    /// The name of the list spliced here.
+    pub fn name(&self) -> Option<String> {
+        self.0
+            .descendants_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .find(|token| token.kind() == SyntaxKind::Identifier)
+            .map(|token| token.text().to_string())
+    }
+}
+
 // --- Studio (roadmap §7.1) --------------------------------------------------
 
 /// One item of a `studio` block. The variants are the block's whole

@@ -325,6 +325,11 @@
     "doc": "A `kernel` quote writes a composition term directly, with `${...}` splicing typed `Music` into it. What the quote guarantees is exact extent, closure, and payload typing; what it does not guarantee is that a surface claim made inside a hole still holds after the quote's own `shift`, `scale`, or `restrict` moved it.\n\n```musa\nlet doubled: Music = kernel EventTrack[WrittenTime, ScoreFact] {\n    let s = ${subject} in together { s; shift by 1/2 s; }\n};\n```"
   },
   {
+    "spelling": "quote",
+    "summary": "a syntax quotation, written where an adapter builds",
+    "doc": "`quote at here { ... }` builds syntax by writing it. The body is read by the ordinary parser, `$x` and `${...}` splice one value where one node stands, `$..xs` splices a list where a sequence stands, and the identity of every node written literally is computed rather than allocated.\n\n```musa\nquote at here { Sounded(${ anchored(region, here) }, $event, $items) }\n```"
+  },
+  {
     "spelling": "Option",
     "summary": "a type that may contain one value",
     "doc": "`Option<T>` represents an honest partial musical result: either `Some(value)` or `None`, with both cases handled explicitly.\n\n```musa\nlet found: Option<Pitch> = None;\n```"

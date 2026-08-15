@@ -253,6 +253,8 @@ pub enum SyntaxKind {
     MusicKw,
     /// `kernel`
     KernelKw,
+    /// `quote`
+    QuoteKw,
     /// `option`
     OptionKw,
     /// `list`
@@ -599,6 +601,18 @@ pub enum SyntaxKind {
     /// `${ expr }` — one typed antiquotation. Its child expression is
     /// ordinary host syntax.
     KernelHole,
+    /// `quote at here { … }` — a syntax quotation
+    /// (`docs/rules/language/11-quotation.md` §2).
+    ///
+    /// Unlike [`Self::KernelQuote`], its interior is *read*: the body is one
+    /// ordinary expression of this grammar, so it formats, highlights, and
+    /// reports parse errors exactly as the file around it does. What the
+    /// quote adds inside its body is the two splice forms and nothing else.
+    QuoteExpr,
+    /// `$x` or `${ e }` — one value spliced where one node stands.
+    Splice,
+    /// `$..xs` — a list of values spliced where a sequence stands.
+    SequenceSplice,
     /// `scale c dorian` — a collection rooted on a spelled tonic class.
     ScaleExpr,
     /// `key c minor` in a value position, which is the tonal fact and not a

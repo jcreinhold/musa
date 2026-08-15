@@ -447,6 +447,7 @@ token_kinds!(
     TraitKw,
     ImplKw,
     WhereKw,
+    QuoteKw,
     Error,
 );
 
@@ -545,16 +546,26 @@ pub(crate) struct Derived {
     /// Which construction site built it.
     pub(crate) quotation: u32,
     /// Where inside that site's own tree it sits.
+    ///
+    /// Never empty. A derivation names a place *inside* what a site built, and
+    /// a site that built nothing named no place — an empty path would restate
+    /// the origin, which is neither derived nor distinct from the input node
+    /// and would put every site's outermost node at one address. So the
+    /// outermost node a site builds is `[0]` rather than `[]`, and every
+    /// builder here maintains that: `syntax_built(here, role, child)` names
+    /// `[child]`, and [`instantiate`] starts a template's walk one step in.
     pub(crate) path: Vec<u32>,
 }
 
 impl Derived {
     /// The path this derivation names.
     ///
-    /// Total, and injective in all three components: the steps a
-    /// [`NodePath`] holds are [`PathStep::Built`] only, which is disjoint from
-    /// the [`PathStep::Child`] steps reading produces, so a derived path can
-    /// never collide with the structural path of an input node either.
+    /// Total, and injective in all three components *given a non-empty path*:
+    /// the steps a [`NodePath`] holds are [`PathStep::Built`] only, which is
+    /// disjoint from the [`PathStep::Child`] steps reading produces, so a
+    /// derived path can never collide with the structural path of an input
+    /// node either. See [`Self::path`](Derived::path) — the field — for why the
+    /// empty path is not a place.
     pub(crate) fn path(&self) -> NodePath {
         let mut built = self.origin.clone();
         for step in &self.path {
@@ -785,22 +796,7 @@ fn read_node(node: &musa_language::SyntaxNode, path: &NodePath) -> Syntax {
             path: path.clone(),
         });
     }
-    let mut pieces: Vec<musa_language::SyntaxElement> = node.children_with_tokens().collect();
-    let mut delimiter = Delimiter::Layout;
-    for candidate in Delimiter::ALL {
-        let (open, close) = candidate.pair();
-        if open.is_empty() {
-            continue;
-        }
-        let opens = pieces.first().and_then(token_text).is_some_and(|text| text == open);
-        let closes = pieces.last().and_then(token_text).is_some_and(|text| text == close);
-        if opens && closes && pieces.len() >= 2 {
-            delimiter = candidate;
-            pieces.pop();
-            pieces.remove(0);
-            break;
-        }
-    }
+    let (delimiter, pieces) = delimited(node.children_with_tokens().collect());
     let children = pieces
         .iter()
         .enumerate()
@@ -820,6 +816,32 @@ fn read_node(node: &musa_language::SyntaxNode, path: &NodePath) -> Syntax {
         delimiter,
         children,
     }
+}
+
+/// The delimiter a node's own outermost tokens put around it, and what is left
+/// inside once they are taken off.
+///
+/// One place says what a group's delimiter is, because a quote's body has to be
+/// grouped exactly the way the same text would be if it had been read: a
+/// template that decided delimiters its own way would print back as text that
+/// parses differently from what the author wrote.
+pub(crate) fn delimited(
+    mut pieces: Vec<musa_language::SyntaxElement>,
+) -> (Delimiter, Vec<musa_language::SyntaxElement>) {
+    for candidate in Delimiter::ALL {
+        let (open, close) = candidate.pair();
+        if open.is_empty() {
+            continue;
+        }
+        let opens = pieces.first().and_then(token_text).is_some_and(|text| text == open);
+        let closes = pieces.last().and_then(token_text).is_some_and(|text| text == close);
+        if opens && closes && pieces.len() >= 2 {
+            pieces.pop();
+            pieces.remove(0);
+            return (candidate, pieces);
+        }
+    }
+    (Delimiter::Layout, pieces)
 }
 
 fn read_token(token: &musa_language::SyntaxToken, path: NodePath) -> Syntax {
@@ -1015,6 +1037,190 @@ pub(crate) fn reference(at: NodePath, binding: &BindingPath, name: String) -> Sy
         info: SourceInfo::Generated(at),
         name,
         scopes: vec![binding.scope()],
+    }
+}
+
+/// A quote's body, with a hole where each splice stands.
+///
+/// The shape [`read_region`] would have read out of the same text, minus the
+/// positions the author left open. Keeping it is what lets one `quote at …` be
+/// read once, at its definition, and instantiated at every call: the tree does
+/// not depend on the environment, and what does — the anchor and each splice's
+/// value — is a hole here and an expression in the checked quote.
+///
+/// It carries no source information at all. Every node a quote writes is
+/// generated, and its path is a function of the anchor, the quotation, and the
+/// position in *this* tree, which is exactly what [`instantiate`] computes.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum Template {
+    /// A node the parser expected inside the body and did not find.
+    Missing,
+    Token {
+        kind: musa_language::SyntaxKind,
+        text: String,
+    },
+    Identifier {
+        name: String,
+        hygiene: Hygiene,
+    },
+    Group {
+        delimiter: Delimiter,
+        /// Whether this position separates its elements with commas.
+        ///
+        /// §2: "the separator a sequence splice needs — the commas of an
+        /// argument list — is supplied by the grammar of the position". So the
+        /// commas the body writes are *not* children of a separated group: one
+        /// is minted between every pair of elements at instantiation, which is
+        /// what makes `f($a, $..rest)` right for a `rest` of any length, the
+        /// empty one included. A group that kept the written commas and spread
+        /// beside them would leave a trailing one there, and musa rejects a
+        /// trailing comma.
+        separated: bool,
+        children: Vec<Self>,
+    },
+    /// `$x` or `${ e }` — one node, from the splice at this index.
+    Splice(usize),
+    /// `$..xs` — a run of nodes, from the splice at this index. Legal only as a
+    /// separated group's child, which is the only place a run of siblings has
+    /// both room and a separator.
+    Sequence(usize),
+}
+
+/// What a quoted name refers to.
+///
+/// `11-quotation.md` §4's two halves, decided while the body is read rather
+/// than while it is instantiated: a name the quote itself binds gets a scope
+/// derived from where the binder stands, and every other name is written plain
+/// and means what it meant where the quote was written.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum Hygiene {
+    /// A name the quote does not bind.
+    Free,
+    /// A binder the quote writes.
+    Binder,
+    /// A use of a binder the quote writes, named by that binder's position in
+    /// this template.
+    Bound(Vec<u32>),
+}
+
+/// One splice's value, at instantiation.
+#[derive(Clone, Debug)]
+pub(crate) enum Spliced {
+    One(Syntax),
+    Many(Vec<Syntax>),
+}
+
+/// Build one quote's answer: `template`, with `spliced` in its holes, derived
+/// from `origin` by construction site `quotation`.
+///
+/// **This is where provenance is minted** (`11-quotation.md` §3). Every node the
+/// template writes is [`SourceInfo::Generated`] at a [`Derived`] path, and every
+/// node that arrived through a splice is copied in with the identity it already
+/// had. So the author supplies no number: the origin comes from the anchor, the
+/// quotation from the elaborator's counter, and the path from the position in
+/// the template — which is fixed when the quote is read, so a sequence splice
+/// expanding to three nodes does not shift what its siblings are called.
+///
+/// `None` where a hole's value has the wrong arity for the position it stands
+/// in, which the checker has already refused; it is here as well because a
+/// total evaluator cannot assume its own checker ran.
+pub(crate) fn instantiate(
+    template: &Template,
+    origin: &NodePath,
+    quotation: u32,
+    spliced: &[Spliced],
+) -> Option<Syntax> {
+    build(template, origin, quotation, spliced, &mut template_root())
+}
+
+/// Where a walk of a quote's template starts.
+///
+/// One step in, never at the origin itself: what a quote builds outermost is a
+/// node of its own, and two quotes reading one input node have to disagree
+/// about where that node sits — see [`Derived`]'s `path` field.
+///
+/// Both walks start here. The checker records a quoted binder's position
+/// against its walk of the body and [`build`] rebuilds that position when it
+/// instantiates, so a binder and the uses that name it are one binding only
+/// while the two walks agree about the first step.
+pub(crate) fn template_root() -> Vec<u32> {
+    vec![0]
+}
+
+fn build(
+    template: &Template,
+    origin: &NodePath,
+    quotation: u32,
+    spliced: &[Spliced],
+    path: &mut Vec<u32>,
+) -> Option<Syntax> {
+    let at = |path: &Vec<u32>| {
+        Derived {
+            origin: origin.clone(),
+            quotation,
+            path: path.clone(),
+        }
+        .path()
+    };
+    match template {
+        Template::Missing => Some(Syntax::Missing(SourceInfo::Generated(at(path)))),
+        Template::Token { kind, text } => Some(token(at(path), *kind, text.clone())),
+        Template::Identifier { name, hygiene } => Some(match hygiene {
+            Hygiene::Free => identifier(at(path), name.clone()),
+            // The binder's own path *is* its binding's, so a quote that writes
+            // two binders writes two names and one written twice is one name,
+            // with nothing allocated either way.
+            Hygiene::Binder => binder(&at(path).binding(quotation), name.clone()),
+            Hygiene::Bound(declared) => reference(at(path), &at(&declared.clone()).binding(quotation), name.clone()),
+        }),
+        Template::Group {
+            delimiter,
+            separated,
+            children,
+        } => {
+            let mut elements: Vec<Syntax> = Vec::with_capacity(children.len());
+            for (index, child) in children.iter().enumerate() {
+                if let Template::Sequence(hole) = child {
+                    let Spliced::Many(values) = spliced.get(*hole)? else {
+                        return None;
+                    };
+                    elements.extend(values.iter().cloned());
+                    continue;
+                }
+                path.push(u32::try_from(index).unwrap_or(u32::MAX));
+                let node = build(child, origin, quotation, spliced, path);
+                path.pop();
+                elements.push(node?);
+            }
+            if *separated {
+                // Every child of a separated position is one element, and so is
+                // every node a spread put there, so one comma goes between each
+                // consecutive pair and none goes at either end. The commas are
+                // numbered past the template's own children, so they cannot
+                // collide with a literal node's path however long the spread
+                // turns out to be.
+                let mut minted = u32::try_from(children.len()).unwrap_or(u32::MAX);
+                let mut separated_elements = Vec::with_capacity(elements.len().saturating_mul(2));
+                for element in elements {
+                    if !separated_elements.is_empty() {
+                        path.push(minted);
+                        separated_elements.push(token(at(path), musa_language::SyntaxKind::Comma, ",".to_owned()));
+                        path.pop();
+                        minted = minted.saturating_add(1);
+                    }
+                    separated_elements.push(element);
+                }
+                elements = separated_elements;
+            }
+            Some(group(at(path), *delimiter, elements))
+        }
+        Template::Splice(hole) => match spliced.get(*hole)? {
+            Spliced::One(node) => Some(node.clone()),
+            Spliced::Many(_) => None,
+        },
+        // Reached only if a sequence splice stood where no group could spread
+        // it, which the checker refuses with a diagnostic that can say where.
+        Template::Sequence(_) => None,
     }
 }
 

@@ -201,6 +201,7 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         SyntaxKind::FnKw => "fn",
         SyntaxKind::MusicKw => "music",
         SyntaxKind::KernelKw => "kernel",
+        SyntaxKind::QuoteKw => "quote",
         SyntaxKind::OptionKw => "Option",
         SyntaxKind::ListKw => "List",
         SyntaxKind::ResultKw => "Result",
@@ -363,6 +364,9 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::PitchExpr
         | SyntaxKind::KernelQuote
         | SyntaxKind::KernelHole
+        | SyntaxKind::QuoteExpr
+        | SyntaxKind::Splice
+        | SyntaxKind::SequenceSplice
         | SyntaxKind::SyntaxRegion
         | SyntaxKind::SyntaxGroup
         | SyntaxKind::TraitDecl

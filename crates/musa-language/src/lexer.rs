@@ -379,6 +379,12 @@ enum RawToken {
     // call until proven otherwise.
     #[token("kernel", priority = 3)]
     KernelKw,
+    // The other quotation's word. A keyword for the same reason `kernel` is
+    // one — `quote at here { … }` is an expression form, and a word that
+    // lexed as an identifier would read as a call to `quote` until the `at`
+    // proved otherwise.
+    #[token("quote", priority = 3)]
+    QuoteKw,
     #[token("Option", priority = 3)]
     OptionKw,
     #[token("List", priority = 3)]
@@ -560,6 +566,7 @@ impl RawToken {
             | Self::FnKw
             | Self::MusicKw
             | Self::KernelKw
+            | Self::QuoteKw
             | Self::OptionKw
             | Self::ListKw
             | Self::ResultKw
@@ -705,6 +712,7 @@ impl RawToken {
             Self::FnKw => SyntaxKind::FnKw,
             Self::MusicKw => SyntaxKind::MusicKw,
             Self::KernelKw => SyntaxKind::KernelKw,
+            Self::QuoteKw => SyntaxKind::QuoteKw,
             Self::OptionKw => SyntaxKind::OptionKw,
             Self::ListKw => SyntaxKind::ListKw,
             Self::ResultKw => SyntaxKind::ResultKw,

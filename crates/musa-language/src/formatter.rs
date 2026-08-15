@@ -502,6 +502,17 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer, layout: &Layout) {
                     write_quote(&child.text().to_string(), writer);
                     continue;
                 }
+                // A splice stands where one node stands
+                // (`docs/rules/language/11-quotation.md` §2), so it is written
+                // as one node: `$x`, `${ e }`, `$..xs`, with nothing between
+                // the `$` and what it splices and no line break inside it. A
+                // splice broken across lines would put the break in the middle
+                // of an argument, which is the one place the reader is least
+                // able to see that a single value stands there.
+                if matches!(child.kind(), SyntaxKind::Splice | SyntaxKind::SequenceSplice) {
+                    write_splice(&child, writer, layout);
+                    continue;
+                }
                 if writer.starts_a_beat_group(&child) {
                     writer.widen_next_gap();
                 }
@@ -618,6 +629,33 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer, layout: &Layout) {
     }
 }
 
+/// Write one splice as the single node it stands for.
+///
+/// The braces of `${ e }` are the splice's own punctuation rather than a
+/// block's, so they take one space inside and never break; the interior is
+/// rendered by [`one_line`], which is the same formatter everything else uses
+/// and not a second set of rules for splices. `$x` and `$..xs` are one word
+/// with punctuation in them, like `M.member` and `3:1`.
+fn write_splice(node: &SyntaxNode, writer: &mut Writer, layout: &Layout) {
+    let inner = node.children().next().map(|held| one_line(&held, layout));
+    let text = match (node.kind(), inner) {
+        (SyntaxKind::SequenceSplice, held) => format!("$..{}", held.unwrap_or_default()),
+        // The braces are written back only where they were written: `$x` is
+        // the shorthand for a name, and re-spelling it `${ x }` would be the
+        // formatter deciding a spelling the author already decided.
+        (_, Some(held))
+            if node
+                .children_with_tokens()
+                .any(|piece| piece.kind() == SyntaxKind::LBrace) =>
+        {
+            format!("${{ {held} }}")
+        }
+        (_, Some(held)) => format!("${held}"),
+        (_, None) => "$".to_owned(),
+    };
+    writer.write_run(&text);
+}
+
 /// Write a quotation verbatim, re-anchored at the writer's indent.
 ///
 /// The first line joins the line in progress — `let doubled: Music = kernel
@@ -711,6 +749,7 @@ fn format_token(node: &SyntaxNode, token: &SyntaxToken, writer: &mut Writer) {
         if matches!(
             parent,
             SyntaxKind::BlockExpr
+                | SyntaxKind::QuoteExpr
                 | SyntaxKind::DataDecl
                 | SyntaxKind::RecordUpdateExpr
                 | SyntaxKind::RecordDecl
@@ -741,6 +780,7 @@ fn format_token(node: &SyntaxNode, token: &SyntaxToken, writer: &mut Writer) {
                 parent,
                 SyntaxKind::MusicExpr
                     | SyntaxKind::MatchExpr
+                    | SyntaxKind::QuoteExpr
                     | SyntaxKind::RecordUpdateExpr
                     | SyntaxKind::RecordLiteralExpr
                     | SyntaxKind::RecordPattern

@@ -85,6 +85,7 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("fn", SyntaxKind::FnKw),
     ("music", SyntaxKind::MusicKw),
     ("kernel", SyntaxKind::KernelKw),
+    ("quote", SyntaxKind::QuoteKw),
     ("Option", SyntaxKind::OptionKw),
     ("List", SyntaxKind::ListKw),
     ("Result", SyntaxKind::ResultKw),
@@ -331,6 +332,7 @@ impl TokenClass {
             | SyntaxKind::FnKw
             | SyntaxKind::MusicKw
             | SyntaxKind::KernelKw
+            | SyntaxKind::QuoteKw
             | SyntaxKind::OptionKw
             | SyntaxKind::ListKw
             | SyntaxKind::ResultKw
@@ -468,6 +470,9 @@ impl TokenClass {
             | SyntaxKind::MusicExpr
             | SyntaxKind::KernelQuote
             | SyntaxKind::KernelHole
+            | SyntaxKind::QuoteExpr
+            | SyntaxKind::Splice
+            | SyntaxKind::SequenceSplice
             | SyntaxKind::ScaleExpr
             | SyntaxKind::KeyExpr
             | SyntaxKind::StepExpr

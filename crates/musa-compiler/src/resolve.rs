@@ -602,6 +602,19 @@ pub(crate) struct Resolver {
     pub(crate) diagnostics: Vec<Diagnostic>,
     pub(crate) next_event: u64,
     pub(crate) next_part: u32,
+    /// Which construction site the next `quote at …` is
+    /// (`docs/rules/language/11-quotation.md` §3).
+    ///
+    /// The middle component of a [`crate::syntax::Derived`] path, and the one
+    /// number in it the elaborator has to allocate rather than derive: the
+    /// origin comes from the anchor and the path from the quote's own tree,
+    /// but "which quote wrote this" is a fact about the program and not about
+    /// either. It lives here, beside [`Self::next_event`] and
+    /// [`Self::next_part`], because a resolver is one per compile — a counter
+    /// on the per-definition checker would restart, and two helpers in two
+    /// modules quoting at the same anchor would mint the same identity for
+    /// different nodes.
+    pub(crate) next_quotation: u32,
     pub(crate) annotations: AnnotationStore,
     /// The prevailing meter, and whether the piece actually wrote it.
     ///
@@ -687,6 +700,7 @@ impl Resolver {
             diagnostics: Vec::new(),
             next_event: 0,
             next_part: 0,
+            next_quotation: 0,
             annotations: AnnotationStore::default(),
             meter: Meter::default(),
             meter_written: false,
