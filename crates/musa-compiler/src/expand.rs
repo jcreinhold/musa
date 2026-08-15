@@ -754,7 +754,7 @@ pub fn adapter_print(
             level: level.word().to_owned(),
         });
     }
-    crate::core::print_value(adapter_source, value).map_err(|failure| match failure {
+    crate::core::print_value(adapter_source, at, &options.imports, value).map_err(|failure| match failure {
         crate::core::PrintFailure::Loss(message) => AdapterPrintError::Loss {
             adapter: adapter.to_owned(),
             message,
@@ -768,7 +768,8 @@ pub fn adapter_print(
         )),
         crate::core::PrintFailure::NotAPrinter(_) => broken(
             format!("`{adapter}`'s `print` does not read this value"),
-            "a printer is `fn (value) { … }` answering `Ok(text)` or `Err(loss)`, over the value its regions produce",
+            "a printer is `fn (value: T) { … }` answering `Ok(text)` or `Err(loss)`, where `T` is the type its regions \
+             produce",
         ),
         crate::core::PrintFailure::NoAnswer => broken(
             format!("`{adapter}` did not answer for this value"),
@@ -1843,7 +1844,7 @@ mod tests {
         }
     };
 
-    let print = fn (value) {
+    let print = fn (value: Text) {
         match value {
             "hello" -> Ok("\"hello\""),
             "goodbye" -> Ok("\"goodbye\""),
@@ -1918,6 +1919,54 @@ mod tests {
         };
         assert_eq!(adapter, "std::adapters::motto");
         assert!(message.contains("neither"), "the adapter's own sentence: {message}");
+    }
+
+    #[test]
+    fn a_printer_reads_the_packages_type_and_its_own_modules_declarations() {
+        // The two halves of "read where it is run". The printer below names
+        // `Clef` — a type of a package it does not import and could not import
+        // — because the *document the region is written into* imports it, and it
+        // calls `named`, a declaration of its own module, because a musa block
+        // holds one expression and a printer with no local definitions is a
+        // printer nobody can write.
+        //
+        // `unreached` is the control: it belongs to the phase, the printer never
+        // names it, and it must not be spliced. If reaching were "the whole
+        // module" rather than "what the printer names", this fixture would not
+        // check at all, because `Syntax` has no ordinary reading.
+        const CLEFS: &str = r#"library {
+    let level = "generative";
+
+    let expand = fn (region) { Ok(region) };
+    let edit = fn (region, command, anchor, argument) { Err("`clefs` serves no command") };
+
+    let unreached = fn (region: Syntax) -> Syntax { region };
+
+    let named = fn (written: Clef) -> Text {
+        match written {
+            Treble -> "treble",
+            Bass -> "bass",
+            Alto -> "alto",
+            Tenor -> "tenor",
+        }
+    };
+
+    let print = fn (written: Clef) -> Result<Text, Text> {
+        Ok(text_join(["clef ", named(written)]))
+    };
+}
+"#;
+        let mut options = CompileOptions::default();
+        options.imports.insert(
+            crate::imports::resolve_import("laws.musa", "std::adapters::clefs"),
+            CLEFS.to_owned(),
+        );
+        // The importing document is where `Clef` comes from. An empty document
+        // would leave the printer's own parameter type unnameable, which is the
+        // state 127dce left every printer in.
+        let at = SourceDocument::new("piece \"laws\" {\n    import std::notation::staff;\n}\n", "laws.musa");
+        let printed = adapter_print(&at, &options, "std::adapters::clefs", "Alto");
+        assert_eq!(printed.as_deref(), Ok("clef alto"), "{printed:?}");
     }
 
     #[test]

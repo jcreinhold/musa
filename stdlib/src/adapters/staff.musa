@@ -107,12 +107,15 @@
 //
 // # What this adapter wanted and did not get
 //
-// - **A number it computed cannot be written back as a numeral.** Every number
-//   this adapter emits is a token the composer wrote, echoed. That is why dots
-//   are counted through a four-valued `Dots` rather than a `Nat`: `NoteValue`
-//   takes a count, and the only way to hand it one is to spell it. Four dots
-//   are refused for the same reason, and closing that would take an operation
-//   turning a phase number into a literal token.
+// - **A number `expand` computed still cannot be written back as a numeral.**
+//   Prompt 127dcfah gave the language `nat_literal` and four other spellings,
+//   and the printer below uses them freely — but they build a `Text`, and what
+//   `expand` has to emit is a `Syntax`. So every number in the *reading*
+//   direction is still a token the composer wrote, echoed, which is why dots
+//   are counted through a four-valued `Dots` rather than a `Nat` and why four
+//   dots are refused. Whether `expand` should be rewritten to build its output
+//   through the spellings the printer uses is prompt 127dd's to weigh; it is a
+//   change to how a working reader is written, not a hole in what it can read.
 // - **A list cannot be built.** A group's children arrive as a `List` and
 //   there is no way to add one to it, or to join two. Reading them into
 //   right-nested data no longer needs a closure — prompt 127dcfaa gave `list`
@@ -127,23 +130,29 @@
 //   operation reading a pitch out of a token, so `f5` tied to `f#5` is caught
 //   by comparing the two spellings the composer wrote. That is the check §2.5
 //   of the trial note asks for, and it is also all this adapter can see.
-// - **A region is reformatted generically until this adapter can print one.**
-//   `readable` means no `print`, so `musa format` reflows a region by the
-//   compiler's own rules, and the blank lines a page was laid out with do not
-//   survive it. Prompt 127dcfb's `print` is what closes this, and until then a
-//   staff page is spaced the way the formatter spaces expressions.
-// - **A refusal cannot quote the numbers it computed.** "This bar does not hold
-//   what it says it measures" points at the bar and stops there; saying *by how
-//   much* would mean spelling a computed rational back as text, which is the
-//   first item on this list again. The place is the half that matters — the
-//   package could find the same fault and could not point anywhere — but the
-//   sentence is poorer than the trial note drew it.
+// - **A printed page is a new page, and says so.** `print` below writes a
+//   `StaffDocument` back out as notation, so a region is no longer reflowed by
+//   the compiler's own rules. What printing does not do is carry anything
+//   across: a printed page holds no comment, no blank line and no origin from
+//   the page a value was read from, because it was written from the value and
+//   the value holds none of those. Preserving them is `edit`'s job, which is
+//   why the two are separate operations rather than one.
+// - **A refusal still does not quote the numbers it computed, and could now.**
+//   "This bar does not hold what it says it measures" points at the bar and
+//   stops there rather than saying *by how much*. That was a limit until
+//   prompt 127dcfah: a refusal is a `Text`, `ratio_literal` writes one out of
+//   an exact rational, and `text_join` puts the two together — the same three
+//   operations the printer below is written with. So this is now a sentence
+//   this adapter has not written rather than one it cannot, and rewriting the
+//   refusals to say how far a bar is out is prompt 127dd's to weigh alongside
+//   the numeral question above. The place was always the half that mattered:
+//   the package could find the same fault and could not point anywhere.
 
 library {
-    // Read-only, of the three levels: prompt 127dcfb gives this adapter `edit`
-    // and `print`, and until it does, a region of this adapter is source a
-    // musician changes by typing.
-    let level = "readable";
+    // The highest of the three levels, and a promise the compiler checks where
+    // this module is imported: this adapter reads a region, serves one
+    // structured command against one, and writes a whole page out of a value.
+    let level = "generative";
 
     // ---------------------------------------------------------------- reading
 
@@ -2153,6 +2162,243 @@ library {
                     Took(spot, body) -> document_read(region, spot, body),
                 },
             },
+        }
+    };
+
+    // ------------------------------------------------------------- writing
+
+    // The other direction, and the one that makes this adapter *generative*.
+    // Everything below is the printer's: `expand` names none of it, so none of
+    // it is checked in the expansion phase, which is what lets it name the
+    // package's own types. A reader and a writer for the same notation belong
+    // in one module even though they are checked in two readings.
+
+    // A word, then its parentheses if it takes numbers. `bar (4, 4)`,
+    // `tuplet (3, 2)` and `time (4, 4)` are one shape, so they are one
+    // function.
+    fn counted(word: Text, count: Nat, unit: Nat) -> Text {
+        text_join([word, " (", nat_literal(count), ", ", nat_literal(unit), ")"])
+    }
+
+    fn measured(word: Text, beats: Meter) -> Text {
+        match beats {
+            Beats(count, unit) -> counted(word, count, unit),
+        }
+    }
+
+    // Two pieces of notation with a space between them, and no space where
+    // either of them is nothing. An empty body is what `NoItems` writes, and a
+    // page that ended with a stray space would not be this page reprinted.
+    fn spaced(first: Text, second: Text) -> Text {
+        if text_equal(first, "") {
+            second
+        } else if text_equal(second, "") {
+            first
+        } else { text_join([first, " ", second]) }
+    }
+
+    // A form that holds notation: its head, its braces, and whatever follows.
+    fn wrapped(
+        head: Text,
+        body: Result<Text, Text>,
+        after: Result<Text, Text>,
+    ) -> Result<Text, Text> { Ok(spaced(text_join([head, " { ", body?, " }"]), after?)) }
+
+    // The dots after a written value, one per dot.
+    //
+    // `nat_fold` and not a comparison, because the language has no `nat_equal`
+    // and needs none: a count is eliminated by counting down it, which is what
+    // a fold over a `Nat` is.
+    fn dotted(dots: Nat) -> Text {
+        nat_fold(
+            "",
+            fn (step_index: Nat, sofar: Text) -> Text { text_join([sofar, "."]) },
+            dots,
+        )
+    }
+
+    // What is written after a pitch: `/4`, `/4.`, or `(3/8)`.
+    //
+    // The first loss this printer can state. An exact span is a `Ratio` and the
+    // grammar has no literal for one below zero, so `ratio_literal` answers
+    // nothing and the answer here is a sentence rather than a shorter note.
+    fn written_value(held: WrittenDuration) -> Result<Text, Text> {
+        match held {
+            NoteValue(division, dots) -> Ok(text_join([
+                "/",
+                nat_literal(division),
+                dotted(dots),
+            ])),
+            ExactSpan(span) -> option_fold(
+                Err("this staff writes no exact span below zero, and this note holds one"),
+                fn (spelt: Text) -> Result<Text, Text> { Ok(text_join(["(", spelt, ")"])) },
+                ratio_literal(span),
+            ),
+        }
+    }
+
+    fn tied_on(tied: Tie) -> Text { match tied { Untied -> "", TiedOn -> " ~", } }
+
+    // The pitches of a chord or a grace, in the order they are held.
+    fn voiced_pitches(voices: List<Pitch>) -> Text {
+        list_fold_from_start(
+            "",
+            fn (sung: Pitch, sofar: Text) -> Text { spaced(sofar, pitch_literal(sung)) },
+            voices,
+        )
+    }
+
+    // What is written at one point of the staff.
+    fn written_event(event: StaffEvent) -> Result<Text, Text> {
+        match event {
+            Note(spelled, held, tied) -> Ok(text_join([
+                pitch_literal(spelled),
+                written_value(held)?,
+                tied_on(tied),
+            ])),
+            Rest(silent) -> Ok(text_join(["rest", written_value(silent)?])),
+            Chord(voices, sustained, joined) -> Ok(text_join([
+                "[",
+                voiced_pitches(voices),
+                "]",
+                written_value(sustained)?,
+                tied_on(joined),
+            ])),
+            Grace(ornaments) -> Ok(text_join(["grace [", voiced_pitches(ornaments), "]"])),
+            MeterChange(beats) -> Ok(measured("meter", beats)),
+        }
+    }
+
+    // The written sequence, by the fold the package's own `data` generates.
+    //
+    // A `pickup` is printed as the `bar` it is. The package has no pickup —
+    // a pickup is a bar with fewer beats in it — so there is nothing here to
+    // tell the two apart, and the round-trip law is stated on the value for
+    // exactly this reason.
+    fn written_items(items: StaffItem) -> Result<Text, Text> {
+        staff_item_fold(
+            Ok(""),
+            fn (
+                anchor: Nat,
+                event: StaffEvent,
+                after: Result<Text, Text>,
+            ) -> Result<Text, Text> { Ok(spaced(written_event(event)?, after?)) },
+            fn (
+                anchor: Nat,
+                beats: Meter,
+                body: Result<Text, Text>,
+                after: Result<Text, Text>,
+            ) -> Result<Text, Text> { wrapped(measured("bar", beats), body, after) },
+            fn (
+                anchor: Nat,
+                body: Result<Text, Text>,
+                after: Result<Text, Text>,
+            ) -> Result<Text, Text> { wrapped("slur", body, after) },
+            fn (
+                anchor: Nat,
+                played: Nat,
+                against: Nat,
+                body: Result<Text, Text>,
+                after: Result<Text, Text>,
+            ) -> Result<Text, Text> { wrapped(counted("tuplet", played, against), body, after) },
+            fn (
+                anchor: Nat,
+                times: Nat,
+                body: Result<Text, Text>,
+                after: Result<Text, Text>,
+            ) -> Result<Text, Text> {
+                wrapped(text_join(["repeat (", nat_literal(times), ")"]), body, after)
+            },
+            fn (
+                anchor: Nat,
+                pass: Nat,
+                body: Result<Text, Text>,
+                after: Result<Text, Text>,
+            ) -> Result<Text, Text> {
+                wrapped(text_join(["ending (", nat_literal(pass), ")"]), body, after)
+            },
+            items,
+        )
+    }
+
+    fn clef_word(written: Clef) -> Text {
+        match written {
+            Treble -> "treble",
+            Bass -> "bass",
+            Alto -> "alto",
+            Tenor -> "tenor",
+        }
+    }
+
+    fn spelling_word(chosen: Spelling) -> Text {
+        match chosen {
+            ShortestReadable -> "shortest_readable",
+            ExactValues -> "exact_values",
+        }
+    }
+
+    // The second loss, and the one the trial note asked for. A transposing
+    // instrument is written by naming the interval its part sits above what it
+    // sounds, and the written names cover a grid: an interval outside it, and
+    // any descending one, has no name a reader would take. The document is not
+    // made smaller by leaving it out — the loss says which part could not be
+    // written.
+    fn transposing_word(shift: Interval) -> Result<Text, Text> {
+        option_fold(
+            Err("this staff has no written name for the interval this part is transposed by"),
+            fn (spelt: Text) -> Result<Text, Text> { Ok(text_join(["transposing ", spelt])) },
+            interval_literal(shift),
+        )
+    }
+
+    // One command, `replace`: put this text where the node the command names
+    // stands.
+    //
+    // The node is named by anchor and the anchor is echoed straight back, which
+    // is the whole of what an adapter may do with a place. The compiler owns
+    // the translation to a range, and this adapter has no operation for reading
+    // one. Everything the edit law asks for follows: the patch lands inside the
+    // region because an anchor of this region is inside it, nothing outside the
+    // named range is touched because nothing else is returned, and re-expanding
+    // the patched region agrees with replacing that node because replacing it
+    // is what the patch does.
+    //
+    // Every item this adapter emits carries an anchor, so `replace` reaches any
+    // note, bar, tuplet, slur, repeat or ending on the page — which is the edit
+    // §2.6 of the trial note draws, and more besides.
+    let edit = fn (region, command, anchor, argument) {
+        match command {
+            "replace" -> Ok([(anchor, argument)]),
+            _ -> Err("`staff` serves one command, `replace`"),
+        }
+    };
+
+    // A page, written back as the notation it was read from.
+    //
+    // The header in the order a musician states it, then the notation. What is
+    // written here is a region's *contents* — what goes between the braces of
+    // `syntax staff { … }` — because the region's name is the importing file's
+    // word for this package and not this package's word for itself.
+    let print = fn (document: StaffDocument) -> Result<Text, Text> {
+        match document {
+            Document(instrument, sounding_shift, written_clef, written_key, beats, spelling, items,) -> Ok(text_join(
+                [
+                    "instrument \"",
+                    instrument,
+                    "\" ",
+                    transposing_word(sounding_shift)?,
+                    " clef ",
+                    clef_word(written_clef),
+                    " ",
+                    key_literal(written_key),
+                    " ",
+                    measured("time", beats),
+                    " spelling ",
+                    spelling_word(spelling),
+                    " ",
+                    written_items(items)?,
+                ],
+            )),
         }
     };
 }

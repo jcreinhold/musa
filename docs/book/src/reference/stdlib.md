@@ -69,9 +69,15 @@ bar. `examples/staff-page.musa` is a page that exercises every item it reads.
 
 Every adapter declares what it promises, and the compiler checks the promise where the module is imported. A *readable*
 adapter expands, and its regions are read-only; an *editable* one also answers structured commands with edits into its
-own region; a *generative* one also writes a new region for a value it is handed. `doubled` is editable and says so —
-writing a region back would mean spelling a musical value as source text, and the source language has no operation that
-does it.
+own region; a *generative* one also writes a new region for a value it is handed. `doubled` is editable and says so.
+`staff` is generative: it serves one command, `replace`, which puts new text where the node an anchor names stands, and
+it writes a whole page back out of a `StaffDocument`.
+
+Writing back is not the same claim as reading. A printed page says what the value said — realize the page a printer
+wrote and you get the spans the value held — but it is new text, so it preserves no comment, no blank line, and no
+origin from any page that came before it. Editing is what preserves those, and it stays a separate operation for that
+reason. And a page the staff spelling cannot write is a stated loss rather than a smaller page: a part transposed by an
+interval with no written name is refused with a sentence saying so, not printed with the transposition left out.
 
 The reference below is generated from the source comments in the bundled modules.
 

@@ -11514,17 +11514,19 @@ fn token_span(token: &SyntaxToken) -> SourceSpan {
 pub(crate) struct AdapterModule {
     values: IndexMap<String, Value>,
     types: IndexMap<String, Type>,
-    /// The text of `print`, which is the one declaration not checked with the
-    /// module.
+    /// `print`, which is the one declaration not checked with the module.
     ///
     /// A printer's argument is the *package's* type — what its regions produce
     /// — and an adapter module imports nothing, so it cannot name that type and
     /// a standalone check of the printer would have nothing to settle its
     /// parameter against. So the printer is read where it is run, against the
     /// value it is handed ([`print_value`]), which is also why it is the one
-    /// operation that never sees the phase environment. The cost is real and
-    /// worth saying: a printer cannot call the module's other declarations.
-    printer: Option<String>,
+    /// operation that never sees the phase environment.
+    ///
+    /// It is still read *with* the module declarations it names, because "not
+    /// in the phase environment" is a statement about what is in scope and not
+    /// a licence to take the module away. See [`Printer`].
+    printer: Option<Printer>,
 }
 
 impl AdapterModule {
@@ -11545,9 +11547,9 @@ impl AdapterModule {
         self.values.contains_key(name) || (name == "print" && self.printer.is_some())
     }
 
-    /// The printer's source, for the one operation read at its use site.
-    pub(crate) fn printer(&self) -> Option<&str> {
-        self.printer.as_deref()
+    /// The printer, for the one operation read at its use site.
+    pub(crate) fn printer(&self) -> Option<&Printer> {
+        self.printer.as_ref()
     }
 
     /// The operation `name`, if the module declares it at exactly `wanted`.
@@ -11654,9 +11656,10 @@ fn read_adapter_module_metered(
     let printer = printer_source(library.syntax());
     let program = check_and_evaluate_metered(
         &mut resolver,
-        declarations(library.syntax(), None)
-            .into_iter()
-            .filter(|declaration| surface_identity(declaration).is_none_or(|(name, ..)| name != "print")),
+        declarations(library.syntax(), None).into_iter().filter(|declaration| {
+            surface_identity(declaration)
+                .is_none_or(|(name, ..)| name != "print" && printer.as_ref().is_none_or(|printer| !printer.owns(&name)))
+        }),
         None,
         UnknownRootMusic::Reject,
         &modules,
@@ -11725,30 +11728,191 @@ fn phase_operations() -> IndexMap<String, Type> {
     ])
 }
 
-/// The text of `let print = <this>;`, if the module declares one.
+/// `print`, and the module declarations it reads.
 ///
-/// The one declaration read as text rather than as a value, for the reason
-/// [`AdapterModule::printer`] gives. Everything between the `=` and the `;` and
-/// nothing else: the name, the type, and the body's own tokens all lie between
-/// the two marks rather than being one of them.
-fn printer_source(library: &SyntaxNode) -> Option<String> {
-    let declaration = root_nodes(library, SyntaxKind::LetDecl)
-        .into_iter()
-        .find(|declaration| declared_name(declaration).as_deref() == Some("print"))?;
+/// The one operation read as text rather than as a value, for the reason
+/// [`AdapterModule::printer`] gives — and read *with* its module rather than
+/// alone. A musa block holds exactly one expression and the language has no
+/// `let` expression, so an operation read as a bare expression cannot bind a
+/// single local name: it would be the language minus local definitions, which
+/// is the sublanguage by subtraction root `AGENTS.md` forbids and the shape
+/// Peyton Jones ch. 3 enriches the calculus to avoid. `expand` and `edit` never
+/// felt it because they are checked with the module; this is what gives `print`
+/// the same.
+///
+/// The declarations it *names*, transitively, and not the whole module — which
+/// makes a module two parts rather than one. A helper written for the printer
+/// names the package's types, and the phase has no such types, so a module
+/// checked as one piece could not hold one at all: the phase would refuse the
+/// helper before the printer was ever read. So a declaration belongs to
+/// whichever operations name it. `level`, `expand` and `edit` are the phase's
+/// roots; `print` is the printer's; a declaration both reach is checked twice,
+/// once under each reading, which is the honest answer for a helper that is
+/// genuinely both. One neither reaches is dead, and stays with the phase so
+/// that it is still checked rather than quietly ignored.
+pub(crate) struct Printer {
+    /// Everything between `let print =` and its `;`.
+    body: String,
+    /// The module declarations the body reaches, in the order the module writes
+    /// them, verbatim.
+    reached: Vec<String>,
+    /// The names of those the phase must *not* check, being the printer's alone.
+    private: IndexSet<String>,
+}
+
+impl Printer {
+    /// Whether the phase should leave a declaration to the printer.
+    pub(crate) fn owns(&self, name: &str) -> bool {
+        self.private.contains(name)
+    }
+}
+
+/// The declarations a set of root names reaches, transitively.
+///
+/// By repetition rather than by recursion: each pass takes the declarations the
+/// names so far reach and adds what *they* name, until a pass adds nothing.
+fn reached_by(module: &[(Vec<String>, IndexSet<String>, String)], roots: IndexSet<String>) -> Vec<bool> {
+    let mut wanted = roots;
+    let mut taken = vec![false; module.len()];
+    loop {
+        let mut grew = false;
+        for (reached, (binds, names, _)) in taken.iter_mut().zip(module) {
+            if *reached || !binds.iter().any(|name| wanted.contains(name)) {
+                continue;
+            }
+            *reached = true;
+            wanted.extend(names.iter().cloned());
+            grew = true;
+        }
+        if !grew {
+            return taken;
+        }
+    }
+}
+
+fn printer_source(library: &SyntaxNode) -> Option<Printer> {
+    let whole = library.to_string();
+    let base = usize::try_from(u32::from(library.text_range().start())).ok()?;
+    let written = |from: u32, to: u32| -> Option<String> {
+        let from = usize::try_from(from).ok()?.checked_sub(base)?;
+        let to = usize::try_from(to).ok()?.checked_sub(base)?;
+        Some(whole.get(from..to)?.trim().to_owned())
+    };
+    // What each declaration binds, what it names, and its own source — in the
+    // order the module writes them, because that is the order they have to be
+    // spliced back in.
+    let mut module: Vec<(Vec<String>, IndexSet<String>, String)> = Vec::new();
+    let mut body = None;
+    for node in library.children() {
+        let range = node.text_range();
+        if matches!(node.kind(), SyntaxKind::LetDecl | SyntaxKind::FnDecl) {
+            let Some(name) = declared_name(&node) else { continue };
+            if node.kind() == SyntaxKind::LetDecl && name == "print" {
+                body = Some(printer_body(&node, &written)?);
+            } else {
+                module.push((
+                    vec![name],
+                    names_in(&node),
+                    written(range.start().into(), range.end().into())?,
+                ));
+            }
+        } else if let Some(declaration) = musa_language::ast::DataDecl::cast(node.clone()) {
+            // A `data` is reached by its type, by any of its constructors, or
+            // by the fold generated for it: those are the whole of what naming
+            // it can look like from a printer.
+            let mut binds: Vec<String> = declaration.variants().iter().filter_map(|it| it.name()).collect();
+            if let Some(name) = declaration.name() {
+                binds.push(crate::data::fold_name(&name));
+                binds.push(name);
+            }
+            module.push((
+                binds,
+                names_in(&node),
+                written(range.start().into(), range.end().into())?,
+            ));
+        }
+    }
+    let body = body?;
+    let printers = reached_by(&module, names_in_text(&body));
+    // The phase's roots are the three operations it runs and reads, and not
+    // every declaration: a helper reached only from `print` has to leave, and
+    // one reached from neither side has to stay.
+    let phases = reached_by(
+        &module,
+        ["level", "expand", "edit"].into_iter().map(str::to_owned).collect(),
+    );
+    let mut reached = Vec::new();
+    let mut private = IndexSet::new();
+    for ((binds, names, text), (&mine, &theirs)) in module.into_iter().zip(printers.iter().zip(&phases)) {
+        if !mine || names_a_phase_type(&names) {
+            continue;
+        }
+        if !theirs {
+            private.extend(binds);
+        }
+        reached.push(text);
+    }
+    Some(Printer { body, reached, private })
+}
+
+/// Whether a declaration writes down one of the phase's own types.
+///
+/// The one place the printer's reachability may not over-reach. A declaration
+/// naming `Syntax`, `NodePath`, `BindingPath` or `SyntaxStep` is the phase's:
+/// the ordinary reading has no such type, so splicing it does not cost "a
+/// little checking" — it refuses the whole piece, and refuses it with a
+/// complaint about a declaration the printer never asked for. So the phase
+/// keeps it, and a printer that genuinely reached one is refused for the name
+/// it wrote rather than for a type it did not.
+///
+/// This is the same boundary [`Printer`] states, applied to the declaration
+/// rather than to the type: a `data` is reached by any of its constructors, and
+/// a constructor name an adapter shares with the package it reads — `Untied` is
+/// both `Tying`'s and `Tie`'s — is exactly where the over-approximation
+/// otherwise drags the phase's half into the printer's piece.
+fn names_a_phase_type(names: &IndexSet<String>) -> bool {
+    names
+        .iter()
+        .any(|name| phase_type(name).is_some() || name == "SyntaxStep")
+}
+
+/// Everything between `let print =` and its `;`, and nothing else: the name,
+/// the type, and the body's own tokens all lie between the two marks rather
+/// than being one of them.
+fn printer_body(declaration: &SyntaxNode, written: &impl Fn(u32, u32) -> Option<String>) -> Option<String> {
     let mut equals = None;
     let mut semicolon = None;
     for token in declaration.children_with_tokens().filter_map(|it| it.into_token()) {
         if token.kind() == SyntaxKind::Equals && equals.is_none() {
-            equals = Some(usize::try_from(u32::from(token.text_range().end())).ok()?);
+            equals = Some(u32::from(token.text_range().end()));
         } else if token.kind() == SyntaxKind::Semicolon {
-            semicolon = Some(usize::try_from(u32::from(token.text_range().start())).ok()?);
+            semicolon = Some(u32::from(token.text_range().start()));
         }
     }
-    let text = library.to_string();
-    let base = usize::try_from(u32::from(library.text_range().start())).ok()?;
-    let from = equals?.checked_sub(base)?;
-    let to = semicolon?.checked_sub(base)?;
-    Some(text.get(from..to)?.trim().to_owned())
+    written(equals?, semicolon?)
+}
+
+/// Every name written anywhere inside a declaration.
+///
+/// Deliberately more than the names it *reads*: a parameter, a field, and a
+/// bound pattern variable all land here too. Over-reaching mostly splices a
+/// declaration the printer did not need, which costs a little checking;
+/// under-reaching would leave a name unbound and refuse a printer that was
+/// correct. The one case where over-reaching is not cheap is a declaration
+/// written in the phase's language, and [`names_a_phase_type`] is what keeps
+/// that one out.
+fn names_in(node: &SyntaxNode) -> IndexSet<String> {
+    node.descendants_with_tokens()
+        .filter_map(|element| element.into_token())
+        .filter(|token| token.kind() == SyntaxKind::Identifier)
+        .map(|token| token.text().to_owned())
+        .collect()
+}
+
+/// The same over source text, for the printer's own body, which is text by the
+/// time anything asks what it names.
+fn names_in_text(source: &str) -> IndexSet<String> {
+    names_in(&musa_language::parse(&format!("library {{ let named = {source}; }}")).syntax())
 }
 
 /// The name a `let` declares.
@@ -12036,11 +12200,18 @@ pub(crate) enum PrintFailure {
 /// a value, outside the one place expansion happens.
 ///
 /// `value` is the value as an ordinary expression, because that is the one
-/// spelling of a value this crate shares with anything outside it. The printer
-/// and the value are checked as one application, so `A` is settled by
-/// unification rather than declared: the phase never learns the package's type
-/// and does not need to.
-pub(crate) fn print_value(adapter_source: &str, value: &str) -> Result<String, PrintFailure> {
+/// spelling of a value this crate shares with anything outside it. `A` is what
+/// the printer says it takes, and the application against the value is what
+/// checks the two agree. A printer *can* say it now: its parameter type is the
+/// package's, and the package is in scope where the printer is read. The phase
+/// still never learns that type — it is named in the adapter's `print` and read
+/// at the use site, never in the module the phase checks.
+pub(crate) fn print_value(
+    adapter_source: &str,
+    at: &crate::compile::SourceDocument,
+    sources: &crate::imports::ImportSources,
+    value: &str,
+) -> Result<String, PrintFailure> {
     let mut unifier = Unifier::default();
     let mut meter = WorkMeter::default();
     let module = match read_adapter_module_metered(adapter_source, &mut unifier, &mut meter) {
@@ -12050,96 +12221,138 @@ pub(crate) fn print_value(adapter_source: &str, value: &str) -> Result<String, P
     let Some(printer) = module.printer() else {
         return Err(PrintFailure::NotAPrinter(vec![not_the_operation("print", None)]));
     };
-    run_printer(printer, value, &mut unifier, &mut meter)
+    run_printer(printer, at, sources, value, &mut meter)
 }
 
+/// The one small piece a printer and its subject are read in.
+///
+/// Ordinary compilation and nothing else: the same declarations, the same
+/// Algorithm W, the same total evaluator, the same meter, and
+/// [`Reading::Source`] — so [`SYNTAX_OWNERSHIP`] is out of scope exactly as the
+/// empty scope had it out. A printer that could build syntax would be a second
+/// way to make an expansion, out of a value, away from the one place expansion
+/// happens.
+///
+/// What the piece holds, and why each part of it is there:
+///
+/// - **`at`'s ordinary imports.** `Document(…)` is not a name an empty world
+///   holds, so neither the subject nor a `match` over it could be checked
+///   without them. They are `at`'s rather than the adapter's because `at` is the
+///   document the region will be written into, which makes this the same scope
+///   the printed region will itself be read in — the two sides of the
+///   round-trip law, read the same way. A syntax import is left out for the
+///   reason [`crate::imports::load`] leaves it out: it named a reader, not a
+///   module.
+/// - **The module declarations the printer names**, so that a printer may have
+///   local definitions. See [`Printer`].
+/// - **`subject`, then `printer`, then `printed`.** `A` is settled by
+///   unification through the application rather than declared: what a package's
+///   regions produce is the package's business, and a phase that had to be told
+///   it would be a phase that knows a type.
 fn run_printer(
-    printer: &str,
+    printer: &Printer,
+    at: &crate::compile::SourceDocument,
+    sources: &crate::imports::ImportSources,
     value: &str,
-    unifier: &mut Unifier,
     meter: &mut WorkMeter,
 ) -> Result<String, PrintFailure> {
-    let parsed = musa_language::parse(&format!(
-        "piece \"print\" {{\n  let subject = {value};\n  let printer = {printer};\n}}"
-    ));
+    let mut source = String::from("piece \"print\" {\n");
+    for import in ordinary_imports(at.text()) {
+        source.push_str(&import);
+        source.push('\n');
+    }
+    for declaration in &printer.reached {
+        source.push_str(declaration);
+        source.push('\n');
+    }
+    source.push_str("let subject = ");
+    source.push_str(value);
+    source.push_str(";\nlet printer = ");
+    source.push_str(&printer.body);
+    source.push_str(";\nlet printed: Result<Text, Text> = printer(subject);\n}\n");
+
+    let parsed = musa_language::parse(&source);
+    if let Some(error) = parsed.errors().first() {
+        return Err(PrintFailure::NotAPrinter(vec![Diagnostic::error(
+            Code::Expansion,
+            format!("the printer and the value do not parse together: {}", error.message()),
+        )]));
+    }
+    let root = parsed.syntax();
+    let Some(piece) = musa_language::ast::PieceDecl::from_root(&root) else {
+        return Err(PrintFailure::NotAPrinter(vec![not_the_operation("print", None)]));
+    };
     let mut resolver = Resolver::new();
-    let declarations = root_nodes(&parsed.syntax(), SyntaxKind::LetDecl);
-    let bodies: Vec<SyntaxNode> = declarations
-        .iter()
-        .filter_map(|declaration| child_of(declaration, is_expr_node))
-        .collect();
-    let [subject, printer] = bodies.as_slice() else {
-        return Err(PrintFailure::NotAPrinter(resolver.diagnostics));
-    };
-    // The value first, and the printer against the type it turned out to have.
-    // `A` is settled by unification rather than declared: what a package's
-    // regions produce is the package's business, and a phase that had to be
-    // told it would be a phase that knows a type.
-    let Some(subject) = check_ordinary(subject, None, &mut resolver, unifier, meter) else {
-        return Err(print_failure(meter, &resolver));
-    };
-    let wanted = Type::Function(
-        vec![unifier.resolve(&subject.ty)],
-        Box::new(Type::Sum(Box::new(Type::Text), Box::new(Type::Text))),
+    let libraries = crate::imports::load(
+        &mut resolver,
+        at.name(),
+        &musa_language::ast::ImportStmt::all_at_root(piece.syntax()),
+        sources,
     );
-    let Some(printer) = check_ordinary(printer, Some(&wanted), &mut resolver, unifier, meter) else {
+    if !validate_imports(&mut resolver, &libraries) {
+        return Err(print_failure(meter, &resolver));
+    }
+    let world = World::read(&mut resolver, &data_owners(&libraries, &root, Some(piece.syntax())));
+    let modules = Modules::read(&mut resolver, &world, module_owners(&libraries, &root));
+    let program = check_and_evaluate_metered(
+        &mut resolver,
+        libraries
+            .each()
+            .flat_map(|(from, library)| declarations(library.syntax(), Some(from)))
+            .chain(root_preamble(&root))
+            .chain(declarations(piece.syntax(), None)),
+        Some(piece.syntax()),
+        UnknownRootMusic::Reject,
+        &modules,
+        &world,
+        Reading::Source,
+        &IndexMap::new(),
+        &mut Unifier::default(),
+        meter,
+    );
+    let Some(program) = program else {
         return Err(print_failure(meter, &resolver));
     };
-    let environment = IndexMap::new();
-    let Some(argument) = eval(&subject, &environment, meter) else {
+    // A checked program is not yet an answer: the declaration world is read
+    // before the expressions are, and its own refusals are recorded there.
+    if resolver
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.severity == crate::diagnose::Severity::Error)
+    {
+        return Err(print_failure(meter, &resolver));
+    }
+    let Some(Value::Sum { error, held, .. }) = program.values.get("printed") else {
         return Err(print_stopped_or(meter, PrintFailure::NoAnswer));
     };
-    let Some(Value::Closure(function)) = eval(&printer, &environment, meter) else {
+    let Value::Text(text) = held.as_ref() else {
         return Err(print_stopped_or(meter, PrintFailure::NoAnswer));
     };
-    let applied = apply_closure(&function, vec![argument], meter, printer.span);
-    let Some(Value::Sum { error, held, .. }) = applied else {
-        return Err(print_stopped_or(meter, PrintFailure::NoAnswer));
-    };
-    let Value::Text(text) = *held else {
-        return Err(print_stopped_or(meter, PrintFailure::NoAnswer));
-    };
-    if error { Err(PrintFailure::Loss(text)) } else { Ok(text) }
+    if *error {
+        Err(PrintFailure::Loss(text.clone()))
+    } else {
+        Ok(text.clone())
+    }
 }
 
-/// Check one expression under the ordinary reading, with nothing else in scope.
+/// The import statements of a document that bring a module's declarations in,
+/// written back out verbatim.
 ///
-/// The environment a printer and the value it is handed are both read in: no
-/// definitions, no module scope, and — the part that matters —
-/// [`Reading::Foreign`] rather than [`Reading::Expansion`], so
-/// [`SYNTAX_OWNERSHIP`] is not in scope. A printer that could build syntax
-/// would be a second way to make an expansion, out of a value, away from the
-/// one place expansion happens.
-fn check_ordinary(
-    node: &SyntaxNode,
-    wanted: Option<&Type>,
-    resolver: &mut Resolver,
-    unifier: &mut Unifier,
-    meter: &mut WorkMeter,
-) -> Option<Expr> {
-    let span = crate::resolve::trimmed_span(node);
-    let mut checker = Checker {
-        resolver,
-        definitions: &[],
-        symbols: &IndexMap::new(),
-        locals: IndexMap::new(),
-        unifier,
-        dependencies: IndexMap::new(),
-        mentioned: Vec::new(),
-        reading: Reading::Foreign,
-        failed: false,
-        meter,
-        music_role: None,
-        definition_span: span,
-        deferred_pitch: false,
-        scope: crate::module::NameScope::empty(),
-        modules: &Modules::default(),
-        world: &World::default(),
-        questions: Vec::new(),
-        asked: 0,
-        tail: false,
-    };
-    checker.check(node, wanted)
+/// Verbatim because an import means what it says: re-spelling `import std::x as
+/// y;` from its parts would be this function deciding what the composer wrote.
+fn ordinary_imports(text: &str) -> Vec<String> {
+    let parsed = musa_language::parse(text);
+    let root = parsed.syntax();
+    // Root and piece both: an import is written at a document's lexical root or
+    // inside its `piece`/`library`, and which of the two a composer chose is not
+    // something the printed region should depend on.
+    root.descendants()
+        .filter_map(musa_language::ast::ImportStmt::cast)
+        .collect::<Vec<_>>()
+        .iter()
+        .filter(|import| !import.changes_syntax())
+        .map(|import| import.syntax().text().to_string().trim().to_owned())
+        .collect()
 }
 
 /// A stop when the meter stopped, and the checker's complaints when it did not.

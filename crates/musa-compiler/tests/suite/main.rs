@@ -55,6 +55,7 @@ mod serial_laws;
 mod sharing_laws;
 mod staff_expansion_laws;
 mod staff_package_laws;
+mod staff_writing_laws;
 mod studio_laws;
 mod template_laws;
 mod tonal_analysis_validation;

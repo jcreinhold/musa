@@ -1,7 +1,7 @@
 ---
 id: 127dcfb
 slug: staff-edit-print
-status: in-progress
+status: done
 depends_on: [127dcfah]
 phase: 3
 ---
@@ -71,9 +71,17 @@ definitions, which is the sublanguage by subtraction root `AGENTS.md` forbids an
 the calculus to avoid. `walked` in `stdlib/src/notation/staff.musa` is what a seven-case fold over `StaffItem` costs
 when it *can* name `stopped`, `nested`, and `tupleted`; the same fold with those inlined is what a printer would
 otherwise have to be, four times over. So `print` is spliced together with the module declarations it names,
-transitively. A declaration that belongs to the phase does not thereby become available: it names `Syntax`, the ordinary
-reading has no such type, and a printer that reached one does not check — which is the same boundary stated as a refusal
-instead of as an absence.
+transitively.
+
+A declaration that belongs to the phase does not thereby become available, and *which* declarations those are has to be
+decided by the splice rather than left to the checker. "The declarations it names" is read off the identifiers a
+declaration writes down, which over-reaches on purpose — a spliced declaration the printer did not need only costs a
+little checking. That is true of every declaration except one kind. An adapter shares constructor names with the package
+it reads — the staff's own `Tying` has an `Untied` and so does the package's `Tie` — so a printer that writes `Untied`
+drags in a `data` whose fields are `Syntax`, and the piece is then refused for a type the printer never mentioned. So a
+declaration that writes down one of the phase's own types stays with the phase, always. A printer that genuinely reached
+one is still refused, for the name it wrote rather than for a type it did not: the same boundary, said in the printer's
+own words.
 
 **Why note 39 did not catch this, and why the answer is not a language change.** Note 39 §4's four facilities were
 derived from note 38 §10, whose evidence was the staff adapter's `expand` — a declaration *of a module*, which already
@@ -94,11 +102,19 @@ the trial block, print the value it produced, expand the printed region, and com
 { … }` printed back as `bar (1, 4) { … }` is the normalization the law has to permit — the package has no pickup,
 because a pickup is a bar with fewer beats in it — and comparing the values is what permits it.
 
-The anchors are part of that equality rather than excused from it. An anchor is minted in the order the adapter asks for
-one, so two regions that present the same forms in the same order to the same reader mint the same numbers; a printer
-that is the reader's inverse produces such a region, and one that is not produces a different page and is caught.
-Stating the law on the values as they stand is therefore stronger than stating it "but for the anchors", and costs
-nothing to state.
+The anchors are the one part of the value the law does not carry across, and saying why is better than leaving it
+implied. An anchor is a node's position in the region's own reading order — trivia included, because the region's nodes
+are what the compiler hands an adapter — so an anchor is a fact about *text*. A printed page is new text with its own
+layout, so it earns its own numbers, and a printer could only reproduce the value's numbers by reproducing the page byte
+for byte, which is the claim §4 is explicit about not making. So the law is stated on the whole value and checked
+through `realize` — every span's onset and written value, compared exactly — which catches a printer that reorders,
+drops, or mis-spells a page. That is also all the compiler exposes of one: a realized span's anchor reaches no compiled
+artifact.
+
+The trial value states the anchors that page mints anyway, because a `StaffItem` carries one and a fixture written with
+placeholders would be a fixture saying something untrue about the reader. The adapter takes an item's anchor at the node
+the item begins with, so a note carries its pitch, a chord carries its bracket, and a bar carries its `bar` — which is
+also the edit test's number.
 
 The level declaration rises from readable to generative in this prompt, and prompt 127dce's import check is what makes
 that a promise rather than a label.
@@ -108,9 +124,9 @@ that a promise rather than a label.
 - `print` read in the scope the Design section fixes: `crates/musa-compiler/src/core.rs`'s `print_value` and
   `run_printer` compile one small piece holding `at`'s ordinary imports, the module declarations the printer names
   transitively, the subject, and the printer — under `Reading::Source`, so the phase environment is as absent as the
-  empty scope made it. `crates/musa-compiler/src/expand.rs`'s `adapter_print` passes `at` and the import sources
-  through. `AdapterModule`'s doc comment loses the sentence about a printer not calling the module's declarations,
-  because it now can.
+  empty scope made it, and with a declaration that writes down one of the phase's own types kept out of the splice.
+  `crates/musa-compiler/src/expand.rs`'s `adapter_print` passes `at` and the import sources through. `AdapterModule`'s
+  doc comment loses the sentence about a printer not calling the module's declarations, because it now can.
 - `edit` and `print` in `stdlib/src/adapters/staff.musa`, with `let level = "generative";`.
 - Tests: §2.6's edit changing one pitch and no other byte; an edit command the adapter does not serve, refused by name;
   the round-trip law over the trial block; and a stated loss on a document the staff spelling cannot write, naming what
