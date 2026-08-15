@@ -2,7 +2,7 @@
 id: 134
 slug: bidirectional-elaboration
 status: pending
-depends_on: [133]
+depends_on: [133a]
 phase: 3
 ---
 
@@ -19,6 +19,9 @@ in Musa's history that talk about a normal form the author never wrote.
 
 - `docs/rules/language/02-core-calculus.md` §2 as rewritten by prompt 129: the check and infer modes, the two
   mode-switch rules, where metavariables are created and solved, the pattern-fragment restriction, and postponement.
+- Prompt [133a](133a-core-provenance.md) — origins exist on core terms before this prompt runs, so a conversion mismatch
+  below has a surface node to name on each side rather than a constraint site to fall back to. Attaching them during
+  elaboration is this prompt's job; carrying them is already done.
 - Prompt [133](133-core-crate.md)'s Design paragraph on why `Value` stayed private — this prompt is the caller that
   argument was made for, and it either vindicates the boundary or falsifies it. If checking against a value turns out to
   need something the facade cannot express, that is a repair of 133's facade, not a reason to make `Value` public.

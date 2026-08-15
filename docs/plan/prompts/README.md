@@ -288,6 +288,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 131 | quotation-spec | 3 | Specify typed quotation and syntax patterns |
 | 132 | paper-trial | 3 | Paper-trial the dependent language before any code implements it |
 | 133 | core-crate | 3 | Build the dependent core as a leaf crate |
+| 133a | core-provenance | 3 | Let a core term say where it came from |
 | 134 | bidirectional-elaboration | 3 | Elaborate bidirectionally, with metavariables |
 | 135 | inductive-families | 3 | Add inductive families, dependent match, and termination checking |
 | 136 | records-and-enums | 3 | Give the language records and namespaced enums |
