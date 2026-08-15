@@ -33,7 +33,7 @@ authoritative where the candidate differs.
 ## Prompt anatomy
 
 Each prompt is a markdown file `NN[suffix]-<slug>.md` with YAML frontmatter. The number is an execution rank, not an
-identity. A lowercase suffix (`129a`) inserts a prompt between two existing ranks without renumbering anything after it,
+identity. A lowercase suffix (`155a`) inserts a prompt between two existing ranks without renumbering anything after it,
 and is the right insertion when the ranks that would move include finished work; `scripts/renumber-prompts.py make-room
 --at N` is the right insertion otherwise. `id` carries the suffix, and so does every `depends_on` that names the prompt.
 
@@ -283,7 +283,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 153 | core-calculus-conformance | 3 | Prove and audit the clean cutover before sound-language work resumes |
 | 154 | studio-vocabulary | 3 | One generated processor/parameter vocabulary, hover, terminology |
 | 155 | exact-studio-values | 3 | Exact written quantities through audio preparation |
-| 129a | payload-admission-rule | 3 | What a kernel payload owes, and the rendering law, before the first second payload |
+| 155a | payload-admission-rule | 3 | What a kernel payload owes, and the rendering law, before the first second payload |
 | 156 | performance-gestures | 3 | Instrument-independent note gestures and musical control curves |
 | 157 | instrument-contracts | 3 | Typed exposed controls over private native/sample implementations |
 | 158 | part-instrument-routing | 3 | Per-part instrument instances and routing isolation |
@@ -566,7 +566,7 @@ blocks only as checked batching. 153 proves and audits the complete path before 
 syntax, APIs, and serialized forms are removed, not kept behind aliases.
 
 **154–160 build musical sound on that core.** 154 makes the primitive vocabulary discoverable from one catalogue; 155
-keeps written quantities exact; and 129a's payload rule is revised for the new storable-data boundary. 156 defines
+keeps written quantities exact; and 155a's payload rule is revised for the new storable-data boundary. 156 defines
 instrument-independent gestures as `EventTrack<PerformedTime,Gesture>`. 157 makes an instrument a typed machine contract
 over private primitives. 158 preserves part identity through prepared routing, and 159 maps musical controls to private
 parameters only during preparation. 160 gives the surface one clear sound/profile choice while keeping expert machine
