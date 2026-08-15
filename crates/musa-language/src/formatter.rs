@@ -439,6 +439,27 @@ fn opens_a_body(kind: SyntaxKind) -> bool {
 /// comma or without it, which is why the two spellings were free to drift apart
 /// in the first place. Every other token is the program, and the program is
 /// read, never written.
+/// Whether this `:` is one half of the `::` that spells a namespace.
+///
+/// Looks both ways: the first half is followed by a colon and the second is
+/// preceded by one, and neither may take the space an annotation's colon does.
+/// Two adjacent colons mean nothing else in this grammar — a `measure:beat`
+/// position is written as one word elsewhere — so the pair is enough to decide
+/// it without asking what encloses them.
+fn halves_a_path_separator(colon: &SyntaxToken) -> bool {
+    let neighbour = |mut side: Option<SyntaxElement>, step: fn(&SyntaxElement) -> Option<SyntaxElement>| {
+        while let Some(element) = side {
+            if element.kind() != SyntaxKind::Whitespace {
+                return element.kind() == SyntaxKind::Colon;
+            }
+            side = step(&element);
+        }
+        false
+    };
+    neighbour(colon.next_sibling_or_token(), SyntaxElement::next_sibling_or_token)
+        || neighbour(colon.prev_sibling_or_token(), SyntaxElement::prev_sibling_or_token)
+}
+
 fn ends_its_list(comma: &SyntaxToken) -> bool {
     let mut following = comma.next_sibling_or_token();
     while let Some(element) = following {
@@ -506,8 +527,11 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer, layout: &Layout) {
                     // continues with a comma. A conditional's branches are the
                     // same — `else` follows one and the enclosing `,` or `;`
                     // follows the other, so neither may end the line it is
-                    // written on.
-                    let inline = node.kind() == SyntaxKind::LambdaExpr || continues_past_a_branch(node);
+                    // written on. A record pattern is a third: the `->` of its
+                    // arm follows it.
+                    let inline = node.kind() == SyntaxKind::LambdaExpr
+                        || continues_past_a_branch(node)
+                        || child.kind() == SyntaxKind::RecordPattern;
                     let last = lines.len().saturating_sub(1);
                     for (index, line) in lines.iter().enumerate() {
                         if inline && index == last {
@@ -568,6 +592,12 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer, layout: &Layout) {
                 // happens to lex as, a modulation target is one path with
                 // dots in it, and `M.member` is one name written in two
                 // words. Their insides take no spaces.
+                //
+                // The two paths §1 adds are the same kind of thing.
+                // `Tying::Untied` names one case and `region.anchor` names one
+                // place, and a `::` or a `.` written with spaces around it
+                // would read as an operator between two names rather than as
+                // the inside of one.
                 if matches!(
                     node.kind(),
                     SyntaxKind::Position
@@ -575,6 +605,8 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer, layout: &Layout) {
                         | SyntaxKind::ParamPath
                         | SyntaxKind::PitchClass
                         | SyntaxKind::NameExpr
+                        | SyntaxKind::PathExpr
+                        | SyntaxKind::FieldPath
                 ) {
                     writer.write_word(kind, token.text(), tight);
                     tight = true;
@@ -678,7 +710,14 @@ fn format_token(node: &SyntaxNode, token: &SyntaxToken, writer: &mut Writer) {
         // same brace stranded after it.
         if matches!(
             parent,
-            SyntaxKind::BlockExpr | SyntaxKind::DataDecl | SyntaxKind::RecordUpdateExpr
+            SyntaxKind::BlockExpr
+                | SyntaxKind::DataDecl
+                | SyntaxKind::RecordUpdateExpr
+                | SyntaxKind::RecordDecl
+                | SyntaxKind::EnumDecl
+                | SyntaxKind::EnumCase
+                | SyntaxKind::RecordLiteralExpr
+                | SyntaxKind::RecordPattern
         ) {
             writer.break_before_close();
         }
@@ -692,11 +731,20 @@ fn format_token(node: &SyntaxNode, token: &SyntaxToken, writer: &mut Writer) {
         writer.write("}");
         // A record update closes an *expression*, like a match: a `,` or a
         // `;` may follow it, so the brace leaves the line open for whatever
-        // the update was written into.
+        // the update was written into. A record literal and a record pattern
+        // close an expression and a pattern for the same reason — what follows
+        // them is a `,`, a `)`, or the `->` of the arm they open. An enum
+        // case's named fields close inside the declaration, and what follows
+        // *that* brace is the comma before the next case.
         if !held
             && !matches!(
                 parent,
-                SyntaxKind::MusicExpr | SyntaxKind::MatchExpr | SyntaxKind::RecordUpdateExpr
+                SyntaxKind::MusicExpr
+                    | SyntaxKind::MatchExpr
+                    | SyntaxKind::RecordUpdateExpr
+                    | SyntaxKind::RecordLiteralExpr
+                    | SyntaxKind::RecordPattern
+                    | SyntaxKind::EnumCase
             )
         {
             writer.end_line();
@@ -710,9 +758,21 @@ fn format_token(node: &SyntaxNode, token: &SyntaxToken, writer: &mut Writer) {
         // both read as a list read downwards. A comma *inside* a constructor
         // separates its fields, which are one word's worth of a line, and that
         // comma belongs to the `DataVariant`, not to the declaration.
+        //
+        // An enum's cases are that same list, and a record's fields are one
+        // per line wherever they are written — declared, built, or matched —
+        // because a record is read far more often than it is written and its
+        // field names are the interface. `EnumCase` is deliberately absent: a
+        // comma there separates the *types* of a positional case, which is
+        // `TiedOn(Nat, Text)` and one word's worth of a line.
         if matches!(
             parent,
-            SyntaxKind::MatchExpr | SyntaxKind::DataDecl | SyntaxKind::RecordUpdateExpr
+            SyntaxKind::MatchExpr
+                | SyntaxKind::DataDecl
+                | SyntaxKind::RecordUpdateExpr
+                | SyntaxKind::EnumDecl
+                | SyntaxKind::RecordLiteralExpr
+                | SyntaxKind::RecordPattern
         ) || stacked
         {
             writer.end_line();
@@ -725,7 +785,14 @@ fn format_token(node: &SyntaxNode, token: &SyntaxToken, writer: &mut Writer) {
         writer.space();
     } else if kind == SyntaxKind::Colon {
         writer.write(":");
-        if parent != SyntaxKind::ImportStmt {
+        // `::` is one separator the lexer happens to give in two tokens, and
+        // §1.5 spells a namespaced case with it. Neither half takes a space,
+        // so `Tying::Untied` is written the way it was read rather than as a
+        // colon between two names. Asked of the tokens either side rather
+        // than of the parent, because a path is spelled the same in a pattern
+        // — where it is bumped straight into the arm — as in an expression,
+        // where it is a `PathExpr`.
+        if parent != SyntaxKind::ImportStmt && !halves_a_path_separator(token) {
             writer.space();
         }
     } else if kind == SyntaxKind::PipeForward && writer.in_wrapped_chain() {
@@ -849,7 +916,7 @@ struct Run {
 fn inline_run(node: &SyntaxNode, indent: usize, layout: &Layout) -> Option<Vec<String>> {
     if !matches!(
         node.kind(),
-        SyntaxKind::BarStmt | SyntaxKind::GraceStmt | SyntaxKind::BlockExpr
+        SyntaxKind::BarStmt | SyntaxKind::GraceStmt | SyntaxKind::BlockExpr | SyntaxKind::RecordPattern
     ) {
         return None;
     }
@@ -859,10 +926,16 @@ fn inline_run(node: &SyntaxNode, indent: usize, layout: &Layout) -> Option<Vec<S
     {
         return None;
     }
-    // A block holds one expression, so there is nothing in it to space by
-    // beat group and nothing to wrap at: it is one line when it fits, and
-    // otherwise it breaks at its own braces like every other block.
-    if node.kind() == SyntaxKind::BlockExpr {
+    // A block holds one expression, and a record pattern holds field names
+    // read left to right: neither has anything to space by beat group and
+    // neither has anything to wrap at, so each is one line when it fits and
+    // otherwise breaks at its own braces like every other block.
+    //
+    // A record pattern is here for the reason this function exists at all. It
+    // is followed by the `->` of the arm it opens, so stacking it writes the
+    // `}` on a line of its own and leaves the arrow after it — one field per
+    // line and a stranded closer, for a construct that is usually two words.
+    if matches!(node.kind(), SyntaxKind::BlockExpr | SyntaxKind::RecordPattern) {
         // Notation stays vertical. A block holding a `music` value would
         // otherwise put a voice's notes on one line, which is the one layout
         // this language does not write — only a *bar* is horizontal.

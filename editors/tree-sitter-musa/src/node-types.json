@@ -40,7 +40,15 @@
           "named": true
         },
         {
+          "type": "path_expression",
+          "named": true
+        },
+        {
           "type": "product_expression",
+          "named": true
+        },
+        {
+          "type": "record_literal_expression",
           "named": true
         },
         {
@@ -793,6 +801,66 @@
     }
   },
   {
+    "type": "enum_case",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "field_declaration",
+          "named": true
+        },
+        {
+          "type": "type_expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "enum_declaration",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "enum_case",
+          "named": true
+        },
+        {
+          "type": "type_parameter_list",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "expression",
     "named": true,
     "fields": {},
@@ -857,6 +925,10 @@
           "named": true
         },
         {
+          "type": "path_expression",
+          "named": true
+        },
+        {
           "type": "pitch_expression",
           "named": true
         },
@@ -866,6 +938,10 @@
         },
         {
           "type": "question_expression",
+          "named": true
+        },
+        {
+          "type": "record_literal_expression",
           "named": true
         },
         {
@@ -933,7 +1009,7 @@
     }
   },
   {
-    "type": "field_update",
+    "type": "field_declaration",
     "named": true,
     "fields": {
       "name": {
@@ -942,6 +1018,99 @@
         "types": [
           {
             "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "type": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "type_expression",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "field_initializer",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "value": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "expression",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "field_path",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "identifier",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "field_pattern",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "pattern": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "pattern",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "field_update",
+    "named": true,
+    "fields": {
+      "path": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "field_path",
             "named": true
           }
         ]
@@ -1663,6 +1832,10 @@
           "named": true
         },
         {
+          "type": "enum_declaration",
+          "named": true
+        },
+        {
           "type": "fragment_declaration",
           "named": true
         },
@@ -1688,6 +1861,10 @@
         },
         {
           "type": "performance_declaration",
+          "named": true
+        },
+        {
+          "type": "record_declaration",
           "named": true
         },
         {
@@ -2208,7 +2385,7 @@
     "named": true,
     "fields": {
       "member": {
-        "multiple": false,
+        "multiple": true,
         "required": false,
         "types": [
           {
@@ -2498,10 +2675,56 @@
     }
   },
   {
+    "type": "path_expression",
+    "named": true,
+    "fields": {
+      "member": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "type": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "pattern",
     "named": true,
     "fields": {
+      "case": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
       "constructor": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "type": {
         "multiple": false,
         "required": false,
         "types": [
@@ -2534,6 +2757,10 @@
         },
         {
           "type": "rational",
+          "named": true
+        },
+        {
+          "type": "record_pattern",
           "named": true
         },
         {
@@ -2618,6 +2845,10 @@
           "named": true
         },
         {
+          "type": "enum_declaration",
+          "named": true
+        },
+        {
           "type": "fragment_declaration",
           "named": true
         },
@@ -2655,6 +2886,10 @@
         },
         {
           "type": "performance_declaration",
+          "named": true
+        },
+        {
+          "type": "record_declaration",
           "named": true
         },
         {
@@ -2922,11 +3157,19 @@
             "named": true
           },
           {
+            "type": "path_expression",
+            "named": true
+          },
+          {
             "type": "product_expression",
             "named": true
           },
           {
             "type": "question_expression",
+            "named": true
+          },
+          {
+            "type": "record_literal_expression",
             "named": true
           },
           {
@@ -2943,6 +3186,77 @@
           }
         ]
       }
+    }
+  },
+  {
+    "type": "record_declaration",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "field_declaration",
+          "named": true
+        },
+        {
+          "type": "type_parameter_list",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "record_literal_expression",
+    "named": true,
+    "fields": {
+      "type": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "field_initializer",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "record_pattern",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "field_pattern",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -2994,11 +3308,19 @@
             "named": true
           },
           {
+            "type": "path_expression",
+            "named": true
+          },
+          {
             "type": "product_expression",
             "named": true
           },
           {
             "type": "question_expression",
+            "named": true
+          },
+          {
+            "type": "record_literal_expression",
             "named": true
           },
           {
@@ -3479,6 +3801,10 @@
           "named": true
         },
         {
+          "type": "enum_declaration",
+          "named": true
+        },
+        {
           "type": "function_declaration",
           "named": true
         },
@@ -3508,6 +3834,10 @@
         },
         {
           "type": "piece_declaration",
+          "named": true
+        },
+        {
+          "type": "record_declaration",
           "named": true
         },
         {
@@ -3720,6 +4050,10 @@
           "named": true
         },
         {
+          "type": "enum_declaration",
+          "named": true
+        },
+        {
           "type": "function_declaration",
           "named": true
         },
@@ -3729,6 +4063,10 @@
         },
         {
           "type": "parameter_list",
+          "named": true
+        },
+        {
+          "type": "record_declaration",
           "named": true
         }
       ]
@@ -4478,6 +4816,10 @@
     "named": false
   },
   {
+    "type": "enum",
+    "named": false
+  },
+  {
     "type": "false",
     "named": false
   },
@@ -4656,6 +4998,10 @@
   {
     "type": "rational",
     "named": true
+  },
+  {
+    "type": "record",
+    "named": false
   },
   {
     "type": "repeat",

@@ -117,6 +117,11 @@ module.exports = grammar({
     // tokens away — so both readings are explored and the one that parses
     // survives. This is the grammar's version of Parser::with_is_spoken_for.
     [$.expression, $.record_update_expression],
+    // `Pending {` is a record literal; `Pending` followed by a block that
+    // happens to start with an identifier is a name and a block. The real
+    // parser looks three tokens ahead for `{ IDENT =`
+    // (Parser::at_field_init); here both readings are explored.
+    [$.name_expression, $.record_literal_expression],
   ],
 
   // `identifier` as the word token steers error recovery toward spelling
@@ -140,6 +145,8 @@ module.exports = grammar({
               $.let_declaration,
               $.function_declaration,
               $.data_declaration,
+              $.record_declaration,
+              $.enum_declaration,
               $.template_declaration,
               $.signature_declaration,
               $.structure_declaration,
@@ -206,7 +213,15 @@ module.exports = grammar({
         ':',
         field('signature', $.identifier),
         '{',
-        repeat(choice($.let_declaration, $.function_declaration, $.data_declaration)),
+        repeat(
+          choice(
+            $.let_declaration,
+            $.function_declaration,
+            $.data_declaration,
+            $.record_declaration,
+            $.enum_declaration,
+          ),
+        ),
         '}',
       ),
 
@@ -234,6 +249,53 @@ module.exports = grammar({
       ),
 
     data_field: ($) => seq(field('name', $.identifier), ':', field('type', $.type_expression)),
+
+    // Parser::record_decl — `01-surface.md` §1.2's structural record. Its
+    // fields end in `;` rather than `,` because a field is a declaration and
+    // a case is an alternative, and the two lists read differently for that
+    // reason. The declared name is what diagnostics say: two records with the
+    // same fields at the same types are one type, so nothing here treats the
+    // name as part of what is declared.
+    record_declaration: ($) =>
+      seq(
+        'record',
+        field('name', $.identifier),
+        optional($.type_parameter_list),
+        '{',
+        repeat($.field_declaration),
+        '}',
+      ),
+
+    field_declaration: ($) =>
+      seq(field('name', $.identifier), ':', field('type', $.type_expression), ';'),
+
+    // Parser::enum_decl — §1.3's nominal sum. A case carries nothing, a
+    // positional list of *types*, or named fields. An enum with no cases is
+    // admitted: `enum Empty {}` is what `P -> Empty` needs to say *not P*.
+    enum_declaration: ($) =>
+      seq(
+        'enum',
+        field('name', $.identifier),
+        optional($.type_parameter_list),
+        '{',
+        optional(seq($.enum_case, repeat(seq(',', $.enum_case)), optional(','))),
+        '}',
+      ),
+
+    enum_case: ($) =>
+      seq(
+        field('name', $.identifier),
+        optional(
+          choice(
+            seq(
+              '(',
+              optional(seq($.type_expression, repeat(seq(',', $.type_expression)), optional(','))),
+              ')',
+            ),
+            seq('{', repeat($.field_declaration), '}'),
+          ),
+        ),
+      ),
 
     // Parser::type_params — the types a declaration abstracts over. A
     // parameter is a name and nothing else: it has no kind to write, because
@@ -277,6 +339,8 @@ module.exports = grammar({
             $.let_declaration,
             $.function_declaration,
             $.data_declaration,
+            $.record_declaration,
+            $.enum_declaration,
             $.score_declaration,
             $.performance_declaration,
             $.studio_declaration,
@@ -298,6 +362,8 @@ module.exports = grammar({
             $.let_declaration,
             $.function_declaration,
             $.data_declaration,
+            $.record_declaration,
+            $.enum_declaration,
             $.performance_declaration,
             $.studio_declaration,
             $.signature_declaration,
@@ -540,7 +606,12 @@ module.exports = grammar({
         ),
       ),
 
-    field_update: ($) => seq(field('name', $.identifier), '=', field('value', $.expression)),
+    // The left of an `=` is a path of field names, not an expression: an
+    // update names a place, and `p with { f(x).g = y }` names none
+    // (Parser::field_update).
+    field_update: ($) => seq(field('path', $.field_path), '=', field('value', $.expression)),
+
+    field_path: ($) => seq($.identifier, repeat(seq('.', $.identifier))),
 
     // Parser::expr — `e?`, the failure carried outward. Postfix like a call
     // and an update, and read in the same left-to-right loop, so `read(here)?`
@@ -649,6 +720,8 @@ module.exports = grammar({
     _primary_expression: ($) =>
       choice(
         $.syntax_region,
+        $.record_literal_expression,
+        $.path_expression,
         $.name_expression,
         $.literal_expression,
         $.option_expression,
@@ -683,13 +756,32 @@ module.exports = grammar({
     // part of the name rather than an operator over two of them.
     name_expression: ($) =>
       choice(
-        seq($.identifier, optional(seq('.', field('member', $.identifier)))),
+        seq($.identifier, repeat(seq('.', field('member', $.identifier)))),
         'repeat',
         'transpose',
         'stretch',
         'retrograde',
         'invert',
       ),
+    // Parser::name_or_record_literal — `Pending { read = 0, dots = 1 }`.
+    record_literal_expression: ($) =>
+      seq(
+        field('type', $.identifier),
+        '{',
+        $.field_initializer,
+        repeat(seq(',', $.field_initializer)),
+        optional(','),
+        '}',
+      ),
+
+    field_initializer: ($) => seq(field('name', $.identifier), '=', field('value', $.expression)),
+
+    // §1.5 — `Tying::Untied`, a case named in its type's namespace. Two `:`
+    // tokens and not one `::`, because the lexer gives two and this grammar
+    // is held to the lexer token for token.
+    path_expression: ($) =>
+      seq(field('type', $.identifier), repeat1(seq(':', ':', field('member', $.identifier)))),
+
     literal_expression: ($) =>
       choice($.integer, $.rational, $.pitch_literal, $.interval_literal, $.string, 'true', 'false'),
     option_expression: ($) => choice('None', seq('Some', '(', $.expression, ')')),
@@ -749,10 +841,39 @@ module.exports = grammar({
           optional(seq($.identifier, repeat(seq(',', $.identifier)))),
           ')',
         ),
+        // `Tying::Untied`, `Tying::TiedOn(n)` — a case named in its type's
+        // namespace. The bare spelling is the `identifier` alternative above
+        // and means the same thing; which of the two a word is is decided
+        // against the scrutinee's type, not here.
+        seq(
+          field('type', $.identifier),
+          repeat1(seq(':', ':', field('case', $.identifier))),
+          optional(
+            choice(
+              seq('(', optional(seq($.identifier, repeat(seq(',', $.identifier)))), ')'),
+              $.record_pattern,
+            ),
+          ),
+        ),
+        // `{ read = r }` and `Pending { read = r }` — a record pattern naming
+        // the fields this arm cares about and nothing about the rest. The
+        // name in front of it is a reading aid: a record *is* its fields.
+        $.record_pattern,
+        seq(field('type', $.identifier), $.record_pattern),
         seq('[', ']'),
         seq('[', $.identifier, ',', '.', '.', $.identifier, ']'),
         seq('(', $.identifier, ',', $.identifier, repeat(seq(',', $.identifier)), ')'),
       ),
+
+    record_pattern: ($) =>
+      seq(
+        '{',
+        optional(seq($.field_pattern, repeat(seq(',', $.field_pattern)), optional(','))),
+        '}',
+      ),
+
+    field_pattern: ($) =>
+      seq(field('name', $.identifier), optional(seq('=', field('pattern', $.pattern)))),
 
     music_expression: ($) => seq('music', '{', repeat(choice(...VOICE_ITEMS($))), '}'),
 

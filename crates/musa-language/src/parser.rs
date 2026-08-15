@@ -1931,10 +1931,17 @@ impl<'a> Parser<'a> {
             }
             self.start_at(checkpoint, SyntaxKind::PathExpr);
         } else {
-            // `Module.member` — one name in two words. A dot only ever
-            // reads this way here: a dotted duration follows a rational,
-            // never a name.
-            if self.at(SyntaxKind::Dot) && self.nth_significant(1) == Some(SyntaxKind::Identifier) {
+            // `Module.member`, `held.region.span` — one name in as many words
+            // as it was written in. A dot only ever reads this way here: a
+            // dotted duration follows a rational, never a name.
+            //
+            // A loop rather than one step, because §1.2 lets a record hold a
+            // record and reading a field of a field is then the ordinary way
+            // to say what a program means. Where the module path stops and the
+            // projection starts is not a question the parser answers: it is a
+            // question about what is *declared*, which is the same reason a
+            // bare word in a pattern stays one token here.
+            while self.at(SyntaxKind::Dot) && self.nth_significant(1) == Some(SyntaxKind::Identifier) {
                 self.bump();
                 self.bump();
             }
@@ -2208,12 +2215,19 @@ impl<'a> Parser<'a> {
                     self.record_pattern();
                 }
             }
-            // `Pending { read = r, taken }` — a record pattern, naming the
-            // fields this arm cares about and nothing about the rest.
+            // `Pending { read = r }` — a record pattern, naming the fields
+            // this arm cares about and nothing about the rest.
             Some(SyntaxKind::Identifier) if self.nth_significant(1) == Some(SyntaxKind::LBrace) => {
                 self.bump();
                 self.record_pattern();
             }
+            // `{ read = r }` — the same pattern without the name in front of
+            // it, and the form §1.2 actually implies: a record *is* its
+            // fields, so the type's name is a reading aid rather than part of
+            // what is being matched. There is no block to be confused with
+            // here — a pattern position admits no expression — so the brace
+            // needs no lookahead to be read.
+            Some(SyntaxKind::LBrace) => self.record_pattern(),
             // `Sounded(pitch, held)` — a declared constructor, taking one
             // binding per field. A bare name is still one token here, because
             // whether `Silence` is a constructor or a binding is a question

@@ -87,6 +87,8 @@
   "let"
   "fn"
   "data"
+  "record"
+  "enum"
   "music"
   "kernel"
   "import"
@@ -246,6 +248,16 @@
 (data_member name: (identifier) @type)
 (type_parameter (identifier) @type)
 
+; §1.2 and §1.3's two declarations name types the same way, and so does the
+; type written in front of a literal or a pattern. An enum *case* is a name in
+; that type's namespace rather than a type of its own, so it takes the
+; vocabulary colour further down instead.
+(record_declaration name: (identifier) @type)
+(enum_declaration name: (identifier) @type)
+(record_literal_expression type: (identifier) @type)
+(path_expression type: (identifier) @type)
+(pattern type: (identifier) @type)
+
 (assign_statement source: (identifier) @type)
 (assign_statement destination: (identifier) @type)
 (route_statement source: (identifier) @type)
@@ -285,8 +297,13 @@
 (setting_statement name: (identifier) @property)
 (signature_member name: (identifier) @property)
 (data_field name: (identifier) @property)
-; A record update names the same fields the declaration does.
-(field_update name: (identifier) @property)
+; A record's fields, everywhere one is written: declared, initialised, matched,
+; and named on the left of an update. The update's left is a *path*, so every
+; segment of it is a field.
+(field_declaration name: (identifier) @property)
+(field_initializer name: (identifier) @property)
+(field_pattern name: (identifier) @property)
+(field_path (identifier) @property)
 (expression_argument name: (identifier) @property)
 
 ; Parameters are the declaration side of an argument.
@@ -308,6 +325,12 @@
 ; in the pattern that takes it apart.
 (data_variant name: (identifier) @constant)
 (pattern constructor: (identifier) @constant)
+
+; §1.3's cases are the same thing, and the namespace in front of one does not
+; change what the word is: `Tying::Held` is a case wherever it is written.
+(enum_case name: (identifier) @constant)
+(path_expression member: (identifier) @constant)
+(pattern case: (identifier) @constant)
 
 ; A bar's name is a target, not a value.
 (bar_statement name: (identifier) @label)

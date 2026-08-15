@@ -6,6 +6,8 @@
   (signature_declaration)
   (structure_declaration)
   (data_declaration)
+  (record_declaration)
+  (enum_declaration)
   (score_declaration)
   (part_declaration)
   (voice_declaration)
@@ -28,6 +30,8 @@
   (kernel_quote_body)
   (match_expression)
   (block_expression)
+  (record_literal_expression)
+  (enum_case)
 ] @indent
 
 ["}" "]" ")"] @end

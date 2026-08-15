@@ -440,6 +440,16 @@
     "doc": "A `data` declaration is a finite, strictly positive type with named constructors and named fields. It is how a package owns its own data instead of asking the compiler for another built-in type: the constructors are the only way in, `match` is how a reader takes one apart, and the generated fold — `motive_fold` for `data Motive` — is how a total traversal is written.\n\nA field may not be a function, at any depth, and the declared type may not appear to the left of an arrow in its own group. Those two rules are what make the type finite and its fold terminating.\n\n```musa\ndata Motive {\n    Silence,\n    Sounded(pitch: Pitch, held: Duration),\n}\n```"
   },
   {
+    "spelling": "record",
+    "summary": "declare a type of named fields",
+    "doc": "A `record` declaration names fields and their types. It is constructed by naming every field, read by projecting one, matched by naming the ones an arm cares about, and rebuilt by `with` — including along a path, so changing a field of a field is one line rather than a rebuilt inner value.\n\nA record *is* its fields: two declarations with the same field names at the same types are one type, and one is accepted where the other is expected. Where two quantities have to stay apart, declare them as one-case `enum`s instead, because each `enum` generates its own type.\n\n```musa\nrecord Pending {\n    read: Reading;\n    dots: Dots;\n}\n\nfn refuse(p: Pending, why: Text) -> Pending { p with { read.refusal = why } }\n```"
+  },
+  {
+    "spelling": "enum",
+    "summary": "declare a type of alternatives",
+    "doc": "An `enum` declares alternatives, one case at a time. A case may carry nothing, a positional list of types, or named fields, and `match` over the declared cases is how a reader takes one apart with coverage checked.\n\nCases live in the type's namespace — `Tying::Untied` — so two enums may declare a case of the same name without colliding. The bare spelling is accepted wherever the expected type is already known, which is where the type says which namespace the word is read in.\n\n```musa\nenum Tying { Untied, TiedOn }\n\nenum Reading<A> {\n    Done(A),\n    Refused { at: NodePath, why: Text },\n}\n```"
+  },
+  {
     "spelling": "module",
     "summary": "the old spelling of `structure`",
     "doc": "`module` no longer declares anything. What it used to declare is a `structure` — the thing that provides a `signature` — and `module` now means only a node of a package's tree, which is declared with `mod`. The two were one letter apart and unrelated, so the rarer one took the name ML has used for it since 1984.\n\n```musa\nstructure CMajor : TonalContext {\n    let key = key c major;\n}\n```"

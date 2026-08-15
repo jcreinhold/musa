@@ -209,3 +209,36 @@ fn a_declaration_instantiated_at_the_wrong_arity_is_rejected() {
     let reported = errors(&bare);
     assert!(reported.contains("`Pair` takes 1 type arguments"), "{reported}");
 }
+
+/// `01-surface.md` §1.2's update along a path parses, and this compiler says
+/// so rather than quietly replacing the wrong field.
+///
+/// The nested form elaborates in `musa-core`, and `musa-compiler` is wired to
+/// it in prompt 142. Until then the path is *syntax this stage does not
+/// implement*, which is a distinct thing from a mistake the author made — the
+/// reason `Code::UnsupportedLanguageStage` exists. The law is here because the
+/// failure it guards against is silent: the old reader took the first
+/// identifier under an update, which for `region.anchor` is `region`.
+#[test]
+fn an_update_along_a_path_is_refused_by_name_rather_than_read_as_its_first_segment() {
+    let compilation = compile_data(
+        "data Region { At(anchor: Nat, span: Nat) } data Pending { Held(read: Nat, region: Region) } \
+         fn shift(held: Pending) -> Pending { held with { region.anchor = 1 } }",
+    );
+    let reported = errors(&compilation);
+    assert!(
+        reported.contains("an update along a path is not elaborated yet"),
+        "{reported}"
+    );
+
+    // And the single-segment form 127dcfac built still elaborates: the repair
+    // was to the reader, not to what the reader accepts.
+    let flat = compile_data(
+        "data Region { At(anchor: Nat, span: Nat) } fn widen(r: Region) -> Region { r with { span = 2 } }",
+    );
+    assert_eq!(
+        errors(&flat),
+        "",
+        "a one-segment update is the form that already worked"
+    );
+}

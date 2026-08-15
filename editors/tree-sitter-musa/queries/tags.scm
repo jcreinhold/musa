@@ -43,6 +43,12 @@
 (data_member
   name: (identifier) @name) @definition.type
 
+(record_declaration
+  name: (identifier) @name) @definition.type
+
+(enum_declaration
+  name: (identifier) @name) @definition.type
+
 (patch_declaration
   name: (identifier) @name) @definition.type
 

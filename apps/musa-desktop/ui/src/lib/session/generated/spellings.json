@@ -352,6 +352,14 @@
     "keyword"
   ],
   [
+    "record",
+    "keyword"
+  ],
+  [
+    "enum",
+    "keyword"
+  ],
+  [
     "module",
     "keyword"
   ],

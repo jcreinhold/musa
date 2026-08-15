@@ -7502,11 +7502,34 @@ impl Checker<'_> {
             // The field's *name*, not the whole `name = value`: what is wrong
             // about an unknown or repeated field is the name, and the value
             // beside it is not part of the mistake.
-            let named = field
+            //
+            // The name is read out of the `FieldPath` the parser already built
+            // rather than by hunting the first identifier token under the
+            // update: the segments after the first are field names too, and a
+            // reader that took the first token it found would silently update
+            // the wrong place when a path has more than one.
+            let path = child_of(&field, |kind| kind == SyntaxKind::FieldPath)?;
+            let mut segments = path
                 .children_with_tokens()
                 .filter_map(SyntaxElement::into_token)
-                .find(|token| token.kind() == SyntaxKind::Identifier)?;
+                .filter(|token| token.kind() == SyntaxKind::Identifier);
+            let named = segments.next()?;
             let at = token_span(&named);
+            // §1.2's nested update is the new language's form and elaborates in
+            // `musa-core`; this checker is the old one, and saying so is better
+            // than replacing `region.anchor` with `region` and calling it done.
+            if let Some(deeper) = segments.next() {
+                self.resolver.report(
+                    Diagnostic::error(
+                        Code::UnsupportedLanguageStage,
+                        "an update along a path is not elaborated yet",
+                    )
+                    .at(token_span(&deeper), "this segment reaches inside the field before it")
+                    .help("update the inner value first, then update the outer field with it"),
+                );
+                self.failed = true;
+                return None;
+            }
             let named = named.text().to_owned();
             let Some(index) = declared.iter().position(|(name, _)| name == &named) else {
                 let mut report = Diagnostic::error(Code::UnknownName, format!("`{id}` has no field `{named}`"))

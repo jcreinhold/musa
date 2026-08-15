@@ -355,7 +355,8 @@ piece "Rebuilding" {
           (name_expression
             (identifier))
           (field_update
-            (identifier)
+            (field_path
+              (identifier))
             (expression
               (literal_expression
                 (integer)))))))
@@ -370,17 +371,20 @@ piece "Rebuilding" {
             (name_expression
               (identifier))
             (field_update
-              (identifier)
+              (field_path
+                (identifier))
               (expression
                 (literal_expression
                   (integer))))
             (field_update
-              (identifier)
+              (field_path
+                (identifier))
               (expression
                 (literal_expression
                   (integer)))))
           (field_update
-            (identifier)
+            (field_path
+              (identifier))
             (expression
               (literal_expression
                 (integer)))))))
@@ -484,7 +488,8 @@ piece "questions" {
                           (name_expression
                             (identifier)))))))
                 (field_update
-                  (identifier)
+                  (field_path
+                    (identifier))
                   (expression
                     (literal_expression
                       (integer))))))))))
