@@ -1,7 +1,7 @@
 ---
 id: 131
 slug: quotation-spec
-status: pending
+status: done
 depends_on: [130]
 phase: 3
 ---

@@ -781,6 +781,11 @@ fn delayed_double(
 kernel-term hole. Kernel identifiers never capture host identifiers; alpha-renaming prevents capture among inserted
 terms. The completed quote must close and type-check before it becomes a track. No raw payload escape exists.
 
+Musa has a second quotation form — `quote at p { … }`, which builds `Syntax<Cat>` in the expansion phase — and the two
+are deliberately not merged. The discipline they share is stated once in [`11-quotation.md`](11-quotation.md) §6: holes
+are typed, nothing quoted captures a host identifier or the reverse, a quote must close and check before it becomes
+anything, and the locus is where a hole is instantiated. What follows is this quote's own, and it stays here.
+
 Four rules a writer of quotes needs, and each one is the same rule the rest of the language already keeps:
 
 - **A quote is commented the way the file around it is.** `//` and `/* */` are trivia inside a quote, and `%` is not:

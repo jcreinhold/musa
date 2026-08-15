@@ -25,8 +25,8 @@ Third — and this is the newest of the three — the constitution's amendment a
 this candidate was written against. Rank-1 inference and principal types are gone; §9 now says bidirectional
 elaboration, dependent types are admitted, totality is well-founded rather than structural, and typed quotation is the
 one admitted form of metaprogramming. Prompt 129 rewrote `02-core-calculus.md` against the dependent core and prompt 130
-rewrote `01-surface.md` and added `10-traits.md`; prompt 131 still owes `11-quotation.md`, so until it lands
-`01-surface.md` §7 is the only account of quotation and it describes the kernel quote alone. The record is
+rewrote `01-surface.md` and added `10-traits.md`; prompt 131 added `11-quotation.md` and amended `00-semantics.md` §2 to
+admit a second, controlled descent into a syntax value. The record is
 [`../../notes/research/language-design-closure/42-dependent-core-decision.md`](../../notes/research/language-design-closure/42-dependent-core-decision.md).
 
 ## Document map
@@ -44,6 +44,7 @@ rewrote `01-surface.md` and added `10-traits.md`; prompt 131 still owes `11-quot
 | `08-performance-and-sound.md` | score-to-gesture-to-instrument-to-audio semantics |
 | `09-assets-and-packages.md` | reproducible assets, packages, sample maps, clips, and fixed media |
 | `10-traits.md` | coherence, dictionary elaboration, operators, methods and namespaces, and what is refused |
+| `11-quotation.md` | `Syntax<Cat>`, quoting and splicing, derived identity, and quotation as a pattern |
 | `citations.md` | every theoretical claim in these documents, and the chapter or proof it comes from |
 
 The numbering deliberately leaves room for future notation and analysis documents without renumbering the sound and

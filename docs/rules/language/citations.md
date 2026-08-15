@@ -185,8 +185,9 @@ convention.
 Everything below the musical layer — the core calculus, the temporal kernel, elaboration, and normalization — is
 specified in [`02-core-calculus.md`](02-core-calculus.md) and `../kernel/`. No music theory is cited there, because none
 is used: the kernel knows about exact time and typed occurrences and nothing about notes. That layer is **not** all
-Musa's own, and §13 below says which parts are borrowed and from where. What is Musa's own there is short: the
-`Storable` constraint, the three-outcome budget law, the phase environment, and the refusals.
+Musa's own, and §13 and §14 below say which parts are borrowed and from where. What is Musa's own there is short: the
+`Storable` constraint, the three-outcome budget law, the phase environment, the refusals, and derived identity as a
+computed triple.
 
 ## 12. Cited, and deliberately not implemented
 
@@ -258,3 +259,23 @@ rather than asserted here:
 | the three-outcome budget law, with exhaustion named as its own outcome | [`02-core-calculus.md`](02-core-calculus.md) §4 |
 | the expansion phase environment and its law 11 | [`02-core-calculus.md`](02-core-calculus.md) §5.9 |
 | the refusals — no cumulativity, no `partial`, no CBPV, no signed integer | [`02-core-calculus.md`](02-core-calculus.md) §1.3 and §1.4, note 42 §9 |
+
+## 14. Quotation and the expansion phase
+
+`11-quotation.md` adds a second borrowed body of work, and it is worth separating from §13 because it is about a *phase*
+rather than about the calculus. None of these are on disk in this workspace.
+
+| What Musa implements | Where it comes from |
+| --- | --- |
+| typed staged quotation: a quoted fragment is a value of a type that says what it is, and splicing is a checked operation rather than text substitution | Taha and Sheard (2000), "MetaML and multi-stage programming with explicit annotations" |
+| the modal reading of a quoted term, which is why a quote must close and check before it becomes anything | Davies and Pfenning (2001), "A modal analysis of staged computation" |
+| quotation and splicing indexed by **syntactic category** — expression, item, pattern, token tree — with a mismatch as a compile-time error | Sheard and Peyton Jones (2002), "Template meta-programming for Haskell", whose `Exp`/`Dec`/`Pat`/`Type` split is where the four categories come from |
+| hygiene: an identifier written in a quote and one spliced into it are different names, and neither captures the other | Kohlbecker, Friedman, Felleisen, and Duba (1986), "Hygienic macro expansion"; Clinger and Rees (1991), "Macros that work" |
+| quotation as a **pattern** — matching on a shape written in the source grammar rather than on an untyped tree | Culpepper and Felleisen (2010), "Fortifying macros" |
+| that a quotation must share the real parser rather than get a template dialect | root `AGENTS.md`'s "no sublanguage by subtraction", after Peyton Jones (1987), `03-translating-a-high-level-functional-language-into-the-lambda-calculus.md` §3.1 |
+
+Musa's own here is one construction: **derived identity as a computed triple**, `Derived { origin, quotation, path }`,
+where every component is produced by the elaborator and none is allocated by the author. Template Haskell mints fresh
+names with `newName` in a monad; Musa has no monad and no fresh-name effect, and the position inside the quote's own
+tree is what makes uniqueness structural instead. It is argued in [`11-quotation.md`](11-quotation.md) §3 and priced by
+the measurement that opens that document.

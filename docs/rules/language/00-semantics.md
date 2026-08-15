@@ -64,18 +64,26 @@ declaration kinds are `library`, `piece`, `part`, `voice`, `performance`, `instr
 not value types.
 
 **The expansion phase is these judgments in a second environment, not a second language.** Adapter expansion happens
-before name resolution and inference, and an adapter module is checked and evaluated by the same checker and the same
-evaluator, under a phase environment `Σφ` that adds the phase-local types `Syntax`, `NodePath`, `BindingPath`, and
-`SyntaxStep<C, A>` and a separate registry of compiler-owned phase operations. Ordinary source is read in a scope where
-none of those names resolve, so nothing the phase owns can be written, named, or obtained outside it. The one thing that
-crosses back is the answer, which is syntax that stands where the region stood; a sealed step is never part of it,
-because a step is not storable data (`02-core-calculus.md` §1.1, §5.9).
+before name resolution and elaboration, and an adapter module is checked and evaluated by the same checker and the same
+evaluator, under a phase environment `Σφ` that adds the phase-local types `Syntax<Cat>`, `NodePath`, `BindingPath`, and
+`SyntaxStep<C, A>` and a separate registry of compiler-owned phase operations. `Cat` is the four-case index — `Expr`,
+`Item`, `Pattern`, `TokenTree` — that says how a syntax value parses (`11-quotation.md` §1); the untyped `Syntax` it
+replaces is the same tree with nothing claimed about it, which is now spelled `Syntax<TokenTree>`. Ordinary source is
+read in a scope where none of those names resolve, so nothing the phase owns can be written, named, or obtained outside
+it. The one thing that crosses back is the answer, which is syntax that stands where the region stood; a sealed step is
+never part of it, because a step is not storable data (`02-core-calculus.md` §1.2, §5.9).
 
 `Σφ`'s registry is a second registry rather than a fifth builtin family, so §5.8's four families of the source core are
-unchanged by it. Descent into a syntax value happens in exactly one place: `recurse_syntax`, with `run_syntax_step`
-resuming a descent it did not start and `syntax_fold_from_leaves` derived from the first at a context nothing reads.
-Prompt 127da's earlier law that a bottom-up fold is the only way into a syntax value is superseded there, with its
-reason.
+unchanged by it. Descent into a syntax value happens in exactly **two** places: `recurse_syntax` for syntax of unknown
+shape — with `run_syntax_step` resuming a descent it did not start and `syntax_fold_from_leaves` derived from the first
+at a context nothing reads — and a **quote pattern** for a shape the adapter can write down (`11-quotation.md` §4).
+Prompt 127da's earlier law that a bottom-up fold is the only way into a syntax value was superseded by the recursor,
+with its reason; prompt 131 admits the second entry, and the reason the rule existed is unchanged: the phase must not
+grow a second *uncontrolled* traversal, because an uncontrolled traversal is where totality, path uniqueness, and
+opacity would be lost together. A quote pattern is controlled because it is not a traversal — it destructures one level
+of a shape written in the source grammar, supplies no path, reveals no `SourceInfo`, and binds only proper children, so
+a definition that recurses through one is checked by the ordinary termination measure rather than by a special rule.
+`11-quotation.md` §5 is where those four properties are stated as the obligations they are.
 
 The budget can stop an evaluation but cannot change an accepted one: if two runs both reach `done`, they reach the same
 value (`02-core-calculus.md`).
