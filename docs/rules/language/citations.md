@@ -1,8 +1,10 @@
 # Where the theory comes from
 
-Musa implements a bounded set of theoretical constructions. Every one of them either comes from a named chapter of
-[Open Music Theory](https://viva.pressbooks.pub/openmusictheory/) or is proved locally, and this chapter says which, for
-each.
+Musa implements a bounded set of theoretical constructions. Every one of them either comes from a named source — a
+chapter of [Open Music Theory](https://viva.pressbooks.pub/openmusictheory/) for the music, a chapter or paper for the
+calculus — or is proved locally, and this chapter says which, for each. Sections 1–12 are the music. **Section 13 is the
+calculus**, added when prompt 128's amendment made the core dependent and gave it constructions that are emphatically
+not Musa's own.
 
 The reason to keep the map is not scholarly manners. A convention that is built into a compiler stops looking like a
 convention: a musician who disagrees with it has nothing to disagree *with* unless the software can say where it got the
@@ -180,9 +182,11 @@ convention.
 | voicing forgetfulness | a voicing has one chord class; a chord class has many voicings |
 | finite closure | row transformations are total after construction |
 
-Everything below the musical layer — the total core calculus, the temporal kernel, elaboration, and normalization — is
-Musa's own and is specified in [`02-core-calculus.md`](02-core-calculus.md) and `../kernel/`. No music theory is cited
-there, because none is used: the kernel knows about exact time and typed occurrences and nothing about notes.
+Everything below the musical layer — the core calculus, the temporal kernel, elaboration, and normalization — is
+specified in [`02-core-calculus.md`](02-core-calculus.md) and `../kernel/`. No music theory is cited there, because none
+is used: the kernel knows about exact time and typed occurrences and nothing about notes. That layer is **not** all
+Musa's own, and §13 below says which parts are borrowed and from where. What is Musa's own there is short: the
+`Storable` constraint, the three-outcome budget law, the phase environment, and the refusals.
 
 ## 12. Cited, and deliberately not implemented
 
@@ -195,3 +199,57 @@ each one causes, stated up front rather than discovered.
 The larger omission is the one worth saying plainly: the theory implemented here is one pedagogical tradition, mostly
 Western and mostly common-practice. That a convention is built into this compiler is a fact about this software, not a
 fact about music.
+
+## 13. The calculus
+
+Prompt 128's amendment replaced Musa's type discipline with a dependent core, and almost nothing in that core is Musa's
+invention. This section says where each construction comes from, for the same reason the music sections exist: a
+construction built into a compiler stops looking like a choice, and naming its source makes it arguable again. It also
+does one thing the music sections do not — it records which sources are **on disk in this workspace** and which are
+cited by name only, so a reader can tell what can be checked here and what has to be looked up.
+
+Local paths below are relative to `~/Code/papers/logic-and-computation/`. Unlike the OMT citations, these are not
+verified by `scripts/check-docs.sh`: the corpus is outside the repository and is not required to build it.
+
+### 13.1 On disk
+
+| What Musa implements | Where it comes from |
+| --- | --- |
+| the surface → core → evaluation architecture, and why Musa is *not* the enriched-calculus arrangement | Peyton Jones (1987), `software-engineering/implementation-of-functional-programming-languages/03-translating-a-high-level-functional-language-into-the-lambda-calculus.md` §3.1 |
+| case-tree compilation of nested patterns: the variable, constructor, empty, and mixture rules | Peyton Jones and Wadler, same book, `04-structured-types-and-the-semantics-of-pattern-matching.md` and `05-efficient-compilation-of-pattern-matching.md` |
+| the shape a type checker takes as a program: constraint generation separated from solving | Hancock, same book, `08-polymorphic-type-checking.md` and `09-a-type-checker.md` |
+| `Y` and the fixed-point combinator — cited to be **refused** (§1.3) | same book, `02-the-lambda-calculus.md` §2.4 |
+| dependent function and sum types, families over a base, and what a universe is | Jacobs, *Categorical Logic and Type Theory*, `type-theory/categorical-logic-and-type-theory/10-first-order-dependent-type-theory.md` and `11-higher-order-dependent-type-theory.md` |
+| normalization by evaluation: evaluate into a semantic domain, quote back, compare normal forms | Abel and Sattler (2019), `type-theory/normalization-by-evaluation-for-call-by-push-value-and-polarized-lambda-calculus/text.md` |
+| logical relations as the technique the NbE obligations are discharged with | `type-theory/logical-relations-as-types/text.md` |
+| de Bruijn levels for quoting under binders, and the free-variable discipline | McBride and McKinna, *I am not a Number — I am a Free Variable*, `type-theory/functional-pearl-i-am-not-a-number-i-am-a-free-variable/text.md` |
+| call-by-push-value — cited to be **refused** (§1.3, and note 42 §7.2) | Levy, `type-theory/call-by-push-value-decomposing-call-by-value-and-call-by-name/` |
+| why non-termination is not the effect the no-go theorem is about | Pédrot and Tabareau, `type-theory/fire-triangle-how-to-mix-substitution-dependent-elimination-and-effects/text.md` |
+| why Musa's phase environment is **not** two-level type theory | `type-theory/two-level-type-theory/`, read against note 39 §8.2 |
+
+### 13.2 Cited by name
+
+| What Musa implements | Where it comes from |
+| --- | --- |
+| pattern-fragment unification, and the restriction that makes it decidable and most general | Miller (1991), "A logic programming language with lambda-abstraction, function variables, and simple unification" |
+| bidirectional type checking: check and infer modes and the two rules that switch | Pierce and Turner (2000), "Local type inference"; Coquand (1996), "An algorithm for type-checking dependent types" |
+| dependent pattern matching, index unification, and coverage | Coquand (1992), "Pattern matching with dependent types"; Goguen, McBride, and McKinna (2006), "Eliminating dependent pattern matching" |
+| strict positivity as the admission condition for an inductive family | Coquand and Paulin (1990), "Inductively defined types" |
+| the predicative universe hierarchy and its consistency consequence | Martin-Löf (1984), *Intuitionistic Type Theory* |
+| K, uniqueness of identity proofs, and what admitting it forecloses | Streicher (1993), "Investigations into intensional type theory"; Hofmann and Streicher (1998), "The groupoid interpretation of type theory" |
+| decidable equality implies UIP, which is why K is not an extra assumption for the families Musa declares | Hedberg (1998), "A coherence theorem for Martin-Löf's type theory" |
+| well-founded recursion as the general form of a terminating definition, with structural decrease as its special case | Nordström (1988), "Terminating general recursion" |
+| dictionary-passing elaboration of a class-like construct, which `10-traits.md` builds on | Wadler and Blott (1989), "How to make ad-hoc polymorphism less ad hoc" |
+
+### 13.3 Musa's own, and priced
+
+Four things in the calculus are not borrowed, and each is priced in
+[`../../notes/research/language-design-closure/42-dependent-core-decision.md`](../../notes/research/language-design-closure/42-dependent-core-decision.md)
+rather than asserted here:
+
+| Construction | Where it is argued |
+| --- | --- |
+| the `Storable` constraint, with generated-only instances | [`02-core-calculus.md`](02-core-calculus.md) §1.2; the kernel's side is `../kernel/12-payload-admission.md` |
+| the three-outcome budget law, with exhaustion named as its own outcome | [`02-core-calculus.md`](02-core-calculus.md) §4 |
+| the expansion phase environment and its law 11 | [`02-core-calculus.md`](02-core-calculus.md) §5.9 |
+| the refusals — no cumulativity, no `partial`, no CBPV, no signed integer | [`02-core-calculus.md`](02-core-calculus.md) §1.3 and §1.4, note 42 §9 |

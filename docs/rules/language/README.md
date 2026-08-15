@@ -35,7 +35,7 @@ constitution above them no longer specifies. The record is
 | --- | --- |
 | `00-semantics.md` | representations, staging judgments, ownership, closure, equality, provenance |
 | `01-surface.md` | settled surface grammar, desugarings, and acceptance corpus |
-| `02-core-calculus.md` | the one total source language and its metatheoretic obligations |
+| `02-core-calculus.md` | the one total dependently typed source language, and the obligations it owes |
 | `03-musical-domains.md` | typed theory domains, definitions, sources, and counterexamples |
 | `04-templates-and-modules.md` | declaration templates, stable identity, signatures, static functors |
 | `05-verification.md` | invariants, assertions, analyses, laws, and implementation gates |

@@ -1,7 +1,7 @@
 ---
 id: 129
 slug: dependent-core-spec
-status: in-progress
+status: done
 depends_on: [128]
 phase: 3
 ---

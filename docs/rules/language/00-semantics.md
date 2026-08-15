@@ -9,7 +9,7 @@ Compilation has one source stage that produces **two** core values, and each cor
 
 ```text
 lossless surface/CST
-    │ resolve names, expand bounded syntax adapters, infer types (rank-1 Hindley–Milner, two classes)
+    │ resolve names, expand bounded syntax adapters, elaborate bidirectionally into the dependent core
     ▼
 typed total source expression
     │ evaluate, under a versioned cost budget
@@ -51,7 +51,8 @@ Four things this diagram is asserting:
 The value stage uses the ordinary static and evaluation judgments:
 
 ```text
-Σ; Γ ⊢ e : τ                     surface/core typing, with inferred principal types
+Σ; Γ ⊢ e ⇐ τ ⇝ t                 checking: τ is known; t is the elaborated core term
+Σ; Γ ⊢ e ⇒ τ ⇝ t                 inference: τ is produced (`02-core-calculus.md` §2)
 Σ ⊢ ⟨budget, e⟩ ⇓ done(v)        total call-by-value evaluation within a cost budget
 Σ ⊢ ⟨budget, e⟩ ⇓ failed(r)      resource exhaustion; never a different accepted value
 Σ; Γ ⊢ D : declaration κ         structural declaration checking
