@@ -40,6 +40,9 @@ small dependently typed core with bidirectional elaboration, a coherent trait sy
 - Prompt [127a](127a-core-calculus-governance.md) — the shape of a governance-only prompt in this repository, and the
   precedent that a governing amendment is committed before the code that needs it.
 - `docs/plan/roadmap.md` §15 — the crate list and dependency lists a new crate has to enter through.
+- `docs/rules/across-stages/01-stage-judgments.md` §2 and `docs/rules/across-stages/05-metatheory.md` §1 and §4 — the
+  two governing documents outside the constitution that restate §9's inference rule in their own words. Amending §9
+  without them leaves a governing document asserting principal types while the constitution says there are none.
 
 ## Design
 
@@ -84,6 +87,16 @@ operation needs a value in a type) is not refuted by this evidence and should no
 declared and prompt 133 may not add one that the roadmap does not list. It is a leaf, the way `musa-kernel` is: nothing
 in it knows what a pitch is.
 
+**The consequential edits to `docs/rules/across-stages/` are part of this amendment, not prompt 149's audit.** Two
+governing documents restate §9's inference rule in their own words: `01-stage-judgments.md` §2 says `A` is the principal
+type of `e`, and `05-metatheory.md` §1 carries a reviewed result about Hindley–Milner inference with §4's evidence rule
+under it. Amending §9 and leaving those is the silent drift `AGENTS.md` forbids, and prompt 149 cannot repair them — its
+own Stop forbids amending `across-stages/`, and rightly, because a closure audit that quietly rewrites a governing claim
+has audited nothing. The rule that separates the two is the same one 149 states: correcting a *pointer* is a repair,
+changing what a document *claims* is an amendment, and an amendment belongs in the commit that caused it. Keep the edits
+minimal — restate the rule, mark the superseded result as superseded and say by what — and do not rewrite the metatheory
+matrix, which is prompt 148's.
+
 ## Target
 
 - `docs/rules/constitution.md` §9: *Inferred* restated as bidirectional elaboration with metavariables, *Total* restated
@@ -95,6 +108,11 @@ in it knows what a pitch is.
   `README.md`: the six amendment requirements under six headings, note 39 §11.2's five items answered one by one, the
   totality argument above, the measured staff evidence, and the refused alternatives — closed overloading alone,
   quotation without a dependent core, dropping totality, and CBPV.
+- `docs/rules/across-stages/01-stage-judgments.md` §2: the source typing judgment restated as bidirectional, with no
+  principal-type claim.
+- `docs/rules/across-stages/05-metatheory.md` §1 and §4: the Hindley–Milner inference row marked superseded by this
+  amendment and naming prompt 148 as the prompt that owes its replacement, and §4's inference evidence rule restated.
+  Nothing else in the matrix moves.
 - `docs/rules/README.md`'s "Changing a decision" section: this amendment recorded as the most recent one, with a link to
   the record, the way prompt 127a's is.
 - `docs/plan/roadmap.md` §15: `musa-core` in the crate list and in the dependency lists, as a leaf below
