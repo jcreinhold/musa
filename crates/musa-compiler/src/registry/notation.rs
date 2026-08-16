@@ -93,7 +93,7 @@ pub(super) fn opaque<T>(name: &'static str, value: T) -> Datum
 where
     T: Clone + PartialEq + std::fmt::Debug + Send + Sync + 'static,
 {
-    Datum::Lit(literal(plain_type(name), Opaque(value)))
+    Datum::Lit(super::opaque_literal(name, value))
 }
 
 /// The value inside such a literal.
@@ -153,13 +153,6 @@ pub(super) fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
 /// handing back the value alone would leave its caller to rebuild the type. A
 /// literal at a base type carries its own, so a `Definition` here would be a
 /// type the value already states, written twice.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "prompt 141k writes the fold this seeds; until then the laws are the caller"
-    )
-)]
 pub(crate) fn nothing() -> Literal {
     let empty: VoiceTrack = musa_kernel::empty(musa_kernel::Duration::ZERO);
     literal(track_type(), empty)

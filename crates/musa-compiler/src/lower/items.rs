@@ -132,6 +132,11 @@ impl Lowering<'_> {
             SyntaxKind::ImplDecl => self.instance(node).map(Item::Instance),
             SyntaxKind::FnDecl => self.function(node).map(Item::Definition),
             SyntaxKind::LetDecl => self.binding(node).map(Item::Definition),
+            // `01-surface.md` §2's two notation declarations, which desugar to
+            // the two above with a role retained. `super::notation` owns them
+            // because what they declare is a block.
+            SyntaxKind::MotifDecl => self.motif(node).map(Item::Definition),
+            SyntaxKind::FragmentDecl => self.fragment(node).map(Item::Definition),
             _ => None,
         }
     }
@@ -629,14 +634,14 @@ impl Lowering<'_> {
 /// which is a child node — cannot answer for the declaration. [`None`] without a
 /// diagnostic when the parser produced no name, which it has already complained
 /// about.
-fn declared_name(node: &SyntaxNode) -> Option<Name> {
+pub(super) fn declared_name(node: &SyntaxNode) -> Option<Name> {
     own_tokens(node)
         .find(|token| token.kind() == SyntaxKind::Identifier)
         .map(|token| Name::from(token.text()))
 }
 
 /// Every `Param` of a declaration's parameter list, in order.
-fn written_parameters(node: &SyntaxNode) -> Vec<SyntaxNode> {
+pub(super) fn written_parameters(node: &SyntaxNode) -> Vec<SyntaxNode> {
     child(node, |kind| kind == SyntaxKind::ParamList)
         .map(|list| children(&list, |kind| kind == SyntaxKind::Param))
         .unwrap_or_default()

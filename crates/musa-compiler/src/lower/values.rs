@@ -53,7 +53,17 @@ impl Lowering<'_> {
         let outer = std::mem::take(&mut self.questions);
         let answer = self.value(node);
         let asked = std::mem::replace(&mut self.questions, outer);
-        let mut built = answer?;
+        self.answered(answer?, asked)
+    }
+
+    /// `built`, with `asked`'s questions caught around it.
+    ///
+    /// Held apart from [`Lowering::expr`] because a notated declaration delimits
+    /// an answer without going through `value`: a motif's body is a fold rather
+    /// than an expression node, and it catches its own failures for the same
+    /// reason a function body does.
+    pub(super) fn answered(&mut self, built: Raw, asked: Vec<Question>) -> Option<Raw> {
+        let mut built = built;
         // Outermost first, so that a later question may mention an earlier
         // question's binder — `f(x)?.g()?` is the ordinary case.
         for Question {
@@ -128,7 +138,8 @@ impl Lowering<'_> {
             SyntaxKind::RecordUpdateExpr => self.record_update(node, origin),
             SyntaxKind::QuestionExpr => self.question(node, origin),
             SyntaxKind::QuoteExpr => self.quote(node, origin),
-            SyntaxKind::MusicExpr | SyntaxKind::KernelQuote => self.not_yet(node, "this form", "a track"),
+            SyntaxKind::MusicExpr => self.music(node),
+            SyntaxKind::KernelQuote => self.not_yet(node, "a kernel quote", "a track"),
             _ => None,
         }
     }
@@ -208,7 +219,7 @@ impl Lowering<'_> {
     /// to the law beside this module: `None` means "this node is not an
     /// expression", and these nodes *are* expressions whose core shape a named
     /// prompt is about to supply.
-    fn not_yet<T>(&mut self, node: &SyntaxNode, what: &str, needs: &str) -> Option<T> {
+    pub(super) fn not_yet<T>(&mut self, node: &SyntaxNode, what: &str, needs: &str) -> Option<T> {
         self.refuse(
             Diagnostic::error(
                 Code::UnsupportedLanguageStage,
@@ -870,9 +881,28 @@ fn phase_literal(written: &str) -> Option<musa_core::Literal> {
 }
 
 /// The name a `NameExpr` writes: one identifier, or two joined by a dot.
+///
+/// A transformation's word counts as an identifier here, because the parser
+/// already says so: `expr_atom` routes `transpose`, `stretch`, `retrograde`,
+/// `invert`, and `repeat` through `name_or_record_literal`, so `transpose(P5, e)`
+/// is a `NameExpr` applied and reading only [`SyntaxKind::Identifier`] would
+/// leave it unlowerable. `00-semantics.md` §3 requires that spelling to exist —
+/// "a call must be complete … `transpose(i)` is written as a function that takes
+/// its track argument" — and it is the half of §3's implementation theorem that
+/// is not written in a block.
 fn written_name(node: &SyntaxNode) -> Option<String> {
     let mut tokens = significant_tokens(node).filter(|token| !matches!(token.kind(), SyntaxKind::Whitespace));
-    let first = tokens.find(|token| token.kind() == SyntaxKind::Identifier)?;
+    let first = tokens.find(|token| {
+        matches!(
+            token.kind(),
+            SyntaxKind::Identifier
+                | SyntaxKind::TransposeKw
+                | SyntaxKind::StretchKw
+                | SyntaxKind::RetrogradeKw
+                | SyntaxKind::InvertKw
+                | SyntaxKind::RepeatKw
+        )
+    })?;
     let mut written = first.text().to_owned();
     if tokens.next().is_some_and(|token| token.kind() == SyntaxKind::Dot)
         && let Some(member) = tokens.next().filter(|token| token.kind() == SyntaxKind::Identifier)

@@ -630,16 +630,21 @@ fn a_method_with_a_block_is_derived_and_its_body_binds_what_its_type_quantifies(
 
 // ---- refusals ----
 
+/// The subject used to be `music { … }`. Prompt 141k gave the notated block a
+/// core shape — [`crate::lower::notation`] folds it, and the laws beside that
+/// module say what it folds to — so the form left standing here is the kernel
+/// quote, whose interior spells `musa-kernel`'s grammar rather than this
+/// crate's and which the parser therefore recognizes without reading.
 #[test]
 fn a_form_with_no_core_shape_is_refused_at_the_node_with_its_prompt_named() {
-    let root = parsed("library { let subject: Music = music { c4/4 }; }");
-    let node = first(&root, SyntaxKind::MusicExpr);
+    let root = parsed("library { let subject: Music = kernel EventTrack[WrittenTime, ScoreFact] { track 1 { } }; }");
+    let node = first(&root, SyntaxKind::KernelQuote);
     let mut resolver = Resolver::new();
     let mut sites = Sites::default();
     let raw = Lowering::new(&mut resolver, &mut sites).value(&node);
     assert!(
         raw.is_none(),
-        "`music` has no core *spelling* until prompt 142 gives it one, though 141h gave the track a core shape"
+        "a kernel quote has no core *spelling* until prompt 142 gives it one, though 141h gave the track a core shape"
     );
     let complaints = resolver.diagnostics;
     assert_eq!(complaints.len(), 1, "one complaint, at the form");

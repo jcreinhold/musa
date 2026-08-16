@@ -376,6 +376,38 @@ fn bases() -> Vec<Base> {
     ]
 }
 
+/// The literal holding `value` at plain base type `name`, for a payload with no
+/// `Display`.
+///
+/// [`literal`]'s companion, and the one entry the lowering has into
+/// [`notation::Opaque`]. Nine of `Fact`'s payload types have no written
+/// spelling, and a module that builds facts out of source needs to write them
+/// without the wrapper becoming part of its vocabulary.
+pub(crate) fn opaque_literal<T>(name: &'static str, value: T) -> Literal
+where
+    T: Clone + PartialEq + fmt::Debug + Send + Sync + 'static,
+{
+    literal(plain_type(name), notation::Opaque(value))
+}
+
+/// The literal holding `written` at `Origin`.
+///
+/// Beside [`opaque_literal`] rather than through it because a [`track::Provenance`]
+/// is not opaque — it has a `Display` of its own, showing the span it points at
+/// — and reaching it needs one name rather than the wrapper's.
+pub(crate) fn provenance_literal(written: crate::origin::Origin) -> Literal {
+    literal(plain_type("Origin"), track::Provenance(written))
+}
+
+/// `nothing` — the empty track, as a literal a lowering can embed.
+///
+/// The re-export exists so that "the seed of a fold is `nothing`" is one name at
+/// the call site rather than a path through the module that registers the words
+/// beside it.
+pub(crate) fn empty_track() -> Literal {
+    notation::nothing()
+}
+
 /// `Type 0`, which every base type but the two indexed ones is registered at.
 fn type0() -> Term {
     Term::universe(HERE, Level::ZERO)

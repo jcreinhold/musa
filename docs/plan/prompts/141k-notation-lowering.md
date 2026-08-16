@@ -1,7 +1,7 @@
 ---
 id: 141k
 slug: notation-lowering
-status: pending
+status: done
 depends_on: [141g, 141h, 141i, 141j]
 phase: 3
 ---
@@ -61,12 +61,29 @@ track it denotes. Placement never appears: `00-semantics.md` §3 deletes the cur
 statement rather than a step — the core checks it against `EventTrack ⟨written⟩` because that is what `follow` demands,
 and the diagnostic arrives at the node this module numbered.
 
+*Decided during implementation: a block answers its own questions.* 141j registered `sounded` and `play` as fallible —
+they answer `Result<EventTrack ⟨written⟩, Text>`, because a fact whose payload does not typecheck has no track — so the
+fold is written in the surface's own `?` and drained at the closing brace. A block therefore denotes
+`Result<EventTrack ⟨written⟩, Text>`, and the `Result.Ok` is unconditional: an empty block wraps `nothing` in `Ok` too,
+so a block's *type* does not depend on which statements a composer happened to write inside it. Draining at the brace
+rather than at the enclosing function is what makes `music { … }` a complete expression instead of one that only
+typechecks in a function that answers a `Result`. The consequence for §2 is recorded under the motif paragraph below.
+
 **A statement contributes one call, and which call is the only thing being decided.** A note or a chord is `play` at its
 origin and scope; a rest is `sounded` with `Fact.Rest`; every annotation — mark, slur, phrase, tuplet, dynamic, hairpin,
 section, harmony, ending, repeat, mobile, improvise, grace — is `sounded` with its own `Fact` case; a transformation
 block is the matching track builtin applied to the fold of its body. Nothing else is a statement. Writing the table out
 in one place, as a function from `SyntaxKind` to the call it makes, is what keeps this readable at nineteen entries;
 spreading it across nineteen methods would hide the very correspondence 141j's mirroring law exists to protect.
+
+*Decided during implementation: `stack` is the one statement that reaches `play`.* This paragraph reads "a note or a
+chord is `play`", and only half of that survived contact with 141j's signature: `play` takes a `Voicing`, and
+`Voicing::new` takes a `ChordClass` alongside its pitches. `stack c4 major/2` names a class and is one `play`. A
+bracketed simultaneity does not — `[c4 c#4]` is a spelling no chord class covers, and inventing one to fit the
+constructor would be the compiler asserting a harmonic reading the composer declined to write. So `[c4 e4 g4]` is one
+`sounded(Fact.Note)` per pitch folded with `together`, which says exactly what was written: three notes, at once, named
+by nothing. `03-musical-domains.md`'s separation is the same point — a simultaneity is a *notation*, a voicing is a
+*theory reading of one* — and the fold is where a notation stops.
 
 **Pitches resolve here, before any track exists.** `01-surface.md` §2 states it twice — "a track value is an ordinary
 value, and `in scale` is lexical rather than captured", and "an absent scale makes `step` a type-context diagnostic, not
@@ -116,10 +133,31 @@ a *score*, and the score is prompt 142's; refusing them here is not refusing the
 `transpose(P5, <fold of the body>)`, which is exactly what `transpose(P5, e)` lowers to. State it as a law over a pair
 of programs rather than as a comment: two source texts, one raw term up to the origins.
 
+*Decided during implementation: the law compares a block with its body, not with a whole program.* The whole-program
+pair this paragraph imagines — `Ok(transpose(M3, music { c4/4 }?)?)` beside `music { transpose up M3 { c4/4 } }` —
+cannot be written yet. `e?` elaborates to a `match` on `e`, a `match` in scrutinee position has no inferable type, and a
+block that drained a question is already a `match`, so `music { … }?` is refused by the core. That is the `?`
+desugaring's limitation and prompt 142 owns the surface; the half this module decides — that the transformation's track
+argument is the body's own fold and nothing else — is stated over four pairs, and the other half is
+`Lowering::application`'s one line, read where `values.rs` is read.
+
 **A motif and a fragment are the declarations §2 says they are.** `motif` becomes a `fn` returning a track, `fragment`
 becomes a `let` bound to one, and both keep their role — this module's `Sites` already carries what a role needs, and
 the role is what lints, extraction, editing, and Origin read. A motif with parameters is an ordinary function with
 ordinary parameters; the notation in its body is the fold above and nothing about it is special.
+
+*Decided during implementation, three ways.* **No written return type.** §2 spells the desugaring
+`fn turn(...) -> EventTrack[WrittenTime, ScoreFact] { music { body } }`, and that annotation is stale relative to 141j:
+a block answers a `Result`, so writing §2's type would be writing a false one. The desugaring omits the annotation
+rather than inventing `Result<EventTrack[WrittenTime, ScoreFact], Text>` on §2's behalf — the value states its own type,
+and reconciling §2's sentence with the fallible vocabulary is prompt 142's, which owns both the surface and the
+migration. **Parameters come from the typed AST.** The grammar gives a motif parameter no `Param` node — it writes a
+bare identifier beside a type name — so `written_parameters`, which finds `Param` nodes, finds none and a parameterized
+motif would lower to its body with nothing bound. `ast::MotifDecl::params()` is what the parser already computed, and
+the binders are numbered at the declaration because that is the node the names were written on. **The declaration
+identity is the enclosing one.** A fact carries the declaration it belongs to, and until 142's piece walk supplies one,
+every fact this module builds says `DeclarationId(0)` — the enclosing declaration — rather than a fresh number per
+statement, because a number invented here would be a second identity scheme for 142 to reconcile with the real one.
 
 **Laws, not a caller.** `mod lower` stays behind its dead-code expectation and prompt 142 is still the first caller,
 exactly as 141g, 141ga, 141h, 141ha, and 141i leave it. The laws are the caller, and they are stated as source text in,

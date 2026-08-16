@@ -57,6 +57,7 @@
 mod laws;
 
 mod items;
+mod notation;
 mod quotes;
 mod refusals;
 mod types;
@@ -212,6 +213,24 @@ impl<'a> Lowering<'a> {
         self.minted = self.minted.saturating_add(1);
         format!("?{hint}{}", self.minted)
     }
+
+    /// `subject?` — the value `subject` succeeded with, its failure carried out
+    /// to the enclosing answer.
+    ///
+    /// The same three lines [`Lowering::question`] runs for a written `?`, held
+    /// apart because a *desugaring* asks too: `01-surface.md` §5 says "an
+    /// operation that can fail keeps its failing shape", and five of the eight
+    /// track builtins can, so a notated block writes the question the composer
+    /// would otherwise have had to write between every two statements.
+    fn asked(&mut self, origin: Origin, subject: Raw) -> Raw {
+        let binder = self.mint("held");
+        self.questions.push(Question {
+            subject,
+            binder: binder.clone(),
+            origin,
+        });
+        Raw::var(origin, binder.as_str())
+    }
 }
 
 /// `head a₁ … aₙ`, left-associated, which is what the core's one-argument
@@ -317,6 +336,8 @@ fn is_expr_node(kind: SyntaxKind) -> bool {
             | SyntaxKind::PathExpr
             | SyntaxKind::Splice
             | SyntaxKind::SequenceSplice
+            | SyntaxKind::MusicExpr
+            | SyntaxKind::KernelQuote
     )
 }
 
