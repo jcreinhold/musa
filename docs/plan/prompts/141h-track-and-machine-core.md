@@ -2,7 +2,7 @@
 id: 141h
 slug: track-and-machine-core
 status: pending
-depends_on: [141e, 141f, 141g]
+depends_on: [141e, 141f, 141g, 141ga]
 phase: 3
 ---
 
@@ -48,6 +48,9 @@ collection eliminators, which become library code, and the one phase projection,
   seventeen belongs to, and each row already says.
 - [`141g`](141g-raw-lowering.md), which reads the surface and deliberately leaves `EventTrack` and `Machine` unspellable
   — because until this prompt they denote nothing.
+- [`141ga`](141ga-quotation-core.md), which registered the `Template` base type and the two quotation rules and added
+  the third count to `rules.rs`'s accounting. This prompt's `UNREGISTERED` arithmetic is stated against that table as
+  141ga leaves it.
 
 ## Design
 

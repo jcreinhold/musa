@@ -307,6 +307,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 141e | compiler-registry | 3 | Say what the compiler owns, in the core's own terms |
 | 141f | phase-traversals | 3 | Let a traversal name what it builds |
 | 141g | raw-lowering | 3 | Read the surface as a raw term |
+| 141ga | quotation-core | 3 | Give a quotation a core shape |
 | 141h | track-and-machine-core | 3 | Give the track and the machine a core shape |
 | 142 | surface-cutover | 3 | Move the whole language over, once |
 | 143 | builtin-collapse | 3 | Collapse the builtin registry behind traits and namespaces |

@@ -1,7 +1,7 @@
 ---
 id: 141g
 slug: raw-lowering
-status: pending
+status: in-progress
 depends_on: [136a, 137, 139, 140, 141e, 141f]
 phase: 3
 ---
@@ -44,8 +44,8 @@ its own.
   [`10-traits.md`](../../rules/language/10-traits.md) §5 and §6 for what `x == y` and `x.m(y)` are spellings *of*.
   `musa_core::Raw`'s own module documentation says the core never learns an operator table; this is the module that
   therefore has to hold one.
-- [`../../rules/language/11-quotation.md`](../../rules/language/11-quotation.md) — both quotation forms, and §4's
-  pattern form, which are the largest single surface feature this reads.
+- [`141ga`](141ga-quotation-core.md), which owns both quotation forms. They left this prompt on the evidence its own
+  implementation produced — see Design — and everything else about reading the surface stayed.
 - `musa_core::Refusal`'s variants and `musa_core::PathStep`. A refusal is what a composer will see, so the mapping to
   [`crate::diagnose::Diagnostic`] is part of reading the surface rather than a later polish. Prompt 144 owns *how good*
   the message is; this prompt owns that there is one, at a span.
@@ -81,6 +81,16 @@ value. Reading a *declaration* and reading an *expression* share the CST walk an
 they are two functions in one module rather than two modules: the information they share is what would have to be passed
 between them.
 
+**Quotation is not here, and the reason is a measurement rather than a boundary.** A quote reads as nested
+`syntax_group`/`syntax_token` calls over `syntax_built(here, q, i)` paths right up to the form the feature exists for: a
+`$..xs` spread in a **separated** position mints one comma between every pair of elements it ends up with, so the
+commas' paths are `children.len() + k` for a `k` nothing knows until the adapter runs. Writing that as a lowered term
+needs a compiler-generated indexed fold — the `callN` boilerplate prompt 131 abolished, reintroduced one level down —
+and it would compute derived identity a second time beside `crate::syntax::build`, which is the second path
+`02-core-calculus.md` §5's audit exists to catch. So a template is *data*, its core shape is an inert base type, and
+[`141ga`](141ga-quotation-core.md) is where it and both quotation forms land. This prompt reads every other surface
+form, and refuses a quote at the node with a diagnostic that says which prompt owns it.
+
 **Laws are the caller, and the oracle is the core.** The property this module can have is that what it writes, the core
 accepts — so every law lowers something real and hands it to `musa_core::check` in [`crate::registry::owned`]'s context.
 That is checkable now, needs nothing migrated, and is exactly the property the cutover will rely on. Where an answer is
@@ -98,12 +108,12 @@ second oracle 142 will remove.
   refusal family and the `PathStep` trail as the diagnostic's cause.
 - Laws in `crates/musa-compiler/src/lower/laws.rs`: every written base type, constructor, and arrow lowers to a type the
   core accepts; every surface expression form lowers to a term the core checks at its written type; a pattern column
-  reaches `match` in the order the arm wrote it; a quote's template and its splices reach `Syntax`; a refusal points at
-  the node that caused it. Beside the module rather than in `tests/suite/` for 141e's reason — `Raw`, `Sites`, and
-  `registry::owned` are all private to this crate.
+  reaches `match` in the order the arm wrote it; a refusal points at the node that caused it. Beside the module rather
+  than in `tests/suite/` for 141e's reason — `Raw`, `Sites`, and `registry::owned` are all private to this crate.
 - `docs/plan/code-map/` rows for `musa-compiler`.
 - Prompt 142 repaired: its first Target bullet becomes wiring what this built, its Read cites this prompt, and its
   `depends_on` names it.
+- Prompt 141ga written, on the evidence above, and cited from this prompt's Design and from 142.
 
 ## Check
 
@@ -132,3 +142,5 @@ Commit as `Read the surface as a raw term`.
   prompt 142's problem or nobody's.
 - No track or machine spelling. `EventTrack` and `Machine` have no core shape until 141h gives them one, and lowering a
   word that denotes nothing would be work thrown away.
+- No quotation. `QuoteExpr` and `QuotePattern` are refused at the node with the prompt that owns them named; 141ga is
+  where a template becomes a core value, and half a quotation is worse than none.
