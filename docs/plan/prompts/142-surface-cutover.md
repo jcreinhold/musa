@@ -2,7 +2,7 @@
 id: 142
 slug: surface-cutover
 status: pending
-depends_on: [136a, 141, 141b, 141c]
+depends_on: [136a, 141, 141b, 141c, 141d]
 phase: 3
 ---
 
@@ -34,6 +34,10 @@ the middle. It absorbs prompt 127e, whose file stays as a superseded record rath
   `syntax_fold_from_leaves` are registered through it, and `staff.musa` does not compile without them. Its Design also
   says where the eight collection eliminators go — they become library code *in this prompt's migration*, which is why
   they are not registered there.
+- [`141d`](141d-finite-constructor-builtins.md), which widens a δ-rule from literals to finite data. Thirty-eight of the
+  92 δ-builtins in `BUILTIN_OWNERSHIP` answer an `Option`, a `Result`, or a `List`, and six take a `List`; without it
+  the registry this prompt fills cannot be filled. Its `Datum`/`Answer` pair is the shape those 38 rules are written
+  against here.
 - `crates/musa-compiler/src/infer.rs` and the checking paths in `core.rs` — what is deleted, and what has to keep
   working because something other than the checker uses it.
 - `crates/musa-compiler/tests/suite/elaboration_compatibility.rs`, especially
