@@ -2,7 +2,7 @@
 id: 142
 slug: surface-cutover
 status: pending
-depends_on: [136a, 141, 141b, 141c, 141d, 141e]
+depends_on: [136a, 141, 141b, 141c, 141d, 141e, 141f]
 phase: 3
 ---
 
@@ -32,6 +32,10 @@ the middle. It absorbs prompt 127e, whose file stays as a superseded record rath
   agreement with the old evaluator that makes them a translation rather than a rewrite. It also names the 28 entries it
   left and why — which is where this prompt's own list of what still has no core spelling comes from. Its accounting law
   is what will fail if this prompt forgets one.
+- [`141f`](141f-phase-traversals.md), which registers the two phase traversals and turns the sealed step into a declared
+  family with a private constructor. `staff.musa` calls `recurse_syntax` four times and does not compile without it, and
+  `run_syntax_step` is a definition here rather than a builtin, so the migration writes `step.run(context)` where the
+  old source wrote a call.
 - [`141c`](141c-structural-eliminators.md), which adds the second of §5.8's four families: a compiler-owned operation
   that takes a function argument and rewrites rather than computing. `recurse_syntax`, `run_syntax_step`, and
   `syntax_fold_from_leaves` are registered through it, and `staff.musa` does not compile without them. Its Design also
