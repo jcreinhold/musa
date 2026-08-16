@@ -54,20 +54,29 @@
 //! are *declared*, so [`musa_core::declare`] already generated their recursors
 //! and [`Registry::new`] refuses a structural target that is not a base type; the
 //! eight track and nine machine builtins need `EventTrack` and `Machine`, which
-//! prompt 142 reshapes when it deletes contextual `Music`. `SYNTAX_OWNERSHIP` has
-//! 17 rows, 14 of them δ builders registered here and three traversals that are
-//! prompt 141f's. [`crate::registry::rules::UNREGISTERED`] counts them, and the
-//! suite counts them again off the tables themselves.
+//! prompt 142 reshapes when it deletes contextual `Music`.
+//!
+//! `SYNTAX_OWNERSHIP` has 17 rows and sixteen are registered: fourteen δ builders
+//! here, and the two traversals in [`traversal`], which are §5.8's *second*
+//! family — a structural eliminator over `Syntax`, which is a base type. The
+//! seventeenth, `run_syntax_step`, is [`run_syntax_step`]: a projection, not a
+//! compiler-owned operation, and its target is a declared family that
+//! [`Registry::new`] would refuse. [`crate::registry::rules::UNREGISTERED`]
+//! counts what is left, and the suite counts it again off the tables themselves.
 
 #[cfg(test)]
 mod laws;
 mod rules;
+mod traversal;
 
 use std::any::Any;
 use std::fmt;
 use std::sync::Arc;
 
-use musa_core::{Base, Builtin, Cx, Datum, ElabError, Level, Literal, Origin, Payload, Refusal, Registry, Term};
+use musa_core::{
+    Base, Builtin, Cx, Datum, ElabError, Index, Level, Literal, Origin, Payload, Raw, RawArm, RawPattern, Refusal,
+    Registry, Term,
+};
 
 /// The old table's name for one inert domain, renamed on the way in.
 ///
@@ -143,6 +152,18 @@ where
     let Datum::Lit(ref value) = *datum else {
         return None;
     };
+    held(value)
+}
+
+/// The value inside a literal, if it is of domain `T`.
+///
+/// The same reading as [`domain`], one layer in. A δ-rule is handed a [`Datum`]
+/// and a structural rewrite is handed the [`Literal`] it fired on, so both
+/// spellings of "the target" reach the same downcast rather than two.
+fn held<T>(value: &Literal) -> Option<&T>
+where
+    T: PartialEq + fmt::Debug + fmt::Display + Send + Sync + 'static,
+{
     value.payload().as_any().downcast_ref::<Domain<T>>().map(|held| &held.0)
 }
 
@@ -163,6 +184,14 @@ pub(crate) fn owned() -> Result<Cx, ElabError> {
     let mut cx = Cx::new();
     for declaration in crate::prelude::structural() {
         let group = musa_core::declare(&cx, &declaration)?;
+        cx = cx.declaring(&group);
+    }
+    // Declared *by* a context standing in the phase module and added to one that
+    // is not, which is what makes `SyntaxStep.Step` private: the group carries
+    // the module it was written in, and the compiler's own context — standing
+    // nowhere — is inside every module and may still mint a step.
+    for declaration in crate::prelude::phase() {
+        let group = musa_core::declare(&cx.in_module(crate::prelude::PHASE), &declaration)?;
         cx = cx.declaring(&group);
     }
     let bases = bases();
@@ -447,7 +476,95 @@ fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
             rule,
         ));
     }
+    built.extend(traversal::eliminators(cx)?);
     Ok(built)
+}
+
+/// `run_syntax_step`, as a definition rather than a registration.
+///
+/// ```text
+/// run_syntax_step
+///   : (Context : Type 0) → (Answer : Type 0)
+///   → Context → SyntaxStep Context Answer → Answer
+/// run_syntax_step = fn (C, A, context, step) {
+///     match step { SyntaxStep.Step(run) => run(context) }
+/// }
+/// ```
+///
+/// Seventeen rows in, sixteen registrations and this out. `run_syntax_step`
+/// leaves the phase registry because a projection is not a compiler-owned
+/// operation: it hides nothing, which is the test every `SYNTAX_OWNERSHIP` row
+/// already states for itself. [`Registry::new`] would have refused it in any
+/// case — its target is a *declared* family, and a rewrite over a declared family
+/// is the second ι-rule that check exists to catch. That the ownership test and
+/// the core's own check agree is evidence the design is right rather than a
+/// coincidence to route around.
+///
+/// The step's `run` field is private to the phase module, so the `match` here
+/// resolves only because this context stands in no module and is therefore inside
+/// every one. A transformer's own module is not, which is the seal.
+///
+/// # Errors
+///
+/// [`ElabError`] when `SyntaxStep` is not declared in `cx`, or when the
+/// definition does not check at its own type — a compiler defect either way.
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "prompt 142 is where elaboration binds the phase's spellings; until then the laws are the caller"
+    )
+)]
+pub(crate) fn run_syntax_step(cx: &Cx) -> Result<Definition, ElabError> {
+    let sealed = crate::prelude::constant(cx, "SyntaxStep")?;
+    let step = Term::app(
+        HERE,
+        Term::app(HERE, sealed, Term::var(HERE, Index(2))),
+        Term::var(HERE, Index(1)),
+    );
+    let ty = Term::pi(
+        HERE,
+        "Context",
+        type0(),
+        Term::pi(
+            HERE,
+            "Answer",
+            type0(),
+            Term::pi(
+                HERE,
+                "context",
+                Term::var(HERE, Index(1)),
+                Term::pi(HERE, "step", step, Term::var(HERE, Index(2))),
+            ),
+        ),
+    );
+    let run = RawArm {
+        patterns: vec![RawPattern::constructor(
+            HERE,
+            "SyntaxStep.Step",
+            [RawPattern::bind(HERE, "run")],
+        )],
+        body: Raw::app(HERE, Raw::var(HERE, "run"), Raw::var(HERE, "context")),
+    };
+    let body = Raw::match_on(HERE, [Raw::var(HERE, "step")], vec![run]);
+    let written = ["Context", "Answer", "context", "step"]
+        .into_iter()
+        .rev()
+        .fold(body, |built, name| Raw::lam(HERE, name, built));
+    let value = musa_core::check(cx, &ty, &written)?;
+    Ok(Definition { ty, value })
+}
+
+/// A compiler-owned definition: what it is, and what it means.
+///
+/// Both halves, because a definition is both — [`Cx::define`] takes a type and a
+/// value, and a λ has no inferable type, so handing back the value alone would
+/// leave every caller to reconstruct the type this function already wrote.
+pub(crate) struct Definition {
+    /// Its type.
+    pub(crate) ty: Term,
+    /// Its meaning, checked at that type.
+    pub(crate) value: Term,
 }
 
 /// A row of a compiler-owned table with no rule behind it.

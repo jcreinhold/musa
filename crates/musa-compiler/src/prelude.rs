@@ -54,7 +54,9 @@
 
 use std::sync::Arc;
 
-use musa_core::{Cx, ElabError, Level, Origin, Raw, RawBinder, RawConstructor, RawData, RawFamily, Term, Visibility};
+use musa_core::{
+    Cx, ElabError, Level, ModuleId, Origin, Raw, RawBinder, RawConstructor, RawData, RawFamily, Term, Visibility,
+};
 
 /// Where a declaration this module writes comes from.
 ///
@@ -183,6 +185,66 @@ fn row_fault_data() -> RawData {
     )
 }
 
+/// `data SyntaxStep (Context : Type 0) (Answer : Type 0) { private Step(run : Context -> Answer) }`.
+///
+/// One suspended recursive call into a proper child, sealed —
+/// `11-quotation.md` §1's sealed step, moved off a base type and onto a family
+/// whose constructor is private to [`PHASE`].
+///
+/// # Why a family, and why it holds a function
+///
+/// A step has to *capture*: which child it descends to, and under which
+/// algebra. The only sound capture in this calculus is a closure, because the
+/// core evaluates a rewrite's answer in the environment of the spine's
+/// arguments and a λ in that answer becomes a value holding them. A base type
+/// cannot hold a closure — its payload is opaque host data, and a payload
+/// carrying a de Bruijn index would be meaningless the moment it left the spine
+/// it was minted in. A declared family can hold a field of function type, so it
+/// does.
+///
+/// # Why the seal survives
+///
+/// It used to be "this type is opaque because the compiler says so". It becomes
+/// "this constructor is private to the phase module", which is 136a's own
+/// mechanism, checked by the same filter as every other `private`. What a
+/// transformer may do is unchanged: it receives steps and runs them, and there
+/// is no spelling with which it could mint one for a node it chose. What is
+/// *gained* is that the claim is now checked rather than asserted.
+///
+/// The family itself is public, because a transformer's own signature has to be
+/// able to say `List (SyntaxStep C A)`. Hiding the type as well would hide the
+/// argument type of the branch that receives it.
+fn syntax_step_data() -> RawData {
+    data(
+        vec![binder("Context", type0()), binder("Answer", type0())],
+        vec![family(
+            "SyntaxStep",
+            Vec::new(),
+            vec![sealed(
+                "Step",
+                vec![binder("run", Raw::pi(HERE, "context", var("Context"), var("Answer")))],
+            )],
+        )],
+    )
+}
+
+/// The module the expansion phase's own declarations are written in.
+///
+/// One module and one number, because there is one seal. It is `1` rather than
+/// `0` so that a context which has not said where it is standing — [`ModuleId`]
+/// is an `Option` in a context — is never confused with this one by arithmetic.
+pub(crate) const PHASE: ModuleId = ModuleId::new(1);
+
+/// The families the expansion phase declares, in the module that seals them.
+///
+/// Separate from [`structural`] not because the elaboration differs but because
+/// the *context* does: these must be declared by a `Cx` standing in [`PHASE`],
+/// or `private` would be a word with nothing behind it — 136a's own rule is that
+/// a declaration written in no module hides from nobody.
+pub(crate) fn phase() -> Vec<RawData> {
+    vec![syntax_step_data()]
+}
+
 /// The families that name no base type, in dependency order.
 ///
 /// These are declarable in a bare context, which is what makes them first: a
@@ -246,6 +308,17 @@ fn constructor(name: &str, fields: Vec<RawBinder>) -> RawConstructor {
         visibility: Visibility::Public,
         fields,
         indices: Vec::new(),
+    }
+}
+
+/// A constructor nothing outside its own module may write.
+///
+/// The one place `private` appears in this module, and the only kind of seal
+/// this compiler has now: [`syntax_step_data`]'s `Step`.
+fn sealed(name: &str, fields: Vec<RawBinder>) -> RawConstructor {
+    RawConstructor {
+        visibility: Visibility::Private,
+        ..constructor(name, fields)
     }
 }
 

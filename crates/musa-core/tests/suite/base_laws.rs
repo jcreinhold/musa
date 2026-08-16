@@ -33,8 +33,9 @@ use std::any::Any;
 use std::sync::Arc;
 
 use musa_core::{
-    Base, Budget, Builtin, CoreError, Cx, Datum, ElabError, Family, Index, Level, Literal, Origin, Payload, Raw,
-    RawArm, RawData, RawPattern, Refusal, Registry, Term, check, convertible, infer, normalize, well_typed,
+    Base, Budget, Builtin, CoreError, Cx, Datum, ElabError, Extern, Family, Group, Index, Level, Literal, Origin,
+    Payload, Raw, RawArm, RawData, RawPattern, Refusal, Registry, Term, check, convertible, infer, normalize,
+    well_typed,
 };
 
 use crate::family_laws::{binder, constructor, data, family, type0, var};
@@ -217,6 +218,31 @@ fn options() -> RawData {
             vec![
                 constructor("None", Vec::new(), Vec::new()),
                 constructor("Some", vec![binder("value", var("A"))], Vec::new()),
+            ],
+        )],
+    )
+}
+
+/// `data List (A : Type 0) { Empty, Cons(first : A, rest : List A) }`.
+///
+/// Declared for the traversal below and for nothing else. A structural
+/// eliminator whose group branch takes a `List A` is the shape `recurse_syntax`
+/// has, and the only shape that needs [`Builtin::structural_with`] — so the law
+/// about a registered vocabulary needs a family whose constructors a rewrite
+/// would have to name and could not.
+fn lists() -> RawData {
+    data(
+        vec![binder("A", type0())],
+        vec![family(
+            "List",
+            Vec::new(),
+            vec![
+                constructor("Empty", Vec::new(), Vec::new()),
+                constructor(
+                    "Cons",
+                    vec![binder("first", var("A")), binder("rest", calls("List", [var("A")]))],
+                    Vec::new(),
+                ),
             ],
         )],
     )
@@ -408,6 +434,89 @@ fn tree_spin() -> Builtin {
     )
 }
 
+/// `tree_depth : (A : Type 0) → (Text → A) → (Text → List A → A) → Tree → A`.
+///
+/// The second worked traversal, and the one [`Builtin::structural_with`] exists
+/// for. Two things separate it from [`tree_fold`]:
+///
+/// - **It is parameterized, and the parameter is an argument.** `A` is the
+///   outermost binder, so the rewrite names it by [`Index`] exactly as it names
+///   a branch — which is what makes `List A` writable at all, and what
+///   `recurse_syntax` will need for its own `C` and `A`.
+/// - **Its group branch takes a `List A`**, so firing at a node with children
+///   means *building a list*. `List.Cons` is a constructor of a declared family;
+///   a [`Rewrite`](musa_core::Rewrite) is handed a literal and a builtin and can
+///   name neither. The vocabulary is where the host puts the two terms it
+///   resolved from the context that declared them.
+///
+/// The signature is the first dependent one in this file, and the indices in it
+/// count outwards through the arrows as well as the named binders: inside the
+/// branch's second arrow, `A` is three binders up.
+fn tree_depth(list: &Term, vocabulary: Vec<Term>) -> Builtin {
+    let text_ty = || text().term(TYPES);
+    Builtin::structural_with(
+        "tree_depth",
+        Term::pi(
+            TYPES,
+            "A",
+            Term::universe(TYPES, Level::ZERO),
+            Term::pi(
+                TYPES,
+                "leaf",
+                arrow(text_ty(), Term::var(TYPES, Index(1))),
+                Term::pi(
+                    TYPES,
+                    "branch",
+                    arrow(
+                        text_ty(),
+                        arrow(
+                            Term::app(TYPES, list.clone(), Term::var(TYPES, Index(2))),
+                            Term::var(TYPES, Index(3)),
+                        ),
+                    ),
+                    Term::pi(TYPES, "subject", tree().term(TYPES), Term::var(TYPES, Index(3))),
+                ),
+            ),
+        ),
+        3,
+        vocabulary,
+        |builtin, literal| {
+            let node = literal.payload().as_any().downcast_ref::<Node>()?;
+            let label = text_lit(&node.label).term(TERMS);
+            if node.kids.is_empty() {
+                return Some(Term::app(TERMS, Term::var(TERMS, Index(2)), label));
+            }
+            // `A`, named where the arguments are: the list this builds is a
+            // `List A` and not a list of whatever the first child happened to
+            // answer, which is the difference an empty group would show.
+            let member = Term::var(TERMS, Index(3));
+            let (empty, cons) = (builtin.vocabulary().first()?, builtin.vocabulary().get(1)?);
+            let kids = node
+                .kids
+                .iter()
+                .rev()
+                .fold(Term::app(TERMS, empty.clone(), member.clone()), |rest, kid| {
+                    applied(cons.clone(), [member.clone(), descended(builtin, kid), rest])
+                });
+            Some(applied(Term::var(TERMS, Index(1)), [label, kids]))
+        },
+    )
+}
+
+/// `tree_depth A leaf branch kid`, with the parameter and the algebra named
+/// where the rewrite stands.
+fn descended(builtin: &Builtin, kid: &Node) -> Term {
+    applied(
+        builtin.term(TERMS),
+        [
+            Term::var(TERMS, Index(3)),
+            Term::var(TERMS, Index(2)),
+            Term::var(TERMS, Index(1)),
+            tree_lit(kid.clone()).term(TERMS),
+        ],
+    )
+}
+
 /// The registry every accepting law below is stated under, over the `Option`
 /// terms the declaring context supplied.
 ///
@@ -415,7 +524,7 @@ fn tree_spin() -> Builtin {
 ///
 /// If the registry refuses its own worked example, which would be a defect in
 /// this crate rather than a property of any test.
-fn registry(option_int: &Term, option_option_int: &Term) -> Arc<Registry> {
+fn registry(declared: &Declared) -> Arc<Registry> {
     Arc::new(
         Registry::new(
             vec![int(), text(), tree()],
@@ -425,13 +534,29 @@ fn registry(option_int: &Term, option_option_int: &Term) -> Arc<Registry> {
                 int_show(),
                 tree_fold(),
                 tree_spin(),
-                int_halve(option_int),
-                option_or(option_int),
-                option_flatten(option_int, option_option_int),
+                tree_depth(&declared.list, declared.vocabulary.clone()),
+                int_halve(&declared.option_int),
+                option_or(&declared.option_int),
+                option_flatten(&declared.option_int, &declared.option_option_int),
             ],
         )
         .expect("the worked registry registers"),
     )
+}
+
+/// What a declaring context supplied, before the registry that mentions it.
+///
+/// One struct rather than five arguments because they are one fact: these are
+/// the terms only a context that has already declared `Option` and `List` can
+/// produce, and every one of them is read out at the same moment for the same
+/// reason.
+struct Declared {
+    option_int: Term,
+    option_option_int: Term,
+    list: Term,
+    /// `List.Empty` and `List.Cons`, in the order [`tree_depth`]'s rewrite reads
+    /// them.
+    vocabulary: Vec<Term>,
 }
 
 /// `Option` declared, then the registry over it, at `budget`.
@@ -452,17 +577,55 @@ fn registry(option_int: &Term, option_option_int: &Term) -> Arc<Registry> {
 ///
 /// If the declaration is refused, which would be a defect in this crate.
 fn host_at(budget: Budget) -> Cx {
+    let (groups, declared) = declarations();
+    groups
+        .iter()
+        .fold(Cx::with_budget(budget), |cx, group| cx.declaring(group))
+        .with_externs(registry(&declared))
+}
+
+/// The declaration groups the fixture rests on, and the terms only a context
+/// already carrying them can supply.
+///
+/// Separate from [`host_at`] because two things want it: building the host, and
+/// stating what the registry was built *from*. A law about the vocabulary has to
+/// reach the registered builtin, and a context does not hand its externs back
+/// out — rightly, since nothing but a test would ask.
+///
+/// The declaring pass runs at the language budget whatever the caller's is, for
+/// the reason [`host_at`] gives.
+///
+/// # Panics
+///
+/// If a declaration is refused, which would be a defect in this crate.
+fn declarations() -> (Vec<Arc<Group>>, Declared) {
     let roomy = Cx::with_budget(Budget::LANGUAGE);
-    let group = musa_core::declare(&roomy, &options()).expect("`Option` is a declaration");
-    let declaring = roomy.declaring(&group);
-    let option = infer(&declaring, &Raw::var(TYPES, "Option"))
-        .expect("`Option` is declared")
-        .0;
+    let options = musa_core::declare(&roomy, &options()).expect("`Option` is a declaration");
+    let declaring = roomy.declaring(&options);
+    let lists = musa_core::declare(&declaring, &lists()).expect("`List` is a declaration");
+    let declaring = declaring.declaring(&lists);
+    let option = named(&declaring, "Option");
     let option_int = Term::app(TYPES, option.clone(), int().term(TYPES));
-    let option_option_int = Term::app(TYPES, option, option_int.clone());
-    Cx::with_budget(budget)
-        .declaring(&group)
-        .with_externs(registry(&option_int, &option_option_int))
+    let declared = Declared {
+        option_option_int: Term::app(TYPES, option, option_int.clone()),
+        option_int,
+        list: named(&declaring, "List"),
+        vocabulary: vec![named(&declaring, "List.Empty"), named(&declaring, "List.Cons")],
+    };
+    (vec![options, lists], declared)
+}
+
+/// The constant `name` denotes, read out of the context that declared it.
+///
+/// This is the one path a vocabulary term may come from, and the reason is the
+/// invariant [`Builtin::structural_with`] states: the term has to be closed, and
+/// a declared constant is closed by construction.
+///
+/// # Panics
+///
+/// If `name` is not declared, which would be a defect in this file.
+fn named(cx: &Cx, name: &str) -> Term {
+    infer(cx, &Raw::var(TYPES, name)).expect("the name is declared here").0
 }
 
 /// A context carrying it, at the language budget.
@@ -1004,6 +1167,134 @@ fn a_function_argument_survives_the_rewrite_unevaluated() {
         ),
         "the traversal fired and handed the leaf to the algebra it was given"
     );
+}
+
+/// A rewrite builds a list from the vocabulary its registration gave it, at the
+/// type parameter it names by index.
+///
+/// This is what [`Builtin::structural_with`] is for, seen end to end. The host
+/// wrote `List.Cons A ⟨child⟩ ⟨rest⟩` for a family the core declared and the
+/// rewrite could not otherwise have named; the core checked that list against
+/// the branch's declared `List A`, evaluated the recursive calls inside it, and
+/// handed the finished list to a branch that takes it apart with an ordinary
+/// `match`. A vocabulary that had been resolved wrongly, or a member type read
+/// off the first child instead of off the parameter, would fail at the
+/// re-checker rather than answer a different number.
+///
+/// The tree is a left spine three deep with a second child at the root, so the
+/// answer distinguishes "the leftmost child" from "the last child" and from "how
+/// many children there are".
+#[test]
+fn a_rewrite_builds_a_list_from_its_registered_vocabulary() {
+    let cx = host();
+    let int_ty = int().term(TYPES);
+    let subject = branch("a", vec![branch("b", vec![leaf("c")]), leaf("d")]);
+    let term = check(&cx, &int_ty, &depth_program(subject)).expect("the traversal checks");
+    assert_eq!(
+        normalize_at(&cx, &int_ty, &term),
+        int_lit(2).term(TERMS),
+        "two groups above the leftmost leaf, each one `List.Cons` the rewrite wrote"
+    );
+    assert_eq!(well_typed(&cx, &int_ty, &term), Ok(()), "and the core re-checks it");
+}
+
+/// Every vocabulary term is closed, so it means the same thing wherever the
+/// rewrite splices it.
+///
+/// The one invariant [`Builtin::structural_with`] leaves to the host, stated
+/// where it can be checked. A rewrite's answer is read in the environment of the
+/// *spine's arguments*, so a vocabulary entry holding a free index would denote
+/// an argument of whatever traversal happened to splice it — the same defect as
+/// a payload carrying a de Bruijn index, one level up. Re-checking each entry in
+/// a context with no assumptions is what rules it out: a free variable has
+/// nothing to be.
+#[test]
+fn a_vocabulary_term_is_closed_and_so_means_the_same_everywhere() {
+    let (_, declared) = declarations();
+    let built = registry(&declared);
+    let Some(Extern::Builtin(traversal)) = built.named("tree_depth") else {
+        panic!("`tree_depth` is a registered builtin")
+    };
+    assert_eq!(
+        traversal.vocabulary().len(),
+        2,
+        "`List.Empty` and `List.Cons`, in that order"
+    );
+    let cx = host();
+    for (entry, name) in traversal.vocabulary().iter().zip(["List.Empty", "List.Cons"]) {
+        let (resolved, ty) = infer(&cx, &Raw::var(TYPES, name)).expect("the constructor is declared");
+        assert_eq!(*entry, resolved, "the vocabulary holds the constant `{name}` denotes");
+        assert_eq!(
+            well_typed(&cx, &ty, entry),
+            Ok(()),
+            "`{name}` checks where nothing is assumed, so it has no free variable to lose"
+        );
+    }
+}
+
+/// Two hosts that register the same vocabulary reduce the same program to the
+/// same normal form.
+///
+/// D3 restated for the new parameter. A vocabulary is data the host supplies, so
+/// the question it raises is the one a captured closure would have raised: can
+/// two compilers disagree? They cannot, and the reason is that the terms are
+/// *values* fixed at registration rather than a lookup performed at reduction —
+/// so two contexts built independently, each resolving `List.Empty` and
+/// `List.Cons` from its own declaration, put the traversal in the same place.
+#[test]
+fn two_registries_with_the_same_vocabulary_reduce_alike() {
+    let subject = branch("a", vec![branch("b", vec![leaf("c")]), leaf("d")]);
+    let int_ty = int().term(TYPES);
+    let (one, other) = (host(), host());
+    let here = check(&one, &int_ty, &depth_program(subject.clone())).expect("the traversal checks");
+    let there = check(&other, &int_ty, &depth_program(subject)).expect("the traversal checks");
+    assert_eq!(
+        normalize_at(&one, &int_ty, &here),
+        normalize_at(&other, &int_ty, &there),
+        "the reduction is a function of the vocabulary and not of which host registered it"
+    );
+}
+
+/// `tree_depth Int (fn (t) { 0 }) (fn (t) { fn (kids) { … } }) ⟨subject⟩`.
+///
+/// The branch takes the list apart with an ordinary `match`, which is the point:
+/// what the rewrite built is a value of a *declared* family, so the ordinary
+/// eliminator consumes it and nothing about the traversal is special downstream.
+fn depth_program(subject: Node) -> Raw {
+    calls(
+        "tree_depth",
+        [
+            Raw::var(TYPES, "Int"),
+            Raw::lam(TERMS, "t", Raw::lit(TERMS, int_lit(0))),
+            Raw::lam(
+                TERMS,
+                "t",
+                Raw::lam(
+                    TERMS,
+                    "kids",
+                    Raw::match_on(
+                        TERMS,
+                        [Raw::var(TERMS, "kids")],
+                        vec![
+                            RawArm {
+                                patterns: vec![RawPattern::constructor(TERMS, "List.Empty", [])],
+                                body: Raw::lit(TERMS, int_lit(0)),
+                            },
+                            RawArm {
+                                patterns: vec![RawPattern::constructor(
+                                    TERMS,
+                                    "List.Cons",
+                                    [RawPattern::bind(TERMS, "first"), RawPattern::bind(TERMS, "rest")],
+                                )],
+                                body: calls("int_add", [Raw::lit(TERMS, int_lit(1)), Raw::var(TERMS, "first")]),
+                            },
+                        ],
+                    ),
+                ),
+            ),
+            Raw::lit(TERMS, tree_lit(subject)),
+        ],
+    )
 }
 
 /// A target that is not a literal leaves an ordinary blocked spine.

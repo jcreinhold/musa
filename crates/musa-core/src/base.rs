@@ -367,6 +367,14 @@ pub type Rule = fn(&[Datum]) -> Option<Datum>;
 /// [`Builtin`] it lives in. [`Builtin::term`] is what turns the handle back into
 /// a head.
 ///
+/// **And through itself, the names it may write.** An argument is nameable by
+/// index and the builtin by its own handle, but a constructor of a *declared*
+/// family is neither — and a traversal whose group branch takes a `List A` has
+/// to build one. [`Builtin::vocabulary`] is where the host puts the closed terms
+/// its rewrite is allowed to write, fixed at registration by
+/// [`Builtin::structural_with`]; see that constructor for why this is not a
+/// weakening of D3.
+///
 /// `fn` rather than a closure for [`Rule`]'s reason, unchanged: a rewrite that
 /// captured host state would make reduction depend on which compiler ran it.
 ///
@@ -414,6 +422,9 @@ struct BuiltinDeclaration {
     family: Family,
     arity: usize,
     reduction: Reduction,
+    /// The closed terms this builtin's rewrite may write. Empty for every
+    /// builtin that needs none, which is every δ-builtin and most traversals.
+    vocabulary: Vec<Term>,
 }
 
 /// Two builtins are the same when they have the same name, for the reason
@@ -465,10 +476,63 @@ impl Builtin {
     /// argument's type is a base type of the registry.
     #[must_use]
     pub fn structural(name: impl Into<Name>, ty: Term, target: usize, rewrite: Rewrite) -> Self {
-        Self::declared(name, ty, Family::Eliminator, Reduction::Structural { target, rewrite })
+        Self::structural_with(name, ty, target, Vec::new(), rewrite)
+    }
+
+    /// [`Self::structural`], plus the closed terms its rewrite may write.
+    ///
+    /// **Why a rewrite needs a vocabulary at all.** A [`Rewrite`] can name three
+    /// things: a literal it was handed, an argument of the spine by [`Index`](crate::Index),
+    /// and its own [`Builtin`]. That is enough for a traversal whose branches
+    /// answer at a base type, and not enough for one whose group branch takes a
+    /// `List A` — building the list means writing `List.Cons`, which is a
+    /// constructor of a *declared* family, and a `fn` pointer cannot look one up.
+    /// The narrow reading is that `Rewrite` wants more arguments. The real one is
+    /// that it wants *names*, and the host is the only thing that has them: it
+    /// declared the family, so it can resolve the constructor and hand the term
+    /// over once, here.
+    ///
+    /// **D3 does not move.** The terms are fixed at registration and closed, so
+    /// they mean the same thing under every environment the rewrite's answer is
+    /// read in; the `fn` still captures nothing; and two compilers that register
+    /// the same vocabulary reduce the same term to the same normal form. What
+    /// would re-open D3 is a vocabulary that could change between two reductions,
+    /// which is why this takes owned terms rather than a lookup.
+    ///
+    /// **Closedness is the host's obligation**, for the reason termination is:
+    /// nothing in a `Term` says which context it was read in, so a vocabulary
+    /// entry holding a free variable would be a term meaning one thing where it
+    /// was resolved and another where it is spliced. Resolve them in the empty
+    /// context — a declared constant is closed by construction — and the
+    /// question does not arise.
+    #[must_use]
+    pub fn structural_with(
+        name: impl Into<Name>,
+        ty: Term,
+        target: usize,
+        vocabulary: Vec<Term>,
+        rewrite: Rewrite,
+    ) -> Self {
+        Self::declared_with(
+            name,
+            ty,
+            Family::Eliminator,
+            Reduction::Structural { target, rewrite },
+            vocabulary,
+        )
     }
 
     fn declared(name: impl Into<Name>, ty: Term, family: Family, reduction: Reduction) -> Self {
+        Self::declared_with(name, ty, family, reduction, Vec::new())
+    }
+
+    fn declared_with(
+        name: impl Into<Name>,
+        ty: Term,
+        family: Family,
+        reduction: Reduction,
+        vocabulary: Vec<Term>,
+    ) -> Self {
         let arity = arity_of(&ty);
         Self(Arc::new(BuiltinDeclaration {
             name: name.into(),
@@ -476,6 +540,7 @@ impl Builtin {
             family,
             arity,
             reduction,
+            vocabulary,
         }))
     }
 
@@ -501,6 +566,18 @@ impl Builtin {
     #[must_use]
     pub fn arity(&self) -> usize {
         self.0.arity
+    }
+
+    /// The closed terms its rewrite may write, in the order the host registered
+    /// them.
+    ///
+    /// Empty unless [`Self::structural_with`] was given some. A rewrite reads
+    /// these by position for the same reason it reads its arguments by position:
+    /// the host wrote both lists, and a name would be a second spelling to keep
+    /// in step with the first.
+    #[must_use]
+    pub fn vocabulary(&self) -> &[Term] {
+        &self.0.vocabulary
     }
 
     /// This builtin as a term.

@@ -63,14 +63,17 @@ use crate::origin::Interval;
 use crate::pitch::{PitchClass, WrittenPitch};
 use crate::syntax::{Cat, Syntax, token_kind_spelling};
 
-/// How many rows of the two ownership tables have a rule here.
+/// How many rows of the two ownership tables reach the core's registry.
 ///
-/// 92 of `BUILTIN_OWNERSHIP`'s 117 and 14 of `SYNTAX_OWNERSHIP`'s 17.
-pub(super) const REGISTERED: usize = 106;
+/// 92 of `BUILTIN_OWNERSHIP`'s 117 and 16 of `SYNTAX_OWNERSHIP`'s 17. The two
+/// phase rows past this module's fourteen are the traversals in
+/// [`super::traversal`]: they are §5.8's second family rather than its first, so
+/// they carry a rewrite instead of a [`Rule`] and are registered there.
+pub(super) const REGISTERED: usize = 108;
 
 /// The rows that do not, by family and by count.
 ///
-/// Twenty-eight, and each group is left for a reason that is about the *core*
+/// Twenty-six, and each group is left for a reason that is about the *core*
 /// rather than about effort:
 ///
 /// - a **structural eliminator** traverses `Nat`, `List`, or `Option`, which are
@@ -81,10 +84,12 @@ pub(super) const REGISTERED: usize = 106;
 /// - a **track** or **machine** builtin needs `EventTrack` or `Machine`, and
 ///   prompt 142 reshapes both when it deletes contextual `Music`. Registering
 ///   them against the shape that is about to go would be work thrown away.
-/// - a **phase traversal** takes a function argument, so it is a structural
-///   eliminator over `Syntax`, which *is* a base type. Prompt 141f registers all
-///   three, after giving a rewrite a way to name the constructors of the list it
-///   builds.
+/// - a **phase projection** is `run_syntax_step`, which hides nothing: it is the
+///   `run` field of a `SyntaxStep` applied to a context, and a projection is not
+///   a compiler-owned operation. [`musa_core::Registry::new`] would have refused
+///   it anyway, since its target is a declared family and a rewrite over one is
+///   the second ι-rule that check exists to catch. It is *defined* instead —
+///   [`super::run_syntax_step`].
 ///
 /// The suite counts each group again off the tables themselves, so this array
 /// cannot drift from what is actually registered.
@@ -92,7 +97,7 @@ pub(super) const UNREGISTERED: [(&str, usize); 4] = [
     ("structural eliminators", 8),
     ("track builtins", 8),
     ("machine builtins", 9),
-    ("phase traversals", 3),
+    ("phase projections", 1),
 ];
 
 // ---- reading an argument ----
@@ -835,7 +840,7 @@ fn pc12_listing(members: Vec<crate::pc12::Pc12>) -> Datum {
 /// registry offers the kind under — the same table `token_kind_equal` compares
 /// against, so what a diagnostic shows is what an adapter would have written.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct Kind(musa_language::SyntaxKind);
+pub(super) struct Kind(pub(super) musa_language::SyntaxKind);
 
 impl std::fmt::Display for Kind {
     fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

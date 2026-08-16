@@ -102,15 +102,19 @@ fn the_unregistered_rows_are_the_families_they_are_said_to_be() {
         .iter()
         .filter(|entry| matches!(entry.family, Family::Machine(_)))
         .count();
-    let traversals = SYNTAX_OWNERSHIP
+    // The descent family's rows minus the two registered as structural
+    // eliminators, which is `run_syntax_step` and says so by subtraction rather
+    // than by being named twice.
+    let projections = SYNTAX_OWNERSHIP
         .iter()
         .filter(|entry| matches!(entry.family, PhaseFamily::Fold))
-        .count();
+        .count()
+        - super::traversal::SPELLINGS.len();
     let counted = [
         ("structural eliminators", eliminators),
         ("track builtins", tracks),
         ("machine builtins", machines),
-        ("phase traversals", traversals),
+        ("phase projections", projections),
     ];
     assert_eq!(counted, rules::UNREGISTERED, "a family's row count moved");
 
@@ -140,6 +144,74 @@ fn the_unregistered_rows_are_the_families_they_are_said_to_be() {
             entry.spelling
         );
     }
+}
+
+/// Sixteen of the phase's seventeen rows are registered, and the seventeenth is
+/// defined.
+///
+/// The claim prompt 141f closes, stated where both halves can be checked at once.
+/// Fourteen builders and two traversals reach [`musa_core::Registry`];
+/// `run_syntax_step` does not, and is a term that checks at its own type instead
+/// — which is what makes leaving it out a design decision rather than a gap.
+#[test]
+fn sixteen_phase_rows_are_registered_and_one_is_defined() {
+    let cx = owned().expect("the compiler's own context builds");
+    let all = builtins(&cx).expect("both tables translate");
+    let registered: Vec<&str> = all
+        .iter()
+        .map(|builtin| &**builtin.name())
+        .filter(|name| SYNTAX_OWNERSHIP.iter().any(|entry| entry.spelling == *name))
+        .collect();
+    assert_eq!(registered.len(), 16, "fourteen builders and two traversals");
+
+    let left: Vec<&str> = SYNTAX_OWNERSHIP
+        .iter()
+        .map(|entry| entry.spelling)
+        .filter(|spelling| !registered.contains(spelling))
+        .collect();
+    assert_eq!(left, ["run_syntax_step"], "the one row left over is the projection");
+    for spelling in super::traversal::SPELLINGS {
+        assert!(registered.contains(&spelling), "`{spelling}` is registered");
+    }
+
+    // And the definition is a projection in the only sense that matters: it runs
+    // the function the step sealed, at the context it is given.
+    let defined = super::run_syntax_step(&cx).expect("`run_syntax_step` is definable");
+    let cx = cx
+        .define(&defined.ty, &defined.value)
+        .expect("a checked definition is definable");
+    let text = super::plain_type("Text");
+    let step = crate::prelude::constant(&cx, "SyntaxStep.Step").expect("the constructor is declared");
+    let sealed = applied(
+        step,
+        [
+            text.clone(),
+            text.clone(),
+            Term::lam(super::HERE, "context", Term::var(super::HERE, musa_core::Index(0))),
+        ],
+    );
+    let asked = super::literal(text.clone(), "the context".to_owned()).term(super::HERE);
+    let run = applied(
+        Term::var(super::HERE, musa_core::Index(0)),
+        [text.clone(), text.clone(), asked.clone(), sealed],
+    );
+    assert_eq!(
+        musa_core::well_typed(&cx, &text, &run),
+        Ok(()),
+        "the application checks"
+    );
+    assert_eq!(
+        musa_core::normalize(&cx, &text, &run).expect("it reduces"),
+        asked,
+        "running a step is the sealed function applied to the context and nothing else"
+    );
+}
+
+/// `head a b …`.
+fn applied(head: Term, arguments: impl IntoIterator<Item = Term>) -> Term {
+    arguments
+        .into_iter()
+        .fold(head, |function, argument| Term::app(super::HERE, function, argument))
 }
 
 /// Each rule answers what the corresponding arm of the old evaluator answers.
