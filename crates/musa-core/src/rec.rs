@@ -31,16 +31,36 @@
 //! A definition recurses on **one** argument, and the `match` at the top of its
 //! body is what says which: the subject that is one of the definition's own
 //! arguments is the recursive position. A call is then a call on a *pattern
-//! binder in that column*, and every other argument is unconstrained — because
-//! the induction hypothesis has already fixed them. `xs#ih` is the answer for
-//! this branch's tail at the indices that tail has, so a `count k ys` is
-//! `ys#ih` and the `k` is not a second thing to check but a consequence of the
-//! first.
+//! binder in that column*, and the arguments **before** that one are fixed —
+//! the hypothesis is the answer at the goal this match was split at, and
+//! everything abstracted before the subject is part of that goal. `xs#ih` is
+//! the answer for this branch's tail at the indices that tail has, so a
+//! `count k ys` is `ys#ih` and the `k` is not a second thing to check but a
+//! consequence of the first.
 //!
 //! That last point is why "exactly one argument changed" is the wrong rule and
 //! was tried first: a recursion over `Vec A n` *must* change two arguments, the
 //! index and the vector, and under that rule no indexed family could be
 //! recursed over at all.
+//!
+//! # Why the later arguments move inside the match
+//!
+//! An argument the definition abstracts *after* the recursive one is a
+//! different matter, and getting it wrong is how a `fold` that accumulates
+//! forwards came out computing its seed. `λxs. λbuilt. match xs { … }` splits
+//! at the goal `B`, so the hypothesis is `B` — the answer for the tail *at this
+//! branch's own accumulator* — and a call that passes a new accumulator has
+//! nowhere to put it. Dropping it type-checks and means something else.
+//!
+//! So the binders after the recursive position are moved inside the arms before
+//! the match is elaborated. The goal at the split becomes `B → B`, the
+//! hypothesis becomes a function of the accumulator, and `walk t (step built h)`
+//! is `t#ih (step built h)` — the strong induction hypothesis, which is what an
+//! accumulating traversal has always needed. Authors write the natural
+//! `λxs. λbuilt. match xs`; the transformation is what makes it mean what it
+//! reads as. A binder is moved under a mangled name in an arm whose pattern
+//! already binds that name, so that the arm's occurrences keep resolving to the
+//! pattern's binder as they did before.
 //!
 //! What this refuses, and why each is genuinely out of reach:
 //!
@@ -53,6 +73,11 @@
 //! - An argument in the recursive position that is not a binder of that
 //!   column's pattern: `f (Succ (Succ k))` is a call on something no match made
 //!   smaller.
+//! - A call that changes an argument *before* the recursive one. The hypothesis
+//!   holds those fixed, so `f (Succ m) k` is asking it a question it does not
+//!   answer. What is admitted there is the definition's own binder, unchanged,
+//!   or a binder this branch's pattern introduced — which is how an index
+//!   reaches the hypothesis.
 //! - The definition used as a value rather than called. A core with no fixed
 //!   point has nothing to hand over.
 //!
@@ -209,20 +234,51 @@ impl Plan {
             // has no hypothesis available and is refused like any other.
             rebuilt.push(outside.term(subject, &mut Vec::new())?);
         }
+        // Everything abstracted after the recursive argument is generalized into
+        // the motive by moving it inside the arms, so that the hypothesis is a
+        // function of it rather than a value at this branch's own copy of it.
+        let after = recursion.position.saturating_add(1).min(lambdas.len());
+        let hoisted = lambdas.split_off(after);
         let mut built = Vec::with_capacity(arms.len());
         for arm in arms.iter() {
             let mut smaller = Vec::new();
             if let Some(pattern) = arm.patterns.get(recursion.column) {
                 binders(pattern, &mut smaller);
             }
+            let mut taken = Vec::new();
+            if !hoisted.is_empty() {
+                for pattern in &arm.patterns {
+                    binders(pattern, &mut taken);
+                }
+            }
             let inside = Rewrite {
                 plan: self,
                 smaller,
                 position: recursion.position,
             };
+            let mut body = inside.term(&arm.body, &mut Vec::new())?;
+            for (origin, plicity, name, domain) in hoisted.iter().rev() {
+                // An arm whose pattern binds this name already answers to it,
+                // and did so before the move; the mangled binder takes the
+                // argument without taking those occurrences with it.
+                let name = if taken.contains(name) {
+                    Arc::from(format!("{name}#arg"))
+                } else {
+                    Arc::clone(name)
+                };
+                body = Raw::new(
+                    *origin,
+                    RawShape::Lam {
+                        plicity: *plicity,
+                        name,
+                        domain: domain.clone(),
+                        body,
+                    },
+                );
+            }
             built.push(RawArm {
                 patterns: arm.patterns.clone(),
-                body: inside.term(&arm.body, &mut Vec::new())?,
+                body,
             });
         }
         let mut rewritten = Raw::new(
@@ -461,10 +517,10 @@ impl Rewrite<'_> {
         Ok(Arc::from(built))
     }
 
-    /// A saturated recursive call, as the hypothesis it becomes.
+    /// A recursive call, as the hypothesis it becomes.
     ///
     /// `None` when `raw` is not one, which is every other term.
-    fn call(&self, raw: &Raw, bound: &[Name]) -> Result<Option<Raw>, ElabError> {
+    fn call(&self, raw: &Raw, bound: &mut Vec<Name>) -> Result<Option<Raw>, ElabError> {
         let (head, arguments) = spine(raw);
         let RawShape::Var(name) = head.shape() else {
             return Ok(None);
@@ -480,9 +536,6 @@ impl Rewrite<'_> {
             }
             .into()
         };
-        if arguments.len() != self.plan.arguments.len() {
-            return Err(refuse());
-        }
         let Some(argument) = arguments.get(self.position) else {
             return Err(refuse());
         };
@@ -494,10 +547,27 @@ impl Rewrite<'_> {
         if bound.contains(passed) || !self.smaller.contains(passed) {
             return Err(refuse());
         }
-        // Every other argument is left alone: the hypothesis is the answer for
-        // this branch's field at the indices that field has, so what stands in
-        // the other positions is decided by conversion rather than here.
-        Ok(Some(Raw::var(here, hypothesis_name(passed))))
+        // The arguments before the recursive one are part of the goal the match
+        // was split at, so the hypothesis already stands at them: a call may
+        // repeat the definition's own binder, or name what this branch's pattern
+        // bound, which is how an index reaches the hypothesis. Anything else is
+        // asking for an answer at something no hypothesis holds.
+        for (index, argument) in arguments.iter().enumerate().take(self.position) {
+            let RawShape::Var(passed) = argument.shape() else {
+                return Err(refuse());
+            };
+            let own = self.plan.arguments.get(index).is_some_and(|name| name == passed);
+            if bound.contains(passed) || !(own || self.smaller.contains(passed)) {
+                return Err(refuse());
+            }
+        }
+        // The arguments after it are what the motive generalized, so they are
+        // applied rather than dropped — `t#ih` is a function of exactly them.
+        let mut rewritten = Raw::var(here, hypothesis_name(passed));
+        for argument in arguments.iter().skip(self.position.saturating_add(1)) {
+            rewritten = Raw::app(here, rewritten, self.term(argument, bound)?);
+        }
+        Ok(Some(rewritten))
     }
 }
 

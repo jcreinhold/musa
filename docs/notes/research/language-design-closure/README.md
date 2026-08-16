@@ -185,6 +185,18 @@ ship.
     it has, because the category is a claim the checker erased, so the evaluator's `admits` check has to be told not to
     compare them.
 
+47. [46-collections-and-the-vec-answer.md](46-collections-and-the-vec-answer.md) records prompt 141's answer on
+    `Vec A n` and what the collection library found in the core it was written against. **`Vec A n` does not ship**:
+    note 43 §7's mechanism table gives it no program, §10 records that the staff adapter's two fixed-arity things are
+    enums whose cases are named, and §5.6 records that the corpus is non-dependent — so the ledger is empty on both
+    sides of the prompt's own test. The index *mechanism* stays, with `Syntax<Cat>` as its user and `Vec` as the fixture
+    the family, coverage, and termination laws are stated over; a program that computes an arity re-opens the type as an
+    ordinary prompt. The note also records why the collection library is a fixture in `collection_laws.rs` rather than
+    crate items — `musa-core` is a leaf calculus whose only pre-declared thing is `Storable` — and three defects writing
+    it found: an accumulating recursion was silently miscompiled, because the hypothesis a split binds stood at the
+    branch's own accumulator and the call's new one was dropped; the re-checker had no rule for a `let` in checking
+    position; and a `match` whose goal was still a metavariable was an internal error rather than a program.
+
 The proof gate failed for the design notes 19–41 pursued, and nothing in *those* notes moved to `docs/rules/` or into
 implementation prompts. Note 42 is the exception and says why: it is an amendment taken under
 [`docs/rules/README.md`](../../../rules/README.md)'s procedure, on engineering evidence those notes did not weigh, and

@@ -1,7 +1,7 @@
 ---
 id: 141
 slug: collections
-status: in-progress
+status: done
 depends_on: [140]
 phase: 3
 ---

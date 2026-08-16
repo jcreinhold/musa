@@ -276,6 +276,38 @@ pub(crate) fn refused_definitions() -> Vec<RefusedDefinition> {
             arrow(var("Nat"), arrow(var("Nat"), var("Nat"))),
         ),
         refused(
+            "a call that changes an argument before the recursive one",
+            // `λa. λb. match b { Zero => a; Succ k => skew (Succ a) k }`. The
+            // hypothesis is the answer at the goal this match was split at, and
+            // everything abstracted before the subject is part of that goal — so
+            // there is no hypothesis standing at a different `a`, and asking for
+            // one is named rather than silently answered with the `a` there is.
+            Raw::rec(
+                WRITTEN,
+                "skew",
+                arrow(var("Nat"), arrow(var("Nat"), var("Nat"))),
+                Raw::lam(
+                    WRITTEN,
+                    "a",
+                    Raw::lam(
+                        WRITTEN,
+                        "b",
+                        matching(
+                            [var("b")],
+                            vec![
+                                arm(vec![con("Nat.Zero", [])], var("a")),
+                                arm(
+                                    vec![con("Nat.Succ", [bind("k")])],
+                                    apply(var("skew"), [apply(var("Nat.Succ"), [var("a")]), var("k")]),
+                                ),
+                            ],
+                        ),
+                    ),
+                ),
+            ),
+            arrow(var("Nat"), arrow(var("Nat"), var("Nat"))),
+        ),
+        refused(
             "the definition used as a value",
             // Passed along rather than called. There is no hypothesis for "the
             // function itself", and a core with no fixed point has nothing else
@@ -350,4 +382,62 @@ fn a_shadowing_binder_is_not_a_recursive_call() {
     let constant = Raw::rec(WRITTEN, "unused", type0(), Raw::record_type(WRITTEN, []));
     musa_core::check(&cx, &core(&cx, "Type 0", &type0()), &constant)
         .expect("a definition that does not recurse is an ordinary term");
+}
+
+/// §2.4 over an argument the recursion *accumulates* into, which is the case
+/// that decides whether a fold can run forwards.
+///
+/// `λn. λacc. match n { Zero => acc; Succ k => down k (Succ acc) }` is how every
+/// author writes a tail recursion, and the hypothesis a split gives it is the
+/// answer at *this* branch's `acc` — so a call passing a new one has nowhere to
+/// put it, and dropping it type-checks and computes the seed. The binders after
+/// the recursive argument are therefore generalized into the motive, and the
+/// law is stated as a sum because a wrong hypothesis here returns `acc`
+/// unchanged rather than failing.
+#[test]
+fn a_recursion_that_accumulates_carries_the_argument_it_changed() {
+    let cx = nat_vec_context();
+    let written = arrow(var("Nat"), arrow(var("Nat"), var("Nat")));
+    let down = Raw::rec(
+        WRITTEN,
+        "down",
+        written.clone(),
+        Raw::lam(
+            WRITTEN,
+            "n",
+            Raw::lam(
+                WRITTEN,
+                "acc",
+                matching(
+                    [var("n")],
+                    vec![
+                        arm(vec![con("Nat.Zero", [])], var("acc")),
+                        arm(
+                            vec![con("Nat.Succ", [bind("k")])],
+                            apply(var("down"), [var("k"), apply(var("Nat.Succ"), [var("acc")])]),
+                        ),
+                    ],
+                ),
+            ),
+        ),
+    );
+    let ty = core(&cx, "Nat → Nat → Nat", &written);
+    let elaborated = musa_core::check(&cx, &ty, &down).expect("an accumulating recursion is admitted");
+    // Re-checked for the reason addition is, and for one more: the motive is a
+    // function type now, so each arm of the compiled tree is a λ under the
+    // `let`s its pattern bound.
+    musa_core::well_typed(&cx, &ty, &elaborated).expect("the compiled definition re-checks in the core");
+
+    let nat = core_constant(&cx, "Nat");
+    for (count, seed) in [(0, 0), (0, 3), (3, 0), (2, 4)] {
+        let name = "counting down into an accumulator";
+        let summed = musa_core::check(&cx, &nat, &applied(&down, &written, [number(count), number(seed)]))
+            .unwrap_or_else(|error| panic!("{name}: {error}"));
+        let expected =
+            musa_core::check(&cx, &nat, &number(count + seed)).unwrap_or_else(|error| panic!("{name}: {error}"));
+        assert!(
+            musa_core::convertible(&cx, &nat, &summed, &expected).unwrap_or_else(|error| panic!("{name}: {error}")),
+            "{count} counted into {seed}"
+        );
+    }
 }

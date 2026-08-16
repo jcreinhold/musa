@@ -532,13 +532,13 @@ fn number(count: u32) -> Raw {
 
 /// `[a, b, c] : List τ`, written out as the constructors it stands for.
 fn listed(element: &Raw, items: impl IntoIterator<Item = Raw>) -> Raw {
-    let items: Vec<Raw> = items.into_iter().collect();
-    items
-        .into_iter()
-        .rev()
-        .fold(apply(var("List.Nil"), [element.clone()]), |tail, head| {
-            apply(var("List.Cons"), [element.clone(), head, tail])
-        })
+    fn built(element: &Raw, mut rest: impl Iterator<Item = Raw>) -> Raw {
+        match rest.next() {
+            None => apply(var("List.Nil"), [element.clone()]),
+            Some(head) => apply(var("List.Cons"), [element.clone(), head, built(element, rest)]),
+        }
+    }
+    built(element, items.into_iter())
 }
 
 /// `[m, n, …] : List Nat`.
@@ -561,11 +561,10 @@ fn same(cx: &Cx, name: &str, ty: &Term, left: &Raw, right: &Raw) {
     let left = check(cx, ty, left).unwrap_or_else(|error| panic!("{name} (left): {error}"));
     let right = check(cx, ty, right).unwrap_or_else(|error| panic!("{name} (right): {error}"));
     well_typed(cx, ty, &left).unwrap_or_else(|error| panic!("{name} (left) does not re-check: {error}"));
-    if !convertible(cx, ty, &left, &right).unwrap_or_else(|error| panic!("{name}: {error}")) {
-        let l = musa_core::normalize(cx, ty, &left);
-        let r = musa_core::normalize(cx, ty, &right);
-        panic!("{name}\nLEFT  {l:?}\nRIGHT {r:?}");
-    }
+    assert!(
+        convertible(cx, ty, &left, &right).unwrap_or_else(|error| panic!("{name}: {error}")),
+        "{name}"
+    );
 }
 
 /// 127dcfaa's decision, restated where both directions of travel exist.
@@ -646,17 +645,30 @@ fn collecting_and_mapping_commute() {
     let cx = context();
     let list_nat = core(&cx, "List Nat", &list_of(var("Nat")));
     let source = numbers([0, 1, 2]);
+    let written = list_of(var("Nat"));
+    // Both intermediates are annotated for the same reason: `map` and `collect`
+    // fix their target by *checking*, and a receiver position infers. §1.6's
+    // refusal and §6's exact-receiver rule are one rule seen twice, and this is
+    // the annotation both diagnostics ask for.
     same(
         &cx,
         "map then collect is collect then map",
         &list_nat,
         &Raw::method(
             WRITTEN,
-            apply(Raw::method(WRITTEN, source.clone(), "map"), [var("Nat.Succ")]),
+            Raw::annot(
+                WRITTEN,
+                apply(Raw::method(WRITTEN, source.clone(), "map"), [var("Nat.Succ")]),
+                written.clone(),
+            ),
             "collect",
         ),
         &apply(
-            Raw::method(WRITTEN, Raw::method(WRITTEN, source, "collect"), "map"),
+            Raw::method(
+                WRITTEN,
+                Raw::annot(WRITTEN, Raw::method(WRITTEN, source, "collect"), written),
+                "map",
+            ),
             [var("Nat.Succ")],
         ),
     );
@@ -668,8 +680,13 @@ fn collecting_and_mapping_commute() {
 fn filtering_keeps_the_elements_the_predicate_admits() {
     let cx = context();
     let list_nat = core(&cx, "List Nat", &list_of(var("Nat")));
-    let is_zero = lam(
+    // `A` is postponed with the dictionary, so the predicate's binder is checked
+    // against a metavariable and the `match` has no constructors to look at.
+    // Naming `Nat` is §6's repair, and the one an author writes.
+    let is_zero = Raw::annotated_lam(
+        WRITTEN,
         "n",
+        var("Nat"),
         matching(
             var("n"),
             vec![
@@ -763,8 +780,10 @@ fn a_nested_forward_traversal_joins_what_a_map_could_not() {
                 var("Buildable.empty"),
                 lam(
                     "done",
-                    lam(
+                    Raw::annotated_lam(
+                        WRITTEN,
                         "kid",
+                        list_nat.clone(),
                         apply(
                             Raw::method(WRITTEN, var("kid"), "fold_from_start"),
                             [
@@ -785,7 +804,16 @@ fn a_nested_forward_traversal_joins_what_a_map_could_not() {
         &cx,
         "a nested group contributes every pitch it holds, in order",
         &core(&cx, "List Nat", &list_nat),
-        &apply(Raw::annot(WRITTEN, voiced_inside, written), [groups]),
+        // A `let` rather than an annotated λ applied on the spot: the core has
+        // no annotation form, so a β-redex an author writes is the one shape
+        // the independent re-checker cannot give a type to, and `same` re-checks.
+        &Raw::annotated_bind(
+            WRITTEN,
+            "voiced_inside",
+            written,
+            voiced_inside,
+            apply(var("voiced_inside"), [groups]),
+        ),
         &numbers([0, 1, 2]),
     );
 }

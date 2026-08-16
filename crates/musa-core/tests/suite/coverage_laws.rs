@@ -627,3 +627,44 @@ fn a_pattern_binder_is_a_definition_at_every_leaf_it_reaches() {
     let compiled = musa_core::check(&cx, &ty, &by_match).expect("the third arm checks at both leaves it reaches");
     musa_core::well_typed(&cx, &ty, &compiled).expect("and re-checks from the core rules alone");
 }
+
+/// A `match` whose goal is still a metavariable elaborates, at the level the
+/// goal already stands at.
+///
+/// §1.3 has no universe polymorphism, so a split reads its motive's universe off
+/// the goal per use site — and a goal an argument position handed over is a
+/// metavariable, which is not a written type and has no syntax to read. It is
+/// not an *unknown* level, though: a metavariable records the type it stands at,
+/// and a goal's type is `Type ℓ`. Reading it there is what lets a `match` be an
+/// argument at all, which every `filter` written against a trait's postponed
+/// element type turns out to need.
+#[test]
+fn a_match_whose_goal_is_a_metavariable_elaborates() {
+    let cx = nat_vec_context();
+    let ty = core(&cx, "Nat", &var("Nat"));
+    let identity = Raw::implicit_pi(WRITTEN, "X", type0(), arrow(var("X"), var("X")));
+    let predecessor = matching(
+        [number(3)],
+        vec![
+            arm(vec![con("Nat.Zero", [])], var("Nat.Zero")),
+            arm(vec![con("Nat.Succ", [bind("k")])], var("k")),
+        ],
+    );
+    // A `let` rather than an annotated λ applied here: `same` re-checks, and an
+    // elimination applied straight to an introduction form is the one shape the
+    // re-checker cannot give a type to.
+    let applied = Raw::annotated_bind(
+        WRITTEN,
+        "identity",
+        identity,
+        Raw::implicit_lam(WRITTEN, "X", Raw::lam(WRITTEN, "x", var("x"))),
+        apply(var("identity"), [predecessor]),
+    );
+    same(
+        &cx,
+        "the predecessor through an implicit identity",
+        &ty,
+        &applied,
+        &number(2),
+    );
+}

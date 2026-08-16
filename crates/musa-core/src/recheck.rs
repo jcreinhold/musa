@@ -108,6 +108,30 @@ impl Checker<'_> {
                 self.check(&cx.assumed(here, Arc::clone(domain)), body, &body_ty)
             }
             (Shape::Record(fields), Form::RecordType(telescope)) => self.literal(cx, here, fields, telescope),
+            // A `let` passes the goal through to its body. Without this rule a
+            // definition could only stand where its body infers, and a case
+            // tree's leaf is a `let` per pattern binder around a body that may
+            // be any introduction form — an accumulating recursion's arms are λs
+            // — so inferring through one would refuse programs elaboration
+            // accepted for reasons that are about this checker and not them.
+            (
+                Shape::Let {
+                    name: _,
+                    ty: declared,
+                    value,
+                    body,
+                },
+                _,
+            ) => {
+                self.universe(cx, declared)?;
+                let declared = eval(self.meter, cx.env(), declared)?;
+                self.check(cx, value, &declared)?;
+                let bound = eval(self.meter, cx.env(), value)?;
+                // The goal is unchanged rather than weakened: a value indexes
+                // its variables by level, so one built here still names the same
+                // binders one binder deeper.
+                self.check(&cx.defined(Arc::new(declared), bound), body, ty)
+            }
             (Shape::Refl(witness), Form::Id { ty: at, left, right }) => {
                 self.check(cx, witness, at)?;
                 let value = eval(self.meter, cx.env(), witness)?;
