@@ -661,6 +661,32 @@ pub enum Refusal {
         /// Where the pattern was written.
         at: Origin,
     },
+    /// A structural eliminator whose target is not one of its own arguments.
+    ///
+    /// §5.8's second family fires on a declared argument — ι fires on the
+    /// recursor's target, and a traversal fires on the value it traverses. An
+    /// index past the end of the signature names nothing, so the rule could
+    /// never fire and the builtin would be a name that reduces for no input.
+    #[error("structural eliminator `{name}` fires on an argument it does not take")]
+    TargetOutsideSignature {
+        /// The builtin.
+        name: Name,
+        /// Where its declared type was written.
+        at: Origin,
+    },
+    /// A structural eliminator whose target is not a base type.
+    ///
+    /// A traversal exists because a base type has no constructors and therefore
+    /// no recursor. A rewrite standing at a *declared* family would be a second
+    /// ι-rule for a type that already has one — two rules over one type, which
+    /// is the second path §5's determinism argument rules out.
+    #[error("structural eliminator `{name}` fires on an argument that is not a base type")]
+    TargetNotABase {
+        /// The builtin.
+        name: Name,
+        /// Where the target argument's type was written.
+        at: Origin,
+    },
 }
 
 /// Two types that could not be made equal, and where the disagreement is.

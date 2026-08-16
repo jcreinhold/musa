@@ -160,6 +160,13 @@ fn definitions_are_unfolded() {
 /// §5.8's D3 makes a δ-rule a function of its arguments alone, so this is the
 /// whole of the condition — a builtin one argument short, or one whose argument
 /// is still a variable, is stuck rather than reducible.
+///
+/// §5.8's *structural* eliminators are the other half of the family and are not
+/// read here, because their condition is about one declared argument and which
+/// one that is lives in the registration rather than in the term. The law over
+/// them is stated where a registry exists to state it against: `base_laws.rs`'s
+/// worked traversal, which normalizes to itself exactly when its target has not
+/// become a literal.
 fn is_delta_redex(term: &Term) -> bool {
     let mut arguments = 0_usize;
     let mut every_argument_is_a_literal = true;

@@ -1,7 +1,7 @@
 ---
 id: 141c
 slug: structural-eliminators
-status: pending
+status: done
 depends_on: [141b]
 phase: 3
 ---

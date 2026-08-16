@@ -320,7 +320,7 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
 }
 
 /// Every refusal this crate can answer with.
-const ALL_REFUSALS: [&str; 47] = [
+const ALL_REFUSALS: [&str; 49] = [
     "unknown-name",
     "mismatch",
     "unsolved",
@@ -368,6 +368,8 @@ const ALL_REFUSALS: [&str; 47] = [
     "higher-order-delta",
     "unknown-base",
     "base-not-matchable",
+    "target-outside-signature",
+    "target-not-a-base",
 ];
 
 /// Which refusal this is, as a tag the coverage gate can compare.
@@ -423,6 +425,8 @@ fn kind(refusal: &Refusal) -> &'static str {
         Refusal::HigherOrderDelta { .. } => "higher-order-delta",
         Refusal::UnknownBase { .. } => "unknown-base",
         Refusal::BaseNotMatchable { .. } => "base-not-matchable",
+        Refusal::TargetOutsideSignature { .. } => "target-outside-signature",
+        Refusal::TargetNotABase { .. } => "target-not-a-base",
     }
 }
 

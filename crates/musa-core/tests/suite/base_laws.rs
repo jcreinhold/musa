@@ -26,8 +26,8 @@ use std::any::Any;
 use std::sync::Arc;
 
 use musa_core::{
-    Base, Budget, Builtin, Cx, ElabError, Family, Level, Literal, Origin, Payload, Raw, RawArm, RawPattern, Refusal,
-    Registry, Term, check, convertible, infer, normalize, well_typed,
+    Base, Budget, Builtin, CoreError, Cx, ElabError, Family, Index, Level, Literal, Origin, Payload, Raw, RawArm,
+    RawPattern, Refusal, Registry, Term, check, convertible, infer, normalize, well_typed,
 };
 
 use crate::programs::refusal;
@@ -71,6 +71,37 @@ impl Payload for Text {
 
     fn shown(&self) -> String {
         format!("{:?}", self.0)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
+/// A labelled tree, as a host would carry one.
+///
+/// This is what §5.8's *structural eliminators* exist for, in miniature. The
+/// core cannot see the shape: `Tree` is a base type, so it has no constructors,
+/// so it has no recursor and no library traversal could be written over it —
+/// which is exactly the position `musa-compiler`'s `Syntax` is in, and the
+/// reason `recurse_syntax` cannot become library code in prompt 142.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct Node {
+    label: String,
+    kids: Vec<Self>,
+}
+
+impl Payload for Node {
+    fn same(&self, other: &dyn Payload) -> bool {
+        other.as_any().downcast_ref::<Self>().is_some_and(|it| it == self)
+    }
+
+    fn shown(&self) -> String {
+        if self.kids.is_empty() {
+            return self.label.clone();
+        }
+        let kids: Vec<String> = self.kids.iter().map(|kid| kid.shown()).collect();
+        format!("{}({})", self.label, kids.join(", "))
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -157,6 +188,114 @@ fn int_show() -> Builtin {
     )
 }
 
+/// `Tree : Type 0`.
+fn tree() -> Base {
+    Base::new("Tree", Term::universe(TYPES, Level::ZERO))
+}
+
+/// `t : Tree`.
+fn tree_lit(node: Node) -> Literal {
+    Literal::new(tree().term(TYPES), Arc::new(node))
+}
+
+fn leaf(label: &str) -> Node {
+    Node {
+        label: label.to_owned(),
+        kids: Vec::new(),
+    }
+}
+
+fn branch(label: &str, kids: Vec<Node>) -> Node {
+    Node {
+        label: label.to_owned(),
+        kids,
+    }
+}
+
+/// `f a b …`, as a term.
+fn applied(function: Term, arguments: impl IntoIterator<Item = Term>) -> Term {
+    arguments
+        .into_iter()
+        .fold(function, |applied, argument| Term::app(TERMS, applied, argument))
+}
+
+/// `tree_fold : (Text → Int) → (Text → Int → Int) → Tree → Int`.
+///
+/// The worked structural eliminator, and everything about it is what a δ-builtin
+/// cannot be: two of its arguments are functions, so no arrangement of
+/// [`Rule`](musa_core::Rule) could ever see them as literals, and the answer it
+/// gives is an *application* of one of them rather than a value it computed
+/// itself.
+///
+/// It fires on argument 2, the tree, and its rewrite names the other two by
+/// position — `Index(2)` is the first argument and `Index(0)` is the last,
+/// because the arguments are read as an environment and an environment counts
+/// inwards. Nothing about them is evaluated: the core already has their values
+/// and hands them back where the rewrite put them.
+fn tree_fold() -> Builtin {
+    Builtin::structural(
+        "tree_fold",
+        arrow(
+            arrow(text().term(TYPES), int().term(TYPES)),
+            arrow(
+                arrow(text().term(TYPES), arrow(int().term(TYPES), int().term(TYPES))),
+                arrow(tree().term(TYPES), int().term(TYPES)),
+            ),
+        ),
+        2,
+        |builtin, literal| {
+            let node = literal.payload().as_any().downcast_ref::<Node>()?;
+            let label = text_lit(&node.label).term(TERMS);
+            if node.kids.is_empty() {
+                // `leaf label` — the algebra's first branch, applied to what
+                // the leaf holds.
+                return Some(Term::app(TERMS, Term::var(TERMS, Index(2)), label));
+            }
+            // `branch label (int_add (fold k₁) (int_add (fold k₂) … 0))`. The
+            // recursive calls are terms the core has not looked at yet, and so
+            // is the δ-redex that sums them: a rewrite says what to do next and
+            // the evaluator does it.
+            let total = node.kids.iter().rev().fold(int_lit(0).term(TERMS), |rest, kid| {
+                applied(int_add().term(TERMS), [folded(builtin, kid), rest])
+            });
+            Some(applied(Term::var(TERMS, Index(1)), [label, total]))
+        },
+    )
+}
+
+/// `tree_fold leaf branch kid`, with the algebra named where the rewrite stands.
+///
+/// The builtin names itself through the handle it was given, because a `fn`
+/// pointer cannot capture one and a traversal that could not recurse would not
+/// be a traversal.
+fn folded(builtin: &Builtin, kid: &Node) -> Term {
+    applied(
+        builtin.term(TERMS),
+        [
+            Term::var(TERMS, Index(2)),
+            Term::var(TERMS, Index(1)),
+            tree_lit(kid.clone()).term(TERMS),
+        ],
+    )
+}
+
+/// `tree_spin : Tree → Int`, a traversal that never descends.
+///
+/// Registered on purpose. §5.8 puts D2 and D4 at the table because a signature
+/// cannot show them, and the same is true of "every recursive call stands at a
+/// smaller literal": this rewrite reapplies itself to the tree it was handed, so
+/// nothing about it converges. What the core owes is that the judgment *ends* —
+/// §4's meter charges the step before the rewrite runs, so this is refused
+/// rather than run forever.
+fn tree_spin() -> Builtin {
+    Builtin::structural(
+        "tree_spin",
+        arrow(tree().term(TYPES), int().term(TYPES)),
+        0,
+        |builtin, literal| Some(Term::app(TERMS, builtin.term(TERMS), literal.term(TERMS))),
+    )
+}
+
 /// The registry every accepting law below is stated under.
 ///
 /// # Panics
@@ -165,8 +304,11 @@ fn int_show() -> Builtin {
 /// this crate rather than a property of any test.
 fn registry() -> Arc<Registry> {
     Arc::new(
-        Registry::new(vec![int(), text()], vec![int_add(), text_append(), int_show()])
-            .expect("the worked registry registers"),
+        Registry::new(
+            vec![int(), text(), tree()],
+            vec![int_add(), text_append(), int_show(), tree_fold(), tree_spin()],
+        )
+        .expect("the worked registry registers"),
     )
 }
 
@@ -469,6 +611,162 @@ fn a_builtin_reduction_is_charged() {
     );
 }
 
+// ---- structural eliminators ------------------------------------------------
+
+/// `fn (t: Text) { 1 }` — one node counted.
+fn counting_leaf() -> Raw {
+    Raw::annotated_lam(TERMS, "t", Raw::var(TERMS, "Text"), Raw::lit(TERMS, int_lit(1)))
+}
+
+/// `fn (t: Text) { fn (n: Int) { int_add(n, 1) } }` — the children, plus this
+/// one.
+fn counting_branch() -> Raw {
+    Raw::annotated_lam(
+        TERMS,
+        "t",
+        Raw::var(TERMS, "Text"),
+        Raw::annotated_lam(
+            TERMS,
+            "n",
+            Raw::var(TERMS, "Int"),
+            calls("int_add", [Raw::var(TERMS, "n"), Raw::lit(TERMS, int_lit(1))]),
+        ),
+    )
+}
+
+/// §5.8's second family: a traversal fires on the argument its registration
+/// named, and the rewrite it answers is *evaluated* rather than taken as an
+/// answer.
+///
+/// Three things at once, and each of them is out of δ's reach. Two of the
+/// arguments are functions, so no δ condition could ever be met and the
+/// traversal would never fire. The rewrite's answer is an application of one of
+/// those functions — the host wrote down `branch label …` and does not know what
+/// it computes to. And the answer holds recursive calls at the children, so the
+/// traversal descends because the core kept evaluating what it was handed, not
+/// because the host walked the tree itself.
+#[test]
+fn a_structural_eliminator_walks_the_literal_it_is_given() {
+    let cx = host();
+    let int_ty = int().term(TYPES);
+    let subject = branch("a", vec![leaf("b"), branch("c", vec![leaf("d")])]);
+    let program = calls(
+        "tree_fold",
+        [counting_leaf(), counting_branch(), Raw::lit(TERMS, tree_lit(subject))],
+    );
+    let term = check(&cx, &int_ty, &program).expect("the traversal checks");
+    assert_eq!(
+        normalize_at(&cx, &int_ty, &term),
+        int_lit(4).term(TERMS),
+        "four nodes, so every one of them was reached"
+    );
+    assert_eq!(well_typed(&cx, &int_ty, &term), Ok(()), "and the core re-checks it");
+}
+
+/// A function argument is passed through as whatever it already is, and is never
+/// forced.
+///
+/// Stated where it can be seen: the algebra here is a *variable*, so there is
+/// nothing to force even in principle, and the traversal still fires and still
+/// answers `f "b"`. A mechanism that had insisted on values for its whole spine
+/// — δ's condition — would have left this blocked, and a mechanism that forced
+/// its arguments would be asking for a strictness this calculus does not have.
+#[test]
+fn a_function_argument_survives_the_rewrite_unevaluated() {
+    let cx = host();
+    let algebra = arrow(text().term(TYPES), int().term(TYPES));
+    let ty = arrow(algebra, int().term(TYPES));
+    // λ(f : Text → Int). tree_fold f (fn (t) { fn (n) { … } }) (leaf "b")
+    let program = Raw::annotated_lam(
+        TERMS,
+        "f",
+        Raw::pi(TERMS, "_", Raw::var(TERMS, "Text"), Raw::var(TERMS, "Int")),
+        calls(
+            "tree_fold",
+            [
+                Raw::var(TERMS, "f"),
+                counting_branch(),
+                Raw::lit(TERMS, tree_lit(leaf("b"))),
+            ],
+        ),
+    );
+    let term = check(&cx, &ty, &program).expect("an open algebra checks");
+    assert_eq!(
+        normalize_at(&cx, &ty, &term),
+        Term::lam(
+            TERMS,
+            "f",
+            Term::app(TERMS, Term::var(TERMS, Index(0)), text_lit("b").term(TERMS)),
+        ),
+        "the traversal fired and handed the leaf to the algebra it was given"
+    );
+}
+
+/// A target that is not a literal leaves an ordinary blocked spine.
+///
+/// The companion to the law above and the reason it is not vacuous: what the
+/// rule waits for is the *target*, so a traversal over a bound variable is stuck
+/// however many of its other arguments are values. Without this a traversal
+/// could not appear in the body of a function over a tree, which is where every
+/// real one appears.
+#[test]
+fn a_structural_eliminator_at_a_neutral_target_is_neutral() {
+    let cx = host();
+    let ty = arrow(tree().term(TYPES), int().term(TYPES));
+    let program = Raw::annotated_lam(
+        TERMS,
+        "t",
+        Raw::var(TERMS, "Tree"),
+        calls("tree_fold", [counting_leaf(), counting_branch(), Raw::var(TERMS, "t")]),
+    );
+    let term = check(&cx, &ty, &program).expect("an open traversal checks");
+    assert_eq!(
+        normalize_at(&cx, &ty, &term),
+        term,
+        "stuck on the binder, so the normal form is the term itself"
+    );
+    assert_eq!(well_typed(&cx, &ty, &term), Ok(()));
+}
+
+/// A structural step is charged, so a traversal that does not descend is refused
+/// rather than run forever.
+///
+/// The pair matters more than either half: at one budget a finite traversal
+/// completes and a non-descending one ends in exhaustion, which is what
+/// separates "the meter is doing its job" from "the budget was too small for
+/// anything". §5.8 leaves the descent obligation at the table, because no
+/// signature shows it; what the core owes is that breaking it costs a judgment
+/// rather than the machine.
+#[test]
+fn a_traversal_that_does_not_descend_is_refused() {
+    let narrow = Cx::with_budget(Budget::LANGUAGE.scaled(4)).with_externs(registry());
+    let int_ty = int().term(TYPES);
+    let finite = calls(
+        "tree_fold",
+        [
+            counting_leaf(),
+            counting_branch(),
+            Raw::lit(TERMS, tree_lit(branch("a", vec![leaf("b")]))),
+        ],
+    );
+    let term = check(&narrow, &int_ty, &finite).expect("a finite traversal fits");
+    assert_eq!(
+        normalize_at(&narrow, &int_ty, &term),
+        int_lit(2).term(TERMS),
+        "two nodes, at the same budget the runaway one cannot afford"
+    );
+
+    // Elaboration accepts it — nothing in the signature is wrong, which is the
+    // whole reason the descent obligation lives at the table. It is asking for
+    // the normal form that has to end.
+    let runaway = calls("tree_spin", [Raw::lit(TERMS, tree_lit(leaf("b")))]);
+    let term = check(&narrow, &int_ty, &runaway).expect("a runaway traversal is well typed");
+    assert!(
+        matches!(normalize(&narrow, &int_ty, &term), Err(CoreError::Exhausted(_))),
+        "a rewrite that reapplies itself to its own target ends the judgment"
+    );
+}
+
 // ---- registration ----------------------------------------------------------
 
 /// The three refusals a registration owes, each reached by a registry that earns
@@ -551,6 +849,32 @@ pub(crate) fn refused_registries() -> Vec<RefusedRegistry> {
                 )],
             ),
             expected: |refusal| matches!(refusal, Refusal::UnknownBase { .. }),
+        },
+        RefusedRegistry {
+            name: "a traversal firing on an argument its signature does not have",
+            outcome: Registry::new(
+                vec![tree(), int()],
+                vec![Builtin::structural(
+                    "tree_size",
+                    arrow(tree().term(TYPES), int().term(TYPES)),
+                    2,
+                    |_, _| None,
+                )],
+            ),
+            expected: |refusal| matches!(refusal, Refusal::TargetOutsideSignature { .. }),
+        },
+        RefusedRegistry {
+            name: "a traversal firing on a type that is not a base type",
+            outcome: Registry::new(
+                vec![int()],
+                vec![Builtin::structural(
+                    "record_walk",
+                    arrow(Term::record_type(TYPES, []), int().term(TYPES)),
+                    0,
+                    |_, _| None,
+                )],
+            ),
+            expected: |refusal| matches!(refusal, Refusal::TargetNotABase { .. }),
         },
     ]
 }

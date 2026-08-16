@@ -327,7 +327,10 @@ pub(crate) fn apply(meter: &mut Meter, here: Origin, function: Value, argument: 
             if let Some(reduced) = crate::family::iota(meter, &built)? {
                 return Ok(reduced);
             }
-            match delta(meter, &built)? {
+            if let Some(reduced) = delta(meter, &built)? {
+                return Ok(reduced);
+            }
+            match structural(meter, &built)? {
                 Some(reduced) => Ok(reduced),
                 None => Ok(Value::neutral(built)),
             }
@@ -364,6 +367,9 @@ fn delta(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreError>
     let Head::Builtin(builtin) = &built.head else {
         return Ok(None);
     };
+    let Some(rule) = builtin.delta_rule() else {
+        return Ok(None);
+    };
     if built.spine.len() != builtin.arity() {
         return Ok(None);
     }
@@ -390,10 +396,86 @@ fn delta(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreError>
     }
     meter.step("builtin reduction")?;
     let borrowed: Vec<&crate::base::Literal> = arguments.iter().collect();
-    match builtin.reduce(&borrowed) {
+    match rule(&borrowed) {
         Some(answer) => Ok(Some(Value::new(built.outer_origin(), Form::Lit(answer)))),
         None => Err(Malformed::BuiltinStuck(Arc::clone(builtin.name())).into()),
     }
+}
+
+/// A structural eliminator's step, or `None` when the spine is not ready.
+///
+/// §5.8's second family, in the same arm as [`delta`] and [`crate::family::iota`]
+/// and for the same reason. It differs from δ in the two ways a traversal
+/// differs from an arithmetic operation:
+///
+/// - **it fires on its target, not on all of its arguments.** δ waits for every
+///   argument to be a literal, because a first-order function needs them all. A
+///   traversal's other arguments are the algebra — functions, which never become
+///   literals — so it waits for the one argument the registration declared, and
+///   passes the rest through untouched. That is ι's condition, which asks about
+///   the recursor's target and nothing about its methods.
+/// - **it answers a term, which this evaluates.** The rewrite writes down the
+///   next step in the traversal, and the arguments it names by position are
+///   bound to the values already on the spine. Nothing is re-evaluated and
+///   nothing is quoted, so a function argument is never forced — a traversal
+///   that needed one forced would be asking for a strictness the calculus does
+///   not have.
+///
+/// The meter is charged before the rewrite runs, D4's reason again, and it is
+/// also the backstop for a rewrite that does not descend: a rule that reapplied
+/// its builtin to the same literal would exhaust the budget rather than hang.
+///
+/// # Errors
+///
+/// [`CoreError::Exhausted`] at a budget limit, [`Malformed::BuiltinStuck`] when
+/// the rewrite answers nothing at a literal target and a full spine, and
+/// whatever evaluating the answer answers.
+fn structural(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreError> {
+    let Head::Builtin(builtin) = &built.head else {
+        return Ok(None);
+    };
+    let Some((target, rewrite)) = builtin.structural_rule() else {
+        return Ok(None);
+    };
+    if built.spine.len() != builtin.arity() {
+        return Ok(None);
+    }
+    let mut arguments = Vec::with_capacity(built.spine.len());
+    for elimination in &built.spine {
+        let Elim::App { argument, .. } = elimination else {
+            return Ok(None);
+        };
+        arguments.push(Value::clone(argument));
+    }
+    // Registration checked that the target names an argument, so this indexes a
+    // spine of exactly the arity.
+    let Some(subject) = arguments.get(target) else {
+        return Ok(None);
+    };
+    let forced = force(meter, subject)?;
+    let rewritten = match forced.as_ref().unwrap_or(subject).form {
+        Form::Lit(ref literal) => {
+            meter.step("structural reduction")?;
+            rewrite(builtin, literal)
+        }
+        Form::Universe(_)
+        | Form::Pi { .. }
+        | Form::Lam(_)
+        | Form::RecordType(_)
+        | Form::Record(_)
+        | Form::Id { .. }
+        | Form::Refl(_)
+        | Form::Neutral(_) => return Ok(None),
+    };
+    let Some(rewritten) = rewritten else {
+        return Err(Malformed::BuiltinStuck(Arc::clone(builtin.name())).into());
+    };
+    // Innermost last, so index 0 is the last argument — the order a telescope of
+    // binders over the same spine would have produced.
+    let env = arguments
+        .into_iter()
+        .fold(Env::EMPTY, |env, argument| env.push(argument));
+    eval(meter, &env, &rewritten).map(Some)
 }
 
 /// Projection, or a blocked projection.

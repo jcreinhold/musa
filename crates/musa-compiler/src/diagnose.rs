@@ -215,6 +215,11 @@ pub enum Code {
     UnknownBase,
     /// A pattern that tries to take a base-typed value apart.
     BaseNotMatchable,
+    /// A structural eliminator declaring a target argument its signature does
+    /// not have.
+    TargetOutsideSignature,
+    /// A structural eliminator whose target argument is not a base type.
+    TargetNotABase,
 }
 
 /// Writes each code's spelling once, and derives the roster from the same
@@ -312,6 +317,8 @@ code_table! {
     HigherOrderDelta => "higher-order-delta",
     UnknownBase => "unknown-base",
     BaseNotMatchable => "base-not-matchable",
+    TargetOutsideSignature => "target-outside-signature",
+    TargetNotABase => "target-not-a-base",
 }
 
 impl Code {

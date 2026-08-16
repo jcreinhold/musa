@@ -786,6 +786,12 @@ pub fn explain(code: &str) -> Option<&'static str> {
         musa_compiler::Code::BaseNotMatchable => {
             "A pattern tried to take apart a value that has no structure.\n\nBase types — text, numbers, durations, pitches — are the language's atoms: they have no cases to match and no fields to open, so a constructor or record pattern at one is asking for parts that do not exist. The only pattern that fits is a name, which binds the whole value.\n\nTo branch on *which* value it is, compare it: `if k == \"PitchLiteral\"`, or a `match` on the result of that comparison. Equality on a base type is decidable and is what the language offers in place of a case analysis it cannot give."
         }
+        musa_compiler::Code::TargetOutsideSignature => {
+            "A compiler-owned traversal says it walks an argument it does not take.\n\nA traversal — `recurse_syntax` and the operations derived from it — reduces once the value it is walking has arrived, and the registration says which argument that is. An index past the end of the signature names no argument at all, so the operation could never take a step: every call would stay blocked, and a program built on it would fail somewhere else entirely, as a type that would not converge.\n\nThis is a report about the compiler's own table rather than about the file being compiled. It is caught at registration so that the failure is one sentence here instead of an unexplainable conversion error later."
+        }
+        musa_compiler::Code::TargetNotABase => {
+            "A compiler-owned traversal walks a type that already knows how to be walked.\n\nThese traversals exist for the types that have no cases — syntax trees, whose node representation the reader owns — because a type with no constructors has no recursor, so there is nothing for a library `match` to take apart. A type declared with `data` is the other kind: its recursor is generated from the declaration, and the language reduces it by that rule.\n\nGiving such a type a second, compiler-owned rule would mean two ways to reduce one term, and which one you got would depend on how the call was written. Write the traversal in Musa, over the cases the declaration already gives."
+        }
     })
 }
 

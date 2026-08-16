@@ -47,6 +47,17 @@
 //! values alone" is checked by the Rust compiler rather than reviewed by a
 //! reader. A rule that wants ambient context cannot be written down.
 //!
+//! **The second family reduces to a term rather than to a value.** §5.8's
+//! *structural eliminators* are "the generated recursors and the derived
+//! traversals over them". The recursors are `family.rs`'s ι-rule; the traversals
+//! are [`Rewrite`], and they exist because a traversal takes a *function*
+//! argument, which is not a literal and cannot be one. A [`Rule`] computes a
+//! value from values; a [`Rewrite`] does what ι does — it rewrites
+//! `Nat.elim P z s (succ k)` into `s k (Nat.elim P z s k)`, a term the core then
+//! evaluates. So it reads the target it fired on and writes down what to do
+//! next, and it never holds one of this crate's values: roadmap §15.12's privacy
+//! boundary is what makes a rewrite honest rather than a callback.
+//!
 //! **Which half of D1–D4 is checked here.** [`Registry::new`] checks what the
 //! signature makes visible: every name registered once, no arrow anywhere in a
 //! δ-builtin's signature, and every base type a δ signature mentions registered
@@ -272,6 +283,58 @@ impl fmt::Display for Family {
 /// forbids and [`crate::Refusal::BuiltinStuck`] reports.
 pub type Rule = fn(&[&Literal]) -> Option<Literal>;
 
+/// How a structural eliminator takes one step: it reads the literal it fired on
+/// and answers the term to evaluate in its place.
+///
+/// **The result is read in the environment of the arguments.** A rewrite is
+/// called on a spine of exactly [`Builtin::arity`] applications, and the term it
+/// answers is evaluated with those argument *values* as its environment —
+/// innermost last, so [`Index`](crate::Index) `0` names the last argument,
+/// `1` the one before it, and `arity - 1` the first. That is the only way a
+/// traversal can hand a child to an algebra it was passed: the algebra is an
+/// argument, so the rewrite names it by position, and the core supplies the
+/// value it already has rather than re-evaluating anything. Binders inside the
+/// answer behave as binders always do — the term is read by
+/// [`eval`](crate::eval), not spliced.
+///
+/// **It is given itself**, because a traversal recurses: `recurse_syntax` has to
+/// name `recurse_syntax` at each child, and a `fn` pointer cannot capture the
+/// [`Builtin`] it lives in. [`Builtin::term`] is what turns the handle back into
+/// a head.
+///
+/// `fn` rather than a closure for [`Rule`]'s reason, unchanged: a rewrite that
+/// captured host state would make reduction depend on which compiler ran it.
+///
+/// **Termination is the host's obligation.** A rewrite that applied its builtin
+/// to the *same* literal would not converge, and no signature shows that. §5.8
+/// splits its conditions this way already — D2 and D3 are checked where the
+/// table lives — so the rule to discharge over there is that every application
+/// of this builtin in the answer stands at a literal strictly smaller than the
+/// target. §4's meter is the backstop, and it refuses rather than hangs.
+///
+/// `None` means *this rule does not apply*, and at a literal target with the
+/// spine full it is a host defect: [`crate::Malformed::BuiltinStuck`] says so,
+/// the same way it does for a δ-rule that answers nothing.
+pub type Rewrite = fn(&Builtin, &Literal) -> Option<Term>;
+
+/// How a builtin reduces: §5.8's δ-rule, or a structural eliminator's rewrite.
+///
+/// One field rather than two optional ones, because a builtin has exactly one
+/// way to take a step and two nullable fields could disagree about which.
+#[derive(Clone, Copy, Debug)]
+enum Reduction {
+    /// D1–D4's: values in, a value out, once every argument is a literal.
+    Delta(Rule),
+    /// A traversal's: a term out, once the argument at `target` is a literal.
+    /// The other arguments are passed through as whatever they already are.
+    Structural {
+        /// Which argument has to be a literal before the rule may fire.
+        target: usize,
+        /// What to answer when it is.
+        rewrite: Rewrite,
+    },
+}
+
 /// A compiler-owned operation: what it is called, what type it has, which family
 /// it belongs to, and what it computes.
 ///
@@ -285,7 +348,7 @@ struct BuiltinDeclaration {
     ty: Term,
     family: Family,
     arity: usize,
-    rule: Rule,
+    reduction: Reduction,
 }
 
 /// Two builtins are the same when they have the same name, for the reason
@@ -307,19 +370,47 @@ impl fmt::Display for Builtin {
 impl Builtin {
     /// A builtin named `name`, of type `ty`, in `family`, computed by `rule`.
     ///
+    /// Builds a builtin reduced by a δ-rule — every argument a literal, a
+    /// literal out. That is D1–D4's shape for [`Family::Delta`] and the shape a
+    /// track or machine constructor has too, since both build a closed value out
+    /// of closed values. A traversal is the other shape; [`Self::structural`]
+    /// builds one.
+    ///
     /// The arity is read off `ty` rather than passed: it is the number of Π
     /// binders the signature has, and a second copy would be free to disagree
     /// with the first. `ty` is read in the empty context, because a builtin is
     /// closed.
     #[must_use]
     pub fn new(name: impl Into<Name>, ty: Term, family: Family, rule: Rule) -> Self {
+        Self::declared(name, ty, family, Reduction::Delta(rule))
+    }
+
+    /// A structural eliminator named `name`, of type `ty`, firing on its
+    /// `target`th argument and rewriting by `rewrite`.
+    ///
+    /// [`Family::Eliminator`] by construction rather than by parameter: among
+    /// builtins the family and the rule are the same fact said twice, and §5.8's
+    /// other three families all compute a value from values.
+    ///
+    /// **The target is written down rather than inferred.** ι fires on the
+    /// recursor's last argument, and the eleven traversals `musa-compiler` owns
+    /// today all fire on their first — neither is a law, and a mechanism that
+    /// guessed would be one more thing to remember at every registration.
+    /// [`Registry::new`] checks that the index names an argument and that the
+    /// argument's type is a base type of the registry.
+    #[must_use]
+    pub fn structural(name: impl Into<Name>, ty: Term, target: usize, rewrite: Rewrite) -> Self {
+        Self::declared(name, ty, Family::Eliminator, Reduction::Structural { target, rewrite })
+    }
+
+    fn declared(name: impl Into<Name>, ty: Term, family: Family, reduction: Reduction) -> Self {
         let arity = arity_of(&ty);
         Self(Arc::new(BuiltinDeclaration {
             name: name.into(),
             ty,
             family,
             arity,
-            rule,
+            reduction,
         }))
     }
 
@@ -353,13 +444,28 @@ impl Builtin {
         Term::new(origin, Shape::Builtin(self.clone()))
     }
 
-    /// What it computes at `arguments`, or `None` when it does not apply.
+    /// Its δ-rule, if it reduces that way.
     ///
     /// Called only at exactly [`Self::arity`] arguments, every one of them a
     /// literal: an application short of the arity, or one whose argument has not
-    /// reduced to a literal, is a blocked spine and never reaches here.
-    pub(crate) fn reduce(&self, arguments: &[&Literal]) -> Option<Literal> {
-        (self.0.rule)(arguments)
+    /// reduced to a literal, is a blocked spine and never reaches it.
+    pub(crate) fn delta_rule(&self) -> Option<Rule> {
+        match self.0.reduction {
+            Reduction::Delta(rule) => Some(rule),
+            Reduction::Structural { .. } => None,
+        }
+    }
+
+    /// Its structural rule and the argument that triggers it, if it reduces that
+    /// way.
+    ///
+    /// The index is within [`Self::arity`], because [`Registry::new`] refused
+    /// the registration otherwise.
+    pub(crate) fn structural_rule(&self) -> Option<(usize, Rewrite)> {
+        match self.0.reduction {
+            Reduction::Delta(_) => None,
+            Reduction::Structural { target, rewrite } => Some((target, rewrite)),
+        }
     }
 }
 
@@ -434,12 +540,24 @@ impl Registry {
     /// - **δ arguments are over registered base types** — every [`Base`] a δ
     ///   signature mentions is a base type of this registry, so "its base types
     ///   have no eliminator" is true because they are inert here rather than
-    ///   because someone checked elsewhere.
+    ///   because someone checked elsewhere;
+    /// - **a structural eliminator has a target it could fire on** — the index
+    ///   [`Builtin::structural`] wrote down names an argument of the signature,
+    ///   and that argument's type is headed by a base type of this registry.
+    ///
+    /// D1's arrow-free rule is checked over δ-builtins and nowhere else, which
+    /// is where §5.8 states it. A structural eliminator's signature holds an
+    /// arrow by definition — a traversal takes an algebra — so a registry that
+    /// applied D1 to the whole table would refuse the family it is registering.
+    /// What replaces it for that family is the target check: a rewrite whose
+    /// target is a *declared* type would be a second ι-rule for something that
+    /// already has one, and the second path is what the audits keep looking for.
     ///
     /// # Errors
     ///
-    /// [`Refusal::DuplicateExtern`], [`Refusal::HigherOrderDelta`], or
-    /// [`Refusal::UnknownBase`].
+    /// [`Refusal::DuplicateExtern`], [`Refusal::HigherOrderDelta`],
+    /// [`Refusal::UnknownBase`], [`Refusal::TargetOutsideSignature`], or
+    /// [`Refusal::TargetNotABase`].
     pub fn new(bases: Vec<Base>, builtins: Vec<Builtin>) -> Result<Self, Refusal> {
         let mut names: HashMap<Name, Extern> = HashMap::with_capacity(bases.len().saturating_add(builtins.len()));
         for base in bases {
@@ -450,6 +568,7 @@ impl Registry {
         }
         let registry = Self { names };
         registry.check_delta_signatures()?;
+        registry.check_structural_targets()?;
         Ok(registry)
     }
 
@@ -457,6 +576,43 @@ impl Registry {
     #[must_use]
     pub fn named(&self, name: &str) -> Option<&Extern> {
         self.names.get(name)
+    }
+
+    /// Every structural eliminator's target: an argument of its own signature,
+    /// at a base type this registry declared inert.
+    fn check_structural_targets(&self) -> Result<(), Refusal> {
+        for entry in self.names.values() {
+            let Extern::Builtin(builtin) = entry else {
+                continue;
+            };
+            let Some((target, _)) = builtin.structural_rule() else {
+                continue;
+            };
+            // `signature_parts` ends with the result type, and a rule cannot
+            // fire on what it produces, so the bound is the arity rather than
+            // the number of parts.
+            let domain = signature_parts(builtin.ty())
+                .into_iter()
+                .nth(target)
+                .filter(|_| target < builtin.arity())
+                .ok_or_else(|| Refusal::TargetOutsideSignature {
+                    name: Arc::clone(builtin.name()),
+                    at: builtin.ty().origin(),
+                })?;
+            let Some(base) = head_base(&domain) else {
+                return Err(Refusal::TargetNotABase {
+                    name: Arc::clone(builtin.name()),
+                    at: domain.origin(),
+                });
+            };
+            if self.named(base.name()).is_none() {
+                return Err(Refusal::UnknownBase {
+                    name: Arc::clone(base.name()),
+                    at: domain.origin(),
+                });
+            }
+        }
+        Ok(())
     }
 
     /// D1's signature half, over every δ-builtin at once.
@@ -555,6 +711,23 @@ fn claim(names: &mut HashMap<Name, Extern>, name: Name, entry: Extern) -> Result
     }
     names.insert(name, entry);
     Ok(())
+}
+
+/// The base type a type is an application of, if it is one of anything.
+///
+/// A base type may take parameters, so `Syntax Expr` is at `Syntax` and the
+/// spine says which one. Anything else — a variable, a declared family, a record
+/// type — is not a base type and has no answer here.
+fn head_base(ty: &Term) -> Option<&Base> {
+    let mut head = ty;
+    while let Shape::App { function, .. } = head.shape() {
+        head = function;
+    }
+    if let Shape::Base(base) = head.shape() {
+        Some(base)
+    } else {
+        None
+    }
 }
 
 /// A signature's argument types and its result type, in order.
