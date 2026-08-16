@@ -20,6 +20,7 @@ use crate::module::Modules;
 use crate::origin::{Interval, SourceSpan};
 use crate::pitch::{PitchClass, WrittenPitch};
 use crate::resolve::{NameKind, Resolver};
+use crate::time::{Exact, exact_arithmetic, exact_ratio, written_rational};
 
 /// Check and evaluate imported definitions followed by a piece's definitions.
 pub(crate) fn check_piece(
@@ -10167,74 +10168,6 @@ fn position_value(value: &Value) -> Option<Ratio<i64>> {
     Some(*value)
 }
 
-/// The greatest common divisor of two magnitudes, by Euclid.
-///
-/// Written out because reduction happens in `i128` here: a sum of two
-/// representable rationals need not be representable, so the arithmetic is
-/// done wide, reduced, and only then asked whether it fits.
-fn greatest_common_divisor(mut left: u128, mut right: u128) -> u128 {
-    while right != 0 {
-        let remainder = left.checked_rem(right).unwrap_or(0);
-        left = right;
-        right = remainder;
-    }
-    left
-}
-
-/// A wide numerator and denominator as an exact `Ratio<i64>`, or nothing.
-///
-/// Nothing means the reduced value does not fit, which every caller turns into
-/// a stated failure rather than a stuck term: D2 forbids partiality anywhere
-/// but the result type.
-pub(crate) fn exact_ratio(numerator: i128, denominator: i128) -> Option<Ratio<i64>> {
-    if denominator == 0 {
-        return None;
-    }
-    let divisor = i128::try_from(greatest_common_divisor(
-        numerator.unsigned_abs(),
-        denominator.unsigned_abs(),
-    ))
-    .ok()?;
-    let divisor = if divisor == 0 { 1 } else { divisor };
-    let (numerator, denominator) = (numerator.checked_div(divisor)?, denominator.checked_div(divisor)?);
-    let (numerator, denominator) = if denominator < 0 {
-        (numerator.checked_neg()?, denominator.checked_neg()?)
-    } else {
-        (numerator, denominator)
-    };
-    Some(Ratio::new(
-        i64::try_from(numerator).ok()?,
-        i64::try_from(denominator).ok()?,
-    ))
-}
-
-/// The four exact operations, named apart from the builtins that offer them.
-///
-/// Separate because the same four are reached from six builtins — a duration
-/// sum is a rational sum, a position shift is one too — and because a match on
-/// [`Builtin`] here would have to name every operation that is *not* one of
-/// these four.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) enum Exact {
-    Add,
-    Sub,
-    Mul,
-    Div,
-}
-
-/// `left · right`, computed wide and reduced before it is asked whether it
-/// fits.
-pub(crate) fn exact_arithmetic(left: Ratio<i64>, right: Ratio<i64>, operation: Exact) -> Option<Ratio<i64>> {
-    let (a, b) = (i128::from(*left.numer()), i128::from(*left.denom()));
-    let (c, d) = (i128::from(*right.numer()), i128::from(*right.denom()));
-    match operation {
-        Exact::Add => exact_ratio(a.checked_mul(d)?.checked_add(c.checked_mul(b)?)?, b.checked_mul(d)?),
-        Exact::Sub => exact_ratio(a.checked_mul(d)?.checked_sub(c.checked_mul(b)?)?, b.checked_mul(d)?),
-        Exact::Mul => exact_ratio(a.checked_mul(c)?, b.checked_mul(d)?),
-        Exact::Div => exact_ratio(a.checked_mul(d)?, b.checked_mul(c)?),
-    }
-}
-
 /// One injection of a `Result<τ, Text>`, which is how every arithmetic builtin
 /// that can refuse says so.
 fn answered(value_type: Type, held: Value) -> Value {
@@ -10283,36 +10216,6 @@ fn ratio_arithmetic(operation: Exact, values: &[Value]) -> Option<Value> {
             "these exact rationals have no result this language can represent",
         ),
     })
-}
-
-/// The source literal that names an exact rational, or nothing.
-///
-/// `p/q`, and `p` where the denominator is one, which is how the reader writes
-/// a whole note. Nothing below zero: the grammar has no negative numeric
-/// literal, so a `-7/6` spelled here would be text the reader would not read
-/// back, and this family's one law is that it does.
-pub(crate) fn written_rational(value: Ratio<i64>) -> Option<String> {
-    if value < Ratio::ZERO {
-        return None;
-    }
-    Some(if *value.denom() == 1 {
-        value.numer().to_string()
-    } else {
-        format!("{}/{}", value.numer(), value.denom())
-    })
-}
-
-/// The source literal that names a written interval, or nothing.
-///
-/// Checked by reading it back rather than by enumerating which intervals have
-/// names, because the reader is the authority on that and a second copy of its
-/// grid here would be a second answer to drift from the first. Two kinds of
-/// interval fall out: one whose size and quality the written grid does not
-/// name, and a descending one, which the reader spells with a `down` the
-/// literal grammar has no token for.
-pub(crate) fn written_interval(interval: Interval) -> Option<String> {
-    let spelling = interval.to_string();
-    (Interval::parse(&spelling, false) == Some(interval)).then_some(spelling)
 }
 
 /// The old evaluator, reachable for prompt 141e's agreement law and nothing else.
@@ -10560,7 +10463,7 @@ fn eval_builtin(
             };
             Some(Value::Option {
                 member: Type::Text,
-                value: written_interval(*interval).map(|text| Box::new(Value::Text(text))),
+                value: interval.literal().map(|text| Box::new(Value::Text(text))),
             })
         }
         Builtin::NatAdd | Builtin::NatMul => {

@@ -234,6 +234,20 @@ impl Interval {
             semitones: self.semitones.checked_neg()?,
         })
     }
+
+    /// The source literal that names this interval, or nothing.
+    ///
+    /// The inverse of [`Interval::parse`], and checked by *being* that inverse
+    /// rather than by enumerating which intervals have names: the reader is the
+    /// authority on that grid and a second copy of it here would be a second
+    /// answer to drift from the first. Two kinds of interval fall out: one
+    /// whose size and quality the written grid does not name, and a descending
+    /// one, which [`Display`](std::fmt::Display) spells with a `down` the
+    /// literal grammar has no token for.
+    pub(crate) fn literal(self) -> Option<String> {
+        let spelling = self.to_string();
+        (Self::parse(&spelling, false) == Some(self)).then_some(spelling)
+    }
 }
 
 impl std::fmt::Display for Interval {

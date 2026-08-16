@@ -1,8 +1,19 @@
 //! Exact musical time (roadmap §5.1): nonnegative rationals where `1` is a
 //! whole note. No floats in the compositional model.
+//!
+//! The exactness is the module's subject, so the arithmetic that keeps a
+//! rational exact lives here too — [`exact_arithmetic`] and the [`exact_ratio`]
+//! it reduces through — as does [`written_rational`], the printer for the
+//! literal grid [`MusicalTime::parse`] reads. Both are reached from more than
+//! one caller: a duration sum, a position shift, and a plain `Ratio` sum are
+//! the same exact operation, and the compiler answers all three from one place
+//! rather than from whichever pass happens to be evaluating.
 
 // Rational arithmetic on `Ratio<i64>` is exact mathematical arithmetic, not
-// raw integer ops; clippy::arithmetic_side_effects does not apply to it.
+// raw integer ops; clippy::arithmetic_side_effects does not apply to it. It
+// does apply to the wide integer arithmetic the exact operations below reduce
+// through, which is why each of those re-arms the lint for itself rather than
+// inheriting this.
 #![allow(clippy::arithmetic_side_effects)]
 
 use num_rational::Ratio;
@@ -118,4 +129,93 @@ impl std::iter::Sum for MusicalDuration {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
         iter.fold(Self::ZERO, |total, item| total + item)
     }
+}
+
+/// The greatest common divisor of two magnitudes, by Euclid.
+///
+/// Written out because reduction happens in `i128` here: a sum of two
+/// representable rationals need not be representable, so the arithmetic is
+/// done wide, reduced, and only then asked whether it fits.
+#[deny(clippy::arithmetic_side_effects)]
+fn greatest_common_divisor(mut left: u128, mut right: u128) -> u128 {
+    while right != 0 {
+        let remainder = left.checked_rem(right).unwrap_or(0);
+        left = right;
+        right = remainder;
+    }
+    left
+}
+
+/// A wide numerator and denominator as an exact `Ratio<i64>`, or nothing.
+///
+/// Nothing means the reduced value does not fit, which every caller turns into
+/// a stated failure rather than a stuck term: D2 forbids partiality anywhere
+/// but the result type.
+#[deny(clippy::arithmetic_side_effects)]
+pub(crate) fn exact_ratio(numerator: i128, denominator: i128) -> Option<Ratio<i64>> {
+    if denominator == 0 {
+        return None;
+    }
+    let divisor = i128::try_from(greatest_common_divisor(
+        numerator.unsigned_abs(),
+        denominator.unsigned_abs(),
+    ))
+    .ok()?;
+    let divisor = if divisor == 0 { 1 } else { divisor };
+    let (numerator, denominator) = (numerator.checked_div(divisor)?, denominator.checked_div(divisor)?);
+    let (numerator, denominator) = if denominator < 0 {
+        (numerator.checked_neg()?, denominator.checked_neg()?)
+    } else {
+        (numerator, denominator)
+    };
+    Some(Ratio::new(
+        i64::try_from(numerator).ok()?,
+        i64::try_from(denominator).ok()?,
+    ))
+}
+
+/// The four exact operations, named apart from the builtins that offer them.
+///
+/// Separate because the same four are reached from six builtins — a duration
+/// sum is a rational sum, a position shift is one too — and because a match on
+/// the builtin at the call site would have to name every operation that is
+/// *not* one of these four.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum Exact {
+    Add,
+    Sub,
+    Mul,
+    Div,
+}
+
+/// `left · right`, computed wide and reduced before it is asked whether it
+/// fits.
+#[deny(clippy::arithmetic_side_effects)]
+pub(crate) fn exact_arithmetic(left: Ratio<i64>, right: Ratio<i64>, operation: Exact) -> Option<Ratio<i64>> {
+    let (a, b) = (i128::from(*left.numer()), i128::from(*left.denom()));
+    let (c, d) = (i128::from(*right.numer()), i128::from(*right.denom()));
+    match operation {
+        Exact::Add => exact_ratio(a.checked_mul(d)?.checked_add(c.checked_mul(b)?)?, b.checked_mul(d)?),
+        Exact::Sub => exact_ratio(a.checked_mul(d)?.checked_sub(c.checked_mul(b)?)?, b.checked_mul(d)?),
+        Exact::Mul => exact_ratio(a.checked_mul(c)?, b.checked_mul(d)?),
+        Exact::Div => exact_ratio(a.checked_mul(d)?, b.checked_mul(c)?),
+    }
+}
+
+/// The source literal that names an exact rational, or nothing.
+///
+/// `p/q`, and `p` where the denominator is one, which is how the reader writes
+/// a whole note — the same grid [`MusicalTime::parse`] reads. Nothing below
+/// zero: the grammar has no negative numeric literal, so a `-7/6` spelled here
+/// would be text the reader would not read back, and this family's one law is
+/// that it does.
+pub(crate) fn written_rational(value: Ratio<i64>) -> Option<String> {
+    if value < Ratio::ZERO {
+        return None;
+    }
+    Some(if *value.denom() == 1 {
+        value.numer().to_string()
+    } else {
+        format!("{}/{}", value.numer(), value.denom())
+    })
 }

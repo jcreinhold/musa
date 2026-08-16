@@ -56,12 +56,11 @@ use musa_core::{Datum, Rule};
 use num_rational::Ratio;
 
 use super::{domain, literal, plain_type, syntax_type, tagged_type};
-use crate::core::{
-    Builtin, Coordinate, Exact, SyntaxOp, exact_arithmetic, exact_ratio, written_interval, written_rational,
-};
+use crate::core::{Builtin, Coordinate, SyntaxOp};
 use crate::origin::Interval;
 use crate::pitch::{PitchClass, WrittenPitch};
 use crate::syntax::{Cat, Syntax, token_kind_spelling};
+use crate::time::{Exact, exact_arithmetic, exact_ratio, written_rational};
 
 /// How many rows of the two ownership tables reach the core's registry.
 ///
@@ -342,11 +341,9 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
                 }
             )))
         },
-        Builtin::IntervalLiteral => |arguments| {
-            Some(optional(
-                written_interval(read::<Interval>(arguments.first()?)?).map(written),
-            ))
-        },
+        Builtin::IntervalLiteral => {
+            |arguments| Some(optional(read::<Interval>(arguments.first()?)?.literal().map(written)))
+        }
 
         // ---- whole numbers ----
         Builtin::NatAdd => |arguments| {
