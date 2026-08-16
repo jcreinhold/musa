@@ -1,7 +1,7 @@
 ---
 id: 141f
 slug: phase-traversals
-status: pending
+status: in-progress
 depends_on: [141c, 141e]
 phase: 3
 ---
@@ -98,10 +98,12 @@ argument to write down and to sample, and §4's meter stays the backstop.
 - `crates/musa-compiler/src/registry.rs`: `recurse_syntax` and `syntax_fold_from_leaves` registered as structural
   eliminators with their vocabularies and their rewrites, and `run_syntax_step` defined over `SyntaxStep` rather than
   registered. 141e's accounting law updated to say 16 registered and 1 defined.
-- Laws in `crates/musa-compiler/tests/suite/`: each traversal reduces a token, an identifier, and a nested group to the
-  same answer the old `eval_syntax` gives on the same tree; a branch is passed through unevaluated; a neutral node
-  leaves a neutral; and the termination argument sampled — every self-application in an answer stands at a strictly
-  smaller node.
+- Laws beside the traversals in `crates/musa-compiler/src/`, not in `tests/suite/`: each traversal reduces a token, an
+  identifier, and a nested group to the same answer the old `eval_syntax` gives on the same tree; a branch is passed
+  through unevaluated; a neutral node leaves a neutral; and the termination argument sampled — every self-application in
+  an answer stands at a strictly smaller node. The agreement law reaches `expand_region`, `read_region`, and `Syntax`,
+  all private to `musa-compiler`, so a test outside the crate cannot state it — which is the reason 141e already gives
+  in `crates/musa-compiler/src/registry/laws.rs`'s own header for the δ agreement law, and it is the same reason twice.
 - `docs/plan/code-map/` rows for `musa-core` and `musa-compiler`.
 
 ## Check
