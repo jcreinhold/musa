@@ -70,18 +70,28 @@ would be the same trade in the other direction. What they share is `family::cons
 constructor, and how many of its arguments are parameters* — and this prompt is where that question gets its second
 caller and stops being a δ-only helper.
 
-**`read_back` becomes a case of it, not a second path.** `registry::read_back::<T>` keeps its signature and its callers,
-and is restated over `data`: a base literal is `Datum::Lit`, and the downcast is unchanged. The compiler must not end
-this prompt with two ways to look at a normal form.
+**`read_back` stays as it is, and that is not a second path.** The first draft of this prompt said
+`registry::read_back::<T>` should be restated over `data`, and writing it showed why it must not be: `read_back` answers
+`&T` *borrowed out of the term*, and `data` answers an owned `Datum`. Routing one through the other would clone an
+entire `VoiceTrack`'s datum on the path every voice in every score takes, to reach a reference it already had. The two
+are not two answers to one question — one borrows a base literal and one owns a data tree — and the only thing they
+share is a `Shape::Lit` match, which is not a rule that can drift. Each says in its doc comment which it is.
 
 **No record arm on `Datum`.** [`Datum`]'s own doc comment says the arm and the signature check that admits it arrive
 together, and nothing here wants one: 142 lowers `(a, b)` to `Pair.Both`, so every product a program writes reaches this
 readback as a `Case`. A record is still not data and still answers `None`.
 
-**What the compiler adds is host-typed, and small.** `crate::registry` grows the four readings a claim's arguments need
-— a `Nat` as a count, a `List` as a vector, a `Pair` as a tuple, and a base literal as its host type — each written once
-over `Datum` rather than once per claim. They stay in `registry` because that is where the compiler's half of the
-core/host boundary already lives.
+**The compiler's host-typed readings already exist, and this prompt adds none of them.** The same first draft listed
+four readings for `crate::registry` to grow — a `Nat` as a count, a `List` as a vector, a `Pair` as a tuple, a base
+literal as its host type — and three of the four are already there: 141e wrote `registry::rules::read`,
+`registry::rules::nat`, and `registry::rules::items` for the δ-rules, over exactly this [`Datum`]. What is missing is a
+*generic* pair reading — `registry::notation`'s is specialized to `Pair Nat Nat` — and a promotion of all four from
+`pub(super)` to the crate, so a caller outside `registry` can use them.
+
+Both of those belong to **142**, not here, because that is where the caller appears. Widening four functions' visibility
+in this prompt would leave four `pub(crate)` items with no caller outside their own module, which is the dead surface
+`AGENTS.md` forbids. What this prompt owes 142 is the one door the compiler cannot open for itself; the rest of the
+route is already paved.
 
 ## Target
 
@@ -89,17 +99,17 @@ core/host boundary already lives.
   application, a λ, a record, a record type, a universe, a Π, an identity, a variable, a definition, a family, a
   recursor, and a builtin.
 - `family::constructed`'s question answered for a `Term` as well as a `Neutral`, without duplicating the parameter-count
-  rule.
-- `crate::registry::read_back` restated over `data`, with its behaviour and its callers unchanged.
-- In `crate::registry`, the host-typed readings a structured argument needs: a whole number out of `Nat`, a `Vec` out of
-  `List`, a pair out of `Pair`, each answering `None` rather than a diagnostic — the caller names what it wanted.
+  rule: the rule moves into one helper and both readings call it.
 - Laws in `musa-core`: a literal reads back; a saturated constructor reads back with its parameters excluded; a
-  constructor one field short does not; a λ, a record, and a universe do not; and — the one that ties the two readings
-  together — a term and the value it evaluates to read back to the *same* `Datum`.
-- Laws in `musa-compiler`: `Nat`, `List`, `Pair`, and a nested `List<(Pitch, Pitch)>` elaborated from real source and
-  read back to the host shapes, so the four readings are proved against what the surface actually builds rather than
-  against hand-written terms.
-- Rows in [`docs/plan/code-map/`](../code-map/) for the new `musa-core` door and the compiler's readings.
+  constructor one field short does not, and neither does one argument too many; a λ, a record, a record type, and a
+  universe do not; nested data reads back nested; and — the one that ties the two readings together — a term and the
+  value it evaluates to read back to the *same* `Datum`.
+- A law in `musa-compiler` reading real source back: a `Nat`, a `List`, and a written `(a, b)` elaborated through
+  `Document` and read as `Datum`s, so the door is proved against what the surface actually builds rather than against
+  hand-written terms. It uses `registry::rules`'s existing readers and adds none.
+- A row in [`docs/plan/code-map/`](../code-map/) for the new `musa-core` door.
+
+No new item in `crate::registry`, and no widened visibility there. See the Design's last two paragraphs.
 
 ## Check
 
@@ -124,3 +134,5 @@ Commit as `Read canonical data back out of a term`.
   repo's standards forbid.
 - No evaluation inside the readback. A term that is not already normal reads back as whatever it literally is, which is
   the honest answer for a projection.
+- No change to `registry::read_back`, and no promotion of `registry::rules`'s readers. Both are 142's, at the point a
+  caller for them exists.
