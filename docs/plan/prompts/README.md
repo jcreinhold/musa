@@ -301,6 +301,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 140 | syntax-patterns | 3 | Match syntax by quoting the shape you mean |
 | 141 | collections | 3 | Let a list be built |
 | 141a | adapter-module-diagnostics | 3 | Carry an adapter module's own diagnostics to its author |
+| 141b | base-types-and-builtins | 3 | Give the core its base types and builtins |
 | 142 | surface-cutover | 3 | Move the whole language over, once |
 | 143 | builtin-collapse | 3 | Collapse the builtin registry behind traits and namespaces |
 | 144 | diagnostics-and-performance | 3 | Make the new failures legible and the new checker fast enough |

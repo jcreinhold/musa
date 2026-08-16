@@ -2,7 +2,7 @@
 id: 142
 slug: surface-cutover
 status: pending
-depends_on: [136a, 141]
+depends_on: [136a, 141, 141b]
 phase: 3
 ---
 
@@ -25,6 +25,10 @@ the middle. It absorbs prompt 127e, whose file stays as a superseded record rath
   from the enclosing voice's left fold. Absorbing it was right because migrating `stdlib/` twice — once onto the old
   core's replacement, once onto the new language — would have been the same files rewritten for two different reasons
   within ten prompts.
+- [`141b`](141b-base-types-and-builtins.md), which gives `musa-core` the base types, literals, and builtin registry
+  without which no real Musa program can be elaborated by it. Its `Registry` is what this prompt fills from
+  `crates/musa-compiler/src/core.rs`'s `BUILTIN_OWNERSHIP`, and that filling is the whole of "wire the compiler to
+  `musa-core`" before a single spelling migrates.
 - `crates/musa-compiler/src/infer.rs` and the checking paths in `core.rs` — what is deleted, and what has to keep
   working because something other than the checker uses it.
 - `crates/musa-compiler/tests/suite/elaboration_compatibility.rs`, especially
