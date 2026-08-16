@@ -2,7 +2,7 @@
 id: 142
 slug: surface-cutover
 status: pending
-depends_on: [136a, 141, 141b]
+depends_on: [136a, 141, 141b, 141c]
 phase: 3
 ---
 
@@ -29,6 +29,11 @@ the middle. It absorbs prompt 127e, whose file stays as a superseded record rath
   without which no real Musa program can be elaborated by it. Its `Registry` is what this prompt fills from
   `crates/musa-compiler/src/core.rs`'s `BUILTIN_OWNERSHIP`, and that filling is the whole of "wire the compiler to
   `musa-core`" before a single spelling migrates.
+- [`141c`](141c-structural-eliminators.md), which adds the second of §5.8's four families: a compiler-owned operation
+  that takes a function argument and rewrites rather than computing. `recurse_syntax`, `run_syntax_step`, and
+  `syntax_fold_from_leaves` are registered through it, and `staff.musa` does not compile without them. Its Design also
+  says where the eight collection eliminators go — they become library code *in this prompt's migration*, which is why
+  they are not registered there.
 - `crates/musa-compiler/src/infer.rs` and the checking paths in `core.rs` — what is deleted, and what has to keep
   working because something other than the checker uses it.
 - `crates/musa-compiler/tests/suite/elaboration_compatibility.rs`, especially
