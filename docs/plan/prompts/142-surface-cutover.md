@@ -49,9 +49,9 @@ the middle. It absorbs prompt 127e, whose file stays as a superseded record rath
   pattern side needs and which every phase builder already needed: each of them reads at `Syntax ⟨tokentree⟩`, the core
   has no subtyping, and a `Syntax ⟨expr⟩` in hand is therefore a value with nowhere to go until this prompt says how a
   category is forgotten.
-- [`141h`](141h-track-and-machine-core.md), which gave `EventTrack` and `Machine` their core shapes and registered the
-  seventeen builtins 141e left, on the grounds that they needed a reshape this prompt would perform. The reshape moved
-  there; what stays here is deleting contextual `Music` and teaching the source the words.
+- [`141h`](141h-track-core.md), which gave `EventTrack` its core shape and registered the eight track builtins 141e
+  left, on the grounds that they needed a reshape this prompt would perform. The reshape moved there; what stays here is
+  deleting contextual `Music` and teaching the source the word.
 - [`141c`](141c-structural-eliminators.md), which adds the second of §5.8's four families: a compiler-owned operation
   that takes a function argument and rewrites rather than computing. `recurse_syntax`, `run_syntax_step`, and
   `syntax_fold_from_leaves` are registered through it, and `staff.musa` does not compile without them. Its Design also
