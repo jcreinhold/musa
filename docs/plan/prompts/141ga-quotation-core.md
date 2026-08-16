@@ -30,7 +30,8 @@ of instantiation. That evidence is this prompt's Design.
 - `crates/musa-compiler/src/core.rs`'s `Checker::syntax_quote`, `quote_template`, `quote_token`, `quote_splice`, and
   `pattern_splice`, and the free functions `binder_positions`, `spread_argument`, and `looks_generated`. The body walk
   is being *moved*, not redesigned: what leaves it is the four calls to `self.check`, which become
-  [`crate::lower`](../../../crates/musa-compiler/src/lower.rs)'s lowering of the splice's own expression.
+  `crates/musa-compiler/src/lower.rs`'s lowering of the splice's own expression — [`141g`](141g-raw-lowering.md) writes
+  that module, so this bullet names a path rather than linking to one.
 - [`../../rules/language/11-quotation.md`](../../rules/language/11-quotation.md) §2, §3, and §4 — what a quote builds,
   where provenance is minted, and the pattern form. §3 is the clause this prompt has to keep true through a change of
   representation.
