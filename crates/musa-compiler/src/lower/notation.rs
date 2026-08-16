@@ -197,31 +197,21 @@ impl Lowering<'_> {
     /// Reads at [`Reading::free`], because a written `music` expression is a
     /// value and a value has no voice.
     ///
-    /// # A block answers its own questions
+    /// # A block asks nothing
     ///
-    /// Everything this module constructs is fallible — `sounded` and `play` both
-    /// answer a `Result` — so the fold is written in the surface's own `?` and
-    /// drained here, at the brace. §5's "an operation that can fail keeps its
-    /// failing shape" is what that is: the block *is* the operation, and
-    /// `Result<EventTrack ⟨written⟩, Text>` is its shape.
+    /// It used to. Every constructor this module reaches for answered
+    /// `Result τ Text`, so the fold was written in the surface's own `?` and
+    /// drained at the brace, and a block denoted `Result<EventTrack ⟨written⟩,
+    /// Text>` — a type §2 never wrote and no author could use without unwrapping
+    /// it first. Prompt 141m gave a δ-rule somewhere to say no, so a fact that
+    /// cannot sound refuses the program at its own span instead of answering a
+    /// failure nobody can act on, and the constructors went total.
     ///
-    /// Draining here rather than at the enclosing function is what makes a block
-    /// a value. §4's four answer-delimiting positions are about a `?` the author
-    /// *wrote*; these are the reading's own, and leaving them standing would mean
-    /// a `music` expression could only appear where a function body could catch
-    /// them — which is not what "a track value is an ordinary value" (§2) says.
-    ///
-    /// The `Ok` is unconditional, including for the empty block, because a
-    /// block's type may not depend on which statements it happens to contain: a
-    /// signature that accepted `music { c4/4 }` and refused `music { }` would be
-    /// one no author could predict.
+    /// What is left is the fold itself: a block denotes `EventTrack ⟨written⟩`,
+    /// which is what §2's twenty signatures say it denotes. The questions
+    /// machinery stays where it belongs, serving a `?` the author wrote.
     pub(crate) fn music(&mut self, node: &SyntaxNode) -> Option<Raw> {
-        let origin = self.origin(node);
-        let outer = std::mem::take(&mut self.questions);
-        let folded = self.notated(node, Reading::free());
-        let asked = std::mem::replace(&mut self.questions, outer);
-        let built = Raw::app(origin, Raw::var(origin, "Result.Ok"), folded?);
-        self.answered(built, asked)
+        self.notated(node, Reading::free())
     }
 
     /// `motif turn(root: Pitch) { … }` — the function §2 says it is.
@@ -234,14 +224,11 @@ impl Lowering<'_> {
     ///
     /// # Why no written return type
     ///
-    /// §2 spells `-> EventTrack[WrittenTime, ScoreFact]`, and spelling it here
-    /// would be *checking*, which this module does not do — and it would be the
-    /// wrong type in any case. A block answers `Result<EventTrack ⟨written⟩,
-    /// Text>`, for the reason [`Lowering::music`] gives, so a motif is a function
-    /// into that; §2 was written before 141j registered `sounded` and `play` at
-    /// their failing signatures. The core infers it from the body, which is the
-    /// one place that can tell, and prompt 142 is where the written spelling in
-    /// `01-surface.md` §2 is reconciled with the vocabulary underneath it.
+    /// §2 spells `-> EventTrack[WrittenTime, ScoreFact]`, and it is now the type
+    /// the body has. Spelling it here would still be *checking*, which this
+    /// module does not do: the core infers it from the body, which is the one
+    /// place that can tell, and a written annotation that agreed with the
+    /// inference would be the same fact stated twice.
     ///
     /// # Why the parameters come from the typed AST
     ///
@@ -325,7 +312,7 @@ impl Lowering<'_> {
                         optional(origin, "FreeDuration", free),
                     ],
                 );
-                self.sounded(origin, reading, fact, held)
+                Some(self.sounded(origin, reading, fact, held))
             }
             SyntaxKind::ChordStmt => self.chord_statement(node, origin, reading),
             SyntaxKind::StackStmt => self.stack(node, origin, reading),
@@ -352,7 +339,7 @@ impl Lowering<'_> {
                     Raw::var(origin, "transpose"),
                     [plain(origin, "Interval", interval), body],
                 );
-                Some(self.asked(origin, call))
+                Some(call)
             }
             SyntaxKind::StretchStmt => {
                 let text = musa_language::ast::StretchStmt::cast(node.clone())
@@ -373,7 +360,7 @@ impl Lowering<'_> {
                     Raw::var(origin, "stretch"),
                     [plain(origin, "Ratio", factor), body],
                 );
-                Some(self.asked(origin, call))
+                Some(call)
             }
             SyntaxKind::RetrogradeStmt => {
                 let body = self.notated(node, reading)?;
@@ -391,7 +378,7 @@ impl Lowering<'_> {
                 };
                 let body = self.notated(node, reading)?;
                 let call = applied(origin, Raw::var(origin, "invert"), [plain(origin, "Pitch", axis), body]);
-                Some(self.asked(origin, call))
+                Some(call)
             }
 
             // `in scale` changes what a `step` reads and denotes its body. It is
@@ -474,14 +461,14 @@ impl Lowering<'_> {
                     Raw::var(origin, "Fact.Dynamic"),
                     payload(origin, "DynamicMark", mark),
                 );
-                self.sounded(origin, reading, fact, Ratio::ZERO)
+                Some(self.sounded(origin, reading, fact, Ratio::ZERO))
             }
             SyntaxKind::SectionStmt => {
                 let name = musa_language::ast::SectionStmt::cast(node.clone())
                     .and_then(|stmt| stmt.name())
                     .unwrap_or_default();
                 let fact = Raw::app(origin, Raw::var(origin, "Fact.Section"), plain(origin, "Text", name));
-                self.sounded(origin, reading, fact, Ratio::ZERO)
+                Some(self.sounded(origin, reading, fact, Ratio::ZERO))
             }
             SyntaxKind::HarmonyStmt => {
                 let text = musa_language::ast::HarmonyStmt::cast(node.clone())
@@ -499,7 +486,7 @@ impl Lowering<'_> {
                     Raw::var(origin, "Fact.Harmony"),
                     payload(origin, "ChordSymbol", symbol),
                 );
-                self.sounded(origin, reading, fact, Ratio::ZERO)
+                Some(self.sounded(origin, reading, fact, Ratio::ZERO))
             }
             SyntaxKind::MarkStmt => self.marked(node, origin, reading),
 
@@ -551,7 +538,7 @@ impl Lowering<'_> {
                 optional(origin, "FreeDuration", free),
             ],
         );
-        self.sounded(origin, reading, fact, held)
+        Some(self.sounded(origin, reading, fact, held))
     }
 
     /// `[c4 e4 g4]/2` — the written pitches sounding together.
@@ -592,7 +579,7 @@ impl Lowering<'_> {
                     optional(origin, "FreeDuration", free),
                 ],
             );
-            let one = self.sounded(origin, reading, fact, held)?;
+            let one = self.sounded(origin, reading, fact, held);
             sounding = Some(match sounding {
                 None => one,
                 Some(built) => applied(origin, Raw::var(origin, "together"), [built, one]),
@@ -635,11 +622,15 @@ impl Lowering<'_> {
             [
                 self.provenance(origin, span),
                 scope_of(origin, reading.scope),
-                payload(origin, "Voicing", voicing),
+                // `plain` and not `payload`: `play` reads a `Voicing` and not an
+                // `Opaque<Voicing>`, and a literal at the wrong Rust type
+                // downcasts to nothing, which the core reports as this
+                // compiler's table disagreeing with itself.
+                plain(origin, "Voicing", voicing),
                 written_duration(origin, duration.value.as_ratio()),
             ],
         );
-        Some(self.asked(origin, call))
+        Some(call)
     }
 
     /// `grace { c5 d5 }` — the notes crushed before the one they lean on.
@@ -670,7 +661,7 @@ impl Lowering<'_> {
                     whole(at, index as u64),
                 ],
             );
-            let one = self.sounded(at, reading, fact, Ratio::ZERO)?;
+            let one = self.sounded(at, reading, fact, Ratio::ZERO);
             built = applied(origin, Raw::var(origin, "follow"), [built, one]);
         }
         Some(built)
@@ -714,7 +705,7 @@ impl Lowering<'_> {
         if statement.has_block() {
             self.region(node, origin, reading, fact)
         } else {
-            self.sounded(origin, reading, fact, Ratio::ZERO)
+            Some(self.sounded(origin, reading, fact, Ratio::ZERO))
         }
     }
 
@@ -806,7 +797,7 @@ impl Lowering<'_> {
         let (duration, _) = self.notated_duration(node, span)?;
         let over = statement.over().map(|text| plain(origin, "Text", text));
         let fact = Raw::app(origin, Raw::var(origin, "Fact.Improvise"), maybe(origin, over));
-        self.sounded(origin, reading, fact, duration.value.as_ratio())
+        Some(self.sounded(origin, reading, fact, duration.value.as_ratio()))
     }
 
     /// `use e;` — the track `e` denotes, folded on.
@@ -821,12 +812,19 @@ impl Lowering<'_> {
 
     // ---- the pieces every arm above is written out of ----
 
-    /// `sounded(origin, scope, fact, held)`, asked.
+    /// `sounded(origin, scope, fact, held)`.
     ///
-    /// The fallible construction §5.7 requires: every fact carries an origin and
-    /// a scope, and neither is something a `fn` pointer can invent.
-    fn sounded(&mut self, origin: Origin, reading: Reading, fact: Raw, held: Ratio<i64>) -> Option<Raw> {
-        let call = applied(
+    /// The construction §5.7 requires: every fact carries an origin and a scope,
+    /// and neither is something a source line writes or a `fn` pointer invents.
+    /// The reading supplies both, which is why the call has four arguments where
+    /// the statement had none.
+    ///
+    /// Nothing to ask any more, and nothing to answer: a length a fact cannot
+    /// sound for is refused by the rule at this origin (prompt 141m), so what
+    /// comes back is a call and every caller gets one. The `Option` that used to
+    /// be here was the `?` this reading wrote, and there is no `?` left to write.
+    fn sounded(&self, origin: Origin, reading: Reading, fact: Raw, held: Ratio<i64>) -> Raw {
+        applied(
             origin,
             Raw::var(origin, "sounded"),
             [
@@ -835,8 +833,7 @@ impl Lowering<'_> {
                 fact,
                 written_duration(origin, held),
             ],
-        );
-        Some(self.asked(origin, call))
+        )
     }
 
     /// A fact over the region its body covers, and the body under it.
@@ -849,7 +846,7 @@ impl Lowering<'_> {
     fn region(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading, fact: Raw) -> Option<Raw> {
         let body = self.notated(node, reading)?;
         let over = extent(node);
-        let marker = self.sounded(origin, reading, fact, over)?;
+        let marker = self.sounded(origin, reading, fact, over);
         Some(applied(origin, Raw::var(origin, "together"), [marker, body]))
     }
 
@@ -1006,7 +1003,11 @@ impl Lowering<'_> {
     }
 
     /// The `Origin` argument a constructed fact carries (§5.7).
-    fn provenance_at(&self, origin: Origin) -> Raw {
+    ///
+    /// `pub(super)` for one caller outside this module: [`super::values`] reads a
+    /// written `play(v, d)` as the four-argument application, and the two
+    /// arguments it supplies are these.
+    pub(super) fn provenance_at(&self, origin: Origin) -> Raw {
         let span = self.sites.span(origin).unwrap_or_default();
         self.provenance(origin, span)
     }
@@ -1128,7 +1129,7 @@ fn written_duration(origin: Origin, held: Ratio<i64>) -> Raw {
 }
 
 /// `Scope.Piece`, `Scope.Part n`, `Scope.Voice p v`.
-fn scope_of(origin: Origin, scope: crate::Scope) -> Raw {
+pub(super) fn scope_of(origin: Origin, scope: crate::Scope) -> Raw {
     match scope {
         crate::Scope::Piece => Raw::var(origin, "Scope.Piece"),
         crate::Scope::Part { part } => Raw::app(origin, Raw::var(origin, "Scope.Part"), whole(origin, u64::from(part))),

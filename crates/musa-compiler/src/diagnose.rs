@@ -240,6 +240,14 @@ pub enum Code {
     TargetNotABase,
     /// A δ-builtin whose signature holds a type that is not finite data.
     NotFiniteData,
+    /// A built-in operation refused the arguments a program gave it.
+    ///
+    /// One code for the whole vocabulary rather than one per operation. What a
+    /// reader needs is not a page about `stretch` and a second about `shift`,
+    /// it is the sentence the operation itself said — a stretch factor is
+    /// greater than zero, a chord sounds for longer than no time at all — and
+    /// that arrives as the diagnostic's message from the rule that raised it.
+    OperationRefused,
 }
 
 /// Writes each code's spelling once, and derives the roster from the same
@@ -342,6 +350,7 @@ code_table! {
     TargetOutsideSignature => "target-outside-signature",
     TargetNotABase => "target-not-a-base",
     NotFiniteData => "not-finite-data",
+    OperationRefused => "operation-refused",
 }
 
 impl Code {

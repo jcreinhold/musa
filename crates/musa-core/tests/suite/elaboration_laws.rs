@@ -11,7 +11,7 @@
 //! As in the other suites, these are laws stated over a corpus and therefore
 //! discharged at the terms in it. Prompt 148 owes the metatheory matrix.
 
-use musa_core::{Cx, ElabError, Index, Level, Raw, Refusal, Term, check, infer, well_typed};
+use musa_core::{Cx, ElabError, Index, Level, Raw, Refusal, Term, check, infer, normalize, well_typed};
 
 use crate::programs::{Program, Refused, WRITTEN, accepted, core_unit_type, refusal, refused, unit, unit_type};
 
@@ -312,6 +312,25 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
         assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
         reached.insert(kind(&refusal));
     }
+    // And the one refusal a δ-rule raises, which arrives a step later than the
+    // rest: the program type-checks, and the rule reads its arguments when it
+    // fires. Reducing it is what makes them arrive.
+    for crate::base_laws::RefusedProgram {
+        name,
+        raw,
+        ty,
+        expected,
+    } in crate::base_laws::refused_reductions()
+    {
+        let (ty, _) = infer(&registered, &ty).unwrap_or_else(|error| panic!("{name}: {error}"));
+        let term = check(&registered, &ty, &raw).unwrap_or_else(|error| panic!("{name}: {error}"));
+        let Err(error) = normalize(&registered, &ty, &term) else {
+            panic!("{name}: reduction answered a program the rule must refuse");
+        };
+        let refusal = refusal(name, error.into());
+        assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
+        reached.insert(kind(&refusal));
+    }
     assert_eq!(
         reached,
         ALL_REFUSALS.iter().copied().collect(),
@@ -320,7 +339,7 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
 }
 
 /// Every refusal this crate can answer with.
-const ALL_REFUSALS: [&str; 50] = [
+const ALL_REFUSALS: [&str; 51] = [
     "unknown-name",
     "mismatch",
     "unsolved",
@@ -371,6 +390,7 @@ const ALL_REFUSALS: [&str; 50] = [
     "target-outside-signature",
     "target-not-a-base",
     "not-finite-data",
+    "builtin-refused",
 ];
 
 /// Which refusal this is, as a tag the coverage gate can compare.
@@ -429,6 +449,7 @@ fn kind(refusal: &Refusal) -> &'static str {
         Refusal::TargetOutsideSignature { .. } => "target-outside-signature",
         Refusal::TargetNotABase { .. } => "target-not-a-base",
         Refusal::NotFiniteData { .. } => "not-finite-data",
+        Refusal::BuiltinRefused { .. } => "builtin-refused",
     }
 }
 

@@ -982,3 +982,52 @@ fn a_path_naming_two_items_in_one_namespace_is_refused_at_the_node() {
         complaint.message
     );
 }
+
+/// §2's `play`, as `stdlib/src/voicing.musa:57` writes it: `fn sound_for(chosen:
+/// Voicing, held: Duration<WrittenTime>) -> … { play(chosen, held) }`.
+///
+/// Two claims in one line. `play` answers a track and not a `Result` — prompt
+/// 141m's refusal channel — and a composer writes two arguments where the
+/// registered operation takes four, because §5.7's origin and scope are the
+/// reading's to supply and a composer has neither. Either one missing and the
+/// line does not elaborate, which is why the law hands the whole function to the
+/// core rather than looking at the application's shape.
+///
+/// The two Πs are built rather than written. `-> EventTrack[WrittenTime,
+/// ScoreFact]` is not a spelling the grammar has — today a track type is written
+/// `Music`, and replacing that word is prompt 142's — and the binders are the
+/// whole difference between this and §2's own line.
+///
+/// §2 writes the length as the literal `1/2`, and that does *not* check: a
+/// written `1/2` is a `Ratio` and `play` reads a `Duration ⟨written⟩`, which is a
+/// different type and the core says so. A finding recorded in this prompt's file
+/// rather than an edit, because what a bare literal may mean at a coordinate type
+/// is the literal domains' question and not the refusal channel's.
+#[test]
+fn a_written_play_supplies_the_origin_and_the_scope_no_composer_has() {
+    let cx = host();
+    let (built, complaints) = lowered_expr("play(chosen, held)");
+    assert!(
+        complaints.is_empty(),
+        "the stdlib's own body lowers without complaint: {complaints:?}"
+    );
+    let built = built.expect("the body lowers");
+    let sound_for = Raw::lam(
+        musa_core::Origin::UNKNOWN,
+        "chosen",
+        Raw::lam(musa_core::Origin::UNKNOWN, "held", built),
+    );
+    let sounds = Term::pi(
+        musa_core::Origin::UNKNOWN,
+        "chosen",
+        crate::registry::plain_type("Voicing"),
+        Term::pi(
+            musa_core::Origin::UNKNOWN,
+            "held",
+            crate::registry::tagged_type("Duration", crate::core::Coordinate::WrittenTime),
+            crate::registry::tagged_type("EventTrack", crate::core::Coordinate::WrittenTime),
+        ),
+    );
+    musa_core::check(&cx, &sounds, &sound_for)
+        .unwrap_or_else(|failure| panic!("a voicing played for a length sounds a track, not {failure:?}"));
+}

@@ -1,7 +1,7 @@
 ---
 id: 141m
 slug: rule-refusal
-status: pending
+status: done
 depends_on: [141b, 141e, 141j, 141k]
 phase: 3
 ---
@@ -97,10 +97,37 @@ way, with the branch that reads it. A site nobody branches on and nobody moves i
 `Result τ Text` in the track and notation families — `STRETCH`, `SHIFT`, `PLAY`, `SOUNDED` — across seven sites, and
 every one of the seven is a program error: a stretch factor at or below zero, music shifted before the start or past the
 end of its track, a chord or a fact given a length it cannot sound for or does not fit. None survives the criterion, so
-the whole family goes total and the `Result` disappears from every track signature rather than from some of them. The
-arithmetic and duration rules in `registry/rules.rs` are the same judgment in a quieter register — division by zero, and
-the overflow sentence "no result this language can represent" — and they matter as much, because 141l routed `x + y`
-through `Add.add`: a fallible `Add` puts a `?` between every two numbers a composer adds.
+the whole family goes total and the `Result` disappears from every track signature rather than from some of them.
+
+**The arithmetic and duration rules are the same judgment and do not move yet.** Division by zero, a duration below
+zero, and the overflow sentence "no result this language can represent" are composers' mistakes by the criterion, and
+they matter for the same reason the track family does: 141l routed `x + y` through `Add.add`, so a fallible `Add` puts a
+`?` between every two numbers a composer adds. They stay `Result` here for a constraint found in the doing rather than a
+change of mind. `BUILTIN_OWNERSHIP` is one table read by **two** checkers — this registry and the one compiling
+`stdlib/` today — so narrowing `ratio_add`'s declared answer rewrites the twenty `match … { Ok(v) -> … }` sites listed
+below, in `stdlib/src/notation/staff.musa` and `stdlib/src/adapters/staff.musa`. Rewriting them is prompt 142's Task and
+this prompt's own Stop forbids it. The track and notation families have no such tie: their signatures live in
+`registry/track.rs` and `registry/notation.rs`, no `.musa` file names them, and that is why the move §2 needs can happen
+here and the quieter one waits for its callers. Prompt 142 carries it.
+
+### The sites the criterion leaves as values
+
+Two are the criterion's own answer and stay values for good:
+
+| Site | Why it stays | The branch that reads it |
+| --- | --- | --- |
+| `Builtin::Row12Of` | a `RowFault` names *which* positions repeat and which classes are missing — an analysis a program reads, not a sentence a composer is told | `stdlib/src/post_tonal/serial.musa:28`'s `row`, which hands the `Result<Row12, (List<Nat>, List<Pc12>)>` on |
+| `SyntaxOp::Checked` | the gate exists so a transformer can *decide* what to say about a tree it built badly; refusing would take that decision away | `crates/musa-compiler`'s phase vocabulary, and prompt 145's rewritten adapter |
+
+Eleven are refusals by the criterion and stay values only until their callers move, all under prompt 142:
+
+| Rule | Sentence | Sites that branch on it |
+| --- | --- | --- |
+| `ratio_arithmetic` (`Add`, `Sub`, `Mul`, `Div`) | not divided by zero; no result this language can represent | `notation/staff.musa:153,164,176,177,213,353,354,398`; `adapters/staff.musa:599,753,1353,1354,1726` |
+| `written_duration`, `DurationOf` | a duration is nonnegative | `notation/staff.musa:199,204,214` |
+| `NatAdd`, `NatMul` | no result this language can represent | none in the corpus; reached through `Add.add` |
+| `DurationAdd`, `DurationScale` | no sum, no product | `notation/staff.musa:286,380` |
+| `PositionShift`, `PositionBetween` | no result; the second position is before the first | `notation/staff.musa:312,529` |
 
 **The block stops being a `Result`, and the reading gets smaller.** With total constructors `Lowering::sounded` stops
 asking a question, `Lowering::music` stops wrapping in `Result.Ok`, and a notated block denotes `EventTrack ⟨written⟩`.
@@ -117,6 +144,20 @@ application changes: this is one entry in a reading, not a general mechanism for
 **One diagnostic code, not seven.** The refusals moving here are not a new family a reader looks up individually; they
 are the operations of the language saying no with their own sentences, which is what `lower/refusals.rs` already exists
 to restate. Prompt 144 owns how good the sentences are.
+
+### What §2 still says that is not true, recorded rather than repaired
+
+Two words of §2's worked example, both outside this prompt's boundary and both prompt 142's:
+
+- **`play(chosen, 1/2)`** does not check. A written `1/2` is a `Ratio` and `play` reads a `Duration ⟨written⟩`, which is
+  a different type and the core says so. `stdlib/src/voicing.musa:57` writes the true version —
+  `fn sound_for(chosen: Voicing, held: Duration<WrittenTime>) -> Music { play(chosen, held) }` — and it is what the law
+  states. What a bare literal may mean at a coordinate type is the literal domains' question: `01-surface.md` fixes
+  `Duration::of(n)` rather than return-type-directed overloading, so §2's own line wants `Duration::of(1/2)` or a
+  coercion nobody has argued for.
+- **`-> EventTrack[WrittenTime, ScoreFact]`** is not a spelling the grammar has. A track type is written `Music` today,
+  and `lower/types.rs`'s table has no entry for either word: the return type in §2's signatures is exactly what prompt
+  142 replaces when it deletes contextual `Music`.
 
 ## Target
 

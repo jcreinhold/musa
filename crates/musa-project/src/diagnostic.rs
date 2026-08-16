@@ -801,6 +801,9 @@ pub fn explain(code: &str) -> Option<&'static str> {
         musa_compiler::Code::NotFiniteData => {
             "A compiler-owned operation names a type it could not be handed or answer.\n\nThese operations compute on *data*: a base type — text, a number, a duration, a pitch — or a declared type like `Option`, `List`, or `Result` holding more of the same, however deeply nested. That is the whole of what one can read and the whole of what it can build, so a signature mentioning a record type, a universe, or a bare type variable describes an operation whose rule could not be written down.\n\nThis is a report about the compiler's own table rather than about the file being compiled. If the operation genuinely needs one of those shapes, it is an ordinary definition in the standard library, written in Musa and checked like everything else."
         }
+        musa_compiler::Code::OperationRefused => {
+            "An operation of the language refused the arguments it was given.\n\nThese are the operations that build and reshape notated music — sounding a fact, playing a chord, stretching or shifting a track — and each one holds to a law about what it can mean: a stretch factor is greater than zero, music does not start before the start, a fact fits inside the length it was given. Arguments that break the law describe music that has no reading, so the operation says so rather than answering something close.\n\nThe message is the operation's own sentence and the span is the call that raised it. This is a report about the file being compiled: the numbers reaching that call are what to change."
+        }
     })
 }
 

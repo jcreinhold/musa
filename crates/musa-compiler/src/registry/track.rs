@@ -58,7 +58,7 @@ use musa_core::{Builtin, Cx, Datum, ElabError, Family, Index, Literal, Rule, Ter
 use musa_kernel::{Duration, Occurrence, Position, Span};
 use num_rational::Ratio;
 
-use super::rules::{answered as ok, items, nat, read, refused as err};
+use super::rules::{items, nat, read, reduced, refused};
 use super::{HERE, held, literal, plain_type, tagged_type};
 use crate::Interval;
 use crate::core::Coordinate;
@@ -125,37 +125,20 @@ impl std::fmt::Display for Provenance {
 ///
 /// # Errors
 ///
-/// [`ElabError`] when `Result`, `List`, `Scope`, or a `List` constructor is not
-/// declared in `cx`, which is a defect in this compiler rather than in any
-/// program.
+/// [`ElabError`] when `List`, `Scope`, or a `List` constructor is not declared
+/// in `cx`, which is a defect in this compiler rather than in any program.
 pub(super) fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
     let track = track_type;
     let beat = || tagged_type("Duration", Coordinate::WrittenTime);
-    let fallible = super::applied(cx, "Result", [track(), plain_type("Text")])?;
     let delta = |name: &'static str, arguments: Vec<Term>, result: Term, rule: Rule| {
         Builtin::new(name, super::arrow(arguments, result), Family::Track, rule)
     };
     Ok(vec![
-        delta(
-            SPELLINGS[0],
-            vec![plain_type("Interval"), track()],
-            fallible.clone(),
-            TRANSPOSE,
-        ),
-        delta(
-            SPELLINGS[1],
-            vec![plain_type("Ratio"), track()],
-            fallible.clone(),
-            STRETCH,
-        ),
+        delta(SPELLINGS[0], vec![plain_type("Interval"), track()], track(), TRANSPOSE),
+        delta(SPELLINGS[1], vec![plain_type("Ratio"), track()], track(), STRETCH),
         delta(SPELLINGS[2], vec![track()], track(), RETROGRADE),
-        delta(
-            SPELLINGS[3],
-            vec![plain_type("Pitch"), track()],
-            fallible.clone(),
-            INVERT,
-        ),
-        delta(SPELLINGS[4], vec![beat(), track()], fallible.clone(), SHIFT),
+        delta(SPELLINGS[3], vec![plain_type("Pitch"), track()], track(), INVERT),
+        delta(SPELLINGS[4], vec![beat(), track()], track(), SHIFT),
         delta(SPELLINGS[5], vec![track(), track()], track(), TOGETHER),
         Builtin::structural_with(
             SPELLINGS[6],
@@ -183,7 +166,7 @@ pub(super) fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
                 plain_type("Voicing"),
                 beat(),
             ],
-            fallible,
+            track(),
             PLAY,
         ),
         set_note_pitches(cx)?,
@@ -261,10 +244,10 @@ const TRANSPOSE: Rule = |arguments| {
     let interval = read::<Interval>(arguments.first()?)?;
     let track = track_of(arguments.get(1)?)?;
     let step = ExpansionStep::Transposition(interval);
-    Some(rewritten(&track, &step, |fact| fact.transposed(interval)).map_or_else(
-        || err("a transposed pitch does not fit the written-pitch coordinate"),
-        |raised| ok(built(raised)),
-    ))
+    let Some(raised) = rewritten(&track, &step, |fact| fact.transposed(interval)) else {
+        return Some(refused("a transposed pitch does not fit the written-pitch coordinate"));
+    };
+    reduced(built(raised))
 };
 
 /// `stretch(factor, t)` — the same music notated `factor` times as long, in a
@@ -273,15 +256,13 @@ const STRETCH: Rule = |arguments| {
     let factor = read::<Ratio<i64>>(arguments.first()?)?;
     let track = track_of(arguments.get(1)?)?;
     let Ok(scaled) = track.scale(factor) else {
-        return Some(err("a stretch factor is greater than zero"));
+        return Some(refused("a stretch factor is greater than zero"));
     };
     let step = ExpansionStep::Stretch(factor);
-    Some(
-        rewritten(&scaled, &step, |fact| Some(fact.stretched(factor))).map_or_else(
-            || err("the stretched music leaves the track it is in"),
-            |stretched| ok(built(stretched)),
-        ),
-    )
+    let Some(stretched) = rewritten(&scaled, &step, |fact| Some(fact.stretched(factor))) else {
+        return Some(refused("the stretched music leaves the track it is in"));
+    };
+    reduced(built(stretched))
 };
 
 /// `retrograde(t)` — every occurrence mirrored about the track's midpoint.
@@ -307,7 +288,7 @@ const RETROGRADE: Rule = |arguments| {
             Some(Occurrence::new(mirrored, fact))
         })
         .collect::<Option<Vec<_>>>()?;
-    Some(built(musa_kernel::track(track.duration(), occurrences).ok()?))
+    reduced(built(musa_kernel::track(track.duration(), occurrences).ok()?))
 };
 
 /// `invert(axis, t)` — every written pitch mirrored about `axis`.
@@ -315,10 +296,10 @@ const INVERT: Rule = |arguments| {
     let axis = read::<WrittenPitch>(arguments.first()?)?;
     let track = track_of(arguments.get(1)?)?;
     let step = ExpansionStep::Inversion { axis: axis.to_string() };
-    Some(rewritten(&track, &step, |fact| fact.inverted(axis)).map_or_else(
-        || err("an inverted pitch does not fit the written-pitch coordinate"),
-        |mirrored| ok(built(mirrored)),
-    ))
+    let Some(mirrored) = rewritten(&track, &step, |fact| fact.inverted(axis)) else {
+        return Some(refused("an inverted pitch does not fit the written-pitch coordinate"));
+    };
+    reduced(built(mirrored))
 };
 
 /// `shift(by, t)` — the same music starting `by` later, in a track that much
@@ -332,7 +313,7 @@ const SHIFT: Rule = |arguments| {
     let by = read::<Ratio<i64>>(arguments.first()?)?;
     let track = track_of(arguments.get(1)?)?;
     let Ok(offset) = Duration::new(by) else {
-        return Some(err("music cannot be shifted to before the start"));
+        return Some(refused("music cannot be shifted to before the start"));
     };
     let occurrences = track
         .occurrences()
@@ -340,9 +321,9 @@ const SHIFT: Rule = |arguments| {
         .map(|occurrence| Occurrence::new(occurrence.span().translate(offset), occurrence.payload().clone()))
         .collect();
     let Ok(shifted) = musa_kernel::track(track.duration().plus(offset), occurrences) else {
-        return Some(err("the shifted music leaves the track it is in"));
+        return Some(refused("the shifted music leaves the track it is in"));
     };
-    Some(ok(built(shifted)))
+    reduced(built(shifted))
 };
 
 /// `together(a, b)` — both at once, in a track as long as the longer.
@@ -353,7 +334,7 @@ const SHIFT: Rule = |arguments| {
 const TOGETHER: Rule = |arguments| {
     let left = track_of(arguments.first()?)?;
     let right = track_of(arguments.get(1)?)?;
-    Some(built(musa_kernel::together(vec![left, right])))
+    reduced(built(musa_kernel::together(vec![left, right])))
 };
 
 /// `set_note_pitches(t, ps)` — the *i*th note's pitch replaced by the *i*th
@@ -379,7 +360,7 @@ const SET_NOTE_PITCHES: Rule = |arguments| {
             Occurrence::new(occurrence.span(), fact)
         })
         .collect();
-    Some(built(musa_kernel::track(track.duration(), occurrences).ok()?))
+    reduced(built(musa_kernel::track(track.duration(), occurrences).ok()?))
 };
 
 /// `play(origin, scope, voicing, held)` — a chord sounding for a length.
@@ -399,10 +380,10 @@ const PLAY: Rule = |arguments| {
     let voicing = read::<crate::chord::Voicing>(arguments.get(2)?)?;
     let sounding = read::<Ratio<i64>>(arguments.get(3)?)?;
     if sounding <= Ratio::ZERO {
-        return Some(err("a chord sounds for longer than no time at all"));
+        return Some(refused("a chord sounds for longer than no time at all"));
     }
     let Ok(span) = Span::new(Position::ZERO, Position::new(sounding)) else {
-        return Some(err("a chord sounds for longer than no time at all"));
+        return Some(refused("a chord sounds for longer than no time at all"));
     };
     let duration = NotatedDuration::spelled(sounding);
     let occurrences = voicing
@@ -425,9 +406,9 @@ const PLAY: Rule = |arguments| {
         })
         .collect();
     let Ok(sounded) = musa_kernel::track(span.duration(), occurrences) else {
-        return Some(err("the chord does not fit the length it was given"));
+        return Some(refused("the chord does not fit the length it was given"));
     };
-    Some(ok(built(sounded)))
+    reduced(built(sounded))
 };
 
 /// The scope a `Scope` datum stands for.

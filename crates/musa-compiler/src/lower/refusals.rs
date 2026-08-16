@@ -14,11 +14,13 @@
 //! the rule that raises it and can therefore name a normal form nobody wrote.
 //! Prompt 144 owns rewriting those; this prompt owns that every one of them
 //! arrives as a diagnostic, with a code that `musa explain` knows and a span a
-//! reader can jump to.
+//! reader can jump to. [`Refusal::BuiltinRefused`] is the one whose sentence
+//! comes from further out still — a δ-rule in `musa-compiler`'s own registry
+//! said it, and the core carried it here and added only the origin.
 //!
 //! # Why the match is written out
 //!
-//! Fifty-two variants, each named once. The alternative — asking `musa-core` for
+//! Fifty-one variants, each named once. The alternative — asking `musa-core` for
 //! a refusal's origin and its severity through accessors — would put the same
 //! fifty-two arms in the core *as well*, because the code still has to be chosen
 //! here. One list of the variants is the smaller arrangement, and a variant
@@ -195,5 +197,9 @@ fn file(refusal: &Refusal) -> Filed {
         Refusal::TargetOutsideSignature { at, .. } => one(Code::TargetOutsideSignature, *at),
         Refusal::TargetNotABase { at, .. } => one(Code::TargetNotABase, *at),
         Refusal::NotFiniteData { at, .. } => one(Code::NotFiniteData, *at),
+        // The vocabulary saying no. One code for all of them, because what a
+        // reader needs here is the sentence the operation said and not a page
+        // per operation, and the node is the application the composer wrote.
+        Refusal::BuiltinRefused { at, .. } => one(Code::OperationRefused, *at),
     }
 }

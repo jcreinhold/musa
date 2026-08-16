@@ -30,7 +30,7 @@
 
 use std::sync::Arc;
 
-use musa_core::{Cx, Datum, Refusal, Term};
+use musa_core::{Answer, Cx, Datum, Refusal, Term};
 use musa_kernel::{Duration, Occurrence, Position, Span, WrittenTime};
 use num_rational::Ratio;
 
@@ -448,20 +448,8 @@ fn every_fact_case_mirrors_a_kind_and_every_kind_a_case() {
 
 // ---- agreement, one fact at a time ----
 
-/// The track inside a `Result.Ok`, or a panic naming what came back instead.
-fn accepted(answer: Option<&Datum>, what: &str) -> VoiceTrack {
-    let Some(Datum::Case { constructor, fields }) = answer else {
-        panic!("{what} answered {answer:?} rather than a `Result`");
-    };
-    assert_eq!(&**constructor, "Result.Ok", "{what} refused: {fields:?}");
-    let Some(Datum::Lit(value)) = fields.first() else {
-        panic!("{what} answered a `Result.Ok` holding no literal");
-    };
-    held::<VoiceTrack>(value).expect("the answer is a track").clone()
-}
-
 /// `sounded` applied to one fact for one length.
-fn sound(fact: Datum, held: Ratio<i64>) -> Option<Datum> {
+fn sound(fact: Datum, held: Ratio<i64>) -> Option<Answer> {
     SOUNDED(&[
         Datum::Lit(origin_literal(provenance())),
         case("Scope.Voice", vec![whole(1), whole(0)]),
@@ -480,7 +468,7 @@ fn sound(fact: Datum, held: Ratio<i64>) -> Option<Datum> {
 fn sounded_reads_every_fact() {
     let held = ratio(3, 8);
     for (constructor, datum, expected) in samples() {
-        let track = accepted(sound(datum, held).as_ref(), constructor);
+        let track = plainly(sound(datum, held).as_ref(), constructor);
         assert_eq!(
             track.occurrences().len(),
             1,
@@ -506,7 +494,7 @@ fn sounded_reads_every_fact() {
 /// written.
 #[test]
 fn sounded_gives_the_fact_the_scope_and_origin_it_was_given() {
-    let track = accepted(sound(case("Fact.Slur", Vec::new()), ratio(1, 1)).as_ref(), "`sounded`");
+    let track = plainly(sound(case("Fact.Slur", Vec::new()), ratio(1, 1)).as_ref(), "`sounded`");
     let fact = track
         .occurrences()
         .first()
@@ -532,7 +520,7 @@ fn sounded_gives_the_fact_the_scope_and_origin_it_was_given() {
 /// would refuse three of the nineteen outright.
 #[test]
 fn sounded_admits_a_point_and_refuses_a_negative_length() {
-    let point = accepted(
+    let point = plainly(
         sound(case("Fact.Slur", Vec::new()), ratio(0, 1)).as_ref(),
         "`sounded` at a point",
     );
@@ -544,12 +532,12 @@ fn sounded_admits_a_point_and_refuses_a_negative_length() {
     assert_eq!(point.occurrences().len(), 1, "and the fact is still there");
 
     let answer = sound(case("Fact.Slur", Vec::new()), ratio(-1, 4));
-    let Some(Datum::Case { ref constructor, .. }) = answer else {
+    let Some(Answer::Refused(ref because)) = answer else {
         panic!("`sounded` got stuck on a negative length rather than refusing: {answer:?}");
     };
-    assert_eq!(
-        &**constructor, "Result.Err",
-        "a negative length is refused in the result type, which is D2"
+    assert!(
+        !because.is_empty(),
+        "a negative length is refused, with the sentence the rule wrote"
     );
 }
 
@@ -600,9 +588,14 @@ fn bar(length: Ratio<i64>, spelling: &str) -> VoiceTrack {
     .expect("the notehead fits the bar it fills")
 }
 
-/// The track a total rule answered.
-fn plainly(answer: Option<&Datum>, what: &str) -> VoiceTrack {
-    let Some(Datum::Lit(value)) = answer else {
+/// The track a rule answered, or a panic naming what came back instead.
+///
+/// One helper for all of them now that the family is total: what a track
+/// operation answers is a track, and the two other cases are a refusal — which
+/// these laws state on purpose, one test down — and nothing at all, which is
+/// this compiler's table disagreeing with itself.
+fn plainly(answer: Option<&Answer>, what: &str) -> VoiceTrack {
+    let Some(Answer::Reduced(Datum::Lit(value))) = answer else {
         panic!("{what} answered {answer:?} rather than a track");
     };
     held::<VoiceTrack>(value).expect("the answer is a track").clone()
@@ -698,8 +691,6 @@ fn term(datum: &Datum) -> Term {
 fn every_notation_application_reduces_and_re_checks_at_its_own_signature() {
     let cx = owned().expect("the compiler's own context builds");
     let track = track_type();
-    let fallible =
-        crate::registry::applied(&cx, "Result", [track.clone(), plain_type("Text")]).expect("`Result` is declared");
     let applications: Vec<(&str, Vec<Term>, &Term)> = vec![
         (
             BEYOND[0],
@@ -709,7 +700,7 @@ fn every_notation_application_reduces_and_re_checks_at_its_own_signature() {
                 crate::prelude::constant(&cx, "Fact.Slur").expect("`Fact` is declared"),
                 term(&beat(ratio(1, 2))),
             ],
-            &fallible,
+            &track,
         ),
         (
             BEYOND[1],

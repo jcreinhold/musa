@@ -52,7 +52,7 @@
 
 use std::sync::Arc;
 
-use musa_core::{Datum, Rule};
+use musa_core::{Answer, Datum, Rule};
 use num_rational::Ratio;
 
 use super::{domain, literal, plain_type, syntax_type, tagged_type};
@@ -283,37 +283,69 @@ fn optional(value: Option<Datum>) -> Datum {
     )
 }
 
-/// The answering half of a `Result`.
-pub(super) fn answered(value: Datum) -> Datum {
-    case("Result.Ok", vec![value])
+/// What a rule computed.
+///
+/// `Some(Answer::Reduced(…))` written at every tail would say one thing three
+/// times; this says it once. The `None` a rule may still answer is a *different*
+/// statement — "this rule does not apply to these arguments", which at closed
+/// data is a defect in this table — and keeps its own spelling so the two never
+/// blur.
+pub(super) fn reduced(value: Datum) -> Option<Answer> {
+    Some(Answer::Reduced(value))
 }
 
-/// The refusing half of a `Result`, whose error type is `Text` in every source
-/// operation but `row12_of`.
-pub(super) fn refused(because: &str) -> Datum {
-    case("Result.Err", vec![written(because.to_owned())])
+/// The program is wrong, and this is what to say about it.
+///
+/// Until prompt 141m these operations answered `Result τ Text` and handed the
+/// sentence back as a *value*, because a rule's only other "no" was silence and
+/// the evaluator reads silence as this table being broken. Every caller then
+/// carried a failure it could do nothing with: no program can recover from "a
+/// chord sounds for longer than no time at all", and the only repair is in the
+/// source.
+pub(super) fn refused(because: &str) -> Answer {
+    Answer::Refused(because.to_owned())
+}
+
+/// The accepting half of a `Result`, for the operations still answering one.
+///
+/// The arithmetic below is classified exactly as the notation vocabulary is —
+/// nobody branches on "no result this language can represent" and no source edit
+/// but the arguments can fix it — and it keeps the `Result` anyway, for a reason
+/// that is about *when* rather than about *what*. `BUILTIN_OWNERSHIP` is one
+/// table read by two checkers: this registry and the one compiling `stdlib/`
+/// today, where `stdlib/src/notation/staff.musa:153` and eight of its
+/// neighbours read these answers with `match … { Ok(v) -> … }`. Narrowing the
+/// declared result here rewrites those files, and rewriting them is prompt 142.
+/// The survey in `docs/plan/prompts/141m-rule-refusal.md` records each site.
+fn answered(value: Datum) -> Answer {
+    Answer::Reduced(case("Result.Ok", vec![value]))
+}
+
+/// The refusing half of that same `Result`.
+fn errored(because: &str) -> Answer {
+    Answer::Reduced(case("Result.Err", vec![written(because.to_owned())]))
 }
 
 /// A duration that has to be nonnegative to exist.
 ///
 /// The one place the law is stated, exactly as the old evaluator stated it once.
-fn written_duration(value: Ratio<i64>) -> Datum {
+fn written_duration(value: Ratio<i64>) -> Answer {
     if value < Ratio::ZERO {
-        return refused("a duration is nonnegative, and this exact rational is below zero");
+        return errored("a duration is nonnegative, and this exact rational is below zero");
     }
     answered(duration(value))
 }
 
 /// The four exact-rational operations, which differ only in the operation and in
 /// division's own refusal.
-fn ratio_arithmetic(operation: Exact, arguments: &[Datum]) -> Option<Datum> {
+fn ratio_arithmetic(operation: Exact, arguments: &[Datum]) -> Option<Answer> {
     let (left, right) = (ratio(arguments.first()?)?, ratio(arguments.get(1)?)?);
     if matches!(operation, Exact::Div) && right == Ratio::ZERO {
-        return Some(refused("an exact rational is not divided by zero"));
+        return Some(errored("an exact rational is not divided by zero"));
     }
     Some(match exact_arithmetic(left, right, operation) {
         Some(value) => answered(exact(value)),
-        None => refused("these exact rationals have no result this language can represent"),
+        None => errored("these exact rationals have no result this language can represent"),
     })
 }
 
@@ -335,24 +367,26 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
         Builtin::RatioSub => |arguments| ratio_arithmetic(Exact::Sub, arguments),
         Builtin::RatioMul => |arguments| ratio_arithmetic(Exact::Mul, arguments),
         Builtin::RatioDiv => |arguments| ratio_arithmetic(Exact::Div, arguments),
-        Builtin::RatioLess => |arguments| Some(boolean(ratio(arguments.first()?)? < ratio(arguments.get(1)?)?)),
-        Builtin::RatioEqual => |arguments| Some(boolean(ratio(arguments.first()?)? == ratio(arguments.get(1)?)?)),
-        Builtin::TextEqual => |arguments| Some(boolean(text(arguments.first()?)? == text(arguments.get(1)?)?)),
+        Builtin::RatioLess => |arguments| reduced(boolean(ratio(arguments.first()?)? < ratio(arguments.get(1)?)?)),
+        Builtin::RatioEqual => |arguments| reduced(boolean(ratio(arguments.first()?)? == ratio(arguments.get(1)?)?)),
+        Builtin::TextEqual => |arguments| reduced(boolean(text(arguments.first()?)? == text(arguments.get(1)?)?)),
         Builtin::TextJoin => |arguments| {
             let mut joined = String::new();
             for piece in items(arguments.first()?)? {
                 joined.push_str(&text(piece)?);
             }
-            Some(written(joined))
+            reduced(written(joined))
         },
 
         // ---- the literals a printer needs ----
-        Builtin::NatLiteral => |arguments| Some(written(nat(arguments.first()?)?.to_string())),
-        Builtin::RatioLiteral => |arguments| Some(optional(written_rational(ratio(arguments.first()?)?).map(written))),
-        Builtin::PitchLiteral => |arguments| Some(written(read::<WrittenPitch>(arguments.first()?)?.to_string())),
+        Builtin::NatLiteral => |arguments| reduced(written(nat(arguments.first()?)?.to_string())),
+        Builtin::RatioLiteral => {
+            |arguments| reduced(optional(written_rational(ratio(arguments.first()?)?).map(written)))
+        }
+        Builtin::PitchLiteral => |arguments| reduced(written(read::<WrittenPitch>(arguments.first()?)?.to_string())),
         Builtin::KeyLiteral => |arguments| {
             let key = read::<crate::score::Key>(arguments.first()?)?;
-            Some(written(format!(
+            reduced(written(format!(
                 "key {} {}",
                 key.tonic(),
                 match key.mode() {
@@ -362,7 +396,7 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
             )))
         },
         Builtin::IntervalLiteral => {
-            |arguments| Some(optional(read::<Interval>(arguments.first()?)?.literal().map(written)))
+            |arguments| reduced(optional(read::<Interval>(arguments.first()?)?.literal().map(written)))
         }
 
         // ---- whole numbers ----
@@ -370,26 +404,26 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
             let (left, right) = (nat(arguments.first()?)?, nat(arguments.get(1)?)?);
             Some(match left.checked_add(right) {
                 Some(value) => answered(whole(value)),
-                None => refused("these whole numbers have no result this language can represent"),
+                None => errored("these whole numbers have no result this language can represent"),
             })
         },
         Builtin::NatMul => |arguments| {
             let (left, right) = (nat(arguments.first()?)?, nat(arguments.get(1)?)?);
             Some(match left.checked_mul(right) {
                 Some(value) => answered(whole(value)),
-                None => refused("these whole numbers have no result this language can represent"),
+                None => errored("these whole numbers have no result this language can represent"),
             })
         },
         // Below zero is the *only* way this fails, so `Option` says everything a
         // `Result` would: there is no second reason to distinguish it from.
         Builtin::NatSub => |arguments| {
             let (left, right) = (nat(arguments.first()?)?, nat(arguments.get(1)?)?);
-            Some(optional(left.checked_sub(right).map(whole)))
+            reduced(optional(left.checked_sub(right).map(whole)))
         },
 
         // ---- durations and positions ----
         Builtin::DurationOf => |arguments| Some(written_duration(ratio(arguments.first()?)?)),
-        Builtin::DurationRatio => |arguments| Some(exact(ratio(arguments.first()?)?)),
+        Builtin::DurationRatio => |arguments| reduced(exact(ratio(arguments.first()?)?)),
         // Two nonnegative durations sum to a nonnegative one, so the only thing
         // left to fail is representability. The constructor is still asked,
         // because the law that durations are nonnegative is stated in one place.
@@ -397,32 +431,32 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
             let (left, right) = (ratio(arguments.first()?)?, ratio(arguments.get(1)?)?);
             Some(match exact_arithmetic(left, right, Exact::Add) {
                 Some(value) => written_duration(value),
-                None => refused("these durations have no sum this language can represent"),
+                None => errored("these durations have no sum this language can represent"),
             })
         },
         Builtin::DurationScale => |arguments| {
             let (held, factor) = (ratio(arguments.first()?)?, ratio(arguments.get(1)?)?);
             Some(match exact_arithmetic(held, factor, Exact::Mul) {
                 Some(value) => written_duration(value),
-                None => refused("this duration and factor have no product this language can represent"),
+                None => errored("this duration and factor have no product this language can represent"),
             })
         },
         Builtin::DurationLess | Builtin::PositionLess => {
-            |arguments| Some(boolean(ratio(arguments.first()?)? < ratio(arguments.get(1)?)?))
+            |arguments| reduced(boolean(ratio(arguments.first()?)? < ratio(arguments.get(1)?)?))
         }
         Builtin::DurationEqual | Builtin::PositionEqual => {
-            |arguments| Some(boolean(ratio(arguments.first()?)? == ratio(arguments.get(1)?)?))
+            |arguments| reduced(boolean(ratio(arguments.first()?)? == ratio(arguments.get(1)?)?))
         }
         // Total, and that is the difference between a position and a duration:
         // an instant before the origin is an ordinary position, so there is no
         // refinement here to check.
-        Builtin::PositionOf => |arguments| Some(position(ratio(arguments.first()?)?)),
-        Builtin::PositionRatio => |arguments| Some(exact(ratio(arguments.first()?)?)),
+        Builtin::PositionOf => |arguments| reduced(position(ratio(arguments.first()?)?)),
+        Builtin::PositionRatio => |arguments| reduced(exact(ratio(arguments.first()?)?)),
         Builtin::PositionShift => |arguments| {
             let (from, by) = (ratio(arguments.first()?)?, ratio(arguments.get(1)?)?);
             Some(match exact_arithmetic(from, by, Exact::Add) {
                 Some(value) => answered(position(value)),
-                None => refused("this position and duration have no result this language can represent"),
+                None => errored("this position and duration have no result this language can represent"),
             })
         },
         // The one operation the whole tagging exists for. Two positions do not
@@ -431,13 +465,13 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
         Builtin::PositionBetween => |arguments| {
             let (from, to) = (ratio(arguments.first()?)?, ratio(arguments.get(1)?)?);
             if to < from {
-                return Some(refused(
+                return Some(errored(
                     "the second position is before the first, and a duration is nonnegative",
                 ));
             }
             Some(match exact_arithmetic(to, from, Exact::Sub) {
                 Some(value) => written_duration(value),
-                None => refused("these positions have no difference this language can represent"),
+                None => errored("these positions have no difference this language can represent"),
             })
         },
 
@@ -445,15 +479,15 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
         Builtin::IntervalAdd => |arguments| {
             read::<Interval>(arguments.first()?)?
                 .compose(read::<Interval>(arguments.get(1)?)?)
-                .map(|composed| plain("Interval", composed))
+                .map(|composed| plain("Interval", composed).into())
         },
         Builtin::IntervalInverse => |arguments| {
             read::<Interval>(arguments.first()?)?
                 .inverse()
-                .map(|inverse| plain("Interval", inverse))
+                .map(|inverse| plain("Interval", inverse).into())
         },
         Builtin::PitchClassOf => |arguments| {
-            Some(plain(
+            reduced(plain(
                 "PitchClass",
                 read::<WrittenPitch>(arguments.first()?)?.pitch_class(),
             ))
@@ -461,24 +495,24 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
 
         // ---- scales, degrees, and frames ----
         Builtin::SignatureScale => |arguments| {
-            Some(plain(
+            reduced(plain(
                 "Scale",
                 crate::scale::signature_scale(read::<crate::score::Key>(arguments.first()?)?),
             ))
         },
         Builtin::ScaleOn => |arguments| {
             let scale = read::<crate::scale::Scale>(arguments.first()?)?;
-            Some(plain("Scale", scale.rooted_at(read::<PitchClass>(arguments.get(1)?)?)))
+            reduced(plain("Scale", scale.rooted_at(read::<PitchClass>(arguments.get(1)?)?)))
         },
         Builtin::ScaleTonic => |arguments| {
-            Some(plain(
+            reduced(plain(
                 "PitchClass",
                 read::<crate::scale::Scale>(arguments.first()?)?.tonic(),
             ))
         },
         Builtin::ScaleSize => |arguments| {
             let size = read::<crate::scale::Scale>(arguments.first()?)?.size();
-            Some(whole(u64::try_from(size).ok()?))
+            reduced(whole(u64::try_from(size).ok()?))
         },
         Builtin::ScalePitch => |arguments| {
             let (scale, pitch) = (
@@ -486,14 +520,14 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
                 read::<WrittenPitch>(arguments.get(1)?)?,
             );
             let located = crate::scale::Frame::around(scale, pitch).and_then(|frame| frame.locate(pitch));
-            Some(optional(located.map(|degree| plain("Degree", degree))))
+            reduced(optional(located.map(|degree| plain("Degree", degree))))
         },
         Builtin::ScaleClass => |arguments| {
             let (scale, degree) = (
                 read::<crate::scale::Scale>(arguments.first()?)?,
                 read::<crate::scale::Degree>(arguments.get(1)?)?,
             );
-            Some(optional(scale.class(degree).map(|class| plain("PitchClass", class))))
+            reduced(optional(scale.class(degree).map(|class| plain("PitchClass", class))))
         },
         Builtin::ScaleChord => |arguments| {
             let (scale, degree) = (
@@ -501,7 +535,7 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
                 read::<crate::scale::Degree>(arguments.get(1)?)?,
             );
             let members = usize::try_from(nat(arguments.get(2)?)?).ok()?;
-            Some(optional(
+            reduced(optional(
                 scale.stacked(degree, members).map(|class| plain("ChordClass", class)),
             ))
         },
@@ -510,71 +544,71 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
                 read::<crate::scale::Scale>(arguments.first()?)?,
                 read::<WrittenPitch>(arguments.get(1)?)?,
             );
-            Some(optional(
+            reduced(optional(
                 crate::scale::Frame::new(scale, tonic).map(|frame| plain("Frame", frame)),
             ))
         },
         Builtin::FrameScale => {
-            |arguments| Some(plain("Scale", read::<crate::scale::Frame>(arguments.first()?)?.scale()))
+            |arguments| reduced(plain("Scale", read::<crate::scale::Frame>(arguments.first()?)?.scale()))
         }
         Builtin::FrameTonic => {
-            |arguments| Some(plain("Pitch", read::<crate::scale::Frame>(arguments.first()?)?.tonic()))
+            |arguments| reduced(plain("Pitch", read::<crate::scale::Frame>(arguments.first()?)?.tonic()))
         }
         Builtin::FramePitch => |arguments| {
             let (frame, degree) = (
                 read::<crate::scale::Frame>(arguments.first()?)?,
                 read::<crate::scale::Degree>(arguments.get(1)?)?,
             );
-            frame.pitch(degree).map(|pitch| plain("Pitch", pitch))
+            frame.pitch(degree).map(|pitch| plain("Pitch", pitch).into())
         },
         // Degrees are written from one, as musicians write them, and `Degree`
         // counts from one as well: no adjustment belongs here.
         Builtin::DegreeOf => |arguments| {
             let ordinal = i64::try_from(nat(arguments.first()?)?).ok()?;
-            Some(plain("Degree", crate::scale::Degree::new(ordinal)))
+            reduced(plain("Degree", crate::scale::Degree::new(ordinal)))
         },
         Builtin::DegreeStepUp => |arguments| {
             let degree = read::<crate::scale::Degree>(arguments.first()?)?;
             let steps = i64::try_from(nat(arguments.get(1)?)?).ok()?;
-            degree.step(steps).map(|stepped| plain("Degree", stepped))
+            degree.step(steps).map(|stepped| plain("Degree", stepped).into())
         },
         Builtin::DegreeStepDown => |arguments| {
             let degree = read::<crate::scale::Degree>(arguments.first()?)?;
             let steps = i64::try_from(nat(arguments.get(1)?)?).ok()?.checked_neg()?;
-            degree.step(steps).map(|stepped| plain("Degree", stepped))
+            degree.step(steps).map(|stepped| plain("Degree", stepped).into())
         },
         Builtin::DegreeRaised => |arguments| {
             read::<crate::scale::Degree>(arguments.first()?)?
                 .raised()
-                .map(|raised| plain("Degree", raised))
+                .map(|raised| plain("Degree", raised).into())
         },
         Builtin::DegreeLowered => |arguments| {
             read::<crate::scale::Degree>(arguments.first()?)?
                 .lowered()
-                .map(|lowered| plain("Degree", lowered))
+                .map(|lowered| plain("Degree", lowered).into())
         },
 
         // ---- chords, triads, and Roman numerals ----
         Builtin::ChordOn => |arguments| {
             let class = read::<crate::chord::ChordClass>(arguments.first()?)?;
-            Some(plain(
+            reduced(plain(
                 "ChordClass",
                 class.rooted_at(read::<PitchClass>(arguments.get(1)?)?),
             ))
         },
         Builtin::ChordRoot => |arguments| {
-            Some(plain(
+            reduced(plain(
                 "PitchClass",
                 read::<crate::chord::ChordClass>(arguments.first()?)?.root(),
             ))
         },
         Builtin::ChordBass => |arguments| {
             let bass = read::<crate::chord::ChordClass>(arguments.first()?)?.bass();
-            Some(optional(bass.map(|class| plain("PitchClass", class))))
+            reduced(optional(bass.map(|class| plain("PitchClass", class))))
         },
         Builtin::ChordMembers => |arguments| {
             let class = read::<crate::chord::ChordClass>(arguments.first()?)?;
-            Some(listing(
+            reduced(listing(
                 class
                     .members()
                     .iter()
@@ -585,41 +619,43 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
         Builtin::ChordInversion => |arguments| {
             let class = read::<crate::chord::ChordClass>(arguments.first()?)?;
             let place = usize::try_from(nat(arguments.get(1)?)?).ok()?;
-            Some(optional(
+            reduced(optional(
                 class.inverted(place).ok().map(|inverted| plain("ChordClass", inverted)),
             ))
         },
         Builtin::ChordOver => |arguments| {
             let class = read::<crate::chord::ChordClass>(arguments.first()?)?;
-            Some(plain("ChordClass", class.over(read::<PitchClass>(arguments.get(1)?)?)))
+            reduced(plain("ChordClass", class.over(read::<PitchClass>(arguments.get(1)?)?)))
         },
         Builtin::ChordTriad => |arguments| {
             let class = read::<crate::chord::ChordClass>(arguments.first()?)?;
-            Some(optional(
+            reduced(optional(
                 crate::chord::Triad::of(class).map(|triad| plain("Triad", triad)),
             ))
         },
         Builtin::TriadChord => |arguments| {
-            Some(plain(
+            reduced(plain(
                 "ChordClass",
                 read::<crate::chord::Triad>(arguments.first()?)?.class(),
             ))
         },
-        Builtin::TriadMajor => |arguments| Some(boolean(read::<crate::chord::Triad>(arguments.first()?)?.is_major())),
+        Builtin::TriadMajor => {
+            |arguments| reduced(boolean(read::<crate::chord::Triad>(arguments.first()?)?.is_major()))
+        }
         Builtin::RomanOf => |arguments| {
             let (ordinal, members, inversion) = (
                 nat(arguments.first()?)?,
                 nat(arguments.get(1)?)?,
                 nat(arguments.get(2)?)?,
             );
-            Some(optional(
+            reduced(optional(
                 crate::roman::Roman::new(ordinal, members, inversion).map(|numeral| plain("Roman", numeral)),
             ))
         },
-        Builtin::RomanOrdinal => |arguments| Some(whole(read::<crate::roman::Roman>(arguments.first()?)?.ordinal())),
-        Builtin::RomanSize => |arguments| Some(whole(read::<crate::roman::Roman>(arguments.first()?)?.members())),
+        Builtin::RomanOrdinal => |arguments| reduced(whole(read::<crate::roman::Roman>(arguments.first()?)?.ordinal())),
+        Builtin::RomanSize => |arguments| reduced(whole(read::<crate::roman::Roman>(arguments.first()?)?.members())),
         Builtin::RomanInversion => {
-            |arguments| Some(whole(read::<crate::roman::Roman>(arguments.first()?)?.inversion()))
+            |arguments| reduced(whole(read::<crate::roman::Roman>(arguments.first()?)?.inversion()))
         }
 
         // ---- voicings ----
@@ -629,7 +665,7 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
                 .into_iter()
                 .map(read::<WrittenPitch>)
                 .collect::<Option<Vec<_>>>()?;
-            Some(optional(
+            reduced(optional(
                 crate::chord::Voicing::new(class, pitches)
                     .ok()
                     .map(|voicing| plain("Voicing", voicing)),
@@ -637,16 +673,16 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
         },
         Builtin::VoicingPitches => |arguments| {
             let voicing = read::<crate::chord::Voicing>(arguments.first()?)?;
-            Some(listing(voicing.pitches().map(|pitch| plain("Pitch", pitch))))
+            reduced(listing(voicing.pitches().map(|pitch| plain("Pitch", pitch))))
         },
         Builtin::VoicingBass => |arguments| {
-            Some(plain(
+            reduced(plain(
                 "Pitch",
                 read::<crate::chord::Voicing>(arguments.first()?)?.bass(),
             ))
         },
         Builtin::VoicingChord => |arguments| {
-            Some(plain(
+            reduced(plain(
                 "ChordClass",
                 read::<crate::chord::Voicing>(arguments.first()?)?.class(),
             ))
@@ -655,14 +691,14 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
             let place = read::<crate::chord::Voicing>(arguments.first()?)?
                 .inversion()
                 .and_then(|place| u64::try_from(place).ok());
-            Some(optional(place.map(whole)))
+            reduced(optional(place.map(whole)))
         },
         Builtin::CloseVoicing => |arguments| {
             let (class, bass) = (
                 read::<crate::chord::ChordClass>(arguments.first()?)?,
                 read::<WrittenPitch>(arguments.get(1)?)?,
             );
-            Some(optional(
+            reduced(optional(
                 crate::chord::Voicing::close_position(class, bass)
                     .ok()
                     .map(|voicing| plain("Voicing", voicing)),
@@ -674,7 +710,7 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
                 read::<WrittenPitch>(arguments.get(1)?)?,
             );
             let voice = usize::try_from(nat(arguments.get(2)?)?).ok()?;
-            Some(optional(
+            reduced(optional(
                 crate::chord::Voicing::dropped(class, bass, voice)
                     .ok()
                     .map(|voicing| plain("Voicing", voicing)),
@@ -683,65 +719,67 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
         Builtin::OmitVoicing => |arguments| {
             let voicing = read::<crate::chord::Voicing>(arguments.first()?)?;
             let place = usize::try_from(nat(arguments.get(1)?)?).ok()?;
-            Some(optional(
+            reduced(optional(
                 voicing.omitting(place).ok().map(|omitted| plain("Voicing", omitted)),
             ))
         },
 
         // ---- the twelve-tone domains ----
-        Builtin::Pc12Of => |arguments| Some(plain("Pc12", crate::pc12::Pc12::from_number(nat(arguments.first()?)?))),
+        Builtin::Pc12Of => |arguments| reduced(plain("Pc12", crate::pc12::Pc12::from_number(nat(arguments.first()?)?))),
         Builtin::Pc12Number => |arguments| {
-            Some(whole(u64::from(
+            reduced(whole(u64::from(
                 read::<crate::pc12::Pc12>(arguments.first()?)?.number(),
             )))
         },
         Builtin::Pc12Forget => |arguments| {
-            Some(plain(
+            reduced(plain(
                 "Pc12",
                 crate::pc12::Pc12::forgetting(read::<PitchClass>(arguments.first()?)?),
             ))
         },
         Builtin::Pc12Transposed => |arguments| {
             let member = read::<crate::pc12::Pc12>(arguments.first()?)?;
-            Some(plain("Pc12", member.transposed(nat(arguments.get(1)?)?)))
+            reduced(plain("Pc12", member.transposed(nat(arguments.get(1)?)?)))
         },
         Builtin::Pc12Inverted => |arguments| {
             let member = read::<crate::pc12::Pc12>(arguments.first()?)?;
-            Some(plain("Pc12", member.inverted(nat(arguments.get(1)?)?)))
+            reduced(plain("Pc12", member.inverted(nat(arguments.get(1)?)?)))
         },
         Builtin::Pc12Spelled => |arguments| {
             let (member, collection) = (
                 read::<crate::pc12::Pc12>(arguments.first()?)?,
                 read::<crate::scale::Scale>(arguments.get(1)?)?,
             );
-            Some(optional(
+            reduced(optional(
                 member.spelled(collection).map(|class| plain("PitchClass", class)),
             ))
         },
-        Builtin::PcSet12Of => |arguments| Some(plain("PcSet12", crate::pc12::PcSet12::of(pc12s(arguments.first()?)?))),
+        Builtin::PcSet12Of => {
+            |arguments| reduced(plain("PcSet12", crate::pc12::PcSet12::of(pc12s(arguments.first()?)?)))
+        }
         Builtin::PcSet12Members => |arguments| {
             let set = read::<crate::pc12::PcSet12>(arguments.first()?)?;
-            Some(pc12_listing(set.members().collect()))
+            reduced(pc12_listing(set.members().collect()))
         },
         Builtin::PcSet12Normal => |arguments| {
             let set = read::<crate::pc12::PcSet12>(arguments.first()?)?;
-            Some(pc12_listing(set.normal_order()))
+            reduced(pc12_listing(set.normal_order()))
         },
         Builtin::PcSet12Transposed => |arguments| {
             let set = read::<crate::pc12::PcSet12>(arguments.first()?)?;
-            Some(plain("PcSet12", set.transposed(nat(arguments.get(1)?)?)))
+            reduced(plain("PcSet12", set.transposed(nat(arguments.get(1)?)?)))
         },
         Builtin::PcSet12Inverted => |arguments| {
             let set = read::<crate::pc12::PcSet12>(arguments.first()?)?;
-            Some(plain("PcSet12", set.inverted(nat(arguments.get(1)?)?)))
+            reduced(plain("PcSet12", set.inverted(nat(arguments.get(1)?)?)))
         },
         Builtin::PcSet12Prime => |arguments| {
             let set = read::<crate::pc12::PcSet12>(arguments.first()?)?;
-            Some(plain("PcSet12", set.prime_form()))
+            reduced(plain("PcSet12", set.prime_form()))
         },
         Builtin::PcSet12Vector => |arguments| {
             let set = read::<crate::pc12::PcSet12>(arguments.first()?)?;
-            Some(listing(
+            reduced(listing(
                 set.interval_class_vector()
                     .into_iter()
                     .map(|count| whole(u64::from(count))),
@@ -753,8 +791,14 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
         Builtin::Row12Of => |arguments| {
             let pcs = pc12s(arguments.first()?)?;
             Some(match crate::pc12::Row12::checked(&pcs) {
-                Some(row) => answered(plain("Row12", row)),
-                None => case(
+                // The one operation the criterion leaves as a value, and the
+                // error type is what says so: a `RowFault` names *which*
+                // positions repeat and *which* classes are missing, which is an
+                // analysis a program reads rather than a sentence a composer is
+                // told. `stdlib/src/post_tonal/serial.musa`'s `row` writes the
+                // `Result<Row12, (List<Nat>, List<Pc12>)>` out and hands it on.
+                Some(row) => Answer::Reduced(case("Result.Ok", vec![plain("Row12", row)])),
+                None => Answer::Reduced(case(
                     "Result.Err",
                     vec![case(
                         "RowFault.Fault",
@@ -763,48 +807,50 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
                             pc12_listing(crate::pc12::missing_classes(&pcs)),
                         ],
                     )],
-                ),
+                )),
             })
         },
         Builtin::Row12Pcs => |arguments| {
             let row = read::<crate::pc12::Row12>(arguments.first()?)?;
-            Some(pc12_listing(row.pcs().collect()))
+            reduced(pc12_listing(row.pcs().collect()))
         },
-        Builtin::Row12Head => |arguments| Some(plain("Pc12", read::<crate::pc12::Row12>(arguments.first()?)?.head())),
+        Builtin::Row12Head => {
+            |arguments| reduced(plain("Pc12", read::<crate::pc12::Row12>(arguments.first()?)?.head()))
+        }
         Builtin::Row12Transposed => |arguments| {
             let row = read::<crate::pc12::Row12>(arguments.first()?)?;
-            Some(plain("Row12", row.transposed(nat(arguments.get(1)?)?)))
+            reduced(plain("Row12", row.transposed(nat(arguments.get(1)?)?)))
         },
         Builtin::Row12Inverted => |arguments| {
             let row = read::<crate::pc12::Row12>(arguments.first()?)?;
-            Some(plain("Row12", row.inverted(nat(arguments.get(1)?)?)))
+            reduced(plain("Row12", row.inverted(nat(arguments.get(1)?)?)))
         },
         Builtin::Row12Retrograde => |arguments| {
-            Some(plain(
+            reduced(plain(
                 "Row12",
                 read::<crate::pc12::Row12>(arguments.first()?)?.retrograde(),
             ))
         },
         Builtin::Row12Matrix => |arguments| {
             let row = read::<crate::pc12::Row12>(arguments.first()?)?;
-            Some(listing(row.matrix().into_iter().map(|form| plain("Row12", form))))
+            reduced(listing(row.matrix().into_iter().map(|form| plain("Row12", form))))
         },
         Builtin::Row12Forms => |arguments| {
-            Some(whole(u64::from(
+            reduced(whole(u64::from(
                 read::<crate::pc12::Row12>(arguments.first()?)?.forms(),
             )))
         },
         Builtin::Row12Symmetries => |arguments| {
-            Some(whole(u64::from(
+            reduced(whole(u64::from(
                 read::<crate::pc12::Row12>(arguments.first()?)?.symmetries(),
             )))
         },
         Builtin::Row12Repeats => |arguments| {
             let pcs = pc12s(arguments.first()?)?;
-            Some(listing(crate::pc12::repeated_positions(&pcs).into_iter().map(whole)))
+            reduced(listing(crate::pc12::repeated_positions(&pcs).into_iter().map(whole)))
         },
         Builtin::Row12Missing => {
-            |arguments| Some(pc12_listing(crate::pc12::missing_classes(&pc12s(arguments.first()?)?)))
+            |arguments| reduced(pc12_listing(crate::pc12::missing_classes(&pc12s(arguments.first()?)?)))
         }
 
         // ---- the 25 rows this module does not own ----
@@ -909,7 +955,7 @@ pub(super) fn phase(operation: SyntaxOp) -> Option<Rule> {
         SyntaxOp::At => |arguments| {
             let subject = node(arguments.first()?)?;
             let wanted = path(arguments.get(1)?)?;
-            Some(optional(subject.at(&wanted).cloned().map(built)))
+            reduced(optional(subject.at(&wanted).cloned().map(built)))
         },
         // The number is built into a token rather than handed over as a `Nat`: a
         // transformer's answer is an expression, and the only way a number
@@ -920,7 +966,7 @@ pub(super) fn phase(operation: SyntaxOp) -> Option<Rule> {
             let found = subject
                 .anchor(&wanted)
                 .map(|anchor| crate::syntax::token(here, musa_language::SyntaxKind::Integer, anchor.to_string()));
-            Some(optional(found.map(built)))
+            reduced(optional(found.map(built)))
         },
         // The reader's own reading, handed back rather than re-derived. Both
         // numeric kinds the lexer distinguishes answer here, and everything else
@@ -945,14 +991,14 @@ pub(super) fn phase(operation: SyntaxOp) -> Option<Rule> {
                 }
                 Syntax::Missing(_) | Syntax::Identifier { .. } | Syntax::Group { .. } => None,
             };
-            Some(optional(found.map(exact)))
+            reduced(optional(found.map(exact)))
         },
         // Written through `Derived` rather than through `NodePath::built`
         // directly, because the triple is what a derived path *is*: the origin
         // the builder was pointed at, the construction site that read it, and
         // the position within what that site built.
         SyntaxOp::Built => |arguments| {
-            Some(where_at(
+            reduced(where_at(
                 crate::syntax::Derived {
                     origin: path(arguments.first()?)?,
                     quotation: role(arguments.get(1)?)?,
@@ -962,20 +1008,20 @@ pub(super) fn phase(operation: SyntaxOp) -> Option<Rule> {
             ))
         },
         SyntaxOp::Binding => |arguments| {
-            Some(plain(
+            reduced(plain(
                 "BindingPath",
                 path(arguments.first()?)?.binding(role(arguments.get(1)?)?),
             ))
         },
         SyntaxOp::Token => |arguments| {
-            Some(built(crate::syntax::token(
+            reduced(built(crate::syntax::token(
                 path(arguments.first()?)?,
                 read::<Kind>(arguments.get(1)?)?.0,
                 text(arguments.get(2)?)?,
             )))
         },
         SyntaxOp::Identifier => |arguments| {
-            Some(built(crate::syntax::identifier(
+            reduced(built(crate::syntax::identifier(
                 path(arguments.first()?)?,
                 text(arguments.get(1)?)?,
             )))
@@ -985,27 +1031,27 @@ pub(super) fn phase(operation: SyntaxOp) -> Option<Rule> {
                 .into_iter()
                 .map(node)
                 .collect::<Option<Vec<_>>>()?;
-            Some(built(crate::syntax::group(
+            reduced(built(crate::syntax::group(
                 path(arguments.first()?)?,
                 read::<crate::syntax::Delimiter>(arguments.get(1)?)?,
                 children,
             )))
         },
         SyntaxOp::Binder => |arguments| {
-            Some(built(crate::syntax::binder(
+            reduced(built(crate::syntax::binder(
                 &read::<crate::syntax::BindingPath>(arguments.first()?)?,
                 text(arguments.get(1)?)?,
             )))
         },
         SyntaxOp::Reference => |arguments| {
-            Some(built(crate::syntax::reference(
+            reduced(built(crate::syntax::reference(
                 path(arguments.first()?)?,
                 &read::<crate::syntax::BindingPath>(arguments.get(1)?)?,
                 text(arguments.get(2)?)?,
             )))
         },
         SyntaxOp::KindEqual => |arguments| {
-            Some(boolean(
+            reduced(boolean(
                 read::<Kind>(arguments.first()?)? == read::<Kind>(arguments.get(1)?)?,
             ))
         },
@@ -1014,7 +1060,7 @@ pub(super) fn phase(operation: SyntaxOp) -> Option<Rule> {
                 read::<crate::syntax::Delimiter>(arguments.first()?)?,
                 read::<crate::syntax::Delimiter>(arguments.get(1)?)?,
             );
-            Some(boolean(left == right))
+            reduced(boolean(left == right))
         },
         // The claim is established by running the real parser, which is the only
         // thing that can establish it. Nothing about the value changes — the
@@ -1023,7 +1069,7 @@ pub(super) fn phase(operation: SyntaxOp) -> Option<Rule> {
         SyntaxOp::AsExpression => |arguments| {
             let subject = node(arguments.first()?)?;
             let parses = crate::syntax::parses_as_expression(&subject);
-            Some(optional(parses.then(|| tree(Cat::Expr, subject))))
+            reduced(optional(parses.then(|| tree(Cat::Expr, subject))))
         },
         // The gate answers with a value either way, which is what keeps it
         // total: a transformer that builds badly gets a `Result` back and
@@ -1032,7 +1078,7 @@ pub(super) fn phase(operation: SyntaxOp) -> Option<Rule> {
             let subject = node(arguments.first()?)?;
             Some(match crate::syntax::check_expression(&subject) {
                 Ok(()) => answered(tree(Cat::Expr, subject)),
-                Err(refusal) => refused(&refusal.to_string()),
+                Err(refusal) => errored(&refusal.to_string()),
             })
         },
         // Prompt 141f's three. A traversal takes a function argument, so it is
@@ -1172,12 +1218,12 @@ pub(super) const INSTANTIATE: Rule = |arguments| {
         });
     }
     let built = crate::syntax::instantiate(&quoted.template, &anchor, quoted.quotation, &spliced)?;
-    Some(tree(Cat::Expr, built))
+    reduced(tree(Cat::Expr, built))
 };
 
 /// `match_quote(subject, template)` — whether the pattern's shape is this
 /// value's.
-pub(super) const MATCHES: Rule = |arguments| Some(boolean(matches!(bound(arguments)?, Matched::Holes(_))));
+pub(super) const MATCHES: Rule = |arguments| reduced(boolean(matches!(bound(arguments)?, Matched::Holes(_))));
 
 /// `quote_hole(subject, template, i)` — the one node hole `i` binds.
 ///
@@ -1194,7 +1240,7 @@ pub(super) const HOLE: Rule = |arguments| {
             crate::syntax::Spliced::One(one) => Some(one),
             crate::syntax::Spliced::Many(_) => None,
         });
-    Some(built(hole.unwrap_or_else(|| {
+    reduced(built(hole.unwrap_or_else(|| {
         Syntax::Missing(crate::syntax::SourceInfo::Generated(subject.info().path().clone()))
     })))
 };
@@ -1211,5 +1257,5 @@ pub(super) const HOLES: Rule = |arguments| {
             crate::syntax::Spliced::One(one) => vec![one],
             crate::syntax::Spliced::Many(many) => many,
         });
-    Some(listing(run.into_iter().map(built)))
+    reduced(listing(run.into_iter().map(built)))
 };

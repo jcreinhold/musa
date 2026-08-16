@@ -30,7 +30,7 @@
 
 use std::sync::Arc;
 
-use musa_core::{Cx, Datum, Refusal, Term};
+use musa_core::{Answer, Cx, Datum, Refusal, Term};
 use musa_kernel::{Duration, Occurrence, Position, Span, WrittenTime};
 use num_rational::Ratio;
 
@@ -149,21 +149,14 @@ fn beat(value: Ratio<i64>) -> Datum {
     ))
 }
 
-/// The track inside a `Result.Ok`, or a panic naming what came back instead.
-fn accepted(answer: Option<&Datum>, what: &str) -> VoiceTrack {
-    let Some(Datum::Case { constructor, fields }) = answer else {
-        panic!("{what} answered {answer:?} rather than a `Result`");
-    };
-    assert_eq!(&**constructor, "Result.Ok", "{what} refused: {fields:?}");
-    let Some(Datum::Lit(value)) = fields.first() else {
-        panic!("{what} answered a `Result.Ok` holding no literal");
-    };
-    held::<VoiceTrack>(value).expect("the answer is a track").clone()
-}
-
-/// The track a total rule answered.
-fn plainly(answer: Option<&Datum>, what: &str) -> VoiceTrack {
-    let Some(Datum::Lit(value)) = answer else {
+/// The track a rule answered, or a panic naming what came back instead.
+///
+/// One helper for all of them now that the family is total: what a track
+/// operation answers is a track, and the two other cases are a refusal — which
+/// these laws state on purpose, one test down — and nothing at all, which is
+/// this compiler's table disagreeing with itself.
+fn plainly(answer: Option<&Answer>, what: &str) -> VoiceTrack {
+    let Some(Answer::Reduced(Datum::Lit(value))) = answer else {
         panic!("{what} answered {answer:?} rather than a track");
     };
     held::<VoiceTrack>(value).expect("the answer is a track").clone()
@@ -231,7 +224,7 @@ fn head(cx: &Cx, spelling: &str) -> Term {
 #[test]
 fn transposing_raises_every_written_pitch_and_records_the_step() {
     let up_a_fifth = Interval::parse("P5", false).expect("a perfect fifth is an interval");
-    let raised = accepted(
+    let raised = plainly(
         TRANSPOSE(&[plain("Interval", up_a_fifth), given()]).as_ref(),
         "`transpose`",
     );
@@ -255,7 +248,7 @@ fn transposing_raises_every_written_pitch_and_records_the_step() {
 #[test]
 fn stretching_scales_the_spans_and_the_written_durations() {
     let twice = ratio(2, 1);
-    let longer = accepted(STRETCH(&[plain("Ratio", twice), given()]).as_ref(), "`stretch`");
+    let longer = plainly(STRETCH(&[plain("Ratio", twice), given()]).as_ref(), "`stretch`");
     assert_eq!(
         longer.duration(),
         Duration::new(ratio(2, 1)).expect("two whole notes is a duration"),
@@ -315,7 +308,7 @@ fn retrograde_mirrors_the_spans_and_keeps_the_duration() {
 #[test]
 fn inverting_mirrors_every_written_pitch_about_the_axis() {
     let axis = pitch("c4");
-    let mirrored = accepted(INVERT(&[plain("Pitch", axis), given()]).as_ref(), "`invert`");
+    let mirrored = plainly(INVERT(&[plain("Pitch", axis), given()]).as_ref(), "`invert`");
     assert_eq!(
         pitches(&mirrored),
         vec![
@@ -339,7 +332,7 @@ fn inverting_mirrors_every_written_pitch_about_the_axis() {
 #[test]
 fn shifting_moves_the_music_and_lengthens_the_track_to_hold_it() {
     let by = ratio(1, 4);
-    let later = accepted(SHIFT(&[beat(by), given()]).as_ref(), "`shift`");
+    let later = plainly(SHIFT(&[beat(by), given()]).as_ref(), "`shift`");
     assert_eq!(
         later.duration(),
         Duration::new(ratio(5, 4)).expect("a bar and a quarter is a duration"),
@@ -459,7 +452,7 @@ fn voicing() -> crate::chord::Voicing {
 fn play_gives_every_fact_it_makes_the_scope_placement_and_origin_it_was_given() {
     let held = ratio(3, 8);
     let requested = Scope::Voice { part: 2, voice: 1 };
-    let sounded = accepted(
+    let sounded = plainly(
         PLAY(&[
             Datum::Lit(origin_literal(provenance())),
             scope("Scope.Voice", vec![whole(2), whole(1)]),
@@ -544,10 +537,10 @@ fn a_partial_track_builtin_refuses_in_its_result_type() {
         ),
     ];
     for (what, answer) in refusals {
-        let Some(Datum::Case { ref constructor, .. }) = answer else {
+        let Some(Answer::Refused(ref because)) = answer else {
             panic!("{what} got stuck rather than refusing: {answer:?}");
         };
-        assert_eq!(&**constructor, "Result.Err", "{what} refuses in its result type");
+        assert!(!because.is_empty(), "{what} refuses with a sentence to say");
     }
 }
 
@@ -576,30 +569,24 @@ fn term(datum: &Datum) -> Term {
 fn every_track_application_reduces_and_re_checks_at_its_own_signature() {
     let cx = owned().expect("the compiler's own context builds");
     let track = track_type();
-    let fallible =
-        crate::registry::applied(&cx, "Result", [track.clone(), plain_type("Text")]).expect("`Result` is declared");
     let up = Interval::parse("m3", false).expect("a minor third is an interval");
     // `fn (pitch) { c4 }` — a mapper that is a function, which is the whole
     // reason `map_note_pitches` cannot be a δ-rule.
     let constant = Term::lam(HERE, "pitch", term(&plain("Pitch", pitch("c4"))));
     let applications: Vec<(&str, Vec<Term>, &Term)> = vec![
-        (
-            SPELLINGS[0],
-            vec![term(&plain("Interval", up)), term(&given())],
-            &fallible,
-        ),
+        (SPELLINGS[0], vec![term(&plain("Interval", up)), term(&given())], &track),
         (
             SPELLINGS[1],
             vec![term(&plain("Ratio", ratio(3, 2))), term(&given())],
-            &fallible,
+            &track,
         ),
         (SPELLINGS[2], vec![term(&given())], &track),
         (
             SPELLINGS[3],
             vec![term(&plain("Pitch", pitch("c4"))), term(&given())],
-            &fallible,
+            &track,
         ),
-        (SPELLINGS[4], vec![term(&beat(ratio(1, 4))), term(&given())], &fallible),
+        (SPELLINGS[4], vec![term(&beat(ratio(1, 4))), term(&given())], &track),
         (SPELLINGS[5], vec![term(&given()), term(&given())], &track),
         (SPELLINGS[6], vec![constant, term(&given())], &track),
         (
@@ -610,7 +597,7 @@ fn every_track_application_reduces_and_re_checks_at_its_own_signature() {
                 term(&plain("Voicing", voicing())),
                 term(&beat(ratio(1, 2))),
             ],
-            &fallible,
+            &track,
         ),
     ];
     for (spelling, arguments, ty) in applications {

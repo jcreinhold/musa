@@ -67,6 +67,13 @@ impl From<CoreError> for ElabError {
         match error {
             CoreError::Exhausted(exhausted) => Self::Exhausted(exhausted),
             CoreError::Malformed(malformed) => Self::Malformed(malformed),
+            // The one lift. `error.rs` sits below this module and carries the
+            // rule's sentence as a plain string; a refusal is what it becomes
+            // the moment it reaches the vocabulary that has one.
+            CoreError::Refused { message, at } => Self::Refused(Refusal::BuiltinRefused {
+                message: Name::from(message),
+                at,
+            }),
         }
     }
 }
@@ -704,6 +711,28 @@ pub enum Refusal {
         /// The builtin.
         name: Name,
         /// Where the offending type was written.
+        at: Origin,
+    },
+    /// A δ-rule said no to the arguments the program gave it.
+    ///
+    /// The one refusal whose sentence this crate did not write. Every other
+    /// variant above states a rule of the calculus and can therefore say what
+    /// went wrong in the calculus's own words; this one is an operation of the
+    /// *language* — a stretch factor, a chord's length, a division — rejecting a
+    /// value, and only the rule knows why. [`Answer::Refused`](crate::Answer)
+    /// carries the sentence out of the rule, and δ-reduction attaches the origin
+    /// of the application it fired at, which is the node the composer wrote.
+    ///
+    /// It is a refusal rather than a [`Malformed`] and that is the whole point:
+    /// before it existed a rule's only "no" was silence, which the evaluator
+    /// reads as its own table being wrong, so operations that needed to reject a
+    /// program answered `Result τ Text` and made every caller carry a failure it
+    /// could not do anything about.
+    #[error("{message}")]
+    BuiltinRefused {
+        /// What the rule said.
+        message: Name,
+        /// The application it fired at.
         at: Origin,
     },
 }

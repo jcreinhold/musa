@@ -2,7 +2,7 @@
 id: 142
 slug: surface-cutover
 status: pending
-depends_on: [136a, 141, 141b, 141c, 141d, 141e, 141f, 141g, 141ga, 141h, 141ha, 141i, 141j, 141k, 141l]
+depends_on: [136a, 141, 141b, 141c, 141d, 141e, 141f, 141g, 141ga, 141h, 141ha, 141i, 141j, 141k, 141l, 141m]
 phase: 3
 ---
 
@@ -84,6 +84,12 @@ the middle. It absorbs prompt 127e, whose file stays as a superseded record rath
   of. It also carries a finding for this prompt's second-path audit: `elab::constrained_function_type` names the
   dictionary binder after the trait, so `(Eq.equal)(x, y)` is a spellable projection out of a binder the core minted and
   a second route to the qualified reading.
+- [`141m`](141m-rule-refusal.md), which gave a δ-rule a way to say the program is wrong and took `Result` off the
+  notation vocabulary. Two things arrive here from it. Its survey table lists the eleven arithmetic, duration, and
+  position rules still answering `Result τ Text` and the twenty corpus sites that branch on them, which is one item of
+  this migration written out in advance. Its "what §2 still says that is not true" list is the other: `play(chosen,
+  1/2)` and `-> EventTrack[WrittenTime, ScoreFact]` are both spellings this prompt makes true or repairs in
+  `01-surface.md`.
 - [`141c`](141c-structural-eliminators.md), which adds the second of §5.8's four families: a compiler-owned operation
   that takes a function argument and rewrites rather than computing. `recurse_syntax`, `run_syntax_step`, and
   `syntax_fold_from_leaves` are registered through it, and `staff.musa` does not compile without them. Its Design also
@@ -175,6 +181,11 @@ rewrite here would destroy that measurement. The same applies to the studio adap
 - The storable-port premise discharged where the constraint solver is — a port is `Storable`, and
   `Machine ⟨step⟩ (Nat → Nat) Nat` is refused here rather than left to `03-machine-calculus.md` §5's preparation.
 - `stdlib/`, `examples/`, book fixtures, LSP fixtures, desktop generated fixtures, and the tree-sitter corpus migrated.
+- The eleven arithmetic, duration, and position rules 141m left answering `Result τ Text` moved onto the refusal
+  channel, and the twenty `match … { Ok(v) -> … }` sites its survey table lists rewritten. 141m could not: one table
+  serves two checkers, so narrowing a declared answer there rewrote the corpus, which is this prompt. The criterion is
+  141m's and unchanged — `Option` is a musical answer, `Result τ Text` is a diagnostic wearing a value's clothes — and
+  what makes it worth doing here rather than never is that 141l routed `x + y` through `Add.add`.
 - Contextual `Music` and `ContextualMusic` gone from source, compiler, and documents.
 - `docs/plan/clean-break-ledger.md`: every row this prompt owns marked discharged, with the rows left for 150–153 named.
 - `tests/fixtures/elaboration-expected-changes.json`: every moved oracle entry, argued.

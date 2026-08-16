@@ -52,7 +52,7 @@ use musa_core::{Builtin, Cx, Datum, ElabError, Family, Literal, Rule};
 use musa_kernel::{Occurrence, Position, Span};
 use num_rational::Ratio;
 
-use super::rules::{answered as ok, items, nat, read, refused as err};
+use super::rules::{items, nat, read, reduced, refused};
 use super::track::{Provenance, built, scope_of, track_of, track_type};
 use super::{literal, plain_type};
 use crate::elaborate::{FactKind, ScoreFact, VoiceTrack};
@@ -109,11 +109,10 @@ where
 ///
 /// # Errors
 ///
-/// [`ElabError`] when `Result`, `Text`, `Scope`, or `Fact` is not declared in
-/// `cx`, which is a defect in this compiler rather than in any program.
+/// [`ElabError`] when `Scope` or `Fact` is not declared in `cx`, which is a
+/// defect in this compiler rather than in any program.
 pub(super) fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
     let track = track_type;
-    let fallible = super::applied(cx, "Result", [track(), plain_type("Text")])?;
     Ok(vec![
         Builtin::new(
             BEYOND[0],
@@ -124,7 +123,7 @@ pub(super) fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
                     crate::prelude::constant(cx, "Fact")?,
                     super::tagged_type("Duration", crate::core::Coordinate::WrittenTime),
                 ],
-                fallible,
+                track(),
             ),
             Family::Track,
             SOUNDED,
@@ -173,10 +172,10 @@ const SOUNDED: Rule = |arguments| {
     let kind = fact_of(arguments.get(2)?)?;
     let held = read::<Ratio<i64>>(arguments.get(3)?)?;
     if held < Ratio::ZERO {
-        return Some(err("a fact lasts for no less than no time at all"));
+        return Some(refused("a fact lasts for no less than no time at all"));
     }
     let Ok(span) = Span::new(Position::ZERO, Position::new(held)) else {
-        return Some(err("a fact lasts for no less than no time at all"));
+        return Some(refused("a fact lasts for no less than no time at all"));
     };
     let fact = ScoreFact {
         scope,
@@ -185,9 +184,9 @@ const SOUNDED: Rule = |arguments| {
         tied: false,
     };
     let Ok(sounded) = musa_kernel::track(span.duration(), vec![Occurrence::new(span, fact)]) else {
-        return Some(err("the fact does not fit the length it was given"));
+        return Some(refused("the fact does not fit the length it was given"));
     };
-    Some(ok(built(sounded)))
+    reduced(built(sounded))
 };
 
 /// `follow(first, next)` — `next` placed after `first`, in a track as long as
@@ -201,7 +200,7 @@ const SOUNDED: Rule = |arguments| {
 const FOLLOW: Rule = |arguments| {
     let first = track_of(arguments.first()?)?;
     let next = track_of(arguments.get(1)?)?;
-    Some(built(musa_kernel::follow(vec![first, next])))
+    reduced(built(musa_kernel::follow(vec![first, next])))
 };
 
 /// The origin a literal holds, as [`super::track`] wraps one.

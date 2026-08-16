@@ -342,15 +342,60 @@ pub enum Datum {
 /// a property of the type rather than a promise a reader has to audit.
 ///
 /// It is handed one [`Datum`] per argument, in the order the signature declares
-/// them, and answers one. Nothing in the argument slice is a term or a value:
-/// roadmap §15.12's privacy boundary is what makes a rule a function over data
-/// rather than a callback into the evaluator.
+/// them, and answers an [`Answer`]. Nothing in the argument slice is a term or a
+/// value: roadmap §15.12's privacy boundary is what makes a rule a function over
+/// data rather than a callback into the evaluator.
 ///
 /// `None` means *this rule does not apply to these arguments*, and the
 /// application stays a neutral spine. For a δ-builtin at closed data of its
 /// declared argument types that answer is a host defect, which D2 forbids and
 /// [`crate::Malformed::BuiltinStuck`] reports.
-pub type Rule = fn(&[Datum]) -> Option<Datum>;
+pub type Rule = fn(&[Datum]) -> Option<Answer>;
+
+/// What a δ-rule says about arguments it *does* apply to.
+///
+/// # Why the rule can refuse at all
+///
+/// `02-core-calculus.md` §4 gives every judgment three outcomes, and until this
+/// type existed a rule could express two of them. It answered `Option<Datum>`,
+/// so "this program is wrong" had nowhere to go but `None` — which the evaluator
+/// reads as D2 broken and [`crate::Malformed::BuiltinStuck`] restates as a
+/// defect in the compiler rather than in the source. Every registered operation
+/// with a real refusal therefore answered `Result τ Text` and handed the
+/// composer's own mistake back as a *value*, which put a `Result` on the type of
+/// every track a notated block builds and would put a `?` between every two
+/// numbers a program adds.
+///
+/// So the distinction this draws is between a *program* the rule rejects and a
+/// *term* the rule cannot have been given. The first is the composer's to fix
+/// and lands on their span; the second is this compiler's, stays `None`, and
+/// says so.
+///
+/// # Why the rule says the sentence and the core says the place
+///
+/// A rule sees [`Datum`]s. It has no term, no origin, and no access to the
+/// refusal vocabulary — that is D3's whole point, and widening this to let a
+/// rule build a [`crate::Refusal`] itself would hand every host table the core's
+/// internals for one narrow need. [`Answer::Refused`] carries the sentence
+/// alone; [`crate::eval`] attaches the origin of the application that fired,
+/// which is the node the composer wrote.
+#[derive(Clone, Debug)]
+pub enum Answer {
+    /// What the rule computed.
+    Reduced(Datum),
+    /// The program is wrong, and this is what to say about it.
+    ///
+    /// Owned rather than `&'static str` because a rule may be restating a
+    /// failure a library it called reported — `musa_kernel`'s, in several of the
+    /// track rules — and a borrowed sentence could not carry one.
+    Refused(String),
+}
+
+impl From<Datum> for Answer {
+    fn from(value: Datum) -> Self {
+        Self::Reduced(value)
+    }
+}
 
 /// How a structural eliminator takes one step: it reads the literal it fired on
 /// and answers the term to evaluate in its place.

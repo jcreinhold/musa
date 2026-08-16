@@ -33,8 +33,8 @@ use std::any::Any;
 use std::sync::Arc;
 
 use musa_core::{
-    Base, Budget, Builtin, CoreError, Cx, Datum, ElabError, Extern, Family, Group, Index, Level, Literal, Origin,
-    Payload, Raw, RawArm, RawData, RawPattern, Refusal, Registry, Term, check, convertible, infer, normalize,
+    Answer, Base, Budget, Builtin, CoreError, Cx, Datum, ElabError, Extern, Family, Group, Index, Level, Literal,
+    Origin, Payload, Raw, RawArm, RawData, RawPattern, Refusal, Registry, Term, check, convertible, infer, normalize,
     well_typed,
 };
 
@@ -166,7 +166,7 @@ fn int_add() -> Builtin {
         Family::Delta,
         |arguments| match arguments {
             [Datum::Lit(left), Datum::Lit(right)] => {
-                Some(Datum::Lit(int_lit(as_int(left)?.checked_add(as_int(right)?)?)))
+                Some(Datum::Lit(int_lit(as_int(left)?.checked_add(as_int(right)?)?)).into())
             }
             _ => None,
         },
@@ -181,7 +181,32 @@ fn text_append() -> Builtin {
         Family::Delta,
         |arguments| match arguments {
             [Datum::Lit(left), Datum::Lit(right)] => {
-                Some(Datum::Lit(text_lit(&format!("{}{}", as_text(left)?, as_text(right)?))))
+                Some(Datum::Lit(text_lit(&format!("{}{}", as_text(left)?, as_text(right)?))).into())
+            }
+            _ => None,
+        },
+    )
+}
+
+/// `int_div : Int → Int → Int`, the one rule here that refuses.
+///
+/// Division by zero is the smallest honest instance of `02-core-calculus.md`
+/// §4's first outcome. The arguments are closed literals of the declared types,
+/// so answering nothing would be D2 broken and a defect in this table; the
+/// program is nonetheless the thing that is wrong. The rule says the sentence
+/// and the core says where.
+fn int_div() -> Builtin {
+    Builtin::new(
+        "int_div",
+        arrow(int().term(TYPES), arrow(int().term(TYPES), int().term(TYPES))),
+        Family::Delta,
+        |arguments| match arguments {
+            [Datum::Lit(left), Datum::Lit(right)] => {
+                let divisor = as_int(right)?;
+                if divisor == 0 {
+                    return Some(Answer::Refused("an integer is not divided by zero".to_owned()));
+                }
+                Some(Datum::Lit(int_lit(as_int(left)?.checked_div(divisor)?)).into())
             }
             _ => None,
         },
@@ -195,7 +220,7 @@ fn int_show() -> Builtin {
         arrow(int().term(TYPES), text().term(TYPES)),
         Family::Delta,
         |arguments| match arguments {
-            [Datum::Lit(only)] => Some(Datum::Lit(text_lit(&as_int(only)?.to_string()))),
+            [Datum::Lit(only)] => Some(Datum::Lit(text_lit(&as_int(only)?.to_string())).into()),
             _ => None,
         },
     )
@@ -271,9 +296,9 @@ fn int_halve(option_int: &Term) -> Builtin {
             [Datum::Lit(only)] => {
                 let value = as_int(only)?;
                 if value % 2 == 0 {
-                    return Some(case("Option.Some", [Datum::Lit(int_lit(value / 2))]));
+                    return Some(case("Option.Some", [Datum::Lit(int_lit(value / 2))]).into());
                 }
-                Some(case("Option.None", []))
+                Some(case("Option.None", []).into())
             }
             _ => None,
         },
@@ -293,9 +318,9 @@ fn option_or(option_int: &Term) -> Builtin {
         |arguments| match arguments {
             [Datum::Case { constructor, fields }, fallback] => {
                 if **constructor == *"Option.Some" {
-                    return fields.first().cloned();
+                    return fields.first().cloned().map(Answer::from);
                 }
-                Some(fallback.clone())
+                Some(fallback.clone().into())
             }
             _ => None,
         },
@@ -317,9 +342,9 @@ fn option_flatten(option_int: &Term, option_option_int: &Term) -> Builtin {
         |arguments| match arguments {
             [Datum::Case { constructor, fields }] => {
                 if **constructor == *"Option.Some" {
-                    return fields.first().cloned();
+                    return fields.first().cloned().map(Answer::from);
                 }
-                Some(case("Option.None", []))
+                Some(case("Option.None", []).into())
             }
             _ => None,
         },
@@ -531,6 +556,7 @@ fn registry(declared: &Declared) -> Arc<Registry> {
             vec![int(), text(), tree()],
             vec![
                 int_add(),
+                int_div(),
                 text_append(),
                 int_show(),
                 tree_fold(),
@@ -949,6 +975,58 @@ fn a_builtin_reduction_is_charged() {
     assert!(
         matches!(outcome, Err(ElabError::Exhausted(_))),
         "a budget of one step cannot afford 64 δ reductions, and says so rather than answering"
+    );
+}
+
+/// §4's first outcome, at the one place that used to collapse it into the third:
+/// a rule that refuses is refusing the *program*, at the application the author
+/// wrote.
+///
+/// Both halves matter. `ElabError::Refused` rather than `Malformed` is what
+/// makes the sentence reach a composer instead of a bug report, and the origin
+/// is what makes it land on a span — a rule sees data and never a term, so it
+/// has no place to name and the core has to supply one.
+#[test]
+fn a_rule_that_refuses_refuses_the_program() {
+    let cx = host();
+    let int_ty = int().term(TYPES);
+    let program = calls("int_div", [Raw::lit(TERMS, int_lit(6)), Raw::lit(TERMS, int_lit(0))]);
+    // Well typed, and accepted as such: `int_div 6 0 : Int` is a true judgment
+    // and checking never asks what it means. The rule looks at the arguments
+    // when it *fires*, which is reduction.
+    let term = check(&cx, &int_ty, &program).expect("dividing by zero is a well-typed application");
+    let error = normalize(&cx, &int_ty, &term).expect_err("and reducing it is refused");
+    let Refusal::BuiltinRefused { message, at } = refusal("int_div at zero", error.into()) else {
+        panic!("a rule's refusal is a refusal");
+    };
+    assert_eq!(
+        &*message, "an integer is not divided by zero",
+        "the rule's own sentence"
+    );
+    assert_eq!(at, TERMS, "at the application, which is what the author wrote");
+}
+
+/// And the neighbour it is deliberately not: a rule that answers *nothing* at
+/// closed data of its declared types is D2 broken, which no source edit can fix
+/// and which therefore stays a defect in this compiler.
+///
+/// `int_add` overflowing is that case exactly — `checked_add` answers `None`, so
+/// the table promises a result the rule cannot produce.
+#[test]
+fn a_rule_that_answers_nothing_is_still_a_compiler_defect() {
+    let cx = host();
+    let int_ty = int().term(TYPES);
+    let program = calls(
+        "int_add",
+        [Raw::lit(TERMS, int_lit(i64::MAX)), Raw::lit(TERMS, int_lit(1))],
+    );
+    let term = check(&cx, &int_ty, &program).expect("the application is well typed");
+    assert!(
+        matches!(
+            normalize(&cx, &int_ty, &term),
+            Err(CoreError::Malformed(musa_core::Malformed::BuiltinStuck(_)))
+        ),
+        "a rule with nothing to say at arguments it declares it accepts is the table's mistake"
     );
 }
 
@@ -1626,6 +1704,22 @@ pub(crate) fn refused_programs() -> Vec<RefusedProgram> {
             expected: |refusal| matches!(refusal, Refusal::BaseNotMatchable { .. }),
         },
     ]
+}
+
+/// The programs a δ-rule refuses, which checking accepts.
+///
+/// A separate list because they fail at a different moment, and the moment is
+/// the point: `int_div 6 0 : Int` is a true typing judgment, so elaboration has
+/// nothing to object to. The rule reads its arguments when it fires, and firing
+/// is reduction — conversion, a type that mentions the application, or a host
+/// asking what the program means.
+pub(crate) fn refused_reductions() -> Vec<RefusedProgram> {
+    vec![RefusedProgram {
+        name: "a δ-rule refusing the arguments it was given",
+        raw: calls("int_div", [Raw::lit(TERMS, int_lit(6)), Raw::lit(TERMS, int_lit(0))]),
+        ty: Raw::var(TERMS, "Int"),
+        expected: |refusal| matches!(refusal, Refusal::BuiltinRefused { .. }),
+    }]
 }
 
 /// `term` at `ty`, normalized, or a panic naming what stopped it.

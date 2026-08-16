@@ -359,6 +359,31 @@ impl Lowering<'_> {
     fn application(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
         let head = child(node, is_expr_node)?;
         let arguments = self.arguments(node)?;
+        // The one call whose arguments are not exactly what was written.
+        // §5.7 requires every constructed fact to carry an origin and a scope,
+        // `BUILTIN_OWNERSHIP` already calls both of them `play`'s hidden
+        // information, and a composer has neither to give: an origin is where
+        // this call *is*, which is the reading's to know and not the caller's.
+        // So the reading supplies them, exactly as `Lowering::sounded` supplies
+        // them for a notation statement. The arity is what makes this
+        // unambiguous — the registered `play` takes four, so a written two is
+        // this and nothing else.
+        if arguments.len() == 2 && head.kind() == SyntaxKind::NameExpr && written_name(&head).as_deref() == Some("play")
+        {
+            let supplied = [
+                self.provenance_at(origin),
+                // The scope a `music` block starts at, because a `fn` body is
+                // inside no voice and no part. `stdlib/src/voicing.musa:57`'s
+                // `sound_for` is the caller this is written for, and the voice
+                // that eventually sounds it is the fold's to say.
+                super::notation::scope_of(origin, crate::Scope::Piece),
+            ];
+            return Some(applied(
+                origin,
+                Raw::var(origin, "play"),
+                supplied.into_iter().chain(arguments),
+            ));
+        }
         // A dotted head is `10-traits.md` §6's method syntax, which resolves by
         // exact receiver *in the core*. Writing it as a projection applied would
         // be a different form — a record field that happened to be a function —

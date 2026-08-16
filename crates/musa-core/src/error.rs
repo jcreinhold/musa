@@ -25,6 +25,24 @@ pub enum CoreError {
     /// context it does not belong to. A compiler defect, reported as one.
     #[error("malformed core term: {0}")]
     Malformed(#[from] Malformed),
+    /// A δ-rule rejected the program (§4's first outcome).
+    ///
+    /// Deliberately *not* a [`Malformed`], which is the mistake this variant
+    /// exists to stop making: the term was well formed and it was the
+    /// composer's own arguments the rule said no to. A stretch factor of zero
+    /// and a chord asked to sound for no time are programs to fix, and a
+    /// sentence blaming the compiler for one is a failed diagnostic.
+    ///
+    /// It carries a sentence and a place rather than a [`crate::Refusal`]
+    /// because this module is below that one: [`crate::ElabError`]'s conversion
+    /// is where the two meet, and is the only lift.
+    #[error("{message}")]
+    Refused {
+        /// What the rule said, in its own words.
+        message: String,
+        /// The application that fired.
+        at: crate::origin::Origin,
+    },
 }
 
 /// A term that does not fit where it was used.

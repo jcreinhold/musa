@@ -29,7 +29,7 @@
 
 use std::sync::Arc;
 
-use crate::base::{Builtin, Datum};
+use crate::base::{Answer, Builtin, Datum};
 use crate::budget::Meter;
 use crate::error::{CoreError, Malformed};
 use crate::origin::Origin;
@@ -420,6 +420,13 @@ fn delta(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreError>
         return Err(Malformed::BuiltinStuck(Arc::clone(builtin.name())).into());
     };
     let here = built.outer_origin();
+    // §4's first outcome, reaching the one place that used to collapse it into
+    // the third. The rule said the sentence and this says where: the origin of
+    // the application that fired, which is the node the composer wrote.
+    let answer = match answer {
+        Answer::Reduced(datum) => datum,
+        Answer::Refused(message) => return Err(CoreError::Refused { message, at: here }),
+    };
     match answer {
         // The overwhelmingly common answer, and it needs no type: a literal
         // carries its own. Only a constructed answer pays for the walk below.

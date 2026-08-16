@@ -56,6 +56,9 @@ fn a_narrower_budget_exhausts_or_agrees() {
                 Err(CoreError::Malformed(malformed)) => {
                     panic!("{name} at 1/{divisor} of the budget: {malformed}")
                 }
+                Err(CoreError::Refused { message, .. }) => {
+                    panic!("{name} at 1/{divisor} of the budget: a rule refused: {message}")
+                }
             }
         }
     }
@@ -122,6 +125,7 @@ fn exhaustion_is_monotone_in_the_budget() {
             }
             Err(CoreError::Exhausted(_)) => exhausted = true,
             Err(CoreError::Malformed(malformed)) => panic!("{malformed}"),
+            Err(CoreError::Refused { message, .. }) => panic!("a rule refused: {message}"),
         }
     }
     assert!(exhausted, "some share of the budget must be too small for this term");

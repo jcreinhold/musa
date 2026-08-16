@@ -30,7 +30,7 @@
     reason = "a law that cannot fail loudly is not a law"
 )]
 
-use musa_core::{Cx, Raw, RawShape, Term};
+use musa_core::{Cx, Origin, Raw, RawShape, Term};
 use musa_language::{SyntaxKind, SyntaxNode};
 
 use super::super::items::{Definition, Item};
@@ -83,48 +83,37 @@ impl Read {
         self.built.as_ref().expect("the source lowers")
     }
 
-    /// The fallible call at each `?` the reading wrote, in the order the fold
-    /// made them.
+    /// Every fact this reading constructed, in the order the fold made them.
     ///
-    /// A block drains its own questions ([`Lowering::music`]), so the calls are
-    /// not a list beside the term — they are the subjects of the `match`es the
-    /// draining built, nested outermost-first. Reading them back is how a law
-    /// says "this statement is one `play`" without asserting the shape of a
-    /// desugaring that is not this module's.
-    fn asked(&self) -> Vec<&Raw> {
+    /// `sounded` and `play` are the two, and naming them rather than "every
+    /// call" is what lets a law say "three pitches, three constructions"
+    /// without counting the `together`s that stack them.
+    ///
+    /// Innermost first, because that is the order they were written: the note
+    /// inside `transpose up M3 { c4/4 }` is constructed before the
+    /// transposition that encloses it.
+    fn constructions(&self) -> Vec<&Raw> {
         let mut found = Vec::new();
-        let mut here = self.term();
-        while let RawShape::Match { subjects, arms } = here.shape() {
-            found.push(subjects.first().expect("a `?` scrutinizes one subject"));
-            here = &arms.first().expect("the `Ok` arm is written first").body;
-        }
+        collect(self.term(), &mut found);
         found
     }
 
-    /// The outermost call — the last one the fold made.
-    ///
-    /// The note inside `transpose up M3 { c4/4 }` is constructed before the
-    /// transposition that encloses it, so the enclosing call is the one at the
-    /// end.
+    /// The last fact constructed — the outermost one the fold reached.
     fn outermost(&self) -> &Raw {
-        self.asked()
+        self.constructions()
             .pop()
-            .unwrap_or_else(|| panic!("this law's source asks a question"))
+            .unwrap_or_else(|| panic!("this law's source constructs a fact"))
     }
+}
 
-    /// The fold itself, under every answer and inside the `Ok`.
-    fn fold(&self) -> &Raw {
-        let mut here = self.term();
-        while let RawShape::Match { arms, .. } = here.shape() {
-            here = &arms.first().expect("the `Ok` arm is written first").body;
-        }
-        let (head, arguments) = spine(here);
-        assert!(
-            matches!(head.shape(), RawShape::Var(name) if &**name == "Result.Ok"),
-            "a block answers its own questions, so what it denotes is an `Ok`: {:?}",
-            head.shape()
-        );
-        arguments.first().copied().expect("`Ok` carries the fold")
+/// Every `sounded` and `play` in `raw`, innermost first.
+fn collect<'a>(raw: &'a Raw, found: &mut Vec<&'a Raw>) {
+    let (head, arguments) = spine(raw);
+    for argument in &arguments {
+        collect(argument, found);
+    }
+    if matches!(head.shape(), RawShape::Var(name) if &**name == "sounded" || &**name == "play") {
+        found.push(raw);
     }
 }
 
@@ -262,14 +251,6 @@ fn track() -> Term {
     crate::registry::tagged_type("EventTrack", crate::core::Coordinate::WrittenTime)
 }
 
-/// `Result<EventTrack ⟨written⟩, Text>` — what a block with a `?` in it
-/// inhabits, drained.
-fn fallible(cx: &Cx) -> Term {
-    let result = crate::prelude::constant(cx, "Result").expect("`Result` is declared");
-    let applied = Term::app(musa_core::Origin::UNKNOWN, result, track());
-    Term::app(musa_core::Origin::UNKNOWN, applied, crate::registry::plain_type("Text"))
-}
-
 // ---- the fold ----
 
 /// §2's empty block, and the one place the seed is visible on its own.
@@ -277,17 +258,16 @@ fn fallible(cx: &Cx) -> Term {
 fn an_empty_block_is_the_track_of_no_occurrences() {
     let cx = host();
     let read = read("music { }");
-    assert!(read.asked().is_empty(), "nothing was constructed, so nothing can fail");
-    let RawShape::Lit(ref written) = *read.fold().shape() else {
-        panic!("an empty block folds to a literal, not {:?}", read.fold().shape());
+    assert!(read.constructions().is_empty(), "an empty block constructs no fact");
+    let RawShape::Lit(ref written) = *read.term().shape() else {
+        panic!("an empty block folds to a literal, not {:?}", read.term().shape());
     };
     assert_eq!(
         *written,
         crate::registry::empty_track(),
         "and the literal is `nothing`, which is what the fold seeds with"
     );
-    musa_core::check(&cx, &fallible(&cx), read.term())
-        .expect("and the block is a fallible track like every other, empty or not");
+    musa_core::check(&cx, &track(), read.term()).expect("and the block is a track like every other, empty or not");
 }
 
 /// The fold itself: one `follow` per statement, over the seed.
@@ -301,7 +281,7 @@ fn the_fold_writes_one_follow_for_each_statement() {
     ] {
         let read = read(written);
         assert_eq!(
-            counted(read.fold(), "follow"),
+            counted(read.term(), "follow"),
             statements,
             "`{written}` folds {statements} statement(s) onto the seed"
         );
@@ -314,7 +294,7 @@ fn the_fold_writes_one_follow_for_each_statement() {
 fn two_statements_are_one_follow_the_core_accepts() {
     let cx = host();
     let read = read("music { c4/4 d4/4 }");
-    let (head, arguments) = spine(read.fold());
+    let (head, arguments) = spine(read.term());
     assert!(
         matches!(head.shape(), RawShape::Var(name) if &**name == "follow"),
         "the outer call is a `follow`, not {:?}",
@@ -326,11 +306,11 @@ fn two_statements_are_one_follow_the_core_accepts() {
         "`follow` takes the fold so far and the next statement"
     );
     assert_eq!(
-        counted(argument(read.fold(), 0), "follow"),
+        counted(argument(read.term(), 0), "follow"),
         1,
         "and the fold so far is itself a `follow`, because the fold is left-nested"
     );
-    musa_core::check(&cx, &fallible(&cx), read.term())
+    musa_core::check(&cx, &track(), read.term())
         .unwrap_or_else(|failure| panic!("the core accepts what the fold wrote, not {failure:?}"));
 }
 
@@ -340,10 +320,10 @@ fn two_statements_are_one_follow_the_core_accepts() {
 fn use_folds_on_the_expression_it_names() {
     let read = read("music { use saved; }");
     assert!(
-        read.asked().is_empty(),
-        "naming a track constructs nothing that could fail"
+        read.constructions().is_empty(),
+        "naming a track constructs no fact of its own"
     );
-    let (_, arguments) = spine(read.fold());
+    let (_, arguments) = spine(read.term());
     let named = arguments.get(1).expect("`follow` takes the statement second");
     assert!(
         matches!(named.shape(), RawShape::Var(name) if &**name == "saved"),
@@ -393,7 +373,7 @@ fn a_stacked_chord_is_one_play() {
         "an origin, a scope, the voicing, and how long it sounds"
     );
     assert_eq!(
-        counted(read.fold(), "Fact.Note"),
+        counted(read.term(), "Fact.Note"),
         0,
         "and `play` builds the note facts itself, so the reading writes none"
     );
@@ -403,7 +383,7 @@ fn a_stacked_chord_is_one_play() {
 #[test]
 fn a_written_simultaneity_is_one_sounded_for_each_pitch() {
     let read = read("music { [c4 e4 g4]/2 }");
-    let sounding = read.asked();
+    let sounding = read.constructions();
     assert_eq!(sounding.len(), 3, "three pitches, three constructions");
     for asked in &sounding {
         assert_eq!(head(asked), "sounded", "each pitch is its own fact");
@@ -414,7 +394,7 @@ fn a_written_simultaneity_is_one_sounded_for_each_pitch() {
         );
     }
     assert_eq!(
-        counted(read.fold(), "together"),
+        counted(read.term(), "together"),
         2,
         "and they sound at once, which is what two `together`s over three tracks say"
     );
@@ -451,14 +431,10 @@ fn a_transformation_block_is_the_builtin_applied_to_its_body() {
         ),
     ] {
         let enclosing = read(block);
-        // `retrograde` cannot fail, so its call stands in the fold rather than
-        // behind an answer — which is the one thing the four do not share.
-        let call = if word == "retrograde" {
-            argument(enclosing.fold(), 1)
-        } else {
-            enclosing.outermost()
-        };
-        let (head, arguments) = spine(call);
+        // All four stand in the fold, as the statement the outer `follow` was
+        // given. Before prompt 141m three of them stood behind an answer
+        // instead, because three of them could fail.
+        let (head, arguments) = spine(argument(enclosing.term(), 1));
         assert!(
             matches!(head.shape(), RawShape::Var(name) if &**name == word),
             "`{block}` calls `{word}`, not {:?}",
@@ -466,36 +442,47 @@ fn a_transformation_block_is_the_builtin_applied_to_its_body() {
         );
         assert_eq!(
             shape(arguments.last().expect("a transformation takes its track last")),
-            shape(read(body).fold()),
+            shape(read(body).term()),
             "and its track argument is `{body}`'s own fold, up to the origins"
         );
     }
 }
 
-/// The one of the four that cannot fail asks nothing of its own.
+/// A block asks nothing, which is what makes it a value.
 ///
-/// `retrograde` answers a track rather than a `Result` (141j: "uniformity is not
-/// a reason to give a total operation an error case"), so it appears in the fold
-/// directly instead of behind an answer — which is the difference the law above
-/// cannot see, because a value hides it.
+/// The law prompt 141m is for. Every constructor a notation statement reaches
+/// for is total, so the reading writes no `?` of its own and drains none: what a
+/// block denotes is the fold, and the fold is an `EventTrack ⟨written⟩` rather
+/// than a `Result` an author would have to open before using it.
+///
+/// Stated over the statements that used to ask the most — a note, a chord, and
+/// each of the four transformations — because a law that only looked at
+/// `retrograde`, which never asked, would have passed before the change too.
 #[test]
-fn retrograde_is_the_one_transformation_that_asks_nothing() {
-    let read = read("music { retrograde { c4/4 } }");
-    assert_eq!(
-        read.asked().len(),
-        1,
-        "the note inside still asks; `retrograde` itself does not"
-    );
-    assert_eq!(
-        head(read.asked().first().expect("the note's own question")),
-        "sounded",
-        "and the one question is the note's"
-    );
-    assert_eq!(
-        head(argument(read.fold(), 1)),
-        "retrograde",
-        "the call stands in the fold, unanswered"
-    );
+fn a_block_asks_nothing() {
+    let cx = host();
+    for written in [
+        "music { c4/4 }",
+        "music { stack c4 major/2 }",
+        "music { transpose up M3 { c4/4 } }",
+        "music { stretch 2 { c4/4 } }",
+        "music { invert around c4 { c4/4 } }",
+        "music { retrograde { c4/4 } }",
+    ] {
+        let read = read(written);
+        assert_eq!(
+            counted(read.term(), "Result.Ok"),
+            0,
+            "`{written}` writes no answer, because nothing in it can fail"
+        );
+        assert!(
+            !matches!(read.term().shape(), RawShape::Match { .. }),
+            "`{written}` drains nothing: {:?}",
+            read.term().shape()
+        );
+        musa_core::check(&cx, &track(), read.term())
+            .unwrap_or_else(|failure| panic!("`{written}` is a track, not {failure:?}"));
+    }
 }
 
 // ---- the reading context ----
@@ -517,7 +504,7 @@ fn in_scale_moves_the_pitch_a_step_reads_and_emits_no_fact() {
         "and putting a collection in force is not a modulation"
     );
     assert_eq!(
-        stepped.asked().len(),
+        stepped.constructions().len(),
         1,
         "one construction, the note's: `in scale` denotes its body and calls nothing"
     );
@@ -587,8 +574,8 @@ fn a_motif_is_the_function_it_is_said_to_be() {
         "and under the binder is the fold of the two statements it was written with"
     );
     assert!(
-        matches!(body.shape(), RawShape::Match { .. }),
-        "drained here, because a function body is one of §4's four answer-delimiting positions"
+        !matches!(body.shape(), RawShape::Match { .. }),
+        "and nothing to drain: a motif's body is the fold, not an answer around one"
     );
     let none = definition("motif plain() { c4/4 }", SyntaxKind::MotifDecl);
     assert!(
@@ -607,8 +594,8 @@ fn a_fragment_is_the_binding_it_is_said_to_be() {
         "and writes no type: what a body of transformations answers is the core's to infer"
     );
     assert!(
-        matches!(defined.value.shape(), RawShape::Match { .. }),
-        "the questions are drained at the binding, not left for whatever `use`s it"
+        !matches!(defined.value.shape(), RawShape::Match { .. }),
+        "and it is the fold itself, which is what lets `use answer;` fold it on directly"
     );
     assert_eq!(
         counted(&defined.value, "follow"),
@@ -617,12 +604,42 @@ fn a_fragment_is_the_binding_it_is_said_to_be() {
     );
 }
 
+/// §2: `use e;` "checks that `e` is a written-time score track" — and a saved
+/// fragment is one, so the fold takes it directly.
+///
+/// The sentence a fallible constructor made unwritable. While a block denoted
+/// `Result (EventTrack ⟨written⟩) Text`, every fragment was an answer and
+/// `follow` demanded a track, so joining two blocks meant a `?` the composer had
+/// no reason to write. Stated closed — the fragment's own value bound around the
+/// block that uses it — because the claim is that the core accepts the join, and
+/// a law with a free variable in it would claim nothing.
+#[test]
+fn a_saved_fragment_folds_into_another_block_through_use() {
+    let cx = host();
+    let saved = definition("fragment answer { c4/4 d4/4 }", SyntaxKind::FragmentDecl);
+    let read = read("music { use answer; e4/4 }");
+    let used = argument(argument(read.term(), 0), 1);
+    assert!(
+        matches!(used.shape(), RawShape::Var(name) if &**name == "answer"),
+        "the fragment is folded on as it stands, not as {:?}",
+        used.shape()
+    );
+    assert_eq!(
+        counted(read.term(), "Result.Ok"),
+        0,
+        "and neither block is an answer somebody has to open"
+    );
+    let joined = Raw::bind(Origin::UNKNOWN, "answer", saved.value, read.term().clone());
+    musa_core::check(&cx, &track(), &joined)
+        .unwrap_or_else(|failure| panic!("the core accepts one block used inside another, not {failure:?}"));
+}
+
 /// Both declarations lower to something the core admits at the type §2 gives
 /// them.
 #[test]
 fn a_fragment_inhabits_the_track_type_it_was_promised() {
     let cx = host();
     let defined = definition("fragment answer { c4/4 d4/4 }", SyntaxKind::FragmentDecl);
-    musa_core::check(&cx, &fallible(&cx), &defined.value)
+    musa_core::check(&cx, &track(), &defined.value)
         .unwrap_or_else(|failure| panic!("the core accepts a fragment's value, not {failure:?}"));
 }

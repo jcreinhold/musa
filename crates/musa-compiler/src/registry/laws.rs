@@ -15,7 +15,7 @@
     reason = "a law that cannot fail loudly is not a law"
 )]
 
-use musa_core::{Datum, Refusal, Term};
+use musa_core::{Answer, Datum, Refusal, Term};
 
 use super::{bases, builtins, owned, rules};
 use crate::core::{BUILTIN_OWNERSHIP, Family, PhaseFamily, SYNTAX_OWNERSHIP, Shape};
@@ -274,16 +274,34 @@ fn each_rule_agrees_with_the_old_evaluator() {
             continue;
         }
         for case in cases {
-            assert_eq!(
-                rule(&case.arguments),
-                case.answer,
-                "`{}` disagrees with the old evaluator at {:?}",
+            let answered = rule(&case.arguments);
+            assert!(
+                agrees(answered.as_ref(), case.answer.as_ref()),
+                "`{}` disagrees with the old evaluator at {:?}: {answered:?} rather than {:?}",
                 entry.spelling,
-                case.arguments
+                case.arguments,
+                case.answer
             );
         }
     }
     assert!(unreached.is_empty(), "no sample reached {unreached:?}");
+}
+
+/// Whether a rule and the old evaluator gave the same answer.
+///
+/// Equality everywhere except one outcome, and the exception is prompt 141m's
+/// whole subject: where the old evaluator answered a `Result.Err` carrying a
+/// sentence, a rule now refuses the program and the sentence becomes a
+/// diagnostic. Those are one judgment written in two vocabularies, so reading
+/// them as agreement is what keeps this law about the *translation* rather than
+/// about the move.
+fn agrees(answered: Option<&Answer>, old: Option<&Datum>) -> bool {
+    match (answered, old) {
+        (Some(Answer::Reduced(datum)), Some(other)) => datum == other,
+        (Some(Answer::Refused(_)), Some(Datum::Case { constructor, .. })) => &**constructor == "Result.Err",
+        (None, None) => true,
+        _ => false,
+    }
 }
 
 /// Every sampled application is well typed at its signature, reduces, and
