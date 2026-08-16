@@ -2,7 +2,7 @@
 id: 142
 slug: surface-cutover
 status: pending
-depends_on: [136a, 141, 141b, 141c, 141d, 141e, 141f, 141g, 141ga, 141h, 141ha, 141i, 141j, 141k, 141l, 141m, 141n, 141o]
+depends_on: [136a, 141, 141b, 141c, 141d, 141e, 141f, 141g, 141ga, 141h, 141ha, 141i, 141j, 141k, 141l, 141m, 141n, 141o, 141p]
 phase: 3
 ---
 
@@ -73,10 +73,9 @@ the middle. It absorbs prompt 127e, whose file stays as a superseded record rath
   against the lexical `in scale` before any track value exists. Both exist because starting this prompt found that
   neither the words nor the reading were there: `play` was the one builtin that constructed anything, one `FactKind`
   case out of nineteen, and sequencing had no word at all, because in the deleted contextual-`Music` design placement
-  was the evaluator's cursor rather than an operation. What is left here is the document *structure* those two do not
-  own — `piece`, `score`, `part`, the `voice` declaration around a body, `section`, `bar`, `template`, `make`, and the
-  context tracks for tempo, meter, key, and clef — together with the wiring, the readback, the migration, and the
-  deletions.
+  was the evaluator's cursor rather than an operation. The document *structure* those two do not own went to
+  [`141p`](141p-piece-structure.md); what is left here of it is `bar`, `senza`, `assert`, and the instance sites, for
+  the reasons that prompt's Stop gives.
 - [`141l`](141l-qualified-path.md), which read the `::` path 141g left as its own text. The migration below needs it
   twice over: `stdlib/src/adapters/` spells the phase enumerations `TokenKind.Comma` and moves to `TokenKind::Comma`
   here, and every generic definition that acquires a `where` clause reaches its methods by `Trait::method` — the fix
@@ -105,6 +104,14 @@ the middle. It absorbs prompt 127e, whose file stays as a superseded record rath
   real file. Its survey is this prompt's work list and its argument for scope: `stdlib/`'s sixteen non-adapter libraries
   elaborate as one document with exactly two faults left, `Music` and an anonymous product, and both are rows in the
   Target below. What is left here is the *readback*, the four passes, the migration, and the deletions.
+- [`141p`](141p-piece-structure.md), which built the other half of that walk: a piece as one raw track, its parts and
+  voices numbered the way the projection buckets them, and the context statements read at the scope that gives "from
+  here onward" a meaning. It was split off when starting this prompt found that the seven statements 141k refuses — four
+  as misplaced, three at a node labelled "a voice to belong to" — are refused for one reason between them, and that the
+  reason is document structure rather than a missing statement. Its survey is this prompt's second work list, over
+  `examples/` as 141o's is over `stdlib/`. What is left here of the structure is bar lines and the instance sites: a
+  `bar`, a `senza`, and an `assert` are checked against barlines a pass resolves, and a `make` mints an expansion path
+  `Sites` has no way to number yet.
 - [`141c`](141c-structural-eliminators.md), which adds the second of §5.8's four families: a compiler-owned operation
   that takes a function argument and rewrites rather than computing. `recurse_syntax`, `run_syntax_step`, and
   `syntax_fold_from_leaves` are registered through it, and `staff.musa` does not compile without them. Its Design also
@@ -183,12 +190,11 @@ rewrite here would destroy that measurement. The same applies to the studio adap
 
 - `musa-compiler` elaborating through `musa-core`: `check_piece`, `check_arguments`, `check_template_voice`, and
   `check_material` calling 141g's and 141k's lowering and `musa_core::check`, with the old checking path deleted. The
-  declaration reading is 141g's and the notation reading is 141k's; what this delivers is the document structure around
-  them — the score's parts and voices, the context tracks a tempo, meter, key, or clef statement contributes, templates
-  and their instances — the passes that call the whole of it, and the readback that turns a normal form into the musical
-  value a consumer receives. A track is a literal at `EventTrack ⟨written⟩`, so the readback is a normal form, a
-  literal, and the payload it holds; what costs something is `Program`'s shape, which exists to defer contextual
-  instantiation and has nothing left to defer.
+  declaration reading is 141g's, the notation reading is 141k's, and the structure around them is 141p's; what this
+  delivers is the rest — bar lines, the instance sites templates make, the passes that call the whole of it, and the
+  readback that turns a normal form into the musical value a consumer receives. A track is a literal at
+  `EventTrack ⟨written⟩`, so the readback is a normal form, a literal, and the payload it holds; what costs something is
+  `Program`'s shape, which exists to defer contextual instantiation and has nothing left to defer.
 - `infer.rs` deleted, `core.rs`'s superseded arms deleted, `names_a_phase_type` deleted, second-path audit recorded.
 - `primitive` typed against the build-local registry, and `registry/rules.rs`'s `UNREGISTERED` shortened by the row
   141ha left there. It is not one more signature: the name and version select the descriptor that supplies the ports and
