@@ -56,10 +56,10 @@
 #[cfg(test)]
 mod laws;
 
-mod items;
+pub(crate) mod items;
 mod notation;
 mod quotes;
-mod refusals;
+pub(crate) mod refusals;
 mod types;
 mod values;
 

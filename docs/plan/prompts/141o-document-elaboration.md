@@ -1,7 +1,7 @@
 ---
 id: 141o
 slug: document-elaboration
-status: pending
+status: done
 depends_on: [141g, 141i, 141k, 141l, 141n]
 phase: 3
 ---

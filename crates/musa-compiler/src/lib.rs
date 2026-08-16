@@ -39,6 +39,21 @@ mod data;
 mod derivation;
 mod diagnose;
 mod docs;
+/// A whole document, elaborated through `musa-core`.
+///
+/// Nothing reaches it yet, and prompt 141o's Design says why: the walk is built
+/// and proved one prompt before the cutover that wires it, so that a wrong walk
+/// is distinguishable from a wrong migration. The expectation rather than an
+/// `allow` is the point — prompt 142 calling it makes this unfulfilled, and the
+/// compiler says so.
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "prompt 141o builds the walk; prompt 142 is the one cutover that calls it"
+    )
+)]
+mod document;
 mod elaborate;
 mod expand;
 mod factext;
