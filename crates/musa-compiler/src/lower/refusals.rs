@@ -37,6 +37,14 @@ struct Filed {
     /// A second place and what to say about it. [`None`] for the refusals that
     /// are about one node.
     also: Option<(Origin, &'static str)>,
+    /// The repair, for a refusal whose repair is a *surface* spelling.
+    ///
+    /// Almost always [`None`]: what to do about a refusal is the refusal's own
+    /// sentence, written in `musa-core` beside the rule that raises it, and
+    /// prompt 144 owns how good those are. The exception is a repair the core
+    /// cannot name because it is not the core's to know — a form the surface
+    /// offers and the core has never heard of.
+    help: Option<&'static str>,
 }
 
 /// What the elaborator said, as a diagnostic at the node that caused it.
@@ -62,9 +70,13 @@ pub(crate) fn restate(sites: &Sites, error: &ElabError) -> Diagnostic {
                 Some((origin, text)) => (sites.span(origin), text),
                 None => (None, ""),
             };
-            Diagnostic::error(filed.code, refusal.to_string())
+            let restated = Diagnostic::error(filed.code, refusal.to_string())
                 .maybe_at(sites.span(filed.at), "here")
-                .maybe_also(also, text)
+                .maybe_also(also, text);
+            match filed.help {
+                Some(repair) => restated.help(repair),
+                None => restated,
+            }
         }
         ElabError::Exhausted(exhausted) => Diagnostic::error(Code::ResourceLimit, exhausted.to_string())
             .note("the program was not judged: elaboration reached a deterministic limit before it could answer"),
@@ -84,11 +96,17 @@ pub(crate) fn restate(sites: &Sites, error: &ElabError) -> Diagnostic {
 /// each such arm says which family, since that is the judgment and not the
 /// mechanics.
 fn file(refusal: &Refusal) -> Filed {
-    let one = |code: Code, at: Origin| Filed { code, at, also: None };
+    let one = |code: Code, at: Origin| Filed {
+        code,
+        at,
+        also: None,
+        help: None,
+    };
     let two = |code: Code, at: Origin, previous: Origin, text: &'static str| Filed {
         code,
         at,
         also: Some((previous, text)),
+        help: None,
     };
     match refusal {
         Refusal::UnknownName { at, .. } => one(Code::UnknownName, *at),
@@ -104,6 +122,7 @@ fn file(refusal: &Refusal) -> Filed {
             code: Code::UnsolvedMetavariable,
             at: *created,
             also: blocked.map(|origin| (origin, "still waiting on this")),
+            help: None,
         },
         Refusal::BareConstructor { at, .. } | Refusal::Uninferable { at, .. } => one(Code::UnsolvedMetavariable, *at),
         // Applying, projecting, or checking something whose type is not the
@@ -148,7 +167,20 @@ fn file(refusal: &Refusal) -> Filed {
         Refusal::MissingMethod { at, .. } => one(Code::MissingMethod, *at),
         Refusal::UnresolvedInstance { at, .. } => one(Code::UnresolvedInstance, *at),
         Refusal::UnconstrainedVariable { at, .. } => one(Code::UnconstrainedVariable, *at),
-        Refusal::MethodOnVariable { at, .. } => one(Code::MethodOnVariable, *at),
+        // The one refusal whose repair the core cannot name. `01-surface.md`
+        // §1.5's refusal table gives both halves — "with the `where` or
+        // `Trait::m(x, y)` as the fix" — and `Trait::m` is a *surface* spelling
+        // the core has never seen: it reaches the core already read, as the
+        // qualified name `Trait.m`. So the sentence belongs here, and it is
+        // true here because this prompt is what gives the path a reading.
+        Refusal::MethodOnVariable { at, .. } => Filed {
+            code: Code::MethodOnVariable,
+            at: *at,
+            also: None,
+            help: Some(
+                "name the trait — `Trait::m(x, y)` resolves wherever its dictionary does, and a `where` clause on this signature is what supplies one",
+            ),
+        },
         Refusal::NoMethodForType { at, .. } => one(Code::NoMethodForType, *at),
         Refusal::AmbiguousMethod { at, .. } => one(Code::AmbiguousMethod, *at),
         Refusal::UnkeyedConstraint { at, .. } => one(Code::UnkeyedConstraint, *at),

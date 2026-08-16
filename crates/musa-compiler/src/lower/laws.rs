@@ -706,11 +706,10 @@ fn with_same() -> Cx {
 /// — after the type parameters, so the constraint may mention them, and before
 /// the value parameters, so a caller answers it before supplying arguments.
 ///
-/// The body does not *use* the dictionary, and that is a limit of the surface
-/// rather than of the binder: §1.5's qualified path has no spelling yet —
-/// `Same.same(x, y)` lowers as §6 method syntax, which a generic receiver is
-/// refused for by design. `crates/musa-core/tests/suite/trait_laws.rs` states
-/// the resolution half, where a raw term can write the qualified name.
+/// The body does not *use* the dictionary, which is what this law is about and
+/// all it is about: the binder's position. Prompt 141l gave §1.5's qualified
+/// path its reading, so a body that reaches its own method is the law beside
+/// it — [`a_trait_method_under_a_where_is_reached_by_the_path_that_names_its_trait`].
 #[test]
 fn a_constraint_on_a_free_definition_is_admitted_where_it_is_written() {
     let cx = with_same();
@@ -843,5 +842,143 @@ fn a_site_answers_the_span_it_was_numbered_for() {
         sites.span(musa_core::Origin::UNKNOWN),
         None,
         "a term nobody wrote has nowhere to point, and says so"
+    );
+}
+
+// ---- the qualified path ----
+
+/// A context holding `trait Eq<A> { fn equal(x: A, y: A) -> Bool; }` and one
+/// instance of it at `Nat`.
+///
+/// Declared out of source in the law rather than in [`crate::registry::owned`],
+/// which is [`with_same`]'s arrangement and is what prompt 141l's Stop asks for:
+/// `Eq` is prompt 143's to *ship*, and what a law needs is something for `==` to
+/// resolve to while it checks that it resolves at all.
+fn with_equality() -> Cx {
+    let cx = host();
+    let Item::Class(class) = item("trait Eq<A> { fn equal(x: A, y: A) -> Bool; }", SyntaxKind::TraitDecl) else {
+        panic!("a `trait` is a class declaration");
+    };
+    let declared = musa_core::declare_trait(&cx, &class).expect("the core declares the trait");
+    let cx = cx.declaring_class(&declared);
+    let Item::Instance(instance) = item("impl Eq<Nat> { fn equal(x, y) { true } }", SyntaxKind::ImplDecl) else {
+        panic!("an `impl` is an instance declaration");
+    };
+    let instance = musa_core::declare_impl(&cx, &instance).expect("the core declares the instance");
+    cx.declaring_instance(&instance)
+}
+
+/// The escape hatch, opened: §6's "any use that lookup refuses can be written
+/// out".
+///
+/// A generic receiver is refused by design, so the qualified path is the *only*
+/// way a constrained body reaches its own method — which is why §1.5 calls it
+/// "the escape hatch that makes the strictness above affordable" and why the law
+/// beside [`a_constraint_on_a_free_definition_is_admitted_where_it_is_written`]
+/// could not use the dictionary before this prompt.
+#[test]
+fn a_trait_method_under_a_where_is_reached_by_the_path_that_names_its_trait() {
+    let cx = with_same();
+    let written = "fn alike<A>(x: A, y: A) -> Bool where Same<A> { Same::same(x, y) }";
+    inhabits_its_written_type(&cx, written, &definition(written, SyntaxKind::FnDecl));
+}
+
+/// The same path at a *known* head, where the global instance answers.
+///
+/// One spelling, two ways of discharging it: `dictionary::method_at` opens the
+/// trait's arguments as metavariables, and what solves them is the `where`
+/// binder above or the argument's own type here.
+#[test]
+fn a_trait_method_at_a_known_head_resolves_from_the_global_instance() {
+    let cx = with_same();
+    let written = "fn probe() -> Bool { Same::same(1, 2) }";
+    inhabits_its_written_type(&cx, written, &definition(written, SyntaxKind::FnDecl));
+}
+
+/// §1.5's own reading, on §1.5's own example shape: the modules are dropped and
+/// the type and its item are the name.
+#[test]
+fn a_module_prefix_reads_to_the_name_it_qualifies() {
+    let named = |written: &str| -> String {
+        let (built, complaints) = lowered_expr(written);
+        assert!(
+            complaints.is_empty(),
+            "`{written}` is read, not refused: {complaints:?}"
+        );
+        match built.unwrap_or_else(|| panic!("`{written}` lowers")).shape() {
+            RawShape::Var(name) => name.to_string(),
+            other => panic!("a path is a name for the core to resolve, not {other:?}"),
+        }
+    };
+    assert_eq!(
+        named("std::tonal::Same::same"),
+        named("Same::same"),
+        "`std::tonal::` says where the name lives and nothing about which name it is"
+    );
+}
+
+/// A case named in its type's namespace, in both positions that admit one.
+///
+/// The pattern half is the same defect one position over: `pattern` read a flat
+/// run of tokens, so `Tying::Untied` bound `Untied` and matched a constructor
+/// named `Tying`. Both now go through [`Lowering::qualified`], which is what
+/// makes them the same name rather than two readings that agree by accident.
+#[test]
+fn an_enum_case_is_reached_by_its_type_in_an_expression_and_in_a_pattern() {
+    let cx = host();
+    let tying = musa_core::declare(&cx, &declaration("enum Tying { Untied, Tied }", SyntaxKind::EnumDecl))
+        .expect("the core declares the family");
+    let cx = cx.declaring(&tying);
+
+    let (built, complaints) = lowered_expr("Tying::Untied");
+    assert!(complaints.is_empty(), "the path is read: {complaints:?}");
+    musa_core::check(&cx, &declared(&cx, "Tying"), &built.expect("the path lowers"))
+        .expect("and the case it names inhabits its own type");
+
+    let matched = lowered_pattern("Tying::Untied").expect("the pattern lowers");
+    let RawPattern::Constructor { name, fields, .. } = &matched else {
+        panic!("a case named in a namespace is a constructor pattern, not {matched:?}");
+    };
+    assert_eq!(&**name, "Tying.Untied", "the whole path is the constructor's name");
+    assert!(
+        fields.is_empty(),
+        "and `Untied` is the case rather than a field it binds"
+    );
+}
+
+/// §5's operator table, and the rule §1.5 states about it: an operator resolves
+/// at a known head **or** under a `where`.
+///
+/// Method syntax on the left operand gives only the first, because a generic
+/// receiver has no head an instance is filed under. The qualified spelling gives
+/// both, which is the whole reason `x == y` reads as `Eq::equal(x, y)` rather
+/// than as `x.equal(y)`.
+#[test]
+fn an_operator_checks_under_a_where_and_at_a_known_head() {
+    let cx = with_equality();
+    for written in [
+        "fn alike<A>(x: A, y: A) -> Bool where Eq<A> { x == y }",
+        "fn probe() -> Bool { 1 == 2 }",
+    ] {
+        inhabits_its_written_type(&cx, written, &definition(written, SyntaxKind::FnDecl));
+    }
+}
+
+/// The one refusal a *reading* can raise about a path.
+///
+/// "Exactly one segment follows it" is a claim about the written text, so it is
+/// answerable without resolving anything — which is what keeps it here rather
+/// than in the core, where every other thing that can be wrong with a path is
+/// answered.
+#[test]
+fn a_path_naming_two_items_in_one_namespace_is_refused_at_the_node() {
+    let (built, complaints) = lowered_expr("TokenKind::PitchLiteral::spelling");
+    assert!(built.is_none(), "a path with no reading has no term");
+    let complaint = complaints.first().expect("one complaint, at the path");
+    assert_eq!(complaint.code, Code::QualifiedPath, "filed under its own code");
+    assert!(
+        complaint.message.contains("one item"),
+        "and it says what a namespace holds: {}",
+        complaint.message
     );
 }

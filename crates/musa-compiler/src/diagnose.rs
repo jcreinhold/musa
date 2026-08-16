@@ -190,6 +190,16 @@ pub enum Code {
     RedundantNamePrefix,
     /// A `where` clause naming one constraint twice.
     DuplicateConstraint,
+    /// A `::` path with more than one segment after the type or trait it names.
+    ///
+    /// `01-surface.md` §1.5 makes a path's reading a question about
+    /// capitalization and nothing else — "lowercase segments are modules, the
+    /// first capitalized segment names a type or a trait, and exactly one
+    /// segment follows it" — so this is the one thing a *reading* can refuse
+    /// about a path without becoming a checker. A path whose prefix names no
+    /// module and a path naming an item nothing declares are both
+    /// [`Self::UnknownName`], answered where every other name is.
+    QualifiedPath,
     /// A `$…` splice whose value is not of the category its position demands.
     ///
     /// Distinct from [`Self::TypeMismatch`] because both sides are `Syntax`
@@ -318,6 +328,7 @@ code_table! {
     AmbiguousMethod => "ambiguous-method",
     RedundantNamePrefix => "redundant-name-prefix",
     DuplicateConstraint => "duplicate-constraint",
+    QualifiedPath => "qualified-path",
     SpliceCategory => "splice-category",
     UnspreadSequence => "unspread-sequence",
     QuotedCapture => "quoted-capture",

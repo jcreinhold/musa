@@ -24,6 +24,7 @@
 //!   the arguments in order.
 
 use musa_core::{Origin, Raw, RawArm, RawPattern};
+use musa_language::ast::AstNode as _;
 use musa_language::{SyntaxKind, SyntaxNode, SyntaxToken};
 use num_rational::Ratio;
 
@@ -118,7 +119,7 @@ impl Lowering<'_> {
             }
             SyntaxKind::LiteralExpr => self.literal(node, origin),
             SyntaxKind::NameExpr => self.name(node, origin),
-            SyntaxKind::PathExpr => Some(Raw::var(origin, node.to_string().trim())),
+            SyntaxKind::PathExpr => self.path(node, origin),
             SyntaxKind::ProductExpr => self.product(node, origin),
             SyntaxKind::ListExpr => self.list(node, origin),
             SyntaxKind::OptionExpr => self.option(node, origin),
@@ -169,6 +170,72 @@ impl Lowering<'_> {
         match written.split_once('.') {
             Some((record, field)) => Some(Raw::project(origin, Raw::var(origin, record), field)),
             None => Some(Raw::var(origin, written.as_str())),
+        }
+    }
+
+    /// `std::tonal::TokenKind::PitchLiteral` — an item in a type's namespace.
+    ///
+    /// The `.` reading above and this one never meet: `10-traits.md` §6 gives
+    /// `::` to namespaces, which is what leaves `.` meaning projection or a
+    /// method call and nothing else. So a path is *not* read as a projection
+    /// however many dots its core name ends up containing.
+    fn path(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
+        let segments = musa_language::ast::PathExpr::cast(node.clone())?.segments();
+        let written = self.qualified(&segments, crate::resolve::trimmed_span(node))?;
+        if self.in_phase
+            && let Some(literal) = phase_literal(&written)
+        {
+            return Some(Raw::lit(origin, literal));
+        }
+        Some(Raw::var(origin, written.as_str()))
+    }
+
+    /// The core name `segments` write, or the one refusal a *reading* can raise
+    /// about a path.
+    ///
+    /// # Capitalization decides, and nothing is looked up
+    ///
+    /// `01-surface.md` §1.5 fixes the whole reading and leaves none of it open:
+    /// "lowercase segments are modules, the first capitalized segment names a
+    /// type or a trait, and exactly one segment follows it." So the modules are
+    /// dropped — what a module name *reaches* is `use` and `import`'s question,
+    /// and this module resolves nothing — and what is left is joined with `.`,
+    /// which is how `musa-core` spells a qualified name: `Nat.Succ`,
+    /// `Bool.True`, `Eq.equal`. The result goes through as a variable like every
+    /// other name, so an item nothing declares is the core's `UnknownName` at
+    /// the origin this node was numbered with, and `Lowering`'s "No scope"
+    /// stays true.
+    ///
+    /// # What is refused and what is not
+    ///
+    /// More than one segment after the capitalized one, and only that: it is a
+    /// claim about the written path, which is the one kind of claim a reading
+    /// can make without becoming a checker.
+    ///
+    /// A path *ending* at the capitalized segment is not refused — it names the
+    /// type or trait itself, and §1.5's refusal-table row is about "the extra
+    /// segment". Nor is a lowercase item: `Duration::of(r)` is the row below it
+    /// and `Trait::method(x)` is §1.5's own sentence, so a blanket ban on a
+    /// lowercase segment after a capitalized one would forbid the two spellings
+    /// the section exists to make available.
+    ///
+    /// A path with no capitalized segment at all is every-segment-a-module and a
+    /// name: `std::tonal::sixth_over` is `sixth_over`, for the same reason and
+    /// by the same rule.
+    fn qualified(&mut self, segments: &[String], span: SourceSpan) -> Option<String> {
+        let named = segments
+            .iter()
+            .position(|segment| segment.starts_with(char::is_uppercase))
+            .unwrap_or(segments.len().checked_sub(1)?);
+        match segments.get(named..)? {
+            [held] => Some(held.clone()),
+            [held, item] => Some(format!("{held}.{item}")),
+            [held, item, extra, ..] => self.refuse(
+                Diagnostic::error(Code::QualifiedPath, "a type namespace holds one item")
+                    .at(span, format!("`{extra}` is written inside `{held}::{item}`"))
+                    .help(format!("write the path of the type `{extra}` belongs to")),
+            ),
+            [] => None,
         }
     }
 
@@ -365,23 +432,28 @@ impl Lowering<'_> {
 
     /// `x ⊕ y` — one trait method, per `10-traits.md` §5's table.
     ///
-    /// Written as method syntax rather than as a call to a named function,
-    /// because that is what an operator *is* here: the receiver's concrete type
-    /// selects the instance, and the core does the selecting.
+    /// Written as the qualified call `01-surface.md` §1.5 spells — `x == y` is
+    /// `Eq::equal(x, y)` — rather than as method syntax on the left operand.
+    /// The two differ exactly where §5 says an operator must still resolve:
+    /// method syntax needs an exact receiver, so `x == y` inside
+    /// `fn same<A>(x: A, y: A) -> Bool where Eq<A>` would be refused for a
+    /// generic receiver, which is §1.4's "`x == y` inside `same` is
+    /// `d.equal(x, y)` for the `d` the caller supplied" not happening.
     fn operator(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
-        let operator = own_tokens(node).find_map(|token| operator_method(token.kind()))?;
+        let method = own_tokens(node).find_map(|token| operator_method(token.kind()))?;
         let parts = children(node, is_expr_node);
         let left = self.value(parts.first()?)?;
         let right = self.value(parts.get(1)?)?;
-        Some(Raw::app(origin, Raw::method(origin, left, operator), right))
+        Some(applied(origin, Raw::var(origin, method), [left, right]))
     }
 
-    /// `xs[i]` — `Index<C, I, A>.at`, which is §5's last row.
+    /// `xs[i]` — `Index::at(xs, i)`, which is §5's last row and §1.5's own
+    /// spelling for it.
     fn indexing(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
         let parts = children(node, is_expr_node);
         let container = self.value(parts.first()?)?;
         let index = self.value(parts.get(1)?)?;
-        Some(Raw::app(origin, Raw::method(origin, container, "at"), index))
+        Some(applied(origin, Raw::var(origin, "Index.at"), [container, index]))
     }
 
     // ---- the musical forms ----
@@ -685,9 +757,15 @@ impl Lowering<'_> {
         if let Some(quoted) = child(node, |kind| kind == SyntaxKind::QuotePattern) {
             return self.not_yet(&quoted, "a quote pattern", "a template");
         }
-        let mut tokens = own_tokens(node);
-        let head = tokens.next()?;
-        let names: Vec<String> = tokens
+        let written: Vec<SyntaxToken> = own_tokens(node).collect();
+        let head = written.first()?.clone();
+        // The `::` path the head writes, and the bindings after it. Splitting
+        // them is the whole of `Tying::Untied`'s repair: reading every later
+        // identifier as a binding made the case name one, so the pattern bound
+        // `Untied` and matched a constructor named `Tying`.
+        let (path, after) = path_segments(&written);
+        let names: Vec<String> = after
+            .iter()
             .filter(|token| token.kind() == SyntaxKind::Identifier)
             .map(|token| token.text().to_owned())
             .collect();
@@ -739,6 +817,13 @@ impl Lowering<'_> {
                     .map(|(index, name)| (position_field(index), RawPattern::bind(origin, name.as_str())))
                     .collect();
                 RawPattern::record(origin, fields.iter().map(|(name, held)| (name.as_str(), held.clone())))
+            }
+            // `Tying::Untied` — §1.5's path, read exactly as it is in an
+            // expression, because a case named in its type's namespace is the
+            // same name written in the same way.
+            SyntaxKind::Identifier if path.len() > 1 => {
+                let name = self.qualified(&path, crate::resolve::trimmed_span(node))?;
+                RawPattern::constructor(origin, name.as_str(), bound(&names))
             }
             SyntaxKind::Identifier => {
                 if names.is_empty() && !head.text().chars().next().is_some_and(char::is_uppercase) {
@@ -852,15 +937,54 @@ pub(super) fn position_field(index: usize) -> String {
     format!("_{index}")
 }
 
-/// The trait method an operator token stands for (`10-traits.md` §5).
+/// The `::` path a pattern's tokens open with, and everything after it.
+///
+/// A pattern is written flat: `Tying::Untied(why)` is a run of tokens directly
+/// under the node, because `constructor_bindings` bumps its names into the
+/// pattern rather than starting a node for them. So the case's path and the
+/// bindings after it have to be told apart here, and the `::` is what tells
+/// them apart — the same question `01-surface.md` §1.5 answers in an expression,
+/// asked where the grammar happens to give no node to ask it of.
+///
+/// A head that is not an identifier — `Some`, `[`, `(`, a number — opens no
+/// path, so the segments are empty and every token is "after", which is what
+/// the shapes below already read.
+fn path_segments(written: &[SyntaxToken]) -> (Vec<String>, &[SyntaxToken]) {
+    let mut segments = Vec::new();
+    let mut rest = written;
+    while let [name, tail @ ..] = rest
+        && name.kind() == SyntaxKind::Identifier
+    {
+        segments.push(name.text().to_owned());
+        match tail {
+            [first, second, beyond @ ..] if first.kind() == SyntaxKind::Colon && second.kind() == SyntaxKind::Colon => {
+                rest = beyond;
+            }
+            _ => return (segments, tail),
+        }
+    }
+    (segments, rest)
+}
+
+/// The trait method an operator token stands for (`10-traits.md` §5), as the
+/// core's own qualified name.
+///
+/// The trait is half of what §5's table says and it is the half that matters
+/// here: an operator written as method syntax resolves by exact receiver, so
+/// `x == y` inside `fn same<A>(x: A, y: A) -> Bool where Eq<A>` would be
+/// `MethodOnVariable` — against §5's "an operator resolves only when the
+/// concrete head type is known **or a `where` supplies the dictionary**".
+/// Naming the trait is what makes both work at once: `dictionary::method_at`
+/// opens the trait's arguments as metavariables, a `where` binder discharges
+/// them and a known head answers from the global instance.
 fn operator_method(kind: SyntaxKind) -> Option<&'static str> {
     Some(match kind {
-        SyntaxKind::EqualsEquals => "equal",
-        SyntaxKind::Less => "less",
-        SyntaxKind::Plus => "add",
-        SyntaxKind::Minus => "sub",
-        SyntaxKind::Star => "mul",
-        SyntaxKind::Slash => "div",
+        SyntaxKind::EqualsEquals => "Eq.equal",
+        SyntaxKind::Less => "Ord.less",
+        SyntaxKind::Plus => "Add.add",
+        SyntaxKind::Minus => "Sub.sub",
+        SyntaxKind::Star => "Mul.mul",
+        SyntaxKind::Slash => "Div.div",
         _ => return None,
     })
 }
