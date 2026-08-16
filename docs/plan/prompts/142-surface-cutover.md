@@ -36,8 +36,10 @@ the middle. It absorbs prompt 127e, whose file stays as a superseded record rath
   they are not registered there.
 - [`141d`](141d-finite-constructor-builtins.md), which widens a δ-rule from literals to finite data. Thirty-eight of the
   92 δ-builtins in `BUILTIN_OWNERSHIP` answer an `Option`, a `Result`, or a `List`, and six take a `List`; without it
-  the registry this prompt fills cannot be filled. Its `Datum`/`Answer` pair is the shape those 38 rules are written
-  against here.
+  the registry this prompt fills cannot be filled. Its `Datum` is the shape those 38 rules are written against here —
+  one owned type in both directions, so a rule that is handed an `Option` and answers one transcribes nothing. Reading
+  is untyped and writing is realized against the builtin's own result type; a rule here writes `Datum::Case` with the
+  qualified constructor name and its fields, and never names a `Constant`.
 - `crates/musa-compiler/src/infer.rs` and the checking paths in `core.rs` — what is deleted, and what has to keep
   working because something other than the checker uses it.
 - `crates/musa-compiler/tests/suite/elaboration_compatibility.rs`, especially
