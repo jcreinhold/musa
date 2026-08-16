@@ -2,7 +2,7 @@
 id: 142
 slug: surface-cutover
 status: pending
-depends_on: [136a, 141, 141b, 141c, 141d]
+depends_on: [136a, 141, 141b, 141c, 141d, 141e]
 phase: 3
 ---
 
@@ -26,9 +26,11 @@ the middle. It absorbs prompt 127e, whose file stays as a superseded record rath
   core's replacement, once onto the new language — would have been the same files rewritten for two different reasons
   within ten prompts.
 - [`141b`](141b-base-types-and-builtins.md), which gives `musa-core` the base types, literals, and builtin registry
-  without which no real Musa program can be elaborated by it. Its `Registry` is what this prompt fills from
-  `crates/musa-compiler/src/core.rs`'s `BUILTIN_OWNERSHIP`, and that filling is the whole of "wire the compiler to
-  `musa-core`" before a single spelling migrates.
+  without which no real Musa program can be elaborated by it.
+- [`141e`](141e-compiler-registry.md), which *filled* that registry: the compiler's prelude declarations, the inert
+  musical domains as base types, all 117 builtins as `musa_core::Builtin`s, and the sampled agreement with the old
+  evaluator that makes them a translation rather than a rewrite. This prompt starts from a registry that exists and a
+  table that has already been said twice; what remains is to elaborate through it and delete the path that does not.
 - [`141c`](141c-structural-eliminators.md), which adds the second of §5.8's four families: a compiler-owned operation
   that takes a function argument and rewrites rather than computing. `recurse_syntax`, `run_syntax_step`, and
   `syntax_fold_from_leaves` are registered through it, and `staff.musa` does not compile without them. Its Design also
@@ -62,10 +64,13 @@ necessarily anywhere between. That is the price of a clean break, and the altern
 elaborator selected by a flag, a per-file opt-in — costs more, because every later reader has to learn both languages
 and decide which one a file is in.
 
-**Order the work so the migration is mechanical.** Wire the compiler to `musa-core` first and get the existing corpus
+**Order the work so the migration is mechanical.** Elaborate through `musa-core` first and get the existing corpus
 passing under the new checker with the old spellings still in place; then migrate spellings; then delete. Mixing the
 three makes every failure ambiguous between "the new checker is wrong" and "this file was translated wrong", and there
-will be enough failures that the distinction matters.
+will be enough failures that the distinction matters. Prompt 141e already took the first slice of this — the registry
+the new checker reads names from — for the same reason and one prompt earlier: a table of 117 builtins is a
+*translation* with an oracle to check it against, and burying it inside a diff that also moves 11,304 lines of `.musa`
+would have made a wrong signature indistinguishable from a wrong migration.
 
 **Contextual `Music` goes, and placement moves to the fold.** A fragment is an `EventTrack[WrittenTime, ScoreFact]`, a
 motif is a function returning one, and placement is applied by the enclosing voice's left fold rather than read from an
@@ -99,8 +104,8 @@ rewrite here would destroy that measurement. The same applies to the studio adap
 
 ## Target
 
-- `musa-compiler` elaborating through `musa-core`: surface CST to raw term to core term, with the old checking path
-  deleted.
+- `musa-compiler` elaborating through `musa-core`: surface CST to raw term to core term, against 141e's registry, with
+  the old checking path deleted.
 - `infer.rs` deleted, `core.rs`'s superseded arms deleted, `names_a_phase_type` deleted, second-path audit recorded.
 - `stdlib/`, `examples/`, book fixtures, LSP fixtures, desktop generated fixtures, and the tree-sitter corpus migrated.
 - Contextual `Music` and `ContextualMusic` gone from source, compiler, and documents.
@@ -138,6 +143,8 @@ Commit as `Move the whole language over, once`.
 - No rewrite of `stdlib/src/adapters/staff.musa` or the studio adapter beyond mechanical migration. Prompts 145 and 146
   own those, and own their measurements.
 - No builtin-registry collapse. Prompt 143.
+- No re-translation of a signature or a rule 141e already wrote. A disagreement between the two is a defect in one of
+  them and is repaired where it is, not worked around here.
 - No performance work and no benchmark rerun. Prompt 144 measures the finished checker; measuring a half-migrated one
   would produce a number nobody can act on.
 - No hand-edited generated file, under any deadline pressure.

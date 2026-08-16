@@ -304,6 +304,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 141b | base-types-and-builtins | 3 | Give the core its base types and builtins |
 | 141c | structural-eliminators | 3 | Give the core its structural eliminators |
 | 141d | finite-constructor-builtins | 3 | Let a δ-rule speak the finite constructors |
+| 141e | compiler-registry | 3 | Say what the compiler owns, in the core's own terms |
 | 142 | surface-cutover | 3 | Move the whole language over, once |
 | 143 | builtin-collapse | 3 | Collapse the builtin registry behind traits and namespaces |
 | 144 | diagnostics-and-performance | 3 | Make the new failures legible and the new checker fast enough |
