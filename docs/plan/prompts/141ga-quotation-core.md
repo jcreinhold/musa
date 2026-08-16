@@ -1,7 +1,7 @@
 ---
 id: 141ga
 slug: quotation-core
-status: pending
+status: in-progress
 depends_on: [139, 140, 141c, 141e, 141f, 141g]
 phase: 3
 ---
@@ -44,6 +44,14 @@ of instantiation. That evidence is this prompt's Design.
   the arithmetic below is right.
 - [`141f`](141f-phase-traversals.md), whose `UNREGISTERED` table and accounting law this prompt adds a term to rather
   than editing around.
+- `musa-core`'s `Registry::check_finite_data` and `Elaborator::definition`, which are the two facts the pattern side's
+  shape is derived from: a δ signature admits a base type at a *literal* index and refuses one at a variable, and an
+  unannotated `let` infers its value where a `match` has no inference rule. Both are cited in the Design rather than
+  worked around; between them they decide that the pattern form is a `Bool` and three reads rather than one `Option` of
+  a list of lists.
+- `crates/musa-compiler/src/lower/values.rs`'s `match_on` and `equality_chain`, which already lower a match against
+  values the core cannot split on. The pattern form is that chain with a different test, and writing a second shape for
+  it would be two answers to one question.
 
 ## Design
 
@@ -73,11 +81,47 @@ single splice is the one-element list, and the template is what says which hole 
 `Spliced` refuses is refused in the rule exactly where it was. §5.8's D3 is satisfied by construction: the answer is a
 function of the argument values alone, which is what `instantiate` already was.
 
-**The pattern form is the same literal read backwards.** `matched` is `instantiate`'s stated inverse, so
-`match_quote(subject, template)` answers `Option<List<List<Syntax ⟨tokentree⟩>>>` off the same literal, and the law that
-the two compose to the identity is stated over the core's own reduction rather than over two Rust functions.
+**The pattern form is the same literal read backwards, asked one hole at a time.** `matched` is `instantiate`'s stated
+inverse, so the pattern side reads the same literal; what it *answers* is decided by what a lowering with no expected
+type can destructure. Three registrations rather than one:
 
-**The accounting stays exact.** These two are in neither `BUILTIN_OWNERSHIP` nor `SYNTAX_OWNERSHIP`, and must not be
+```text
+match_quote : Syntax ⟨tokentree⟩ → Template → Bool
+quote_hole  : Syntax ⟨tokentree⟩ → Template → Nat → Syntax ⟨tokentree⟩
+quote_holes : Syntax ⟨tokentree⟩ → Template → Nat → List (Syntax ⟨tokentree⟩)
+```
+
+An arm then lowers the way `crate::lower`'s existing chain lowers a match against inert values — the subject bound once,
+one test per arm, the rest of the chain in the failing branch:
+
+```musa
+if match_quote(subject, T) {
+    let head = quote_hole(subject, T, 0);
+    let args = quote_holes(subject, T, 1);
+    body
+} else { … the arms after this one … }
+```
+
+The rejected shape is `Option<List<List<Syntax ⟨tokentree⟩>>>`, one call per arm, and what rejects it is the
+destructuring rather than the rule. A hole's value would be reached by walking `Cons` — one step per hole, and one more
+to take a single hole's element out of its list — and `02-core-calculus.md` §6.2's coverage demands an `Empty` arm at
+every one of those steps. Each of those arms has to evaluate to the rest of the chain, and the rest of the chain cannot
+be bound to a name first: `Raw::bind` with no written type *infers* its value, and §6.2 makes a `match` a checking form
+with no inference rule, so `let fallback = match …` is `Uninferable` by construction. The continuation is therefore
+copied into every coverage hole, which is `docs/plan/prompts/README.md`'s red flag rather than a shape to tune. Asking
+`matched` once per hole recomputes a shape walk; prompt 144 owns what that costs, and a duplicated continuation is not
+something a later prompt can measure its way out of.
+
+**And the index is not a variable, because D1 says so.** The signature a reader reaches for first is
+`(c : Cat) → Syntax c → Template → Option<List<List<Syntax c>>>` — §4's "a pattern is read at the scrutinee's category"
+said in the core's own terms. `Registry::new` refuses it: §5.8's finite-data check admits a base type applied to a
+*literal* index and nothing else, so `Syntax c` at a variable `c` is `NotFiniteData`, and that narrowness is argued
+where the check is written rather than being an omission. So the pattern side reads and binds at `⟨tokentree⟩`, which is
+where every other phase operation already reads and builds, and §1's forgetting rule is what lets a `Syntax ⟨expr⟩`
+scrutinee arrive there. That rule is an *acceptance* rule rather than an operation and the core has no subtyping;
+supplying it is prompt 142's, for this and for the fourteen builders that already need it.
+
+**The accounting stays exact.** These four are in neither `BUILTIN_OWNERSHIP` nor `SYNTAX_OWNERSHIP`, and must not be
 added to either: those tables are the *old* checker's, and a row in `SYNTAX_OWNERSHIP` would make `instantiate_quote` a
 word an adapter could write today. So `rules.rs` grows a third count — the operations the core has that the old checker
 never offered — and the accounting law counts it off the registry rather than off a table, which is what makes it a
@@ -86,21 +130,23 @@ check and not a restatement.
 ## Target
 
 - `crates/musa-compiler/src/registry.rs`: `Template` registered as an inert base type at `Type 0`, doc-commented with
-  the §5.8 D1 test that decided it, and `instantiate_quote` and `match_quote` registered as δ-builtins with the
-  signatures above.
-- `crates/musa-compiler/src/registry/rules.rs`: their two rules, each calling `crate::syntax::instantiate` and
+  the §5.8 D1 test that decided it, and `instantiate_quote`, `match_quote`, `quote_hole`, and `quote_holes` registered
+  as δ-builtins with the signatures above.
+- `crates/musa-compiler/src/registry/rules.rs`: their four rules, each calling `crate::syntax::instantiate` and
   `crate::syntax::matched` rather than restating them, with `REGISTERED` and the new third count updated and the doc
-  saying why these two are in no ownership table.
+  saying why these four are in no ownership table.
 - `crates/musa-compiler/src/lower/`: the quote body walk — `quote_template`, `quote_token`, `quote_splice`, and the
   pattern form — moved off `Checker` and onto [`crate::lower::Lowering`], answering a template literal and a lowered
   splice list. `binder_positions`, `spread_argument`, and `looks_generated` come with it. The old checker keeps its own
   copy until prompt 142 deletes it, and the two are held together by the law below rather than by care.
-- `QuoteExpr` and `QuotePattern` lowered: a quote is one application of `instantiate_quote`, and a quote pattern is a
-  `match` on `match_quote`'s `Option`.
+- `QuoteExpr` and `QuotePattern` lowered: a quote is one application of `instantiate_quote`, and a `match` whose arms
+  are quote patterns is the `Bool` chain above, beside the literal chain it is shaped after.
 - Laws beside them: a quote lowers to a term the core accepts at `Syntax ⟨expr⟩`; the normal form of a lowered quote is
   the `Syntax` value the old checker and evaluator build from the same source, sampled the way 141e's δ agreement law
-  samples; a spread of length zero, one, and three each instantiate with the commas §2 promises; and
-  `match_quote(instantiate_quote(t, s)) = s`, which is `11-quotation.md` §4's inverse claim stated once over the core.
+  samples; a spread of length zero, one, and three each instantiate with the commas §2 promises; and every hole comes
+  back the node that went in — `quote_hole(instantiate_quote(a, t, s), t, i) = sᵢ` — which is `11-quotation.md` §4's
+  inverse claim stated once over the core's own reduction. The law applies §1's forgetting itself, at the literal, and
+  says so: the core has no acceptance rule yet, and prompt 142 is where one arrives.
 - `docs/plan/code-map/` rows for `musa-compiler`.
 
 ## Check

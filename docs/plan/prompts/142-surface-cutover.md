@@ -41,11 +41,14 @@ the middle. It absorbs prompt 127e, whose file stays as a superseded record rath
   because this prompt's own Design asks for the three stages in order and an ordering inside one commit is not
   observable; the argument is 141e's, one level up. What is left here is the *wiring*: the passes that call it, the
   readback out of normal forms, and the deletion of what it replaces.
-- [`141ga`](141ga-quotation-core.md), which gave a template an inert core shape and moved both quotation forms onto one
-  δ-rule that calls `crate::syntax::instantiate` rather than a second copy of it. It exists because 141g's own
-  implementation proved that building a quote out of the phase builders cannot express a spread in a separated position
-  without a compiler-generated indexed fold. What is left here is deleting `ExprKind::SyntaxQuote` and the checker's own
-  copy of the body walk.
+- [`141ga`](141ga-quotation-core.md), which gave a template an inert core shape and moved both quotation forms onto
+  δ-rules that call `crate::syntax::instantiate` and `crate::syntax::matched` rather than a second copy of either. It
+  exists because 141g's own implementation proved that building a quote out of the phase builders cannot express a
+  spread in a separated position without a compiler-generated indexed fold. What is left here is deleting
+  `ExprKind::SyntaxQuote` and the checker's own copy of the body walk — and **§1's forgetting rule**, which 141ga's
+  pattern side needs and which every phase builder already needed: each of them reads at `Syntax ⟨tokentree⟩`, the core
+  has no subtyping, and a `Syntax ⟨expr⟩` in hand is therefore a value with nowhere to go until this prompt says how a
+  category is forgotten.
 - [`141h`](141h-track-and-machine-core.md), which gave `EventTrack` and `Machine` their core shapes and registered the
   seventeen builtins 141e left, on the grounds that they needed a reshape this prompt would perform. The reshape moved
   there; what stays here is deleting contextual `Music` and teaching the source the words.
