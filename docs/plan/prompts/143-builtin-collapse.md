@@ -27,6 +27,9 @@ actually hides. Record what shrank and what did not, and why.
   representation and work budget needed to preserve total evaluation." That is the four-way test each entry faces.
 - `docs/rules/language/10-traits.md`'s operator table, and prompt [137a](137a-operators-and-methods.md)'s implementation
   — the replacements have to exist and be as fast, or this is a regression dressed as a cleanup.
+- [`141l`](141l-qualified-path.md), which read `::` and moved the operator and index lowerings onto §1.5's qualified
+  desugaring. Its Stop refused to declare the traits those spellings name on the grounds that doing so would answer this
+  prompt's survey in advance; this is the prompt that answers it.
 - Prompt [138](138-typed-syntax.md)'s registry survey, which already marked phase entries for deletion once their
   arguments became typed.
 - `docs/rules/language/02-core-calculus.md` §5.8's four builtin families — collapsing entries must not change how many
@@ -42,6 +45,13 @@ actually hides. Record what shrank and what did not, and why.
 private representation, the build-local registry, source-aware provenance, direct core construction, or the work budget.
 It goes when its hidden information turns out to be "how to add two numbers". Go through all 131 entries and record the
 verdict for each — this is a survey with an answer per row, not a sweep that deletes what is easy.
+
+**The spellings already exist; what is missing is what they name.** Prompt [141l](141l-qualified-path.md) moved the
+operator and index readings onto `01-surface.md` §1.5's own desugaring — `x == y` is lowered as `Eq::equal(x, y)` and
+`xs[i]` as `Index::at(xs, i)` — and read the `::` path that `Duration::of` is written with. So none of this prompt's
+work is a change to `musa-compiler`'s lowering: `Eq`, `Ord`, `Add`, `Sub`, `Mul`, `Div`, and `Index` are names those
+readings already write and nothing in `crate::registry::owned` declares. What this prompt adds is the declarations and
+the instances, and a collapsed entry is measured by an operator that resolves rather than by a table that shrank.
 
 **Some entries move to `stdlib/` rather than disappearing.** An operation that a library can now express belongs in the
 library, written in Musa, where it can be read and improved. Say which moved, and check that the moved version is

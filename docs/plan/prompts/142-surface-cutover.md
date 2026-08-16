@@ -2,7 +2,7 @@
 id: 142
 slug: surface-cutover
 status: pending
-depends_on: [136a, 141, 141b, 141c, 141d, 141e, 141f, 141g, 141ga, 141h, 141ha, 141i, 141j, 141k]
+depends_on: [136a, 141, 141b, 141c, 141d, 141e, 141f, 141g, 141ga, 141h, 141ha, 141i, 141j, 141k, 141l]
 phase: 3
 ---
 
@@ -77,6 +77,13 @@ the middle. It absorbs prompt 127e, whose file stays as a superseded record rath
   own — `piece`, `score`, `part`, the `voice` declaration around a body, `section`, `bar`, `template`, `make`, and the
   context tracks for tempo, meter, key, and clef — together with the wiring, the readback, the migration, and the
   deletions.
+- [`141l`](141l-qualified-path.md), which read the `::` path 141g left as its own text. The migration below needs it
+  twice over: `stdlib/src/adapters/` spells the phase enumerations `TokenKind.Comma` and moves to `TokenKind::Comma`
+  here, and every generic definition that acquires a `where` clause reaches its methods by `Trait::method` — the fix
+  `01-surface.md` §1.5's refusal table names and the escape hatch `10-traits.md` §6's strictness is affordable because
+  of. It also carries a finding for this prompt's second-path audit: `elab::constrained_function_type` names the
+  dictionary binder after the trait, so `(Eq.equal)(x, y)` is a spellable projection out of a binder the core minted and
+  a second route to the qualified reading.
 - [`141c`](141c-structural-eliminators.md), which adds the second of §5.8's four families: a compiler-owned operation
   that takes a function argument and rewrites rather than computing. `recurse_syntax`, `run_syntax_step`, and
   `syntax_fold_from_leaves` are registered through it, and `staff.musa` does not compile without them. Its Design also
@@ -132,7 +139,10 @@ them.
 **Delete the second path, and audit for a third.** `infer.rs`'s unifier, the superseded checking arms in `core.rs`,
 `names_a_phase_type` and the collision it worked around, and every function that only existed to keep the old
 representation working. Then run the second-path audit the core prompts already established: if two code paths can
-answer the same question, one of them is going to disagree eventually.
+answer the same question, one of them is going to disagree eventually. 141l's finding is already on the list: the
+dictionary binder a `where` introduces is named after its trait, so a constrained body can project a method out of it by
+a spelling no document offers, and the audit decides whether that binder should be unspellable the way a desugaring's
+own binders are.
 
 **Take the split `core.rs` has been asking for.** 15,017 lines in one file is not a module boundary; it is the absence
 of one. The checker's departure is the moment to see what is left and whether it is one thing. Do not restructure
