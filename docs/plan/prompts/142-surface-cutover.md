@@ -2,7 +2,7 @@
 id: 142
 slug: surface-cutover
 status: pending
-depends_on: [136a, 141, 141b, 141c, 141d, 141e, 141f, 141g, 141ga, 141h]
+depends_on: [136a, 141, 141b, 141c, 141d, 141e, 141f, 141g, 141ga, 141h, 141ha, 141i]
 phase: 3
 ---
 
@@ -52,6 +52,12 @@ the middle. It absorbs prompt 127e, whose file stays as a superseded record rath
 - [`141h`](141h-track-core.md), which gave `EventTrack` its core shape and registered the eight track builtins 141e
   left, on the grounds that they needed a reshape this prompt would perform. The reshape moved there; what stays here is
   deleting contextual `Music` and teaching the source the word.
+- [`141ha`](141ha-machine-core.md), which gave `Machine` its core shape and registered §2's nine forms as constructors.
+  It split off 141h because a machine reduces to nothing and needs a unit and a product that 141h's track does not; what
+  stays here is deleting `Type::Machine` and the old checker's machine path.
+- [`141i`](141i-constrained-definitions.md), which gave a free `fn`, `record`, and `enum` their `where` clause. The
+  migration below needs it: a generic parameter acquires no method without a constraint, and `stdlib/` is full of
+  generic definitions that will.
 - [`141c`](141c-structural-eliminators.md), which adds the second of §5.8's four families: a compiler-owned operation
   that takes a function argument and rewrites rather than computing. `recurse_syntax`, `run_syntax_step`, and
   `syntax_fold_from_leaves` are registered through it, and `staff.musa` does not compile without them. Its Design also
