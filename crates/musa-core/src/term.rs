@@ -24,6 +24,7 @@
 
 use std::sync::Arc;
 
+use crate::class::Constraint;
 use crate::family::Constant;
 use crate::level::Level;
 use crate::meta::Meta;
@@ -47,13 +48,48 @@ pub type Name = Arc<str>;
 /// projection, through δ, or through substituting a type variable has been
 /// through the semantic domain, and elaboration still has to be able to ask the
 /// binder it found whether a use site writes that argument.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// A third kind was added at prompt 141i, for `01-surface.md` §1.4's `where`.
+/// It is not a third *function type* — §1's "exactly one Π" is untouched, and a
+/// constraint binder is a Π whose argument the elaborator answers by
+/// `10-traits.md` §4 instead of by unification. The constraint travels **on the
+/// binder** rather than in a table beside the definition, because a definition
+/// is a value: `same` may be passed, stored, or returned, and at that use site
+/// there is no name to look up and only the type is in hand. It cannot be
+/// recovered from the domain either — [`crate::Trait`]'s dictionary is a closed
+/// `λp⃗. { … }`, so `Eq A` β-reduces to a record type and the trait's name is
+/// gone by the time anything asks.
+#[derive(Clone, Debug)]
 pub enum Plicity {
     /// Written at every use.
     Explicit,
     /// Inserted at every use, as a metavariable, unless written in braces.
     Implicit,
+    /// Answered at every use by `10-traits.md` §4's lookup, and never written.
+    ///
+    /// Never appears in a [`Raw`](crate::Raw): a surface `where` clause is
+    /// [`RawShape::ConstrainedPi`](crate::RawShape), whose constraint is
+    /// unelaborated, and elaboration is what turns one into the other.
+    Constraint(Arc<Constraint>),
 }
+
+/// Two binders agree when a use site fills them the same way.
+///
+/// Written rather than derived for [`Term`]'s reason one level down: two
+/// constraint binders that demand the same instance are the same binder
+/// wherever they were written, so the origin is excluded here as it is there.
+impl PartialEq for Plicity {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Explicit, Self::Explicit) | (Self::Implicit, Self::Implicit) => true,
+            (Self::Constraint(left), Self::Constraint(right)) => {
+                Arc::ptr_eq(left, right) || (left.class == right.class && left.args == right.args)
+            }
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Plicity {}
 
 /// A de Bruijn index: how many binders out from its use site a variable's
 /// binder is. `Index(0)` is the nearest enclosing binder.
@@ -461,6 +497,24 @@ impl Term {
     #[must_use]
     pub fn implicit_pi(origin: Origin, name: impl Into<Name>, domain: Self, codomain: Self) -> Self {
         Self::function(origin, Plicity::Implicit, name, domain, codomain)
+    }
+
+    /// `[Class a⃗] → codomain` — the binder `01-surface.md` §1.4's `where`
+    /// elaborates to, whose argument every use site answers by `10-traits.md`
+    /// §4 rather than writing.
+    ///
+    /// The domain is the dictionary's *record type*, which is what makes this
+    /// one Π and not a new form; the constraint rides along so that resolution
+    /// can key on the trait after the domain has β-reduced past it.
+    #[must_use]
+    pub(crate) fn constrained_pi(
+        origin: Origin,
+        constraint: Arc<Constraint>,
+        name: impl Into<Name>,
+        domain: Self,
+        codomain: Self,
+    ) -> Self {
+        Self::function(origin, Plicity::Constraint(constraint), name, domain, codomain)
     }
 
     /// `(name : domain) → codomain` at a plicity a caller already has in hand —

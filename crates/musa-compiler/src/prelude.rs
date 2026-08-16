@@ -433,6 +433,7 @@ fn data(params: Vec<RawBinder>, families: Vec<RawFamily>) -> RawData {
     RawData {
         origin: HERE,
         params,
+        context: Vec::new(),
         families,
     }
 }

@@ -375,7 +375,7 @@ fn supplied_methods(class: &Trait, raw: &RawImpl) -> Result<(), ElabError> {
 }
 
 /// A constraint written under one binding, read at the arguments in `at`.
-fn instantiated(
+pub(crate) fn instantiated(
     elaborator: &mut Elaborator,
     scope: &Scope,
     constraint: &Constraint,
@@ -693,7 +693,7 @@ fn dictionary_type(
 /// `None` for a constraint whose first argument has no head at all, which is not
 /// a defect: such a dictionary is still *bound*, and a use that needs it is
 /// postponed until its head is known rather than answered from here.
-fn discharges(constraint: &Constraint, scope: &Scope) -> Option<Key> {
+pub(crate) fn discharges(constraint: &Constraint, scope: &Scope) -> Option<Key> {
     let head = head_of(constraint.args.first()?, scope.depth())?;
     Some(Key {
         class: Arc::clone(&constraint.class),
@@ -713,7 +713,11 @@ fn discharges(constraint: &Constraint, scope: &Scope) -> Option<Key> {
 /// # Errors
 ///
 /// As [`crate::eval`].
-fn valued(elaborator: &mut Elaborator, scope: &Scope, constraint: &Constraint) -> Result<Arc<[Value]>, ElabError> {
+pub(crate) fn valued(
+    elaborator: &mut Elaborator,
+    scope: &Scope,
+    constraint: &Constraint,
+) -> Result<Arc<[Value]>, ElabError> {
     let mut args = Vec::with_capacity(constraint.args.len());
     for argument in constraint.args.iter() {
         args.push(scope.eval(elaborator.meter(), argument)?);
@@ -918,7 +922,7 @@ fn requirements(
         }
         let name = Trait::super_field(&elaborated.class);
         inner = assumed(elaborator, &inner, constraint.origin, &name, &ty)?;
-        binders.push(Binder { name, ty });
+        binders.push(Binder::explicit(name, ty));
         context.push(elaborated);
     }
     Ok((context, binders, inner))
@@ -991,7 +995,13 @@ fn field_type(
 }
 
 /// Elaborate a constraint, answering it and the type its dictionary has here.
-fn constraint_at(
+///
+/// The type comes back **β-normal**. `Class a⃗` is `(λp⃗. { … }) a⃗`, and a redex
+/// standing as a binder's domain is a term the re-checker cannot infer — it
+/// reads a λ only against a Π it was given, which a domain position does not
+/// supply. Reducing it here is what makes every binder built from this an
+/// ordinary record-typed one.
+pub(crate) fn constraint_at(
     elaborator: &mut Elaborator,
     scope: &Scope,
     classes: &Classes,
@@ -1006,7 +1016,9 @@ fn constraint_at(
     };
     let class = Arc::clone(class);
     let args = arguments(elaborator, scope, &class, raw.origin, &raw.args)?;
-    let ty = applied(raw.origin, class.dictionary.clone(), &args);
+    let applied = applied(raw.origin, class.dictionary.clone(), &args);
+    let value = scope.eval(elaborator.meter(), &applied)?;
+    let ty = scope.quote_type(elaborator.meter(), &value)?;
     Ok((
         Constraint {
             origin: raw.origin,
@@ -1054,10 +1066,7 @@ fn telescope(elaborator: &mut Elaborator, scope: &Scope, raw: &[RawBinder]) -> R
     for binder in raw {
         let (ty, _) = elaborator.check_type(&inner, &binder.ty)?;
         inner = assumed(elaborator, &inner, binder.ty.origin(), &binder.name, &ty)?;
-        binders.push(Binder {
-            name: Arc::clone(&binder.name),
-            ty,
-        });
+        binders.push(Binder::explicit(Arc::clone(&binder.name), ty));
     }
     Ok((binders, inner))
 }

@@ -59,6 +59,7 @@ pub(crate) fn data(params: Vec<RawBinder>, families: Vec<RawFamily>) -> RawData 
     RawData {
         origin: WRITTEN,
         params,
+        context: Vec::new(),
         families,
     }
 }

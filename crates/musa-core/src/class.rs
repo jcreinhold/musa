@@ -125,13 +125,29 @@ impl Key {
 /// under the instance parameters, a function's `where` under its type
 /// parameters.
 #[derive(Clone, Debug)]
-pub(crate) struct Constraint {
+pub struct Constraint {
     /// Where it was written.
     pub(crate) origin: Origin,
     /// The trait's name.
     pub(crate) class: Name,
     /// One argument per trait parameter.
     pub(crate) args: Arc<[Term]>,
+}
+
+impl Constraint {
+    /// The same demand, with its arguments read somewhere else.
+    ///
+    /// A constraint travels: it is written under one telescope and asked under
+    /// another — a use site's, a recursor's, a nested telescope's. What changes
+    /// is only how the arguments are spelled, so the trait and the origin come
+    /// along unexamined and there is one place that says so.
+    pub(crate) fn at(&self, args: Arc<[Term]>) -> Self {
+        Self {
+            origin: self.origin,
+            class: Arc::clone(&self.class),
+            args,
+        }
+    }
 }
 
 /// Which of §1's two kinds a method is, and how a use site reaches it.

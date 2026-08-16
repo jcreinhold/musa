@@ -11,11 +11,11 @@
 use std::sync::Arc;
 
 use musa_core::{
-    Cx, ElabError, Instance, PackageId, Raw, RawBinder, RawConstraint, RawDefinition, RawImpl, RawMethod, RawTrait,
-    Refusal, Visibility, declare_impl, declare_trait,
+    Cx, ElabError, Index, Instance, Level, PackageId, Raw, RawBinder, RawConstraint, RawDefinition, RawImpl, RawMethod,
+    RawTrait, Refusal, Term, Visibility, declare_impl, declare_trait,
 };
 
-use crate::family_laws::{binder, constructor, data, family, nat_context, type0, var};
+use crate::family_laws::{apply, binder, constructor, data, family, nat_context, type0, var};
 use crate::programs::WRITTEN;
 
 /// A declaration elaboration must refuse, and the refusal it owes.
@@ -683,5 +683,234 @@ fn storable_is_in_scope_before_anything_is_declared() {
         )
         .is_ok(),
         "`Storable` left scope once a declaration required it"
+    );
+}
+
+// ---- §1.4's `where` on a free definition ----
+//
+// A constraint binder is the third position `Constraint`'s doc names — "a
+// function's `where` under its type parameters" — and prompt 141i is the door.
+// Its two rules are the two halves §4 already had: abstracting discharges the
+// key so a body finds the binder, and filling answers it by lookup rather than
+// by a metavariable.
+
+/// `{A : Type 0} → [Eq A] → A` — §1.4's signature, one method wide.
+///
+/// `Eq`'s only method has type `A` rather than a function type, so a body that
+/// answers this signature is exactly a use of the dictionary and nothing else.
+fn constrained_scheme() -> Raw {
+    Raw::implicit_pi(
+        WRITTEN,
+        "A",
+        type0(),
+        Raw::constrained_pi(WRITTEN, constraint("Eq", vec![var("A")]), var("A")),
+    )
+}
+
+/// `let same : {A} → [Eq A] → A = Eq.equal in body`.
+fn under_same(body: Raw) -> Raw {
+    Raw::annotated_bind(WRITTEN, "same", constrained_scheme(), var("Eq.equal"), body)
+}
+
+/// How many binders a type begins with, which is how a law counts parameters
+/// without [`musa_core::Group`] having to hand its telescope out.
+fn binders(ty: &Term) -> usize {
+    let mut count: usize = 0;
+    let mut at = ty;
+    while let musa_core::Shape::Pi { codomain, .. } = at.shape() {
+        count = count.saturating_add(1);
+        at = codomain;
+    }
+    count
+}
+
+/// `Type 0` as a core term, which a type-level law checks against.
+fn core_type0() -> Term {
+    Term::universe(WRITTEN, Level::ZERO)
+}
+
+/// The body finds the dictionary the `where` bound, and the re-checker agrees.
+///
+/// **Type-checking at all is the proof that it is the binder and not the
+/// instance.** `Eq<Nat>` is in scope, and its `equal` is a `Nat`; the signature
+/// promises an `A`. A resolution that had reached past the binder to the global
+/// table would have produced a term of the wrong type, so the only way this
+/// checks is §4 step 1 — which is what [`Elaborator::discharging`] exists for.
+#[test]
+fn a_where_clause_binds_a_dictionary_its_body_finds() {
+    let cx = context();
+    let cx = cx.declaring_instance(&eq_nat(&cx));
+    let ty = musa_core::infer(&cx, &constrained_scheme())
+        .expect("the signature is a type")
+        .0;
+    let term = musa_core::check(&cx, &ty, &var("Eq.equal")).expect("the body finds the bound dictionary");
+    musa_core::well_typed(&cx, &ty, &term).expect("and the re-checker accepts what elaboration built");
+}
+
+/// The filling half: a use at a head §4 can key on becomes the instance.
+///
+/// The constraint is reached while `A` is still a metavariable, so §4 postpones;
+/// unifying the result with `Nat` solves the head, and `discharge` retries and
+/// finds the global instance. One program covers both halves because there is no
+/// order in which they could be separated — postponement is what makes the
+/// answer possible.
+#[test]
+fn a_use_at_a_known_head_fills_the_constraint_from_the_table() {
+    let cx = context();
+    let cx = cx.declaring_instance(&eq_nat(&cx));
+    let nat = crate::family_laws::core_constant(&cx, "Nat");
+    let term = musa_core::check(&cx, &nat, &under_same(var("same"))).expect("`same` at `Nat` resolves");
+    let zero = crate::family_laws::core_constant(&cx, "Nat.Zero");
+    assert!(
+        musa_core::convertible(&cx, &nat, &term, &zero).expect("conversion is decidable"),
+        "the inserted dictionary is not the one `impl Eq<Nat>` gave"
+    );
+    musa_core::well_typed(&cx, &nat, &term).expect("and the re-checker accepts it");
+}
+
+/// A constraint no instance answers is refused at the use site, not at the
+/// definition — the definition was fine, and the caller is who can fix it.
+#[test]
+fn a_use_at_a_head_no_instance_answers_is_refused() {
+    let cx = context();
+    let cx = cx.declaring_instance(&eq_nat(&cx));
+    let boxed = musa_core::check(&cx, &core_type0(), &apply(var("Box"), [var("Nat")])).expect("`Box Nat` is a type");
+    let outcome = musa_core::check(&cx, &boxed, &under_same(var("same")));
+    let Err(error) = outcome else {
+        panic!("`same` was accepted at a type no instance covers");
+    };
+    let refusal = crate::programs::refusal("a constraint nothing answers", error);
+    assert!(
+        matches!(refusal, Refusal::UnresolvedInstance { .. }),
+        "an unanswerable constraint was refused as `{refusal}`"
+    );
+}
+
+/// §4 step 1's "innermost first", at two binders nothing else tells apart.
+///
+/// Both dictionaries have the same type and answer the same key, so only the
+/// term says which one was taken — and it has to be the inner one, because that
+/// is the rule that makes instantiating a parameter later unable to reroute a
+/// call already elaborated.
+#[test]
+fn an_inner_where_clause_shadows_an_outer_one() {
+    let cx = context();
+    let ty = musa_core::infer(
+        &cx,
+        &Raw::implicit_pi(
+            WRITTEN,
+            "A",
+            type0(),
+            Raw::constrained_pi(
+                WRITTEN,
+                constraint("Eq", vec![var("A")]),
+                Raw::constrained_pi(WRITTEN, constraint("Eq", vec![var("A")]), var("A")),
+            ),
+        ),
+    )
+    .expect("the signature is a type")
+    .0;
+    let term = musa_core::check(&cx, &ty, &var("Eq.equal")).expect("the body finds a bound dictionary");
+    let projected = |index| {
+        Term::lam(
+            WRITTEN,
+            "A",
+            Term::lam(
+                WRITTEN,
+                "Eq",
+                Term::lam(
+                    WRITTEN,
+                    "Eq",
+                    Term::project(WRITTEN, Term::var(WRITTEN, Index(index)), "equal"),
+                ),
+            ),
+        )
+    };
+    assert_eq!(term, projected(0), "the inner `where` is what a body reaches");
+    assert_ne!(term, projected(1), "and the outer one is shadowed");
+}
+
+/// §1.2 at a record: the constraint is a parameter, and nothing is stored.
+///
+/// "A record is its fields" survives the clause, which is the sentence the whole
+/// feature rests on — the dictionary is an argument the body ignores, so the
+/// applied type unfolds to the record a constraint-free declaration would give.
+#[test]
+fn a_constrained_record_type_is_the_record_it_would_be_without_the_clause() {
+    let cx = context();
+    let cx = cx.declaring_instance(&eq_nat(&cx));
+    let declared = Raw::pi(
+        WRITTEN,
+        "A",
+        type0(),
+        Raw::constrained_pi(WRITTEN, constraint("Eq", vec![var("A")]), type0()),
+    );
+    let cell = Raw::annotated_bind(
+        WRITTEN,
+        "Cell",
+        declared,
+        Raw::lam(WRITTEN, "A", Raw::record_type(WRITTEN, [("value", var("A"))])),
+        apply(var("Cell"), [var("Nat")]),
+    );
+    let applied = musa_core::check(&cx, &core_type0(), &cell).expect("`Cell Nat` is a type");
+    let written = musa_core::check(&cx, &core_type0(), &Raw::record_type(WRITTEN, [("value", var("Nat"))]))
+        .expect("the hand-written record is a type");
+    assert!(
+        musa_core::convertible_types(&cx, &applied, &written).expect("conversion is decidable"),
+        "a constrained record type is not the record its fields make it"
+    );
+}
+
+/// `data Sealed (A : Type 0) where Eq<A> { Seal : (x : A) → Sealed A }`.
+///
+/// The family half: a constraint binder on a *group*, appended after the written
+/// parameters so that every count in the core keeps counting the same thing.
+fn sealed() -> musa_core::RawData {
+    let mut declared = data(
+        vec![binder("A", type0())],
+        vec![family(
+            "Sealed",
+            Vec::new(),
+            vec![constructor("Seal", vec![binder("x", var("A"))], Vec::new())],
+        )],
+    );
+    declared.context = vec![constraint("Eq", vec![var("A")])];
+    declared
+}
+
+/// The constructor carries the constraint parameter, and a use site never
+/// writes it.
+#[test]
+fn a_constrained_family_carries_the_parameter_its_constructor_reads() {
+    let cx = context();
+    let cx = cx.declaring_instance(&eq_nat(&cx));
+    let group = musa_core::declare(&cx, &sealed()).expect("the core declares a constrained family");
+    let cx = cx.declaring(&group);
+    let (_, kind) = musa_core::infer(&cx, &var("Sealed")).expect("the family is in scope");
+    assert_eq!(
+        binders(&kind),
+        2,
+        "the written parameter and the dictionary the `where` appended"
+    );
+    let sealed_nat = musa_core::check(&cx, &core_type0(), &apply(var("Sealed"), [var("Nat")]))
+        .expect("`Sealed Nat` is a type: the dictionary is inserted, not written");
+    let built = musa_core::check(&cx, &sealed_nat, &apply(var("Sealed.Seal"), [var("Nat.Zero")]))
+        .expect("the constructor reads both parameters off the expected type");
+    musa_core::well_typed(&cx, &sealed_nat, &built).expect("and the re-checker accepts it");
+}
+
+/// A dictionary parameter is a parameter and not a field, so `Storable` is
+/// unaffected — which is worth a law rather than an assumption, because a
+/// dictionary contains Π and a family that *stored* one would stop being
+/// storable.
+#[test]
+fn a_constrained_family_is_as_storable_as_the_fields_it_stores() {
+    let cx = storing();
+    let cx = cx.declaring_instance(&eq_nat(&cx));
+    let group = musa_core::declare(&cx, &sealed()).expect("the core declares a constrained family");
+    let cx = cx.declaring(&group);
+    assert!(
+        storable(&cx, Vec::new(), apply(var("Sealed"), [var("Nat")]), Vec::new()).is_ok(),
+        "`Sealed Nat` stores one `Nat` and is not storable"
     );
 }

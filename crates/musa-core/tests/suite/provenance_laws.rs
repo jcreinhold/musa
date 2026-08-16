@@ -308,7 +308,7 @@ fn restamp(term: &Term, origin: Origin) -> Term {
             domain,
             codomain,
         } => Shape::Pi {
-            plicity: *plicity,
+            plicity: plicity.clone(),
             name: Arc::clone(name),
             domain: restamp(domain, origin),
             codomain: restamp(codomain, origin),

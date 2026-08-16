@@ -211,7 +211,7 @@ impl Plan {
             body: inner,
         } = at.shape()
         {
-            lambdas.push((at.origin(), *plicity, Arc::clone(name), domain.clone()));
+            lambdas.push((at.origin(), plicity.clone(), Arc::clone(name), domain.clone()));
             at = inner;
         }
         let RawShape::Match { subjects, arms } = at.shape() else {
@@ -269,7 +269,7 @@ impl Plan {
                 body = Raw::new(
                     *origin,
                     RawShape::Lam {
-                        plicity: *plicity,
+                        plicity: plicity.clone(),
                         name,
                         domain: domain.clone(),
                         body,
@@ -366,13 +366,28 @@ impl Rewrite<'_> {
             // A universe and a literal are both closed: neither can hold a call,
             // so neither needs rewriting.
             RawShape::Universe(_) | RawShape::Lit(_) => return Ok(raw.clone()),
+            // The dictionary binder takes the trait's own name — see
+            // [`crate::elab`]'s constrained Π — so the codomain is walked under
+            // it for the same reason an ordinary Π's is.
+            RawShape::ConstrainedPi { constraint, codomain } => RawShape::ConstrainedPi {
+                constraint: crate::raw::RawConstraint {
+                    origin: constraint.origin,
+                    name: Arc::clone(&constraint.name),
+                    args: constraint
+                        .args
+                        .iter()
+                        .map(|argument| self.term(argument, bound))
+                        .collect::<Result<Vec<_>, _>>()?,
+                },
+                codomain: self.under(&constraint.name, codomain, bound)?,
+            },
             RawShape::Pi {
                 plicity,
                 name,
                 domain,
                 codomain,
             } => RawShape::Pi {
-                plicity: *plicity,
+                plicity: plicity.clone(),
                 name: Arc::clone(name),
                 domain: self.term(domain, bound)?,
                 codomain: self.under(name, codomain, bound)?,
@@ -383,7 +398,7 @@ impl Rewrite<'_> {
                 domain,
                 body,
             } => RawShape::Lam {
-                plicity: *plicity,
+                plicity: plicity.clone(),
                 name: Arc::clone(name),
                 domain: domain.as_ref().map(|ty| self.term(ty, bound)).transpose()?,
                 body: self.under(name, body, bound)?,
@@ -397,7 +412,7 @@ impl Rewrite<'_> {
                 function,
                 argument,
             } => RawShape::App {
-                plicity: *plicity,
+                plicity: plicity.clone(),
                 function: self.term(function, bound)?,
                 argument: self.term(argument, bound)?,
             },

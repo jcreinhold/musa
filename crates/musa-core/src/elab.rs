@@ -70,7 +70,7 @@
 use std::sync::Arc;
 
 use crate::budget::Meter;
-use crate::class::{Constraint, Head, Key, head_of};
+use crate::class::{Constraint, Head, Key, Trait, head_of};
 use crate::context::Cx;
 use crate::dictionary::{Postponed, Wanted};
 use crate::error::{CoreError, Malformed};
@@ -79,7 +79,7 @@ use crate::level::{Level, LevelMeta};
 use crate::meta::{Meta, MetaSource};
 use crate::origin::Origin;
 use crate::quote::{Depth, quote, quote_type};
-use crate::raw::{Raw, RawField, RawShape, RawUpdate};
+use crate::raw::{Raw, RawConstraint, RawField, RawShape, RawUpdate};
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
 use crate::term::{DbLevel, Field, Index, Name, Plicity, Shape, Term};
@@ -398,7 +398,7 @@ impl Elaborator {
                 name,
                 domain,
                 body,
-            } => self.lambda(scope, raw, *plicity, name, domain.as_ref(), body, ty),
+            } => self.lambda(scope, raw, plicity, name, domain.as_ref(), body, ty),
             RawShape::Record(fields) => {
                 let Form::RecordType(telescope) = &ty.form else {
                     return self.abstracted(scope, raw, ty);
@@ -445,6 +445,7 @@ impl Elaborator {
             | RawShape::Lit(_)
             | RawShape::Universe(_)
             | RawShape::Pi { .. }
+            | RawShape::ConstrainedPi { .. }
             | RawShape::App { .. }
             | RawShape::RecordType(_)
             | RawShape::Method { .. }
@@ -524,7 +525,7 @@ impl Elaborator {
             built = self.given(scope, here, built, param)?;
         }
         for argument in arguments {
-            built = self.applied(scope, here, built, Plicity::Explicit, argument)?;
+            built = self.applied(scope, here, built, &Plicity::Explicit, argument)?;
         }
         Ok(Some(built))
     }
@@ -560,7 +561,7 @@ impl Elaborator {
     /// has one abstracted for it here.
     fn abstracted(&mut self, scope: &Scope, raw: &Raw, ty: &Value) -> Result<Option<Term>, ElabError> {
         let Form::Pi {
-            plicity: Plicity::Implicit,
+            plicity,
             name,
             domain,
             codomain,
@@ -568,12 +569,44 @@ impl Elaborator {
         else {
             return Ok(None);
         };
-        let (name, domain, codomain) = (Arc::clone(name), Arc::clone(domain), codomain.clone());
+        if *plicity == Plicity::Explicit {
+            return Ok(None);
+        }
+        let (plicity, name, domain, codomain) =
+            (plicity.clone(), Arc::clone(name), Arc::clone(domain), codomain.clone());
         let here = raw.origin();
         let variable = scope.fresh_var(here, Arc::clone(&domain));
         let body_ty = apply_closure(&mut self.meter, &codomain, variable)?;
-        let inner = scope.assume(Some(Arc::clone(&name)), here, domain);
+        let discharged = self.discharging(scope, &plicity, &codomain.env)?;
+        let inner = discharged.assume(Some(Arc::clone(&name)), here, domain);
         Ok(Some(Term::lam(here, name, self.check(&inner, raw, &body_ty)?)))
+    }
+
+    /// `scope` with a constraint binder's key discharged, for the binder about
+    /// to be assumed.
+    ///
+    /// The second half of the abstracting rule, and not an optimization:
+    /// `10-traits.md` §4 step 1 answers a constraint from "a dictionary bound by
+    /// an enclosing `where` clause", so a body that writes `x == y` inside
+    /// `same` has to reach *this* binder rather than a global instance. Without
+    /// it the binder would be bound and unreachable, and a generic definition
+    /// would type-check and then resolve to an instance its caller did not
+    /// choose. [`crate::dictionary`]'s `requirements` does both for a derived
+    /// method's `where`, and this is the same pair one level out.
+    ///
+    /// A constraint whose head is not yet known discharges nothing, which is
+    /// §4's postponement rather than a failure: the key does not exist yet, and
+    /// a use inside the body is postponed until it does.
+    pub(crate) fn discharging(&mut self, scope: &Scope, plicity: &Plicity, at: &Env) -> Result<Scope, ElabError> {
+        let Plicity::Constraint(constraint) = plicity else {
+            return Ok(scope.clone());
+        };
+        let needed = crate::dictionary::instantiated(self, scope, constraint, at)?;
+        let Some(key) = crate::dictionary::discharges(&needed, scope) else {
+            return Ok(scope.clone());
+        };
+        let args = crate::dictionary::valued(self, scope, &needed)?;
+        Ok(scope.discharging(key, scope.depth(), args))
     }
 
     /// `λx. e ⇐ (x : A) → B`, and the plicity rules that go with it.
@@ -581,7 +614,7 @@ impl Elaborator {
         &mut self,
         scope: &Scope,
         raw: &Raw,
-        plicity: Plicity,
+        plicity: &Plicity,
         name: &Name,
         domain: Option<&Raw>,
         body: &Raw,
@@ -597,11 +630,11 @@ impl Elaborator {
         else {
             return self.abstracted(scope, raw, ty);
         };
-        if plicity != *expected {
+        if *plicity != *expected {
             // An implicit λ at an explicit binder is a mistake rather than a
             // term to abstract around: the author wrote the binder, at the
             // plicity the type does not have.
-            if plicity == Plicity::Implicit {
+            if *plicity == Plicity::Implicit {
                 return Err(Refusal::PlicityMismatch { at: here }.into());
             }
             return self.abstracted(scope, raw, ty);
@@ -729,18 +762,21 @@ impl Elaborator {
                 name,
                 domain,
                 codomain,
-            } => self.function_type(scope, here, *plicity, name, domain, codomain),
+            } => self.function_type(scope, here, plicity.clone(), name, domain, codomain),
+            RawShape::ConstrainedPi { constraint, codomain } => {
+                self.constrained_function_type(scope, here, constraint, codomain)
+            }
             RawShape::Lam {
                 plicity,
                 name,
                 domain,
                 body,
-            } => self.infer_lambda(scope, here, *plicity, name, domain.as_ref(), body),
+            } => self.infer_lambda(scope, here, plicity.clone(), name, domain.as_ref(), body),
             RawShape::App {
                 plicity,
                 function,
                 argument,
-            } => self.application(scope, here, *plicity, function, argument),
+            } => self.application(scope, here, plicity, function, argument),
             RawShape::RecordType(fields) => self.record_type(scope, here, fields),
             // §2: a record literal is an introduction form, so it checks. The
             // type it "obviously" has is a guess rather than a principal type —
@@ -809,14 +845,20 @@ impl Elaborator {
         }
     }
 
-    /// Fill every leading implicit binder of an inferred type with a
-    /// metavariable.
+    /// Fill every leading binder of an inferred type that a use site does not
+    /// write: an implicit one with a metavariable, a constraint one with the
+    /// dictionary `10-traits.md` §4 finds.
+    ///
+    /// A constraint is *not* filled with a metavariable. A dictionary nothing
+    /// solves would be reported as an unsolved hole, which is the wrong story
+    /// about a constraint that was answerable and about one that was not alike;
+    /// §4 answers or postpones, and `resolve` is what does both.
     fn inserted(&mut self, scope: &Scope, mut inferred: Typed) -> Result<Typed, ElabError> {
         loop {
             let unfolded = force(&mut self.meter, &inferred.ty)?;
             let ty = unfolded.as_ref().unwrap_or(&inferred.ty);
             let Form::Pi {
-                plicity: Plicity::Implicit,
+                plicity,
                 name: _,
                 domain,
                 codomain,
@@ -824,9 +866,29 @@ impl Elaborator {
             else {
                 return Ok(inferred);
             };
-            let (domain, codomain) = (Arc::clone(domain), codomain.clone());
+            if *plicity == Plicity::Explicit {
+                return Ok(inferred);
+            }
+            let (plicity, domain, codomain) = (plicity.clone(), Arc::clone(domain), codomain.clone());
             let here = inferred.term.origin();
-            let argument = self.fresh_meta(scope, here, MetaSource::ImplicitArgument, &domain)?;
+            let argument = match &plicity {
+                // Unreachable: the guard above returned, and the two arms below
+                // are the rest of the enum. Written rather than `unreachable!`
+                // because a fourth plicity should be a compile error here.
+                Plicity::Explicit => return Ok(inferred),
+                Plicity::Implicit => self.fresh_meta(scope, here, MetaSource::ImplicitArgument, &domain)?,
+                Plicity::Constraint(constraint) => {
+                    // The constraint's arguments are terms under the Π's own
+                    // binders, and the codomain closure is what holds that
+                    // environment — including whatever this loop has already
+                    // inserted, which is how `same(x, y)` reaches §4 with the
+                    // metavariable standing for `A` rather than with `A`.
+                    let constraint = Arc::clone(constraint);
+                    let needed = crate::dictionary::instantiated(self, scope, &constraint, &codomain.env)?;
+                    let classes = scope.cx().classes().clone();
+                    crate::dictionary::resolve(self, scope, &classes, &needed)?
+                }
+            };
             let value = scope.eval(&mut self.meter, &argument)?;
             inferred = Typed {
                 term: Term::app(here, inferred.term, argument),
@@ -851,6 +913,43 @@ impl Elaborator {
         let (codomain_term, codomain_level) = self.check_type(&inner, codomain)?;
         Ok(Typed {
             term: Term::function(here, plicity, Arc::clone(name), domain_term, codomain_term),
+            ty: Value::new(here, Form::Universe(domain_level.max(&codomain_level))),
+        })
+    }
+
+    /// `[Class a⃗] → B ⇒ Type (max l l')` — `01-surface.md` §1.4's `where`.
+    ///
+    /// It adds no term to the calculus, which is §1.4's own claim: what this
+    /// builds is the Π that was already there, at a domain the author did not
+    /// have to write because the trait and its arguments determine it. The
+    /// level is asked of the assembled dictionary type rather than read off a
+    /// raw one, since there is no raw one — [`crate::dictionary`] hands back a
+    /// term, and `Class a⃗` β-reduces to the record type whose universe is the
+    /// answer.
+    ///
+    /// The binder takes the trait's own name, which is what makes a body's
+    /// `Eq` and the dictionary it stands at the same word in a diagnostic.
+    fn constrained_function_type(
+        &mut self,
+        scope: &Scope,
+        here: Origin,
+        raw: &RawConstraint,
+        codomain: &Raw,
+    ) -> Result<Typed, ElabError> {
+        let classes = scope.cx().classes().clone();
+        let (constraint, domain_term) = crate::dictionary::constraint_at(self, scope, &classes, raw)?;
+        let domain_value = scope.eval(&mut self.meter, &domain_term)?;
+        let domain_level = crate::recheck::universe_of(&mut self.meter, scope.cx(), &domain_term)?;
+        let name = Trait::super_field(&constraint.class);
+        let constraint = Arc::new(constraint);
+        // Discharged as well as assumed, for [`Self::discharging`]'s reason: a
+        // codomain that mentions the trait's own methods is answered by the
+        // binder standing right there.
+        let inner = self.discharging(scope, &Plicity::Constraint(Arc::clone(&constraint)), scope.env())?;
+        let inner = inner.assume(Some(Arc::clone(&name)), here, Arc::new(domain_value));
+        let (codomain_term, codomain_level) = self.check_type(&inner, codomain)?;
+        Ok(Typed {
+            term: Term::constrained_pi(here, constraint, name, domain_term, codomain_term),
             ty: Value::new(here, Form::Universe(domain_level.max(&codomain_level))),
         })
     }
@@ -910,7 +1009,7 @@ impl Elaborator {
         &mut self,
         scope: &Scope,
         here: Origin,
-        plicity: Plicity,
+        plicity: &Plicity,
         function: &Raw,
         argument: &Raw,
     ) -> Result<Typed, ElabError> {
@@ -928,7 +1027,7 @@ impl Elaborator {
         scope: &Scope,
         here: Origin,
         inferred: Typed,
-        plicity: Plicity,
+        plicity: &Plicity,
         argument: &Raw,
     ) -> Result<Typed, ElabError> {
         // An argument the author wrote implicitly is the one the binder wanted,
@@ -936,7 +1035,11 @@ impl Elaborator {
         // metavariable and then refuse the argument as one too many.
         let inferred = match plicity {
             Plicity::Explicit => self.inserted(scope, inferred)?,
-            Plicity::Implicit => inferred,
+            // A constraint argument has no surface spelling — a [`Raw`] never
+            // carries one — so `plicity` here is only ever one of the two the
+            // author can write. It is grouped with the implicit case rather
+            // than panicked on, and the plicity comparison below refuses it.
+            Plicity::Implicit | Plicity::Constraint(_) => inferred,
         };
         let unfolded = force(&mut self.meter, &inferred.ty)?;
         let function_ty = unfolded.as_ref().unwrap_or(&inferred.ty);
@@ -953,7 +1056,7 @@ impl Elaborator {
             }
             .into());
         };
-        if plicity != *expected {
+        if *plicity != *expected {
             return Err(Refusal::PlicityMismatch { at: argument.origin() }.into());
         }
         let (domain, codomain) = (Arc::clone(domain), codomain.clone());
@@ -1605,7 +1708,7 @@ fn zonk(meter: &mut Meter, depth: u32, term: &Term) -> Result<Term, CoreError> {
                 domain,
                 codomain,
             } => Shape::Pi {
-                plicity: *plicity,
+                plicity: plicity.clone(),
                 name: Arc::clone(name),
                 domain: zonk(meter, depth, domain)?,
                 codomain: zonk(meter, under, codomain)?,

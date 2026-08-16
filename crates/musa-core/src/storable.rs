@@ -73,10 +73,7 @@ pub(crate) fn class() -> Arc<Trait> {
         Arc::new(Trait {
             name: Arc::from(STORABLE),
             package: None,
-            params: Arc::from(vec![Binder {
-                name: Arc::from("A"),
-                ty: Term::universe(at, Level::ZERO),
-            }]),
+            params: Arc::from(vec![Binder::explicit(Arc::from("A"), Term::universe(at, Level::ZERO))]),
             supers: Arc::from(Vec::new()),
             dictionary: Term::lam(at, "A", Term::record_type(at, core::iter::empty())),
             methods: Arc::from(Vec::new()),

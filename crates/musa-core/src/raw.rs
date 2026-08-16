@@ -109,6 +109,16 @@ pub struct RawData {
     pub origin: Origin,
     /// The parameters, shared by every family in the group.
     pub params: Vec<RawBinder>,
+    /// Its `where` clause, read under the parameters.
+    ///
+    /// Each entry becomes one more parameter, appended after [`Self::params`]
+    /// and standing at the dictionary's type — `01-surface.md` §1.2's "requires
+    /// the constraint at every construction and carries it to every reader",
+    /// which is what a parameter every use site has to fill already means. They
+    /// are parameters and not a list beside them because every count in this
+    /// crate — [`Group::params`](crate::Group::params) and the arithmetic that
+    /// splits a spine at it — is then counting the same thing it counted before.
+    pub context: Vec<RawConstraint>,
     /// The families, in declaration order.
     pub families: Vec<RawFamily>,
 }
@@ -283,6 +293,22 @@ pub enum RawShape {
     /// `Type l`, at a level the writer states — or bare `Type`, whose level is
     /// §2.1's third metavariable site.
     Universe(Option<Level>),
+    /// `[Class a⃗] → B` — the binder `01-surface.md` §1.4's `where` clause
+    /// elaborates to.
+    ///
+    /// Its own shape rather than a [`Plicity`] on [`Self::Pi`], because what a
+    /// `where` writes is a *raw* constraint: a trait name and raw arguments,
+    /// which nothing has resolved yet. [`Plicity::Constraint`] carries an
+    /// elaborated [`Constraint`](crate::Trait), and turning one into the other
+    /// is what elaboration does here. There is no domain to write either — the
+    /// dictionary's type is the trait applied to those arguments, so writing it
+    /// would be writing the answer.
+    ConstrainedPi {
+        /// The constraint the binder answers.
+        constraint: RawConstraint,
+        /// `B`, under the dictionary binder.
+        codomain: Raw,
+    },
     /// `(x : A) → B`, or `{x : A} → B` when the binder is implicit.
     Pi {
         /// Whether uses of the function must write this argument.
@@ -567,6 +593,18 @@ impl Raw {
     #[must_use]
     pub fn implicit_pi(origin: Origin, name: impl Into<Name>, domain: Self, codomain: Self) -> Self {
         Self::binder(origin, Plicity::Implicit, name, domain, codomain)
+    }
+
+    /// `[constraint] → codomain` — a `where` clause's binder.
+    ///
+    /// There is no `constrained_lam` to go with it, and there is not meant to
+    /// be: `02-core-calculus.md` §2 wraps a term checked against a binder the
+    /// author did not write in the λ it needs, and a constraint binder is that
+    /// sentence a third time. A caller writes the *signature* and the core
+    /// writes the abstraction.
+    #[must_use]
+    pub fn constrained_pi(origin: Origin, constraint: RawConstraint, codomain: Self) -> Self {
+        Self::new(origin, RawShape::ConstrainedPi { constraint, codomain })
     }
 
     fn binder(origin: Origin, plicity: Plicity, name: impl Into<Name>, domain: Self, codomain: Self) -> Self {

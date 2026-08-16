@@ -354,7 +354,7 @@ fn read_type(meter: &mut Meter, reading: Reading<'_>, value: &Value) -> Result<T
                 let opened = apply_closure(meter, codomain, variable)?;
                 Ok(Term::function(
                     here,
-                    *plicity,
+                    plicity.clone(),
                     Arc::clone(name),
                     read_type(meter, reading, domain)?,
                     read_type(meter, reading.under_binder(), &opened)?,

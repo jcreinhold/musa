@@ -26,12 +26,12 @@
     reason = "a law that cannot fail loudly is not a law"
 )]
 
-use musa_core::{Cx, Level, Raw, RawData, RawPattern, Term};
+use musa_core::{Cx, Level, Plicity, Raw, RawData, RawPattern, RawShape, Term};
 use musa_language::{SyntaxKind, SyntaxNode};
 
 use super::items::{Definition, Item};
 use super::{Lowering, Sites, is_type_node};
-use crate::diagnose::Diagnostic;
+use crate::diagnose::{Code, Diagnostic};
 use crate::resolve::Resolver;
 
 // ---- reading a written program back out of a parse ----
@@ -673,20 +673,106 @@ fn a_definition_is_numbered_at_the_declaration_that_wrote_it() {
     );
 }
 
-/// The one surface form a *declaration* has and the core has no binder for.
+/// A context holding `trait Same<A> { fn same(x: A, y: A) -> Bool; }` and one
+/// instance of it at `Nat`.
+///
+/// The smallest thing a `where` clause can be *about*: a trait with a head, a
+/// method a body can call, and a global instance a use site at a known type can
+/// find. Every law below writes its constraint against this one.
+fn with_same() -> Cx {
+    let cx = host();
+    let Item::Class(class) = item("trait Same<A> { fn same(x: A, y: A) -> Bool; }", SyntaxKind::TraitDecl) else {
+        panic!("a `trait` is a class declaration");
+    };
+    let declared = musa_core::declare_trait(&cx, &class).expect("the core declares the trait");
+    let cx = cx.declaring_class(&declared);
+    let Item::Instance(instance) = item("impl Same<Nat> { fn same(x, y) { true } }", SyntaxKind::ImplDecl) else {
+        panic!("an `impl` is an instance declaration");
+    };
+    let instance = musa_core::declare_impl(&cx, &instance).expect("the core declares the instance");
+    cx.declaring_instance(&instance)
+}
+
+/// §1.4's own program, lowered and admitted.
+///
+/// The law that changed sides at prompt 141i. It used to assert the refusal
+/// `Lowering::unconstrained` raised; what it asserts now is that the same source
+/// becomes a definition the core checks, with the binder in §1.4's own position
+/// — after the type parameters, so the constraint may mention them, and before
+/// the value parameters, so a caller answers it before supplying arguments.
+///
+/// The body does not *use* the dictionary, and that is a limit of the surface
+/// rather than of the binder: §1.5's qualified path has no spelling yet —
+/// `Same.same(x, y)` lowers as §6 method syntax, which a generic receiver is
+/// refused for by design. `crates/musa-core/tests/suite/trait_laws.rs` states
+/// the resolution half, where a raw term can write the qualified name.
 #[test]
-fn a_constraint_on_a_free_definition_is_refused_where_it_is_written() {
-    let (item, complaints) = lowered_item(
-        "fn same<A>(x: A, y: A) -> Bool where Eq<A> { x == y }",
-        SyntaxKind::FnDecl,
-    );
-    assert!(item.is_none(), "a free definition's dictionary has no core binder");
-    assert_eq!(complaints.len(), 1, "one complaint, at the clause");
-    let complaint = complaints.first().expect("one complaint").message.as_str();
+fn a_constraint_on_a_free_definition_is_admitted_where_it_is_written() {
+    let cx = with_same();
+    let written = "fn alike<A>(x: A, y: A) -> Bool where Same<A> { true }";
+    let defined = definition(written, SyntaxKind::FnDecl);
+    let ty = defined.ty.as_ref().expect("the declaration wrote its type");
+    let RawShape::Pi { plicity, codomain, .. } = ty.shape() else {
+        panic!("the type parameter is the outermost binder");
+    };
+    assert_eq!(*plicity, Plicity::Implicit, "a function's type parameter is implicit");
     assert!(
-        complaint.contains("constraint"),
-        "and it names what it is about: {complaint}"
+        matches!(codomain.shape(), RawShape::ConstrainedPi { .. }),
+        "and the `where` clause is the binder just inside it"
     );
+    inhabits_its_written_type(&cx, written, &defined);
+}
+
+/// §1.2's sentence, lowered: the constraint is a parameter of the type former.
+///
+/// "Requires the constraint at every construction and carries it to every
+/// reader" is a *binder*, and this is the shape of it — a reader cannot name
+/// `Cell A` without an argument the trait answers.
+#[test]
+fn a_constraint_on_a_record_becomes_a_parameter_of_its_type() {
+    let cx = with_same();
+    let written = "record Cell<A> where Same<A> { index: Nat; value: A; }";
+    let defined = definition(written, SyntaxKind::RecordDecl);
+    inhabits_its_written_type(&cx, written, &defined);
+}
+
+/// The same at a family, which is where the binder has to live on a `Group`.
+#[test]
+fn a_constraint_on_an_enum_becomes_a_parameter_of_its_family() {
+    let cx = with_same();
+    let written = "enum Held<A> where Same<A> { Empty, Full(A) }";
+    let data = declaration(written, SyntaxKind::EnumDecl);
+    assert_eq!(data.context.len(), 1, "the `where` clause is read, not dropped");
+    musa_core::declare(&cx, &data).expect("the core declares what the surface wrote");
+}
+
+/// An impl method's `where` is misplaced rather than unsupported, and the
+/// difference is that no later prompt is going to admit it.
+#[test]
+fn a_constraint_on_an_impl_method_is_refused_where_it_is_written() {
+    let (item, complaints) = lowered_item(
+        "impl Same<Nat> { fn same(x, y) where Same<Nat> { true } }",
+        SyntaxKind::ImplDecl,
+    );
+    assert!(item.is_none(), "an impl method's type is the trait's");
+    assert_eq!(complaints.len(), 1, "one complaint, at the clause");
+    let complaint = complaints.first().expect("one complaint");
+    assert_eq!(complaint.code, Code::Misplaced, "a permanent answer, not a promise");
+    assert!(
+        complaint.message.contains("impl method"),
+        "and it names what it is about: {}",
+        complaint.message
+    );
+}
+
+/// A constraint with no signature to hang on is refused rather than dropped.
+#[test]
+fn a_constraint_on_an_unsigned_definition_is_refused_where_it_is_written() {
+    let (item, complaints) = lowered_item("fn alike<A>(x, y) where Same<A> { same(x, y) }", SyntaxKind::FnDecl);
+    assert!(item.is_none(), "there is no declared type for the binder to join");
+    assert_eq!(complaints.len(), 1, "one complaint, at the clause");
+    let complaint = complaints.first().expect("one complaint");
+    assert_eq!(complaint.code, Code::Misplaced, "a permanent answer, not a promise");
 }
 
 /// The other half of [`Sites`]: a refusal the core raised, pointed back at the

@@ -77,7 +77,7 @@ pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, C
                 name,
                 domain,
                 codomain,
-            } => pi(meter, env, here, *plicity, name, domain, codomain),
+            } => pi(meter, env, here, plicity.clone(), name, domain, codomain),
             Shape::Lam { name: _, body } => Ok(Value::new(
                 here,
                 Form::Lam(Closure {

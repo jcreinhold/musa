@@ -1,7 +1,7 @@
 ---
 id: 141i
 slug: constrained-definitions
-status: pending
+status: done
 depends_on: [135, 137, 141g]
 phase: 3
 ---

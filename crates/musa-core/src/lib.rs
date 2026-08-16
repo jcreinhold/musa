@@ -110,7 +110,7 @@ mod visibility;
 
 pub use crate::base::{Base, Builtin, Datum, Extern, Family, Literal, Payload, Registry, Rewrite, Rule};
 pub use crate::budget::{Budget, Metric, ResourceError};
-pub use crate::class::{Instance, PackageId, Trait};
+pub use crate::class::{Constraint, Instance, PackageId, Trait};
 pub use crate::context::Cx;
 pub use crate::error::{CoreError, Malformed};
 pub use crate::family::{Binder, Constant, Constructor, Declared, Group};

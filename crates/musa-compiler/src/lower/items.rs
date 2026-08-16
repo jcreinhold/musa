@@ -158,6 +158,10 @@ impl Lowering<'_> {
         Some(RawData {
             origin,
             params,
+            // `data` has no `where` clause to read: `01-surface.md` §1's
+            // `where_clause` is called from `record`, `enum`, `trait`, `impl`,
+            // and a `fn` signature, and `data_decl` is not among them.
+            context: Vec::new(),
             families: vec![RawFamily {
                 name,
                 visibility,
@@ -192,8 +196,8 @@ impl Lowering<'_> {
     fn enumeration(&mut self, node: &SyntaxNode) -> Option<RawData> {
         let origin = self.origin(node);
         let name = declared_name(node)?;
-        self.unconstrained(node)?;
         let params = self.type_parameters(node);
+        let context = self.written_constraints(node)?;
         let mut constructors = Vec::new();
         for written in children(node, |kind| kind == SyntaxKind::EnumCase) {
             constructors.push(self.case(&written)?);
@@ -201,6 +205,7 @@ impl Lowering<'_> {
         Some(RawData {
             origin,
             params,
+            context,
             families: vec![RawFamily {
                 name,
                 visibility: visibility_of(node),
@@ -251,8 +256,8 @@ impl Lowering<'_> {
     fn structural(&mut self, node: &SyntaxNode) -> Option<Definition> {
         let origin = self.origin(node);
         let name = declared_name(node)?;
-        self.unconstrained(node)?;
         let params = self.type_parameters(node);
+        let context = self.written_constraints(node)?;
         let mut names = Vec::new();
         let mut types = Vec::new();
         for written in children(node, |kind| kind == SyntaxKind::FieldDecl) {
@@ -262,6 +267,13 @@ impl Lowering<'_> {
         }
         let mut value = Raw::record_type(origin, names.iter().map(|name| &**name).zip(types));
         let mut ty = Raw::universe(origin, Level::ZERO);
+        // §1.2's `record Cell<A> where Eq<A>` is `(A : Type) → [Eq A] → Type`:
+        // the constraint stands between the parameters and the record, so its
+        // arguments may mention them. Only the type gains a binder — the core
+        // wraps the value in the λ for it, exactly as it does for an implicit.
+        for constraint in context.into_iter().rev() {
+            ty = Raw::constrained_pi(origin, constraint, ty);
+        }
         for parameter in params.iter().rev() {
             value = Raw::lam(origin, Arc::clone(&parameter.name), value);
             ty = Raw::pi(origin, Arc::clone(&parameter.name), parameter.ty.clone(), ty);
@@ -369,6 +381,7 @@ impl Lowering<'_> {
         let mut methods = Vec::new();
         for written in children(node, |kind| kind == SyntaxKind::FnDecl) {
             let at = self.origin(&written);
+            self.misplaced_constraint(&written)?;
             methods.push(RawDefinition {
                 origin: at,
                 name: declared_name(&written)?,
@@ -409,13 +422,14 @@ impl Lowering<'_> {
     fn function(&mut self, node: &SyntaxNode) -> Option<Definition> {
         let origin = self.origin(node);
         let name = declared_name(node)?;
-        self.unconstrained(node)?;
+        let context = self.written_constraints(node)?;
         let parameters = written_parameters(node);
         let signed = child(node, is_type_node).is_some()
             && parameters
                 .iter()
                 .all(|parameter| child(parameter, is_type_node).is_some());
         if !signed {
+            self.unsigned_constraint(node, &context)?;
             return Some(Definition {
                 origin,
                 name,
@@ -432,6 +446,13 @@ impl Lowering<'_> {
             let written = child(parameter, is_type_node)?;
             ty = Raw::pi(at, Arc::clone(&bound), self.ty(&written)?, ty);
             value = Raw::lam(at, bound, value);
+        }
+        // §1.4's `fn same<A>(x: A, y: A) -> Bool where Eq<A>` is
+        // `{A : Type} → [Eq A] → (x : A) → (y : A) → Bool`: after the type
+        // parameters, so the constraint can mention them, and before the value
+        // parameters, so a caller answers it before supplying arguments.
+        for constraint in context.into_iter().rev() {
+            ty = Raw::constrained_pi(origin, constraint, ty);
         }
         for parameter in self.type_parameters(node).iter().rev() {
             ty = Raw::implicit_pi(origin, Arc::clone(&parameter.name), parameter.ty.clone(), ty);
@@ -511,28 +532,46 @@ impl Lowering<'_> {
             .collect()
     }
 
-    /// A `where` clause the core has no binder for, refused where it was
-    /// written.
+    /// A `where` clause on an `impl`'s method, refused where it was written.
     ///
-    /// `01-surface.md` §1.4 elaborates a constraint on a free definition to "an
-    /// extra parameter holding the dictionary", and `10-traits.md` §4 step 1
-    /// finds that parameter by the constraint it discharges. `musa-core`
-    /// discharges one at a trait, at a derived method, and at an `impl`, and a
-    /// definition is none of the three — so a reading that invented the
-    /// parameter would produce a term whose every method use refused, which is
-    /// worse than saying so here.
-    fn unconstrained(&mut self, node: &SyntaxNode) -> Option<()> {
+    /// An impl method takes its type from the dictionary field it fills, so a
+    /// constraint of its own has nowhere to go and never will — the same
+    /// reasoning `musa-core` gives for one on a *required* trait method. The
+    /// parser attaches a `WhereClause` to every `FnDecl`, including these, and
+    /// before this refusal existed the clause was read and dropped.
+    ///
+    /// [`Code::Misplaced`] rather than [`Code::UnsupportedLanguageStage`]: this
+    /// is a permanent answer, and the other code promises a later prompt.
+    fn misplaced_constraint(&mut self, node: &SyntaxNode) -> Option<()> {
         let Some(clause) = child(node, |kind| kind == SyntaxKind::WhereClause) else {
             return Some(());
         };
         self.refuse(
-            Diagnostic::error(
-                Code::UnsupportedLanguageStage,
-                "a constraint here has no core spelling yet",
-            )
-            .at(trimmed_span(&clause), "written here")
-            .note("the core binds a dictionary at a trait, at a derived method, and at an `impl`")
-            .help("declare the operation as a trait method, or write the constraint on an `impl`"),
+            Diagnostic::error(Code::Misplaced, "an impl method cannot carry a `where` clause")
+                .at(trimmed_span(&clause), "written here")
+                .note("its type is the trait's, so there is no binder of its own for a dictionary")
+                .help("write the constraint on the `impl`, or on the method in the `trait`"),
+        )
+    }
+
+    /// A `where` clause on a `fn` that wrote no signature, refused where it was
+    /// written.
+    ///
+    /// A constraint elaborates to a binder *on the type*, and this branch has no
+    /// type: §1.4's `where Eq<A>` names `A`, which is a type parameter, and a
+    /// declaration that annotates nothing quantifies over none. Reading the
+    /// clause and dropping it would leave every method use inside the body
+    /// resolving against a global instance.
+    fn unsigned_constraint(&mut self, node: &SyntaxNode, context: &[RawConstraint]) -> Option<()> {
+        if context.is_empty() {
+            return Some(());
+        }
+        let clause = child(node, |kind| kind == SyntaxKind::WhereClause)?;
+        self.refuse(
+            Diagnostic::error(Code::Misplaced, "a `where` clause needs the signature it constrains")
+                .at(trimmed_span(&clause), "written here")
+                .note("the constraint becomes a binder on the declared type, and none was written")
+                .help("annotate every parameter and the result type"),
         )
     }
 
@@ -546,7 +585,10 @@ impl Lowering<'_> {
     /// reading.
     fn head_and_arguments(&mut self, node: &SyntaxNode) -> Option<(Name, Vec<Raw>)> {
         match node.kind() {
-            SyntaxKind::TypeExpr => {
+            // A `where` clause's entry is a `Constraint` wrapping the written
+            // type, and an `impl`'s head is the written type itself. Both reach
+            // here, so the wrapper is transparent.
+            SyntaxKind::Constraint | SyntaxKind::TypeExpr => {
                 let inner = child(node, is_type_node)?;
                 self.head_and_arguments(&inner)
             }

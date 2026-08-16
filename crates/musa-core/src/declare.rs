@@ -37,10 +37,10 @@ use crate::eval::eval;
 use crate::family::{Binder, Constructor, Declared, Group};
 use crate::level::Level;
 use crate::origin::Origin;
-use crate::raw::{RawBinder, RawConstructor, RawData, RawFamily};
+use crate::raw::{RawBinder, RawConstraint, RawConstructor, RawData, RawFamily};
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
-use crate::term::{Index, Name, Shape, Term};
+use crate::term::{Index, Name, Plicity, Shape, Term};
 use crate::value::{Form, Value};
 use crate::visibility::Visibility;
 
@@ -61,7 +61,9 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<Arc<Group>, ElabError> 
     let opaque = Arc::new(Value::new(here, Form::Universe(Level::ZERO)));
     let outline = declaring(&Scope::new(&closed), data, |_| Arc::clone(&opaque));
     let arity = u32::try_from(data.families.len()).unwrap_or(u32::MAX);
-    let (params, under_params) = telescope(&mut elaborator, &outline, &data.params, arity)?;
+    let (mut params, under_params) = telescope(&mut elaborator, &outline, &data.params, arity)?;
+    let (context, under_params) = constraints(&mut elaborator, &under_params, &data.context)?;
+    params.extend(context);
 
     let mut indices = Vec::with_capacity(data.families.len());
     let mut levels = Vec::with_capacity(data.families.len());
@@ -184,10 +186,38 @@ fn telescope(
             .into());
         }
         inner = assume(elaborator, &inner, binder.ty.origin(), &binder.name, &ty)?;
-        binders.push(Binder {
-            name: Arc::clone(&binder.name),
-            ty,
-        });
+        binders.push(Binder::explicit(Arc::clone(&binder.name), ty));
+    }
+    Ok((binders, inner))
+}
+
+/// The group's `where` clause, as the parameters it becomes.
+///
+/// One parameter per constraint, appended after the written ones and standing
+/// at the dictionary's type — `01-surface.md` §1.2's `record Cell<A> where
+/// Eq<A>`, whose constraint "is required at every construction and carried to
+/// every reader" because a reader cannot name `Cell A` without an argument for
+/// it. Nothing is stored: the fields do not mention the dictionary, so `Cell Nat
+/// d` unfolds to the same record type a constraint-free declaration would give.
+///
+/// Each is discharged into the scope as well as assumed, so a constructor field
+/// or a later constraint written under it reaches this dictionary by
+/// `10-traits.md` §4 step 1.
+fn constraints(
+    elaborator: &mut Elaborator,
+    scope: &Scope,
+    raw: &[RawConstraint],
+) -> Result<(Vec<Binder>, Scope), ElabError> {
+    let mut binders = Vec::with_capacity(raw.len());
+    let mut inner = scope.clone();
+    for written in raw {
+        let classes = inner.cx().classes().clone();
+        let (constraint, ty) = crate::dictionary::constraint_at(elaborator, &inner, &classes, written)?;
+        let name = crate::class::Trait::super_field(&constraint.class);
+        let plicity = Plicity::Constraint(Arc::new(constraint));
+        inner = elaborator.discharging(&inner, &plicity, inner.env())?;
+        inner = assume(elaborator, &inner, written.origin, &name, &ty)?;
+        binders.push(Binder { name, ty, plicity });
     }
     Ok((binders, inner))
 }
@@ -196,6 +226,7 @@ fn telescope(
 fn assumed(elaborator: &mut Elaborator, scope: &Scope, binders: &[Binder]) -> Result<Scope, ElabError> {
     let mut inner = scope.clone();
     for binder in binders {
+        inner = elaborator.discharging(&inner, &binder.plicity, inner.env())?;
         inner = assume(elaborator, &inner, binder.ty.origin(), &binder.name, &binder.ty)?;
     }
     Ok(inner)
@@ -226,10 +257,16 @@ fn signatures(
         .collect()
 }
 
-/// `(b₀ : B₀) → … → body`.
+/// `(b₀ : B₀) → … → body`, each binder at the plicity it was declared with.
 fn closed_over(here: Origin, binders: &[Binder], body: Term) -> Term {
     binders.iter().rev().fold(body, |codomain, binder| {
-        Term::pi(here, Arc::clone(&binder.name), binder.ty.clone(), codomain)
+        Term::function(
+            here,
+            binder.plicity.clone(),
+            Arc::clone(&binder.name),
+            binder.ty.clone(),
+            codomain,
+        )
     })
 }
 
@@ -317,10 +354,7 @@ fn telescope_fields(
     for field in &constructor.fields {
         let (ty, level) = elaborator.check_type(&inner, &field.ty)?;
         inner = assume(elaborator, &inner, field.ty.origin(), &field.name, &ty)?;
-        binders.push(Binder {
-            name: Arc::clone(&field.name),
-            ty,
-        });
+        binders.push(Binder::explicit(Arc::clone(&field.name), ty));
         levels.push(level);
     }
     Ok((binders, levels, inner))

@@ -89,17 +89,39 @@ use crate::level::Level;
 use crate::list::List;
 use crate::origin::Origin;
 use crate::quote::{Depth, quote_type};
-use crate::term::{DbLevel, Index, Name, Shape, Term};
+use crate::term::{DbLevel, Index, Name, Plicity, Shape, Term};
 use crate::value::{Elim, Env, Form, Head, Neutral, Value};
 use crate::visibility::{ModuleId, Visibility};
 
-/// One binder of a telescope: a name and the type it stands at.
+/// One binder of a telescope: a name, the type it stands at, and how a use site
+/// fills it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Binder {
     /// The binder's written name, for diagnostics and for what quotation prints.
     pub name: Name,
     /// Its type, read under the declaration context and the binders before it.
     pub ty: Term,
+    /// How a use site supplies its argument.
+    ///
+    /// [`Plicity::Explicit`] for everything a declaration writes — §1.1's
+    /// parameters and indices are written at every use, which is what
+    /// `List<Nat>` is. A group's `where` clause appends
+    /// [`Plicity::Constraint`] parameters after the written ones, and those are
+    /// answered by `10-traits.md` §4 instead of written; see
+    /// [`RawData::context`](crate::RawData).
+    pub plicity: Plicity,
+}
+
+impl Binder {
+    /// A binder a use site writes: `(name : ty)`.
+    #[must_use]
+    pub fn explicit(name: Name, ty: Term) -> Self {
+        Self {
+            name,
+            ty,
+            plicity: Plicity::Explicit,
+        }
+    }
 }
 
 /// One constructor of a family.
@@ -700,7 +722,7 @@ struct Telescope<'a> {
     /// and the next position.
     depth: u32,
     /// The binders, in order, to be folded into Π's by [`Self::close`].
-    binders: Vec<(Name, Term)>,
+    binders: Vec<(Plicity, Name, Term)>,
 }
 
 impl<'a> Telescope<'a> {
@@ -741,7 +763,7 @@ impl<'a> Telescope<'a> {
             .env
             .push(Value::var(self.origin, DbLevel(self.depth), Arc::new(value)));
         self.depth = self.depth.saturating_add(1);
-        self.binders.push((Arc::from(name), ty));
+        self.binders.push((Plicity::Explicit, Arc::from(name), ty));
         Ok(at)
     }
 
@@ -752,15 +774,35 @@ impl<'a> Telescope<'a> {
         for binder in binders {
             let value = eval(meter, &self.reading, &binder.ty)?;
             let ty = quote_type(meter, Depth(self.depth), &value)?;
+            // A constraint binder's arguments are terms read under exactly the
+            // binders its *type* was read under, so they travel by the same
+            // eval-then-quote this line already does for the type. Re-indexing
+            // one and not the other is how a recursor's parameters would end up
+            // naming a motive.
+            let plicity = self.reindexed(meter, &binder.plicity)?;
             let variable = Value::var(self.origin, DbLevel(self.depth), Arc::new(value.clone()));
             self.env = self.env.push(variable.clone());
             self.reading = self.reading.push(variable);
             let at = At(self.depth);
             self.depth = self.depth.saturating_add(1);
-            self.binders.push((Arc::clone(&binder.name), ty));
+            self.binders.push((plicity, Arc::clone(&binder.name), ty));
             introduced.push((at, value));
         }
         Ok(introduced)
+    }
+
+    /// A stored binder's plicity, with a constraint's arguments read at the
+    /// depth this telescope has reached.
+    fn reindexed(&self, meter: &mut Meter, plicity: &Plicity) -> Result<Plicity, CoreError> {
+        let Plicity::Constraint(constraint) = plicity else {
+            return Ok(plicity.clone());
+        };
+        let mut args = Vec::with_capacity(constraint.args.len());
+        for argument in constraint.args.iter() {
+            let value = eval(meter, &self.reading, argument)?;
+            args.push(quote_type(meter, Depth(self.depth), &value)?);
+        }
+        Ok(Plicity::Constraint(Arc::new(constraint.at(Arc::from(args)))))
     }
 
     /// One motive per family in the group: `P_j : (i⃗ : Indices_j) → N_j p⃗ i⃗ →
@@ -924,9 +966,12 @@ impl<'a> Telescope<'a> {
 
     /// Fold the binders back into Π's around `result`.
     fn close(self, result: Term) -> Term {
-        self.binders.into_iter().rev().fold(result, |codomain, (name, domain)| {
-            Term::pi(self.origin, name, domain, codomain)
-        })
+        self.binders
+            .into_iter()
+            .rev()
+            .fold(result, |codomain, (plicity, name, domain)| {
+                Term::function(self.origin, plicity, name, domain, codomain)
+            })
     }
 
     /// [`Self::close`], for a caller holding the telescope by reference.
@@ -934,8 +979,8 @@ impl<'a> Telescope<'a> {
         std::mem::take(&mut self.binders)
             .into_iter()
             .rev()
-            .fold(result, |codomain, (name, domain)| {
-                Term::pi(self.origin, name, domain, codomain)
+            .fold(result, |codomain, (plicity, name, domain)| {
+                Term::function(self.origin, plicity, name, domain, codomain)
             })
     }
 }
