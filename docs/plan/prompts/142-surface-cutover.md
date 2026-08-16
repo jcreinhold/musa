@@ -111,7 +111,9 @@ the middle. It absorbs prompt 127e, whose file stays as a superseded record rath
   reason is document structure rather than a missing statement. Its survey is this prompt's second work list, over
   `examples/` as 141o's is over `stdlib/`. What is left here of the structure is bar lines and the instance sites: a
   `bar`, a `senza`, and an `assert` are checked against barlines a pass resolves, and a `make` mints an expansion path
-  `Sites` has no way to number yet.
+  `Sites` has no way to number yet. That survey also found the one fault in either corpus that no prompt had written
+  down — a notation statement whose argument is a *bound name* rather than a literal — and the Target below now names
+  it.
 - [`141c`](141c-structural-eliminators.md), which adds the second of §5.8's four families: a compiler-owned operation
   that takes a function argument and rewrites rather than computing. `recurse_syntax`, `run_syntax_step`, and
   `syntax_fold_from_leaves` are registered through it, and `staff.musa` does not compile without them. Its Design also
@@ -195,6 +197,15 @@ rewrite here would destroy that measurement. The same applies to the studio adap
   readback that turns a normal form into the musical value a consumer receives. A track is a literal at
   `EventTrack ⟨written⟩`, so the readback is a normal form, a literal, and the payload it holds; what costs something is
   `Program`'s shape, which exists to defer contextual instantiation and has nothing left to defer.
+- A notation statement whose argument is a **bound name** read as a term rather than refused. `root/4` in
+  `motif turn(root: Pitch)`, `key k;` and `in scale mode` in a `template piece`: 141k's reading folds a pitch, a key,
+  and a scale to a *value* while it walks the block, so a parameter — which has no value until an instance site supplies
+  one — is reported as though a literal had been misspelled. Five of `examples/`' fifty-four fail this way and both
+  template examples do, so the migration cannot land without it. What it costs is that `Fact.Note`, `Fact.Key`, and the
+  scale a `step` counts in take an argument that is a `Raw::var`, which makes the enclosing `sounded` a neutral term
+  until the site applies it — the ordinary behaviour of a builtin under an unapplied binder (`02-core-calculus.md`
+  §5.8), and the reason this is a spelling rather than a language feature. Record in the code map which of the four
+  statements each corpus needed.
 - `infer.rs` deleted, `core.rs`'s superseded arms deleted, `names_a_phase_type` deleted, second-path audit recorded.
 - `primitive` typed against the build-local registry, and `registry/rules.rs`'s `UNREGISTERED` shortened by the row
   141ha left there. It is not one more signature: the name and version select the descriptor that supplies the ports and
