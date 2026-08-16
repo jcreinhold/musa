@@ -2,7 +2,7 @@
 id: 141g
 slug: raw-lowering
 status: in-progress
-depends_on: [136a, 137, 139, 140, 141e, 141f]
+depends_on: [136a, 137, 139, 140, 141e, 141f, 141fa]
 phase: 3
 ---
 
@@ -44,6 +44,10 @@ its own.
   [`10-traits.md`](../../rules/language/10-traits.md) §5 and §6 for what `x == y` and `x.m(y)` are spellings *of*.
   `musa_core::Raw`'s own module documentation says the core never learns an operator table; this is the module that
   therefore has to hold one.
+- [`141fa`](141fa-constructor-checking.md), which makes what this prompt writes checkable. A surface constructor is
+  written without its family's parameters — `Some(x)`, `None`, `[a, b]` — and a reading that holds no expected type
+  cannot supply one, so the rule that supplies them is the checker's. It was written on this prompt's evidence; see
+  Design.
 - [`141ga`](141ga-quotation-core.md), which owns both quotation forms. They left this prompt on the evidence its own
   implementation produced — see Design — and everything else about reading the surface stayed.
 - `musa_core::Refusal`'s variants and `musa_core::PathStep`. A refusal is what a composer will see, so the mapping to
@@ -91,6 +95,14 @@ and it would compute derived identity a second time beside `crate::syntax::build
 [`141ga`](141ga-quotation-core.md) is where it and both quotation forms land. This prompt reads every other surface
 form, and refuses a quote at the node with a diagnostic that says which prompt owns it.
 
+**A constructor is written without its parameters, and that is the checker's rule rather than a reading.** `Some(x)`
+names `Option.Some`, whose type quantifies over the family's parameter before its field. Nothing in the surface writes
+that parameter and nothing in a reading could supply it, because supplying it is knowing the expected type. §2 already
+says the rule — "a constructor checks against its family at known parameters and indices" — and `family::realize`
+already implements it for a δ-rule's answer; what was missing was the same rule for a raw term.
+[`141fa`](141fa-constructor-checking.md) is that rule, written on the evidence that `None`, `Some(0)`, `Ok(0)`, and
+every list literal were refused by the core until it existed.
+
 **Laws are the caller, and the oracle is the core.** The property this module can have is that what it writes, the core
 accepts — so every law lowers something real and hands it to `musa_core::check` in [`crate::registry::owned`]'s context.
 That is checkable now, needs nothing migrated, and is exactly the property the cutover will rely on. Where an answer is
@@ -114,6 +126,7 @@ second oracle 142 will remove.
 - Prompt 142 repaired: its first Target bullet becomes wiring what this built, its Read cites this prompt, and its
   `depends_on` names it.
 - Prompt 141ga written, on the evidence above, and cited from this prompt's Design and from 142.
+- Prompt 141fa written, on the evidence above, and named in this prompt's `depends_on`.
 
 ## Check
 
