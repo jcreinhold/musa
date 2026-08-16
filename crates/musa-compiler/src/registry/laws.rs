@@ -73,7 +73,7 @@ fn every_delta_spelling_is_registered_exactly_once() {
     assert_eq!(spellings, unique, "a spelling was registered twice");
     assert_eq!(
         spellings.len(),
-        rules::REGISTERED + rules::BEYOND.len() + super::track::TRACK_BEYOND.len(),
+        rules::REGISTERED + rules::BEYOND.len() + super::track::TRACK_BEYOND.len() + super::notation::BEYOND.len(),
         "the registered count and the counts this module states have drifted"
     );
     for builtin in &registered {
@@ -81,7 +81,7 @@ fn every_delta_spelling_is_registered_exactly_once() {
     }
 }
 
-/// The operations past both tables are exactly the five that are said to be
+/// The operations past both tables are exactly the seven that are said to be
 /// past them, counted off the registry rather than off a table.
 ///
 /// Two claims, and the second is the one that needs a test: that each is
@@ -93,7 +93,11 @@ fn every_delta_spelling_is_registered_exactly_once() {
 fn the_operations_past_both_tables_are_named_and_in_neither() {
     let cx = owned().expect("the compiler's own context builds");
     let registered = builtins(&cx).expect("both tables translate");
-    for spelling in rules::BEYOND.into_iter().chain(super::track::TRACK_BEYOND) {
+    for spelling in rules::BEYOND
+        .into_iter()
+        .chain(super::track::TRACK_BEYOND)
+        .chain(super::notation::BEYOND)
+    {
         assert!(
             registered.iter().any(|builtin| &**builtin.name() == spelling),
             "`{spelling}` is registered"

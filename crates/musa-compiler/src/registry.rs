@@ -73,6 +73,7 @@
 #[cfg(test)]
 mod laws;
 mod machine;
+mod notation;
 mod rules;
 mod track;
 mod traversal;
@@ -328,6 +329,27 @@ fn bases() -> Vec<Base> {
         plain("Triad"),
         plain("Roman"),
         plain("Voicing"),
+        // The notated domains: the payloads of [`crate::prelude`]'s `Fact`, and
+        // registered for the reason the written domains above are. A composer
+        // writes a clef, a dynamic, or a metronome mark; none of them is taken
+        // apart by a program, and each carries a spelling and a reading this
+        // compiler owns — a `NotatedDuration` holds the pieces a tie is written
+        // with, a `ChordSymbol` holds a parsed analysis, a `Progress` is a
+        // kernel curve. They are here rather than in `Fact`'s own cases because
+        // D1's test is inertness and not size: a case that spelled a
+        // `NotatedDuration` out of a `Ratio` and a `Text` would let a program
+        // build one whose spelling and value disagree.
+        plain("Mode"),
+        plain("Clef"),
+        plain("NotatedDuration"),
+        plain("FreeDuration"),
+        plain("Mark"),
+        plain("MarkArgument"),
+        plain("DynamicMark"),
+        plain("Progress"),
+        plain("Metronome"),
+        plain("Ramp"),
+        plain("ChordSymbol"),
         // The twelve-tone domains.
         plain("Pc12"),
         plain("PcSet12"),
@@ -705,6 +727,7 @@ fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
     built.extend(traversal::eliminators(cx)?);
     built.extend(quotation(cx)?);
     built.extend(track::builtins(cx)?);
+    built.extend(notation::builtins(cx)?);
     built.extend(machine::builtins(cx)?);
     Ok(built)
 }

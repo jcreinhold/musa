@@ -100,7 +100,7 @@ pub(super) const TRACK_BEYOND: [&str; 1] = ["set_note_pitches"];
 /// The only instantiation this compiler has, and the one every signature below
 /// is written at. `EventTrack` is registered at `Coordinate → Type 0`, so this
 /// is the same application `Duration ⟨written⟩` is.
-fn track_type() -> Term {
+pub(super) fn track_type() -> Term {
     tagged_type("EventTrack", Coordinate::WrittenTime)
 }
 
@@ -216,7 +216,7 @@ fn set_note_pitches(cx: &Cx) -> Result<Builtin, ElabError> {
 // ---- reading and writing a track ----
 
 /// The track an argument holds.
-fn track_of(datum: &Datum) -> Option<VoiceTrack> {
+pub(super) fn track_of(datum: &Datum) -> Option<VoiceTrack> {
     let Datum::Lit(ref value) = *datum else {
         return None;
     };
@@ -224,7 +224,7 @@ fn track_of(datum: &Datum) -> Option<VoiceTrack> {
 }
 
 /// A track, as a literal at `EventTrack ⟨written⟩`.
-fn built(track: VoiceTrack) -> Datum {
+pub(super) fn built(track: VoiceTrack) -> Datum {
     Datum::Lit(literal(track_type(), track))
 }
 
@@ -435,7 +435,7 @@ const PLAY: Rule = |arguments| {
 /// The inverse of [`crate::prelude`]'s declaration, and the one place the two
 /// spellings of a scope meet. A part or voice number past `u32` is not a scope
 /// this compiler can name, so it reads as absent rather than as a truncation.
-fn scope_of(datum: &Datum) -> Option<Scope> {
+pub(super) fn scope_of(datum: &Datum) -> Option<Scope> {
     let Datum::Case {
         ref constructor,
         ref fields,

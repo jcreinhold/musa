@@ -274,6 +274,119 @@ fn row_fault_data() -> RawData {
     )
 }
 
+/// `data Fact { Note(…); Rest(…); … }` — the nineteen things a score says.
+///
+/// One case per [`crate::elaborate::FactKind`] case, with the same name and the
+/// same fields in the same order. That correspondence is the declaration's whole
+/// content and is checked by a law rather than trusted: a twentieth kind added
+/// to the enum makes the law's exhaustive `match` fail to compile, so notation
+/// cannot quietly become unwritable in the core.
+///
+/// # Why declared rather than registered
+///
+/// `02-core-calculus.md` §5.8's D1 test is inertness, and a fact fails it in the
+/// direction that matters: it is finite data whose cases are the vocabulary of
+/// notation itself, and `07-analysis.md`'s analyses are `match`es over exactly
+/// this. `Scope` settled the same question for `play`'s other argument — "finite
+/// data with three cases and nothing hidden behind them" — and this is that
+/// answer nineteen cases wider.
+///
+/// Its *payloads* go the other way and are registered base types, because each
+/// is a value this compiler owns a representation and a reading of: a
+/// `NotatedDuration` records which noteheads spell a span, a `ChordSymbol` is a
+/// parsed analysis, a `Progress` is a kernel curve. A case that spelled one out
+/// of its parts would let a program build a duration whose value and spelling
+/// disagree, which is a fact no notation can be.
+fn fact_data() -> RawData {
+    let list = |name: &str| applied("List", [var(name)]);
+    let option = |name: &str| applied("Option", [var(name)]);
+    data(
+        Vec::new(),
+        vec![family(
+            "Fact",
+            Vec::new(),
+            vec![
+                constructor(
+                    "Note",
+                    vec![
+                        binder("pitch", var("Pitch")),
+                        binder("duration", var("NotatedDuration")),
+                        binder("articulations", list("Mark")),
+                        binder("free", option("FreeDuration")),
+                    ],
+                ),
+                constructor(
+                    "Rest",
+                    vec![
+                        binder("duration", var("NotatedDuration")),
+                        binder("articulations", list("Mark")),
+                        binder("free", option("FreeDuration")),
+                    ],
+                ),
+                constructor(
+                    "Mark",
+                    vec![binder("mark", var("Mark")), binder("argument", option("MarkArgument"))],
+                ),
+                constructor(
+                    "Grace",
+                    vec![
+                        binder("pitch", var("Pitch")),
+                        binder("articulations", list("Mark")),
+                        binder("index", var("Nat")),
+                    ],
+                ),
+                constructor("Slur", Vec::new()),
+                constructor("Phrase", vec![binder("name", var("Text"))]),
+                constructor("Tuplet", vec![binder("num", var("Nat")), binder("den", var("Nat"))]),
+                constructor("Dynamic", vec![binder("mark", var("DynamicMark"))]),
+                constructor(
+                    "Hairpin",
+                    vec![
+                        binder("grows", var("Bool")),
+                        binder("target", var("DynamicMark")),
+                        binder("shape", var("Progress")),
+                    ],
+                ),
+                constructor(
+                    "Key",
+                    vec![binder("tonic", var("PitchClass")), binder("mode", var("Mode"))],
+                ),
+                constructor(
+                    "Meter",
+                    vec![binder("numerator", var("Nat")), binder("denominator", var("Nat"))],
+                ),
+                constructor("Clef", vec![binder("clef", var("Clef"))]),
+                constructor(
+                    "Tempo",
+                    vec![
+                        binder("metronome", option("Metronome")),
+                        binder("text", option("Text")),
+                        binder("ramp", option("Ramp")),
+                    ],
+                ),
+                constructor("Section", vec![binder("name", var("Text"))]),
+                constructor("Harmony", vec![binder("symbol", var("ChordSymbol"))]),
+                constructor(
+                    "Repeat",
+                    vec![
+                        binder("times", var("Nat")),
+                        binder("range", applied("Option", [applied("Pair", [var("Nat"), var("Nat")])])),
+                    ],
+                ),
+                constructor(
+                    "Mobile",
+                    vec![binder("fragments", list("Text")), binder("order", list("Nat"))],
+                ),
+                constructor("Improvise", vec![binder("over", option("Text"))]),
+                constructor(
+                    "Ending",
+                    vec![binder("bracket", var("Nat")), binder("pass", var("Nat"))],
+                ),
+            ],
+        )],
+    )
+}
+
 /// `data SyntaxStep (Context : Type 0) (Answer : Type 0) { private Step(run : Context -> Answer) }`.
 ///
 /// One suspended recursive call into a proper child, sealed —
@@ -365,7 +478,7 @@ pub(crate) fn structural() -> Vec<RawData> {
 /// by breaking it: `RowFault` holds a `List Pc12`, and `Pc12` is registered
 /// rather than declared.
 pub(crate) fn musical() -> Vec<RawData> {
-    vec![row_fault_data()]
+    vec![row_fault_data(), fact_data()]
 }
 
 /// The term naming `name` in `cx`, for a caller assembling a builtin's type.

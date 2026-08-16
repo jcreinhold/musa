@@ -1,7 +1,7 @@
 ---
 id: 141j
 slug: notation-vocabulary
-status: pending
+status: done
 depends_on: [141b, 141d, 141e, 141h]
 phase: 3
 ---
@@ -102,10 +102,18 @@ kernel's own word, `musa_kernel::follow` already exists and is already proved as
 registering it costs one rule that calls it.
 
 **`nothing` is `follow`'s identity and it is a value, not a rule.** An empty `music { }` block, a voice with no
-statements, and the seed of the left fold are all the same track: duration zero, no occurrences. Register it the way
-141ha registered §2's grammatical forms — `Builtin::constructor`, whose "reduction shape is none at all" — or as a
-zero-argument δ-rule if the registry's arity checking prefers it; the Design fixes the *type* and leaves that choice to
-whichever one the registry accepts without a special case. It is `musa_kernel::empty` and nothing more.
+statements, and the seed of the left fold are all the same track: duration zero, no occurrences. It is
+`musa_kernel::empty` and nothing more.
+
+*Repaired during implementation.* This paragraph asked for `Builtin::constructor` — 141ha's shape, "whose reduction
+shape is none at all" — or a zero-argument δ-rule, and neither works, for the same reason in two spellings. A δ-rule
+fires "at the moment the last argument arrives" (`02-core-calculus.md` §5.8), so a rule of no arguments never fires; a
+`Builtin::constructor` has no reduction by design, so `follow(nothing, t)` would hand `follow`'s rule a rigid neutral
+where it expects canonical data and the spine would block forever. Both shapes say *operation*, and `nothing` is not
+one. Nor is it a `Definition` like `run_syntax_step`, which needs one only because a λ has no inferable type: a literal
+at a base type carries its own, so a `Definition` here would write a type the value already states. So `nothing` is a
+**literal** at `EventTrack ⟨written⟩` that prompt 141k's lowering embeds directly, and the accounting law counts two
+registrations here rather than three.
 
 **Agreement is the check, as it was in 141e.** Each new rule is sampled against the code that builds the same fact in
 `elaborate.rs` today, by a second hand-written path, so a broken encoding cannot make agreement pass. `follow`'s law is
@@ -124,10 +132,10 @@ the data is finite. `Scope` settled this question already and this is the same a
 
 - `crates/musa-compiler/src/prelude.rs`: `Fact` declared, one case per `FactKind` case, doc-commented with the mirroring
   rule and with what each field's payload type is.
-- `crates/musa-compiler/src/registry/`: `sounded`, `follow`, and `nothing` registered against the types above, in
-  `track.rs` beside the eight or in a `notation.rs` next to it, whichever leaves `track.rs` a module that can still be
-  named in one sentence.
-- `TRACK_BEYOND` (or its equivalent) naming all four operations that no ownership table names, each with the sentence
+- `crates/musa-compiler/src/registry/`: `sounded` and `follow` registered against the types above and `nothing` written
+  as a literal at the same track type, in `track.rs` beside the eight or in a `notation.rs` next to it, whichever leaves
+  `track.rs` a module that can still be named in one sentence.
+- `TRACK_BEYOND` (or its equivalent) naming all three operations that no ownership table names, each with the sentence
   that says why it has no source word.
 - Any payload type `Fact` needs and the registry lacks, registered as an inert base type and counted.
 - The accounting law extended: registered builtins are exactly the ownership tables' entries plus the named

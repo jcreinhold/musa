@@ -840,3 +840,30 @@ fn a_site_answers_the_span_it_was_numbered_for() {
         "a term nobody wrote has nowhere to point, and says so"
     );
 }
+
+#[test]
+fn probe_spellings() {
+    let cx = with_same();
+    for written in [
+        "fn alike<A>(x: A, y: A) -> Bool where Same<A> { Same.same(x, y) }",
+        "fn alike<A>(x: A, y: A) -> Bool where Same<A> { (Same.same)(x, y) }",
+        "fn alike<A>(x: A, y: A) -> Bool where Same<A> { Same::same(x, y) }",
+        "fn alike<A>(x: A, y: A) -> Bool where Same<A> { x.same(y) }",
+        "fn alike(x: Nat, y: Nat) -> Bool { Same.same(x, y) }",
+        "fn alike(x: Nat, y: Nat) -> Bool { (Same.same)(x, y) }",
+        "fn alike(x: Nat, y: Nat) -> Bool { x.same(y) }",
+    ] {
+        let (item, complaints) = lowered_item(written, SyntaxKind::FnDecl);
+        print!("--- {written}\n    lower: {complaints:?} => ");
+        if let Some(Item::Definition(defined)) = item {
+            let declared = defined.ty.as_ref().expect("wrote its type");
+            let (declared, _) = musa_core::infer(&cx, declared).expect("its type is a type");
+            match musa_core::check(&cx, &declared, &defined.value) {
+                Ok(_) => println!("CHECKS"),
+                Err(failure) => println!("REFUSED {failure:?}"),
+            }
+        } else {
+            println!("no item");
+        }
+    }
+}
