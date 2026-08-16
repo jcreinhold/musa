@@ -312,6 +312,8 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 141h | track-core | 3 | Give the track a core shape |
 | 141ha | machine-core | 3 | Give the machine a core shape |
 | 141i | constrained-definitions | 3 | Give a free definition its dictionary |
+| 141j | notation-vocabulary | 3 | Give notation its core words |
+| 141k | notation-lowering | 3 | Read a notated block as a track term |
 | 142 | surface-cutover | 3 | Move the whole language over, once |
 | 143 | builtin-collapse | 3 | Collapse the builtin registry behind traits and namespaces |
 | 144 | diagnostics-and-performance | 3 | Make the new failures legible and the new checker fast enough |
