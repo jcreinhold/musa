@@ -476,6 +476,16 @@ impl Coordinate {
     }
 }
 
+/// A coordinate prints as the word a type is written with.
+///
+/// It is the index of `Duration` and `Position` in [`crate::registry`], so this
+/// is what a diagnostic shows when one of those types is printed.
+impl std::fmt::Display for Coordinate {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        out.write_str(self.spelling())
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Type {
     /// A type inference has not decided yet, named by the
@@ -995,7 +1005,7 @@ struct CheckedMusic {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Builtin {
+pub(crate) enum Builtin {
     NatFold,
     ListFoldFromStart,
     ListFoldFromEnd,
@@ -1359,7 +1369,7 @@ fn encode_exactly(value: &Value, bytes: &mut Vec<u8>) -> Option<()> {
 /// is observed by applying a builtin. That is condition D1, and it holds here by construction —
 /// there is no variant for a type with an eliminator.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-enum Base {
+pub(crate) enum Base {
     Bool,
     Nat,
     /// An exact rational. Signed, and the ordinary arithmetic base: §1's
@@ -1395,14 +1405,26 @@ enum Base {
 /// function argument could not be spelled here at all — it would have to join the eliminators,
 /// which is exactly the classification the theorem depends on.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-enum Shape {
+pub(crate) enum Shape {
     Base(Base),
     Option(&'static Self),
     List(&'static Self),
-    Product(&'static [Self]),
     /// `Result<value, error>` — how a builtin with more than one way to
     /// fail says which one happened. `Option` says only *that* it did.
     Result(&'static Self, &'static Self),
+    /// Why a sequence of pitch classes is not a twelve-tone row.
+    ///
+    /// The one signature in the table that is neither a base type nor a
+    /// container over one, and the reason it is spelled as a name rather than as
+    /// an anonymous pair: a δ-rule answers a `musa_core::Datum`, which is a
+    /// literal or a constructor, so a bare product is the one thing it cannot
+    /// write. That is the mechanism noticing something true — the pair was a
+    /// domain concept wearing a tuple — so it is declared in
+    /// [`crate::prelude`] and named here.
+    ///
+    /// It is still a product to the old checker, because [`Self::ty`] still has
+    /// to answer one; that half leaves with the old checker in prompt 142.
+    Fault,
 }
 
 impl Shape {
@@ -1412,7 +1434,7 @@ impl Shape {
             Self::Base(base) => base.ty(),
             Self::Option(member) => Type::Option(Box::new(member.ty())),
             Self::List(member) => Type::List(Box::new(member.ty())),
-            Self::Product(members) => Type::Product(members.iter().map(|member| member.ty()).collect()),
+            Self::Fault => Type::Product(vec![NATS.ty(), PC12S.ty()]),
             Self::Result(value, error) => Type::Sum(Box::new(value.ty()), Box::new(error.ty())),
         }
     }
@@ -1447,7 +1469,7 @@ impl Shape {
         match self {
             Self::Base(base) => base.is_storable(),
             Self::Option(member) | Self::List(member) => member.is_storable(),
-            Self::Product(members) => all_storable(members),
+            Self::Fault => NATS.is_storable() && PC12S.is_storable(),
             Self::Result(value, error) => value.is_storable() && error.is_storable(),
         }
     }
@@ -1529,7 +1551,7 @@ const fn all_storable(shapes: &[Shape]) -> bool {
 ///
 /// All four of §5.8's families are spelled here.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-enum Family {
+pub(crate) enum Family {
     /// §5.8's **δ-builtins**: first-order and arrow-free. Covered by Theorem 5 once D1–D4 hold,
     /// and the declared signature is the single statement of the operation's type: the checker
     /// reads argument and result types from it rather than restating them.
@@ -1552,7 +1574,7 @@ enum Family {
 /// Seven of them are pure wiring and say nothing about what is being wired; `primitive` names a
 /// registered unit, and `machine` is how one becomes a machine.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-enum MachineOp {
+pub(crate) enum MachineOp {
     /// `primitive(name, version, configuration)` — one instance of a registered unit.
     Primitive,
     /// `machine(p)` — §2's lifting of a registered unit into a machine.
@@ -1680,7 +1702,7 @@ impl MachineOp {
 /// is exactly why the direction has to be in the name. Other structures may admit ordered
 /// traversals too; they keep one canonical eliminator until another primitive earns a caller.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-enum Eliminator {
+pub(crate) enum Eliminator {
     NatFold,
     ListFoldFromStart,
     ListFoldFromEnd,
@@ -1809,7 +1831,7 @@ impl Eliminator {
 /// takes a number and returns a path, and nothing mints a fresh id, which is
 /// the repair `37-final-blocker.md` §1 and `34-proof-review.md` asked for.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-enum SyntaxOp {
+pub(crate) enum SyntaxOp {
     /// `recurse_syntax(missing, token, identifier, group, context, subject)` —
     /// the way into a syntax value, with each branch receiving the inherited
     /// context and the node's own path.
@@ -1906,7 +1928,7 @@ enum SyntaxOp {
 /// exactly one place" is then a fact the registry states rather than a claim a
 /// reader has to count out.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-enum PhaseFamily {
+pub(crate) enum PhaseFamily {
     /// Descent: [`SyntaxOp::Recurse`], [`SyntaxOp::Run`], and the derived
     /// [`SyntaxOp::Fold`]. Each takes function arguments and carries a rank-1
     /// scheme, so §5.6's account of an eliminator applies to them unchanged,
@@ -1962,7 +1984,7 @@ impl SyntaxOp {
     /// functions as readily as a list of syntax. Everything else is
     /// monomorphic, because a builder's argument and result types are decided
     /// by which builder it is.
-    fn instantiate(self, unifier: &mut Unifier) -> Type {
+    pub(crate) fn instantiate(self, unifier: &mut Unifier) -> Type {
         // Every operation here reads and builds at `TokenTree`: reading claims
         // nothing about a node it descends into, and a builder's result is a
         // tree nobody has parsed. `Expr` is reached only by `as_expression` and
@@ -2075,11 +2097,11 @@ impl SyntaxOp {
 }
 
 #[derive(Clone, Copy)]
-struct BuiltinOwnership<T, F = Family> {
-    operation: T,
-    spelling: &'static str,
+pub(crate) struct BuiltinOwnership<T, F = Family> {
+    pub(crate) operation: T,
+    pub(crate) spelling: &'static str,
     hidden_information: &'static str,
-    family: F,
+    pub(crate) family: F,
 }
 
 /// The phase-local registry.
@@ -2090,7 +2112,7 @@ struct BuiltinOwnership<T, F = Family> {
 /// looked up when ordinary source reads a name. Each entry says what it hides,
 /// for the same reason the source entries do — an operation earns a place in a
 /// compiler-owned registry by hiding something a library could not.
-const SYNTAX_OWNERSHIP: [BuiltinOwnership<SyntaxOp, PhaseFamily>; 17] = [
+pub(crate) const SYNTAX_OWNERSHIP: [BuiltinOwnership<SyntaxOp, PhaseFamily>; 17] = [
     BuiltinOwnership {
         operation: SyntaxOp::Recurse,
         spelling: "recurse_syntax",
@@ -2237,10 +2259,10 @@ const ROW12: Shape = Shape::Base(Base::Row12);
 const TEXTS: Shape = Shape::List(&TEXT);
 const MAYBE_TEXT: Shape = Shape::Option(&TEXT);
 
-const NATS: Shape = Shape::List(&NAT);
+pub(crate) const NATS: Shape = Shape::List(&NAT);
 const PITCHES: Shape = Shape::List(&PITCH);
 const INTERVALS: Shape = Shape::List(&INTERVAL);
-const PC12S: Shape = Shape::List(&PC12);
+pub(crate) const PC12S: Shape = Shape::List(&PC12);
 const ROW12S: Shape = Shape::List(&ROW12);
 
 const RATIO_OR_TEXT: Shape = Shape::Result(&RATIO, &TEXT);
@@ -2262,7 +2284,7 @@ const MAYBE_VOICING: Shape = Shape::Option(&VOICING);
 /// (*Open Music Theory*, `108-basics-of-twelve-tone-theory.md`). Both, rather
 /// than a choice between them, because a sequence of the wrong length can have
 /// either without the other.
-const ROW_FAULT: Shape = Shape::Product(&[NATS, PC12S]);
+const ROW_FAULT: Shape = Shape::Fault;
 const ROW12_OR_FAULT: Shape = Shape::Result(&ROW12, &ROW_FAULT);
 
 /// Register a first-order signature, checking it as it is written.
@@ -2296,7 +2318,7 @@ const fn delta(arguments: &'static [Shape], result: Shape) -> Family {
     Family::Delta { arguments, result }
 }
 
-const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 117] = [
+pub(crate) const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 117] = [
     BuiltinOwnership {
         operation: Builtin::NatFold,
         spelling: "nat_fold",
@@ -10164,7 +10186,7 @@ fn greatest_common_divisor(mut left: u128, mut right: u128) -> u128 {
 /// Nothing means the reduced value does not fit, which every caller turns into
 /// a stated failure rather than a stuck term: D2 forbids partiality anywhere
 /// but the result type.
-fn exact_ratio(numerator: i128, denominator: i128) -> Option<Ratio<i64>> {
+pub(crate) fn exact_ratio(numerator: i128, denominator: i128) -> Option<Ratio<i64>> {
     if denominator == 0 {
         return None;
     }
@@ -10193,7 +10215,7 @@ fn exact_ratio(numerator: i128, denominator: i128) -> Option<Ratio<i64>> {
 /// [`Builtin`] here would have to name every operation that is *not* one of
 /// these four.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-enum Exact {
+pub(crate) enum Exact {
     Add,
     Sub,
     Mul,
@@ -10202,7 +10224,7 @@ enum Exact {
 
 /// `left · right`, computed wide and reduced before it is asked whether it
 /// fits.
-fn exact_arithmetic(left: Ratio<i64>, right: Ratio<i64>, operation: Exact) -> Option<Ratio<i64>> {
+pub(crate) fn exact_arithmetic(left: Ratio<i64>, right: Ratio<i64>, operation: Exact) -> Option<Ratio<i64>> {
     let (a, b) = (i128::from(*left.numer()), i128::from(*left.denom()));
     let (c, d) = (i128::from(*right.numer()), i128::from(*right.denom()));
     match operation {
@@ -10269,7 +10291,7 @@ fn ratio_arithmetic(operation: Exact, values: &[Value]) -> Option<Value> {
 /// a whole note. Nothing below zero: the grammar has no negative numeric
 /// literal, so a `-7/6` spelled here would be text the reader would not read
 /// back, and this family's one law is that it does.
-fn written_rational(value: Ratio<i64>) -> Option<String> {
+pub(crate) fn written_rational(value: Ratio<i64>) -> Option<String> {
     if value < Ratio::ZERO {
         return None;
     }
@@ -10288,10 +10310,14 @@ fn written_rational(value: Ratio<i64>) -> Option<String> {
 /// interval fall out: one whose size and quality the written grid does not
 /// name, and a descending one, which the reader spells with a `down` the
 /// literal grammar has no token for.
-fn written_interval(interval: Interval) -> Option<String> {
+pub(crate) fn written_interval(interval: Interval) -> Option<String> {
     let spelling = interval.to_string();
     (Interval::parse(&spelling, false) == Some(interval)).then_some(spelling)
 }
+
+/// The old evaluator, reachable for prompt 141e's agreement law and nothing else.
+#[cfg(test)]
+pub(crate) mod oracle;
 
 fn eval_builtin(
     builtin: Builtin,
@@ -13938,10 +13964,9 @@ mod tests {
                 produced_by_a_builtin(*value, found);
                 produced_by_a_builtin(*error, found);
             }
-            Shape::Product(members) => {
-                for member in members {
-                    produced_by_a_builtin(*member, found);
-                }
+            Shape::Fault => {
+                produced_by_a_builtin(NATS, found);
+                produced_by_a_builtin(PC12S, found);
             }
         }
     }

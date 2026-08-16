@@ -2350,6 +2350,7 @@ dependencies = [
  "divan",
  "indexmap 2.14.0",
  "insta",
+ "musa-core",
  "musa-kernel",
  "musa-language",
  "num-rational",

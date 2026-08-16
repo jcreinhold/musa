@@ -509,6 +509,22 @@ pub struct Key {
     mode: Mode,
 }
 
+/// A key shows what [`Key::parse`] reads: a pitch class, a space, and `major`
+/// or `minor`.
+///
+/// The two are inverses on purpose. A composer who sees a key in a diagnostic
+/// can type what they saw, and a round trip through both is the law that keeps
+/// it true.
+impl std::fmt::Display for Key {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mode = match self.mode {
+            Mode::Major => "major",
+            Mode::Minor => "minor",
+        };
+        write!(out, "{} {mode}", self.tonic)
+    }
+}
+
 impl Key {
     /// The tonic pitch class.
     pub fn tonic(self) -> PitchClass {

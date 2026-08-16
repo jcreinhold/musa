@@ -56,10 +56,34 @@ mod package;
 mod pc12;
 mod performance;
 mod pitch;
+/// The compiler's own `data` declarations, reachable only from [`registry`].
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "prompt 141e builds the core's registry; prompt 142 is the one cutover that calls it"
+    )
+)]
+mod prelude;
 mod profile;
 mod project;
 mod realize;
 mod reference;
+/// The compiler's own operations as `musa-core` registrations.
+///
+/// Nothing reaches it yet, and prompt 141e's Design says why: the registry is
+/// built and proved one prompt before the cutover that uses it, so that a wrong
+/// signature is distinguishable from a wrong migration. The expectation rather
+/// than an `allow` is the point — prompt 142 wiring the elaborator makes it
+/// unfulfilled, and the compiler says so.
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "prompt 141e builds the core's registry; prompt 142 is the one cutover that calls it"
+    )
+)]
+mod registry;
 mod resolve;
 mod roman;
 mod scale;

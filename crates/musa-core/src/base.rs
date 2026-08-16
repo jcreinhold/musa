@@ -707,11 +707,20 @@ impl Registry {
     /// `Result` are ordinary declarations — their values are constructor
     /// applications, which is exactly what [`Datum::Case`] says.
     ///
+    /// **A literal is data where a base type indexes on one, and nowhere else.**
+    /// This is the case the check reserved and prompt 141e brought a caller for:
+    /// `Duration ⟨written⟩` and `Syntax ⟨token-tree⟩` are how the compiler keeps
+    /// a written beat from adding to a number of seconds and an expression from
+    /// standing where a token tree belongs, and a δ-rule is a `fn` pointer, so
+    /// the *only* index it can write is one it can build without a context —
+    /// which is a literal and is not a constructor. The law is the narrow one:
+    /// admitted under a registered base head, so a declared family applied to a
+    /// literal is still refused and `Vec Nat 3` is still not a δ signature.
+    ///
     /// Everything else is refused, including the ones that would be *harmless*
-    /// to admit. A literal in an index position — `Vec Nat 3` — is not written
-    /// by anything in the table this check exists for, and a check that admits
-    /// what nothing writes is a check nobody has read; the day something wants
-    /// one, it arrives with a caller and a law.
+    /// to admit, for the reason the literal case was refused until it had a
+    /// caller: a check that admits what nothing writes is a check nobody has
+    /// read.
     fn check_finite_data(&self, builtin: &Builtin, ty: &Term) -> Result<(), Refusal> {
         let mut head = ty;
         let mut arguments = Vec::new();
@@ -719,6 +728,7 @@ impl Registry {
             arguments.push(argument);
             head = function;
         }
+        let mut indexed = false;
         match head.shape() {
             // A Π keeps its own diagnostic: it is what a table author writes
             // when they reach for a higher-order operation, and "not finite
@@ -736,6 +746,7 @@ impl Registry {
                         at: head.origin(),
                     });
                 }
+                indexed = true;
             }
             Shape::Const(constant) if constant.is_family() => {}
             Shape::Var(_)
@@ -760,6 +771,9 @@ impl Registry {
             }
         }
         for argument in arguments {
+            if indexed && matches!(*argument.shape(), Shape::Lit(_)) {
+                continue;
+            }
             self.check_finite_data(builtin, argument)?;
         }
         Ok(())

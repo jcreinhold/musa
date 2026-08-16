@@ -1,7 +1,7 @@
 ---
 id: 141e
 slug: compiler-registry
-status: in-progress
+status: done
 depends_on: [141b, 141c, 141d]
 phase: 3
 ---

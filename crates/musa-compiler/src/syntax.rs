@@ -156,6 +156,33 @@ impl NodePath {
     }
 }
 
+/// A path as a diagnostic shows it: the expansion's ordinals, then one step per
+/// derivation.
+///
+/// Written out rather than left to `Debug` because a path is the *only* thing a
+/// diagnostic about a generated node has to point at — there is no line for it —
+/// so two paths that differ must read differently at a glance. Reading steps and
+/// building steps are spelled differently for the reason they are separate
+/// constructors: a derived path can never be an input node's, and the text says
+/// so.
+impl std::fmt::Display for NodePath {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for (index, ordinal) in self.expansion.0.iter().enumerate() {
+            if index > 0 {
+                out.write_str(":")?;
+            }
+            write!(out, "{ordinal}")?;
+        }
+        for step in &self.steps {
+            match *step {
+                PathStep::Child(index) => write!(out, "/{index}")?,
+                PathStep::Built { role, child } => write!(out, "/+{role}.{child}")?,
+            }
+        }
+        Ok(())
+    }
+}
+
 /// Which name a binder declares and a reference means.
 ///
 /// One binding path is one name: a binder and every reference derived from the
@@ -181,6 +208,16 @@ impl BindingPath {
     }
 }
 
+/// A binding path, shown as the path it derives from.
+///
+/// One binding is one name, and the path is the name, so there is nothing to add
+/// to it.
+impl std::fmt::Display for BindingPath {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(out)
+    }
+}
+
 /// An opaque hygiene mark on an identifier.
 ///
 /// A transformer may preserve the scopes it received and may compare two
@@ -197,6 +234,18 @@ impl Scope {
         let mut out = Vec::new();
         self.0.write_into(&mut out);
         out
+    }
+}
+
+/// A syntax value, shown as the text it prints to.
+///
+/// [`print`] is the authority on that and is reused rather than approximated: a
+/// diagnostic that showed a tree one way while the expansion emitted it another
+/// would be describing a program nobody wrote. The generated-name report [`print`]
+/// also carries is a gate's concern and not a reader's, so it is dropped here.
+impl std::fmt::Display for Syntax {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        out.write_str(&print(self).text)
     }
 }
 
@@ -462,6 +511,19 @@ pub(crate) fn token_kind_named(case: &str) -> Option<musa_language::SyntaxKind> 
         .map(|(_, kind)| *kind)
 }
 
+/// The name `TokenKind.<case>` gives a kind, which is [`token_kind_named`]
+/// read the other way round.
+///
+/// Answers a name for every kind in the table and `"Error"` for one outside it,
+/// because the drift test already holds the table to the lexer and a diagnostic
+/// is not the place to discover that it slipped.
+pub(crate) fn token_kind_spelling(kind: musa_language::SyntaxKind) -> &'static str {
+    TOKEN_KINDS
+        .iter()
+        .find(|(_, known)| *known == kind)
+        .map_or("Error", |(name, _)| *name)
+}
+
 /// The four delimiters the fixed grouper knows.
 ///
 /// A type rather than the spellings it used to be. A transformer named one as
@@ -521,6 +583,23 @@ impl Delimiter {
             Self::Braces => 2,
             Self::Layout => 3,
         }
+    }
+}
+
+/// A category, under the name it is written by inside `Syntax<…>`.
+///
+/// It is the index of `Syntax` in [`crate::registry`], so this is what a
+/// diagnostic shows when a syntax type is printed.
+impl std::fmt::Display for Cat {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        out.write_str(self.name())
+    }
+}
+
+/// A delimiter, under the name the phase offers it by.
+impl std::fmt::Display for Delimiter {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        out.write_str(self.name())
     }
 }
 

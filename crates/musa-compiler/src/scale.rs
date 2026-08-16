@@ -415,6 +415,19 @@ impl std::fmt::Display for Scale {
     }
 }
 
+/// A frame shows the scale it frames and the register it sits in.
+///
+/// The tonic is a *pitch*, not the scale's pitch class, and that is the whole
+/// difference between a frame and a scale — [`Frame::new`] refuses a tonic that
+/// does not spell the scale's tonic class, so the only information the pitch
+/// adds is the octave. Showing it is what lets a diagnostic distinguish two
+/// frames that a scale alone could not.
+impl std::fmt::Display for Frame {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(out, "{} from {}", self.scale, self.tonic)
+    }
+}
+
 /// The collection a key signature supplies as a default coordinate system.
 ///
 /// This is a *default*, not a claim: a minor key routinely sounds its raised

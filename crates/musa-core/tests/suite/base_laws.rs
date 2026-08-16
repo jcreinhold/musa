@@ -1076,6 +1076,49 @@ fn a_traversal_that_does_not_descend_is_refused() {
 /// The three refusals a registration owes, each reached by a registry that earns
 /// it.
 #[test]
+fn a_base_type_indexed_by_a_literal_is_finite_data() {
+    // `Tagged : Int → Type 0`, and `tagged_of : Int → Tagged ⟨0⟩`. This is the
+    // shape `Duration : Coordinate → Type 0` has in `musa-compiler`, and the
+    // index is a literal rather than a constructor for D3's reason: a δ-rule is
+    // a `fn` pointer, so the only type it can answer at is one it can build
+    // without a context.
+    let tagged = Base::new("Tagged", arrow(int().term(TYPES), Term::universe(TYPES, Level::ZERO)));
+    let at_zero = Term::app(TYPES, tagged.term(TYPES), int_lit(0).term(TYPES));
+    Registry::new(
+        vec![int(), tagged],
+        vec![Builtin::new(
+            "tagged_of",
+            arrow(int().term(TYPES), at_zero),
+            Family::Delta,
+            |_| None,
+        )],
+    )
+    .expect("a registered base type applied to a literal index is finite data");
+}
+
+#[test]
+fn a_literal_is_data_only_where_a_base_type_indexes_on_it() {
+    // The same literal, with nothing registered in front of it. The law is the
+    // narrow one — admitted *under a registered base head* — so a signature
+    // that names a literal outright is refused exactly as it was before the
+    // index case had a caller.
+    let refusal = Registry::new(
+        vec![int()],
+        vec![Builtin::new(
+            "of_three",
+            arrow(int_lit(3).term(TYPES), int().term(TYPES)),
+            Family::Delta,
+            |_| None,
+        )],
+    )
+    .expect_err("a bare literal is not a type a δ-builtin may take");
+    assert!(
+        matches!(refusal, Refusal::NotFiniteData { .. }),
+        "refused, but as `{refusal}`"
+    );
+}
+
+#[test]
 fn a_registration_is_refused_by_the_table_it_is_about() {
     for RefusedRegistry {
         name,
