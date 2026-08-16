@@ -561,10 +561,11 @@ fn same(cx: &Cx, name: &str, ty: &Term, left: &Raw, right: &Raw) {
     let left = check(cx, ty, left).unwrap_or_else(|error| panic!("{name} (left): {error}"));
     let right = check(cx, ty, right).unwrap_or_else(|error| panic!("{name} (right): {error}"));
     well_typed(cx, ty, &left).unwrap_or_else(|error| panic!("{name} (left) does not re-check: {error}"));
-    assert!(
-        convertible(cx, ty, &left, &right).unwrap_or_else(|error| panic!("{name}: {error}")),
-        "{name}"
-    );
+    if !convertible(cx, ty, &left, &right).unwrap_or_else(|error| panic!("{name}: {error}")) {
+        let l = musa_core::normalize(cx, ty, &left);
+        let r = musa_core::normalize(cx, ty, &right);
+        panic!("{name}\nLEFT  {l:?}\nRIGHT {r:?}");
+    }
 }
 
 /// 127dcfaa's decision, restated where both directions of travel exist.
@@ -787,24 +788,4 @@ fn a_nested_forward_traversal_joins_what_a_map_could_not() {
         &apply(Raw::annot(WRITTEN, voiced_inside, written), [groups]),
         &numbers([0, 1, 2]),
     );
-}
-
-#[test]
-fn scratch_match_at_an_unsolved_goal() {
-    let (cx, _) = nat_context();
-    let nat = core(&cx, "Nat", &var("Nat"));
-    let identity = Raw::annot(
-        WRITTEN,
-        Raw::implicit_lam(WRITTEN, "X", lam("x", var("x"))),
-        Raw::implicit_pi(WRITTEN, "X", type0(), arrow(var("X"), var("X"))),
-    );
-    let scrutinised = matching(
-        number(1),
-        vec![
-            arm(vec![con("Nat.Zero", [])], number(0)),
-            arm(vec![con("Nat.Succ", [bind("k")])], var("k")),
-        ],
-    );
-    let outcome = check(&cx, &nat, &apply(identity, [scrutinised]));
-    panic!("outcome: {outcome:?}");
 }
