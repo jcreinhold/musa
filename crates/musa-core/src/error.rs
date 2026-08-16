@@ -69,4 +69,17 @@ pub enum Malformed {
     /// elaborator.
     #[error("metavariable ?{0} stands applied to fewer arguments than it abstracts")]
     UnderappliedMeta(u32),
+    /// A δ-rule answered nothing at closed literal arguments of its declared
+    /// types.
+    ///
+    /// `docs/rules/language/02-core-calculus.md` §5.8's D2 promises that "for
+    /// every tuple of closed values of the declared argument types it yields a
+    /// closed value of the declared result type". This is that promise broken,
+    /// and it belongs here rather than beside the elaborator's refusals for the
+    /// reason this module opens with: the program was well typed and the *table*
+    /// was wrong, which is a caller defect. Reported rather than left as a stuck
+    /// term, because a silently neutral application surfaces later as an
+    /// inscrutable conversion failure somewhere else entirely.
+    #[error("builtin `{0}` computed nothing at arguments it declares it accepts")]
+    BuiltinStuck(Name),
 }

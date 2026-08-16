@@ -1,7 +1,7 @@
 ---
 id: 141b
 slug: base-types-and-builtins
-status: in-progress
+status: done
 depends_on: [136b, 137, 141]
 phase: 3
 ---
@@ -55,13 +55,14 @@ are already exactly this shape.
 
 **Three things, each with one job.**
 
-- **`Base`** — a base type: a name and nothing else. `Shape::Base` and `Form::Base`. It has no constructor, no
-  eliminator, and contributes no ι-rule, which is D1 stated as a representation rather than as a rule to obey. Two base
-  types are convertible iff they are the same name, for the same reason two constants are (`family.rs`'s `PartialEq`
-  argues it already).
-- **`Literal`** — a closed value of a base type, opaque to the core. `Shape::Lit` and `Form::Lit`, and
-  `RawPattern::Lit`. Conversion is §5.8's own sentence: *two closed values of an inert base type are convertible iff
-  they are the same constant*.
+- **`Base`** — a base type: a name and a kind. `Shape::Base`, and `Head::Base` rather than a `Form`, because a base type
+  may be applied — `Syntax Expr` is `Syntax` at a parameter — and a canonical form would need an arm saying what
+  applying it means. It has no constructor, no eliminator, and contributes no ι-rule, which is D1 stated as a
+  representation rather than as a rule to obey. Two base types are convertible iff they are the same name, for the same
+  reason two constants are (`family.rs`'s `PartialEq` argues it already).
+- **`Literal`** — a closed value of a base type, opaque to the core. `Shape::Lit`, `Form::Lit`, and `RawShape::Lit`;
+  **no `RawPattern::Lit`**, for the reason the decidable-equality clause below argues. Conversion is §5.8's own
+  sentence: *two closed values of an inert base type are convertible iff they are the same constant*.
 - **`Builtin`** — a compiler-owned operation: a name, a declared core type, a family, and a δ-rule. `Head::Builtin`
   applied along a spine. Its *typing* needs no new rule — a builtin is a constant of a declared type and application is
   application — so the only new arm is reduction.

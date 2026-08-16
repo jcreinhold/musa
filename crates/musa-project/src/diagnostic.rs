@@ -774,6 +774,18 @@ pub fn explain(code: &str) -> Option<&'static str> {
         musa_compiler::Code::UnconstrainedVariable => {
             "A trait was needed for a type variable that nothing constrains.\n\nA type variable can never acquire a global instance: it stands for a type the caller chooses, and the instance would have to be chosen with it. So unlike an unresolved instance, there is exactly one repair, and it is on the signature this code is inside rather than in a library somewhere.\n\nAdd the constraint — `where Eq<A>` — and the dictionary becomes an argument the caller supplies. That is also what makes the function's behaviour a consequence of its own signature, which is why the constraint is written rather than inferred."
         }
+        musa_compiler::Code::DuplicateExtern => {
+            "One name was registered twice as a base type or a builtin.\n\nThe compiler hands the core a table of the types and operations it owns, and every entry in it has to mean one thing: two entries under one spelling would give every use site whichever was inserted last, silently and without either author knowing which they got.\n\nThis is a report about the compiler's own table rather than about anything in the file being compiled, so nothing in the source can repair it. It is here because a diagnostic nobody can read is worse than one that names its own author."
+        }
+        musa_compiler::Code::HigherOrderDelta => {
+            "A compiler-owned operation was declared to take or return a function.\n\nThe δ-builtins are the operations the compiler computes for itself — arithmetic on durations, comparison on pitches — and they are first-order on purpose: every argument type and the result type is a base type or a finite structure over base types, with no arrow anywhere. That restriction is what lets the language reason about them at all, because a builtin that took a function would be a control operator whose behaviour is a fact about the compiler rather than about the language.\n\nAn operation that genuinely needs a function argument is an ordinary definition in the standard library, where it is written in Musa and checked like everything else."
+        }
+        musa_compiler::Code::UnknownBase => {
+            "A compiler-owned operation names a base type nothing registered.\n\nA base type has no cases and no eliminator, and that inertness is true of it *because it is registered as one*. A signature over a type nobody registered claims an inertness nobody declared, so the guarantee the operation is resting on does not exist yet.\n\nRegister the base type alongside the operations over it. The table is one table for exactly this reason: the type and the operations that compute on it are one decision."
+        }
+        musa_compiler::Code::BaseNotMatchable => {
+            "A pattern tried to take apart a value that has no structure.\n\nBase types — text, numbers, durations, pitches — are the language's atoms: they have no cases to match and no fields to open, so a constructor or record pattern at one is asking for parts that do not exist. The only pattern that fits is a name, which binds the whole value.\n\nTo branch on *which* value it is, compare it: `if k == \"PitchLiteral\"`, or a `match` on the result of that comparison. Equality on a base type is decidable and is what the language offers in place of a case analysis it cannot give."
+        }
     })
 }
 

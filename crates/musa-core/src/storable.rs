@@ -244,6 +244,11 @@ fn headed(
                     .instance(&Key::rigid(&storable_name(), &constant.name()))
                     .is_some()
         }
+        // A base type stands for the host's own data, so whether it can be
+        // stored is the host's claim and not this crate's guess: it is answered
+        // by an instance keyed on the base type's name, exactly as a declared
+        // family's is.
+        Shape::Base(base) => classes.instance(&Key::rigid(&storable_name(), base.name())).is_some(),
         // An anonymous record stores its fields, so it asks the same question
         // once per field, each read under the ones before it.
         Shape::RecordType(fields) => fields.iter().enumerate().all(|(position, field)| {
@@ -267,6 +272,8 @@ fn headed(
         | Shape::Refl(_)
         | Shape::J { .. }
         | Shape::Meta(_)
+        | Shape::Builtin(_)
+        | Shape::Lit(_)
         | Shape::Let { .. } => false,
     }
 }
@@ -289,7 +296,10 @@ fn finite(ty: &Term, depth: usize, telescope: &Telescope, required: &mut BTreeSe
             }
             true
         }
-        Shape::Const(_) | Shape::Meta(_) => true,
+        // Neither an arrow nor a universe, and neither holds one: a base type
+        // is a name, a literal is a closed value the host owns, and a builtin's
+        // application is walked by the arm below.
+        Shape::Const(_) | Shape::Base(_) | Shape::Builtin(_) | Shape::Lit(_) | Shape::Meta(_) => true,
         Shape::App { function, argument } => {
             finite(function, depth, telescope, required) && finite(argument, depth, telescope, required)
         }

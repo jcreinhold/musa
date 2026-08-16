@@ -19,6 +19,7 @@
 
 use std::sync::{Arc, OnceLock};
 
+use crate::base::Registry;
 use crate::budget::{Budget, Meter};
 use crate::class::{Classes, Instance, PackageId, Trait};
 use crate::error::CoreError;
@@ -74,6 +75,18 @@ pub struct Cx {
     /// table — which is what every caller that declares no traits has, so they
     /// pay one null check rather than an allocation.
     classes: Option<Arc<Classes>>,
+    /// The host's base types and builtins (§5.8).
+    ///
+    /// Behind an [`Arc`] and optional for exactly the reasons `classes` is: a
+    /// context is cloned per binder, and a caller that registers nothing pays a
+    /// null check rather than an allocation. `None` is the empty registry, so a
+    /// context that names no base type is the one every test written before
+    /// this rule existed already had.
+    ///
+    /// The core never builds one. `crates/musa-core/src/base.rs` argues why —
+    /// a leaf calculus that enumerated the base types would make every new
+    /// musical domain a core amendment.
+    externs: Option<Arc<Registry>>,
     depth: u32,
     budget: Budget,
 }
@@ -99,6 +112,7 @@ impl Cx {
             module: None,
             package: None,
             classes: None,
+            externs: None,
             depth: 0,
             budget,
         }
@@ -120,6 +134,7 @@ impl Cx {
             module: self.module,
             package: self.package,
             classes: self.classes.clone(),
+            externs: self.externs.clone(),
             depth: 0,
             budget: self.budget,
         }
@@ -172,6 +187,24 @@ impl Cx {
         self.classes
             .as_deref()
             .unwrap_or_else(|| EMPTY.get_or_init(Classes::default))
+    }
+
+    /// This context, with the host's base types and builtins in scope.
+    ///
+    /// Registered once by the caller and then immutable, which is what keeps a
+    /// δ-rule's answer independent of when it was asked — see
+    /// [`Registry`](crate::Registry).
+    #[must_use]
+    pub fn with_externs(&self, externs: Arc<Registry>) -> Self {
+        Self {
+            externs: Some(externs),
+            ..self.clone()
+        }
+    }
+
+    /// What `name` names among the host's registrations, if anything.
+    pub(crate) fn extern_named(&self, name: &str) -> Option<&crate::base::Extern> {
+        self.externs.as_deref()?.named(name)
     }
 
     /// This context with `declared` in scope as a trait.
@@ -371,6 +404,7 @@ impl Cx {
             module: self.module,
             package: self.package,
             classes: self.classes.clone(),
+            externs: self.externs.clone(),
             depth: self.depth.saturating_add(1),
             budget: self.budget,
         }

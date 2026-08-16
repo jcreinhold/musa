@@ -621,8 +621,12 @@ fn unkeyed(term: &Term) -> bool {
         // is for.
         Shape::Meta(_) | Shape::Project { .. } | Shape::J { .. } | Shape::Let { .. } => false,
         // Reached only when `head_of` answered, so unreachable here. `false`
-        // keeps the answer conservative rather than inventing a refusal.
-        Shape::Var(_) | Shape::Const(_) => false,
+        // keeps the answer conservative rather than inventing a refusal. A base
+        // type is on this list for the same reason: `head_of` keys on it.
+        Shape::Var(_) | Shape::Const(_) | Shape::Base(_) => false,
+        // A builtin and a literal are terms, not type constructors. Neither is
+        // a name an `impl` could be keyed on, which is what `true` says.
+        Shape::Builtin(_) | Shape::Lit(_) => true,
     }
 }
 
@@ -767,7 +771,15 @@ fn constant(term: &Term) -> Option<&Constant> {
         | Shape::Refl(_)
         | Shape::J { .. }
         | Shape::Meta(_)
+        | Shape::Builtin(_)
+        | Shape::Lit(_)
         | Shape::Let { .. } => None,
+        // A base type has no declaration and so no package. §3's orphan rule
+        // asks whether an `impl` shares a package with the *declaration* of its
+        // head type, and for a host-registered type there is none to share —
+        // which `orphan` reads as "not at home here", the same conservative
+        // answer it gives a variable.
+        Shape::Base(_) => None,
     }
 }
 

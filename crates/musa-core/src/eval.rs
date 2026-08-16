@@ -57,6 +57,13 @@ pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, C
             // ι does not fire here: it needs the target, which arrives through
             // [`apply`].
             Shape::Const(constant) => Ok(constant.value(here)),
+            // §5.8's extension. A base type is rigid forever — nothing
+            // eliminates it — and a builtin is rigid until its arguments are
+            // literals, which is a question [`apply`] asks once the spine is
+            // long enough. A literal is already canonical.
+            Shape::Base(base) => Ok(Value::neutral(Neutral::head(here, Head::Base(base.clone())))),
+            Shape::Builtin(builtin) => Ok(Value::neutral(Neutral::head(here, Head::Builtin(builtin.clone())))),
+            Shape::Lit(literal) => Ok(Value::new(here, Form::Lit(literal.clone()))),
             // A meta is closed, so the environment says nothing about it: it is
             // either its solution, with that solution's own origins (§7), or a
             // flexible head waiting for one.
@@ -236,7 +243,7 @@ pub(crate) fn force(meter: &mut Meter, value: &Value) -> Result<Option<Value>, C
 /// point of storing the head beside the spine instead of under it.
 fn head_is_solved(neutral: &Neutral) -> bool {
     match &neutral.head {
-        Head::Var(_, _) | Head::Const(_) => false,
+        Head::Var(_, _) | Head::Const(_) | Head::Base(_) | Head::Builtin(_) => false,
         Head::Meta(meta) => meta.is_solved(),
     }
 }
@@ -317,7 +324,10 @@ pub(crate) fn apply(meter: &mut Meter, here: Origin, function: Value, argument: 
                     argument: Arc::new(argument),
                 },
             );
-            match crate::family::iota(meter, &built)? {
+            if let Some(reduced) = crate::family::iota(meter, &built)? {
+                return Ok(reduced);
+            }
+            match delta(meter, &built)? {
                 Some(reduced) => Ok(reduced),
                 None => Ok(Value::neutral(built)),
             }
@@ -327,7 +337,62 @@ pub(crate) fn apply(meter: &mut Meter, here: Origin, function: Value, argument: 
         | Form::RecordType(_)
         | Form::Record(_)
         | Form::Id { .. }
-        | Form::Refl(_) => Err(Malformed::NotAFunction.into()),
+        | Form::Refl(_)
+        | Form::Lit(_) => Err(Malformed::NotAFunction.into()),
+    }
+}
+
+/// δ at a compiler-owned builtin, or `None` when the spine is not ready.
+///
+/// The mirror of [`crate::family::iota`], in the same arm and for the same
+/// reason: an application is the first moment a rule can know its last argument
+/// has arrived. A builtin fires when three things hold at once — the head is a
+/// builtin, the spine is exactly its arity of applications, and every argument
+/// has reduced to a literal. Any one of them failing leaves an ordinary blocked
+/// spine, which is what a builtin applied to a variable *is*.
+///
+/// The meter is charged before the rule runs, which is where D4's "charged to
+/// the §4 meter before construction begins" can actually be enforced: after the
+/// fact, the result already exists.
+///
+/// # Errors
+///
+/// [`CoreError::Exhausted`] at a budget limit, and [`Malformed::BuiltinStuck`]
+/// when the rule answers nothing at closed literal arguments — D2 broken, which
+/// is a defect in the host's table rather than in the program.
+fn delta(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreError> {
+    let Head::Builtin(builtin) = &built.head else {
+        return Ok(None);
+    };
+    if built.spine.len() != builtin.arity() {
+        return Ok(None);
+    }
+    let mut arguments = Vec::with_capacity(built.spine.len());
+    for elimination in &built.spine {
+        let Elim::App { argument, .. } = elimination else {
+            return Ok(None);
+        };
+        // A metavariable that has since been solved may have a literal behind
+        // it, and a builtin that ignored that would answer "blocked" for an
+        // argument the program has already determined.
+        let forced = force(meter, argument)?;
+        match forced.as_ref().unwrap_or(argument).form {
+            Form::Lit(ref literal) => arguments.push(literal.clone()),
+            Form::Universe(_)
+            | Form::Pi { .. }
+            | Form::Lam(_)
+            | Form::RecordType(_)
+            | Form::Record(_)
+            | Form::Id { .. }
+            | Form::Refl(_)
+            | Form::Neutral(_) => return Ok(None),
+        }
+    }
+    meter.step("builtin reduction")?;
+    let borrowed: Vec<&crate::base::Literal> = arguments.iter().collect();
+    match builtin.reduce(&borrowed) {
+        Some(answer) => Ok(Some(Value::new(built.outer_origin(), Form::Lit(answer)))),
+        None => Err(Malformed::BuiltinStuck(Arc::clone(builtin.name())).into()),
     }
 }
 
@@ -353,9 +418,13 @@ pub(crate) fn project(meter: &mut Meter, here: Origin, record: Value, field: &Na
                 field: Arc::clone(field),
             },
         ))),
-        Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) | Form::RecordType(_) | Form::Id { .. } | Form::Refl(_) => {
-            Err(Malformed::NotARecord.into())
-        }
+        Form::Universe(_)
+        | Form::Pi { .. }
+        | Form::Lam(_)
+        | Form::RecordType(_)
+        | Form::Id { .. }
+        | Form::Refl(_)
+        | Form::Lit(_) => Err(Malformed::NotARecord.into()),
     }
 }
 
@@ -397,7 +466,8 @@ pub(crate) fn jay(
         | Form::Lam(_)
         | Form::RecordType(_)
         | Form::Record(_)
-        | Form::Id { .. } => Err(Malformed::NotAnIdentity.into()),
+        | Form::Id { .. }
+        | Form::Lit(_) => Err(Malformed::NotAnIdentity.into()),
     }
 }
 
@@ -453,6 +523,11 @@ pub(crate) fn neutral_type(meter: &mut Meter, neutral: &Neutral) -> Result<Value
             // A constant's type is its declaration's, assembled on demand
             // rather than stored beside it — `family.rs` says why.
             Head::Const(constant) => constant.ty(meter)?,
+            // A base type's kind and a builtin's signature are closed terms the
+            // host registered, so the empty environment is the whole context
+            // either needs.
+            Head::Base(base) => eval(meter, &Env::EMPTY, base.kind())?,
+            Head::Builtin(builtin) => eval(meter, &Env::EMPTY, builtin.ty())?,
         };
         // The prefix each elimination is applied to, grown in place. A
         // projection's field type may mention the record it projects from, and
@@ -483,6 +558,7 @@ fn eliminated_type(meter: &mut Meter, head: Value, prefix: &Neutral, elimination
             | Form::Record(_)
             | Form::Id { .. }
             | Form::Refl(_)
+            | Form::Lit(_)
             | Form::Neutral(_) => Err(Malformed::NotAFunction.into()),
         },
         Elim::Project { field, .. } => match head.form {
@@ -496,6 +572,7 @@ fn eliminated_type(meter: &mut Meter, head: Value, prefix: &Neutral, elimination
             | Form::Record(_)
             | Form::Id { .. }
             | Form::Refl(_)
+            | Form::Lit(_)
             | Form::Neutral(_) => Err(Malformed::NotARecord.into()),
         },
         Elim::J { origin, motive, to, .. } => {

@@ -608,6 +608,59 @@ pub enum Refusal {
         /// The trait.
         class: Name,
     },
+    /// One name registered twice in a [`Registry`](crate::Registry).
+    ///
+    /// §5.8's law suite checks that "every builtin is classified exactly once",
+    /// and a name registered twice is the way that fails at the table rather
+    /// than at a family: two entries under one spelling means every use site
+    /// silently gets whichever one was inserted last.
+    #[error("`{name}` is registered more than once")]
+    DuplicateExtern {
+        /// The name registered twice.
+        name: Name,
+        /// Where the second registration's type was written.
+        at: Origin,
+    },
+    /// A δ-builtin whose signature holds an arrow.
+    ///
+    /// D1: "every argument type and the result type is a base type or a finite
+    /// constructor over base types, with no arrow anywhere in the signature." A
+    /// higher-order δ-builtin would be an operation the compiler owns and cannot
+    /// reason about, which is the one thing the family is defined to exclude —
+    /// and §5.8's theorem is stated over first-order operations only.
+    #[error("δ-builtin `{name}` takes or returns a function")]
+    HigherOrderDelta {
+        /// The builtin.
+        name: Name,
+        /// Where its declared type was written.
+        at: Origin,
+    },
+    /// A δ signature naming a base type the registry does not have.
+    ///
+    /// D1's inertness is true of a base type *because it is registered as one*
+    /// — nothing eliminates what the registry holds. A signature over an
+    /// unregistered base type is a claim about a type nobody declared inert.
+    #[error("base type `{name}` is not registered")]
+    UnknownBase {
+        /// The base type as named in the signature.
+        name: Name,
+        /// Where it was named.
+        at: Origin,
+    },
+    /// A pattern that takes a base type apart.
+    ///
+    /// D1's other half: "the only pattern that may match [a closed value of a
+    /// base type] is a literal or a catch-all". A constructor or record pattern
+    /// at a base type asks for structure the type does not have — and admitting
+    /// one would be admitting an eliminator, which is what inertness is the
+    /// absence of.
+    #[error("a value of base type `{base}` has no structure to match on")]
+    BaseNotMatchable {
+        /// The base type.
+        base: Name,
+        /// Where the pattern was written.
+        at: Origin,
+    },
 }
 
 /// Two types that could not be made equal, and where the disagreement is.

@@ -363,7 +363,9 @@ impl Rewrite<'_> {
                 }
                 return Ok(raw.clone());
             }
-            RawShape::Universe(_) => return Ok(raw.clone()),
+            // A universe and a literal are both closed: neither can hold a call,
+            // so neither needs rewriting.
+            RawShape::Universe(_) | RawShape::Lit(_) => return Ok(raw.clone()),
             RawShape::Pi {
                 plicity,
                 name,

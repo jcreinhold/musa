@@ -225,6 +225,49 @@ impl Tree<'_, '_> {
         }
     }
 
+    /// Refuse a column whose subject has a base type and whose patterns take it
+    /// apart.
+    ///
+    /// §5.8's D1 gives a base type no eliminator, so a column of one has
+    /// nothing to split on and nothing to open: the only pattern that may stand
+    /// there is the catch-all, which [`RawPattern::Bind`] already is — and a
+    /// column of catch-alls is never tested, so coverage needs no rule here. A
+    /// literal *pattern* is decidable equality rather than a case analysis, and
+    /// arrives already desugared into a match on the host's `Bool`, which is
+    /// prompt 141b's Design and [`RawPattern`]'s own doc.
+    ///
+    /// Asked before [`element`] and before the record unfolding, so the author
+    /// hears that the type has no structure rather than that some constructor
+    /// they did not write is missing.
+    fn not_matchable(&mut self, problem: &Problem<'_>, column: usize) -> Result<Option<ElabError>, CoreError> {
+        let Some(subject) = problem.columns.get(column) else {
+            return Ok(None);
+        };
+        let meter = self.elaborator.meter();
+        let unfolded = force(meter, &subject.ty)?;
+        let Form::Neutral(neutral) = &unfolded.as_ref().unwrap_or(&subject.ty).form else {
+            return Ok(None);
+        };
+        let Head::Base(base) = &neutral.head else {
+            return Ok(None);
+        };
+        let at = problem
+            .rows
+            .iter()
+            .find_map(|row| match row.patterns.get(column)? {
+                pattern @ (RawPattern::Constructor { .. } | RawPattern::Record { .. }) => Some(pattern.origin()),
+                RawPattern::Bind { .. } => None,
+            })
+            .unwrap_or(subject.at);
+        Ok(Some(
+            Refusal::BaseNotMatchable {
+                base: Arc::clone(base.name()),
+                at,
+            }
+            .into(),
+        ))
+    }
+
     /// The leftmost column the **first** row tests, and what it tests it with.
     ///
     /// The first row, not any row, and that is Maranget's necessity condition
@@ -281,6 +324,9 @@ impl Tree<'_, '_> {
                 RawPattern::Bind { .. } | RawPattern::Constructor { .. } => None,
             })
             .unwrap_or(subject.at);
+        if let Some(refusal) = self.not_matchable(problem, column)? {
+            return Err(refusal);
+        }
         let meter = self.elaborator.meter();
         let unfolded = force(meter, &subject.ty)?;
         let record_ty = Value::clone(unfolded.as_ref().unwrap_or(&subject.ty));
@@ -469,6 +515,9 @@ impl Tree<'_, '_> {
             .into());
         };
         let at = subject.at;
+        if let Some(refusal) = self.not_matchable(problem, column)? {
+            return Err(refusal);
+        }
         let Some(found) = element(self.elaborator.meter(), &subject.ty)? else {
             return Err(self.not_a_constructor(scope, problem, column, at)?);
         };
@@ -1217,7 +1266,10 @@ fn variable(value: &Value) -> Option<u32> {
         // `f x` is not the variable `f`.
         crate::value::Form::Neutral(neutral) if neutral.spine.is_empty() => match &neutral.head {
             crate::value::Head::Var(level, _) => Some(level.0),
-            crate::value::Head::Const(_) | crate::value::Head::Meta(_) => None,
+            crate::value::Head::Const(_)
+            | crate::value::Head::Base(_)
+            | crate::value::Head::Builtin(_)
+            | crate::value::Head::Meta(_) => None,
         },
         crate::value::Form::Neutral(_) => None,
         crate::value::Form::Universe(_)
@@ -1226,6 +1278,7 @@ fn variable(value: &Value) -> Option<u32> {
         | crate::value::Form::RecordType(_)
         | crate::value::Form::Record(_)
         | crate::value::Form::Id { .. }
+        | crate::value::Form::Lit(_)
         | crate::value::Form::Refl(_) => None,
     }
 }

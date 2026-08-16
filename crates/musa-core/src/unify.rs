@@ -342,7 +342,14 @@ impl Unifier {
                 Form::RecordType(telescope) => {
                     return self.field_by_field(meter, depth, origin, telescope, left, right);
                 }
-                Form::Universe(_) | Form::Lam(_) | Form::Record(_) | Form::Id { .. } | Form::Refl(_) => {}
+                Form::Universe(_)
+                | Form::Lam(_)
+                | Form::Record(_)
+                | Form::Id { .. }
+                | Form::Refl(_)
+                // A base type has no η, because η is a rule about a type's
+                // eliminations and §5.8 gives it none.
+                | Form::Lit(_) => {}
                 // A type that is still a metavariable says nothing yet, and a λ
                 // under it would be one the elaborator has not pinned down. The
                 // match below reads both sides back, which is the honest answer
@@ -550,8 +557,14 @@ impl Unifier {
             // `flexible` answers `Solved` for a meta against itself and
             // `Postpone` for two different ones.
             (Head::Meta(left), Head::Meta(right)) => left == right,
+            // Rigid for good: §5.8 gives a base type no eliminator, so nothing
+            // under one could ever unblock it, and a builtin still headed here
+            // has an argument that is not a literal. Both decide by name, like a
+            // constant.
+            (Head::Base(left), Head::Base(right)) => left == right,
+            (Head::Builtin(left), Head::Builtin(right)) => left == right,
             // Two different kinds of head, which never agree.
-            (Head::Meta(_) | Head::Var(_, _) | Head::Const(_), _) => false,
+            (Head::Meta(_) | Head::Var(_, _) | Head::Const(_) | Head::Base(_) | Head::Builtin(_), _) => false,
         };
         // One comparison decides a length disagreement, before any argument is
         // compared. The chain representation had to walk both to find out.
@@ -772,7 +785,7 @@ fn flexible_head(value: &Value) -> Option<&Meta> {
         return None;
     };
     match &neutral.head {
-        Head::Var(_, _) | Head::Const(_) => None,
+        Head::Var(_, _) | Head::Const(_) | Head::Base(_) | Head::Builtin(_) => None,
         Head::Meta(meta) => Some(meta),
     }
 }

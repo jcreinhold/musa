@@ -303,11 +303,16 @@ fn read(meter: &mut Meter, reading: Reading<'_>, ty: &Value, value: &Value) -> R
                 | Form::Lam(_)
                 | Form::RecordType(_)
                 | Form::Record(_)
+                | Form::Lit(_)
                 | Form::Id { .. } => Err(Malformed::NotAnIdentity.into()),
             },
-            // A neutral type has no η, so whatever inhabits it is neutral too.
+            // A neutral type has no η, so whatever inhabits it is neutral too —
+            // with one exception, and it is the one §5.8 adds. A base type
+            // evaluates to a spine headed by [`Head::Base`], so *every* literal
+            // is quoted here, and a literal is already its own normal form.
             Form::Neutral(_) => match &value.form {
                 Form::Neutral(neutral) => read_neutral(meter, reading, neutral),
+                Form::Lit(literal) => Ok(literal.term(here)),
                 Form::Universe(_)
                 | Form::Pi { .. }
                 | Form::Lam(_)
@@ -316,7 +321,7 @@ fn read(meter: &mut Meter, reading: Reading<'_>, ty: &Value, value: &Value) -> R
                 | Form::Id { .. }
                 | Form::Refl(_) => read_type(meter, reading, value),
             },
-            Form::Lam(_) | Form::Record(_) | Form::Refl(_) => Err(Malformed::NotAType.into()),
+            Form::Lam(_) | Form::Record(_) | Form::Refl(_) | Form::Lit(_) => Err(Malformed::NotAType.into()),
         }
     })
 }
@@ -363,7 +368,7 @@ fn read_type(meter: &mut Meter, reading: Reading<'_>, value: &Value) -> Result<T
                 read(meter, reading, ty, right)?,
             )),
             Form::Neutral(neutral) => read_neutral(meter, reading, neutral),
-            Form::Lam(_) | Form::Record(_) | Form::Refl(_) => Err(Malformed::NotAType.into()),
+            Form::Lam(_) | Form::Record(_) | Form::Refl(_) | Form::Lit(_) => Err(Malformed::NotAType.into()),
         }
     })
 }
@@ -414,6 +419,11 @@ fn read_neutral(meter: &mut Meter, reading: Reading<'_>, neutral: &Neutral) -> R
                 Term::meta(here, meta.clone())
             }
             Head::Const(constant) => constant.term(here),
+            // Both rigid, both closed, and both already their own normal form:
+            // a base type has no eliminator and a builtin whose arguments were
+            // literals would have reduced before quotation saw it.
+            Head::Base(base) => base.term(here),
+            Head::Builtin(builtin) => builtin.term(here),
         };
         // Innermost first, and each node takes its *own* origin (§7): the spine
         // of `f x y` reads back as three terms and each says where it was
@@ -446,6 +456,7 @@ fn read_elimination(
                 | Form::Record(_)
                 | Form::Id { .. }
                 | Form::Refl(_)
+                | Form::Lit(_)
                 | Form::Neutral(_) => return Err(Malformed::NotAFunction.into()),
             };
             Ok(Term::app(*origin, quoted, read(meter, reading, &domain, argument)?))

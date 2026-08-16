@@ -273,6 +273,13 @@ pub struct Raw {
 pub enum RawShape {
     /// A name, to be resolved against the binders in scope.
     Var(Name),
+    /// One closed value of a base type, already built by whoever read the
+    /// source: `3`, `"c"`, `1/4`.
+    ///
+    /// A literal arrives assembled rather than as text, because §5.8's payload
+    /// is the host's and a core that parsed one would have to know what it
+    /// parsed. It carries the base type it inhabits, so it infers.
+    Lit(crate::base::Literal),
     /// `Type l`, at a level the writer states — or bare `Type`, whose level is
     /// §2.1's third metavariable site.
     Universe(Option<Level>),
@@ -443,6 +450,16 @@ pub struct RawArm {
 /// if matching one constructor tells you something about another position, and a
 /// pattern that cannot look through two constructors cannot say what a family is
 /// indexed for.
+///
+/// **There is no literal pattern**, and that is §5.8's D1 rather than an
+/// omission. A base type has no eliminator, so a column of one has nothing to
+/// split on: the only pattern that may stand there is a catch-all, which
+/// [`Self::Bind`] already is. Matching *against* a literal is decidable equality
+/// — the host's own δ-builtin returning the host's own `Bool` — so a surface
+/// `match k { "PitchLiteral" -> … ; _ -> … }` arrives here already desugared
+/// into a match on that `Bool`. The core keeps the half of D1 it can enforce:
+/// [`crate::case`] refuses a [`Self::Constructor`] or [`Self::Record`] pattern
+/// at a base-typed column, which is inertness.
 #[derive(Clone, Debug)]
 pub enum RawPattern {
     /// A name that matches anything and binds it. `_` is spelled as an ordinary
@@ -520,6 +537,12 @@ impl Raw {
     #[must_use]
     pub fn var(origin: Origin, name: impl Into<Name>) -> Self {
         Self::new(origin, RawShape::Var(name.into()))
+    }
+
+    /// One closed value of a base type, already built.
+    #[must_use]
+    pub fn lit(origin: Origin, literal: crate::base::Literal) -> Self {
+        Self::new(origin, RawShape::Lit(literal))
     }
 
     /// `Type level`, at a level the caller names.

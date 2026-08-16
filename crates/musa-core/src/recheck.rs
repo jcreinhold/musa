@@ -58,7 +58,7 @@ use crate::origin::Origin;
 use crate::quote::{quote, quote_type};
 use crate::refuse::{ElabError, Mismatch, Refusal};
 use crate::term::{DbLevel, Field, Shape, Term};
-use crate::value::{Closure, Form, Telescope, Value};
+use crate::value::{Closure, Env, Form, Telescope, Value};
 
 /// Check that `term` inhabits `ty` in `cx`, from the core rules alone.
 ///
@@ -165,6 +165,13 @@ impl Checker<'_> {
             // declaration was checked when it was made. Re-checking it here would
             // re-run strict positivity at every occurrence of `Nat`.
             Shape::Const(constant) => Ok(constant.ty(self.meter)?),
+            // The same argument one line up, for §5.8's extension: a base type's
+            // kind, a builtin's signature, and a literal's type were all fixed
+            // by the host's registration, and re-deriving one here would be
+            // re-checking the registry at every occurrence of `Nat`.
+            Shape::Base(base) => Ok(eval(self.meter, &Env::EMPTY, base.kind())?),
+            Shape::Builtin(builtin) => Ok(eval(self.meter, &Env::EMPTY, builtin.ty())?),
+            Shape::Lit(literal) => Ok(eval(self.meter, &Env::EMPTY, literal.ty())?),
             Shape::Universe(level) => Ok(Value::new(here, Form::Universe(level.succ()))),
             Shape::Pi {
                 plicity: _,

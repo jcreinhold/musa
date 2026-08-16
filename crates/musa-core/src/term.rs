@@ -143,6 +143,16 @@ pub enum Shape {
     /// says what an argument is, and three spine-carrying variants would say it
     /// three more times while making partial application a different term.
     Const(Constant),
+    /// A base type: §5.8's conservative extension, registered by the host and
+    /// inert here. It has no constructor and no eliminator, so no rule in this
+    /// crate ever takes one apart — which is D1 stated as a representation.
+    Base(crate::base::Base),
+    /// A closed value of a base type, opaque to this crate.
+    Lit(crate::base::Literal),
+    /// A compiler-owned operation. Rigid until its arguments are literals, at
+    /// which point [`crate::eval::apply`] runs its δ-rule — the same moment, and
+    /// the same arm, at which ι fires for a recursor.
+    Builtin(crate::base::Builtin),
     /// `Type l`. Predicative and not cumulative: `Type l : Type (succ l)`.
     Universe(Level),
     /// `(x : A) → B`, the one function type.
@@ -256,6 +266,12 @@ impl PartialEq for Shape {
         match (self, other) {
             (Self::Var(left), Self::Var(right)) => left == right,
             (Self::Const(left), Self::Const(right)) => left == right,
+            (Self::Base(left), Self::Base(right)) => left == right,
+            (Self::Builtin(left), Self::Builtin(right)) => left == right,
+            // §5.8: an inert base type contributes no ι-rule, so two closed
+            // values of it are convertible iff they are the same constant. The
+            // host decides what "the same" means for its own data.
+            (Self::Lit(left), Self::Lit(right)) => left == right,
             (Self::Universe(left), Self::Universe(right)) => left == right,
             (
                 Self::Pi {
@@ -364,6 +380,9 @@ impl PartialEq for Shape {
             (
                 Self::Var(_)
                 | Self::Const(_)
+                | Self::Base(_)
+                | Self::Lit(_)
+                | Self::Builtin(_)
                 | Self::Universe(_)
                 | Self::Pi { .. }
                 | Self::Lam { .. }

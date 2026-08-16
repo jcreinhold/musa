@@ -154,6 +154,25 @@ fn definitions_are_unfolded() {
     );
 }
 
+/// Whether `term` is a δ-redex: a builtin applied to as many literals as its
+/// arity.
+///
+/// §5.8's D3 makes a δ-rule a function of its arguments alone, so this is the
+/// whole of the condition — a builtin one argument short, or one whose argument
+/// is still a variable, is stuck rather than reducible.
+fn is_delta_redex(term: &Term) -> bool {
+    let mut arguments = 0_usize;
+    let mut every_argument_is_a_literal = true;
+    let mut head = term;
+    while let Shape::App { function, argument } = head.shape() {
+        arguments = arguments.saturating_add(1);
+        every_argument_is_a_literal &= matches!(*argument.shape(), Shape::Lit(_));
+        head = function;
+    }
+    matches!(head.shape(), Shape::Builtin(builtin)
+        if every_argument_is_a_literal && arguments >= builtin.arity())
+}
+
 /// Whether a term has no redex anywhere inside it.
 ///
 /// Written out rather than matched with a wildcard: a variant added later must
@@ -161,11 +180,20 @@ fn definitions_are_unfolded() {
 /// this function about would silently pass every test above.
 fn is_normal(term: &Term) -> bool {
     match term.shape() {
-        Shape::Var(_) | Shape::Universe(_) | Shape::Const(_) => true,
+        // A base type, a literal, and a builtin are leaves. §5.8's D1 gives a
+        // base type no eliminator, so nothing built from one is a redex; a
+        // builtin applied to enough literals is, and that is an `App` whose
+        // function is this leaf, which the `App` arm below already reads.
+        Shape::Var(_) | Shape::Universe(_) | Shape::Const(_) | Shape::Base(_) | Shape::Lit(_) | Shape::Builtin(_) => {
+            true
+        }
         Shape::Pi { domain, codomain, .. } => is_normal(domain) && is_normal(codomain),
         Shape::Lam { body, .. } => is_normal(body),
         Shape::App { function, argument } => {
-            !matches!(*function.shape(), Shape::Lam { .. }) && is_normal(function) && is_normal(argument)
+            !matches!(*function.shape(), Shape::Lam { .. })
+                && !is_delta_redex(term)
+                && is_normal(function)
+                && is_normal(argument)
         }
         Shape::RecordType(fields) | Shape::Record(fields) => fields.iter().all(|field| is_normal(&field.term)),
         Shape::Project { record, field: _ } => !matches!(*record.shape(), Shape::Record(_)) && is_normal(record),

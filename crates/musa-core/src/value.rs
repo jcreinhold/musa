@@ -102,6 +102,10 @@ pub(crate) enum Form {
         right: Arc<Value>,
     },
     Refl(Arc<Value>),
+    /// A closed value of a base type. Canonical, not neutral: `3` is a value of
+    /// `Nat` the way `refl x` is a value of `Id A x x`, and §5.8's inertness is
+    /// that nothing eliminates it rather than that it is stuck.
+    Lit(crate::base::Literal),
     Neutral(Arc<Neutral>),
 }
 
@@ -146,6 +150,17 @@ pub(crate) enum Head {
     /// It carries no type, unlike [`Self::Var`], because a constant's type is
     /// determined by its declaration and [`crate::family::Constant`] holds that.
     Const(crate::family::Constant),
+    /// A base type, registered by the host. Rigid forever: §5.8 gives it no
+    /// eliminator, so a spine headed by one is blocked with nothing that could
+    /// unblock it. It is a head rather than a [`Form`] because a base type may
+    /// take parameters — `Syntax Expr` is `Syntax` applied — and an applied
+    /// canonical form would need an arm that says what applying it means.
+    Base(crate::base::Base),
+    /// A compiler-owned operation. Rigid until every argument is a literal:
+    /// [`crate::eval::apply`] runs the δ-rule at that moment, in the same arm
+    /// that fires ι for a recursor, so a spine still headed by one here is
+    /// genuinely blocked.
+    Builtin(crate::base::Builtin),
     /// An unsolved metavariable. The one *flexible* head: a neutral headed by a
     /// variable can never compute, while this one computes the moment the meta
     /// is solved, which is exactly the distinction unification turns on.

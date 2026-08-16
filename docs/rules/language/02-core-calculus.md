@@ -28,6 +28,10 @@ the contract.
 There is **one syntactic category**. Types are terms, so the grammar below is the whole language and there is no
 separate type grammar to keep in step with it.
 
+The grammar below is the whole *pure* calculus. §5.8 extends it with base types, their literals, and the compiler-owned
+builtins over them — a conservative extension, proved there rather than assumed here, and the reason a musical domain is
+a registration rather than an amendment. Read the two together: nothing below changes, and three productions are added.
+
 ```text
 l  ::= 0 | succ l | max l l | ℓ            % universe levels; ℓ is a level metavariable
 

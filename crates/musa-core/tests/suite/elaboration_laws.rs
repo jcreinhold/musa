@@ -279,6 +279,39 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
         assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
         reached.insert(kind(&refusal));
     }
+    // §5.8's registration refusals are answered by a *table* rather than by a
+    // program, which is what makes them the host's mistakes rather than an
+    // author's: a registry is refused before anything is elaborated under it.
+    for crate::base_laws::RefusedRegistry {
+        name,
+        outcome,
+        expected,
+    } in crate::base_laws::refused_registries()
+    {
+        let Err(refusal) = outcome else {
+            panic!("{name}: the registry was admitted");
+        };
+        assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
+        reached.insert(kind(&refusal));
+    }
+    // D1's other half is about a program, and needs the worked registry to be
+    // in scope for a base-typed subject to exist at all.
+    let registered = crate::base_laws::base_context();
+    for crate::base_laws::RefusedProgram {
+        name,
+        raw,
+        ty,
+        expected,
+    } in crate::base_laws::refused_programs()
+    {
+        let (ty, _) = infer(&registered, &ty).unwrap_or_else(|error| panic!("{name}: {error}"));
+        let Err(error) = check(&registered, &ty, &raw) else {
+            panic!("{name}: elaboration accepted a program it must refuse");
+        };
+        let refusal = refusal(name, error);
+        assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
+        reached.insert(kind(&refusal));
+    }
     assert_eq!(
         reached,
         ALL_REFUSALS.iter().copied().collect(),
@@ -287,7 +320,7 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
 }
 
 /// Every refusal this crate can answer with.
-const ALL_REFUSALS: [&str; 43] = [
+const ALL_REFUSALS: [&str; 47] = [
     "unknown-name",
     "mismatch",
     "unsolved",
@@ -331,6 +364,10 @@ const ALL_REFUSALS: [&str; 43] = [
     "method-on-variable",
     "no-method-for-type",
     "ambiguous-method",
+    "duplicate-extern",
+    "higher-order-delta",
+    "unknown-base",
+    "base-not-matchable",
 ];
 
 /// Which refusal this is, as a tag the coverage gate can compare.
@@ -382,6 +419,10 @@ fn kind(refusal: &Refusal) -> &'static str {
         Refusal::MethodOnVariable { .. } => "method-on-variable",
         Refusal::NoMethodForType { .. } => "no-method-for-type",
         Refusal::AmbiguousMethod { .. } => "ambiguous-method",
+        Refusal::DuplicateExtern { .. } => "duplicate-extern",
+        Refusal::HigherOrderDelta { .. } => "higher-order-delta",
+        Refusal::UnknownBase { .. } => "unknown-base",
+        Refusal::BaseNotMatchable { .. } => "base-not-matchable",
     }
 }
 
@@ -462,7 +503,11 @@ fn meta_free(term: &Term) -> bool {
 
     match term.shape() {
         Shape::Meta(_) => false,
-        Shape::Var(_) | Shape::Universe(_) | Shape::Const(_) => true,
+        // A base type, a builtin, and a literal are all closed: each is a name
+        // or a payload the host registered, and none of them holds a term.
+        Shape::Var(_) | Shape::Universe(_) | Shape::Const(_) | Shape::Base(_) | Shape::Builtin(_) | Shape::Lit(_) => {
+            true
+        }
         Shape::Pi { domain, codomain, .. } => meta_free(domain) && meta_free(codomain),
         Shape::Lam { body, .. } => meta_free(body),
         Shape::App { function, argument } => meta_free(function) && meta_free(argument),

@@ -206,6 +206,15 @@ pub enum Code {
     /// A name a quote pattern wrote literally, used in the arm as though the
     /// pattern had bound it.
     QuotedLiteralName,
+    /// One name claimed twice in the builtin registry the compiler hands the
+    /// core.
+    DuplicateExtern,
+    /// A δ-builtin whose declared signature takes or returns a function.
+    HigherOrderDelta,
+    /// A δ-builtin's signature naming a base type the registry does not hold.
+    UnknownBase,
+    /// A pattern that tries to take a base-typed value apart.
+    BaseNotMatchable,
 }
 
 /// Writes each code's spelling once, and derives the roster from the same
@@ -299,6 +308,10 @@ code_table! {
     AmbiguousSpread => "ambiguous-spread",
     PatternCategory => "pattern-category",
     QuotedLiteralName => "quoted-literal-name",
+    DuplicateExtern => "duplicate-extern",
+    HigherOrderDelta => "higher-order-delta",
+    UnknownBase => "unknown-base",
+    BaseNotMatchable => "base-not-matchable",
 }
 
 impl Code {

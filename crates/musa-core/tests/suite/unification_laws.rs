@@ -240,8 +240,9 @@ fn mentions_free_variable(term: &Term) -> bool {
 
         match term.shape() {
             Shape::Var(index) => index.0 >= depth,
-            // Closed by construction, so it escapes nothing.
-            Shape::Const(_) => false,
+            // Closed by construction, so each escapes nothing: a declared
+            // constant, and the three the host registered.
+            Shape::Const(_) | Shape::Base(_) | Shape::Builtin(_) | Shape::Lit(_) => false,
             Shape::Universe(_) | Shape::Meta(_) => false,
             Shape::Pi { domain, codomain, .. } => walk(domain, depth) || walk(codomain, depth.saturating_add(1)),
             Shape::Lam { body, .. } => walk(body, depth.saturating_add(1)),

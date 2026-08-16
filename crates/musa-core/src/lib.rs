@@ -81,6 +81,7 @@
 //! on, because a total language that aborts has replaced a diagnostic with a
 //! crash.
 
+mod base;
 mod budget;
 mod case;
 mod class;
@@ -107,6 +108,7 @@ mod unify;
 mod value;
 mod visibility;
 
+pub use crate::base::{Base, Builtin, Extern, Family, Literal, Payload, Registry, Rule};
 pub use crate::budget::{Budget, Metric, ResourceError};
 pub use crate::class::{Instance, PackageId, Trait};
 pub use crate::context::Cx;

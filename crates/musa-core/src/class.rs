@@ -359,7 +359,13 @@ impl Classes {
 pub(crate) fn size(term: &Term) -> u32 {
     use crate::term::Shape;
     let inner = match term.shape() {
-        Shape::Var(_) | Shape::Const(_) | Shape::Universe(_) | Shape::Meta(_) => 0,
+        Shape::Var(_)
+        | Shape::Const(_)
+        | Shape::Base(_)
+        | Shape::Builtin(_)
+        | Shape::Lit(_)
+        | Shape::Universe(_)
+        | Shape::Meta(_) => 0,
         Shape::Pi { domain, codomain, .. } => size(domain).saturating_add(size(codomain)),
         Shape::Lam { body, .. } => size(body),
         Shape::App { function, argument, .. } => size(function).saturating_add(size(argument)),
@@ -395,7 +401,9 @@ pub(crate) fn occurrences(term: &Term, depth: u32, level: u32) -> u32 {
     let deeper = |term: &Term, by: u32| occurrences(term, depth.saturating_add(by), level);
     match term.shape() {
         Shape::Var(index) => u32::from(depth.checked_sub(index.0.saturating_add(1)) == Some(level)),
-        Shape::Const(_) | Shape::Universe(_) | Shape::Meta(_) => 0,
+        // Closed leaves: none of them can be a variable, so none of them can
+        // hold an occurrence of one.
+        Shape::Const(_) | Shape::Base(_) | Shape::Builtin(_) | Shape::Lit(_) | Shape::Universe(_) | Shape::Meta(_) => 0,
         Shape::Pi { domain, codomain, .. } => deeper(domain, 0).saturating_add(deeper(codomain, 1)),
         Shape::Lam { body, .. } => deeper(body, 1),
         Shape::App { function, argument, .. } => deeper(function, 0).saturating_add(deeper(argument, 0)),
@@ -434,6 +442,11 @@ pub(crate) fn head_of(term: &Term, depth: u32) -> Option<Head> {
     use crate::term::Shape;
     match term.shape() {
         Shape::Const(constant) => Some(Head::Rigid(constant.name())),
+        // A base type is a rigid type constructor with a name, so it keys the
+        // same way a declared family does. Without an `impl` on it, resolution
+        // then reports "no instance" rather than postponing a constraint that
+        // nothing could ever unblock.
+        Shape::Base(base) => Some(Head::Rigid(std::sync::Arc::clone(base.name()))),
         Shape::Var(index) => depth
             .checked_sub(index.0.saturating_add(1))
             .map(|level| Head::Local(DbLevel(level))),
@@ -451,6 +464,8 @@ pub(crate) fn head_of(term: &Term, depth: u32) -> Option<Head> {
         | Shape::Refl(_)
         | Shape::J { .. }
         | Shape::Meta(_)
+        | Shape::Builtin(_)
+        | Shape::Lit(_)
         | Shape::Let { .. } => None,
     }
 }

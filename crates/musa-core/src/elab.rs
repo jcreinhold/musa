@@ -276,6 +276,18 @@ impl Elaborator {
             if let Some((term, ty)) = crate::dictionary::method_at(self, scope, here, name)? {
                 return Ok(Typed { term, ty });
             }
+            // Last, and last on purpose: the host's registry is consulted only
+            // where nothing the author wrote answers, so a declaration always
+            // shadows a base type or a builtin of the same spelling rather than
+            // the other way round. A registry that won would let the host
+            // silently redefine a name in a program it never read.
+            if let Some(entry) = scope.cx().extern_named(name) {
+                let ty = eval(&mut self.meter, &Env::EMPTY, entry.ty())?;
+                return Ok(Typed {
+                    term: entry.term(here),
+                    ty,
+                });
+            }
             return Err(self.unresolved(scope, here, name));
         };
         // Found, and possibly not for this reader. The check is here rather
@@ -429,7 +441,8 @@ impl Elaborator {
                 Some(term) => Ok(Some(term)),
                 None => self.abstracted(scope, raw, ty),
             },
-            RawShape::Universe(_)
+            RawShape::Lit(_)
+            | RawShape::Universe(_)
             | RawShape::Pi { .. }
             | RawShape::App { .. }
             | RawShape::RecordType(_)
@@ -623,6 +636,14 @@ impl Elaborator {
                     ty: Value::clone(&found.ty),
                 })
             }
+            // A literal carries the base type it inhabits, so it infers rather
+            // than checks: the host wrote the type down when it made the
+            // literal, and reading it off anything else would be guessing at
+            // what the host already said.
+            RawShape::Lit(literal) => Ok(Typed {
+                term: literal.term(here),
+                ty: eval(&mut self.meter, &Env::EMPTY, literal.ty())?,
+            }),
             RawShape::Universe(written) => {
                 let level = match written {
                     Some(level) => level.clone(),
@@ -1486,6 +1507,11 @@ fn zonk(meter: &mut Meter, depth: u32, term: &Term) -> Result<Term, CoreError> {
             // and it is resolved by [`Constant`]'s own equality rather than here:
             // the level lives inside the group, which zonking does not rebuild.
             Shape::Const(constant) => Shape::Const(constant.clone()),
+            // Closed and holding no metavariable, because a host registers them
+            // before elaboration begins and nothing here rebuilds one.
+            Shape::Base(base) => Shape::Base(base.clone()),
+            Shape::Builtin(builtin) => Shape::Builtin(builtin.clone()),
+            Shape::Lit(literal) => Shape::Lit(literal.clone()),
             Shape::Universe(level) => Shape::Universe(level.resolved()),
             Shape::Pi {
                 plicity,
