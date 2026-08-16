@@ -1,7 +1,7 @@
 ---
 id: 141b
 slug: base-types-and-builtins
-status: pending
+status: in-progress
 depends_on: [136b, 137, 141]
 phase: 3
 ---
@@ -34,6 +34,10 @@ Implement it: base types, literals, and a builtin registry the **host supplies a
   The answer this prompt commits to is *nothing*, and the interface is what makes that true or false.
 - Peyton Jones ch. 3 §3.1 and ch. 6 — a core is enriched with constants and their δ-rules rather than made to enumerate
   them; the built-in functions are a parameter of the reduction machine, not part of its syntax.
+- Peyton Jones ch. 4 §4.1 and ch. 5 §5.1 on what a pattern *is*: a constructor pattern is the elimination form of an
+  algebraic type, so a type with no constructors and no eliminator has no pattern but a variable. That is why the
+  literal pattern in `crates/musa-compiler/src/core.rs`'s `Pattern::Literal` desugars here rather than crossing into the
+  core, and it is the derivation behind this prompt's Design clause on decidable equality.
 
 ## Design
 
@@ -90,11 +94,25 @@ order-independence, and D4's bound are properties of the host's functions over t
 already samples them where the table lives. Say which half is checked where, in the module doc, so the next reader does
 not look for D2 in the core.
 
-**Coverage over a literal column is a catch-all or nothing.** D1's "the only pattern that may match it is a literal or a
-catch-all" is a coverage rule, and prompt 135's case-tree compiler is where it lands: a column of a base type splits
-into the literals the arms name plus a required default, and a match over base-typed subjects with no default is
-`Refusal::IncompleteMatch` naming the base type rather than enumerating an infinite constructor set. No destructuring
-pattern may stand at a base type, which is the second half of inertness.
+**A literal pattern is decidable equality, and decidable equality is the host's.** D1's "the only pattern that may match
+it is a literal or a catch-all" reads at first like a coverage rule for prompt 135's case-tree compiler — a base-typed
+column splitting into the literals the arms name plus a required default. It cannot be: that split is a case analysis on
+a base type, and D1's first clause says no reduction rule inspects a closed value of one. A base type has no eliminator,
+so a base-typed column has *nothing to split on*, and a `Test::Literal` would be the eliminator D1 refuses, introduced
+by the compiler instead of by the registry.
+
+What a literal pattern actually means is `if x == "PitchLiteral" then … else …`: a δ-builtin deciding equality, and the
+host's own `Bool` — an ordinary declared family with an ordinary recursor — doing the branching. Lean compiles `String`
+patterns exactly this way, for exactly this reason. So the desugaring belongs to whoever owns both halves, and that is
+`musa-compiler`: it knows which base types it registered, which δ-builtin decides each one, and which family it calls
+`Bool`. A `RawPattern::Lit` in the core would be a third party to a conversation between two things the core does not
+know, and it would have to learn `Bool` to compile it.
+
+`musa-core` therefore has **no literal pattern**, and `case.rs` keeps the half of D1 it can enforce: a
+`RawPattern::Constructor` or `RawPattern::Record` at a base-typed column is `Refusal::BaseNotMatchable`, naming the base
+type. Coverage needs no rule at all — the only pattern the core admits there is `RawPattern::Bind`, which is the
+catch-all D1 requires, and a column of catch-alls is never tested. Prompt 142 owns the desugaring, and this Design is
+what tells it to write one.
 
 **Charge before constructing.** A builtin application charges the `Budget` through the existing `Metric` before its
 δ-rule runs, which is D4 where D4 can be enforced rather than where it is merely true.
@@ -107,19 +125,21 @@ matched — so the mechanism is exercised without `musa-compiler` changing. 142 
 
 - `crates/musa-core/src/base.rs`: `Base`, `Literal`, the `Payload` trait, `Builtin`, `Family`, and `Registry` with its
   registration checks, all doc-commented with their invariants before the implementation.
-- `Shape::Base`/`Shape::Lit`, `RawShape::Lit`, `RawPattern::Lit`, `Form::Base`/`Form::Lit`, and `Head::Builtin`, with
+- `Shape::Base`/`Shape::Lit`/`Shape::Builtin`, `RawShape::Lit`, `Form::Lit`, and `Head::Base`/`Head::Builtin`, with
   their arms in `eval.rs` (δ and stuck-is-neutral), `unify.rs` (base identity and literal identity), `quote.rs`,
   `recheck.rs`, and `storable.rs`.
-- `case.rs`: literal columns, the required default, and the refusal for a destructuring pattern at a base type.
+- `case.rs`: the refusal for a destructuring pattern at a base-typed column, which is all of D1 the core can enforce.
 - `Cx` carrying an optional `Arc<Registry>`, supplied by the caller the way `Classes` is; a context with no registry
   names no base type, which is what keeps every existing test unchanged.
 - New `Refusal` variants and their `musa explain` codes in `crates/musa-compiler/src/diagnose.rs` — the compiler's
   diagnostic registry is the one file this prompt touches there, and its checker is untouched: unknown base type,
-  destructuring pattern at a base type, incomplete match over a base type, a δ-builtin signature containing an arrow, a
-  builtin classified twice, and a δ-rule that answered nothing at closed arguments.
+  destructuring pattern at a base type, a δ-builtin signature containing an arrow, and a builtin classified twice. A
+  δ-rule that answers nothing at arguments it declared it accepts is **not** among them: it is a host defect rather than
+  a program error, so it belongs to `error.rs`'s `Malformed`, which is the crate's existing word for a caller that
+  handed over something that does not fit.
 - `crates/musa-core/tests/suite/base_laws.rs`: the worked registry, and the laws — inertness (no reduction inspects a
-  literal), literal conversion, δ agreement with the host function over a finite sample, stuck-is-neutral, the coverage
-  rule in both directions, budget charging, and the registration refusals.
+  literal, and no destructuring pattern stands at a base type), literal conversion, δ agreement with the host function
+  over a finite sample, stuck-is-neutral, budget charging, and the registration refusals.
 - `docs/rules/language/02-core-calculus.md` §1: the one-line repair admitting §5.8's extension.
 - `docs/plan/code-map/` rows for `musa-core`, replacing "a leaf calculus with no base types".
 - No change to `musa-compiler`'s checker, no `stdlib/` or `examples/` change, and the compiler's `BUILTIN_OWNERSHIP`
