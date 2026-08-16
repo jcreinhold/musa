@@ -81,7 +81,7 @@ pub use crate::chord::chord_types;
 pub use crate::compile::{Compilation, CompileOptions, DocumentKind, SourceDocument, compile, format_document};
 pub use crate::context::ContextTrack;
 pub use crate::derivation::Derivation;
-pub use crate::diagnose::{Code, Diagnostic, Fix, FixEdit, Label, Severity};
+pub use crate::diagnose::{Cause, Code, Diagnostic, Fix, FixEdit, Label, Severity};
 pub use crate::docs::{ItemDoc, ItemSource, ParameterDoc, TypeNote};
 #[doc(hidden)]
 pub use crate::elaborate::kernel_normal_form;

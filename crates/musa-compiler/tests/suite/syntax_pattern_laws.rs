@@ -77,11 +77,11 @@ fn piece(declarations: &str, binding: &str, contents: &str) -> String {
 /// Every error compiling that piece against that adapter, as the whole small
 /// document each one is — message, note, and help.
 ///
-/// A module's own diagnostics reach here through `expand`'s level check, which
-/// keeps the first one's **message** and replaces its note, help, and label
-/// with the wrapper's own. So a law about what an adapter author is told is a
-/// law about the message, and every distinction one of these tests observes is
-/// written there rather than in a note.
+/// A module's own diagnostics reach here through `expand`'s level check, as
+/// the wrapper diagnostic's **causes**: one per fault, each whole, each with
+/// the note and the help §4 wrote for the adapter author. So these laws read
+/// the same four parts of a cause that they read of an ordinary diagnostic,
+/// and a distinction written in a note is a distinction a test can observe.
 fn errors(declarations: &str, binding: &str, contents: &str, module: &str) -> Vec<String> {
     let source = SourceDocument::new(piece(declarations, binding, contents), "probe.musa");
     let mut imports = ImportSources::default();
@@ -96,17 +96,33 @@ fn errors(declarations: &str, binding: &str, contents: &str, module: &str) -> Ve
     .diagnostics()
     .iter()
     .filter(|diagnostic| diagnostic.severity == Severity::Error)
-    .map(|diagnostic| {
-        let mut lines = vec![diagnostic.message.clone()];
-        if let Some(note) = diagnostic.note.as_deref() {
-            lines.push(format!("note: {note}"));
-        }
-        if let Some(help) = diagnostic.help.as_deref() {
-            lines.push(format!("help: {help}"));
-        }
-        lines.join("\n")
+    .flat_map(|diagnostic| {
+        let mut found = vec![whole(
+            &diagnostic.message,
+            diagnostic.note.as_deref(),
+            diagnostic.help.as_deref(),
+        )];
+        found.extend(
+            diagnostic
+                .causes
+                .iter()
+                .map(|cause| whole(&cause.message, cause.note.as_deref(), cause.help.as_deref())),
+        );
+        found
     })
     .collect()
+}
+
+/// One diagnostic, or one cause, as the small document it is.
+fn whole(message: &str, note: Option<&str>, help: Option<&str>) -> String {
+    let mut lines = vec![message.to_owned()];
+    if let Some(note) = note {
+        lines.push(format!("note: {note}"));
+    }
+    if let Some(help) = help {
+        lines.push(format!("help: {help}"));
+    }
+    lines.join("\n")
 }
 
 fn plain(binding: &str, contents: &str, module: &str) -> Vec<String> {
@@ -553,5 +569,40 @@ fn the_recursor_traverses_an_unknown_shape() {
     assert!(
         found.is_empty(),
         "the recursor did not reach the region's leaves: {found:?}"
+    );
+}
+
+#[test]
+fn two_refused_patterns_in_one_module_arrive_as_two() {
+    // §4's refusals are per pattern, and two of them in one module are two
+    // things its author has to fix. Each arrives whole and at its own place —
+    // two spreads in one group is a refusal about searching, and `${ … }` in a
+    // pattern is a refusal about direction, and the notes are where the
+    // difference between them is written.
+    let module = deciding(
+        r#"
+    let also = fn (here: NodePath, region: Syntax<TokenTree>) -> Syntax<Expr> {
+        match region {
+            quote { { ${ region } } } -> quote at here { 1 },
+            _ -> quote at here { "unmatched" },
+        }
+    };
+
+    let decide = fn (here: NodePath, region: Syntax<TokenTree>) -> Syntax<Expr> {
+        match region {
+            quote { f($..xs, $..ys) } -> quote at here { 1 },
+            _ -> quote at here { "unmatched" },
+        }
+    };
+"#,
+    );
+    let found = plain("held: Nat", "a", &module);
+    assert!(
+        says(&found, "and this language does not search"),
+        "the ambiguous-spread refusal did not arrive whole: {found:?}"
+    );
+    assert!(
+        says(&found, "only a quote that builds fills them"),
+        "the second refusal was summarized away by the first: {found:?}"
     );
 }

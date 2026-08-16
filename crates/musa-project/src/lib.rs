@@ -58,7 +58,7 @@ mod utf16;
 pub use crate::analysis::{AnalysisFacts, EvidenceFacts, FindingFacts, GroundFacts, NoteFacts};
 pub use crate::command::{DocumentId, ProjectCommand, ProjectUpdate, Revision, TextEdit, TransportRequest, Validity};
 pub use crate::contents::{ContentsFacts, EntryFacts};
-pub use crate::diagnostic::{Diagnostic, Fix, FixEdit, Label, Severity, Span, codes, explain};
+pub use crate::diagnostic::{Cause, CauseLabel, Diagnostic, Fix, FixEdit, Label, Severity, Span, codes, explain};
 pub use crate::edit::{CandidateEdit, EditCommand, EditImpact, GeneratedEditMode, InsertAt, NoteSpec};
 pub use crate::error::ProjectError;
 pub use crate::export::{ExportArtifact, ExportRequest, KernelReport, check_kernel};

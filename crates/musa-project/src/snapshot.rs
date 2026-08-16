@@ -18,6 +18,9 @@ pub struct ProjectSnapshot<'session> {
     pub(crate) name: &'session str,
     pub(crate) revision: Revision,
     pub(crate) diagnostics: &'session [Diagnostic],
+    /// The closed world the last compilation was handed, for
+    /// [`Self::cause_source`] and nothing else.
+    pub(crate) imports: &'session musa_compiler::ImportSources,
     pub(crate) valid: &'session Option<ValidArtifacts>,
     pub(crate) compiles: bool,
     pub(crate) unsaved: bool,
@@ -120,6 +123,20 @@ impl<'session> ProjectSnapshot<'session> {
     /// Diagnostics for the *current* source, whether or not it compiles.
     pub fn diagnostics(&self) -> &[Diagnostic] {
         self.diagnostics
+    }
+
+    /// The text of the document a [`Cause`](crate::Cause) is about.
+    ///
+    /// A cause already says *where* in that document, in lines and columns, so
+    /// this is only for a renderer that quotes the line as well — the terminal
+    /// draws a caret under it. An interface that merely lists causes does not
+    /// need it, and the desktop deliberately does not: the composer does not
+    /// own that file (`docs/rules/desktop/05-states.md` §5).
+    ///
+    /// `None` for a key this compilation was not handed, which is also when
+    /// the cause's own positions are absent.
+    pub fn cause_source(&self, document: &str) -> Option<&str> {
+        self.imports.get(document)
     }
 
     /// Whether the current source compiles.

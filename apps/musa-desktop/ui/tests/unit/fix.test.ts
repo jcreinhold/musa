@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { applyFix, asControl, labelOf, onlyFix, placeOf } from "../../src/lib/state/fix";
-import type { Diagnostic, Fix } from "../../src/lib/state/snapshot";
+import { applyFix, asControl, labelOf, labelOfCause, onlyFix, placeOf, placeOfCause } from "../../src/lib/state/fix";
+import type { Cause, Diagnostic, Fix } from "../../src/lib/state/snapshot";
 
 function diagnostic(over: Partial<Diagnostic> = {}): Diagnostic {
   return {
@@ -12,7 +12,20 @@ function diagnostic(over: Partial<Diagnostic> = {}): Diagnostic {
     help: null,
     note: null,
     fixes: [],
+    causes: [],
     span: null,
+    ...over,
+  };
+}
+
+function cause(over: Partial<Cause> = {}): Cause {
+  return {
+    document: "/packages/staff/src/adapter.musa",
+    code: "unspread-sequence",
+    message: "nothing here spreads a sequence",
+    labels: [],
+    help: null,
+    note: null,
     ...over,
   };
 }
@@ -93,6 +106,37 @@ describe("placeOf and labelOf", () => {
   it("says nothing when the problem is the whole file", () => {
     expect(placeOf(diagnostic())).toBeNull();
     expect(labelOf(diagnostic())).toBeNull();
+  });
+});
+
+describe("placeOfCause and labelOfCause", () => {
+  const placed = cause({
+    labels: [
+      {
+        at: { line: 40, column: 9 },
+        to: { line: 40, column: 14 },
+        text: "this position holds one node",
+        primary: true,
+      },
+    ],
+  });
+
+  it("names the file and the place within it", () => {
+    // The last segment, not the resolved key: a row of the problems list is
+    // not where a reader wants to read a directory tree.
+    expect(placeOfCause(placed)).toBe("adapter.musa 40:9");
+    expect(labelOfCause(placed)).toBe("this position holds one node");
+  });
+
+  it("names the file alone when the fault is the whole of it", () => {
+    // "it does not parse" and "an adapter module is a `library`" have no
+    // place inside the module, and are still worth telling the composer.
+    expect(placeOfCause(cause())).toBe("adapter.musa");
+    expect(labelOfCause(cause())).toBeNull();
+  });
+
+  it("falls back to the key when it has no segments", () => {
+    expect(placeOfCause(cause({ document: "std::staff" }))).toBe("std::staff");
   });
 });
 

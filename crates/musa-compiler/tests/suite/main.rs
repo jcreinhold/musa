@@ -8,6 +8,7 @@ mod analysis_laws;
 mod annotation_laws;
 mod assertion_laws;
 mod bars;
+mod cause_laws;
 mod chord_construction_laws;
 mod compiler;
 mod complete_call_laws;

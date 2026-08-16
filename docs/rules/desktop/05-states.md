@@ -101,6 +101,23 @@ advice, and — where the repair is unambiguous — the edit itself. The list sh
   warnings.
 - Diagnostics never appear as toasts. They are not transient.
 
+**A diagnostic about another document.** Some faults are not in the piece. A `import syntax` names an adapter module,
+and a module that does not check produces the compiler's own diagnostics *about that module* — several of them, each at
+its own place inside a file the composer did not write and cannot open here. They are **causes**, and they list under
+the diagnostic they caused rather than being summarized into it.
+
+- The four-line rule above is a rule about one diagnostic. A diagnostic with causes is that, plus one entry per cause,
+  indented past the diagnostic's own detail so the nesting says what it is.
+- Each cause reads as the diagnostic does — message, then its label and its help line — with **the document's name where
+  the location goes** and the position within that document beside it: `adapter.musa 40:9`. The name is the last path
+  segment; the resolved key is a directory tree and this is a list, not a path bar.
+- **A cause is not a navigation target and carries no fix control.** The composer cannot edit that file, so a row that
+  looked clickable and a button labelled with an edit would both be promises this interface will not keep. Text a
+  composer does not own is drawn as text (`08-elaboration.md`).
+- The words are still the compiler's own (§1). A cause is where a note and a help written for a *package author* reach
+  the person who imported the package; shortening either into the diagnostic above it would say the first cause twice
+  and the rest not at all.
+
 ## 6. Confirmations and results
 
 - Destructive or wide-reaching operations state their scope before they run, inline, with counts (`04-provenance.md`

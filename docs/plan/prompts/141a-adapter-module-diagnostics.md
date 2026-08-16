@@ -1,7 +1,7 @@
 ---
 id: 141a
 slug: adapter-module-diagnostics
-status: pending
+status: done
 depends_on: [140]
 phase: 3
 ---

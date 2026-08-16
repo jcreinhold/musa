@@ -35,6 +35,7 @@ function snapshotOf(source: string, revision: number, compiles = true): ProjectS
             help: null,
             note: null,
             fixes: [],
+            causes: [],
             span: null,
           },
         ],

@@ -68,11 +68,15 @@ fn piece(contents: &str) -> String {
     )
 }
 
-/// Every error the compilation reported, as the whole small document it is.
+/// Every error the compilation reported, as the whole small document it is,
+/// and every **cause** with it.
 ///
 /// All three parts, because a refusal puts the claim in the message, the
 /// adapter's own words in the note, and the advice in the help — and a test
-/// that reads only the first line tests less than it looks like it does.
+/// that reads only the first line tests less than it looks like it does. A
+/// fault inside the adapter module arrives as a cause of the diagnostic about
+/// the import, whole and one per fault, which is what lets these laws read the
+/// note at all.
 fn errors(contents: &str, module: &str) -> Vec<String> {
     let source = SourceDocument::new(piece(contents), "probe.musa");
     let mut imports = ImportSources::default();
@@ -87,17 +91,33 @@ fn errors(contents: &str, module: &str) -> Vec<String> {
     .diagnostics()
     .iter()
     .filter(|diagnostic| diagnostic.severity == Severity::Error)
-    .map(|diagnostic| {
-        let mut lines = vec![diagnostic.message.clone()];
-        if let Some(note) = diagnostic.note.as_deref() {
-            lines.push(format!("note: {note}"));
-        }
-        if let Some(help) = diagnostic.help.as_deref() {
-            lines.push(format!("help: {help}"));
-        }
-        lines.join("\n")
+    .flat_map(|diagnostic| {
+        let mut found = vec![whole(
+            &diagnostic.message,
+            diagnostic.note.as_deref(),
+            diagnostic.help.as_deref(),
+        )];
+        found.extend(
+            diagnostic
+                .causes
+                .iter()
+                .map(|cause| whole(&cause.message, cause.note.as_deref(), cause.help.as_deref())),
+        );
+        found
     })
     .collect()
+}
+
+/// One diagnostic, or one cause, as the small document it is.
+fn whole(message: &str, note: Option<&str>, help: Option<&str>) -> String {
+    let mut lines = vec![message.to_owned()];
+    if let Some(note) = note {
+        lines.push(format!("note: {note}"));
+    }
+    if let Some(help) = help {
+        lines.push(format!("help: {help}"));
+    }
+    lines.join("\n")
 }
 
 #[test]

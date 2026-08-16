@@ -197,6 +197,18 @@ ship.
     branch's own accumulator and the call's new one was dropped; the re-checker had no rule for a `let` in checking
     position; and a `match` whose goal was still a metavariable was an internal error rather than a program.
 
+48. [47-diagnostics-about-another-document.md](47-diagnostics-about-another-document.md) records what prompt 141a's
+    `Cause` is: a diagnostic about a document other than the one being compiled, carried whole rather than flattened to
+    one string. The invisible cost of the flattening is the part worth keeping — the constraint had begun to shape the
+    diagnostics themselves, with `quote_splice` carrying a comment instructing future authors to write distinctions into
+    the *message* because a distinction in a note was one nobody would ever read. The note states the three properties
+    that make a cause safe to carry (its spans are in its own document, it has no fixes, it holds no causes), records
+    why embedding the module's text in the serde shape and re-reading it from disk were both rejected, and names the
+    obvious next application: `Code::Import`'s `` `{path}` does not compile ``, which today folds one parse error into a
+    note and tells the reader to run a second compilation. It is left alone because a library can import and a library's
+    diagnostics are reported rather than handed back — two decisions that belong to a prompt whose Task is the import
+    contract.
+
 The proof gate failed for the design notes 19–41 pursued, and nothing in *those* notes moved to `docs/rules/` or into
 implementation prompts. Note 42 is the exception and says why: it is an amendment taken under
 [`docs/rules/README.md`](../../../rules/README.md)'s procedure, on engineering evidence those notes did not weigh, and

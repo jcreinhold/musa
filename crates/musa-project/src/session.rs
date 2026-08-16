@@ -230,6 +230,7 @@ impl ProjectSession {
             name: &self.name,
             revision: self.revision,
             diagnostics: &self.diagnostics,
+            imports: &self.imports,
             valid: &self.valid,
             compiles: self.compiles,
             unsaved: self.on_disk.as_ref() != Some(&self.source),
@@ -898,7 +899,7 @@ impl ProjectSession {
         compilation
             .diagnostics()
             .iter()
-            .map(|diagnostic| Diagnostic::from_compiler(diagnostic, &lines))
+            .map(|diagnostic| Diagnostic::from_compiler(diagnostic, &lines, &self.imports))
             .find(|diagnostic| diagnostic.severity == crate::diagnostic::Severity::Error)
             .map(|diagnostic| diagnostic.message)
     }
@@ -964,7 +965,7 @@ impl ProjectSession {
         let diagnostics: Vec<Diagnostic> = compilation
             .diagnostics()
             .iter()
-            .map(|diagnostic| Diagnostic::from_compiler(diagnostic, &lines))
+            .map(|diagnostic| Diagnostic::from_compiler(diagnostic, &lines, &self.imports))
             .collect();
         let diagnostics_changed = diagnostics != self.diagnostics;
         self.diagnostics = diagnostics;
@@ -1066,6 +1067,7 @@ impl ProjectSession {
                         help: Some("this is a bug in musa, not in the piece".to_owned()),
                         note: None,
                         fixes: Vec::new(),
+                        causes: Vec::new(),
                         span: None,
                     });
                 }

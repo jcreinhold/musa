@@ -12,7 +12,7 @@
  * happens here and none should.
  */
 
-import type { Diagnostic, Fix } from "./snapshot";
+import type { Cause, CauseLabel, Diagnostic, Fix } from "./snapshot";
 
 /**
  * `source` with `fix` applied.
@@ -54,6 +54,27 @@ export function placeOf(diagnostic: Diagnostic): string | null {
 /** The primary label's text, when there is one worth showing. */
 export function labelOf(diagnostic: Diagnostic): string | null {
   const label = diagnostic.labels.find((candidate) => candidate.primary) ?? diagnostic.labels[0];
+  return label?.text ?? null;
+}
+
+/**
+ * Where a cause points, as `staff.musa 40:9`, or the document alone.
+ *
+ * A cause's location is words rather than a link, because the composer cannot
+ * edit that file (`05-states.md` §5). The document is named by its last path
+ * segment: the resolved key is absolute and a row of the problems list is not
+ * where a reader wants to read a directory tree.
+ */
+export function placeOfCause(cause: Cause): string {
+  const name = cause.document.split("/").pop() || cause.document;
+  const label: CauseLabel | undefined = cause.labels.find((candidate) => candidate.primary) ?? cause.labels[0];
+  const at = label?.at;
+  return at ? `${name} ${at.line}:${at.column}` : name;
+}
+
+/** The primary label's text on a cause, when there is one worth showing. */
+export function labelOfCause(cause: Cause): string | null {
+  const label = cause.labels.find((candidate) => candidate.primary) ?? cause.labels[0];
   return label?.text ?? null;
 }
 

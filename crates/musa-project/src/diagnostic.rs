@@ -53,6 +53,55 @@ pub struct Label {
     pub primary: bool,
 }
 
+/// One place a *cause* points at, in the cause's own document.
+///
+/// Deliberately not a [`Label`]: that type documents its `span` as a byte
+/// range in the current source text, and a byte range into a file the frontend
+/// does not hold is a footgun with no use. This carries the two ends as
+/// [`Position`]s and no span at all, so there is nothing to misuse.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CauseLabel {
+    /// Where it begins, in the cause's document.
+    ///
+    /// `None` only when this compilation was not handed that document's text,
+    /// which the session's own compilations never are. `at` and `to` are known
+    /// together or not at all: both come from the same index over the same
+    /// text.
+    pub at: Option<Position>,
+    /// Where it ends. See [`Self::at`].
+    pub to: Option<Position>,
+    /// What is wrong *here*, in the checker's few words.
+    pub text: String,
+    /// Whether this is the place the cause is chiefly about.
+    pub primary: bool,
+}
+
+/// A diagnostic about a document other than the one being edited.
+///
+/// What produces one is a compilation that had to check a second file to
+/// answer about this one — an adapter module named by an `import syntax`. The
+/// composer cannot edit that file, so a cause is not a navigation target and
+/// carries no fix; it says where in words (`docs/rules/desktop/05-states.md`
+/// §5).
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Cause {
+    /// The document, by the key its import resolved to. A path for a file, a
+    /// `std::`-style URI for a bundled module.
+    pub document: String,
+    /// Its stable name, the same vocabulary as [`Diagnostic::code`].
+    pub code: String,
+    /// What is wrong, in the compiler's own words.
+    pub message: String,
+    /// Where, in `document`. Primary first.
+    pub labels: Vec<CauseLabel>,
+    /// What to do about it — advice for that document's author.
+    pub help: Option<String>,
+    /// The rule behind it.
+    pub note: Option<String>,
+}
+
 /// An edit that resolves a diagnostic, offered only when it is certain.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -91,6 +140,12 @@ pub struct Diagnostic {
     pub note: Option<String>,
     /// Edits that resolve it without guesswork.
     pub fixes: Vec<Fix>,
+    /// Faults in another document that this one is the consequence of.
+    ///
+    /// Empty for nearly every diagnostic. Listed under it rather than folded
+    /// into the message, because a set of diagnostics about a different file
+    /// is not one sentence about this one.
+    pub causes: Vec<Cause>,
     /// The primary label's span, repeated.
     ///
     /// Not redundant in practice: the editor's lint decorations want one
@@ -101,7 +156,18 @@ pub struct Diagnostic {
 
 impl Diagnostic {
     /// Restate a compiler diagnostic against the source it was produced from.
-    pub(crate) fn from_compiler(diagnostic: &musa_compiler::Diagnostic, lines: &Lines<'_>) -> Self {
+    ///
+    /// `imports` is the same closed world the compilation was handed, and it
+    /// is here for one reason: a cause's labels are places in *another*
+    /// document, and turning a byte offset into a line and column needs that
+    /// document's text. The frontend still derives nothing
+    /// (`docs/rules/desktop/03-interaction.md` §7) — the positions arrive
+    /// computed, in whichever file they belong to.
+    pub(crate) fn from_compiler(
+        diagnostic: &musa_compiler::Diagnostic,
+        lines: &Lines<'_>,
+        imports: &musa_compiler::ImportSources,
+    ) -> Self {
         let labels: Vec<Label> = diagnostic
             .labels
             .iter()
@@ -138,6 +204,11 @@ impl Diagnostic {
                         .collect(),
                 })
                 .collect(),
+            causes: diagnostic
+                .causes
+                .iter()
+                .map(|cause| Cause::from_compiler(cause, imports))
+                .collect(),
         }
     }
 
@@ -158,6 +229,36 @@ impl Diagnostic {
         match self.fixes.as_slice() {
             [fix] => Some(fix),
             _ => None,
+        }
+    }
+}
+
+impl Cause {
+    /// Restate one cause against the document it is about.
+    ///
+    /// A document this compilation was not handed keeps its label texts and
+    /// loses their positions, rather than being dropped: the composer still
+    /// has to be told what the checker said, and a cause with no coordinates
+    /// says less than a full one and much more than nothing.
+    fn from_compiler(cause: &musa_compiler::Cause, imports: &musa_compiler::ImportSources) -> Self {
+        let text = imports.get(&cause.document);
+        let lines = text.map(Lines::new);
+        Self {
+            document: cause.document.clone(),
+            code: cause.code.to_string(),
+            message: cause.message.clone(),
+            labels: cause
+                .labels
+                .iter()
+                .map(|label| CauseLabel {
+                    at: lines.as_ref().map(|lines| lines.at(label.span.start)),
+                    to: lines.as_ref().map(|lines| lines.at(label.span.end)),
+                    text: label.text.clone(),
+                    primary: label.primary,
+                })
+                .collect(),
+            help: cause.help.clone(),
+            note: cause.note.clone(),
         }
     }
 }

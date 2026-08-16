@@ -362,6 +362,50 @@ pub struct FixEdit {
     pub replacement: String,
 }
 
+/// A diagnostic about a document other than the one being compiled.
+///
+/// Spans in `labels` are spans in `document` and in no other file. That is
+/// what keeps [`Diagnostic::remap_spans`] correct without a runtime check:
+/// the source map moves the composer's own text, and a cause is not in it.
+///
+/// A cause carries no fixes and no causes of its own. No fixes for the reason
+/// `remap_spans` already gives about generated text — an edit offered against
+/// a file the composer cannot see would silently rewrite it — and no causes
+/// because the only thing that produces one is reading an adapter module, and
+/// a module may not import.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Cause {
+    /// The document, by the key the import resolved to.
+    pub document: String,
+    /// Its stable name, the same vocabulary as [`Diagnostic::code`].
+    pub code: Code,
+    /// What is wrong, in the checker's own words.
+    pub message: String,
+    /// Where, in `document`. Primary first, as in a diagnostic.
+    pub labels: Vec<Label>,
+    /// What to do about it.
+    pub help: Option<String>,
+    /// The rule behind it.
+    pub note: Option<String>,
+}
+
+impl Cause {
+    /// Restate one diagnostic as a fault in `document`.
+    ///
+    /// The fixes are dropped here rather than at the renderers, so no consumer
+    /// has to know they were ever there.
+    pub(crate) fn of(document: impl Into<String>, diagnostic: Diagnostic) -> Self {
+        Self {
+            document: document.into(),
+            code: diagnostic.code,
+            message: diagnostic.message,
+            labels: diagnostic.labels,
+            help: diagnostic.help,
+            note: diagnostic.note,
+        }
+    }
+}
+
 /// Diagnostic severity.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Severity {
@@ -374,8 +418,8 @@ pub enum Severity {
 /// A semantic diagnostic.
 ///
 /// Built with the `error`/`warning` constructors and the chained `at`, `also`,
-/// `help`, `note`, and `fix` methods, in that order — which is also the order
-/// they are read in.
+/// `help`, `note`, `fix`, and `caused_by` methods, in that order — which is
+/// also the order they are read in.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Diagnostic {
     /// How bad it is.
@@ -392,6 +436,14 @@ pub struct Diagnostic {
     pub note: Option<String>,
     /// Edits that resolve it without guesswork.
     pub fixes: Vec<Fix>,
+    /// Faults in *another* document that this one is the consequence of.
+    ///
+    /// Empty for nearly every diagnostic. What fills it is a compilation that
+    /// had to check a second document to answer about this one — an adapter
+    /// module named by an `import syntax` — where the whole of what the
+    /// checker said about that document belongs to its author and none of it
+    /// is a place in the composer's file.
+    pub causes: Vec<Cause>,
 }
 
 impl Diagnostic {
@@ -401,6 +453,10 @@ impl Diagnostic {
     /// would silently rewrite a file the composer cannot see, which is worse
     /// than offering no fix at all. A fix that lands on a whole region says
     /// "replace this region", which is at least a place they can act on.
+    ///
+    /// [`Self::causes`] is left alone, and that is the rule rather than an
+    /// omission: a cause's spans are already in the document it names, and
+    /// this map describes only the composer's own text.
     pub(crate) fn remap_spans(&mut self, map: &crate::expand::SourceMap) {
         for label in &mut self.labels {
             label.span = map.span(label.span);
@@ -431,6 +487,7 @@ impl Diagnostic {
             help: None,
             note: None,
             fixes: Vec::new(),
+            causes: Vec::new(),
         }
     }
 
@@ -523,6 +580,19 @@ impl Diagnostic {
                 replacement: replacement.into(),
             }],
         });
+        self
+    }
+
+    /// Attach what a second document's own checker said, whole.
+    ///
+    /// Nothing is spliced into the message: the wrapper says which module and
+    /// which import, and the causes say what is wrong inside it. Saying it
+    /// twice is what `docs/rules/desktop/05-states.md` §5 forbids of a label,
+    /// and a summarized first diagnostic is the same mistake with the other
+    /// diagnostics missing as well.
+    #[must_use]
+    pub(crate) fn caused_by(mut self, causes: impl IntoIterator<Item = Cause>) -> Self {
+        self.causes.extend(causes);
         self
     }
 

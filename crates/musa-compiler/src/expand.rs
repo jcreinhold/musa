@@ -38,6 +38,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use musa_language::ast::{AstNode as _, ImportStmt};
 use musa_language::{SyntaxKind, SyntaxNode};
 
 use crate::compile::{CompileOptions, SourceDocument};
@@ -306,6 +307,11 @@ impl Level {
 /// A message and a help, and no span: the same fault is reported at the import
 /// that names the module and at a region the module reads, and which of those
 /// the caret belongs on is the caller's question rather than this one's.
+///
+/// And causes, for the other half of the same argument. Which of the caller's
+/// spans is right is the caller's question; which document the module's own
+/// faults are in is not a question at all, so they travel whole rather than
+/// being restated anywhere.
 struct LevelFault {
     message: String,
     help: &'static str,
@@ -313,6 +319,8 @@ struct LevelFault {
     /// while being read is a limit and says so, exactly as a stop during
     /// expansion does; everything else here is the module's own fault.
     code: Code,
+    /// What the module's own checker said, when it said anything.
+    causes: Vec<crate::diagnose::Cause>,
 }
 
 /// The level `adapter_source` declares, checked against what it offers.
@@ -326,41 +334,58 @@ struct LevelFault {
 /// A module that declares no level at all is refused rather than defaulted.
 /// "Declared and checked, not inferred" is the whole point: a default would be
 /// the compiler deciding what a package promises.
-fn level_of(adapter_source: &str, path: &str) -> Result<Level, LevelFault> {
+///
+/// `path` is the module as the importer wrote it, which is what the messages
+/// name it by; `document` is the key the import resolved to, which is what a
+/// cause is filed under and what a renderer looks the text up with.
+fn level_of(adapter_source: &str, path: &str, document: &str) -> Result<Level, LevelFault> {
+    let plain = |message: String, help: &'static str| LevelFault {
+        message,
+        help,
+        code: Code::Expansion,
+        causes: Vec::new(),
+    };
     let module = crate::core::read_adapter_module(adapter_source).map_err(|fault| match fault {
         crate::core::ModuleFault::Stopped => LevelFault {
             message: format!("reading `{path}` crossed a compilation limit"),
             help: "an adapter is total, so this is a limit rather than a loop",
             code: Code::ResourceLimit,
+            // A read that ran out of budget said nothing about the module, so
+            // there is nothing to carry.
+            causes: Vec::new(),
         },
+        // The wrapper's own sentence, and not a word of the module's spliced
+        // into it: the causes below say what is wrong inside the module, each
+        // at its own place in it, and a summary here would say the first one
+        // twice and the rest not at all.
         crate::core::ModuleFault::Broken(diagnostics) => LevelFault {
-            message: format!(
-                "`{path}` is not an adapter module: {}",
-                diagnostics
-                    .first()
-                    .map_or_else(|| "it does not check".to_owned(), |first| first.message.clone())
-            ),
+            message: format!("`{path}` is not an adapter module"),
             help: "an adapter module is a `library` of ordinary declarations, checked in the expansion phase",
             code: Code::Expansion,
+            causes: diagnostics
+                .into_iter()
+                .map(|diagnostic| crate::diagnose::Cause::of(document, diagnostic))
+                .collect(),
         },
     })?;
-    let declared = module.text("level").ok_or_else(|| LevelFault {
-        message: format!("`{path}` declares no conformance level"),
-        help: "an adapter module declares `let level = \"readable\";`, `\"editable\"`, or `\"generative\"`",
-        code: Code::Expansion,
+    let declared = module.text("level").ok_or_else(|| {
+        plain(
+            format!("`{path}` declares no conformance level"),
+            "an adapter module declares `let level = \"readable\";`, `\"editable\"`, or `\"generative\"`",
+        )
     })?;
-    let level = Level::named(declared).ok_or_else(|| LevelFault {
-        message: format!("`{path}` declares the level `{declared}`, which is not one of the three"),
-        help: "the levels are `readable`, `editable`, and `generative`, and each is the one before it plus an operation",
-        code: Code::Expansion,
+    let level = Level::named(declared).ok_or_else(|| {
+        plain(
+            format!("`{path}` declares the level `{declared}`, which is not one of the three"),
+            "the levels are `readable`, `editable`, and `generative`, and each is the one before it plus an operation",
+        )
     })?;
     for operation in level.operations() {
         if !module.declares(operation) {
-            return Err(LevelFault {
-                message: format!("`{path}` declares the {} level and no `{operation}`", level.word()),
-                help: "a level is a promise: declare the level the module reaches, or write the operation it names",
-                code: Code::Expansion,
-            });
+            return Err(plain(
+                format!("`{path}` declares the {} level and no `{operation}`", level.word()),
+                "a level is a promise: declare the level the module reaches, or write the operation it names",
+            ));
         }
     }
     Ok(level)
@@ -390,11 +415,12 @@ pub(crate) fn expand(source: &SourceDocument, options: &CompileOptions) -> Expan
             // what the missing module was for.
             continue;
         };
-        if let Err(fault) = level_of(adapter_source, &import.path) {
+        if let Err(fault) = level_of(adapter_source, &import.path, &uri) {
             expansion.diagnostics.push(
                 Diagnostic::error(fault.code, fault.message)
                     .at(import.at, "this import")
-                    .help(fault.help),
+                    .help(fault.help)
+                    .caused_by(fault.causes),
             );
         }
     }
@@ -576,8 +602,11 @@ pub fn adapter_edits(
     // The level decides, not the presence of an `edit`. A module that declares
     // *readable* has said its regions are read-only, and an `edit` it did not
     // advertise does not quietly make them writable.
-    let level = level_of(adapter_source, &import.path)
-        .map_err(|fault| AdapterEditError::Broken(Box::new(refusal(site, fault.message, fault.help))))?;
+    let level = level_of(adapter_source, &import.path, &uri).map_err(|fault| {
+        AdapterEditError::Broken(Box::new(
+            refusal(site, fault.message, fault.help).caused_by(fault.causes),
+        ))
+    })?;
     if level < Level::Editable {
         return Err(AdapterEditError::ReadOnly {
             adapter: import.path.clone(),
@@ -737,9 +766,12 @@ pub fn adapter_print(
     // Spanless, and every fault below with it: there is no region to point at
     // yet, and a caret over the file's first byte would be a place the reader
     // would go and find nothing.
-    let broken = |message: String, help: &'static str| {
-        AdapterPrintError::Broken(Box::new(Diagnostic::error(Code::Expansion, message).help(help)))
+    let broken_by = |message: String, help: &'static str, causes: Vec<crate::diagnose::Cause>| {
+        AdapterPrintError::Broken(Box::new(
+            Diagnostic::error(Code::Expansion, message).help(help).caused_by(causes),
+        ))
     };
+    let broken = |message: String, help: &'static str| broken_by(message, help, Vec::new());
     let uri = crate::imports::resolve_import(at.name(), adapter);
     let adapter_source = options.imports.get(&uri).ok_or_else(|| {
         broken(
@@ -747,7 +779,8 @@ pub fn adapter_print(
             "check the package path, or provide the file the import names",
         )
     })?;
-    let level = level_of(adapter_source, adapter).map_err(|fault| broken(fault.message, fault.help))?;
+    let level =
+        level_of(adapter_source, adapter, &uri).map_err(|fault| broken_by(fault.message, fault.help, fault.causes))?;
     if level < Level::Generative {
         return Err(AdapterPrintError::NotGenerative {
             adapter: adapter.to_owned(),
@@ -1033,51 +1066,25 @@ fn region_body(region: &SyntaxNode) -> Option<SyntaxNode> {
     region.children().find(|node| node.kind() == SyntaxKind::SyntaxGroup)
 }
 
-/// Whether a statement is `import syntax …`.
-fn is_syntax_import(node: &SyntaxNode) -> bool {
-    node.kind() == SyntaxKind::ImportStmt
-        && node
-            .children_with_tokens()
-            .filter_map(|it| it.into_token())
-            .any(|token| token.kind() == SyntaxKind::SyntaxKw)
-}
-
 /// Step 3: the header's syntax imports, in the order they are written.
+///
+/// The path is the one [`ImportStmt::path`] reads, not one rebuilt from the
+/// statement's tokens: an import writes a package path bare and a relative path
+/// in quotes, and whoever owns the filesystem keys the file's text under the
+/// unquoted path. A phase that spelled the path a second way would ask for
+/// `"adapter.musa"`, quotes and all, and never find the file that is right
+/// there.
 fn syntax_imports(root: &SyntaxNode) -> Vec<SyntaxImport> {
     root.descendants()
-        .filter(is_syntax_import)
-        .filter_map(|node| {
-            let mut path = String::new();
-            let mut alias = None;
-            let mut after_as = false;
-            // The words of the statement are read off in order: the two that
-            // open it and the `;` that closes it say nothing, `as` switches
-            // from the path to the name, and everything left is one or the
-            // other. A module may be named after a domain keyword, so what
-            // spells a path is not only identifiers.
-            for token in node.children_with_tokens().filter_map(|it| it.into_token()) {
-                let kind = token.kind();
-                if kind == SyntaxKind::AsKw {
-                    after_as = true;
-                } else if kind == SyntaxKind::Colon {
-                    path.push(':');
-                } else if kind.is_trivia()
-                    || matches!(
-                        kind,
-                        SyntaxKind::ImportKw | SyntaxKind::SyntaxKw | SyntaxKind::Semicolon
-                    )
-                {
-                } else if after_as {
-                    alias = Some(token.text().to_owned());
-                } else {
-                    path.push_str(token.text());
-                }
-            }
+        .filter_map(ImportStmt::cast)
+        .filter(ImportStmt::changes_syntax)
+        .filter_map(|import| {
+            let node = import.syntax();
             Some(SyntaxImport {
-                alias: alias?,
-                path,
+                alias: import.alias()?,
+                path: import.path()?,
                 ends: u32::from(node.text_range().end()),
-                at: crate::resolve::trimmed_span(&node),
+                at: crate::resolve::trimmed_span(node),
             })
         })
         .collect()
@@ -1394,10 +1401,10 @@ mod tests {
             .expect("the fixture adapter is bundled");
         let read = musa_language::parse(adapter);
         assert!(
-            !read
-                .syntax()
-                .descendants()
-                .any(|node| node.kind() == SyntaxKind::SyntaxRegion || is_syntax_import(&node)),
+            !read.syntax().descendants().any(|node| {
+                node.kind() == SyntaxKind::SyntaxRegion
+                    || ImportStmt::cast(node).is_some_and(|import| import.changes_syntax())
+            }),
             "an adapter definition contains no adapter region and no syntax import"
         );
         let expansion = run(&piece("c4"));

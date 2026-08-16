@@ -160,6 +160,51 @@ fn a_missing_import_names_the_path_it_looked_for() {
     );
 }
 
+/// The smallest adapter that answers: whatever the region held, unchanged.
+///
+/// Small on purpose — what is under test is which file the import found, not
+/// what the module in it does, so the module does as little as a module can.
+const ECHO: &str = "library {\n    let level = \"readable\";\n    let expand = fn (region) { Ok(region) };\n}\n";
+
+/// A syntax import resolves by the path its statement *has*, and a path in
+/// quotes is the path without them.
+///
+/// The regression is the quotes. A relative path is written quoted and a
+/// string token's text carries its quote characters, so a phase that spelled
+/// the path a second time out of the statement's tokens asked for a key with
+/// `"` in it, while whoever owns the filesystem keys the file under the path
+/// the statement reads. The two never met: a module sitting exactly where the
+/// import said was reported as one this compilation cannot read, which put
+/// every relative adapter out of reach of the CLI and the desktop both.
+#[test]
+fn a_syntax_import_written_in_quotes_reads_the_module_at_that_path() {
+    // The key the filesystem side computes for this import, and therefore the
+    // one the compiler has to look the module up under.
+    let resolved = resolve_import("pieces/01.musa", "../adapters/echo.musa");
+    assert_eq!(
+        resolved, "adapters/echo.musa",
+        "the path a reader of the import expects"
+    );
+    let compilation = compile_with(
+        "pieces/01.musa",
+        "piece \"P\" {\n    import syntax \"../adapters/echo.musa\" as echo;\n\n    let held = syntax echo { 1 };\n\n    \
+         tempo 1/4 = 60;\n    meter 4/4;\n    key c major;\n    score { part p { voice v { c5/1 } } }\n}\n",
+        &[(resolved.as_str(), ECHO)],
+    );
+    let messages = errors(&compilation);
+    assert!(
+        !messages
+            .iter()
+            .any(|message| message.contains("is not a module this compilation can read")),
+        "the module is at the path the import names, got {messages:?}"
+    );
+    assert_eq!(
+        messages,
+        Vec::<String>::new(),
+        "and the region it reads expands, rather than the import quietly going missing"
+    );
+}
+
 /// An imported file is a `library`. A piece in one is rejected — the point of
 /// the rule is that a score cannot be imported and silently ignored.
 #[test]

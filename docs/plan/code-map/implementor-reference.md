@@ -229,7 +229,10 @@ Without a stated α, "candidate" and "fact" mean nothing.
 The family is fixed at five, and a style rule is not an assertion kind — it is an argument to `follows`.
 
 **Adding a diagnostic.** Add a fixture to `examples/broken/`. The rendered report is snapshotted whole, at a fixed width
-and without colour, so a help line cannot stop matching its message unnoticed.
+and without colour, so a help line cannot stop matching its message unnoticed. A diagnostic about a *different* document
+— one raised while reading an adapter module the composer imported — is a `Cause` on the diagnostic about the import,
+not a longer message: its labels are spans in that document, it carries no fix, and all three renderers already know how
+to show one.
 
 **Adding a surface construct.** Decide its elaboration in `../../rules/kernel/06-surface-elaboration.md` before writing
 the parser, and add a positive fixture to `examples/`. If it cannot be elaborated from the three kernel combinators,

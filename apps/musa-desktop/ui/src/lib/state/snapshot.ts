@@ -47,6 +47,37 @@ export interface FixEdit {
   replacement: string;
 }
 
+/**
+ * One place a cause points at, in the cause's own document.
+ *
+ * Positions and no span: a byte range into a file this app does not hold is a
+ * footgun with no use. `at` and `to` are known together or not at all.
+ */
+export interface CauseLabel {
+  at: Position | null;
+  to: Position | null;
+  /** What is wrong *here*, in the checker's few words. */
+  text: string;
+  primary: boolean;
+}
+
+/**
+ * A diagnostic about a document other than the one being edited — an adapter
+ * module this piece imports.
+ *
+ * The composer does not own that file, so a cause is not a navigation target
+ * and carries no fix (`05-states.md` §5). It says where in words.
+ */
+export interface Cause {
+  /** The document, by the key its import resolved to. */
+  document: string;
+  code: string;
+  message: string;
+  labels: CauseLabel[];
+  help: string | null;
+  note: string | null;
+}
+
 /** An edit that resolves a diagnostic, offered only when it is certain. */
 export interface Fix {
   /** What applying it does, phrased as the action: ``add `;` ``. */
@@ -63,6 +94,11 @@ export interface Diagnostic {
   help: string | null;
   note: string | null;
   fixes: Fix[];
+  /**
+   * Faults in another document this one is the consequence of. Empty for
+   * nearly every diagnostic.
+   */
+  causes: Cause[];
   /** The primary label's span, for the editor's lint decoration. */
   span: Span | null;
 }

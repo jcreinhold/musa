@@ -6675,11 +6675,11 @@ impl Checker<'_> {
         let span = crate::resolve::trimmed_span(node);
         let sequence = node.kind() == SyntaxKind::SequenceSplice;
         if sequence && !spreadable {
-            // Two directions, two faults, and the *message* carries which —
-            // not the note. An adapter's diagnostics reach their author through
-            // [`crate::expand`]'s level check, which keeps the message and
-            // drops everything around it, so a distinction written only in a
-            // note is a distinction no adapter author ever reads.
+            // Two directions, two faults, and the *message* carries which,
+            // because a message says what is wrong and these are two different
+            // wrong things. The note says why each one is, which is a second
+            // job; both reach the module's author whole, as a cause of the
+            // diagnostic about the import ([`crate::diagnose::Cause`]).
             let (complaint, advice, why) = if walk.matching {
                 (
                     "nothing here holds a run to bind",

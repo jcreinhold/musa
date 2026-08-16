@@ -18,7 +18,7 @@
   import Seam from "./Seam.svelte";
   import SourceEditor from "./SourceEditor.svelte";
   import Ticked from "./Ticked.svelte";
-  import { applyFix, asControl, labelOf, onlyFix, placeOf } from "../state/fix";
+  import { applyFix, asControl, labelOf, labelOfCause, onlyFix, placeOf, placeOfCause } from "../state/fix";
   import type { Snippet } from "svelte";
   import type { Reveal } from "../state/reveal";
   import type { Diagnostic, NameFacts, Span, TermFacts } from "../state/snapshot";
@@ -239,6 +239,28 @@
             <button type="button" class="fix" onclick={() => fix(diagnostic)}
               ><Ticked text={asControl(only.title)} /></button
             >
+          {/if}
+          <!--
+            What the compiler said about a file the composer did not open, in
+            its own words (`05-states.md` §5). Indented under the diagnostic it
+            caused, with the document's name where the location goes. Not a
+            button and not a target: this interface will not let them edit that
+            file, so a control that looks like it would is a lie.
+          -->
+          {#if diagnostic.causes.length > 0}
+            <ul class="causes">
+              {#each diagnostic.causes as cause, cause_index (cause_index)}
+                {@const cause_label = labelOfCause(cause)}
+                <li>
+                  <p class="cause">
+                    <span class="message"><Ticked text={cause.message} /></span>
+                    <span class="where">{placeOfCause(cause)}</span>
+                  </p>
+                  {#if cause_label}<p class="label"><Ticked text={cause_label} /></p>{/if}
+                  {#if cause.help}<p class="help"><Ticked text={cause.help} /></p>{/if}
+                </li>
+              {/each}
+            </ul>
           {/if}
         </li>
       {/each}
@@ -461,10 +483,34 @@
     border-bottom-color: var(--plate);
   }
 
+  /*
+   * The causes, under the diagnostic they caused and indented past its own
+   * detail, so the nesting says what it is: these are about a different file.
+   * No glyph — the severity is the diagnostic's — and no control of any kind,
+   * because there is nothing here the composer can act on.
+   */
+  .causes {
+    margin: var(--s-1) 0 0 calc(7px + var(--s-1));
+    padding: 0 0 0 var(--s-2);
+    list-style: none;
+    border-left: 1px solid var(--rule);
+  }
+
+  .cause {
+    margin: 0;
+    color: var(--ink-muted);
+  }
+
   /* One problem is one block; the next one starts far enough away to read as
      a different problem. */
-  .diagnostics li + li {
+  .diagnostics > li + li {
     margin-top: var(--s-2);
+  }
+
+  /* Causes sit closer together than problems do: they are one file's report,
+     not several. */
+  .causes li + li {
+    margin-top: var(--s-1);
   }
 
   /*

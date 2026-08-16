@@ -75,7 +75,12 @@ fn piece(region: &str) -> String {
 }
 
 /// Every error compiling that piece against `module`, as the whole small
-/// document each one is.
+/// document each one is, and every **cause** with it.
+///
+/// A fault the checker finds *inside* the fixture module is a diagnostic about
+/// another document, and arrives as a cause of the diagnostic about the import
+/// rather than being summarized into it — which is what lets a law here name
+/// the coverage complaint the fixture is for.
 fn errors(region: &str, module: &str) -> Vec<String> {
     let source = SourceDocument::new(piece(region), "staff-dispatch.musa");
     let mut imports = ImportSources::default();
@@ -90,17 +95,33 @@ fn errors(region: &str, module: &str) -> Vec<String> {
     .diagnostics()
     .iter()
     .filter(|diagnostic| diagnostic.severity == Severity::Error)
-    .map(|diagnostic| {
-        let mut lines = vec![diagnostic.message.clone()];
-        if let Some(note) = diagnostic.note.as_deref() {
-            lines.push(format!("note: {note}"));
-        }
-        if let Some(help) = diagnostic.help.as_deref() {
-            lines.push(format!("help: {help}"));
-        }
-        lines.join("\n")
+    .flat_map(|diagnostic| {
+        let mut found = vec![whole(
+            &diagnostic.message,
+            diagnostic.note.as_deref(),
+            diagnostic.help.as_deref(),
+        )];
+        found.extend(
+            diagnostic
+                .causes
+                .iter()
+                .map(|cause| whole(&cause.message, cause.note.as_deref(), cause.help.as_deref())),
+        );
+        found
     })
     .collect()
+}
+
+/// One diagnostic, or one cause, as the small document it is.
+fn whole(message: &str, note: Option<&str>, help: Option<&str>) -> String {
+    let mut lines = vec![message.to_owned()];
+    if let Some(note) = note {
+        lines.push(format!("note: {note}"));
+    }
+    if let Some(help) = help {
+        lines.push(format!("help: {help}"));
+    }
+    lines.join("\n")
 }
 
 /// Lines of the fixture that are not comments.

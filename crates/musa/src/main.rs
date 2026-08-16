@@ -936,6 +936,11 @@ fn is_document(name: &std::ffi::OsStr) -> bool {
 /// snippet. The note and the fixes are printed after the report rather than
 /// inside it, because miette has one advice slot and they are three different
 /// kinds of advice — what to do, why the rule exists, and the exact edit.
+///
+/// A cause is one of these too, nested under the report it caused, carrying
+/// its *own* source. That is what puts a caret in the adapter module's file
+/// underneath a diagnostic about the import that named it — and it is why
+/// `related` exists rather than a longer message.
 #[derive(Debug, thiserror::Error)]
 #[error("{message}")]
 struct CliDiagnostic {
@@ -945,6 +950,7 @@ struct CliDiagnostic {
     src: miette::NamedSource<String>,
     labels: Vec<miette::LabeledSpan>,
     error: bool,
+    causes: Vec<Self>,
 }
 
 impl miette::Diagnostic for CliDiagnostic {
@@ -975,10 +981,25 @@ impl miette::Diagnostic for CliDiagnostic {
             Some(miette::Severity::Warning)
         }
     }
+
+    fn related(&self) -> Option<Box<dyn Iterator<Item = &dyn miette::Diagnostic> + '_>> {
+        if self.causes.is_empty() {
+            return None;
+        }
+        Some(Box::new(self.causes.iter().map(|cause| {
+            let cause: &dyn miette::Diagnostic = cause;
+            cause
+        })))
+    }
 }
 
 /// Render one diagnostic and everything hanging off it.
-fn report(path: &str, source: &str, diagnostic: &musa_project::Diagnostic) {
+///
+/// The snapshot is here for the causes: a cause names a document this piece
+/// imports, and the snapshot is what holds that document's text
+/// ([`ProjectSnapshot::cause_source`](musa_project::ProjectSnapshot::cause_source)).
+fn report(path: &str, snapshot: &musa_project::ProjectSnapshot<'_>, diagnostic: &musa_project::Diagnostic) {
+    let source = snapshot.source();
     let labels = diagnostic
         .labels
         .iter()
@@ -999,6 +1020,11 @@ fn report(path: &str, source: &str, diagnostic: &musa_project::Diagnostic) {
         src: miette::NamedSource::new(path, source.to_owned()),
         labels,
         error: diagnostic.severity == musa_project::Severity::Error,
+        causes: diagnostic
+            .causes
+            .iter()
+            .map(|cause| caused(cause, snapshot.cause_source(&cause.document)))
+            .collect(),
     };
     eprintln!("{:?}", miette::Report::new(rendered));
     if let Some(note) = diagnostic.note.as_deref() {
@@ -1015,9 +1041,101 @@ fn report(path: &str, source: &str, diagnostic: &musa_project::Diagnostic) {
             }
         }
     }
-    if diagnostic.note.is_some() || !diagnostic.fixes.is_empty() {
+    // A cause has no fixes by construction — an edit against a file the
+    // composer cannot see is worse than none — so its footer is the note
+    // alone, named by the place it is about. The document *and* the position,
+    // because two faults in one module are the ordinary case and the document
+    // alone would leave a reader guessing which report each note follows.
+    for cause in &diagnostic.causes {
+        if let Some(note) = cause.note.as_deref() {
+            eprintln!("  note ({}): {note}", where_of(cause));
+        }
+    }
+    let footer = diagnostic.note.is_some()
+        || !diagnostic.fixes.is_empty()
+        || diagnostic.causes.iter().any(|cause| cause.note.is_some());
+    if footer {
         eprintln!();
     }
+}
+
+/// One cause as a nested miette report over the document it is about.
+///
+/// Without that document's text there is no snippet to draw, so the labels are
+/// dropped and the report is the words alone: a caret over a source miette does
+/// not have would land in the composer's file, which is the one thing the whole
+/// mechanism exists to prevent.
+fn caused(cause: &musa_project::Cause, source: Option<&str>) -> CliDiagnostic {
+    let text = source.unwrap_or_default();
+    let labels = source
+        .map(|source| {
+            cause
+                .labels
+                .iter()
+                .filter_map(|label| {
+                    let start = offset_of(source, label.at?)?;
+                    let end = offset_of(source, label.to?)?.max(start);
+                    Some(miette::LabeledSpan::new_with_span(
+                        Some(label.text.clone()),
+                        miette::SourceSpan::from((miette::SourceOffset::from(start), end.saturating_sub(start))),
+                    ))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    CliDiagnostic {
+        code: cause.code.clone(),
+        message: cause.message.clone(),
+        help: cause.help.clone(),
+        src: miette::NamedSource::new(&cause.document, text.to_owned()),
+        labels,
+        error: true,
+        // One level. The only thing that produces a cause is reading an
+        // adapter module, and a module may not import.
+        causes: Vec::new(),
+    }
+}
+
+/// Where a cause is, for its note's footer line: the document, and the place
+/// within it when the fault has one.
+///
+/// The whole resolved key rather than its last segment, because a terminal is
+/// not a list of four-line entries and the reader may be about to open the
+/// file. A fault that is about the module as a whole — one that does not parse
+/// — has no position and says the document alone.
+fn where_of(cause: &musa_project::Cause) -> String {
+    let at = cause
+        .labels
+        .iter()
+        .find(|label| label.primary)
+        .or_else(|| cause.labels.first())
+        .and_then(|label| label.at);
+    at.map_or_else(
+        || cause.document.clone(),
+        |at| format!("{} {}:{}", cause.document, at.line, at.column),
+    )
+}
+
+/// The byte offset of a 1-based line and character column in `source`.
+///
+/// The inverse of [`position_of`], and it counts characters for the same
+/// reason that one does: a column is what a reader counts across the line,
+/// whatever the characters cost to store.
+fn offset_of(source: &str, position: musa_project::Position) -> Option<usize> {
+    let wanted = usize::try_from(position.line).ok()?.checked_sub(1)?;
+    let column = usize::try_from(position.column).ok()?.checked_sub(1)?;
+    let mut start = 0usize;
+    for (number, line) in source.split_inclusive('\n').enumerate() {
+        if number == wanted {
+            let within = line
+                .char_indices()
+                .nth(column)
+                .map_or_else(|| line.len(), |(offset, _)| offset);
+            return start.checked_add(within);
+        }
+        start = start.checked_add(line.len())?;
+    }
+    None
 }
 
 /// `line:column` for a byte offset, for the fix footer.
@@ -1149,7 +1267,7 @@ fn cmd_check_one(path: &str, realization: &Realization, tally: &mut Tally, fix: 
         let snapshot = session.snapshot();
         for diagnostic in snapshot.diagnostics() {
             tally.count(diagnostic);
-            report(path, snapshot.source(), diagnostic);
+            report(path, &snapshot, diagnostic);
         }
         let edits = if fix { warning_fix_edits(&snapshot) } else { Vec::new() };
         (snapshot.compiles(), edits)

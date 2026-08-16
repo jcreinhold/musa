@@ -92,11 +92,13 @@ fn piece(declarations: &str, binding: &str, contents: &str) -> String {
 }
 
 /// Every error compiling that piece against that adapter reported, as the
-/// whole small document each one is.
+/// whole small document each one is — and every **cause** with it.
 ///
 /// All three parts, because a refusal puts the claim in the message, the
 /// reason in the note, and the repair in the help — and a test that reads only
-/// the first line tests less than it looks like it does.
+/// the first line tests less than it looks like it does. A fault inside the
+/// adapter module arrives as a cause of the diagnostic about the import, whole
+/// and one per fault, which is what lets these laws read the note at all.
 fn errors(declarations: &str, binding: &str, contents: &str, module: &str) -> Vec<String> {
     let source = SourceDocument::new(piece(declarations, binding, contents), "probe.musa");
     let mut imports = ImportSources::default();
@@ -111,17 +113,33 @@ fn errors(declarations: &str, binding: &str, contents: &str, module: &str) -> Ve
     .diagnostics()
     .iter()
     .filter(|diagnostic| diagnostic.severity == Severity::Error)
-    .map(|diagnostic| {
-        let mut lines = vec![diagnostic.message.clone()];
-        if let Some(note) = diagnostic.note.as_deref() {
-            lines.push(format!("note: {note}"));
-        }
-        if let Some(help) = diagnostic.help.as_deref() {
-            lines.push(format!("help: {help}"));
-        }
-        lines.join("\n")
+    .flat_map(|diagnostic| {
+        let mut found = vec![whole(
+            &diagnostic.message,
+            diagnostic.note.as_deref(),
+            diagnostic.help.as_deref(),
+        )];
+        found.extend(
+            diagnostic
+                .causes
+                .iter()
+                .map(|cause| whole(&cause.message, cause.note.as_deref(), cause.help.as_deref())),
+        );
+        found
     })
     .collect()
+}
+
+/// One diagnostic, or one cause, as the small document it is.
+fn whole(message: &str, note: Option<&str>, help: Option<&str>) -> String {
+    let mut lines = vec![message.to_owned()];
+    if let Some(note) = note {
+        lines.push(format!("note: {note}"));
+    }
+    if let Some(help) = help {
+        lines.push(format!("help: {help}"));
+    }
+    lines.join("\n")
 }
 
 /// The same, for a region whose answer the piece binds without an annotation.
@@ -614,5 +632,37 @@ fn a_piece_cannot_write_a_quote_at_all() {
     assert!(
         found.iter().any(|error| error.contains("adapter's form")),
         "a piece built syntax: {found:?}"
+    );
+}
+
+#[test]
+fn two_refusals_in_one_module_arrive_as_two() {
+    // §7's refusals are per quote, and a module holding two of them is told
+    // about both. This is a law about delivery rather than about quotation:
+    // the module's faults reach its author as causes, one per fault, so a
+    // second refusal is not summarized away by the first — and each keeps the
+    // note that says why, which is the part that says which refusal it is.
+    let module = folding(
+        r"
+    let also = fn (here: NodePath) -> Syntax<Expr> {
+        quote at here { (fn (held: Nat) { held })(held_g0) }
+    };
+
+    let emit = fn (here: NodePath, kids: List<Syntax<Expr>>) -> Syntax<Expr> {
+        quote at here { $..kids }
+    };
+",
+    );
+    let found = plain("a", &module);
+    assert!(
+        found.iter().any(|error| error.contains("spreads a sequence")
+            && error.contains("a spread needs the position's own separator")),
+        "the spread refusal did not arrive whole: {found:?}"
+    );
+    assert!(
+        found
+            .iter()
+            .any(|error| error.contains("could generate") && error.contains("note:")),
+        "the second refusal did not arrive at all: {found:?}"
     );
 }
