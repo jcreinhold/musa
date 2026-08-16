@@ -310,6 +310,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 141g | raw-lowering | 3 | Read the surface as a raw term |
 | 141ga | quotation-core | 3 | Give a quotation a core shape |
 | 141h | track-and-machine-core | 3 | Give the track and the machine a core shape |
+| 141i | constrained-definitions | 3 | Give a free definition its dictionary |
 | 142 | surface-cutover | 3 | Move the whole language over, once |
 | 143 | builtin-collapse | 3 | Collapse the builtin registry behind traits and namespaces |
 | 144 | diagnostics-and-performance | 3 | Make the new failures legible and the new checker fast enough |

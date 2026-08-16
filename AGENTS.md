@@ -31,7 +31,7 @@ Read [`docs/README.md`](docs/README.md) first: it maps the four directories and 
    `import` and `use` are two words because they were always two statements. Candidate until prompt 172 graduates it, so
    everything above it in `docs/README.md`'s precedence ladder wins where they differ.
 
-Under `docs/plan/`: **`prompts/`** is the numbered work plan, currently 215 prompts through rank 179, with its README
+Under `docs/plan/`: **`prompts/`** is the numbered work plan, currently 230 prompts through rank 179, with its README
 defining prompt anatomy and execution rules — implementation happens in dependency order (see the `prompt-stack` skill).
 Prompts 127a–127d and 150–153, including inserted prompts 127aa–127ad, 127ca, and 127da, are the clean-break
 core-calculus cutover; 127a amends the current governing boundary before any code implements the replacement. Prompts
