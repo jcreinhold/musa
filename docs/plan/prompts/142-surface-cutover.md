@@ -28,9 +28,10 @@ the middle. It absorbs prompt 127e, whose file stays as a superseded record rath
 - [`141b`](141b-base-types-and-builtins.md), which gives `musa-core` the base types, literals, and builtin registry
   without which no real Musa program can be elaborated by it.
 - [`141e`](141e-compiler-registry.md), which *filled* that registry: the compiler's prelude declarations, the inert
-  musical domains as base types, all 117 builtins as `musa_core::Builtin`s, and the sampled agreement with the old
-  evaluator that makes them a translation rather than a rewrite. This prompt starts from a registry that exists and a
-  table that has already been said twice; what remains is to elaborate through it and delete the path that does not.
+  musical domains as base types, the 92 δ builtins and 14 δ phase builders as `musa_core::Builtin`s, and the sampled
+  agreement with the old evaluator that makes them a translation rather than a rewrite. It also names the 28 entries it
+  left and why — which is where this prompt's own list of what still has no core spelling comes from. Its accounting law
+  is what will fail if this prompt forgets one.
 - [`141c`](141c-structural-eliminators.md), which adds the second of §5.8's four families: a compiler-owned operation
   that takes a function argument and rewrites rather than computing. `recurse_syntax`, `run_syntax_step`, and
   `syntax_fold_from_leaves` are registered through it, and `staff.musa` does not compile without them. Its Design also
