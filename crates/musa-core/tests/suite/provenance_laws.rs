@@ -298,6 +298,7 @@ fn restamp(term: &Term, origin: Origin) -> Term {
     let shape = match term.shape() {
         Shape::Var(index) => Shape::Var(*index),
         Shape::Const(constant) => Shape::Const(constant.clone()),
+        Shape::Def(def) => Shape::Def(def.clone()),
         Shape::Base(base) => Shape::Base(base.clone()),
         Shape::Builtin(builtin) => Shape::Builtin(builtin.clone()),
         Shape::Lit(literal) => Shape::Lit(literal.clone()),
@@ -374,9 +375,13 @@ fn restamp_fields(fields: &[Field], origin: Origin) -> Arc<[Field]> {
 /// A term's immediate subterms, in the order they were written.
 fn children(term: &Term) -> Vec<&Term> {
     match term.shape() {
-        Shape::Var(_) | Shape::Universe(_) | Shape::Const(_) | Shape::Base(_) | Shape::Builtin(_) | Shape::Lit(_) => {
-            Vec::new()
-        }
+        Shape::Var(_)
+        | Shape::Universe(_)
+        | Shape::Const(_)
+        | Shape::Def(_)
+        | Shape::Base(_)
+        | Shape::Builtin(_)
+        | Shape::Lit(_) => Vec::new(),
         Shape::Pi { domain, codomain, .. } => vec![domain, codomain],
         Shape::Lam { body, .. } => vec![body],
         Shape::App { function, argument } => vec![function, argument],

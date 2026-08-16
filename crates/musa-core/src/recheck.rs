@@ -165,6 +165,11 @@ impl Checker<'_> {
             // declaration was checked when it was made. Re-checking it here would
             // re-run strict positivity at every occurrence of `Nat`.
             Shape::Const(constant) => Ok(constant.ty(self.meter)?),
+            // And once more for §2.4: a definition's type was checked when the
+            // program was declared, and a use is a reference to it rather than
+            // a copy of the body — so this reads the type off and does not
+            // re-check the definition at every name of it.
+            Shape::Def(def) => Ok(Value::clone(&def.ty())),
             // The same argument one line up, for §5.8's extension: a base type's
             // kind, a builtin's signature, and a literal's type were all fixed
             // by the host's registration, and re-deriving one here would be

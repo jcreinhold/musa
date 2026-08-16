@@ -338,6 +338,34 @@ pub enum Refusal {
         /// The index argument that is not a variable.
         index: Term,
     },
+    /// Top-level definitions that name each other (§2.4).
+    ///
+    /// §2.4 admits recursion "through the measure rather than through the
+    /// graph", and [`crate::rec`]'s measure is minted by a `match` inside one
+    /// body: a mutually recursive pair has no induction hypothesis to become.
+    /// So the graph rule is not a leftover from the old checker — it is exactly
+    /// what the measure does not reach, and this is where a program lands that
+    /// needs what neither has.
+    #[error("these definitions name each other: {}", names.join(" → "))]
+    DefinitionCycle {
+        /// The definitions in the cycle, in the order they name each other.
+        names: Vec<Name>,
+        /// The definition whose reference closes it.
+        at: Origin,
+    },
+    /// A top-level definition that names itself and wrote no type (§2.4).
+    ///
+    /// The measure is checked against the type the definition presents, and a
+    /// definition that presents none has nothing to check it against — there is
+    /// no type to infer it from either, because inferring the body is what
+    /// needs the type. Writing the signature is the whole of the repair.
+    #[error("`{name}` names itself, so it has to say what its type is")]
+    UntypedRecursion {
+        /// The definition.
+        name: Name,
+        /// Where it was written.
+        at: Origin,
+    },
     /// A recursive call the structural measure could not see decrease (§2.4).
     #[error("`{name}` calls itself on something this checker cannot see decrease")]
     UncheckedRecursion {

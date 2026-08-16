@@ -1,7 +1,7 @@
 ---
 id: 141n
 slug: top-level-program
-status: pending
+status: done
 depends_on: [135, 136a, 141g, 141i]
 phase: 3
 ---
@@ -48,10 +48,12 @@ Give the core the program: one group of named definitions, every signature known
 - Peyton Jones **ch. 6 §6.2.8** and **ch. 8**. §6.2.8 is dependency analysis: sort definitions "into minimal groups" and
   use `letrec` only "where it is actually necessary". Ch. 8 says when it has to run — "it is, however, important that
   the program is subjected to the dependency analysis referred to in Section 6.2.8 before type-checking", because a
-  definition put in a `letrec` it does not belong in may fail to type-check at all. That is the derivation for keeping
-  signature collection and dependency ordering as two mechanisms rather than one: the first is what lets an annotated
-  definition be referenced from anywhere, the second is what an *unannotated* one needs, and collapsing them would make
-  every definition pay the restriction only unannotated ones have.
+  definition put in a `letrec` it does not belong in may fail to type-check at all. That is the derivation for computing
+  the order rather than reading it off the document, and for computing it over the whole group rather than over the
+  unannotated half: the analysis is what makes §2.4's first sentence true, because by the time a body is elaborated
+  every definition it names has been through the checker already. Ch. 8's warning is against the *other* collapse —
+  putting a definition into a recursive group it does not belong in — which is what "minimal groups" avoids and what
+  rule 3 below is.
 - [`136a`](136a-module-visibility.md)'s `Visibility`, `ModuleId`, and `Cx::in_module`. A `private fn` is filtered
   exactly as a private constructor is, and by the same mechanism; a second visibility rule for definitions would be the
   second path `02-core-calculus.md` §5's audit exists to catch.
@@ -71,15 +73,19 @@ than in the binder environment, where a name would collide with the reason binde
 
 **Three rules, and each is one of §2.4's sentences.**
 
-1. **Annotated definitions are collected first.** Every written type is elaborated in a context holding every other
-   annotated definition's type, and only then is any body checked. This is the whole of what makes a forward reference
-   work, and it is why `examples/neo-riemannian.musa:72` may call the `compose_close` declared at `:151`.
-2. **An unannotated definition has no signature to collect**, so it is inferred from its value — and may therefore only
-   be referenced by definitions that come after it. Ch. 8's paragraph is the reason this is a *different* rule and not a
-   weaker version of the first: inference needs the dependency order, annotation does not, and a rule that demanded the
-   order of both would refuse programs §2.4 admits.
-3. **Cycles.** A self-recursive definition goes to `rec.rs`'s measure. Anything else that closes a cycle is refused,
-   with the cycle named, because the measure cannot reach it and taking it on trust is the one thing §2.4 forbids.
+1. **A definition is elaborated after everything it names.** The order is computed from the group's edges rather than
+   read off the document, so a body may name a declaration written later — which is why
+   `examples/neo-riemannian.musa:72` may call the `compose_close` declared at `:151`. §2.4's "signatures are collected
+   before bodies" is what this delivers: by the time a body is checked, every signature it can mention has already been
+   elaborated.
+2. **An unannotated definition has no signature to collect**, so it is inferred from its value — and the computed order
+   is what makes that enough. It needs no restriction of its own: the analysis finishes it before anything that names
+   it, exactly as it does an annotated one, so the two differ in how the type is *found* and not in where the name may
+   be written. Imposing the restriction it looks like it should need — referable only from after itself — would refuse
+   programs §2.4 admits, which is why signature collection and dependency ordering are one mechanism here and not two.
+3. **Cycles.** A self-recursive definition goes to `rec.rs`'s measure, and must write its type, because the measure is
+   checked against a type nothing else can supply. Anything else that closes a cycle is refused, with the cycle named,
+   because the measure cannot reach it and taking it on trust is the one thing §2.4 forbids.
 
 **A use is a reference, not a copy.** The term a use of a definition elaborates to is one node whose size does not
 depend on the definition's body, and δ unfolds it during conversion. Inlining at the use site would type-check and would
@@ -96,19 +102,21 @@ learned what a file is.
 
 - `RawProgram` and its member type in `crates/musa-core/src/raw.rs`; `musa_core::declare_program` and `Cx::defining` in
   the facade, each doc-commented with the rule it implements and the sentence of §2.4 it comes from.
-- Signature collection: every annotated definition's type elaborated before any body, in a context holding all of them.
-- Dependency analysis over the group, ordering the unannotated definitions and detecting cycles. One traversal, not two
-  — the edges the order is computed from are the edges the cycle check reads.
+- Signature collection by computed order: each definition's type is elaborated before its own body, and every definition
+  it names before either. That is what §2.4's first sentence asks for and what makes a forward reference work.
+- Dependency analysis over the whole group, ordering it and detecting cycles. One traversal, not two — the edges the
+  order is computed from are the edges the cycle check reads.
 - Self-recursion routed through `rec.rs` unchanged. No second measure, no second rewrite.
 - Two refusals, each naming what a reader has to fix: a definition cycle, naming the cycle the way
-  `Code::DependencyCycle` does today, and a reference to an unannotated definition from before it. Both with a code in
+  `Code::DependencyCycle` does today, and a definition that names itself without writing a type. Both with a code in
   `musa-compiler`'s `diagnose` and an arm in `lower/refusals.rs`, so the count in that module's doc comment moves with
   them.
 - Visibility: a definition carries one, filtered by the mechanism 136a built.
 - Laws in `crates/musa-core/tests/suite/`: a forward reference to an annotated definition checks; a forward reference to
-  an unannotated one is refused; a cycle of two is refused and the refusal names both; a self-recursive definition with
-  a structural measure checks; a private definition is invisible from another module; and the size law — a use's term
-  size does not grow with the body it names.
+  an unannotated one checks too, because the order is computed rather than read; a cycle of two is refused and the
+  refusal names both; a self-recursive definition with a structural measure checks; one that names itself with no
+  written type is refused; a private definition is invisible from another module; and the size law — a use's term size
+  does not grow with the body it names.
 - `docs/plan/code-map/spec-to-implementation-map.md` rows for `musa-core` and `musa-compiler`.
 
 ## Check

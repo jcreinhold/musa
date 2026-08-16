@@ -938,6 +938,7 @@ impl Registry {
             Shape::Var(_)
             | Shape::Universe(_)
             | Shape::Const(_)
+            | Shape::Def(_)
             | Shape::Lam { .. }
             | Shape::App { .. }
             | Shape::RecordType(_)

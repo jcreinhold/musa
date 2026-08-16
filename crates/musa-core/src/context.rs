@@ -27,6 +27,7 @@ use crate::eval::eval;
 use crate::family::{Constant, Found, Group};
 use crate::list::List;
 use crate::origin::Origin;
+use crate::program::{Defined, Definitions};
 use crate::quote::Depth;
 use crate::term::{DbLevel, Index, Name, Term};
 use crate::value::{Env, Value};
@@ -54,6 +55,13 @@ pub struct Cx {
     /// drop every binder and keep every declaration, which is what a `data`
     /// declaration is elaborated in.
     declared: List<Arc<Group>>,
+    /// The top-level definitions in scope, most recent first.
+    ///
+    /// Beside the binders for `declared`'s reason and one of its own: §2.4 lets
+    /// a body name a definition written after it, and a de Bruijn binder refers
+    /// outward only, so a definition that lived in `env` could never be seen by
+    /// the definitions before it. See [`crate::program`].
+    definitions: List<Arc<Defined>>,
     /// The module a term elaborated here is written in, when the caller named
     /// one.
     ///
@@ -109,6 +117,7 @@ impl Cx {
             env: Env::EMPTY,
             types: List::EMPTY,
             declared: List::EMPTY,
+            definitions: List::EMPTY,
             module: None,
             package: None,
             classes: None,
@@ -131,6 +140,7 @@ impl Cx {
             env: Env::EMPTY,
             types: List::EMPTY,
             declared: self.declared.clone(),
+            definitions: self.definitions.clone(),
             module: self.module,
             package: self.package,
             classes: self.classes.clone(),
@@ -292,6 +302,46 @@ impl Cx {
             .collect()
     }
 
+    /// This context with `definitions` in scope as global names.
+    ///
+    /// What a caller brings a declared program into scope with, so that the
+    /// next document — or the next `check` against a term the caller wrote by
+    /// hand — may name what it defined. The group arrives whole because that is
+    /// the unit [`declare_program`](crate::declare_program) answers: §2.4
+    /// collects signatures before bodies, so no member of a group is finished
+    /// until all of them are.
+    #[must_use]
+    pub fn defining(&self, definitions: &Definitions) -> Self {
+        let extended = definitions
+            .members()
+            .iter()
+            .fold(self.definitions.clone(), |scope, defined| {
+                scope.push(Arc::clone(defined))
+            });
+        Self {
+            definitions: extended,
+            ..self.clone()
+        }
+    }
+
+    /// This context with one more definition in scope.
+    ///
+    /// The step [`declare_program`](crate::declare_program) takes between
+    /// members: dependency order means the definitions a body may name are
+    /// exactly those already elaborated, and this is how the next one sees
+    /// them.
+    pub(crate) fn defining_one(&self, defined: &Arc<Defined>) -> Self {
+        Self {
+            definitions: self.definitions.push(Arc::clone(defined)),
+            ..self.clone()
+        }
+    }
+
+    /// What `name` names among the definitions in scope, most recent first.
+    pub(crate) fn definition(&self, name: &str) -> Option<&Arc<Defined>> {
+        self.definitions.iter().find(|defined| *defined.name == *name)
+    }
+
     /// This context extended by an assumption at type `ty`, written at
     /// `binder`.
     ///
@@ -401,6 +451,7 @@ impl Cx {
             env: self.env.push(value),
             types: self.types.push(ty),
             declared: self.declared.clone(),
+            definitions: self.definitions.clone(),
             module: self.module,
             package: self.package,
             classes: self.classes.clone(),

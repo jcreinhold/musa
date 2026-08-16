@@ -42,7 +42,7 @@ use std::sync::Arc;
 use crate::level::Level;
 use crate::origin::Origin;
 use crate::term::{Name, Plicity};
-use crate::visibility::Visibility;
+use crate::visibility::{ModuleId, Visibility};
 
 /// One binder of a raw telescope: a parameter, an index, or a constructor field.
 #[derive(Clone, Debug)]
@@ -121,6 +121,50 @@ pub struct RawData {
     pub context: Vec<RawConstraint>,
     /// The families, in declaration order.
     pub families: Vec<RawFamily>,
+}
+
+/// A document's top-level definitions, before elaboration.
+///
+/// A group rather than one definition at a time for [`RawData`]'s reason, one
+/// word over: `02-core-calculus.md` §2.4 lets a body name a declaration written
+/// later, so no definition here is finished until the group is. What the group
+/// *is not* is an ordering — the order below is the order they were written,
+/// and [`declare_program`](crate::declare_program) computes the order they are
+/// elaborated in from what each one names.
+#[derive(Clone, Debug)]
+pub struct RawProgram {
+    /// The definitions, in the order the document wrote them.
+    pub definitions: Vec<RawTopLevel>,
+}
+
+/// One top-level definition, before elaboration.
+///
+/// # Why the type is optional and the module is not
+///
+/// The type is optional because the surface makes it optional (`01-surface.md`
+/// §1's `binding` writes `(":" type)?`), and a definition that wrote none is
+/// inferred from its value.
+///
+/// The module is written out per definition rather than taken from the
+/// declaring context, which is where [`RawData`] gets its. One group holds
+/// everything a document can see — its imports' definitions and its own — so
+/// there is no single module the group was written in, and a `private` name in
+/// an imported library has to stay private to *that* library rather than to
+/// whichever document is being checked.
+#[derive(Clone, Debug)]
+pub struct RawTopLevel {
+    /// Where the definition was written.
+    pub origin: Origin,
+    /// The name it binds.
+    pub name: Name,
+    /// Whether `private` was written before it.
+    pub visibility: Visibility,
+    /// The module it was written in, when the caller numbers modules at all.
+    pub module: Option<ModuleId>,
+    /// The type it wrote, when it wrote one.
+    pub ty: Option<Raw>,
+    /// Its value.
+    pub value: Raw,
 }
 
 /// One constraint, before elaboration: a trait applied to type arguments.

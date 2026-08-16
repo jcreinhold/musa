@@ -191,9 +191,13 @@ fn is_normal(term: &Term) -> bool {
         // base type no eliminator, so nothing built from one is a redex; a
         // builtin applied to enough literals is, and that is an `App` whose
         // function is this leaf, which the `App` arm below already reads.
-        Shape::Var(_) | Shape::Universe(_) | Shape::Const(_) | Shape::Base(_) | Shape::Lit(_) | Shape::Builtin(_) => {
-            true
-        }
+        Shape::Var(_)
+        | Shape::Universe(_)
+        | Shape::Const(_)
+        | Shape::Def(_)
+        | Shape::Base(_)
+        | Shape::Lit(_)
+        | Shape::Builtin(_) => true,
         Shape::Pi { domain, codomain, .. } => is_normal(domain) && is_normal(codomain),
         Shape::Lam { body, .. } => is_normal(body),
         Shape::App { function, argument } => {

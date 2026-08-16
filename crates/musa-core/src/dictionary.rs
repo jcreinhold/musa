@@ -624,6 +624,11 @@ fn unkeyed(term: &Term) -> bool {
         // keeps the answer conservative rather than inventing a refusal. A base
         // type is on this list for the same reason: `head_of` keys on it.
         Shape::Var(_) | Shape::Const(_) | Shape::Base(_) => false,
+        // A definition unfolds, so a constraint headed by one is stuck on
+        // nothing an author can fix by annotating — but it is also not a
+        // canonical former, and `false` keeps the answer conservative here for
+        // the reason the line above does.
+        Shape::Def(_) => false,
         // A builtin and a literal are terms, not type constructors. Neither is
         // a name an `impl` could be keyed on, which is what `true` says.
         Shape::Builtin(_) | Shape::Lit(_) => true,
@@ -765,6 +770,7 @@ fn constant(term: &Term) -> Option<&Constant> {
         // A head that is not a declared constant is not one §3 can place, and
         // `orphan` reads that as "not at home here" rather than guessing.
         Shape::Var(_)
+        | Shape::Def(_)
         | Shape::Universe(_)
         | Shape::Pi { .. }
         | Shape::Lam { .. }

@@ -58,6 +58,11 @@ pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, C
             // ι does not fire here: it needs the target, which arrives through
             // [`apply`].
             Shape::Const(constant) => Ok(constant.value(here)),
+            // δ on a top-level definition: the value was computed once, at the
+            // declaration, and this hands it back. The origins inside it are
+            // the definition's own, which is §7 working — the value came from
+            // where it was written, not from where it was named.
+            Shape::Def(def) => Ok((*def.value()).clone()),
             // §5.8's extension. A base type is rigid forever — nothing
             // eliminates it — and a builtin is rigid until its arguments are
             // literals, which is a question [`apply`] asks once the spine is

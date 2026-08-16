@@ -259,8 +259,12 @@ fn headed(
             )
         }),
         // Everything else is refused by `finite` already, or is not a type a
-        // value can be stored at.
-        Shape::Universe(_)
+        // value can be stored at. A definition is here rather than unfolded
+        // because this walk runs over a *quoted* type, where δ has already
+        // happened: reaching one means the type was never evaluated, and
+        // guessing on its behalf is what this function must not do.
+        Shape::Def(_)
+        | Shape::Universe(_)
         | Shape::Pi { .. }
         | Shape::Lam { .. }
         | Shape::Record(_)
@@ -296,7 +300,7 @@ fn finite(ty: &Term, depth: usize, telescope: &Telescope, required: &mut BTreeSe
         // Neither an arrow nor a universe, and neither holds one: a base type
         // is a name, a literal is a closed value the host owns, and a builtin's
         // application is walked by the arm below.
-        Shape::Const(_) | Shape::Base(_) | Shape::Builtin(_) | Shape::Lit(_) | Shape::Meta(_) => true,
+        Shape::Const(_) | Shape::Def(_) | Shape::Base(_) | Shape::Builtin(_) | Shape::Lit(_) | Shape::Meta(_) => true,
         Shape::App { function, argument } => {
             finite(function, depth, telescope, required) && finite(argument, depth, telescope, required)
         }

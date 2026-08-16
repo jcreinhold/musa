@@ -96,6 +96,7 @@ mod level;
 mod list;
 mod meta;
 mod origin;
+mod program;
 mod quote;
 mod raw;
 mod rec;
@@ -117,9 +118,10 @@ pub use crate::family::{Binder, Constant, Constructor, Declared, Group};
 pub use crate::level::Level;
 pub use crate::meta::{Meta, MetaSource};
 pub use crate::origin::Origin;
+pub use crate::program::{Def, Definitions};
 pub use crate::raw::{
     Raw, RawArm, RawBinder, RawConstraint, RawConstructor, RawData, RawDefinition, RawFamily, RawField, RawImpl,
-    RawMethod, RawPattern, RawShape, RawTrait,
+    RawMethod, RawPattern, RawProgram, RawShape, RawTopLevel, RawTrait,
 };
 pub use crate::recheck::well_typed;
 pub use crate::refuse::{ElabError, Mismatch, PathStep, Refusal};
@@ -154,6 +156,22 @@ use crate::unify::Unifier;
 /// arguments are ordinary elaboration and fail in the ordinary ways.
 pub fn declare(cx: &Cx, data: &RawData) -> Result<Arc<Group>, ElabError> {
     crate::declare::declare(cx, data)
+}
+
+/// Elaborate a document's top-level definitions, in context `cx`.
+///
+/// The other half of a document, and the same arrangement [`declare`] has for
+/// the first: one call takes all of them, because `02-core-calculus.md` §2.4
+/// lets a body name a declaration written later, and the result is brought into
+/// scope with [`Cx::defining`].
+///
+/// # Errors
+///
+/// [`Refusal::DefinitionCycle`] for definitions that name each other,
+/// [`Refusal::UntypedRecursion`] for a self-recursive definition that wrote no
+/// type, and otherwise as [`check`].
+pub fn declare_program(cx: &Cx, program: &RawProgram) -> Result<Arc<Definitions>, ElabError> {
+    crate::program::declare_program(cx, program)
 }
 
 /// Elaborate a `trait` declaration, in context `cx`.

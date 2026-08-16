@@ -331,6 +331,15 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
         assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
         reached.insert(kind(&refusal));
     }
+    // And the two a *group* raises, which no single term can reach: §2.4's
+    // graph rule is about how definitions name each other, so the smallest
+    // program that reaches it is a program rather than a term.
+    for (name, group) in crate::program_laws::refused_groups() {
+        let Err(error) = musa_core::declare_program(&crate::coverage_laws::nat_vec_context(), &group) else {
+            panic!("{name}: the group was declared, and §2.4 refuses it");
+        };
+        reached.insert(kind(&refusal(name, error)));
+    }
     assert_eq!(
         reached,
         ALL_REFUSALS.iter().copied().collect(),
@@ -339,7 +348,7 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
 }
 
 /// Every refusal this crate can answer with.
-const ALL_REFUSALS: [&str; 51] = [
+const ALL_REFUSALS: [&str; 53] = [
     "unknown-name",
     "mismatch",
     "unsolved",
@@ -357,6 +366,8 @@ const ALL_REFUSALS: [&str; 51] = [
     "unreachable-branch",
     "forced-index",
     "unchecked-recursion",
+    "untyped-recursion",
+    "definition-cycle",
     "duplicate-field",
     "duplicate-case",
     "overlapping-update",
@@ -416,6 +427,8 @@ fn kind(refusal: &Refusal) -> &'static str {
         Refusal::UnreachableBranch { .. } => "unreachable-branch",
         Refusal::ForcedIndex { .. } => "forced-index",
         Refusal::UncheckedRecursion { .. } => "unchecked-recursion",
+        Refusal::UntypedRecursion { .. } => "untyped-recursion",
+        Refusal::DefinitionCycle { .. } => "definition-cycle",
         Refusal::DuplicateField { .. } => "duplicate-field",
         Refusal::DuplicateCase { .. } => "duplicate-case",
         Refusal::OverlappingUpdate { .. } => "overlapping-update",
@@ -532,9 +545,13 @@ fn meta_free(term: &Term) -> bool {
         Shape::Meta(_) => false,
         // A base type, a builtin, and a literal are all closed: each is a name
         // or a payload the host registered, and none of them holds a term.
-        Shape::Var(_) | Shape::Universe(_) | Shape::Const(_) | Shape::Base(_) | Shape::Builtin(_) | Shape::Lit(_) => {
-            true
-        }
+        Shape::Var(_)
+        | Shape::Universe(_)
+        | Shape::Const(_)
+        | Shape::Def(_)
+        | Shape::Base(_)
+        | Shape::Builtin(_)
+        | Shape::Lit(_) => true,
         Shape::Pi { domain, codomain, .. } => meta_free(domain) && meta_free(codomain),
         Shape::Lam { body, .. } => meta_free(body),
         Shape::App { function, argument } => meta_free(function) && meta_free(argument),

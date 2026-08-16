@@ -270,6 +270,26 @@ impl Elaborator {
     /// the level is one per *use site* and this is what a use site is.
     fn constant(&mut self, scope: &Scope, here: Origin, name: &Name) -> Result<Typed, ElabError> {
         let Some(found) = scope.declared(name) else {
+            // A top-level definition (§2.4), after declarations for the reason
+            // declarations come after binders — the more local answer wins —
+            // and before the two below because both of those are the host's
+            // namespaces rather than the author's.
+            if let Some(defined) = scope.cx().definition(name) {
+                if let Some(module) = defined.hidden_from(scope.cx().module()) {
+                    return Err(Refusal::Private {
+                        name: Arc::clone(name),
+                        module,
+                        at: here,
+                    }
+                    .into());
+                }
+                let def = crate::program::one(defined);
+                let ty = Value::clone(&def.ty());
+                return Ok(Typed {
+                    term: def.term(here),
+                    ty,
+                });
+            }
             // `Class.method` before the general report, and only after binders
             // and declarations: a trait's methods live in the trait's namespace,
             // so nothing here can shadow a name an author declared themselves.
@@ -1696,6 +1716,10 @@ fn zonk(meter: &mut Meter, depth: u32, term: &Term) -> Result<Term, CoreError> {
             // and it is resolved by [`Constant`]'s own equality rather than here:
             // the level lives inside the group, which zonking does not rebuild.
             Shape::Const(constant) => Shape::Const(constant.clone()),
+            // A definition holds values, not terms, so there is no
+            // metavariable inside one for zonking to reach — see
+            // [`crate::program`].
+            Shape::Def(def) => Shape::Def(def.clone()),
             // Closed and holding no metavariable, because a host registers them
             // before elaboration begins and nothing here rebuilds one.
             Shape::Base(base) => Shape::Base(base.clone()),

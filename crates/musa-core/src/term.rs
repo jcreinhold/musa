@@ -179,6 +179,15 @@ pub enum Shape {
     /// says what an argument is, and three spine-carrying variants would say it
     /// three more times while making partial application a different term.
     Const(Constant),
+    /// A use of a top-level definition (§2.4).
+    ///
+    /// Separate from [`Self::Const`] rather than a fourth
+    /// [`Role`](crate::family::Role), because a declared constant is *rigid* —
+    /// a family, a constructor, and a recursor each stand for themselves — and
+    /// a definition is the one global name that δ unfolds. One node whatever
+    /// the definition is: see [`crate::program`] for why a use is a reference
+    /// rather than a copy of the body.
+    Def(crate::program::Def),
     /// A base type: §5.8's conservative extension, registered by the host and
     /// inert here. It has no constructor and no eliminator, so no rule in this
     /// crate ever takes one apart — which is D1 stated as a representation.
@@ -302,6 +311,11 @@ impl PartialEq for Shape {
         match (self, other) {
             (Self::Var(left), Self::Var(right)) => left == right,
             (Self::Const(left), Self::Const(right)) => left == right,
+            // Two uses of one definition are one term. Conversion never gets
+            // this far — evaluation unfolds a definition before anything
+            // compares — so this is α-equality on *syntax*, which is what a
+            // semantic hash and a re-check are written against.
+            (Self::Def(left), Self::Def(right)) => left == right,
             (Self::Base(left), Self::Base(right)) => left == right,
             (Self::Builtin(left), Self::Builtin(right)) => left == right,
             // §5.8: an inert base type contributes no ι-rule, so two closed
@@ -416,6 +430,7 @@ impl PartialEq for Shape {
             (
                 Self::Var(_)
                 | Self::Const(_)
+                | Self::Def(_)
                 | Self::Base(_)
                 | Self::Lit(_)
                 | Self::Builtin(_)

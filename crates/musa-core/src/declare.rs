@@ -460,9 +460,13 @@ fn mentions(term: &Term, arity: u32, depth: u32, bound: u32) -> Option<Origin> {
     let under = bound.saturating_add(1);
     match term.shape() {
         Shape::Var(index) => declared_by(arity, depth.saturating_add(bound), *index).map(|_| here),
-        Shape::Const(_) | Shape::Base(_) | Shape::Builtin(_) | Shape::Lit(_) | Shape::Universe(_) | Shape::Meta(_) => {
-            None
-        }
+        Shape::Const(_)
+        | Shape::Def(_)
+        | Shape::Base(_)
+        | Shape::Builtin(_)
+        | Shape::Lit(_)
+        | Shape::Universe(_)
+        | Shape::Meta(_) => None,
         Shape::Pi { domain, codomain, .. } => {
             mentions(domain, arity, depth, bound).or_else(|| mentions(codomain, arity, depth, under))
         }

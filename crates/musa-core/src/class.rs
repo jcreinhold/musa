@@ -377,6 +377,7 @@ pub(crate) fn size(term: &Term) -> u32 {
     let inner = match term.shape() {
         Shape::Var(_)
         | Shape::Const(_)
+        | Shape::Def(_)
         | Shape::Base(_)
         | Shape::Builtin(_)
         | Shape::Lit(_)
@@ -419,7 +420,13 @@ pub(crate) fn occurrences(term: &Term, depth: u32, level: u32) -> u32 {
         Shape::Var(index) => u32::from(depth.checked_sub(index.0.saturating_add(1)) == Some(level)),
         // Closed leaves: none of them can be a variable, so none of them can
         // hold an occurrence of one.
-        Shape::Const(_) | Shape::Base(_) | Shape::Builtin(_) | Shape::Lit(_) | Shape::Universe(_) | Shape::Meta(_) => 0,
+        Shape::Const(_)
+        | Shape::Def(_)
+        | Shape::Base(_)
+        | Shape::Builtin(_)
+        | Shape::Lit(_)
+        | Shape::Universe(_)
+        | Shape::Meta(_) => 0,
         Shape::Pi { domain, codomain, .. } => deeper(domain, 0).saturating_add(deeper(codomain, 1)),
         Shape::Lam { body, .. } => deeper(body, 1),
         Shape::App { function, argument, .. } => deeper(function, 0).saturating_add(deeper(argument, 0)),
@@ -469,8 +476,12 @@ pub(crate) fn head_of(term: &Term, depth: u32) -> Option<Head> {
         Shape::App { function, .. } => head_of(function, depth),
         // Everything else is a type no instance can be keyed on: a universe, a
         // binder, a record, an eliminator, or a metavariable — and the last is
-        // §4's postponement rather than a failure.
-        Shape::Universe(_)
+        // §4's postponement rather than a failure. A definition is on the list
+        // for a reason of its own: it unfolds, so an instance keyed on one
+        // would be a second key for whatever it unfolds to, which is exactly
+        // the overlap §3 forbids.
+        Shape::Def(_)
+        | Shape::Universe(_)
         | Shape::Pi { .. }
         | Shape::Lam { .. }
         | Shape::RecordType(_)

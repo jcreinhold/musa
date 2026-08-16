@@ -429,6 +429,7 @@ fn trees(term: &Term, into: &mut Vec<Syntax>) {
         // could hold a literal should stop here and be decided.
         musa_core::Shape::Var(_)
         | musa_core::Shape::Const(_)
+        | musa_core::Shape::Def(_)
         | musa_core::Shape::Base(_)
         | musa_core::Shape::Builtin(_)
         | musa_core::Shape::Universe(_)

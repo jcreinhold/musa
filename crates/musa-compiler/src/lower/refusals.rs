@@ -20,9 +20,9 @@
 //!
 //! # Why the match is written out
 //!
-//! Fifty-one variants, each named once. The alternative — asking `musa-core` for
+//! Fifty-three variants, each named once. The alternative — asking `musa-core` for
 //! a refusal's origin and its severity through accessors — would put the same
-//! fifty-two arms in the core *as well*, because the code still has to be chosen
+//! fifty-four arms in the core *as well*, because the code still has to be chosen
 //! here. One list of the variants is the smaller arrangement, and a variant
 //! added to the core fails to compile here until somebody says where it belongs.
 
@@ -151,6 +151,11 @@ fn file(refusal: &Refusal) -> Filed {
         Refusal::UnreachableBranch { at, .. } => one(Code::UnreachableBranch, *at),
         Refusal::ForcedIndex { at, .. } => one(Code::ForcedIndex, *at),
         Refusal::UncheckedRecursion { at, .. } => one(Code::UncheckedRecursion, *at),
+        Refusal::UntypedRecursion { at, .. } => one(Code::UntypedRecursion, *at),
+        // `02-core-calculus.md` §2.4's graph rule, under the code the old
+        // checker filed the same mistake under: a reader who has seen
+        // `dependency-cycle` once has seen this.
+        Refusal::DefinitionCycle { at, .. } => one(Code::DependencyCycle, *at),
         Refusal::ReservedClass { at, .. } => one(Code::ReservedClass, *at),
         Refusal::HeadlessClass { at, .. } => one(Code::HeadlessClass, *at),
         Refusal::ConstrainedField { at, .. } => one(Code::ConstrainedField, *at),

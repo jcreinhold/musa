@@ -131,6 +131,14 @@ pub enum Code {
     ForcedIndex,
     /// A recursive call the termination rule cannot see is smaller.
     UncheckedRecursion,
+    /// A definition that names itself and wrote no type.
+    ///
+    /// Distinct from [`Self::UncheckedRecursion`], which is about a call the
+    /// measure could not admit: this one is about a definition the measure was
+    /// never able to look at, because the measure is checked against a written
+    /// type and inference has nothing to infer from a body that names the
+    /// definition it is inferring.
+    UntypedRecursion,
     /// A name that exists and is `private` to the module that declares it.
     ///
     /// Distinct from [`Self::UnknownName`] on purpose: the whole value of the
@@ -312,6 +320,7 @@ code_table! {
     UnreachableBranch => "unreachable-branch",
     ForcedIndex => "forced-index",
     UncheckedRecursion => "unchecked-recursion",
+    UntypedRecursion => "untyped-recursion",
     PrivateName => "private-name",
     MixedVisibility => "mixed-visibility",
     AbstractMatch => "abstract-match",

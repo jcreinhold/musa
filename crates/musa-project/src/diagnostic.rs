@@ -637,6 +637,20 @@ pub fn explain(code: &str) -> Option<&'static str> {
              keystroke, so a definition that might not stop is a compiler and \
              editor that might not stop."
         }
+        musa_compiler::Code::UntypedRecursion => {
+            "A definition that names itself, and wrote no type.\n\n\
+             Musa infers a definition's type from its value when the value is \
+             enough to say. A body that names the definition it is defining is \
+             not: there is nothing to infer from until the answer is already \
+             known.\n\n\
+             It is also what the termination rule needs. A recursive \
+             definition is admitted by rewriting each call into the induction \
+             hypothesis its branch was handed, and the hypothesis's type is \
+             the definition's own — so with no written type there is no \
+             hypothesis to hand out.\n\n\
+             Write the signature. Every other recursive definition in the \
+             language has one for the same reason."
+        }
         musa_compiler::Code::PrivateName => {
             "A name that exists, and is `private` to the module that declares \
              it.\n\n\
