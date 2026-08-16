@@ -48,6 +48,21 @@ mod imports;
 mod infer;
 mod kernel_text;
 mod lint;
+/// The surface CST read as a [`musa_core::Raw`].
+///
+/// Nothing reaches it yet, and prompt 141g's Design says why: the reading is
+/// built and proved one prompt before the cutover that wires it, so that a wrong
+/// reading is distinguishable from a wrong migration. The expectation rather
+/// than an `allow` is the point — prompt 142 calling it makes this unfulfilled,
+/// and the compiler says so.
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "prompt 141g builds the reading; prompt 142 is the one cutover that calls it"
+    )
+)]
+mod lower;
 mod machine;
 mod marks;
 mod module;

@@ -702,6 +702,9 @@ pub fn explain(code: &str) -> Option<&'static str> {
         musa_compiler::Code::HeadlessClass => {
             "A `trait` was declared with no parameters.\n\nInstance lookup is keyed on the trait and the head constructor of its first argument, so a trait with no parameters has nothing to key on. What such a declaration describes is a record of global values, and `record` is the word for that.\n\nAdd the parameter the methods are about: `trait Eq<A>` rather than `trait Eq`."
         }
+        musa_compiler::Code::ConstrainedField => {
+            "A `trait` gave a required method a `where` clause.\n\n`10-traits.md` §1 splits a trait's methods in two, and the split decides who may carry a constraint. A *required* method is a field of the dictionary, filled by the `impl` that writes the instance — and a constraint in a field's type would have to be discharged by somebody who never wrote it: not the impl, which supplies a value and not a type, and not the use site, where resolving it would hide a second lookup inside a projection.\n\nA *derived* method is a function, and a function can take a dictionary. So it may carry a `where` clause, and that is the half of the split the constraint belongs to.\n\nTwo repairs: give the method a body, which makes it derived, or move the constraint onto the trait itself where it applies to every method at once."
+        }
         musa_compiler::Code::DuplicateMethod => {
             "A `trait` declares one method name twice.\n\nThe dictionary a trait elaborates to is a record, and a record has one field per name. Two methods spelled alike would leave every use site with a choice nothing in the language could settle.\n\nThe report names both declarations. Rename one, or delete it if the second was meant to replace the first."
         }

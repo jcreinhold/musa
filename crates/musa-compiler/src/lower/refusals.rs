@@ -1,0 +1,167 @@
+//! A core refusal, restated where it was written.
+//!
+//! `musa-core` answers a rejected program with a [`musa_core::ElabError`], which
+//! names an [`Origin`] and nothing else about place: the core is a leaf that
+//! must not learn what a file is (`02-core-calculus.md` §7). [`super::Sites`]
+//! holds the other half of that arrangement, and this module is where the two
+//! meet — a refusal in, a [`Diagnostic`] at the composer's own span out.
+//!
+//! # What this module decides, and what it does not
+//!
+//! It decides **which code** a refusal is filed under and **which node** it
+//! points at. It does not decide how good the sentence is: the message is the
+//! refusal's own [`Display`](std::fmt::Display), which `musa-core` wrote beside
+//! the rule that raises it and can therefore name a normal form nobody wrote.
+//! Prompt 144 owns rewriting those; this prompt owns that every one of them
+//! arrives as a diagnostic, with a code that `musa explain` knows and a span a
+//! reader can jump to.
+//!
+//! # Why the match is written out
+//!
+//! Fifty-two variants, each named once. The alternative — asking `musa-core` for
+//! a refusal's origin and its severity through accessors — would put the same
+//! fifty-two arms in the core *as well*, because the code still has to be chosen
+//! here. One list of the variants is the smaller arrangement, and a variant
+//! added to the core fails to compile here until somebody says where it belongs.
+
+use musa_core::{ElabError, Origin, Refusal};
+
+use super::Sites;
+use crate::diagnose::{Code, Diagnostic};
+
+/// A refusal filed: which code, where it happened, and the earlier place that
+/// explains it when there is one.
+struct Filed {
+    code: Code,
+    at: Origin,
+    /// A second place and what to say about it. [`None`] for the refusals that
+    /// are about one node.
+    also: Option<(Origin, &'static str)>,
+}
+
+/// What the elaborator said, as a diagnostic at the node that caused it.
+///
+/// Three outcomes reach here and stay three (`02-core-calculus.md` §4). A
+/// **refusal** is the program's fault and carries the node it is about. An
+/// **exhaustion** is not a judgment at all — the checker ran out of room — and
+/// is filed under [`Code::ResourceLimit`] with no place, because the budget ends
+/// wherever it happens to end and pointing at that node would blame it.
+/// A **malformed** term is this compiler's own defect: `musa-core` says a term
+/// handed to it is one it could not have produced, so the report says that
+/// rather than dressing it as a source error.
+///
+/// The span is `Option` throughout, and that is the honest shape. A refusal
+/// about a *registered signature* carries [`Origin::UNKNOWN`] by construction —
+/// nobody wrote it in a file — and [`Sites::span`] answers `None` rather than
+/// pointing at node one.
+pub(crate) fn restate(sites: &Sites, error: &ElabError) -> Diagnostic {
+    match error {
+        ElabError::Refused(refusal) => {
+            let filed = file(refusal);
+            let (also, text) = match filed.also {
+                Some((origin, text)) => (sites.span(origin), text),
+                None => (None, ""),
+            };
+            Diagnostic::error(filed.code, refusal.to_string())
+                .maybe_at(sites.span(filed.at), "here")
+                .maybe_also(also, text)
+        }
+        ElabError::Exhausted(exhausted) => Diagnostic::error(Code::ResourceLimit, exhausted.to_string())
+            .note("the program was not judged: elaboration reached a deterministic limit before it could answer"),
+        ElabError::Malformed(malformed) => Diagnostic::error(
+            Code::UnsupportedLanguageStage,
+            format!("the compiler built a core term musa-core could not have produced: {malformed}"),
+        )
+        .note("this is a defect in the compiler rather than in the source"),
+    }
+}
+
+/// Which code a refusal belongs under, and which nodes it is about.
+///
+/// The mapping is nearly one-to-one, because `musa-compiler`'s codes were named
+/// for these rules as they were built. Where several refusals share a code they
+/// share a *family* — a thing a reader looks up once — and the doc comment on
+/// each such arm says which family, since that is the judgment and not the
+/// mechanics.
+fn file(refusal: &Refusal) -> Filed {
+    let one = |code: Code, at: Origin| Filed { code, at, also: None };
+    let two = |code: Code, at: Origin, previous: Origin, text: &'static str| Filed {
+        code,
+        at,
+        also: Some((previous, text)),
+    };
+    match refusal {
+        Refusal::UnknownName { at, .. } => one(Code::UnknownName, *at),
+        Refusal::Mismatch(mismatch) => one(Code::ConversionMismatch, mismatch.at),
+        Refusal::Private { at, .. } => one(Code::PrivateName, *at),
+        Refusal::MixedVisibility { at, .. } => one(Code::MixedVisibility, *at),
+        Refusal::AbstractMatch { at, .. } => one(Code::AbstractMatch, *at),
+        // The three ways elaboration can fail to *determine* something the
+        // program did not say. A metavariable nothing solved is the general
+        // case; a bare constructor and a term with no inference rule are the
+        // two the surface reaches by writing less than a type needs.
+        Refusal::Unsolved { created, blocked, .. } => Filed {
+            code: Code::UnsolvedMetavariable,
+            at: *created,
+            also: blocked.map(|origin| (origin, "still waiting on this")),
+        },
+        Refusal::BareConstructor { at, .. } | Refusal::Uninferable { at, .. } => one(Code::UnsolvedMetavariable, *at),
+        // Applying, projecting, or checking something whose type is not the
+        // shape the position needs: one family, and the report says which shape
+        // was wanted.
+        Refusal::NotAFunction { at, .. }
+        | Refusal::NotARecord { at, .. }
+        | Refusal::NotAType { at, .. }
+        | Refusal::RecordShape { at, .. } => one(Code::TypeMismatch, *at),
+        // Too many, too few, or the wrong kind of argument.
+        Refusal::PlicityMismatch { at, .. } | Refusal::IndexCount { at, .. } | Refusal::ClassArity { at, .. } => {
+            one(Code::WrongArity, *at)
+        }
+        // A name the declaration it is read against does not have.
+        Refusal::NoSuchField { at, .. } | Refusal::NoSuchConstructor { at, .. } => one(Code::UnknownName, *at),
+        // One name written twice, in a record type, an enum, or a `with`.
+        Refusal::DuplicateField { at, previous, .. }
+        | Refusal::DuplicateCase { at, previous, .. }
+        | Refusal::OverlappingUpdate { at, previous, .. } => {
+            two(Code::DuplicateName, *at, *previous, "first written here")
+        }
+        Refusal::NonPositive { at, .. } => one(Code::NonPositiveOccurrence, *at),
+        Refusal::IncompleteMatch { at, .. } => one(Code::IncompleteMatch, *at),
+        Refusal::UnreachableBranch { at, .. } => one(Code::UnreachableBranch, *at),
+        Refusal::ForcedIndex { at, .. } => one(Code::ForcedIndex, *at),
+        Refusal::UncheckedRecursion { at, .. } => one(Code::UncheckedRecursion, *at),
+        Refusal::ReservedClass { at, .. } => one(Code::ReservedClass, *at),
+        Refusal::HeadlessClass { at, .. } => one(Code::HeadlessClass, *at),
+        Refusal::ConstrainedField { at, .. } => one(Code::ConstrainedField, *at),
+        Refusal::DuplicateMethod { at, previous, .. } => {
+            two(Code::DuplicateMethod, *at, *previous, "first declared here")
+        }
+        Refusal::HandWrittenStorable { at, .. } => one(Code::HandWrittenStorable, *at),
+        Refusal::BlanketInstance { at, .. } => one(Code::BlanketInstance, *at),
+        Refusal::DuplicateInstance { at, previous, .. } => {
+            two(Code::DuplicateInstance, *at, *previous, "already answered here")
+        }
+        Refusal::OrphanInstance { at, .. } => one(Code::OrphanInstance, *at),
+        Refusal::UnboundedInstance { at, .. } => one(Code::UnboundedInstance, *at),
+        Refusal::DerivedMethod { at, .. } => one(Code::DerivedMethod, *at),
+        Refusal::NoSuchMethod { at, .. } => one(Code::NoSuchMethod, *at),
+        Refusal::MissingMethod { at, .. } => one(Code::MissingMethod, *at),
+        Refusal::UnresolvedInstance { at, .. } => one(Code::UnresolvedInstance, *at),
+        Refusal::UnconstrainedVariable { at, .. } => one(Code::UnconstrainedVariable, *at),
+        Refusal::MethodOnVariable { at, .. } => one(Code::MethodOnVariable, *at),
+        Refusal::NoMethodForType { at, .. } => one(Code::NoMethodForType, *at),
+        Refusal::AmbiguousMethod { at, .. } => one(Code::AmbiguousMethod, *at),
+        Refusal::UnkeyedConstraint { at, .. } => one(Code::UnkeyedConstraint, *at),
+        // The registry's own five. Reachable from source only through a
+        // compiler defect — nobody writes a δ-builtin in `.musa` — but filed
+        // rather than folded together, because the person who reads one of
+        // these is the person editing `BUILTIN_OWNERSHIP`.
+        Refusal::DuplicateExtern { at, .. } => one(Code::DuplicateExtern, *at),
+        Refusal::HigherOrderDelta { at, .. } => one(Code::HigherOrderDelta, *at),
+        Refusal::UnknownBase { at, .. } => one(Code::UnknownBase, *at),
+        Refusal::BaseNotMatchable { at, .. } => one(Code::BaseNotMatchable, *at),
+        Refusal::TargetOutsideSignature { at, .. } => one(Code::TargetOutsideSignature, *at),
+        Refusal::TargetNotABase { at, .. } => one(Code::TargetNotABase, *at),
+        Refusal::NotFiniteData { at, .. } => one(Code::NotFiniteData, *at),
+    }
+}

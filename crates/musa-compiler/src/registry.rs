@@ -293,8 +293,34 @@ pub(crate) fn syntax_type(cat: crate::syntax::Cat) -> Term {
     Term::app(
         HERE,
         indexed("Syntax", "Cat").term(HERE),
-        literal(plain_type("Cat"), cat).term(HERE),
+        category_literal(cat).term(HERE),
     )
+}
+
+/// The literal one coordinate is written as, at base type `Coordinate`.
+///
+/// The index of `Duration` and `Position`, and the one place a lowered
+/// `Duration<WrittenTime>` and a registered signature's `DURATION` can agree —
+/// [`tagged_type`] builds the same literal, so the two spellings are one
+/// expression rather than two that match today.
+pub(crate) fn coordinate_literal(which: Coordinate) -> Literal {
+    literal(plain_type("Coordinate"), which)
+}
+
+/// The literal one syntax category is written as, at base type `Cat`.
+pub(crate) fn category_literal(cat: crate::syntax::Cat) -> Literal {
+    literal(plain_type("Cat"), cat)
+}
+
+/// The literal one token kind is written as, at base type `TokenKind`.
+///
+/// The payload is [`rules::Kind`] and cannot be anything else: `token_kind_equal`
+/// reads its arguments back at that type, so a literal built from the bare
+/// `musa_language::SyntaxKind` would compare equal to nothing. That is why the
+/// wrapper is reachable only through this function — a caller outside the
+/// registry can write the literal without being able to write a different one.
+pub(crate) fn token_kind_literal(kind: musa_language::SyntaxKind) -> Literal {
+    literal(plain_type("TokenKind"), rules::Kind(kind))
 }
 
 /// The core type a signature shape denotes.

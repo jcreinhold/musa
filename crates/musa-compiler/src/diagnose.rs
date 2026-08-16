@@ -146,6 +146,14 @@ pub enum Code {
     ReservedClass,
     /// A `trait` with no parameters, so nothing can be an instance of it.
     HeadlessClass,
+    /// A `trait` whose *required* method carries a `where` clause.
+    ///
+    /// Distinct from [`Self::DuplicateConstraint`] and the other `where` codes,
+    /// which are about a clause that is wrong. This one is about a clause that
+    /// is in the wrong half of the declaration: `10-traits.md` §1 makes a
+    /// required method a field of the dictionary, and a field has nobody to
+    /// discharge a constraint.
+    ConstrainedField,
     /// A `trait` declaring one method name twice.
     DuplicateMethod,
     /// A trait applied to the wrong number of arguments.
@@ -291,6 +299,7 @@ code_table! {
     AbstractMatch => "abstract-match",
     ReservedClass => "reserved-class",
     HeadlessClass => "headless-class",
+    ConstrainedField => "constrained-field",
     DuplicateMethod => "duplicate-method",
     ClassArity => "class-arity",
     HandWrittenStorable => "hand-written-storable",
