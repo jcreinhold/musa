@@ -2,7 +2,7 @@
 id: 142
 slug: surface-cutover
 status: pending
-depends_on: [136a, 141, 141b, 141c, 141d, 141e, 141f]
+depends_on: [136a, 141, 141b, 141c, 141d, 141e, 141f, 141g, 141h]
 phase: 3
 ---
 
@@ -36,6 +36,14 @@ the middle. It absorbs prompt 127e, whose file stays as a superseded record rath
   family with a private constructor. `staff.musa` calls `recurse_syntax` four times and does not compile without it, and
   `run_syntax_step` is a definition here rather than a builtin, so the migration writes `step.run(context)` where the
   old source wrote a call.
+- [`141g`](141g-raw-lowering.md), which built the reading half of this prompt's first Target bullet — surface CST to
+  `musa_core::Raw`, with the site table that points a refusal back at a span, and laws rather than a caller. It exists
+  because this prompt's own Design asks for the three stages in order and an ordering inside one commit is not
+  observable; the argument is 141e's, one level up. What is left here is the *wiring*: the passes that call it, the
+  readback out of normal forms, and the deletion of what it replaces.
+- [`141h`](141h-track-and-machine-core.md), which gave `EventTrack` and `Machine` their core shapes and registered the
+  seventeen builtins 141e left, on the grounds that they needed a reshape this prompt would perform. The reshape moved
+  there; what stays here is deleting contextual `Music` and teaching the source the words.
 - [`141c`](141c-structural-eliminators.md), which adds the second of §5.8's four families: a compiler-owned operation
   that takes a function argument and rewrites rather than computing. `recurse_syntax`, `run_syntax_step`, and
   `syntax_fold_from_leaves` are registered through it, and `staff.musa` does not compile without them. Its Design also
@@ -109,8 +117,10 @@ rewrite here would destroy that measurement. The same applies to the studio adap
 
 ## Target
 
-- `musa-compiler` elaborating through `musa-core`: surface CST to raw term to core term, against 141e's registry, with
-  the old checking path deleted.
+- `musa-compiler` elaborating through `musa-core`: `check_piece`, `check_arguments`, `check_template_voice`, and
+  `check_material` calling 141g's lowering and `musa_core::check`, with the old checking path deleted. The reading is
+  built; what this delivers is the passes that call it and the readback that turns a normal form into the musical value
+  a consumer receives.
 - `infer.rs` deleted, `core.rs`'s superseded arms deleted, `names_a_phase_type` deleted, second-path audit recorded.
 - `stdlib/`, `examples/`, book fixtures, LSP fixtures, desktop generated fixtures, and the tree-sitter corpus migrated.
 - Contextual `Music` and `ContextualMusic` gone from source, compiler, and documents.
