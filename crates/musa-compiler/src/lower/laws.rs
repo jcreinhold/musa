@@ -639,7 +639,7 @@ fn a_form_with_no_core_shape_is_refused_at_the_node_with_its_prompt_named() {
     let raw = Lowering::new(&mut resolver, &mut sites).value(&node);
     assert!(
         raw.is_none(),
-        "`music` has no core shape until prompt 141h gives it one"
+        "`music` has no core *spelling* until prompt 142 gives it one, though 141h gave the track a core shape"
     );
     let complaints = resolver.diagnostics;
     assert_eq!(complaints.len(), 1, "one complaint, at the form");

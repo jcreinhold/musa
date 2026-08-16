@@ -48,13 +48,15 @@
 //!
 //! # What is registered, and what is named and left
 //!
-//! `BUILTIN_OWNERSHIP` has 117 rows and 92 of them are δ. The other 25 are
-//! §5.8's three remaining families and none is registrable here: the eight
-//! collection eliminators are traversals over `Nat`, `List`, and `Option`, which
-//! are *declared*, so [`musa_core::declare`] already generated their recursors
-//! and [`Registry::new`] refuses a structural target that is not a base type; the
-//! eight track and nine machine builtins need `EventTrack` and `Machine`, which
-//! prompt 142 reshapes when it deletes contextual `Music`.
+//! `BUILTIN_OWNERSHIP` has 117 rows and 92 of them are δ. Eight more are §5.8's
+//! *third* family and are registered in [`track`], over the `EventTrack` base
+//! type this module registers for them. The seventeen left are two families and
+//! neither is registrable here: the eight collection eliminators are traversals
+//! over `Nat`, `List`, and `Option`, which are *declared*, so
+//! [`musa_core::declare`] already generated their recursors and
+//! [`Registry::new`] refuses a structural target that is not a base type; the
+//! nine machine builtins need `Machine`, which `03-machine-calculus.md` §2 gives
+//! type indices and no reductions, and prompt 141ha owns.
 //!
 //! `SYNTAX_OWNERSHIP` has 17 rows and sixteen are registered: fourteen δ builders
 //! here, and the two traversals in [`traversal`], which are §5.8's *second*
@@ -67,6 +69,7 @@
 #[cfg(test)]
 mod laws;
 mod rules;
+mod track;
 mod traversal;
 
 use std::any::Any;
@@ -246,6 +249,33 @@ fn bases() -> Vec<Base> {
         // written beat and a number of seconds do not add.
         indexed("Duration", "Coordinate"),
         indexed("Position", "Coordinate"),
+        // §5.7's event track, indexed by the same coordinate for the same
+        // reason. Inert by D1's test rather than by convenience: an
+        // `EventTrack` is normalized, carries a versioned exact identity
+        // (`../../rules/kernel/05-normalization.md`), and is taken apart by
+        // nothing the source language can write — every operation over it is
+        // one of the eight compiler-owned builtins in [`track`]. A *declared*
+        // family of tracks would have to expose constructors the kernel's
+        // normal form does not admit, which is the opposite of what a track's
+        // identity is for.
+        //
+        // One index and not two. The payload would have to be an index too for
+        // `EventTrack ⟨written⟩ ⟨score⟩` to mean anything, and
+        // [`Registry::check_finite_data`] admits a base type at a *literal*
+        // index and at nothing else — so a payload index is a base type with a
+        // literal per payload, and this compiler has one payload. The
+        // registration fixes it, and a performance payload earns the second
+        // index in the prompt that has a caller for it.
+        indexed("EventTrack", "Coordinate"),
+        // Why a constructed fact exists. Inert for D1's reason and not for
+        // convenience either: an origin is a source span, a definition span, a
+        // declaration ordinal, and an expansion path, no program takes one
+        // apart, and the Origin view reads a *compiled projection* one stage
+        // down rather than a value of this type. `play` is its only reader, and
+        // [`crate::prelude`]'s `Scope` is the other half of what §5.7 requires
+        // a constructed fact to carry — declared rather than registered,
+        // because a scope is finite data with three cases and nothing hidden.
+        plain("Origin"),
         // The written domains.
         plain("Pitch"),
         plain("PitchClass"),
@@ -294,7 +324,7 @@ pub(crate) fn plain_type(name: &'static str) -> Term {
     plain(name).term(HERE)
 }
 
-/// The term naming `Duration` or `Position` at one coordinate.
+/// The term naming `Duration`, `Position`, or `EventTrack` at one coordinate.
 pub(crate) fn tagged_type(name: &'static str, which: Coordinate) -> Term {
     Term::app(
         HERE,
@@ -325,6 +355,28 @@ pub(crate) fn coordinate_literal(which: Coordinate) -> Literal {
 /// The literal one syntax category is written as, at base type `Cat`.
 pub(crate) fn category_literal(cat: crate::syntax::Cat) -> Literal {
     literal(plain_type("Cat"), cat)
+}
+
+/// The literal one origin is written as, at base type `Origin`.
+///
+/// The only way into `play`'s first argument, and the reason `play` has one: a
+/// source span, a definition span, and a `DeclarationId` are not things a `fn`
+/// pointer can invent, so the caller supplies them exactly as it supplies
+/// `instantiate_quote`'s anchor (`11-quotation.md` §3).
+///
+/// The payload is [`track::Provenance`] and cannot be anything else, for
+/// [`token_kind_literal`]'s reason: `play` reads its argument back at that type,
+/// so a literal built from a bare [`crate::origin::Origin`] would be an origin
+/// no rule can read. The wrapper is reachable only through this function.
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "prompt 142 is where the source learns to spell `play`; until then the laws are the caller"
+    )
+)]
+pub(crate) fn origin_literal(origin: crate::origin::Origin) -> Literal {
+    literal(plain_type("Origin"), track::Provenance(origin))
 }
 
 /// The literal one quote's body is written as, at base type `Template`.
@@ -612,6 +664,7 @@ fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
     }
     built.extend(traversal::eliminators(cx)?);
     built.extend(quotation(cx)?);
+    built.extend(track::builtins(cx)?);
     Ok(built)
 }
 

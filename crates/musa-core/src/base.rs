@@ -464,9 +464,10 @@ impl Builtin {
     /// A structural eliminator named `name`, of type `ty`, firing on its
     /// `target`th argument and rewriting by `rewrite`.
     ///
-    /// [`Family::Eliminator`] by construction rather than by parameter: among
-    /// builtins the family and the rule are the same fact said twice, and §5.8's
-    /// other three families all compute a value from values.
+    /// [`Family::Eliminator`] because a traversal is one. Which family an
+    /// operation belongs to is a *separate* question from how it reduces, and
+    /// [`Self::structural_with`] takes it as a parameter for that reason; this
+    /// spelling is the case where the answer is not in doubt.
     ///
     /// **The target is written down rather than inferred.** ι fires on the
     /// recursor's last argument, and the eleven traversals `musa-compiler` owns
@@ -476,10 +477,23 @@ impl Builtin {
     /// argument's type is a base type of the registry.
     #[must_use]
     pub fn structural(name: impl Into<Name>, ty: Term, target: usize, rewrite: Rewrite) -> Self {
-        Self::structural_with(name, ty, target, Vec::new(), rewrite)
+        Self::structural_with(name, ty, Family::Eliminator, target, Vec::new(), rewrite)
     }
 
-    /// [`Self::structural`], plus the closed terms its rewrite may write.
+    /// [`Self::structural`] in `family`, plus the closed terms its rewrite may
+    /// write.
+    ///
+    /// **The family is a parameter, and that is a repair.** This used to fix
+    /// [`Family::Eliminator`] by construction, arguing that "among builtins the
+    /// family and the rule are the same fact said twice, and §5.8's other three
+    /// families all compute a value from values". `map_note_pitches` is the
+    /// counterexample: it is a §5.7 *controlled transform*, so §5.8's third
+    /// family is the argument that covers it, and its mapper is a function, so
+    /// no δ-rule can ever fire at it — [`crate::eval`]'s `canonical` answers
+    /// `None` at a λ and the spine blocks forever. The family says which
+    /// admissibility argument covers the operation; the reduction says how it
+    /// computes; and one operation needing two different answers is what proves
+    /// they are two questions.
     ///
     /// **Why a rewrite needs a vocabulary at all.** A [`Rewrite`] can name three
     /// things: a literal it was handed, an argument of the spine by [`Index`](crate::Index),
@@ -509,17 +523,12 @@ impl Builtin {
     pub fn structural_with(
         name: impl Into<Name>,
         ty: Term,
+        family: Family,
         target: usize,
         vocabulary: Vec<Term>,
         rewrite: Rewrite,
     ) -> Self {
-        Self::declared_with(
-            name,
-            ty,
-            Family::Eliminator,
-            Reduction::Structural { target, rewrite },
-            vocabulary,
-        )
+        Self::declared_with(name, ty, family, Reduction::Structural { target, rewrite }, vocabulary)
     }
 
     fn declared(name: impl Into<Name>, ty: Term, family: Family, reduction: Reduction) -> Self {

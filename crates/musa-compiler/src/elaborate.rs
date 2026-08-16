@@ -283,7 +283,7 @@ impl ScoreFact {
     }
 
     /// The same fact sounding and notated `factor` times as long.
-    fn stretched(&self, factor: Ratio<i64>) -> Self {
+    pub(crate) fn stretched(&self, factor: Ratio<i64>) -> Self {
         let mut stretched = self.clone();
         match &mut stretched.kind {
             FactKind::Note { duration, .. } | FactKind::Rest { duration, .. } => {
@@ -310,9 +310,30 @@ impl ScoreFact {
         stretched
     }
 
+    /// The same fact with its pitch raised by `interval`, or `None` only when a
+    /// fixed-width storage coordinate would overflow.
+    ///
+    /// Beside [`Self::inverted`] rather than inside the fold, because the
+    /// contextual path transposes by rebasing an [`ExpandCx`] and the track
+    /// builtin registered in [`crate::registry::track`] has no context to
+    /// rebase: it holds facts that already have written pitches. A non-note
+    /// fact transposes to itself, which is the one thing both readings agree on
+    /// and is why this is a method rather than a match at each caller.
+    pub(crate) fn transposed(&self, interval: crate::Interval) -> Option<Self> {
+        let FactKind::Note { pitch, .. } = &self.kind else {
+            return Some(self.clone());
+        };
+        let raised = pitch.transpose(interval)?;
+        let mut transposed = self.clone();
+        if let FactKind::Note { pitch, .. } = &mut transposed.kind {
+            *pitch = raised;
+        }
+        Some(transposed)
+    }
+
     /// The same fact with its pitch mirrored about `axis`, or `None` only
     /// when a fixed-width storage coordinate would overflow.
-    fn inverted(&self, axis: WrittenPitch) -> Option<Self> {
+    pub(crate) fn inverted(&self, axis: WrittenPitch) -> Option<Self> {
         let FactKind::Note { pitch, .. } = &self.kind else {
             return Some(self.clone());
         };

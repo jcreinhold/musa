@@ -61,6 +61,7 @@ pub(super) fn eliminators(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
         Builtin::structural_with(
             SPELLINGS[0],
             recurse_type(cx)?,
+            musa_core::Family::Eliminator,
             Recurse::SUBJECT,
             vocabulary(cx, &["List.Empty", "List.Cons", "SyntaxStep", "SyntaxStep.Step"])?,
             rewrite_recurse,
@@ -68,6 +69,7 @@ pub(super) fn eliminators(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
         Builtin::structural_with(
             SPELLINGS[1],
             fold_type(cx)?,
+            musa_core::Family::Eliminator,
             Fold::SUBJECT,
             vocabulary(cx, &["List.Empty", "List.Cons"])?,
             rewrite_fold,

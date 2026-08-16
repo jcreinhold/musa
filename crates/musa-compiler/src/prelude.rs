@@ -155,6 +155,39 @@ fn result_data() -> RawData {
     )
 }
 
+/// `data Scope { Piece; Part(part : Nat); Voice(part : Nat, voice : Nat) }`.
+///
+/// Where a constructed fact sits in the score's *structure* — the same three
+/// places [`crate::scope::Scope`] names, and never a position in time.
+///
+/// # Why this is declared and `Origin` is registered
+///
+/// `02-core-calculus.md` §5.7 requires that every fact a track builtin
+/// constructs has "the requested scope" and "a complete `Origin`", and neither
+/// is something a `fn` rule can invent — so `play` takes both. They arrive by
+/// different doors because they are different kinds of thing. A scope is finite
+/// data with three cases and nothing hidden behind them, so it is *declared* and
+/// a program may match on it. An origin is a source span, a definition span, a
+/// declaration ordinal, and an expansion path over a growing set of steps: the
+/// compiler owns its representation, no program takes one apart, and §5.8's D1
+/// inertness test therefore puts it in the registry. That is the same test that
+/// declared `Bool` and registered `Pitch`, applied to the two arguments of one
+/// builtin.
+fn scope_data() -> RawData {
+    data(
+        Vec::new(),
+        vec![family(
+            "Scope",
+            Vec::new(),
+            vec![
+                constructor("Piece", Vec::new()),
+                constructor("Part", vec![binder("part", var("Nat"))]),
+                constructor("Voice", vec![binder("part", var("Nat")), binder("voice", var("Nat"))]),
+            ],
+        )],
+    )
+}
+
 /// `data RowFault { Fault(List Nat, List Pc12) }`.
 ///
 /// Why the twelve-tone row's failure has a name rather than a tuple: a rule
@@ -257,7 +290,14 @@ pub(crate) fn phase() -> Vec<RawData> {
 /// unrelated families in one would make positivity a question about all of them
 /// at once.
 pub(crate) fn structural() -> Vec<RawData> {
-    vec![bool_data(), nat_data(), option_data(), list_data(), result_data()]
+    vec![
+        bool_data(),
+        nat_data(),
+        option_data(),
+        list_data(),
+        result_data(),
+        scope_data(),
+    ]
 }
 
 /// The families that name a base type, and so must be declared after one exists.

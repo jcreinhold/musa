@@ -10,8 +10,9 @@
 //! Four kinds are read by the grammar and denote nothing yet, and each answers a
 //! diagnostic rather than an unhelpful `None`:
 //!
-//! - `MusicExpr` and `KernelQuote` need `EventTrack`, which prompt 141h gives a
-//!   core shape and prompt 142 teaches the source to spell.
+//! - `MusicExpr` and `KernelQuote` need `EventTrack`. Prompt 141h gave it a core
+//!   shape — a base type and eight builtins over it — and deliberately left it
+//!   unspellable; prompt 142 is where the source learns the word.
 //! - `ProductType`'s value form, `(a, b)`, is written as a record here — the
 //!   core has structural records and no separate pair, so a product is the
 //!   record whose fields are its positions. That is a *reading*, not a new
@@ -214,7 +215,7 @@ impl Lowering<'_> {
                 format!("{what} has no core spelling yet"),
             )
             .at(crate::resolve::trimmed_span(node), format!("{needs} is written here"))
-            .note("a template reaches the core in prompt 141ga and a track in prompt 141h"),
+            .note("both reached the core in prompts 141ga and 141h; prompt 142 teaches the source to spell them"),
         )
     }
 

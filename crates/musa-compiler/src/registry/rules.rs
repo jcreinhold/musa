@@ -64,25 +64,28 @@ use crate::time::{Exact, exact_arithmetic, exact_ratio, written_rational};
 
 /// How many rows of the two ownership tables reach the core's registry.
 ///
-/// 92 of `BUILTIN_OWNERSHIP`'s 117 and 16 of `SYNTAX_OWNERSHIP`'s 17. The two
-/// phase rows past this module's fourteen are the traversals in
-/// [`super::traversal`]: they are §5.8's second family rather than its first, so
-/// they carry a rewrite instead of a [`Rule`] and are registered there.
-pub(super) const REGISTERED: usize = 108;
+/// 100 of `BUILTIN_OWNERSHIP`'s 117 and 16 of `SYNTAX_OWNERSHIP`'s 17. The rows
+/// past this module's 92 and fourteen are registered where their reduction is:
+/// the two traversals in [`super::traversal`] and the eight track builtins in
+/// [`super::track`], which are §5.8's second and third families rather than its
+/// first. A δ-builtin's rule is a [`Rule`] and lives here; the others carry a
+/// rewrite, a family, or both, and live beside the argument that admits them.
+pub(super) const REGISTERED: usize = 116;
 
 /// The rows that do not, by family and by count.
 ///
-/// Twenty-six, and each group is left for a reason that is about the *core*
-/// rather than about effort:
+/// Eighteen, and each group is left for a reason that is about the *core* rather
+/// than about effort:
 ///
 /// - a **structural eliminator** traverses `Nat`, `List`, or `Option`, which are
 ///   declared families with generated recursors, and
 ///   [`musa_core::Registry::new`] refuses a structural target that is not a base
 ///   type. Registering one would be a second ι-rule for a type that has one;
 ///   prompt 142 makes them library code.
-/// - a **track** or **machine** builtin needs `EventTrack` or `Machine`, and
-///   prompt 142 reshapes both when it deletes contextual `Music`. Registering
-///   them against the shape that is about to go would be work thrown away.
+/// - a **machine** builtin needs `Machine`, which §2 of `03-machine-calculus.md`
+///   gives type *indices* and no reductions — a third reduction shape the core
+///   does not have, over a unit and a product nothing has declared. Prompt 141ha
+///   owns all of it, and the track argument shares no lemma with it.
 /// - a **phase projection** is `run_syntax_step`, which hides nothing: it is the
 ///   `run` field of a `SyntaxStep` applied to a context, and a projection is not
 ///   a compiler-owned operation. [`musa_core::Registry::new`] would have refused
@@ -92,9 +95,8 @@ pub(super) const REGISTERED: usize = 108;
 ///
 /// The suite counts each group again off the tables themselves, so this array
 /// cannot drift from what is actually registered.
-pub(super) const UNREGISTERED: [(&str, usize); 4] = [
+pub(super) const UNREGISTERED: [(&str, usize); 3] = [
     ("structural eliminators", 8),
-    ("track builtins", 8),
     ("machine builtins", 9),
     ("phase projections", 1),
 ];
@@ -123,7 +125,7 @@ pub(super) const BEYOND: [&str; 4] = ["instantiate_quote", "match_quote", "quote
 /// another. The old evaluator needed three functions here because a `Value` was
 /// self-describing and the checker's promise was not machine-checkable at this
 /// point; the core's is.
-fn read<T>(datum: &Datum) -> Option<T>
+pub(super) fn read<T>(datum: &Datum) -> Option<T>
 where
     T: Clone + PartialEq + std::fmt::Debug + std::fmt::Display + Send + Sync + 'static,
 {
@@ -144,7 +146,7 @@ fn text(datum: &Datum) -> Option<String> {
 ///
 /// Iterative rather than recursive: a `Nat` is as deep as it is large, and a
 /// recursive count would put the host's stack where the core's budget belongs.
-fn nat(datum: &Datum) -> Option<u64> {
+pub(super) fn nat(datum: &Datum) -> Option<u64> {
     let mut counted: u64 = 0;
     let mut rest = datum;
     loop {
@@ -167,7 +169,7 @@ fn nat(datum: &Datum) -> Option<u64> {
 }
 
 /// The members of a `List`, in order.
-fn items(datum: &Datum) -> Option<Vec<&Datum>> {
+pub(super) fn items(datum: &Datum) -> Option<Vec<&Datum>> {
     let mut members = Vec::new();
     let mut rest = datum;
     loop {
@@ -278,13 +280,13 @@ fn optional(value: Option<Datum>) -> Datum {
 }
 
 /// The answering half of a `Result`.
-fn answered(value: Datum) -> Datum {
+pub(super) fn answered(value: Datum) -> Datum {
     case("Result.Ok", vec![value])
 }
 
 /// The refusing half of a `Result`, whose error type is `Text` in every source
 /// operation but `row12_of`.
-fn refused(because: &str) -> Datum {
+pub(super) fn refused(because: &str) -> Datum {
     case("Result.Err", vec![written(because.to_owned())])
 }
 

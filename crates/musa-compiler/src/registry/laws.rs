@@ -73,7 +73,7 @@ fn every_delta_spelling_is_registered_exactly_once() {
     assert_eq!(spellings, unique, "a spelling was registered twice");
     assert_eq!(
         spellings.len(),
-        rules::REGISTERED + rules::BEYOND.len(),
+        rules::REGISTERED + rules::BEYOND.len() + super::track::TRACK_BEYOND.len(),
         "the registered count and the counts this module states have drifted"
     );
     for builtin in &registered {
@@ -81,19 +81,19 @@ fn every_delta_spelling_is_registered_exactly_once() {
     }
 }
 
-/// The operations past both tables are exactly the four that are said to be
+/// The operations past both tables are exactly the five that are said to be
 /// past them, counted off the registry rather than off a table.
 ///
 /// Two claims, and the second is the one that needs a test: that each is
 /// registered, and that each is in *neither* ownership table. The second is what
-/// keeps `instantiate_quote` out of an adapter's reach — the tables are the old
-/// checker's name lookup, and a row added to one of them would be a word a
-/// transformer could write, silently.
+/// keeps `instantiate_quote` and `set_note_pitches` out of an adapter's reach —
+/// the tables are the old checker's name lookup, and a row added to one of them
+/// would be a word a transformer could write, silently.
 #[test]
 fn the_operations_past_both_tables_are_named_and_in_neither() {
     let cx = owned().expect("the compiler's own context builds");
     let registered = builtins(&cx).expect("both tables translate");
-    for spelling in rules::BEYOND {
+    for spelling in rules::BEYOND.into_iter().chain(super::track::TRACK_BEYOND) {
         assert!(
             registered.iter().any(|builtin| &**builtin.name() == spelling),
             "`{spelling}` is registered"
@@ -110,22 +110,21 @@ fn the_operations_past_both_tables_are_named_and_in_neither() {
     }
 }
 
-/// The rows with no rule are exactly the four families that are said to have
-/// none, counted from the tables rather than from a comment.
+/// The rows with no registration are exactly the three families that are said to
+/// have none, counted from the tables rather than from a comment.
 ///
 /// The point of counting both ways is that neither number is trusted: the tables
 /// say how many rows each family has, [`rules::UNREGISTERED`] says how many are
 /// expected to be left, and 141e's Design says which families those are. A row
 /// that quietly changed family would move one of the three and not the others.
+///
+/// The track family left this array in prompt 141h and is checked the other way
+/// round in [`super::track::laws`] — that all eight of its rows *are* registered.
 #[test]
 fn the_unregistered_rows_are_the_families_they_are_said_to_be() {
     let eliminators = BUILTIN_OWNERSHIP
         .iter()
         .filter(|entry| matches!(entry.family, Family::Eliminator(_)))
-        .count();
-    let tracks = BUILTIN_OWNERSHIP
-        .iter()
-        .filter(|entry| matches!(entry.family, Family::Track))
         .count();
     let machines = BUILTIN_OWNERSHIP
         .iter()
@@ -141,7 +140,6 @@ fn the_unregistered_rows_are_the_families_they_are_said_to_be() {
         - super::traversal::SPELLINGS.len();
     let counted = [
         ("structural eliminators", eliminators),
-        ("track builtins", tracks),
         ("machine builtins", machines),
         ("phase projections", projections),
     ];
@@ -151,7 +149,7 @@ fn the_unregistered_rows_are_the_families_they_are_said_to_be() {
     assert_eq!(
         left,
         counted.iter().map(|&(_, count)| count).sum::<usize>(),
-        "the rows left over are not the four families they are said to be"
+        "the rows left over are not the three families they are said to be"
     );
 
     // And nothing outside those four families is missing a rule.

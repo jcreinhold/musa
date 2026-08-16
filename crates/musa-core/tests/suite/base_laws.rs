@@ -478,6 +478,7 @@ fn tree_depth(list: &Term, vocabulary: Vec<Term>) -> Builtin {
                 ),
             ),
         ),
+        Family::Eliminator,
         3,
         vocabulary,
         |builtin, literal| {
