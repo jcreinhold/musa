@@ -361,9 +361,9 @@ mod tests {
         reason = "a law that cannot fail loudly is not a law"
     )]
 
-    use musa_core::Cx;
+    use musa_core::{Cx, Level, Raw, Term};
 
-    use super::{constant, structural};
+    use super::{HERE, applied, constant, structural, var};
 
     /// The structural families elaborate in a bare context.
     ///
@@ -411,6 +411,59 @@ mod tests {
             "Result.Err",
         ] {
             constant(&cx, name).unwrap_or_else(|_| panic!("`{name}` is declared"));
+        }
+    }
+
+    /// The prelude's families are writable the way source writes them: a
+    /// constructor names its case and supplies its fields, and never its
+    /// family's parameters.
+    ///
+    /// `02-core-calculus.md` §2 states the rule and `musa-core`'s own suite
+    /// proves it over families that suite declares. What this law adds is that
+    /// the families *this* module declares are the shape it fires on. Three of
+    /// the five carry parameters, and a parameterized family whose constructors
+    /// could only be written `Option.Some Nat 0` is one no `.musa` file could
+    /// use — `None` and `Some(register)` are what
+    /// `stdlib/src/context.musa` actually writes.
+    #[test]
+    fn a_prelude_constructor_is_written_without_its_family_s_parameters() {
+        let mut cx = Cx::new();
+        for declaration in structural() {
+            let group = musa_core::declare(&cx, &declaration).expect("a compiler declaration elaborates");
+            cx = cx.declaring(&group);
+        }
+        let ty = |raw: &Raw| {
+            musa_core::check(&cx, &Term::universe(HERE, Level::ZERO), raw).expect("a prelude family is a type")
+        };
+        let zero = var("Nat.Zero");
+        let programs: &[(&str, Raw, Raw)] = &[
+            ("None", applied("Option", [var("Nat")]), var("None")),
+            (
+                "Some(0)",
+                applied("Option", [var("Nat")]),
+                applied("Some", [zero.clone()]),
+            ),
+            (
+                "Ok(0)",
+                applied("Result", [var("Nat"), var("Bool")]),
+                applied("Ok", [zero.clone()]),
+            ),
+            (
+                "Err(True)",
+                applied("Result", [var("Nat"), var("Bool")]),
+                applied("Err", [var("Bool.True")]),
+            ),
+            (
+                "List.Cons(0, List.Cons(0, List.Empty))",
+                applied("List", [var("Nat")]),
+                applied(
+                    "List.Cons",
+                    [zero.clone(), applied("List.Cons", [zero, var("List.Empty")])],
+                ),
+            ),
+        ];
+        for (name, at, program) in programs {
+            musa_core::check(&cx, &ty(at), program).unwrap_or_else(|error| panic!("{name}: {error}"));
         }
     }
 }

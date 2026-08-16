@@ -127,6 +127,192 @@ pub(crate) fn vec() -> RawData {
     )
 }
 
+/// `data Option (A : Type 0) where None : Option A; Some : (x : A) → Option A`.
+pub(crate) fn option() -> RawData {
+    data(
+        vec![binder("A", type0())],
+        vec![family(
+            "Option",
+            Vec::new(),
+            vec![
+                constructor("None", Vec::new(), Vec::new()),
+                constructor("Some", vec![binder("x", var("A"))], Vec::new()),
+            ],
+        )],
+    )
+}
+
+/// `data Result (A : Type 0) (E : Type 0)`, whose two parameters are what make
+/// the *order* the rule reads them in observable.
+pub(crate) fn result() -> RawData {
+    data(
+        vec![binder("A", type0()), binder("E", type0())],
+        vec![family(
+            "Result",
+            Vec::new(),
+            vec![
+                constructor("Ok", vec![binder("x", var("A"))], Vec::new()),
+                constructor("Err", vec![binder("e", var("E"))], Vec::new()),
+            ],
+        )],
+    )
+}
+
+/// `Nat`, `Option`, and `Result`, declared in that order.
+///
+/// # Panics
+///
+/// If any declaration is refused, which would be a defect in this crate.
+pub(crate) fn container_context() -> Cx {
+    let (mut cx, _) = nat_context();
+    for declaration in [option(), result()] {
+        let group = musa_core::declare(&cx, &declaration).expect("a container is a declaration");
+        cx = cx.declaring(&group);
+    }
+    cx
+}
+
+/// §2: "a constructor checks against its family at known parameters and
+/// indices" — so the parameters are read off the expected type and not written.
+///
+/// Four spellings of one term, and the law is that they are one term. A reader
+/// who believes `Some(x)` is sugar for `Option.Some Nat x` should be able to
+/// check that belief here rather than in the elaborator, because the whole
+/// content of the rule is that the two elaborate to the same core term.
+#[test]
+fn a_constructor_reads_its_parameters_off_the_expected_type() {
+    let cx = container_context();
+    let option_nat = checked_type(&cx, &apply(var("Option"), [var("Nat")]));
+
+    let written = |raw: Raw| musa_core::check(&cx, &option_nat, &raw);
+    written(var("None")).expect("a bare nullary constructor checks");
+    written(var("Option.None")).expect("a qualified nullary constructor checks");
+
+    let bare = written(apply(var("Some"), [var("Nat.Zero")])).expect("a bare applied constructor checks");
+    let qualified =
+        written(apply(var("Option.Some"), [var("Nat.Zero")])).expect("a qualified applied constructor checks");
+    let explicit = written(apply(var("Option.Some"), [var("Nat"), var("Nat.Zero")]))
+        .expect("the fully written spelling still checks");
+    assert_eq!(bare, explicit, "`Some(0)` and `Option.Some Nat 0` are one term");
+    assert_eq!(
+        qualified, explicit,
+        "`Option.Some(0)` and `Option.Some Nat 0` are one term"
+    );
+}
+
+/// The rule changes nothing about a family with no parameters: there is nothing
+/// to read off the expected type, and the term is the one the qualified
+/// spelling already built.
+#[test]
+fn a_family_with_no_parameters_is_unaffected() {
+    let (cx, _) = nat_context();
+    let nat = core_nat(&cx);
+    let written = |raw: Raw| musa_core::check(&cx, &nat, &raw);
+    let expectations: &[(&str, Raw, Raw)] = &[
+        ("Zero", var("Zero"), var("Nat.Zero")),
+        (
+            "Succ",
+            apply(var("Succ"), [var("Nat.Zero")]),
+            apply(var("Nat.Succ"), [var("Nat.Zero")]),
+        ),
+    ];
+    for (name, bare, qualified) in expectations {
+        let bare = written(bare.clone()).unwrap_or_else(|error| panic!("{name}: {error}"));
+        let qualified = written(qualified.clone()).unwrap_or_else(|error| panic!("{name}: {error}"));
+        assert_eq!(bare, qualified, "{name}");
+    }
+}
+
+/// The parameters an inner constructor reads come from the field type it stands
+/// at, not from the outermost expected type — which is the only thing that
+/// makes the rule compose.
+#[test]
+fn a_nested_constructor_reads_the_parameters_of_the_type_it_stands_at() {
+    let cx = container_context();
+    let inner = apply(var("Result"), [var("Nat"), var("Nat")]);
+    let ty = checked_type(&cx, &apply(var("Option"), [inner.clone()]));
+
+    let nested = musa_core::check(&cx, &ty, &apply(var("Some"), [apply(var("Ok"), [var("Nat.Zero")])]))
+        .expect("`Some(Ok(0))` checks");
+    let explicit = musa_core::check(
+        &cx,
+        &ty,
+        &apply(
+            var("Option.Some"),
+            [
+                inner,
+                apply(var("Result.Ok"), [var("Nat"), var("Nat"), var("Nat.Zero")]),
+            ],
+        ),
+    )
+    .expect("the fully written spelling checks");
+    assert_eq!(nested, explicit, "the nested spellings are one term");
+}
+
+/// The rule fires where the elaborator used to fail, so it has nothing new to
+/// complain about: a constructor given the wrong number of arguments is refused
+/// as it was, and reading the parameters does not rescue it.
+#[test]
+fn a_constructor_given_the_wrong_number_of_arguments_is_still_refused() {
+    let cx = container_context();
+    let option_nat = checked_type(&cx, &apply(var("Option"), [var("Nat")]));
+    let questions: &[(&str, Raw, fn(&Refusal) -> bool)] = &[
+        // Under-applied: the parameter is supplied, and what is left is a
+        // function type rather than an `Option`.
+        ("Some", var("Some"), |refusal| matches!(*refusal, Refusal::Mismatch(_))),
+        // Over-applied: more arguments than the constructor has fields, so the
+        // rule declines and the ordinary path answers exactly as before.
+        ("None(0)", apply(var("None"), [var("Nat.Zero")]), |refusal| {
+            matches!(*refusal, Refusal::BareConstructor { .. })
+        }),
+        (
+            "Option.Some Nat 0 0",
+            apply(var("Option.Some"), [var("Nat"), var("Nat.Zero"), var("Nat.Zero")]),
+            |refusal| matches!(*refusal, Refusal::NotAFunction { .. }),
+        ),
+    ];
+    for (name, raw, expected) in questions {
+        let Err(error) = musa_core::check(&cx, &option_nat, raw) else {
+            panic!("{name}: the program was admitted");
+        };
+        let refusal = refusal(name, error);
+        assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
+    }
+}
+
+/// §1.1's other half: a parameter is fixed across the declaration and an index
+/// is what a constructor chooses. So the parameters come off the expected type
+/// and the indices stay the constructor's, and a constructor whose index
+/// disagrees is refused exactly where it was.
+#[test]
+fn an_indexed_constructor_still_checks_its_own_indices() {
+    let (cx, _) = nat_context();
+    let group = musa_core::declare(&cx, &vec()).expect("Vec is a declaration");
+    let cx = cx.declaring(&group);
+    let unit_type = Raw::record_type(WRITTEN, []);
+    let unit = Raw::record(WRITTEN, []);
+    let at = |length: Raw| checked_type(&cx, &apply(var("Vec"), [unit_type.clone(), length]));
+    let one = apply(var("Nat.Succ"), [var("Nat.Zero")]);
+
+    // `Cons(0, {}, Nil) : Vec {} (Succ 0)` — the parameter read off the expected
+    // type at both layers, the length index chosen by `Cons` and by `Nil`.
+    musa_core::check(
+        &cx,
+        &at(one.clone()),
+        &apply(var("Cons"), [var("Nat.Zero"), unit, var("Nil")]),
+    )
+    .expect("a one-element vector checks with no parameter written");
+    musa_core::check(&cx, &at(var("Nat.Zero")), &var("Nil")).expect("the empty vector has length zero");
+
+    let Err(error) = musa_core::check(&cx, &at(one), &var("Nil")) else {
+        panic!("`Nil` was admitted at length one");
+    };
+    assert!(
+        matches!(refusal("Nil at length one", error), Refusal::Mismatch(_)),
+        "an index the constructor did not choose was accepted from the expected type"
+    );
+}
+
 /// §1.1: a family, its constructors, and its recursor are in scope under the
 /// names the declaration gives them, at the types it gives them.
 #[test]
@@ -598,6 +784,15 @@ fn a_declaration_is_refused_for_the_reason_it_is_wrong() {
         let refusal = refusal(name, error);
         assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
     }
+}
+
+/// A written type, elaborated so that it can be checked against.
+///
+/// # Panics
+///
+/// If it is not a type, which is a defect in the test that asked.
+fn checked_type(cx: &Cx, raw: &Raw) -> Term {
+    musa_core::check(cx, &Term::universe(WRITTEN, Level::ZERO), raw).expect("a type")
 }
 
 /// `Nat` as a core term, for a checking question.

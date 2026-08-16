@@ -369,10 +369,18 @@ impl Elaborator {
         match self.checked(scope, raw, ty)? {
             Some(term) => Ok(term),
             // §2's `Switch`, and the only rule in this module that calls
-            // conversion.
+            // conversion. A constructor reaches it having read its family's
+            // parameters off `ty` — see [`Self::constructed`] — and everything
+            // else reaches it having inferred, which is the difference between
+            // the two and the whole of it.
             None => {
-                let inferred = self.infer(scope, raw)?;
-                let inferred = self.inserted(scope, inferred)?;
+                let inferred = match self.constructed(scope, raw, ty)? {
+                    Some(supplied) => supplied,
+                    None => {
+                        let inferred = self.infer(scope, raw)?;
+                        self.inserted(scope, inferred)?
+                    }
+                };
                 self.unifier
                     .unify_types(&mut self.meter, scope.depth(), raw.origin(), ty, &inferred.ty)?;
                 Ok(inferred.term)
@@ -433,15 +441,8 @@ impl Elaborator {
                 ty: written,
                 body,
             } => crate::rec::define(self, scope, here, name, written, body, ty).map(Some),
-            // §1.3's bare constructor. Only in this direction, and that is the
-            // rule rather than a fallback: here the expected type names the
-            // family whose namespace the word is read in, and where it does not
-            // there is nothing to read it in.
-            RawShape::Var(name) => match self.bare(scope, here, name, ty)? {
-                Some(term) => Ok(Some(term)),
-                None => self.abstracted(scope, raw, ty),
-            },
-            RawShape::Lit(_)
+            RawShape::Var(_)
+            | RawShape::Lit(_)
             | RawShape::Universe(_)
             | RawShape::Pi { .. }
             | RawShape::App { .. }
@@ -455,31 +456,100 @@ impl Elaborator {
         }
     }
 
-    /// `Untied ⇐ Tying`, when nothing nearer already means `Untied`.
+    /// §2's constructor rule: `C a⃗ ⇐ N p⃗ i⃗`, with `p⃗` read off the expected
+    /// type rather than written.
     ///
-    /// Answers `None` when the name is bound, is declared in its own right, is
-    /// already qualified, or when the expected type is not a family with a case
-    /// of that name — every one of which is a term with an ordinary rule, and
-    /// none of which this may take over.
-    fn bare(&mut self, scope: &Scope, here: Origin, name: &Name, ty: &Value) -> Result<Option<Term>, ElabError> {
-        if name.contains('.') || scope.lookup(name).is_some() || scope.declared(name).is_some() {
+    /// "A constructor checks against its family at known parameters and
+    /// indices." A constructor's type quantifies over its family's parameters
+    /// before its fields, and nothing at a use site writes them: `Some(x)` names
+    /// the case and supplies the field. The parameters are in the expected type,
+    /// by §1.1's definition of a parameter — fixed across the declaration, so
+    /// the family's are the constructor's — and this is where they are read.
+    ///
+    /// **Not the indices.** §1.1's other half is that an index is what a
+    /// constructor *chooses*, so taking one from the expected type would assume
+    /// the answer coverage exists to check. The indices stay the constructor's,
+    /// and the `Switch` this answers into is what compares them.
+    ///
+    /// This is the raw-term twin of [`crate::family::realize`], which does the
+    /// same reading for a δ-rule's answer, where the same decision was already
+    /// taken: [`Datum::Case`](crate::Datum::Case)'s fields carry no parameters
+    /// either.
+    ///
+    /// # What it declines
+    ///
+    /// Answers `None` — leaving `Switch` to infer, exactly as before — when the
+    /// expected type is not a family, when the head is not a case of it, when a
+    /// nearer binder or declaration answers to a bare word, when the author
+    /// wrote an implicit argument, or when there are *more* written arguments
+    /// than the constructor has fields. That last one is what keeps the fully
+    /// written `Option.Some Nat 0` on the path it has always taken: its
+    /// parameter is one of its arguments, so it has one argument too many to be
+    /// a term whose parameters are missing.
+    ///
+    /// Fewer arguments than fields is not declined, and that is where §1.3's
+    /// `bare` rule now lives: a word standing alone is qualified against the
+    /// expected type's family whether or not the case it names takes fields.
+    /// Supplying the parameters to an under-applied constructor cannot make one
+    /// check — a partial application has a Π type and the expected type is an
+    /// element of a family — so this only decides which refusal it earns, and
+    /// "expected `Option Nat`, found `Nat → Option Nat`" is the one that names
+    /// what is missing.
+    fn constructed(&mut self, scope: &Scope, raw: &Raw, ty: &Value) -> Result<Option<Typed>, ElabError> {
+        let here = raw.origin();
+        let Some((head, arguments)) = written_spine(raw) else {
             return Ok(None);
-        }
+        };
+        let RawShape::Var(name) = head.shape() else {
+            return Ok(None);
+        };
         let Some(element) = crate::family::element(&mut self.meter, ty)? else {
             return Ok(None);
         };
         let Some(declared) = element.group.family_at(element.family) else {
             return Ok(None);
         };
-        if !declared
-            .constructors
-            .iter()
-            .any(|constructor| *constructor.name == **name)
-        {
+        let Some((case, fields)) = case_named(scope, name, declared) else {
+            return Ok(None);
+        };
+        if arguments.len() > fields {
             return Ok(None);
         }
-        let qualified = Raw::var(here, format!("{}.{name}", declared.name));
-        self.check(scope, &qualified, ty).map(Some)
+        // Through the ordinary constant rule, so that a case a module keeps to
+        // itself is refused here the same way it is refused when its qualified
+        // name is written out.
+        let qualified = Raw::var(here, format!("{}.{case}", declared.name));
+        let mut built = self.infer(scope, &qualified)?;
+        for param in &element.params {
+            built = self.given(scope, here, built, param)?;
+        }
+        for argument in arguments {
+            built = self.applied(scope, here, built, Plicity::Explicit, argument)?;
+        }
+        Ok(Some(built))
+    }
+
+    /// `head p`, where `p` is a value already in hand rather than a raw term.
+    ///
+    /// The parameters [`Self::constructed`] supplies come from the expected
+    /// type, so they are values and there is nothing to check them against:
+    /// they were checked when the type they were read from was.
+    fn given(&mut self, scope: &Scope, here: Origin, head: Typed, param: &Value) -> Result<Typed, ElabError> {
+        let unfolded = force(&mut self.meter, &head.ty)?;
+        let function_ty = unfolded.as_ref().unwrap_or(&head.ty);
+        let Form::Pi { domain, codomain, .. } = &function_ty.form else {
+            return Err(Refusal::NotAFunction {
+                at: here,
+                ty: scope.quote_type(&mut self.meter, function_ty)?,
+            }
+            .into());
+        };
+        let (domain, codomain) = (Arc::clone(domain), codomain.clone());
+        let term = quote(&mut self.meter, Depth(scope.depth()), &domain, param)?;
+        Ok(Typed {
+            term: Term::app(here, head.term, term),
+            ty: apply_closure(&mut self.meter, &codomain, param.clone())?,
+        })
     }
 
     /// Wrap `raw` in an implicit λ when the type it is checked against wants
@@ -845,6 +915,22 @@ impl Elaborator {
         argument: &Raw,
     ) -> Result<Typed, ElabError> {
         let inferred = self.infer(scope, function)?;
+        self.applied(scope, here, inferred, plicity, argument)
+    }
+
+    /// One argument applied to a function already elaborated.
+    ///
+    /// Separate from [`Self::application`] because [`Self::constructed`] has a
+    /// function it did not infer from a raw term, and an application loop
+    /// written twice is two chances to insert differently.
+    fn applied(
+        &mut self,
+        scope: &Scope,
+        here: Origin,
+        inferred: Typed,
+        plicity: Plicity,
+        argument: &Raw,
+    ) -> Result<Typed, ElabError> {
         // An argument the author wrote implicitly is the one the binder wanted,
         // so insertion is skipped: inserting first would fill that binder with a
         // metavariable and then refuse the argument as one too many.
@@ -1704,4 +1790,55 @@ fn zonk_telescope(meter: &mut Meter, depth: u32, fields: &[Field]) -> Result<Arc
             })
         })
         .collect()
+}
+
+/// A raw term as a head and the arguments the author wrote after it.
+///
+/// [`None`] where any of them is implicit: an author supplying an implicit
+/// argument is telling the elaborator which binder they mean, and
+/// [`Elaborator::constructed`] would be filling a different one.
+fn written_spine(raw: &Raw) -> Option<(&Raw, Vec<&Raw>)> {
+    let mut arguments = Vec::new();
+    let mut head = raw;
+    while let RawShape::App {
+        plicity,
+        function,
+        argument,
+    } = head.shape()
+    {
+        if *plicity != Plicity::Explicit {
+            return None;
+        }
+        arguments.push(argument);
+        head = function;
+    }
+    arguments.reverse();
+    Some((head, arguments))
+}
+
+/// The case of `declared` that a written name denotes, and how many fields it
+/// takes — the count being what tells a missing parameter from a missing field.
+///
+/// Two spellings, and the difference between them is who wrote the family's
+/// name. `Option.Some` says it, and the only question is whether the family is
+/// the one expected. `Some` does not, and then §1.3's rule applies: the word is
+/// read in the expected type's namespace, but only after a binder and a
+/// declaration have both declined it, so nothing an author named themselves can
+/// be taken for a constructor.
+fn case_named(scope: &Scope, name: &Name, declared: &crate::family::Declared) -> Option<(Name, usize)> {
+    let case = match name.split_once('.') {
+        Some((family, case)) if family == &*declared.name => case,
+        Some(_) => return None,
+        None => {
+            if scope.lookup(name).is_some() || scope.declared(name).is_some() {
+                return None;
+            }
+            name
+        }
+    };
+    declared
+        .constructors
+        .iter()
+        .find(|constructor| *constructor.name == *case)
+        .map(|constructor| (Arc::clone(&constructor.name), constructor.fields.len()))
 }
