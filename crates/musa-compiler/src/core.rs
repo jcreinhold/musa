@@ -1069,6 +1069,8 @@ pub(crate) enum Builtin {
     PositionEqual,
     IntervalAdd,
     IntervalInverse,
+    PitchTransposed,
+    PitchClassTransposed,
     PitchClassOf,
     SignatureScale,
     ScaleOn,
@@ -2319,7 +2321,7 @@ const fn delta(arguments: &'static [Shape], result: Shape) -> Family {
     Family::Delta { arguments, result }
 }
 
-pub(crate) const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 117] = [
+pub(crate) const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 119] = [
     BuiltinOwnership {
         operation: Builtin::NatFold,
         spelling: "nat_fold",
@@ -2552,6 +2554,18 @@ pub(crate) const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 117] = [
         spelling: "interval_inverse",
         hidden_information: "the evaluator's exact written-interval coordinate representation",
         family: delta(&[INTERVAL], INTERVAL),
+    },
+    BuiltinOwnership {
+        operation: Builtin::PitchTransposed,
+        spelling: "pitch_transposed",
+        hidden_information: "the two coordinates a written pitch moves on at once, and the range either may leave",
+        family: delta(&[PITCH, INTERVAL], PITCH),
+    },
+    BuiltinOwnership {
+        operation: Builtin::PitchClassTransposed,
+        spelling: "pitchclass_transposed",
+        hidden_information: "the spelling-preserving quotient a class is transposed in, and the range it may leave",
+        family: delta(&[CLASS, INTERVAL], CLASS),
     },
     BuiltinOwnership {
         operation: Builtin::PitchClassOf,
@@ -3070,6 +3084,8 @@ impl Builtin {
             Self::PositionEqual => "position_equal",
             Self::IntervalAdd => "interval_add",
             Self::IntervalInverse => "interval_inverse",
+            Self::PitchTransposed => "pitch_transposed",
+            Self::PitchClassTransposed => "pitchclass_transposed",
             Self::PitchClassOf => "pitchclass_of",
             Self::SignatureScale => "signature_scale",
             Self::ScaleOn => "scale_on",
@@ -3244,6 +3260,8 @@ impl Builtin {
             | Self::PositionEqual
             | Self::IntervalAdd
             | Self::IntervalInverse
+            | Self::PitchTransposed
+            | Self::PitchClassTransposed
             | Self::PitchClassOf
             | Self::SignatureScale
             | Self::ScaleOn
@@ -6945,8 +6963,8 @@ impl Checker<'_> {
                     Code::WrongArity,
                     format!(
                         "`{name}` takes {}, and {} written",
-                        spell_arguments(predicate.parameters.len()),
-                        spell_written(arguments.len())
+                        crate::assert::spell_arguments(predicate.parameters.len()),
+                        crate::assert::spell_written(arguments.len())
                     ),
                 )
                 .at(name_span, "this claim's arguments do not match it")
@@ -10051,6 +10069,8 @@ fn apply_builtin(builtin: Builtin, provided: Vec<Value>, span: SourceSpan) -> Op
         | Builtin::PositionEqual
         | Builtin::IntervalAdd
         | Builtin::IntervalInverse
+        | Builtin::PitchTransposed
+        | Builtin::PitchClassTransposed
         | Builtin::PitchClassOf
         | Builtin::SignatureScale
         | Builtin::ScaleOn
@@ -10575,6 +10595,18 @@ fn eval_builtin(
                 return None;
             };
             interval.inverse().map(Value::Interval)
+        }
+        Builtin::PitchTransposed => {
+            let (Value::Pitch(pitch), Some(Value::Interval(interval))) = (values.first()?, values.get(1)) else {
+                return None;
+            };
+            pitch.transpose(*interval).map(Value::Pitch)
+        }
+        Builtin::PitchClassTransposed => {
+            let (Value::PitchClass(class), Some(Value::Interval(interval))) = (values.first()?, values.get(1)) else {
+                return None;
+            };
+            class.transpose(*interval).map(Value::PitchClass)
         }
         Builtin::PitchClassOf => {
             let Value::Pitch(pitch) = values.first()? else {
@@ -12265,24 +12297,6 @@ fn eval_claim(
         });
     }
     crate::assert::Claim::build(claim.predicate.name, arguments)
-}
-
-/// `two arguments`, `no arguments` — what a claim's signature asks for.
-fn spell_arguments(count: usize) -> String {
-    match count {
-        0 => "no arguments".to_owned(),
-        1 => "one argument".to_owned(),
-        other => format!("{other} arguments"),
-    }
-}
-
-/// `none were`, `one was`, `three were` — what the source actually wrote.
-fn spell_written(count: usize) -> String {
-    match count {
-        0 => "none were".to_owned(),
-        1 => "one was".to_owned(),
-        other => format!("{other} were"),
-    }
 }
 
 fn owned_descendants(owner: &SyntaxNode, kind: SyntaxKind) -> Vec<SyntaxNode> {
@@ -14168,7 +14182,7 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(
             entries.len(),
-            117,
+            119,
             "new compiler operations must enter the ownership registry"
         );
         let unique = entries.iter().map(|(spelling, _)| *spelling).collect::<IndexSet<_>>();
@@ -14475,7 +14489,7 @@ mod tests {
         );
         assert_eq!(
             delta + eliminator + track + machine,
-            117,
+            119,
             "a new compiler operation must be classified before it is admitted"
         );
     }

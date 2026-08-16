@@ -52,13 +52,13 @@ use musa_core::{Builtin, Cx, Datum, ElabError, Family, Literal, Rule};
 use musa_kernel::{Occurrence, Position, Span};
 use num_rational::Ratio;
 
-use super::rules::{items, nat, read, reduced, refused};
+use super::rules::{halves, items, nat, read, reduced, refused};
 use super::track::{Provenance, built, scope_of, track_of, track_type};
 use super::{literal, plain_type};
 use crate::elaborate::{FactKind, ScoreFact, VoiceTrack};
 use crate::harmony::ChordSymbol;
 use crate::marks::MarkArgument;
-use crate::score::{Clef, DynamicMark, FreeDuration, Metronome, Mode, NotatedDuration, Ramp};
+use crate::score::{Clef, DynamicMark, FreeDuration, Metronome, NotatedDuration, Ramp};
 
 /// The two operations this module registers, in the order [`builtins`] writes
 /// them.
@@ -271,10 +271,13 @@ fn fact_of(datum: &Datum) -> Option<FactKind> {
             target: unwrapped::<DynamicMark>(at(1)?)?,
             shape: unwrapped::<musa_kernel::Progress>(at(2)?)?,
         },
-        "Fact.Key" => FactKind::Key {
-            tonic: read(at(0)?)?,
-            mode: unwrapped::<Mode>(at(1)?)?,
-        },
+        "Fact.Key" => {
+            let key = read::<crate::Key>(at(0)?)?;
+            FactKind::Key {
+                tonic: key.tonic(),
+                mode: key.mode(),
+            }
+        }
         "Fact.Meter" => FactKind::Meter {
             numerator: count(0)?,
             denominator: count(1)?,
@@ -375,18 +378,6 @@ fn boolean(datum: &Datum) -> Option<bool> {
 
 /// The two whole numbers a `Pair Nat Nat` holds.
 fn pair(datum: &Datum) -> Option<(u32, u32)> {
-    let Datum::Case {
-        ref constructor,
-        ref fields,
-    } = *datum
-    else {
-        return None;
-    };
-    if &**constructor != "Pair.Both" {
-        return None;
-    }
-    Some((
-        u32::try_from(nat(fields.first()?)?).ok()?,
-        u32::try_from(nat(fields.get(1)?)?).ok()?,
-    ))
+    let (first, second) = halves(datum)?;
+    Some((u32::try_from(nat(first)?).ok()?, u32::try_from(nat(second)?).ok()?))
 }

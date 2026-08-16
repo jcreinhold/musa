@@ -57,7 +57,7 @@
 mod laws;
 
 pub(crate) mod items;
-mod notation;
+pub(crate) mod notation;
 pub(crate) mod piece;
 mod quotes;
 pub(crate) mod refusals;
@@ -158,6 +158,14 @@ pub(crate) struct Lowering<'a> {
     questions: Vec<Question>,
     /// How many unspellable binders this walk has minted.
     minted: u32,
+    /// The claims written over passages in this walk, in source order.
+    ///
+    /// Accumulated here rather than answered by [`Lowering::notated`] because a
+    /// claim is not part of the music: the fold answers a track, and an
+    /// assertion that changed its answer would be the thing
+    /// `examples/theory-assertions.musa` promises it is not. See
+    /// [`notation::Claimed`] for why each one holds two terms.
+    claims: Vec<notation::Claimed>,
 }
 
 /// One `?`, waiting for the answer it was written inside of.
@@ -182,7 +190,18 @@ impl<'a> Lowering<'a> {
             in_phase: false,
             questions: Vec::new(),
             minted: 0,
+            claims: Vec::new(),
         }
+    }
+
+    /// The claims written over passages in this walk, taken away from it.
+    ///
+    /// Drained rather than borrowed because a walk reads one declaration and a
+    /// claim outlives it: the piece decides where its barlines fall once every
+    /// voice has been read, so what is recorded here is carried to that point
+    /// and proved there.
+    pub(crate) fn claimed(&mut self) -> Vec<notation::Claimed> {
+        std::mem::take(&mut self.claims)
     }
 
     /// A walk of an adapter phase, where §5.9's vocabulary is readable.

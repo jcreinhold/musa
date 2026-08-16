@@ -93,7 +93,7 @@ use musa_language::ast::AstNode as _;
 use musa_language::{SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 
-use super::{Lowering, applied, child, children, is_expr_node, listed, whole, writes};
+use super::{Lowering, applied, child, children, is_expr_node, listed, significant_tokens, whole, writes};
 use crate::diagnose::{Code, Diagnostic};
 use crate::origin::SourceSpan;
 use crate::score::NotatedDuration;
@@ -108,7 +108,7 @@ pub(super) struct Reading {
     /// The scope every fact built here is constructed at (§5.7 requires one).
     scope: crate::Scope,
     /// The collection `step` counts in, when an `in scale` lexically encloses.
-    scale: Option<crate::scale::Scale>,
+    scale: Option<Counting>,
     /// Whether this block stands at one place in the piece.
     ///
     /// The one thing that decides whether a `key`, a `meter`, a `tempo`, or a
@@ -117,6 +117,13 @@ pub(super) struct Reading {
     /// piece's own header, and the difference between them is not what the fact
     /// is *about* but whether "from here onward" has a single here.
     placed: bool,
+    /// The meter in force where this block begins.
+    ///
+    /// Read lexically, exactly as [`Reading::scale`] is, and for the same
+    /// reason: `senza { … }` restores the meter that was already in force, and a
+    /// fold has no cursor to ask. One statement reads it and one writes it, so
+    /// what it costs is a copy of two `u32`s per nesting.
+    meter: crate::score::Meter,
 }
 
 impl Reading {
@@ -125,30 +132,115 @@ impl Reading {
     /// [`crate::Scope::Piece`] because a fragment is "usable at several places"
     /// and so has no voice of its own, and no scale because `01-surface.md` §2
     /// refuses an implicit C major.
-    const fn free() -> Self {
+    fn free() -> Self {
         Self {
             scope: crate::Scope::Piece,
             scale: None,
             placed: false,
+            meter: crate::score::Meter::default(),
         }
     }
 
     /// The reading a body written at one place in the piece is read under.
-    pub(super) const fn at(scope: crate::Scope) -> Self {
+    pub(super) fn at(scope: crate::Scope) -> Self {
         Self {
             scope,
             scale: None,
             placed: true,
+            meter: crate::score::Meter::default(),
         }
     }
 
     /// The same reading, counting steps in `scale`.
-    const fn stepping(self, scale: crate::scale::Scale) -> Self {
+    const fn stepping(self, scale: Counting) -> Self {
         Self {
             scale: Some(scale),
             ..self
         }
     }
+
+    /// The same reading, under `meter`.
+    ///
+    /// Called once by [`super::piece`] with the meter the piece's header states,
+    /// and again by [`Lowering::notated`] at each `meter` a block writes — the
+    /// two places a meter can come into force, and the only two.
+    pub(super) const fn metered(self, meter: crate::score::Meter) -> Self {
+        Self { meter, ..self }
+    }
+}
+
+/// A claim written over a passage, waiting for the piece to place it.
+///
+/// Two *terms* rather than a position and a duration, because a fold has no
+/// cursor. Where a passage starts is how long the music before it lasts, and how
+/// long the passage is is how long it lasts itself; both are questions a normal
+/// form answers and neither is known while the block is being read. Recording
+/// the two terms therefore records the question instead of guessing at it, and
+/// [`crate::document::Document::track`] turns each into the exact rational the
+/// claim is checked against.
+///
+/// [`Claimed::before`] is built up by [`Lowering::notated`] as the claim rises
+/// out of the blocks it was written in: each enclosing fold prepends the music
+/// standing before the statement it came from, so no level needs to know how
+/// deeply it is nested and no level is handed an absolute position it could get
+/// wrong.
+pub(crate) struct Claimed {
+    /// Which claim is made. The registry's own row, so the name and the shapes
+    /// its arguments must have are one fact rather than two that could disagree.
+    pub(crate) predicate: &'static crate::assert::Predicate,
+    /// Its arguments, in written order, as long as `predicate.parameters`.
+    pub(crate) arguments: Vec<Argued>,
+    /// Where the claim is written — the `assert`, or the `bar`.
+    pub(crate) span: SourceSpan,
+    /// Where an inserted rest would go: after the last thing written inside the
+    /// braces, and absent when nothing is.
+    pub(crate) content_end: Option<u32>,
+    /// What the sentence naming the passage calls it: a `bar`, or the `passage`
+    /// an `assert` was written on.
+    pub(crate) noun: &'static str,
+    /// The music standing before the passage. Its duration is where the passage
+    /// begins, which is what a measure claim is measured against.
+    pub(crate) before: Raw,
+    /// The passage itself. Its duration is how long the passage lasts, and its
+    /// occurrences are the notes a pitch or chord claim is proved against.
+    pub(crate) passage: Raw,
+}
+
+/// One argument of a written claim, in the state the reading leaves it in.
+///
+/// Two cases because [`crate::assert::ParamType`] has two kinds in it. Four of
+/// the six shapes are *values* — a scale, a chord, a count, a list of ranges —
+/// and a value has no value until the document that wrote it is elaborated, so
+/// what a block can record is the raw term and no more. The other two are
+/// **words**: a realization policy and the id of a voice-leading rule are
+/// spellings the registry reads, not terms the language can produce, so they are
+/// resolved where they stand and their refusals are reported there.
+///
+/// Recording the difference rather than erasing it is what keeps
+/// [`crate::registry::argument`] free of a case it could never meet: the reading
+/// never hands it a word.
+pub(crate) enum Argued {
+    /// A word this reading already resolved.
+    Word(crate::assert::Argument),
+    /// An expression, annotated with the type its shape declares so that the
+    /// core checks it rather than a second table beside the core.
+    Value(Raw),
+}
+
+/// The collection an `in scale` put in force.
+///
+/// Two cases rather than one scale, because `in scale mode { … }` names a
+/// collection a template was handed and a template's argument has no degrees
+/// until an instance site supplies one. What the two share is everything
+/// `in scale` itself does — it contributes no fact and only changes what a
+/// `step` reads — so the difference surfaces at exactly one statement.
+#[derive(Clone, Copy)]
+enum Counting {
+    /// A scale the source spelled, whose degrees this reading can count
+    /// through at the note that asks.
+    Written(crate::scale::Scale),
+    /// A scale a binder supplies.
+    Bound,
 }
 
 /// One of the four statements whose meaning is "from here onward".
@@ -220,6 +312,24 @@ fn is_statement(kind: SyntaxKind) -> bool {
             | SyntaxKind::ImproviseStmt
             | SyntaxKind::SectionStmt
             | SyntaxKind::HarmonyStmt
+    )
+}
+
+/// An argument read as the word it spells rather than as an expression.
+///
+/// Every significant token joined, because a policy and a rule id are both
+/// written as one identifier and anything else is a mistake this reading
+/// wants to *quote back*: `may omit` spelled with a space should say what
+/// was written, not what its first token was.
+fn word(node: &SyntaxNode) -> String {
+    significant_tokens(node).map(|token| token.text().to_owned()).collect()
+}
+
+/// Where a claim's name is written, falling back to the whole statement.
+fn claim_span(statement: &musa_language::ast::AssertStmt, node: &SyntaxNode) -> SourceSpan {
+    statement.claim_span().map_or_else(
+        || crate::resolve::trimmed_span(node),
+        |(start, end)| SourceSpan::new(start, end),
     )
 }
 
@@ -325,13 +435,36 @@ impl Lowering<'_> {
     /// answer is [`None`] if any of them was refused, because a fold that
     /// quietly dropped a statement would answer a *different piece of music*
     /// than the one written.
+    ///
+    /// A claim raised while a statement is read is placed relative to *this*
+    /// block, so every claim that came out of that statement has the music
+    /// standing before it prepended before the fold moves on. One level of that
+    /// at each nesting is what makes [`Claimed::before`] absolute by the time a
+    /// voice is finished, without any block having to know where it stands.
     pub(super) fn notated(&mut self, node: &SyntaxNode, reading: Reading) -> Option<Raw> {
         let origin = self.origin(node);
         let mut built = Raw::lit(origin, crate::registry::empty_track());
         let mut whole = true;
+        let mut reading = reading;
         for statement in statements(node) {
+            // A `meter` is in force from where it is written, so it is read
+            // *before* the statement that wrote it is folded and stays in force
+            // for everything after — which is the whole of what makes the
+            // restoring half of `senza` the meter a composer expects.
+            if let Some(written) = musa_language::ast::MeterStmt::cast(statement.clone())
+                && let Some(meter) = crate::resolve::parse_meter(&written)
+            {
+                reading = reading.metered(meter);
+            }
+            let raised = self.claims.len();
             match self.statement(&statement, reading) {
-                Some(next) => built = applied(origin, Raw::var(origin, "follow"), [built, next]),
+                Some(next) => {
+                    for claim in self.claims.iter_mut().skip(raised) {
+                        let inside = claim.before.clone();
+                        claim.before = applied(origin, Raw::var(origin, "follow"), [built.clone(), inside]);
+                    }
+                    built = applied(origin, Raw::var(origin, "follow"), [built, next]);
+                }
                 None => whole = false,
             }
         }
@@ -439,7 +572,7 @@ impl Lowering<'_> {
                             .at(span, "expected a scale, such as `c dorian`"),
                     );
                 };
-                let scale = self.written_scale(&written)?;
+                let scale = self.counting(&written)?;
                 self.notated(node, reading.stepping(scale))
             }
 
@@ -546,11 +679,10 @@ impl Lowering<'_> {
             SyntaxKind::TempoStmt => self.context(node, origin, reading, span, Context::Tempo),
             SyntaxKind::ClefStmt => self.context(node, origin, reading, span, Context::Clef),
 
-            // Bar structure is what a *pass* builds over a voice, not what a
-            // block says; prompt 142 owns it and the voice it belongs to.
-            SyntaxKind::BarStmt | SyntaxKind::SenzaStmt | SyntaxKind::AssertStmt => {
-                self.not_yet(node, "this statement", "a voice to belong to")
-            }
+            SyntaxKind::BarStmt => self.bar(node, origin, reading),
+            SyntaxKind::SenzaStmt => self.senza(node, origin, reading, span),
+
+            SyntaxKind::AssertStmt => self.asserted(node, origin, reading),
             _ => None,
         }
     }
@@ -565,23 +697,14 @@ impl Lowering<'_> {
     fn note(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
         let statement = musa_language::ast::NoteStmt::cast(node.clone())?;
         let span = crate::resolve::trimmed_span(node);
-        let pitch = match statement.pitch_expr() {
-            Some(written) => self.written_pitch(&written, reading)?,
-            None => {
-                let text = statement.pitch().unwrap_or_default();
-                let Some(pitch) = crate::WrittenPitch::parse(&text) else {
-                    return self.refuse(Self::not_a_pitch(&text, span));
-                };
-                pitch
-            }
-        };
+        let pitch = self.pitch_term(&statement, node, origin, reading)?;
         let (duration, free) = self.notated_duration(node, span)?;
         let held = duration.value.as_ratio();
         let fact = applied(
             origin,
             Raw::var(origin, "Fact.Note"),
             [
-                plain(origin, "Pitch", pitch),
+                pitch,
                 payload(origin, "NotatedDuration", duration),
                 self.articulations(origin, &statement.articulations(), span),
                 optional(origin, "FreeDuration", free),
@@ -819,6 +942,261 @@ impl Lowering<'_> {
         self.region(node, origin, reading, fact)
     }
 
+    /// `bar { … }` and `bar refrain { … }` — a measure, and what it claims.
+    ///
+    /// The braces erase. A bar contributes no occurrence, no payload, and no
+    /// time of its own — the kernel's ontology has no bar in it, and where the
+    /// barlines fall is [`crate::BarLines`]'s answer over the meters — so the
+    /// term a bar denotes is exactly the fold of what is inside it. What the
+    /// braces contribute is the claim that the music between them fills one
+    /// measure of the meter in force where they stand, and that is a
+    /// [`Claimed`] rather than a fact.
+    ///
+    /// The name is not read here. `bar refrain { … }` binds a passage another
+    /// voice can answer, which is a *declaration* in the enclosing document
+    /// rather than a statement in this block, and reading it here would put the
+    /// same name in scope once per voice that mentions it.
+    fn bar(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
+        let statement = musa_language::ast::BarStmt::cast(node.clone())?;
+        let passage = self.notated(node, reading)?;
+        self.claims.push(Claimed {
+            predicate: crate::assert::predicate("fills_meter")?,
+            arguments: Vec::new(),
+            span: crate::resolve::trimmed_span(node),
+            content_end: statement.content_end(),
+            noun: "bar",
+            // Nothing yet: the fold this bar stands in prepends what comes
+            // before it, and so does every fold above that one.
+            before: Raw::lit(origin, crate::registry::empty_track()),
+            passage: passage.clone(),
+        });
+        Some(passage)
+    }
+
+    /// `assert pitches_in(scale c major) { … }` — a claim, and the passage it
+    /// is about.
+    ///
+    /// The braces erase for [`Self::bar`]'s reason and the same [`Claimed`] is
+    /// pushed; what an `assert` adds is a claim the composer chose and the
+    /// arguments they chose it with. Those arguments are read here rather than
+    /// where the claim is proved because this is where they are *written*: an
+    /// unknown claim, a wrong count of arguments, and a word that names no
+    /// policy are all mistakes in the source, and a pass that met them after
+    /// elaboration would have to invent a span to report them at.
+    ///
+    /// What is *not* read here is any argument's value. An expression has none
+    /// until the document it stands in is elaborated, so the reading annotates
+    /// it with the type its shape declares and records the term —
+    /// [`crate::document::Document::passage`] evaluates it and
+    /// [`crate::registry::argument`] reads it back.
+    fn asserted(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
+        let statement = musa_language::ast::AssertStmt::cast(node.clone())?;
+        let predicate = self.claimed_predicate(&statement, node)?;
+        let arguments = self.claim_arguments(predicate, &statement, node)?;
+        let passage = self.notated(node, reading)?;
+        self.claims.push(Claimed {
+            predicate,
+            arguments,
+            span: crate::resolve::trimmed_span(node),
+            content_end: statement.content_end(),
+            noun: "passage",
+            // Nothing yet, exactly as a bar records nothing: the fold this
+            // assertion stands in prepends what comes before it.
+            before: Raw::lit(origin, crate::registry::empty_track()),
+            passage: passage.clone(),
+        });
+        Some(passage)
+    }
+
+    /// The registry row `statement` names, or a refusal that lists the family.
+    ///
+    /// The whole family in the note rather than only the nearest spelling,
+    /// because `CLAIMS` is six rows and a composer who misremembered one is
+    /// better served by reading all six than by being guessed at.
+    fn claimed_predicate(
+        &mut self,
+        statement: &musa_language::ast::AssertStmt,
+        node: &SyntaxNode,
+    ) -> Option<&'static crate::assert::Predicate> {
+        let name = statement.claim().unwrap_or_default();
+        if let Some(predicate) = crate::assert::predicate(&name) {
+            return Some(predicate);
+        }
+        let known: Vec<&str> = crate::assert::names().collect();
+        self.refuse(
+            Diagnostic::error(Code::UnknownName, format!("nothing is claimed by `{name}`"))
+                .at(claim_span(statement, node), "not a claim musa can prove")
+                .maybe_help(
+                    crate::diagnose::nearest(&name, known.iter().copied())
+                        .map(|near| format!("did you mean `{near}`?")),
+                )
+                .note(format!("the claims are: {}", known.join(", "))),
+        )
+    }
+
+    /// Every argument `statement` writes, in the two states [`Argued`] has.
+    ///
+    /// The arity is checked first and the whole statement is refused when it is
+    /// wrong, because an argument read against the wrong parameter would be
+    /// refused for a reason that is not the mistake: `voices(scale c major)`
+    /// written with one argument too many should say so once, not report a
+    /// scale where a count was wanted.
+    fn claim_arguments(
+        &mut self,
+        predicate: &'static crate::assert::Predicate,
+        statement: &musa_language::ast::AssertStmt,
+        node: &SyntaxNode,
+    ) -> Option<Vec<Argued>> {
+        use crate::assert::{Argument, ParamType};
+
+        let written = statement.args();
+        if written.len() != predicate.parameters.len() {
+            let wanted: Vec<&str> = predicate
+                .parameters
+                .iter()
+                .map(|parameter| parameter.as_str())
+                .collect();
+            let name = predicate.name;
+            return self.refuse(
+                Diagnostic::error(
+                    Code::WrongArity,
+                    format!(
+                        "`{name}` takes {}, and {} written",
+                        crate::assert::spell_arguments(predicate.parameters.len()),
+                        crate::assert::spell_written(written.len())
+                    ),
+                )
+                .at(claim_span(statement, node), "this claim's arguments do not match it")
+                .help(if wanted.is_empty() {
+                    format!("`{name}()` — it reads the passage and needs nothing else")
+                } else {
+                    format!("`{name}({})`", wanted.join(", "))
+                })
+                .note(predicate.checks),
+            );
+        }
+        let mut arguments = Vec::with_capacity(written.len());
+        for (argument, shape) in written.iter().zip(predicate.parameters) {
+            let written = argument.syntax();
+            let origin = self.origin(written);
+            let named = |name: &str| Raw::var(origin, name);
+            arguments.push(match *shape {
+                ParamType::Policy => Argued::Word(Argument::Policy(self.policy(written)?)),
+                ParamType::Rule => Argued::Word(Argument::Rule(self.rule_named(written)?)),
+                ParamType::Scale => self.claim_value(written, origin, named("Scale"))?,
+                ParamType::Chord => self.claim_value(written, origin, named("ChordClass"))?,
+                ParamType::Count => self.claim_value(written, origin, named("Nat"))?,
+                // The one applied type among the six, and the reason the shape
+                // decides the annotation rather than a name: a range is a pair
+                // of written pitches and a claim reads one per voice.
+                ParamType::Ranges => {
+                    let range = applied(origin, named("Pair"), [named("Pitch"), named("Pitch")]);
+                    self.claim_value(written, origin, applied(origin, named("List"), [range]))?
+                }
+            });
+        }
+        Some(arguments)
+    }
+
+    /// One argument that is a value, checked at the type its shape declares.
+    ///
+    /// Annotated rather than inferred, so that an argument of the wrong type is
+    /// a conversion the core refuses against the type the registry declares —
+    /// one answer to "what may stand here", from the declaration, rather than a
+    /// second table of expected types beside it.
+    fn claim_value(&mut self, node: &SyntaxNode, origin: Origin, ty: Raw) -> Option<Argued> {
+        let written = child(node, is_expr_node)?;
+        let term = self.expr(&written)?;
+        Some(Argued::Value(Raw::annot(origin, term, ty)))
+    }
+
+    /// One of [`crate::assert::Realization`]'s three words.
+    fn policy(&mut self, node: &SyntaxNode) -> Option<crate::assert::Realization> {
+        let word = word(node);
+        if let Some(policy) = crate::assert::Realization::named(&word) {
+            return Some(policy);
+        }
+        let spellings: Vec<&str> = crate::assert::Realization::ALL
+            .iter()
+            .map(|policy| policy.as_str())
+            .collect();
+        self.refuse(
+            Diagnostic::error(Code::UnknownWord, format!("`{word}` is not a realization policy"))
+                .at(crate::resolve::trimmed_span(node), "expected one of three words")
+                .maybe_help(
+                    crate::diagnose::nearest(&word, spellings.iter().copied())
+                        .map(|near| format!("did you mean `{near}`?")),
+                )
+                .note(
+                    "`exactly` is set equality, `may_omit` lets a member be missing, \
+                     and `may_add` lets other notes sound",
+                ),
+        )
+    }
+
+    /// The id of a voice-leading rule an assertion may name.
+    fn rule_named(&mut self, node: &SyntaxNode) -> Option<crate::analysis::RuleName> {
+        let word = word(node);
+        if let Some(rule) = crate::analysis::assertable().find(|rule| rule.id() == word) {
+            return Some(rule);
+        }
+        let assertable: Vec<&str> = crate::analysis::assertable().map(|rule| rule.id()).collect();
+        self.refuse(
+            Diagnostic::error(
+                Code::UnknownWord,
+                format!("`{word}` is not a rule this claim can check"),
+            )
+            .at(
+                crate::resolve::trimmed_span(node),
+                "expected the id of a voice-leading rule",
+            )
+            .maybe_help(
+                crate::diagnose::nearest(&word, assertable.iter().copied())
+                    .map(|near| format!("did you mean `{near}`?")),
+            )
+            .help(format!("the rules a source may assert are: {}", assertable.join(", ")))
+            .note(
+                "every other rule is reported by `musa analyze --kind voice-leading`, \
+                 which says how strongly a style holds it rather than failing the build",
+            ),
+        )
+    }
+
+    /// `senza { … }` — an unmeasured stretch, with the meter put back after it.
+    ///
+    /// Three statements' worth of fold and no mechanism: `meter none`, the body,
+    /// and the meter that was in force. That is what makes it sugar — the
+    /// barlines stop for exactly as long as the braces say, and the meter that
+    /// resumes is the one that was already there, so there is no second meter to
+    /// keep in step with the first.
+    ///
+    /// The restoring meter is [`Reading::meter`], read lexically. The replaced
+    /// path asked its cursor which meter change it had passed, which is the same
+    /// answer by a longer route whenever a meter is written where it is read —
+    /// and this reading refuses `meter` inside reusable material, so there is no
+    /// other case.
+    fn senza(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading, span: SourceSpan) -> Option<Raw> {
+        if !reading.placed {
+            return self.misplaced("an unmeasured stretch", span);
+        }
+        let opened = self.sounded_at(
+            origin,
+            crate::Scope::Piece,
+            metered(origin, crate::score::Meter::NONE),
+            Ratio::ZERO,
+        );
+        // Under `meter none` for its whole length, so the body is read with the
+        // unmeasured meter in force: a `senza` inside a `senza` restores the one
+        // its own braces opened, which is the one that was in force there.
+        let body = self.notated(node, reading.metered(crate::score::Meter::NONE))?;
+        let closed = self.sounded_at(origin, crate::Scope::Piece, metered(origin, reading.meter), Ratio::ZERO);
+        Some(applied(
+            origin,
+            Raw::var(origin, "follow"),
+            [applied(origin, Raw::var(origin, "follow"), [opened, body]), closed],
+        ))
+    }
+
     /// `mobile { a; b; c; }` — the fragments as written.
     ///
     /// The order this performance chose is empty here, for the reason the repeat
@@ -946,6 +1324,15 @@ impl Lowering<'_> {
         match which {
             Context::Key => {
                 let statement = musa_language::ast::KeyStmt::cast(node.clone())?;
+                // `key k;` names a key rather than spelling one, and the parser
+                // wrote the name as an expression child for exactly this
+                // reading. The ordinary value reading answers it, so a key a
+                // template was handed reaches `Fact.Key` the same way a written
+                // one does.
+                if let Some(written) = child(node, is_expr_node) {
+                    let named = self.value(&written)?;
+                    return Some(Raw::app(origin, Raw::var(origin, "Fact.Key"), named));
+                }
                 let Some(key) = crate::resolve::parse_key(&statement) else {
                     return self.refuse(
                         Diagnostic::error(Code::NotAValue, "this key cannot be read")
@@ -1024,6 +1411,93 @@ impl Lowering<'_> {
         Some((duration, None))
     }
 
+    /// The `Pitch` a note statement sounds, as a term.
+    ///
+    /// A spelled pitch folds to a literal, which is what lets the fold finish a
+    /// note into a value; a *named* one does not, because a parameter has no
+    /// value until an instance site supplies one. Both answer a `Raw` at
+    /// `Pitch`, so the `Fact.Note` written around them is one expression rather
+    /// than two — what the second costs is that the `sounded` enclosing it stays
+    /// a neutral term until the site applies it, which is the ordinary behaviour
+    /// of a builtin under an unapplied binder (`02-core-calculus.md` §5.8).
+    ///
+    /// Which of the two a statement wrote is the parser's answer and not a
+    /// second grammar here: `c4` lexes as a pitch literal and `root` as an
+    /// identifier, and the statement's own tokens say which is there.
+    fn pitch_term(
+        &mut self,
+        statement: &musa_language::ast::NoteStmt,
+        node: &SyntaxNode,
+        origin: Origin,
+        reading: Reading,
+    ) -> Option<Raw> {
+        if let Some(written) = statement.pitch_expr() {
+            return self.pitch_of(&written, reading);
+        }
+        let text = statement.pitch().unwrap_or_default();
+        if writes(node, SyntaxKind::Identifier) {
+            return Some(Raw::var(origin, text.as_str()));
+        }
+        let Some(pitch) = crate::WrittenPitch::parse(&text) else {
+            return self.refuse(Self::not_a_pitch(&text, crate::resolve::trimmed_span(node)));
+        };
+        Some(plain(origin, "Pitch", pitch))
+    }
+
+    /// A pitch expression as a term, whatever it names.
+    ///
+    /// `up`/`down` becomes `pitch_transposed`, which reduces to a literal when
+    /// both arguments are ones and stays a neutral spine when either is a
+    /// binder — so one reading serves `c5/4` and `(root up M2)/4` and the fold
+    /// never asks which it got. `step` is the exception: no registered
+    /// operation walks a frame of a collection, so it still folds here and
+    /// still needs a base it can read.
+    fn pitch_of(&mut self, node: &SyntaxNode, reading: Reading) -> Option<Raw> {
+        let origin = self.origin(node);
+        match node.kind() {
+            SyntaxKind::ParenExpr | SyntaxKind::BlockExpr => {
+                let inner = child(node, is_expr_node)?;
+                self.pitch_of(&inner, reading)
+            }
+            SyntaxKind::NameExpr | SyntaxKind::PathExpr => self.value(node),
+            SyntaxKind::PitchExpr => {
+                let parts = children(node, is_expr_node);
+                let base = self.pitch_of(parts.first()?, reading)?;
+                let interval = self.interval_of(parts.get(1)?, writes(node, SyntaxKind::DownKw))?;
+                Some(applied(origin, Raw::var(origin, "pitch_transposed"), [base, interval]))
+            }
+            _ => {
+                let pitch = self.written_pitch(node, reading)?;
+                Some(plain(origin, "Pitch", pitch))
+            }
+        }
+    }
+
+    /// The interval a transposition moves by, as a term.
+    ///
+    /// A named one is inverted by `interval_inverse` rather than by parsing the
+    /// spelling with a sign, because `down` is a direction the source wrote and
+    /// the value it applies to may not arrive until an instance site.
+    fn interval_of(&mut self, node: &SyntaxNode, down: bool) -> Option<Raw> {
+        let origin = self.origin(node);
+        if named(node) {
+            let held = self.value(node)?;
+            return Some(if down {
+                Raw::app(origin, Raw::var(origin, "interval_inverse"), held)
+            } else {
+                held
+            });
+        }
+        let text = node.to_string().trim().to_owned();
+        let Some(interval) = crate::Interval::parse(&text, down) else {
+            return self.refuse(
+                Diagnostic::error(Code::NotAValue, format!("`{text}` is not an interval"))
+                    .at(crate::resolve::trimmed_span(node), "unknown interval"),
+            );
+        };
+        Some(plain(origin, "Interval", interval))
+    }
+
     /// A written pitch, finished under the scale in force.
     ///
     /// The one place `in scale` is read. `p step n` needs a scale and says so
@@ -1066,13 +1540,27 @@ impl Lowering<'_> {
                 } else {
                     count
                 };
-                let Some(scale) = reading.scale else {
-                    return self.refuse(
-                        Diagnostic::error(Code::Misplaced, "`step` needs a scale to count in")
-                            .at(span, "no `in scale` encloses this")
-                            .help("put the passage in `in scale c major { … }`, naming the collection this steps through")
-                            .note("an absent scale is never an implicit C major: a step is a coordinate move and a coordinate needs a system"),
-                    );
+                let scale = match reading.scale {
+                    Some(Counting::Written(scale)) => scale,
+                    Some(Counting::Bound) => {
+                        return self.refuse(
+                            Diagnostic::error(Code::UnsupportedLanguageStage, "`step` needs a scale it can count")
+                                .at(span, "the enclosing `in scale` names a scale rather than spelling one")
+                                .help("write the collection out, as `in scale c major { … }`")
+                                .note(
+                                    "a step walks a frame of the collection around this pitch, and no registered \
+                                     operation builds one",
+                                ),
+                        );
+                    }
+                    None => {
+                        return self.refuse(
+                            Diagnostic::error(Code::Misplaced, "`step` needs a scale to count in")
+                                .at(span, "no `in scale` encloses this")
+                                .help("put the passage in `in scale c major { … }`, naming the collection this steps through")
+                                .note("an absent scale is never an implicit C major: a step is a coordinate move and a coordinate needs a system"),
+                        );
+                    }
                 };
                 self.stepped(base, scale, steps, span)
             }
@@ -1108,6 +1596,23 @@ impl Lowering<'_> {
         };
         let moved = degree.step(steps)?;
         frame.pitch(moved).or_else(|| self.out_of_range(span))
+    }
+
+    /// What an `in scale` put in force: a spelled collection, or a bound name.
+    ///
+    /// The two are told apart by the node the parser built and not by trying to
+    /// read the text both ways: `in scale c dorian` writes a scale expression
+    /// and `in scale mode` writes a name, and asking the CST which one is there
+    /// is the same reading [`super::values`] does one statement over.
+    fn counting(&mut self, node: &SyntaxNode) -> Option<Counting> {
+        if named(node) {
+            // Read for its refusals — an unbound name is still an error here —
+            // and discarded, because `in scale` contributes no fact of its own
+            // and a `step` under a bound scale is refused where it is written.
+            self.value(node)?;
+            return Some(Counting::Bound);
+        }
+        self.written_scale(node).map(Counting::Written)
     }
 
     /// `scale c dorian`, as the collection it names.
@@ -1327,16 +1832,9 @@ where
 // parse from the writing is what keeps one spelling of `Fact.Key` in the
 // compiler rather than two.
 
-/// `Fact.Key(tonic, mode)`.
+/// `Fact.Key(key)`, from a key the source spelled out.
 pub(super) fn keyed(origin: Origin, key: crate::score::Key) -> Raw {
-    applied(
-        origin,
-        Raw::var(origin, "Fact.Key"),
-        [
-            plain(origin, "PitchClass", key.tonic()),
-            payload(origin, "Mode", key.mode()),
-        ],
-    )
+    Raw::app(origin, Raw::var(origin, "Fact.Key"), plain(origin, "Key", key))
 }
 
 /// `Fact.Meter(numerator, denominator)`.
@@ -1380,6 +1878,16 @@ fn maybe(origin: Origin, value: Option<Raw>) -> Raw {
         None => Raw::var(origin, "Option.None"),
         Some(held) => Raw::app(origin, Raw::var(origin, "Option.Some"), held),
     }
+}
+
+/// Whether `node` *names* a value rather than spelling one out.
+///
+/// The parser already told the two apart, and this reads its answer rather than
+/// trying the text both ways: `key g major` and `scale c dorian` are their own
+/// expression forms, and a bare name or a qualified path is a reference to a
+/// binder — a template's parameter, or a value a module holds.
+fn named(node: &SyntaxNode) -> bool {
+    matches!(node.kind(), SyntaxKind::NameExpr | SyntaxKind::PathExpr)
 }
 
 /// `3/2`, as a tuplet's two counts, unreduced as the backends need them.

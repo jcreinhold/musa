@@ -266,10 +266,10 @@ fn samples() -> Vec<(&'static str, Datum, FactKind)> {
             "Fact.Key",
             case(
                 "Fact.Key",
-                vec![
-                    plain("PitchClass", PitchClass::parse("e").expect("`e` is a pitch class")),
-                    opaque("Mode", Mode::Minor),
-                ],
+                vec![plain(
+                    "Key",
+                    crate::Key::new(PitchClass::parse("e").expect("`e` is a pitch class"), Mode::Minor),
+                )],
             ),
             FactKind::Key {
                 tonic: PitchClass::parse("e").expect("`e` is a pitch class"),

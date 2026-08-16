@@ -89,6 +89,22 @@ pub(crate) struct Voice {
     pub(crate) id: u32,
     /// What the part calls it.
     pub(crate) name: String,
+    /// What this voice alone sounds, as a term.
+    ///
+    /// Beside [`Piece::track`] rather than instead of it, because the two answer
+    /// different questions and a consumer needs both: a projection is *lanes*,
+    /// one per voice, and the piece's own identity is the whole simultaneity.
+    /// Deriving either from the other would mean taking a normal form apart by
+    /// scope, which is reading provenance back out of a value that was built to
+    /// carry it forward.
+    pub(crate) track: Raw,
+    /// The claims written over passages of this voice, in source order.
+    ///
+    /// Per voice rather than per piece because a claim is proved against the
+    /// barlines *its own part* counts by, and a polymetric piece has more than
+    /// one set of them. Each one carries its own two terms, so a claim is placed
+    /// by reading, not by a position this walk would have had to keep.
+    pub(crate) claims: Vec<super::notation::Claimed>,
 }
 
 impl Lowering<'_> {
@@ -103,6 +119,15 @@ impl Lowering<'_> {
         let origin = self.origin(node);
         let mut whole = true;
         let mut context = self.header(&declaration, &mut whole);
+        // The meter every voice starts in. Read off the header rather than
+        // carried out of [`Lowering::header`], because a header states three
+        // different facts and only one of them is a *reading context*: a `senza`
+        // asks what meter to put back, and no voice asks about the key or the
+        // tempo the piece opened with.
+        let opening = declaration
+            .meter()
+            .and_then(|statement| crate::resolve::parse_meter(&statement))
+            .unwrap_or_default();
         let mut parts: Vec<Part> = Vec::new();
         let mut tracks = Vec::new();
         for written in declaration.score().map(|score| score.parts()).unwrap_or_default() {
@@ -139,13 +164,20 @@ impl Lowering<'_> {
                     );
                     continue;
                 }
-                match self.notated(held.syntax(), Reading::at(crate::Scope::Voice { part: id, voice })) {
-                    Some(track) => tracks.push(track),
-                    None => whole = false,
-                }
+                let held_at = Reading::at(crate::Scope::Voice { part: id, voice }).metered(opening);
+                let Some(track) = self.notated(held.syntax(), held_at) else {
+                    whole = false;
+                    continue;
+                };
+                tracks.push(track.clone());
                 voices.push(Voice {
                     id: voice,
                     name: voice_name,
+                    track,
+                    // Taken here, where the voice they were written in is still
+                    // the thing being read: the walk is shared across the score,
+                    // so leaving them would give the next voice this one's bars.
+                    claims: self.claimed(),
                 });
             }
             parts.push(Part { id, name, voices });

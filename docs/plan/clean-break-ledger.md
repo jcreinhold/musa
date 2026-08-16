@@ -26,7 +26,7 @@ best-effort translation.
 
 | Deleted spelling | Replacement | Deleted by |
 | --- | --- | --- |
-| the type name `Music` | `EventTrack[WrittenTime, ScoreFact]`, written out | 142 |
+| the type name `Music` | `EventTrack<WrittenTime>`, written out | 142 |
 | the type name `ContextualMusic` and the contextual-instantiation judgment | ordinary values; placement by the enclosing voice's left fold | 142 |
 | `music { … }` as a contextual-value constructor | an ordinary expression of event-track type | 142 |
 | `overlay(a, b)` | `together(a, b)` | 127c |

@@ -1,7 +1,7 @@
 ---
 id: 142
 slug: surface-cutover
-status: pending
+status: in-progress
 depends_on: [136a, 141, 141b, 141c, 141d, 141e, 141f, 141g, 141ga, 141h, 141ha, 141i, 141j, 141k, 141l, 141m, 141n, 141o, 141p]
 phase: 3
 ---
@@ -196,7 +196,61 @@ rewrite here would destroy that measurement. The same applies to the studio adap
   delivers is the rest — bar lines, the instance sites templates make, the passes that call the whole of it, and the
   readback that turns a normal form into the musical value a consumer receives. A track is a literal at
   `EventTrack ⟨written⟩`, so the readback is a normal form, a literal, and the payload it holds; what costs something is
-  `Program`'s shape, which exists to defer contextual instantiation and has nothing left to defer.
+  `Program`'s shape, which exists to defer contextual instantiation and has nothing left to defer. Three things bar
+  structure forced, recorded here rather than left as drift:
+  - **A bar's core spelling is its body, and its claim is placed by two terms.** `bar { … }` contributes no occurrence,
+    no payload, and no time — `elaborate.rs`'s own `elaborate_bar` already said the kernel's ontology has no bar in it —
+    so the braces erase and the term is exactly the fold of what is inside them. What the braces contribute is the
+    measure claim, and a fold has no cursor to place it with. So a claim records *the music before it* and *the passage
+    itself*, and the readback turns those two terms into a position and a duration. Each enclosing fold prepends what
+    stands before the statement the claim came out of, so a bar inside a `repeat` is placed absolutely without any block
+    knowing where it stands. The alternative — selecting a passage's occurrences by provenance — needs a step a bar
+    deliberately does not mint, because a bar that turned its own contents into an expansion of itself would make a
+    composer's notes read as generated in Origin view.
+  - **`senza`'s restoring meter is lexical.** It is `meter none`, the body, and the meter that was in force, which is
+    three statements' worth of fold and no mechanism. The meter travels down in the reading beside the scale `in scale`
+    supplies, seeded from the piece header and updated at each `meter` a block writes. The replaced path asked its
+    cursor which change it had passed; that is the same answer by a longer route wherever a meter is written where it is
+    read, and this reading refuses `meter` inside reusable material, so there is no other case.
+  - **The anonymous product was half-built, not missing, and both halves are `Pair`.** `(a, b)` has lowered since 141g
+    and only the type `(A, B)` refused — one construct disagreeing with itself, which is a defect rather than a stage.
+    Both halves now read the family 141ha declared for the machine calculus's wiring: `(A, B)` is `Pair A B` and
+    `(a, b)` is `Pair.Both a b`, in the expression and in the pattern. A *constructor application* and not a structural
+    record, because that is what makes a written product **canonical data** — `Pair.Both a b` is a `musa_core::Datum`
+    and a record is not, so a δ-rule and an assertion's argument can read one back. `prelude.rs`'s own note already
+    argued the same point one level down: §2's pairs are wiring, field names would be invented here and read by every
+    program that matched on one, and two products that named them differently would stop being the same type. Wider
+    products keep the refusal and its help text, because three positions and no names would have to choose between
+    `(a, (b, c))` and `((a, b), c)` — a choice the corpus does not force, since all 36 products it writes are pairs.
+    This closes the second of the two faults 141o's standard-library survey recorded and one of the two on the staff
+    adapter.
+  - **`assert` comes after the anonymous product, not before it.** Its arguments are values the readback has to evaluate
+    and hand `crate::assert::Claim::build` in its own six shapes, and one of those six is `within_ranges`'s
+    `List<(Pitch, Pitch)>` — the spelling that had no core term until the bullet above gave it one. Reading its
+    arguments syntactically to get around that would be a second way to read an expression, which is the second path
+    this prompt exists to remove. Four things the implementation forced:
+    - **A `Claimed` records the claim it will build, not a built one.** `crate::assert::Claim::build` takes *evaluated*
+      arguments and a block being read has none, so the statement holds the registry's own `Predicate` row and a vector
+      of `Argued`. Two cases, because `ParamType` has two kinds in it: four shapes are values and stay raw terms, and
+      the policy and the rule id are **words** the registry reads rather than terms the language can produce, so they
+      are resolved where they stand. `Document::passage` therefore answers the claim beside the passage — one call,
+      because whether the notes are gathered depends on which claim was built (`Claim::reads_notes`).
+    - **A value argument is annotated, not checked against a second table.** The reading wraps each one in `Raw::annot`
+      at the type its shape declares — `Scale`, `ChordClass`, `Nat`, `List (Pair Pitch Pitch)` — so the core refuses a
+      wrong argument against the registry's own declaration. The replaced checker carried a parallel `Type` for each
+      shape; a second list of expected types beside the registry is exactly the drift this prompt removes. The
+      consequence worth stating: an argument's type is checked when the claim is *placed*, not when the block is read,
+      because a term has no type until the document it stands in has a context to check it in.
+    - **The readback is one function in `crate::registry`, and 141q's predicted promotion was not needed.** 141q's
+      Design assigned 142 both a generic pair reading and a promotion of `registry::rules`'s four readers from
+      `pub(super)` to the crate. Writing it showed the promotion was an artifact of putting the reading at the *call
+      site*: `registry::argument(shape, normal)` lives in `registry.rs` itself, which already sees `rules`, so the three
+      existing readers stay where they are and only `rules::halves` is new — the generic pair 141q did ask for, with
+      `registry/notation.rs`'s specialized `Pair Nat Nat` reading restated over it. One `pub(crate)` item with one
+      caller instead of five with none.
+    - **`spell_arguments` and `spell_written` move to `assert.rs`.** The arity sentence is about a `Predicate`'s arity
+      and two readings write it while the cutover is in progress; one spelling beside the registry rather than two that
+      could describe the same claim differently.
 - A notation statement whose argument is a **bound name** read as a term rather than refused. `root/4` in
   `motif turn(root: Pitch)`, `key k;` and `in scale mode` in a `template piece`: 141k's reading folds a pitch, a key,
   and a scale to a *value* while it walks the block, so a parameter — which has no value until an instance site supplies
@@ -205,7 +259,19 @@ rewrite here would destroy that measurement. The same applies to the studio adap
   scale a `step` counts in take an argument that is a `Raw::var`, which makes the enclosing `sounded` a neutral term
   until the site applies it — the ordinary behaviour of a builtin under an unapplied binder (`02-core-calculus.md`
   §5.8), and the reason this is a spelling rather than a language feature. Record in the code map which of the four
-  statements each corpus needed.
+  statements each corpus needed. Three things the implementation forced, recorded here rather than left as drift:
+  - **`Fact.Key` takes one `Key`, not a tonic and a mode.** A bound key cannot be taken apart by any word this compiler
+    registers, so a two-binder constructor could be reached only from a spelled `key g major;`. Narrowing it to one
+    binder gives a key statement one meaning rather than two, and `key g major;` reaches the same constructor through
+    the same reading. `registry/notation.rs` reads the pair back off the single value.
+  - **`pitch_transposed` and `pitchclass_transposed` are new `BUILTIN_OWNERSHIP` rows**, on 141m's refusal channel.
+    `p up M3` was an *arm of the replaced checker* (`core.rs`'s `pitch_action`) rather than a row of the table 141e
+    translated, so 141e had nothing to carry: an interval moves two coordinates at once and the operation that does it
+    had no source word. It needs one here because `(root up M2)/4` in a motif has no literal to move at read time.
+    `BUILTIN_OWNERSHIP` goes 117 → 119 and `rules::REGISTERED` 124 → 126.
+  - **`step` under a *bound* scale stays refused**, with an `UnsupportedLanguageStage` naming what is missing: a step
+    walks a `scale::Frame::around` of the collection, and no registered operation builds one. No corpus file needs it,
+    and inventing a builtin for a shape nothing writes would be a knob rather than a capability.
 - `infer.rs` deleted, `core.rs`'s superseded arms deleted, `names_a_phase_type` deleted, second-path audit recorded.
 - `primitive` typed against the build-local registry, and `registry/rules.rs`'s `UNREGISTERED` shortened by the row
   141ha left there. It is not one more signature: the name and version select the descriptor that supplies the ports and

@@ -24,8 +24,10 @@
 )]
 
 use musa_language::{SyntaxKind, SyntaxNode};
+use num_rational::Ratio;
 
 use crate::document::{Document, Source, elaborate};
+use crate::elaborate::{FactKind, VoiceTrack};
 use crate::resolve::Resolver;
 
 // ---- reading a written piece back out of a parse ----
@@ -110,6 +112,368 @@ fn read(resolver: &mut Resolver, elaborated: Option<Document>, node: &SyntaxNode
 fn piece(source: &str) -> musa_core::Term {
     let (answer, said) = checked(&written(source));
     answer.unwrap_or_else(|| panic!("the piece elaborates: {said:?}"))
+}
+
+/// The whole piece and each of its lanes, read the way a consumer reads them.
+///
+/// Through [`Document::track`] rather than through [`piece`] and a hand-written
+/// shape match, because that is the operation the passes use and a law that took
+/// the term apart itself would be checking a second readback rather than the
+/// one.
+fn sounding(source: &str) -> (VoiceTrack, Vec<(String, VoiceTrack)>) {
+    let node = written(source);
+    let mut resolver = Resolver::new();
+    let sources = [Source {
+        root: node.clone(),
+        in_phase: false,
+    }];
+    let mut document = elaborate(&mut resolver, &sources).expect("the document elaborates");
+    let read = document.piece(&mut resolver, &node).expect("the piece reads");
+    let lanes = read
+        .parts
+        .iter()
+        .flat_map(|part| {
+            part.voices.iter().map(|voice| {
+                let track = document
+                    .track(&voice.track)
+                    .expect("a voice reads back as a track of its own");
+                (format!("{}.{}", part.name, voice.name), track)
+            })
+        })
+        .collect();
+    let whole = document.track(&read.track).expect("the piece reads back as a track");
+    (whole, lanes)
+}
+
+/// Every claim written in `source`, placed the way a consumer places it.
+///
+/// Through [`Document::passage`] for [`sounding`]'s reason: placing a claim by
+/// hand here would test a second arithmetic rather than the one the passes use.
+fn claimed(source: &str) -> Vec<(Ratio<i64>, Ratio<i64>, String)> {
+    let node = written(source);
+    let mut resolver = Resolver::new();
+    let sources = [Source {
+        root: node.clone(),
+        in_phase: false,
+    }];
+    let mut document = elaborate(&mut resolver, &sources).expect("the document elaborates");
+    let read = document.piece(&mut resolver, &node).expect("the piece reads");
+    read.parts
+        .iter()
+        .flat_map(|part| part.voices.iter())
+        .flat_map(|voice| voice.claims.iter())
+        .map(|claim| {
+            let (made, placed) = document.passage(claim).expect("a claim places against its own voice");
+            (placed.at.as_ratio(), placed.extent.as_ratio(), made.describe())
+        })
+        .collect()
+}
+
+/// A bar knows where it stands without a cursor to keep it.
+///
+/// The claim a `bar` makes is about *this* measure under the meter in force
+/// *here*, so a bar that could not place itself would be a true claim about the
+/// wrong music. The fold has no cursor; what it has is the term standing before
+/// each bar, and how long that lasts is where the bar begins. Three whole
+/// measures start at 0, 1, and 2 — and the third one holds a single quarter,
+/// which is the case the claim exists to catch and the reason the *extent* is
+/// asserted beside the position.
+#[test]
+fn a_bar_is_placed_by_the_music_before_it() {
+    assert_eq!(
+        claimed(
+            "piece \"bars\" {
+                score { part solo { voice one {
+                    bar { c4/4 d4/4 e4/4 f4/4 }
+                    bar { g4/4 a4/4 b4/4 c5/4 }
+                    bar { c5/4 }
+                } } }
+            }",
+        ),
+        [
+            (Ratio::new(0, 1), Ratio::new(1, 1), "fills_meter()".to_owned()),
+            (Ratio::new(1, 1), Ratio::new(1, 1), "fills_meter()".to_owned()),
+            (Ratio::new(2, 1), Ratio::new(1, 4), "fills_meter()".to_owned()),
+        ],
+        "each bar starts where the one before it ended, and says how long it is"
+    );
+}
+
+/// A bar nested inside a block is still placed absolutely.
+///
+/// The composition [`super::super::notation::Claimed::before`] performs, and the
+/// only law that can tell it apart from a reading that just happened to work at
+/// the top level: the bar inside the `repeat` is written second in its own
+/// block, and the block itself stands after a whole measure, so the answer is a
+/// sum of two prefixes rather than either one of them.
+#[test]
+fn a_nested_bar_is_placed_through_every_block_it_is_in() {
+    assert_eq!(
+        claimed(
+            "piece \"nested bars\" {
+                score { part solo { voice one {
+                    bar { c4/4 d4/4 e4/4 f4/4 }
+                    repeat 2 {
+                        bar { g4/4 a4/4 b4/4 c5/4 }
+                        bar { c5/2 }
+                    }
+                } } }
+            }",
+        )
+        .iter()
+        .map(|(at, extent, _)| (*at, *extent))
+        .collect::<Vec<_>>(),
+        [
+            (Ratio::new(0, 1), Ratio::new(1, 1)),
+            (Ratio::new(1, 1), Ratio::new(1, 1)),
+            (Ratio::new(2, 1), Ratio::new(1, 2)),
+        ],
+        "the repeat's first bar stands after the measure before the repeat, not at zero"
+    );
+}
+
+/// An assertion is the claim it names, with the arguments it was written with.
+///
+/// The law the `assert` reading exists for, and it is stated through
+/// [`Document::passage`] for [`claimed`]'s reason. Every one of
+/// `crate::assert::ParamType`'s six shapes is here, because the six are read
+/// three different ways and a law that exercised one would prove the least
+/// interesting of them: a scale and a chord are base literals, a count is the
+/// prelude's unary `Nat`, a list of ranges is `List.Cons` over `Pair.Both`, and
+/// a policy and a rule id are *words* that never become terms at all.
+///
+/// The positions are asserted beside the claims for the same reason a bar's
+/// are: an assertion places exactly the way a bar does, because it is the same
+/// [`super::super::notation::Claimed`] with a different claim in it.
+#[test]
+fn an_assertion_carries_the_claim_and_the_arguments_it_was_written_with() {
+    assert_eq!(
+        claimed(
+            "piece \"claims\" {
+                score { part choir { voice one {
+                    assert pitches_in(scale c major) { c4/4 d4/4 e4/4 f4/4 }
+                    assert voices(1) { g4/4 }
+                    assert realizes(chord c major, exactly) { [c4 e4 g4]/4 }
+                    assert within_ranges([(c3, c5), (g3, g5)]) { c4/4 }
+                    assert follows(satb_spacing) { c4/4 }
+                    assert fills_meter() { c4/1 }
+                } } }
+            }",
+        ),
+        [
+            (
+                Ratio::new(0, 1),
+                Ratio::new(1, 1),
+                "pitches_in(scale c major)".to_owned()
+            ),
+            (Ratio::new(1, 1), Ratio::new(1, 4), "voices(1)".to_owned()),
+            (
+                Ratio::new(5, 4),
+                Ratio::new(1, 4),
+                "realizes(chord c major, exactly)".to_owned()
+            ),
+            (Ratio::new(3, 2), Ratio::new(1, 4), "within_ranges(2 ranges)".to_owned()),
+            (Ratio::new(7, 4), Ratio::new(1, 4), "follows(satb_spacing)".to_owned()),
+            (Ratio::new(2, 1), Ratio::new(1, 1), "fills_meter()".to_owned()),
+        ],
+        "each assertion carries what was written on it, and stands where the music before it ends"
+    );
+}
+
+/// A claim nobody registered, an arity nobody declared, and a word nobody
+/// spells — refused where they are written.
+///
+/// Four refusals in one law because they are one boundary: the registry is the
+/// authority on what an `assert` may say, and all four are mistakes about *its*
+/// vocabulary rather than about a type. They are read while the block is read,
+/// which is what lets each one point at the source it is about — a pass that
+/// met them after elaboration would have nothing to point at, because none of
+/// the four ever becomes a term.
+#[test]
+fn an_assertion_is_refused_against_the_registrys_own_vocabulary() {
+    let refused = |claim: &str| {
+        let source = format!("piece \"bad\" {{ score {{ part p {{ voice v {{ assert {claim} {{ c4/4 }} }} }} }} }}");
+        checked(&written(&source)).1
+    };
+    assert_eq!(
+        refused("pitches_at(scale c major)"),
+        ["UnknownName: nothing is claimed by `pitches_at`"],
+        "a claim the registry does not have is not a claim"
+    );
+    assert_eq!(
+        refused("voices(4, 5)"),
+        ["WrongArity: `voices` takes one argument, and 2 were written"],
+        "and one it does have is written with what it takes"
+    );
+    assert_eq!(
+        refused("realizes(chord c major, may_drop)"),
+        ["UnknownWord: `may_drop` is not a realization policy"],
+        "a policy is one of three words"
+    );
+    assert_eq!(
+        refused("follows(satb_tessitura)"),
+        ["UnknownWord: `satb_tessitura` is not a rule this claim can check"],
+        "and a rule id is one of the rules an assertion may name"
+    );
+}
+
+/// A value argument is checked at the type the registry declares for it.
+///
+/// And checked *when it is evaluated*, which is the arrangement rather than a
+/// gap: an assertion's arguments are terms, and a term has no type until the
+/// document it stands in has a context to check it in. The reading records the
+/// annotation; [`Document::passage`] is where it is checked, the same call that
+/// turns the two track terms into a position and an extent.
+///
+/// `voices` takes a `Nat`, so a scale written where the count goes is a
+/// conversion the core refuses against the registry's own declaration — one
+/// answer to "what may stand here", from the row that declares it, rather than
+/// a table of expected types beside it.
+#[test]
+fn a_value_argument_is_checked_at_the_shape_the_claim_declares() {
+    let node = written(
+        "piece \"mistyped\" {
+            score { part p { voice v {
+                assert voices(scale c major) { c4/4 }
+            } } }
+        }",
+    );
+    let mut resolver = Resolver::new();
+    let sources = [Source {
+        root: node.clone(),
+        in_phase: false,
+    }];
+    let mut document = elaborate(&mut resolver, &sources).expect("the document elaborates");
+    let read = document.piece(&mut resolver, &node).expect("the piece reads");
+    let claim = read
+        .parts
+        .iter()
+        .flat_map(|part| part.voices.iter())
+        .flat_map(|voice| voice.claims.iter())
+        .next()
+        .expect("the assertion is recorded");
+    let Err(error) = document.passage(claim) else {
+        panic!("a scale is not a count")
+    };
+    let restated = crate::lower::refusals::restate(document.sites(), &error);
+    assert_eq!(
+        restated.code,
+        crate::diagnose::Code::ConversionMismatch,
+        "the count's own type is what refuses a scale: {}",
+        restated.message
+    );
+}
+
+/// `senza` stops the barlines and puts back the meter that was in force.
+///
+/// The two halves are what makes it sugar rather than a mechanism, and the
+/// second half is the one worth a law: the meter that resumes is `3/4` because
+/// the piece's header says so, and a reading that restored a default would have
+/// silently rebarred everything after the cadenza. Nothing here consults a
+/// cursor — the meter travels down with the reading, and the two facts are two
+/// ordinary statements of the fold.
+#[test]
+fn senza_stops_the_meter_and_restores_the_one_in_force() {
+    let (whole, _) = sounding(
+        "piece \"cadenza\" {
+            meter 3/4;
+            score { part solo { voice one {
+                c4/4
+                senza { d4/8 e4/8 }
+                f4/4
+            } } }
+        }",
+    );
+    assert_eq!(
+        placed(&whole),
+        ["0 c4", "1/4 0/4", "1/4 d4", "3/8 e4", "1/2 3/4", "1/2 f4", "0 3/4"],
+        "the braces open unmeasured at 1/4 and close back into three-four at 1/2"
+    );
+}
+
+/// The readback is the music, not a term that resembles it.
+///
+/// What a consumer receives is a `VoiceTrack`: the occurrences a voice folded,
+/// at the exact written positions the fold placed them, in a track exactly as
+/// long as what was written. Asserting the *positions* is the point — a term
+/// that held the right facts in the wrong order would print the same way and
+/// sound like a different piece.
+///
+/// The meter is in the list and is not an accident of the fixture: a piece that
+/// writes no `meter` is in four-four at its own start, and a readback that
+/// dropped the fact saying so would hand a consumer a piece with no time
+/// signature.
+#[test]
+fn a_piece_reads_back_as_the_track_it_folded() {
+    let (whole, _) = sounding(
+        "piece \"read back\" {
+            score { part solo { voice one { c4/4 d4/4 e4/2 } } }
+        }",
+    );
+    assert_eq!(
+        whole.duration().as_ratio(),
+        Ratio::new(1, 1),
+        "two quarters and a half is one whole"
+    );
+    assert_eq!(
+        placed(&whole),
+        ["0 c4", "1/4 d4", "1/2 e4", "0 4/4"],
+        "each note starts where the one before it ended, under the meter the piece is in"
+    );
+}
+
+/// A voice reads back on its own, and holds only what it sounds.
+///
+/// The lane a projection draws, and the reason [`super::Voice`] keeps a term of
+/// its own: two parts sounding at once are one simultaneity in the piece and two
+/// staves on a page, and a consumer that had only the piece's track would have to
+/// take a normal form apart by scope to get them back. The header facts are
+/// *absent* from a lane and present in the whole, which is the same split
+/// `resolve::lower_header` and the lane loop already make.
+#[test]
+fn each_voice_reads_back_as_the_lane_it_is() {
+    let (whole, lanes) = sounding(
+        "piece \"two staves\" {
+            score {
+                part upper { voice one { c5/2 } }
+                part lower { voice two { c3/4 g3/4 } }
+            }
+        }",
+    );
+    let shown: Vec<_> = lanes
+        .iter()
+        .map(|(name, track)| (name.as_str(), placed(track)))
+        .collect();
+    assert_eq!(
+        shown,
+        [
+            ("upper.one", vec!["0 c5".to_owned()]),
+            ("lower.two", vec!["0 c3".to_owned(), "1/4 g3".to_owned()]),
+        ],
+        "each lane is its own voice and nothing else"
+    );
+    assert_eq!(
+        whole.duration(),
+        lanes.first().expect("the upper part is a lane").1.duration(),
+        "the piece is as long as its longest lane, not as long as their sum"
+    );
+}
+
+/// Where each occurrence starts and what it is, compactly enough to read.
+fn placed(track: &VoiceTrack) -> Vec<String> {
+    track
+        .occurrences()
+        .iter()
+        .map(|occurrence| {
+            let at = occurrence.span().start().as_ratio();
+            let what = match occurrence.payload().kind {
+                FactKind::Note { ref pitch, .. } => pitch.to_string(),
+                FactKind::Meter { numerator, denominator } => format!("{numerator}/{denominator}"),
+                ref other => format!("{other:?}"),
+            };
+            format!("{at} {what}")
+        })
+        .collect()
 }
 
 /// `source`'s parts and voices, without checking the term they fold into.
@@ -378,30 +742,19 @@ fn a_parts_own_meter_is_a_fact_at_the_parts_scope() {
 /// Every piece in `examples/`, read and checked with the standard library in
 /// scope.
 ///
-/// Ten reasons remain, in six classes, and none of them is about the structure
-/// this prompt built:
+/// Five reasons remain, in four classes, and none of them is about the
+/// structure 141k built:
 ///
 /// - **the contextual `music` value** — `Music` in a signature, and the `step`
 ///   in a free `music { … }` that no `in scale` encloses. One thing twice:
 ///   prompt 142 deletes contextual `Music`, and a phrase whose meaning depends
 ///   on where it is used is the thing being deleted.
-/// - **a notation statement whose argument is a name** — `root/4` in
-///   `motif turn(root: Pitch)`, `key k;` and `in scale mode` in a
-///   `template piece`. The reading folds a pitch, a key, and a scale to a
-///   *value* while it walks, and a parameter has no value until the site
-///   supplies one, so each is reported as though a literal had been misspelled.
-///   Prompt 142's Target now names this class; it is the one fault the survey
-///   found that no prompt had written down.
 /// - **the instance site** — `make` inside a part, which needs the expansion
-///   path this prompt's Stop leaves to 142.
-/// - **bar structure** — `bar`, `senza`, and `assert`, which are checked against
-///   barlines a pass resolves once every voice has been read.
-/// - **the anonymous product** — `(A, B)` written as a type, which prompt 136's
-///   records replaced and [`crate::lower::types`] refuses by name.
-/// - **an argument written by name** — `f(x: 1)`, which
-///   [`crate::lower::values`] refuses. Its message reads backwards, naming what
-///   the writer should have done rather than what they did; the wording belongs
-///   to the prompt that owns that refusal.
+///   path 141k's Stop leaves to 142.
+/// - **an argument written by name** — `Against(first: Plain, …)` in
+///   `gesture-data`, which [`crate::lower::values`] refuses. A field's name is
+///   written at the declaration; repeating it at a use is a second way to pass
+///   an argument, and the migration drops the labels.
 /// - **a kernel quote** — `kernel { … }`, whose core spelling 141h's laws
 ///   already record as 142's.
 ///
@@ -409,6 +762,24 @@ fn a_parts_own_meter_is_a_fact_at_the_parts_scope() {
 /// notation statements, motifs, fragments, transformations, part and voice
 /// numbering, header and per-part context, and the scope every fact in them is
 /// constructed at.
+///
+/// Three classes were here and are gone. A notation statement whose argument is
+/// a *name* — `root/4` in `motif turn(root: Pitch)`, `key k;` and `in scale
+/// mode` in a `template piece` — which 141k's fold reported as though a literal
+/// had been misspelled, because it folded to a value while it walked and a
+/// parameter has no value until an instance site supplies one; 142 answers it by
+/// reading those three positions as terms (see [`crate::lower::notation`]). The
+/// anonymous product, where only the *type* half was ever missing: `(a, b)` has
+/// lowered since 141g, and both halves now read the `Pair` the prelude declares,
+/// so a written product is canonical data rather than a structural record.
+///
+/// And the **assertion**. `assert`'s claim, its arity, and its two *word*
+/// arguments are read where they are written, and its value arguments are
+/// annotated with the type the registry declares and left as terms;
+/// [`crate::document::Document::passage`] evaluates them and builds the claim.
+/// `bar` and `senza` were beside it in that class and went earlier: a bar's
+/// braces erase and its claim is placed by the term standing before it, and a
+/// `senza` is `meter none`, the body, and the meter the reading carried down.
 #[test]
 fn every_example_elaborates() {
     let libraries = crate::document::laws::library_sources();
@@ -420,6 +791,7 @@ fn every_example_elaborates() {
             continue;
         };
         let (_, reasons) = checked_with(&node, &libraries);
+        let _ = &libraries;
         said.extend(reasons);
     }
     said.sort();
@@ -428,15 +800,10 @@ fn every_example_elaborates() {
         said,
         [
             "Misplaced: `step` needs a scale to count in",
-            "NotAValue: `mode` is not a pitch class",
-            "NotAValue: `root` is not a pitch",
-            "NotAValue: this key cannot be read",
             "UnknownName: no binder named `Music` is in scope",
             "UnsupportedLanguageStage: a kernel quote has no core spelling yet",
             "UnsupportedLanguageStage: a voice made from a template has no core spelling yet",
-            "UnsupportedLanguageStage: an anonymous product has no core spelling",
-            "UnsupportedLanguageStage: an argument is passed by position",
-            "UnsupportedLanguageStage: this statement has no core spelling yet",
+            "UnsupportedLanguageStage: an argument cannot be labelled here",
         ],
         "the examples need exactly what 142 owns"
     );

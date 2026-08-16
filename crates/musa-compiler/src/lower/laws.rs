@@ -158,6 +158,11 @@ fn every_written_base_type_lowers_to_a_type_the_core_accepts() {
         "Row12",
         "Duration<WrittenTime>",
         "Position<PhysicalTime>",
+        // The type a fragment inhabits, written the way its duration is. This
+        // is the ledger's replacement for `Music`, and it is a *written* type
+        // rather than a contextual one: a track of beats and a track of seconds
+        // are different types, and neither depends on where it is used.
+        "EventTrack<WrittenTime>",
     ] {
         let (raw, complaints) = lowered_type(written);
         assert!(complaints.is_empty(), "`{written}` lowers without complaint");

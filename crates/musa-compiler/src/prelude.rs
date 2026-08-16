@@ -347,10 +347,13 @@ fn fact_data() -> RawData {
                         binder("shape", var("Progress")),
                     ],
                 ),
-                constructor(
-                    "Key",
-                    vec![binder("tonic", var("PitchClass")), binder("mode", var("Mode"))],
-                ),
+                // One `Key` rather than a tonic and a mode, because `key k;`
+                // names a key a template was handed and the two halves of a
+                // bound one cannot be taken apart by any word this compiler
+                // registers. A written `key g major;` reaches the same
+                // constructor through the same reading, so there is one answer
+                // to what a key statement means rather than two.
+                constructor("Key", vec![binder("key", var("Key"))]),
                 constructor(
                     "Meter",
                     vec![binder("numerator", var("Nat")), binder("denominator", var("Nat"))],

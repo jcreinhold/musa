@@ -53,20 +53,56 @@ impl Lowering<'_> {
                 // the name is unreachable and its only job is to be printable.
                 Some(Raw::pi(origin, "argument", domain, codomain))
             }
-            // `ProductType` is `01-surface.md`'s anonymous product, which
-            // `136`'s records replaced: the core's records are structural and
-            // keyed by field name, so a written pair has no type until its
-            // positions are named. Prompt 142's migration names the record.
-            SyntaxKind::ProductType => self.refuse(
-                Diagnostic::error(
-                    Code::UnsupportedLanguageStage,
-                    "an anonymous product has no core spelling",
-                )
-                .at(crate::resolve::trimmed_span(node), "written here")
-                .help("declare a `record` whose fields name what the positions meant, and write that"),
-            ),
+            // `01-surface.md`'s anonymous product, as the `Pair` the prelude
+            // already declares. The value side reads `(a, b)` as `Pair.Both a b`
+            // for the reason [`crate::prelude`]'s own note gives — positions are
+            // what a written pair has, and inventing `first`/`second` would make
+            // two products that named them differently different types — and a
+            // type that disagreed with the value side would be one construct
+            // contradicting itself.
+            //
+            // Only two, and the refusal keeps the help text it always had. The
+            // corpus writes 36 products and every one of them is a pair, so the
+            // arity that would force a choice between `(A, (B, C))` and
+            // `((A, B), C)` is one nobody has written; a reading invented for it
+            // would be an encoding no reader could check against the source.
+            SyntaxKind::ProductType => {
+                let members: Option<Vec<Raw>> = children(node, is_type_node).iter().map(|held| self.ty(held)).collect();
+                match members?.as_slice() {
+                    [first, second] => Some(applied(
+                        origin,
+                        Raw::var(origin, "Pair"),
+                        [first.clone(), second.clone()],
+                    )),
+                    written => self.wide_product(node, written.len()),
+                }
+            }
             _ => None,
         }
+    }
+
+    /// "an anonymous product of `n` has no core spelling", for `n` other than
+    /// two.
+    ///
+    /// Shared with [`super::values`] so a written `(a, b, c)` and its type are
+    /// refused in the same words: the value side reads a pair and the type side
+    /// reads a pair, and one of them refusing a triple more helpfully than the
+    /// other would be a reader's problem rather than a distinction.
+    ///
+    /// The help text is the one the whole construct carried before 142 gave the
+    /// pair a spelling, and it is still the repair: a record's fields say what
+    /// the positions meant, which is exactly what is missing when three of them
+    /// are written and nothing says how they group.
+    pub(super) fn wide_product<T>(&mut self, node: &SyntaxNode, written: usize) -> Option<T> {
+        self.refuse(
+            Diagnostic::error(
+                Code::UnsupportedLanguageStage,
+                format!("an anonymous product of {written} has no core spelling"),
+            )
+            .at(crate::resolve::trimmed_span(node), "written here")
+            .help("declare a `record` whose fields name what the positions meant, and write that")
+            .note("a product of two is `Pair`; wider ones would have to choose a nesting nothing wrote"),
+        )
     }
 
     /// `Option<τ>` and `List<τ>`, which have their own node kinds because the
@@ -200,7 +236,13 @@ impl Lowering<'_> {
     /// the phase scope is exactly where they would disagree.
     fn indexed_base(&self, written: &str) -> Option<(Index, String)> {
         match written {
-            "Duration" | "Position" => Some((
+            // `EventTrack` is here rather than in [`compiler_type`] because it is
+            // registered at `Coordinate → Type 0` exactly as the two tagged
+            // rationals are: a track of written beats and a track of seconds are
+            // different types, and the word alone names neither. It is what the
+            // ledger's row for `Music` replaces, so a fragment's type is now
+            // written the way its duration always was.
+            "Duration" | "Position" | "EventTrack" => Some((
                 Index::Coordinate,
                 format!("write `{written}<WrittenTime>`, or `<PhysicalTime>` for clock time"),
             )),

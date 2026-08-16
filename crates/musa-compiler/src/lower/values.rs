@@ -13,11 +13,11 @@
 //! - `MusicExpr` and `KernelQuote` need `EventTrack`. Prompt 141h gave it a core
 //!   shape — a base type and eight builtins over it — and deliberately left it
 //!   unspellable; prompt 142 is where the source learns the word.
-//! - `ProductType`'s value form, `(a, b)`, is written as a record here — the
-//!   core has structural records and no separate pair, so a product is the
-//!   record whose fields are its positions. That is a *reading*, not a new
-//!   feature: nothing about which programs are admitted changes, and a surface
-//!   product and the record it becomes have the same projections.
+//! - `(a, b, c)`, and every wider product. The pair is `Pair.Both a b`, which
+//!   the prelude already declares; three positions and no names would have to
+//!   choose between `(a, (b, c))` and `((a, b), c)`, and the corpus writes 36
+//!   products of which every one is a pair. `Lowering::wide_product` refuses the
+//!   rest in the words the whole construct carried before 142.
 //! - A **named** call argument. The core applies positionally, and reordering a
 //!   written argument list to match a declaration would mean resolving the
 //!   callee — which is the core's, one pass later. Prompt 142's migration writes
@@ -307,19 +307,23 @@ impl Lowering<'_> {
 
     // ---- the built-up forms ----
 
-    /// `(a, b)` — the anonymous product, as the record whose fields are its
-    /// positions.
+    /// `(a, b)` — the anonymous product, as the `Pair` the prelude declares.
+    ///
+    /// A constructor application and not a structural record, which makes a
+    /// written product *canonical data*: `Pair.Both a b` is a
+    /// [`musa_core::Datum::Case`], so a δ-rule and a claim's argument can read
+    /// one back, and a record cannot be read back at all. That is the whole of
+    /// why this is `Pair` — see [`crate::prelude`] for why the halves stay
+    /// positional.
     fn product(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
-        let members = self.every(node)?;
-        let fields: Vec<(String, Raw)> = members
-            .into_iter()
-            .enumerate()
-            .map(|(index, member)| (position_field(index), member))
-            .collect();
-        Some(Raw::record(
-            origin,
-            fields.iter().map(|(name, term)| (name.as_str(), term.clone())),
-        ))
+        match self.every(node)?.as_slice() {
+            [first, second] => Some(applied(
+                origin,
+                Raw::var(origin, "Pair.Both"),
+                [first.clone(), second.clone()],
+            )),
+            written => self.wide_product(node, written.len()),
+        }
     }
 
     /// `[a, b]` — a cons list, built from its tail.
@@ -407,11 +411,19 @@ impl Lowering<'_> {
         };
         let mut arguments = Vec::new();
         for argument in children(&list, |kind| kind == SyntaxKind::ExprArg) {
+            // A label at a *use* is refused rather than checked against the
+            // declaration's field name, because checking it would need the
+            // declaration here and the core is what knows one. Every argument is
+            // positional, so a label is either agreeing with the position it is
+            // already in or contradicting it, and neither is worth a second way
+            // to pass an argument (`01-surface.md` §1.2 names fields at the
+            // declaration, which is where the name does work).
             if own_tokens(&argument).any(|token| token.kind() == SyntaxKind::Colon) {
                 return self.refuse(
-                    Diagnostic::error(Code::UnsupportedLanguageStage, "an argument is passed by position")
-                        .at(crate::resolve::trimmed_span(&argument), "named here")
-                        .help("write the arguments in the order the declaration takes them"),
+                    Diagnostic::error(Code::UnsupportedLanguageStage, "an argument cannot be labelled here")
+                        .at(crate::resolve::trimmed_span(&argument), "labelled here")
+                        .help("drop the label — arguments go in the order the declaration takes them")
+                        .note("a field's name is written at the declaration; a use passes values by position"),
                 );
             }
             let written = child(&argument, is_expr_node)?;
@@ -834,15 +846,18 @@ impl Lowering<'_> {
                 // bracket it could not finish would bind names nobody wrote.
                 _ => return None,
             },
-            // `(m, n)` matches the record a product is written as.
-            SyntaxKind::LParen => {
-                let fields: Vec<(String, RawPattern)> = names
-                    .iter()
-                    .enumerate()
-                    .map(|(index, name)| (position_field(index), RawPattern::bind(origin, name.as_str())))
-                    .collect();
-                RawPattern::record(origin, fields.iter().map(|(name, held)| (name.as_str(), held.clone())))
-            }
+            // `(m, n)` matches the constructor a product is written as.
+            SyntaxKind::LParen => match names.as_slice() {
+                [first, second] => RawPattern::constructor(
+                    origin,
+                    "Pair.Both",
+                    [
+                        RawPattern::bind(origin, first.as_str()),
+                        RawPattern::bind(origin, second.as_str()),
+                    ],
+                ),
+                written => return self.wide_product(node, written.len()),
+            },
             // `Tying::Untied` — §1.5's path, read exactly as it is in an
             // expression, because a case named in its type's namespace is the
             // same name written in the same way.
@@ -952,14 +967,6 @@ fn literal_of(pattern: &SyntaxNode) -> Option<SyntaxNode> {
             )
         })
         .then(|| pattern.clone())
-}
-
-/// The field name a product's position is written as.
-///
-/// Leading underscore so that it cannot collide with a field a `record`
-/// declaration wrote: `01-surface.md`'s identifiers do not start with one.
-pub(super) fn position_field(index: usize) -> String {
-    format!("_{index}")
 }
 
 /// The `::` path a pattern's tokens open with, and everything after it.

@@ -162,6 +162,56 @@ fn the_phase_vocabulary_is_readable_only_in_a_phase_source() {
     assert!(phase.is_some(), "an adapter phase can: {said:?}");
 }
 
+/// A structured answer reads back as the data it is.
+///
+/// The compiler's half of prompt 141q, and the reason that prompt exists:
+/// [`crate::registry::read_back`] answers a *base literal*, and a count and a
+/// list are neither. `3` is `Nat.Succ` three deep over `Nat.Zero`, `[1, 2]` is
+/// `List.Cons` over `List.Empty`, and both are constructor spines that
+/// `read_back` refuses.
+///
+/// Stated over source rather than over hand-written terms because that is the
+/// claim worth making. The shapes below are what `let n: Nat = 3;` *actually*
+/// elaborates to through the prelude's declarations and 141g's lowering, so a
+/// change to either that broke a consumer's reading would fail here rather than
+/// in whatever pass first tried to count something.
+///
+/// The parameter is what `List` adds over `Nat`. A value of `List Nat` is
+/// `List.Cons Nat 1 (…)`, and every field below is a field: the reading drops
+/// the parameter because the declaration says where the fields begin.
+#[test]
+fn a_count_and_a_list_read_back_as_canonical_data() {
+    let document = document(
+        "library {
+            let n: Nat = 3;
+            let xs: List<Nat> = [1, 2];
+        }",
+    );
+    let read = |name: &str| {
+        let (normal, _) = document.value(name).expect("the definition is bound");
+        musa_core::canonical(&normal).unwrap_or_else(|| panic!("`{name}` reads back as data"))
+    };
+    let case = |name: &str, fields: Vec<musa_core::Datum>| musa_core::Datum::Case {
+        constructor: std::sync::Arc::from(name),
+        fields,
+    };
+    let zero = case("Nat.Zero", Vec::new());
+    let succ = |inner| case("Nat.Succ", vec![inner]);
+    let three = succ(succ(succ(zero.clone())));
+    assert_eq!(read("n"), three, "a count is the `Succ`s it is deep");
+    assert_eq!(
+        read("xs"),
+        case(
+            "List.Cons",
+            vec![
+                succ(zero.clone()),
+                case("List.Cons", vec![succ(succ(zero)), case("List.Empty", Vec::new())]),
+            ],
+        ),
+        "and a list is its members, with the element type left out"
+    );
+}
+
 /// The two questions a [`Document`] answers are one interface, not two.
 ///
 /// [`Document::value`] hands back an [`musa_core::ElabError`] and nothing else
@@ -255,17 +305,18 @@ const STANDARD_LIBRARY: &[(&str, &str)] = &[
 
 /// The whole standard library, elaborated as one document.
 ///
-/// Two faults, and each is a row in prompt 142's Target rather than a defect
-/// here:
+/// One fault, and it is a row in prompt 142's Target rather than a defect here:
+/// **`Music`**, the contextual type 142 deletes. `list.musa` and `voicing.musa`
+/// write it in a signature, and after the migration a fragment is an
+/// `EventTrack ⟨written⟩` and a motif is a function to one, which is what
+/// `00-semantics.md` §3 already says.
 ///
-/// - **`Music`** is the contextual type 142 deletes. `list.musa` and
-///   `voicing.musa` write it in a signature, and after the migration a fragment
-///   is an `EventTrack ⟨written⟩` and a motif is a function to one, which is
-///   what `00-semantics.md` §3 already says.
-/// - **the anonymous product** is `(A, B)` written as a type, which `136`'s
-///   records replaced and [`crate::lower::types`] refuses by name: the core's
-///   records are structural and keyed by field name, so a written pair has no
-///   type until its positions are named.
+/// The anonymous product was the second, until 142 found that only *half* of it
+/// was missing: `(a, b)` had lowered here since 141g and it was the type
+/// `(A, B)` alone that refused, which is one construct disagreeing with itself
+/// rather than a stage. Both halves now read `Pair`, the family 141ha declared
+/// for the machine calculus's wiring — a written product is a constructor
+/// application and therefore canonical data, which a structural record is not.
 ///
 /// Everything else the thirteen prompts built holds on the standard library's
 /// real Musa: every `data` declaration, every generic signature, the qualified
@@ -275,10 +326,7 @@ fn the_standard_library_elaborates() {
     let (_, said) = faults(&library_sources());
     assert_eq!(
         said,
-        [
-            "UnknownName: no binder named `Music` is in scope",
-            "UnsupportedLanguageStage: an anonymous product has no core spelling",
-        ],
+        ["UnknownName: no binder named `Music` is in scope"],
         "the standard library needs exactly what 142 already owns"
     );
 }
@@ -300,23 +348,19 @@ fn the_doubled_adapter_elaborates() {
 
 /// `stdlib/src/adapters/staff.musa`, elaborated in phase scope.
 ///
-/// Two reasons, and both are 142's: the anonymous product again, and a
-/// conversion mismatch where the file branches on a rule 141m left answering
-/// `Result τ Text` — one of the twenty sites 141m's survey table lists and
-/// 142's Target moves onto the refusal channel.
+/// One reason, and it is 142's: a conversion mismatch where the file branches on
+/// a rule 141m left answering `Result τ Text` — one of the twenty sites 141m's
+/// survey table lists and 142's Target moves onto the refusal channel.
 ///
 /// This file is prompt 145's benchmark and 142's Stop forbids rewriting it, so
-/// the reasons here are the ones a *migration* has to answer and not the ones a
+/// the reason here is the one a *migration* has to answer and not the ones a
 /// rewrite would.
 #[test]
 fn the_staff_adapter_elaborates() {
     let (_, said) = adapter(include_str!("../../../../stdlib/src/adapters/staff.musa"));
     assert_eq!(
         said,
-        [
-            "ConversionMismatch: type mismatch",
-            "UnsupportedLanguageStage: an anonymous product has no core spelling",
-        ],
+        ["ConversionMismatch: type mismatch"],
         "the staff adapter needs exactly what 142 already owns"
     );
 }

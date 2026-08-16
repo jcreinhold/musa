@@ -64,15 +64,15 @@ use crate::time::{Exact, exact_arithmetic, exact_ratio, written_rational};
 
 /// How many rows of the two ownership tables reach the core's registry.
 ///
-/// 108 of `BUILTIN_OWNERSHIP`'s 117 and 16 of `SYNTAX_OWNERSHIP`'s 17. The rows
-/// past this module's 92 and fourteen are registered where their reduction is:
+/// 110 of `BUILTIN_OWNERSHIP`'s 119 and 16 of `SYNTAX_OWNERSHIP`'s 17. The rows
+/// past this module's 94 and fourteen are registered where their reduction is:
 /// the two traversals in [`super::traversal`], the eight track builtins in
 /// [`super::track`], and the eight machine forms in [`super::machine`], which
 /// are §5.8's second, third, and fourth families rather than its first. A
 /// δ-builtin's rule is a [`Rule`] and lives here; the others carry a rewrite, a
 /// family, or no reduction at all, and live beside the argument that admits
 /// them.
-pub(super) const REGISTERED: usize = 124;
+pub(super) const REGISTERED: usize = 126;
 
 /// The rows that do not, by family and by count.
 ///
@@ -193,6 +193,28 @@ pub(super) fn items(datum: &Datum) -> Option<Vec<&Datum>> {
             _ => return None,
         }
     }
+}
+
+/// The two halves of a `Pair`, whatever they hold.
+///
+/// Generic where [`super::notation`]'s reading was specialized, because the
+/// halves of a pair are the same two fields at every instantiation: a written
+/// `(a, b)` is `Pair.Both a b` (`lower::values`), and what the halves *are* is
+/// the caller's question. `super::argument` reads a pair of pitches through
+/// this and `super::notation` reads a pair of counts, and neither has to know
+/// where a constructor's parameters stop.
+pub(super) fn halves(datum: &Datum) -> Option<(&Datum, &Datum)> {
+    let Datum::Case {
+        ref constructor,
+        ref fields,
+    } = *datum
+    else {
+        return None;
+    };
+    if &**constructor != "Pair.Both" {
+        return None;
+    }
+    Some((fields.first()?, fields.get(1)?))
 }
 
 /// The pitch classes of a `List Pc12`.
@@ -485,6 +507,32 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
             read::<Interval>(arguments.first()?)?
                 .inverse()
                 .map(|inverse| plain("Interval", inverse).into())
+        },
+        // `c4 up M3` and `c up M3` were arms of the replaced checker rather
+        // than rows of this table, so `141e` had nothing to translate: an
+        // interval moves two coordinates at once and the operation that does
+        // it had no source word. It has one here because the notation fold
+        // needs it for a pitch it was *handed* — `(root up M2)/4` in a motif —
+        // where there is no literal to move at read time.
+        Builtin::PitchTransposed => |arguments| {
+            let (pitch, interval) = (
+                read::<WrittenPitch>(arguments.first()?)?,
+                read::<Interval>(arguments.get(1)?)?,
+            );
+            Some(pitch.transpose(interval).map_or_else(
+                || refused("this transposition leaves the range of written pitches"),
+                |moved| Answer::Reduced(plain("Pitch", moved)),
+            ))
+        },
+        Builtin::PitchClassTransposed => |arguments| {
+            let (class, interval) = (
+                read::<PitchClass>(arguments.first()?)?,
+                read::<Interval>(arguments.get(1)?)?,
+            );
+            Some(class.transpose(interval).map_or_else(
+                || refused("this transposition leaves the range of spelled pitch classes"),
+                |moved| Answer::Reduced(plain("PitchClass", moved)),
+            ))
         },
         Builtin::PitchClassOf => |arguments| {
             reduced(plain(

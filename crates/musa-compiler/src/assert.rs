@@ -205,6 +205,14 @@ impl ParamType {
 /// The value language's own `Value` stays private to `core`: this is the five
 /// shapes a claim can be built from, and the boundary is here so that adding a
 /// claim cannot widen what the checker can see.
+///
+/// `Clone` because two of the six arrive at different times. A policy and a
+/// rule id are *words*, read where the `assert` was written; the other four are
+/// expressions that have no value until the document is elaborated. The
+/// statement therefore holds the resolved words while it waits, and building
+/// the claim reads them back out of a borrow rather than consuming the
+/// statement — see [`crate::lower::notation::Argued`].
+#[derive(Clone)]
 pub(crate) enum Argument {
     /// A scale.
     Scale(Scale),
@@ -324,6 +332,29 @@ pub(crate) const CLAIMS: [Predicate; 6] = [
     },
 ];
 
+/// `two arguments`, `no arguments` — what a claim's signature asks for.
+///
+/// Beside [`Predicate`] because the sentence is about a predicate's arity, and
+/// two readings of an `assert` write it: the checker `142` replaces and the
+/// lowering that replaces it. One spelling rather than two, so a claim that
+/// gains an argument cannot be described two ways.
+pub(crate) fn spell_arguments(count: usize) -> String {
+    match count {
+        0 => "no arguments".to_owned(),
+        1 => "one argument".to_owned(),
+        other => format!("{other} arguments"),
+    }
+}
+
+/// `none were`, `one was`, `three were` — what the source actually wrote.
+pub(crate) fn spell_written(count: usize) -> String {
+    match count {
+        0 => "none were".to_owned(),
+        1 => "one was".to_owned(),
+        other => format!("{other} were"),
+    }
+}
+
 /// One claim, as an editor offers it.
 ///
 /// A restatement of [`Predicate`] with the registry's own types spelled out,
@@ -425,6 +456,16 @@ impl Claim {
             _ => return None,
         };
         arguments.next().is_none().then_some(claim)
+    }
+
+    /// Whether proving this claim needs to know which notes sound.
+    ///
+    /// Only the measure claim does not: it is about how long a passage lasts and
+    /// nothing else, so reading a bar's notes out would pay for a list every
+    /// [`check`] arm that could see it ignores. Every other claim is about the
+    /// pitches themselves.
+    pub(crate) const fn reads_notes(&self) -> bool {
+        !matches!(*self, Self::FillsMeter)
     }
 
     /// How the claim reads back: the name with its arguments, spelled the way

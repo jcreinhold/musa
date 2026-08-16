@@ -182,6 +182,78 @@ where
     value.payload().as_any().downcast_ref::<Domain<T>>().map(|held| &held.0)
 }
 
+/// The value of domain `T` a *closed normal form* holds.
+///
+/// [`held`] one layer further out, and the outermost one there is: a δ-rule is
+/// handed a [`Datum`], a structural rewrite a [`Literal`], and a caller that has
+/// finished elaborating a [`Term`]. The step this adds is the canonicity
+/// `02-core-calculus.md` §5 promises — a closed term at a registered base type
+/// normalizes to a literal of that type — so whoever put a track or a `Syntax`
+/// into the core takes one back out here rather than matching on a term's shape
+/// by hand at each site.
+///
+/// # Errors
+///
+/// [`ElabError::Malformed`] when the normal form is not a literal, or holds
+/// another host's datum. Both are defects in *this* crate rather than in the
+/// source: the term was checked at `T`'s own type before it was normalized, so a
+/// program cannot reach either by being wrong.
+pub(crate) fn read_back<T>(normal: &Term) -> Result<&T, ElabError>
+where
+    T: PartialEq + fmt::Debug + fmt::Display + Send + Sync + 'static,
+{
+    // `type_name` rather than a name each caller passes: the sentence is about a
+    // Rust domain that disagreed with its own registration, and a caller free to
+    // name it could name it wrongly.
+    let broken = || ElabError::from(musa_core::Malformed::NotALiteral(std::any::type_name::<T>().into()));
+    let musa_core::Shape::Lit(ref value) = *normal.shape() else {
+        return Err(broken());
+    };
+    held::<T>(value).ok_or_else(broken)
+}
+
+/// The claim argument a checked normal form holds, at the shape the claim
+/// registry declares for it.
+///
+/// Here rather than beside the `assert` reading because this is the registry's
+/// own knowledge: a scale is a base literal, a count is the prelude's unary
+/// `Nat`, and a list of ranges is `List.Cons` over `Pair.Both` over two `Pitch`
+/// literals. Three different readings behind one question, so a caller that has
+/// finished elaborating an argument does not have to know which — the same
+/// service [`read_back`] performs for the one shape that *is* a literal.
+///
+/// `None` for a `shape` that is a **word** rather than a value, and for a normal
+/// form that does not hold what the shape declares. Both are defects in this
+/// crate rather than in a program, for [`read_back`]'s reason and
+/// [`crate::assert::Claim::build`]'s: the two words are read where the `assert`
+/// is written and never reach here, and every other argument was checked at the
+/// type this shape declares before it was normalized. `None` is the belt to
+/// those braces.
+pub(crate) fn argument(shape: crate::assert::ParamType, normal: &Term) -> Option<crate::assert::Argument> {
+    use crate::assert::{Argument, ParamType};
+
+    match shape {
+        ParamType::Scale => Some(Argument::Scale(*read_back::<crate::scale::Scale>(normal).ok()?)),
+        ParamType::Chord => Some(Argument::Chord(*read_back::<crate::chord::ChordClass>(normal).ok()?)),
+        ParamType::Count => Some(Argument::Count(rules::nat(&musa_core::canonical(normal)?)?)),
+        ParamType::Ranges => {
+            let written = musa_core::canonical(normal)?;
+            let ranges = rules::items(&written)?
+                .into_iter()
+                .map(|range| {
+                    let (low, high) = rules::halves(range)?;
+                    Some((
+                        rules::read::<crate::pitch::WrittenPitch>(low)?,
+                        rules::read::<crate::pitch::WrittenPitch>(high)?,
+                    ))
+                })
+                .collect::<Option<Vec<_>>>()?;
+            Some(Argument::Ranges(ranges))
+        }
+        ParamType::Policy | ParamType::Rule => None,
+    }
+}
+
 /// The context every Musa program is elaborated in.
 ///
 /// Answers the context and nothing else, for [`crate::prelude::constant`]'s

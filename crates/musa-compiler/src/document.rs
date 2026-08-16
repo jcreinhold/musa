@@ -54,7 +54,9 @@ use musa_core::{Cx, Definitions, ElabError, Name, Origin, Raw, RawData, RawProgr
 use musa_language::{SyntaxKind, SyntaxNode};
 
 use crate::diagnose::{Code, Diagnostic};
+use crate::elaborate::VoiceTrack;
 use crate::lower::items::{Definition, Item};
+use crate::lower::notation::{Argued, Claimed};
 use crate::lower::{Lowering, Sites, refusals};
 use crate::resolve::Resolver;
 
@@ -121,6 +123,119 @@ impl Document {
         let (term, ty) = musa_core::infer(&self.cx, raw)?;
         let normal = musa_core::normalize(&self.cx, &ty, &term)?;
         Ok((normal, ty))
+    }
+
+    /// The written-time track `raw` denotes.
+    ///
+    /// The readback, and the whole of it. A caller asks this crate for the
+    /// *music* a piece is and never for the term that computed it: the normal
+    /// form, the literal canonicity promises it is, and the payload that literal
+    /// holds are three steps a consumer would otherwise take in the open, and a
+    /// consumer that took them could also take a different three.
+    ///
+    /// # Errors
+    ///
+    /// [`ElabError`] when `raw` does not elaborate here, when normalizing it
+    /// exhausts the budget, or when the normal form does not hold a track —
+    /// which is [`crate::registry::read_back`]'s compiler defect rather than a
+    /// program's, since the term was checked before it was read.
+    pub(crate) fn track(&self, raw: &Raw) -> Result<VoiceTrack, ElabError> {
+        let (normal, _) = self.term(raw)?;
+        Ok(crate::registry::read_back::<VoiceTrack>(&normal)?.clone())
+    }
+
+    /// What `claimed` claims, and where it sits in its voice.
+    ///
+    /// The other half of the readback, and the reason [`Claimed`] holds terms
+    /// rather than numbers. A fold has no cursor, so where a passage *begins* is
+    /// how long the music before it lasts — one duration, read the same way the
+    /// passage's own is — and the answer is exact rational arithmetic rather
+    /// than a running position some walk had to keep correct.
+    ///
+    /// The claim comes back beside the passage because it is finished here too:
+    /// a written `assert` records the *terms* of its arguments, and a term has
+    /// no value until this document is elaborated. Building the claim in the
+    /// same call is what lets the notes be gathered only for the claims that
+    /// read them ([`crate::assert::Claim::reads_notes`]), so a bar pays for its
+    /// duration and nothing else. They are relative to the passage, because
+    /// that is what a claim is about: `assert voices(4)` counts what sounds
+    /// together inside the braces, and where the braces stand is the measure
+    /// claim's business.
+    ///
+    /// # Errors
+    ///
+    /// [`ElabError`] for [`Self::track`]'s reasons, on either of the two terms
+    /// or on any argument, and [`musa_core::Malformed::NotALiteral`] when an
+    /// argument's normal form does not hold what its shape declares — which is
+    /// this crate's defect rather than a program's, since every argument was
+    /// checked at that shape's own type.
+    pub(crate) fn passage(
+        &self,
+        claimed: &Claimed,
+    ) -> Result<(crate::assert::Claim, crate::assert::Passage), ElabError> {
+        let claim = self.claim(claimed)?;
+        let before = self.track(&claimed.before)?;
+        let sounding = self.track(&claimed.passage)?;
+        let notes = if claim.reads_notes() {
+            sounding
+                .occurrences()
+                .iter()
+                .filter_map(|occurrence| {
+                    Some(crate::assert::Sounded {
+                        pitch: occurrence.payload().pitch_of()?,
+                        start: crate::MusicalTime::new(occurrence.span().start().as_ratio()),
+                        end: crate::MusicalTime::new(occurrence.span().end().as_ratio()),
+                        // The span of the note itself and not of whatever played
+                        // it: a note generated from a motif is written in the
+                        // motif, and that is where a composer goes to change it.
+                        at: occurrence.payload().origin.definition_span,
+                    })
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+        Ok((
+            claim,
+            crate::assert::Passage {
+                span: claimed.span,
+                at: crate::MusicalTime::new(before.duration().as_ratio()),
+                extent: crate::MusicalDuration::new(sounding.duration().as_ratio()),
+                content_end: claimed.content_end,
+                notes,
+                noun: claimed.noun,
+            },
+        ))
+    }
+
+    /// The claim `claimed` writes, with its arguments evaluated.
+    ///
+    /// Each value argument is elaborated exactly the way any other written term
+    /// is — the annotation [`crate::lower::notation`] wrapped it in is what
+    /// checks it at the shape the registry declares — and then read back into
+    /// the host shape by [`crate::registry::argument`]. The words were resolved
+    /// where they were written and are copied through.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::passage`].
+    fn claim(&self, claimed: &Claimed) -> Result<crate::assert::Claim, ElabError> {
+        // One sentence for both failures below, because they are one defect:
+        // an argument that was checked at its shape's type and does not read
+        // back as that shape means this crate's registration and its reading
+        // disagree, which no program can cause and no diagnostic can repair.
+        let broken = || ElabError::from(musa_core::Malformed::NotALiteral(claimed.predicate.name.into()));
+        let mut arguments = Vec::with_capacity(claimed.arguments.len());
+        for (argued, shape) in claimed.arguments.iter().zip(claimed.predicate.parameters) {
+            arguments.push(match *argued {
+                Argued::Word(ref word) => word.clone(),
+                Argued::Value(ref raw) => {
+                    let (normal, _) = self.term(raw)?;
+                    crate::registry::argument(*shape, &normal).ok_or_else(broken)?
+                }
+            });
+        }
+        crate::assert::Claim::build(claimed.predicate.name, arguments).ok_or_else(broken)
     }
 
     /// The table that turns an [`Origin`] this document minted back into a span.

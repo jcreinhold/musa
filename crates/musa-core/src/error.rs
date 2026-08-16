@@ -111,4 +111,18 @@ pub enum Malformed {
     /// *table* was wrong.
     #[error("builtin answered `{0}`, which does not fit the type it answers at")]
     MisfitAnswer(Name),
+    /// A closed normal form was read for a host datum and did not hold one.
+    ///
+    /// `docs/rules/language/02-core-calculus.md` §5's canonicity says a closed
+    /// term at a registered base type normalizes to a *literal* of that type, so
+    /// a host that put a datum into the core is entitled to take one back out of
+    /// the term the core reduced to. This is that entitlement failing: either
+    /// the normal form is not a literal at all, or the literal it is holds some
+    /// other host's datum.
+    ///
+    /// One sentence for both, for [`Self::MisfitAnswer`]'s reason — the term was
+    /// checked at the type before it was normalized, so the program was well
+    /// typed and the *registration* was wrong.
+    #[error("a closed normal form does not hold a `{0}`")]
+    NotALiteral(Name),
 }

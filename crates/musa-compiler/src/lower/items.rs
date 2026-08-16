@@ -57,7 +57,6 @@ use musa_core::{
 use musa_language::{SyntaxKind, SyntaxNode};
 
 use super::types::compiler_type;
-use super::values::position_field;
 use super::{Lowering, child, children, is_expr_node, is_type_node, own_tokens, writes};
 use crate::diagnose::{Code, Diagnostic};
 use crate::resolve::trimmed_span;
@@ -222,17 +221,17 @@ impl Lowering<'_> {
 
     /// One enum case: empty, positional, or named.
     ///
-    /// A positional case's fields are named `_0`, `_1`, … — the same spelling a
-    /// written product gets, and for the same reason. §1.3 says the positional
-    /// form "names types and not fields", so the names exist only to be
-    /// distinct, and a leading underscore is not an identifier start.
+    /// A positional case's fields are named `_0`, `_1`, …, because §1.3 says the
+    /// positional form "names types and not fields": the names exist only to be
+    /// distinct, and a leading underscore cannot collide with one a `record`
+    /// wrote because `01-surface.md`'s identifiers do not start with one.
     fn case(&mut self, node: &SyntaxNode) -> Option<RawConstructor> {
         let origin = self.origin(node);
         let name = declared_name(node)?;
         let mut fields = Vec::new();
         for (index, written) in children(node, is_type_node).iter().enumerate() {
             fields.push(RawBinder {
-                name: Arc::from(position_field(index).as_str()),
+                name: Arc::from(format!("_{index}").as_str()),
                 ty: self.ty(written)?,
             });
         }
