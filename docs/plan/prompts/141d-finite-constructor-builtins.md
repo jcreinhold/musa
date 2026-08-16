@@ -1,7 +1,7 @@
 ---
 id: 141d
 slug: finite-constructor-builtins
-status: pending
+status: in-progress
 depends_on: [141b, 141c]
 phase: 3
 ---
@@ -45,7 +45,11 @@ the table it has.
   explicitly rather than building for.
 - `crates/musa-core/src/family.rs`'s `Constant`, `Group`, `Declared`, `Constructor`, and `Found::named` — every one of
   them public as a *type* and none of them constructible or readable from outside the crate. That is the wall, and
-  whether to open it is this prompt's central decision.
+  whether to open it is this prompt's central decision. Then `element`, which reads a family application off a value
+  type, and `iota`'s `ready`, which is where "a constructor's parameters come before its fields" is load-bearing.
+- `crates/musa-core/src/case.rs`'s split, around `built` — the declaration context, then the parameters, then each field
+  as it is assumed, which is the environment a stored field type is read in. Realization walks the same telescope in the
+  same order, which is why it needs no new machinery and no index.
 - `crates/musa-core/src/eval.rs`'s `delta` and `structural` — the two firing conditions, and the one this prompt
   generalizes.
 - Peyton Jones ch. 3 §3.2 and ch. 6, on the enriched calculus's constants: a δ-rule is a rewrite over *constructed*
@@ -66,63 +70,85 @@ it is decidable by looking, and it degenerates to the old condition exactly when
 existing registration changes behaviour. A record, a λ, a neutral, or a partially applied constructor is not data, and
 leaves the spine blocked, which is what a builtin over an open term must do.
 
-**A rule speaks `Datum` and answers `Answer`, and neither is a term.**
+**A rule reads data and answers data, and data is one type.**
 
 ```rust
-pub enum Datum<'a> {
-    Lit(&'a Literal),
-    Case { constructor: &'a Name, fields: Vec<Datum<'a>> },
-}
-
-pub enum Answer {
+pub enum Datum {
     Lit(Literal),
-    Case { constructor: Name, fields: Vec<Answer> },
+    Case { constructor: Name, fields: Vec<Datum> },
 }
 
-pub type Rule = fn(&[Datum<'_>]) -> Option<Answer>;
+pub type Rule = fn(&[Datum]) -> Option<Datum>;
 ```
 
-The core builds a `Datum` from each argument value — cheap, and needing no type, because canonical data is canonical and
-quotation's η has nothing to expand — and turns an `Answer` back into a value, resolving each constructor *name* against
-the declared families the builtin's own signature mentions. Resolution is stamped on the [`Builtin`] at registration, so
-reduction consults a table the registration built rather than a context it does not have; `eval` stays as context-free
-as it is today.
+One type rather than a borrowing `Datum` in and an owning `Answer` out, and the reason is not symmetry for its own sake.
+A borrowed view cannot be built: the core has to *force* each argument before it can see whether it is canonical, and a
+forced value is a new value the borrow would have to outlive — pushing them into a side vector while holding references
+into it is the shape of an arena, which is a lot of machinery for two `Arc` bumps per literal. δ already clones every
+argument literal today. And a rule that answers one of its arguments unchanged — `option_or`, `result_or_else` — writes
+that as `arguments[0].clone()` rather than rebuilding a tree in the other type.
+
+Constructor names are qualified, the spelling [`Constant::name`] already prints and a diagnostic already shows:
+`Option.Some`, not `Some`. That is what makes reading and writing the same vocabulary, so passing an argument back is
+the identity it looks like.
+
+**Reading needs no type; writing is type-directed.** A value is canonical or it is not, and looking says which, so the
+`Datum` a rule receives is built from the argument values alone. Realizing an answer is the other way round: `Some(x)`
+does not say what `A` is, and a constructor value carries its parameters before its fields — `iota` reads them by
+position — so a value built without them is a value the re-checker would refuse and `List.elim` would take apart wrong.
+The result type supplies them. It is the builtin's own signature applied to the argument values, so realization walks
+the answer and the type together: at `F p⃗` the answer names one of `F`'s constructors, the parameters are `p⃗`, and each
+field is realized at that field's declared type instantiated at `p⃗` and the fields before it. That is exactly what
+`case.rs`'s split already does in the other direction, and it is why no registration-time constructor index is needed:
+the type in hand at each node resolves the name, so nesting and repeated families cost nothing and can be ambiguous
+about nothing. Only an answer that is a `Case` pays for the signature walk, so the 54 rules that answer a base type pay
+nothing.
+
+**The arrow refusal stays where it is.** [`Refusal::HigherOrderDelta`] is the diagnostic an author of a table actually
+hits, and it says the specific thing. So the positive check reports it when the offending head is a Π, and reports the
+new refusal for everything else that is not data — a record type, a universe, a bare variable. D1's arrow-free clause
+becomes a consequence *and* keeps its own name.
 
 **The alternative was to open `Constant`, and it is refused.** The obvious other design gives `Group` a public
 constructor lookup and lets a rule build a `Term` — 141c's `Rewrite` shape, one prompt later. It is refused twice over.
 It puts the core's declaration representation into all 38 host rules, each of which would walk its own signature to find
 the group it needs before it can say `Some`; and it makes `Constant` constructible from outside, which is the one thing
 keeping "a constant is what a declaration put in scope" true. A name plus fields is what a rule actually means, so that
-is what it should be able to write. The cost is an allocation per argument per call where 141b had a borrow, and prompt
-144 is where that gets measured rather than asserted.
+is what it should be able to write. The cost is one small tree per call where 141b had a borrowed slice, and prompt 144
+is where that gets measured rather than asserted.
 
 **D1 becomes a registration check instead of a comment.** `Registry::new` today refuses an arrow in a δ signature and
 nothing else, which admitted the record types and the bare type variables D1 never meant. State it positively: every
 argument and result type of a δ-builtin is a registered base type, or a declared family applied to argument types that
 are themselves this, at any depth. A signature that is neither is `Refusal::NotFiniteData`, and that refusal is what
-makes "no arrow anywhere" a consequence rather than a separate rule.
+makes "no arrow anywhere" a consequence rather than a separate rule. A literal in an index position — `Vec Nat 3` — is
+refused with everything else, because no entry in the table has one and a check that admits what nothing writes is a
+check nobody has read.
 
 **A product is not built for.** `Shape::Product` is spellable in the compiler's shape language and used by no entry in
 `BUILTIN_OWNERSHIP`. `Datum` therefore has no record arm, a record argument is not canonical data, and a δ signature
 naming a record type is refused by the check above. When a product is wanted the arm and the loosened check arrive
 together, with a caller; adding them now would be surface with nothing behind it.
 
-**A host defect stays a host defect.** An `Answer` naming a constructor no family in the signature declares, or applying
-one to the wrong number of fields, is `Malformed` and not a `Refusal` — 141b's rule, unchanged: D2 promises a value for
-every closed argument tuple, and a rule that cannot say what it meant is a bug in the table rather than in a program.
+**A host defect stays a host defect.** An answer naming a constructor its result type does not declare, or applying one
+to the wrong number of fields, or standing at a type that is not a family at all, is `Malformed` and not a `Refusal` —
+141b's rule, unchanged: D2 promises a value for every closed argument tuple, and a rule that cannot say what it meant is
+a bug in the table rather than in a program. One variant for all three, because all three are the same sentence: the
+data does not fit the type the builtin declared it answers at.
 
 **Proved by a program.** As in 141b and 141c: the worked registry in the test suite gains a declared family and δ-rules
 over it, so the mechanism is exercised without `musa-compiler` changing. Prompt 142 is still the one cutover.
 
 ## Target
 
-- `crates/musa-core/src/base.rs`: `Datum`, `Answer`, the widened `Rule`, and the constructor table stamped on a
-  [`Builtin`] at registration, all doc-commented with their invariants before the implementation.
-- `crates/musa-core/src/eval.rs`: the firing condition generalized from *literal* to *canonical data*, the `Datum` view
-  built from the argument values, and the `Answer` realized as a value.
+- `crates/musa-core/src/base.rs`: `Datum` and the widened `Rule`, doc-commented with their invariants before the
+  implementation.
+- `crates/musa-core/src/eval.rs`: the firing condition generalized from *literal* to *canonical data*, the `Datum` built
+  from the argument values, and the answer realized at the builtin's own result type.
+- `crates/musa-core/src/family.rs`: the constructor a saturated spine is built by, and realization at a family type.
 - `Registry::new`: D1 stated positively, replacing the arrow-only check for δ-builtins.
 - One new `Refusal` variant with its `musa explain` code in `crates/musa-compiler/src/diagnose.rs`, and one new
-  `Malformed` variant for an answer naming a constructor its signature does not have.
+  `Malformed` variant for an answer that does not fit the type it answers at.
 - `crates/musa-core/tests/suite/base_laws.rs`: a declared family in the worked registry, and the laws — a rule reads a
   constructed argument, a rule answers a constructed value, a partially applied constructor leaves the spine blocked,
   the degenerate case still behaves exactly as 141b's laws say, and the registration refusal.
@@ -156,3 +182,5 @@ Commit as `Let a δ-rule speak the finite constructors`.
 - No wiring, no move of `BUILTIN_OWNERSHIP`, and no `musa-compiler` checker change. Prompt 142 owns the cutover.
 - No amendment to §5.8. This prompt implements the half of D1 that was skipped; a disagreement is a finding to record.
 - No record arm on `Datum` and no product in a δ signature until a caller wants one.
+- No second `Datum` type for the answer direction, and no borrowing view. One owned type is the decision; a rule that
+  wants to hand an argument straight back writes a clone.
