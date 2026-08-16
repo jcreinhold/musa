@@ -287,7 +287,7 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
 }
 
 /// Every refusal this crate can answer with.
-const ALL_REFUSALS: [&str; 42] = [
+const ALL_REFUSALS: [&str; 43] = [
     "unknown-name",
     "mismatch",
     "unsolved",
@@ -314,6 +314,7 @@ const ALL_REFUSALS: [&str; 42] = [
     "abstract-match",
     "reserved-class",
     "headless-class",
+    "constrained-field",
     "duplicate-method",
     "class-arity",
     "hand-written-storable",
@@ -364,6 +365,7 @@ fn kind(refusal: &Refusal) -> &'static str {
         Refusal::AbstractMatch { .. } => "abstract-match",
         Refusal::ReservedClass { .. } => "reserved-class",
         Refusal::HeadlessClass { .. } => "headless-class",
+        Refusal::ConstrainedField { .. } => "constrained-field",
         Refusal::DuplicateMethod { .. } => "duplicate-method",
         Refusal::ClassArity { .. } => "class-arity",
         Refusal::HandWrittenStorable { .. } => "hand-written-storable",

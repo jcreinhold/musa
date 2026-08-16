@@ -64,9 +64,10 @@
 
 use std::sync::{Arc, OnceLock};
 
+use crate::budget::Meter;
 use crate::elab::Elaborator;
 use crate::error::CoreError;
-use crate::eval::{apply, eval, field_type, force, project};
+use crate::eval::{apply, apply_closure, eval, field_type, force, project};
 use crate::family::{Constant, Element, element};
 use crate::level::Level;
 use crate::list::List;
@@ -76,7 +77,7 @@ use crate::raw::{Raw, RawArm, RawPattern};
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
 use crate::term::{DbLevel, Index, Name, Shape, Term};
-use crate::value::{Env, Form, Value};
+use crate::value::{Elim, Env, Form, Head, Value};
 
 /// Elaborate `match subjects… { arms… }` against `goal`.
 ///
@@ -1057,6 +1058,69 @@ struct Motive {
     value: Value,
 }
 
+/// The universe the motives land in, which this use site does not get to choose.
+///
+/// §1.3 has no universe polymorphism, so a recursor takes a level per use, and
+/// the motive here is the goal with binders in front of it — the level is the
+/// goal's, and asking is the only way to learn it.
+///
+/// **Where the asking happens depends on whether the goal has syntax yet.** A
+/// goal with a head is read by [`universe_of`](crate::recheck::universe_of),
+/// which is the core rules answering about a finished term. A goal that is still
+/// a **metavariable** is not a finished term, and handing one to the re-checker
+/// would be asking it a question its own contract says it never receives — the
+/// answer is [`Malformed`](crate::error::Malformed), which is a defect report
+/// and not a verdict about the program.
+///
+/// The level is not unknown there, only written somewhere else: a metavariable
+/// records the type it stands at, and a goal's type is `Type ℓ`. So the spine is
+/// walked through that telescope and the level comes out of the end. This is
+/// what lets a `match` be written where its result type is determined later —
+/// `xs.fold_from_start(empty, λacc. λx. match keep(x) { … })`, where the
+/// accumulator's type is fixed by what the fold is checked against and not by
+/// anything the arms can see.
+fn motive_level(meter: &mut Meter, scope: &Scope, goal: &Value) -> Result<Level, ElabError> {
+    if let Some(level) = meta_level(meter, goal)? {
+        return Ok(level);
+    }
+    let quoted = scope.quote_type(meter, goal)?;
+    crate::recheck::universe_of(meter, scope.cx(), &quoted)
+}
+
+/// The universe a metavariable goal stands at, read off the metavariable itself.
+///
+/// `None` for a goal that is not one, which is every goal the re-checker can
+/// answer about.
+fn meta_level(meter: &mut Meter, goal: &Value) -> Result<Option<Level>, ElabError> {
+    let Form::Neutral(neutral) = &goal.form else {
+        return Ok(None);
+    };
+    let Head::Meta(meta) = &neutral.head else {
+        return Ok(None);
+    };
+    // `?α : (x₀ : A₀) → … → Type ℓ` applied to its own context, so each argument
+    // instantiates one binder and what is left after the spine is the universe.
+    let mut ty = meta.ty().clone();
+    for elimination in &neutral.spine {
+        let Elim::App { argument, .. } = elimination else {
+            return Ok(None);
+        };
+        let unfolded = force(meter, &ty)?;
+        let forced = unfolded.as_ref().unwrap_or(&ty);
+        let Form::Pi { codomain, .. } = &forced.form else {
+            return Ok(None);
+        };
+        let codomain = codomain.clone();
+        ty = apply_closure(meter, &codomain, argument.as_ref().clone())?;
+    }
+    let unfolded = force(meter, &ty)?;
+    let forced = unfolded.as_ref().unwrap_or(&ty);
+    let Form::Universe(level) = &forced.form else {
+        return Ok(None);
+    };
+    Ok(Some(level.clone()))
+}
+
 /// What reading a subject's type told the splitter.
 struct Split {
     element: Element,
@@ -1118,12 +1182,7 @@ impl Split {
             pattern.push(level);
         }
         let target = quote(meter, Depth(depth), &subject.ty, &subject.value)?;
-        // The motive's universe, which this use site does not get to choose:
-        // §1.3 has no universe polymorphism, so a recursor takes a level per
-        // use, and the motive here is the goal with binders in front of it. A
-        // metavariable would be a level nothing ever solves.
-        let quoted = scope.quote_type(meter, goal)?;
-        let level = crate::recheck::universe_of(meter, scope.cx(), &quoted)?;
+        let level = motive_level(meter, scope, goal)?;
         Ok(Self {
             element: Element {
                 group: Arc::clone(&found.group),

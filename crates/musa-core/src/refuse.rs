@@ -376,6 +376,24 @@ pub enum Refusal {
         /// Its name.
         class: Name,
     },
+    /// A **required** method carrying a `where` clause of its own.
+    ///
+    /// `10-traits.md` §1 makes a required method a *field* of the dictionary,
+    /// and a field is filled by the impl that writes the instance. A constraint
+    /// in its type would have to be discharged by somebody, and neither
+    /// candidate works: the impl never wrote the field's type, and a use site
+    /// resolving it would be a second lookup hidden inside a projection. A
+    /// derived method has the `where` clause because it is a *function*, which
+    /// is the half of §1's split that can take a dictionary.
+    #[error("`{class}.{method}` is required, and a required method cannot carry a `where` clause")]
+    ConstrainedField {
+        /// The method.
+        at: Origin,
+        /// The trait.
+        class: Name,
+        /// Its name.
+        method: Name,
+    },
     /// A trait declaring one method name twice.
     #[error("`{class}` declares `{method}` twice")]
     DuplicateMethod {

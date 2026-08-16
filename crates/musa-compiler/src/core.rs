@@ -4294,12 +4294,20 @@ fn settle_expr(unifier: &Unifier, expr: &mut Expr) -> Option<(SourceSpan, Type)>
 ///
 /// Nothing happens here when every declaration wrote its type, which is what
 /// keeps the second pass off the path files that do not need it.
+///
+/// `reading` is the one the real loop will use, and it has to be: an adapter's
+/// declarations are checked in the expansion phase, where `Syntax<Cat>` exists
+/// and `quote` is a form. Reading them as ordinary source here would fail
+/// every one of them, and a declaration this pass failed to infer generalizes
+/// to `forall a. a` — a scheme each use instantiates afresh, so no use would
+/// meet the declaration's type or any other use's.
 fn infer_open_declarations(
     raw: &[RawDefinition],
     symbols: &mut IndexMap<String, Symbol>,
     unifier: &mut Unifier,
     modules: &Modules,
     world: &World,
+    reading: Reading,
 ) {
     let open: Vec<usize> = raw
         .iter()
@@ -4325,11 +4333,7 @@ fn infer_open_declarations(
                 unifier,
                 dependencies: IndexMap::new(),
                 mentioned: Vec::new(),
-                reading: if definition.foreign {
-                    Reading::Foreign
-                } else {
-                    Reading::Source
-                },
+                reading: if definition.foreign { Reading::Foreign } else { reading },
                 failed: false,
                 meter: &mut meter,
                 music_role: definition.role.clone(),
@@ -4671,7 +4675,7 @@ fn check_and_evaluate_metered(
             expectation_failed = true;
         }
     }
-    infer_open_declarations(&raw, &mut symbols, &mut *unifier, modules, world);
+    infer_open_declarations(&raw, &mut symbols, &mut *unifier, modules, world, reading);
 
     // Documentation is written from the type each declaration ended up with,
     // which for an annotated one is what it wrote and for an inferred one is

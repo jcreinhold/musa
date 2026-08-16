@@ -57,24 +57,19 @@ fn probe(body: &str) -> String {
 /// fold's answer at `Syntax<Expr>`, which is why `children` arrives as a list
 /// of expressions rather than of trees.
 ///
-/// A leaf's empty child list is bound and annotated rather than written `[]`
-/// at the call. The checker resolves a use of a module-level name to its arity
-/// and settles each definition as it finishes, so a literal whose type would
-/// have to come from the *callee's* parameter is undetermined at the point the
-/// caller is settled. That is a limitation of the checker rather than of
-/// anything here, and this is the shape adapter code already uses around it.
+/// A leaf has no children, so it is handed `[]` at the call — the element type
+/// is the one `emit`'s own parameter names, and nothing here has to say it
+/// twice.
 fn folding(emit: &str) -> String {
     probe(&format!(
         "{emit}
-    let childless: List<Syntax<Expr>> = [];
-
     let expand = fn (region) {{ Ok(built(region)) }};
 
     let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {{
         syntax_fold_from_leaves(
-            fn (here) {{ emit(here, childless) }},
-            fn (here, kind, text) {{ emit(here, childless) }},
-            fn (here, name) {{ emit(here, childless) }},
+            fn (here) {{ emit(here, []) }},
+            fn (here, kind, text) {{ emit(here, []) }},
+            fn (here, name) {{ emit(here, []) }},
             fn (here, delimiter, children) {{ emit(here, children) }},
             region,
         )
@@ -444,6 +439,59 @@ fn what_a_quote_builds_is_charged() {
     assert!(
         found.iter().any(|error| error.contains("crossed a compilation limit")),
         "four hundred quotes of four hundred nodes were built for nothing: {found:?}"
+    );
+}
+
+#[test]
+fn an_adapter_helper_is_inferred_in_the_phase_it_is_checked_in() {
+    // A declaration whose type the file did not write in full is inferred
+    // before anything reads it — and an adapter's declarations are checked in
+    // the expansion phase, where `Syntax<Cat>` exists and `quote` is a form.
+    // Inferring them as ordinary source instead fails every one of them, and a
+    // declaration that pass failed to infer means nothing to its uses: each one
+    // instantiates a fresh variable, so the name is read as "something of this
+    // arity" rather than as the type it has.
+    //
+    // What that costs is visible in the shape adapter code is written in. A
+    // helper takes `List<Syntax<Expr>>` and a leaf case calls it with a
+    // one-element list built on the spot. The callee's parameter is what says
+    // what the literal holds, so the literal needs no annotation of its own —
+    // while `children`, which arrives already typed from the fold, would be
+    // accepted either way.
+    let module = probe(
+        r"
+    let one = fn (here: NodePath) -> Syntax<Expr> { quote at here { 1 } };
+
+    let spread = fn (here: NodePath, items: List<Syntax<Expr>>) -> Syntax<Expr> {
+        quote at here { [$..items] }
+    };
+
+    let expand = fn (region) { Ok(built(region)) };
+
+    let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {
+        syntax_fold_from_leaves(
+            fn (here) { spread(here, [one(here)]) },
+            fn (here, kind, text) { spread(here, [one(here)]) },
+            fn (here, name) { spread(here, [one(here)]) },
+            fn (here, delimiter, children) { spread(here, children) },
+            region,
+        )
+    };
+",
+    );
+    // The annotation is the observation, as everywhere else here: the region is
+    // a group of leaves, so each leaf's one-element list arrives inside the
+    // group's own spread. A literal the callee's parameter had not decided
+    // could not have reached `List<Nat>`.
+    let found = errors("", "held: List<List<Nat>>", "1", &module);
+    assert!(
+        found.is_empty(),
+        "a list literal whose element type the callee's parameter decides was refused: {found:?}"
+    );
+    let refused = errors("", "held: List<Nat>", "1", &module);
+    assert!(
+        !refused.is_empty(),
+        "the leaves' lists were not built at all, so the half above proves nothing"
     );
 }
 

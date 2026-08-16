@@ -137,19 +137,38 @@ pub struct RawConstraint {
 /// of the dictionary, defined once here, and an impl may not replace it. That
 /// is why §9 can refuse specialization as a *mechanism* rather than as a rule —
 /// there is no overridable definition to specialize.
+///
+/// A method may quantify over parameters of its **own** and require its own
+/// constraints — `fn map<D, B>(source: C, f: A -> B) -> D where Buildable<D, B>`
+/// (`01-surface.md` §1.6). They are separate fields rather than binders written
+/// into [`RawMethod::ty`] because the surface writes them separately, and
+/// because a use site has to fill them by two different mechanisms: a parameter
+/// by unification and a constraint by §4's lookup.
 #[derive(Clone, Debug)]
 pub struct RawMethod {
     /// Where it was written.
     pub origin: Origin,
     /// Its name, unqualified: the trait qualifies it.
     pub name: Name,
-    /// Its type, read under the trait's parameters.
+    /// The type parameters it quantifies over, read under the trait's own.
+    ///
+    /// Implicit at every use: `xs.map(f)` writes neither `D` nor `B`.
+    pub params: Vec<RawBinder>,
+    /// Its own constraints, read under the trait's parameters and then its own.
+    ///
+    /// Only a **derived** method may have them. A required method is a field of
+    /// the dictionary, and a field whose type demanded a dictionary the impl
+    /// never wrote would be a second resolution site inside the first — see
+    /// [`Refusal::ConstrainedField`](crate::Refusal::ConstrainedField).
+    pub context: Vec<RawConstraint>,
+    /// Its type, read under the trait's parameters and then its own.
     pub ty: Raw,
     /// Its definition, when the trait derives it.
     ///
-    /// Read under the trait's parameters, a binder for the dictionary, and the
-    /// trait's own methods — a derived method is written in terms of the
-    /// required ones, which is the whole reason for the form.
+    /// Read under the trait's parameters, a binder for the dictionary, the
+    /// trait's own methods, this method's parameters, and a binder per
+    /// constraint — a derived method is written in terms of the required ones,
+    /// which is the whole reason for the form.
     pub body: Option<Raw>,
 }
 

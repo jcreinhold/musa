@@ -57,7 +57,7 @@ use crate::eval::eval;
 use crate::family::{Binder, Constant};
 use crate::meta::MetaSource;
 use crate::origin::Origin;
-use crate::raw::{Raw, RawBinder, RawConstraint, RawImpl, RawTrait};
+use crate::raw::{Raw, RawBinder, RawConstraint, RawImpl, RawMethod, RawTrait};
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
 use crate::storable::STORABLE;
@@ -107,7 +107,15 @@ pub(crate) fn declare_trait(cx: &Cx, raw: &RawTrait) -> Result<Arc<Trait>, ElabE
             methods.push((Arc::clone(&method.name), Kind::Derived));
             continue;
         }
-        let (ty, _) = elaborator.check_type(&inner, &method.ty)?;
+        if let Some(constraint) = method.context.first() {
+            return Err(Refusal::ConstrainedField {
+                at: constraint.origin,
+                class: Arc::clone(&raw.name),
+                method: Arc::clone(&method.name),
+            }
+            .into());
+        }
+        let (ty, _) = elaborator.check_type(&inner, &quantified(method))?;
         inner = assumed(&mut elaborator, &inner, method.origin, &method.name, &ty)?;
         fields.push(Field {
             name: Arc::clone(&method.name),
@@ -132,6 +140,20 @@ pub(crate) fn declare_trait(cx: &Cx, raw: &RawTrait) -> Result<Arc<Trait>, ElabE
         derived: Arc::from(derived),
         ..declared
     }))
+}
+
+/// `{q⃗} → τ`: a required method's own parameters, folded onto its type.
+///
+/// Implicit, because a required method is reached by projecting it out of the
+/// dictionary and applying it — `xs.fold_from_start(zero, step)` writes no `B`.
+/// So the field's type is an ordinary implicit Π and §2's insertion rule fills
+/// it, with nothing here to know about. A **derived** method's parameters are
+/// not folded in this way: [`method_at`] fills those itself, because the
+/// constraints that follow them have to be resolved rather than unified.
+fn quantified(method: &RawMethod) -> Raw {
+    method.params.iter().rev().fold(method.ty.clone(), |body, binder| {
+        Raw::implicit_pi(binder.ty.origin(), Arc::clone(&binder.name), binder.ty.clone(), body)
+    })
 }
 
 /// Refuse a trait that declares one method name twice.
@@ -218,7 +240,8 @@ pub(crate) fn declare_impl(cx: &Cx, raw: &RawImpl) -> Result<Arc<Instance>, Elab
         let (elaborated, ty) = constraint_at(&mut elaborator, &inner, classes, constraint)?;
         decreasing(&elaborated, head_size, args.first(), under_params.depth(), &params)?;
         if let Some(key) = discharges(&elaborated, &inner) {
-            inner = inner.discharging(key, inner.depth());
+            let written = valued(&mut elaborator, &inner, &elaborated)?;
+            inner = inner.discharging(key, inner.depth(), written);
         }
         inner = assumed(
             &mut elaborator,
@@ -431,8 +454,15 @@ fn lookup(
     };
 
     // Step 1. Innermost first, so an inner `where` shadows an outer one the way
-    // every other binder does.
+    // every other binder does. Its written arguments are unified with the ones
+    // asked for, which is §1's "with it every other parameter" — the same thing
+    // `apply_instance` does for a global, and needed for the same reason.
     if let Some(local) = scope.discharged(&key) {
+        let local = local.clone();
+        for (written, wanted) in local.args.iter().zip(needed.args.iter()) {
+            let wanted = scope.eval(elaborator.meter(), wanted)?;
+            elaborator.unify_types(scope, at, written, &wanted)?;
+        }
         return Ok(Some(Term::var(at, level_index(scope.depth(), local.level))));
     }
 
@@ -667,6 +697,26 @@ fn discharges(constraint: &Constraint, scope: &Scope) -> Option<Key> {
     })
 }
 
+/// A constraint's arguments, as the local dictionary it becomes will hold them.
+///
+/// Values rather than terms because a local outlives the scope it was written
+/// in: §4 step 1 reads it while checking a body nested arbitrarily deep inside
+/// the `where`, and a term would have to be re-indexed at every one of those
+/// depths. A value is closed over its own environment and is read at any of
+/// them, which is [`Local::level`](crate::scope::Local::level)'s argument
+/// applied to the arguments too.
+///
+/// # Errors
+///
+/// As [`crate::eval`].
+fn valued(elaborator: &mut Elaborator, scope: &Scope, constraint: &Constraint) -> Result<Arc<[Value]>, ElabError> {
+    let mut args = Vec::with_capacity(constraint.args.len());
+    for argument in constraint.args.iter() {
+        args.push(scope.eval(elaborator.meter(), argument)?);
+    }
+    Ok(Arc::from(args))
+}
+
 /// The index a variable at `level` has, read at `depth`.
 fn level_index(depth: u32, level: u32) -> Index {
     Index(depth.saturating_sub(level).saturating_sub(1))
@@ -772,13 +822,26 @@ fn derivations(elaborator: &mut Elaborator, cx: &Cx, class: &Trait, raw: &RawTra
         let name: Name = Arc::from("dictionary");
         let under_dictionary = under_params.assume(Some(Arc::clone(&name)), here, Arc::new(ty_value.clone()));
 
+        // The method's own parameters, then its own constraints, in that order
+        // and not the other: `where Buildable<D, B>` mentions `D`, and nothing
+        // in a parameter's type can mention a dictionary.
+        let (own, under_own) = telescope(elaborator, &under_dictionary, &method.params)?;
+        let (context, required, inner) = requirements(elaborator, cx, &under_own, method)?;
+
+        // The type is checked *here* rather than deeper, and that is what lets
+        // it be used as written: the Π below binds exactly these binders in
+        // exactly this order, so its indices are already the ones it needs. The
+        // `let`s that follow are why the old form had to quote the type back.
+        let (stated, _) = elaborator.check_type(&inner, &method.ty)?;
+        let goal = inner.eval(elaborator.meter(), &stated)?;
+
         // The trait's own required methods are in scope in a derived body, bound
         // to projections out of that dictionary. §1 calls a derived method "an
         // ordinary function that takes the dictionary", and this is what makes
         // the form worth having: `map` is written in terms of `fold`, by name.
-        let (with_methods, wrappers) = methods_in_scope(elaborator, &under_dictionary, class, &ty_value, here)?;
-        let (ty, _) = elaborator.check_type(&with_methods, &method.ty)?;
-        let goal = with_methods.eval(elaborator.meter(), &ty)?;
+        let deeper = own.len().saturating_add(required.len());
+        let dictionary = Index(u32::try_from(deeper).unwrap_or(u32::MAX));
+        let (with_methods, wrappers) = methods_in_scope(elaborator, &inner, class, &ty_value, dictionary, here)?;
         let definition = elaborator.check_open(&with_methods, body, &goal)?;
 
         // The `let`s that rebuilt the scope have to appear in the term, because
@@ -789,20 +852,64 @@ fn derivations(elaborator: &mut Elaborator, cx: &Cx, class: &Trait, raw: &RawTra
             .fold(definition, |body, (field, field_ty, value)| {
                 Term::bind(here, Arc::clone(field), field_ty.clone(), value.clone(), body)
             });
-        // The written type is read under the same `let`s, so it is quoted back
-        // at the dictionary's own depth instead of reused.
-        let stated = under_dictionary.quote_type(elaborator.meter(), &goal)?;
         built.push(Derived {
             name: Arc::clone(&method.name),
+            params: Arc::from(own.clone()),
+            context: Arc::from(context),
             ty: closed_pi(
                 here,
                 &class.params,
-                Term::pi(here, Arc::clone(&name), dictionary_ty, stated),
+                Term::pi(
+                    here,
+                    Arc::clone(&name),
+                    dictionary_ty,
+                    closed_pi(here, &own, closed_pi(here, &required, stated)),
+                ),
             ),
-            value: closed_lambda(here, &class.params, Term::lam(here, Arc::clone(&name), definition)),
+            value: closed_lambda(
+                here,
+                &class.params,
+                Term::lam(
+                    here,
+                    Arc::clone(&name),
+                    closed_lambda(here, &own, closed_lambda(here, &required, definition)),
+                ),
+            ),
         });
     }
     Ok(built)
+}
+
+/// A derived method's own `where` clause: the constraints, the binders they
+/// become, and the scope in which they are answered.
+///
+/// Each is **discharged** into the scope as well as assumed, so a body that
+/// writes `push` reaches the `Buildable` binder standing right there rather than
+/// a global instance — §4 step 1, and the same call `declare_impl` makes for an
+/// instance's own `where`. That is the whole reason a derived method may have
+/// one: `map` is written at a `D` no instance can be declared for, so the only
+/// dictionary that could ever answer is the one its caller supplies.
+fn requirements(
+    elaborator: &mut Elaborator,
+    cx: &Cx,
+    scope: &Scope,
+    method: &RawMethod,
+) -> Result<(Vec<Constraint>, Vec<Binder>, Scope), ElabError> {
+    let mut context = Vec::with_capacity(method.context.len());
+    let mut binders = Vec::with_capacity(method.context.len());
+    let mut inner = scope.clone();
+    for constraint in &method.context {
+        let (elaborated, ty) = constraint_at(elaborator, &inner, cx.classes(), constraint)?;
+        if let Some(key) = discharges(&elaborated, &inner) {
+            let args = valued(elaborator, &inner, &elaborated)?;
+            inner = inner.discharging(key, inner.depth(), args);
+        }
+        let name = Trait::super_field(&elaborated.class);
+        inner = assumed(elaborator, &inner, constraint.origin, &name, &ty)?;
+        binders.push(Binder { name, ty });
+        context.push(elaborated);
+    }
+    Ok((context, binders, inner))
 }
 
 /// The scope a derived body is written in, and the `let`s that rebuild it.
@@ -817,13 +924,14 @@ fn methods_in_scope(
     scope: &Scope,
     class: &Trait,
     dictionary_ty: &Value,
+    dictionary: Index,
     at: Origin,
 ) -> Result<(Scope, Vec<(Name, Term, Term)>), ElabError> {
     let Form::RecordType(telescope) = &dictionary_ty.form else {
         return Ok((scope.clone(), Vec::new()));
     };
     let telescope = telescope.clone();
-    let subject = scope.eval(elaborator.meter(), &Term::var(at, Index(0)))?;
+    let subject = scope.eval(elaborator.meter(), &Term::var(at, dictionary))?;
     let mut inner = scope.clone();
     let mut wrappers: Vec<(Name, Term, Term)> = Vec::new();
     for (name, kind) in class.methods.iter() {
@@ -834,7 +942,8 @@ fn methods_in_scope(
         let ty_term = inner.quote_type(elaborator.meter(), &ty)?;
         // The dictionary has moved out by one binder per wrapper already bound.
         let position = u32::try_from(wrappers.len()).unwrap_or(u32::MAX);
-        let value_term = Term::project(at, Term::var(at, Index(position)), Arc::clone(name));
+        let reached = Index(dictionary.0.saturating_add(position));
+        let value_term = Term::project(at, Term::var(at, reached), Arc::clone(name));
         let value = inner.eval(elaborator.meter(), &value_term)?;
         wrappers.push((Arc::clone(name), ty_term, value_term));
         inner = inner.define(Arc::clone(name), Arc::new(ty), value);
@@ -1041,8 +1150,14 @@ pub(crate) fn method_at(
             let ty = field_type(elaborator, telescope, &subject, &method)?;
             (Term::project(at, dictionary.clone(), method), ty)
         }
-        // A derived method is `(p⃗ : Params) → (dict : Class p⃗) → τ` applied to
-        // both, so its type is that Π instantiated the same way its value is.
+        // A derived method is
+        // `(p⃗ : Params) → (dict : Class p⃗) → (q⃗ : Own) → (d⃗ : Ctx) → τ`
+        // applied to all four, so its type is that Π instantiated the same way
+        // its value is. The four groups are filled by three different rules and
+        // that is the point of the walk: the trait's arguments and the method's
+        // own parameters are metavariables, the trait's dictionary is a hole
+        // §4 postpones, and each of the method's own constraints goes through
+        // §4's lookup at the parameters just made.
         Kind::Derived => {
             let Some(derived) = class.derivation(&method) else {
                 return Err(Refusal::UnknownName {
@@ -1051,11 +1166,27 @@ pub(crate) fn method_at(
                 }
                 .into());
             };
-            let value = Term::app(at, applied(at, derived.value.clone(), &args), dictionary.clone());
+            let mut filled = args.clone();
+            filled.push(dictionary.clone());
+            env = env.push(scope.eval(elaborator.meter(), &dictionary)?);
+            for binder in derived.params.iter() {
+                let ty = eval(elaborator.meter(), &env, &binder.ty)?;
+                let term = elaborator.fresh_meta(scope, at, MetaSource::ImplicitArgument, &ty)?;
+                env = env.push(scope.eval(elaborator.meter(), &term)?);
+                filled.push(term);
+            }
+            for constraint in derived.context.iter() {
+                let wanted = instantiated(elaborator, scope, constraint, &env)?;
+                let term = resolve(elaborator, scope, &classes, &wanted)?;
+                env = env.push(scope.eval(elaborator.meter(), &term)?);
+                filled.push(term);
+            }
+
+            let value = applied(at, derived.value.clone(), &filled);
             // Its type is a Π, so it is *instantiated* rather than applied: a Π
             // is a type and `Term::app` of one would be a term no rule accepts.
             let mut ty = scope.eval(elaborator.meter(), &derived.ty)?;
-            for argument in args.iter().chain(std::iter::once(&dictionary)) {
+            for argument in &filled {
                 let Form::Pi { codomain, .. } = &ty.form else {
                     return Err(Refusal::NotAFunction {
                         at,

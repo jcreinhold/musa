@@ -86,12 +86,22 @@ pub(crate) struct Scope {
 /// made in: a `where` dictionary is looked up while checking a body nested
 /// arbitrarily deep inside it, and an index would have to be corrected at every
 /// one of those depths. A level is corrected once, where it is read.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) struct Local {
     /// What it answers.
     pub(crate) key: Key,
     /// Where its binder stands, counted from the outside.
     pub(crate) level: u32,
+    /// The arguments it was written at, as values for the same reason.
+    ///
+    /// `10-traits.md` §1: "once the head is known the whole instance is known,
+    /// and with it every other parameter." A global instance makes that true by
+    /// unifying its written arguments against the ones asked for
+    /// (`apply_instance`), and a local has to do the same or the rule would hold
+    /// for one of §4's two lookups. It is `Buildable<D, B>` that shows it: a use
+    /// of `empty : C` mentions the first parameter and not the second, so
+    /// nothing else in the program could ever determine `B`.
+    pub(crate) args: Arc<[Value]>,
 }
 
 impl Scope {
@@ -124,9 +134,9 @@ impl Scope {
     /// 1). Under coherence the two can never disagree; what the rule buys is
     /// determinacy, so instantiating a parameter later cannot reroute a call
     /// that was already elaborated.
-    pub(crate) fn discharging(&self, key: Key, level: u32) -> Self {
+    pub(crate) fn discharging(&self, key: Key, level: u32, args: Arc<[Value]>) -> Self {
         Self {
-            locals: self.locals.push(Local { key, level }),
+            locals: self.locals.push(Local { key, level, args }),
             ..self.clone()
         }
     }

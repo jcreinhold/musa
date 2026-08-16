@@ -17,6 +17,7 @@
 
 mod budget_laws;
 mod coherence_laws;
+mod collection_laws;
 mod conversion_laws;
 mod coverage_laws;
 mod elaboration_laws;

@@ -36,6 +36,8 @@ pub(crate) fn method(name: &'static str, ty: Raw) -> RawMethod {
     RawMethod {
         origin: WRITTEN,
         name: Arc::from(name),
+        params: Vec::new(),
+        context: Vec::new(),
         ty,
         body: None,
     }
@@ -45,9 +47,24 @@ pub(crate) fn derived(name: &'static str, ty: Raw, body: Raw) -> RawMethod {
     RawMethod {
         origin: WRITTEN,
         name: Arc::from(name),
+        params: Vec::new(),
+        context: Vec::new(),
         ty,
         body: Some(body),
     }
+}
+
+/// The same method, quantified over parameters of its own and requiring them.
+///
+/// A combinator rather than two more arguments on [`method`] and [`derived`],
+/// for [`hidden_case`](crate::family_laws::hidden_case)'s reason: every method
+/// declared before `01-surface.md` §1.6's collection pair had neither, and
+/// adding two `Vec::new()`s to each of them would say "no parameters, no
+/// constraints" forty times to state the default.
+pub(crate) fn generic(mut declared: RawMethod, params: Vec<RawBinder>, context: Vec<RawConstraint>) -> RawMethod {
+    declared.params = params;
+    declared.context = context;
+    declared
 }
 
 pub(crate) fn defines(name: &'static str, value: Raw) -> RawDefinition {
@@ -239,6 +256,28 @@ pub(crate) fn refused_declarations() -> Vec<RefusedDeclaration> {
             )
             .map(|_| ()),
             expected: |refusal| matches!(refusal, Refusal::DuplicateMethod { .. }),
+        },
+        RefusedDeclaration {
+            // §1: a required method is a *field*, and a field is filled by the
+            // impl. Nothing in an impl writes the field's type, so a constraint
+            // sitting in one has nobody to discharge it — which is why the
+            // `where` clause is the derived half's, and only that half's.
+            name: "a required method with a `where` clause of its own",
+            outcome: declare_trait(
+                &cx,
+                &class(
+                    "Demanding",
+                    vec![binder("A", type0())],
+                    Vec::new(),
+                    vec![generic(
+                        method("only", var("A")),
+                        Vec::new(),
+                        vec![constraint("Eq", vec![var("A")])],
+                    )],
+                ),
+            )
+            .map(|_| ()),
+            expected: |refusal| matches!(refusal, Refusal::ConstrainedField { .. }),
         },
         RefusedDeclaration {
             name: "an instance written with too many arguments",

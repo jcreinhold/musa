@@ -145,13 +145,22 @@ pub(crate) enum Kind {
 
 /// One method a trait derives: a definition, written once, that an impl may not
 /// replace.
+///
+/// Its own parameters and constraints are carried beside the type rather than
+/// only inside it, because a use site fills the two by different mechanisms: a
+/// parameter becomes a metavariable and a constraint goes through §4's lookup.
+/// Reading them back off a Π chain would mean guessing which binder was which.
 #[derive(Debug)]
 pub(crate) struct Derived {
     /// Its name, unqualified.
     pub(crate) name: Name,
-    /// Its type: `(p⃗ : Params) → (dict : Class p⃗) → τ`.
+    /// Its own type parameters, read under the trait's and the dictionary.
+    pub(crate) params: Arc<[Binder]>,
+    /// Its own constraints, read under all of those and its own parameters.
+    pub(crate) context: Arc<[Constraint]>,
+    /// Its type: `(p⃗ : Params) → (dict : Class p⃗) → (q⃗ : Own) → (d⃗ : Ctx) → τ`.
     pub(crate) ty: Term,
-    /// Its definition: `λp⃗. λdict. e`.
+    /// Its definition: `λp⃗. λdict. λq⃗. λd⃗. e`.
     pub(crate) value: Term,
 }
 
