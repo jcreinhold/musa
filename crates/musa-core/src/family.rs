@@ -1192,12 +1192,6 @@ pub(crate) fn constructed(neutral: &Neutral) -> Option<(Name, usize)> {
     let Head::Const(constant) = &neutral.head else {
         return None;
     };
-    if !matches!(constant.role, Role::Constructor(_)) {
-        return None;
-    }
-    if u32::try_from(neutral.spine.len()).unwrap_or(u32::MAX) != constant.arity() {
-        return None;
-    }
     // A constructor's type is a Π chain, so anything but an application means
     // the spine was assembled by something other than the elaborator.
     if !neutral
@@ -1207,10 +1201,117 @@ pub(crate) fn constructed(neutral: &Neutral) -> Option<(Name, usize)> {
     {
         return None;
     }
+    saturated(constant, neutral.spine.len())
+}
+
+/// The same question of a constant and how many arguments it was applied to.
+///
+/// The parameter-count rule itself, with the two readings of it above and in
+/// [`canonical`] left holding only the walk that finds the spine. One rule
+/// because there is one fact — where a constructor's fields begin is fixed by
+/// the declaration — and two copies of it could disagree about a family whose
+/// parameters changed.
+fn saturated(constant: &Constant, applied: usize) -> Option<(Name, usize)> {
+    if !matches!(constant.role, Role::Constructor(_)) {
+        return None;
+    }
+    if u32::try_from(applied).unwrap_or(u32::MAX) != constant.arity() {
+        return None;
+    }
     Some((
         constant.name(),
         usize::try_from(constant.group.params()).unwrap_or(usize::MAX),
     ))
+}
+
+/// The canonical data a normal form denotes, or [`None`] when it denotes none.
+///
+/// The same name as `eval`'s private reading of a [`Value`], because it is the
+/// same question: §5.8's D1 asked of a *term* rather than of a value: a literal, or a
+/// constructor of a declared family applied to more of the same. It is what a
+/// consumer of [`crate::check`] uses to look inside an answer that is not a bare
+/// literal — a count written as a `Nat`, a list, a pair — and the shape it hands
+/// back is the one a δ-rule is already written against, so a host reads one
+/// vocabulary rather than two.
+///
+/// Takes no context and cannot fail. A constructor spine carries its own
+/// [`Constant`], which carries the group that declared it, so where the fields
+/// begin is already in the term; and a normal form has nothing left to compute,
+/// which is what makes this a projection where
+/// [`realize`] — its inverse — must be type-directed.
+///
+/// # What answers `None`
+///
+/// Everything that is not saturated canonical data, which is a longer list than
+/// it sounds: a constructor one argument short or one too many, a variable, a
+/// definition, a family or a recursor applied or bare, a builtin, a λ, a Π, a
+/// universe, an identity type, a `refl`, a record, a record type, and a literal
+/// that has somehow been applied to something. A record is on that list
+/// deliberately — [`Datum`] has no record arm, and `01-surface.md`'s written
+/// product reaches here as `Pair.Both` rather than as one.
+///
+/// Nothing here is an error, because "not data" is an ordinary answer: it is
+/// exactly what a blocked δ-spine reports, and a caller that wanted a `Nat` says
+/// so itself.
+pub fn canonical(term: &Term) -> Option<Datum> {
+    let (head, arguments) = applied_spine(term);
+    match *head.shape() {
+        Shape::Lit(ref literal) if arguments.is_empty() => Some(Datum::Lit(literal.clone())),
+        Shape::Const(ref constant) => {
+            let (constructor, params) = saturated(constant, arguments.len())?;
+            let fields = arguments
+                .into_iter()
+                .skip(params)
+                .map(canonical)
+                .collect::<Option<Vec<_>>>()?;
+            Some(Datum::Case { constructor, fields })
+        }
+        // Written out rather than left to a wildcard so that the list in the
+        // doc comment above is checked by the compiler: a shape added to the
+        // core has to be classified here before this crate builds again.
+        //
+        // `App` cannot appear — the peel above ended because the head was not
+        // one — and it is named anyway, because an arm that says "unreachable"
+        // is a claim a later reader has to re-derive.
+        Shape::Lit(_)
+        | Shape::Var(_)
+        | Shape::Def(_)
+        | Shape::Base(_)
+        | Shape::Builtin(_)
+        | Shape::Universe(_)
+        | Shape::Pi { .. }
+        | Shape::Lam { .. }
+        | Shape::App { .. }
+        | Shape::RecordType(_)
+        | Shape::Record(_)
+        | Shape::Project { .. }
+        | Shape::Id { .. }
+        | Shape::Refl(_)
+        | Shape::J { .. }
+        | Shape::Meta(_)
+        | Shape::Let { .. } => None,
+    }
+}
+
+/// A term as its head and the arguments applied to it, outermost last.
+///
+/// `Shape::App` nests to the left, so peeling collects the arguments backwards
+/// and this puts them in written order — which is the order a constructor's
+/// parameters precede its fields in, and therefore the only order `skip` above
+/// means anything in.
+fn applied_spine(term: &Term) -> (&Term, Vec<&Term>) {
+    let mut head = term;
+    let mut arguments = Vec::new();
+    while let Shape::App {
+        ref function,
+        ref argument,
+    } = *head.shape()
+    {
+        arguments.push(argument);
+        head = function;
+    }
+    arguments.reverse();
+    (head, arguments)
 }
 
 /// Canonical data as a value of `ty`.

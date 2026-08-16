@@ -114,7 +114,7 @@ pub use crate::budget::{Budget, Metric, ResourceError};
 pub use crate::class::{Constraint, Instance, PackageId, Trait};
 pub use crate::context::Cx;
 pub use crate::error::{CoreError, Malformed};
-pub use crate::family::{Binder, Constant, Constructor, Declared, Group};
+pub use crate::family::{Binder, Constant, Constructor, Declared, Group, canonical};
 pub use crate::level::Level;
 pub use crate::meta::{Meta, MetaSource};
 pub use crate::origin::Origin;

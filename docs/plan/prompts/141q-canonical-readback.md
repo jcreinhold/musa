@@ -1,7 +1,7 @@
 ---
 id: 141q
 slug: canonical-readback
-status: pending
+status: done
 depends_on: [141b, 141e, 141j]
 phase: 3
 ---
@@ -52,7 +52,7 @@ mistake as an adapter re-parsing `3/8` out of a token's spelling.
 
 ```rust
 /// The canonical data a normal form denotes, or `None` when it denotes none.
-pub fn data(term: &Term) -> Option<Datum>
+pub fn canonical(term: &Term) -> Option<Datum>
 ```
 
 Free rather than a method, and taking a normal form rather than a value, because that is what a consumer of
@@ -71,11 +71,11 @@ constructor, and how many of its arguments are parameters* — and this prompt i
 caller and stops being a δ-only helper.
 
 **`read_back` stays as it is, and that is not a second path.** The first draft of this prompt said
-`registry::read_back::<T>` should be restated over `data`, and writing it showed why it must not be: `read_back` answers
-`&T` *borrowed out of the term*, and `data` answers an owned `Datum`. Routing one through the other would clone an
-entire `VoiceTrack`'s datum on the path every voice in every score takes, to reach a reference it already had. The two
-are not two answers to one question — one borrows a base literal and one owns a data tree — and the only thing they
-share is a `Shape::Lit` match, which is not a rule that can drift. Each says in its doc comment which it is.
+`registry::read_back::<T>` should be restated over `canonical`, and writing it showed why it must not be: `read_back`
+answers `&T` *borrowed out of the term*, and `canonical` answers an owned `Datum`. Routing one through the other would
+clone an entire `VoiceTrack`'s datum on the path every voice in every score takes, to reach a reference it already had.
+The two are not two answers to one question — one borrows a base literal and one owns a data tree — and the only thing
+they share is a `Shape::Lit` match, which is not a rule that can drift. Each says in its doc comment which it is.
 
 **No record arm on `Datum`.** [`Datum`]'s own doc comment says the arm and the signature check that admits it arrive
 together, and nothing here wants one: 142 lowers `(a, b)` to `Pair.Both`, so every product a program writes reaches this
@@ -95,7 +95,7 @@ route is already paved.
 
 ## Target
 
-- `musa_core::data`, exported from the crate root, doc-commented with its `None` cases enumerated: a partial
+- `musa_core::canonical`, exported from the crate root, doc-commented with its `None` cases enumerated: a partial
   application, a λ, a record, a record type, a universe, a Π, an identity, a variable, a definition, a family, a
   recursor, and a builtin.
 - `family::constructed`'s question answered for a `Term` as well as a `Neutral`, without duplicating the parameter-count
@@ -104,12 +104,25 @@ route is already paved.
   constructor one field short does not, and neither does one argument too many; a λ, a record, a record type, and a
   universe do not; nested data reads back nested; and — the one that ties the two readings together — a term and the
   value it evaluates to read back to the *same* `Datum`.
-- A law in `musa-compiler` reading real source back: a `Nat`, a `List`, and a written `(a, b)` elaborated through
-  `Document` and read as `Datum`s, so the door is proved against what the surface actually builds rather than against
-  hand-written terms. It uses `registry::rules`'s existing readers and adds none.
 - A row in [`docs/plan/code-map/`](../code-map/) for the new `musa-core` door.
 
 No new item in `crate::registry`, and no widened visibility there. See the Design's last two paragraphs.
+
+### What lands with 142 instead
+
+The first draft asked for a law in `musa-compiler` reading real source back — a `Nat` and a `List` elaborated through
+`Document` and read as `Datum`s, so the door is proved against what the surface builds rather than against hand-written
+terms. It is written, it passes, and it is **committed with 142** rather than here.
+
+The reason is the order this prompt was written in. 141q was split out of 142 *while 142 was being implemented*, so the
+only home for a `Document` law — `document/laws.rs` — already held 142's rewritten fault surveys when this prompt ran.
+Committing it here would have meant either carrying 142's half-finished work into this commit or splitting one file
+across two, and neither is a thing to do to keep a bullet true. So the bullet moved instead, which is the repair
+procedure working rather than a shortcut around it.
+
+Nothing about the door itself is deferred: `musa_core::canonical` and its seven `musa-core` laws land here, and the
+crate's own suite is what proves them. What waits is a second demonstration through the compiler, and 142 is the caller
+that makes it a demonstration rather than a law with no consumer.
 
 ## Check
 

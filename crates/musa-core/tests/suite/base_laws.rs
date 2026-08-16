@@ -1157,6 +1157,157 @@ fn a_constructor_over_an_open_field_leaves_the_spine_blocked() {
     assert_eq!(well_typed(&cx, &ty, &term), Ok(()));
 }
 
+// ---- reading data back out of a term ---------------------------------------
+//
+// Everything above this line reads data on the way *in*, when δ fires. These
+// read it on the way out, through [`musa_core::canonical`], which is the same
+// D1 question asked of a normal form. The corpus is the same `Option` and the
+// same `Int`, deliberately: if the two readings agreed only on terms written
+// for them separately they would not be one answer to one question.
+
+/// A base literal is data, and is its own.
+#[test]
+fn a_literal_reads_back_as_itself() {
+    assert_eq!(
+        musa_core::canonical(&int_lit(3).term(TERMS)),
+        Some(Datum::Lit(int_lit(3)))
+    );
+    assert_eq!(
+        musa_core::canonical(&text_lit("c").term(TERMS)),
+        Some(Datum::Lit(text_lit("c")))
+    );
+}
+
+/// A saturated constructor reads back, with its parameters left out.
+///
+/// The parameter is the whole assertion. A value of `Option Int` is
+/// `Option.Some Int 9` — the type first, because ι reads it by position — and a
+/// reading that handed back two fields would be describing the term rather than
+/// the data. `None` is beside it because it is where a fields-only
+/// representation would have quietly worked: it carries nothing and still has to
+/// be told apart from `Some`.
+#[test]
+fn a_saturated_constructor_reads_back_without_its_parameters() {
+    let cx = host();
+    let ty = option_int(&cx);
+    let questions = [
+        (
+            "Some 9",
+            some(Raw::lit(TERMS, int_lit(9))),
+            case("Option.Some", [Datum::Lit(int_lit(9))]),
+        ),
+        ("None", none(), case("Option.None", [])),
+    ];
+    for (name, written, expected) in questions {
+        let term = check(&cx, &ty, &written).unwrap_or_else(|error| panic!("{name}: {error}"));
+        assert_eq!(
+            musa_core::canonical(&normalize_at(&cx, &ty, &term)),
+            Some(expected),
+            "{name}"
+        );
+    }
+}
+
+/// Data nests, and the reading descends through a field rather than stopping at
+/// the outer constructor.
+#[test]
+fn nested_data_reads_back_nested() {
+    let cx = host();
+    let inner = calls("Option", [Raw::var(TYPES, "Int")]);
+    let ty = infer(&cx, &calls("Option", [inner.clone()]))
+        .expect("`Option (Option Int)` is a type")
+        .0;
+    let written = calls("Option.Some", [inner, some(Raw::lit(TERMS, int_lit(4)))]);
+    let term = check(&cx, &ty, &written).expect("the nested value checks");
+    assert_eq!(
+        musa_core::canonical(&normalize_at(&cx, &ty, &term)),
+        Some(case("Option.Some", [case("Option.Some", [Datum::Lit(int_lit(4))])]))
+    );
+}
+
+/// The reading a term gets is the reading a δ-rule gets.
+///
+/// The law that makes the two halves one answer. `option_or` is handed a
+/// [`Datum`] by the evaluator when it fires, and it answers the field it found;
+/// [`musa_core::canonical`] is handed the same subject as a term. If the field
+/// the rule acted on and the field the reading reports could differ, a host
+/// would have to know which door it came through — and §5.8's whole point is
+/// that it does not.
+#[test]
+fn a_term_and_the_rule_that_fires_on_it_see_the_same_data() {
+    let cx = host();
+    let int_ty = int().term(TYPES);
+    let ty = option_int(&cx);
+    let subject = some(Raw::lit(TERMS, int_lit(9)));
+
+    let held = check(&cx, &ty, &subject).expect("the subject checks");
+    let read = musa_core::canonical(&normalize_at(&cx, &ty, &held)).expect("the term reads back as data");
+
+    let program = calls("option_or", [subject, Raw::lit(TERMS, int_lit(0))]);
+    let fired = check(&cx, &int_ty, &program).expect("the application checks");
+    let answered = normalize_at(&cx, &int_ty, &fired);
+
+    let Datum::Case { ref fields, .. } = read else {
+        panic!("the reading found a constructor: {read:?}");
+    };
+    assert_eq!(
+        fields.first(),
+        Some(&Datum::Lit(int_lit(9))),
+        "the reading found the field"
+    );
+    assert_eq!(answered, int_lit(9).term(TERMS), "and the rule answered the same one");
+}
+
+/// What is not data, which is most terms.
+///
+/// One law rather than eight, because the answer is one word and listing them
+/// apart would say eight times that `None` means `None`. What matters is that
+/// each of these is a *well-typed* term the core will happily hand a caller —
+/// a partial constructor, a λ, a record, a universe — so the reading refuses
+/// them on their shape rather than on their having been rejected earlier.
+#[test]
+fn what_is_not_canonical_data_reads_back_as_nothing() {
+    let cx = host();
+    let int_ty = int().term(TYPES);
+    let questions = [
+        (
+            "a constructor one field short",
+            calls("Option.Some", [Raw::var(TYPES, "Int")]),
+            arrow(int_ty.clone(), option_int(&cx)),
+        ),
+        (
+            "the family itself",
+            calls("Option", [Raw::var(TYPES, "Int")]),
+            Term::universe(TYPES, Level::ZERO),
+        ),
+        (
+            "a λ",
+            Raw::annotated_lam(TERMS, "n", Raw::var(TERMS, "Int"), Raw::var(TERMS, "n")),
+            arrow(int_ty.clone(), int_ty),
+        ),
+        (
+            "a record",
+            Raw::record(TERMS, [("held", Raw::lit(TERMS, int_lit(1)))]),
+            infer(&cx, &Raw::record_type(TYPES, [("held", Raw::var(TYPES, "Int"))]))
+                .expect("the record type is a type")
+                .0,
+        ),
+        (
+            "a universe",
+            Raw::universe(TYPES, Level::ZERO),
+            Term::universe(TYPES, Level::ZERO.succ()),
+        ),
+    ];
+    for (name, written, ty) in questions {
+        let term = check(&cx, &ty, &written).unwrap_or_else(|error| panic!("{name}: {error}"));
+        assert_eq!(
+            musa_core::canonical(&normalize_at(&cx, &ty, &term)),
+            None,
+            "{name} is not data"
+        );
+    }
+}
+
 // ---- structural eliminators ------------------------------------------------
 
 /// `fn (t: Text) { 1 }` — one node counted.
