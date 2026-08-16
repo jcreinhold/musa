@@ -1,7 +1,7 @@
 ---
 id: 141d
 slug: finite-constructor-builtins
-status: in-progress
+status: done
 depends_on: [141b, 141c]
 phase: 3
 ---

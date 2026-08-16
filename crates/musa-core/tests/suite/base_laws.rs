@@ -21,15 +21,23 @@
 //! the host says their payloads agree, δ fires exactly where ι does, a builtin
 //! short of its arguments is neutral rather than an error, and every δ step is
 //! charged.
+//!
+//! **`Option` is declared here rather than registered.** D1 admits "a base type
+//! **or a finite constructor over base types**", and the second half needs a
+//! family with real constructors to be about anything — so the context below
+//! declares one, in the test, the way prompt 141 proved `Option`, `List`, and
+//! `Result` are declarations rather than core knowledge. Nothing in `src/` learns
+//! that `Option` exists; what it learns is that a family *has* constructors.
 
 use std::any::Any;
 use std::sync::Arc;
 
 use musa_core::{
-    Base, Budget, Builtin, CoreError, Cx, ElabError, Family, Index, Level, Literal, Origin, Payload, Raw, RawArm,
-    RawPattern, Refusal, Registry, Term, check, convertible, infer, normalize, well_typed,
+    Base, Budget, Builtin, CoreError, Cx, Datum, ElabError, Family, Index, Level, Literal, Origin, Payload, Raw,
+    RawArm, RawData, RawPattern, Refusal, Registry, Term, check, convertible, infer, normalize, well_typed,
 };
 
+use crate::family_laws::{binder, constructor, data, family, type0, var};
 use crate::programs::refusal;
 
 /// Where every type in this suite says it was written.
@@ -156,7 +164,9 @@ fn int_add() -> Builtin {
         arrow(int().term(TYPES), arrow(int().term(TYPES), int().term(TYPES))),
         Family::Delta,
         |arguments| match arguments {
-            [left, right] => Some(int_lit(as_int(left)?.checked_add(as_int(right)?)?)),
+            [Datum::Lit(left), Datum::Lit(right)] => {
+                Some(Datum::Lit(int_lit(as_int(left)?.checked_add(as_int(right)?)?)))
+            }
             _ => None,
         },
     )
@@ -169,7 +179,9 @@ fn text_append() -> Builtin {
         arrow(text().term(TYPES), arrow(text().term(TYPES), text().term(TYPES))),
         Family::Delta,
         |arguments| match arguments {
-            [left, right] => Some(text_lit(&format!("{}{}", as_text(left)?, as_text(right)?))),
+            [Datum::Lit(left), Datum::Lit(right)] => {
+                Some(Datum::Lit(text_lit(&format!("{}{}", as_text(left)?, as_text(right)?))))
+            }
             _ => None,
         },
     )
@@ -182,7 +194,107 @@ fn int_show() -> Builtin {
         arrow(int().term(TYPES), text().term(TYPES)),
         Family::Delta,
         |arguments| match arguments {
-            [only] => Some(text_lit(&as_int(only)?.to_string())),
+            [Datum::Lit(only)] => Some(Datum::Lit(text_lit(&as_int(only)?.to_string()))),
+            _ => None,
+        },
+    )
+}
+
+// ---- the declared family, and the δ-rules over it ---------------------------
+
+/// `data Option (A : Type 0) where None : Option A; Some : (value : A) → Option A`.
+///
+/// Declared rather than registered, and that is the whole point: a δ-rule that
+/// answers `Some 3` is answering a *constructor application*, which prompt 141
+/// established is what a value of a declared family is. `Literal` cannot be one,
+/// which is why [`Datum`] exists.
+fn options() -> RawData {
+    data(
+        vec![binder("A", type0())],
+        vec![family(
+            "Option",
+            Vec::new(),
+            vec![
+                constructor("None", Vec::new(), Vec::new()),
+                constructor("Some", vec![binder("value", var("A"))], Vec::new()),
+            ],
+        )],
+    )
+}
+
+/// The qualified spelling a rule writes, and the one a diagnostic prints.
+fn case(name: &str, fields: impl IntoIterator<Item = Datum>) -> Datum {
+    Datum::Case {
+        constructor: Arc::from(name),
+        fields: fields.into_iter().collect(),
+    }
+}
+
+/// `int_halve : Int → Option Int`, which answers a value it has to *build*.
+///
+/// Both constructors, on purpose: `Some` carries a field and `None` carries
+/// none, and neither says what `A` is. The parameter comes from the result type
+/// at realization, which is why an answer is written as a name and its fields
+/// and nothing else.
+fn int_halve(option_int: &Term) -> Builtin {
+    Builtin::new(
+        "int_halve",
+        arrow(int().term(TYPES), option_int.clone()),
+        Family::Delta,
+        |arguments| match arguments {
+            [Datum::Lit(only)] => {
+                let value = as_int(only)?;
+                if value % 2 == 0 {
+                    return Some(case("Option.Some", [Datum::Lit(int_lit(value / 2))]));
+                }
+                Some(case("Option.None", []))
+            }
+            _ => None,
+        },
+    )
+}
+
+/// `option_or : Option Int → Int → Int`, which reads one.
+///
+/// It also hands an argument back unchanged, which is the case that decided
+/// [`Datum`] is one type rather than two: the fallback is *already* a datum, so
+/// answering it is a clone rather than a transcription into a second vocabulary.
+fn option_or(option_int: &Term) -> Builtin {
+    Builtin::new(
+        "option_or",
+        arrow(option_int.clone(), arrow(int().term(TYPES), int().term(TYPES))),
+        Family::Delta,
+        |arguments| match arguments {
+            [Datum::Case { constructor, fields }, fallback] => {
+                if **constructor == *"Option.Some" {
+                    return fields.first().cloned();
+                }
+                Some(fallback.clone())
+            }
+            _ => None,
+        },
+    )
+}
+
+/// `option_flatten : Option (Option Int) → Option Int`, nested both ways.
+///
+/// The reading side has to descend into a constructor's field to see another
+/// constructor, and the answering side has to realize the inner one at the
+/// *inner* type — `Option Int`, read off the outer type's parameter rather than
+/// off anything the rule said. A mechanism that resolved constructor names from
+/// a flat table would have nothing to say about which `Option` this is.
+fn option_flatten(option_int: &Term, option_option_int: &Term) -> Builtin {
+    Builtin::new(
+        "option_flatten",
+        arrow(option_option_int.clone(), option_int.clone()),
+        Family::Delta,
+        |arguments| match arguments {
+            [Datum::Case { constructor, fields }] => {
+                if **constructor == *"Option.Some" {
+                    return fields.first().cloned();
+                }
+                Some(case("Option.None", []))
+            }
             _ => None,
         },
     )
@@ -296,25 +408,90 @@ fn tree_spin() -> Builtin {
     )
 }
 
-/// The registry every accepting law below is stated under.
+/// The registry every accepting law below is stated under, over the `Option`
+/// terms the declaring context supplied.
 ///
 /// # Panics
 ///
 /// If the registry refuses its own worked example, which would be a defect in
 /// this crate rather than a property of any test.
-fn registry() -> Arc<Registry> {
+fn registry(option_int: &Term, option_option_int: &Term) -> Arc<Registry> {
     Arc::new(
         Registry::new(
             vec![int(), text(), tree()],
-            vec![int_add(), text_append(), int_show(), tree_fold(), tree_spin()],
+            vec![
+                int_add(),
+                text_append(),
+                int_show(),
+                tree_fold(),
+                tree_spin(),
+                int_halve(option_int),
+                option_or(option_int),
+                option_flatten(option_int, option_option_int),
+            ],
         )
         .expect("the worked registry registers"),
     )
 }
 
+/// `Option` declared, then the registry over it, at `budget`.
+///
+/// The order is forced and is worth naming: a δ signature mentioning
+/// `Option Int` needs the family *constant*, which only a context that has
+/// already declared it can supply. So the family is declared first, its constant
+/// is read out, the two `Option` types are assembled from it and the registered
+/// `Int`, and the registry is built last. A host doing this for real does the
+/// same thing in the same order.
+///
+/// The preparation runs at the language budget whatever `budget` is, because it
+/// is the fixture rather than the law: the narrow-budget tests below are about
+/// what a *program* costs, and a declaration nobody could afford to make would
+/// say nothing about that.
+///
+/// # Panics
+///
+/// If the declaration is refused, which would be a defect in this crate.
+fn host_at(budget: Budget) -> Cx {
+    let roomy = Cx::with_budget(Budget::LANGUAGE);
+    let group = musa_core::declare(&roomy, &options()).expect("`Option` is a declaration");
+    let declaring = roomy.declaring(&group);
+    let option = infer(&declaring, &Raw::var(TYPES, "Option"))
+        .expect("`Option` is declared")
+        .0;
+    let option_int = Term::app(TYPES, option.clone(), int().term(TYPES));
+    let option_option_int = Term::app(TYPES, option, option_int.clone());
+    Cx::with_budget(budget)
+        .declaring(&group)
+        .with_externs(registry(&option_int, &option_option_int))
+}
+
 /// A context carrying it, at the language budget.
 fn host() -> Cx {
-    Cx::new().with_externs(registry())
+    host_at(Budget::LANGUAGE)
+}
+
+/// `Option Int` as a type, read where both halves of it are in scope.
+///
+/// # Panics
+///
+/// If it is not a type, which would be a defect in this file.
+fn option_int(cx: &Cx) -> Term {
+    infer(cx, &calls("Option", [Raw::var(TYPES, "Int")]))
+        .expect("`Option Int` is a type")
+        .0
+}
+
+/// `Option.Some Int n` and `Option.None Int`, as raw terms.
+///
+/// The type parameter is written because a constructor takes it: `Option.Some`
+/// has arity two, and that is exactly the fact realization has to supply from
+/// the result type when a δ-rule answers one.
+fn some(value: Raw) -> Raw {
+    calls("Option.Some", [Raw::var(TYPES, "Int"), value])
+}
+
+fn none() -> Raw {
+    calls("Option.None", [Raw::var(TYPES, "Int")])
 }
 
 /// `f a b …`, as a raw term.
@@ -603,12 +780,139 @@ fn a_builtin_reduction_is_charged() {
         "and it reduces to 64"
     );
 
-    let narrow = Cx::with_budget(Budget::LANGUAGE.scaled(200_000)).with_externs(registry());
+    let narrow = host_at(Budget::LANGUAGE.scaled(200_000));
     let outcome = check(&narrow, &int_ty, &chain);
     assert!(
         matches!(outcome, Err(ElabError::Exhausted(_))),
         "a budget of one step cannot afford 64 δ reductions, and says so rather than answering"
     );
+}
+
+// ---- δ over finite data ----------------------------------------------------
+//
+// D1's *or*. Everything above this line is a rule over base types alone, and
+// every one of those laws still holds unchanged — which is the first thing this
+// section claims: the firing condition widened from "every argument a literal"
+// to "every argument canonical data", and the two coincide exactly where no
+// declared family is involved.
+
+/// A δ-rule reads a constructor application, its fields and all.
+///
+/// The subject here is not a literal and could never be one: `Option.Some Int 9`
+/// is a constant applied to a type and a value, which is what prompt 141 proved
+/// a value of a declared family is. A rule handed only literals would have been
+/// blocked on every call.
+///
+/// Both cases, because the empty one is where a fields-only representation would
+/// have quietly worked and told us nothing: `None` carries no field and still has
+/// to be distinguishable from `Some`.
+#[test]
+fn a_builtin_reads_a_constructed_argument() {
+    let cx = host();
+    let int_ty = int().term(TYPES);
+    let questions = [
+        ("Some 9, so the field", some(Raw::lit(TERMS, int_lit(9))), 9),
+        ("None, so the fallback", none(), 0),
+    ];
+    for (name, subject, expected) in questions {
+        let program = calls("option_or", [subject, Raw::lit(TERMS, int_lit(0))]);
+        let term = check(&cx, &int_ty, &program).unwrap_or_else(|error| panic!("{name}: {error}"));
+        assert_eq!(
+            normalize_at(&cx, &int_ty, &term),
+            int_lit(expected).term(TERMS),
+            "{name}"
+        );
+        assert_eq!(well_typed(&cx, &int_ty, &term), Ok(()), "{name}: and it re-checks");
+    }
+}
+
+/// A δ-rule answers a constructor application, and what it answers is a real
+/// value of the family.
+///
+/// The re-check on the *normal form* is the load-bearing assertion rather than
+/// the comparison above it. A rule writes `Option.Some` and one field; a value of
+/// `Option Int` is `Option.Some Int 3`, with the parameter first because ι reads
+/// it by position. Realization supplies that parameter from the builtin's own
+/// result type, and a value missing it would compare equal to nothing and
+/// re-check as nothing.
+#[test]
+fn a_builtin_answers_a_constructed_value() {
+    let cx = host();
+    let ty = option_int(&cx);
+    let questions = [
+        ("an even input", 6, some(Raw::lit(TERMS, int_lit(3)))),
+        ("an odd one, so the empty case", 7, none()),
+    ];
+    for (name, input, written) in questions {
+        let program = calls("int_halve", [Raw::lit(TERMS, int_lit(input))]);
+        let term = check(&cx, &ty, &program).unwrap_or_else(|error| panic!("{name}: {error}"));
+        let normal = normalize_at(&cx, &ty, &term);
+        let expected = check(&cx, &ty, &written).unwrap_or_else(|error| panic!("{name}: {error}"));
+        assert_eq!(normal, normalize_at(&cx, &ty, &expected), "{name}");
+        assert_eq!(
+            well_typed(&cx, &ty, &normal),
+            Ok(()),
+            "{name}: the answer is a well-typed value of the family, parameter and all"
+        );
+    }
+}
+
+/// Data nests, in both directions and at the right type.
+///
+/// Reading has to descend through a constructor's field to find another
+/// constructor; answering has to realize the inner one at `Option Int` — a type
+/// read off the outer type's own parameter, not off anything the rule said. A
+/// mechanism that resolved constructor names against one flat table per builtin
+/// would have had nothing to say about *which* `Option` this is.
+#[test]
+fn constructed_data_nests_in_both_directions() {
+    let cx = host();
+    let ty = option_int(&cx);
+    let nested = |inner: Raw| calls("Option.Some", [calls("Option", [Raw::var(TYPES, "Int")]), inner]);
+    let questions = [
+        (
+            "Some (Some 4) flattens to Some 4",
+            nested(some(Raw::lit(TERMS, int_lit(4)))),
+            some(Raw::lit(TERMS, int_lit(4))),
+        ),
+        ("Some None flattens to None", nested(none()), none()),
+    ];
+    for (name, subject, written) in questions {
+        let program = calls("option_flatten", [subject]);
+        let term = check(&cx, &ty, &program).unwrap_or_else(|error| panic!("{name}: {error}"));
+        let normal = normalize_at(&cx, &ty, &term);
+        let expected = check(&cx, &ty, &written).unwrap_or_else(|error| panic!("{name}: {error}"));
+        assert_eq!(normal, normalize_at(&cx, &ty, &expected), "{name}");
+        assert_eq!(well_typed(&cx, &ty, &normal), Ok(()), "{name}: and it re-checks");
+    }
+}
+
+/// A constructor whose field is not data leaves the spine blocked.
+///
+/// The companion that makes the laws above non-vacuous. `Option.Some Int n` is a
+/// perfectly good constructor application, and it is not canonical data, because
+/// `n` is a variable — so the rule waits, exactly as it waits for a literal. A
+/// core that took the outer constructor as enough would hand the rule a `Datum`
+/// it had invented a field for, and the body of every function over an `Option`
+/// would reduce to a lie.
+#[test]
+fn a_constructor_over_an_open_field_leaves_the_spine_blocked() {
+    let cx = host();
+    let int_ty = int().term(TYPES);
+    let ty = arrow(int_ty.clone(), int_ty);
+    let program = Raw::annotated_lam(
+        TERMS,
+        "n",
+        Raw::var(TERMS, "Int"),
+        calls("option_or", [some(Raw::var(TERMS, "n")), Raw::lit(TERMS, int_lit(0))]),
+    );
+    let term = check(&cx, &ty, &program).expect("an open field checks");
+    assert_eq!(
+        normalize_at(&cx, &ty, &term),
+        term,
+        "stuck on the binder inside the constructor, so the normal form is the term itself"
+    );
+    assert_eq!(well_typed(&cx, &ty, &term), Ok(()));
 }
 
 // ---- structural eliminators ------------------------------------------------
@@ -739,7 +1043,7 @@ fn a_structural_eliminator_at_a_neutral_target_is_neutral() {
 /// rather than the machine.
 #[test]
 fn a_traversal_that_does_not_descend_is_refused() {
-    let narrow = Cx::with_budget(Budget::LANGUAGE.scaled(4)).with_externs(registry());
+    let narrow = host_at(Budget::LANGUAGE.scaled(4));
     let int_ty = int().term(TYPES);
     let finite = calls(
         "tree_fold",
@@ -875,6 +1179,19 @@ pub(crate) fn refused_registries() -> Vec<RefusedRegistry> {
                 )],
             ),
             expected: |refusal| matches!(refusal, Refusal::TargetNotABase { .. }),
+        },
+        RefusedRegistry {
+            name: "a δ signature over a type that is not finite data",
+            outcome: Registry::new(
+                vec![int()],
+                vec![Builtin::new(
+                    "int_of_record",
+                    arrow(Term::record_type(TYPES, []), int().term(TYPES)),
+                    Family::Delta,
+                    |_| None,
+                )],
+            ),
+            expected: |refusal| matches!(refusal, Refusal::NotFiniteData { .. }),
         },
     ]
 }

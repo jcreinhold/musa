@@ -320,7 +320,7 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
 }
 
 /// Every refusal this crate can answer with.
-const ALL_REFUSALS: [&str; 49] = [
+const ALL_REFUSALS: [&str; 50] = [
     "unknown-name",
     "mismatch",
     "unsolved",
@@ -370,6 +370,7 @@ const ALL_REFUSALS: [&str; 49] = [
     "base-not-matchable",
     "target-outside-signature",
     "target-not-a-base",
+    "not-finite-data",
 ];
 
 /// Which refusal this is, as a tag the coverage gate can compare.
@@ -427,6 +428,7 @@ fn kind(refusal: &Refusal) -> &'static str {
         Refusal::BaseNotMatchable { .. } => "base-not-matchable",
         Refusal::TargetOutsideSignature { .. } => "target-outside-signature",
         Refusal::TargetNotABase { .. } => "target-not-a-base",
+        Refusal::NotFiniteData { .. } => "not-finite-data",
     }
 }
 

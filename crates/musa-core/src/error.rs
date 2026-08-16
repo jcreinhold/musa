@@ -82,4 +82,15 @@ pub enum Malformed {
     /// inscrutable conversion failure somewhere else entirely.
     #[error("builtin `{0}` computed nothing at arguments it declares it accepts")]
     BuiltinStuck(Name),
+    /// A δ-rule answered data that does not fit its own declared result type.
+    ///
+    /// Three ways to earn it and one sentence for all of them: the constructor
+    /// named is not a case of the type the builtin answers at, or it is applied
+    /// to a number of fields the declaration does not have, or the result type
+    /// is not a declared family at all. Each is the same defect — the host's
+    /// rule and the host's signature disagree — and each is a caller defect for
+    /// [`Self::BuiltinStuck`]'s reason: the program was well typed and the
+    /// *table* was wrong.
+    #[error("builtin answered `{0}`, which does not fit the type it answers at")]
+    MisfitAnswer(Name),
 }

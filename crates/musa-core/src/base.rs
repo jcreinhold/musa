@@ -31,6 +31,17 @@
 //!   constant of a declared type and application is application — so the only
 //!   new arm anywhere is reduction.
 //!
+//! **D1's *or* is [`Datum`].** A δ-builtin's argument and result types are "a
+//! base type **or a finite constructor over base types**", and the second half
+//! is not optional decoration: a host that answers `Option Scale` or takes a
+//! `List Pc12` is writing an ordinary first-order function, because neither
+//! family has an arrow in it. So a rule reads and writes [`Datum`] rather than
+//! [`Literal`] — a literal, or a constructor of a declared family applied to
+//! more of the same — and the firing condition is "every argument is canonical
+//! data" rather than "every argument is a literal". The two conditions coincide
+//! exactly when no declared family is involved, which is why the base-only rules
+//! 141b registered behave as they always did.
+//!
 //! **A literal's payload is opaque, and the alternative was refused.** The core
 //! needs three things from a literal and no more: which type it inhabits,
 //! whether it is the same literal as another, and how to show it in a
@@ -59,9 +70,11 @@
 //! boundary is what makes a rewrite honest rather than a callback.
 //!
 //! **Which half of D1–D4 is checked here.** [`Registry::new`] checks what the
-//! signature makes visible: every name registered once, no arrow anywhere in a
-//! δ-builtin's signature, and every base type a δ signature mentions registered
-//! as a base type. D2 totality, D3's order-independence, and D4's size bound are
+//! signature makes visible: every name registered once, every argument and
+//! result type of a δ-builtin *finite data* — a registered base type, or a
+//! declared family applied to more of the same — and every structural
+//! eliminator firing on an argument it takes. D2 totality, D3's
+//! order-independence, and D4's size bound are
 //! properties of the host's *functions over the host's domains*, and the host's
 //! own law suite samples them where the table lives — `crates/musa-compiler`'s
 //! `BUILTIN_OWNERSHIP` suite, since prompt 127ca. Do not look for D2 here; it is
@@ -269,6 +282,53 @@ impl fmt::Display for Family {
     }
 }
 
+/// Canonical data: what a δ-rule reads, and what it answers.
+///
+/// D1's disjunction, as one recursive type. A [`Literal`] is "a base type"; a
+/// [`Self::Case`] is "a finite constructor over base types", and the recursion
+/// is what makes `Cons(1, Cons(2, Nil))` one datum rather than a shape the core
+/// would have to special-case per depth.
+///
+/// **One type for both directions, rather than a borrowing view in and an owned
+/// tree out.** The core has to *force* an argument before it can see whether it
+/// is canonical, and a forced value is a new value a borrow would have to
+/// outlive — keeping them alive while building references into them is an arena,
+/// which is a great deal of machinery for two [`Arc`] bumps per literal that δ
+/// already pays. Symmetry buys something as well: a rule that answers one of its
+/// arguments unchanged — an `or_else`, a `flatten` at the outer level — writes
+/// `arguments[0].clone()` rather than transcribing a tree into the other type.
+///
+/// **Constructor names are qualified**, the spelling
+/// [`Constant::name`](crate::Constant) prints and a diagnostic already shows:
+/// `Option.Some`, never `Some`. Reading and writing therefore speak one
+/// vocabulary, so handing an argument straight back really is the identity it
+/// looks like, and a signature naming two families that each declare a `Nil` is
+/// not ambiguous about which one it meant.
+///
+/// **A constructor's parameters are not fields and are not here.** `Option.Some`
+/// applied to `3` has arity two — the element type, then the value — and only
+/// the second is data. The parameters are recovered from the type when an answer
+/// is realized, which is why realization is type-directed and reading is not.
+///
+/// **There is no record arm.** A product is spellable in the host's shape
+/// language and used by nothing, so admitting one would be public surface with
+/// no caller; a record argument is not canonical data and leaves the spine
+/// blocked. When something wants one, the arm and the signature check that
+/// admits it arrive together.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Datum {
+    /// A closed value of a base type.
+    Lit(Literal),
+    /// A constructor of a declared family, applied to its fields.
+    Case {
+        /// The constructor's qualified name, as `Family.Case`.
+        constructor: Name,
+        /// Its fields, in declaration order. The family's parameters are not
+        /// among them.
+        fields: Vec<Self>,
+    },
+}
+
 /// What a builtin does to its arguments.
 ///
 /// A `fn` pointer rather than a boxed closure, and that is D3 rather than a
@@ -277,11 +337,16 @@ impl fmt::Display for Family {
 /// evaluation-order dependence, hash-iteration order, or diagnostic emission" is
 /// a property of the type rather than a promise a reader has to audit.
 ///
+/// It is handed one [`Datum`] per argument, in the order the signature declares
+/// them, and answers one. Nothing in the argument slice is a term or a value:
+/// roadmap §15.12's privacy boundary is what makes a rule a function over data
+/// rather than a callback into the evaluator.
+///
 /// `None` means *this rule does not apply to these arguments*, and the
-/// application stays a neutral spine. For a δ-builtin at closed literal
-/// arguments of its declared types that answer is a host defect, which D2
-/// forbids and [`crate::Refusal::BuiltinStuck`] reports.
-pub type Rule = fn(&[&Literal]) -> Option<Literal>;
+/// application stays a neutral spine. For a δ-builtin at closed data of its
+/// declared argument types that answer is a host defect, which D2 forbids and
+/// [`crate::Malformed::BuiltinStuck`] reports.
+pub type Rule = fn(&[Datum]) -> Option<Datum>;
 
 /// How a structural eliminator takes one step: it reads the literal it fired on
 /// and answers the term to evaluate in its place.
@@ -323,7 +388,7 @@ pub type Rewrite = fn(&Builtin, &Literal) -> Option<Term>;
 /// way to take a step and two nullable fields could disagree about which.
 #[derive(Clone, Copy, Debug)]
 enum Reduction {
-    /// D1–D4's: values in, a value out, once every argument is a literal.
+    /// D1–D4's: data in, data out, once every argument is canonical.
     Delta(Rule),
     /// A traversal's: a term out, once the argument at `target` is a literal.
     /// The other arguments are passed through as whatever they already are.
@@ -370,8 +435,8 @@ impl fmt::Display for Builtin {
 impl Builtin {
     /// A builtin named `name`, of type `ty`, in `family`, computed by `rule`.
     ///
-    /// Builds a builtin reduced by a δ-rule — every argument a literal, a
-    /// literal out. That is D1–D4's shape for [`Family::Delta`] and the shape a
+    /// Builds a builtin reduced by a δ-rule — every argument canonical data,
+    /// data out. That is D1–D4's shape for [`Family::Delta`] and the shape a
     /// track or machine constructor has too, since both build a closed value out
     /// of closed values. A traversal is the other shape; [`Self::structural`]
     /// builds one.
@@ -446,9 +511,9 @@ impl Builtin {
 
     /// Its δ-rule, if it reduces that way.
     ///
-    /// Called only at exactly [`Self::arity`] arguments, every one of them a
-    /// literal: an application short of the arity, or one whose argument has not
-    /// reduced to a literal, is a blocked spine and never reaches it.
+    /// Called only at exactly [`Self::arity`] arguments, every one of them
+    /// canonical data: an application short of the arity, or one whose argument
+    /// has not reduced to data, is a blocked spine and never reaches it.
     pub(crate) fn delta_rule(&self) -> Option<Rule> {
         match self.0.reduction {
             Reduction::Delta(rule) => Some(rule),
@@ -534,30 +599,33 @@ impl Registry {
     ///
     /// - **one name, one meaning** — no name registered twice, whether as two
     ///   base types, two builtins, or one of each;
-    /// - **no arrow in a δ signature** (D1) — a δ-builtin's argument and result
-    ///   types hold no Π anywhere, at any depth, which is what makes a δ-builtin
-    ///   a first-order operation over data rather than a higher-order one;
-    /// - **δ arguments are over registered base types** — every [`Base`] a δ
-    ///   signature mentions is a base type of this registry, so "its base types
-    ///   have no eliminator" is true because they are inert here rather than
-    ///   because someone checked elsewhere;
+    /// - **a δ signature is finite data** (D1) — every argument type and the
+    ///   result type is a registered base type, or a declared family applied to
+    ///   argument types that are themselves this, at any depth. Stated
+    ///   positively rather than as "no arrow", because "no arrow" also admitted
+    ///   the record types, universes, and bare variables D1 never meant, and
+    ///   because a rule can only *read* and *answer* what [`Datum`] can say;
     /// - **a structural eliminator has a target it could fire on** — the index
     ///   [`Builtin::structural`] wrote down names an argument of the signature,
     ///   and that argument's type is headed by a base type of this registry.
     ///
-    /// D1's arrow-free rule is checked over δ-builtins and nowhere else, which
-    /// is where §5.8 states it. A structural eliminator's signature holds an
-    /// arrow by definition — a traversal takes an algebra — so a registry that
-    /// applied D1 to the whole table would refuse the family it is registering.
-    /// What replaces it for that family is the target check: a rewrite whose
-    /// target is a *declared* type would be a second ι-rule for something that
-    /// already has one, and the second path is what the audits keep looking for.
+    /// D1 is checked over δ-builtins and nowhere else, which is where §5.8
+    /// states it. A structural eliminator's signature holds an arrow by
+    /// definition — a traversal takes an algebra — so a registry that applied D1
+    /// to the whole table would refuse the family it is registering. What
+    /// replaces it for that family is the target check: a rewrite whose target
+    /// is a *declared* type would be a second ι-rule for something that already
+    /// has one, and the second path is what the audits keep looking for.
+    ///
+    /// An arrow keeps its own diagnostic inside the positive check, because a Π
+    /// where data was wanted is the D1 violation a table author actually writes,
+    /// and [`Refusal::HigherOrderDelta`] says the specific thing.
     ///
     /// # Errors
     ///
     /// [`Refusal::DuplicateExtern`], [`Refusal::HigherOrderDelta`],
-    /// [`Refusal::UnknownBase`], [`Refusal::TargetOutsideSignature`], or
-    /// [`Refusal::TargetNotABase`].
+    /// [`Refusal::NotFiniteData`], [`Refusal::UnknownBase`],
+    /// [`Refusal::TargetOutsideSignature`], or [`Refusal::TargetNotABase`].
     pub fn new(bases: Vec<Base>, builtins: Vec<Builtin>) -> Result<Self, Refusal> {
         let mut names: HashMap<Name, Extern> = HashMap::with_capacity(bases.len().saturating_add(builtins.len()));
         for base in bases {
@@ -625,77 +693,74 @@ impl Registry {
                 continue;
             }
             for argument in signature_parts(builtin.ty()) {
-                self.check_first_order(builtin, &argument)?;
+                self.check_finite_data(builtin, &argument)?;
             }
         }
         Ok(())
     }
 
-    /// One argument or result type of a δ-builtin: no arrow at any depth, and
-    /// every base type it names registered here.
-    fn check_first_order(&self, builtin: &Builtin, ty: &Term) -> Result<(), Refusal> {
-        let mut pending = vec![ty.clone()];
-        while let Some(part) = pending.pop() {
-            match part.shape() {
-                Shape::Pi { .. } => {
-                    return Err(Refusal::HigherOrderDelta {
-                        name: Arc::clone(builtin.name()),
-                        at: builtin.ty().origin(),
+    /// One argument or result type of a δ-builtin: finite data, at any depth.
+    ///
+    /// Two shapes and no third. A registered base type, applied to whatever it
+    /// takes, is data because §5.8 declares it inert. A declared family applied
+    /// to more data is data because prompt 141 proved `List`, `Option`, and
+    /// `Result` are ordinary declarations — their values are constructor
+    /// applications, which is exactly what [`Datum::Case`] says.
+    ///
+    /// Everything else is refused, including the ones that would be *harmless*
+    /// to admit. A literal in an index position — `Vec Nat 3` — is not written
+    /// by anything in the table this check exists for, and a check that admits
+    /// what nothing writes is a check nobody has read; the day something wants
+    /// one, it arrives with a caller and a law.
+    fn check_finite_data(&self, builtin: &Builtin, ty: &Term) -> Result<(), Refusal> {
+        let mut head = ty;
+        let mut arguments = Vec::new();
+        while let Shape::App { function, argument } = head.shape() {
+            arguments.push(argument);
+            head = function;
+        }
+        match head.shape() {
+            // A Π keeps its own diagnostic: it is what a table author writes
+            // when they reach for a higher-order operation, and "not finite
+            // data" would be a true sentence about the wrong problem.
+            Shape::Pi { .. } => {
+                return Err(Refusal::HigherOrderDelta {
+                    name: Arc::clone(builtin.name()),
+                    at: builtin.ty().origin(),
+                });
+            }
+            Shape::Base(base) => {
+                if self.named(base.name()).is_none() {
+                    return Err(Refusal::UnknownBase {
+                        name: Arc::clone(base.name()),
+                        at: head.origin(),
                     });
                 }
-                Shape::Base(base) => {
-                    if self.named(base.name()).is_none() {
-                        return Err(Refusal::UnknownBase {
-                            name: Arc::clone(base.name()),
-                            at: part.origin(),
-                        });
-                    }
-                }
-                Shape::App { function, argument } => {
-                    pending.push(function.clone());
-                    pending.push(argument.clone());
-                }
-                Shape::RecordType(fields) | Shape::Record(fields) => {
-                    pending.extend(fields.iter().map(|field| field.term.clone()));
-                }
-                Shape::Project { record, .. } => pending.push(record.clone()),
-                Shape::Lam { body, .. } => pending.push(body.clone()),
-                Shape::Refl(witness) => pending.push(witness.clone()),
-                Shape::Id { ty, left, right } => {
-                    pending.push(ty.clone());
-                    pending.push(left.clone());
-                    pending.push(right.clone());
-                }
-                Shape::J {
-                    ty,
-                    from,
-                    motive,
-                    base,
-                    to,
-                    proof,
-                } => {
-                    pending.extend([
-                        ty.clone(),
-                        from.clone(),
-                        motive.clone(),
-                        base.clone(),
-                        to.clone(),
-                        proof.clone(),
-                    ]);
-                }
-                Shape::Let { ty, value, body, .. } => {
-                    pending.extend([ty.clone(), value.clone(), body.clone()]);
-                }
-                // A variable, a universe, a declared constant, another builtin,
-                // a literal, or a metavariable: none of them is an arrow and
-                // none of them holds one.
-                Shape::Var(_)
-                | Shape::Universe(_)
-                | Shape::Const(_)
-                | Shape::Builtin(_)
-                | Shape::Lit(_)
-                | Shape::Meta(_) => {}
             }
+            Shape::Const(constant) if constant.is_family() => {}
+            Shape::Var(_)
+            | Shape::Universe(_)
+            | Shape::Const(_)
+            | Shape::Lam { .. }
+            | Shape::App { .. }
+            | Shape::RecordType(_)
+            | Shape::Record(_)
+            | Shape::Project { .. }
+            | Shape::Id { .. }
+            | Shape::Refl(_)
+            | Shape::J { .. }
+            | Shape::Let { .. }
+            | Shape::Builtin(_)
+            | Shape::Lit(_)
+            | Shape::Meta(_) => {
+                return Err(Refusal::NotFiniteData {
+                    name: Arc::clone(builtin.name()),
+                    at: head.origin(),
+                });
+            }
+        }
+        for argument in arguments {
+            self.check_finite_data(builtin, argument)?;
         }
         Ok(())
     }

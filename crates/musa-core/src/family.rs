@@ -80,9 +80,10 @@
 
 use std::sync::Arc;
 
+use crate::base::Datum;
 use crate::budget::Meter;
 use crate::class::PackageId;
-use crate::error::CoreError;
+use crate::error::{CoreError, Malformed};
 use crate::eval::{apply, eval, force};
 use crate::level::Level;
 use crate::list::List;
@@ -1128,6 +1129,129 @@ fn hypotheses(meter: &mut Meter, reduction: &Reduction) -> Result<Vec<Value>, Co
         reading = reading.push(field.clone());
     }
     Ok(built)
+}
+
+/// The constructor a saturated spine is built by, and how many of its arguments
+/// are parameters rather than fields.
+///
+/// What §5.8's δ needs in order to see a *constructor application* as canonical
+/// data: the qualified name a rule writes, and where its fields begin. The
+/// parameters are excluded because they are types rather than data — `Some 3` is
+/// `Option.Some Int 3`, and only the `3` is something a rule can be handed.
+///
+/// `None` for anything that is not a saturated constructor: a family, a
+/// recursor, a variable, or a constructor one field short. Each of those is a
+/// blocked spine, which is exactly what a δ-builtin over an open term should
+/// stay.
+pub(crate) fn constructed(neutral: &Neutral) -> Option<(Name, usize)> {
+    let Head::Const(constant) = &neutral.head else {
+        return None;
+    };
+    if !matches!(constant.role, Role::Constructor(_)) {
+        return None;
+    }
+    if u32::try_from(neutral.spine.len()).unwrap_or(u32::MAX) != constant.arity() {
+        return None;
+    }
+    // A constructor's type is a Π chain, so anything but an application means
+    // the spine was assembled by something other than the elaborator.
+    if !neutral
+        .spine
+        .iter()
+        .all(|elimination| matches!(*elimination, Elim::App { .. }))
+    {
+        return None;
+    }
+    Some((
+        constant.name(),
+        usize::try_from(constant.group.params()).unwrap_or(usize::MAX),
+    ))
+}
+
+/// Canonical data as a value of `ty`.
+///
+/// The inverse of [`constructed`], and the reason it needs a type where reading
+/// needed none. A [`Datum::Case`] says `Option.Some 3` and a constructor *value*
+/// is `Option.Some Int 3`: the parameters come before the fields, ι reads them
+/// by position, and nothing in the name or the fields says what they are. `ty`
+/// is where they come from — for a δ-rule's answer it is the builtin's own
+/// signature applied to the argument values, so nothing ambient is consulted.
+///
+/// The walk is `case.rs`'s split in reverse. At `F p⃗` the answer names one of
+/// `F`'s constructors, the parameters are `p⃗`, and each field is realized at its
+/// declared type read in the declaration context, then the parameters, then the
+/// fields before it — the same environment a split assumes its fields in. So a
+/// nested family resolves against the type in hand at that node rather than
+/// against a table, which is why two occurrences of one family in a signature
+/// cannot be ambiguous about anything.
+///
+/// # Errors
+///
+/// [`Malformed::MisfitAnswer`] when the data and the type disagree, otherwise as
+/// [`eval`].
+pub(crate) fn realize(meter: &mut Meter, here: Origin, datum: &Datum, ty: &Value) -> Result<Value, CoreError> {
+    meter.nested("data realization", |meter| match *datum {
+        Datum::Lit(ref literal) => Ok(Value::new(here, Form::Lit(literal.clone()))),
+        Datum::Case {
+            ref constructor,
+            ref fields,
+        } => realize_case(meter, here, constructor, fields, ty),
+    })
+}
+
+/// One constructor application, at the family type it stands at.
+fn realize_case(
+    meter: &mut Meter,
+    here: Origin,
+    constructor: &Name,
+    fields: &[Datum],
+    ty: &Value,
+) -> Result<Value, CoreError> {
+    let misfit = || CoreError::from(Malformed::MisfitAnswer(Arc::clone(constructor)));
+    let Some(element) = element(meter, ty)? else {
+        return Err(misfit());
+    };
+    let Some(declared) = element.group.family_at(element.family) else {
+        return Err(misfit());
+    };
+    // Qualified, the spelling `Constant::name` prints and `Found::named` reads,
+    // so the name a rule writes is the name a diagnostic would have shown it.
+    let Some(case) = constructor
+        .strip_prefix(&*declared.name)
+        .and_then(|rest| rest.strip_prefix('.'))
+    else {
+        return Err(misfit());
+    };
+    let Some(which) = declared
+        .constructors
+        .iter()
+        .position(|declared| *declared.name == *case)
+    else {
+        return Err(misfit());
+    };
+    let Some(rule) = declared.constructor_at(u32::try_from(which).unwrap_or(u32::MAX)) else {
+        return Err(misfit());
+    };
+    if rule.fields.len() != fields.len() {
+        return Err(misfit());
+    }
+
+    let mut reading = Group::declarations(&element.group);
+    for param in &element.params {
+        reading = reading.push(param.clone());
+    }
+    let mut value =
+        Constant::constructor(&element.group, element.family, u32::try_from(which).unwrap_or(u32::MAX)).value(here);
+    for param in &element.params {
+        value = apply(meter, here, value, param.clone())?;
+    }
+    for (binder, field) in rule.fields.iter().zip(fields) {
+        let field_type = eval(meter, &reading, &binder.ty)?;
+        let built = realize(meter, here, field, &field_type)?;
+        reading = reading.push(built.clone());
+        value = apply(meter, here, value, built)?;
+    }
+    Ok(value)
 }
 
 /// The index arguments of a value of family type.

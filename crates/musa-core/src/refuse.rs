@@ -687,6 +687,25 @@ pub enum Refusal {
         /// Where the target argument's type was written.
         at: Origin,
     },
+    /// A δ-builtin whose signature holds something that is not finite data.
+    ///
+    /// §5.8's D1 states the shape positively: every argument type and the result
+    /// type is "a base type or a finite constructor over base types". A record
+    /// type, a universe, or a bare type variable is none of those, and the
+    /// consequence is concrete rather than aesthetic — a δ-rule reads and answers
+    /// [`Datum`](crate::Datum), which can say a literal and a constructor
+    /// application and nothing else, so a signature outside that shape declares
+    /// an operation whose rule could never be written.
+    ///
+    /// An arrow gets [`Self::HigherOrderDelta`] instead, because it is the one a
+    /// table author actually writes and it deserves the specific sentence.
+    #[error("δ-builtin `{name}` has an argument or result type that is not finite data")]
+    NotFiniteData {
+        /// The builtin.
+        name: Name,
+        /// Where the offending type was written.
+        at: Origin,
+    },
 }
 
 /// Two types that could not be made equal, and where the disagreement is.

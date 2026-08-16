@@ -792,6 +792,9 @@ pub fn explain(code: &str) -> Option<&'static str> {
         musa_compiler::Code::TargetNotABase => {
             "A compiler-owned traversal walks a type that already knows how to be walked.\n\nThese traversals exist for the types that have no cases — syntax trees, whose node representation the reader owns — because a type with no constructors has no recursor, so there is nothing for a library `match` to take apart. A type declared with `data` is the other kind: its recursor is generated from the declaration, and the language reduces it by that rule.\n\nGiving such a type a second, compiler-owned rule would mean two ways to reduce one term, and which one you got would depend on how the call was written. Write the traversal in Musa, over the cases the declaration already gives."
         }
+        musa_compiler::Code::NotFiniteData => {
+            "A compiler-owned operation names a type it could not be handed or answer.\n\nThese operations compute on *data*: a base type — text, a number, a duration, a pitch — or a declared type like `Option`, `List`, or `Result` holding more of the same, however deeply nested. That is the whole of what one can read and the whole of what it can build, so a signature mentioning a record type, a universe, or a bare type variable describes an operation whose rule could not be written down.\n\nThis is a report about the compiler's own table rather than about the file being compiled. If the operation genuinely needs one of those shapes, it is an ordinary definition in the standard library, written in Musa and checked like everything else."
+        }
     })
 }
 

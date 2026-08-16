@@ -220,6 +220,8 @@ pub enum Code {
     TargetOutsideSignature,
     /// A structural eliminator whose target argument is not a base type.
     TargetNotABase,
+    /// A δ-builtin whose signature holds a type that is not finite data.
+    NotFiniteData,
 }
 
 /// Writes each code's spelling once, and derives the roster from the same
@@ -319,6 +321,7 @@ code_table! {
     BaseNotMatchable => "base-not-matchable",
     TargetOutsideSignature => "target-outside-signature",
     TargetNotABase => "target-not-a-base",
+    NotFiniteData => "not-finite-data",
 }
 
 impl Code {

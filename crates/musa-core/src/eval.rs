@@ -29,6 +29,7 @@
 
 use std::sync::Arc;
 
+use crate::base::{Builtin, Datum};
 use crate::budget::Meter;
 use crate::error::{CoreError, Malformed};
 use crate::origin::Origin;
@@ -351,8 +352,14 @@ pub(crate) fn apply(meter: &mut Meter, here: Origin, function: Value, argument: 
 /// reason: an application is the first moment a rule can know its last argument
 /// has arrived. A builtin fires when three things hold at once — the head is a
 /// builtin, the spine is exactly its arity of applications, and every argument
-/// has reduced to a literal. Any one of them failing leaves an ordinary blocked
-/// spine, which is what a builtin applied to a variable *is*.
+/// has reduced to **canonical data**. Any one of them failing leaves an ordinary
+/// blocked spine, which is what a builtin applied to a variable *is*.
+///
+/// Canonical data rather than a literal, because §5.8's D1 admits "a base type
+/// **or a finite constructor over base types**" and a host that answers an
+/// `Option` or takes a `List` is writing the second. The two conditions coincide
+/// wherever no declared family is involved, so a table of base-typed rules
+/// behaves exactly as it did.
 ///
 /// The meter is charged before the rule runs, which is where D4's "charged to
 /// the §4 meter before construction begins" can actually be enforced: after the
@@ -360,9 +367,10 @@ pub(crate) fn apply(meter: &mut Meter, here: Origin, function: Value, argument: 
 ///
 /// # Errors
 ///
-/// [`CoreError::Exhausted`] at a budget limit, and [`Malformed::BuiltinStuck`]
-/// when the rule answers nothing at closed literal arguments — D2 broken, which
-/// is a defect in the host's table rather than in the program.
+/// [`CoreError::Exhausted`] at a budget limit, [`Malformed::BuiltinStuck`] when
+/// the rule answers nothing at closed data — D2 broken, which is a defect in the
+/// host's table rather than in the program — and [`Malformed::MisfitAnswer`]
+/// when what it answers does not fit its own declared result type.
 fn delta(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreError> {
     let Head::Builtin(builtin) = &built.head else {
         return Ok(None);
@@ -378,28 +386,106 @@ fn delta(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreError>
         let Elim::App { argument, .. } = elimination else {
             return Ok(None);
         };
-        // A metavariable that has since been solved may have a literal behind
-        // it, and a builtin that ignored that would answer "blocked" for an
-        // argument the program has already determined.
-        let forced = force(meter, argument)?;
-        match forced.as_ref().unwrap_or(argument).form {
-            Form::Lit(ref literal) => arguments.push(literal.clone()),
+        let Some(datum) = canonical(meter, argument)? else {
+            return Ok(None);
+        };
+        arguments.push(datum);
+    }
+    meter.step("builtin reduction")?;
+    let Some(answer) = rule(&arguments) else {
+        return Err(Malformed::BuiltinStuck(Arc::clone(builtin.name())).into());
+    };
+    let here = built.outer_origin();
+    match answer {
+        // The overwhelmingly common answer, and it needs no type: a literal
+        // carries its own. Only a constructed answer pays for the walk below.
+        Datum::Lit(literal) => Ok(Some(Value::new(here, Form::Lit(literal)))),
+        Datum::Case { .. } => {
+            let ty = result_type(meter, builtin, built)?;
+            crate::family::realize(meter, here, &answer, &ty).map(Some)
+        }
+    }
+}
+
+/// `value` as canonical data, or `None` when it is not data at all.
+///
+/// §5.8's D1 turned into a predicate: a literal, or a constructor of a declared
+/// family applied to more of the same. A record, a λ, a universe, or a
+/// constructor one field short is none of those and leaves the spine blocked,
+/// which is what a δ-builtin over an open term must do.
+///
+/// Forcing first is not optional. A metavariable that has since been solved may
+/// have data behind it, and a builtin that ignored that would answer "blocked"
+/// for an argument the program has already determined.
+///
+/// Needs no type, where [`crate::family::realize`] does: canonical data is
+/// canonical, so looking says which shape it is, and η — the one thing that
+/// makes reading back type-directed — has nothing to expand here.
+///
+/// # Errors
+///
+/// As [`force`], plus §4.1's nesting limit at data nested deeper than the meter
+/// allows.
+fn canonical(meter: &mut Meter, value: &Value) -> Result<Option<Datum>, CoreError> {
+    meter.nested("canonical data", |meter| {
+        let forced = force(meter, value)?;
+        match forced.as_ref().unwrap_or(value).form {
+            Form::Lit(ref literal) => Ok(Some(Datum::Lit(literal.clone()))),
+            Form::Neutral(ref neutral) => constructed(meter, neutral),
             Form::Universe(_)
             | Form::Pi { .. }
             | Form::Lam(_)
             | Form::RecordType(_)
             | Form::Record(_)
             | Form::Id { .. }
-            | Form::Refl(_)
-            | Form::Neutral(_) => return Ok(None),
+            | Form::Refl(_) => Ok(None),
         }
+    })
+}
+
+/// A blocked spine as canonical data, when it is a saturated constructor whose
+/// fields are themselves data.
+fn constructed(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Datum>, CoreError> {
+    let Some((constructor, params)) = crate::family::constructed(neutral) else {
+        return Ok(None);
+    };
+    let mut fields = Vec::with_capacity(neutral.spine.len().saturating_sub(params));
+    for elimination in neutral.spine.iter().skip(params) {
+        let Elim::App { argument, .. } = elimination else {
+            return Ok(None);
+        };
+        let Some(field) = canonical(meter, argument)? else {
+            return Ok(None);
+        };
+        fields.push(field);
     }
-    meter.step("builtin reduction")?;
-    let borrowed: Vec<&crate::base::Literal> = arguments.iter().collect();
-    match rule(&borrowed) {
-        Some(answer) => Ok(Some(Value::new(built.outer_origin(), Form::Lit(answer)))),
-        None => Err(Malformed::BuiltinStuck(Arc::clone(builtin.name())).into()),
+    Ok(Some(Datum::Case { constructor, fields }))
+}
+
+/// The type a builtin answers at, given the arguments on its spine.
+///
+/// Its declared signature, opened one Π per argument. Computed here rather than
+/// stored because it is needed only by an answer that names a constructor, and
+/// because the signature and the answer must not be able to disagree about what
+/// the result type is — they are the same term either way.
+///
+/// # Errors
+///
+/// [`Malformed::NotAFunction`] when the signature runs out of Π before the spine
+/// runs out of arguments, which means the arity and the type disagree.
+fn result_type(meter: &mut Meter, builtin: &Builtin, built: &Neutral) -> Result<Value, CoreError> {
+    let mut ty = eval(meter, &Env::EMPTY, builtin.ty())?;
+    for elimination in &built.spine {
+        let Elim::App { argument, .. } = elimination else {
+            return Err(Malformed::NotAFunction.into());
+        };
+        let forced = force(meter, &ty)?.unwrap_or(ty);
+        let Form::Pi { codomain, .. } = forced.form else {
+            return Err(Malformed::NotAFunction.into());
+        };
+        ty = apply_closure(meter, &codomain, Value::clone(argument))?;
     }
+    Ok(ty)
 }
 
 /// A structural eliminator's step, or `None` when the spine is not ready.
