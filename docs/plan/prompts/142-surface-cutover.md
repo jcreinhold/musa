@@ -2,7 +2,7 @@
 id: 142
 slug: surface-cutover
 status: pending
-depends_on: [136a, 141, 141b, 141c, 141d, 141e, 141f, 141g, 141ga, 141h, 141ha, 141i, 141j, 141k, 141l, 141m]
+depends_on: [136a, 141, 141b, 141c, 141d, 141e, 141f, 141g, 141ga, 141h, 141ha, 141i, 141j, 141k, 141l, 141m, 141n]
 phase: 3
 ---
 
@@ -90,6 +90,14 @@ the middle. It absorbs prompt 127e, whose file stays as a superseded record rath
   this migration written out in advance. Its "what §2 still says that is not true" list is the other: `play(chosen,
   1/2)` and `-> EventTrack[WrittenTime, ScoreFact]` are both spellings this prompt makes true or repairs in
   `01-surface.md`.
+- [`141n`](141n-top-level-program.md), which gave `musa-core` the thing a pass hands a whole document to: one group of
+  named definitions, every signature collected before any body, so a later declaration may be referenced. It was split
+  off when starting this prompt found that the core had no door for it — `declare` takes a *data* group, `check` takes
+  one term, and `Cx::define`'s binder is nameless on purpose, so the only named binding on offer was `RawShape::Let`,
+  which scopes forward only. `examples/neo-riemannian.musa:72` calls the `compose_close` declared at `:151`, and
+  `examples/tonal-construction.musa` does the same kind of thing eighteen times, so a nested `let` chain would have
+  refused the existing corpus before any of it was migrated. What is left here is building the group out of 141g's items
+  and handing it over.
 - [`141c`](141c-structural-eliminators.md), which adds the second of §5.8's four families: a compiler-owned operation
   that takes a function argument and rewrites rather than computing. `recurse_syntax`, `run_syntax_step`, and
   `syntax_fold_from_leaves` are registered through it, and `staff.musa` does not compile without them. Its Design also
