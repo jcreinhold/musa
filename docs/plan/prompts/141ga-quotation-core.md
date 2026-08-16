@@ -1,7 +1,7 @@
 ---
 id: 141ga
 slug: quotation-core
-status: in-progress
+status: done
 depends_on: [139, 140, 141c, 141e, 141f, 141g]
 phase: 3
 ---

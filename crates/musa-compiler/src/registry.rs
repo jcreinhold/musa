@@ -160,7 +160,13 @@ where
 /// The same reading as [`domain`], one layer in. A δ-rule is handed a [`Datum`]
 /// and a structural rewrite is handed the [`Literal`] it fired on, so both
 /// spellings of "the target" reach the same downcast rather than two.
-fn held<T>(value: &Literal) -> Option<&T>
+///
+/// Visible to the crate because it is [`literal`]'s inverse and a normal form is
+/// read the same way a rule's argument is: whoever puts a `Syntax` or a
+/// `Template` into the core takes one back out of the term the core reduced to,
+/// and a second downcast written beside this one would be a second answer to
+/// "what domain is this literal of".
+pub(crate) fn held<T>(value: &Literal) -> Option<&T>
 where
     T: PartialEq + fmt::Debug + fmt::Display + Send + Sync + 'static,
 {
@@ -266,6 +272,15 @@ fn bases() -> Vec<Base> {
         plain("Delimiter"),
         plain("NodePath"),
         plain("BindingPath"),
+        // A quote's body, held whole. Inert by §5.8's D1 test and not by
+        // convenience: a template contributes no ι-rule, no source program takes
+        // one apart — `11-quotation.md` gives it no eliminator and no spelling
+        // beyond the two forms that build and read it — and two of them agree
+        // exactly when the host says the bodies do. What the alternative would
+        // have been is the argument: a *declared* family of templates would make
+        // a quote's body something a program could match on, and matching on it
+        // is reading provenance, which §4's second rule forbids.
+        plain("Template"),
     ]
 }
 
@@ -310,6 +325,17 @@ pub(crate) fn coordinate_literal(which: Coordinate) -> Literal {
 /// The literal one syntax category is written as, at base type `Cat`.
 pub(crate) fn category_literal(cat: crate::syntax::Cat) -> Literal {
     literal(plain_type("Cat"), cat)
+}
+
+/// The literal one quote's body is written as, at base type `Template`.
+///
+/// The construction site rides with the body, because that is what it is a
+/// property of: `Derived`'s three fields are the anchor, the quotation, and the
+/// position, and only the first is an argument. Two quotes with identical bodies
+/// at one anchor must still build distinguishable nodes (`11-quotation.md` §3),
+/// so the counter cannot be recovered from the template and cannot be shared.
+pub(crate) fn template_literal(template: crate::syntax::Template, quotation: u32) -> Literal {
+    literal(plain_type("Template"), rules::Quotation { template, quotation })
 }
 
 /// The literal one token kind is written as, at base type `TokenKind`.
@@ -458,11 +484,93 @@ fn applied(cx: &Cx, head: &str, arguments: impl IntoIterator<Item = Term>) -> Re
 
 /// The signature of a δ entry: its arguments, then its result, as one Π type.
 fn delta_type(cx: &Cx, arguments: &[Shape], result: Shape) -> Result<Term, ElabError> {
-    let mut ty = shape_type(cx, result)?;
-    for argument in arguments.iter().rev() {
-        ty = Term::pi(HERE, "argument", shape_type(cx, *argument)?, ty);
-    }
-    Ok(ty)
+    Ok(arrow(
+        arguments
+            .iter()
+            .map(|argument| shape_type(cx, *argument))
+            .collect::<Result<Vec<_>, _>>()?,
+        shape_type(cx, result)?,
+    ))
+}
+
+/// `α₁ → … → αₙ → ρ`, which is what a first-order signature is.
+///
+/// The binder is named and unreferenced for [`crate::lower`]'s reason: a Π always
+/// binds, and nothing in an arrow refers to its argument.
+fn arrow(arguments: Vec<Term>, result: Term) -> Term {
+    arguments
+        .into_iter()
+        .rev()
+        .fold(result, |built, argument| Term::pi(HERE, "argument", argument, built))
+}
+
+/// The four operations quotation needs and neither ownership table names.
+///
+/// ```text
+/// instantiate_quote : NodePath → Template → List (List (Syntax ⟨expr⟩)) → Syntax ⟨expr⟩
+/// match_quote       : Syntax ⟨token-tree⟩ → Template → Bool
+/// quote_hole        : Syntax ⟨token-tree⟩ → Template → Nat → Syntax ⟨token-tree⟩
+/// quote_holes       : Syntax ⟨token-tree⟩ → Template → Nat → List (Syntax ⟨token-tree⟩)
+/// ```
+///
+/// # Why these are not table rows
+///
+/// [`BUILTIN_OWNERSHIP`] and [`SYNTAX_OWNERSHIP`] are the *old* checker's name
+/// lookup, so a row in either would make `instantiate_quote` a word an adapter
+/// could write today — and what an adapter writes is `quote at here { … }`, whose
+/// whole point is that the anchor is the only number it supplies. They are
+/// counted instead by [`rules::BEYOND`], and the accounting law reads them back
+/// off the registry.
+///
+/// # Why the pattern side reads at `⟨token-tree⟩`
+///
+/// The signature §4 asks for is `(c : Cat) → Syntax c → …`, and the finite-data
+/// check refuses it: a δ signature admits a base type at a *literal* index and
+/// nothing else, because a `fn` rule can build a literal and cannot build a
+/// constructor. So the pattern side reads and binds at the category every other
+/// phase operation reads at, and §1's forgetting rule is what a `Syntax ⟨expr⟩`
+/// scrutinee arrives by — an acceptance rule the core does not have yet, and
+/// prompt 142's to supply.
+///
+/// # Errors
+///
+/// [`ElabError`] when `Nat`, `Bool`, or `List` is not declared in `cx`, which is
+/// a compiler defect.
+fn quotation(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
+    let template = plain_type("Template");
+    let expression = syntax_type(crate::syntax::Cat::Expr);
+    let read = syntax_type(crate::syntax::Cat::TokenTree);
+    let index = crate::prelude::constant(cx, "Nat")?;
+    let splices = applied(cx, "List", [applied(cx, "List", [expression.clone()])?])?;
+    let delta = |name: &'static str, arguments: Vec<Term>, result: Term, rule| {
+        Builtin::new(name, arrow(arguments, result), musa_core::Family::Delta, rule)
+    };
+    Ok(vec![
+        delta(
+            rules::BEYOND[0],
+            vec![plain_type("NodePath"), template.clone(), splices],
+            expression,
+            rules::INSTANTIATE,
+        ),
+        delta(
+            rules::BEYOND[1],
+            vec![read.clone(), template.clone()],
+            crate::prelude::constant(cx, "Bool")?,
+            rules::MATCHES,
+        ),
+        delta(
+            rules::BEYOND[2],
+            vec![read.clone(), template.clone(), index.clone()],
+            read.clone(),
+            rules::HOLE,
+        ),
+        delta(
+            rules::BEYOND[3],
+            vec![read.clone(), template, index],
+            applied(cx, "List", [read])?,
+            rules::HOLES,
+        ),
+    ])
 }
 
 /// Every compiler-owned δ operation, as a core builtin.
@@ -503,6 +611,7 @@ fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
         ));
     }
     built.extend(traversal::eliminators(cx)?);
+    built.extend(quotation(cx)?);
     Ok(built)
 }
 

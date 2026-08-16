@@ -26,7 +26,9 @@ use musa_core::{Origin, Raw, RawArm, RawPattern};
 use musa_language::{SyntaxKind, SyntaxNode, SyntaxToken};
 use num_rational::Ratio;
 
-use super::{Lowering, Question, applied, child, children, is_expr_node, own_tokens, significant_tokens, writes};
+use super::{
+    Lowering, Question, applied, child, children, is_expr_node, listed, own_tokens, significant_tokens, whole, writes,
+};
 use crate::diagnose::{Code, Diagnostic};
 use crate::origin::SourceSpan;
 
@@ -124,7 +126,7 @@ impl Lowering<'_> {
             SyntaxKind::RecordLiteralExpr => self.record(node, origin),
             SyntaxKind::RecordUpdateExpr => self.record_update(node, origin),
             SyntaxKind::QuestionExpr => self.question(node, origin),
-            SyntaxKind::QuoteExpr => self.not_yet(node, "a quote", "a template"),
+            SyntaxKind::QuoteExpr => self.quote(node, origin),
             SyntaxKind::MusicExpr | SyntaxKind::KernelQuote => self.not_yet(node, "this form", "a track"),
             _ => None,
         }
@@ -243,12 +245,7 @@ impl Lowering<'_> {
 
     /// `[a, b]` — a cons list, built from its tail.
     fn list(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
-        let members = self.every(node)?;
-        let mut built = Raw::var(origin, "List.Empty");
-        for member in members.into_iter().rev() {
-            built = applied(origin, Raw::var(origin, "List.Cons"), [member, built]);
-        }
-        Some(built)
+        Some(listed(origin, self.every(node)?))
     }
 
     /// `some(e)` and `none`.
@@ -522,6 +519,13 @@ impl Lowering<'_> {
         let subject = child(node, is_expr_node)?;
         let subject = self.value(&subject)?;
         let arms = children(node, |kind| kind == SyntaxKind::MatchArm);
+        // A quote pattern first, because the two tests cannot both be about one
+        // arm — `matches_a_literal` reads the `Pattern`'s *own* tokens, and a
+        // quote pattern holds its body in a child node — and because the quote
+        // chain is the one that refuses a match written with both.
+        if arms.iter().any(matches_a_quote) {
+            return self.quote_chain(origin, subject, &arms);
+        }
         if arms.iter().any(matches_a_literal) {
             return self.equality_chain(origin, subject, &arms);
         }
@@ -762,15 +766,6 @@ impl Lowering<'_> {
     }
 }
 
-/// `n`, counted up from `Nat.Zero`.
-fn whole(origin: Origin, value: u64) -> Raw {
-    let mut built = Raw::var(origin, "Nat.Zero");
-    for _ in 0..value {
-        built = Raw::app(origin, Raw::var(origin, "Nat.Succ"), built);
-    }
-    built
-}
-
 /// A literal of a plain base type, written the way [`crate::registry`] writes
 /// one.
 ///
@@ -807,7 +802,7 @@ fn trailing_word(node: &SyntaxNode) -> String {
 }
 
 /// Whether an arm's pattern is a literal of a base type.
-fn matches_a_literal(arm: &SyntaxNode) -> bool {
+pub(super) fn matches_a_literal(arm: &SyntaxNode) -> bool {
     child(arm, |kind| kind == SyntaxKind::Pattern).is_some_and(|pattern| {
         own_tokens(&pattern).any(|token| {
             matches!(
@@ -816,6 +811,12 @@ fn matches_a_literal(arm: &SyntaxNode) -> bool {
             )
         })
     })
+}
+
+/// Whether an arm matches against a quote pattern (`11-quotation.md` §4).
+fn matches_a_quote(arm: &SyntaxNode) -> bool {
+    child(arm, |kind| kind == SyntaxKind::Pattern)
+        .is_some_and(|pattern| child(&pattern, |kind| kind == SyntaxKind::QuotePattern).is_some())
 }
 
 /// The `LiteralExpr` a bare literal pattern would have been, when the

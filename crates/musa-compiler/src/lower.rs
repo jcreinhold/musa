@@ -57,6 +57,7 @@
 mod laws;
 
 mod items;
+mod quotes;
 mod refusals;
 mod types;
 mod values;
@@ -219,6 +220,34 @@ fn applied(origin: Origin, head: Raw, arguments: impl IntoIterator<Item = Raw>) 
     arguments
         .into_iter()
         .fold(head, |function, argument| Raw::app(origin, function, argument))
+}
+
+/// `[m₁, …, mₙ]`, as the prelude's `List` spells one.
+///
+/// Beside [`applied`] rather than inside one reading, because three of them
+/// build a list from members they already hold: a written `[…]`, a quote's
+/// splices, and the run one hole of a quote pattern stands for. One fold, so a
+/// list a lowering writes has one shape.
+fn listed(origin: Origin, members: Vec<Raw>) -> Raw {
+    let mut built = Raw::var(origin, "List.Empty");
+    for member in members.into_iter().rev() {
+        built = applied(origin, Raw::var(origin, "List.Cons"), [member, built]);
+    }
+    built
+}
+
+/// `n`, counted up from `Nat.Zero`.
+///
+/// `Nat` is a declared family rather than a base type (`02-core-calculus.md`
+/// §5.8), so a written number is a unary tower and not a literal. Small by
+/// construction wherever this is called: a scalar the source wrote, or a hole's
+/// index in a quote pattern.
+fn whole(origin: Origin, value: u64) -> Raw {
+    let mut built = Raw::var(origin, "Nat.Zero");
+    for _ in 0..value {
+        built = Raw::app(origin, Raw::var(origin, "Nat.Succ"), built);
+    }
+    built
 }
 
 /// The tokens of `node` that carry meaning, in order.

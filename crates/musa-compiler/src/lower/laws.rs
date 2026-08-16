@@ -632,16 +632,22 @@ fn a_method_with_a_block_is_derived_and_its_body_binds_what_its_type_quantifies(
 
 #[test]
 fn a_form_with_no_core_shape_is_refused_at_the_node_with_its_prompt_named() {
-    let root = parsed("library { fn probe() -> Nat { quote at here { 1 } } }");
-    let node = first(&root, SyntaxKind::BlockExpr);
+    let root = parsed("library { let subject: Music = music { c4/4 }; }");
+    let node = first(&root, SyntaxKind::MusicExpr);
     let mut resolver = Resolver::new();
     let mut sites = Sites::default();
-    let raw = Lowering::phase(&mut resolver, &mut sites).expr(&node);
-    assert!(raw.is_none(), "a quote has no core shape yet");
+    let raw = Lowering::new(&mut resolver, &mut sites).value(&node);
+    assert!(
+        raw.is_none(),
+        "`music` has no core shape until prompt 141h gives it one"
+    );
     let complaints = resolver.diagnostics;
-    assert_eq!(complaints.len(), 1, "one complaint, at the quote");
+    assert_eq!(complaints.len(), 1, "one complaint, at the form");
     let complaint = complaints.first().expect("one complaint").message.as_str();
-    assert!(complaint.contains("quote"), "and it names the form: {complaint}");
+    assert!(
+        complaint.contains("core spelling"),
+        "and it says what is missing: {complaint}"
+    );
 }
 
 /// A declaration is numbered like everything else, which is what lets a refusal

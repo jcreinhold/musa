@@ -73,11 +73,40 @@ fn every_delta_spelling_is_registered_exactly_once() {
     assert_eq!(spellings, unique, "a spelling was registered twice");
     assert_eq!(
         spellings.len(),
-        rules::REGISTERED,
-        "the registered count and the count this module states have drifted"
+        rules::REGISTERED + rules::BEYOND.len(),
+        "the registered count and the counts this module states have drifted"
     );
     for builtin in &registered {
         named(&cx, builtin.name());
+    }
+}
+
+/// The operations past both tables are exactly the four that are said to be
+/// past them, counted off the registry rather than off a table.
+///
+/// Two claims, and the second is the one that needs a test: that each is
+/// registered, and that each is in *neither* ownership table. The second is what
+/// keeps `instantiate_quote` out of an adapter's reach — the tables are the old
+/// checker's name lookup, and a row added to one of them would be a word a
+/// transformer could write, silently.
+#[test]
+fn the_operations_past_both_tables_are_named_and_in_neither() {
+    let cx = owned().expect("the compiler's own context builds");
+    let registered = builtins(&cx).expect("both tables translate");
+    for spelling in rules::BEYOND {
+        assert!(
+            registered.iter().any(|builtin| &**builtin.name() == spelling),
+            "`{spelling}` is registered"
+        );
+        assert!(
+            !BUILTIN_OWNERSHIP.iter().any(|entry| entry.spelling == spelling),
+            "`{spelling}` is not a source word"
+        );
+        assert!(
+            !SYNTAX_OWNERSHIP.iter().any(|entry| entry.spelling == spelling),
+            "`{spelling}` is not a phase word either"
+        );
+        named(&cx, &std::sync::Arc::from(spelling));
     }
 }
 

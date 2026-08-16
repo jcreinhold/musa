@@ -99,6 +99,20 @@ pub(super) const UNREGISTERED: [(&str, usize); 4] = [
     ("phase projections", 1),
 ];
 
+/// The operations the core has that neither ownership table names.
+///
+/// The third count, and it runs the other way from the two above: those are rows
+/// with no registration, and these are registrations with no row. Quotation is
+/// the reason there are any — the old checker built a quote inside itself, as an
+/// `ExprKind` with a template beside it, so there was never a *name* for
+/// instantiating one. There is now, and it is deliberately not a name an adapter
+/// can write: [`super::quotation`] says why.
+///
+/// Named rather than counted for [`super::traversal::SPELLINGS`]'s reason —
+/// "which" is the claim, and the accounting law reads each of them back out of
+/// the built registry and checks it against both tables.
+pub(super) const BEYOND: [&str; 4] = ["instantiate_quote", "match_quote", "quote_hole", "quote_holes"];
+
 // ---- reading an argument ----
 
 /// The domain value an argument holds.
@@ -1020,3 +1034,176 @@ pub(super) fn phase(operation: SyntaxOp) -> Option<Rule> {
         SyntaxOp::Recurse | SyntaxOp::Run | SyntaxOp::Fold => return None,
     })
 }
+
+// ---- quotation ----
+
+/// A quote's body and the construction site that read it.
+///
+/// Two fields and one literal, because [`crate::syntax::instantiate`] needs both
+/// and only one of them is an argument. `11-quotation.md` §3 mints a node's
+/// identity from the anchor, the quotation, and the position in the template; the
+/// anchor is written at the use site and the other two belong to the quote
+/// itself, so they travel with it.
+///
+/// The wrapper exists for [`Kind`]'s reason as well: [`crate::syntax::Template`]
+/// is this crate's, but a payload must print, and what a template should print as
+/// is its site rather than its shape — a diagnostic naming a hundred-node body
+/// would say nothing a reader could use.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct Quotation {
+    pub(super) template: crate::syntax::Template,
+    pub(super) quotation: u32,
+}
+
+impl std::fmt::Display for Quotation {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(out, "quote #{}", self.quotation)
+    }
+}
+
+/// Which holes a template has, in the order it numbers them, and whether each
+/// stands for a run.
+///
+/// Read off the template rather than carried beside it: the walk that built it
+/// numbered the holes densely from zero, and a count stored next to the body
+/// would be a second answer to a question the body already answers.
+/// [`crate::syntax::matched`] takes the count as an argument for the same reason
+/// the checker could supply it — here the template is all there is.
+fn hole_kinds(template: &crate::syntax::Template) -> Vec<bool> {
+    fn walk(template: &crate::syntax::Template, found: &mut Vec<(usize, bool)>) {
+        match *template {
+            crate::syntax::Template::Splice(hole) => found.push((hole, false)),
+            crate::syntax::Template::Sequence(hole) => found.push((hole, true)),
+            crate::syntax::Template::Group { ref children, .. } => {
+                for child in children {
+                    walk(child, found);
+                }
+            }
+            crate::syntax::Template::Missing
+            | crate::syntax::Template::Token { .. }
+            | crate::syntax::Template::Identifier { .. } => {}
+        }
+    }
+    let mut found = Vec::new();
+    walk(template, &mut found);
+    let mut kinds = vec![false; found.iter().map(|&(hole, _)| hole.saturating_add(1)).max().unwrap_or(0)];
+    for (hole, sequence) in found {
+        if let Some(slot) = kinds.get_mut(hole) {
+            *slot = sequence;
+        }
+    }
+    kinds
+}
+
+/// What matching a subject against one quote pattern found.
+///
+/// Two cases and not [`Option`], because the [`Option`] the reading already
+/// answers means something else: `None` there is "these arguments are not the
+/// shapes this rule reads", which leaves the term neutral, and `No` here is a
+/// perfectly good answer that the pattern does not match.
+enum Matched {
+    /// The subject has another shape.
+    No,
+    /// The subject is this template's, with what each hole bound, in order.
+    Holes(Vec<crate::syntax::Spliced>),
+}
+
+impl Matched {
+    /// What hole `which` bound, where the subject matched and has one.
+    fn hole(self, which: usize) -> Option<crate::syntax::Spliced> {
+        match self {
+            Self::No => None,
+            Self::Holes(holes) => holes.into_iter().nth(which),
+        }
+    }
+}
+
+/// What one quote pattern bound.
+///
+/// The one reading the three pattern rules share, so that the answer to "does
+/// this match" and the answer to "what did hole two bind" cannot disagree.
+fn bound(arguments: &[Datum]) -> Option<Matched> {
+    let subject = node(arguments.first()?)?;
+    let quoted = read::<Quotation>(arguments.get(1)?)?;
+    let holes = hole_kinds(&quoted.template).len();
+    Some(crate::syntax::matched(&quoted.template, &subject, holes).map_or(Matched::No, Matched::Holes))
+}
+
+/// The hole a pattern rule was asked about.
+fn which(datum: &Datum) -> Option<usize> {
+    usize::try_from(nat(datum)?).ok()
+}
+
+/// `instantiate_quote(anchor, template, splices)`.
+///
+/// The whole of building a quote, and it is [`crate::syntax::instantiate`] —
+/// which mints every derived path, carries every spliced node in with the
+/// identity it arrived with, and is the *only* implementation of either. Reading
+/// the arguments and shaping the answer is all that happens here.
+///
+/// The splices arrive as a list of lists because a hole is a run or a node and
+/// the core has no sum of the two that a lowering could write; which of the two a
+/// hole is, the template says. A single hole handed anything but one node
+/// answers [`None`] — the arity mismatch [`crate::syntax::Spliced`] refuses,
+/// refused where it was, and unreachable from a lowered quote because the same
+/// template decided both.
+pub(super) const INSTANTIATE: Rule = |arguments| {
+    let anchor = path(arguments.first()?)?;
+    let quoted = read::<Quotation>(arguments.get(1)?)?;
+    let kinds = hole_kinds(&quoted.template);
+    let written = items(arguments.get(2)?)?;
+    if written.len() != kinds.len() {
+        return None;
+    }
+    let mut spliced = Vec::with_capacity(kinds.len());
+    for (&sequence, hole) in kinds.iter().zip(written) {
+        let nodes = items(hole)?.into_iter().map(node).collect::<Option<Vec<_>>>()?;
+        spliced.push(if sequence {
+            crate::syntax::Spliced::Many(nodes)
+        } else {
+            let [one] = <[Syntax; 1]>::try_from(nodes).ok()?;
+            crate::syntax::Spliced::One(one)
+        });
+    }
+    let built = crate::syntax::instantiate(&quoted.template, &anchor, quoted.quotation, &spliced)?;
+    Some(tree(Cat::Expr, built))
+};
+
+/// `match_quote(subject, template)` — whether the pattern's shape is this
+/// value's.
+pub(super) const MATCHES: Rule = |arguments| Some(boolean(matches!(bound(arguments)?, Matched::Holes(_))));
+
+/// `quote_hole(subject, template, i)` — the one node hole `i` binds.
+///
+/// A node either way, because what binds it is a `let` and a `let` binds one
+/// type. Reached only under [`MATCHES`], which is what makes the answer for a
+/// subject of another shape a question of totality rather than of meaning: a
+/// [`crate::syntax::Syntax::Missing`] at the subject's own place is the node a
+/// reader expected and did not find, which is exactly the situation.
+pub(super) const HOLE: Rule = |arguments| {
+    let subject = node(arguments.first()?)?;
+    let hole = bound(arguments)?
+        .hole(which(arguments.get(2)?)?)
+        .and_then(|held| match held {
+            crate::syntax::Spliced::One(one) => Some(one),
+            crate::syntax::Spliced::Many(_) => None,
+        });
+    Some(built(hole.unwrap_or_else(|| {
+        Syntax::Missing(crate::syntax::SourceInfo::Generated(subject.info().path().clone()))
+    })))
+};
+
+/// `quote_holes(subject, template, i)` — the run hole `i` binds.
+///
+/// The empty list where [`HOLE`] answers `Missing`, and for the same reason: a
+/// run of no nodes is the answer a spread of nothing already gives, so the
+/// unreachable case needs no case of its own.
+pub(super) const HOLES: Rule = |arguments| {
+    let run = bound(arguments)?
+        .hole(which(arguments.get(2)?)?)
+        .map_or_else(Vec::new, |held| match held {
+            crate::syntax::Spliced::One(one) => vec![one],
+            crate::syntax::Spliced::Many(many) => many,
+        });
+    Some(listing(run.into_iter().map(built)))
+};
