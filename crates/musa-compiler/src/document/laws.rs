@@ -185,6 +185,28 @@ fn a_refusal_about_a_name_is_restated_through_the_documents_own_sites() {
 
 // ---- the survey ----
 
+/// [`STANDARD_LIBRARY`], parsed, as the sources an importing document sees.
+///
+/// `pub(crate)` for one caller outside this module: prompt 141p's example survey
+/// in [`crate::lower::piece::laws`] reads the same corpus, because an example
+/// that writes `use theory::harmony;` sees exactly these and surveying it
+/// without them would report missing names that are not missing. One list rather
+/// than two, so a library added to `stdlib/` cannot appear in one survey and not
+/// the other.
+pub(crate) fn library_sources() -> Vec<Source> {
+    STANDARD_LIBRARY
+        .iter()
+        .map(|&(name, source)| {
+            let held = musa_language::parse(source);
+            assert!(held.errors().is_empty(), "`{name}` parses: {:?}", held.errors());
+            Source {
+                root: written_library(&held.syntax()).expect("every standard library file writes a library"),
+                in_phase: false,
+            }
+        })
+        .collect()
+}
+
 /// Every library `stdlib/` writes that is not an adapter, in import order.
 ///
 /// One document rather than sixteen, because that is what an importing file
@@ -250,22 +272,7 @@ const STANDARD_LIBRARY: &[(&str, &str)] = &[
 /// paths 141l reads, and the notation vocabulary 141j and 141k registered.
 #[test]
 fn the_standard_library_elaborates() {
-    let parsed: Vec<_> = STANDARD_LIBRARY
-        .iter()
-        .map(|&(name, source)| {
-            let held = musa_language::parse(source);
-            assert!(held.errors().is_empty(), "`{name}` parses: {:?}", held.errors());
-            held
-        })
-        .collect();
-    let sources: Vec<Source> = parsed
-        .iter()
-        .map(|held| Source {
-            root: written_library(&held.syntax()).expect("every standard library file writes a library"),
-            in_phase: false,
-        })
-        .collect();
-    let (_, said) = faults(&sources);
+    let (_, said) = faults(&library_sources());
     assert_eq!(
         said,
         [

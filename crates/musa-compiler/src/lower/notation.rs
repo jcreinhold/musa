@@ -63,8 +63,9 @@
 //!   key signature and not a claim of modulation.
 //! - **Scope is given, not discovered.** A `music { … }` value is "usable at
 //!   several places" (§3), so it has no voice of its own and reads at
-//!   [`crate::Scope::Piece`]. When prompt 142 lowers a *voice's* body it passes
-//!   the voice's scope down the same way, and nothing here changes.
+//!   [`crate::Scope::Piece`]. [`super::piece`] lowers a *voice's* body by passing
+//!   the voice's scope down the same way, and nothing here changed to let it —
+//!   which was prompt 141k's prediction and is now prompt 141p's evidence.
 //!
 //! Expression-position `step` is untouched: [`Lowering::value`] lowers `p step n`
 //! to a method call whose scale prompt 142's migration supplies, because an
@@ -103,11 +104,19 @@ use crate::score::NotatedDuration;
 /// lexical without a stack to push and pop. Small enough to copy: a scope is two
 /// words and a scale is a tonic class and a collection.
 #[derive(Clone, Copy)]
-struct Reading {
+pub(super) struct Reading {
     /// The scope every fact built here is constructed at (§5.7 requires one).
     scope: crate::Scope,
     /// The collection `step` counts in, when an `in scale` lexically encloses.
     scale: Option<crate::scale::Scale>,
+    /// Whether this block stands at one place in the piece.
+    ///
+    /// The one thing that decides whether a `key`, a `meter`, a `tempo`, or a
+    /// `clef` may be written here. Not derivable from [`Reading::scope`]: a
+    /// free `music { … }` value reads at [`crate::Scope::Piece`] and so does a
+    /// piece's own header, and the difference between them is not what the fact
+    /// is *about* but whether "from here onward" has a single here.
+    placed: bool,
 }
 
 impl Reading {
@@ -120,6 +129,16 @@ impl Reading {
         Self {
             scope: crate::Scope::Piece,
             scale: None,
+            placed: false,
+        }
+    }
+
+    /// The reading a body written at one place in the piece is read under.
+    pub(super) const fn at(scope: crate::Scope) -> Self {
+        Self {
+            scope,
+            scale: None,
+            placed: true,
         }
     }
 
@@ -128,6 +147,35 @@ impl Reading {
         Self {
             scale: Some(scale),
             ..self
+        }
+    }
+}
+
+/// One of the four statements whose meaning is "from here onward".
+///
+/// A closed set rather than a `SyntaxKind`, because it is the set
+/// `00-semantics.md` §3 names — "a block may not contain a key, meter, tempo, or
+/// clef change" — and both readers of it want the same four and no others.
+#[derive(Clone, Copy)]
+pub(super) enum Context {
+    /// `key g major;`
+    Key,
+    /// `meter 3/4;`
+    Meter,
+    /// `tempo 1/4 = 96;`
+    Tempo,
+    /// `clef bass;`
+    Clef,
+}
+
+impl Context {
+    /// What a refusal calls this, in the words a composer wrote it in.
+    const fn what(self) -> &'static str {
+        match self {
+            Self::Key => "a key change",
+            Self::Meter => "a meter change",
+            Self::Tempo => "a tempo marking",
+            Self::Clef => "a clef change",
         }
     }
 }
@@ -277,7 +325,7 @@ impl Lowering<'_> {
     /// answer is [`None`] if any of them was refused, because a fold that
     /// quietly dropped a statement would answer a *different piece of music*
     /// than the one written.
-    fn notated(&mut self, node: &SyntaxNode, reading: Reading) -> Option<Raw> {
+    pub(super) fn notated(&mut self, node: &SyntaxNode, reading: Reading) -> Option<Raw> {
         let origin = self.origin(node);
         let mut built = Raw::lit(origin, crate::registry::empty_track());
         let mut whole = true;
@@ -491,11 +539,12 @@ impl Lowering<'_> {
             SyntaxKind::MarkStmt => self.marked(node, origin, reading),
 
             // §3's own list: "from here onward" has no unique meaning in a value
-            // usable at several places.
-            SyntaxKind::KeyStmt => self.misplaced("a key change", span),
-            SyntaxKind::MeterStmt => self.misplaced("a meter change", span),
-            SyntaxKind::TempoStmt => self.misplaced("a tempo marking", span),
-            SyntaxKind::ClefStmt => self.misplaced("a clef change", span),
+            // usable at several places — so each of the four is refused where
+            // there is no single here, and is a point where there is one.
+            SyntaxKind::KeyStmt => self.context(node, origin, reading, span, Context::Key),
+            SyntaxKind::MeterStmt => self.context(node, origin, reading, span, Context::Meter),
+            SyntaxKind::TempoStmt => self.context(node, origin, reading, span, Context::Tempo),
+            SyntaxKind::ClefStmt => self.context(node, origin, reading, span, Context::Clef),
 
             // Bar structure is what a *pass* builds over a voice, not what a
             // block says; prompt 142 owns it and the voice it belongs to.
@@ -824,16 +873,116 @@ impl Lowering<'_> {
     /// comes back is a call and every caller gets one. The `Option` that used to
     /// be here was the `?` this reading wrote, and there is no `?` left to write.
     fn sounded(&self, origin: Origin, reading: Reading, fact: Raw, held: Ratio<i64>) -> Raw {
+        self.sounded_at(origin, reading.scope, fact, held)
+    }
+
+    /// The same, at a scope the reading does not supply.
+    ///
+    /// Three callers want one: a `clef` written in a voice is the *part's*
+    /// clef, a `key` or a `meter` written in a voice is the *piece's*, and the
+    /// header facts [`super::piece`] builds belong to the part or the piece that
+    /// wrote them rather than to any voice. §5.7 asks which scope a fact is
+    /// constructed at, and the answer is not always the scope it was written in.
+    pub(super) fn sounded_at(&self, origin: Origin, scope: crate::Scope, fact: Raw, held: Ratio<i64>) -> Raw {
         applied(
             origin,
             Raw::var(origin, "sounded"),
             [
                 self.provenance_at(origin),
-                scope_of(origin, reading.scope),
+                scope_of(origin, scope),
                 fact,
                 written_duration(origin, held),
             ],
         )
+    }
+
+    /// One of the four statements whose meaning is "from here onward".
+    ///
+    /// Refused where there is no single here — a `music` value is "usable at
+    /// several places" — and a **point** where there is one, which is what the
+    /// replaced path made of a context statement written among a voice's items
+    /// too. A point rather than a region because a left fold cannot see what
+    /// comes after the statement it is reading, and because "from here onward"
+    /// is answered by the context rules in [`crate::scope`] reading the
+    /// occurrences in order rather than by the extent written on any one of them.
+    fn context(
+        &mut self,
+        node: &SyntaxNode,
+        origin: Origin,
+        reading: Reading,
+        span: SourceSpan,
+        which: Context,
+    ) -> Option<Raw> {
+        if !reading.placed {
+            return self.misplaced(which.what(), span);
+        }
+        // Where the *fact* belongs, which is not where it was written: a key,
+        // a meter, and a tempo are things the piece does, and a clef is one
+        // player's staff. Both rules are `elaborate.rs`'s, unchanged.
+        let scope = match which {
+            Context::Key | Context::Meter | Context::Tempo => crate::Scope::Piece,
+            Context::Clef => match reading.scope {
+                crate::Scope::Part { part } | crate::Scope::Voice { part, .. } => crate::Scope::Part { part },
+                crate::Scope::Piece => {
+                    return self.refuse(
+                        Diagnostic::error(Code::Misplaced, "a clef change belongs to a part")
+                            .at(span, "written outside any part")
+                            .help("write it in the part, or in a voice of that part")
+                            .note("a clef is one player's staff, and the piece as a whole is read on none"),
+                    );
+                }
+            },
+        };
+        let fact = self.fact(node, origin, span, which)?;
+        Some(self.sounded_at(origin, scope, fact, Ratio::ZERO))
+    }
+
+    /// The `Fact` one of the four states, without the placement around it.
+    ///
+    /// Shared with [`super::piece`], which writes the same four facts over the
+    /// region a header covers rather than at the point a body reached. Reading
+    /// them twice would be two answers to what `key g major;` means.
+    pub(super) fn fact(&mut self, node: &SyntaxNode, origin: Origin, span: SourceSpan, which: Context) -> Option<Raw> {
+        match which {
+            Context::Key => {
+                let statement = musa_language::ast::KeyStmt::cast(node.clone())?;
+                let Some(key) = crate::resolve::parse_key(&statement) else {
+                    return self.refuse(
+                        Diagnostic::error(Code::NotAValue, "this key cannot be read")
+                            .at(span, "expected a note and a mode, like `a minor`"),
+                    );
+                };
+                Some(keyed(origin, key))
+            }
+            Context::Meter => {
+                let statement = musa_language::ast::MeterStmt::cast(node.clone())?;
+                let Some(meter) = crate::resolve::parse_meter(&statement) else {
+                    return self.refuse(
+                        Diagnostic::error(Code::NotAValue, "this meter cannot be read")
+                            .at(span, "expected `4/4`, or `none`"),
+                    );
+                };
+                Some(metered(origin, meter))
+            }
+            Context::Tempo => {
+                let statement = musa_language::ast::TempoStmt::cast(node.clone())?;
+                let marking = crate::resolve::tempo_marking(self.resolver, &statement);
+                Some(tempo(origin, &marking))
+            }
+            Context::Clef => {
+                let written = musa_language::ast::ClefStmt::cast(node.clone())
+                    .and_then(|statement| statement.name())
+                    .unwrap_or_default();
+                let Some(clef) = crate::score::Clef::parse(&written) else {
+                    return self.refuse(
+                        Diagnostic::error(Code::UnknownWord, format!("`{written}` is not a clef"))
+                            .at(span, "not a clef musa reads")
+                            .help(crate::resolve::suggest(&written, crate::score::Clef::NAMES, "clefs")),
+                    );
+                };
+                Some(clefed(origin, clef))
+            }
+        }
     }
 
     /// A fact over the region its body covers, and the body under it.
@@ -1095,7 +1244,7 @@ impl Lowering<'_> {
     clippy::arithmetic_side_effects,
     reason = "`Ratio<i64>` addition is exact mathematical arithmetic rather than raw integer ops, which is the same argument `realize.rs`, `assert.rs`, `resolve.rs`, and `time.rs` make at module scope; scoped to this function because it is the only arithmetic here"
 )]
-fn extent(node: &SyntaxNode) -> Ratio<i64> {
+pub(super) fn extent(node: &SyntaxNode) -> Ratio<i64> {
     let mut total = Ratio::ZERO;
     for statement in statements(node) {
         let each = match statement.kind() {
@@ -1166,6 +1315,63 @@ where
     T: Clone + PartialEq + std::fmt::Debug + Send + Sync + 'static,
 {
     maybe(origin, value.map(|held| payload(origin, base, held)))
+}
+
+// ---- the four context facts, written ----
+//
+// Free functions rather than arms of [`Lowering::fact`] because there are two
+// readers and only one of them starts from a node: a *part's* clef, meter, and
+// tempo are read by [`crate::resolve::part_facts`], which already carries the
+// refusals a second clef and an unreadable meter need, and what is left for
+// [`super::piece`] to do is write down what that reading answered. Splitting the
+// parse from the writing is what keeps one spelling of `Fact.Key` in the
+// compiler rather than two.
+
+/// `Fact.Key(tonic, mode)`.
+pub(super) fn keyed(origin: Origin, key: crate::score::Key) -> Raw {
+    applied(
+        origin,
+        Raw::var(origin, "Fact.Key"),
+        [
+            plain(origin, "PitchClass", key.tonic()),
+            payload(origin, "Mode", key.mode()),
+        ],
+    )
+}
+
+/// `Fact.Meter(numerator, denominator)`.
+pub(super) fn metered(origin: Origin, meter: crate::score::Meter) -> Raw {
+    applied(
+        origin,
+        Raw::var(origin, "Fact.Meter"),
+        [
+            whole(origin, u64::from(meter.numerator())),
+            whole(origin, u64::from(meter.denominator())),
+        ],
+    )
+}
+
+/// `Fact.Clef(clef)`.
+pub(super) fn clefed(origin: Origin, clef: crate::score::Clef) -> Raw {
+    Raw::app(origin, Raw::var(origin, "Fact.Clef"), payload(origin, "Clef", clef))
+}
+
+/// `Fact.Tempo(metronome, text, ramp)`, from what the statement said.
+///
+/// The three arguments are the three answers [`crate::resolve::Marking`] holds,
+/// in the order `registry::notation` reads them back. `text` is written with
+/// [`plain`] rather than [`payload`] because `Text`'s payload is a `String` and
+/// the reader asks for one; the other two are opaque.
+pub(super) fn tempo(origin: Origin, marking: &crate::resolve::Marking) -> Raw {
+    applied(
+        origin,
+        Raw::var(origin, "Fact.Tempo"),
+        [
+            optional(origin, "Metronome", marking.metronome),
+            maybe(origin, marking.text.clone().map(|text| plain(origin, "Text", text))),
+            optional(origin, "Ramp", marking.ramp.clone()),
+        ],
+    )
 }
 
 /// The same, from a term that may not be there.

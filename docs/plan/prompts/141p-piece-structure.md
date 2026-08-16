@@ -1,7 +1,7 @@
 ---
 id: 141p
 slug: piece-structure
-status: pending
+status: done
 depends_on: [141k, 141o]
 phase: 3
 ---
@@ -67,6 +67,12 @@ the same nodes read at `Scope::Piece`, a part's at `Scope::Part { part }`. The f
 refused in a free `music` value — that is `registry::notation`'s argument and it survives untouched — and become
 ordinary where a voice or a piece encloses them.
 
+**The distinguishing bit is `placed`, not the scope.** 141k's prediction was right about the mechanism and one word off
+about the discriminator: a free `music { … }` value reads at `Scope::Piece` and so does a piece *header*, so a rule
+keyed on the scope would refuse the header too. What separates them is whether the block stands at one place in the
+piece, which is a third field on `Reading` and the only thing the four statements consult before choosing a scope. Found
+by writing the refusal and watching it fire on `piece "…" { key g major; … }`.
+
 **Numbering is positional and counts every item.** A part's id is a running count over the score; a voice's id is its
 position among the part's items, *including* the instance sites this prompt does not expand. A `make` between two voices
 therefore keeps the number it will have when 142 expands it, so the two paths bucket into the same voices and the
@@ -98,15 +104,31 @@ a cutover.
   through it. No second statement table and no new combinator.
 - Part and voice numbering, with the duplicate-name refusals the numbering forces, restated at the declaration that
   repeated the name.
-- Part context read through `resolve::part_context` rather than re-derived, and its clef, meter, and tempo entering the
-  piece's context track at `Scope::Part`.
+- Part context read through `resolve::part_facts` rather than re-derived, and its clef, meter, and tempo entering the
+  piece's context track at `Scope::Part`. **The reading answered `part_facts` and not `part_context`**: the existing
+  function also resolves the part's *profile*, which is a declaration this walk has nothing to do with, so the two facts
+  a shared reading owes were split out from the one thing only the replaced path wants — with `resolve::Marking` split
+  out of `tempo_fact` for the same reason, since what a writer here needs is the marking and not the `FactKind` the old
+  path builds from it. `Lowering::heard` is what makes the shared reading callable: `crate::resolve` reports on the
+  resolver and answers what it could still make of the source, everything in `lower` answers `Option`, and one adapter
+  between them is cheaper than a second reading of a part's header.
+- Each context fact carrying **its own statement's origin**, not the piece's, and an unwritten meter carrying
+  `Origin::UNKNOWN` — which `provenance_at` already reads as "nowhere of its own to point", and which is the same empty
+  span `elaborate.rs` writes there today. Not in the first draft, and put here because the first run of the laws showed
+  every header fact pointing at the whole declaration.
 - `Document::term`, elaborating a raw term in a document's own context, with `Document::value` written in terms of it —
-  one question rather than two, because a name is a term.
+  one question rather than two, because a name is a term. Beside it `Document::piece`, which is what lets a caller read
+  a piece *out of the document that binds its motifs*; the two are one door, since a piece's track is a raw term and the
+  context it is checked in is the document's.
 - Laws beside the module: a voice's statements are read at the voice's scope; a piece's header facts cover the longest
   voice; two parts with one name are refused, and two voices of one part likewise; a `key` written in a piece is
   ordinary and the same `key` written in a `music` value is still misplaced.
-- **The survey**, as a law: every `examples/*.musa` elaborated, with the remaining faults recorded exactly and each one
-  named as something [`142`](142-surface-cutover.md)'s Target already owns.
+- **The survey**, as a law: every `examples/*.musa` elaborated **with the standard library in scope**, with the
+  remaining faults recorded exactly and each one named as something [`142`](142-surface-cutover.md)'s Target owns. The
+  corpus is `document/laws.rs`'s own, shared rather than copied, for the reason 141o's survey gives for reading sixteen
+  files as one document: a survey that reported `option_fold` missing would be measuring its harness. One fault it finds
+  was *not* a row 142 had — a notation statement whose argument is a bound name — so this prompt is preceded by a repair
+  that adds it.
 - A `docs/plan/code-map/spec-to-implementation-map.md` row for the piece reading.
 
 ## Check

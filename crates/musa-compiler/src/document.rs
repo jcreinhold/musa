@@ -45,7 +45,7 @@
 //! a number would be guessing.
 
 #[cfg(test)]
-mod laws;
+pub(crate) mod laws;
 
 use std::collections::BTreeSet;
 use std::sync::Arc;
@@ -59,6 +59,11 @@ use crate::lower::{Lowering, Sites, refusals};
 use crate::resolve::Resolver;
 
 /// One node whose children are declarations.
+///
+/// [`Clone`] because a corpus of sources is read once and elaborated many
+/// times, each with a different file added to it: a [`SyntaxNode`] is a
+/// refcounted handle, so the copy is a pointer and not a parse.
+#[derive(Clone)]
 pub(crate) struct Source {
     /// The node itself: a `library`, a document root, a `piece`, or a `voice`.
     pub(crate) root: SyntaxNode,
@@ -88,17 +93,32 @@ impl Document {
 
     /// The normal form of what `name` denotes, with its type.
     ///
-    /// Goes through [`musa_core::infer`] rather than reaching into the group,
-    /// which is what makes this the same reading a source term gets: the name is
-    /// resolved, its type is inferred, and the value is normalized *at* that
-    /// type, so η applies where the type says it should.
+    /// One line rather than a second reading, because a name *is* a term: the
+    /// declarations this document brought into scope are what make it one, and
+    /// resolving it through [`Document::term`] is what makes a use of a
+    /// definition mean here exactly what it means in a body.
     ///
     /// # Errors
     ///
     /// [`ElabError`] when `name` is not bound here, or when normalizing it
     /// exhausts the budget.
     pub(crate) fn value(&self, name: &str) -> Result<(Term, Term), ElabError> {
-        let (term, ty) = musa_core::infer(&self.cx, &Raw::var(Origin::UNKNOWN, name))?;
+        self.term(&Raw::var(Origin::UNKNOWN, name))
+    }
+
+    /// The normal form of `raw` in this document's context, with its type.
+    ///
+    /// Goes through [`musa_core::infer`] rather than reaching into the group,
+    /// which is what makes this the same reading a source term gets: the term is
+    /// elaborated, its type is inferred, and the value is normalized *at* that
+    /// type, so η applies where the type says it should.
+    ///
+    /// # Errors
+    ///
+    /// [`ElabError`] when `raw` does not elaborate here, or when normalizing it
+    /// exhausts the budget.
+    pub(crate) fn term(&self, raw: &Raw) -> Result<(Term, Term), ElabError> {
+        let (term, ty) = musa_core::infer(&self.cx, raw)?;
         let normal = musa_core::normalize(&self.cx, &ty, &term)?;
         Ok((normal, ty))
     }
@@ -106,6 +126,18 @@ impl Document {
     /// The table that turns an [`Origin`] this document minted back into a span.
     pub(crate) fn sites(&self) -> &Sites {
         &self.sites
+    }
+
+    /// The piece `node` writes, read into this document's own site table.
+    ///
+    /// Read *after* elaboration and through the same table, which is what makes
+    /// a refusal about a voice restatable at the note that caused it: a piece's
+    /// structure names the motifs and fragments its declarations bound, so the
+    /// declarations have to be in scope before the structure is a term, and the
+    /// origins the structure mints have to be numbered by the table the
+    /// declarations were.
+    pub(crate) fn piece(&mut self, resolver: &mut Resolver, node: &SyntaxNode) -> Option<crate::lower::piece::Piece> {
+        Lowering::new(resolver, &mut self.sites).piece(node)
     }
 }
 

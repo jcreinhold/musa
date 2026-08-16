@@ -1705,12 +1705,25 @@ pub(crate) struct PartContext {
     pub(crate) profile: Option<String>,
 }
 
+/// The three things a part states about itself, before either path shapes
+/// them.
+///
+/// Separate from [`PartContext`] because they are a separate concern: a clef,
+/// a polymeter, and a polytempo are *facts* that enter the piece's context
+/// track, and a profile is metadata the snapshot carries. The reading that
+/// wants the facts should not have to supply the declared profiles to get
+/// them.
+pub(crate) struct PartFacts {
+    /// The clef the part is read in.
+    pub(crate) clef: Option<(Clef, SourceSpan)>,
+    /// The part's own meter — polymeter, when it differs from the piece's.
+    pub(crate) meter: Option<(Meter, SourceSpan)>,
+    /// The part's own tempo — polytempo.
+    pub(crate) tempo: Option<(Marking, SourceSpan)>,
+}
+
 /// The part-level facts both semantic paths read the same way.
-pub(crate) fn part_context(
-    resolver: &mut Resolver,
-    part: &musa_language::ast::PartDecl,
-    profiles: &ProfileSet,
-) -> PartContext {
+pub(crate) fn part_facts(resolver: &mut Resolver, part: &musa_language::ast::PartDecl) -> PartFacts {
     let mut clef: Option<(Clef, SourceSpan)> = None;
     for node in part.syntax().children() {
         if node.kind() != SyntaxKind::ClefStmt {
@@ -1743,21 +1756,7 @@ pub(crate) fn part_context(
             ),
         }
     }
-    let mut profile = None;
-    if let Some(statement) = part.profile() {
-        let name = statement.name().unwrap_or_default();
-        if profiles.declares(&name) {
-            profile = Some(name);
-        } else {
-            let known: Vec<&str> = profiles.names().collect();
-            resolver.report(
-                Diagnostic::error(Code::UnknownName, format!("cannot find profile `{name}`"))
-                    .at(trimmed_span(statement.syntax()), "not declared in this piece")
-                    .help(suggest(&name, &known, "profiles")),
-            );
-        }
-    }
-    PartContext {
+    PartFacts {
         clef,
         meter: part.meter().and_then(|stmt| {
             let span = trimmed_span(stmt.syntax());
@@ -1776,8 +1775,62 @@ pub(crate) fn part_context(
         }),
         tempo: part
             .tempo()
-            .map(|stmt| (tempo_fact(resolver, &stmt), trimmed_span(stmt.syntax()))),
+            .map(|stmt| (tempo_marking(resolver, &stmt), trimmed_span(stmt.syntax()))),
+    }
+}
+
+/// The same three, with the profile the part names beside them.
+pub(crate) fn part_context(
+    resolver: &mut Resolver,
+    part: &musa_language::ast::PartDecl,
+    profiles: &ProfileSet,
+) -> PartContext {
+    let PartFacts { clef, meter, tempo } = part_facts(resolver, part);
+    let mut profile = None;
+    if let Some(statement) = part.profile() {
+        let name = statement.name().unwrap_or_default();
+        if profiles.declares(&name) {
+            profile = Some(name);
+        } else {
+            let known: Vec<&str> = profiles.names().collect();
+            resolver.report(
+                Diagnostic::error(Code::UnknownName, format!("cannot find profile `{name}`"))
+                    .at(trimmed_span(statement.syntax()), "not declared in this piece")
+                    .help(suggest(&name, &known, "profiles")),
+            );
+        }
+    }
+    PartContext {
+        clef,
+        meter,
+        tempo: tempo.map(|(marking, span)| (marking.into_fact(), span)),
         profile,
+    }
+}
+
+/// What one `tempo` statement says, before either path shapes it.
+///
+/// Three answers rather than a [`crate::elaborate::FactKind`] because the two
+/// readings need them in two shapes — one builds the fact directly, the other
+/// writes each as an argument of `Fact.Tempo` — and turning the finished fact
+/// back into its parts would be a second reading of what this already knows.
+pub(crate) struct Marking {
+    /// The metronome mark, when the statement carries one.
+    pub(crate) metronome: Option<crate::score::Metronome>,
+    /// The printed words, when the statement carries any.
+    pub(crate) text: Option<String>,
+    /// How the marking arrives, when it is gradual.
+    pub(crate) ramp: Option<crate::score::Ramp>,
+}
+
+impl Marking {
+    /// The same three, as the fact a track carries.
+    pub(crate) fn into_fact(self) -> crate::elaborate::FactKind {
+        crate::elaborate::FactKind::Tempo {
+            metronome: self.metronome,
+            text: self.text,
+            ramp: self.ramp,
+        }
     }
 }
 
@@ -1787,6 +1840,11 @@ pub(crate) fn part_context(
 /// change the clock" is one question and every consumer asks it the same way:
 /// by looking for a [`crate::score::Metronome`].
 pub(crate) fn tempo_fact(resolver: &mut Resolver, tempo: &TempoStmt) -> crate::elaborate::FactKind {
+    tempo_marking(resolver, tempo).into_fact()
+}
+
+/// The same reading, stopping one step earlier.
+pub(crate) fn tempo_marking(resolver: &mut Resolver, tempo: &TempoStmt) -> Marking {
     let syntax = tempo.syntax();
     let text = tempo.text();
     let metronome = tempo.has_metronome().then(|| {
@@ -1811,7 +1869,7 @@ pub(crate) fn tempo_fact(resolver: &mut Resolver, tempo: &TempoStmt) -> crate::e
     // No check that the marking says *something*: the grammar refuses
     // `tempo;` outright, and a file with a syntax error never reaches
     // elaboration. A diagnostic here would be one nothing could produce.
-    crate::elaborate::FactKind::Tempo {
+    Marking {
         metronome,
         ramp: tempo_ramp(resolver, tempo, text.is_some()),
         text,

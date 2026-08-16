@@ -58,6 +58,7 @@ mod laws;
 
 pub(crate) mod items;
 mod notation;
+pub(crate) mod piece;
 mod quotes;
 pub(crate) mod refusals;
 mod types;
@@ -202,6 +203,20 @@ impl<'a> Lowering<'a> {
     fn refuse<T>(&mut self, complaint: Diagnostic) -> Option<T> {
         self.resolver.report(complaint);
         None
+    }
+
+    /// Run `read`, and answer [`None`] if it complained.
+    ///
+    /// [`crate::resolve`]'s readings report on the resolver and answer whatever
+    /// they could still make of the source; everything here answers [`Option`]
+    /// and lets the caller decide what a refusal costs. This is the adapter
+    /// between the two, and it exists so a reading the replaced path already
+    /// has — [`crate::resolve::part_facts`] is the first — can be *called* from
+    /// here rather than written a second time.
+    fn heard<T>(&mut self, read: impl FnOnce(&mut Resolver) -> T) -> Option<T> {
+        let before = self.resolver.diagnostics.len();
+        let answer = read(self.resolver);
+        (self.resolver.diagnostics.len() == before).then_some(answer)
     }
 
     /// A binder no source file can write.
