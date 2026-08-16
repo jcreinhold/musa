@@ -188,6 +188,62 @@ fn scope_data() -> RawData {
     )
 }
 
+/// `data Unit { Only }`.
+///
+/// One constructor and no fields, so `Unit` has exactly one value.
+/// `../../rules/across-stages/03-machine-calculus.md` §2 needs a type with that
+/// property in one place and one only: `drop : Machine<K,A,Unit>` is how a
+/// machine says its output carries no information, and a result type with two
+/// values would let a `drop` be observed.
+///
+/// Declared rather than registered for `Bool`'s reason one constructor shorter:
+/// a base type with one opaque value would make `Unit`'s value unwritable, and
+/// §2's `feedback` threads a stored value through a machine — a piece that
+/// stores nothing has to be able to write the value it stores.
+fn unit_data() -> RawData {
+    data(
+        Vec::new(),
+        vec![family("Unit", Vec::new(), vec![constructor("Only", Vec::new())])],
+    )
+}
+
+/// `data Pair (A : Type 0) (B : Type 0) { Both(first : A, second : B) }`.
+///
+/// `../../rules/across-stages/03-machine-calculus.md` §2's `(A, D)`.  Four of
+/// its eight forms are written over it — `beside` pairs both ports, `copy`
+/// answers one, `swap` exchanges a pair's halves, and `feedback` threads the
+/// stored value through one on both sides — and the compiler has had it as
+/// `Type::Product` with no source spelling since the old checker.
+///
+/// # Why a declared family and not a record type
+///
+/// Prompt 136 gave the core structural record types, and `{ first : A, second :
+/// B }` would spell this without a declaration. It is the wrong shape, because
+/// §2's pairs are *wiring*: `swap : Machine<K,(A,B),(B,A)>` says which side goes
+/// where and says nothing about what the sides are called. Field names would be
+/// invented here and then read by every program that matched on one, which is
+/// the surface reading a wiring diagram as a record — and a record's fields are
+/// its interface, so two pieces of wiring that named theirs differently would
+/// stop being the same type. A declared family keeps the halves positional,
+/// which is what they are, and gives a program a constructor to match on.
+///
+/// The field names exist anyway because a constructor's fields are binders, and
+/// `first`/`second` are the two words that add nothing: they name the position,
+/// which is the only thing here that is true.
+fn pair_data() -> RawData {
+    data(
+        vec![binder("A", type0()), binder("B", type0())],
+        vec![family(
+            "Pair",
+            Vec::new(),
+            vec![constructor(
+                "Both",
+                vec![binder("first", var("A")), binder("second", var("B"))],
+            )],
+        )],
+    )
+}
+
 /// `data RowFault { Fault(List Nat, List Pc12) }`.
 ///
 /// Why the twelve-tone row's failure has a name rather than a tuple: a rule
@@ -297,6 +353,8 @@ pub(crate) fn structural() -> Vec<RawData> {
         list_data(),
         result_data(),
         scope_data(),
+        unit_data(),
+        pair_data(),
     ]
 }
 

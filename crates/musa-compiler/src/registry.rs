@@ -50,13 +50,17 @@
 //!
 //! `BUILTIN_OWNERSHIP` has 117 rows and 92 of them are δ. Eight more are §5.8's
 //! *third* family and are registered in [`track`], over the `EventTrack` base
-//! type this module registers for them. The seventeen left are two families and
-//! neither is registrable here: the eight collection eliminators are traversals
-//! over `Nat`, `List`, and `Option`, which are *declared*, so
-//! [`musa_core::declare`] already generated their recursors and
-//! [`Registry::new`] refuses a structural target that is not a base type; the
-//! nine machine builtins need `Machine`, which `03-machine-calculus.md` §2 gives
-//! type indices and no reductions, and prompt 141ha owns.
+//! type this module registers for them. Eight of the nine machine rows are the
+//! *fourth* family and are registered in [`machine`], over the `Machine` and
+//! `Primitive` base types this module registers for them — as constructors,
+//! because `03-machine-calculus.md` §2 gives them typing rules and no
+//! reductions. The nine left are two kinds and neither is registrable here: the
+//! eight collection eliminators are traversals over `Nat`, `List`, and
+//! `Option`, which are *declared*, so [`musa_core::declare`] already generated
+//! their recursors and [`Registry::new`] refuses a structural target that is
+//! not a base type; and `primitive` is typed by a build-local registry rather
+//! than by a signature, which [`machine::UNREGISTERED`] argues and prompt 142
+//! owns.
 //!
 //! `SYNTAX_OWNERSHIP` has 17 rows and sixteen are registered: fourteen δ builders
 //! here, and the two traversals in [`traversal`], which are §5.8's *second*
@@ -68,6 +72,7 @@
 
 #[cfg(test)]
 mod laws;
+mod machine;
 mod rules;
 mod track;
 mod traversal;
@@ -227,6 +232,27 @@ fn indexed(name: &'static str, index: &'static str) -> Base {
     Base::new(name, Term::pi(HERE, "index", plain(index).term(HERE), type0()))
 }
 
+/// A base type indexed by a step tag and two ports, all three of them *types*.
+///
+/// `Machine` and `Primitive`, and nothing else. The other two indexed base types
+/// are indexed by the *values* of a base type, because a δ-rule writes their
+/// index and a `fn` pointer can build a literal and not a constructor. Nothing
+/// writes one of these: §2 gives its forms no reductions, so every index here is
+/// supplied by a constructor's caller, and the ports are then whatever storable
+/// types the piece is wiring together — arbitrary, which is exactly what a
+/// literal index cannot be.
+fn ported(name: &'static str) -> Base {
+    Base::new(
+        name,
+        Term::pi(
+            HERE,
+            "step",
+            type0(),
+            Term::pi(HERE, "input", type0(), Term::pi(HERE, "output", type0(), type0())),
+        ),
+    )
+}
+
 /// Every inert domain, with the kind it is registered at.
 ///
 /// Needs no context, which is the point: a rule reaches the same three helpers
@@ -276,6 +302,20 @@ fn bases() -> Vec<Base> {
         // a constructed fact to carry — declared rather than registered,
         // because a scope is finite data with three cases and nothing hidden.
         plain("Origin"),
+        // `03-machine-calculus.md` §2's machine, and §1's registered unit.
+        // Inert for the reason a base type usually is not: not because the
+        // compiler owns a representation source may not take apart, but because
+        // §2 gives these forms *no reductions at all*. A machine's application
+        // is its value, so there is nothing for an ι-rule to do and nothing for
+        // a program to match on — `03-machine-calculus.md` §3 gives a machine
+        // one step and §5 prepares it, and neither is a source operation.
+        //
+        // Indexed by three types rather than by a literal, which is
+        // [`ported`]'s argument. The eight forms over them are in [`machine`];
+        // `primitive` is the ninth row and is registered nowhere, because its
+        // ports come from a build-local registry rather than from a signature.
+        ported("Machine"),
+        ported("Primitive"),
         // The written domains.
         plain("Pitch"),
         plain("PitchClass"),
@@ -665,6 +705,7 @@ fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
     built.extend(traversal::eliminators(cx)?);
     built.extend(quotation(cx)?);
     built.extend(track::builtins(cx)?);
+    built.extend(machine::builtins(cx)?);
     Ok(built)
 }
 

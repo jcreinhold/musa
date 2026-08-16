@@ -1,7 +1,7 @@
 ---
 id: 141ha
 slug: machine-core
-status: pending
+status: done
 depends_on: [136, 141e, 141g, 141h]
 phase: 3
 ---

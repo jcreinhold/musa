@@ -12,7 +12,9 @@
 //! stated as tests: the *smallest* disagreeing pair, and the path from the two
 //! whole types down to it.
 
-use musa_core::{Cx, ElabError, Index, Level, Mismatch, PathStep, Raw, Refusal, Term, check, infer};
+use musa_core::{
+    Base, Builtin, Cx, ElabError, Index, Level, Mismatch, PathStep, Raw, Refusal, Registry, Term, check, infer,
+};
 
 use crate::programs::{WRITTEN, annotated_unit, core_unit_type, refusal, unit, unit_type};
 
@@ -22,6 +24,76 @@ fn type0() -> Raw {
 
 fn var(name: &'static str) -> Raw {
     Raw::var(WRITTEN, name)
+}
+
+/// `Wire tag input output`, written the way a program would.
+fn ported(tag: Raw, input: Raw, output: Raw) -> Raw {
+    [tag, input, output]
+        .into_iter()
+        .fold(var("Wire"), |head, argument| Raw::app(WRITTEN, head, argument))
+}
+
+/// A registry carrying one rigid three-argument type and two polymorphic
+/// constants over it.
+///
+/// Not a musical registry and not §5.8's δ family: these are constructors, whose
+/// application *is* their value, and the only thing the law needs from them is
+/// that they stand at the top level with implicit arguments.
+///
+/// # Panics
+///
+/// If the registry refuses its own worked example, which would be a defect in
+/// this crate.
+fn wired() -> std::sync::Arc<Registry> {
+    // `Wire : Type 0 → Type 0 → Type 0 → Type 0`
+    let wire = Base::new("Wire", core_scheme(3, core_type0()));
+    let ported = |depth: usize, tag: usize, input: usize, output: usize| {
+        [tag, input, output]
+            .into_iter()
+            .fold(wire.term(WRITTEN), |head, position| {
+                Term::app(WRITTEN, head, at(depth, position))
+            })
+    };
+    // `identity : {K A : Type 0} → Wire K A A`
+    let identity = Builtin::constructor("identity", implicits(2, ported(2, 0, 1, 1)), musa_core::Family::Machine);
+    // `connect : {K A B C : Type 0} → Wire K A B → Wire K B C → Wire K A C`
+    let connect = Builtin::constructor(
+        "connect",
+        implicits(
+            4,
+            Term::pi(
+                WRITTEN,
+                "first",
+                ported(4, 0, 1, 2),
+                Term::pi(WRITTEN, "second", ported(5, 0, 2, 3), ported(6, 0, 1, 3)),
+            ),
+        ),
+        musa_core::Family::Machine,
+    );
+    std::sync::Arc::new(Registry::new(vec![wire], vec![identity, connect]).expect("two constructors register"))
+}
+
+fn core_type0() -> Term {
+    Term::universe(WRITTEN, Level::ZERO)
+}
+
+/// `Type 0 → … → result`, with `arity` explicit arguments.
+fn core_scheme(arity: usize, result: Term) -> Term {
+    (0..arity).fold(result, |built, _| Term::pi(WRITTEN, "argument", core_type0(), built))
+}
+
+/// `{v₁ … vₙ : Type 0} → body`, where `body` is already written at depth `n`.
+fn implicits(arity: usize, body: Term) -> Term {
+    (0..arity).fold(body, |built, _| {
+        Term::implicit_pi(WRITTEN, "argument", core_type0(), built)
+    })
+}
+
+/// The variable bound at `position`, counted from the outermost, read at
+/// `depth`.
+fn at(depth: usize, position: usize) -> Term {
+    let index = depth.saturating_sub(position).saturating_sub(1);
+    Term::var(WRITTEN, Index(u32::try_from(index).unwrap_or_default()))
 }
 
 /// Elaborate, expecting acceptance.
@@ -103,6 +175,53 @@ fn a_metavariable_determined_twice_must_be_determined_the_same_way() {
         matches!(refusal, Refusal::Mismatch(_)),
         "the second argument disagrees with the solution the first fixed, got `{refusal}`"
     );
+}
+
+/// §2.1: a metavariable's solution may itself be a metavariable, and reading one
+/// means reading the whole chain.
+///
+/// `?α := ?β` is what solving a flex-flex pair writes, and it stores the value
+/// `?β` had at that moment — a value that says "blocked on `?β`". Solve `?β`
+/// afterwards and unfolding `?α` *once* answers something blocked again. Every
+/// decision the unifier takes by looking at a head then reads a solved
+/// metavariable as an unsolved one, and the flexible case solves whatever it
+/// finds there: solutions are write-once, so a program that determined one thing
+/// once is refused for having determined it twice.
+///
+/// Two details of the program are load-bearing, and both are about keeping the
+/// chain intact rather than about what it says:
+///
+/// - **The head is rigid.** Unifying two function types compares a domain with a
+///   domain and the unifier may solve either side; unifying `Wire ?k ?a ?b`
+///   against `Wire ?k' ?c ?c` descends the spine pairwise, which is what makes
+///   the second argument's solution land on a metavariable the first argument
+///   already pointed at.
+/// - **The constants are registered rather than bound.** A λ- or `let`-bound
+///   polymorphic value puts its metavariables *under* binders, so a solution is a
+///   λ, unfolding it is [`musa_core`]'s β, and evaluating the body resolves the
+///   next link for free — the chain is chased by accident. Registered constants
+///   are elaborated in the empty scope, where nothing chases it but forcing.
+///
+/// Nothing here is musical. `Wire` is three type arguments and a rigid head, and
+/// any two polymorphic constants meeting at a shared implicit build the same
+/// chain.
+#[test]
+fn a_solution_that_is_itself_a_metavariable_is_followed_to_the_end() {
+    // `connect identity identity : Wire {} {} {}`
+    let cx = Cx::new().with_externs(wired());
+    let at = check(
+        &cx,
+        &Term::universe(WRITTEN, Level::ZERO),
+        &ported(unit_type(), unit_type(), unit_type()),
+    )
+    .expect("`Wire {} {} {}` is a type");
+    let program = Raw::app(
+        WRITTEN,
+        Raw::app(WRITTEN, var("connect"), var("identity")),
+        var("identity"),
+    );
+    check(&cx, &at, &program)
+        .unwrap_or_else(|error| panic!("two registered constants meeting at a shared implicit: {error}"));
 }
 
 /// §2.1: a metavariable is never defaulted and never generalized, so one nothing

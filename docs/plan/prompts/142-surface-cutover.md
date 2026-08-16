@@ -52,9 +52,17 @@ the middle. It absorbs prompt 127e, whose file stays as a superseded record rath
 - [`141h`](141h-track-core.md), which gave `EventTrack` its core shape and registered the eight track builtins 141e
   left, on the grounds that they needed a reshape this prompt would perform. The reshape moved there; what stays here is
   deleting contextual `Music` and teaching the source the word.
-- [`141ha`](141ha-machine-core.md), which gave `Machine` its core shape and registered §2's nine forms as constructors.
-  It split off 141h because a machine reduces to nothing and needs a unit and a product that 141h's track does not; what
-  stays here is deleting `Type::Machine` and the old checker's machine path.
+- [`141ha`](141ha-machine-core.md), which gave `Machine` its core shape and registered §2's eight *grammatical* forms as
+  constructors. It split off 141h because a machine reduces to nothing and needs a unit and a product that 141h's track
+  does not. Two things stay here rather than there. **`primitive` is unregistered**, and deliberately: §1's ninth row is
+  typed by the build-local registry — the written name and version select a descriptor that supplies the step, both
+  ports, *and the configuration argument's type* — so it is a different type per registered pair rather than one Π short
+  of writable, and only a stage that can perform that lookup can type it. This prompt is that stage; it is counted in
+  `registry/rules.rs`'s `UNREGISTERED` until then. **Storability is unchecked**, for the same reason:
+  `02-core-calculus.md` §1.2 states it as a constraint, a `Builtin`'s type is a `Term` with no constraint binder, and so
+  `Machine ⟨step⟩ (Nat → Nat) Nat` is writable in the core today. Discharging it belongs to the elaboration here that
+  has the constraint solver, with `03-machine-calculus.md` §5's preparation refusing what survives. Also here: deleting
+  `Type::Machine` and the old checker's machine path.
 - [`141i`](141i-constrained-definitions.md), which gave a free `fn`, `record`, and `enum` their `where` clause. The
   migration below needs it: a generic parameter acquires no method without a constraint, and `stdlib/` is full of
   generic definitions that will.
@@ -136,6 +144,11 @@ rewrite here would destroy that measurement. The same applies to the studio adap
   built; what this delivers is the passes that call it and the readback that turns a normal form into the musical value
   a consumer receives.
 - `infer.rs` deleted, `core.rs`'s superseded arms deleted, `names_a_phase_type` deleted, second-path audit recorded.
+- `primitive` typed against the build-local registry, and `registry/rules.rs`'s `UNREGISTERED` shortened by the row
+  141ha left there. It is not one more signature: the name and version select the descriptor that supplies the ports and
+  the configuration type, so this is elaboration reading a registry, not a table gaining an entry.
+- The storable-port premise discharged where the constraint solver is — a port is `Storable`, and
+  `Machine ⟨step⟩ (Nat → Nat) Nat` is refused here rather than left to `03-machine-calculus.md` §5's preparation.
 - `stdlib/`, `examples/`, book fixtures, LSP fixtures, desktop generated fixtures, and the tree-sitter corpus migrated.
 - Contextual `Music` and `ContextualMusic` gone from source, compiler, and documents.
 - `docs/plan/clean-break-ledger.md`: every row this prompt owns marked discharged, with the rows left for 150–153 named.

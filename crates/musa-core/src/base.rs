@@ -27,9 +27,13 @@
 //!   Conversion is §5.8's own sentence: two closed values of an inert base type
 //!   are convertible iff they are the same constant.
 //! - A [`Builtin`] is a compiler-owned operation: a name, a declared type, a
-//!   [`Family`], and a δ-rule. Its *typing* needs no new rule — a builtin is a
-//!   constant of a declared type and application is application — so the only
-//!   new arm anywhere is reduction.
+//!   [`Family`], and how it reduces — a δ-rule, a structural rewrite, or
+//!   nothing at all. Its *typing* needs no new rule — a builtin is a constant of
+//!   a declared type and application is application — so the only new arm
+//!   anywhere is reduction, and the third shape adds not even that:
+//!   [`Builtin::constructor`] is how a table registers a form that §2 of
+//!   `../../rules/across-stages/03-machine-calculus.md` gives a typing rule and
+//!   no reduction.
 //!
 //! **D1's *or* is [`Datum`].** A δ-builtin's argument and result types are "a
 //! base type **or a finite constructor over base types**", and the second half
@@ -390,10 +394,11 @@ pub type Rule = fn(&[Datum]) -> Option<Datum>;
 /// the same way it does for a δ-rule that answers nothing.
 pub type Rewrite = fn(&Builtin, &Literal) -> Option<Term>;
 
-/// How a builtin reduces: §5.8's δ-rule, or a structural eliminator's rewrite.
+/// How a builtin reduces: §5.8's δ-rule, a structural eliminator's rewrite, or
+/// not at all.
 ///
-/// One field rather than two optional ones, because a builtin has exactly one
-/// way to take a step and two nullable fields could disagree about which.
+/// One field rather than three optional ones, because a builtin has exactly one
+/// way to take a step and separate nullable fields could disagree about which.
 #[derive(Clone, Copy, Debug)]
 enum Reduction {
     /// D1–D4's: data in, data out, once every argument is canonical.
@@ -406,6 +411,8 @@ enum Reduction {
         /// What to answer when it is.
         rewrite: Rewrite,
     },
+    /// A constructor's: none. Its application is its value.
+    None,
 }
 
 /// A compiler-owned operation: what it is called, what type it has, which family
@@ -448,9 +455,10 @@ impl Builtin {
     ///
     /// Builds a builtin reduced by a δ-rule — every argument canonical data,
     /// data out. That is D1–D4's shape for [`Family::Delta`] and the shape a
-    /// track or machine constructor has too, since both build a closed value out
-    /// of closed values. A traversal is the other shape; [`Self::structural`]
-    /// builds one.
+    /// track constructor has too, since it builds a closed value out of closed
+    /// values. A traversal is the second shape and [`Self::structural`] builds
+    /// one; a form that has a type and no computation at all is the third, and
+    /// [`Self::constructor`] builds that.
     ///
     /// The arity is read off `ty` rather than passed: it is the number of Π
     /// binders the signature has, and a second copy would be free to disagree
@@ -531,6 +539,43 @@ impl Builtin {
         Self::declared_with(name, ty, family, Reduction::Structural { target, rewrite }, vocabulary)
     }
 
+    /// A builtin named `name`, of type `ty`, in `family`, that computes nothing.
+    ///
+    /// Its saturated application is a neutral spine and stays one, so two of
+    /// them are the same value exactly when they were built the same way — which
+    /// is the whole of what `../../rules/across-stages/03-machine-calculus.md`
+    /// §2 says about a machine. That section gives its forms **typing rules and
+    /// no reductions**, and this is how a table says so.
+    ///
+    /// **Why this is not a [`Rule`] that always answers `None`.** Three
+    /// differences, and each one is a thing that would otherwise go wrong:
+    ///
+    /// - A rule that answered nothing at closed data is D2 broken, and
+    ///   [`crate::Malformed::BuiltinStuck`] would report it — correctly, because
+    ///   that is what a forgotten arm looks like. A constructor has no rule to
+    ///   answer nothing, so the diagnostic cannot misfire and the forgotten arm
+    ///   it names stays a real defect everywhere else.
+    /// - §5.8's inertness argument is about which operations contribute a
+    ///   reduction. A constructor contributes none, so it is covered by that
+    ///   argument in the way a base type is, rather than by an appeal to a rule
+    ///   nobody can run.
+    /// - A rule is *reachable*: `Rule` is a `fn` pointer, so a table could hand
+    ///   the same pointer to a δ-builtin, and "this one is never called" would
+    ///   be a claim about every registration rather than about this one. Here it
+    ///   is the type.
+    ///
+    /// **It is not a weaker [`Self::new`], because a machine builtin's rule
+    /// could never fire anyway.** Every form of §2 is polymorphic in its step
+    /// tag and its ports, so a type stands on every one of those spines,
+    /// [`crate::eval`]'s `canonical` answers `None` at a universe, and δ blocks
+    /// forever. Registering such a form with a rule would be writing an arm that
+    /// is unreachable by construction and cannot be tested; registering it
+    /// without one says the same thing and can be read.
+    #[must_use]
+    pub fn constructor(name: impl Into<Name>, ty: Term, family: Family) -> Self {
+        Self::declared(name, ty, family, Reduction::None)
+    }
+
     fn declared(name: impl Into<Name>, ty: Term, family: Family, reduction: Reduction) -> Self {
         Self::declared_with(name, ty, family, reduction, Vec::new())
     }
@@ -603,7 +648,7 @@ impl Builtin {
     pub(crate) fn delta_rule(&self) -> Option<Rule> {
         match self.0.reduction {
             Reduction::Delta(rule) => Some(rule),
-            Reduction::Structural { .. } => None,
+            Reduction::Structural { .. } | Reduction::None => None,
         }
     }
 
@@ -614,7 +659,7 @@ impl Builtin {
     /// the registration otherwise.
     pub(crate) fn structural_rule(&self) -> Option<(usize, Rewrite)> {
         match self.0.reduction {
-            Reduction::Delta(_) => None,
+            Reduction::Delta(_) | Reduction::None => None,
             Reduction::Structural { target, rewrite } => Some((target, rewrite)),
         }
     }
@@ -706,6 +751,16 @@ impl Registry {
     /// An arrow keeps its own diagnostic inside the positive check, because a Π
     /// where data was wanted is the D1 violation a table author actually writes,
     /// and [`Refusal::HigherOrderDelta`] says the specific thing.
+    ///
+    /// **A [`Builtin::constructor`] is checked by neither, and that is the
+    /// absence of a check rather than an exemption from one.** Both checks ask
+    /// about a *reduction*: D1 bounds what a δ-rule may read and answer, and the
+    /// target check bounds what a rewrite may fire on. A form with no reduction
+    /// has neither question to answer, so what is left is the duplicate-name
+    /// check above, which applies to everything registered. §2's machine forms
+    /// are why: their signatures are full of arrows and universes, and holding
+    /// them to a rule about `fn` pointers would refuse the family for a property
+    /// no rule of theirs has.
     ///
     /// # Errors
     ///

@@ -225,6 +225,19 @@ fn binding(meter: &mut Meter, env: &Env, value: &Term, body: &Term) -> Result<Va
 /// clone keeps the common case, a value with no metavariable anywhere in it,
 /// free.
 ///
+/// **One unfolding is not enough**, and that is why this is a loop. `?α := ?β`
+/// is an ordinary solution — it is what solving a flex-flex pair writes — and it
+/// stores the value `?β` *had at that moment*, which is a neutral blocked on
+/// `?β`. Solve `?β` afterwards and unfolding `?α` once answers a value that is
+/// blocked again. A caller that trusted a single step would then read a solved
+/// metavariable as an unsolved one; in [`crate::unify`] that is not a missed
+/// reduction but a wrong one, because the flex case solves whatever stands at
+/// the head and a metavariable may only be solved once. So the postcondition is
+/// the fixed point: the head of what comes back is never a solved metavariable.
+///
+/// Each unfolding after the first is charged, so a chain of solutions is bounded
+/// by the budget rather than by a claim that chains are short.
+///
 /// # Errors
 ///
 /// As [`eval`]: replaying the spine is ordinary evaluation.
@@ -235,7 +248,18 @@ pub(crate) fn force(meter: &mut Meter, value: &Value) -> Result<Option<Value>, C
     if !head_is_solved(neutral) {
         return Ok(None);
     }
-    replay(meter, neutral).map(Some)
+    let mut answer = replay(meter, neutral)?;
+    loop {
+        let Form::Neutral(blocked) = &answer.form else {
+            return Ok(Some(answer));
+        };
+        if !head_is_solved(blocked) {
+            return Ok(Some(answer));
+        }
+        let blocked = Arc::clone(blocked);
+        meter.step("forcing")?;
+        answer = replay(meter, &blocked)?;
+    }
 }
 
 /// Whether the head of a spine is a metavariable that now has a solution.

@@ -77,7 +77,7 @@ fn every_delta_spelling_is_registered_exactly_once() {
         "the registered count and the counts this module states have drifted"
     );
     for builtin in &registered {
-        named(&cx, builtin.name());
+        resolves(&cx, builtin.name());
     }
 }
 
@@ -119,17 +119,24 @@ fn the_operations_past_both_tables_are_named_and_in_neither() {
 /// that quietly changed family would move one of the three and not the others.
 ///
 /// The track family left this array in prompt 141h and is checked the other way
-/// round in [`super::track::laws`] — that all eight of its rows *are* registered.
+/// round in [`super::track::laws`] — that all eight of its rows *are*
+/// registered. Prompt 141ha did the same to eight of the machine family's nine,
+/// which is why that count is a subtraction: the row left is `primitive`, and
+/// [`super::machine::laws`] checks the eight from the other side.
 #[test]
 fn the_unregistered_rows_are_the_families_they_are_said_to_be() {
     let eliminators = BUILTIN_OWNERSHIP
         .iter()
         .filter(|entry| matches!(entry.family, Family::Eliminator(_)))
         .count();
+    // The machine family's rows minus the eight registered as constructors,
+    // which leaves `primitive` and says so by subtraction rather than by naming
+    // it twice.
     let machines = BUILTIN_OWNERSHIP
         .iter()
         .filter(|entry| matches!(entry.family, Family::Machine(_)))
-        .count();
+        .count()
+        - super::machine::SPELLINGS.len();
     // The descent family's rows minus the two registered as structural
     // eliminators, which is `run_syntax_step` and says so by subtraction rather
     // than by being named twice.
@@ -429,9 +436,29 @@ fn surrounding(cx: &musa_core::Cx, shape: Shape, constructor: &str) -> (Vec<Term
 fn named(cx: &musa_core::Cx, name: &str) -> Term {
     let (term, _) = musa_core::infer(cx, &musa_core::Raw::var(super::HERE, name)).unwrap_or_else(|refusal| {
         let unknown = matches!(refusal, musa_core::ElabError::Refused(Refusal::UnknownName { .. }));
-        panic!("`{name}` is not registered (unknown name: {unknown})");
+        panic!("`{name}` is not registered (unknown name: {unknown}): {refusal}");
     });
     term
+}
+
+/// `name` resolves in `cx`, without asking what it elaborates to.
+///
+/// Weaker than [`named`] on purpose, and the weakening is
+/// `03-machine-calculus.md` §2's. Eight registered spellings are its machine
+/// forms, whose type arguments are every one of them *implicit*, so inferring
+/// one in isolation inserts metavariables with nothing to solve them from and
+/// [`Refusal::Unsolved`] is the correct answer rather than a failure. It still
+/// settles what this law asks — the name resolved and a signature was found —
+/// and where those arguments actually come from is
+/// [`super::machine::laws`]'s question, asked at the positions §2's rules put
+/// them in.
+pub(super) fn resolves(cx: &musa_core::Cx, name: &str) {
+    if let Err(refusal) = musa_core::infer(cx, &musa_core::Raw::var(super::HERE, name)) {
+        assert!(
+            matches!(refusal, musa_core::ElabError::Refused(Refusal::Unsolved { .. })),
+            "`{name}` is not registered: {refusal}"
+        );
+    }
 }
 
 /// A `Datum` is compared by value, which is what the agreement law relies on.

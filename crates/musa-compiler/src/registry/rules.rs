@@ -64,17 +64,19 @@ use crate::time::{Exact, exact_arithmetic, exact_ratio, written_rational};
 
 /// How many rows of the two ownership tables reach the core's registry.
 ///
-/// 100 of `BUILTIN_OWNERSHIP`'s 117 and 16 of `SYNTAX_OWNERSHIP`'s 17. The rows
+/// 108 of `BUILTIN_OWNERSHIP`'s 117 and 16 of `SYNTAX_OWNERSHIP`'s 17. The rows
 /// past this module's 92 and fourteen are registered where their reduction is:
-/// the two traversals in [`super::traversal`] and the eight track builtins in
-/// [`super::track`], which are §5.8's second and third families rather than its
-/// first. A δ-builtin's rule is a [`Rule`] and lives here; the others carry a
-/// rewrite, a family, or both, and live beside the argument that admits them.
-pub(super) const REGISTERED: usize = 116;
+/// the two traversals in [`super::traversal`], the eight track builtins in
+/// [`super::track`], and the eight machine forms in [`super::machine`], which
+/// are §5.8's second, third, and fourth families rather than its first. A
+/// δ-builtin's rule is a [`Rule`] and lives here; the others carry a rewrite, a
+/// family, or no reduction at all, and live beside the argument that admits
+/// them.
+pub(super) const REGISTERED: usize = 124;
 
 /// The rows that do not, by family and by count.
 ///
-/// Eighteen, and each group is left for a reason that is about the *core* rather
+/// Ten, and each group is left for a reason that is about the *core* rather
 /// than about effort:
 ///
 /// - a **structural eliminator** traverses `Nat`, `List`, or `Option`, which are
@@ -82,10 +84,12 @@ pub(super) const REGISTERED: usize = 116;
 ///   [`musa_core::Registry::new`] refuses a structural target that is not a base
 ///   type. Registering one would be a second ι-rule for a type that has one;
 ///   prompt 142 makes them library code.
-/// - a **machine** builtin needs `Machine`, which §2 of `03-machine-calculus.md`
-///   gives type *indices* and no reductions — a third reduction shape the core
-///   does not have, over a unit and a product nothing has declared. Prompt 141ha
-///   owns all of it, and the track argument shares no lemma with it.
+/// - the one **machine** builtin left is `primitive`, whose ports and whose
+///   configuration type are read out of the build-local registry rather than
+///   written in a signature. [`super::machine::UNREGISTERED`] argues it and
+///   names prompt 142, which is where elaboration replaces the old checker and
+///   a build-local lookup becomes possible at all. Its eight siblings are
+///   registered.
 /// - a **phase projection** is `run_syntax_step`, which hides nothing: it is the
 ///   `run` field of a `SyntaxStep` applied to a context, and a projection is not
 ///   a compiler-owned operation. [`musa_core::Registry::new`] would have refused
@@ -97,7 +101,7 @@ pub(super) const REGISTERED: usize = 116;
 /// cannot drift from what is actually registered.
 pub(super) const UNREGISTERED: [(&str, usize); 3] = [
     ("structural eliminators", 8),
-    ("machine builtins", 9),
+    ("machine builtins", 1),
     ("phase projections", 1),
 ];
 

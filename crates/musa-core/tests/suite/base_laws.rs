@@ -1410,6 +1410,56 @@ fn a_literal_is_data_only_where_a_base_type_indexes_on_it() {
     );
 }
 
+/// The registry's two checks are about *rules*, and a [`Builtin::constructor`]
+/// has none — so it passes both by never being asked.
+///
+/// Worth stating because the difference between an absence and an exemption is
+/// invisible from the outside and load-bearing from the inside. One signature
+/// below registers as a constructor and is refused twice over as anything that
+/// computes: as a δ-builtin because D1 admits no arrow, and as a traversal
+/// because the argument it would fire on is not a base type. Neither check has
+/// been relaxed. A constructor's application *is* its value, so a δ signature it
+/// does not have and a target it does not fire at are both questions about
+/// nothing.
+///
+/// What a constructor does at a *use* site — stay neutral saturated or not, and
+/// normalize to itself — is `musa-compiler`'s `registry::machine::laws`, where
+/// the first eight of them live.
+#[test]
+fn a_constructor_is_asked_neither_registration_question() {
+    let signature = || {
+        arrow(
+            arrow(int().term(TYPES), int().term(TYPES)),
+            arrow(int().term(TYPES), int().term(TYPES)),
+        )
+    };
+    let refused = Registry::new(
+        vec![int()],
+        vec![Builtin::new("wrapped", signature(), Family::Delta, |_| None)],
+    )
+    .expect_err("a δ-builtin may not take a function");
+    assert!(
+        matches!(refused, Refusal::HigherOrderDelta { .. }),
+        "refused, but as `{refused}`"
+    );
+
+    let refused = Registry::new(
+        vec![int()],
+        vec![Builtin::structural("wrapped", signature(), 0, |_, _| None)],
+    )
+    .expect_err("a traversal may not fire on an argument that is not a base type");
+    assert!(
+        matches!(refused, Refusal::TargetNotABase { .. }),
+        "refused, but as `{refused}`"
+    );
+
+    Registry::new(
+        vec![int()],
+        vec![Builtin::constructor("wrapped", signature(), Family::Machine)],
+    )
+    .expect("the same signature registers as a constructor, because it carries no rule to check");
+}
+
 #[test]
 fn a_registration_is_refused_by_the_table_it_is_about() {
     for RefusedRegistry {
