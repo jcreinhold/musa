@@ -25,8 +25,9 @@ registered.
   ScoreFact] { music { body } }` with a `Motif` role retained for lints, extraction, editing, and Origin";
   `fragment name { body }` is "`let name = music { body };` with a `Fragment` role"; and `use e;` "checks that `e` is a
   written-time score track, `follow`s it onto the voice at the current cursor, and advances by `duration(e)`. Existing
-  `use name(args);` is the same rule, not a second invocation mechanism." Then §2's `in scale` pair, §3's higher-order
-  programs, and §5's chords, rows, and explicit register.
+  `use name(args);` is the same rule, not a second invocation mechanism." Then §2's `in scale` sentences — the heading
+  claim and the closing line, **not** the `figure()`/`subject` example between them, which the Design below withdraws —
+  §3's higher-order programs, and §5's chords, rows, and explicit register.
 - [`../../rules/language/00-semantics.md`](../../rules/language/00-semantics.md) §3 — the two composition equations, and
   the list of what a block may not contain. That list is this prompt's refusals, and each one is refused *because* the
   value is usable at several places, which is a sentence a diagnostic can say.
@@ -67,14 +68,43 @@ block is the matching track builtin applied to the fold of its body. Nothing els
 in one place, as a function from `SyntaxKind` to the call it makes, is what keeps this readable at nineteen entries;
 spreading it across nineteen methods would hide the very correspondence 141j's mirroring law exists to protect.
 
-**Pitches resolve here, before any track exists.** `01-surface.md` §2 is explicit — "the two uses differ under `≈facts`,
-because `in scale` is resolved where the pitches are resolved; saving `subject` does not freeze the scale" — and
-`00-semantics.md` §3 repeats it. So `in scale` is a *lexical reading context* in this module, not a value and not a
-fact: it emits no key signature, it is not a claim of modulation, and a `step` written with no scale in scope is a
-diagnostic here rather than an implicit C major. The consequence to state plainly: a pitch is a literal in the raw term,
-so the core never sees a scale, and `PitchTerm`'s deferred resolution has no successor. Whether that is a loss is the
-one question this prompt must answer with evidence rather than assertion — if a program in `examples/` or `stdlib/`
-needs a pitch whose scale arrives later, this design is wrong and the prompt is repaired before it is implemented.
+**Pitches resolve here, before any track exists.** `01-surface.md` §2 states it twice — "a track value is an ordinary
+value, and `in scale` is lexical rather than captured", and "an absent scale makes `step` a type-context diagnostic, not
+an implicit C-major choice" — and `00-semantics.md` §3 says the same from the other side: a block may contain "lexically
+scoped `in scale`", which "is resolved while pitches are resolved — before any track value exists". So `in scale` is a
+*lexical reading context* in this module, not a value and not a fact: it emits no key signature, it is not a claim of
+modulation, and a `step` written with no scale in scope is a diagnostic here rather than an implicit C major. The
+consequence to state plainly: a pitch is a literal in the raw term, so the core never sees a scale, and `PitchTerm`'s
+deferred resolution has no successor.
+
+*Answered during preparation, and one citation withdrawn.* This paragraph used to quote §2's "the two uses differ under
+`≈facts` … saving `subject` does not freeze the scale" as its authority. That sentence and the `figure()`/`subject`
+example above it say the opposite of the three sentences quoted here, and they contradict §2's own heading and closing
+line: the body of `fn figure()` has no lexically enclosing `in scale`, so under "lexical rather than captured" its
+`step 1` is the diagnostic §2's last sentence describes, and the example cannot compile to have two readings. Only
+*dynamic* capture makes it differ at two use sites, which is the deleted contextual-`Music` behaviour. The example is a
+survival, not a decision, and repairing it belongs to [`149`](149-language-pass-closure.md), whose Task is the
+contradiction audit and which "may repair `docs/rules/language/` as its own candidate specification". Recorded there so
+the audit does not have to rediscover it.
+
+The evidence question this paragraph used to leave open — whether any program needs a pitch whose scale arrives later —
+is answered no, by reading every program that could:
+
+- `examples/scale-context.musa` is the only one, and it names the deleted design as its reason in its own header
+  comment: "Because a `music` value is contextual, the same saved phrase elaborates differently at two use sites." It is
+  written in `Music`, the type name prompt 127a deleted (`01-surface.md` §2), and its final voice lets a `key` statement
+  supply a collection to a scale-less `step`, which is the implicit choice §2's last sentence refuses. It is a migration
+  item for prompt 142, not a requirement on this one.
+- `stdlib/src/tonal/schemas.musa` already writes the idiom this design prescribes: a collection is an explicit argument
+  (`fn sixth_over(collection: Scale, bass: Degree)`), never ambient. The library never needed the capture.
+- `examples/broken/no-scale-in-force.musa` already asserts the refusal — "an absent scale is never an implicit C major"
+  — so the negative fixture encodes the new rule before this prompt implements it.
+- `examples/module-functor-study.musa` and `examples/template-study.musa` open `in scale` and contain no `step`, so
+  neither constrains where resolution happens.
+
+A saved fragment that wants a scale is written `fn figure(under: Scale) -> EventTrack[WrittenTime, ScoreFact]`, which
+makes the dependency an argument rather than ambient context — the direction §3's deletion of the cursor and the
+contextual stage was already moving.
 
 **The reading context is a reader, not mutable state.** Scope (piece, part, voice), the lexical scale, and the origin
 path travel *down* into a block and never back up. A statement that would change what follows it — a key, meter, tempo,

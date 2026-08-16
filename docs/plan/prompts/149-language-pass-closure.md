@@ -46,6 +46,20 @@ numbers; `docs/rules/desktop/`'s error-and-states voice against the diagnostics 
 style-guide rules against what prompt 143 moved out of the compiler. Check each explicitly rather than trusting a
 link-checker to notice, because a document can be internally consistent, well-linked, and wrong.
 
+**One contradiction is already found and is this prompt's to repair.** `docs/rules/language/01-surface.md` §2 introduces
+its `figure()`/`subject` example with "a track value is an ordinary value, and `in scale` is lexical rather than
+captured", and closes with "an absent scale makes `step` a type-context diagnostic, not an implicit C-major choice" —
+but the example between them claims "the two uses differ under `≈facts` … saving `subject` does not freeze the scale",
+which only *dynamic* capture produces. Under the two sentences that bracket it, `fn figure()`'s body has no enclosing
+`in scale`, so its `step 1` is the diagnostic the closing line describes and the example does not compile, let alone
+compile two ways. It is the deleted contextual-`Music` behaviour surviving inside the paragraph that deletes it; both
+halves entered in one commit (`0f18eb7`, the event-track cutover), so neither is stale relative to the other and the
+example is simply the wrong illustration of a correct claim. Prompt [`141k`](141k-notation-lowering.md) implemented §2's
+two normative sentences and withdrew the example as a citation, which is as far as an implementation prompt's standing
+reaches. Delete the example and its sentence, or replace it with one that illustrates lexical scoping — a scale-taking
+`fn figure(under: Scale)` is the idiom the standard library already writes — and check `docs/book/src/guide/cookbook.md`
+and `examples/scale-context.musa` for the same claim.
+
 **A stale cross-reference is not an amendment.** `docs/rules/kernel/06-surface-elaboration.md` and
 `docs/rules/across-stages/05-metatheory.md` name prompt ranks that this pass superseded; correcting a pointer to say
 which prompt now owns the work changes no decision and is an ordinary repair. Changing what one of those documents
