@@ -2,7 +2,7 @@
 id: 142
 slug: surface-cutover
 status: pending
-depends_on: [136a, 141, 141b, 141c, 141d, 141e, 141f, 141g, 141ga, 141h, 141ha, 141i, 141j, 141k, 141l, 141m, 141n]
+depends_on: [136a, 141, 141b, 141c, 141d, 141e, 141f, 141g, 141ga, 141h, 141ha, 141i, 141j, 141k, 141l, 141m, 141n, 141o]
 phase: 3
 ---
 
@@ -98,6 +98,13 @@ the middle. It absorbs prompt 127e, whose file stays as a superseded record rath
   `examples/tonal-construction.musa` does the same kind of thing eighteen times, so a nested `let` chain would have
   refused the existing corpus before any of it was migrated. What is left here is building the group out of 141g's items
   and handing it over.
+- [`141o`](141o-document-elaboration.md), which walks a whole document: which of the core's four doors each written
+  declaration goes through, the order they open in, and the dependency ordering the family groups need for the reason
+  141n's definitions needed one. It was split off when starting this prompt found that `crate::lower` had no caller at
+  all outside its own laws — thirteen prompts of reading and vocabulary, and nothing had ever handed the new checker a
+  real file. Its survey is this prompt's work list and its argument for scope: `stdlib/`'s sixteen non-adapter libraries
+  elaborate as one document with exactly two faults left, `Music` and an anonymous product, and both are rows in the
+  Target below. What is left here is the *readback*, the four passes, the migration, and the deletions.
 - [`141c`](141c-structural-eliminators.md), which adds the second of §5.8's four families: a compiler-owned operation
   that takes a function argument and rewrites rather than computing. `recurse_syntax`, `run_syntax_step`, and
   `syntax_fold_from_leaves` are registered through it, and `staff.musa` does not compile without them. Its Design also

@@ -317,6 +317,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 141l | qualified-path | 3 | Read the qualified path |
 | 141m | rule-refusal | 3 | Let a δ-rule refuse the program |
 | 141n | top-level-program | 3 | Collect the signatures before the bodies |
+| 141o | document-elaboration | 3 | Elaborate a whole document |
 | 142 | surface-cutover | 3 | Move the whole language over, once |
 | 143 | builtin-collapse | 3 | Collapse the builtin registry behind traits and namespaces |
 | 144 | diagnostics-and-performance | 3 | Make the new failures legible and the new checker fast enough |
