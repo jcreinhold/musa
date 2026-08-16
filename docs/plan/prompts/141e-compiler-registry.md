@@ -114,9 +114,22 @@ answer. Only the unwrapping and the wrapping change. A rule that found itself re
 evidence that the operation was in the evaluator rather than in its module, and that is a finding to record rather than
 a thing to write twice.
 
-**Nothing calls this.** `musa-compiler` keeps its old checker, its old evaluator, and its old table for one more prompt.
-Two paths existing side by side for the length of one prompt is the price of a cutover that can be reviewed; two paths
-existing after prompt 142 is the defect the second-path audit looks for, and 142 is where the old one is deleted.
+**Nothing calls this, and the two consequences are stated rather than worked around.** `musa-compiler` keeps its old
+checker, its old evaluator, and its old table for one more prompt. Two paths existing side by side for the length of one
+prompt is the price of a cutover that can be reviewed; two paths existing after prompt 142 is the defect the second-path
+audit looks for, and 142 is where the old one is deleted. But "nothing calls this" is a claim the compiler checks:
+
+- **The registry is unreachable in a non-test build**, so `dead_code` fires on the whole subtree. The right statement is
+  `#[cfg_attr(not(test), expect(dead_code, …))]` on the two module declarations, and not an `allow`. An `expect` is
+  itself checked — the day prompt 142 wires the elaborator, the expectation goes unfulfilled and the compiler says so,
+  which is the opposite of an allow-list that silently outlives its reason.
+- **The laws are unit tests, not integration tests.** `eval_builtin` is private to `crate::core`, and the whole point of
+  the agreement law is to run a rule and the old arm on the same input and compare. A test in
+  `crates/musa-compiler/tests/suite/` links against the crate's public facade — `parse`, `compile`, `render_notation` —
+  and can reach neither the old evaluator nor `owned()`. Making either public to test it would widen the facade for a
+  test's convenience, which is the failure the crate's own narrow-facade rule exists to prevent. So the laws live beside
+  what they are about, in `src/registry/laws.rs` under `#[cfg(test)]`, and prompt 142 moves whatever survives the
+  cutover into the suite once there is a public path to it.
 
 ## Target
 
@@ -126,16 +139,21 @@ existing after prompt 142 is the defect the second-path audit looks for, and 142
   refusal unchanged everywhere else, and `crates/musa-core/tests/suite/base_laws.rs` states both halves.
 - `crates/musa-compiler/src/registry.rs`: the generic `Payload`, the base types with their kinds, the `Shape`-to-`Term`
   translation, the 92 δ entries of `BUILTIN_OWNERSHIP` and the 14 δ builders of `SYNTAX_OWNERSHIP` with their rules, and
-  the assembled `musa_core::Registry`. The two tables stay two, because §5.9 makes the phase registry separate.
+  the assembled `musa_core::Registry`, with the rules themselves in `src/registry/rules.rs`. The two tables stay two,
+  because §5.9 makes the phase registry separate, and the two walks over them stay two for the same reason.
+- `crates/musa-compiler/src/lib.rs`: `mod prelude` and `mod registry` carrying
+  `#[cfg_attr(not(test), expect(dead_code, …))]` with the reason naming prompt 142, so that "nothing calls this" is a
+  claim the compiler retires rather than a comment.
 - `Shape::Product` deleted, and `Shape`'s remaining constructors each still used.
 - `Display` for `Key` and `Frame`, in their own modules.
-- Laws in `crates/musa-compiler/tests/suite/`: the registry builds; every δ spelling of both tables is registered
-  exactly once and no name is registered twice; the 28 entries that are *not* registered are exactly the eight
-  collection eliminators, the eight track builtins, the nine machine builtins, and the three phase folds, counted from
-  the tables themselves so the accounting cannot drift; every δ signature is finite data, checked by `Registry::new`
-  itself; each rule agrees with the corresponding arm of the old evaluator on sampled inputs, which is what makes this a
-  translation rather than a rewrite; and a rule that answers `Option` or `Result` answers a value the re-checker accepts
-  at the signature's own result type.
+- Laws in `crates/musa-compiler/src/registry/laws.rs`, under `#[cfg(test)]` because the agreement law needs the old
+  evaluator and the old evaluator is private: the registry builds; every δ spelling of both tables is registered exactly
+  once and no name is registered twice; the 28 entries that are *not* registered are exactly the eight collection
+  eliminators, the eight track builtins, the nine machine builtins, and the three phase folds, counted from the tables
+  themselves so the accounting cannot drift; every δ signature is finite data, checked by `Registry::new` itself; each
+  rule agrees with the corresponding arm of the old evaluator on sampled inputs, which is what makes this a translation
+  rather than a rewrite; and a rule that answers `Option` or `Result` answers a value the re-checker accepts at the
+  signature's own result type.
 - `docs/plan/code-map/` rows for `musa-compiler`.
 
 ## Check
