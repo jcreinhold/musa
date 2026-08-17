@@ -198,17 +198,21 @@ moves. That obligation is a law here, not an assertion — see **Target**.
 cargo build --workspace
 cargo nextest run -p musa-core
 cargo nextest run -p musa-compiler -E 'test(numeral) or test(whole)'
-cargo clippy --all-targets -p musa-core -p musa-compiler -- -D warnings
+cargo clippy --all-targets -p musa-core -- -D warnings
 cargo fmt --check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 python3 scripts/renumber-prompts.py audit
 ```
 
-`musa-compiler`'s full suite is deliberately not a gate here. This prompt lands in the middle of 142's migration, where
-that suite is red for migration reasons this prompt neither causes nor can fix, and a gate that cannot go green is not a
-gate. `musa-core`'s suite is the one that must be wholly green, because `musa-core` is the crate this prompt changes;
-the compiler side is checked at the two named behaviours, and 142's own Check is where the whole corpus answers.
+`musa-compiler`'s full suite and its clippy run are deliberately not gates here, for the same reason and by the same
+measurement. This prompt lands in the middle of 142's migration: that suite is red for migration reasons this prompt
+neither causes nor can fix, and `-D warnings` is red on `core.rs`'s superseded checking paths, which 142's own Target
+deletes. `check_piece`, `check_arguments` and `check_template_voice` each occur once in the tree — their definition — at
+the 142 checkpoint `1f071ea`, before this prompt existed, so the failure is 142's to close and gating on it would be
+gating one prompt on another's unfinished work. `musa-core`'s suite and clippy are the ones that must be wholly green,
+because `musa-core` is the crate this prompt changes; the compiler side is checked at the two named behaviours, and
+142's own Check is where the whole corpus answers.
 
 Commit as `A numeral is one node, not a tower`.
 
