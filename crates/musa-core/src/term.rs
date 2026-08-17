@@ -188,6 +188,16 @@ pub enum Shape {
     /// the definition is: see [`crate::program`] for why a use is a reference
     /// rather than a copy of the body.
     Def(crate::program::Def),
+    /// A closed value of a counting family, written as a count rather than as
+    /// that many applications of its step constructor.
+    ///
+    /// A *representation*, not a new kind of value: it is definitionally the
+    /// tower it stands for, and [`crate::family::Counting`] is the shape
+    /// condition that makes that true. Distinct from [`Self::Lit`] because the
+    /// two mean opposite things — a base literal is opaque and nothing in this
+    /// crate takes one apart, while a numeral is taken apart by every
+    /// elimination at its family, one level at a time.
+    Numeral(crate::family::Numeral),
     /// A base type: §5.8's conservative extension, registered by the host and
     /// inert here. It has no constructor and no eliminator, so no rule in this
     /// crate ever takes one apart — which is D1 stated as a representation.
@@ -322,6 +332,10 @@ impl PartialEq for Shape {
             // values of it are convertible iff they are the same constant. The
             // host decides what "the same" means for its own data.
             (Self::Lit(left), Self::Lit(right)) => left == right,
+            // Constant time, and that is the representation earning its keep:
+            // two numerals are equal when they count the same far at the same
+            // family, where two towers would have been walked to the floor.
+            (Self::Numeral(left), Self::Numeral(right)) => left == right,
             (Self::Universe(left), Self::Universe(right)) => left == right,
             (
                 Self::Pi {
@@ -445,6 +459,7 @@ impl PartialEq for Shape {
                 | Self::Refl(_)
                 | Self::J { .. }
                 | Self::Meta(_)
+                | Self::Numeral(_)
                 | Self::Let { .. },
                 _,
             ) => false,
@@ -493,6 +508,22 @@ impl Term {
     #[must_use]
     pub fn var(origin: Origin, index: Index) -> Self {
         Self::new(origin, Shape::Var(index))
+    }
+
+    /// `count` steps above `family`'s floor, as one node. See
+    /// [`Shape::Numeral`].
+    ///
+    /// Takes the family's constant rather than its name, because by the time a
+    /// term is built the name has already been resolved and a second lookup
+    /// could disagree with the first.
+    pub(crate) fn numeral(origin: Origin, family: &crate::family::Constant, count: u64) -> Self {
+        Self::new(
+            origin,
+            Shape::Numeral(crate::family::Numeral {
+                family: family.clone(),
+                count,
+            }),
+        )
     }
 
     /// `Type level`.

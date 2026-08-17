@@ -166,6 +166,8 @@ pub enum Code {
     DuplicateMethod,
     /// A trait applied to the wrong number of arguments.
     ClassArity,
+    /// A number written at a type that does not count.
+    NotANumeralFamily,
     /// A source `impl Storable`, behind any spelling.
     HandWrittenStorable,
     /// An `impl` whose head argument is a bare type variable.
@@ -329,6 +331,7 @@ code_table! {
     ConstrainedField => "constrained-field",
     DuplicateMethod => "duplicate-method",
     ClassArity => "class-arity",
+    NotANumeralFamily => "not-a-numeral-family",
     HandWrittenStorable => "hand-written-storable",
     BlanketInstance => "blanket-instance",
     DuplicateInstance => "duplicate-instance",

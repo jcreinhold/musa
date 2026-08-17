@@ -197,6 +197,7 @@ fn is_normal(term: &Term) -> bool {
         | Shape::Def(_)
         | Shape::Base(_)
         | Shape::Lit(_)
+        | Shape::Numeral(_)
         | Shape::Builtin(_) => true,
         Shape::Pi { domain, codomain, .. } => is_normal(domain) && is_normal(codomain),
         Shape::Lam { body, .. } => is_normal(body),

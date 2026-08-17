@@ -177,6 +177,12 @@ impl Checker<'_> {
             Shape::Base(base) => Ok(eval(self.meter, &Env::EMPTY, base.kind())?),
             Shape::Builtin(builtin) => Ok(eval(self.meter, &Env::EMPTY, builtin.ty())?),
             Shape::Lit(literal) => Ok(eval(self.meter, &Env::EMPTY, literal.ty())?),
+            // And once more, for the same reason: a numeral's type is the
+            // family it counts at, which the declaration already fixed. The
+            // count is not re-derived either — a numeral is well-typed at its
+            // family for every value of `u64`, which is exactly what makes the
+            // representation total.
+            Shape::Numeral(numeral) => Ok(numeral.family.value(here)),
             Shape::Universe(level) => Ok(Value::new(here, Form::Universe(level.succ()))),
             Shape::Pi {
                 plicity: _,

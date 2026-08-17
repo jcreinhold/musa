@@ -302,6 +302,7 @@ fn restamp(term: &Term, origin: Origin) -> Term {
         Shape::Base(base) => Shape::Base(base.clone()),
         Shape::Builtin(builtin) => Shape::Builtin(builtin.clone()),
         Shape::Lit(literal) => Shape::Lit(literal.clone()),
+        Shape::Numeral(numeral) => Shape::Numeral(numeral.clone()),
         Shape::Universe(level) => Shape::Universe(level.clone()),
         Shape::Pi {
             plicity,
@@ -381,7 +382,8 @@ fn children(term: &Term) -> Vec<&Term> {
         | Shape::Def(_)
         | Shape::Base(_)
         | Shape::Builtin(_)
-        | Shape::Lit(_) => Vec::new(),
+        | Shape::Lit(_)
+        | Shape::Numeral(_) => Vec::new(),
         Shape::Pi { domain, codomain, .. } => vec![domain, codomain],
         Shape::Lam { body, .. } => vec![body],
         Shape::App { function, argument } => vec![function, argument],

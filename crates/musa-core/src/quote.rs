@@ -304,6 +304,7 @@ fn read(meter: &mut Meter, reading: Reading<'_>, ty: &Value, value: &Value) -> R
                 | Form::RecordType(_)
                 | Form::Record(_)
                 | Form::Lit(_)
+                | Form::Numeral(_)
                 | Form::Id { .. } => Err(Malformed::NotAnIdentity.into()),
             },
             // A neutral type has no η, so whatever inhabits it is neutral too —
@@ -313,6 +314,10 @@ fn read(meter: &mut Meter, reading: Reading<'_>, ty: &Value, value: &Value) -> R
             Form::Neutral(_) => match &value.form {
                 Form::Neutral(neutral) => read_neutral(meter, reading, neutral),
                 Form::Lit(literal) => Ok(literal.term(here)),
+                // Already its own normal form, and one node rather than `count`
+                // of them — which is what keeps quotation's node charge
+                // independent of the number the author wrote.
+                Form::Numeral(numeral) => Ok(Term::new(here, crate::term::Shape::Numeral(numeral.clone()))),
                 Form::Universe(_)
                 | Form::Pi { .. }
                 | Form::Lam(_)
@@ -321,7 +326,9 @@ fn read(meter: &mut Meter, reading: Reading<'_>, ty: &Value, value: &Value) -> R
                 | Form::Id { .. }
                 | Form::Refl(_) => read_type(meter, reading, value),
             },
-            Form::Lam(_) | Form::Record(_) | Form::Refl(_) | Form::Lit(_) => Err(Malformed::NotAType.into()),
+            Form::Lam(_) | Form::Record(_) | Form::Refl(_) | Form::Lit(_) | Form::Numeral(_) => {
+                Err(Malformed::NotAType.into())
+            }
         }
     })
 }
@@ -368,7 +375,9 @@ fn read_type(meter: &mut Meter, reading: Reading<'_>, value: &Value) -> Result<T
                 read(meter, reading, ty, right)?,
             )),
             Form::Neutral(neutral) => read_neutral(meter, reading, neutral),
-            Form::Lam(_) | Form::Record(_) | Form::Refl(_) | Form::Lit(_) => Err(Malformed::NotAType.into()),
+            Form::Lam(_) | Form::Record(_) | Form::Refl(_) | Form::Lit(_) | Form::Numeral(_) => {
+                Err(Malformed::NotAType.into())
+            }
         }
     })
 }
@@ -457,6 +466,7 @@ fn read_elimination(
                 | Form::Id { .. }
                 | Form::Refl(_)
                 | Form::Lit(_)
+                | Form::Numeral(_)
                 | Form::Neutral(_) => return Err(Malformed::NotAFunction.into()),
             };
             Ok(Term::app(*origin, quoted, read(meter, reading, &domain, argument)?))

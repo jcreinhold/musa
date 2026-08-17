@@ -160,9 +160,8 @@ fn the_phase_vocabulary_is_readable_only_in_a_phase_source() {
 ///
 /// The compiler's half of prompt 141q, and the reason that prompt exists:
 /// [`crate::registry::read_back`] answers a *base literal*, and a count and a
-/// list are neither. `3` is `Nat.Succ` three deep over `Nat.Zero`, `[1, 2]` is
-/// `List.Cons` over `List.Empty`, and both are constructor spines that
-/// `read_back` refuses.
+/// list are neither. `3` is a numeral at the counting family `Nat`, `[1, 2]` is
+/// `List.Cons` over `List.Empty`, and `read_back` refuses both.
 ///
 /// Stated over source rather than over hand-written terms because that is the
 /// claim worth making. The shapes below are what `let n: Nat = 3;` *actually*
@@ -189,17 +188,18 @@ fn a_count_and_a_list_read_back_as_canonical_data() {
         constructor: std::sync::Arc::from(name),
         fields,
     };
-    let zero = case("Nat.Zero", Vec::new());
-    let succ = |inner| case("Nat.Succ", vec![inner]);
-    let three = succ(succ(succ(zero.clone())));
-    assert_eq!(read("n"), three, "a count is the `Succ`s it is deep");
+    let whole = |count| musa_core::Datum::Count {
+        family: std::sync::Arc::from("Nat"),
+        count,
+    };
+    assert_eq!(read("n"), whole(3), "a count reads back as the number it is");
     assert_eq!(
         read("xs"),
         case(
             "List.Cons",
             vec![
-                succ(zero.clone()),
-                case("List.Cons", vec![succ(succ(zero)), case("List.Empty", Vec::new())]),
+                whole(1),
+                case("List.Cons", vec![whole(2), case("List.Empty", Vec::new())]),
             ],
         ),
         "and a list is its members, with the element type left out"

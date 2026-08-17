@@ -402,6 +402,7 @@ pub(crate) fn size(term: &Term) -> u32 {
         | Shape::Base(_)
         | Shape::Builtin(_)
         | Shape::Lit(_)
+        | Shape::Numeral(_)
         | Shape::Universe(_)
         | Shape::Meta(_) => 0,
         Shape::Pi { domain, codomain, .. } => size(domain).saturating_add(size(codomain)),
@@ -446,6 +447,7 @@ pub(crate) fn occurrences(term: &Term, depth: u32, level: u32) -> u32 {
         | Shape::Base(_)
         | Shape::Builtin(_)
         | Shape::Lit(_)
+        | Shape::Numeral(_)
         | Shape::Universe(_)
         | Shape::Meta(_) => 0,
         Shape::Pi { domain, codomain, .. } => deeper(domain, 0).saturating_add(deeper(codomain, 1)),
@@ -514,6 +516,7 @@ pub(crate) fn head_of(term: &Term, depth: u32) -> Option<Head> {
         | Shape::Meta(_)
         | Shape::Builtin(_)
         | Shape::Lit(_)
+        | Shape::Numeral(_)
         | Shape::Let { .. } => None,
     }
 }

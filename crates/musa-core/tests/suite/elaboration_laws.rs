@@ -331,6 +331,23 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
         assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
         reached.insert(kind(&refusal));
     }
+    // §5.9's numeral is refused against the *family* it is written at, and the
+    // three conditions a family can fail are three declarations, so each of
+    // these carries the context whose declaration fails the condition.
+    for crate::numeral_laws::RefusedNumeral {
+        name,
+        cx,
+        raw,
+        expected,
+    } in crate::numeral_laws::refused_numerals()
+    {
+        let Err(error) = infer(&cx, &raw) else {
+            panic!("{name}: elaboration accepted a number written at a type that cannot count");
+        };
+        let refusal = refusal(name, error);
+        assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
+        reached.insert(kind(&refusal));
+    }
     // And the two a *group* raises, which no single term can reach: §2.4's
     // graph rule is about how definitions name each other, so the smallest
     // program that reaches it is a program rather than a term.
@@ -348,7 +365,7 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
 }
 
 /// Every refusal this crate can answer with.
-const ALL_REFUSALS: [&str; 54] = [
+const ALL_REFUSALS: [&str; 55] = [
     "unknown-name",
     "mismatch",
     "unsolved",
@@ -403,6 +420,7 @@ const ALL_REFUSALS: [&str; 54] = [
     "target-not-a-base",
     "not-finite-data",
     "builtin-refused",
+    "not-a-numeral-family",
 ];
 
 /// Which refusal this is, as a tag the coverage gate can compare.
@@ -465,6 +483,7 @@ fn kind(refusal: &Refusal) -> &'static str {
         Refusal::TargetNotABase { .. } => "target-not-a-base",
         Refusal::NotFiniteData { .. } => "not-finite-data",
         Refusal::BuiltinRefused { .. } => "builtin-refused",
+        Refusal::NotANumeralFamily { .. } => "not-a-numeral-family",
     }
 }
 
@@ -553,7 +572,8 @@ fn meta_free(term: &Term) -> bool {
         | Shape::Def(_)
         | Shape::Base(_)
         | Shape::Builtin(_)
-        | Shape::Lit(_) => true,
+        | Shape::Lit(_)
+        | Shape::Numeral(_) => true,
         Shape::Pi { domain, codomain, .. } => meta_free(domain) && meta_free(codomain),
         Shape::Lam { body, .. } => meta_free(body),
         Shape::App { function, argument } => meta_free(function) && meta_free(argument),

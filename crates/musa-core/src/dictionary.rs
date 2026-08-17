@@ -632,7 +632,7 @@ fn unkeyed(term: &Term) -> bool {
         Shape::Def(_) => false,
         // A builtin and a literal are terms, not type constructors. Neither is
         // a name an `impl` could be keyed on, which is what `true` says.
-        Shape::Builtin(_) | Shape::Lit(_) => true,
+        Shape::Builtin(_) | Shape::Lit(_) | Shape::Numeral(_) => true,
     }
 }
 
@@ -784,6 +784,7 @@ fn constant(term: &Term) -> Option<&Constant> {
         | Shape::Meta(_)
         | Shape::Builtin(_)
         | Shape::Lit(_)
+        | Shape::Numeral(_)
         | Shape::Let { .. } => None,
         // A base type has no declaration and so no package. §3's orphan rule
         // asks whether an `impl` shares a package with the *declaration* of its

@@ -1286,6 +1286,7 @@ fn variable(value: &Value) -> Option<u32> {
         | crate::value::Form::Record(_)
         | crate::value::Form::Id { .. }
         | crate::value::Form::Lit(_)
+        | crate::value::Form::Numeral(_)
         | crate::value::Form::Refl(_) => None,
     }
 }

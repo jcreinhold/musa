@@ -56,8 +56,15 @@ pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, C
             Shape::Universe(level) => Ok(Value::new(here, Form::Universe(level.resolved()))),
             // A constant is closed and rigid, so evaluating one is reading it.
             // ι does not fire here: it needs the target, which arrives through
-            // [`apply`].
+            // [`apply`]. A counting family's floor is the one constant that is
+            // not rigid — [`Constant::value`](crate::family::Constant) turns it
+            // into the numeral zero, which is where that collapse lives so that
+            // it cannot be done twice or forgotten once.
             Shape::Const(constant) => Ok(constant.value(here)),
+            // Nothing to do, and that is the point: a numeral of 384 is one node
+            // here, so evaluating it charges one step and one nesting level
+            // rather than 384 of each.
+            Shape::Numeral(numeral) => Ok(Value::new(here, Form::Numeral(numeral.clone()))),
             // δ on a top-level definition: the value was computed once, at the
             // declaration, and this hands it back. The origins inside it are
             // the definition's own, which is §7 working — the value came from
@@ -357,6 +364,13 @@ pub(crate) fn apply(meter: &mut Meter, here: Origin, function: Value, argument: 
             if let Some(reduced) = crate::family::iota(meter, &built)? {
                 return Ok(reduced);
             }
+            // The other direction: not an elimination firing but a construction
+            // collapsing, so that a counting family's values stay numerals and
+            // never accumulate a spine. Here rather than in `eval` because a
+            // constructor meets its argument at an application and nowhere else.
+            if let Some(counted) = crate::family::stepped(meter, &built)? {
+                return Ok(counted);
+            }
             if let Some(reduced) = delta(meter, &built)? {
                 return Ok(reduced);
             }
@@ -371,7 +385,8 @@ pub(crate) fn apply(meter: &mut Meter, here: Origin, function: Value, argument: 
         | Form::Record(_)
         | Form::Id { .. }
         | Form::Refl(_)
-        | Form::Lit(_) => Err(Malformed::NotAFunction.into()),
+        | Form::Lit(_)
+        | Form::Numeral(_) => Err(Malformed::NotAFunction.into()),
     }
 }
 
@@ -436,7 +451,7 @@ fn delta(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreError>
         // The overwhelmingly common answer, and it needs no type: a literal
         // carries its own. Only a constructed answer pays for the walk below.
         Datum::Lit(literal) => Ok(Some(Value::new(here, Form::Lit(literal)))),
-        Datum::Case { .. } => {
+        Datum::Count { .. } | Datum::Case { .. } => {
             let ty = result_type(meter, builtin, built)?;
             crate::family::realize(meter, here, &answer, &ty).map(Some)
         }
@@ -467,6 +482,10 @@ fn canonical(meter: &mut Meter, value: &Value) -> Result<Option<Datum>, CoreErro
         let forced = force(meter, value)?;
         match forced.as_ref().unwrap_or(value).form {
             Form::Lit(ref literal) => Ok(Some(Datum::Lit(literal.clone()))),
+            // The count read back as the tower it stands for. See
+            // [`crate::family::canonical`], which is the same answer one layer
+            // up and carries the argument for building it with a loop.
+            Form::Numeral(ref numeral) => Ok(crate::family::counted(numeral)),
             Form::Neutral(ref neutral) => constructed(meter, neutral),
             Form::Universe(_)
             | Form::Pi { .. }
@@ -587,6 +606,7 @@ fn structural(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreE
         | Form::Record(_)
         | Form::Id { .. }
         | Form::Refl(_)
+        | Form::Numeral(_)
         | Form::Neutral(_) => return Ok(None),
     };
     let Some(rewritten) = rewritten else {
@@ -628,7 +648,8 @@ pub(crate) fn project(meter: &mut Meter, here: Origin, record: Value, field: &Na
         | Form::RecordType(_)
         | Form::Id { .. }
         | Form::Refl(_)
-        | Form::Lit(_) => Err(Malformed::NotARecord.into()),
+        | Form::Lit(_)
+        | Form::Numeral(_) => Err(Malformed::NotARecord.into()),
     }
 }
 
@@ -671,7 +692,8 @@ pub(crate) fn jay(
         | Form::RecordType(_)
         | Form::Record(_)
         | Form::Id { .. }
-        | Form::Lit(_) => Err(Malformed::NotAnIdentity.into()),
+        | Form::Lit(_)
+        | Form::Numeral(_) => Err(Malformed::NotAnIdentity.into()),
     }
 }
 
@@ -763,6 +785,7 @@ fn eliminated_type(meter: &mut Meter, head: Value, prefix: &Neutral, elimination
             | Form::Id { .. }
             | Form::Refl(_)
             | Form::Lit(_)
+            | Form::Numeral(_)
             | Form::Neutral(_) => Err(Malformed::NotAFunction.into()),
         },
         Elim::Project { field, .. } => match head.form {
@@ -777,6 +800,7 @@ fn eliminated_type(meter: &mut Meter, head: Value, prefix: &Neutral, elimination
             | Form::Id { .. }
             | Form::Refl(_)
             | Form::Lit(_)
+            | Form::Numeral(_)
             | Form::Neutral(_) => Err(Malformed::NotARecord.into()),
         },
         Elim::J { origin, motive, to, .. } => {

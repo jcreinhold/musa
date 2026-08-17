@@ -413,18 +413,16 @@ pub(crate) fn expansion(at: SourceSpan, step: crate::origin::ExpansionStep) -> c
     }
 }
 
-/// `n`, counted up from `Nat.Zero`.
+/// `n`, as one node at `Nat`.
 ///
 /// `Nat` is a declared family rather than a base type (`02-core-calculus.md`
-/// §5.8), so a written number is a unary tower and not a literal. Small by
-/// construction wherever this is called: a scalar the source wrote, or a hole's
-/// index in a quote pattern.
+/// §5.8), and it is a *counting* family, so a written number elaborates to a
+/// numeral rather than to that many applications of `Nat.Succ`. The numbers are
+/// not small: `repeat 384` writes 384, and a whole note over a 384-tick division
+/// writes 384. The tower cost one term node and one evaluator frame per unit,
+/// which is why writing one is now writing a count.
 fn whole(origin: Origin, value: u64) -> Raw {
-    let mut built = Raw::var(origin, "Nat.Zero");
-    for _ in 0..value {
-        built = Raw::app(origin, Raw::var(origin, "Nat.Succ"), built);
-    }
-    built
+    Raw::numeral(origin, "Nat", value)
 }
 
 /// The tokens of `node` that carry meaning, in order.

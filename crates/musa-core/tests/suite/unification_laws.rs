@@ -369,7 +369,12 @@ fn mentions_free_variable(term: &Term) -> bool {
             Shape::Var(index) => index.0 >= depth,
             // Closed by construction, so each escapes nothing: a declared
             // constant, and the three the host registered.
-            Shape::Const(_) | Shape::Def(_) | Shape::Base(_) | Shape::Builtin(_) | Shape::Lit(_) => false,
+            Shape::Const(_)
+            | Shape::Def(_)
+            | Shape::Base(_)
+            | Shape::Builtin(_)
+            | Shape::Lit(_)
+            | Shape::Numeral(_) => false,
             Shape::Universe(_) | Shape::Meta(_) => false,
             Shape::Pi { domain, codomain, .. } => walk(domain, depth) || walk(codomain, depth.saturating_add(1)),
             Shape::Lam { body, .. } => walk(body, depth.saturating_add(1)),

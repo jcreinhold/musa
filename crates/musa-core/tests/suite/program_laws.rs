@@ -112,6 +112,7 @@ fn size(term: &Term) -> u32 {
         | Shape::Base(_)
         | Shape::Builtin(_)
         | Shape::Lit(_)
+        | Shape::Numeral(_)
         | Shape::Universe(_)
         | Shape::Meta(_) => 0,
         Shape::Pi { domain, codomain, .. } => size(domain).saturating_add(size(codomain)),

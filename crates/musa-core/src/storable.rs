@@ -275,6 +275,7 @@ fn headed(
         | Shape::Meta(_)
         | Shape::Builtin(_)
         | Shape::Lit(_)
+        | Shape::Numeral(_)
         | Shape::Let { .. } => false,
     }
 }
@@ -300,7 +301,13 @@ fn finite(ty: &Term, depth: usize, telescope: &Telescope, required: &mut BTreeSe
         // Neither an arrow nor a universe, and neither holds one: a base type
         // is a name, a literal is a closed value the host owns, and a builtin's
         // application is walked by the arm below.
-        Shape::Const(_) | Shape::Def(_) | Shape::Base(_) | Shape::Builtin(_) | Shape::Lit(_) | Shape::Meta(_) => true,
+        Shape::Const(_)
+        | Shape::Def(_)
+        | Shape::Base(_)
+        | Shape::Builtin(_)
+        | Shape::Lit(_)
+        | Shape::Numeral(_)
+        | Shape::Meta(_) => true,
         Shape::App { function, argument } => {
             finite(function, depth, telescope, required) && finite(argument, depth, telescope, required)
         }

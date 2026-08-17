@@ -418,19 +418,12 @@ fn scope(constructor: &'static str, fields: Vec<Datum>) -> Datum {
     }
 }
 
-/// `Nat`, one `Succ` at a time.
+/// `Nat`, as the count it is.
 fn whole(value: u32) -> Datum {
-    let mut built = Datum::Case {
-        constructor: Arc::from("Nat.Zero"),
-        fields: Vec::new(),
-    };
-    for _ in 0..value {
-        built = Datum::Case {
-            constructor: Arc::from("Nat.Succ"),
-            fields: vec![built],
-        };
+    Datum::Count {
+        family: Arc::from("Nat"),
+        count: u64::from(value),
     }
-    built
 }
 
 /// A three-note voicing, spelled by hand.

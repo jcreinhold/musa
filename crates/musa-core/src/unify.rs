@@ -348,8 +348,12 @@ impl Unifier {
                 | Form::Id { .. }
                 | Form::Refl(_)
                 // A base type has no η, because η is a rule about a type's
-                // eliminations and §5.8 gives it none.
-                | Form::Lit(_) => {}
+                // eliminations and §5.8 gives it none. Neither of the two below
+                // is a type at all; they are here because this match is over
+                // every form a forced value can take, not over the well-typed
+                // ones.
+                | Form::Lit(_)
+                | Form::Numeral(_) => {}
                 // A type that is still a metavariable says nothing yet, and a λ
                 // under it would be one the elaborator has not pinned down. The
                 // match below reads both sides back, which is the honest answer

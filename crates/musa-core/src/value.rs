@@ -102,10 +102,25 @@ pub(crate) enum Form {
         right: Arc<Value>,
     },
     Refl(Arc<Value>),
-    /// A closed value of a base type. Canonical, not neutral: `3` is a value of
-    /// `Nat` the way `refl x` is a value of `Id A x x`, and §5.8's inertness is
+    /// A closed value of a base type. Canonical, not neutral: a `Text` is a
+    /// value the way `refl x` is a value of `Id A x x`, and §5.8's inertness is
     /// that nothing eliminates it rather than that it is stuck.
     Lit(crate::base::Literal),
+    /// A closed value of a counting family, as how far above the floor it
+    /// stands.
+    ///
+    /// Canonical, and the *only* canonical form at such a family:
+    /// [`crate::eval::apply`] collapses the step constructor applied to one of
+    /// these into one of these, and [`crate::eval::eval`] turns the floor into a
+    /// zero, so no value at a counting family ever holds a constructor spine.
+    /// That is what makes conversion here a [`u64`] comparison instead of a walk
+    /// whose cost is the number the author wrote.
+    ///
+    /// A step applied to a *neutral* is still an ordinary neutral spine and
+    /// needs no case of its own: a neutral is not a closed value, so it is not
+    /// this, and the two are unequal for the reason any two different normal
+    /// forms are.
+    Numeral(crate::family::Numeral),
     Neutral(Arc<Neutral>),
 }
 

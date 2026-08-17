@@ -88,7 +88,7 @@ use crate::eval::{apply, eval, force};
 use crate::level::Level;
 use crate::list::List;
 use crate::origin::Origin;
-use crate::quote::{Depth, quote_type};
+use crate::quote::{Depth, quote, quote_type};
 use crate::term::{DbLevel, Index, Name, Plicity, Shape, Term};
 use crate::value::{Elim, Env, Form, Head, Neutral, Value};
 use crate::visibility::{ModuleId, Visibility};
@@ -146,6 +146,30 @@ pub struct Constructor {
     pub(crate) indices: Arc<[Term]>,
 }
 
+/// The two constructors that make a family *count*.
+///
+/// A family counts when a closed value of it is completely described by how many
+/// steps it stands above a floor: the group takes no parameters, the family takes
+/// no indices, and it has exactly two constructors, one with no fields and one
+/// with a single field that is a recursive occurrence of the family itself. That
+/// sentence is both the recognition rule and the soundness argument for
+/// [`Shape::Numeral`](crate::term::Shape::Numeral), which is why it is one
+/// sentence and not two.
+///
+/// Derived at [`crate::declare`] from the declaration's own shape rather than
+/// nominated by the host. A `Registry` row would have to be filled *after*
+/// `declare_data` had built the group, and a call order enforced by convention is
+/// coupling this crate does not have anywhere else; deriving costs no parameter,
+/// no ordering, and no host knowledge, and any family of this shape gets the
+/// representation without asking for it.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Counting {
+    /// The constructor with no fields — what a count of zero denotes.
+    pub(crate) floor: u32,
+    /// The constructor with one self-typed field — one more than its argument.
+    pub(crate) step: u32,
+}
+
 /// One family of a declaration group.
 #[derive(Debug)]
 pub struct Declared {
@@ -163,6 +187,9 @@ pub struct Declared {
     pub(crate) level: Level,
     /// Its constructors, in declaration order.
     pub(crate) constructors: Arc<[Constructor]>,
+    /// Which of them make it count, when its shape says it does — see
+    /// [`Counting`].
+    pub(crate) counting: Option<Counting>,
 }
 
 /// A declaration group: families declared together, over shared parameters.
@@ -320,6 +347,46 @@ impl Eq for Constant {}
 impl core::fmt::Display for Constant {
     fn fmt(&self, out: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         out.write_str(&self.name())
+    }
+}
+
+/// A closed value of a counting family, as how far above the floor it stands.
+///
+/// The representation [`Counting`] licenses, and the reason `repeat 384` is one
+/// node rather than 384. It is canonical: evaluation collapses the step
+/// constructor applied to a numeral into a numeral one higher and the floor into
+/// zero, so at a counting family no *value* ever holds a constructor spine and
+/// conversion is [`u64`] equality. The spine reappears one level at a time, and
+/// only where an elimination asks for it — [`iota`] and [`crate::case`].
+///
+/// Definitionally the tower it stands for, which is what makes the
+/// representation a conservative extension rather than a new form of value: a
+/// numeral of `n` and `n` applications of the step constructor to the floor are
+/// the same value, and `suite::numeral_laws` is where that is checked rather
+/// than asserted.
+#[derive(Clone, Debug)]
+pub struct Numeral {
+    /// The family, as its own [`Role::Family`] constant. Carried rather than
+    /// implied, because the core does not know which family is `Nat` and must
+    /// not guess: two counting families are two types, and a numeral has to be
+    /// able to say which one it inhabits.
+    pub(crate) family: Constant,
+    /// How many steps above the floor.
+    pub(crate) count: u64,
+}
+
+/// Two numerals are the same when they count the same far at the same family.
+impl PartialEq for Numeral {
+    fn eq(&self, other: &Self) -> bool {
+        self.count == other.count && self.family == other.family
+    }
+}
+
+impl Eq for Numeral {}
+
+impl core::fmt::Display for Numeral {
+    fn fmt(&self, out: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(out, "{}", self.count)
     }
 }
 
@@ -573,9 +640,95 @@ impl Constant {
         Term::new(origin, Shape::Const(self.clone()))
     }
 
-    /// This constant as a value: a rigid neutral, which is what a constant is.
+    /// The two constructors that make this a counting family, when it is one and
+    /// this constant names the family itself.
+    ///
+    /// Asked of the [`Role::Family`] constant rather than of a constructor,
+    /// because a numeral names the type it inhabits — `384` is a `Nat`, not a
+    /// `Nat.Succ`.
+    pub(crate) fn counting(&self) -> Option<Counting> {
+        matches!(self.role, Role::Family)
+            .then(|| self.group.family_at(self.family)?.counting)
+            .flatten()
+    }
+
+    /// Why this constant is *not* a counting family, as the first condition of
+    /// [`Counting`]'s rule that it fails.
+    ///
+    /// `None` when it counts, so a caller already answered by [`Self::counting`]
+    /// never reaches it. The conditions are asked in the order [`Counting`]
+    /// states them, which is the order an author reads a declaration in: what
+    /// the name is, what the declaration stands over, and what its cases are.
+    /// Naming the first failure rather than all of them is deliberate — a
+    /// declaration that fails two conditions is repaired at the first one.
+    pub(crate) fn uncounted(&self) -> Option<&'static str> {
+        if self.counting().is_some() {
+            return None;
+        }
+        if !self.is_family() {
+            return Some("it names a case rather than the type itself");
+        }
+        let Some(declared) = self.group.family_at(self.family) else {
+            return Some("it is not a declared type");
+        };
+        if !self.group.params.is_empty() {
+            return Some("its declaration takes parameters, and a count does not say what they are");
+        }
+        if !declared.indices.is_empty() {
+            return Some("it is indexed, and a count does not say which index the value lands at");
+        }
+        if declared.constructors.len() != 2 {
+            return Some("it does not have exactly two cases");
+        }
+        Some("neither case is one with no fields whose partner takes exactly one value of the same type")
+    }
+
+    /// This family's numeral for `count`, taken apart one level.
+    ///
+    /// `None` at zero — the floor takes no argument, so there is nothing below
+    /// it — and otherwise the argument the step constructor was applied to.
+    /// [`Self::case_of`] says which constructor it is either way; the two are
+    /// separate because a caller that only needs to know *which* branch to take
+    /// should not have to build the value under it.
+    pub(crate) fn below(&self, count: u64) -> Option<Numeral> {
+        count.checked_sub(1).map(|below| Numeral {
+            family: self.clone(),
+            count: below,
+        })
+    }
+
+    /// Which constructor a numeral of `count` was built by, as its index.
+    pub(crate) fn case_of(&self, counting: Counting, count: u64) -> u32 {
+        if count == 0 { counting.floor } else { counting.step }
+    }
+
+    /// This constant as a value: a rigid neutral, which is what a constant is —
+    /// unless it is a counting family's floor, which is the numeral zero.
+    ///
+    /// The collapse lives here rather than in [`crate::eval::eval`]'s arm for
+    /// [`Shape::Const`] so that there is one answer to "what value is this
+    /// constant": every path that turns the floor into a value gets the numeral,
+    /// and no second path can produce the spine form [`Numeral`]'s canonicity
+    /// says does not exist.
     pub(crate) fn value(&self, origin: Origin) -> Value {
-        Value::neutral(Neutral::head(origin, Head::Const(self.clone())))
+        self.floor().map_or_else(
+            || Value::neutral(Neutral::head(origin, Head::Const(self.clone()))),
+            |zero| Value::new(origin, Form::Numeral(zero)),
+        )
+    }
+
+    /// The numeral zero, when this constant is a counting family's floor.
+    fn floor(&self) -> Option<Numeral> {
+        let Role::Constructor(which) = self.role else {
+            return None;
+        };
+        let family = Self {
+            group: Arc::clone(&self.group),
+            family: self.family,
+            role: Role::Family,
+        };
+        let counting = family.counting()?;
+        (which == counting.floor).then_some(Numeral { family, count: 0 })
     }
 
     /// How many arguments saturate it.
@@ -658,8 +811,9 @@ impl Constant {
             return Ok(Term::universe(self.group.origin, Level::ZERO));
         };
         let params = builder.extend(meter, &self.group.params)?;
+        let over_params = builder.reading.clone();
         builder.extend(meter, &constructor.fields)?;
-        let indices = builder.quoted(meter, &constructor.indices)?;
+        let indices = builder.chosen(meter, &over_params, self.family, &constructor.indices)?;
         let arguments = builder.references(&params).into_iter().chain(indices);
         let result = applied(self.group.origin, builder.family(self.family), arguments);
         Ok(builder.close(result))
@@ -872,6 +1026,7 @@ impl<'a> Telescope<'a> {
         let fields_of = Arc::clone(&constructor.fields);
         let recursive = Arc::clone(&constructor.recursive);
         let chooses = Arc::clone(&constructor.indices);
+        let over_params = self.reading.clone();
         let mut inner = self.nested();
         let fields = inner.extend(meter, &fields_of)?;
         for (field, of_family) in recursive.iter() {
@@ -881,7 +1036,7 @@ impl<'a> Telescope<'a> {
             let hypothesis = inner.hypothesis(meter, motives, *of_family, at, &ty)?;
             inner.assume(meter, "ih", hypothesis)?;
         }
-        let indices = inner.quoted(meter, &chooses)?;
+        let indices = inner.chosen(meter, &over_params, family, &chooses)?;
         let arguments = inner.references(params).into_iter().chain(inner.references(&fields));
         let built = applied(self.origin, inner.constructor(family, which), arguments);
         let motive = inner.reference(motives.get(usize::try_from(family).unwrap_or(usize::MAX)).copied());
@@ -912,15 +1067,47 @@ impl<'a> Telescope<'a> {
         ))
     }
 
-    /// Quote stored terms at the depth this telescope has reached.
-    fn quoted(&self, meter: &mut Meter, terms: &[Term]) -> Result<Vec<Term>, CoreError> {
-        terms
-            .iter()
-            .map(|term| {
-                let value = eval(meter, &self.reading, term)?;
-                quote_type(meter, Depth(self.depth), &value)
-            })
-            .collect()
+    /// A constructor's chosen index arguments, re-read at the depth this
+    /// telescope has reached.
+    ///
+    /// `over_params` is the environment the family's *index binders* were
+    /// written in — the parameters alone — because index `k`'s type may mention
+    /// indices `0..k`, and the values those stand at here are the ones this
+    /// constructor chose.
+    ///
+    /// Read with [`quote`] at that type rather than with [`quote_type`], because
+    /// an index is a term: `Vec A Zero` chooses a `Nat` and does not choose a
+    /// type. §5.9's numeral is the value that makes the difference visible —
+    /// `Zero` evaluates to one node that inhabits a type and is not one, so
+    /// reading it as a type is [`Malformed::NotAType`] for a program the
+    /// elaborator had just accepted.
+    fn chosen(
+        &self,
+        meter: &mut Meter,
+        over_params: &Env,
+        family: u32,
+        terms: &[Term],
+    ) -> Result<Vec<Term>, CoreError> {
+        let declared = self.group.family_at(family);
+        let mut env = over_params.clone();
+        let mut read = Vec::with_capacity(terms.len());
+        for (position, term) in terms.iter().enumerate() {
+            let value = eval(meter, &self.reading, term)?;
+            let binder = declared.and_then(|declared| declared.indices.get(position));
+            read.push(match binder {
+                Some(binder) => {
+                    let ty = eval(meter, &env, &binder.ty)?;
+                    quote(meter, Depth(self.depth), &ty, &value)?
+                }
+                // A constructor choosing more indices than its family declares
+                // is refused where it is declared, so this arm is unreachable
+                // from an accepted group; reading as a type keeps it total
+                // without inventing a type nothing wrote.
+                None => quote_type(meter, Depth(self.depth), &value)?,
+            });
+            env = env.push(value);
+        }
+        Ok(read)
     }
 
     /// The variable naming the binder at `at`, seen from here.
@@ -1096,6 +1283,57 @@ fn unread(method: &Value) -> Option<Value> {
         .then(|| Value::new(method.origin, Form::Universe(crate::level::Level::ZERO)))
 }
 
+/// The numeral a counting family's step constructor collapses to, when it has
+/// been applied to a numeral of that same family.
+///
+/// The other half of [`Numeral`]'s canonicity: [`crate::eval::eval`] turns the
+/// floor into a zero and this turns `step k` into `k + 1`, so a value at a
+/// counting family is *always* a numeral and never a constructor spine. Called
+/// from [`crate::eval::apply`] beside [`iota`], because both answer the same
+/// question about a freshly blocked spine — whether it is blocked at all.
+///
+/// A count that would pass [`u64::MAX`] simply does not collapse: the spine is a
+/// representation this crate already has and already reads correctly, so nothing
+/// is lost by leaving one there and no error path has to exist for a case that
+/// costs 2⁶⁴ steps to reach.
+///
+/// # Errors
+///
+/// As [`force`], from looking through a solved metavariable at the argument.
+pub(crate) fn stepped(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Value>, CoreError> {
+    let Head::Const(ref constructor) = neutral.head else {
+        return Ok(None);
+    };
+    let Role::Constructor(which) = constructor.role else {
+        return Ok(None);
+    };
+    let family = Constant {
+        group: Arc::clone(&constructor.group),
+        family: constructor.family,
+        role: Role::Family,
+    };
+    if family.counting().is_none_or(|counting| which != counting.step) {
+        return Ok(None);
+    }
+    let [Elim::App { ref argument, .. }] = *neutral.spine else {
+        return Ok(None);
+    };
+    let below = force(meter, argument)?;
+    let Form::Numeral(ref below) = below.as_ref().unwrap_or(argument).form else {
+        return Ok(None);
+    };
+    if below.family != family {
+        return Ok(None);
+    }
+    let Some(count) = below.count.checked_add(1) else {
+        return Ok(None);
+    };
+    Ok(Some(Value::new(
+        neutral.outer_origin(),
+        Form::Numeral(Numeral { family, count }),
+    )))
+}
+
 /// Everything ι needs once it has decided the elimination fires.
 struct Reduction {
     /// The method for the constructor the target was built by.
@@ -1137,27 +1375,58 @@ fn ready(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Reduction>, Core
         return Ok(None);
     };
     let target = force(meter, target)?.unwrap_or_else(|| target.clone());
-    let Form::Neutral(target) = &target.form else {
-        return Ok(None);
-    };
-    let Some((constructor, built)) = spine(target) else {
-        return Ok(None);
-    };
-    let Role::Constructor(which) = constructor.role else {
-        return Ok(None);
-    };
     let params = usize::try_from(group.params()).unwrap_or(usize::MAX);
+    let (family, which, fields) = match target.form {
+        // This is where the tower reappears, one level and no more: a numeral
+        // knows which constructor it was built by from its count, and what that
+        // constructor was applied to is the numeral one below. The level under
+        // *that* is not built, which is the whole saving — a fold over `n` costs
+        // what a fold over a tower of height `n` costs, and building the number
+        // costs nothing.
+        Form::Numeral(ref numeral) => {
+            let Some(counting) = numeral.family.counting() else {
+                return Ok(None);
+            };
+            let which = numeral.family.case_of(counting, numeral.count);
+            let below = numeral
+                .family
+                .below(numeral.count)
+                .map(|below| Value::new(target.origin, Form::Numeral(below)));
+            (numeral.family.family, which, below.into_iter().collect())
+        }
+        Form::Neutral(ref target) => {
+            let Some((constructor, built)) = spine(target) else {
+                return Ok(None);
+            };
+            let Role::Constructor(which) = constructor.role else {
+                return Ok(None);
+            };
+            (
+                constructor.family,
+                which,
+                built.get(params..).unwrap_or_default().to_vec(),
+            )
+        }
+        Form::Universe(_)
+        | Form::Pi { .. }
+        | Form::Lam(_)
+        | Form::RecordType(_)
+        | Form::Record(_)
+        | Form::Id { .. }
+        | Form::Refl(_)
+        | Form::Lit(_) => return Ok(None),
+    };
     let motives = usize::try_from(group.arity()).unwrap_or(usize::MAX);
-    let position = usize::try_from(group.method_position(constructor.family, which)).unwrap_or(usize::MAX);
+    let position = usize::try_from(group.method_position(family, which)).unwrap_or(usize::MAX);
     let Some(method) = arguments.get(params.saturating_add(motives).saturating_add(position)) else {
         return Ok(None);
     };
     Ok(Some(Reduction {
         method: method.clone(),
-        fields: built.get(params..).unwrap_or_default().to_vec(),
+        fields,
         prefix: arguments.get(..prefix_len).unwrap_or_default().to_vec(),
         group,
-        family: constructor.family,
+        family,
         which,
         level,
     }))
@@ -1267,6 +1536,22 @@ pub(crate) fn constructed(neutral: &Neutral) -> Option<(Name, usize)> {
     saturated(constant, neutral.spine.len())
 }
 
+/// A numeral as canonical data: the family it stands at, and the count.
+///
+/// One node, like the numeral itself. The obvious alternative — read it back as
+/// the `count` nested constructor applications it denotes — is what the old
+/// representation forced and what this one exists to remove: the tree costs a
+/// node per unit, and *dropping* it recurses on the host stack, so a host asking
+/// for a large `Nat` as data would abort where the term never could. A rule that
+/// wants the number reads [`Datum::Count`] and has it.
+pub(crate) fn counted(numeral: &Numeral) -> Option<Datum> {
+    numeral.family.counting()?;
+    Some(Datum::Count {
+        family: numeral.family.name(),
+        count: numeral.count,
+    })
+}
+
 /// The same question of a constant and how many arguments it was applied to.
 ///
 /// The parameter-count rule itself, with the two readings of it above and in
@@ -1320,6 +1605,7 @@ pub fn canonical(term: &Term) -> Option<Datum> {
     let (head, arguments) = applied_spine(term);
     match *head.shape() {
         Shape::Lit(ref literal) if arguments.is_empty() => Some(Datum::Lit(literal.clone())),
+        Shape::Numeral(ref numeral) if arguments.is_empty() => counted(numeral),
         Shape::Const(ref constant) => {
             let (constructor, params) = saturated(constant, arguments.len())?;
             let fields = arguments
@@ -1337,6 +1623,7 @@ pub fn canonical(term: &Term) -> Option<Datum> {
         // one — and it is named anyway, because an arm that says "unreachable"
         // is a claim a later reader has to re-derive.
         Shape::Lit(_)
+        | Shape::Numeral(_)
         | Shape::Var(_)
         | Shape::Def(_)
         | Shape::Base(_)
@@ -1401,11 +1688,36 @@ fn applied_spine(term: &Term) -> (&Term, Vec<&Term>) {
 pub(crate) fn realize(meter: &mut Meter, here: Origin, datum: &Datum, ty: &Value) -> Result<Value, CoreError> {
     meter.nested("data realization", |meter| match *datum {
         Datum::Lit(ref literal) => Ok(Value::new(here, Form::Lit(literal.clone()))),
+        Datum::Count { ref family, count } => realize_count(meter, here, family, count, ty),
         Datum::Case {
             ref constructor,
             ref fields,
         } => realize_case(meter, here, constructor, fields, ty),
     })
+}
+
+/// A count, at the counting family the answer's type says it stands at.
+///
+/// The type decides, and the name the rule wrote is checked against it rather
+/// than trusted: a rule that answered `Nat` where the signature promised some
+/// other counting family would otherwise build a value at the wrong type, and
+/// the two are indistinguishable once the count is all that is left.
+fn realize_count(meter: &mut Meter, here: Origin, family: &Name, count: u64, ty: &Value) -> Result<Value, CoreError> {
+    let misfit = || CoreError::from(Malformed::MisfitAnswer(Arc::clone(family)));
+    let Some(element) = element(meter, ty)? else {
+        return Err(misfit());
+    };
+    let constant = Constant::family(&element.group, element.family);
+    if constant.counting().is_none() || *constant.name() != **family {
+        return Err(misfit());
+    }
+    Ok(Value::new(
+        here,
+        Form::Numeral(Numeral {
+            family: constant,
+            count,
+        }),
+    ))
 }
 
 /// One constructor application, at the family type it stands at.

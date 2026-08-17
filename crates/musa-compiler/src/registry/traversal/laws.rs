@@ -99,9 +99,9 @@ fn text(spelling: &str) -> Raw {
     Raw::lit(HERE, literal(plain_type("Text"), spelling.to_owned()))
 }
 
-/// A `Nat`, one `Succ` at a time, which is the representation the prelude chose.
+/// A `Nat`, as the one node the prelude's counting family stores it as.
 fn whole(value: usize) -> Raw {
-    (0..value).fold(var("Nat.Zero"), |built, _| apply(var("Nat.Succ"), [built]))
+    Raw::numeral(HERE, "Nat", u64::try_from(value).unwrap_or(u64::MAX))
 }
 
 /// `syntax_built(here, role, 0)` — a derived output path, at the role the old
@@ -431,6 +431,7 @@ fn trees(term: &Term, into: &mut Vec<Syntax>) {
         | musa_core::Shape::Const(_)
         | musa_core::Shape::Def(_)
         | musa_core::Shape::Base(_)
+        | musa_core::Shape::Numeral(_)
         | musa_core::Shape::Builtin(_)
         | musa_core::Shape::Universe(_)
         | musa_core::Shape::Pi { .. }

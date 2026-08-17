@@ -99,6 +99,11 @@ fn write(out: &mut String, term: &Term, level: Level, names: &mut Vec<Name>) {
         Shape::Lit(literal) => {
             let _ = write!(out, "{literal}");
         }
+        // `384`, not 384 `Nat.Succ`s. What the author wrote is what a
+        // diagnostic, a hover, and a semantic hash should all say back.
+        Shape::Numeral(numeral) => {
+            let _ = write!(out, "{numeral}");
+        }
         Shape::Builtin(builtin) => {
             let _ = write!(out, "{builtin}");
         }
@@ -305,6 +310,7 @@ fn occurs(term: &Term, depth: u32) -> bool {
         | Shape::Def(_)
         | Shape::Base(_)
         | Shape::Lit(_)
+        | Shape::Numeral(_)
         | Shape::Builtin(_)
         | Shape::Universe(_)
         | Shape::Meta(_) => false,

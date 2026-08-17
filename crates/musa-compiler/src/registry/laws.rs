@@ -15,7 +15,7 @@
     reason = "a law that cannot fail loudly is not a law"
 )]
 
-use musa_core::{Answer, Datum, Refusal, Term};
+use musa_core::{Answer, Datum, Raw, Refusal, Term};
 
 use super::{bases, builtins, owned, rules};
 use crate::core::{BUILTIN_OWNERSHIP, Family, PhaseFamily, SYNTAX_OWNERSHIP, Shape};
@@ -400,6 +400,12 @@ fn fail<T>(spelling: &str, what: &str, why: &dyn std::fmt::Display) -> T {
 fn written(cx: &musa_core::Cx, shape: Shape, datum: &Datum) -> Term {
     match *datum {
         Datum::Lit(ref held) => held.term(super::HERE),
+        // A count is closed and says which family it stands at, so it needs no
+        // parameters read off the shape — the one datum arm that is as
+        // self-describing as a literal.
+        Datum::Count { ref family, count } => musa_core::infer(cx, &Raw::numeral(super::HERE, &**family, count))
+            .map(|(term, _)| term)
+            .unwrap_or_else(|why| fail(family, "is not a type a number can be written at", &why)),
         Datum::Case {
             ref constructor,
             ref fields,

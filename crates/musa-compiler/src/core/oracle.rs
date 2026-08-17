@@ -224,13 +224,10 @@ fn as_datum(value: &Value) -> Option<Datum> {
     }
     Some(match *value {
         Value::Bool(held) => case(if held { "Bool.True" } else { "Bool.False" }, Vec::new()),
-        Value::Nat(held) => {
-            let mut built = case("Nat.Zero", Vec::new());
-            for _ in 0..held {
-                built = case("Nat.Succ", vec![built]);
-            }
-            built
-        }
+        Value::Nat(held) => Datum::Count {
+            family: std::sync::Arc::from("Nat"),
+            count: held,
+        },
         Value::Ratio(held) => Datum::Lit(literal(plain_type("Ratio"), held)),
         Value::Text(ref held) => Datum::Lit(literal(plain_type("Text"), held.clone())),
         Value::Duration(coordinate, held) => Datum::Lit(literal(tagged_type("Duration", coordinate), held)),

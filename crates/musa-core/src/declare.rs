@@ -34,7 +34,7 @@ use crate::context::Cx;
 use crate::elab::Elaborator;
 use crate::error::CoreError;
 use crate::eval::eval;
-use crate::family::{Binder, Constructor, Declared, Group};
+use crate::family::{Binder, Constructor, Counting, Declared, Group};
 use crate::level::Level;
 use crate::origin::Origin;
 use crate::raw::{RawBinder, RawConstraint, RawConstructor, RawData, RawFamily};
@@ -98,7 +98,9 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<Arc<Group>, ElabError> 
             .into());
         }
         uniform(family)?;
+        let which = u32::try_from(which).unwrap_or(u32::MAX);
         families.push(Declared {
+            counting: counting(which, &params, declared_indices, &built.constructors),
             name: Arc::clone(&family.name),
             visibility: family.visibility,
             indices: Arc::from(declared_indices.clone()),
@@ -343,6 +345,34 @@ fn constructors(
     })
 }
 
+/// Whether family `which` counts, and by which two constructors.
+///
+/// The four conditions of [`Counting`], read off the declaration that was just
+/// checked: no group parameters, no indices on the family, exactly two
+/// constructors, and between them one with no fields and one whose single field
+/// is a recursive occurrence of *this* family. Recursion is read off
+/// [`Constructor::recursive`](crate::family::Constructor) rather than re-derived
+/// from the field's type, so the positivity check and this recognition cannot
+/// disagree about what a recursive field is: they are the same list.
+///
+/// Deliberately silent when the shape does not match. A family that misses by
+/// one constructor is an ordinary family, not a mistake — there is nothing to
+/// refuse, only a representation not to use.
+fn counting(which: u32, params: &[Binder], indices: &[Binder], constructors: &[Constructor]) -> Option<Counting> {
+    if !params.is_empty() || !indices.is_empty() {
+        return None;
+    }
+    let [first, second] = constructors else {
+        return None;
+    };
+    let steps = |case: &Constructor| case.fields.len() == 1 && *case.recursive == [(0, which)];
+    let floors = |case: &Constructor| case.fields.is_empty();
+    if floors(first) && steps(second) {
+        return Some(Counting { floor: 0, step: 1 });
+    }
+    (floors(second) && steps(first)).then_some(Counting { floor: 1, step: 0 })
+}
+
 fn telescope_fields(
     elaborator: &mut Elaborator,
     scope: &Scope,
@@ -465,6 +495,7 @@ fn mentions(term: &Term, arity: u32, depth: u32, bound: u32) -> Option<Origin> {
         | Shape::Base(_)
         | Shape::Builtin(_)
         | Shape::Lit(_)
+        | Shape::Numeral(_)
         | Shape::Universe(_)
         | Shape::Meta(_) => None,
         Shape::Pi { domain, codomain, .. } => {

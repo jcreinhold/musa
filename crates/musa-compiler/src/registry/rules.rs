@@ -151,29 +151,17 @@ fn text(datum: &Datum) -> Option<String> {
     read::<String>(datum)
 }
 
-/// A whole number, by counting the `Succ`s off a unary `Nat`.
+/// A whole number.
 ///
-/// Iterative rather than recursive: a `Nat` is as deep as it is large, and a
-/// recursive count would put the host's stack where the core's budget belongs.
+/// One arm and no walk: `Nat` is a counting family, so the core reads a closed
+/// `Nat` back as [`Datum::Count`] and the number is already the number. This
+/// used to count `Succ`s off a tower iteratively, because a tower is as deep as
+/// it is large and a recursive count would have put the host's stack where the
+/// core's budget belongs; now no tower is built on either side.
 pub(super) fn nat(datum: &Datum) -> Option<u64> {
-    let mut counted: u64 = 0;
-    let mut rest = datum;
-    loop {
-        let Datum::Case {
-            ref constructor,
-            ref fields,
-        } = *rest
-        else {
-            return None;
-        };
-        match &**constructor {
-            "Nat.Zero" => return Some(counted),
-            "Nat.Succ" => {
-                counted = counted.checked_add(1)?;
-                rest = fields.first()?;
-            }
-            _ => return None,
-        }
+    match *datum {
+        Datum::Count { ref family, count } if &**family == "Nat" => Some(count),
+        Datum::Count { .. } | Datum::Case { .. } | Datum::Lit(_) => None,
     }
 }
 
@@ -258,13 +246,12 @@ fn boolean(value: bool) -> Datum {
     case(if value { "Bool.True" } else { "Bool.False" }, Vec::new())
 }
 
-/// `Nat`, one `Succ` at a time.
+/// `Nat`, as the count it is.
 fn whole(value: u64) -> Datum {
-    let mut built = case("Nat.Zero", Vec::new());
-    for _ in 0..value {
-        built = case("Nat.Succ", vec![built]);
+    Datum::Count {
+        family: Arc::from("Nat"),
+        count: value,
     }
-    built
 }
 
 /// `Text`.

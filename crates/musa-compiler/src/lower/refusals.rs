@@ -163,6 +163,7 @@ fn file(refusal: &Refusal) -> Filed {
         Refusal::DuplicateMethod { at, previous, .. } => {
             two(Code::DuplicateMethod, *at, *previous, "first declared here")
         }
+        Refusal::NotANumeralFamily { at, .. } => one(Code::NotANumeralFamily, *at),
         Refusal::HandWrittenStorable { at, .. } => one(Code::HandWrittenStorable, *at),
         Refusal::BlanketInstance { at, .. } => one(Code::BlanketInstance, *at),
         Refusal::DuplicateInstance { at, previous, .. } => {

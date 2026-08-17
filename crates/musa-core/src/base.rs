@@ -358,6 +358,26 @@ impl fmt::Display for Family {
 pub enum Datum {
     /// A closed value of a base type.
     Lit(Literal),
+    /// A closed value of a counting family, as how far above its floor it
+    /// stands.
+    ///
+    /// The tower is *not* built. A rule that reads a `Nat` wants the number, and
+    /// the core already holds it as a [`u64`]: expanding it into `count` nested
+    /// [`Self::Case`]s so the rule could count them back down would allocate a
+    /// node per unit, and dropping that tree recurses on the host stack — the
+    /// overflow [`Shape::Numeral`](crate::Shape::Numeral) exists to remove,
+    /// reintroduced one layer out. A rule reads this arm the way it reads a
+    /// literal.
+    ///
+    /// The family is named, and qualified the way [`Self::Case`]'s constructor
+    /// is, so reading and writing speak one vocabulary and a rule can check
+    /// which family it was handed.
+    Count {
+        /// The counting family, as the name a diagnostic would print: `Nat`.
+        family: Name,
+        /// How far above its floor the value stands.
+        count: u64,
+    },
     /// A constructor of a declared family, applied to its fields.
     Case {
         /// The constructor's qualified name, as `Family.Case`.
@@ -998,6 +1018,7 @@ impl Registry {
             | Shape::Let { .. }
             | Shape::Builtin(_)
             | Shape::Lit(_)
+            | Shape::Numeral(_)
             | Shape::Meta(_) => {
                 return Err(Refusal::NotFiniteData {
                     name: Arc::clone(builtin.name()),

@@ -354,6 +354,10 @@ fn write_stored(datum: &musa_core::Datum, bytes: &mut Vec<u8>) -> Option<()> {
             bytes.extend_from_slice(&exact.numer().to_be_bytes());
             bytes.extend_from_slice(&exact.denom().to_be_bytes());
         }
+        musa_core::Datum::Count { .. } => {
+            bytes.push(3);
+            bytes.extend_from_slice(&super::rules::nat(datum)?.to_be_bytes());
+        }
         musa_core::Datum::Case {
             ref constructor,
             ref fields,
@@ -361,10 +365,6 @@ fn write_stored(datum: &musa_core::Datum, bytes: &mut Vec<u8>) -> Option<()> {
             "Unit.Only" => bytes.push(1),
             "Bool.False" => bytes.extend_from_slice(&[2, 0]),
             "Bool.True" => bytes.extend_from_slice(&[2, 1]),
-            "Nat.Zero" | "Nat.Succ" => {
-                bytes.push(3);
-                bytes.extend_from_slice(&super::rules::nat(datum)?.to_be_bytes());
-            }
             "Pair.Both" => {
                 bytes.push(4);
                 write_stored(fields.first()?, bytes)?;
@@ -404,6 +404,7 @@ fn spelled(ty: &Term) -> Option<String> {
         | musa_core::Shape::Var(_)
         | musa_core::Shape::Def(_)
         | musa_core::Shape::Lit(_)
+        | musa_core::Shape::Numeral(_)
         | musa_core::Shape::Builtin(_)
         | musa_core::Shape::Universe(_)
         | musa_core::Shape::Pi { .. }

@@ -74,6 +74,7 @@ use crate::class::{Constraint, Head, Key, Trait, head_of};
 use crate::context::Cx;
 use crate::dictionary::{Postponed, Wanted};
 use crate::error::{CoreError, Malformed};
+use crate::family::Found;
 use crate::eval::{apply, apply_closure, eval, field_type, force};
 use crate::level::{Level, LevelMeta};
 use crate::meta::{Meta, MetaSource};
@@ -377,6 +378,31 @@ impl Elaborator {
         self.registered(scope, here, name)
     }
 
+    /// [`RawShape::Numeral`]: a number at the family the reader named.
+    ///
+    /// Resolved in the host's namespaces, like [`Self::hosted`] and for the same
+    /// reason: the family is the reader's word, so a binding that happens to
+    /// spell `Nat` cannot change what a written number means. It infers rather
+    /// than checks, because the raw term already says which type it is at — the
+    /// same argument [`RawShape::Lit`] makes, one namespace over.
+    fn numeral(&mut self, scope: &Scope, here: Origin, family: &Name, count: u64) -> Result<Typed, ElabError> {
+        let Some(Found::Rigid(constant)) = scope.declared(family) else {
+            return Err(self.unresolved(scope, here, family));
+        };
+        let Some(reason) = constant.uncounted() else {
+            return Ok(Typed {
+                term: Term::numeral(here, &constant, count),
+                ty: constant.value(here),
+            });
+        };
+        Err(Refusal::NotANumeralFamily {
+            at: here,
+            name: Arc::clone(family),
+            reason,
+        }
+        .into())
+    }
+
     /// Why a name resolved to nothing, as precisely as the context can say.
     ///
     /// Three different mistakes wear the same spelling, and telling them apart
@@ -506,6 +532,7 @@ impl Elaborator {
             RawShape::Var(_)
             | RawShape::Hosted(_)
             | RawShape::Lit(_)
+            | RawShape::Numeral { .. }
             | RawShape::Universe(_)
             | RawShape::Pi { .. }
             | RawShape::ConstrainedPi { .. }
@@ -962,6 +989,7 @@ impl Elaborator {
                 term: literal.term(here),
                 ty: eval(&mut self.meter, &Env::EMPTY, literal.ty())?,
             }),
+            RawShape::Numeral { family, count } => self.numeral(scope, here, family, *count),
             RawShape::Universe(written) => {
                 let level = match written {
                     Some(level) => level.clone(),
@@ -1985,6 +2013,7 @@ fn zonk(meter: &mut Meter, depth: u32, term: &Term) -> Result<Term, CoreError> {
             Shape::Base(base) => Shape::Base(base.clone()),
             Shape::Builtin(builtin) => Shape::Builtin(builtin.clone()),
             Shape::Lit(literal) => Shape::Lit(literal.clone()),
+            Shape::Numeral(numeral) => Shape::Numeral(numeral.clone()),
             Shape::Universe(level) => Shape::Universe(level.resolved()),
             Shape::Pi {
                 plicity,

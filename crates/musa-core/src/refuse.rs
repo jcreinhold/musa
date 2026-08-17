@@ -763,6 +763,28 @@ pub enum Refusal {
         /// Where the target argument's type was written.
         at: Origin,
     },
+    /// A number written at a family that does not count.
+    ///
+    /// A numeral is a representation of a *counting* family — no parameters, no
+    /// indices, two cases, one a floor and one a step over itself — so a reader
+    /// that wrote `384` at anything else asked for a value that has no such
+    /// spelling. The reason is carried rather than left to the reader to work
+    /// out, because the four conditions fail for four different edits: drop a
+    /// parameter, drop an index, change the cases, change a field.
+    ///
+    /// The host's mistake and not the author's: `RawShape::Numeral` names the
+    /// family, and the reader is what chose it. So the sentence addresses
+    /// whoever wrote the reading, which is why it says what the family is rather
+    /// than what to write instead.
+    #[error("`{name}` is not a type a number can be written at: {reason}")]
+    NotANumeralFamily {
+        /// Where the number was written.
+        at: Origin,
+        /// The family the reader named.
+        name: Name,
+        /// Which condition of the counting rule it fails, first failure first.
+        reason: &'static str,
+    },
     /// A δ-builtin whose signature holds something that is not finite data.
     ///
     /// §5.8's D1 states the shape positively: every argument type and the result

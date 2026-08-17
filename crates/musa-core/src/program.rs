@@ -461,7 +461,7 @@ fn free(raw: &crate::raw::Raw, bound: &mut Vec<Name>, names: &[&Name], found: &m
         }
         // No edge: a hosted name is the reader's, resolved in the host's
         // namespaces, and cannot be the definition standing beside it.
-        RawShape::Hosted(_) | RawShape::Lit(_) | RawShape::Universe(_) => {}
+        RawShape::Hosted(_) | RawShape::Lit(_) | RawShape::Numeral { .. } | RawShape::Universe(_) => {}
         RawShape::ConstrainedPi { constraint, codomain } => {
             for argument in &constraint.args {
                 walk(argument, bound);

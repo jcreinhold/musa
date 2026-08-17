@@ -366,7 +366,9 @@ impl Rewrite<'_> {
             // A universe and a literal are both closed: neither can hold a call,
             // so neither needs rewriting. A hosted name is closed for the same
             // purpose — it names the host, never the definition being measured.
-            RawShape::Hosted(_) | RawShape::Universe(_) | RawShape::Lit(_) => return Ok(raw.clone()),
+            RawShape::Hosted(_) | RawShape::Universe(_) | RawShape::Lit(_) | RawShape::Numeral { .. } => {
+                return Ok(raw.clone());
+            }
             // The dictionary binder takes the trait's own name — see
             // [`crate::elab`]'s constrained Π — so the codomain is walked under
             // it for the same reason an ordinary Π's is.

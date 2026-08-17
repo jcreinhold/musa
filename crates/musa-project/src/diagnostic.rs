@@ -725,6 +725,9 @@ pub fn explain(code: &str) -> Option<&'static str> {
         musa_compiler::Code::ClassArity => {
             "A trait was written with the wrong number of arguments.\n\nA trait's parameters are fixed by its declaration, and each argument is checked at the type the corresponding parameter was declared with — so a missing one cannot be inferred from the others and an extra one has nowhere to go.\n\nThe report says how many the trait takes and how many were written."
         }
+        musa_compiler::Code::NotANumeralFamily => {
+            "A number was written at a type that cannot be counted.\n\nA written number is stored as a count rather than as that many applications of a successor constructor, which is what keeps `repeat 384` one node instead of 384. That representation is only sound for a *counting* type: one with no parameters, no indices, and exactly two cases — one with no fields, and one taking a single value of the same type. `Nat` is the one the language writes.\n\nThe report says which of those conditions the named type fails. This is a mistake in whatever read the source, not in the source: the reader is what chose the type the number was written at."
+        }
         musa_compiler::Code::HandWrittenStorable => {
             "An `impl Storable` was written.\n\n`Storable` is the one trait whose instances the elaborator generates and no program supplies. This is the deliberate exception to the rule that instances are declarations, and it is an exception in the safe direction: the set of instances is smaller than an author could write, never larger.\n\nIf a type should be storable and is not, the repair is in the type — a field holding a function, at any depth, is what makes it unstorable — and never in an instance asserting otherwise."
         }

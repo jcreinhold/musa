@@ -375,6 +375,24 @@ pub enum RawShape {
     /// shadows a builtin of the same spelling where the author is the one
     /// naming it.
     Hosted(Name),
+    /// A number at a counting family: `count` steps above that family's floor.
+    ///
+    /// The family is a *name*, resolved the way [`Self::Hosted`] is, because the
+    /// reader is what knows which family a written number means — `Nat` in this
+    /// language, and a core that guessed would either search for a unique
+    /// counting family in scope or refuse to infer at all. Naming it costs the
+    /// reader one word it already has.
+    ///
+    /// Not a [`Self::Lit`]: a literal is a closed value of a base type, and
+    /// §5.8's base types are exactly the ones no rule takes apart. A number is
+    /// the opposite — every rule takes it apart — so it elaborates to a term at
+    /// a declared family and eliminates by that family's recursor.
+    Numeral {
+        /// The counting family the number stands at.
+        family: Name,
+        /// How far above its floor.
+        count: u64,
+    },
     /// One closed value of a base type, already built by whoever read the
     /// source: `3`, `"c"`, `1/4`.
     ///
@@ -692,6 +710,18 @@ impl Raw {
     #[must_use]
     pub fn hosted(origin: Origin, name: impl Into<Name>) -> Self {
         Self::new(origin, RawShape::Hosted(name.into()))
+    }
+
+    /// `count` steps above `family`'s floor. See [`RawShape::Numeral`].
+    #[must_use]
+    pub fn numeral(origin: Origin, family: impl Into<Name>, count: u64) -> Self {
+        Self::new(
+            origin,
+            RawShape::Numeral {
+                family: family.into(),
+                count,
+            },
+        )
     }
 
     /// One closed value of a base type, already built.
