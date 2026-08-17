@@ -90,66 +90,46 @@ one invariant, stated on the function and asserted in debug builds: **a region f
 boundaries in its own scope**, because a region is built from the duration of the items it encloses. If that is ever
 violated, the elaboration that violated it is the bug.
 
-## Sharing and provenance: how `repeat` and `use` elaborate (prompt 49)
+## Sharing and provenance: how `repeat` and `use` elaborate (prompt 49, repaired at prompt 142)
 
-Elaboration emits a **term** (`10-term-calculus.md`), evaluated at the compiler's boundary. `repeat n { body }`
-elaborates the body **once** into a `let` and references it `n` times; a `use motif(args)` elaborates the motif's body
-once per distinct argument tuple and references it at each call site. The rule being implemented is that normalization
-is a semantic boundary, not the internal representation of every compiler pass: nothing requires duplicating thousands
-of nodes merely to obey the normalized model.
+**Elaboration no longer emits a kernel term.** Prompt 142 moved the surface onto a dependent core
+(`../language/02-core-calculus.md`): a `.musa` document elaborates into a **core** program, the core evaluates it by
+normalization, and a `musa_kernel::Term` is *projected* from the result — one literal per voice, plus one for the
+piece-wide context. The kernel term is an output of compilation now, not the shape compilation is carried in. That
+relocates everything this section decided, and the three claims below are what became of it.
 
-**The provenance question, and its answer.** Every occurrence of the third repetition must carry `RepeatIteration(2)`,
-and the Origin view depends on it. If the body is elaborated once, the occurrences inside the `let` cannot each carry a
-different iteration — that is the saving. Two options were on the table; the resolution is **provenance at the
-reference**:
+**The saving is kept, and kept where it was argued for.** The claim was never that a track is stored once; it was that
+"the CST is walked once, pitches resolved once, diagnostics emitted once". A motif is one core definition, elaborated
+from the text once and applied at each call site, so all three hold by construction rather than by a sharing table the
+elaborator maintains — and they now hold for every reusable thing the language has, not only for `repeat` and `use`.
+What the `let` bought *in addition* — a printed term whose body appears once — is gone. Normalization is what a core
+evaluator does, and normalization is what spends sharing, so it is spent everywhere rather than at the four levels the
+old rule enumerated. That list is deleted rather than corrected: a rule naming the four places a value is needed
+describes an evaluator that stops elsewhere, and this one does not stop.
 
-> A reference carries a **mark** naming what distinguishes this use. Evaluation applies a payload map chosen from that
-> mark, rewriting each instantiated occurrence's `Origin` and nothing else.
+**Provenance is no longer carried at the reference, because nothing collides.** The mark existed because occurrences
+stated once inside a `let` could not each carry a different `RepeatIteration`. With no shared body there is no such
+occurrence: every one is built by the voice's own left fold and carries its own `Origin`, and each enclosing transform
+records its step at the *front* of the expansion path, so the path reads outside-in the way
+`../desktop/04-provenance.md` requires. The mark grammar, its `depth`/`origin-span`/`scope`/`steps` fields, and the
+`u32::MAX` placeholders a shared body carried where the call would supply a span and the voice a scope, are all gone
+from what the compiler writes.
 
-**The mark's text**, which is `ScoreFact`'s and not the core's — the core treats it as an opaque string
-(`10-term-calculus.md` T6):
+**Marks stay in the kernel language, and `musa-compiler` is now only their reader.** `10-term-calculus.md` T6 is
+unchanged: a `.musa.kernel` file may write `x @ m`, and a reader of one must still evaluate it. What changed is that no
+compiler pass writes one. `let` survives in the kernel term for its other use, which was never about motifs: a kernel
+quote binds its holes with it — `Term::bind`, first hole outermost — and that is the kernel's own call-by-value sharing.
 
-```text
-mark  = <depth> "|" <origin-span> "|" <scope> "|" <steps>
-depth = <integer>                      (* where in the expansion path the steps belong *)
-steps = <step> { "," <step> }          (* the expansion-path grammar below *)
-```
+**What it costs, stated plainly.** An interchange file is larger. `examples/kernel/variation.musa.kernel` had one `let`
+for five `use`s; it now writes every occurrence of all five out, and no file in `examples/kernel/` contains a shared
+binding or a `4294967295` placeholder. The rejected repair was to rebuild the sharing inside the projection, reading
+common expansion-path prefixes back out of the evaluated tracks. It was refused because it re-derives in an output stage
+what the core knew and normalization deliberately discarded, which is the mistake this repository names in `AGENTS.md` —
+hand a consumer what we already computed, rather than making a later stage recover it.
 
-`origin-span` and `scope` are `-` when the reference does not rewrite them. The steps come **last** so they are escaped
-once rather than twice: nothing before them contains a `|`, so a reader splits three times and takes the rest verbatim.
-
-Three things this had to get right, none of them obvious from the option alone:
-
-- **Depth, not append.** A repeat's iteration index belongs *before* the steps of everything nested inside the body,
-  which is where direct expansion puts it. Appending would put it after. So the mark says where to splice, and a repeat
-  splices at its body's own depth while a motif call splices at zero.
-- **A motif body is elaborated with no path at all**, because two call sites in different places must reach the same
-  body. The path leading to the call — every enclosing transposition and motif application — travels on the mark
-  instead, and is spliced back at depth zero.
-- **Placeholders for what the call supplies.** A motif body's occurrences take their `source_span` from the *call* and
-  their `scope` from the *voice*, and neither can be baked into a shared body. The body carries `u32::MAX` in both, and
-  the mark says what to put there. This is visible in `examples/kernel/*.musa.kernel` as `4294967295` inside a shared
-  binding's payloads, and it is not corrupt data: it is the hole the reference fills.
-
-Provenance is byte-identical to what direct expansion produced: the same steps, in the same order, on the same
-occurrences. The saving is in elaboration — the CST is walked once, pitches resolved once, diagnostics emitted once —
-not in evaluation, which still materializes every occurrence.
-
-**Where sharing is spent.** A level that needs a *value* rather than a term cannot stay shared, and there are exactly
-four: a tie crossing an item boundary (merging joins two occurrences into one, which no payload map can do),
-`retrograde` and `invert` and `stretch` (payload maps and mirroring, applied during elaboration), and a `use` with
-`with { … }` overrides (which respell notes of *this* call). Each of these evaluates its reference, which instantiates
-the body exactly as direct expansion would have built it — so the sharing is spent, not lost, and the binding it made is
-pruned when the piece's term is closed. This is why `examples/kernel/variation.musa.kernel` has one `let` for five
-`use`s: four of its five are inside a transformation.
-
-The rejected option was to share only where the expansion path would be identical, which for `repeat` is never, and
-which would therefore have bought nothing. What was *not* an option was dropping the iteration index: the Origin view is
-a promise the project already made.
-
-**What does not share.** `transpose`, `invert` and `stretch` bodies are payload maps and time scaling applied during
-elaboration; `scale` has a term and the payload maps do not, and inventing one would breach the calculus's absent list.
-Voices become `together` and voice items `follow` — structural, and what makes a printed file legible.
+**What does not share, and never did.** `transpose`, `invert` and `stretch` are payload maps and time scaling applied
+during elaboration; `scale` has a term and the payload maps do not, and inventing one would breach the calculus's absent
+list. Voices become `together` and voice items `follow` — structural, and what makes a printed file legible.
 
 ## Reusable material is an ordinary value (amended at prompt 127a)
 

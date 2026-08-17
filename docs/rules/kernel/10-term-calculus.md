@@ -73,11 +73,15 @@ Three constraints make this narrow enough to be worth having, and they are the w
    already guarantees that (L9–L12). This is not a new operation: `map` is still not a term — no function is written
    down, and the consumer that owns the payload chooses the map, exactly as it chooses what the payload text means.
 3. **An unmarked reference is the identity case.** `x` is `x @ m` with the identity map, so E-Var stays as it was and a
-   consumer with no marks (every consumer but `musa-compiler`) is unaffected.
+   consumer with no marks is unaffected. Since prompt 142 that is *every* consumer: `musa-compiler` reads a mark in a
+   file it is given and writes none of its own, because the surface elaborates through a core program rather than
+   through a shared kernel body (`06-surface-elaboration.md`).
 
-What this buys, and it is the point: the interchange file both *shares* and reproduces the compiled snapshot's
-provenance byte for byte. Without it, prompt 49 has to choose, and either choice loses something the project already
-promised — `06-surface-elaboration.md` records that the choice was faced.
+What this buys, for a file that uses it: the interchange file both *shares* and reproduces the compiled snapshot's
+provenance byte for byte. Without it, prompt 49 had to choose, and either choice lost something the project had already
+promised — `06-surface-elaboration.md` records that the choice was faced, and that prompt 142 dissolved it by moving
+elaboration off the kernel term. T6 stays because the file format is not the compiler: a `.musa.kernel` a person or
+another tool writes may share a body, and a reader of one must evaluate its marks.
 
 ### `shift` is sugar, and stays sugar
 
