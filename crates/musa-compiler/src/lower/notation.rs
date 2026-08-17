@@ -974,7 +974,7 @@ impl Lowering<'_> {
             origin,
             Raw::hosted(origin, "play"),
             [
-                self.provenance(origin, span),
+                self.provenance(origin, span, reading.placed),
                 scope_of(origin, reading.scope),
                 // `plain` and not `payload`: `play` reads a `Voicing` and not an
                 // `Opaque<Voicing>`, and a literal at the wrong Rust type
@@ -1550,6 +1550,7 @@ impl Lowering<'_> {
         let opened = self.sounded_at(
             origin,
             crate::Scope::Piece,
+            reading.placed,
             metered(origin, crate::score::Meter::NONE),
             Ratio::ZERO,
         );
@@ -1557,7 +1558,13 @@ impl Lowering<'_> {
         // unmeasured meter in force: a `senza` inside a `senza` restores the one
         // its own braces opened, which is the one that was in force there.
         let body = self.notated(node, reading.metered(crate::score::Meter::NONE))?;
-        let closed = self.sounded_at(origin, crate::Scope::Piece, metered(origin, reading.meter), Ratio::ZERO);
+        let closed = self.sounded_at(
+            origin,
+            crate::Scope::Piece,
+            reading.placed,
+            metered(origin, reading.meter),
+            Ratio::ZERO,
+        );
         Some(applied(
             origin,
             Raw::hosted(origin, "follow"),
@@ -1818,7 +1825,7 @@ impl Lowering<'_> {
     /// comes back is a call and every caller gets one. The `Option` that used to
     /// be here was the `?` this reading wrote, and there is no `?` left to write.
     fn sounded(&self, origin: Origin, reading: Reading, fact: Raw, held: Ratio<i64>) -> Raw {
-        self.sounded_at(origin, reading.scope, fact, held)
+        self.sounded_at(origin, reading.scope, reading.placed, fact, held)
     }
 
     /// The same, at a scope the reading does not supply.
@@ -1828,12 +1835,19 @@ impl Lowering<'_> {
     /// header facts [`super::piece`] builds belong to the part or the piece that
     /// wrote them rather than to any voice. §5.7 asks which scope a fact is
     /// constructed at, and the answer is not always the scope it was written in.
-    pub(super) fn sounded_at(&self, origin: Origin, scope: crate::Scope, fact: Raw, held: Ratio<i64>) -> Raw {
+    pub(super) fn sounded_at(
+        &self,
+        origin: Origin,
+        scope: crate::Scope,
+        placed: bool,
+        fact: Raw,
+        held: Ratio<i64>,
+    ) -> Raw {
         applied(
             origin,
             Raw::hosted(origin, "sounded"),
             [
-                self.provenance_at(origin),
+                self.provenance_at(origin, placed),
                 scope_of(origin, scope),
                 fact,
                 written_duration(origin, held),
@@ -1879,7 +1893,7 @@ impl Lowering<'_> {
             },
         };
         let fact = self.fact(node, origin, span, which)?;
-        Some(self.sounded_at(origin, scope, fact, Ratio::ZERO))
+        Some(self.sounded_at(origin, scope, reading.placed, fact, Ratio::ZERO))
     }
 
     /// The `Fact` one of the four states, without the placement around it.
@@ -2331,19 +2345,28 @@ impl Lowering<'_> {
     /// `pub(super)` for one caller outside this module: [`super::values`] reads a
     /// written `play(v, d)` as the four-argument application, and the two
     /// arguments it supplies are these.
-    pub(super) fn provenance_at(&self, origin: Origin) -> Raw {
+    pub(super) fn provenance_at(&self, origin: Origin, placed: bool) -> Raw {
         let span = self.sites.span(origin).unwrap_or_default();
-        self.provenance(origin, span)
+        self.provenance(origin, span, placed)
     }
 
     /// The same, when the caller already holds the span.
+    ///
+    /// `placed` is [`Reading::placed`], and it decides the one field a *shared*
+    /// body cannot know: `source_span` is where an event came from, and material
+    /// usable at several places came from every one of them. So an unplaced
+    /// reading writes [`crate::elaborate::SHARED_ORIGIN`] there and each use
+    /// fills it in — `instanced` at a `use`, the same conditional fill `scoped`
+    /// already performs for [`crate::Scope::Piece`]. `definition_span` is the
+    /// span either way, because that is what *wrote* the event and a body is
+    /// written once however many times it is spoken.
     #[expect(
         clippy::unused_self,
         reason = "reads as a sibling of `provenance_at`, which needs the table"
     )]
-    fn provenance(&self, origin: Origin, span: SourceSpan) -> Raw {
+    fn provenance(&self, origin: Origin, span: SourceSpan, placed: bool) -> Raw {
         let written = crate::origin::Origin {
-            source_span: span,
+            source_span: if placed { span } else { crate::elaborate::SHARED_ORIGIN },
             definition_span: span,
             // Zero, which `factext.rs` already reads as "no declaration to
             // name" — it prints `#n` only for a non-zero one. This module walks

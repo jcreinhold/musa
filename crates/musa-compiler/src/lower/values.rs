@@ -408,7 +408,10 @@ impl Lowering<'_> {
         if arguments.len() == 2 && head.kind() == SyntaxKind::NameExpr && written_name(&head).as_deref() == Some("play")
         {
             let supplied = [
-                self.provenance_at(origin),
+                // Unplaced, for the same reason the scope below is `Piece`: a
+                // `fn` body stands at no one place in the piece, so where its
+                // facts *came from* is each call site's to fill in.
+                self.provenance_at(origin, false),
                 // The scope a `music` block starts at, because a `fn` body is
                 // inside no voice and no part. `stdlib/src/voicing.musa:57`'s
                 // `sound_for` is the caller this is written for, and the voice

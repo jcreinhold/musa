@@ -499,12 +499,22 @@ const PLAY: Rule = |arguments| {
 /// written inside the template body and miss every note a function it calls
 /// produced.
 ///
-/// Only the path is read, and the other three fields of the origin are not an
-/// oversight: a fact keeps its own span and its own declaration because an
-/// instance does not relocate text. What an editor points at inside a template
+/// A fact keeps its own `definition_span` and its own declaration, because an
+/// instance does not relocate text: what an editor points at inside a template
 /// body is the line the author wrote, once, for every instance of it
 /// (`04-templates-and-modules.md` §1) — see [`crate::template`], whose expansion
 /// is a binding and never a rewrite.
+///
+/// `source_span` is the one field that *does* move, and only where the reading
+/// left it unset. Material read as usable at several places carries
+/// [`crate::elaborate::SHARED_ORIGIN`] there, because "where this event came
+/// from" is a question about the use and a shared body has no one answer; this
+/// is the use, so this is where it is answered. A body read at one place
+/// already holds its own span and keeps it, so a template instance relocates
+/// nothing and a `use` of a fragment relocates exactly the field that was
+/// waiting to be filled. The fill is conditional for the reason [`SCOPED`]'s is:
+/// the innermost use answers, and a use of material that already used something
+/// else does not overwrite the answer that use gave.
 ///
 /// In front rather than behind, which is why this cannot be [`rewritten`]:
 /// [`ExpansionStep::TemplateInstance`] is the *first* step of anything a `make`
@@ -522,7 +532,8 @@ const INSTANCED: Rule = |arguments| {
     let Datum::Lit(ref written) = *arguments.first()? else {
         return None;
     };
-    let path = &held::<Provenance>(written)?.0.expansion_path;
+    let at = &held::<Provenance>(written)?.0;
+    let (path, site) = (&at.expansion_path, at.source_span);
     let track = track_of(arguments.get(1)?)?;
     let occurrences = track
         .occurrences()
@@ -530,6 +541,9 @@ const INSTANCED: Rule = |arguments| {
         .map(|occurrence| {
             let mut fact = occurrence.payload().clone();
             fact.origin.expansion_path.splice(0..0, path.iter().cloned());
+            if fact.origin.source_span == crate::elaborate::SHARED_ORIGIN {
+                fact.origin.source_span = site;
+            }
             Occurrence::new(occurrence.span(), fact)
         })
         .collect();

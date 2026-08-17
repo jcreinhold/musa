@@ -279,7 +279,10 @@ impl Lowering<'_> {
         let over = self.reach(&declaration);
         let laid: Vec<Raw> = context
             .into_iter()
-            .map(|(scope, said, fact)| self.sounded_at(said, scope, fact, over))
+            // Placed: a header stands at exactly one place in the piece, so its
+            // facts carry the span they were written at rather than the shared
+            // placeholder a body usable at several places has to carry.
+            .map(|(scope, said, fact)| self.sounded_at(said, scope, true, fact, over))
             .collect();
         tracks.push(simultaneous(origin, laid));
         whole.then(|| Piece {
