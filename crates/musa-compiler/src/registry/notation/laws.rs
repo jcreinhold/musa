@@ -100,9 +100,17 @@ fn case(constructor: &'static str, fields: Vec<Datum>) -> Datum {
     }
 }
 
-/// `Nat`, one `Succ` at a time.
-fn whole(value: u32) -> Datum {
-    (0..value).fold(case("Nat.Zero", Vec::new()), |built, _| case("Nat.Succ", vec![built]))
+/// `Nat`, as the count it is.
+///
+/// The shape a rule is handed, not the shape a source writes: `Nat` is a
+/// counting family, so a closed `Nat` reaches a δ-rule as [`Datum::Count`] and
+/// never as a tower of `Succ`s. A law that built the tower here would be
+/// testing the rules against an argument the core does not produce.
+fn whole(value: u64) -> Datum {
+    Datum::Count {
+        family: Arc::from("Nat"),
+        count: value,
+    }
 }
 
 /// A `List` of data.
