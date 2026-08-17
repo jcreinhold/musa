@@ -78,7 +78,7 @@ fn old(quoted: &str) -> Syntax {
 
     let quoting = fn (here: NodePath) -> Syntax<Expr> {{ {quoted} }};
 
-    let expand = fn (region) {{
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{
         Ok(syntax_fold_from_leaves(
             fn (here) {{ quoting(here) }},
             fn (here, kind, spelling) {{ quoting(here) }},
@@ -89,7 +89,7 @@ fn old(quoted: &str) -> Syntax {
     }};
 }}"
     );
-    crate::core::expand_syntax(&source, &subject())
+    crate::core::expand_syntax(&source, crate::core::PhaseImports::bundled(), &subject())
         .0
         .expect("the old evaluator runs the transformer")
 }
@@ -103,10 +103,12 @@ fn new(cx: &Cx, quoted: &str) -> Syntax {
             .rev()
             .fold(body.clone(), |built, name| Raw::lam(HERE, *name, built))
     };
+    // `Answer` is an implicit parameter of the fold, so it is not written here
+    // any more than it is in `old`'s musa source — the checked result type
+    // solves it. Writing it lands a `Type 0` at the `missing` branch's position.
     let program = apply(
         Raw::var(HERE, "syntax_fold_from_leaves"),
         [
-            category(Cat::Expr),
             branch(&["here"]),
             branch(&["here", "kind", "spelling"]),
             branch(&["here", "name"]),

@@ -247,22 +247,26 @@ impl Def {
 /// [`declare_impl`](crate::declare_impl) refuses, since an instance in the
 /// group goes through it unchanged; and otherwise as [`crate::check`] — each
 /// declaration is ordinary elaboration and fails in the ordinary ways.
-pub(crate) fn declare_program(cx: &Cx, program: &RawProgram) -> Result<Arc<Program>, ElabError> {
+pub(crate) fn declare_program(cx: &Cx, program: &RawProgram) -> Result<(Arc<Program>, crate::Spend), ElabError> {
     let nodes = graph(cx, program);
     let mut extended = cx.clone();
     // Positions rather than the values themselves, because the elaboration
     // order is not the written order and the written order is what comes back.
     let mut members: Vec<(usize, Arc<Defined>)> = Vec::with_capacity(program.definitions.len());
     let mut instances: Vec<(usize, Arc<Instance>)> = Vec::with_capacity(program.instances.len());
+    let mut spent = crate::Spend::default();
     for node in ordering(&nodes)? {
         match node.held {
             Held::Definition(index, held) => {
-                let defined = Arc::new(elaborate(&extended, held, node.recursive)?);
+                let (defined, spend) = elaborate(&extended, held, node.recursive)?;
+                let defined = Arc::new(defined);
+                spent = spent.and(spend);
                 extended = extended.defining_one(&defined);
                 members.push((index, defined));
             }
             Held::Instance(index, raw) => {
-                let declared = crate::dictionary::declare_impl(&extended, raw)?;
+                let (declared, spend) = crate::dictionary::declare_impl(&extended, raw)?;
+                spent = spent.and(spend);
                 extended = extended.declaring_instance(&declared);
                 instances.push((index, declared));
             }
@@ -273,10 +277,11 @@ pub(crate) fn declare_program(cx: &Cx, program: &RawProgram) -> Result<Arc<Progr
     // this call rather than about the group.
     members.sort_by_key(|&(index, _)| index);
     instances.sort_by_key(|&(index, _)| index);
-    Ok(Arc::new(Program {
+    let declared = Arc::new(Program {
         members: members.into_iter().map(|(_, defined)| defined).collect(),
         instances: instances.into_iter().map(|(_, declared)| declared).collect(),
-    }))
+    });
+    Ok((declared, spent))
 }
 
 /// The dependency graph over a document's definitions and instances.
@@ -396,7 +401,7 @@ impl Written {
 /// what "signatures are collected before bodies" means once the order has been
 /// computed: by the time this runs, every definition this one names has been
 /// through it already.
-fn elaborate(cx: &Cx, held: &RawTopLevel, recursive: bool) -> Result<Defined, ElabError> {
+fn elaborate(cx: &Cx, held: &RawTopLevel, recursive: bool) -> Result<(Defined, crate::Spend), ElabError> {
     let inner = held.module.map_or_else(|| cx.clone(), |module| cx.in_module(module));
     let mut elaborator = Elaborator::new(&inner);
     let scope = Scope::new(&inner);
@@ -430,13 +435,14 @@ fn elaborate(cx: &Cx, held: &RawTopLevel, recursive: bool) -> Result<Defined, El
         }
     };
     let value = eval(elaborator.meter(), &Env::EMPTY, &value)?;
-    Ok(Defined {
+    let defined = Defined {
         name: Arc::clone(&held.name),
         visibility: held.visibility,
         module: held.module,
         ty: Arc::new(ty),
         value: Arc::new(value),
-    })
+    };
+    Ok((defined, elaborator.spent()))
 }
 
 /// What `raw` names of the group around it, added to `found`.

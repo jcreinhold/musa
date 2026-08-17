@@ -15,7 +15,9 @@ piece "Scale Context" {
     // A saved phrase steps in no collection, so it spells its pitches. This is
     // the half of the figure that means the same thing everywhere.
     fn opening() -> EventTrack<WrittenTime> {
-        music { c5/8 }
+        music {
+            c5/8
+        }
     }
 
     // Read as values, the domains stay separate: a key is a signature and a

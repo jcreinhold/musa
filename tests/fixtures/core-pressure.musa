@@ -11,7 +11,7 @@ meter 4/4;
 key c major;
 
 fn keep(index: Nat, accumulator: Nat) -> Nat { accumulator }
-fn depth_0(seed: Nat) -> Nat { nat_fold(seed, keep, 1) }
+fn depth_0(seed: Nat) -> Nat { range(1).fold_from_start(seed, fn (carried, index) { keep(index, carried) }) }
     fn depth_1(seed: Nat) -> Nat { depth_0(seed) }
     fn depth_2(seed: Nat) -> Nat { depth_1(seed) }
     fn depth_3(seed: Nat) -> Nat { depth_2(seed) }
@@ -78,7 +78,7 @@ fn depth_0(seed: Nat) -> Nat { nat_fold(seed, keep, 1) }
 
     let deep: Nat = depth_63(0);
     let counted: List<Nat> = naturals(512);
-    let folded: Nat = list_fold_from_start(0, keep, counted);
+    let folded: Nat = counted.fold_from_start(0, fn (carried, one) { keep(one, carried) });
 
     let raise: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(P8, line) };
     let subject: EventTrack<WrittenTime> = music { c4/4 d4/4 e4/4 f4/4 };

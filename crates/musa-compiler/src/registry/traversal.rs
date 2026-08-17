@@ -172,6 +172,25 @@ fn telescope(binders: Vec<(&'static str, Term)>, body: Term) -> Term {
         .fold(body, |built, (name, domain)| Term::pi(HERE, name, domain, built))
 }
 
+/// The same, over type parameters a use site does not write.
+///
+/// Implicit because that is what a type parameter is everywhere else in this
+/// language: `fn list_fold_from_start<A, B>(…)` is called `list_fold_from_start(
+/// seed, step, values)`, and a builtin whose answer type had to be spelled out
+/// would be the one generic function in the language with a different calling
+/// convention — for no reason a reader could name, since the branches determine
+/// it exactly as a library function's arguments do.
+///
+/// It changes the *type* and not the term. An implicit argument is still an
+/// argument, so both rewrites still read their branches at the positions
+/// [`Recurse`] and [`Fold`] give them, and the arity is what it was.
+fn parameterized(names: &[&'static str], body: Term) -> Term {
+    names
+        .iter()
+        .rev()
+        .fold(body, |built, name| Term::implicit_pi(HERE, *name, type0(), built))
+}
+
 /// One branch of a traversal: `arguments`, then the traversal's answer.
 ///
 /// `written` is where the branch itself is bound. Each argument must already be
@@ -208,7 +227,7 @@ fn tree_type() -> Term {
 
 /// ```text
 /// recurse_syntax
-///   : (Context : Type 0) → (Answer : Type 0)
+///   : {Context : Type 0} → {Answer : Type 0}
 ///   → (Context → NodePath → Answer)
 ///   → (Context → NodePath → TokenKind → Text → Answer)
 ///   → (Context → NodePath → Text → Answer)
@@ -235,53 +254,54 @@ fn recurse_type(cx: &Cx) -> Result<Term, ElabError> {
     // type, and the reason `branch` states where its arguments are read.
     let inside = Recurse::GROUP.saturating_add(3);
     let steps = Term::app(HERE, list, applied(sealed, [context(inside), answer(inside)]));
-    Ok(telescope(
-        vec![
-            ("Context", type0()),
-            ("Answer", type0()),
-            (
-                "missing",
-                branch(&answer, Recurse::MISSING, vec![context(Recurse::MISSING), path()]),
-            ),
-            (
-                "token",
-                branch(
-                    &answer,
-                    Recurse::TOKEN,
-                    vec![
-                        context(Recurse::TOKEN),
-                        path(),
-                        plain_type("TokenKind"),
-                        plain_type("Text"),
-                    ],
+    Ok(parameterized(
+        &["Context", "Answer"],
+        telescope(
+            vec![
+                (
+                    "missing",
+                    branch(&answer, Recurse::MISSING, vec![context(Recurse::MISSING), path()]),
                 ),
-            ),
-            (
-                "identifier",
-                branch(
-                    &answer,
-                    Recurse::IDENTIFIER,
-                    vec![context(Recurse::IDENTIFIER), path(), plain_type("Text")],
+                (
+                    "token",
+                    branch(
+                        &answer,
+                        Recurse::TOKEN,
+                        vec![
+                            context(Recurse::TOKEN),
+                            path(),
+                            plain_type("TokenKind"),
+                            plain_type("Text"),
+                        ],
+                    ),
                 ),
-            ),
-            (
-                "group",
-                branch(
-                    &answer,
-                    Recurse::GROUP,
-                    vec![context(Recurse::GROUP), path(), plain_type("Delimiter"), steps],
+                (
+                    "identifier",
+                    branch(
+                        &answer,
+                        Recurse::IDENTIFIER,
+                        vec![context(Recurse::IDENTIFIER), path(), plain_type("Text")],
+                    ),
                 ),
-            ),
-            ("context", context(Recurse::CONTEXT)),
-            ("subject", tree_type()),
-        ],
-        answer(Recurse::ARITY),
+                (
+                    "group",
+                    branch(
+                        &answer,
+                        Recurse::GROUP,
+                        vec![context(Recurse::GROUP), path(), plain_type("Delimiter"), steps],
+                    ),
+                ),
+                ("context", context(Recurse::CONTEXT)),
+                ("subject", tree_type()),
+            ],
+            answer(Recurse::ARITY),
+        ),
     ))
 }
 
 /// ```text
 /// syntax_fold_from_leaves
-///   : (Answer : Type 0)
+///   : {Answer : Type 0}
 ///   → (NodePath → Answer)
 ///   → (NodePath → TokenKind → Text → Answer)
 ///   → (NodePath → Text → Answer)
@@ -302,29 +322,31 @@ fn fold_type(cx: &Cx) -> Result<Term, ElabError> {
     let path = || plain_type("NodePath");
     let inside = Fold::GROUP.saturating_add(2);
     let read = Term::app(HERE, list, answer(inside));
-    Ok(telescope(
-        vec![
-            ("Answer", type0()),
-            ("missing", branch(&answer, Fold::MISSING, vec![path()])),
-            (
-                "token",
-                branch(
-                    &answer,
-                    Fold::TOKEN,
-                    vec![path(), plain_type("TokenKind"), plain_type("Text")],
+    Ok(parameterized(
+        &["Answer"],
+        telescope(
+            vec![
+                ("missing", branch(&answer, Fold::MISSING, vec![path()])),
+                (
+                    "token",
+                    branch(
+                        &answer,
+                        Fold::TOKEN,
+                        vec![path(), plain_type("TokenKind"), plain_type("Text")],
+                    ),
                 ),
-            ),
-            (
-                "identifier",
-                branch(&answer, Fold::IDENTIFIER, vec![path(), plain_type("Text")]),
-            ),
-            (
-                "group",
-                branch(&answer, Fold::GROUP, vec![path(), plain_type("Delimiter"), read]),
-            ),
-            ("subject", tree_type()),
-        ],
-        answer(Fold::ARITY),
+                (
+                    "identifier",
+                    branch(&answer, Fold::IDENTIFIER, vec![path(), plain_type("Text")]),
+                ),
+                (
+                    "group",
+                    branch(&answer, Fold::GROUP, vec![path(), plain_type("Delimiter"), read]),
+                ),
+                ("subject", tree_type()),
+            ],
+            answer(Fold::ARITY),
+        ),
     ))
 }
 

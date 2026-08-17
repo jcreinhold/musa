@@ -66,24 +66,15 @@ private to it.
 
 ## `std::list`
 
-- `fn counting_from(count: Nat, first: Nat) -> List<Nat>` — The natural numbers from `first`, `count` of them, ascending.  The accumulator is `first` and it comes after the list-shaped argument for the reason above. `Succ` rather than `nat_add`: the successor constructor *is* "one more", so counting needs no arithmetic and no failure case.
+- `fn counting_from(count: Nat, first: Nat) -> List<Nat>` — The natural numbers from `first`, `count` of them, ascending.  The accumulator is `first` and it comes after the argument the recursion descends on, because §2.4's measure holds everything written *before* that argument fixed: a walk that both descends and accumulates has to descend first and accumulate later. `Succ` rather than `nat_add`: the successor constructor *is* "one more", so counting needs no arithmetic and no failure case.
 - `fn range(count: Nat) -> List<Nat>` — The natural numbers from zero up to, but not including, `count`.
 - `fn repeated<A>(value: A, count: Nat) -> List<A>` — One value, `count` times, as finite data.  Not `repeat`: that word opens a repeated passage in a score, so it is a statement keyword and cannot also be a function name. The past participle is what the list *is* rather than what a player does.
 - `fn map<A, B>(function: A -> B, values: List<A>) -> List<B>` — Apply `function` to every member, in order.
 - `fn filter<A>(predicate: A -> Bool, values: List<A>) -> List<A>` — Keep the members for which `predicate` answers true, in order.
-- `fn folded_from_start<A, B>(values: List<A>, carried: B, combine: A -> B -> B) -> B` — `combine` applied to each member in turn, carrying the answer forward.
-- `fn list_fold_from_start<A, B>(seed: B, combine: A -> B -> B, values: List<A>) -> B` — Accumulate left to right: `combine` sees the first member first, and each application is handed what the members before it produced.
-- `fn folded_from_end<A, B>(values: List<A>, seed: B, combine: A -> B -> B) -> B` — The catamorphism's equation, written as it reads: `combine(x, fold(xs))`.
-- `fn list_fold_from_end<A, B>(seed: B, combine: A -> B -> B, values: List<A>) -> B` — Fold from the end: the application nearest the seed is the one over the last member, which is what lets this build right-nested data.
 - `fn naturals(count: Nat) -> List<Nat>` — The natural numbers from zero up to, but not including, count.
 - `fn map_pitches(function: Pitch -> Pitch, values: List<Pitch>) -> List<Pitch>` — Apply one pitch function to every member of a finite pitch list.
 - `fn filter_pitches(predicate: Pitch -> Bool, values: List<Pitch>) -> List<Pitch>` — Keep the pitches for which predicate returns true.
 - `fn repeat_music(value: EventTrack<WrittenTime>, count: Nat) -> List<EventTrack<WrittenTime>>` — Repeat one contextual music value count times as finite data.
-
-## `std::nat`
-
-- `fn counted<A>(count: Nat, index: Nat, carried: A, combine: Nat -> A -> A) -> A` — `combine` applied `count` times, told which application it is.  The count comes first because it is the argument the recursion descends on, and §2.4's measure holds everything written before that argument fixed: an index that ascends and an answer that changes have to be written after it. The public spelling below puts them back in the order the corpus writes.
-- `fn nat_fold<A>(seed: A, combine: Nat -> A -> A, count: Nat) -> A` — Fold `count` upward from `seed`, applying `combine` to each index in turn: zero first, `count` minus one last, and `seed` itself when the count is zero.  The index is passed rather than left implicit because the applications are not interchangeable — a sequence that rises by a step per repetition needs to know which repetition it is in, and a fold that hid the number would make every such pattern carry its own counter.
 
 ## `std::notation::staff`
 
@@ -124,12 +115,6 @@ private to it.
 - `fn spelled_as(policy: Spelling, held: Duration<WrittenTime>) -> Result<WrittenDuration, Text>` — Which written value a realized span is printed as.  This is the choice expansion deliberately left open, and it is made here so that a span nothing readable spells is a complaint about the document's spelling policy rather than a note quietly rounded.
 - `fn engrave(document: StaffDocument) -> Result<Spelled, Text>` — Every realized span with the written value chosen for it.
 - `fn spelled_spans(policy: Spelling, spans: WrittenSpans) -> Result<Spelled, Text>` — The spelling choice, made once per span and refused once for all of them.
-
-## `std::option`
-
-- `fn option_fold<A, B>(fallback: B, present: A -> B, value: Option<A>) -> B` — Read an optional value by naming both cases: `fallback` when there is nothing, `present` applied to what is there when there is.  `Option`'s own recursor, written where a program can reach it. A total language has no way to unwrap one without saying what happens when it is empty, so this is the only way to read an `Option` and it is two lines.
-- `fn pitch_or_else(fallback: Pitch, present: Pitch -> Pitch, value: Option<Pitch>) -> Pitch` — Read an optional pitch, using fallback when it is absent and present when it is available.
-- `fn nat_or_else(fallback: Nat, present: Nat -> Nat, value: Option<Nat>) -> Nat` — Read an optional natural number under the same explicit policy.
 
 ## `std::pitch`
 
@@ -278,9 +263,9 @@ private to it.
 ## `std::tonal::sequences`
 
 - `fn rising_degree(start: Degree, steps: Nat, index: Nat) -> Degree` — The degree reached after `index` applications of a rise of `steps` scale steps. Index zero is the start, which is what makes a count of one mean "the pattern, stated once".
-- `fn risen_by(steps: Nat, index: Nat, from: Degree) -> Degree` — The rise itself, as the `nat_fold` step it is applied by. The index is ignored on purpose: a diatonic sequence moves by the same interval every time, and a pattern that did not would be a different pattern.
+- `fn risen_by(steps: Nat, index: Nat, from: Degree) -> Degree` — The rise itself, as the fold step it is applied by. The index is ignored on purpose: a diatonic sequence moves by the same interval every time, and a pattern that did not would be a different pattern.
 - `fn falling_degree(start: Degree, steps: Nat, index: Nat) -> Degree` — The degree reached after `index` applications of a fall of `steps` scale steps. Falling is its own function rather than a negative rise, because a `nat` has no sign and a direction that could be forgotten is a direction that will be.
-- `fn fallen_by(steps: Nat, index: Nat, from: Degree) -> Degree` — The fall, as the `nat_fold` step it is applied by.
+- `fn fallen_by(steps: Nat, index: Nat, from: Degree) -> Degree` — The fall, as the fold step it is applied by.
 - `fn rising_degrees(start: Degree, steps: Nat, count: Nat) -> List<Degree>` — The whole finite walk upward: `count` degrees, beginning at `start`. A count of zero is the empty walk and a count of one is the start alone, which are the ordinary meanings and are asserted as laws.
 - `fn falling_degrees(start: Degree, steps: Nat, count: Nat) -> List<Degree>` — The whole finite walk downward.
 - `fn stacked_on(collection: Scale, members: Nat, written: Degree) -> Option<ChordClass>` — Harmonize one degree of a walk with the collection's own stack. Absent when the collection stacks to a sonority the chord vocabulary cannot name, which is how a pentatonic or whole-tone collection reports that it does not harmonize in thirds.

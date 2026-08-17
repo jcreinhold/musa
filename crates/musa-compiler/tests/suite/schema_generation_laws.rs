@@ -63,7 +63,7 @@ const PRELUDE: &str = r"
     }
 
     fn after(one: EventTrack<WrittenTime>, carried: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { together(one, shift(duration_of(1/1), carried)) }
-    fn laid_out(values: List<EventTrack<WrittenTime>>) -> EventTrack<WrittenTime> { list_fold_from_start(music { rest/1 }, after, values) }
+    fn laid_out(values: List<EventTrack<WrittenTime>>) -> EventTrack<WrittenTime> { values.fold_from_start(music { rest/1 }, fn (carried, one) { after(one, carried) }) }
     fn line(written: List<Degree>) -> EventTrack<WrittenTime> { retrograde(laid_out(map(degree_note, written))) }
 
     fn spelled(bass: Pitch, content: Option<ChordClass>) -> EventTrack<WrittenTime> { match content {

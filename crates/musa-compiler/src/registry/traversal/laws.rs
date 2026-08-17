@@ -46,7 +46,9 @@ fn subject() -> Syntax {
 
 /// What the old evaluator answers for `transformer` on the region.
 fn old(transformer: &str) -> Syntax {
-    let written = format!("fn (region) {{ Ok({transformer}) }}");
+    let written = format!(
+        "fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ Ok({transformer}) }}"
+    );
     expand_region(&written, REGION, expansion()).expect("the old evaluator runs the transformer")
 }
 
@@ -73,6 +75,18 @@ fn apply(head: Raw, arguments: impl IntoIterator<Item = Raw>) -> Raw {
     arguments
         .into_iter()
         .fold(head, |function, argument| Raw::app(HERE, function, argument))
+}
+
+/// A traversal at the type parameters a use site does not write.
+///
+/// Written out here and nowhere else. A source program lets elaboration solve
+/// them from the branches; these laws state what the *registration* is, so they
+/// say which types they mean — and an implicit binder is still applied, which is
+/// what `Raw::implicit_app` is for.
+fn at_types(head: Raw, types: impl IntoIterator<Item = Raw>) -> Raw {
+    types
+        .into_iter()
+        .fold(head, |function, argument| Raw::implicit_app(HERE, function, argument))
 }
 
 fn lambda(names: &[&str], body: Raw) -> Raw {
@@ -133,9 +147,8 @@ fn leaf() -> Raw {
 fn the_fold_rebuilds_the_region_the_way_the_old_evaluator_does() {
     let cx = owned().expect("the compiler's own context builds");
     let program = apply(
-        var("syntax_fold_from_leaves"),
+        at_types(var("syntax_fold_from_leaves"), [tree()]),
         [
-            tree(),
             lambda(&["here"], leaf()),
             lambda(
                 &["here", "kind", "spelling"],
@@ -167,12 +180,11 @@ fn the_fold_rebuilds_the_region_the_way_the_old_evaluator_does() {
 ///
 /// The observation is a chain of parenthesis groups as deep as the region's
 /// leftmost spine, with a leaf at the bottom. It is not the identity rebuild the
-/// fold gets, and the reason is a real limitation rather than a shortcut: a group
-/// branch is handed a `List (SyntaxStep C A)` and rebuilding needs to map over
-/// it, which the *source* language cannot do — `list_fold_from_end` can consume a
-/// list and nothing in the phase can build one, which is the missing constructor
-/// `stdlib/src/adapters/staff.musa`'s header records. Both sides can take the
-/// first child's answer, so that is what both sides take.
+/// fold gets, and the shape is deliberate: what is being compared is the
+/// *descent*, so both sides take the first child's answer and neither rebuilds
+/// the siblings. `Buildable` closed the missing constructor
+/// `stdlib/src/adapters/staff.musa`'s header records, so a rebuilding branch is
+/// now writable — and it would establish nothing this one does not.
 ///
 /// What it still establishes is everything this prompt added: a step is minted
 /// per child, sealed with the algebra and the child it names, carried into a
@@ -183,7 +195,7 @@ fn recursing_descends_the_leftmost_spine_the_way_the_old_evaluator_does() {
     let cx = owned().expect("the compiler's own context builds");
     let step = apply(var("SyntaxStep"), [Raw::var(HERE, "Text"), tree()]);
     // `List.elim`'s `Cons` method ignores its induction hypothesis, so the answer
-    // is the *first* member's — which is `list_fold_from_end`'s answer for a step
+    // is the *first* member's — which is `fold_from_end`'s answer for a step
     // function that ignores its accumulator, and is why the two sides agree.
     let first = apply(
         var("List.elim"),
@@ -210,10 +222,8 @@ fn recursing_descends_the_leftmost_spine_the_way_the_old_evaluator_does() {
         ],
     );
     let program = apply(
-        var("recurse_syntax"),
+        at_types(var("recurse_syntax"), [Raw::var(HERE, "Text"), tree()]),
         [
-            Raw::var(HERE, "Text"),
-            tree(),
             lambda(&["context", "here"], leaf()),
             lambda(&["context", "here", "kind", "spelling"], leaf()),
             lambda(&["context", "here", "name"], leaf()),
@@ -238,10 +248,9 @@ fn recursing_descends_the_leftmost_spine_the_way_the_old_evaluator_does() {
             fn (context, here, name) { syntax_identifier(syntax_built(here, 2, 0), "leaf") },
             fn (context, here, delimiter, children) {
                 syntax_group(syntax_built(here, 3, 0), Delimiter.Parentheses, [
-                    list_fold_from_end(
+                    children.fold_from_end(
                         syntax_identifier(syntax_built(here, 2, 0), "leaf"),
                         fn (child, found) { run_syntax_step(context, child) },
-                        children,
                     )
                 ])
             },
@@ -285,9 +294,8 @@ fn a_branch_the_node_does_not_select_is_never_evaluated() {
         ),
     );
     let program = apply(
-        var("syntax_fold_from_leaves"),
+        at_types(var("syntax_fold_from_leaves"), [tree()]),
         [
-            tree(),
             refusing,
             lambda(
                 &["here", "kind", "spelling"],
@@ -341,10 +349,13 @@ fn a_traversal_at_a_variable_stays_neutral() {
         syntax_type(Cat::TokenTree),
     );
     for spelling in super::SPELLINGS {
+        let types: Vec<Raw> = if spelling == super::SPELLINGS[0] {
+            vec![Raw::var(HERE, "Text"), tree()]
+        } else {
+            vec![tree()]
+        };
         let branches: Vec<Raw> = if spelling == super::SPELLINGS[0] {
             vec![
-                Raw::var(HERE, "Text"),
-                tree(),
                 lambda(&["context", "here"], leaf()),
                 lambda(&["context", "here", "kind", "spelling"], leaf()),
                 lambda(&["context", "here", "name"], leaf()),
@@ -353,7 +364,6 @@ fn a_traversal_at_a_variable_stays_neutral() {
             ]
         } else {
             vec![
-                tree(),
                 lambda(&["here"], leaf()),
                 lambda(&["here", "kind", "spelling"], leaf()),
                 lambda(&["here", "name"], leaf()),
@@ -363,7 +373,10 @@ fn a_traversal_at_a_variable_stays_neutral() {
         let blocked = Raw::lam(
             HERE,
             "subject",
-            apply(apply(var(spelling), branches), [Raw::var(HERE, "subject")]),
+            apply(
+                apply(at_types(var(spelling), types), branches),
+                [Raw::var(HERE, "subject")],
+            ),
         );
         let term = musa_core::check(&cx, &ty, &blocked)
             .unwrap_or_else(|why| panic!("`{spelling}` at a variable does not check: {why}"));

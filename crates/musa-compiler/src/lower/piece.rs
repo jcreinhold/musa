@@ -229,7 +229,12 @@ impl Lowering<'_> {
                     );
                     continue;
                 }
-                let read_under = Reading::at(crate::Scope::Voice { part: id, voice }).metered(opening);
+                // Numbered here, where a voice begins: everything read under
+                // this reading — the voice's own statements and every block
+                // nested in them — carries the voice as the declaration that
+                // wrote it, which is what `#n` in a printed fact names.
+                let entered = self.sites.declaring();
+                let read_under = Reading::at(crate::Scope::Voice { part: id, voice }, entered).metered(opening);
                 let held_at = match suggested {
                     Some(key) => read_under.keyed(key),
                     None => read_under,
@@ -282,7 +287,13 @@ impl Lowering<'_> {
             // Placed: a header stands at exactly one place in the piece, so its
             // facts carry the span they were written at rather than the shared
             // placeholder a body usable at several places has to carry.
-            .map(|(scope, said, fact)| self.sounded_at(said, scope, true, fact, over))
+            //
+            // Under no declaration, which is the honest answer rather than a
+            // gap: `tempo 1/4 = 96;` is the piece speaking, and a header is
+            // written in no motif, no bar, and no voice.
+            .map(|(scope, said, fact)| {
+                self.sounded_at(said, scope, true, crate::origin::DeclarationId::default(), fact, over)
+            })
             .collect();
         tracks.push(simultaneous(origin, laid));
         whole.then(|| Piece {

@@ -65,7 +65,7 @@ use crate::term::{Field, Index, Name, Shape, Term};
 use crate::value::{Env, Form, Telescope, Value};
 
 /// Elaborate a `trait` declaration.
-pub(crate) fn declare_trait(cx: &Cx, raw: &RawTrait) -> Result<Arc<Trait>, ElabError> {
+pub(crate) fn declare_trait(cx: &Cx, raw: &RawTrait) -> Result<(Arc<Trait>, crate::Spend), ElabError> {
     let here = raw.origin;
     if raw.name.as_ref() == STORABLE {
         return Err(Refusal::ReservedClass {
@@ -136,10 +136,11 @@ pub(crate) fn declare_trait(cx: &Cx, raw: &RawTrait) -> Result<Arc<Trait>, ElabE
     };
     let derived = derivations(&mut elaborator, cx, &declared, raw)?;
     elaborator.settled()?;
-    Ok(Arc::new(Trait {
+    let class = Arc::new(Trait {
         derived: Arc::from(derived),
         ..declared
-    }))
+    });
+    Ok((class, elaborator.spent()))
 }
 
 /// `{q⃗} → τ`: a required method's own parameters, folded onto its type.
@@ -179,7 +180,7 @@ fn duplicate_method(raw: &RawTrait) -> Result<(), ElabError> {
 
 /// Elaborate an `impl` declaration, and run every check §2, §3, and §4 make at
 /// the declaration.
-pub(crate) fn declare_impl(cx: &Cx, raw: &RawImpl) -> Result<Arc<Instance>, ElabError> {
+pub(crate) fn declare_impl(cx: &Cx, raw: &RawImpl) -> Result<(Arc<Instance>, crate::Spend), ElabError> {
     let here = raw.origin;
     let classes = cx.classes();
     if raw.name.as_ref() == STORABLE {
@@ -265,14 +266,15 @@ pub(crate) fn declare_impl(cx: &Cx, raw: &RawImpl) -> Result<Arc<Instance>, Elab
         }),
     );
     elaborator.settled()?;
-    Ok(Arc::new(Instance {
+    let instance = Arc::new(Instance {
         origin: here,
         key,
         params: Arc::from(params),
         args: Arc::from(args),
         context: Arc::from(context),
         dictionary,
-    }))
+    });
+    Ok((instance, elaborator.spent()))
 }
 
 /// The record an impl's dictionary is.

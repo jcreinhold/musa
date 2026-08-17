@@ -12,7 +12,6 @@
 // warning follows it out.
 piece "Theory Assertions" {
     import std::harmony;
-    import std::option;
 
     fn same(content: ChordClass) -> ChordClass { content }
 
@@ -20,10 +19,9 @@ piece "Theory Assertions" {
     // `Option`, and a total language unwraps one by naming what happens when
     // there is nothing there: the fallback is the root-position chord, which
     // the assertion below would then refuse rather than quietly accept.
-    let first_inversion: ChordClass = option_fold(
+    let first_inversion: ChordClass = inversion(chord c major, 1).fold_from_end(
         chord c major,
-        same,
-        inversion(chord c major, 1),
+        fn (found, otherwise) { same(found) },
     );
 
     score {

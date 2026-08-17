@@ -97,6 +97,36 @@ use crate::resolve::Resolver;
 #[derive(Debug, Default)]
 pub(crate) struct Sites {
     spans: Vec<SourceSpan>,
+    brought: Vec<Brought>,
+    /// How many blocks of notation this document has entered.
+    ///
+    /// Beside the span table because it is the other thing a document numbers
+    /// once and every walk of it shares: a [`Lowering`] lives for one
+    /// declaration, and a [`crate::origin::DeclarationId`] has to be unique
+    /// across all of them. See [`Sites::declaring`].
+    declarations: u32,
+}
+
+/// A run of sites read out of an imported file, and the statement that brought
+/// it in.
+///
+/// A *run* rather than a mark on every site, because a document is gathered one
+/// source at a time: every site an import contributes is numbered before the
+/// next source's first, so the whole fact is two numbers. A piece with no
+/// imports carries none of these, and one with a dozen carries a dozen — the
+/// scan in [`Sites::brought`] is over files, not over sites.
+#[derive(Debug)]
+struct Brought {
+    /// The file, by the key the import resolved to. [`crate::diagnose::Cause`]
+    /// names a document by this, which is how a consumer finds the text a
+    /// foreign span is a span in.
+    path: String,
+    /// The `import` statement, in *this* document — the one span about that file
+    /// a reader can be pointed at.
+    at: SourceSpan,
+    /// The half-open run of site numbers this file contributed.
+    from: usize,
+    upto: usize,
 }
 
 impl Sites {
@@ -116,18 +146,73 @@ impl Sites {
         self.at(crate::resolve::trimmed_span(node))
     }
 
+    /// How many sites have been numbered, so a caller can say where a source's
+    /// run began before reading it.
+    pub(crate) fn counted(&self) -> usize {
+        self.spans.len()
+    }
+
+    /// Every site numbered since `from` was read out of `path`, imported at `at`.
+    ///
+    /// Called by the document walk after each imported source, because that walk
+    /// is the one thing that knows a source came from somewhere else. The
+    /// alternative — a mode on this table, set and cleared around the read —
+    /// would be an invariant a caller could break silently, and this is the same
+    /// fact with nothing to forget.
+    pub(crate) fn imported(&mut self, from: usize, path: &str, at: SourceSpan) {
+        if from < self.spans.len() {
+            self.brought.push(Brought {
+                path: path.to_owned(),
+                at,
+                from,
+                upto: self.spans.len(),
+            });
+        }
+    }
+
     /// Where the term carrying `origin` was written, when this table numbered it.
     ///
     /// [`None`] for [`Origin::UNKNOWN`] and for a number this table did not
     /// hand out — the core mints neither, but a registered builtin's signature
     /// carries `UNKNOWN` by construction, so a refusal *about a signature* has
     /// nowhere of its own to point and says so rather than pointing at node one.
+    ///
+    /// The span may be a span in *another file*, which is why [`Sites::foreign`]
+    /// exists beside this: a caller that publishes a span into a diagnostic has
+    /// to ask which document it is a span in first.
     pub(crate) fn span(&self, origin: Origin) -> Option<SourceSpan> {
         origin
             .node_number()
             .and_then(|index| usize::try_from(index).ok())
             .and_then(|index| self.spans.get(index))
             .copied()
+    }
+
+    /// The next block of notation this document reads, numbered.
+    ///
+    /// A [`crate::origin::DeclarationId`] names the declaration a fact was
+    /// written in, and the two places a block of notation begins ask for one:
+    /// [`notation::Lowering::music`], which every motif, fragment, named bar,
+    /// and `music` value goes through, and [`piece::Lowering::piece`], which
+    /// enters a voice. Numbered from one, because zero is `factext`'s "no
+    /// declaration to name" and stays the answer for a fact no block wrote.
+    ///
+    /// Handed out in reading order rather than derived from the node, which is
+    /// what makes it an *ordinal* and not a second name for the span: two
+    /// blocks are two numbers however alike their text.
+    pub(crate) fn declaring(&mut self) -> crate::origin::DeclarationId {
+        self.declarations = self.declarations.saturating_add(1);
+        crate::origin::DeclarationId(self.declarations)
+    }
+
+    /// The file `origin` was read out of, when it was not this document's own
+    /// text, with the `import` statement that brought it in.
+    pub(crate) fn foreign(&self, origin: Origin) -> Option<(&str, SourceSpan)> {
+        let index = origin.node_number().and_then(|index| usize::try_from(index).ok())?;
+        self.brought
+            .iter()
+            .find(|brought| (brought.from..brought.upto).contains(&index))
+            .map(|brought| (brought.path.as_str(), brought.at))
     }
 }
 
@@ -436,6 +521,39 @@ fn listed(origin: Origin, members: Vec<Raw>) -> Raw {
     built
 }
 
+/// `(m₁, …, mₙ)`, as nested `Pair`s — the anonymous product of any width.
+///
+/// Beside [`listed`] for its reason, and generic for one more: the *direction*
+/// of the nesting has to be the same on the type side, the value side, and in a
+/// pattern, and three copies of a fold are three chances for one of them to
+/// lean the other way. All that differs between the three is which two-argument
+/// form a pair is written as, so that is the argument.
+///
+/// **To the right**, so `(A, B, C)` is `Pair A (Pair B C)` and `(a, b, c)` is
+/// `(a, (b, c))`. That is not a nesting nobody wrote: it is what every
+/// implementation of a core whose product is binary writes, and it is the
+/// choice under which the two spellings agree — a composer who nests by hand
+/// gets the same type and the same value as one who writes the commas. Idris
+/// folds a comma run right in its parser and applies a two-argument `Pair` at
+/// desugaring, and the pair a program sees is binary either way.
+///
+/// The alternative was to refuse more than two, which reads as a smaller
+/// language for no gain: the corpus writes wide products where a *count* is the
+/// observation — the arity a sequence splice arrives with, which is the whole
+/// of what `11-quotation.md` §2 says a position's grammar supplies — and there
+/// is no narrower spelling of that.
+///
+/// Two or more is what the grammar can produce, since a parenthesized run with
+/// no comma is a `ParenExpr`; the single-member fold below is therefore the
+/// identity it should be rather than a case anybody reaches.
+fn paired<T>(mut members: Vec<T>, pair: impl Fn(T, T) -> T) -> Option<T> {
+    let mut built = members.pop()?;
+    while let Some(before) = members.pop() {
+        built = pair(before, built);
+    }
+    Some(built)
+}
+
 /// The origin a reading hands `instanced`: one expansion step, and the place
 /// that produced it.
 ///
@@ -520,6 +638,7 @@ fn is_expr_node(kind: SyntaxKind) -> bool {
             | SyntaxKind::OptionExpr
             | SyntaxKind::ResultExpr
             | SyntaxKind::ApplyExpr
+            | SyntaxKind::MethodCallExpr
             | SyntaxKind::LambdaExpr
             | SyntaxKind::PitchExpr
             | SyntaxKind::ChordExpr

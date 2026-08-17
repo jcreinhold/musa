@@ -7,16 +7,12 @@
 //!
 //! # Where a surface form has no core term
 //!
-//! Two kinds are read by the grammar and denote nothing yet, and each answers a
+//! One kind is read by the grammar and denotes nothing yet, and it answers a
 //! diagnostic rather than an unhelpful `None`. `MusicExpr` and `KernelQuote`
 //! were here and are gone: prompt 141k folded the first and
-//! [`super::kernel`] reads the second.
+//! [`super::kernel`] reads the second. The anonymous product was here too, and
+//! prompt 142 gave it a spelling at every width — [`super::paired`] nests it.
 //!
-//! - `(a, b, c)`, and every wider product. The pair is `Pair.Both a b`, which
-//!   the prelude already declares; three positions and no names would have to
-//!   choose between `(a, (b, c))` and `((a, b), c)`, and the corpus writes 36
-//!   products of which every one is a pair. `Lowering::wide_product` refuses the
-//!   rest in the words the whole construct carried before 142.
 //! - A **named** call argument. The core applies positionally, and reordering a
 //!   written argument list to match a declaration would mean resolving the
 //!   callee — which is the core's, one pass later. Prompt 142's migration writes
@@ -28,7 +24,8 @@ use musa_language::{SyntaxKind, SyntaxNode, SyntaxToken};
 use num_rational::Ratio;
 
 use super::{
-    Lowering, Question, applied, child, children, is_expr_node, listed, own_tokens, significant_tokens, whole, writes,
+    Lowering, Question, applied, child, children, is_expr_node, listed, own_tokens, paired, significant_tokens, whole,
+    writes,
 };
 use crate::diagnose::{Code, Diagnostic};
 use crate::origin::SourceSpan;
@@ -124,6 +121,7 @@ impl Lowering<'_> {
             SyntaxKind::OptionExpr => self.option(node, origin),
             SyntaxKind::ResultExpr => self.result(node, origin),
             SyntaxKind::ApplyExpr => self.application(node, origin),
+            SyntaxKind::MethodCallExpr => self.method_call(node, origin),
             SyntaxKind::LambdaExpr => self.lambda(node, origin),
             SyntaxKind::BinaryExpr => self.operator(node, origin),
             SyntaxKind::IndexExpr => self.indexing(node, origin),
@@ -373,23 +371,18 @@ impl Lowering<'_> {
 
     // ---- the built-up forms ----
 
-    /// `(a, b)` — the anonymous product, as the `Pair` the prelude declares.
+    /// `(a, b, …)` — the anonymous product, as the `Pair`s the prelude declares.
     ///
     /// A constructor application and not a structural record, which makes a
     /// written product *canonical data*: `Pair.Both a b` is a
     /// [`musa_core::Datum::Case`], so a δ-rule and a claim's argument can read
     /// one back, and a record cannot be read back at all. That is the whole of
     /// why this is `Pair` — see [`crate::prelude`] for why the halves stay
-    /// positional.
+    /// positional, and [`super::paired`] for why a wider one nests to the right.
     fn product(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
-        match self.every(node)?.as_slice() {
-            [first, second] => Some(applied(
-                origin,
-                Raw::hosted(origin, "Pair.Both"),
-                [first.clone(), second.clone()],
-            )),
-            written => self.wide_product(node, written.len()),
-        }
+        paired(self.every(node)?, |first, second| {
+            applied(origin, Raw::hosted(origin, "Pair.Both"), [first, second])
+        })
     }
 
     /// `[a, b]` — a cons list, built from its tail.
@@ -409,6 +402,15 @@ impl Lowering<'_> {
     }
 
     /// `Ok(e)` and `Err(e)`.
+    ///
+    /// [`Raw::hosted`] rather than [`Raw::var`], for the reason [`Self::option`]
+    /// one function up is: `Ok` is a form of the grammar and not a path the
+    /// author qualified, so the single written argument is the *field* and there
+    /// are no parameters to misread it as. That is exactly the promise
+    /// `RawShape::Hosted` carries, and it is what lets `Ok(x)` infer where the
+    /// expected type is still a metavariable — an adapter's `syntax_fold_from_leaves`
+    /// branch is checked against the fold's answer parameter long before the
+    /// annotation on the transformer solves it.
     fn result(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
         let constructor = if writes(node, SyntaxKind::ErrKw) {
             "Result.Err"
@@ -417,7 +419,7 @@ impl Lowering<'_> {
         };
         let held = child(node, is_expr_node)?;
         let held = self.value(&held)?;
-        Some(Raw::app(origin, Raw::var(origin, constructor), held))
+        Some(Raw::app(origin, Raw::hosted(origin, constructor), held))
     }
 
     /// `f(a, b)`, and `x.m(a)` with it.
@@ -443,8 +445,11 @@ impl Lowering<'_> {
             let supplied = [
                 // Unplaced, for the same reason the scope below is `Piece`: a
                 // `fn` body stands at no one place in the piece, so where its
-                // facts *came from* is each call site's to fill in.
-                self.provenance_at(origin, false),
+                // facts *came from* is each call site's to fill in. Under no
+                // declaration by the same argument — this is a call in a
+                // function and not a block of notation, so there is no motif,
+                // bar, or voice to name.
+                self.provenance_at(origin, false, crate::origin::DeclarationId::default()),
                 // The scope a `music` block starts at, because a `fn` body is
                 // inside no voice and no part. `stdlib/src/voicing.musa:57`'s
                 // `sound_for` is the caller this is written for, and the voice
@@ -610,6 +615,30 @@ impl Lowering<'_> {
         let left = self.value(parts.first()?)?;
         let right = self.value(parts.get(1)?)?;
         Some(applied(origin, Raw::var(origin, method), [left, right]))
+    }
+
+    /// `e.m(y)` where `e` is not a name — `[1, 2].collect()`, `f(x).m(y)`,
+    /// `xs[i].m(y)`.
+    ///
+    /// The other half of [`Self::application`]'s dotted-head reading, and a
+    /// separate case for the reason the *parser* makes it one: `low.rise()` is
+    /// three tokens that may be a module member or a method, so the name is read
+    /// whole and the question is deferred; a receiver with no name has nothing
+    /// to defer, so the parser commits and this is where the commitment is
+    /// honored. Both readings end at the same [`Raw::method`], which is what
+    /// makes "resolves by exact receiver" one rule rather than two.
+    ///
+    /// Written out because the corpus writes it. `option_fold(fallback, present,
+    /// value)` becomes `value.fold_from_end(fallback, present)`, and `value` at
+    /// most of `staff.musa`'s call sites is a field read or a call's answer
+    /// rather than a bound name — so a reading that took only named receivers
+    /// would make the trait unreachable from exactly the code it was introduced
+    /// for.
+    fn method_call(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
+        let receiver = self.value(&child(node, is_expr_node)?)?;
+        let named = own_tokens(node).find(|token| token.kind() == SyntaxKind::Identifier)?;
+        let method = Raw::method(origin, receiver, named.text());
+        Some(Raw::call(origin, method, self.arguments(node)?))
     }
 
     /// `xs[i]` — `Index::at(xs, i)`, which is §5's last row and §1.5's own
@@ -982,18 +1011,13 @@ impl Lowering<'_> {
                 // bracket it could not finish would bind names nobody wrote.
                 _ => return None,
             },
-            // `(m, n)` matches the constructor a product is written as.
-            SyntaxKind::LParen => match names.as_slice() {
-                [first, second] => RawPattern::constructor(
-                    origin,
-                    "Pair.Both",
-                    [
-                        RawPattern::bind(origin, first.as_str()),
-                        RawPattern::bind(origin, second.as_str()),
-                    ],
-                ),
-                written => return self.wide_product(node, written.len()),
-            },
+            // `(m, n)` matches the constructor a product is written as, and a
+            // wider one matches the nesting [`super::paired`] writes. A `(` with
+            // no name under it is the [`SyntaxKind::LBracket`] case again: the
+            // parser has already complained.
+            SyntaxKind::LParen => paired(bound(&names), |first, second| {
+                RawPattern::constructor(origin, "Pair.Both", [first, second])
+            })?,
             // `Tying::Untied` — §1.5's path, read exactly as it is in an
             // expression, because a case named in its type's namespace is the
             // same name written in the same way.

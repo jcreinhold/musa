@@ -149,6 +149,11 @@
 //   the package could find the same fault and could not point anywhere.
 
 library {
+    // `map`, `filter`, and `range` are ordinary source now that `Iterable`
+    // carries the folds, so the reader that uses them says where they come
+    // from. An adapter may not import a *syntax* — that is the bootstrap cycle
+    // — but an ordinary import only brings declarations in.
+    import std::list;
 
     // The highest of the three levels, and a promise the compiler checks where
     // this module is imported: this adapter reads a region, serves one
@@ -199,27 +204,23 @@ library {
     }
 
     // The six things a staff says about itself before any notation.
-    data Head {
-        Head(
-            instrument: Given,
-            shift: Given,
-            written_clef: Given,
-            tonality: Given,
-            beats: Given,
-            spelled: Given,
-        ),
+    record Head {
+        instrument: Given;
+        shift: Given;
+        written_clef: Given;
+        tonality: Given;
+        beats: Given;
+        spelled: Given;
     }
 
     // What one stretch of notation reads to.
-    data Reading {
-        Reading(
-            items: Syntax<TokenTree>,
-            span: Ratio,
-            opens: Sound,
-            hangs: Hanging,
-            head: Head,
-            refusal: Refusal,
-        ),
+    record Reading {
+        items: Syntax<TokenTree>;
+        span: Ratio;
+        opens: Sound;
+        hangs: Hanging;
+        head: Head;
+        refusal: Refusal;
     }
 
     // How many dots a written value carries.
@@ -247,7 +248,7 @@ library {
     // the dot before it added.
     fn dotted_factor(dots: Dots) -> Ratio {
         match dots {
-            NoDots -> 1,
+            NoDots -> 1/1,
             OneDot -> 3/2,
             TwoDots -> 7/4,
             ThreeDots -> 15/8,
@@ -319,17 +320,15 @@ library {
     // what the traversal costs: `bar` arrives after its braces and its
     // parentheses, `c5` after the value written on it, and `clef` after the
     // word it names. A descent written by hand would hold the same seven.
-    data Pending {
-        Pending(
-            read: Reading,
-            length: Length,
-            dots: Dots,
-            tying: Tying,
-            numbers: Numbers,
-            taken: Taken,
-            voiced: Voiced,
-            words: Words,
-        ),
+    record Pending {
+        read: Reading;
+        length: Length;
+        dots: Dots;
+        tying: Tying;
+        numbers: Numbers;
+        taken: Taken;
+        voiced: Voiced;
+        words: Words;
     }
 
     // Where the reader is, which is the one thing a token cannot say about
@@ -359,7 +358,14 @@ library {
     // --------------------------------------------------------------- emitting
 
     // Nothing said yet.
-    let no_head = Head(Absent, Absent, Absent, Absent, Absent, Absent);
+    let no_head: Head = Head {
+        instrument = Absent,
+        shift = Absent,
+        written_clef = Absent,
+        tonality = Absent,
+        beats = Absent,
+        spelled = Absent,
+    };
 
     // A name, as an expression.
     fn named(here: NodePath, role: Nat, spelling: Text) -> Syntax<TokenTree> {
@@ -374,9 +380,9 @@ library {
         spelling: Text,
         one: Syntax<TokenTree>,
     ) -> Syntax<TokenTree> {
-        syntax_group(syntax_built(here, role, 0), Delimiter.Layout, [
+        syntax_group(syntax_built(here, role, 0), Delimiter::Layout, [
             named(here, role, spelling),
-            syntax_group(syntax_built(here, role, 2), Delimiter.Parentheses, [one]),
+            syntax_group(syntax_built(here, role, 2), Delimiter::Parentheses, [one]),
         ])
     }
 
@@ -387,11 +393,11 @@ library {
         one: Syntax<TokenTree>,
         two: Syntax<TokenTree>,
     ) -> Syntax<TokenTree> {
-        syntax_group(syntax_built(here, role, 0), Delimiter.Layout, [
+        syntax_group(syntax_built(here, role, 0), Delimiter::Layout, [
             named(here, role, spelling),
-            syntax_group(syntax_built(here, role, 2), Delimiter.Parentheses, [
+            syntax_group(syntax_built(here, role, 2), Delimiter::Parentheses, [
                 one,
-                syntax_token(syntax_built(here, role, 3), TokenKind.Comma, ","),
+                syntax_token(syntax_built(here, role, 3), TokenKind::Comma, ","),
                 two,
             ]),
         ])
@@ -405,13 +411,13 @@ library {
         two: Syntax<TokenTree>,
         three: Syntax<TokenTree>,
     ) -> Syntax<TokenTree> {
-        syntax_group(syntax_built(here, role, 0), Delimiter.Layout, [
+        syntax_group(syntax_built(here, role, 0), Delimiter::Layout, [
             named(here, role, spelling),
-            syntax_group(syntax_built(here, role, 2), Delimiter.Parentheses, [
+            syntax_group(syntax_built(here, role, 2), Delimiter::Parentheses, [
                 one,
-                syntax_token(syntax_built(here, role, 3), TokenKind.Comma, ","),
+                syntax_token(syntax_built(here, role, 3), TokenKind::Comma, ","),
                 two,
-                syntax_token(syntax_built(here, role, 4), TokenKind.Comma, ","),
+                syntax_token(syntax_built(here, role, 4), TokenKind::Comma, ","),
                 three,
             ]),
         ])
@@ -426,15 +432,15 @@ library {
         three: Syntax<TokenTree>,
         four: Syntax<TokenTree>,
     ) -> Syntax<TokenTree> {
-        syntax_group(syntax_built(here, role, 0), Delimiter.Layout, [
+        syntax_group(syntax_built(here, role, 0), Delimiter::Layout, [
             named(here, role, spelling),
-            syntax_group(syntax_built(here, role, 2), Delimiter.Parentheses, [
+            syntax_group(syntax_built(here, role, 2), Delimiter::Parentheses, [
                 one,
-                syntax_token(syntax_built(here, role, 3), TokenKind.Comma, ","),
+                syntax_token(syntax_built(here, role, 3), TokenKind::Comma, ","),
                 two,
-                syntax_token(syntax_built(here, role, 4), TokenKind.Comma, ","),
+                syntax_token(syntax_built(here, role, 4), TokenKind::Comma, ","),
                 three,
-                syntax_token(syntax_built(here, role, 5), TokenKind.Comma, ","),
+                syntax_token(syntax_built(here, role, 5), TokenKind::Comma, ","),
                 four,
             ]),
         ])
@@ -450,17 +456,17 @@ library {
         four: Syntax<TokenTree>,
         five: Syntax<TokenTree>,
     ) -> Syntax<TokenTree> {
-        syntax_group(syntax_built(here, role, 0), Delimiter.Layout, [
+        syntax_group(syntax_built(here, role, 0), Delimiter::Layout, [
             named(here, role, spelling),
-            syntax_group(syntax_built(here, role, 2), Delimiter.Parentheses, [
+            syntax_group(syntax_built(here, role, 2), Delimiter::Parentheses, [
                 one,
-                syntax_token(syntax_built(here, role, 3), TokenKind.Comma, ","),
+                syntax_token(syntax_built(here, role, 3), TokenKind::Comma, ","),
                 two,
-                syntax_token(syntax_built(here, role, 4), TokenKind.Comma, ","),
+                syntax_token(syntax_built(here, role, 4), TokenKind::Comma, ","),
                 three,
-                syntax_token(syntax_built(here, role, 5), TokenKind.Comma, ","),
+                syntax_token(syntax_built(here, role, 5), TokenKind::Comma, ","),
                 four,
-                syntax_token(syntax_built(here, role, 6), TokenKind.Comma, ","),
+                syntax_token(syntax_built(here, role, 6), TokenKind::Comma, ","),
                 five,
             ]),
         ])
@@ -478,21 +484,21 @@ library {
         six: Syntax<TokenTree>,
         seven: Syntax<TokenTree>,
     ) -> Syntax<TokenTree> {
-        syntax_group(syntax_built(here, role, 0), Delimiter.Layout, [
+        syntax_group(syntax_built(here, role, 0), Delimiter::Layout, [
             named(here, role, spelling),
-            syntax_group(syntax_built(here, role, 2), Delimiter.Parentheses, [
+            syntax_group(syntax_built(here, role, 2), Delimiter::Parentheses, [
                 one,
-                syntax_token(syntax_built(here, role, 3), TokenKind.Comma, ","),
+                syntax_token(syntax_built(here, role, 3), TokenKind::Comma, ","),
                 two,
-                syntax_token(syntax_built(here, role, 4), TokenKind.Comma, ","),
+                syntax_token(syntax_built(here, role, 4), TokenKind::Comma, ","),
                 three,
-                syntax_token(syntax_built(here, role, 5), TokenKind.Comma, ","),
+                syntax_token(syntax_built(here, role, 5), TokenKind::Comma, ","),
                 four,
-                syntax_token(syntax_built(here, role, 6), TokenKind.Comma, ","),
+                syntax_token(syntax_built(here, role, 6), TokenKind::Comma, ","),
                 five,
-                syntax_token(syntax_built(here, role, 7), TokenKind.Comma, ","),
+                syntax_token(syntax_built(here, role, 7), TokenKind::Comma, ","),
                 six,
-                syntax_token(syntax_built(here, role, 8), TokenKind.Comma, ","),
+                syntax_token(syntax_built(here, role, 8), TokenKind::Comma, ","),
                 seven,
             ]),
         ])
@@ -505,31 +511,39 @@ library {
 
     // Nothing read at all.
     fn nothing_read(here: NodePath) -> Reading {
-        Reading(no_items(here), 0, Silent, Closed, no_head, NoRefusal)
+        Reading {
+            items = no_items(here),
+            span = 0/1,
+            opens = Silent,
+            hangs = Closed,
+            head = no_head,
+            refusal = NoRefusal,
+        }
     }
 
     // A reader that has read nothing, ready to be threaded through children.
     fn nothing_pending(here: NodePath) -> Pending {
-        Pending(
-            nothing_read(here),
-            NoLength,
-            NoDots,
-            Untied,
-            NoNumbers,
-            NoBody,
-            NoVoices,
-            NoWords,
-        )
+        Pending {
+            read = nothing_read(here),
+            length = NoLength,
+            dots = NoDots,
+            tying = Untied,
+            numbers = NoNumbers,
+            taken = NoBody,
+            voiced = NoVoices,
+            words = NoWords,
+        }
     }
 
     // The anchor of the node at `here`, or a zero where the compiler has no
     // range. An anchor is a number whose meaning is the compiler's table: this
     // adapter hands one over and can read nothing from it.
     fn anchored(region: Syntax<TokenTree>, here: NodePath) -> Syntax<TokenTree> {
-        option_fold(
-            syntax_token(syntax_built(here, 32, 0), TokenKind.Integer, "0"),
-            fn (node: Syntax<TokenTree>) -> Syntax<TokenTree> { node },
-            syntax_anchor(region, here, syntax_built(here, 33, 0)),
+        syntax_anchor(region, here, syntax_built(here, 33, 0)).fold_from_end(
+            syntax_token(syntax_built(here, 32, 0), TokenKind::Integer, "0"),
+            fn (node: Syntax<TokenTree>, otherwise: Syntax<TokenTree>) -> Syntax<TokenTree> {
+                node
+            },
         )
     }
 
@@ -555,7 +569,7 @@ library {
                 numeral,
                 syntax_token(
                     syntax_built(here, 30, 0),
-                    TokenKind.Integer,
+                    TokenKind::Integer,
                     match dots {
                         NoDots -> "0",
                         OneDot -> "1",
@@ -607,10 +621,11 @@ library {
     // region itself stands in where there is nothing there, which cannot
     // happen for a path the traversal handed out.
     fn node_at(region: Syntax<TokenTree>, spot: NodePath) -> Syntax<TokenTree> {
-        option_fold(
+        syntax_at(region, spot).fold_from_end(
             region,
-            fn (node: Syntax<TokenTree>) -> Syntax<TokenTree> { node },
-            syntax_at(region, spot),
+            fn (node: Syntax<TokenTree>, otherwise: Syntax<TokenTree>) -> Syntax<TokenTree> {
+                node
+            },
         )
     }
 
@@ -625,7 +640,7 @@ library {
         match one {
             Unopened -> None,
             Opened(place, pending) -> match pending {
-                Pending(read, length, dots, tying, numbers, taken, voiced, words) -> only_word(
+                Pending { read, length, dots, tying, numbers, taken, voiced, words } -> only_word(
                     words,
                 ),
             },
@@ -634,17 +649,16 @@ library {
 
     // Whether a child is a written pitch.
     fn is_pitch(one: State) -> Bool {
-        option_fold(
+        said_of(one).fold_from_end(
             false,
-            fn (said: Said) -> Bool {
+            fn (said: Said, otherwise: Bool) -> Bool {
                 match said {
                     Said(spot, kind, spelling) -> token_kind_equal(
                         kind,
-                        TokenKind.PitchLiteral,
+                        TokenKind::PitchLiteral,
                     ),
                 }
             },
-            said_of(one),
         )
     }
 
@@ -652,65 +666,62 @@ library {
     // the next. A layout group is transparent to the parser, so a list of them
     // reads as the list literal it spells.
     fn voice_written(here: NodePath, one: State) -> Syntax<TokenTree> {
-        option_fold(
-            syntax_token(syntax_built(here, 44, 0), TokenKind.Error, ""),
-            fn (said: Said) -> Syntax<TokenTree> {
+        said_of(one).fold_from_end(
+            syntax_token(syntax_built(here, 44, 0), TokenKind::Error, ""),
+            fn (said: Said, otherwise: Syntax<TokenTree>) -> Syntax<TokenTree> {
                 match said {
                     Said(spot, kind, spelling) -> syntax_group(
                         syntax_built(spot, 42, 0),
-                        Delimiter.Layout,
+                        Delimiter::Layout,
                         [
                             syntax_token(
                                 syntax_built(spot, 41, 0),
-                                TokenKind.PitchLiteral,
+                                TokenKind::PitchLiteral,
                                 spelling,
                             ),
-                            syntax_token(syntax_built(spot, 43, 0), TokenKind.Comma, ","),
+                            syntax_token(syntax_built(spot, 43, 0), TokenKind::Comma, ","),
                         ],
                     ),
                 }
             },
-            said_of(one),
         )
     }
 
     // The spelling of the first pitch among some children, if there is one.
     fn first_voice(parts: List<State>) -> Option<Text> {
-        list_fold_from_start(
+        parts.fold_from_start(
             None,
-            fn (one: State, sofar: Option<Text>) -> Option<Text> {
+            fn (sofar: Option<Text>, one: State) -> Option<Text> {
                 match sofar {
                     Some(found) -> Some(found),
-                    None -> option_fold(
+                    None -> said_of(one).fold_from_end(
                         None,
-                        fn (said: Said) -> Option<Text> {
+                        fn (said: Said, otherwise: Option<Text>) -> Option<Text> {
                             match said {
                                 Said(spot, kind, spelling) -> if token_kind_equal(
                                     kind,
-                                    TokenKind.PitchLiteral,
+                                    TokenKind::PitchLiteral,
                                 ) {
                                     Some(spelling)
                                 } else { None },
                             }
                         },
-                        said_of(one),
                     ),
                 }
             },
-            parts,
         )
     }
 
     // The pitches of `[ … ]`, as the list expression the package's `Chord` and
     // `Grace` take, together with the first of them for a tie to meet.
     fn voiced_of(here: NodePath, parts: List<State>) -> Voiced {
-        option_fold(
+        first_voice(parts).fold_from_end(
             NoVoices,
-            fn (spelling: Text) -> Voiced {
+            fn (spelling: Text, otherwise: Voiced) -> Voiced {
                 Voices(
                     syntax_group(
                         syntax_built(here, 47, 0),
-                        Delimiter.Brackets,
+                        Delimiter::Brackets,
                         map(
                             fn (one: State) -> Syntax<TokenTree> { voice_written(here, one) },
                             filter(is_pitch, parts),
@@ -719,7 +730,7 @@ library {
                     spelling,
                     syntax_group(
                         syntax_built(here, 48, 0),
-                        Delimiter.Brackets,
+                        Delimiter::Brackets,
                         map(
                             fn (one: State) -> Syntax<TokenTree> { voice_written(here, one) },
                             filter(is_pitch, parts),
@@ -727,7 +738,6 @@ library {
                     ),
                 )
             },
-            first_voice(parts),
         )
     }
 
@@ -744,16 +754,16 @@ library {
         trouble: Refusal,
     ) -> Pending {
         match later {
-            Pending(read, length, dots, tying, numbers, taken, voiced, words) -> match read {
-                Reading(was, span, was_open, was_hanging, head, refusal) -> later with {
-                    read = Reading(
-                        items,
-                        ratio_add(span, added),
-                        opens,
-                        hangs,
-                        head,
-                        first_refusal(trouble, refusal),
-                    ),
+            Pending { read, length, dots, tying, numbers, taken, voiced, words } -> match read {
+                Reading { items = was, span, opens = was_open, hangs = was_hanging, head, refusal } -> later with {
+                    read = Reading {
+                        items = items,
+                        span = ratio_add(span, added),
+                        opens = opens,
+                        hangs = hangs,
+                        head = head,
+                        refusal = first_refusal(trouble, refusal),
+                    },
                     length = NoLength,
                     dots = NoDots,
                     tying = Untied,
@@ -788,7 +798,7 @@ library {
     // Everything a placed item needs to know about what follows it.
     fn following(later: Pending) -> Reading {
         match later {
-            Pending(read, length, dots, tying, numbers, taken, voiced, words) -> read,
+            Pending { read, length, dots, tying, numbers, taken, voiced, words } -> read,
         }
     }
 
@@ -804,7 +814,7 @@ library {
         hangs: Hanging,
     ) -> Pending {
         match following(later) {
-            Reading(items, span, next, beyond, head, refusal) -> match tie_met(
+            Reading { items, span, opens = next, hangs = beyond, head, refusal } -> match tie_met(
                 hangs,
                 next,
                 beyond,
@@ -841,10 +851,15 @@ library {
         trouble: Refusal,
     ) -> Pending {
         match body {
-            Reading(inner, inner_span, inner_opens, inner_hangs, inner_head, inner_refusal) -> match following(
-                later,
-            ) {
-                Reading(items, span, next, beyond, head, refusal) -> match tie_met(
+            Reading {
+                items = inner,
+                span = inner_span,
+                opens = inner_opens,
+                hangs = inner_hangs,
+                head = inner_head,
+                refusal = inner_refusal,
+            } -> match following(later) {
+                Reading { items, span, opens = next, hangs = beyond, head, refusal } -> match tie_met(
                     inner_hangs,
                     next,
                     beyond,
@@ -882,16 +897,16 @@ library {
     // that is not what went wrong.
     fn faulting(later: Pending, node: Syntax<TokenTree>, why: Text) -> Pending {
         match later {
-            Pending(read, length, dots, tying, numbers, taken, voiced, words) -> match read {
-                Reading(items, span, opens, hangs, head, refusal) -> later with {
-                    read = Reading(
-                        items,
-                        span,
-                        opens,
-                        hangs,
-                        head,
-                        first_refusal(Refused(node, why), refusal),
-                    )
+            Pending { read, length, dots, tying, numbers, taken, voiced, words } -> match read {
+                Reading { items, span, opens, hangs, head, refusal } -> later with {
+                    read = Reading {
+                        items = items,
+                        span = span,
+                        opens = opens,
+                        hangs = hangs,
+                        head = head,
+                        refusal = first_refusal(Refused(node, why), refusal),
+                    }
                 },
             },
         }
@@ -900,10 +915,10 @@ library {
     // A refusal, with nothing placed.
     fn refusing(later: Pending, node: Syntax<TokenTree>, why: Text) -> Pending {
         match following(later) {
-            Reading(items, span, next, beyond, head, refusal) -> after_item(
+            Reading { items, span, opens = next, hangs = beyond, head, refusal } -> after_item(
                 later,
                 items,
-                0,
+                0/1,
                 next,
                 beyond,
                 Refused(node, why),
@@ -927,7 +942,7 @@ library {
         length: Length,
     ) -> Pending {
         match later {
-            Pending(r, was, dots, tying, numbers, taken, voiced, words) -> match was {
+            Pending { read = r, length = was, dots, tying, numbers, taken, voiced, words } -> match was {
                 // The left `length` is the field; the right is this
                 // function's parameter. A right-hand side reads the scope
                 // around the update, never the fields of its subject.
@@ -953,7 +968,7 @@ library {
     // more than any form in this notation takes.
     fn holding_word(region: Syntax<TokenTree>, later: Pending, said: Said) -> Pending {
         match later {
-            Pending(r, length, dots, tying, numbers, taken, voiced, words) -> match words {
+            Pending { read = r, length, dots, tying, numbers, taken, voiced, words } -> match words {
                 NoWords -> later with {
                     words = OneWord(said)
                 },
@@ -984,7 +999,7 @@ library {
         node: Syntax<TokenTree>,
     ) -> Result<Head, Refusal> {
         match head {
-            Head(instrument, shift, written_clef, tonality, beats, spelled) -> match which {
+            Head { instrument, shift, written_clef, tonality, beats, spelled } -> match which {
                 "instrument" -> match instrument {
                     Absent -> Ok(head with {
                         instrument = Stated(given)
@@ -1034,15 +1049,22 @@ library {
         node: Syntax<TokenTree>,
     ) -> Pending {
         match later {
-            Pending(read, length, dots, tying, numbers, taken, voiced, words) -> match read {
-                Reading(items, span, opens, hangs, head, refusal) -> match stating(
+            Pending { read, length, dots, tying, numbers, taken, voiced, words } -> match read {
+                Reading { items, span, opens, hangs, head, refusal } -> match stating(
                     head,
                     which,
                     given,
                     node,
                 ) {
                     Ok(stated) -> later with {
-                        read = Reading(items, span, opens, hangs, stated, refusal),
+                        read = Reading {
+                            items = items,
+                            span = span,
+                            opens = opens,
+                            hangs = hangs,
+                            head = stated,
+                            refusal = refusal,
+                        },
                         length = NoLength,
                         dots = NoDots,
                         tying = Untied,
@@ -1052,14 +1074,14 @@ library {
                         words = NoWords
                     },
                     Err(why) -> later with {
-                        read = Reading(
-                            items,
-                            span,
-                            opens,
-                            hangs,
-                            head,
-                            first_refusal(why, refusal),
-                        ),
+                        read = Reading {
+                            items = items,
+                            span = span,
+                            opens = opens,
+                            hangs = hangs,
+                            head = head,
+                            refusal = first_refusal(why, refusal),
+                        },
                         length = NoLength,
                         dots = NoDots,
                         tying = Untied,
@@ -1106,9 +1128,9 @@ library {
     ) -> Pending {
         match written_duration(spot, length) {
             None -> refusing(later, node_at(region, spot), "this rest states no written value"),
-            Some(value) -> option_fold(
+            Some(value) -> stated_span(length).fold_from_end(
                 refusing(later, node_at(region, spot), "this rest states no written value"),
-                fn (span: Ratio) -> Pending {
+                fn (span: Ratio, otherwise: Pending) -> Pending {
                     sounding(
                         region,
                         spot,
@@ -1119,7 +1141,6 @@ library {
                         Closed,
                     )
                 },
-                stated_span(length),
             ),
         }
     }
@@ -1135,9 +1156,9 @@ library {
     ) -> Pending {
         match written_duration(spot, length) {
             None -> refusing(later, node_at(region, spot), "this note states no written value"),
-            Some(value) -> option_fold(
+            Some(value) -> stated_span(length).fold_from_end(
                 refusing(later, node_at(region, spot), "this note states no written value"),
-                fn (span: Ratio) -> Pending {
+                fn (span: Ratio, otherwise: Pending) -> Pending {
                     sounding(
                         region,
                         spot,
@@ -1148,7 +1169,7 @@ library {
                             "Note",
                             syntax_token(
                                 syntax_built(spot, 49, 0),
-                                TokenKind.PitchLiteral,
+                                TokenKind::PitchLiteral,
                                 spelling,
                             ),
                             value,
@@ -1162,7 +1183,6 @@ library {
                         },
                     )
                 },
-                stated_span(length),
             ),
         }
     }
@@ -1184,13 +1204,13 @@ library {
                     node_at(region, spot),
                     "this chord states no written value",
                 ),
-                Some(value) -> option_fold(
+                Some(value) -> stated_span(length).fold_from_end(
                     refusing(
                         later,
                         node_at(region, spot),
                         "this chord states no written value",
                     ),
-                    fn (span: Ratio) -> Pending {
+                    fn (span: Ratio, otherwise: Pending) -> Pending {
                         sounding(
                             region,
                             spot,
@@ -1204,7 +1224,6 @@ library {
                             },
                         )
                     },
-                    stated_span(length),
                 ),
             },
         }
@@ -1213,7 +1232,7 @@ library {
     // What follows the item being placed.
     fn after_items(later: Pending) -> Syntax<TokenTree> {
         match following(later) {
-            Reading(items, span, opens, hangs, head, refusal) -> items,
+            Reading { items, span, opens, hangs, head, refusal } -> items,
         }
     }
 
@@ -1232,22 +1251,22 @@ library {
     ) -> Pending {
         match taken {
             NoBody -> refusing(later, node_at(region, spot), "this bar holds no notation"),
-            Took(body_at, body) -> option_fold(
+            Took(body_at, body) -> beats_span(numbers).fold_from_end(
                 refusing(
                     later,
                     node_at(region, spot),
                     "this bar does not say what it measures",
                 ),
-                fn (wanted: Ratio) -> Pending {
-                    option_fold(
+                fn (wanted: Ratio, otherwise: Pending) -> Pending {
+                    beats_of(spot, numbers).fold_from_end(
                         refusing(
                             later,
                             node_at(region, spot),
                             "this bar does not say what it measures",
                         ),
-                        fn (beats: Syntax<TokenTree>) -> Pending {
+                        fn (beats: Syntax<TokenTree>, otherwise: Pending) -> Pending {
                             match body {
-                                Reading(items, span, opens, hangs, head, refusal) -> nesting(
+                                Reading { items, span, opens, hangs, head, refusal } -> nesting(
                                     spot,
                                     later,
                                     call4(
@@ -1272,10 +1291,8 @@ library {
                                 ),
                             }
                         },
-                        beats_of(spot, numbers),
                     )
                 },
-                beats_span(numbers),
             ),
         }
     }
@@ -1290,7 +1307,7 @@ library {
         match taken {
             NoBody -> refusing(later, node_at(region, spot), "this slur holds no notation"),
             Took(body_at, body) -> match body {
-                Reading(items, span, opens, hangs, head, refusal) -> nesting(
+                Reading { items, span, opens, hangs, head, refusal } -> nesting(
                     spot,
                     later,
                     call3(spot, 8, "Slur", anchored(region, spot), items, after_items(later)),
@@ -1331,7 +1348,7 @@ library {
                         "this tuplet plays no notes in the time of some",
                     ),
                     false -> match body {
-                        Reading(items, span, opens, hangs, head, refusal) -> nesting(
+                        Reading { items, span, opens, hangs, head, refusal } -> nesting(
                             spot,
                             later,
                             call5(
@@ -1373,7 +1390,7 @@ library {
             Took(body_at, body) -> match numbers {
                 NoNumbers -> refusing(later, node_at(region, spot), missing),
                 OneNumber(first, value) -> match body {
-                    Reading(items, span, opens, hangs, head, refusal) -> nesting(
+                    Reading { items, span, opens, hangs, head, refusal } -> nesting(
                         spot,
                         later,
                         call4(
@@ -1413,16 +1430,15 @@ library {
         later: Pending,
         numbers: Numbers,
     ) -> Pending {
-        option_fold(
+        beats_of(spot, numbers).fold_from_end(
             refusing(
                 later,
                 node_at(region, spot),
                 "this staff does not say what time it opens in",
             ),
-            fn (beats: Syntax<TokenTree>) -> Pending {
+            fn (beats: Syntax<TokenTree>, otherwise: Pending) -> Pending {
                 heading(later, "time", beats, node_at(region, spot))
             },
-            beats_of(spot, numbers),
         )
     }
 
@@ -1434,20 +1450,19 @@ library {
         later: Pending,
         numbers: Numbers,
     ) -> Pending {
-        option_fold(
+        beats_of(spot, numbers).fold_from_end(
             refusing(later, node_at(region, spot), "this meter states no count and unit"),
-            fn (beats: Syntax<TokenTree>) -> Pending {
+            fn (beats: Syntax<TokenTree>, otherwise: Pending) -> Pending {
                 sounding(
                     region,
                     spot,
                     later,
                     call1(spot, 6, "MeterChange", beats),
-                    0,
+                    0/1,
                     Silent,
                     Closed,
                 )
             },
-            beats_of(spot, numbers),
         )
     }
 
@@ -1466,7 +1481,7 @@ library {
                 spot,
                 later,
                 call1(spot, 5, "Grace", listed),
-                0,
+                0/1,
                 Silent,
                 Closed,
             ),
@@ -1516,9 +1531,9 @@ library {
         kind: TokenKind,
         words: Words,
     ) -> Pending {
-        option_fold(
+        only_word(words).fold_from_end(
             stray_word(region, spot, later, words),
-            fn (said: Said) -> Pending {
+            fn (said: Said, otherwise: Pending) -> Pending {
                 match said {
                     Said(word_at, said_kind, spelling) -> if token_kind_equal(said_kind, kind) {
                         heading(
@@ -1536,8 +1551,22 @@ library {
                     },
                 }
             },
-            only_word(words),
         )
+    }
+
+    // The word one of the two single-word headers knows, or nothing.
+    //
+    // Written as a function and not inline, because a fold's receiver is a
+    // position that has to *infer* a type and an `if` is checked against one.
+    // Naming the answer is what the language has instead of a `let` expression.
+    fn header_given(
+        which: Text,
+        word_at: NodePath,
+        spelling: Text,
+    ) -> Option<Syntax<TokenTree>> {
+        if text_equal(which, "clef") {
+            clef_named(word_at, spelling)
+        } else { spelling_named(word_at, spelling) }
     }
 
     // `clef treble` and `spelling shortest_readable` — a word this adapter
@@ -1549,26 +1578,26 @@ library {
         which: Text,
         words: Words,
     ) -> Pending {
-        option_fold(
+        only_word(words).fold_from_end(
             stray_word(region, spot, later, words),
-            fn (said: Said) -> Pending {
+            fn (said: Said, otherwise: Pending) -> Pending {
                 match said {
-                    Said(word_at, said_kind, spelling) -> option_fold(
+                    Said(word_at, said_kind, spelling) -> header_given(
+                        which,
+                        word_at,
+                        spelling,
+                    ).fold_from_end(
                         refusing(
                             later,
                             node_at(region, word_at),
                             "this staff does not know this word",
                         ),
-                        fn (given: Syntax<TokenTree>) -> Pending {
+                        fn (given: Syntax<TokenTree>, otherwise: Pending) -> Pending {
                             heading(later, which, given, node_at(region, word_at))
                         },
-                        if text_equal(which, "clef") {
-                            clef_named(word_at, spelling)
-                        } else { spelling_named(word_at, spelling) },
                     ),
                 }
             },
-            only_word(words),
         )
     }
 
@@ -1586,16 +1615,16 @@ library {
                     Said(mode_at, mode_kind, mode) -> heading(
                         later,
                         "key",
-                        syntax_group(syntax_built(spot, 51, 0), Delimiter.Parentheses, [
-                            syntax_token(syntax_built(spot, 51, 1), TokenKind.KeyKw, "key"),
+                        syntax_group(syntax_built(spot, 51, 0), Delimiter::Parentheses, [
+                            syntax_token(syntax_built(spot, 51, 1), TokenKind::KeyKw, "key"),
                             syntax_token(
                                 syntax_built(tonic_at, 52, 0),
-                                TokenKind.Identifier,
+                                TokenKind::Identifier,
                                 tonic,
                             ),
                             syntax_token(
                                 syntax_built(mode_at, 52, 1),
-                                TokenKind.Identifier,
+                                TokenKind::Identifier,
                                 mode,
                             ),
                         ]),
@@ -1633,7 +1662,7 @@ library {
         later: Pending,
     ) -> Pending {
         match later {
-            Pending(read, length, dots, tying, numbers, taken, voiced, words) -> match spelling {
+            Pending { read, length, dots, tying, numbers, taken, voiced, words } -> match spelling {
                 "rest" -> rest_read(region, spot, later, length),
                 "bar" -> bar_read(region, spot, later, numbers, taken),
                 "pickup" -> bar_read(region, spot, later, numbers, taken),
@@ -1667,7 +1696,7 @@ library {
                     spot,
                     later,
                     "instrument",
-                    TokenKind.String,
+                    TokenKind::String,
                     words,
                 ),
                 "transposing" -> literal_header(
@@ -1675,7 +1704,7 @@ library {
                     spot,
                     later,
                     "transposing",
-                    TokenKind.IntervalLiteral,
+                    TokenKind::IntervalLiteral,
                     words,
                 ),
                 "clef" -> named_header(region, spot, later, "clef", words),
@@ -1695,23 +1724,22 @@ library {
         later: Pending,
     ) -> Pending {
         match later {
-            Pending(read, length, dots, tying, numbers, taken, voiced, words) -> if token_kind_equal(
+            Pending { read, length, dots, tying, numbers, taken, voiced, words } -> if token_kind_equal(
                 kind,
-                TokenKind.Tilde,
+                TokenKind::Tilde,
             ) {
                 later with {
                     tying = Tied(node_at(region, spot))
                 }
-            } else if token_kind_equal(kind, TokenKind.Dot) {
-                option_fold(
+            } else if token_kind_equal(kind, TokenKind::Dot) {
+                one_more_dot(dots).fold_from_end(
                     refusing(later, node_at(region, spot), "this value carries too many dots"),
-                    fn (more: Dots) -> Pending { later with { dots = more } },
-                    one_more_dot(dots),
+                    fn (more: Dots, otherwise: Pending) -> Pending { later with { dots = more } },
                 )
-            } else if token_kind_equal(kind, TokenKind.Integer) {
-                option_fold(
+            } else if token_kind_equal(kind, TokenKind::Integer) {
+                syntax_number(node_at(region, spot)).fold_from_end(
                     refusing(later, node_at(region, spot), "this is not a written value"),
-                    fn (value: Ratio) -> Pending {
+                    fn (value: Ratio, otherwise: Pending) -> Pending {
                         // `c4/0` is the one number that names no value, and the
                         // guard is written rather than caught: dividing by zero
                         // is a refusal the checker makes, and a refused adapter
@@ -1730,7 +1758,7 @@ library {
                                 Divided(
                                     syntax_token(
                                         syntax_built(spot, 53, 0),
-                                        TokenKind.Integer,
+                                        TokenKind::Integer,
                                         spelling,
                                     ),
                                     dots,
@@ -1739,13 +1767,12 @@ library {
                             ),
                         }
                     },
-                    syntax_number(node_at(region, spot)),
                 )
-            } else if token_kind_equal(kind, TokenKind.PitchLiteral) {
+            } else if token_kind_equal(kind, TokenKind::PitchLiteral) {
                 note_read(region, spot, later, spelling, length, tying)
-            } else if token_kind_equal(kind, TokenKind.Slash) {
+            } else if token_kind_equal(kind, TokenKind::Slash) {
                 later
-            } else if token_kind_equal(kind, TokenKind.Comma) {
+            } else if token_kind_equal(kind, TokenKind::Comma) {
                 later
             } else { word_read(region, spot, spelling, kind, later) },
         }
@@ -1760,13 +1787,13 @@ library {
     ) -> Numbers {
         match numbers {
             NoNumbers -> OneNumber(
-                syntax_token(syntax_built(spot, 45, 0), TokenKind.Integer, spelling),
+                syntax_token(syntax_built(spot, 45, 0), TokenKind::Integer, spelling),
                 value,
             ),
             OneNumber(first, already) -> TwoNumbers(
                 first,
                 already,
-                syntax_token(syntax_built(spot, 45, 0), TokenKind.Integer, spelling),
+                syntax_token(syntax_built(spot, 45, 0), TokenKind::Integer, spelling),
                 value,
             ),
             TwoNumbers(first, already, second, other) -> numbers,
@@ -1786,36 +1813,34 @@ library {
         later: Pending,
     ) -> Pending {
         match later {
-            Pending(read, length, dots, tying, numbers, taken, voiced, words) -> if token_kind_equal(
+            Pending { read, length, dots, tying, numbers, taken, voiced, words } -> if token_kind_equal(
                 kind,
-                TokenKind.Integer,
+                TokenKind::Integer,
             ) {
-                option_fold(
+                syntax_number(node_at(region, spot)).fold_from_end(
                     later,
-                    fn (value: Ratio) -> Pending {
+                    fn (value: Ratio, otherwise: Pending) -> Pending {
                         later with {
                             numbers = one_more_number(spot, numbers, spelling, value)
                         }
                     },
-                    syntax_number(node_at(region, spot)),
                 )
-            } else if token_kind_equal(kind, TokenKind.Rational) {
+            } else if token_kind_equal(kind, TokenKind::Rational) {
                 match length {
-                    NoLength -> option_fold(
+                    NoLength -> syntax_number(node_at(region, spot)).fold_from_end(
                         later,
-                        fn (value: Ratio) -> Pending {
+                        fn (value: Ratio, otherwise: Pending) -> Pending {
                             later with {
                                 length = Spanned(
                                     syntax_token(
                                         syntax_built(spot, 46, 0),
-                                        TokenKind.Rational,
+                                        TokenKind::Rational,
                                         spelling,
                                     ),
                                     value,
                                 )
                             }
                         },
-                        syntax_number(node_at(region, spot)),
                     ),
                     Divided(numeral, held_dots, span) -> later,
                     Spanned(numeral, span) -> later,
@@ -1921,14 +1946,13 @@ library {
     ) -> Reading {
         match pending_of(
             here,
-            list_fold_from_end(
+            kids.fold_from_end(
                 Opened(InBody, nothing_pending(here)),
                 fn (kid, later) { run_syntax_step(later, kid) },
-                kids,
             ),
         ) {
-            Pending(read, length, dots, tying, numbers, taken, voiced, words) -> match read {
-                Reading(items, span, opens, hangs, head, refusal) -> read with {
+            Pending { read, length, dots, tying, numbers, taken, voiced, words } -> match read {
+                Reading { items, span, opens, hangs, head, refusal } -> read with {
                     refusal = first_refusal(
                         leftover(region, here, length, numbers, taken, voiced, words),
                         refusal,
@@ -1946,10 +1970,9 @@ library {
     fn stated_inside(here: NodePath, kids: List<SyntaxStep<State, State>>) -> Pending {
         pending_of(
             here,
-            list_fold_from_start(
+            kids.fold_from_start(
                 Opened(InParens, nothing_pending(here)),
-                fn (kid, earlier) { run_syntax_step(earlier, kid) },
-                kids,
+                fn (earlier, kid) { run_syntax_step(earlier, kid) },
             ),
         )
     }
@@ -1984,7 +2007,7 @@ library {
         kids: List<SyntaxStep<State, State>>,
     ) -> Pending {
         match stated_inside(here, kids) {
-            Pending(read, exact, dots, tying, stated, taken, voiced, words) -> match exact {
+            Pending { read, length = exact, dots, tying, numbers = stated, taken, voiced, words } -> match exact {
                 NoLength -> pending with {
                     numbers = stated
                 },
@@ -2005,7 +2028,7 @@ library {
         kids: List<SyntaxStep<State, State>>,
     ) -> Pending {
         match pending {
-            Pending(read, length, dots, tying, numbers, taken, voiced, words) -> match length {
+            Pending { read, length, dots, tying, numbers, taken, voiced, words } -> match length {
                 NoLength -> pending with {
                     voiced = voiced_of(here, voiced_inside(here, kids))
                 },
@@ -2037,11 +2060,11 @@ library {
         delimiter: Delimiter,
         kids: List<SyntaxStep<State, State>>,
     ) -> State {
-        if delimiter_equal(delimiter, Delimiter.Braces) {
+        if delimiter_equal(delimiter, Delimiter::Braces) {
             taking(here, state, body_reading(region, here, kids))
-        } else if delimiter_equal(delimiter, Delimiter.Parentheses) {
+        } else if delimiter_equal(delimiter, Delimiter::Parentheses) {
             reopened(state, parens_pending(region, here, pending_of(here, state), kids))
-        } else if delimiter_equal(delimiter, Delimiter.Brackets) {
+        } else if delimiter_equal(delimiter, Delimiter::Brackets) {
             reopened(state, brackets_pending(region, here, pending_of(here, state), kids))
         } else { state }
     }
@@ -2062,10 +2085,9 @@ library {
     ) -> State {
         match place_of(state) {
             InBody -> entered(region, state, here, delimiter, kids),
-            InParens -> list_fold_from_start(
+            InParens -> kids.fold_from_start(
                 state,
-                fn (kid, earlier) { run_syntax_step(earlier, kid) },
-                kids,
+                fn (earlier, kid) { run_syntax_step(earlier, kid) },
             ),
             InBrackets -> state,
         }
@@ -2075,11 +2097,11 @@ library {
     // wherever it is written, which is the one rule that holds in all three
     // places.
     fn trivial(kind: TokenKind) -> Bool {
-        if token_kind_equal(kind, TokenKind.Whitespace) {
+        if token_kind_equal(kind, TokenKind::Whitespace) {
             true
-        } else if token_kind_equal(kind, TokenKind.LineComment) {
+        } else if token_kind_equal(kind, TokenKind::LineComment) {
             true
-        } else { token_kind_equal(kind, TokenKind.BlockComment) }
+        } else { token_kind_equal(kind, TokenKind::BlockComment) }
     }
 
     // The one word a bracketed child amounts to. Each child is read from a
@@ -2158,7 +2180,7 @@ library {
         read: Reading,
     ) -> Result<Syntax<TokenTree>, (Syntax<TokenTree>, Text)> {
         match read {
-            Reading(items, span, opens, hangs, head, refusal) -> match refusal {
+            Reading { items, span, opens, hangs, head, refusal } -> match refusal {
                 Refused(node, why) -> Err((node, why)),
                 NoRefusal -> match hangs {
                     Hangs(spelling, node) -> Err((
@@ -2171,7 +2193,7 @@ library {
                         // first refusal straight back out, so what is left on
                         // the page is the document being built rather than the
                         // six ways it might not be.
-                        Head(instrument, shift, written_clef, tonality, beats, spelled) -> Ok(call7(
+                        Head { instrument, shift, written_clef, tonality, beats, spelled } -> Ok(call7(
                             here,
                             19,
                             "Document",
@@ -2224,12 +2246,14 @@ library {
     // The region's own braces are what the traversal is started outside of, so
     // a region written any other way arrives here with nothing taken and is
     // told what a region is written between.
-    let expand = fn (region) {
+    let expand = fn (
+        region: Syntax<TokenTree>,
+    ) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {
         match recurse_syntax(
             fn (state, here) { missing_read(region, state, here) },
             fn (state, here, kind, text) { token_read(region, state, here, kind, text) },
             fn (state, here, name) {
-                token_read(region, state, here, TokenKind.Identifier, name)
+                token_read(region, state, here, TokenKind::Identifier, name)
             },
             fn (state, here, delimiter, kids) {
                 group_read(region, state, here, delimiter, kids)
@@ -2239,7 +2263,7 @@ library {
         ) {
             Unopened -> Err((region, "a staff region is written between braces")),
             Opened(place, pending) -> match pending {
-                Pending(read, length, dots, tying, numbers, taken, voiced, words) -> match taken {
+                Pending { read, length, dots, tying, numbers, taken, voiced, words } -> match taken {
                     NoBody -> Err((region, "a staff region is written between braces")),
                     Took(spot, body) -> document_read(region, spot, body),
                 },
@@ -2288,14 +2312,13 @@ library {
 
     // The dots after a written value, one per dot.
     //
-    // `nat_fold` and not a comparison, because the language has no `nat_equal`
-    // and needs none: a count is eliminated by counting down it, which is what
-    // a fold over a `Nat` is.
+    // A fold over the count and not a comparison, because the language has no
+    // `nat_equal` and needs none: a count is eliminated by counting through it,
+    // which is what folding `range(dots)` is.
     fn dotted(dots: Nat) -> Text {
-        nat_fold(
+        range(dots).fold_from_start(
             "",
-            fn (step_index: Nat, sofar: Text) -> Text { text_join([sofar, "."]) },
-            dots,
+            fn (sofar: Text, step_index: Nat) -> Text { text_join([sofar, "."]) },
         )
     }
 
@@ -2311,10 +2334,11 @@ library {
                 nat_literal(division),
                 dotted(dots),
             ])),
-            ExactSpan(span) -> option_fold(
+            ExactSpan(span) -> ratio_literal(span).fold_from_end(
                 Err("this staff writes no exact span below zero, and this note holds one"),
-                fn (spelt: Text) -> Result<Text, Text> { Ok(text_join(["(", spelt, ")"])) },
-                ratio_literal(span),
+                fn (spelt: Text, otherwise: Result<Text, Text>) -> Result<Text, Text> {
+                    Ok(text_join(["(", spelt, ")"]))
+                },
             ),
         }
     }
@@ -2323,10 +2347,9 @@ library {
 
     // The pitches of a chord or a grace, in the order they are held.
     fn voiced_pitches(voices: List<Pitch>) -> Text {
-        list_fold_from_start(
+        voices.fold_from_start(
             "",
-            fn (sung: Pitch, sofar: Text) -> Text { spaced(sofar, pitch_literal(sung)) },
-            voices,
+            fn (sofar: Text, sung: Pitch) -> Text { spaced(sofar, pitch_literal(sung)) },
         )
     }
 
@@ -2426,10 +2449,11 @@ library {
     // made smaller by leaving it out — the loss says which part could not be
     // written.
     fn transposing_word(shift: Interval) -> Result<Text, Text> {
-        option_fold(
+        interval_literal(shift).fold_from_end(
             Err("this staff has no written name for the interval this part is transposed by"),
-            fn (spelt: Text) -> Result<Text, Text> { Ok(text_join(["transposing ", spelt])) },
-            interval_literal(shift),
+            fn (spelt: Text, otherwise: Result<Text, Text>) -> Result<Text, Text> {
+                Ok(text_join(["transposing ", spelt]))
+            },
         )
     }
 
@@ -2448,7 +2472,12 @@ library {
     // Every item this adapter emits carries an anchor, so `replace` reaches any
     // note, bar, tuplet, slur, repeat or ending on the page — which is the edit
     // §2.6 of the trial note draws, and more besides.
-    let edit = fn (region, command, anchor, argument) {
+    let edit = fn (
+        region: Syntax<TokenTree>,
+        command: Text,
+        anchor: Nat,
+        argument: Text,
+    ) -> Result<List<Pair<Nat, Text>>, Text> {
         match command {
             "replace" -> Ok([(anchor, argument)]),
             _ -> Err("`staff` serves one command, `replace`"),

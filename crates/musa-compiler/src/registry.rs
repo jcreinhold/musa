@@ -307,10 +307,13 @@ pub(crate) fn owned() -> Result<Cx, ElabError> {
         cx = cx.declaring(&group);
     }
     let builtins = builtins(&cx)?;
-    // `Eq` last, because an instance body *is* a δ-builtin's name: `impl
+    // The traits last, because an instance body *is* a δ-builtin's name: `impl
     // Eq<Text>`'s `equal` is `text_equal` and nothing else, so the trait cannot
     // be declared until the registry that resolves that name is the context's.
-    crate::prelude::equality(cx.with_externs(Arc::new(Registry::new(bases, builtins)?)))
+    // `Iterable`'s bodies name no builtin, but they name `List.Cons`, and one
+    // ordering for all of them is one thing to remember rather than two.
+    let cx = crate::prelude::equality(cx.with_externs(Arc::new(Registry::new(bases, builtins)?)))?;
+    crate::prelude::collections(cx)
 }
 
 /// A base type at `Type 0`.
@@ -485,7 +488,12 @@ fn bases() -> Vec<Base> {
         // what §5.9 keeps separate is the *operations*, and those are two tables
         // in [`builtins`].
         plain("Cat"),
-        indexed("Syntax", "Cat"),
+        // The one base type with an acceptance rule. `11-quotation.md` §1's
+        // forgetting rule is stated as the checker's and not as an operation an
+        // author writes, so it is registered *with the type it is about* and the
+        // elaborator asks it where a direction exists — see [`rules::forgets`]
+        // and [`syntax_carrier`].
+        indexed("Syntax", "Cat").accepting(rules::forgets),
         plain("TokenKind"),
         plain("Delimiter"),
         plain("NodePath"),
@@ -856,6 +864,36 @@ fn quotation(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
     ])
 }
 
+/// `forget_category : Syntax ⟨expr⟩ → Syntax ⟨token-tree⟩`.
+///
+/// What `11-quotation.md` §1's acceptance rule elaborates to. The section calls
+/// it "one acceptance rule in the checker rather than a `forget` an author
+/// writes", and both halves of that are here: the rule is
+/// [`rules::forgets`], carried on the `Syntax` registration and asked by
+/// `musa-core`'s one directional site, and this operation is what the *checker*
+/// inserts — it is in neither ownership table, so no name resolves to it and no
+/// adapter can write it.
+///
+/// It is a δ-builtin and not bare acceptance because an elaborated term has to
+/// re-check in the core. Without it the term the elaborator produced would hold
+/// a `Syntax ⟨expr⟩` where its own type says `Syntax ⟨token-tree⟩`, and
+/// [`musa_core::well_typed`] would refuse a term this compiler had accepted.
+///
+/// One direction and one signature, because [`crate::syntax::Cat`] has two
+/// cases. A third category is a case in [`rules::forgets`] and a second
+/// registration here.
+fn syntax_carrier() -> Builtin {
+    Builtin::new(
+        rules::FORGOTTEN,
+        arrow(
+            vec![syntax_type(crate::syntax::Cat::Expr)],
+            syntax_type(crate::syntax::Cat::TokenTree),
+        ),
+        musa_core::Family::Delta,
+        rules::FORGET,
+    )
+}
+
 /// Every compiler-owned δ operation, as a core builtin.
 ///
 /// Two tables, kept two. `BUILTIN_OWNERSHIP` is the source language's and
@@ -894,6 +932,7 @@ fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
         ));
     }
     built.extend(traversal::eliminators(cx)?);
+    built.push(syntax_carrier());
     built.extend(quotation(cx)?);
     built.extend(track::builtins(cx)?);
     built.extend(notation::builtins(cx)?);

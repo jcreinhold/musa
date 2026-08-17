@@ -91,7 +91,7 @@ fn module_names_are_names_not_keywords() {
     let cases: &[(&str, &str)] = &[
         ("import std::harmony;", "harmony"),
         ("import std::list;", "list"),
-        ("import std::option;", "option"),
+        ("import std::pitch;", "pitch"),
         ("import std::pitch;", "pitch"),
         ("import std::scale;", "scale"),
         ("import std::tonal::harmony;", "harmony"),

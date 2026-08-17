@@ -30,7 +30,6 @@ use musa_compiler::{Code, CompileOptions, ScoreEventKind, ScoreSnapshot, Severit
 /// leaves as notes in a voice.
 const PRELUDE: &str = r"
     import std::list;
-    import std::option;
     import std::post_tonal::pcset;
     import std::post_tonal::serial;
 
@@ -38,11 +37,11 @@ const PRELUDE: &str = r"
 
     fn tick(one: EventTrack<WrittenTime>, carried: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { together(one, carried) }
     fn beat() -> EventTrack<WrittenTime> { music { c4/1 } }
-    fn tally(count: Nat) -> EventTrack<WrittenTime> { list_fold_from_start(music { rest/1 }, tick, repeated(beat(), count)) }
+    fn tally(count: Nat) -> EventTrack<WrittenTime> { repeated(beat(), count).fold_from_start(music { rest/1 }, fn (carried, one) { tick(one, carried) }) }
     fn beat_for_pc(member: Pc12) -> EventTrack<WrittenTime> { beat() }
     fn beat_for_nat(count: Nat) -> EventTrack<WrittenTime> { beat() }
     fn beat_for_spelling(spelled: NoteName) -> EventTrack<WrittenTime> { beat() }
-    fn chorus(voices: List<EventTrack<WrittenTime>>) -> EventTrack<WrittenTime> { list_fold_from_start(music { rest/1 }, tick, voices) }
+    fn chorus(voices: List<EventTrack<WrittenTime>>) -> EventTrack<WrittenTime> { voices.fold_from_start(music { rest/1 }, fn (carried, one) { tick(one, carried) }) }
 ";
 
 /// A piece whose one voice sounds `expression`.
@@ -147,8 +146,14 @@ fn forgetting_a_spelling_is_total_and_not_injective() {
 fn a_spelling_needs_a_collection_and_may_not_exist_in_it() {
     let bindings = "
     fn present(spelled: NoteName) -> EventTrack<WrittenTime> { beat() }
-    let in_c: EventTrack<WrittenTime> = option_fold(music { rest/1 }, present, spelled_in(pc(1), scale c major));
-    let in_d: EventTrack<WrittenTime> = option_fold(music { rest/1 }, present, spelled_in(pc(1), scale d major));
+    let in_c: EventTrack<WrittenTime> = spelled_in(pc(1), scale c major).fold_from_end(
+        music { rest/1 },
+        fn (found, otherwise) { present(found) },
+    );
+    let in_d: EventTrack<WrittenTime> = spelled_in(pc(1), scale d major).fold_from_end(
+        music { rest/1 },
+        fn (found, otherwise) { present(found) },
+    );
 ";
     assert_eq!(
         counted(bindings, "in_c"),

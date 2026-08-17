@@ -47,8 +47,8 @@ const PRELUDE: &str = r"
 
     fn tick(one: EventTrack<WrittenTime>, carried: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { together(one, carried) }
     fn beat() -> EventTrack<WrittenTime> { music { c4/1 } }
-    fn tally(count: Nat) -> EventTrack<WrittenTime> { list_fold_from_start(music { rest/1 }, tick, repeated(beat(), count)) }
-    fn chorus(voices: List<EventTrack<WrittenTime>>) -> EventTrack<WrittenTime> { list_fold_from_start(music { rest/1 }, tick, voices) }
+    fn tally(count: Nat) -> EventTrack<WrittenTime> { repeated(beat(), count).fold_from_start(music { rest/1 }, fn (carried, one) { tick(one, carried) }) }
+    fn chorus(voices: List<EventTrack<WrittenTime>>) -> EventTrack<WrittenTime> { voices.fold_from_start(music { rest/1 }, fn (carried, one) { tick(one, carried) }) }
     fn beat_for_pc(member: Pc12) -> EventTrack<WrittenTime> { beat() }
     fn beat_for_voicing(chosen: Voicing) -> EventTrack<WrittenTime> { beat() }
     fn beat_for_triad(refined: Triad) -> EventTrack<WrittenTime> { beat() }
@@ -119,7 +119,7 @@ fn asked(start: &str, reached: &str, question: &str) -> usize {
             "    fn reached(refined: Triad) -> Triad {{ {reached} }}
     fn question(probed: Triad) -> EventTrack<WrittenTime> {{ {question} }}
     fn combined(refined: Triad) -> EventTrack<WrittenTime> {{ question(reached(refined)) }}
-    let sounded: EventTrack<WrittenTime> = option_fold(music {{ rest/1 }}, combined, {start});"
+    let sounded: EventTrack<WrittenTime> = {start}.fold_from_end(music {{ rest/1 }}, fn (found, otherwise) {{ combined(found) }});"
         ),
         "sounded",
     )
@@ -148,7 +148,10 @@ fn voiceable(start: &str, reached: &str, bass: &str) -> bool {
     asked(
         start,
         reached,
-        &format!("option_fold(music {{ rest/1 }}, beat_for_voicing, close_position(triad_content(probed), {bass}))"),
+        &format!(
+            "close_position(triad_content(probed), {bass}).fold_from_end(music {{ rest/1 }}, \
+             fn (found, otherwise) {{ beat_for_voicing(found) }})"
+        ),
     ) == 1
 }
 
@@ -289,10 +292,10 @@ fn a_chain_is_the_composition_it_is_written_as() {
 fn only_a_triad_is_in_the_domain() {
     let refinements = "
     fn present(refined: Triad) -> EventTrack<WrittenTime> { beat_for_triad(refined) }
-    let seventh: EventTrack<WrittenTime> = option_fold(music { rest/1 }, present, as_triad(chord c major7));
-    let suspended: EventTrack<WrittenTime> = option_fold(music { rest/1 }, present, as_triad(chord c sus4));
-    let diminished: EventTrack<WrittenTime> = option_fold(music { rest/1 }, present, as_triad(chord c dim));
-    let minor: EventTrack<WrittenTime> = option_fold(music { rest/1 }, present, as_triad(chord c minor));
+    let seventh: EventTrack<WrittenTime> = as_triad(chord c major7).fold_from_end(music { rest/1 }, fn (found, otherwise) { present(found) });
+    let suspended: EventTrack<WrittenTime> = as_triad(chord c sus4).fold_from_end(music { rest/1 }, fn (found, otherwise) { present(found) });
+    let diminished: EventTrack<WrittenTime> = as_triad(chord c dim).fold_from_end(music { rest/1 }, fn (found, otherwise) { present(found) });
+    let minor: EventTrack<WrittenTime> = as_triad(chord c minor).fold_from_end(music { rest/1 }, fn (found, otherwise) { present(found) });
 ";
     assert_eq!(counted(refinements, "seventh"), 0, "a seventh chord is not a triad");
     assert_eq!(
@@ -309,7 +312,7 @@ fn only_a_triad_is_in_the_domain() {
     );
     let errors = errors_of(&widened);
     assert!(
-        errors.iter().any(|(code, _)| *code == Code::TypeMismatch),
+        errors.iter().any(|(code, _)| *code == Code::ConversionMismatch),
         "a chord class is not a triad and the checker says so: {errors:?}"
     );
 }

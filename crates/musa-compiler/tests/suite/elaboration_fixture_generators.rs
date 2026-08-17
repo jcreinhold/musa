@@ -240,12 +240,11 @@ fn core_pressure() -> String {
          piece \"Core Pressure Baseline\" {\n\
              import std::core;\n\
              import std::list;\n\
-             import std::nat;\n\n\
              tempo 1/4 = 96;\n\
              meter 4/4;\n\
              key c major;\n\n\
              fn keep(index: Nat, accumulator: Nat) -> Nat { accumulator }\n\
-             fn depth_0(seed: Nat) -> Nat { nat_fold(seed, keep, 1) }\n",
+             fn depth_0(seed: Nat) -> Nat { range(1).fold_from_start(seed, fn (carried, index) { keep(index, carried) }) }\n",
     );
     for index in 1_usize..64 {
         let below = index.saturating_sub(1);
@@ -257,7 +256,7 @@ fn core_pressure() -> String {
     source.push_str(
         "\n    let deep: Nat = depth_63(0);\n\
          \x20   let counted: List<Nat> = naturals(512);\n\
-         \x20   let folded: Nat = list_fold_from_start(0, keep, counted);\n\n\
+         \x20   let folded: Nat = counted.fold_from_start(0, fn (carried, one) { keep(one, carried) });\n\n\
          \x20   let raise: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(P8, line) };\n\
          \x20   let subject: EventTrack<WrittenTime> = music { c4/4 d4/4 e4/4 f4/4 };\n\
          \x20   let answer: EventTrack<WrittenTime> = compose_music(raise, retrograde, subject);\n\n\

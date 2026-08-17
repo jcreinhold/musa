@@ -51,7 +51,7 @@ use crate::visibility::Visibility;
 /// [`Refusal::NonPositive`] for an occurrence §1.1 forbids, and otherwise as
 /// [`crate::check`]: the parameters, indices, fields, and chosen indices are
 /// ordinary elaboration.
-pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<Arc<Group>, ElabError> {
+pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spend), ElabError> {
     let here = data.origin;
     let closed = cx.closed();
     let mut elaborator = Elaborator::new(cx);
@@ -117,14 +117,15 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<Arc<Group>, ElabError> 
     let positive: Vec<bool> = (0..u32::try_from(params.len()).unwrap_or(u32::MAX))
         .map(|which| parameter_is_positive(&families, arity, under_params.depth(), which))
         .collect();
-    Ok(Arc::new(Group {
+    let group = Arc::new(Group {
         origin: here,
         params: Arc::from(params),
         positive: Arc::from(positive),
         families: Arc::from(families),
         module: cx.module(),
         package: cx.package(),
-    }))
+    });
+    Ok((group, elaborator.spent()))
 }
 
 /// Refuse a family whose cases are not all equally visible.

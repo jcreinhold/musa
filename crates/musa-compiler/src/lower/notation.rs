@@ -95,7 +95,7 @@ use num_rational::Ratio;
 
 use super::{Lowering, applied, child, children, is_expr_node, listed, significant_tokens, whole, writes};
 use crate::diagnose::{Code, Diagnostic};
-use crate::origin::SourceSpan;
+use crate::origin::{DeclarationId, SourceSpan};
 use crate::score::NotatedDuration;
 
 /// What a block reads and never writes.
@@ -111,12 +111,40 @@ pub(super) struct Reading {
     scale: Option<Counting>,
     /// Whether this block stands at one place in the piece.
     ///
-    /// The one thing that decides whether a `key`, a `meter`, a `tempo`, or a
-    /// `clef` may be written here. Not derivable from [`Reading::scope`]: a
-    /// free `music { … }` value reads at [`crate::Scope::Piece`] and so does a
-    /// piece's own header, and the difference between them is not what the fact
-    /// is *about* but whether "from here onward" has a single here.
+    /// Decides the `source_span` every event built here carries: material
+    /// usable at several places came from every one of them, so an unplaced
+    /// reading writes [`crate::elaborate::SHARED_ORIGIN`] and each use fills it
+    /// in. Not derivable from [`Reading::scope`]: a free `music { … }` value
+    /// reads at [`crate::Scope::Piece`] and so does a piece's own header, and
+    /// the difference between them is not what the fact is *about* but whether
+    /// the text is spoken in one place.
     placed: bool,
+    /// Whether an enclosing `repeat` speaks this block more than once.
+    ///
+    /// A second bit rather than a wider meaning for [`Reading::placed`],
+    /// because the two questions come apart at exactly one construct and answer
+    /// different callers. A repeat body *is* written at one place, so its
+    /// events keep their own span and each pass is told apart by
+    /// [`crate::origin::ExpansionStep::RepeatIteration`] — but it is played `n`
+    /// times, so a statement meaning "from here onward" has `n` heres. Folding
+    /// the two together would either hand every note in a repeat
+    /// [`crate::elaborate::SHARED_ORIGIN`] forever or admit a meter change that
+    /// takes effect at a different bar on every pass.
+    ///
+    /// Set for *any* repeat rather than for a repeat of more than one pass:
+    /// `repeat 4 to 16 { … }` leaves the count to the performance
+    /// (`11-realization.md`), so "played once" is not a property this reading
+    /// may rely on.
+    repeated: bool,
+    /// The declaration this block is, or is written in.
+    ///
+    /// A motif, a fragment, a named bar, a free `music` value, and a voice each
+    /// ask [`super::Sites::declaring`] for one, and everything read under the
+    /// reading they make names it. Carried here rather than on the walk because
+    /// a walk reads several: [`super::piece`] enters every voice of the score
+    /// with one [`Lowering`], and a body nested inside a voice belongs to that
+    /// voice however deep it is.
+    declaration: DeclarationId,
     /// The meter in force where this block begins.
     ///
     /// Read lexically, exactly as [`Reading::scale`] is, and for the same
@@ -157,25 +185,45 @@ impl Reading {
     /// [`crate::Scope::Piece`] because a fragment is "usable at several places"
     /// and so has no voice of its own, and no scale because `01-surface.md` §2
     /// refuses an implicit C major.
-    fn free() -> Self {
+    fn free(declaration: DeclarationId) -> Self {
         Self {
             scope: crate::Scope::Piece,
             scale: None,
             placed: false,
+            repeated: false,
+            declaration,
             meter: crate::score::Meter::default(),
             tuplet: Ratio::ONE,
         }
     }
 
     /// The reading a body written at one place in the piece is read under.
-    pub(super) fn at(scope: crate::Scope) -> Self {
+    pub(super) fn at(scope: crate::Scope, declaration: DeclarationId) -> Self {
         Self {
             scope,
             scale: None,
             placed: true,
+            repeated: false,
+            declaration,
             meter: crate::score::Meter::default(),
             tuplet: Ratio::ONE,
         }
+    }
+
+    /// The same reading, inside a `repeat` that speaks it again.
+    ///
+    /// One-way: nothing nested inside a repeat is played once, so a reading
+    /// never becomes unrepeated on the way down.
+    const fn again(self) -> Self {
+        Self { repeated: true, ..self }
+    }
+
+    /// Whether a statement meaning "from here onward" may stand in this block.
+    ///
+    /// Both bits, and neither alone: the here must exist ([`Reading::placed`])
+    /// and there must be exactly one of it ([`Reading::repeated`]).
+    const fn permanent(self) -> bool {
+        self.placed && !self.repeated
     }
 
     /// The same reading, inside a tuplet that scales durations by `factor`.
@@ -475,7 +523,12 @@ impl Lowering<'_> {
     /// which is what §2's twenty signatures say it denotes. The questions
     /// machinery stays where it belongs, serving a `?` the author wrote.
     pub(crate) fn music(&mut self, node: &SyntaxNode) -> Option<Raw> {
-        self.notated(node, Reading::free())
+        // The one place a block of notation that is not a voice begins, so the
+        // one place that asks for its number: a motif, a fragment, a named bar,
+        // and a `music` value all arrive here, and each is a declaration a fact
+        // can name.
+        let declaration = self.sites.declaring();
+        self.notated(node, Reading::free(declaration))
     }
 
     /// `motif turn(root: Pitch) { … }` — the function §2 says it is.
@@ -1035,7 +1088,7 @@ impl Lowering<'_> {
             origin,
             Raw::hosted(origin, "play"),
             [
-                self.provenance(origin, span, reading.placed),
+                self.provenance(origin, span, reading.placed, reading.declaration),
                 scope_of(origin, reading.scope),
                 // `plain` and not `payload`: `play` reads a `Voicing` and not an
                 // `Opaque<Voicing>`, and a literal at the wrong Rust type
@@ -1250,10 +1303,11 @@ impl Lowering<'_> {
         // Folded once each, before any pass is built: a body read `times` over
         // would report every diagnostic inside it `times` over, and speak every
         // name it uses that many times.
-        let body = self.folded(node, statements(node).filter(is_not_an_ending), reading);
+        let inside = reading.again();
+        let body = self.folded(node, statements(node).filter(is_not_an_ending), inside);
         let played: Option<Vec<Raw>> = brackets
             .iter()
-            .map(|bracket| self.notated(bracket.syntax(), reading))
+            .map(|bracket| self.notated(bracket.syntax(), inside))
             .collect();
         let (body, played) = (body?, played?);
         let ending_extents: Vec<Ratio<i64>> = brackets.iter().map(|held| self.extent(held.syntax())).collect();
@@ -1705,13 +1759,14 @@ impl Lowering<'_> {
     /// and this reading refuses `meter` inside reusable material, so there is no
     /// other case.
     fn senza(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading, span: SourceSpan) -> Option<Raw> {
-        if !reading.placed {
+        if !reading.permanent() {
             return self.misplaced("an unmeasured stretch", span);
         }
         let opened = self.sounded_at(
             origin,
             crate::Scope::Piece,
             reading.placed,
+            reading.declaration,
             metered(origin, crate::score::Meter::NONE),
             Ratio::ZERO,
         );
@@ -1723,6 +1778,7 @@ impl Lowering<'_> {
             origin,
             crate::Scope::Piece,
             reading.placed,
+            reading.declaration,
             metered(origin, reading.meter),
             Ratio::ZERO,
         );
@@ -2062,7 +2118,7 @@ impl Lowering<'_> {
     /// comes back is a call and every caller gets one. The `Option` that used to
     /// be here was the `?` this reading wrote, and there is no `?` left to write.
     fn sounded(&self, origin: Origin, reading: Reading, fact: Raw, held: Ratio<i64>) -> Raw {
-        self.sounded_at(origin, reading.scope, reading.placed, fact, held)
+        self.sounded_at(origin, reading.scope, reading.placed, reading.declaration, fact, held)
     }
 
     /// The same, at a scope the reading does not supply.
@@ -2077,6 +2133,7 @@ impl Lowering<'_> {
         origin: Origin,
         scope: crate::Scope,
         placed: bool,
+        declaration: DeclarationId,
         fact: Raw,
         held: Ratio<i64>,
     ) -> Raw {
@@ -2084,7 +2141,7 @@ impl Lowering<'_> {
             origin,
             Raw::hosted(origin, "sounded"),
             [
-                self.provenance_at(origin, placed),
+                self.provenance_at(origin, placed, declaration),
                 scope_of(origin, scope),
                 fact,
                 written_duration(origin, held),
@@ -2109,7 +2166,7 @@ impl Lowering<'_> {
         span: SourceSpan,
         which: Context,
     ) -> Option<Raw> {
-        if !reading.placed {
+        if !reading.permanent() {
             return self.misplaced(which.what(), span);
         }
         // Where the *fact* belongs, which is not where it was written: a key,
@@ -2130,7 +2187,7 @@ impl Lowering<'_> {
             },
         };
         let fact = self.fact(node, origin, span, which)?;
-        Some(self.sounded_at(origin, scope, reading.placed, fact, Ratio::ZERO))
+        Some(self.sounded_at(origin, scope, reading.placed, reading.declaration, fact, Ratio::ZERO))
     }
 
     /// The `Fact` one of the four states, without the placement around it.
@@ -2602,9 +2659,9 @@ impl Lowering<'_> {
     /// `pub(super)` for one caller outside this module: [`super::values`] reads a
     /// written `play(v, d)` as the four-argument application, and the two
     /// arguments it supplies are these.
-    pub(super) fn provenance_at(&self, origin: Origin, placed: bool) -> Raw {
+    pub(super) fn provenance_at(&self, origin: Origin, placed: bool, declaration: DeclarationId) -> Raw {
         let span = self.sites.span(origin).unwrap_or_default();
-        self.provenance(origin, span, placed)
+        self.provenance(origin, span, placed, declaration)
     }
 
     /// The same, when the caller already holds the span.
@@ -2617,19 +2674,21 @@ impl Lowering<'_> {
     /// already performs for [`crate::Scope::Piece`]. `definition_span` is the
     /// span either way, because that is what *wrote* the event and a body is
     /// written once however many times it is spoken.
+    ///
+    /// `declaration` is [`Reading::declaration`] — the motif, fragment, named
+    /// bar, `music` value, or voice this block is. Zero is a legal answer and
+    /// means what `factext.rs` already reads it as, "no declaration to name":
+    /// a fact built by a `play` call in a `fn` body is written in no block, and
+    /// which declaration it ends up in is the caller's the same way its span is.
     #[expect(
         clippy::unused_self,
         reason = "reads as a sibling of `provenance_at`, which needs the table"
     )]
-    fn provenance(&self, origin: Origin, span: SourceSpan, placed: bool) -> Raw {
+    fn provenance(&self, origin: Origin, span: SourceSpan, placed: bool, declaration: DeclarationId) -> Raw {
         let written = crate::origin::Origin {
             source_span: if placed { span } else { crate::elaborate::SHARED_ORIGIN },
             definition_span: span,
-            // Zero, which `factext.rs` already reads as "no declaration to
-            // name" — it prints `#n` only for a non-zero one. This module walks
-            // a block, and which declaration encloses it is what prompt 142's
-            // piece walk knows.
-            declaration: crate::origin::DeclarationId(0),
+            declaration,
             // Empty by construction: expansion happened in the phase, and what
             // this module reads is the answer it left behind.
             expansion_path: Vec::new(),
@@ -2642,14 +2701,17 @@ impl Lowering<'_> {
     /// *Misplaced* rather than *unsupported*: these are permanent answers, and
     /// the same statement in a score is perfectly legal. A diagnostic that said
     /// "not supported yet" would be a promise nobody intends to keep.
+    ///
+    /// The sentence names **material** rather than the `music` value it is most
+    /// often written in, because a `motif` body and a `repeat` block reach here
+    /// too and neither is a `music` value: a message that named one spelling
+    /// would be false at two of its three call sites.
     fn misplaced<T>(&mut self, what: &str, span: SourceSpan) -> Option<T> {
         self.refuse(
-            Diagnostic::error(Code::Misplaced, format!("{what} cannot stand in a `music` value"))
+            Diagnostic::error(Code::Misplaced, format!("{what} belongs to the piece, not to material"))
                 .at(span, "this says \"from here onward\"")
                 .help("write it in the voice or part this music is used in")
-                .note(
-                    "a `music` value is usable at several places, and \"from here onward\" has no unique meaning there",
-                ),
+                .note("material is usable at several places, and \"from here onward\" has no unique meaning there"),
         )
     }
 

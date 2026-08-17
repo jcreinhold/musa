@@ -8,21 +8,27 @@
 // builtin that hides something; a traversal of a list whose constructors the
 // language writes hides nothing.
 //
-// # Why a fold takes its list last and a helper takes it first
+// # Where the folds went
 //
-// The public spellings are the ones the corpus already writes:
-// `list_fold_from_start(seed, combine, values)`. The recursion cannot be
-// written in that order — §2.4's measure holds the arguments *before* the
-// recursive position fixed, so a fold that both descends the list and carries a
-// new accumulator has to descend in the first argument and accumulate in a
-// later one. Each public fold is therefore one line over a private helper whose
-// list comes first, which is where the induction hypothesis is a function of
-// the accumulator rather than of nothing.
+// A list is read by `xs.fold_from_start(seed, combine)` and
+// `xs.fold_from_end(seed, combine)`, which are `Iterable<List<A>, A>`'s two
+// required methods and not functions of this module. One trait, one spelling
+// per direction, and every container that can be walked answers to the same two
+// words — which is what a per-type `list_fold_from_start` beside an
+// `option_fold` beside a `nat_fold` could never be.
+//
+// What stays here is what the trait cannot say. `Iterable`'s derived `map` and
+// `filter` build their answer through `Buildable`, whose `push` for a list is
+// snoc, so they cost the square of the length; the two below are written over
+// `List`'s own constructors and cost the length. A caller who knows the
+// container is a list should say so.
 library {
     // The natural numbers from `first`, `count` of them, ascending.
     //
-    // The accumulator is `first` and it comes after the list-shaped argument
-    // for the reason above. `Succ` rather than `nat_add`: the successor
+    // The accumulator is `first` and it comes after the argument the recursion
+    // descends on, because §2.4's measure holds everything written *before*
+    // that argument fixed: a walk that both descends and accumulates has to
+    // descend first and accumulate later. `Succ` rather than `nat_add`: the successor
     // constructor *is* "one more", so counting needs no arithmetic and no
     // failure case.
     private fn counting_from(count: Nat, first: Nat) -> List<Nat> {
@@ -63,34 +69,6 @@ library {
                 Cons(head, filter(predicate, tail))
             } else { filter(predicate, tail) },
         }
-    }
-
-    // `combine` applied to each member in turn, carrying the answer forward.
-    private fn folded_from_start<A, B>(values: List<A>, carried: B, combine: A -> B -> B) -> B {
-        match values {
-            [] -> carried,
-            [head, .. tail] -> folded_from_start(tail, combine(head, carried), combine),
-        }
-    }
-
-    // Accumulate left to right: `combine` sees the first member first, and each
-    // application is handed what the members before it produced.
-    fn list_fold_from_start<A, B>(seed: B, combine: A -> B -> B, values: List<A>) -> B {
-        folded_from_start(values, seed, combine)
-    }
-
-    // The catamorphism's equation, written as it reads: `combine(x, fold(xs))`.
-    private fn folded_from_end<A, B>(values: List<A>, seed: B, combine: A -> B -> B) -> B {
-        match values {
-            [] -> seed,
-            [head, .. tail] -> combine(head, folded_from_end(tail, seed, combine)),
-        }
-    }
-
-    // Fold from the end: the application nearest the seed is the one over the
-    // last member, which is what lets this build right-nested data.
-    fn list_fold_from_end<A, B>(seed: B, combine: A -> B -> B, values: List<A>) -> B {
-        folded_from_end(values, seed, combine)
     }
 
     // The natural numbers from zero up to, but not including, count.

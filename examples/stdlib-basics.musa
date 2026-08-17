@@ -3,7 +3,6 @@
 piece "Standard Library Basics" {
     import std::core;
     import std::list;
-    import std::option;
 
     let subject: EventTrack<WrittenTime> = music {
         c4/4
@@ -17,7 +16,7 @@ piece "Standard Library Basics" {
         retrograde,
         subject,
     );
-    let chosen: Pitch = pitch_or_else(c4, same_pitch, Some(e4));
+    let chosen: Pitch = Some(e4).fold_from_end(c4, fn (found, otherwise) { same_pitch(found) });
     let counting: List<Nat> = naturals(4);
 
     score {

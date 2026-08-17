@@ -23,14 +23,44 @@ fn scalar_functions_capture_lexical_values_and_accept_higher_order_arguments() {
 }
 
 #[test]
-fn products_and_named_arguments_are_checked_and_evaluated() {
+fn products_are_checked_and_evaluated_at_every_width() {
     let compilation = compile_core(
         "let pair: (Nat, Bool) = (3, true); \
+         let wide: (Nat, Bool, Nat) = (3, true, 4); \
          fn keep(value: (Nat, Bool), ornament: Interval) -> (Nat, Bool) { value } \
          let first: (Nat, Bool) = keep(pair, P5); \
-         let second: (Nat, Bool) = keep(ornament: M3, value: pair);",
+         let second: (Nat, Bool) = keep(pair, M3);",
     );
     assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
+}
+
+#[test]
+fn a_wide_product_nests_the_same_way_written_out_by_hand() {
+    // What makes `(A, B, C)` a spelling rather than an encoding: the composer
+    // who nests by hand gets the same type and the same value, so the two ways
+    // of writing it are interchangeable in both directions. If the fold leaned
+    // the other way this would be a conversion mismatch at every one of the
+    // four bindings.
+    let compilation = compile_core(
+        "let wide: (Nat, Bool, Nat) = (3, true, 4); \
+         let nested: (Nat, (Bool, Nat)) = wide; \
+         let byHand: (Nat, (Bool, Nat)) = (3, (true, 4)); \
+         let back: (Nat, Bool, Nat) = byHand;",
+    );
+    assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
+}
+
+#[test]
+fn an_argument_label_at_a_use_is_refused() {
+    // A field is named at its declaration, and a label at a *use* is either
+    // agreeing with the position it already sits in or contradicting it. The
+    // law is that neither is a second way to pass an argument, so the refusal
+    // names the position rule rather than deferring to a later prompt.
+    let compilation = compile_core(
+        "fn keep(value: Nat, ornament: Interval) -> Nat { value } \
+         let second: Nat = keep(ornament: M3, value: 3);",
+    );
+    assert!(compilation.has_errors(), "a labelled argument was accepted");
 }
 
 #[test]

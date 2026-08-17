@@ -140,6 +140,18 @@ pub(crate) struct Elaborator {
     /// back and look. [`Self::settled`] is where they are retried, which is the
     /// same place the report about the ones that stayed blocked is made.
     postponed: Vec<Postponed>,
+    /// The terms §1.3 could not read yet, each with the hole it left.
+    ///
+    /// [`Self::postponed`]'s twin one sort down: that list waits for a
+    /// constraint's head and this one waits for a *type*. A bare constructor is
+    /// read against the family the expected type names, and a checking position
+    /// does not always name one at the moment it is reached —
+    /// `xs.fold_from_end(Nothing, step)` checks the seed at the method's
+    /// implicit `B`, which the argument after it determines. Reading it now
+    /// would mean guessing among the families that declare `Nothing`; refusing
+    /// now would mean the author writing a type the surface has no expression
+    /// for. So it is read later, which is neither. See [`Self::delay`].
+    delayed: Vec<Delayed>,
 }
 
 impl Elaborator {
@@ -150,6 +162,7 @@ impl Elaborator {
             metas: Vec::new(),
             levels: Vec::new(),
             postponed: Vec::new(),
+            delayed: Vec::new(),
         }
     }
 
@@ -180,6 +193,11 @@ impl Elaborator {
     /// Put back the constraints a retry could not answer.
     pub(crate) fn keep_waiting(&mut self, blocked: Vec<Postponed>) {
         self.postponed.extend(blocked);
+    }
+
+    /// What this elaboration has charged.
+    pub(crate) const fn spent(&self) -> crate::budget::Spend {
+        self.meter.spent()
     }
 
     /// `term` with every solved metavariable replaced by its solution.
@@ -215,7 +233,16 @@ impl Elaborator {
     /// Answer every postponed constraint that can now be answered, then refuse
     /// if any metavariable — of either sort — is still undetermined.
     pub(crate) fn settled(&mut self) -> Result<(), ElabError> {
-        crate::dictionary::discharge(self)?;
+        // Alternated rather than run in turn: reading a postponed term can solve
+        // the head a constraint waited on, and discharging a constraint can
+        // solve the type a term waited on. Each round either answers something
+        // or answers nothing, and a round that answered nothing ends the loop —
+        // which is the same bound [`crate::budget::Metric::Retries`] charges.
+        while {
+            crate::dictionary::discharge(self)?;
+            self.read_delayed()?
+        } {}
+        self.stubborn()?;
         self.unsolved()
     }
 
@@ -464,16 +491,116 @@ impl Elaborator {
             None => {
                 let inferred = match self.constructed(scope, raw, ty)? {
                     Some(supplied) => supplied,
+                    None if self.waits_for_a_family(scope, raw, ty) => return self.delay(scope, raw, ty),
                     None => {
                         let inferred = self.infer(scope, raw)?;
                         self.inserted(scope, inferred)?
                     }
                 };
+                if let Some(carried) = self.carried(scope, ty, &inferred)? {
+                    return Ok(carried);
+                }
                 self.unifier
                     .unify_types(&mut self.meter, scope.depth(), raw.origin(), ty, &inferred.ty)?;
                 Ok(inferred.term)
             }
         }
+    }
+
+    /// `inferred`, carried into a position of type `ty` that accepts it at a
+    /// different index — or `None` when no host rule applies and conversion
+    /// decides.
+    ///
+    /// The core's one subsumption rule, and it is the host's rather than the
+    /// core's: see [`Accepts`]. Two things about *where* it stands are the whole
+    /// of why it is sound.
+    ///
+    /// **It is here and not in [`Unifier`].** Conversion is symmetric, so a rule
+    /// living there would let a value stand at either index and the index would
+    /// certify nothing. `check`'s `Switch` is the only place in the elaborator
+    /// where one type is *expected* and another *found*, which is exactly the
+    /// asymmetry an acceptance rule needs — `11-quotation.md` §1 states its
+    /// forgetting rule directionally for the same reason.
+    ///
+    /// **It elaborates to a coercion rather than to bare acceptance.** The
+    /// alternative — return `inferred.term` unchanged and skip unification — is
+    /// what the replaced checker did, and it would leave a term whose type is
+    /// `Syntax ⟨expr⟩` standing where the elaborated program says
+    /// `Syntax ⟨token-tree⟩`. [`crate::well_typed`] would then refuse a term
+    /// this elaborator produced, which is the one invariant prompt 134 called
+    /// the most valuable in the crate. So the checker inserts the carrier, the
+    /// author never writes it, and the core keeps no notion of subtyping at all.
+    ///
+    /// # Errors
+    ///
+    /// [`Malformed::UnregisteredCarrier`] when the host's rule names an
+    /// operation its own registry does not hold, and whatever forcing the two
+    /// indices costs.
+    fn carried(&mut self, scope: &Scope, ty: &Value, inferred: &Typed) -> Result<Option<Term>, ElabError> {
+        let (Some((expected, wanted)), Some((found, held))) =
+            (self.at_a_literal_index(ty)?, self.at_a_literal_index(&inferred.ty)?)
+        else {
+            return Ok(None);
+        };
+        if expected != found {
+            return Ok(None);
+        }
+        // The rule is the *registry's*, not the one carried by whichever `Base`
+        // this type was built from. A host writes a base type's term at many
+        // sites — `Base` compares by name for exactly that reason — so reading
+        // the rule off the embedded declaration reads it off whichever copy the
+        // type happened to be built from, and only the copy in the registry was
+        // decorated. Storability is already read this way, off the registered
+        // bases and never off a type's own; this is the same authority.
+        let Some(crate::base::Extern::Base(declared)) = scope.cx().extern_named(expected.name()) else {
+            return Ok(None);
+        };
+        let Some(carrier) = declared.accepts().and_then(|accepts| accepts(&wanted, &held)) else {
+            return Ok(None);
+        };
+        let Some(crate::base::Extern::Builtin(builtin)) = scope.cx().extern_named(carrier) else {
+            return Err(Malformed::UnregisteredCarrier(carrier.into()).into());
+        };
+        let here = inferred.term.origin();
+        let builtin = builtin.term(here);
+        Ok(Some(Term::app(here, builtin, inferred.term.clone())))
+    }
+
+    /// The base type and index of `ty`, when it is one applied to one literal.
+    ///
+    /// The shape [`Accepts`] is asked about and the only one: a base type at no
+    /// index has no second position to accept from, and one whose index is a
+    /// variable or a metavariable is not settled enough to ask about — the rule
+    /// reads two literals, so both sides must have got that far.
+    fn at_a_literal_index(
+        &mut self,
+        ty: &Value,
+    ) -> Result<Option<(crate::base::Base, crate::base::Literal)>, ElabError> {
+        // Forced first, and not only at the index. `check` forces the type it
+        // was handed, but the *inferred* type reaching this arrives straight out
+        // of `infer` — and for a call whose result is an implicit parameter that
+        // is a metavariable, solved by the first argument that mentions it. A
+        // solved metavariable is a neutral with no spine, so reading the head
+        // without forcing sees `Head::Meta` and answers that this is not a type
+        // at a literal index, one layer of indirection away from the type that
+        // plainly is.
+        let unfolded = force(&mut self.meter, ty)?;
+        let ty = unfolded.as_ref().unwrap_or(ty);
+        let Form::Neutral(ref neutral) = ty.form else {
+            return Ok(None);
+        };
+        let crate::value::Head::Base(ref base) = neutral.head else {
+            return Ok(None);
+        };
+        let [crate::value::Elim::App { ref argument, .. }] = neutral.spine[..] else {
+            return Ok(None);
+        };
+        let unfolded = force(&mut self.meter, argument)?;
+        let index = unfolded.as_ref().unwrap_or(argument);
+        let Form::Lit(ref literal) = index.form else {
+            return Ok(None);
+        };
+        Ok(Some((base.clone(), literal.clone())))
     }
 
     /// The checking rule for `raw` at `ty`, or `None` when it has none and §2's
@@ -667,6 +794,103 @@ impl Elaborator {
             return Ok(None);
         };
         Ok(Some((name.to_string(), fields, Params::Holes(params))))
+    }
+
+    /// Whether `raw` is a bare constructor whose family `ty` has not yet named.
+    ///
+    /// The exact shape [`Self::unresolved`] would refuse, asked one step
+    /// earlier and with the expected type in hand. Both halves are needed and
+    /// neither is enough: a rigid expected type means [`Self::case_of`] already
+    /// answered or never will, and a name a binder or a declaration answers is
+    /// not a constructor at all.
+    ///
+    /// `Var` and not [`RawShape::Hosted`]. A reader's constructor already has a
+    /// rule at an unknown type — [`Self::constructed_open`] makes its parameters
+    /// holes — because the reader knows it wrote none. An author's `Nothing`
+    /// carries no such promise, which is why it is the one that has to wait.
+    fn waits_for_a_family(&self, scope: &Scope, raw: &Raw, ty: &Value) -> bool {
+        crate::unify::flexible_head(ty).is_some() && bare_case(scope, raw).is_some()
+    }
+
+    /// Elaborate `raw` when its type is known, and stand a hole in for it now.
+    ///
+    /// §4's postponement, applied to a term rather than to a constraint, and for
+    /// the same reason: what blocks it is an unknown some *later* part of the
+    /// same declaration usually determines. `xs.fold_from_end(Nothing, step)` is
+    /// the case that forces it — a method's implicit `B` is a metavariable when
+    /// the seed is checked and the annotation on `step` solves it one argument
+    /// later, and arguments are checked in the order they are written.
+    ///
+    /// The hole is an ordinary metavariable, so a postponement that never
+    /// unblocks needs no second reporting path: [`Self::stubborn`] refuses it as
+    /// the bare constructor it was, which is the sentence about the program
+    /// rather than about this mechanism.
+    fn delay(&mut self, scope: &Scope, raw: &Raw, ty: &Value) -> Result<Term, ElabError> {
+        let here = raw.origin();
+        let hole = self.fresh_meta(scope, here, MetaSource::PostponedTerm, ty)?;
+        self.delayed.push(Delayed {
+            scope: scope.clone(),
+            raw: raw.clone(),
+            ty: ty.clone(),
+            hole: hole.clone(),
+        });
+        Ok(hole)
+    }
+
+    /// Read every postponed term whose type is now known, and say whether any
+    /// was.
+    ///
+    /// [`crate::dictionary::discharge`]'s shape, because it is the same
+    /// mechanism: retry, keep what is still blocked, and report progress so the
+    /// caller knows whether another round could help. The two lists feed each
+    /// other — a term read here can solve the head a constraint waited on, and a
+    /// dictionary discharged there can solve the type a term waited on — which
+    /// is why [`Self::settled`] alternates them rather than running each once.
+    fn read_delayed(&mut self) -> Result<bool, ElabError> {
+        let waiting = core::mem::take(&mut self.delayed);
+        if waiting.is_empty() {
+            return Ok(false);
+        }
+        let mut answered = false;
+        let mut blocked = Vec::new();
+        for item in waiting {
+            let unfolded = force(&mut self.meter, &item.ty)?;
+            let ty = unfolded.unwrap_or_else(|| item.ty.clone());
+            if crate::unify::flexible_head(&ty).is_some() {
+                blocked.push(item);
+                continue;
+            }
+            self.meter.retry("elaboration")?;
+            let here = item.raw.origin();
+            let term = self.check(&item.scope, &item.raw, &ty)?;
+            let read = item.scope.eval(&mut self.meter, &term)?;
+            let hole = item.scope.eval(&mut self.meter, &item.hole)?;
+            self.unify_at(&item.scope, here, &ty, &hole, &read)?;
+            answered = true;
+        }
+        self.delayed.extend(blocked);
+        Ok(answered)
+    }
+
+    /// Refuse the first postponed term nothing ever determined a type for.
+    ///
+    /// The refusal it would have earned had it been read where it was written,
+    /// stated at the same origin: waiting is what the elaborator did about the
+    /// program, not something the program did.
+    fn stubborn(&mut self) -> Result<(), ElabError> {
+        let Some(item) = self.delayed.first() else {
+            return Ok(());
+        };
+        let Some(name) = bare_case(&item.scope, &item.raw) else {
+            return Ok(());
+        };
+        let families = item.scope.cx().cases(&name);
+        Err(Refusal::BareConstructor {
+            at: item.raw.origin(),
+            name,
+            families,
+        }
+        .into())
     }
 
     /// §2's constructor rule reached from the other direction: `C a⃗ ⇒ N ?p⃗`,
@@ -1911,6 +2135,38 @@ impl Elaborator {
     }
 }
 
+/// One term §1.3 could not read yet, and the hole standing where it goes.
+///
+/// [`Postponed`]'s counterpart, field for field: the scope it was written in,
+/// what it was, the type it is waiting on, and the metavariable the surrounding
+/// term was handed in the meantime. See [`Elaborator::delay`].
+struct Delayed {
+    scope: Scope,
+    raw: Raw,
+    /// The expected type as it stood when the term was reached. It is re-forced
+    /// on every retry rather than stored resolved, because what the retry is
+    /// waiting for is precisely a solution this value reaches through.
+    ty: Value,
+    hole: Term,
+}
+
+/// The name at the head of `raw`, when `raw` is a constructor no binder or
+/// declaration answers to.
+///
+/// The condition [`Elaborator::unresolved`] tests on its way to
+/// [`Refusal::BareConstructor`], lifted out so that the decision to wait and the
+/// refusal for having waited in vain read the same source.
+fn bare_case(scope: &Scope, raw: &Raw) -> Option<Name> {
+    let (head, _) = written_spine(raw)?;
+    let RawShape::Var(name) = head.shape() else {
+        return None;
+    };
+    if scope.declared(name).is_some() || scope.cx().cases(name).is_empty() {
+        return None;
+    }
+    Some(Arc::clone(name))
+}
+
 /// A `let`'s definition, and the scope its body is read in.
 struct Bound {
     scope: Scope,
@@ -2177,6 +2433,7 @@ fn stated(
         MetaSource::Dictionary => "method",
         MetaSource::ImplicitArgument => "implicit",
         MetaSource::FamilyParameter => "parameter",
+        MetaSource::PostponedTerm => "postponed",
         MetaSource::BinderType | MetaSource::UniverseLevel => "solved",
     };
     let stated = quote_type(meter, Depth(depth), ty)?.at(at);
@@ -2337,12 +2594,25 @@ fn written_case(scope: &Scope, name: &Name) -> Option<(usize, u32)> {
 /// read in the expected type's namespace, but only after a binder and a
 /// declaration have both declined it, so nothing an author named themselves can
 /// be taken for a constructor.
+///
+/// # The family answers to its own name, and that is not a declaration declining
+///
+/// `01-surface.md` §1.3 blesses `enum Beats { Beats(Nat) }` in as many words, so
+/// a word that names a family and one of its cases is an ordinary program and
+/// not a collision. Counting the family as "a declaration answered" would make
+/// every such case unwritable in checking position, which is the position §1.3
+/// says a bare constructor is *for*. The exception is exactly as wide as the
+/// coincidence: the case wins only over the family the expected type already
+/// names, and reading the word as that family is never what this position
+/// wanted, because a family is a type and an element of one is what is being
+/// checked. Any other declaration — a `let`, a function, a different family —
+/// still declines, and a binder still declines first.
 fn case_named(scope: &Scope, name: &Name, declared: &crate::family::Declared) -> Option<(Name, usize)> {
     let case = match name.split_once('.') {
         Some((family, case)) if family == &*declared.name => case,
         Some(_) => return None,
         None => {
-            if scope.lookup(name).is_some() || scope.declared(name).is_some() {
+            if scope.lookup(name).is_some() || answered_apart_from(scope, name, declared) {
                 return None;
             }
             name
@@ -2353,4 +2623,16 @@ fn case_named(scope: &Scope, name: &Name, declared: &crate::family::Declared) ->
         .iter()
         .find(|constructor| *constructor.name == *case)
         .map(|constructor| (Arc::clone(&constructor.name), constructor.fields.len()))
+}
+
+/// Whether a declaration other than `declared` itself answers to `name`.
+///
+/// [`case_named`]'s "a declaration declined it" test, with the one coincidence
+/// §1.3 allows taken out — see the note there.
+fn answered_apart_from(scope: &Scope, name: &Name, declared: &crate::family::Declared) -> bool {
+    match scope.declared(name) {
+        Some(crate::family::Found::Rigid(constant)) => !(constant.is_family() && *constant.name() == *declared.name),
+        Some(crate::family::Found::Recursor(..)) => true,
+        None => false,
+    }
 }

@@ -54,7 +54,7 @@ const PRELUDE: &str = r"
 
     fn tick(one: EventTrack<WrittenTime>, carried: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { together(one, carried) }
     fn beat() -> EventTrack<WrittenTime> { music { c4/1 } }
-    fn tally(count: Nat) -> EventTrack<WrittenTime> { list_fold_from_start(music { rest/1 }, tick, repeated(beat(), count)) }
+    fn tally(count: Nat) -> EventTrack<WrittenTime> { repeated(beat(), count).fold_from_start(music { rest/1 }, fn (carried, one) { tick(one, carried) }) }
 
     fn numeral_in(collection: Scale, written: Option<Roman>) -> Option<ChordClass> { match written {
             None -> None,

@@ -29,7 +29,12 @@ piece "Gesture Study" {
     // notation and one into a count. The gesture comes last because that is
     // how a case is written at a call, and the recursion descends on it while
     // every argument before it stays fixed (§2.4's measure).
-    fn gesture_fold<A>(plain: A, higher: Interval -> A -> A, against: A -> A -> A, shape: Gesture) -> A {
+    fn gesture_fold<A>(
+        plain: A,
+        higher: Interval -> A -> A,
+        against: A -> A -> A,
+        shape: Gesture,
+    ) -> A {
         match shape {
             Plain -> plain,
             Higher(by, inner) -> higher(by, gesture_fold(plain, higher, against, inner)),

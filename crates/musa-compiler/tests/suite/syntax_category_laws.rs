@@ -131,7 +131,7 @@ fn a_token_tree_position_accepts_a_certified_expression() {
         r"
     let kept = fn (node: Syntax<TokenTree>) -> Syntax<TokenTree> { node };
 
-    let expand = fn (region) {
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {
         match as_expression(rebuilt(region)) {
             Some(node) -> Ok(kept(node)),
             None -> Ok(rebuilt(region)),
@@ -155,7 +155,7 @@ fn an_expression_position_refuses_a_tree_nobody_parsed() {
         r"
     let demands = fn (node: Syntax<Expr>) -> Syntax<Expr> { node };
 
-    let expand = fn (region) { Ok(demands(region)) };
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(demands(region)) };
 ",
     );
     let found = errors("c4", &module);
@@ -176,7 +176,7 @@ fn bare_syntax_names_no_type() {
         r"
     let held = fn (node: Syntax) -> Syntax { node };
 
-    let expand = fn (region) { Ok(held(region)) };
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(held(region)) };
 ",
     );
     let found = errors("c4", &module);
@@ -202,7 +202,7 @@ fn the_checked_parse_answers_exactly_when_the_tree_parses_as_an_expression() {
     // composer's own line is read by.
     let module = probe(
         r#"
-    let expand = fn (region) {
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {
         match as_expression(rebuilt(region)) {
             Some(node) -> Ok(node),
             None -> Err((region, "this region does not parse as an expression")),
@@ -243,7 +243,7 @@ fn the_phase_can_name_every_token_kind_the_lexer_produces() {
         .map(|kind| format!("    let {}_ = TokenKind.{kind:?};", format!("{kind:?}").to_lowercase()))
         .collect();
     let module = probe(&format!(
-        "{}\n\n    let expand = fn (region) {{ Ok(rebuilt(region)) }};\n",
+        "{}\n\n    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ Ok(rebuilt(region)) }};\n",
         named.join("\n")
     ));
     let found = errors("c4", &module);
@@ -259,7 +259,7 @@ fn an_invented_token_kind_names_nothing() {
     // name outside it is a name error rather than a kind no token ever has.
     let module = probe(
         r"
-    let expand = fn (region) { Ok(rebuilt(region)) };
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(rebuilt(region)) };
 
     let invented = TokenKind.Zither;
 ",
@@ -276,7 +276,7 @@ fn an_invented_token_kind_names_nothing() {
 fn pair_built_at(role: u32) -> String {
     probe(&format!(
         r#"
-    let expand = fn (region) {{
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{
         Ok(syntax_fold_from_leaves(
             fn (here) {{ syntax_token(syntax_built(here, 0, 0), TokenKind.Error, "") }},
             fn (here, kind, text) {{ syntax_token(syntax_built(here, 1, 0), kind, text) }},

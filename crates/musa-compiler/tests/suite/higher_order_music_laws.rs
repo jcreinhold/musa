@@ -216,7 +216,7 @@ fn wrong_higher_order_arguments_are_rejected_statically() {
             compilation
                 .diagnostics()
                 .iter()
-                .any(|diagnostic| diagnostic.code == Code::TypeMismatch),
+                .any(|diagnostic| diagnostic.code == Code::ConversionMismatch),
             "{:?}",
             compilation.diagnostics()
         );

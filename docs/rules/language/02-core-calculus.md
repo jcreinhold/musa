@@ -576,12 +576,27 @@ and exhaustive is a checked law:
 - **machine builtins** — the constructors of `../across-stages/03-machine-calculus.md` §2.
 
 A δ-builtin must satisfy four conditions: **D1 inertness** — its base types have no eliminator, so no reduction rule
-inspects a closed value of one and the only pattern that may match it is a literal or a catch-all; **D2 totality** — for
-every tuple of closed values of the declared argument types it yields a closed value of the declared result type, with
-partiality expressed *in the result type* as an `Option` rather than as a stuck term, a panic, or a diagnostic; **D3
-purity** — the result is a function of the argument values alone, with no ambient context, evaluation-order dependence,
+inspects a closed value of one and the only pattern that may match it is a literal or a catch-all; **D2 declared
+partiality** — for every tuple of closed values of the declared argument types it either yields a closed value of the
+declared result type or *declares* that it cannot, and never a stuck term, a panic, or a silent absence; **D3 purity** —
+the result is a function of the argument values alone, with no ambient context, evaluation-order dependence,
 hash-iteration order, or diagnostic emission; and **D4 finiteness** — the result's constructed-node count is bounded by
 a function of the argument sizes, charged to the §4 meter before construction begins.
+
+**The two ways D2 admits of declaring it.** A builtin declares partiality either **in the result type**, as an `Option`,
+or **through §4's refusal outcome**, by answering with the sentence to say about the program. Which one is right is a
+question about the *composer*, not about the implementation: `pc12_spelled` answers `Option` because a pitch class with
+no spelling in a collection is a musical fact a piece may branch on, and `ratio_div` refuses at a zero divisor because
+no branch repairs dividing by zero — the only repair is in the source. Wrapping the second kind in a value hands the
+composer a failure they can do nothing with, and every caller then threads it; §4 exists so that the checker can say it
+instead. What D2 forbids is unchanged and is the whole point: an application of a builtin to closed arguments of its
+declared types never gets stuck, never panics, and never answers a bare absence the evaluator has to read as its own
+defect. A refusal is not a diagnostic *emitted during* reduction — D3 still forbids that — it is one of the three
+outcomes §4 already gives elaboration, reached instead of a value and carrying its own sentence.
+
+*Amended by prompt 142, which moved the eleven arithmetic, duration, and position rules onto the channel prompt 141m
+built. The sentence this replaces required an `Option` result and named a "diagnostic" among the forbidden answers,
+which read §4's refusal outcome out of the calculus one section after §4 put it in.*
 
 **The theorem to re-derive.** Adding a base type with no eliminator, together with any finite set of δ-builtins over the
 extended base set satisfying D1–D4, preserves every obligation in §5's matrix. The old proof took `R_b(t) ⟺ t : b ∧ t ∈

@@ -111,8 +111,10 @@ mod unify;
 mod value;
 mod visibility;
 
-pub use crate::base::{Answer, Base, Builtin, Datum, Extern, Family, Literal, Payload, Registry, Rewrite, Rule};
-pub use crate::budget::{Budget, Metric, ResourceError};
+pub use crate::base::{
+    Accepts, Answer, Base, Builtin, Datum, Extern, Family, Literal, Payload, Registry, Rewrite, Rule,
+};
+pub use crate::budget::{Budget, Metric, ResourceError, Spend};
 pub use crate::class::{Constraint, Instance, PackageId, Trait};
 pub use crate::context::Cx;
 pub use crate::error::{CoreError, Malformed};
@@ -159,6 +161,15 @@ use crate::unify::Unifier;
 /// [`check`] — a declaration's parameters, indices, fields, and chosen index
 /// arguments are ordinary elaboration and fail in the ordinary ways.
 pub fn declare(cx: &Cx, data: &RawData) -> Result<Arc<Group>, ElabError> {
+    declare_metered(cx, data).map(|(group, _)| group)
+}
+
+/// [`declare`], and what elaborating the declaration charged.
+///
+/// # Errors
+///
+/// As [`declare`].
+pub fn declare_metered(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, Spend), ElabError> {
     with_room(|| crate::declare::declare(cx, data))
 }
 
@@ -187,6 +198,20 @@ pub fn declare(cx: &Cx, data: &RawData) -> Result<Arc<Group>, ElabError> {
 /// [`Refusal::UntypedRecursion`] for a self-recursive definition that wrote no
 /// type, and otherwise as [`check`] and [`declare_impl`].
 pub fn declare_program(cx: &Cx, program: &RawProgram) -> Result<Arc<Program>, ElabError> {
+    declare_program_metered(cx, program).map(|(declared, _)| declared)
+}
+
+/// [`declare_program`], and what elaborating the group charged.
+///
+/// The sum over its definitions and instances, which is what a caller keeping a
+/// budget of its own wants: `26-language-design-decision.md` §3.5 charges the
+/// expansion phase for reading its adapter module, and reading a module *is*
+/// declaring the program it holds.
+///
+/// # Errors
+///
+/// As [`declare_program`].
+pub fn declare_program_metered(cx: &Cx, program: &RawProgram) -> Result<(Arc<Program>, Spend), ElabError> {
     with_room(|| crate::program::declare_program(cx, program))
 }
 
@@ -206,6 +231,15 @@ pub fn declare_program(cx: &Cx, program: &RawProgram) -> Result<Arc<Program>, El
 /// [`check`] — a trait's parameters, constraints, and method types are ordinary
 /// elaboration and fail in the ordinary ways.
 pub fn declare_trait(cx: &Cx, raw: &RawTrait) -> Result<Arc<Trait>, ElabError> {
+    declare_trait_metered(cx, raw).map(|(class, _)| class)
+}
+
+/// [`declare_trait`], and what elaborating the declaration charged.
+///
+/// # Errors
+///
+/// As [`declare_trait`].
+pub fn declare_trait_metered(cx: &Cx, raw: &RawTrait) -> Result<(Arc<Trait>, Spend), ElabError> {
     with_room(|| crate::dictionary::declare_trait(cx, raw))
 }
 
@@ -223,7 +257,7 @@ pub fn declare_trait(cx: &Cx, raw: &RawTrait) -> Result<Arc<Trait>, ElabError> {
 /// mismatches [`Refusal::DerivedMethod`], [`Refusal::NoSuchMethod`] and
 /// [`Refusal::MissingMethod`], and otherwise as [`check`].
 pub fn declare_impl(cx: &Cx, raw: &RawImpl) -> Result<Arc<Instance>, ElabError> {
-    with_room(|| crate::dictionary::declare_impl(cx, raw))
+    with_room(|| crate::dictionary::declare_impl(cx, raw)).map(|(instance, _)| instance)
 }
 
 /// Elaborate `raw` against the type `ty`, in context `cx`.
@@ -265,7 +299,27 @@ pub fn check(cx: &Cx, ty: &Term, raw: &Raw) -> Result<Term, ElabError> {
 ///
 /// As [`check`].
 pub fn infer(cx: &Cx, raw: &Raw) -> Result<(Term, Term), ElabError> {
-    with_room(|| Elaborator::new(cx).run_infer(&Scope::new(cx), raw))
+    Ok(infer_metered(cx, raw)?.0)
+}
+
+/// The same, and what it charged.
+///
+/// For a caller that keeps a budget of its own — the expansion phase does, and
+/// two of `26-language-design-decision.md` §3.5's four counters are elaboration
+/// work rather than the phase's. A separate entry point rather than a second
+/// return value on [`infer`], because almost nobody is counting and a spend
+/// every caller had to ignore would be a parameter this crate charges everyone
+/// for.
+///
+/// # Errors
+///
+/// As [`infer`].
+pub fn infer_metered(cx: &Cx, raw: &Raw) -> Result<((Term, Term), Spend), ElabError> {
+    with_room(|| {
+        let mut elaborator = Elaborator::new(cx);
+        let inferred = elaborator.run_infer(&Scope::new(cx), raw)?;
+        Ok((inferred, elaborator.spent()))
+    })
 }
 
 /// The normal form of `term` at type `ty`, in context `cx`.
@@ -281,11 +335,24 @@ pub fn infer(cx: &Cx, raw: &Raw) -> Result<(Term, Term), ElabError> {
 /// [`CoreError::Exhausted`] when the deterministic budget ends the operation,
 /// [`CoreError::Malformed`] when the term does not fit the shape `ty` demands.
 pub fn normalize(cx: &Cx, ty: &Term, term: &Term) -> Result<Term, CoreError> {
+    Ok(normalize_metered(cx, ty, term)?.0)
+}
+
+/// The same, and what it charged.
+///
+/// [`infer_metered`]'s counterpart one stage on, for the same caller and the
+/// same reason.
+///
+/// # Errors
+///
+/// As [`normalize`].
+pub fn normalize_metered(cx: &Cx, ty: &Term, term: &Term) -> Result<(Term, Spend), CoreError> {
     with_room(|| {
         let mut meter = cx.meter();
         let ty = eval(&mut meter, cx.env(), ty)?;
         let value = eval(&mut meter, cx.env(), term)?;
-        quote(&mut meter, cx.quoting_depth(), &ty, &value)
+        let normal = quote(&mut meter, cx.quoting_depth(), &ty, &value)?;
+        Ok((normal, meter.spent()))
     })
 }
 

@@ -45,6 +45,12 @@ says what the implementation owes instead. This prompt discharges it.
   `fn pi` — the ~2 KiB per level that note records, and, more to the point, **what it is a measurement of**: `eval`
   recursing into itself. The chain a real program drives is `infer → check → eval → apply → infer`, and it costs five
   times that.
+- `crates/musa-compiler/src/expand.rs`'s `nested_region` helper and the two laws beside it,
+  `a_region_deeper_than_the_budget_allows_is_refused_rather_than_fatal` and
+  `a_region_nested_deeper_than_anyone_writes_still_expands` — the second's doc comment records a measurement taken
+  during 142 and explicitly declines to decide the number, because the number is this prompt's. Read it against
+  `Budget::NESTING`'s own doc claim, "past anything a person writes and short of anything a host cannot hold", which was
+  written about an evaluator that no longer exists.
 - `crates/musa-core/src/elab.rs`'s `check` and `infer` — mutually recursive over the raw term, and charged nothing for
   nesting. `zonk` is the only thing in that file that calls `Meter::nested`.
 - `crates/musa-compiler/src/lower/notation.rs`'s `notated`, at the line that writes
@@ -150,6 +156,19 @@ _Third, nothing arranges the room._ `musa-compiler` honours §4.1 for the *old* 
 > *bottom* rather than from the top, and a term far enough past the limit still aborts — measured on a raw `let` chain
 > in a debug build, 756 levels are refused and 1,256 abort. No ceiling repairs that; only the charge does.
 
+_Fourth, the same defect seen from the adapter's side: the headroom for nested regions shrank fourfold and nobody
+decided that._ §4.1's metric was written for §5.9's recursor, which descends *through* the transformer's own branches,
+so one level of a region's nesting costs a chain of frames rather than one. Under the replaced Algorithm-W evaluator
+that chain was about four levels long and the first refusal came at 64 groups deep. Under normalization by evaluation it
+is about fourteen — `quote` walks a value the way `eval` walks a term — and the first refusal is at **19**: measured
+during 142 by bisection against `expand.rs`'s `nested_region` helper and the `EACH_ONCE` recursor, where depth 18
+expands and depth 19 stops. `a_region_nested_deeper_than_anyone_writes_still_expands` was re-calibrated from 48 to 16 in
+that prompt, with a comment saying exactly this and deferring the number here, because a test that asserts a limit it
+did not choose is a test pinned to whatever the compiler happened to do. Two things follow. `Budget::NESTING`'s doc
+claim is now unsupported for the adapter path in the direction that matters — 19 groups is not "past anything a person
+writes" by the margin 64 was. And the 19 is measured **before** step 3: any charge added to `check` and `infer` charges
+an adapter's region levels too, so 19 is a ceiling on what a region may be after this prompt rather than a floor.
+
 **What follows, and what does not.** Lowering `Budget::NESTING` to something a 2 MiB thread survives is the one option
 to reject outright: the counter that would be lowered is not the counter that grows, so it would refuse programs without
 saving the ones that crash. Charging `check` and `infer` for nesting is right by §4.1 and insufficient alone — at 256 it
@@ -171,6 +190,15 @@ today is a cost-table version bump and a bad one. So:
    it last, because only after (2) is a limit of 256 a limit on nesting an author wrote rather than on the length of a
    phrase. If the charge still refuses a program that compiles today, that is a cost-table version bump with a stated
    reason, argued in `02-core-calculus.md` §4 — never a threshold quietly raised to make the suite pass.
+4. **Then restate the depth law**, once (2) and (3) have settled what a level costs, at whatever the re-measurement
+   supports rather than at whatever the suite tolerates. Two ways out, and they are priced differently. Spending fewer
+   frames a level in the NbE descent is free by §4.1's own sentence — shrinking the frame ceiling changes nothing
+   normative — so it is the one to try first, and it is the same work as (2) pointed at the recursor instead of at the
+   voice spine. Raising `NESTING` is a cost-table version bump and is not free in a second way either: both seams size
+   their stack as `NESTING × FRAME_CEILING`, `musa-core`'s `room.rs` at 8 MiB today and `core.rs`'s `with_room` for the
+   expansion phase, so the room every host allocates scales with the limit. Whichever way it goes,
+   `a_region_nested_deeper_than_anyone_writes_still_expands` ends this prompt carrying a depth the measurement supports
+   and a comment that states the measurement, and `Budget::NESTING`'s doc claim ends it re-earned or corrected.
 
 A stack that is merely *larger* is step 1 and is not steps 2 and 3. `RUST_MIN_STACK` in a test command, a `.cargo`
 config, or CI is not any of them: it hides the defect from the suite while leaving every host that is not the suite
@@ -232,6 +260,12 @@ and never a quietly raised threshold.
 - The elaborator's recursion charged for nesting, and the spine walk that lets 256 stay 256. If either forces a
   cost-table version bump, the bump lands in `02-core-calculus.md` §4 with its reason, and `06-performance.md` records
   what the change cost.
+- The region depth law restated: `expand.rs`'s `a_region_nested_deeper_than_anyone_writes_still_expands` at a depth the
+  finished checker's measured frames-per-level supports rather than at 142's provisional 16, the first-refusal depth
+  recorded beside it with what measured it, and `Budget::NESTING`'s doc comment either re-earned for the adapter path or
+  corrected. If the answer is a raised limit, one version bump lands in `02-core-calculus.md` §4 carrying both
+  measurements — the voice spine and the adapter region — as its reason, and `room.rs`'s allocation is re-stated at the
+  size the new limit implies.
 - A law that a voice long enough to reach the nesting limit is **refused and not fatal**, run on a thread no larger than
   the desktop session thread, so the guarantee is stated at the size the smallest host actually has. The law
   `a_term_nested_past_the_limit_is_refused` in `musa-core`'s `budget_laws.rs` is the one to extend: it descends through

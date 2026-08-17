@@ -1,5 +1,4 @@
 library {
-    import std::option;
 
     // A chord class is rooted spelled content and nothing else: a root pitch
     // class, a stack of spelled intervals above it, and an optionally
@@ -52,7 +51,10 @@ library {
 
     // Whether a chord class is a major or minor triad.
     fn is_triad(content: ChordClass) -> Bool {
-        option_fold(false, triad_is_present, chord_triad(content))
+        chord_triad(content).fold_from_end(
+            false,
+            fn (refined, absent) { triad_is_present(refined) },
+        )
     }
 
     // The present case of `is_triad`: a refinement that exists is a triad,

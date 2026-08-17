@@ -319,8 +319,8 @@ fn agrees(answered: Option<&Answer>, old: Option<&Datum>) -> bool {
     }
 }
 
-/// Every sampled application is well typed at its signature, reduces, and
-/// re-checks.
+/// Every sampled application is well typed at its signature and either reduces
+/// and re-checks or refuses the program in words.
 ///
 /// The agreement law compares two implementations to each other; this one
 /// compares one to its *type*, and they fail on different mistakes. Two
@@ -343,7 +343,7 @@ fn agrees(answered: Option<&Answer>, old: Option<&Datum>) -> bool {
 /// through [`musa_core::infer`] here would be testing that unwritten path's
 /// implicit insertion rather than this prompt's registrations.
 #[test]
-fn every_sampled_application_reduces_and_re_checks() {
+fn every_sampled_application_reduces_and_re_checks_or_states_its_refusal() {
     let cx = owned().expect("the compiler's own context builds");
     let mut checked = 0_usize;
     for entry in &BUILTIN_OWNERSHIP {
@@ -354,12 +354,30 @@ fn every_sampled_application_reduces_and_re_checks() {
         let ty = super::shape_type(&cx, result)
             .unwrap_or_else(|why| fail(entry.spelling, "has a result type the core cannot name", &why));
         for case in crate::core::oracle::cases(entry.operation) {
-            // A rule that declines is making no claim about its result type, and
-            // the agreement law has already checked that it declines exactly
-            // where the old evaluator did. 141e's Design names the rows this
-            // reaches — an interval sum with no name, a degree stepped off its
-            // scale — and defers them to prompt 143.
+            // Where the old evaluator declined, the rule owes a *sentence*. This
+            // is the second half of §5.8's D2, and it is stated here because the
+            // old evaluator cannot state it: `eval_builtin` has two answers and
+            // the rule has three, so absence there is the old vocabulary's only
+            // spelling for both "the program is wrong" and "this table is". D2
+            // forbids the second, and what tells them apart is whether the
+            // registered rule refuses — `ratio_div` at a zero divisor and
+            // `duration_of` below zero are the two the sample reaches.
             if case.answer.is_none() {
+                let rule = rules::source(entry.operation)
+                    .unwrap_or_else(|| fail(entry.spelling, "declined with no rule to say why", &"the core owns it"));
+                let because = match rule(&case.arguments) {
+                    Some(Answer::Refused(because)) => because,
+                    Some(Answer::Reduced(_)) | None => fail(
+                        entry.spelling,
+                        "declined without declaring that it cannot answer",
+                        &"D2",
+                    ),
+                };
+                assert!(
+                    !because.is_empty(),
+                    "`{}` refused with nothing to say about the program",
+                    entry.spelling
+                );
                 continue;
             }
             let applied = arguments

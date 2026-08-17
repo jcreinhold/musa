@@ -7,6 +7,7 @@
 //! can observe or orchestrate the pass representation.
 
 use indexmap::{IndexMap, IndexSet};
+use musa_core::Raw;
 use musa_language::ast::{AstNode as _, FnDecl, LetDecl, VoiceItem};
 use musa_language::{SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken};
 use num_rational::Ratio;
@@ -12314,14 +12315,13 @@ fn token_span(token: &SyntaxToken) -> SourceSpan {
     )
 }
 
-/// One adapter module, checked and evaluated in the phase environment.
+/// One adapter module, elaborated in the phase environment.
 ///
-/// **This is the phase environment**, and the only place [`Reading::Expansion`]
-/// is ever set. Everything about it is the ordinary machinery: the same
-/// declarations, the same Algorithm W, the same total evaluator, the same work
-/// meter, and the same `data` world. What is phase-local is the *environment* —
-/// [`SYNTAX_OWNERSHIP`] answers a name here and nowhere else, and
-/// [`phase_type`] gives the phase's three types a written spelling here and
+/// **This is the phase environment**, and the only place a [`crate::document::Source`]
+/// is read [`in_phase`](crate::document::Source::in_phase). Everything about it
+/// is the ordinary machinery: the same declarations, the same bidirectional
+/// elaborator, the same core, the same budget. What is phase-local is the
+/// *environment* — [`crate::prelude::phase`]'s vocabulary answers a name here and
 /// nowhere else — which is what keeps `02-core-calculus.md` §5's closed source
 /// type grammar and its "no syntax value" sentence true of the language a
 /// composer writes.
@@ -12330,17 +12330,27 @@ fn token_span(token: &SyntaxToken) -> SourceSpan {
 /// own `let`, `fn`, and `data`, because they are declarations of the module
 /// those operations are declared in, and because a reader written without local
 /// definitions is a reader nobody can follow (Peyton Jones ch. 3).
+///
+/// # What the phase no longer supplies
+///
+/// The types of `expand` and `edit`. They used to be a table here, matched
+/// against what the checker inferred; now the adapter writes them, and the
+/// application below is what checks that it wrote the right one. The reason is
+/// the reason [`Printer`] already gives for `print`: a bidirectional elaborator
+/// settles a `fn` where the `fn` stands, so a definition whose type is held in a
+/// table beside the file is a definition the file cannot be read without. Every
+/// adapter in `stdlib/src/adapters/` now writes both signatures.
 pub(crate) struct AdapterModule {
-    values: IndexMap<String, Value>,
-    types: IndexMap<String, Type>,
-    /// `print`, which is the one declaration not checked with the module.
+    /// The module's declarations, elaborated once.
+    read: crate::document::Document,
+    /// `print`, which is the one declaration not read with the module.
     ///
     /// A printer's argument is the *package's* type — what its regions produce
-    /// — and an adapter module imports nothing, so it cannot name that type and
-    /// a standalone check of the printer would have nothing to settle its
-    /// parameter against. So the printer is read where it is run, against the
-    /// value it is handed ([`print_value`]), which is also why it is the one
-    /// operation that never sees the phase environment.
+    /// — and the package a region belongs to is not a module the adapter
+    /// imports, so a standalone check of the printer would have nothing to
+    /// settle its parameter against. So the printer is read where it is run,
+    /// against the value it is handed ([`print_value`]), which is also why it is
+    /// the one operation that never sees the phase environment.
     ///
     /// It is still read *with* the module declarations it names, because "not
     /// in the phase environment" is a statement about what is in scope and not
@@ -12349,21 +12359,31 @@ pub(crate) struct AdapterModule {
 }
 
 impl AdapterModule {
+    /// What checking this module charged.
+    ///
+    /// `26-language-design-decision.md` §3.5's checking counters, for a run to
+    /// add to its own. The module is where an adapter's *checking* actually
+    /// happens — the run itself is one application of an operation whose type
+    /// the module already fixed — so a phase that reported only the run would
+    /// charge nothing for the expensive half and let a file buy unbounded
+    /// checking by arranging to be refused.
+    pub(crate) const fn spend(&self) -> musa_core::Spend {
+        self.read.spend()
+    }
+
     /// The text a declaration holds, when it holds one.
     ///
     /// How `level` is read: the declared level is a `Text` the module
     /// evaluates to, so asking for it is asking the module for one of its own
     /// values rather than matching the shape of its source.
-    pub(crate) fn text(&self, name: &str) -> Option<&str> {
-        let Value::Text(held) = self.values.get(name)? else {
-            return None;
-        };
-        Some(held)
+    pub(crate) fn text(&self, name: &str) -> Option<String> {
+        let (normal, _) = self.read.value(name).ok()?;
+        crate::registry::read_back::<String>(&normal).ok().cloned()
     }
 
     /// Whether the module declares `name` at all.
     pub(crate) fn declares(&self, name: &str) -> bool {
-        self.values.contains_key(name) || (name == "print" && self.printer.is_some())
+        self.read.names().iter().any(|bound| &**bound == name) || (name == "print" && self.printer.is_some())
     }
 
     /// The printer, for the one operation read at its use site.
@@ -12371,22 +12391,97 @@ impl AdapterModule {
         self.printer.as_ref()
     }
 
-    /// The operation `name`, if the module declares it at exactly `wanted`.
+    /// Apply the operation `name` to `arguments`, and normalize the answer.
     ///
-    /// Two ways to answer no, kept apart because they are different mistakes:
-    /// a module that declares no `expand` is not the same as a module whose
-    /// `expand` is not a transformer, and the second wants to say what type it
-    /// found instead.
-    fn operation(&self, name: &str, wanted: &Type) -> Result<&Closure, Option<&Type>> {
-        let Some(found) = self.types.get(name) else {
-            return Err(None);
-        };
-        if found != wanted {
-            return Err(Some(found));
+    /// One step where there used to be three. The operation's type was compared
+    /// against a table, its value was pulled out as a closure, and the closure
+    /// was applied by a second evaluator; now the call is written as a term and
+    /// elaborated in the module's own context, so "is this an `expand`?" and
+    /// "what does it answer here?" are the one question the elaborator already
+    /// answers. An adapter whose `expand` takes the wrong thing is refused by
+    /// the conversion check at the argument, which says which type it found and
+    /// where — the sentence [`not_the_operation`] used to approximate.
+    ///
+    /// The arguments are terms rather than values because that is the phase's
+    /// side of the boundary: a region is a literal at `Syntax ⟨token-tree⟩`, a
+    /// command is a literal at `Text`, and an anchor is the prelude's `Nat`.
+    fn run(&self, name: &str, arguments: Vec<Raw>) -> Result<(musa_core::Datum, musa_core::Spend), Unrun> {
+        if !self.declares(name) {
+            return Err(Unrun::Undeclared);
         }
-        match self.values.get(name) {
-            Some(Value::Closure(closure)) => Ok(closure),
-            _ => Err(Some(found)),
+        let here = musa_core::Origin::UNKNOWN;
+        let call = Raw::call(here, Raw::var(here, name), arguments);
+        let ((normal, _), spend) = self.read.term_metered(&call).map_err(|error| match error {
+            musa_core::ElabError::Exhausted(_) => Unrun::Stopped,
+            error => Unrun::Refused(vec![crate::lower::refusals::restate(self.read.sites(), &error)]),
+        })?;
+        // Canonicity, and the whole of what it is for: the call was checked
+        // before it was normalized, so a closed answer at a declared family *is*
+        // one of its constructors. A term that is not one is this crate's defect
+        // rather than an adapter's, which is why the two callers report it as
+        // "no answer" rather than as a refusal with the adapter's name on it.
+        let datum = musa_core::canonical(&normal).ok_or(Unrun::NoAnswer)?;
+        Ok((datum, spend))
+    }
+}
+
+/// Why an operation produced no answer.
+///
+/// Four cases and not one because the two callers restate them into two
+/// different vocabularies — a transformer that is not a transformer and an
+/// editor that is not an editor are different sentences — and because
+/// [`ExpansionFailure`] and [`EditFailure`] each already keep a stop apart from a
+/// fault, which this has to be able to tell them.
+enum Unrun {
+    /// The module declares nothing under that name.
+    Undeclared,
+    /// A compilation limit was crossed before the run finished.
+    Stopped,
+    /// The application did not elaborate.
+    Refused(Vec<Diagnostic>),
+    /// It elaborated and its normal form was not canonical, which is a defect
+    /// in this crate rather than in the adapter.
+    NoAnswer,
+}
+
+/// Where an adapter module's own imports resolve.
+///
+/// Two things and not one because an import is resolved *relative to the module
+/// that writes it*: `document` is the key the syntax import itself resolved to,
+/// and `sources` is the text of every file this compilation may read. A phase
+/// that took only the second would resolve `./sibling.musa` against whichever
+/// file happened to be compiling.
+///
+/// Bundled `std::` modules answer out of [`crate::imports::ImportSources`]
+/// without having been inserted into it, so a caller that hands over a default
+/// one is still handing over the standard library rather than an empty world.
+#[derive(Clone, Copy)]
+pub(crate) struct PhaseImports<'a> {
+    document: &'a str,
+    sources: &'a crate::imports::ImportSources,
+}
+
+impl<'a> PhaseImports<'a> {
+    /// The closure of the module stored under `document`.
+    pub(crate) fn at(document: &'a str, sources: &'a crate::imports::ImportSources) -> Self {
+        Self { document, sources }
+    }
+}
+
+#[cfg(test)]
+impl PhaseImports<'static> {
+    /// The bundled standard library, for a module written in a test rather than
+    /// read out of a package.
+    ///
+    /// A default [`crate::imports::ImportSources`] is not an empty world: it
+    /// falls back to the embedded `std::` modules, which is exactly the closure
+    /// a test module that writes `import std::list;` should get.
+    pub(crate) fn bundled() -> Self {
+        static SOURCES: std::sync::LazyLock<crate::imports::ImportSources> =
+            std::sync::LazyLock::new(crate::imports::ImportSources::default);
+        Self {
+            document: "adapter.musa",
+            sources: &SOURCES,
         }
     }
 }
@@ -12397,15 +12492,105 @@ impl AdapterModule {
 /// adapter package's own document, and publishing a span inside it as a span in
 /// the composer's file is exactly what the source map exists to prevent. The
 /// caller decides which of its own spans to restate them at.
-pub(crate) fn read_adapter_module(source: &str) -> Result<AdapterModule, ModuleFault> {
-    let mut meter = WorkMeter::default();
-    read_adapter_module_metered(source, &mut Unifier::default(), &mut meter).map_err(|diagnostics| {
-        if meter.failure().is_some() {
-            ModuleFault::Stopped
-        } else {
-            ModuleFault::Broken(diagnostics)
-        }
-    })
+pub(crate) fn read_adapter_module(source: &str, imports: PhaseImports<'_>) -> Result<AdapterModule, ModuleFault> {
+    let parsed = musa_language::parse(source);
+    if let Some(error) = parsed.errors().first() {
+        return Err(ModuleFault::Broken(vec![Diagnostic::error(
+            Code::Expansion,
+            format!("it does not parse: {}", error.message()),
+        )]));
+    }
+    let root = parsed.syntax();
+    let Some(library) = musa_language::ast::LibraryDecl::from_root(&root) else {
+        return Err(ModuleFault::Broken(vec![
+            Diagnostic::error(Code::Expansion, "an adapter module is a `library`").help(
+                "write the module as `library { let level = …; let expand = …; }`, the way `stdlib/src/adapters/` does",
+            ),
+        ]));
+    };
+    // The adapter-free bootstrap, checked rather than assumed. An adapter whose
+    // own definition needed an adapter would put the expansion order back into
+    // a cycle, and this pair of refusals is the whole of what prevents it —
+    // which is also why termination is structural and needs no rank arithmetic.
+    // An *ordinary* import is not in the cycle and is loaded below: it brings a
+    // module's declarations in, which is the one thing `02-core-calculus.md`
+    // §5.9 says the phase adds rather than takes away.
+    // Root and library both, for the reason [`ordinary_imports`] reads both: an
+    // import stands at a document's lexical root or inside its `library`, and
+    // which one an author chose is not something the phase should depend on.
+    let written: Vec<musa_language::ast::ImportStmt> = root
+        .descendants()
+        .filter_map(musa_language::ast::ImportStmt::cast)
+        .collect();
+    if let Some(reader) = written.iter().find(|import| import.changes_syntax()) {
+        return Err(ModuleFault::Broken(vec![
+            Diagnostic::error(Code::Expansion, "it is written with an adapter of its own")
+                .at(crate::resolve::trimmed_span(reader.syntax()), "this syntax import")
+                .help("an adapter is written in the adapter-free bootstrap: no region, no syntax import"),
+        ]));
+    }
+    if root.descendants().any(|node| node.kind() == SyntaxKind::SyntaxRegion) {
+        return Err(ModuleFault::Broken(vec![
+            Diagnostic::error(Code::Expansion, "it is written with an adapter of its own")
+                .help("an adapter is written in the adapter-free bootstrap: no region, no syntax import"),
+        ]));
+    }
+    let mut resolver = Resolver::new();
+    let libraries = crate::imports::load(&mut resolver, imports.document, &written, imports.sources);
+    // A module that could not be read is not a module whose declarations can be
+    // checked, and going on would report "cannot find `range`" instead of
+    // "`std::list` is not a file this compilation can read" — the second being
+    // the one an author can act on.
+    if resolver
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.severity == crate::diagnose::Severity::Error)
+    {
+        return Err(ModuleFault::Broken(resolver.diagnostics));
+    }
+    let printer = printer_source(library.syntax());
+    let sources: Vec<crate::document::Source> = libraries
+        .each()
+        .map(|(from, imported)| crate::document::Source::imported(imported.syntax(), from).in_phase())
+        .chain(std::iter::once(
+            crate::document::Source::own(library.syntax())
+                .in_phase()
+                // `print`, and whatever only `print` reaches. See [`Printer`].
+                .without(printer.iter().flat_map(Printer::left_to_it)),
+        ))
+        .collect();
+    let Some(read) = crate::document::elaborate(&mut resolver, &sources, None) else {
+        return Err(module_fault(resolver.diagnostics));
+    };
+    // A document that came back is not yet a module that checks: `elaborate`
+    // answers `Some` for a document whose *declarations* all landed, and the
+    // refusals a declaration world reports — a field storing an arrow, a name
+    // declared twice — are in the resolver beside it. Answering `Ok` while it
+    // holds an error would be an adapter running with a declaration the checker
+    // had already refused.
+    let refusals: Vec<Diagnostic> = resolver
+        .diagnostics
+        .into_iter()
+        .filter(|diagnostic| diagnostic.severity == crate::diagnose::Severity::Error)
+        .collect();
+    if !refusals.is_empty() {
+        return Err(module_fault(refusals));
+    }
+    Ok(AdapterModule { read, printer })
+}
+
+/// A stop when a limit was crossed, and the module's own complaints when not.
+///
+/// Read off the diagnostics rather than off a meter, because the meter is
+/// [`musa_core`]'s now and it reports exhaustion the way it reports everything
+/// else — as a refusal, filed under [`Code::ResourceLimit`] by
+/// [`crate::lower::refusals::restate`].
+fn module_fault(diagnostics: Vec<Diagnostic>) -> ModuleFault {
+    if diagnostics.iter().any(|it| it.code == Code::ResourceLimit) {
+        ModuleFault::Stopped
+    } else {
+        ModuleFault::Broken(diagnostics)
+    }
 }
 
 /// Why a module could not be read as an adapter module.
@@ -12419,141 +12604,6 @@ pub(crate) enum ModuleFault {
     Stopped,
     /// It is not an adapter module, and these say why.
     Broken(Vec<Diagnostic>),
-}
-
-/// The same, charged to a run's own meter.
-///
-/// The phase reports what checking a module cost, because it is work the
-/// compilation did: an adapter that is expensive to check is expensive whether
-/// or not the region it reads is small.
-fn read_adapter_module_metered(
-    source: &str,
-    unifier: &mut Unifier,
-    meter: &mut WorkMeter,
-) -> Result<AdapterModule, Vec<Diagnostic>> {
-    let parsed = musa_language::parse(source);
-    if let Some(error) = parsed.errors().first() {
-        return Err(vec![Diagnostic::error(
-            Code::Expansion,
-            format!("it does not parse: {}", error.message()),
-        )]);
-    }
-    let root = parsed.syntax();
-    let Some(library) = musa_language::ast::LibraryDecl::from_root(&root) else {
-        return Err(vec![
-            Diagnostic::error(Code::Expansion, "an adapter module is a `library`").help(
-                "write the module as `library { let level = …; let expand = …; }`, the way `stdlib/src/adapters/` does",
-            ),
-        ]);
-    };
-    // An adapter that imported would need the phase to resolve a package graph
-    // before it can expand, and the phase runs before ordinary resolution. It
-    // is refused rather than ignored: a module whose imports silently did
-    // nothing would be a module whose author was misled.
-    if root.descendants().any(|node| node.kind() == SyntaxKind::ImportStmt) {
-        return Err(vec![
-            Diagnostic::error(Code::Expansion, "an adapter module imports nothing").help(
-                "expansion runs before ordinary resolution, so an adapter reads its own declarations and the phase's \
-                 operations",
-            ),
-        ]);
-    }
-    // The adapter-free bootstrap, checked rather than assumed. An adapter whose
-    // own definition needed an adapter would put the expansion order back into
-    // a cycle, and this is the whole of what prevents it — which is also why
-    // termination is structural and needs no rank arithmetic.
-    if root.descendants().any(|node| node.kind() == SyntaxKind::SyntaxRegion) {
-        return Err(vec![
-            Diagnostic::error(Code::Expansion, "it is written with an adapter of its own")
-                .help("an adapter is written in the adapter-free bootstrap: no region, no syntax import"),
-        ]);
-    }
-    let mut resolver = Resolver::new();
-    let owners = [library.syntax().clone()];
-    let world = World::read_in_phase(&mut resolver, &owners);
-    let modules = Modules::read(&mut resolver, std::iter::once((None, library.syntax().clone())));
-    let printer = printer_source(library.syntax());
-    let program = check_and_evaluate_metered(
-        &mut resolver,
-        declarations(library.syntax(), None).into_iter().filter(|declaration| {
-            surface_identity(declaration)
-                .is_none_or(|(name, ..)| name != "print" && printer.as_ref().is_none_or(|printer| !printer.owns(&name)))
-        }),
-        None,
-        UnknownRootMusic::Reject,
-        &modules,
-        &world,
-        Reading::Expansion,
-        &phase_operations(),
-        unifier,
-        meter,
-    );
-    let Some(program) = program else {
-        return Err(if resolver.diagnostics.is_empty() {
-            vec![Diagnostic::error(Code::Expansion, "it does not check")]
-        } else {
-            resolver.diagnostics
-        });
-    };
-    // A checked program is not yet a checked *module*: the declaration world is
-    // read before the expressions are, and its refusals — a field storing an
-    // arrow, a field storing a sealed step — are recorded there. Answering
-    // `Ok` while the resolver holds an error would be an adapter running with
-    // a declaration the checker had already refused.
-    let refusals: Vec<Diagnostic> = resolver
-        .diagnostics
-        .iter()
-        .filter(|diagnostic| diagnostic.severity == crate::diagnose::Severity::Error)
-        .cloned()
-        .collect();
-    if !refusals.is_empty() {
-        return Err(refusals);
-    }
-    Ok(AdapterModule {
-        values: program.values,
-        types: program.types,
-        printer,
-    })
-}
-
-/// The type of each operation the phase runs, by the name it is declared under.
-///
-/// The phase's interface, stated once. An adapter does not get to infer these:
-/// `expand`'s error half is how it refuses, and an adapter that never refuses
-/// would otherwise leave that half open and be told its own module does not say
-/// what it holds — a complaint about a type that was never the module's.
-///
-/// Every `Syntax` here is `Syntax`, on both sides. The argument is
-/// the composer's own region, about which nothing is claimed; the answer is at
-/// `TokenTree` because step 5 of the fixed order prints it and reads it with the
-/// real parser regardless, so asking the adapter for `Syntax<Expr>` would be
-/// asking it to prove what the phase re-establishes on the next line. The index
-/// earns its keep inside an adapter, at the splice boundary `as_expression`
-/// decides, and not at this signature.
-fn phase_operations() -> IndexMap<String, Type> {
-    let syntax = || Type::Syntax(crate::syntax::Cat::TokenTree);
-    IndexMap::from([
-        (
-            "expand".to_owned(),
-            Type::Function(
-                vec![syntax()],
-                Box::new(Type::Sum(
-                    Box::new(syntax()),
-                    Box::new(Type::Product(vec![syntax(), Type::Text])),
-                )),
-            ),
-        ),
-        (
-            "edit".to_owned(),
-            Type::Function(
-                vec![syntax(), Type::Text, Type::Nat, Type::Text],
-                Box::new(Type::Sum(
-                    Box::new(Type::List(Box::new(Type::Product(vec![Type::Nat, Type::Text])))),
-                    Box::new(Type::Text),
-                )),
-            ),
-        ),
-    ])
 }
 
 /// `print`, and the module declarations it reads.
@@ -12578,9 +12628,30 @@ fn phase_operations() -> IndexMap<String, Type> {
 /// once under each reading, which is the honest answer for a helper that is
 /// genuinely both. One neither reaches is dead, and stays with the phase so
 /// that it is still checked rather than quietly ignored.
+///
+/// # Why the lambda is kept in two pieces
+///
+/// [`run_printer`] splices it back as a `fn` declaration rather than as a `let`
+/// bound to a lambda, and needs the halves apart to do it. The reason is
+/// bidirectional: `let printer = fn (value: Text) { match value { … } };` gives
+/// the elaborator a domain and no codomain, so the arms are *inferred*, and
+/// `Ok("hello")` on its own infers `Result Text ?e` with nothing to solve `?e`
+/// — an unsolved metavariable in a printer that is perfectly well typed. Written
+/// as `fn printer(value: Text) -> Result<Text, Text> { … }`, the same arms are
+/// *checked*, and the error type comes from the annotation `04-adapters.md` §4
+/// already fixes for every printer. Algorithm W did not need this because it
+/// solved the whole piece at once; a checker that reads a definition where it
+/// stands needs the type written where it stands.
 pub(crate) struct Printer {
-    /// Everything between `let print =` and its `;`.
-    body: String,
+    /// The parameter list, verbatim — `(value: Text)`.
+    params: String,
+    /// Everything after it: the body, and the `-> T` before it when the adapter
+    /// wrote one.
+    answer: String,
+    /// Whether it did. When it did not, [`run_printer`] supplies the return type
+    /// §4 fixes; when it did, the adapter's own words stand and `printed`'s
+    /// annotation is what checks the two agree.
+    says_answer: bool,
     /// The module declarations the body reaches, in the order the module writes
     /// them, verbatim.
     reached: Vec<String>,
@@ -12592,6 +12663,17 @@ impl Printer {
     /// Whether the phase should leave a declaration to the printer.
     pub(crate) fn owns(&self, name: &str) -> bool {
         self.private.contains(name)
+    }
+
+    /// Every name the phase leaves to the printer, `print` included.
+    ///
+    /// What [`crate::document::Source::without`] is handed. `print` is on the
+    /// list because it is the operation itself and the rest because they are
+    /// reached from nowhere else, and both halves are the same sentence: a
+    /// declaration whose type only the *package* names cannot be read in a phase
+    /// that has no package.
+    fn left_to_it(&self) -> impl Iterator<Item = String> {
+        std::iter::once("print".to_owned()).chain(self.private.iter().cloned())
     }
 }
 
@@ -12630,13 +12712,13 @@ fn printer_source(library: &SyntaxNode) -> Option<Printer> {
     // order the module writes them, because that is the order they have to be
     // spliced back in.
     let mut module: Vec<(Vec<String>, IndexSet<String>, String)> = Vec::new();
-    let mut body = None;
+    let mut printer = None;
     for node in library.children() {
         let range = node.text_range();
         if matches!(node.kind(), SyntaxKind::LetDecl | SyntaxKind::FnDecl) {
             let Some(name) = declared_name(&node) else { continue };
             if node.kind() == SyntaxKind::LetDecl && name == "print" {
-                body = Some(printer_body(&node, &written)?);
+                printer = Some(printer_body(&node, &written)?);
             } else {
                 module.push((
                     vec![name],
@@ -12660,8 +12742,11 @@ fn printer_source(library: &SyntaxNode) -> Option<Printer> {
             ));
         }
     }
-    let body = body?;
-    let printers = reached_by(&module, names_in_text(&body));
+    let (params, answer, says_answer) = printer?;
+    // Both halves, because the parameter's *type* is a name the printer reads
+    // like any other: a `print` that takes the package's own `Page` reaches
+    // whatever declares one.
+    let printers = reached_by(&module, names_in_text(&format!("fn {params} {answer}")));
     // The phase's roots are the three operations it runs and reads, and not
     // every declaration: a helper reached only from `print` has to leave, and
     // one reached from neither side has to stay.
@@ -12680,7 +12765,13 @@ fn printer_source(library: &SyntaxNode) -> Option<Printer> {
         }
         reached.push(text);
     }
-    Some(Printer { body, reached, private })
+    Some(Printer {
+        params,
+        answer,
+        says_answer,
+        reached,
+        private,
+    })
 }
 
 /// Whether a declaration writes down one of the phase's own types.
@@ -12704,20 +12795,27 @@ fn names_a_phase_type(names: &IndexSet<String>) -> bool {
         .any(|name| phase_type(name).is_some() || matches!(name.as_str(), "Syntax" | "SyntaxStep"))
 }
 
-/// Everything between `let print =` and its `;`, and nothing else: the name,
-/// the type, and the body's own tokens all lie between the two marks rather
-/// than being one of them.
-fn printer_body(declaration: &SyntaxNode, written: &impl Fn(u32, u32) -> Option<String>) -> Option<String> {
-    let mut equals = None;
-    let mut semicolon = None;
-    for token in declaration.children_with_tokens().filter_map(|it| it.into_token()) {
-        if token.kind() == SyntaxKind::Equals && equals.is_none() {
-            equals = Some(u32::from(token.text_range().end()));
-        } else if token.kind() == SyntaxKind::Semicolon {
-            semicolon = Some(u32::from(token.text_range().start()));
-        }
-    }
-    written(equals?, semicolon?)
+/// `let print = fn (…) …;` split where the parameter list ends.
+///
+/// [`None`] when the declaration's value is not a lambda at all, which refuses
+/// the module as "not a printer" — the same answer §4 gives for a `print` that
+/// is not `fn (value: T) { … }`, reached one step earlier.
+fn printer_body(
+    declaration: &SyntaxNode,
+    written: &impl Fn(u32, u32) -> Option<String>,
+) -> Option<(String, String, bool)> {
+    let lambda = declaration
+        .children()
+        .find(|node| node.kind() == SyntaxKind::LambdaExpr)?;
+    let params = lambda
+        .children()
+        .find(|node| node.kind() == SyntaxKind::ParamList)?
+        .text_range();
+    Some((
+        written(params.start().into(), params.end().into())?,
+        written(params.end().into(), lambda.text_range().end().into())?,
+        lambda.children_with_tokens().any(|it| it.kind() == SyntaxKind::Arrow),
+    ))
 }
 
 /// Every name written anywhere inside a declaration.
@@ -12812,53 +12910,77 @@ pub(crate) fn expand_region(
     let subject = crate::syntax::read_region(&musa_language::parse(region).syntax(), expansion);
     expand_syntax(
         &format!("library {{\n    let level = \"readable\";\n\n    let expand = {transformer};\n}}\n"),
+        PhaseImports::bundled(),
         &subject,
     )
     .0
 }
 
-/// The refusal an `Err((node, message))` carries.
+/// The refusal an `Err(Both(node, message))` carries.
 ///
 /// The span comes from the node the adapter handed back, never from anything
 /// the adapter computed: `SourceInfo` has no eliminator, so an adapter can
 /// point at a node it holds and cannot say where a node is.
-fn refusal_of(held: Value) -> Option<ExpansionFailure> {
-    let Value::Product(parts) = held else {
+fn refusal_of(held: &musa_core::Datum) -> Option<ExpansionFailure> {
+    let musa_core::Datum::Case {
+        ref constructor,
+        ref fields,
+    } = *held
+    else {
         return None;
     };
-    let [Value::Syntax(node), Value::Text(message)] = parts.as_slice() else {
+    if &**constructor != "Pair.Both" {
+        return None;
+    }
+    let [musa_core::Datum::Lit(ref node), ref message] = fields[..] else {
         return None;
     };
+    let node = crate::registry::held::<crate::syntax::Syntax>(node)?;
     let at = match node.info() {
         crate::syntax::SourceInfo::Original { span, .. } => Some(*span),
         crate::syntax::SourceInfo::Generated(_) => None,
     };
     Some(ExpansionFailure::Refused {
-        message: message.clone(),
+        message: said(message)?,
         at,
     })
-}
-
-/// A stop when the meter stopped, and `otherwise` when it did not.
-fn stopped_or(meter: &WorkMeter, otherwise: ExpansionFailure) -> ExpansionFailure {
-    if meter.failure().is_some() {
-        ExpansionFailure::Stopped
-    } else {
-        otherwise
-    }
 }
 
 /// What one expansion charged the phases it used.
 ///
 /// Two of `CompilerLimits`' four counters (`26-language-design-decision.md`
 /// §3.5); the other two are the phase's own and are counted by
-/// [`crate::expand`]. Read off the ordinary meter and the ordinary unifier,
-/// because a transformer is checked and evaluated by the ordinary machinery
-/// and a separate accounting of the same work would be a second opinion about
-/// it.
+/// [`crate::expand`]. Read off [`musa_core::Spend`], because a transformer is
+/// elaborated and normalized by the ordinary machinery and a separate accounting
+/// of the same work would be a second opinion about it.
 pub(crate) struct PhaseWork {
     pub(crate) type_constraints: u64,
     pub(crate) evaluation_steps: u64,
+}
+
+impl PhaseWork {
+    /// §3.5's two counters, from what the core charged.
+    ///
+    /// `evaluation_steps` is the core's reduction count, which is the same
+    /// quantity under the same name. `type_constraints` is the metavariables the
+    /// elaboration made plus the postponements it retried: those *are* the
+    /// constraints a bidirectional elaborator raises, where the replaced checker
+    /// raised them as unification equations. §3.5 asks the counter to be
+    /// deterministic and to grow with the checking, and both are.
+    ///
+    /// The cost of reading the adapter *module* is in here too, added by
+    /// [`AdapterModule::spend`] before the run. It has to be: an adapter whose
+    /// operations carry their own signatures is checked without raising a
+    /// single metavariable, so a phase that counted only the run's own
+    /// elaboration would report zero for the checking half and charge nothing
+    /// for a module of any size. The number is the core's own rather than an
+    /// estimate on this side, which is what the paragraph above requires.
+    const fn of(spent: musa_core::Spend) -> Self {
+        Self {
+            type_constraints: spent.metavariables.saturating_add(spent.retries),
+            evaluation_steps: spent.steps,
+        }
+    }
 }
 
 /// Why an adapter's `edit` produced no patch.
@@ -12906,96 +13028,150 @@ pub(crate) type AdapterPatch = (u64, String);
 /// command type.
 pub(crate) fn edit_syntax(
     adapter_source: &str,
+    imports: PhaseImports<'_>,
     subject: crate::syntax::Syntax,
     command: &str,
     anchor: u64,
     argument: &str,
 ) -> (Result<Vec<AdapterPatch>, EditFailure>, PhaseWork) {
-    let mut unifier = Unifier::default();
-    let mut meter = WorkMeter::default();
-    let answer = run_editor(
-        adapter_source,
-        subject,
-        command,
-        anchor,
-        argument,
-        &mut unifier,
-        &mut meter,
-    );
-    let work = PhaseWork {
-        type_constraints: unifier.constraints(),
-        evaluation_steps: meter.steps(),
-    };
-    (answer, work)
+    let mut spent = musa_core::Spend::default();
+    let answer = run_editor(adapter_source, imports, subject, command, anchor, argument, &mut spent);
+    (answer, PhaseWork::of(spent))
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "an edit is a function of exactly these things: bundling them would hide which of them the phase may read"
+)]
 fn run_editor(
     adapter_source: &str,
+    imports: PhaseImports<'_>,
     subject: crate::syntax::Syntax,
     command: &str,
     anchor: u64,
     argument: &str,
-    unifier: &mut Unifier,
-    meter: &mut WorkMeter,
+    spent: &mut musa_core::Spend,
 ) -> Result<Vec<AdapterPatch>, EditFailure> {
-    // `edit : Syntax × Text × Nat × Text -> Result<List<(Nat, Text)>, Text>`.
-    // The anchor arrives as a number rather than inside the argument text
-    // because a command spelled as one string would be one an adapter could
-    // not take apart.
-    let wanted = phase_operations().swap_remove("edit").unwrap_or(Type::Unit);
-    let module = match read_adapter_module_metered(adapter_source, unifier, meter) {
-        Ok(module) => module,
-        Err(diagnostics) => {
-            if meter.failure().is_some() {
-                return Err(EditFailure::Stopped);
-            }
-            return Err(EditFailure::NotAnEditor(diagnostics));
-        }
-    };
-    let function = match module.operation("edit", &wanted) {
-        Ok(function) => function.clone(),
-        Err(found) => return Err(EditFailure::NotAnEditor(vec![not_the_operation("edit", found)])),
-    };
-    let arguments = vec![
-        Value::Syntax(Box::new(subject)),
-        Value::Text(command.to_owned()),
-        Value::Nat(anchor),
-        Value::Text(argument.to_owned()),
-    ];
-    let applied = apply_closure(&function, arguments, meter, SourceSpan::new(0, 0));
-    let Some(Value::Sum { error, held, .. }) = applied else {
-        return Err(edit_stopped_or(meter, EditFailure::NoAnswer));
-    };
-    if error {
-        let Value::Text(message) = *held else {
-            return Err(EditFailure::NoAnswer);
-        };
-        return Err(EditFailure::Refused(message));
-    }
-    let Value::List { values, .. } = *held else {
-        return Err(edit_stopped_or(meter, EditFailure::NoAnswer));
-    };
-    values
-        .into_iter()
-        .map(|value| {
-            let Value::Product(parts) = value else {
-                return Err(EditFailure::NoAnswer);
-            };
-            let [Value::Nat(anchor), Value::Text(text)] = parts.as_slice() else {
-                return Err(EditFailure::NoAnswer);
-            };
-            Ok((*anchor, text.clone()))
-        })
-        .collect()
+    let module = read_adapter_module(adapter_source, imports).map_err(|fault| match fault {
+        ModuleFault::Stopped => EditFailure::Stopped,
+        ModuleFault::Broken(diagnostics) => EditFailure::NotAnEditor(diagnostics),
+    })?;
+    *spent = spent.and(module.spend());
+    // `edit(region, command, anchor, argument)`, written as a term and read in
+    // the module's own context. The anchor arrives as a number rather than
+    // inside the argument text because a command spelled as one string would be
+    // one an adapter could not take apart.
+    let here = musa_core::Origin::UNKNOWN;
+    let (answer, spend) = module
+        .run(
+            "edit",
+            vec![
+                region(subject),
+                text(command),
+                Raw::numeral(here, "Nat", anchor),
+                text(argument),
+            ],
+        )
+        .map_err(|unrun| match unrun {
+            Unrun::Undeclared => EditFailure::NotAnEditor(vec![not_the_operation("edit")]),
+            Unrun::Stopped => EditFailure::Stopped,
+            Unrun::Refused(diagnostics) => EditFailure::NotAnEditor(diagnostics),
+            Unrun::NoAnswer => EditFailure::NoAnswer,
+        })?;
+    *spent = spent.and(spend);
+    patches(&answer).ok_or(EditFailure::NoAnswer)?
 }
 
-/// A stop when the meter stopped, and `otherwise` when it did not.
-fn edit_stopped_or(meter: &WorkMeter, otherwise: EditFailure) -> EditFailure {
-    if meter.failure().is_some() {
-        EditFailure::Stopped
-    } else {
-        otherwise
+/// The `Result<List<Pair<Nat, Text>>, Text>` an editor answered.
+///
+/// [`None`] when the normal form is not one, which is this crate's defect rather
+/// than an adapter's for [`answered`]'s reason: the call was checked before it
+/// was normalized, so an editor cannot reach it by being wrong.
+fn patches(answer: &musa_core::Datum) -> Option<Result<Vec<AdapterPatch>, EditFailure>> {
+    let musa_core::Datum::Case {
+        ref constructor,
+        ref fields,
+    } = *answer
+    else {
+        return None;
+    };
+    let [ref held] = fields[..] else { return None };
+    match &**constructor {
+        "Result.Ok" => Some(Ok(listed(held, patch)?)),
+        // The package's own sentence, exactly as a refusal during expansion is.
+        "Result.Err" => Some(Err(EditFailure::Refused(said(held)?))),
+        _ => None,
     }
+}
+
+/// One `Pair<Nat, Text>` an editor asked for.
+fn patch(field: &musa_core::Datum) -> Option<AdapterPatch> {
+    let musa_core::Datum::Case {
+        ref constructor,
+        ref fields,
+    } = *field
+    else {
+        return None;
+    };
+    if &**constructor != "Pair.Both" {
+        return None;
+    }
+    let [musa_core::Datum::Count { count, .. }, ref text] = fields[..] else {
+        return None;
+    };
+    Some((count, said(text)?))
+}
+
+/// The elements of a `List`, each read by `each`.
+///
+/// The prelude spelling and not a builtin one: `01-surface.md`'s `List` is
+/// `Empty`/`Cons`, so a closed list is that chain and reading it is walking it.
+/// [`None`] the moment an element is not what `each` expects, which keeps the
+/// whole answer one decision rather than a vector with a hole in it.
+fn listed<T>(held: &musa_core::Datum, each: impl Fn(&musa_core::Datum) -> Option<T>) -> Option<Vec<T>> {
+    let mut read = Vec::new();
+    let mut rest = held;
+    loop {
+        let musa_core::Datum::Case {
+            ref constructor,
+            ref fields,
+        } = *rest
+        else {
+            return None;
+        };
+        match (&**constructor, &fields[..]) {
+            ("List.Empty", []) => return Some(read),
+            ("List.Cons", [head, tail]) => {
+                read.push(each(head)?);
+                rest = tail;
+            }
+            _ => return None,
+        }
+    }
+}
+
+/// The text a literal holds.
+fn said(held: &musa_core::Datum) -> Option<String> {
+    let musa_core::Datum::Lit(ref value) = *held else {
+        return None;
+    };
+    crate::registry::held::<String>(value).cloned()
+}
+
+/// One region, as the term the phase hands an operation.
+fn region(subject: crate::syntax::Syntax) -> Raw {
+    Raw::lit(
+        musa_core::Origin::UNKNOWN,
+        crate::registry::literal(crate::registry::syntax_type(crate::syntax::Cat::TokenTree), subject),
+    )
+}
+
+/// One `Text` argument, the same way.
+fn text(said: &str) -> Raw {
+    Raw::lit(
+        musa_core::Origin::UNKNOWN,
+        crate::registry::literal(crate::registry::plain_type("Text"), said.to_owned()),
+    )
 }
 
 /// Why an adapter's `print` produced no source text.
@@ -13036,68 +13212,99 @@ pub(crate) enum PrintFailure {
 /// at the use site, never in the module the phase checks.
 pub(crate) fn print_value(
     adapter_source: &str,
+    imports: PhaseImports<'_>,
     at: &crate::compile::SourceDocument,
-    sources: &crate::imports::ImportSources,
     value: &str,
 ) -> Result<String, PrintFailure> {
-    let mut unifier = Unifier::default();
-    let mut meter = WorkMeter::default();
-    let module = match read_adapter_module_metered(adapter_source, &mut unifier, &mut meter) {
-        Ok(module) => module,
-        Err(diagnostics) => return Err(PrintFailure::NotAPrinter(diagnostics)),
-    };
+    let module = read_adapter_module(adapter_source, imports).map_err(|fault| match fault {
+        ModuleFault::Stopped => PrintFailure::Stopped,
+        ModuleFault::Broken(diagnostics) => PrintFailure::NotAPrinter(diagnostics),
+    })?;
     let Some(printer) = module.printer() else {
-        return Err(PrintFailure::NotAPrinter(vec![not_the_operation("print", None)]));
+        return Err(PrintFailure::NotAPrinter(vec![not_the_operation("print")]));
     };
-    run_printer(printer, at, sources, value, &mut meter)
+    run_printer(printer, adapter_source, imports, at, value)
 }
 
 /// The one small piece a printer and its subject are read in.
 ///
 /// Ordinary compilation and nothing else: the same declarations, the same
-/// Algorithm W, the same total evaluator, the same meter, and
-/// [`Reading::Source`] — so [`SYNTAX_OWNERSHIP`] is out of scope exactly as the
-/// empty scope had it out. A printer that could build syntax would be a second
-/// way to make an expansion, out of a value, away from the one place expansion
-/// happens.
+/// elaborator, the same core, and the same readback that every other document in
+/// this crate gets — so [`crate::prelude::phase`]'s vocabulary is out of scope
+/// exactly as the empty scope had it out. A printer that could build syntax
+/// would be a second way to make an expansion, out of a value, away from the one
+/// place expansion happens.
+///
+/// "Ordinary compilation" is [`crate::document::elaborate`] because that is what
+/// the words now mean. The piece below is a document like any other, and a
+/// printer read by a second checker would be a printer the language does not
+/// agree about: `Ok(text_join([…]))` would have to mean here what it means
+/// everywhere, and two checkers is two chances for it not to.
 ///
 /// What the piece holds, and why each part of it is there:
 ///
-/// - **`at`'s ordinary imports.** `Document(…)` is not a name an empty world
-///   holds, so neither the subject nor a `match` over it could be checked
-///   without them. They are `at`'s rather than the adapter's because `at` is the
-///   document the region will be written into, which makes this the same scope
-///   the printed region will itself be read in — the two sides of the
-///   round-trip law, read the same way. A syntax import is left out for the
-///   reason [`crate::imports::load`] leaves it out: it named a reader, not a
-///   module.
+/// - **`at`'s ordinary imports, and the adapter's.** `Document(…)` is not a name
+///   an empty world holds, so neither the subject nor a `match` over it could be
+///   checked without `at`'s: `at` is the document the region will be written
+///   into, which makes those the same scope the printed region will itself be
+///   read in — the two sides of the round-trip law, read the same way. The
+///   adapter's are here for the other half of the same claim: the printer's
+///   reached declarations are checked *twice*, once in the phase and once here,
+///   and a second reading that could not see the modules the first one saw would
+///   be a second program rather than a second reading of one. A syntax import is
+///   left out for the reason [`crate::imports::load`] leaves it out: it named a
+///   reader, not a module. A line both documents write is written once, because
+///   two identical imports in one piece is a collision the composer did not
+///   make.
 /// - **The module declarations the printer names**, so that a printer may have
 ///   local definitions. See [`Printer`].
-/// - **`subject`, then `printer`, then `printed`.** `A` is settled by
-///   unification through the application rather than declared: what a package's
-///   regions produce is the package's business, and a phase that had to be told
-///   it would be a phase that knows a type.
+/// - **`printer` as a `fn` declaration, then `printed`, with the value written
+///   *at* the call.** A `fn` and not a `let` for the reason [`Printer`] gives:
+///   §4 fixes a printer's answer at `Result<Text, Text>`, and writing it is what
+///   turns the arms from inferred into checked. `A` is still settled by checking
+///   the argument against the printer's own domain rather than by declaring it:
+///   what a package's regions produce is the package's business, and a phase
+///   that had to be told it would be a phase that knows a type. The value is not
+///   bound to a name first, because a bidirectional
+///   elaborator has nothing to check a bare `let subject = Alto;` against —
+///   `Alto` is a constructor of some family and the binding says of which one
+///   only if the type is written, which is the very thing this must not write.
+///   In argument position the domain is already known, so the same text needs no
+///   annotation at all.
 fn run_printer(
     printer: &Printer,
+    adapter_source: &str,
+    imports: PhaseImports<'_>,
     at: &crate::compile::SourceDocument,
-    sources: &crate::imports::ImportSources,
     value: &str,
-    meter: &mut WorkMeter,
 ) -> Result<String, PrintFailure> {
     let mut source = String::from("piece \"print\" {\n");
-    for import in ordinary_imports(at.text()) {
-        source.push_str(&import);
+    let mut written = IndexSet::new();
+    written.extend(ordinary_imports(at.text()));
+    // Where `at`'s lines stop and the adapter's begin, kept because the two
+    // resolve against different documents: `./sibling.musa` written in an
+    // adapter names a file beside the adapter, and resolving it against the
+    // composer's document would read whichever file happened to be compiling.
+    let mine = written.len();
+    written.extend(ordinary_imports(adapter_source));
+    for import in &written {
+        source.push_str(import);
         source.push('\n');
     }
     for declaration in &printer.reached {
         source.push_str(declaration);
         source.push('\n');
     }
-    source.push_str("let subject = ");
+    source.push_str("fn printer");
+    source.push_str(&printer.params);
+    if !printer.says_answer {
+        source.push_str(" -> Result<Text, Text>");
+    }
+    source.push(' ');
+    source.push_str(&printer.answer);
+    source.push_str("\nlet printed: Result<Text, Text> = printer(");
     source.push_str(value);
-    source.push_str(";\nlet printer = ");
-    source.push_str(&printer.body);
-    source.push_str(";\nlet printed: Result<Text, Text> = printer(subject);\n}\n");
+    source.push_str(");\n}\n");
 
     let parsed = musa_language::parse(&source);
     if let Some(error) = parsed.errors().first() {
@@ -13108,58 +13315,72 @@ fn run_printer(
     }
     let root = parsed.syntax();
     let Some(piece) = musa_language::ast::PieceDecl::from_root(&root) else {
-        return Err(PrintFailure::NotAPrinter(vec![not_the_operation("print", None)]));
+        return Err(PrintFailure::NotAPrinter(vec![not_the_operation("print")]));
     };
     let mut resolver = Resolver::new();
-    let libraries = crate::imports::load(
-        &mut resolver,
-        at.name(),
-        &musa_language::ast::ImportStmt::all_at_root(piece.syntax()),
-        sources,
-    );
-    if !validate_imports(&mut resolver, &libraries) {
-        return Err(print_failure(meter, &resolver));
+    // The statements come back in the order they were written above, so the
+    // split is where `mine` said it was.
+    let statements = musa_language::ast::ImportStmt::all_at_root(piece.syntax());
+    let (here, there) = statements.split_at(mine.min(statements.len()));
+    let composers = crate::imports::load(&mut resolver, at.name(), here, imports.sources);
+    let adapters = crate::imports::load(&mut resolver, imports.document, there, imports.sources);
+    // One library per document, however many closures reached it: a piece that
+    // reads both a composer's `std::list` and an adapter's `std::list` reaches
+    // the same module twice, and declaring it twice would be a collision
+    // neither of them wrote.
+    let mut seen = IndexSet::new();
+    let mut sources = Vec::new();
+    for (importer, libraries) in [(at.name(), &composers), (imports.document, &adapters)] {
+        for (from, library) in libraries.each() {
+            let document = crate::imports::resolve_import(importer, from.path);
+            if seen.insert((document, from.qualifier.map(str::to_owned))) {
+                sources.push(crate::document::Source::imported(library.syntax(), from));
+            }
+        }
     }
-    let world = World::read(&mut resolver, &data_owners(&libraries, &root, Some(piece.syntax())));
-    let modules = Modules::read(&mut resolver, module_owners(&libraries, &root));
-    let program = check_and_evaluate_metered(
-        &mut resolver,
-        libraries
-            .each()
-            .flat_map(|(from, library)| declarations(library.syntax(), Some(from)))
-            .chain(root_preamble(&root))
-            .chain(declarations(piece.syntax(), None)),
-        Some(piece.syntax()),
-        UnknownRootMusic::Reject,
-        &modules,
-        &world,
-        Reading::Source,
-        &IndexMap::new(),
-        &mut Unifier::default(),
-        meter,
-    );
-    let Some(program) = program else {
-        return Err(print_failure(meter, &resolver));
+    sources.push(crate::document::Source::own(&root));
+    sources.push(crate::document::Source::own(piece.syntax()));
+    let Some(document) = crate::document::elaborate(&mut resolver, &sources, None) else {
+        return Err(print_failure(resolver.diagnostics));
     };
-    // A checked program is not yet an answer: the declaration world is read
-    // before the expressions are, and its own refusals are recorded there.
-    if resolver
-        .diagnostics
-        .iter()
-        .any(|diagnostic| diagnostic.severity == crate::diagnose::Severity::Error)
-    {
-        return Err(print_failure(meter, &resolver));
-    }
-    let Some(Value::Sum { error, held, .. }) = program.values.get("printed") else {
-        return Err(print_stopped_or(meter, PrintFailure::NoAnswer));
+    let printed = match document.value("printed") {
+        Ok((printed, _)) => printed,
+        Err(musa_core::ElabError::Exhausted(_)) => return Err(PrintFailure::Stopped),
+        Err(error) => {
+            return Err(PrintFailure::NotAPrinter(vec![crate::lower::refusals::restate(
+                document.sites(),
+                &error,
+            )]));
+        }
     };
-    let Value::Text(text) = held.as_ref() else {
-        return Err(print_stopped_or(meter, PrintFailure::NoAnswer));
+    answered(&printed).ok_or(PrintFailure::NoAnswer)?
+}
+
+/// The `Result<Text, Text>` a printer answered, as this module's own outcome.
+///
+/// [`None`] when the normal form is not one, which is a defect in this crate
+/// rather than in an adapter: the term was checked at `Result<Text, Text>` above
+/// before it was normalized, so a printer cannot reach it by being wrong.
+///
+/// [`PrintFailure::Loss`] is what the error arm *means* — the printer read the
+/// value and said which part of it it could not spell — so the two arms are not
+/// success and failure here. They are the two answers §4 declares.
+fn answered(printed: &musa_core::Term) -> Option<Result<String, PrintFailure>> {
+    let musa_core::Datum::Case {
+        ref constructor,
+        ref fields,
+    } = musa_core::canonical(printed)?
+    else {
+        return None;
     };
-    if *error {
-        Err(PrintFailure::Loss(text.clone()))
-    } else {
-        Ok(text.clone())
+    let [musa_core::Datum::Lit(ref said)] = fields[..] else {
+        return None;
+    };
+    let said = crate::registry::held::<String>(said)?.clone();
+    match &**constructor {
+        "Result.Ok" => Some(Ok(said)),
+        "Result.Err" => Some(Err(PrintFailure::Loss(said))),
+        _ => None,
     }
 }
 
@@ -13183,21 +13404,16 @@ fn ordinary_imports(text: &str) -> Vec<String> {
         .collect()
 }
 
-/// A stop when the meter stopped, and the checker's complaints when it did not.
-fn print_failure(meter: &WorkMeter, resolver: &Resolver) -> PrintFailure {
-    if meter.failure().is_some() {
+/// A stop when a limit was crossed, and the checker's complaints when not.
+///
+/// Read off the diagnostics for [`module_fault`]'s reason, and separate from it
+/// because the two sentences differ: a printer that does not check is not an
+/// adapter module that does not check.
+fn print_failure(diagnostics: Vec<Diagnostic>) -> PrintFailure {
+    if diagnostics.iter().any(|it| it.code == Code::ResourceLimit) {
         PrintFailure::Stopped
     } else {
-        PrintFailure::NotAPrinter(resolver.diagnostics.clone())
-    }
-}
-
-/// A stop when the meter stopped, and `otherwise` when it did not.
-fn print_stopped_or(meter: &WorkMeter, otherwise: PrintFailure) -> PrintFailure {
-    if meter.failure().is_some() {
-        PrintFailure::Stopped
-    } else {
-        otherwise
+        PrintFailure::NotAPrinter(diagnostics)
     }
 }
 
@@ -13256,19 +13472,15 @@ pub(crate) fn evaluate_text(expression: &str) -> Option<String> {
 /// arranging to be refused.
 pub(crate) fn expand_syntax(
     adapter_source: &str,
+    imports: PhaseImports<'_>,
     subject: &crate::syntax::Syntax,
 ) -> (Result<crate::syntax::Syntax, ExpansionFailure>, PhaseWork) {
-    let mut unifier = Unifier::default();
     // Built here and lent inwards rather than made on the other side of
-    // `with_room`: the meter carries the budget this run is metered by, and a
-    // meter made on a fresh thread would be made under a fresh default.
-    let mut meter = WorkMeter::default();
-    let answer = with_room(adapter_source, subject, &mut unifier, &mut meter);
-    let work = PhaseWork {
-        type_constraints: unifier.constraints(),
-        evaluation_steps: meter.steps(),
-    };
-    (answer, work)
+    // `with_room`: what a run charged is reported by the caller that asked for
+    // it, and a total kept on a scoped thread would go out of scope with it.
+    let mut spent = musa_core::Spend::default();
+    let answer = with_room(adapter_source, imports, subject, &mut spent);
+    (answer, PhaseWork::of(spent))
 }
 
 /// Run one transformer with enough stack for the nesting the budget allows.
@@ -13290,16 +13502,16 @@ pub(crate) fn expand_syntax(
 /// programs; they differ only in what they survive.
 fn with_room(
     adapter_source: &str,
+    imports: PhaseImports<'_>,
     subject: &crate::syntax::Syntax,
-    unifier: &mut Unifier,
-    meter: &mut WorkMeter,
+    spent: &mut musa_core::Spend,
 ) -> Result<crate::syntax::Syntax, ExpansionFailure> {
     let room = usize::try_from(crate::core_budget::NESTING.saturating_mul(crate::core_budget::FRAME_CEILING))
         .unwrap_or(usize::MAX);
     let mut answer = None;
     if !cfg!(target_family = "wasm") {
         std::thread::scope(|scope| {
-            let run = || answer = Some(run_transformer(adapter_source, subject.clone(), unifier, meter));
+            let run = || answer = Some(run_transformer(adapter_source, imports, subject.clone(), spent));
             if let Ok(running) = std::thread::Builder::new().stack_size(room).spawn_scoped(scope, run)
                 && let Err(panic) = running.join()
             {
@@ -13312,74 +13524,78 @@ fn with_room(
     }
     // Either the host gave no thread or it is not a host that has them. The
     // work is done here instead, at the caller's own depth.
-    answer.unwrap_or_else(|| run_transformer(adapter_source, subject.clone(), unifier, meter))
+    answer.unwrap_or_else(|| run_transformer(adapter_source, imports, subject.clone(), spent))
 }
 
 fn run_transformer(
     adapter_source: &str,
+    imports: PhaseImports<'_>,
     subject: crate::syntax::Syntax,
-    unifier: &mut Unifier,
-    meter: &mut WorkMeter,
+    spent: &mut musa_core::Spend,
 ) -> Result<crate::syntax::Syntax, ExpansionFailure> {
-    // `expand : Syntax -> Result<Syntax, (Syntax, Text)>`, which is
+    let module = read_adapter_module(adapter_source, imports).map_err(|fault| match fault {
+        ModuleFault::Stopped => ExpansionFailure::Stopped,
+        ModuleFault::Broken(diagnostics) => ExpansionFailure::NotATransformer(diagnostics),
+    })?;
+    *spent = spent.and(module.spend());
+    // `expand(region)`, whose answer is `Result<Syntax, Pair<Syntax, Text>>` —
     // `26-language-design-decision.md` §3.4's operation with both halves. One
     // shape and not two: a phase that took either would be two interfaces
     // wearing one name.
-    let wanted = phase_operations().swap_remove("expand").unwrap_or(Type::Unit);
-    let module = match read_adapter_module_metered(adapter_source, unifier, meter) {
-        Ok(module) => module,
-        Err(diagnostics) => {
-            if meter.failure().is_some() {
-                return Err(ExpansionFailure::Stopped);
-            }
-            return Err(ExpansionFailure::NotATransformer(diagnostics));
-        }
-    };
-    let function = match module.operation("expand", &wanted) {
-        Ok(function) => function.clone(),
-        Err(found) => {
-            return Err(ExpansionFailure::NotATransformer(vec![not_the_operation(
-                "expand", found,
-            )]));
-        }
-    };
-    let applied = apply_closure(
-        &function,
-        vec![Value::Syntax(Box::new(subject))],
-        meter,
-        SourceSpan::new(0, 0),
-    );
-    let Some(Value::Sum { error, held, .. }) = applied else {
-        return Err(stopped_or(meter, ExpansionFailure::NoAnswer));
-    };
-    if error {
-        return Err(refusal_of(*held).unwrap_or(ExpansionFailure::NoAnswer));
-    }
-    let Value::Syntax(produced) = *held else {
-        return Err(stopped_or(meter, ExpansionFailure::NoAnswer));
-    };
+    let (answer, spend) = module
+        .run("expand", vec![region(subject)])
+        .map_err(|unrun| match unrun {
+            Unrun::Undeclared => ExpansionFailure::NotATransformer(vec![not_the_operation("expand")]),
+            Unrun::Stopped => ExpansionFailure::Stopped,
+            Unrun::Refused(diagnostics) => ExpansionFailure::NotATransformer(diagnostics),
+            Unrun::NoAnswer => ExpansionFailure::NoAnswer,
+        })?;
+    *spent = spent.and(spend);
+    let produced = expanded(&answer).ok_or(ExpansionFailure::NoAnswer)??;
     // The gate again, here rather than only in `checked_expression`: a
     // transformer that never called the builtin has still produced output the
     // rest of the compiler will have to anchor diagnostics against.
     crate::syntax::check_expression(&produced).map_err(ExpansionFailure::NotAnExpression)?;
-    Ok(*produced)
+    Ok(produced)
 }
 
-/// The complaint for a module that declares the wrong thing under a name the
-/// phase runs, or nothing at all.
+/// The `Result<Syntax, Pair<Syntax, Text>>` a transformer answered.
 ///
-/// It says the type it found, because "this is not a transformer" is not
-/// advice: the author wrote a function and wants to know which function the
-/// phase was expecting.
-fn not_the_operation(name: &str, found: Option<&Type>) -> Diagnostic {
-    match found {
-        None => Diagnostic::error(Code::Expansion, format!("it declares no `{name}`")),
-        Some(found) => Diagnostic::error(
-            Code::Expansion,
-            format!("its `{name}` has type `{}`", crate::infer::plain_one(found)),
-        ),
+/// [`None`] for [`answered`]'s reason, and the error arm is not a fault for
+/// [`ExpansionFailure::Refused`]'s: a transformer that answers `Err` has
+/// *worked*, and what it says is the adapter package's sentence about the
+/// composer's text.
+fn expanded(answer: &musa_core::Datum) -> Option<Result<crate::syntax::Syntax, ExpansionFailure>> {
+    let musa_core::Datum::Case {
+        ref constructor,
+        ref fields,
+    } = *answer
+    else {
+        return None;
+    };
+    let [ref held] = fields[..] else { return None };
+    match &**constructor {
+        "Result.Ok" => {
+            let musa_core::Datum::Lit(ref produced) = *held else {
+                return None;
+            };
+            Some(Ok(crate::registry::held::<crate::syntax::Syntax>(produced)?.clone()))
+        }
+        "Result.Err" => Some(Err(refusal_of(held)?)),
+        _ => None,
     }
-    .help(match name {
+}
+
+/// The complaint for a module that declares nothing under a name the phase
+/// runs.
+///
+/// One case where there were two. A module whose `expand` is not a transformer
+/// used to be told the type the phase found instead; now the *call* is what
+/// checks it, so that author is told which argument did not fit and where, by
+/// the conversion check itself. What is left here is the case there is no call
+/// to make.
+fn not_the_operation(name: &str) -> Diagnostic {
+    Diagnostic::error(Code::Expansion, format!("it declares no `{name}`")).help(match name {
         "expand" => {
             "an adapter declares `let expand = fn (region) { … };`, answering `Ok(syntax)` or `Err((node, why))`"
         }
@@ -13724,6 +13940,13 @@ mod tests {
         for (was, now) in musa_language::RESPELLED_TYPES {
             if matches!(*now, "Option" | "List" | "Result") {
                 continue; // Parameterized: a node kind, not a name.
+            }
+            // A respelling that carries its argument — `music` is now
+            // `EventTrack<WrittenTime>` — is a written form the type reader
+            // parses, for the same reason `Duration` alone names no type
+            // above: the coordinate is part of what was said.
+            if now.contains('<') {
+                continue;
             }
             assert!(
                 named_type(now).is_some(),
@@ -14256,16 +14479,16 @@ mod tests {
         One(node: Syntax<TokenTree>),
     }
 
-    let held = fn (node: Syntax<TokenTree>) { One(node) };
+    let held = fn (node: Syntax<TokenTree>) -> Seen { One(node) };
 
-    let first = fn (found: Seen, later: Seen) {
+    let first = fn (found: Seen, later: Seen) -> Seen {
         match found {
             One(node) -> One(node),
             Nothing -> later,
         }
     };
 
-    let expand = fn (region) {
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {
         match first(held(region), Nothing) {
             One(node) -> Ok(node),
             Nothing -> Err((region, \"a region is always a node\")),
@@ -14277,24 +14500,51 @@ mod tests {
             &musa_language::parse("let melody = c4").syntax(),
             crate::syntax::ExpansionPath::at(vec![0]),
         );
+        let outcome = expand_syntax(module, PhaseImports::bundled(), &subject).0;
         assert!(
-            expand_syntax(module, &subject).0.is_ok(),
-            "a `data` holding a `Syntax`, a parameter annotated `Syntax`, and a sibling `fn` are all the module's own"
+            outcome.is_ok(),
+            "a `data` holding a `Syntax`, a parameter annotated `Syntax`, and a sibling `fn` are all the module's own: {:?}",
+            outcome.err()
         );
     }
 
-    /// An adapter reads its region and imports nothing: expansion runs before
-    /// ordinary resolution, so there is no package graph for it to reach into.
+    /// An adapter module reads the modules it imports.
+    ///
+    /// `../rules/language/02-core-calculus.md` §5.9 says the phase "adds three
+    /// things and takes nothing away", and the standard library is one of the
+    /// things it may not take: an adapter that could not import would be
+    /// ordinary Musa minus the modules, which is the sublanguage by subtraction
+    /// `AGENTS.md` forbids.
     #[test]
-    fn an_adapter_module_that_imports_is_refused_with_a_sentence() {
-        let module = "library {\n    import std::notation::staff;\n\n    let level = \"readable\";\n}\n";
-        let Err(ModuleFault::Broken(diagnostics)) = read_adapter_module(module) else {
-            panic!("an adapter that imports is refused")
+    fn an_adapter_module_reads_the_modules_it_imports() {
+        // `repeated` and not `map` or `range`: those two are spelled in the
+        // builtin table as well as in `std::list`, so a module that named one
+        // would pass whether or not the import was read. `repeated` is written
+        // in source and nowhere else, which is what makes this a test of the
+        // import rather than of the registry.
+        let module = "library {\n    import std::list;\n\n    let level = \"readable\";\n\n    let counted = \
+                      repeated(\"readable\", 2);\n}\n";
+        match read_adapter_module(module, PhaseImports::bundled()) {
+            Ok(_) => {}
+            Err(ModuleFault::Broken(diagnostics)) => panic!("the imported module is in scope: {diagnostics:?}"),
+            Err(ModuleFault::Stopped) => panic!("the module is small enough to check"),
+        }
+    }
+
+    /// A *syntax* import is the one an adapter may not write, and for the
+    /// reason the `syntax` region beside it is refused: an adapter written with
+    /// an adapter puts the expansion order back into a cycle.
+    #[test]
+    fn an_adapter_module_that_imports_an_adapter_is_refused_with_a_sentence() {
+        let module =
+            "library {\n    import syntax std::adapters::staff as staff;\n\n    let level = \"readable\";\n}\n";
+        let Err(ModuleFault::Broken(diagnostics)) = read_adapter_module(module, PhaseImports::bundled()) else {
+            panic!("an adapter that reads with an adapter is refused")
         };
         assert!(
             diagnostics
                 .first()
-                .is_some_and(|first| first.message.contains("imports nothing")),
+                .is_some_and(|first| first.message.contains("an adapter of its own")),
             "and it says which rule it broke: {diagnostics:?}"
         );
     }
@@ -14303,9 +14553,8 @@ mod tests {
     /// diagnostics say so rather than landing on the composer's region.
     #[test]
     fn a_diagnostic_inside_an_adapter_module_stays_in_that_module() {
-        let module =
-            "library {\n    let level = \"readable\";\n\n    let expand = fn (region) { Ok(nowhere(region)) };\n}\n";
-        let Err(ModuleFault::Broken(diagnostics)) = read_adapter_module(module) else {
+        let module = "library {\n    let level = \"readable\";\n\n    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(nowhere(region)) };\n}\n";
+        let Err(ModuleFault::Broken(diagnostics)) = read_adapter_module(module, PhaseImports::bundled()) else {
             panic!("an unbound name is a broken module")
         };
         assert!(
@@ -14324,24 +14573,25 @@ mod tests {
     #[test]
     fn the_reader_hands_a_transformer_the_number_it_already_read() {
         let read = |region: &str| {
-            let transformer = "fn (region) {
+            let transformer =
+                "fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {
                 Err((region, syntax_fold_from_leaves(
                     fn (here) { \"none\" },
                     fn (here, kind, text) {
-                        option_fold(\"none\", fn (node) {
-                            option_fold(\"none\", fn (value) {
+                        syntax_at(region, here).fold_from_end(\"none\", fn (node, unused) {
+                            syntax_number(node).fold_from_end(\"none\", fn (value, also_unused) {
                                 match ratio_equal(value, 3/8) {
                                     true -> \"three eighths\",
                                     false -> \"another number\",
                                 }
-                            }, syntax_number(node))
-                        }, syntax_at(region, here))
+                            })
+                        })
                     },
                     fn (here, name) { \"none\" },
                     fn (here, delimiter, children) {
-                        list_fold_from_start(\"none\", fn (child, found) {
+                        children.fold_from_start(\"none\", fn (found, child) {
                             match text_equal(found, \"none\") { true -> child, false -> found }
-                        }, children)
+                        })
                     },
                     region
                 )))
@@ -14476,7 +14726,7 @@ mod tests {
     /// with. The module is checked whole: a declaration the checker refused is
     /// a refused module even where the expressions around it check.
     fn adapter_refusals(module: &str) -> Vec<String> {
-        match read_adapter_module(module) {
+        match read_adapter_module(module, PhaseImports::bundled()) {
             Ok(_) => Vec::new(),
             Err(ModuleFault::Broken(diagnostics)) => {
                 diagnostics.into_iter().map(|diagnostic| diagnostic.message).collect()
@@ -14488,7 +14738,7 @@ mod tests {
     /// One adapter module around `body`, which is spliced in above `expand`.
     fn adapter_module(body: &str) -> String {
         format!(
-            "library {{\n    let level = \"readable\";\n\n{body}\n\n    let expand = fn (region) {{ Ok(region) }};\n}}\n"
+            "library {{\n    let level = \"readable\";\n\n{body}\n\n    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ Ok(region) }};\n}}\n"
         )
     }
 
@@ -14508,7 +14758,10 @@ mod tests {
                 "    let run_it = fn (sealed: SyntaxStep<Text, Text>) { run_syntax_step(\"c\", sealed) };"
             ))
             .is_empty(),
-            "an adapter may name the type of the value its group branch is handed"
+            "an adapter may name the type of the value its group branch is handed: {:?}",
+            adapter_refusals(&adapter_module(
+                "    let run_it = fn (sealed: SyntaxStep<Text, Text>) { run_syntax_step(\"c\", sealed) };"
+            ))
         );
         // Written at the wrong size it names no type at all, so the mistake is
         // reported where it was written rather than at a later mismatch.
@@ -14517,40 +14770,51 @@ mod tests {
                 "    let run_it = fn (sealed: SyntaxStep<Text>) { sealed };"
             ))
             .iter()
-            .any(|message| message.contains("takes 2 type arguments")),
-            "`SyntaxStep` written with one argument is refused where it is written"
+            .any(|message| message.contains("takes 2 arguments") && message.contains("`Answer`")),
+            "`SyntaxStep` written with one argument is refused where it is written, naming the parameter left out"
         );
-        // No constructor: the name is a type and not a term.
-        assert!(
-            adapter_refusals(&adapter_module(
-                "    let forged = fn (node: Syntax<TokenTree>) { SyntaxStep(node) };"
-            ))
-            .iter()
-            .any(|message| message.contains("cannot find `SyntaxStep`")),
-            "a step has no source constructor"
-        );
+        // No constructor an adapter may write. `Step` is private to the phase
+        // module, so every spelling that would mint one is refused there: the
+        // qualified head at full arity, the same head under-applied, and the
+        // bare case name under a checking type.
+        for forging in [
+            "    let forged = fn (run: Text -> Text) { SyntaxStep::Step(Text, Text, run) };",
+            "    let forged = fn (run: Text -> Text) { SyntaxStep::Step(run) };",
+            "    let forged = fn (run: Text -> Text) -> SyntaxStep<Text, Text> { Step(run) };",
+        ] {
+            assert!(
+                adapter_refusals(&adapter_module(forging))
+                    .iter()
+                    .any(|message| message.contains("`SyntaxStep.Step` is private")),
+                "a step was minted from source by `{forging}`"
+            );
+        }
         // And nothing else is one. A region is a `Syntax`, which is what the
         // recursor descends into — not what running a step resumes.
         assert!(
             adapter_refusals(
-                "library {\n    let level = \"readable\";\n\n    let expand = fn (region) { Ok(run_syntax_step(\"c\", \
+                "library {\n    let level = \"readable\";\n\n    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(run_syntax_step(\"c\", \
                  region)) };\n}\n"
             )
             .iter()
             .any(|message| message.contains("expected `SyntaxStep")),
             "a raw region is not a step, so minting stays the only introduction"
         );
-        // Not storable, directly or inside a container: a stored step would
-        // outlive the traversal that sealed it, which is what sealing is for.
+        // A field *may* be declared at a step's type, directly or inside a
+        // container, and the seal is not weakened by it. §1.2 makes a family
+        // storable exactly when every field it stores is, which is the rule that
+        // lets `SyntaxStep` itself — one field, of function type — be declared
+        // at all; refusing the declaration here would be the opposite rule one
+        // type later. What a declaration cannot do is *fill* the field, because
+        // the case is private, which is the block above.
         for field in ["SyntaxStep<Text, Text>", "List<SyntaxStep<Text, Text>>"] {
             let module = adapter_module(&format!(
                 "    data Held {{\n        Nothing,\n        One(held: {field}),\n    }}"
             ));
             assert!(
+                adapter_refusals(&module).is_empty(),
+                "a `data` field of type `{field}` was refused at its declaration: {:?}",
                 adapter_refusals(&module)
-                    .iter()
-                    .any(|message| message.contains("may not be a sealed step")),
-                "a `data` field of type `{field}` was accepted"
             );
         }
     }
@@ -14598,7 +14862,7 @@ mod tests {
         // operation that reads a node refuses one.
         let branch = |reading: &str| {
             format!(
-                "library {{\n    let level = \"readable\";\n\n    let expand = fn (region) {{ Ok(recurse_syntax(\n     \
+                "library {{\n    let level = \"readable\";\n\n    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ Ok(recurse_syntax(\n     \
                     fn (c, here) {{ region }},\n        fn (c, here, kind, text) {{ region }},\n        fn (c, here, \
                  name) {{ region }},\n        fn (c, here, delimiter, kids) {{ {reading} }},\n        \"\", region)) \
                  }};\n}}\n"
@@ -15524,11 +15788,15 @@ mod tests {
                 exercised.push(builtin);
             }
             let Some(value) = answer else {
-                panic!(
-                    "`{}` returned no value on a well-typed argument tuple; D2 requires partiality \
-                     to be declared in the result type, not reported by the evaluator",
-                    builtin.name()
-                );
+                // D2 admits two ways of declaring partiality since prompt 141m,
+                // and this evaluator can only spell one of them. It has two
+                // answers where a rule has three, so `None` here stands for both
+                // "the program is wrong" and "this table is" — which is exactly
+                // the collapse 141m's Task names. Whether an absence is the
+                // first is a question about the *registered rule's* sentence,
+                // and `crate::registry::laws` asks it there, over the same
+                // signatures, in the vocabulary that can tell them apart.
+                continue;
             };
             let actual = value_type(&value)
                 .unwrap_or_else(|| panic!("`{}` returned a value with no first-order type", builtin.name()));

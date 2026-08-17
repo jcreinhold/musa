@@ -81,6 +81,8 @@ pub(crate) struct Source {
     pub(crate) from: Option<Import>,
     /// Whether `02-core-calculus.md` §5.9's phase vocabulary is readable here.
     pub(crate) in_phase: bool,
+    /// Declarations this reading leaves to somebody else. See [`Self::without`].
+    left: Vec<String>,
 }
 
 /// The `import` statement one source arrived through.
@@ -119,6 +121,7 @@ impl Source {
             root: root.clone(),
             from: None,
             in_phase: false,
+            left: Vec::new(),
         }
     }
 
@@ -138,6 +141,28 @@ impl Source {
     pub(crate) fn in_phase(mut self) -> Self {
         self.in_phase = true;
         self
+    }
+
+    /// The same source, minus the declarations `left` names.
+    ///
+    /// One caller, and it is the expansion phase. An adapter's `print` is read
+    /// where it is *run* rather than with its module — its parameter is the
+    /// package's own type, which the phase has no name for — and a helper only
+    /// `print` reaches goes with it ([`crate::core::Printer`]). So the phase asks
+    /// for the module without those lines.
+    ///
+    /// By name and not by rebuilding the node, because the node is where the
+    /// author wrote it: a library re-spelled without those declarations would
+    /// move every span after the first one, and a refusal about the module would
+    /// then point into the wrong line of the adapter's own file.
+    pub(crate) fn without(mut self, left: impl IntoIterator<Item = String>) -> Self {
+        self.left.extend(left);
+        self
+    }
+
+    /// Whether this reading was told to leave `node` to somebody else.
+    fn leaves(&self, node: &SyntaxNode) -> bool {
+        !self.left.is_empty() && bound_name(node).is_some_and(|name| self.left.contains(&name))
     }
 }
 
@@ -166,12 +191,31 @@ pub(crate) struct Document {
     /// document can be asked for: the file is the template's body, so everything
     /// in it was produced by the one site that made it.
     standing: Option<crate::origin::Origin>,
+    /// What elaborating the declarations charged.
+    ///
+    /// Kept because one caller has a budget of its own to answer for: the
+    /// expansion phase charges `26-language-design-decision.md` §3.5's four
+    /// counters, and reading an adapter *module* is the checking half of them.
+    /// A number estimated on that side would be a second opinion about work the
+    /// core already counted exactly, so the reading reports what it spent and
+    /// the phase adds it up — see [`crate::core::PhaseWork`].
+    spend: musa_core::Spend,
 }
 
 impl Document {
     /// Every name this document bound, in the order it was written.
     pub(crate) fn names(&self) -> &[Name] {
         &self.names
+    }
+
+    /// What elaborating this document's declarations charged.
+    ///
+    /// The sum over the families, traits, definitions and instances it holds.
+    /// Not the *piece*: a piece is read afterwards and through
+    /// [`Document::piece`], so a caller that wants both adds two numbers rather
+    /// than reading one that quietly means whichever happened first.
+    pub(crate) const fn spend(&self) -> musa_core::Spend {
+        self.spend
     }
 
     /// The normal form of what `name` denotes, with its type.
@@ -201,9 +245,24 @@ impl Document {
     /// [`ElabError`] when `raw` does not elaborate here, or when normalizing it
     /// exhausts the budget.
     pub(crate) fn term(&self, raw: &Raw) -> Result<(Term, Term), ElabError> {
-        let (term, ty) = musa_core::infer(&self.cx, raw)?;
-        let normal = musa_core::normalize(&self.cx, &ty, &term)?;
-        Ok((normal, ty))
+        Ok(self.term_metered(raw)?.0)
+    }
+
+    /// The same, and what reading it charged.
+    ///
+    /// For [`crate::core::AdapterModule`], which has a budget of its own:
+    /// `26-language-design-decision.md` §3.5 gives the expansion phase four
+    /// counters and two of them are this reading's work. A phase that estimated
+    /// them would be keeping a second opinion about work the core already
+    /// counted exactly.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::term`].
+    pub(crate) fn term_metered(&self, raw: &Raw) -> Result<((Term, Term), musa_core::Spend), ElabError> {
+        let ((term, ty), elaborating) = musa_core::infer_metered(&self.cx, raw)?;
+        let (normal, normalizing) = musa_core::normalize_metered(&self.cx, &ty, &term)?;
+        Ok(((normal, ty), elaborating.and(normalizing)))
     }
 
     /// The written-time track `raw` denotes.
@@ -413,8 +472,16 @@ pub(crate) fn elaborate(
     let mut brought: Vec<(Name, &Import)> = Vec::new();
     for source in sources {
         let already = read.definitions.len();
+        let numbered = sites.counted();
         read.gather(resolver, &mut sites, source, &modules, &aliases);
         read.barred(resolver, &mut sites, source, &modules);
+        // Which file this source's sites came out of, recorded now because this
+        // is the walk that knows. A refusal about one of them is restated at the
+        // `import` below rather than at a span in a document nobody here has —
+        // see `refusals::restate`.
+        if let Some(import) = &source.from {
+            sites.imported(numbered, &import.path, import.at);
+        }
         let named = read.definitions.iter().skip(already);
         match &source.from {
             None => here.extend(named.map(|held| (Arc::clone(&held.name), held.origin))),
@@ -440,41 +507,95 @@ pub(crate) fn elaborate(
         read.definitions
             .extend(instantiated(resolver, &mut sites, instance, &modules)?);
     }
+    // Standing *somewhere*, which is what makes the phase's `private` bite: the
+    // compiler's own context stands nowhere and is inside every module, and a
+    // document elaborated in it could mint the sealed step. See
+    // [`crate::prelude::SOURCE`].
     let mut cx = match crate::registry::owned() {
-        Ok(cx) => cx,
+        Ok(cx) => cx.in_module(crate::prelude::SOURCE),
         Err(error) => {
             resolver.report(refusals::restate(&sites, &error));
             return None;
         }
     };
-    let mut refused = false;
-    for (_, group) in order_families(resolver, read.families)? {
-        match musa_core::declare(&cx, &group) {
-            Ok(declared) => cx = cx.declaring(&declared),
+    // `05-adapters.md` §5.9 keeps the phase's vocabulary and the piece's apart,
+    // so `run_syntax_step` is in scope for a reading that holds a phase source
+    // and unknown everywhere else. It is a definition rather than a builtin
+    // because a projection out of a declared family is what the language
+    // already writes — see [`crate::prelude::expansion`].
+    if sources.iter().any(|source| source.in_phase) {
+        match crate::prelude::expansion(&cx) {
+            Ok(widened) => cx = widened,
             Err(error) => {
                 resolver.report(refusals::restate(&sites, &error));
-                refused = true;
+                return None;
+            }
+        }
+    }
+    let mut refused = false;
+    let mut spend = musa_core::Spend::default();
+    let mut structural = Vec::new();
+    for (_, declared) in order_types(resolver, read.types)? {
+        match declared {
+            TypeDecl::Family(group) => match musa_core::declare_metered(&cx, &group) {
+                Ok((declared, spent)) => {
+                    spend = spend.and(spent);
+                    cx = cx.declaring(&declared);
+                }
+                Err(error) => {
+                    resolver.report(refusals::restate(&sites, &error));
+                    refused = true;
+                }
+            },
+            // One record at a time and not one program of them: the order is
+            // already computed here, and a record's Σ may name a family the
+            // record after it has not yet been declared under.
+            TypeDecl::Record(held) => {
+                structural.push(Arc::clone(&held.name));
+                let program = RawProgram {
+                    definitions: vec![held],
+                    instances: Vec::new(),
+                };
+                match musa_core::declare_program_metered(&cx, &program) {
+                    Ok((declared, spent)) => {
+                        spend = spend.and(spent);
+                        cx = cx.defining(&declared);
+                    }
+                    Err(error) => {
+                        resolver.report(refusals::restate(&sites, &error));
+                        refused = true;
+                    }
+                }
             }
         }
     }
     for raw in &read.classes {
-        match musa_core::declare_trait(&cx, raw) {
-            Ok(declared) => cx = cx.declaring_class(&declared),
+        match musa_core::declare_trait_metered(&cx, raw) {
+            Ok((declared, spent)) => {
+                spend = spend.and(spent);
+                cx = cx.declaring_class(&declared);
+            }
             Err(error) => {
                 resolver.report(refusals::restate(&sites, &error));
                 refused = true;
             }
         }
     }
-    let names: Vec<Name> = read.definitions.iter().map(|held| Arc::clone(&held.name)).collect();
+    let names: Vec<Name> = structural
+        .into_iter()
+        .chain(read.definitions.iter().map(|held| Arc::clone(&held.name)))
+        .collect();
     refused |= !named_once(resolver, &sites, &here);
     refused |= !imports_agree(resolver, &brought);
     let program = RawProgram {
         definitions: read.definitions,
         instances: read.instances,
     };
-    let declared = match musa_core::declare_program(&cx, &program) {
-        Ok(declared) => declared,
+    let declared = match musa_core::declare_program_metered(&cx, &program) {
+        Ok((declared, spent)) => {
+            spend = spend.and(spent);
+            declared
+        }
         Err(error) => {
             resolver.report(refusals::restate(&sites, &error));
             return None;
@@ -492,6 +613,7 @@ pub(crate) fn elaborate(
         names,
         modules,
         standing: made.map(|instance| crate::lower::expansion(instance.span(), instance.step())),
+        spend,
     })
 }
 
@@ -611,9 +733,9 @@ fn imports_agree(resolver: &mut Resolver, brought: &[(Name, &Import)]) -> bool {
 /// goes through.
 #[derive(Default)]
 struct Read {
-    /// Each family group beside the node it was written at, because the node is
-    /// what [`order_families`] reads the group's dependencies off.
-    families: Vec<(SyntaxNode, RawData)>,
+    /// Each type declaration beside the node it was written at, because the node
+    /// is what [`order_types`] reads its dependencies off.
+    types: Vec<(SyntaxNode, TypeDecl)>,
     classes: Vec<musa_core::RawTrait>,
     instances: Vec<musa_core::RawImpl>,
     definitions: Vec<RawTopLevel>,
@@ -652,6 +774,9 @@ impl Read {
     ) {
         let alias = source.from.as_ref().and_then(|from| from.alias.as_deref());
         for node in source.root.children() {
+            if source.leaves(&node) {
+                continue;
+            }
             let visibility = visibility_of(&node);
             let item = {
                 let lowering = if source.in_phase {
@@ -662,7 +787,7 @@ impl Read {
                 lowering.naming(Naming::at_root(modules).under(aliases)).item(&node)
             };
             match item {
-                Declared::Item(Item::Data(data)) => self.families.push((node, data)),
+                Declared::Item(Item::Data(data)) => self.types.push((node, TypeDecl::Family(data))),
                 Declared::Item(Item::Class(class)) => self.classes.push(class),
                 Declared::Item(Item::Instance(instance)) => self.instances.push(instance),
                 Declared::Item(Item::Definition(mut definition)) => {
@@ -671,7 +796,15 @@ impl Read {
                     }
                     record(resolver, &node, &definition.name);
                     self.declaring.push(Declaring::at(&node, &definition, source));
-                    self.definitions.push(top_level(definition, visibility));
+                    let held = top_level(definition, visibility);
+                    // A `record` declares a *type*, so it goes through the type
+                    // door even though it is written as a definition — see
+                    // [`TypeDecl`].
+                    if node.kind() == SyntaxKind::RecordDecl {
+                        self.types.push((node, TypeDecl::Record(held)));
+                    } else {
+                        self.definitions.push(held);
+                    }
                 }
                 Declared::Refused => self.refused = true,
                 Declared::Elsewhere => {}
@@ -947,6 +1080,21 @@ fn record(resolver: &mut Resolver, node: &SyntaxNode, name: &str) {
     resolver.references.declare(kind, name, span);
 }
 
+/// The name a declaration is written under, before anything lowers it.
+///
+/// Its *first* name and not everything it binds: a `data` binds its
+/// constructors too, and [`Source::without`]'s one caller excludes whole
+/// declarations by the name at the head of each. Reading it off the CST rather
+/// than off a lowered item is what lets a source leave a declaration out
+/// *before* it is lowered, which is the point — the phase cannot lower `print`
+/// at all.
+fn bound_name(node: &SyntaxNode) -> Option<String> {
+    node.children_with_tokens()
+        .filter_map(musa_language::SyntaxElement::into_token)
+        .find(|token| token.kind() == SyntaxKind::Identifier)
+        .map(|token| token.text().to_owned())
+}
+
 /// Whether `private` was written on this declaration.
 fn visibility_of(node: &SyntaxNode) -> Visibility {
     if node
@@ -960,7 +1108,36 @@ fn visibility_of(node: &SyntaxNode) -> Visibility {
     }
 }
 
-/// The family groups, ordered so that each is declared after the families its
+/// A type declaration, whichever of the two doors it goes through.
+///
+/// `01-surface.md` §1.2 gives a document two ways to declare a type: a `data` or
+/// `enum` names an inductive family, and a `record` names a Σ. The core keeps
+/// them apart — a family is [`musa_core::declare`]'s and a record is an ordinary
+/// definition — but *the document* cannot, because either may name the other. A
+/// sum whose payload is a product (`data Taken { Took(read: Reading) }`) and a
+/// product holding a sum (`record Pending { taken: Taken; }`) are both ordinary
+/// programs, and declaring every family before every definition would make the
+/// first unwritable. So the two travel in one list, in one dependency order —
+/// see [`order_types`].
+enum TypeDecl {
+    /// A `data` or `enum` group, declared by [`musa_core::declare_metered`].
+    Family(RawData),
+    /// A `record`, declared by defining its Σ under the record's name.
+    Record(RawTopLevel),
+}
+
+impl TypeDecl {
+    /// The type names this declaration binds — one for a record, and one per
+    /// family for a group.
+    fn names(&self) -> Vec<&str> {
+        match self {
+            Self::Family(data) => data.families.iter().map(|family| &*family.name).collect(),
+            Self::Record(held) => vec![&held.name],
+        }
+    }
+}
+
+/// The type declarations, ordered so that each is declared after the types its
 /// fields name.
 ///
 /// The same analysis [`musa_core::declare_program`] runs over definitions and
@@ -983,39 +1160,45 @@ fn visibility_of(node: &SyntaxNode) -> Visibility {
 /// A cycle between two declarations is refused here rather than in the core,
 /// because the core's mutual-recursion door is one group with shared parameters
 /// and two written `data` declarations share none.
-fn order_families(resolver: &mut Resolver, families: Vec<(SyntaxNode, RawData)>) -> Option<Vec<(SyntaxNode, RawData)>> {
-    let edges: Vec<BTreeSet<usize>> = families
+fn order_types(resolver: &mut Resolver, types: Vec<(SyntaxNode, TypeDecl)>) -> Option<Vec<(SyntaxNode, TypeDecl)>> {
+    let edges: Vec<BTreeSet<usize>> = types
         .iter()
         .map(|(node, _)| {
             let named = identifiers(node);
-            families
+            types
                 .iter()
                 .enumerate()
-                .filter(|&(_, (_, data))| data.families.iter().any(|family| named.contains(family.name.as_ref())))
+                .filter(|&(_, (_, declared))| declared.names().iter().any(|name| named.contains(*name)))
                 .map(|(index, _)| index)
                 .collect()
         })
         .collect();
     let mut placed = BTreeSet::new();
     let mut walking = BTreeSet::new();
-    let mut order = Vec::with_capacity(families.len());
-    for start in 0..families.len() {
+    let mut order = Vec::with_capacity(types.len());
+    for start in 0..types.len() {
         if !visit(start, &edges, &mut walking, &mut placed, &mut order) {
-            let names = families
+            let names = types
                 .iter()
                 .enumerate()
                 .filter(|(index, _)| walking.contains(index))
-                .flat_map(|(_, (_, data))| data.families.iter().map(|family| format!("`{}`", family.name)))
+                .flat_map(|(_, (_, declared))| {
+                    declared
+                        .names()
+                        .into_iter()
+                        .map(|name| format!("`{name}`"))
+                        .collect::<Vec<_>>()
+                })
                 .collect::<Vec<_>>()
                 .join(", ");
             resolver.report(
                 Diagnostic::error(Code::DependencyCycle, format!("{names} name each other"))
-                    .help("a `data` declaration may not depend on one that depends on it"),
+                    .help("a type declaration may not depend on one that depends on it"),
             );
             return None;
         }
     }
-    let mut held: Vec<Option<(SyntaxNode, RawData)>> = families.into_iter().map(Some).collect();
+    let mut held: Vec<Option<(SyntaxNode, TypeDecl)>> = types.into_iter().map(Some).collect();
     Some(
         order
             .into_iter()

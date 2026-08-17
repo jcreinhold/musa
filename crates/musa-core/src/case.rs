@@ -95,9 +95,18 @@ pub(crate) fn compile(
     arms: &[RawArm],
     goal: &Value,
 ) -> Result<Term, ElabError> {
+    // Each subject is elaborated under the binders the ones before it needed,
+    // so a term read at one depth is never used at another.
+    let mut inner = scope.clone();
+    let mut bound = Vec::new();
     let mut columns = Vec::with_capacity(subjects.len());
     for raw in subjects {
-        columns.push(subject(elaborator, scope, raw)?);
+        let (column, binder) = subject(elaborator, &inner, raw)?;
+        if let Some((name, ty_term, value_term)) = binder {
+            inner = inner.assume(Some(Arc::clone(&name)), raw.origin(), Arc::clone(&column.ty));
+            bound.push((name, ty_term, value_term));
+        }
+        columns.push(column);
     }
     let mut rows = Vec::with_capacity(arms.len());
     for (which, arm) in arms.iter().enumerate() {
@@ -121,8 +130,8 @@ pub(crate) fn compile(
         arms,
         selected: vec![false; arms.len()],
     };
-    let term = tree.solve(
-        scope,
+    let mut term = tree.solve(
+        &inner,
         &Problem {
             columns,
             rows,
@@ -132,6 +141,9 @@ pub(crate) fn compile(
     if let Some(arm) = tree.unselected() {
         return Err(Refusal::UnreachableBranch { at: arm }.into());
     }
+    for (name, ty, value) in bound.into_iter().rev() {
+        term = Term::bind(here, name, ty, value, term);
+    }
     Ok(term)
 }
 
@@ -140,6 +152,10 @@ pub(crate) fn compile(
 /// A *value*, not a term: a subject outlives several splits and every split is at
 /// a deeper context than the last, so a term would need shifting at each one.
 /// Values are de Bruijn-levelled, so this one is written down once.
+///
+/// **The value is always a variable.** [`subject`] names anything else first,
+/// and the invariant is what makes [`Split::read`]'s readback cost the size of
+/// the subject's *type* rather than the size of its normal form.
 struct Subject {
     value: Value,
     ty: Arc<Value>,
@@ -1237,6 +1253,8 @@ impl Split {
             }
             pattern.push(level);
         }
+        // Cheap because [`Subject`]'s value is a variable: this reads back a
+        // variable, η-expanded at its type, and never a call's normal form.
         let target = quote(meter, Depth(depth), &subject.ty, &subject.value)?;
         let level = motive_level(meter, scope, goal)?;
         Ok(Self {
@@ -1255,15 +1273,41 @@ impl Split {
     }
 }
 
-/// Elaborate one subject, and keep it as a value.
-fn subject(elaborator: &mut Elaborator, scope: &Scope, raw: &Raw) -> Result<Subject, ElabError> {
+/// Elaborate one subject, and keep it as a value — a *variable*, if it was not
+/// one already, together with the binder that names it.
+///
+/// Peyton Jones ch. 5 states the match algorithm over variables ("the `u_i` are
+/// variables") and §5.2.4 introduces exactly this `let` for the general case.
+/// Here the reason is sharper than presentation. [`Split::read`] hands the
+/// recursor its target as a *term*, and the only way to turn a value back into
+/// a term is [`quote`], which writes a **normal form**: a subject that is a call
+/// would put that call's whole unfolding into the emitted tree, and the
+/// unfolding of a call into `stdlib/` is the transitive closure of everything it
+/// reaches. Naming it first is what keeps the tree the size of the program.
+///
+/// The binder is an *assumption* and not a definition, and nothing is lost by
+/// that: [`Tree::motives`] specializes a subject by its de Bruijn level through
+/// [`rebound`], so a subject that was not a variable never had a dependent
+/// motive to lose. The `let` [`compile`] writes around the tree is δ, so the
+/// value is back before anything evaluates.
+fn subject(
+    elaborator: &mut Elaborator,
+    scope: &Scope,
+    raw: &Raw,
+) -> Result<(Subject, Option<(Name, Term, Term)>), ElabError> {
     let (term, ty) = elaborator.infer_open(scope, raw)?;
     let value = scope.eval(elaborator.meter(), &term)?;
-    Ok(Subject {
-        value,
-        ty: Arc::new(ty),
-        at: raw.origin(),
-    })
+    let ty = Arc::new(ty);
+    let at = raw.origin();
+    if variable(&value).is_some() {
+        return Ok((Subject { value, ty, at }, None));
+    }
+    let ty_term = scope.quote_type(elaborator.meter(), &ty)?;
+    let value = scope.fresh_var(at, Arc::clone(&ty));
+    // A space, so that no author's identifier is shadowed by it and every
+    // refusal that prints a binder still prints something a reader recognizes.
+    let name: Name = Arc::from("match subject");
+    Ok((Subject { value, ty, at }, Some((name, ty_term, term))))
 }
 
 /// The de Bruijn level a value is, when it is a variable.

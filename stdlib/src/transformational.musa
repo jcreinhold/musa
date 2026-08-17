@@ -1,6 +1,5 @@
 library {
     import std::list;
-    import std::option;
     // For `Transposable`: every transformation below moves a root by a written
     // interval, and `up`/`down` is that trait's one method.
     import std::pitch;
@@ -50,12 +49,18 @@ library {
     // be explained. Every transformation below is total because of this
     // function and the next.
     fn major_triad_on(root: NoteName, fallback: Triad) -> Triad {
-        option_fold(fallback, itself, chord_triad(chord_on(chord c major, root)))
+        chord_triad(chord_on(chord c major, root)).fold_from_end(
+            fallback,
+            fn (refined, impossible) { itself(refined) },
+        )
     }
 
     // The minor triad rooted on a pitch class, on the same terms.
     fn minor_triad_on(root: NoteName, fallback: Triad) -> Triad {
-        option_fold(fallback, itself, chord_triad(chord_on(chord c minor, root)))
+        chord_triad(chord_on(chord c minor, root)).fold_from_end(
+            fallback,
+            fn (refined, impossible) { itself(refined) },
+        )
     }
 
     // The present case of the two constructors above.
@@ -116,7 +121,7 @@ library {
     // keyword or a special form, so a list of them is ordinary data and this
     // is an ordinary fold.
     fn chain(steps: List<Triad -> Triad>, start: Triad) -> Triad {
-        list_fold_from_start(start, applied, steps)
+        steps.fold_from_start(start, fn (carried, operation) { applied(operation, carried) })
     }
 
     // One step of `chain`.

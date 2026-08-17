@@ -10,7 +10,7 @@
 use musa_core::{Origin, Raw};
 use musa_language::{SyntaxKind, SyntaxNode};
 
-use super::{Lowering, applied, child, children, is_type_node};
+use super::{Lowering, applied, child, children, is_type_node, paired};
 use crate::core::Coordinate;
 use crate::diagnose::{Code, Diagnostic};
 
@@ -61,48 +61,17 @@ impl Lowering<'_> {
             // type that disagreed with the value side would be one construct
             // contradicting itself.
             //
-            // Only two, and the refusal keeps the help text it always had. The
-            // corpus writes 36 products and every one of them is a pair, so the
-            // arity that would force a choice between `(A, (B, C))` and
-            // `((A, B), C)` is one nobody has written; a reading invented for it
-            // would be an encoding no reader could check against the source.
+            // Any width, right-nested, which is the same fold the value side and
+            // a pattern run: [`super::paired`] holds the direction and the
+            // argument for it.
             SyntaxKind::ProductType => {
                 let members: Option<Vec<Raw>> = children(node, is_type_node).iter().map(|held| self.ty(held)).collect();
-                match members?.as_slice() {
-                    [first, second] => Some(applied(
-                        origin,
-                        Raw::hosted(origin, "Pair"),
-                        [first.clone(), second.clone()],
-                    )),
-                    written => self.wide_product(node, written.len()),
-                }
+                paired(members?, |first, second| {
+                    applied(origin, Raw::hosted(origin, "Pair"), [first, second])
+                })
             }
             _ => None,
         }
-    }
-
-    /// "an anonymous product of `n` has no core spelling", for `n` other than
-    /// two.
-    ///
-    /// Shared with [`super::values`] so a written `(a, b, c)` and its type are
-    /// refused in the same words: the value side reads a pair and the type side
-    /// reads a pair, and one of them refusing a triple more helpfully than the
-    /// other would be a reader's problem rather than a distinction.
-    ///
-    /// The help text is the one the whole construct carried before 142 gave the
-    /// pair a spelling, and it is still the repair: a record's fields say what
-    /// the positions meant, which is exactly what is missing when three of them
-    /// are written and nothing says how they group.
-    pub(super) fn wide_product<T>(&mut self, node: &SyntaxNode, written: usize) -> Option<T> {
-        self.refuse(
-            Diagnostic::error(
-                Code::UnsupportedLanguageStage,
-                format!("an anonymous product of {written} has no core spelling"),
-            )
-            .at(crate::resolve::trimmed_span(node), "written here")
-            .help("declare a `record` whose fields name what the positions meant, and write that")
-            .note("a product of two is `Pair`; wider ones would have to choose a nesting nothing wrote"),
-        )
     }
 
     /// `Option<τ>` and `List<τ>`, which have their own node kinds because the
@@ -178,7 +147,15 @@ impl Lowering<'_> {
         }
         let head = self.ty(head)?;
         let arguments: Option<Vec<Raw>> = arguments.iter().map(|child| self.ty(child)).collect();
-        Some(applied(origin, head, arguments?))
+        // A *call* rather than an iterated application, which is what makes the
+        // under-applied direction reportable. `Option<Nat, Nat>` still earns
+        // `NotAFunction` from `Option`'s own kind, as the module doc says; what
+        // a spine cannot say is that a parameter went *unwritten*, because a
+        // prefix of an application does not know it is a prefix. `SyntaxStep<Text>`
+        // otherwise reaches the annotation as a `Type 0 → Type 0` and is refused
+        // as "not a type", which names neither the arity nor the argument left
+        // out. §1.3's completeness rule reads both off the declaration.
+        Some(Raw::call(origin, head, arguments?))
     }
 
     /// `Machine<K, A, B>` and `Primitive<K, A, B>`: a step tag, then two ports.

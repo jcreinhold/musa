@@ -369,6 +369,68 @@ impl ScoreFact {
             | FactKind::Improvise { .. } => None,
         }
     }
+
+    /// The pitch this fact *sounds*, and where it is stored.
+    ///
+    /// Wider than [`Self::pitch_of`] by exactly one case, and separate from it
+    /// on purpose. `pitch_of` answers "is this a notehead a reader can point
+    /// at", which is what numbers positions, groups a chord, and finds a tie —
+    /// and a grace note is none of those, because `04-provenance.md`'s inspector
+    /// numbers what a reader points at. This one answers "does this fact carry a
+    /// pitch a mapper must see", and a grace note plainly does: a
+    /// `map_note_pitches(pedal, …)` that left the ornaments alone would give
+    /// back a passage the composer did not write.
+    ///
+    /// A get/set pair over one table, so the half of the controlled traversal
+    /// that *collects* pitches and the half that *puts them back* cannot
+    /// disagree about which facts carry one — and a newly-added [`FactKind`]
+    /// fails to compile in both until its policy is chosen deliberately.
+    pub(crate) const fn sounding_pitch(&self) -> Option<WrittenPitch> {
+        match &self.kind {
+            FactKind::Note { pitch, .. } | FactKind::Grace { pitch, .. } => Some(*pitch),
+            FactKind::Rest { .. }
+            | FactKind::Mark { .. }
+            | FactKind::Slur
+            | FactKind::Phrase { .. }
+            | FactKind::Tuplet { .. }
+            | FactKind::Dynamic { .. }
+            | FactKind::Hairpin { .. }
+            | FactKind::Key { .. }
+            | FactKind::Meter { .. }
+            | FactKind::Clef { .. }
+            | FactKind::Tempo { .. }
+            | FactKind::Section { .. }
+            | FactKind::Harmony { .. }
+            | FactKind::Repeat { .. }
+            | FactKind::Ending { .. }
+            | FactKind::Mobile { .. }
+            | FactKind::Improvise { .. } => None,
+        }
+    }
+
+    /// The same place, to write through. See [`Self::sounding_pitch`].
+    pub(crate) const fn sounding_pitch_mut(&mut self) -> Option<&mut WrittenPitch> {
+        match &mut self.kind {
+            FactKind::Note { pitch, .. } | FactKind::Grace { pitch, .. } => Some(pitch),
+            FactKind::Rest { .. }
+            | FactKind::Mark { .. }
+            | FactKind::Slur
+            | FactKind::Phrase { .. }
+            | FactKind::Tuplet { .. }
+            | FactKind::Dynamic { .. }
+            | FactKind::Hairpin { .. }
+            | FactKind::Key { .. }
+            | FactKind::Meter { .. }
+            | FactKind::Clef { .. }
+            | FactKind::Tempo { .. }
+            | FactKind::Section { .. }
+            | FactKind::Harmony { .. }
+            | FactKind::Repeat { .. }
+            | FactKind::Ending { .. }
+            | FactKind::Mobile { .. }
+            | FactKind::Improvise { .. } => None,
+        }
+    }
 }
 
 impl musa_kernel::Canonical for ScoreFact {

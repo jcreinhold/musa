@@ -182,6 +182,44 @@ pub struct ResourceError {
     pub attempted: u64,
 }
 
+/// What one facade call charged, by metric.
+///
+/// The four counters that only go up. [`Metric::Nesting`] is not among them
+/// because it is a depth rather than a total: it comes back down on the way out,
+/// so "how deep did this go" is not a charge and adding it to one would be a
+/// number nothing means.
+///
+/// Reported because a caller may have a budget of its own to keep.
+/// `26-language-design-decision.md` §3.5 gives the expansion phase four
+/// counters, two of which are this crate's work — an adapter that is expensive
+/// to check is expensive whether or not the region it reads is small — and a
+/// phase that had to estimate them would be keeping a second opinion about work
+/// this crate already counted exactly.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Spend {
+    /// [`Metric::Steps`].
+    pub steps: u64,
+    /// [`Metric::QuotedNodes`].
+    pub quoted_nodes: u64,
+    /// [`Metric::Metavariables`].
+    pub metavariables: u64,
+    /// [`Metric::Retries`].
+    pub retries: u64,
+}
+
+impl Spend {
+    /// The two spends of one operation done in two calls, added.
+    #[must_use]
+    pub const fn and(self, later: Self) -> Self {
+        Self {
+            steps: self.steps.saturating_add(later.steps),
+            quoted_nodes: self.quoted_nodes.saturating_add(later.quoted_nodes),
+            metavariables: self.metavariables.saturating_add(later.metavariables),
+            retries: self.retries.saturating_add(later.retries),
+        }
+    }
+}
+
 /// One operation's spend.
 ///
 /// Built per facade call rather than carried in the context: limits are
@@ -275,6 +313,16 @@ impl Meter {
         value
     }
 
+    /// What this meter has charged so far.
+    pub(crate) const fn spent(&self) -> Spend {
+        Spend {
+            steps: self.steps,
+            quoted_nodes: self.quoted_nodes,
+            metavariables: self.metavariables,
+            retries: self.retries,
+        }
+    }
+
     fn charge(&self, metric: Metric, operation: &'static str, spent: u64) -> Result<u64, CoreError> {
         let attempted = spent.saturating_add(1);
         if attempted > self.budget.limit(metric) {
@@ -354,3 +402,5 @@ mod tests {
         );
     }
 }
+
+// ---- scratch instrumentation, removed before 142 closes ----

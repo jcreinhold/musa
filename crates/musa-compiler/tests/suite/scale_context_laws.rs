@@ -163,7 +163,7 @@ fn a_numbered_degree_realizes_in_the_frame_that_registers_it() {
     // replaces, which is what `map_note_pitches` is for, and the block sequences
     // the three.
     let source = piece_with(
-        "    import std::collections;\n    import std::scale;\n\n    fn sounding(register: Frame, ordinal: Nat) -> EventTrack<WrittenTime> {\n        map_note_pitches(fn (written: Pitch) -> Pitch { frame_degree(register, ordinal) }, music { c4/4 })\n    }\n\n    fn triad(register: Frame) -> EventTrack<WrittenTime> { music {\n        use sounding(register, 1);\n        use sounding(register, 3);\n        use sounding(register, 5);\n    } }\n\n    let anchored: EventTrack<WrittenTime> = option_fold(music { rest/4 }, triad, frame_on(scale c major, c4));",
+        "    import std::collections;\n    import std::scale;\n\n    fn sounding(register: Frame, ordinal: Nat) -> EventTrack<WrittenTime> {\n        map_note_pitches(fn (written: Pitch) -> Pitch { frame_degree(register, ordinal) }, music { c4/4 })\n    }\n\n    fn triad(register: Frame) -> EventTrack<WrittenTime> { music {\n        use sounding(register, 1);\n        use sounding(register, 3);\n        use sounding(register, 5);\n    } }\n\n    let anchored: EventTrack<WrittenTime> = frame_on(scale c major, c4).fold_from_end(music { rest/4 }, fn (found, otherwise) { triad(found) });",
         "        use anchored;",
     );
     assert_eq!(pitches(&source), ["c4", "e4", "g4"]);

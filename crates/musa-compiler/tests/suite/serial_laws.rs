@@ -34,7 +34,6 @@ const SERIAL_FORMS: &str = include_str!("../../../../examples/serial-forms.musa"
 /// not a row at all.
 const PRELUDE: &str = r"
     import std::list;
-    import std::option;
     import std::post_tonal::pcset;
     import std::post_tonal::serial;
 
@@ -42,13 +41,13 @@ const PRELUDE: &str = r"
 
     fn tick(one: EventTrack<WrittenTime>, carried: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { together(one, carried) }
     fn beat() -> EventTrack<WrittenTime> { music { c4/1 } }
-    fn tally(count: Nat) -> EventTrack<WrittenTime> { list_fold_from_start(music { rest/1 }, tick, repeated(beat(), count)) }
+    fn tally(count: Nat) -> EventTrack<WrittenTime> { repeated(beat(), count).fold_from_start(music { rest/1 }, fn (carried, one) { tick(one, carried) }) }
     fn beat_for_pc(member: Pc12) -> EventTrack<WrittenTime> { beat() }
     fn beat_for_nat(count: Nat) -> EventTrack<WrittenTime> { beat() }
     fn beat_for_row(series: Row12) -> EventTrack<WrittenTime> { beat() }
     fn beat_for_spelling(spelled: NoteName) -> EventTrack<WrittenTime> { beat() }
-    fn chorus(voices: List<EventTrack<WrittenTime>>) -> EventTrack<WrittenTime> { list_fold_from_start(music { rest/1 }, tick, voices) }
-    fn sounded(cell: Option<NoteName>) -> EventTrack<WrittenTime> { option_fold(music { rest/1 }, beat_for_spelling, cell) }
+    fn chorus(voices: List<EventTrack<WrittenTime>>) -> EventTrack<WrittenTime> { voices.fold_from_start(music { rest/1 }, fn (carried, one) { tick(one, carried) }) }
+    fn sounded(cell: Option<NoteName>) -> EventTrack<WrittenTime> { cell.fold_from_end(music { rest/1 }, fn (found, otherwise) { beat_for_spelling(found) }) }
 
     let generic_pcs: List<Pc12> = pcs([0, 1, 4, 9, 5, 8, 3, 10, 2, 11, 6, 7]);
     let chromatic_pcs: List<Pc12> = pcs([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);

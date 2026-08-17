@@ -831,7 +831,7 @@ fn a_key_is_ordinary_in_a_piece_and_misplaced_in_a_music_value() {
             .iter()
             .map(|complaint| complaint.message.clone())
             .collect::<Vec<_>>(),
-        ["a key change cannot stand in a `music` value"]
+        ["a key change belongs to the piece, not to material"]
     );
 }
 

@@ -1,7 +1,6 @@
 library {
     import std::harmony;
     import std::list;
-    import std::nat;
     import std::scale;
 
     // A diatonic sequence is a pattern applied a finite number of times. OMT
@@ -26,14 +25,10 @@ library {
     // steps. Index zero is the start, which is what makes a count of one mean
     // "the pattern, stated once".
     fn rising_degree(start: Degree, steps: Nat, index: Nat) -> Degree {
-        nat_fold(
-            start,
-            fn (nth: Nat, from: Degree) -> Degree { risen_by(steps, nth, from) },
-            index,
-        )
+        range(index).fold_from_start(start, fn (from, nth) { risen_by(steps, nth, from) })
     }
 
-    // The rise itself, as the `nat_fold` step it is applied by. The index is
+    // The rise itself, as the fold step it is applied by. The index is
     // ignored on purpose: a diatonic sequence moves by the same interval every
     // time, and a pattern that did not would be a different pattern.
     fn risen_by(steps: Nat, index: Nat, from: Degree) -> Degree { up_steps(from, steps) }
@@ -43,14 +38,10 @@ library {
     // a `nat` has no sign and a direction that could be forgotten is a
     // direction that will be.
     fn falling_degree(start: Degree, steps: Nat, index: Nat) -> Degree {
-        nat_fold(
-            start,
-            fn (nth: Nat, from: Degree) -> Degree { fallen_by(steps, nth, from) },
-            index,
-        )
+        range(index).fold_from_start(start, fn (from, nth) { fallen_by(steps, nth, from) })
     }
 
-    // The fall, as the `nat_fold` step it is applied by.
+    // The fall, as the fold step it is applied by.
     fn fallen_by(steps: Nat, index: Nat, from: Degree) -> Degree { down_steps(from, steps) }
 
     // The whole finite walk upward: `count` degrees, beginning at `start`. A

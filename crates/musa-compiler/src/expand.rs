@@ -337,44 +337,51 @@ struct LevelFault {
 ///
 /// `path` is the module as the importer wrote it, which is what the messages
 /// name it by; `document` is the key the import resolved to, which is what a
-/// cause is filed under and what a renderer looks the text up with.
-fn level_of(adapter_source: &str, path: &str, document: &str) -> Result<Level, LevelFault> {
+/// cause is filed under, what a renderer looks the text up with, and what the
+/// module's own imports resolve against.
+fn level_of(
+    adapter_source: &str,
+    path: &str,
+    document: &str,
+    sources: &crate::imports::ImportSources,
+) -> Result<Level, LevelFault> {
     let plain = |message: String, help: &'static str| LevelFault {
         message,
         help,
         code: Code::Expansion,
         causes: Vec::new(),
     };
-    let module = crate::core::read_adapter_module(adapter_source).map_err(|fault| match fault {
-        crate::core::ModuleFault::Stopped => LevelFault {
-            message: format!("reading `{path}` crossed a compilation limit"),
-            help: "an adapter is total, so this is a limit rather than a loop",
-            code: Code::ResourceLimit,
-            // A read that ran out of budget said nothing about the module, so
-            // there is nothing to carry.
-            causes: Vec::new(),
-        },
-        // The wrapper's own sentence, and not a word of the module's spliced
-        // into it: the causes below say what is wrong inside the module, each
-        // at its own place in it, and a summary here would say the first one
-        // twice and the rest not at all.
-        crate::core::ModuleFault::Broken(diagnostics) => LevelFault {
-            message: format!("`{path}` is not an adapter module"),
-            help: "an adapter module is a `library` of ordinary declarations, checked in the expansion phase",
-            code: Code::Expansion,
-            causes: diagnostics
-                .into_iter()
-                .map(|diagnostic| crate::diagnose::Cause::of(document, diagnostic))
-                .collect(),
-        },
-    })?;
+    let module = crate::core::read_adapter_module(adapter_source, crate::core::PhaseImports::at(document, sources))
+        .map_err(|fault| match fault {
+            crate::core::ModuleFault::Stopped => LevelFault {
+                message: format!("reading `{path}` crossed a compilation limit"),
+                help: "an adapter is total, so this is a limit rather than a loop",
+                code: Code::ResourceLimit,
+                // A read that ran out of budget said nothing about the module, so
+                // there is nothing to carry.
+                causes: Vec::new(),
+            },
+            // The wrapper's own sentence, and not a word of the module's spliced
+            // into it: the causes below say what is wrong inside the module, each
+            // at its own place in it, and a summary here would say the first one
+            // twice and the rest not at all.
+            crate::core::ModuleFault::Broken(diagnostics) => LevelFault {
+                message: format!("`{path}` is not an adapter module"),
+                help: "an adapter module is a `library` of ordinary declarations, checked in the expansion phase",
+                code: Code::Expansion,
+                causes: diagnostics
+                    .into_iter()
+                    .map(|diagnostic| crate::diagnose::Cause::of(document, diagnostic))
+                    .collect(),
+            },
+        })?;
     let declared = module.text("level").ok_or_else(|| {
         plain(
             format!("`{path}` declares no conformance level"),
             "an adapter module declares `let level = \"readable\";`, `\"editable\"`, or `\"generative\"`",
         )
     })?;
-    let level = Level::named(declared).ok_or_else(|| {
+    let level = Level::named(&declared).ok_or_else(|| {
         plain(
             format!("`{path}` declares the level `{declared}`, which is not one of the three"),
             "the levels are `readable`, `editable`, and `generative`, and each is the one before it plus an operation",
@@ -415,7 +422,7 @@ pub(crate) fn expand(source: &SourceDocument, options: &CompileOptions) -> Expan
             // what the missing module was for.
             continue;
         };
-        if let Err(fault) = level_of(adapter_source, &import.path, &uri) {
+        if let Err(fault) = level_of(adapter_source, &import.path, &uri, &options.imports) {
             expansion.diagnostics.push(
                 Diagnostic::error(fault.code, fault.message)
                     .at(import.at, "this import")
@@ -428,7 +435,7 @@ pub(crate) fn expand(source: &SourceDocument, options: &CompileOptions) -> Expan
         return expansion;
     }
     let written = names_written(source.text());
-    let mut cache: BTreeMap<(String, String), Cached> = BTreeMap::new();
+    let mut cache: BTreeMap<(String, String, String), Cached> = BTreeMap::new();
     let mut text = String::with_capacity(source.text().len());
     let mut copied = 0usize;
     for (ordinal, region) in regions.iter().enumerate() {
@@ -602,7 +609,7 @@ pub fn adapter_edits(
     // The level decides, not the presence of an `edit`. A module that declares
     // *readable* has said its regions are read-only, and an `edit` it did not
     // advertise does not quietly make them writable.
-    let level = level_of(adapter_source, &import.path, &uri).map_err(|fault| {
+    let level = level_of(adapter_source, &import.path, &uri, &options.imports).map_err(|fault| {
         AdapterEditError::Broken(Box::new(
             refusal(site, fault.message, fault.help).caused_by(fault.causes),
         ))
@@ -626,7 +633,14 @@ pub fn adapter_edits(
         crate::syntax::ExpansionPath::at(vec![u32::try_from(ordinal).unwrap_or(u32::MAX)]),
     );
     let anchors = subject.spans(site);
-    let (answer, _work) = crate::core::edit_syntax(adapter_source, subject, command, anchor, argument);
+    let (answer, _work) = crate::core::edit_syntax(
+        adapter_source,
+        crate::core::PhaseImports::at(&uri, &options.imports),
+        subject,
+        command,
+        anchor,
+        argument,
+    );
     let patches = answer.map_err(|failure| match failure {
         crate::core::EditFailure::Refused(message) => AdapterEditError::Refused {
             adapter: import.path.clone(),
@@ -643,7 +657,7 @@ pub fn adapter_edits(
         crate::core::EditFailure::NotAnEditor(_) => AdapterEditError::Broken(Box::new(refusal(
             site,
             format!("`{}`'s `edit` is not an editor", import.path),
-            "an adapter module declares `let edit = fn (region, command, anchor, argument) { … };`",
+            "an adapter module declares `let edit = fn (region: Syntax<TokenTree>, command: Text, anchor: Nat, argument: Text) -> Result<List<Pair<Nat, Text>>, Text> { … };`",
         ))),
         crate::core::EditFailure::NoAnswer => AdapterEditError::Broken(Box::new(refusal(
             site,
@@ -779,15 +793,21 @@ pub fn adapter_print(
             "check the package path, or provide the file the import names",
         )
     })?;
-    let level =
-        level_of(adapter_source, adapter, &uri).map_err(|fault| broken_by(fault.message, fault.help, fault.causes))?;
+    let level = level_of(adapter_source, adapter, &uri, &options.imports)
+        .map_err(|fault| broken_by(fault.message, fault.help, fault.causes))?;
     if level < Level::Generative {
         return Err(AdapterPrintError::NotGenerative {
             adapter: adapter.to_owned(),
             level: level.word().to_owned(),
         });
     }
-    crate::core::print_value(adapter_source, at, &options.imports, value).map_err(|failure| match failure {
+    crate::core::print_value(
+        adapter_source,
+        crate::core::PhaseImports::at(&uri, &options.imports),
+        at,
+        value,
+    )
+    .map_err(|failure| match failure {
         crate::core::PrintFailure::Loss(message) => AdapterPrintError::Loss {
             adapter: adapter.to_owned(),
             message,
@@ -799,16 +819,44 @@ pub fn adapter_print(
             )
             .help("the adapter is total, so this is a limit rather than a loop"),
         )),
-        crate::core::PrintFailure::NotAPrinter(_) => broken(
+        // The checker's own sentences, restated against the adapter, for the
+        // reason `level_of` restates its own: "does not read this value" says
+        // which two things disagreed and not *how*, and the how is the only part
+        // an adapter author can act on.
+        //
+        // Their coordinates are dropped rather than published. A printer and its
+        // subject are read together in a piece neither of them is written in
+        // (`crate::core::print_value`), so a span here is a position in text no
+        // consumer can open — and the adapter is a file a consumer *can* open,
+        // which is what would make an offset into the reading land somewhere
+        // real and wrong.
+        crate::core::PrintFailure::NotAPrinter(why) => broken_by(
             format!("`{adapter}`'s `print` does not read this value"),
             "a printer is `fn (value: T) { … }` answering `Ok(text)` or `Err(loss)`, where `T` is the type its regions \
              produce",
+            why.into_iter().map(|diagnostic| said_by(adapter, diagnostic)).collect(),
         ),
         crate::core::PrintFailure::NoAnswer => broken(
             format!("`{adapter}` did not answer for this value"),
             "the adapter checked and then produced nothing, which is a fault in the adapter",
         ),
     })
+}
+
+/// One complaint about a reading, filed against `adapter` and stripped of its
+/// coordinates.
+///
+/// [`crate::diagnose::Cause::of`] everywhere else keeps the labels, because
+/// everywhere else the offsets are offsets into a file the reader can open. Here
+/// they are offsets into the piece [`crate::core::print_value`] wrote to read the
+/// printer and the value together, and `adapter` is a real file: kept, they would
+/// resolve against text they did not come from and point somewhere plausible and
+/// wrong. The sentence is what an adapter author acts on, and it survives.
+fn said_by(adapter: &str, diagnostic: Diagnostic) -> crate::diagnose::Cause {
+    crate::diagnose::Cause {
+        labels: Vec::new(),
+        ..crate::diagnose::Cause::of(adapter, diagnostic)
+    }
 }
 
 /// One region's answer, kept so a second identical region costs the same.
@@ -855,7 +903,7 @@ fn expand_one(
     written: &BTreeSet<String>,
     options: &CompileOptions,
     source: &SourceDocument,
-    cache: &mut BTreeMap<(String, String), Cached>,
+    cache: &mut BTreeMap<(String, String, String), Cached>,
 ) -> Result<(String, ExpansionRecord, Charges), Refused> {
     let name = region_name(region).ok_or_else(|| {
         Box::new(refusal(
@@ -904,7 +952,12 @@ fn expand_one(
     // the same table from the same region and neither has to remember it.
     let anchors = subject.spans(site);
 
-    let key = (version.clone(), interior);
+    // The document as well as its digest, because a module's own imports
+    // resolve against the document it was read from: two copies of one adapter
+    // under two paths hash the same and do not read the same modules, and a
+    // cache that said they did would be the second path this prompt's audit
+    // exists to find.
+    let key = (uri.clone(), version.clone(), interior);
     if let Some(hit) = cache.get(&key) {
         // The charge is replayed from the record, so the second of two
         // identical regions costs exactly what the first did.
@@ -920,7 +973,11 @@ fn expand_one(
         return Ok((hit.printed.clone(), record, hit.charges));
     }
 
-    let (answer, work) = crate::core::expand_syntax(adapter_source, &subject);
+    let (answer, work) = crate::core::expand_syntax(
+        adapter_source,
+        crate::core::PhaseImports::at(&uri, &options.imports),
+        &subject,
+    );
     // The run happened, so the run is charged, and everything below reports
     // against the same charge whether the adapter answered or refused.
     let charged = |generated_syntax_nodes| Charges {
@@ -1163,7 +1220,7 @@ mod tests {
     /// A transformer that answers `Ok` with `emitted`, whatever the region held.
     fn answering(emitted: &str) -> String {
         format!(
-            "fn (region) {{ Ok(syntax_fold_from_leaves(fn (here) {{ syntax_token(syntax_built(here, 0, 0), TokenKind.Error, \"\") }}, \
+            "fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ Ok(syntax_fold_from_leaves(fn (here) {{ syntax_token(syntax_built(here, 0, 0), TokenKind.Error, \"\") }}, \
              fn (here, kind, text) {{ syntax_token(syntax_built(here, 1, 0), kind, text) }}, \
              fn (here, name) {{ syntax_identifier(syntax_built(here, 2, 0), name) }}, \
              fn (here, delimiter, children) {{ {emitted} }}, region)) }}"
@@ -1184,7 +1241,7 @@ mod tests {
     fn answer(transformer: &str, region: &str) -> Result<crate::syntax::Printed, crate::core::ExpansionFailure> {
         let read = musa_language::parse(region);
         let subject = crate::syntax::read_region(&read.syntax(), crate::syntax::ExpansionPath::at(vec![0]));
-        crate::core::expand_syntax(&module(transformer), &subject)
+        crate::core::expand_syntax(&module(transformer), crate::core::PhaseImports::bundled(), &subject)
             .0
             .map(|output| crate::syntax::print(&output))
     }
@@ -1321,9 +1378,10 @@ mod tests {
 
     #[test]
     fn an_adapter_written_with_an_adapter_is_refused() {
-        let Err(crate::core::ModuleFault::Broken(diagnostics)) =
-            crate::core::read_adapter_module("library {\n    let expand = syntax other { c4 };\n}\n")
-        else {
+        let Err(crate::core::ModuleFault::Broken(diagnostics)) = crate::core::read_adapter_module(
+            "library {\n    let expand = syntax other { c4 };\n}\n",
+            crate::core::PhaseImports::bundled(),
+        ) else {
             panic!("the bootstrap is adapter-free")
         };
         let refusal = diagnostics.into_iter().next().expect("it says why");
@@ -1454,12 +1512,14 @@ mod tests {
         // whichever node reaches the top carries `Generated` and nothing else.
         let refused = r#"Err((syntax_token(syntax_built(here, 9, 0), TokenKind.Error, ""), "nothing here is mine"))"#;
         let refusing = format!(
-            "fn (region) {{ syntax_fold_from_leaves(fn (here) {{ {refused} }}, fn (here, kind, text) {{ {refused} }}, \
+            "fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ syntax_fold_from_leaves(fn (here) {{ {refused} }}, fn (here, kind, text) {{ {refused} }}, \
              fn (here, name) {{ {refused} }}, fn (here, delimiter, children) {{ {refused} }}, region) }}"
         );
         let read = musa_language::parse("c4");
         let subject = crate::syntax::read_region(&read.syntax(), crate::syntax::ExpansionPath::at(vec![0]));
-        let Err(generated) = crate::core::expand_syntax(&module(&refusing), &subject).0 else {
+        let Err(generated) =
+            crate::core::expand_syntax(&module(&refusing), crate::core::PhaseImports::bundled(), &subject).0
+        else {
             panic!("the adapter refuses");
         };
         assert_eq!(
@@ -1521,17 +1581,31 @@ mod tests {
             broken.primary_span(),
             "only the refusal was pointed, so only the refusal is narrower than the region"
         );
-        // And end to end, under a budget small enough to stop the run: the
-        // same region that refuses at the language budget must not report the
-        // stop as the adapter's own sentence.
-        let source = piece(REFUSED);
-        let narrow =
-            crate::core_budget::under_budget(crate::core_budget::Budget::LANGUAGE.narrowed(512), || run(&source));
-        for diagnostic in &narrow.diagnostics {
+        // And end to end, on a region the run cannot finish: a stop must not
+        // reach the reader as the adapter's own sentence.
+        //
+        // The stop is provoked by nesting rather than by narrowing a budget.
+        // `musa_core::Budget::scaled` says why in as many words — the core's
+        // limit is `LANGUAGE` and nothing in the pipeline lowers it, "because a
+        // budget the caller could lower would make acceptance a property of the
+        // invocation rather than of the language" — so the only honest way to
+        // reach the counter is to give it work it genuinely cannot do under it.
+        // Deep enough that `doubled`'s own traversal cannot finish under
+        // `Budget::NESTING`, and no deeper: the point is the *reporting*, so a
+        // depth chosen for headroom would be a slower test saying the same
+        // thing.
+        const DEPTH: usize = 120;
+        let deep = format!("{}a{}", "(".repeat(DEPTH), ")".repeat(DEPTH));
+        let stopped = run(&piece(&deep));
+        assert!(
+            !stopped.diagnostics.is_empty(),
+            "the region was supposed to be too deep to read"
+        );
+        for diagnostic in &stopped.diagnostics {
             assert_ne!(
                 diagnostic.code,
                 Code::Expansion,
-                "a narrowed budget reported a stop as the adapter refusing: {}",
+                "a stopped run reported the limit as the adapter refusing: {}",
                 diagnostic.message
             );
         }
@@ -1638,7 +1712,7 @@ mod tests {
         // learn one it was not given.
         let built = answer(
             &answering(
-                r#"option_fold(syntax_token(syntax_built(here, 9, 0), TokenKind.Integer, "404"), fn (node) { node }, syntax_anchor(region, syntax_built(here, 0, 0), syntax_built(here, 10, 0)))"#,
+                r#"syntax_anchor(region, syntax_built(here, 0, 0), syntax_built(here, 10, 0)).fold_from_start(syntax_token(syntax_built(here, 9, 0), TokenKind.Integer, "404"), fn (held, node) { node })"#,
             ),
             "{ c4 }",
         )
@@ -1650,7 +1724,7 @@ mod tests {
         );
         let given = answer(
             &answering(
-                r#"option_fold(syntax_token(syntax_built(here, 9, 0), TokenKind.Integer, "404"), fn (node) { node }, syntax_anchor(region, here, syntax_built(here, 10, 0)))"#,
+                r#"syntax_anchor(region, here, syntax_built(here, 10, 0)).fold_from_start(syntax_token(syntax_built(here, 9, 0), TokenKind.Integer, "404"), fn (held, node) { node })"#,
             ),
             "{ c4 }",
         )
@@ -1833,7 +1907,7 @@ mod tests {
     const MOTTO: &str = r#"library {
     let level = "generative";
 
-    let expand = fn (region) {
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {
         Ok(syntax_fold_from_leaves(
             fn (here) { syntax_token(syntax_built(here, 0, 0), TokenKind.Error, "") },
             fn (here, kind, text) { syntax_token(syntax_built(here, 1, 0), kind, text) },
@@ -1843,7 +1917,7 @@ mod tests {
         ))
     };
 
-    let edit = fn (region, command, anchor, argument) {
+    let edit = fn (region: Syntax<TokenTree>, command: Text, anchor: Nat, argument: Text) -> Result<List<Pair<Nat, Text>>, Text> {
         match command {
             "replace" -> Ok([(anchor, argument)]),
             _ -> Err("`motto` serves one command, `replace`"),
@@ -1943,8 +2017,8 @@ mod tests {
         const CLEFS: &str = r#"library {
     let level = "generative";
 
-    let expand = fn (region) { Ok(region) };
-    let edit = fn (region, command, anchor, argument) { Err("`clefs` serves no command") };
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(region) };
+    let edit = fn (region: Syntax<TokenTree>, command: Text, anchor: Nat, argument: Text) -> Result<List<Pair<Nat, Text>>, Text> { Err("`clefs` serves no command") };
 
     let unreached = fn (region: Syntax<TokenTree>) -> Syntax<TokenTree> { region };
 
@@ -2078,7 +2152,7 @@ mod tests {
     /// the root is read under.
     fn recursing(initial: &str, group: &str) -> String {
         format!(
-            "fn (region) {{ Ok(recurse_syntax(\
+            "fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ Ok(recurse_syntax(\
              fn (c, here) {{ syntax_token(syntax_built(here, 0, 0), TokenKind.Error, \"\") }}, \
              fn (c, here, kind, text) {{ syntax_token(syntax_built(here, 1, 0), kind, text) }}, \
              fn (c, here, name) {{ syntax_identifier(syntax_built(here, 2, 0), c) }}, \
@@ -2098,7 +2172,8 @@ mod tests {
     fn charged(transformer: &str, region: &str) -> u64 {
         let read = musa_language::parse(region);
         let subject = crate::syntax::read_region(&read.syntax(), crate::syntax::ExpansionPath::at(vec![0]));
-        let (answered, work) = crate::core::expand_syntax(&module(transformer), &subject);
+        let (answered, work) =
+            crate::core::expand_syntax(&module(transformer), crate::core::PhaseImports::bundled(), &subject);
         if let Err(fault) = answered {
             panic!("the transformer answers over `{region}`: {fault:?}");
         }
@@ -2107,7 +2182,7 @@ mod tests {
 
     /// Read every child once, left to right, under the context handed down.
     const EACH_ONCE: &str =
-        r"syntax_group(syntax_built(here, 3, 0), delimiter, map(fn (kid) { run_syntax_step(c, kid) }, kids))";
+        r"syntax_group(syntax_built(here, 3, 0), delimiter, kids.map(fn (kid) { run_syntax_step(c, kid) }))";
 
     /// Read nothing: a group branch that answers without running a step.
     const NONE_AT_ALL: &str = r"syntax_group(syntax_built(here, 3, 0), delimiter, [])";
@@ -2144,7 +2219,11 @@ mod tests {
     /// guarded and reads unmistakably in the output.
     #[test]
     fn a_region_deeper_than_the_budget_allows_is_refused_rather_than_fatal() {
-        let (answered, _) = crate::core::expand_syntax(&module(&recursing("\"\"", EACH_ONCE)), &nested_region(1_000));
+        let (answered, _) = crate::core::expand_syntax(
+            &module(&recursing("\"\"", EACH_ONCE)),
+            crate::core::PhaseImports::bundled(),
+            &nested_region(1_000),
+        );
         assert!(
             matches!(answered, Err(crate::core::ExpansionFailure::Stopped)),
             "a region too deep to read is a limit crossed, not a crash and not a malformed adapter"
@@ -2163,14 +2242,27 @@ mod tests {
     /// The limit is set where honest work still fits under it.
     ///
     /// A guard that refused the regions adapters actually meet would be a
-    /// crash with better manners. This recursor spends four nesting levels per
-    /// level of the region, so the 256 of `Budget::LANGUAGE` first refuses at
-    /// 64 groups deep; a region nested well past anything a person writes has
-    /// to expand, and forty-eight is well past it while leaving the exact
-    /// boundary to the meter's own law rather than pinning it here.
+    /// crash with better manners. This recursor descends through the
+    /// transformer's own branches, so one level of source nesting costs a chain
+    /// of frames rather than one, and the 256 of `Budget::LANGUAGE` is what
+    /// turns that chain into a refusal instead of a crash.
+    ///
+    /// **Sixteen and not forty-eight.** Under the replaced evaluator a level of
+    /// region cost four frames and the first refusal was at 64 groups deep.
+    /// Normalization by evaluation adds a second descent — `quote` walks a value
+    /// the way `eval` walks a term — and the measured chain is now some fourteen
+    /// frames a level, so the first refusal is at 19. Sixteen is still past
+    /// anything a person writes and it leaves the exact boundary to the meter's
+    /// own law rather than pinning it here, but the headroom an adapter has
+    /// shrank fourfold and that is a measurement, not a preference: prompt 144
+    /// sets this limit against the checker that now spends it.
     #[test]
     fn a_region_nested_deeper_than_anyone_writes_still_expands() {
-        let (answered, _) = crate::core::expand_syntax(&module(&recursing("\"\"", EACH_ONCE)), &nested_region(48));
+        let (answered, _) = crate::core::expand_syntax(
+            &module(&recursing("\"\"", EACH_ONCE)),
+            crate::core::PhaseImports::bundled(),
+            &nested_region(16),
+        );
         assert!(
             !matches!(answered, Err(crate::core::ExpansionFailure::Stopped)),
             "a region forty-eight groups deep was refused: the nesting limit is below what adapters meet"
@@ -2187,9 +2279,9 @@ mod tests {
         // outputs are compared byte for byte.
         let recursor = recursing(
             "\"\"",
-            r#"syntax_group(syntax_built(here, 3, 0), delimiter, map(fn (kid) { run_syntax_step("", kid) }, kids))"#,
+            r#"syntax_group(syntax_built(here, 3, 0), delimiter, kids.map(fn (kid) { run_syntax_step("", kid) }))"#,
         );
-        let fold = "fn (region) { Ok(syntax_fold_from_leaves(\
+        let fold = "fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(syntax_fold_from_leaves(\
              fn (here) { syntax_token(syntax_built(here, 0, 0), TokenKind.Error, \"\") }, \
              fn (here, kind, text) { syntax_token(syntax_built(here, 1, 0), kind, text) }, \
              fn (here, name) { syntax_identifier(syntax_built(here, 2, 0), \"\") }, \
@@ -2215,7 +2307,7 @@ mod tests {
                 "\"top\"",
                 &format!(
                     r#"syntax_group(syntax_built(here, 3, 0), delimiter,
-                         map(fn (kid) {{ run_syntax_step("{passed}", kid) }}, kids))"#
+                         kids.map(fn (kid) {{ run_syntax_step("{passed}", kid) }}))"#
                 ),
             )
         };
@@ -2266,12 +2358,11 @@ mod tests {
 
     /// Run every child twice, under two contexts, and emit the second answer.
     const TWICE_OVER: &str = r#"syntax_group(syntax_built(here, 3, 0), delimiter,
-         map(fn (kid) {
-           option_fold(
+         kids.map(fn (kid) {
+           Some(run_syntax_step("first", kid)).fold_from_start(
              syntax_token(syntax_built(here, 8, 0), TokenKind.Error, ""),
-             fn (node) { run_syntax_step("second", kid) },
-             Some(run_syntax_step("first", kid)))
-         }, kids))"#;
+             fn (held, node) { run_syntax_step("second", kid) })
+         }))"#;
 
     #[test]
     fn law_2_a_step_carried_into_a_nested_recursor_still_runs_its_own_algebra() {
@@ -2285,7 +2376,7 @@ mod tests {
         // re-associate a step with itself, the captured steps would come back
         // `inner`. They do not, and no ownership check is what stops it —
         // there is no operation that would let the inner traversal try.
-        let hostile = r#"fn (region) { Ok(recurse_syntax(
+        let hostile = r#"fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(recurse_syntax(
             fn (c, here) { syntax_token(syntax_built(here, 0, 0), TokenKind.Error, "") },
             fn (c, here, kind, text) { syntax_token(syntax_built(here, 1, 0), kind, text) },
             fn (c, here, name) { syntax_identifier(syntax_built(here, 2, 0), "outer") },
@@ -2296,7 +2387,7 @@ mod tests {
                     fn (d, spot, name) { syntax_identifier(syntax_built(here, 6, 0), "inner") },
                     fn (d, spot, delimiter, others) {
                         syntax_group(syntax_built(here, 7, 0), delimiter,
-                            map(fn (kid) { run_syntax_step(d, kid) }, kids))
+                            kids.map(fn (kid) { run_syntax_step(d, kid) }))
                     },
                     c, region)
             },
@@ -2324,14 +2415,14 @@ mod tests {
         let restarting = recursing(
             "\"\"",
             r"syntax_group(syntax_built(here, 3, 0), delimiter,
-                 map(fn (kid) {
+                 kids.map(fn (kid) {
                    recurse_syntax(
                      fn (d, spot) { run_syntax_step(d, kid) },
                      fn (d, spot, kind, text) { run_syntax_step(d, kid) },
                      fn (d, spot, name) { run_syntax_step(d, kid) },
                      fn (d, spot, delimiter, others) { run_syntax_step(d, kid) },
                      c, region)
-                 }, kids))",
+                 }))",
         );
         for region in ["a", "together(a)"] {
             drop(printed(&restarting, region));
@@ -2383,7 +2474,7 @@ mod tests {
             r#"match c {
                  "stop" -> syntax_group(syntax_built(here, 3, 0), delimiter, []),
                  _ -> syntax_group(syntax_built(here, 4, 0), delimiter,
-                        map(fn (kid) { run_syntax_step("stop", kid) }, kids)),
+                        kids.map(fn (kid) { run_syntax_step("stop", kid) })),
                }"#,
         );
         assert!(

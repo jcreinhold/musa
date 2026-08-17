@@ -25,7 +25,7 @@
 //!
 //! `finite_large_work_is_accepted_but_the_deterministic_boundary_is_not` goes
 //! with them, and it is the one whose claim actually *failed* rather than
-//! moved: its accepted half was `nat_fold(0, keep, 50000)`, and 50,000 is not
+//! moved: its accepted half was `range(50000).fold_from_start(0, fn (carried, index) { keep(index, carried) })`, and 50,000 is not
 //! accepted — it is not even refused. Past about 1,256 elements the process
 //! aborts with a stack overflow, which §4.1 names as the one outcome this
 //! language may not have: "a compiler that aborts instead has replaced a
@@ -55,7 +55,7 @@ fn compile_declarations(declarations: &str) -> musa_compiler::Compilation {
     compile(
         &SourceDocument::new(
             format!(
-                "piece \"Resource validation\" {{ import std::nat; import std::list; {declarations} \
+                "piece \"Resource validation\" {{ import std::list; {declarations} \
                  score {{ part p {{ voice v {{ c4/1 }} }} }} }}"
             ),
             "resource-validation.musa",

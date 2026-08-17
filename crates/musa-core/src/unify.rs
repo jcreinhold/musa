@@ -784,7 +784,7 @@ fn blocked_mismatch(
 ///
 /// Asked on both sides of every step, which is why the head is a field rather
 /// than the deepest node of a chain.
-fn flexible_head(value: &Value) -> Option<&Meta> {
+pub(crate) fn flexible_head(value: &Value) -> Option<&Meta> {
     let Form::Neutral(neutral) = &value.form else {
         return None;
     };

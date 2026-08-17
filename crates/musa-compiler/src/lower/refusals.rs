@@ -29,7 +29,8 @@
 use musa_core::{ElabError, Origin, Refusal};
 
 use super::Sites;
-use crate::diagnose::{Code, Diagnostic};
+use crate::diagnose::{Cause, Code, Diagnostic};
+use crate::origin::SourceSpan;
 
 /// A refusal filed: which code, where it happened, and the earlier place that
 /// explains it when there is one.
@@ -86,8 +87,12 @@ pub(crate) fn restate(sites: &Sites, error: &ElabError) -> Diagnostic {
             let restated = Diagnostic::error(filed.code, said)
                 .maybe_at(sites.span(filed.at), "here")
                 .maybe_also(also, text);
-            match filed.help {
+            let restated = match filed.help {
                 Some(repair) => restated.help(repair),
+                None => restated,
+            };
+            match sites.foreign(filed.at) {
+                Some((path, at)) => imported(path, at, restated),
                 None => restated,
             }
         }
@@ -99,6 +104,22 @@ pub(crate) fn restate(sites: &Sites, error: &ElabError) -> Diagnostic {
         )
         .note("this is a defect in the compiler rather than in the source"),
     }
+}
+
+/// A refusal about text in `path`, restated at the `import` that brought it in.
+///
+/// A span inside a foreign CST means nothing against this document's text, so
+/// the refusal cannot be published as it stands: the only span here that is
+/// *about* that file is the statement that named it. What was going to be said
+/// travels as a [`Cause`] instead, which is the channel prompt 141a built for
+/// exactly this — it keeps the code, the sentence and the foreign labels
+/// together, and `musa-project` resolves those labels against the import
+/// sources it holds, so a reader still gets the line inside the library.
+fn imported(path: &str, at: SourceSpan, refusal: Diagnostic) -> Diagnostic {
+    Diagnostic::error(Code::Import, format!("`{path}` does not compile"))
+        .at(at, "imported here")
+        .help(format!("run `musa check {path}`"))
+        .caused_by([Cause::of(path, refusal)])
 }
 
 /// Which code a refusal belongs under, and which nodes it is about.

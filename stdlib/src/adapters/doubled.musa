@@ -47,7 +47,7 @@
 // spliced expression. Even a fixture this small is better for it: `Refusal`
 // says what the first fold is looking for, and `first_refusal` says how two of
 // them combine, where before both were an anonymous `Option<Syntax>` and a
-// nested `option_fold` a reader had to decode.
+// nested fold a reader had to decode.
 
 library {
 
@@ -64,11 +64,11 @@ library {
 
     // The first refusal among two, in the order they were written.
     //
-    // A left-to-right `list_fold_from_start` over a group's children carries
+    // A left-to-right `fold_from_start` over a group's children carries
     // the refusal it already has, so this is what "the first `;` in the region"
     // means, and it is one named function rather than a fold nested inside a
     // fold.
-    let first_refusal = fn (found: Refusal, later: Refusal) {
+    let first_refusal = fn (found: Refusal, later: Refusal) -> Refusal {
         match found {
             Found(node) -> Found(node),
             Nothing -> later,
@@ -83,8 +83,11 @@ library {
     // keeps the fold's step one line long. Both parameters are annotated,
     // which an adapter can do because the phase's own types have a spelling in
     // the module it is written in.
-    let found_at = fn (region: Syntax<TokenTree>, here: NodePath) {
-        option_fold(Nothing, fn (node) { Found(node) }, syntax_at(region, here))
+    let found_at = fn (region: Syntax<TokenTree>, here: NodePath) -> Refusal {
+        syntax_at(region, here).fold_from_end(
+            Nothing,
+            fn (node: Syntax<TokenTree>, absent: Refusal) -> Refusal { Found(node) },
+        )
     };
 
     // What this adapter promises, of `26-language-design-decision.md` §4's
@@ -104,7 +107,9 @@ library {
     // staff adapter's problem, and prompt 127dcf is where it is solved.
     let level = "editable";
 
-    let expand = fn (region) {
+    let expand = fn (
+        region: Syntax<TokenTree>,
+    ) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {
         match syntax_fold_from_leaves(
             fn (here) { Nothing },
             // Where the refusal is found and where it is pointed are the same
@@ -112,22 +117,17 @@ library {
             // the rebuilt one, and its source information is what the compiler
             // reads the range from.
             fn (here, kind, text) {
-                if token_kind_equal(kind, TokenKind.Semicolon) {
+                if token_kind_equal(kind, TokenKind::Semicolon) {
                     found_at(region, here)
                 } else { Nothing }
             },
             fn (here, name) { Nothing },
             // The first refusal among the children, in the order they are
-            // written: `list_fold_from_start` runs left to right, and the
-            // sibling `first_refusal` says what "first" means once, here
-            // rather than inside the step.
-            fn (here, delimiter, children) {
-                list_fold_from_start(
-                    Nothing,
-                    fn (child, found) { first_refusal(found, child) },
-                    children,
-                )
-            },
+            // written: `fold_from_start` runs left to right and carries the
+            // answer so far, so the sibling `first_refusal` *is* the step and
+            // says what "first" means once, here rather than inside a lambda
+            // that only reorders its arguments.
+            fn (here, delimiter, children) { children.fold_from_start(Nothing, first_refusal) },
             region,
         ) {
             Found(node) -> Err((
@@ -135,28 +135,30 @@ library {
                 "this region holds a `;`, and I read one expression's worth of tokens"
             )),
             Nothing -> Ok(syntax_fold_from_leaves(
-                fn (here) { syntax_token(syntax_built(here, 0, 0), TokenKind.Error, "") },
+                fn (here) { syntax_token(syntax_built(here, 0, 0), TokenKind::Error, "") },
                 fn (here, kind, text) { syntax_token(syntax_built(here, 1, 0), kind, text) },
                 fn (here, name) { syntax_identifier(syntax_built(here, 2, 0), name) },
                 fn (here, delimiter, children) {
-                    syntax_group(syntax_built(here, 9, 0), Delimiter.Parentheses, [
-                        syntax_group(syntax_built(here, 3, 0), Delimiter.Layout, [
+                    syntax_group(syntax_built(here, 9, 0), Delimiter::Parentheses, [
+                        syntax_group(syntax_built(here, 3, 0), Delimiter::Layout, [
                             syntax_identifier(syntax_built(here, 4, 0), "repeated"),
-                            syntax_group(syntax_built(here, 5, 0), Delimiter.Parentheses, [
+                            syntax_group(syntax_built(here, 5, 0), Delimiter::Parentheses, [
                                 syntax_group(
                                     syntax_built(here, 6, 0),
-                                    Delimiter.Layout,
+                                    Delimiter::Layout,
                                     children,
                                 ),
-                                syntax_token(syntax_built(here, 7, 0), TokenKind.Comma, ","),
-                                syntax_token(syntax_built(here, 8, 0), TokenKind.Integer, "2"),
+                                syntax_token(syntax_built(here, 7, 0), TokenKind::Comma, ","),
+                                syntax_token(syntax_built(here, 8, 0), TokenKind::Integer, "2"),
                             ]),
                         ]),
-                        syntax_token(syntax_built(here, 10, 0), TokenKind.Comma, ","),
-                        option_fold(
-                            syntax_token(syntax_built(here, 12, 0), TokenKind.Integer, "0"),
-                            fn (node) { node },
-                            syntax_anchor(region, here, syntax_built(here, 11, 0)),
+                        syntax_token(syntax_built(here, 10, 0), TokenKind::Comma, ","),
+                        syntax_anchor(region, here, syntax_built(here, 11, 0)).fold_from_end(
+                            syntax_token(syntax_built(here, 12, 0), TokenKind::Integer, "0"),
+                            fn (
+                                anchored: Syntax<TokenTree>,
+                                unanchored: Syntax<TokenTree>,
+                            ) -> Syntax<TokenTree> { anchored },
                         ),
                     ])
                 },
@@ -180,7 +182,12 @@ library {
     // outside the named range is touched, because nothing else is returned; and
     // re-expanding the patched region agrees with replacing that node, because
     // replacing the node is exactly what the patch does.
-    let edit = fn (region, command, anchor, argument) {
+    let edit = fn (
+        region: Syntax<TokenTree>,
+        command: Text,
+        anchor: Nat,
+        argument: Text,
+    ) -> Result<List<Pair<Nat, Text>>, Text> {
         match command {
             "replace" -> Ok([(anchor, argument)]),
             _ -> Err("`doubled` serves one command, `replace`"),

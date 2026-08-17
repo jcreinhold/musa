@@ -206,6 +206,105 @@ fn a_count_and_a_list_read_back_as_canonical_data() {
     );
 }
 
+/// Every container reachable from a piece that imports nothing folds, and the
+/// three derived methods come with the two written ones.
+///
+/// This is the collection half of prompt 141 arriving at the surface, and the
+/// claim is deliberately made over *source*: `01-surface.md` §1.6 says a
+/// container earns `map`, `filter`, and `collect` by writing `fold_from_start`
+/// and `fold_from_end`, and the prelude's two impls write exactly two methods
+/// each. If the derived bodies were not inherited, `xs.collect()` below would
+/// fail to resolve rather than answer.
+///
+/// # Why over the prelude and not over `stdlib/`
+///
+/// `List` and `Option` are prelude families and their instances are prelude
+/// instances, so the source here writes no `import`. A law that imported would
+/// be checking the module system, which
+/// [`the_standard_library_elaborates`] already does; what this one checks is
+/// that a piece which imports nothing can still fold, which is what makes the
+/// traits reachable from an adapter and from `examples/named-answer.musa`
+/// alike.
+///
+/// # The directions
+///
+/// `rebuilt` and `gathered` are the pair that decides the builder is right.
+/// `fold_from_end` with `Cons` is the identity on lists, and `collect` is
+/// `fold_from_start` with a snoc `push`; they have to answer the same list or
+/// the builder is reversing, which is note 41 §7's whole complaint.
+///
+/// # `nothing` is bound and `Some(5)` is not
+///
+/// Deliberate, and the difference is `10-traits.md` §6. A method resolves by
+/// *exact receiver*: `Some(5)` says `Option` and `None` on its own does not,
+/// because its parameter is the only thing that fixes the type and nothing here
+/// fixes it. So `None.fold_from_end(…)` is refused by design and an author
+/// writes the annotation once at the binding — which is what the corpus does
+/// anyway, since the empty case usually arrives in a variable rather than
+/// spelled at the call.
+#[test]
+fn a_prelude_container_folds_and_earns_its_derived_methods() {
+    let document = document(
+        "library {
+            let length: Nat = [1, 2, 3].fold_from_start(0, fn (built: Nat, item: Nat) -> Nat { Succ(built) });
+            let rebuilt: List<Nat> =
+                [1, 2].fold_from_end([], fn (item: Nat, later: List<Nat>) -> List<Nat> { Cons(item, later) });
+            let gathered: List<Nat> = [1, 2].collect();
+            let doubled: List<Bool> = [1, 2].map(fn (item: Nat) -> Bool { True });
+            let kept: List<Nat> = [0, 1, 2].filter(fn (item: Nat) -> Bool {
+                match item { Zero -> False, Succ(fewer) -> True }
+            });
+            let held: Nat = Some(5).fold_from_end(0, fn (found: Nat, fallback: Nat) -> Nat { found });
+            let nothing: Option<Nat> = None;
+            let missing: Nat = nothing.fold_from_end(7, fn (found: Nat, fallback: Nat) -> Nat { found });
+        }",
+    );
+    let read = |name: &str| {
+        let (normal, _) = document.value(name).expect("the definition is bound");
+        musa_core::canonical(&normal).unwrap_or_else(|| panic!("`{name}` reads back as data"))
+    };
+    let whole = |count| musa_core::Datum::Count {
+        family: std::sync::Arc::from("Nat"),
+        count,
+    };
+    let case = |name: &str, fields: Vec<musa_core::Datum>| musa_core::Datum::Case {
+        constructor: std::sync::Arc::from(name),
+        fields,
+    };
+    let listed = |items: Vec<musa_core::Datum>| {
+        items
+            .into_iter()
+            .rev()
+            .fold(case("List.Empty", Vec::new()), |rest, item| {
+                case("List.Cons", vec![item, rest])
+            })
+    };
+
+    assert_eq!(read("length"), whole(3), "a forward fold visits every member once");
+    assert_eq!(
+        read("rebuilt"),
+        listed(vec![whole(1), whole(2)]),
+        "and the catamorphism with `Cons` is the identity"
+    );
+    assert_eq!(
+        read("gathered"),
+        listed(vec![whole(1), whole(2)]),
+        "so `collect` — a forward fold and a snoc — must answer the same, not the reverse"
+    );
+    assert_eq!(
+        read("doubled"),
+        listed(vec![case("Bool.True", Vec::new()), case("Bool.True", Vec::new())]),
+        "`map` builds at the type its answer is checked against"
+    );
+    assert_eq!(
+        read("kept"),
+        listed(vec![whole(1), whole(2)]),
+        "and `filter` keeps what the predicate admits, in order"
+    );
+    assert_eq!(read("held"), whole(5), "an `Option` fold reaches the held value");
+    assert_eq!(read("missing"), whole(7), "and answers the seed when there is none");
+}
+
 /// The two questions a [`Document`] answers are one interface, not two.
 ///
 /// [`Document::value`] hands back an [`musa_core::ElabError`] and nothing else
@@ -274,16 +373,14 @@ pub(crate) fn library_sources() -> Vec<Source> {
 
 /// Every library `stdlib/` writes that is not an adapter, in import order.
 ///
-/// One document rather than sixteen, because that is what an importing file
-/// sees: `option_fold` is written in `option.musa` and read in four others, and
-/// surveying each file alone would report fifteen missing names that are not
+/// One document rather than fourteen, because that is what an importing file
+/// sees: `triad` is written in `harmony.musa` and read in several others, and
+/// surveying each file alone would report names as missing that are not
 /// missing at all.
 const STANDARD_LIBRARY: &[(&str, &str)] = &[
     ("core", include_str!("../../../../stdlib/src/core.musa")),
     ("collections", include_str!("../../../../stdlib/src/collections.musa")),
-    ("nat", include_str!("../../../../stdlib/src/nat.musa")),
     ("list", include_str!("../../../../stdlib/src/list.musa")),
-    ("option", include_str!("../../../../stdlib/src/option.musa")),
     ("pitch", include_str!("../../../../stdlib/src/pitch.musa")),
     ("scale", include_str!("../../../../stdlib/src/scale.musa")),
     ("harmony", include_str!("../../../../stdlib/src/harmony.musa")),
@@ -347,53 +444,63 @@ fn the_standard_library_elaborates() {
 
 /// `stdlib/src/adapters/doubled.musa`, elaborated in phase scope.
 ///
-/// One fault: something the reading cannot give a type on its own. 142's
-/// migration writes the annotation, which is the same repair `01-surface.md` §1
-/// asks for anywhere else a declaration is left open.
+/// Whole, with nothing left over. What it took was the annotation on `expand`
+/// and on `edit`: the replaced checker was told each operation's type by
+/// [`crate::core::read_adapter_module`] and solved the rest, and a bidirectional
+/// reading settles a `fn` where the `fn` stands. So the phase's interface is now
+/// written in the two files that implement it rather than held in a table beside
+/// them — the same move [`crate::core::Printer`] already argued for `print`, and
+/// the repair `01-surface.md` §1 asks for anywhere else a declaration is left
+/// open.
 #[test]
 fn the_doubled_adapter_elaborates() {
-    let (_, said) = adapter(include_str!("../../../../stdlib/src/adapters/doubled.musa"));
-    assert_eq!(
-        said,
-        ["UnsolvedMetavariable: this cannot be given a type on its own; write the type it should have"],
-        "the doubled adapter needs exactly what 142 already owns"
-    );
+    let said = adapter(include_str!("../../../../stdlib/src/adapters/doubled.musa"));
+    assert!(said.is_empty(), "the doubled adapter elaborates whole: {said:?}");
 }
 
-/// `stdlib/src/adapters/staff.musa`, elaborated in phase scope.
+/// `stdlib/src/adapters/staff.musa`, elaborated in phase scope, with the one
+/// module it imports.
 ///
-/// One reason, and it is 142's: a conversion mismatch where the file branches on
-/// a rule 141m left answering `Result τ Text` — one of the twenty sites 141m's
-/// survey table lists and 142's Target moves onto the refusal channel.
-///
-/// The message names the pair now, which is what makes the *remaining* work
-/// legible rather than merely counted: `expected Ratio, found Nat` is the
-/// numeric-literal conversion 142 still owes, and a bare "type mismatch" said
-/// only that something was left.
+/// Whole, and the import is why the list is not empty. §5.9's phase "adds three
+/// things and takes nothing away", so an adapter reads `std::list` like any
+/// other document; `map`, `filter`, and `range` are ordinary source now that
+/// `Iterable` carries the folds, and a survey that withheld the module would
+/// report three names as missing that the phase finds.
 ///
 /// This file is prompt 145's benchmark and 142's Stop forbids rewriting it, so
-/// the reason here is the one a *migration* has to answer and not the ones a
-/// rewrite would.
+/// what it took was a *migration*: the two `::` paths a type namespace now
+/// wants, the three products that had to become records for `with` to reach
+/// them, and the fold call sites the trait rewrote.
 #[test]
 fn the_staff_adapter_elaborates() {
-    let (_, said) = adapter(include_str!("../../../../stdlib/src/adapters/staff.musa"));
-    assert_eq!(
-        said,
-        ["ConversionMismatch: type mismatch: expected `Ratio`, found `Nat`"],
-        "the staff adapter needs exactly what 142 already owns"
-    );
+    let said = adapter(include_str!("../../../../stdlib/src/adapters/staff.musa"));
+    assert!(said.is_empty(), "the staff adapter elaborates whole: {said:?}");
 }
 
-/// One adapter, elaborated alone in the scope `02-core-calculus.md` §5.9 gives
-/// a phase.
+/// One adapter, read the way the expansion phase reads one.
 ///
-/// Alone, and that is the arrangement rather than a shortcut: an adapter module
-/// is checked as its own document, which is the whole of what the replaced
-/// checker's `Reading::Expansion` meant.
-fn adapter(source: &str) -> (Option<Document>, Vec<String>) {
-    let held = musa_language::parse(source);
-    assert!(held.errors().is_empty(), "the adapter parses: {:?}", held.errors());
-    faults(&[Source::own(&written_library(&held.syntax()).expect("an adapter writes a library")).in_phase()])
+/// Through [`crate::core::read_adapter_module`] and not through a document
+/// assembled here, because two details of §5.9's scope are the phase's and
+/// cannot be guessed from the file: the modules an `import` brings in, and the
+/// declarations `print` takes with it. `print` is read where it *runs* — with
+/// the notation module in scope — so a survey that elaborated it with the rest
+/// would report the notation's own type names as missing. Reusing the phase's
+/// entry is what keeps this a law about the adapter rather than about the
+/// harness.
+fn adapter(source: &str) -> Vec<String> {
+    match crate::core::read_adapter_module(source, crate::core::PhaseImports::bundled()) {
+        Ok(_) => Vec::new(),
+        Err(crate::core::ModuleFault::Broken(said)) => {
+            let mut said: Vec<String> = said
+                .iter()
+                .map(|complaint| format!("{:?}: {}", complaint.code, complaint.message))
+                .collect();
+            said.sort();
+            said.dedup();
+            said
+        }
+        Err(crate::core::ModuleFault::Stopped) => vec!["Stopped: a compilation limit was crossed".to_owned()],
+    }
 }
 
 /// A written `primitive("name", version, c)` is the registration that pair

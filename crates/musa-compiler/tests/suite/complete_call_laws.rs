@@ -132,16 +132,27 @@ fn an_under_applied_lambda_is_refused() {
     );
 }
 
-/// §1.1 is untouched: a function value may be applied and passed, and a
-/// `data` field that would store one is refused whether the function has a
-/// name or not.
+/// §1.1 is untouched by the complete-call rule: an anonymous function is a
+/// value, so it may be applied, passed, and *stored*.
+///
+/// This law used to say the last of those was refused, and read `data Held {
+/// Keeps(action: Nat -> Nat) }` back as "a stored field may not be a function".
+/// Prompt 128's amendment moved that rule rather than deleting it: storability
+/// is the `Storable A` constraint of `02-core-calculus.md` §1.2, required at
+/// the five positions §1.2 lists and at no others, and a `data` field is on
+/// none of them. `Held` is therefore a perfectly good type that simply has no
+/// `Storable` instance — which is the whole of what a complete call has to say
+/// about it, since a lambda that could not be stored would be a value with a
+/// missing power rather than a value.
+///
+/// The refusal itself did not go missing: it fires at the *use* that needs an
+/// encoding, and `inferred_core_laws::a_function_may_not_hide_where_an_encoding_is_required`
+/// is where both halves of that are checked.
 #[test]
-fn a_lambda_may_not_be_stored_in_a_data_field() {
-    let reported = errors("data Held { Keeps(action: Nat -> Nat) } let kept: Held = Keeps(fn (n: Nat) -> Nat { n });");
-    assert!(
-        reported
-            .iter()
-            .any(|(_, message)| message.contains("a stored field may not be a function")),
-        "{reported:?}"
+fn a_lambda_is_a_value_and_may_be_stored() {
+    let reported = errors(
+        "data Held { Keeps(action: Nat -> Nat) } \
+         let kept: Held = Keeps(fn (n: Nat) -> Nat { n });",
     );
+    assert!(reported.is_empty(), "{reported:?}");
 }

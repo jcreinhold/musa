@@ -164,7 +164,7 @@ fn a_missing_import_names_the_path_it_looked_for() {
 ///
 /// Small on purpose — what is under test is which file the import found, not
 /// what the module in it does, so the module does as little as a module can.
-const ECHO: &str = "library {\n    let level = \"readable\";\n    let expand = fn (region) { Ok(region) };\n}\n";
+const ECHO: &str = "library {\n    let level = \"readable\";\n    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(region) };\n}\n";
 
 /// A syntax import resolves by the path its statement *has*, and a path in
 /// quotes is the path without them.

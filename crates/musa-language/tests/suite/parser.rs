@@ -597,7 +597,7 @@ fn an_import_is_a_path_and_a_motif_use_is_a_call() {
 
 #[test]
 fn standard_imports_preserve_their_reserved_namespace() {
-    let doc = parse("piece \"Imports\" { import std::core; import std::list; import std::option; }");
+    let doc = parse("piece \"Imports\" { import std::core; import std::list; import std::pitch; }");
     assert_eq!(doc.errors(), &[], "errors: {}", print_errors(&doc));
     let piece = PieceDecl::from_root(&doc.syntax()).expect("a piece");
     let paths: Vec<_> = piece
@@ -605,7 +605,7 @@ fn standard_imports_preserve_their_reserved_namespace() {
         .iter()
         .filter_map(musa_language::ast::ImportStmt::path)
         .collect();
-    assert_eq!(paths, ["std::core", "std::list", "std::option"]);
+    assert_eq!(paths, ["std::core", "std::list", "std::pitch"]);
 }
 
 /// An alias parses and round-trips. It binds nothing yet — there is no

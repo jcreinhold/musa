@@ -125,4 +125,13 @@ pub enum Malformed {
     /// typed and the *registration* was wrong.
     #[error("a closed normal form does not hold a `{0}`")]
     NotALiteral(Name),
+    /// A base type's [`Accepts`](crate::Accepts) named an operation the registry
+    /// does not hold.
+    ///
+    /// The host said one of its index positions accepts a value at another, and
+    /// then named something that is not a builtin of the same registry to carry
+    /// it across. [`Self::MisfitAnswer`]'s defect one step earlier: the rule and
+    /// the table disagree, and the program that reached it was well typed.
+    #[error("no builtin named `{0}` to carry a value into the position that accepts it")]
+    UnregisteredCarrier(Name),
 }

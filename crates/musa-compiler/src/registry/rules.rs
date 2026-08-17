@@ -52,7 +52,7 @@
 
 use std::sync::Arc;
 
-use musa_core::{Answer, Datum, Rule};
+use musa_core::{Answer, Datum, Literal, Rule};
 use num_rational::Ratio;
 
 use super::{domain, literal, plain_type, syntax_type, tagged_type};
@@ -83,9 +83,13 @@ pub(super) const REGISTERED: usize = 128;
 ///   declared families with generated recursors, and
 ///   [`musa_core::Registry::new`] refuses a structural target that is not a base
 ///   type. Registering one would be a second ι-rule for a type that has one, so
-///   all eight are library code: `stdlib/src/nat.musa` holds `nat_fold`,
-///   `stdlib/src/option.musa` holds `option_fold`, and `stdlib/src/list.musa`
-///   holds the other six. Seven keep their old spelling; `repeat` could not,
+///   all eight are library code. Four of them no longer exist as *names*: the
+///   prelude declares `Iterable<C, A>`, so a fold over a list, an option, or a
+///   count is `xs.fold_from_start(seed, combine)` and its mirror — one spelling
+///   per direction for every container that can be walked — and `nat_fold`,
+///   `option_fold`, and the two list folds have nothing left to be. The other
+///   four are in `stdlib/src/list.musa`. Three keep their old spelling;
+///   `repeat` could not,
 ///   because a `repeat { … }` in a score means the word is a statement keyword
 ///   and `fn repeat` does not parse. It is `repeated` there.
 /// - the one **machine** builtin left is `primitive`, which has no type of its
@@ -119,10 +123,29 @@ pub(super) const UNREGISTERED: [(&str, usize); 3] = [
 /// instantiating one. There is now, and it is deliberately not a name an adapter
 /// can write: [`super::quotation`] says why.
 ///
+/// [`FORGOTTEN`] is the fifth, and the strongest case of the same argument: it
+/// is what `11-quotation.md` §1's acceptance rule *elaborates to*, so a row
+/// naming it would hand an author the `forget` the section says they do not
+/// write.
+///
 /// Named rather than counted for [`super::traversal::SPELLINGS`]'s reason —
 /// "which" is the claim, and the accounting law reads each of them back out of
 /// the built registry and checks it against both tables.
-pub(super) const BEYOND: [&str; 4] = ["instantiate_quote", "match_quote", "quote_hole", "quote_holes"];
+pub(super) const BEYOND: [&str; 5] = [
+    "instantiate_quote",
+    "match_quote",
+    "quote_hole",
+    "quote_holes",
+    FORGOTTEN,
+];
+
+/// The name of the operation that carries a parsed tree into a position that
+/// has forgotten how it parses.
+///
+/// One constant because two places have to agree on it and neither can read the
+/// other: [`super::syntax_carrier`] registers the builtin under it, and
+/// [`forgets`] answers it to `musa-core`'s elaborator.
+pub(super) const FORGOTTEN: &str = "forget_category";
 
 // ---- reading an argument ----
 
@@ -1142,6 +1165,37 @@ pub(super) fn phase(operation: SyntaxOp) -> Option<Rule> {
         SyntaxOp::Recurse | SyntaxOp::Run | SyntaxOp::Fold => return None,
     })
 }
+
+// ---- the forgetting rule ----
+
+/// Whether a `Syntax ⟨wanted⟩` position accepts a `Syntax ⟨held⟩`, and what
+/// carries it there.
+///
+/// `11-quotation.md` §1's forgetting rule, as `musa-core` asks it: a token-tree
+/// position accepts a tree of any category, because a token-tree position is
+/// precisely one that has not been parsed as anything more specific, and every
+/// other position requires its own category exactly. Directional on purpose —
+/// the reverse, a `Syntax ⟨expr⟩` position taking a tree nobody parsed, is the
+/// uncertified splice the index exists to refuse, and the core asks this only
+/// where a direction exists.
+///
+/// `None` at two equal categories, which is [`musa_core::Accepts`]'s contract:
+/// there is nothing to carry, and ordinary conversion says so more cheaply than
+/// a coercion nobody would read.
+pub(super) fn forgets(wanted: &Literal, held: &Literal) -> Option<&'static str> {
+    let (wanted, held) = (super::held::<Cat>(wanted)?, super::held::<Cat>(held)?);
+    (*wanted == Cat::TokenTree && *held != Cat::TokenTree).then_some(FORGOTTEN)
+}
+
+/// `forget_category(subject)` — the same tree, no longer claiming how it parses.
+///
+/// The value does not change and the *type* does, which is the content of a
+/// forgetting rule: [`tree`] rebuilds the literal at `Syntax ⟨token-tree⟩` so
+/// that what the position holds afterwards is a value of the type the position
+/// asked for. Answering the argument unchanged would leave a `Syntax ⟨expr⟩`
+/// standing where the elaborated term says otherwise, which the re-checker would
+/// then be right to refuse.
+pub(super) const FORGET: Rule = |arguments| reduced(built(node(arguments.first()?)?));
 
 // ---- quotation ----
 

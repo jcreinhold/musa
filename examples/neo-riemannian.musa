@@ -15,7 +15,6 @@
 // hear.
 piece "Neo-Riemannian" {
     import std::harmony;
-    import std::option;
     import std::transformational;
     import std::voicing;
 
@@ -45,106 +44,124 @@ piece "Neo-Riemannian" {
     fn whole(chosen: Voicing) -> EventTrack<WrittenTime> { sound_for(chosen, duration_of(1/1)) }
 
     fn close_on(bass: Pitch, refined: Triad) -> EventTrack<WrittenTime> {
-        option_fold(music {
-            rest/1
-        }, whole, close_position(triad_content(refined), bass))
+        close_position(triad_content(refined), bass).fold_from_end(
+            music {
+                rest/1
+            },
+            fn (found, otherwise) { whole(found) },
+        )
     }
 
     fn drop_on(bass: Pitch, refined: Triad) -> EventTrack<WrittenTime> {
-        option_fold(music {
-            rest/1
-        }, whole, drop_position(triad_content(refined), bass, 2))
+        drop_position(triad_content(refined), bass, 2).fold_from_end(
+            music {
+                rest/1
+            },
+            fn (found, otherwise) { whole(found) },
+        )
     }
 
     // The cycle in close position. The bass under each chord is a pitch of
     // that chord's own spelling — `ab3` under the A flat triads, `fb3` under
     // the F flat ones — because a voicing is spelled or it does not exist.
-    let close_one: EventTrack<WrittenTime> = option_fold(
+    let close_one: EventTrack<WrittenTime> = tonic.fold_from_end(
         music {
             rest/1
         },
-        fn (refined: Triad) -> EventTrack<WrittenTime> { close_on(c4, refined) },
-        tonic,
+        fn (refined: Triad, otherwise: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+            close_on(c4, refined)
+        },
     );
-    let close_two: EventTrack<WrittenTime> = option_fold(
+    let close_two: EventTrack<WrittenTime> = tonic.fold_from_end(
         music {
             rest/1
         },
-        fn (start: Triad) -> EventTrack<WrittenTime> { compose_close(c4, at_p, start) },
-        tonic,
+        fn (start: Triad, otherwise: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+            compose_close(c4, at_p, start)
+        },
     );
-    let close_three: EventTrack<WrittenTime> = option_fold(
+    let close_three: EventTrack<WrittenTime> = tonic.fold_from_end(
         music {
             rest/1
         },
-        fn (start: Triad) -> EventTrack<WrittenTime> { compose_close(ab3, at_pl, start) },
-        tonic,
+        fn (start: Triad, otherwise: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+            compose_close(ab3, at_pl, start)
+        },
     );
-    let close_four: EventTrack<WrittenTime> = option_fold(
+    let close_four: EventTrack<WrittenTime> = tonic.fold_from_end(
         music {
             rest/1
         },
-        fn (start: Triad) -> EventTrack<WrittenTime> { compose_close(ab3, at_plp, start) },
-        tonic,
+        fn (start: Triad, otherwise: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+            compose_close(ab3, at_plp, start)
+        },
     );
-    let close_five: EventTrack<WrittenTime> = option_fold(
+    let close_five: EventTrack<WrittenTime> = tonic.fold_from_end(
         music {
             rest/1
         },
-        fn (start: Triad) -> EventTrack<WrittenTime> { compose_close(fb3, at_plpl, start) },
-        tonic,
+        fn (start: Triad, otherwise: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+            compose_close(fb3, at_plpl, start)
+        },
     );
-    let close_six: EventTrack<WrittenTime> = option_fold(
+    let close_six: EventTrack<WrittenTime> = tonic.fold_from_end(
         music {
             rest/1
         },
-        fn (start: Triad) -> EventTrack<WrittenTime> { compose_close(fb3, at_plplp, start) },
-        tonic,
+        fn (start: Triad, otherwise: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+            compose_close(fb3, at_plplp, start)
+        },
     );
 
     // The same six under drop-2, which is the same chord classes and a
     // different sound: the policy is the caller's, never the library's.
-    let drop_one: EventTrack<WrittenTime> = option_fold(
+    let drop_one: EventTrack<WrittenTime> = tonic.fold_from_end(
         music {
             rest/1
         },
-        fn (refined: Triad) -> EventTrack<WrittenTime> { drop_on(c4, refined) },
-        tonic,
+        fn (refined: Triad, otherwise: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+            drop_on(c4, refined)
+        },
     );
-    let drop_two: EventTrack<WrittenTime> = option_fold(
+    let drop_two: EventTrack<WrittenTime> = tonic.fold_from_end(
         music {
             rest/1
         },
-        fn (start: Triad) -> EventTrack<WrittenTime> { compose_drop(c4, at_p, start) },
-        tonic,
+        fn (start: Triad, otherwise: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+            compose_drop(c4, at_p, start)
+        },
     );
-    let drop_three: EventTrack<WrittenTime> = option_fold(
+    let drop_three: EventTrack<WrittenTime> = tonic.fold_from_end(
         music {
             rest/1
         },
-        fn (start: Triad) -> EventTrack<WrittenTime> { compose_drop(ab3, at_pl, start) },
-        tonic,
+        fn (start: Triad, otherwise: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+            compose_drop(ab3, at_pl, start)
+        },
     );
-    let drop_four: EventTrack<WrittenTime> = option_fold(
+    let drop_four: EventTrack<WrittenTime> = tonic.fold_from_end(
         music {
             rest/1
         },
-        fn (start: Triad) -> EventTrack<WrittenTime> { compose_drop(ab3, at_plp, start) },
-        tonic,
+        fn (start: Triad, otherwise: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+            compose_drop(ab3, at_plp, start)
+        },
     );
-    let drop_five: EventTrack<WrittenTime> = option_fold(
+    let drop_five: EventTrack<WrittenTime> = tonic.fold_from_end(
         music {
             rest/1
         },
-        fn (start: Triad) -> EventTrack<WrittenTime> { compose_drop(fb3, at_plpl, start) },
-        tonic,
+        fn (start: Triad, otherwise: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+            compose_drop(fb3, at_plpl, start)
+        },
     );
-    let drop_six: EventTrack<WrittenTime> = option_fold(
+    let drop_six: EventTrack<WrittenTime> = tonic.fold_from_end(
         music {
             rest/1
         },
-        fn (start: Triad) -> EventTrack<WrittenTime> { compose_drop(fb3, at_plplp, start) },
-        tonic,
+        fn (start: Triad, otherwise: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+            compose_drop(fb3, at_plplp, start)
+        },
     );
 
     // Reach a waypoint, then voice it. Written out because a composition of
@@ -170,17 +187,35 @@ piece "Neo-Riemannian" {
     }
     fn returned(start: Triad) -> Option<Voicing> { voiced_from_c4(at_plplpl(start)) }
 
-    let returned_is_c_major: Option<Voicing> = option_fold(None, returned, tonic);
-    let tonic_classes: Option<PcSet12> = option_fold(None, classes, tonic);
-    let returned_classes: Option<PcSet12> = option_fold(None, classes_after, tonic);
+    let returned_is_c_major: Option<Voicing> = tonic.fold_from_end(
+        None,
+        fn (found, otherwise) { returned(found) },
+    );
+    let tonic_classes: Option<PcSet12> = tonic.fold_from_end(
+        None,
+        fn (found, otherwise) { classes(found) },
+    );
+    let returned_classes: Option<PcSet12> = tonic.fold_from_end(
+        None,
+        fn (found, otherwise) { classes_after(found) },
+    );
 
     fn classes(refined: Triad) -> Option<PcSet12> { Some(triad_classes(refined)) }
     fn classes_after(start: Triad) -> Option<PcSet12> { Some(triad_classes(at_plplpl(start))) }
 
     // The named compositions, on the triad OMT names them from.
-    let slid: Option<Triad> = option_fold(None, slid_from, tonic);
-    let neighboured: Option<Triad> = option_fold(None, neighboured_from, tonic);
-    let polar: Option<Triad> = option_fold(None, polar_from, tonic);
+    let slid: Option<Triad> = tonic.fold_from_end(
+        None,
+        fn (found, otherwise) { slid_from(found) },
+    );
+    let neighboured: Option<Triad> = tonic.fold_from_end(
+        None,
+        fn (found, otherwise) { neighboured_from(found) },
+    );
+    let polar: Option<Triad> = tonic.fold_from_end(
+        None,
+        fn (found, otherwise) { polar_from(found) },
+    );
 
     fn slid_from(refined: Triad) -> Option<Triad> { Some(slide(refined)) }
     fn neighboured_from(refined: Triad) -> Option<Triad> { Some(nebenverwandt(refined)) }

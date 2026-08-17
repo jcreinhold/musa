@@ -52,7 +52,7 @@ fn probe(body: &str) -> String {
 fn deciding(decide: &str) -> String {
     probe(&format!(
         "{decide}
-    let expand = fn (region) {{ Ok(built(region)) }};
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ Ok(built(region)) }};
 
     let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {{
         syntax_fold_from_leaves(
@@ -547,7 +547,7 @@ fn the_recursor_traverses_an_unknown_shape() {
     // why prompt 140 deletes neither form — see [`a_pattern_decides_a_known_shape`].
     let module = probe(
         r#"
-    let expand = fn (region) { Ok(built(region)) };
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(built(region)) };
 
     let one = fn (here: NodePath) -> Syntax<Expr> { quote at here { 1 } };
 

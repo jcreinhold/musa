@@ -63,7 +63,7 @@ fn probe(body: &str) -> String {
 fn folding(emit: &str) -> String {
     probe(&format!(
         "{emit}
-    let expand = fn (region) {{ Ok(built(region)) }};
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ Ok(built(region)) }};
 
     let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {{
         syntax_fold_from_leaves(
@@ -190,7 +190,7 @@ fn a_spread_arrives_with_the_separators_its_position_supplies() {
         r#"
     let one = fn (here: NodePath) -> Syntax<Expr> { quote at here { 1 } };
 
-    let expand = fn (region) { Ok(built(region)) };
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(built(region)) };
 
     let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {
         syntax_fold_from_leaves(
@@ -234,7 +234,7 @@ fn an_empty_spread_leaves_no_separator_behind() {
 
     let empty = fn (here: NodePath) -> Syntax<Expr> { quote at here { [$..nothing] } };
 
-    let expand = fn (region) { Ok(built(region)) };
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(built(region)) };
 
     let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {
         syntax_fold_from_leaves(
@@ -382,7 +382,7 @@ fn a_quote_takes_its_identity_from_the_anchor_it_is_evaluated_with() {
         r"
     let one = fn (here: NodePath) -> Syntax<Expr> { quote at here { (1, 1) } };
 
-    let expand = fn (region) { Ok(built(region)) };
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(built(region)) };
 
     let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {
         syntax_fold_from_leaves(
@@ -413,7 +413,7 @@ fn what_a_quote_builds_is_charged() {
         r"
     let wide = fn (here: NodePath) -> Syntax<Expr> {{ quote at here {{ [{}] }} }};
 
-    let expand = fn (region) {{ Ok(built(region)) }};
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ Ok(built(region)) }};
 
     let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {{
         syntax_fold_from_leaves(
@@ -431,7 +431,7 @@ fn what_a_quote_builds_is_charged() {
         r"
     let narrow = fn (here: NodePath) -> Syntax<Expr> { quote at here { [1] } };
 
-    let expand = fn (region) { Ok(built(region)) };
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(built(region)) };
 
     let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {
         syntax_fold_from_leaves(
@@ -484,7 +484,7 @@ fn an_adapter_helper_is_inferred_in_the_phase_it_is_checked_in() {
         quote at here { [$..items] }
     };
 
-    let expand = fn (region) { Ok(built(region)) };
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(built(region)) };
 
     let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {
         syntax_fold_from_leaves(
@@ -525,7 +525,7 @@ fn a_quote_in_an_inferring_position_names_the_annotation() {
         r"
     let unannotated = fn (here: NodePath) { quote at here { 1 } };
 
-    let expand = fn (region) {
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {
         Ok(syntax_fold_from_leaves(
             fn (here) { unannotated(here) },
             fn (here, kind, text) { unannotated(here) },
@@ -554,7 +554,7 @@ fn a_splice_of_the_wrong_category_names_both_categories() {
         quote at here { [$tree] }
     };
 
-    let expand = fn (region) {
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {
         Ok(syntax_fold_from_leaves(
             fn (here) { loose(here, region) },
             fn (here, kind, text) { loose(here, region) },

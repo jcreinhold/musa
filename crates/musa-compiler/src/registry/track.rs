@@ -452,7 +452,7 @@ const SET_NOTE_PITCHES: Rule = |arguments| {
         .iter()
         .map(|occurrence| {
             let mut fact = occurrence.payload().clone();
-            if let FactKind::Note { ref mut pitch, .. } = fact.kind
+            if let Some(pitch) = fact.sounding_pitch_mut()
                 && let Some(replacement) = replacements.next()
             {
                 *pitch = replacement;
@@ -816,7 +816,7 @@ fn rewrite_map_note_pitches(builtin: &Builtin, subject: &Literal) -> Option<Term
     for pitch in track
         .occurrences()
         .iter()
-        .filter_map(|occurrence| occurrence.payload().pitch_of())
+        .filter_map(|occurrence| occurrence.payload().sounding_pitch())
         .collect::<Vec<_>>()
         .into_iter()
         .rev()

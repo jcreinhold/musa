@@ -1698,7 +1698,7 @@ mod tests {
     /// there is a diagnostic to read it out of.
     fn transformer(missing: &str, token: &str, identifier: &str, group: &str) -> String {
         format!(
-            "fn (region) {{ Ok(syntax_fold_from_leaves(fn (here) {{ {missing} }}, fn (here, kind, text) {{ {token} }}, \
+            "fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ Ok(syntax_fold_from_leaves(fn (here) {{ {missing} }}, fn (here, kind, text) {{ {token} }}, \
              fn (here, name) {{ {identifier} }}, fn (here, delimiter, children) {{ {group} }}, region)) }}"
         )
     }
@@ -1854,8 +1854,9 @@ mod tests {
         // `syntax_at` is how a transformer carries input through: it turns a
         // path the fold revealed back into the node, unchanged.
         let carry = r#"syntax_group(syntax_built(here, 3, 0), delimiter,
-            [option_fold(syntax_token(syntax_built(here, 7, 0), TokenKind.Error, ""), fn (node) { node },
-                         syntax_at(region, here))])"#;
+            [syntax_at(region, here).fold_from_end(
+                 syntax_token(syntax_built(here, 7, 0), TokenKind.Error, ""),
+                 fn (node, unused) { node })])"#;
         let produced = run(&transformer(
             r#"syntax_token(syntax_built(here, 0, 0), TokenKind.Error, "")"#,
             r"syntax_token(syntax_built(here, 1, 0), kind, text)",

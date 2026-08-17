@@ -125,9 +125,9 @@ fn a_written_type_cannot_be_widened_by_a_caller() {
 fn a_deeply_nested_finite_program_evaluates_to_its_value() {
     let compilation = compile_core(
         "let rows: List<List<Nat>> = map(fn (index) { range(index) }, range(4)); \
-         let widths: List<Nat> = map(fn (row) { list_fold_from_start(0, fn (member, running) { running }, row) }, rows); \
-         let total: Nat = list_fold_from_start(7, fn (width, running) { running }, widths); \
-         let repeated: List<Nat> = list_fold_from_start(range(3), fn (row, running) { running }, rows);",
+         let widths: List<Nat> = map(fn (row) { row.fold_from_start(0, fn (running, member) { running }) }, rows); \
+         let total: Nat = widths.fold_from_start(7, fn (running, width) { running }); \
+         let repeated: List<Nat> = rows.fold_from_start(range(3), fn (running, row) { running });",
     );
     assert!(
         !compilation.has_errors(),

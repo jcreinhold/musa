@@ -74,6 +74,20 @@ pub enum MetaSource {
     /// already reports an unsolved hole, and nothing was built for
     /// postponement.
     Dictionary,
+    /// The answer of a term whose elaboration was postponed.
+    ///
+    /// §1.3 reads a bare constructor against the family the expected type names,
+    /// and a checking position does not always name one *yet*: in
+    /// `xs.fold_from_end(Nothing, step)` the seed is checked at the method's
+    /// implicit `B`, which the *next* argument determines. So the term is
+    /// elaborated later and this hole stands for it until then — see
+    /// [`Elaborator::delay`](crate::elab::Elaborator).
+    ///
+    /// It is never the hole a report names. A postponement that never unblocks
+    /// is refused as the bare constructor it was, because "nothing here says of
+    /// which type" is the sentence about the program, and "could not determine
+    /// the postponed term" would be a sentence about this mechanism.
+    PostponedTerm,
 }
 
 impl MetaSource {
@@ -90,6 +104,7 @@ impl MetaSource {
             Self::FamilyParameter => "a constructor's family parameter",
             Self::UniverseLevel => "the level of a universe",
             Self::Dictionary => "the instance a constraint needs",
+            Self::PostponedTerm => "the type a postponed term was written at",
         }
     }
 }

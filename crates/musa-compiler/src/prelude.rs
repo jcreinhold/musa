@@ -56,8 +56,8 @@
 use std::sync::Arc;
 
 use musa_core::{
-    Cx, ElabError, Level, ModuleId, Origin, Raw, RawBinder, RawConstructor, RawData, RawDefinition, RawFamily, RawImpl,
-    RawMethod, RawTrait, Term, Visibility,
+    Cx, ElabError, Level, ModuleId, Origin, Raw, RawArm, RawBinder, RawConstraint, RawConstructor, RawData,
+    RawDefinition, RawFamily, RawImpl, RawMethod, RawPattern, RawProgram, RawTopLevel, RawTrait, Term, Visibility,
 };
 
 /// Where a declaration this module writes comes from.
@@ -442,6 +442,24 @@ fn syntax_step_data() -> RawData {
 /// is an `Option` in a context — is never confused with this one by arithmetic.
 pub(crate) const PHASE: ModuleId = ModuleId::new(1);
 
+/// The module every *written* document stands in.
+///
+/// A context standing nowhere is inside every module, which is right for this
+/// compiler's own — [`crate::registry::owned`] declares the phase's families and
+/// then keeps minting steps for the traversals. It is wrong for a document a
+/// person wrote: standing nowhere, an adapter module could write
+/// `SyntaxStep::Step(Text, Text, run)` and mint the seal `11-quotation.md` §1
+/// says only the recursor mints. Naming a module for source is what turns
+/// [`syntax_step_data`]'s `private` from a word into a check.
+///
+/// **One number for every document, not one per file.** What this identity
+/// decides is the boundary between the phase's declarations and written ones,
+/// which is a single boundary; privacy *between* two written files is a
+/// different question, and the import filter — which carries only the public
+/// names of a module it read — is what answers it. A per-document number would
+/// answer the second question twice and the first no better.
+pub(crate) const SOURCE: ModuleId = ModuleId::new(2);
+
 /// The families the expansion phase declares, in the module that seals them.
 ///
 /// Separate from [`structural`] not because the elaboration differs but because
@@ -497,10 +515,9 @@ pub(crate) fn musical() -> Vec<RawData> {
 /// `x == y` lowers to `Eq.equal(x, y)` by §5's table. Both are readings the
 /// compiler performs on source that imported nothing, and `examples/named-answer.musa`
 /// is a piece that writes one and imports nothing. A trait in `stdlib/` would
-/// make that piece's meaning depend on a line it did not write; worse, an
-/// *adapter* module imports nothing by rule (`crate::core`'s "an adapter module
-/// imports nothing"), so a library `Eq` would be unreachable from the phase
-/// where string dispatch is most of the work.
+/// make that piece's meaning depend on a line it did not write — and the piece
+/// cannot even be told to write it, because the line it would have to write is
+/// an import of the thing that gives `==` its meaning.
 ///
 /// # Why a trait rather than a per-type builtin
 ///
@@ -585,6 +602,407 @@ fn eq_instance(head: Raw, rule: &'static str) -> RawImpl {
     }
 }
 
+/// `trait Buildable<C, A> { fn empty() -> C; fn push(target: C, item: A) -> C; }`
+/// — `01-surface.md` §1.6's builder, verbatim.
+fn buildable_class() -> RawTrait {
+    RawTrait {
+        origin: HERE,
+        name: Arc::from("Buildable"),
+        visibility: Visibility::Public,
+        params: vec![binder("C", type0()), binder("A", type0())],
+        context: Vec::new(),
+        methods: vec![
+            trait_method("empty", var("C")),
+            trait_method("push", arrow(var("C"), arrow(var("A"), var("C")))),
+        ],
+    }
+}
+
+/// §1.6's `Iterable<C, A>`: two required folds, three derived methods.
+///
+/// # Why the compiler owns this one too
+///
+/// [`eq_class`]'s argument, applied to a second trait. `List` and `Option` are
+/// *prelude* families — no source file writes `data List` — and coherence makes
+/// a type's canonical instance the type's own. Declaring `List` here and
+/// `impl Iterable<List<A>, A>` in `stdlib/` would put a family and its one
+/// lawful traversal in two packages, which is the orphan-shaped split
+/// `10-traits.md` §3's orphan rule exists to prevent, and it would make a piece
+/// that folds a list depend on a line it did not write.
+///
+/// # Why a trait rather than one function per container
+///
+/// It replaces `list_fold_from_start`, `list_fold_from_end`, `option_fold`, and
+/// `nat_fold` — four spellings of one operation, which existed because the
+/// checker they were written for had no source-level type parameters. A
+/// container earns five operations by writing two, and a reader who has learned
+/// `xs.fold_from_end(zero, step)` has learned every container the language will
+/// ever add.
+///
+/// The step of a fold takes the accumulator as well as the element, so an
+/// `Option` reader that only wants the held value writes a step that ignores one
+/// argument. That is the price of one interface over four and it is the right
+/// one: the alternative reading — a container-shaped `Option` eliminator beside
+/// the trait — is the per-type function this replaces, one type later.
+fn iterable_class() -> RawTrait {
+    let step_from_start = arrow(var("B"), arrow(var("A"), var("B")));
+    let step_from_end = arrow(var("A"), arrow(var("B"), var("B")));
+    RawTrait {
+        origin: HERE,
+        name: Arc::from("Iterable"),
+        visibility: Visibility::Public,
+        params: vec![binder("C", type0()), binder("A", type0())],
+        context: Vec::new(),
+        methods: vec![
+            over(
+                trait_method(
+                    "fold_from_start",
+                    arrow(var("C"), arrow(var("B"), arrow(step_from_start, var("B")))),
+                ),
+                vec![binder("B", type0())],
+                Vec::new(),
+            ),
+            over(
+                trait_method(
+                    "fold_from_end",
+                    arrow(var("C"), arrow(var("B"), arrow(step_from_end, var("B")))),
+                ),
+                vec![binder("B", type0())],
+                Vec::new(),
+            ),
+            over(
+                derived_method(
+                    "map",
+                    arrow(var("C"), arrow(arrow(var("A"), var("B")), var("D"))),
+                    lam("source", lam("f", accumulating(applied("f", [var("item")])))),
+                ),
+                vec![binder("D", type0()), binder("B", type0())],
+                vec![requires("Buildable", vec![var("D"), var("B")])],
+            ),
+            over(
+                derived_method(
+                    "filter",
+                    arrow(var("C"), arrow(arrow(var("A"), var("Bool")), var("C"))),
+                    filtering(),
+                ),
+                Vec::new(),
+                vec![requires("Buildable", vec![var("C"), var("A")])],
+            ),
+            over(
+                derived_method(
+                    "collect",
+                    arrow(var("C"), var("D")),
+                    lam("source", accumulating(var("item"))),
+                ),
+                vec![binder("D", type0())],
+                vec![requires("Buildable", vec![var("D"), var("A")])],
+            ),
+        ],
+    }
+}
+
+/// The fold `map` and `collect` share: build forwards, pushing `contributed`.
+///
+/// `fold_from_start` and `push` in that combination is the whole of §1.6's
+/// claim, and note 41 §7's missing operation: the accumulator travels *with* the
+/// traversal, so a reader written this way runs in the direction the source is
+/// written in rather than backwards.
+///
+/// `source` and `item` are free, and `contributed` may mention `f`: this is an
+/// expression written under whichever binders its method has, not a closed one.
+fn accumulating(contributed: Raw) -> Raw {
+    applied(
+        "fold_from_start",
+        [
+            var("source"),
+            var("Buildable.empty"),
+            lam(
+                "built",
+                lam("item", applied("Buildable.push", [var("built"), contributed])),
+            ),
+        ],
+    )
+}
+
+/// `filter`'s body: the same forward fold, pushing only what `keep` admits.
+fn filtering() -> Raw {
+    lam(
+        "source",
+        lam(
+            "keep",
+            applied(
+                "fold_from_start",
+                [
+                    var("source"),
+                    var("Buildable.empty"),
+                    lam(
+                        "built",
+                        lam(
+                            "item",
+                            matching(
+                                applied("keep", [var("item")]),
+                                vec![
+                                    arm(
+                                        vec![con("Bool.True", [])],
+                                        applied("Buildable.push", [var("built"), var("item")]),
+                                    ),
+                                    arm(vec![con("Bool.False", [])], var("built")),
+                                ],
+                            ),
+                        ),
+                    ),
+                ],
+            ),
+        ),
+    )
+}
+
+/// `impl<A> Buildable<List<A>, A>`, whose `push` is **snoc**.
+///
+/// Snoc rather than cons, and the choice is forced: `fold_from_start` hands the
+/// accumulator the elements in source order, so a `push` that prepended would
+/// make `collect` reverse and `map` reverse with it — the exact reversal note 41
+/// §7 is about. It costs a walk per push, which makes `collect` quadratic; that
+/// is the price of `Buildable` having only `empty` and `push`, it is paid on
+/// compile-time lists of the size an adapter reads, and a cheaper builder is a
+/// third method with a program behind it rather than a redesign of this one.
+fn buildable_list() -> RawImpl {
+    let list_a = list_of(var("A"));
+    let snoc = Raw::rec(
+        HERE,
+        "snoc",
+        arrow(list_a.clone(), arrow(var("A"), list_a)),
+        lam(
+            "xs",
+            lam(
+                "item",
+                matching(
+                    var("xs"),
+                    vec![
+                        arm(
+                            vec![con("List.Empty", [])],
+                            applied("List.Cons", [var("A"), var("item"), applied("List.Empty", [var("A")])]),
+                        ),
+                        arm(
+                            vec![con("List.Cons", [held("first"), held("rest")])],
+                            applied(
+                                "List.Cons",
+                                [var("A"), var("first"), applied("snoc", [var("rest"), var("item")])],
+                            ),
+                        ),
+                    ],
+                ),
+            ),
+        ),
+    );
+    RawImpl {
+        origin: HERE,
+        name: Arc::from("Buildable"),
+        params: vec![binder("A", type0())],
+        args: vec![list_of(var("A")), var("A")],
+        context: Vec::new(),
+        methods: vec![
+            supplies("empty", applied("List.Empty", [var("A")])),
+            supplies("push", snoc),
+        ],
+    }
+}
+
+/// `impl<A> Iterable<List<A>, A>`: the two folds, and nothing else.
+///
+/// Three methods arrive with them, which is §1.6's "a container earns all five
+/// by writing two" as a thing the checker enforces rather than a claim in prose
+/// — an impl that tried to write `map` is refused as supplying a derived method.
+fn iterable_list() -> RawImpl {
+    let list_a = list_of(var("A"));
+
+    // `λ{B}. λsource. λzero. λstep. walk source zero`, accumulating forwards.
+    let walk_ty = arrow(list_a.clone(), arrow(var("B"), var("B")));
+    let from_start = Raw::implicit_lam(
+        HERE,
+        "B",
+        lam(
+            "source",
+            lam(
+                "zero",
+                lam(
+                    "step",
+                    Raw::annotated_bind(
+                        HERE,
+                        "walk",
+                        walk_ty.clone(),
+                        Raw::rec(
+                            HERE,
+                            "walk",
+                            walk_ty,
+                            lam(
+                                "xs",
+                                lam(
+                                    "built",
+                                    matching(
+                                        var("xs"),
+                                        vec![
+                                            arm(vec![con("List.Empty", [])], var("built")),
+                                            arm(
+                                                vec![con("List.Cons", [held("first"), held("rest")])],
+                                                applied(
+                                                    "walk",
+                                                    [var("rest"), applied("step", [var("built"), var("first")])],
+                                                ),
+                                            ),
+                                        ],
+                                    ),
+                                ),
+                            ),
+                        ),
+                        applied("walk", [var("source"), var("zero")]),
+                    ),
+                ),
+            ),
+        ),
+    );
+
+    // `λ{B}. λsource. λzero. λstep. walk source`, the catamorphism.
+    let fold_ty = arrow(list_a, var("B"));
+    let from_end = Raw::implicit_lam(
+        HERE,
+        "B",
+        lam(
+            "source",
+            lam(
+                "zero",
+                lam(
+                    "step",
+                    Raw::annotated_bind(
+                        HERE,
+                        "walk",
+                        fold_ty.clone(),
+                        Raw::rec(
+                            HERE,
+                            "walk",
+                            fold_ty,
+                            lam(
+                                "xs",
+                                matching(
+                                    var("xs"),
+                                    vec![
+                                        arm(vec![con("List.Empty", [])], var("zero")),
+                                        arm(
+                                            vec![con("List.Cons", [held("first"), held("rest")])],
+                                            applied("step", [var("first"), applied("walk", [var("rest")])]),
+                                        ),
+                                    ],
+                                ),
+                            ),
+                        ),
+                        applied("walk", [var("source")]),
+                    ),
+                ),
+            ),
+        ),
+    );
+
+    RawImpl {
+        origin: HERE,
+        name: Arc::from("Iterable"),
+        params: vec![binder("A", type0())],
+        args: vec![list_of(var("A")), var("A")],
+        context: Vec::new(),
+        methods: vec![
+            supplies("fold_from_start", from_start),
+            supplies("fold_from_end", from_end),
+        ],
+    }
+}
+
+/// `impl<A> Iterable<Option<A>, A>`: the container that holds at most one thing.
+///
+/// This is what `option_fold(fallback, present, value)` was. Neither fold
+/// recurses, because there is nothing to recurse into — an `Option` is one step
+/// of a list — and the two differ only in which side of `step` the held value
+/// arrives on. A reader that wants the held value alone writes
+/// `value.fold_from_end(fallback, fn (found, _) { … })`, and the ignored
+/// argument is the accumulator that a one-element container has no second use
+/// for.
+fn iterable_option() -> RawImpl {
+    let fold = |step: Raw| {
+        Raw::implicit_lam(
+            HERE,
+            "B",
+            lam(
+                "source",
+                lam(
+                    "zero",
+                    lam(
+                        "step",
+                        matching(
+                            var("source"),
+                            vec![
+                                arm(vec![con("Option.None", [])], var("zero")),
+                                arm(vec![con("Option.Some", [held("found")])], step),
+                            ],
+                        ),
+                    ),
+                ),
+            ),
+        )
+    };
+    RawImpl {
+        origin: HERE,
+        name: Arc::from("Iterable"),
+        params: vec![binder("A", type0())],
+        args: vec![option_of(var("A")), var("A")],
+        context: Vec::new(),
+        methods: vec![
+            supplies("fold_from_start", fold(applied("step", [var("zero"), var("found")]))),
+            supplies("fold_from_end", fold(applied("step", [var("found"), var("zero")]))),
+        ],
+    }
+}
+
+/// One required method of a trait: a name and a type, and no body.
+fn trait_method(name: &str, ty: Raw) -> RawMethod {
+    RawMethod {
+        origin: HERE,
+        name: Arc::from(name),
+        params: Vec::new(),
+        context: Vec::new(),
+        ty,
+        body: None,
+    }
+}
+
+/// One derived method: the same, with the body every instance inherits.
+fn derived_method(name: &str, ty: Raw, body: Raw) -> RawMethod {
+    RawMethod {
+        body: Some(body),
+        ..trait_method(name, ty)
+    }
+}
+
+/// The same method, quantified over parameters of its own and requiring them.
+fn over(mut declared: RawMethod, params: Vec<RawBinder>, context: Vec<RawConstraint>) -> RawMethod {
+    declared.params = params;
+    declared.context = context;
+    declared
+}
+
+fn requires(name: &str, args: Vec<Raw>) -> RawConstraint {
+    RawConstraint {
+        origin: HERE,
+        name: Arc::from(name),
+        args,
+    }
+}
+
+fn supplies(name: &str, value: Raw) -> RawDefinition {
+    RawDefinition {
+        origin: HERE,
+        name: Arc::from(name),
+        value,
+    }
+}
+
 /// `cx` with [`eq_class`] declared and every [`eq_instances`] entry in it.
 ///
 /// Last in [`crate::registry::owned`] and necessarily so: an instance body is a
@@ -604,6 +1022,126 @@ pub(crate) fn equality(cx: Cx) -> Result<Cx, ElabError> {
         cx = cx.declaring_instance(&declared);
     }
     Ok(cx)
+}
+
+/// `cx` with [`buildable_class`] and [`iterable_class`] declared and the three
+/// prelude instances in it.
+///
+/// Ordered, and the order is forced twice over: `Buildable` before `Iterable`
+/// because `Iterable`'s derived bodies name `Buildable.empty` and
+/// `Buildable.push`, and both classes before their instances because an instance
+/// head is checked against the class it names.
+///
+/// # Errors
+///
+/// As [`equality`].
+pub(crate) fn collections(cx: Cx) -> Result<Cx, ElabError> {
+    let mut cx = cx;
+    for class in [buildable_class(), iterable_class()] {
+        let declared = musa_core::declare_trait(&cx, &class)?;
+        cx = cx.declaring_class(&declared);
+    }
+    for instance in [buildable_list(), iterable_list(), iterable_option()] {
+        let declared = musa_core::declare_impl(&cx, &instance)?;
+        cx = cx.declaring_instance(&declared);
+    }
+    Ok(cx)
+}
+
+/// `cx` with the expansion phase's one definition in scope.
+///
+/// ```text
+/// run_syntax_step
+///   : {Context : Type 0} → {Answer : Type 0}
+///   → Context → SyntaxStep Context Answer → Answer
+/// run_syntax_step = fn (context, step) {
+///     match step { SyntaxStep.Step(run) => run(context) }
+/// }
+/// ```
+///
+/// Seventeen phase rows in, sixteen registrations and this out.
+/// `run_syntax_step` is not a registered builtin because a projection is not a
+/// compiler-owned operation: it hides nothing, which is the test every
+/// `SYNTAX_OWNERSHIP` row states for itself, and
+/// [`Registry::new`](musa_core::Registry::new) would have refused it in any
+/// case — its target is a *declared* family, and a rewrite over one is the
+/// second ι-rule that check exists to catch. It is defined instead, by the same
+/// [`musa_core::declare_program`] that reads a library's own definitions.
+///
+/// **Only where a phase reads.** §5.9 keeps the two vocabularies apart, so a
+/// piece that wrote `run_syntax_step` must get the unknown name it earned;
+/// [`crate::document::elaborate`] calls this for a reading that holds a phase
+/// source and for no other.
+///
+/// The step's `run` field is private to the phase module, so the `match`
+/// resolves only because `cx` stands in no module and is therefore inside every
+/// one. A transformer's own module is not, which is the seal.
+///
+/// # Errors
+///
+/// [`ElabError`] when `SyntaxStep` is not declared in `cx`, or when the
+/// definition does not check at its own type — a compiler defect either way.
+pub(crate) fn expansion(cx: &Cx) -> Result<Cx, ElabError> {
+    let program = RawProgram {
+        definitions: vec![run_syntax_step()],
+        instances: Vec::new(),
+    };
+    let declared = musa_core::declare_program(cx, &program)?;
+    Ok(cx.defining(&declared))
+}
+
+/// `run_syntax_step`, written out. See [`expansion`].
+fn run_syntax_step() -> RawTopLevel {
+    let sealed = calling(var("SyntaxStep"), [var("Context"), var("Answer")]);
+    let ty = Raw::implicit_pi(
+        HERE,
+        "Context",
+        type0(),
+        Raw::implicit_pi(
+            HERE,
+            "Answer",
+            type0(),
+            Raw::pi(
+                HERE,
+                "context",
+                var("Context"),
+                Raw::pi(HERE, "step", sealed, var("Answer")),
+            ),
+        ),
+    );
+    let ran = arm(
+        vec![RawPattern::constructor(
+            HERE,
+            "SyntaxStep.Step",
+            [RawPattern::bind(HERE, "run")],
+        )],
+        calling(var("run"), [var("context")]),
+    );
+    // The implicit binders are written rather than left to insertion: a λ is
+    // checked against the Π it stands at, and the two type parameters are the
+    // ones the body's `SyntaxStep Context Answer` names.
+    let value = Raw::implicit_lam(
+        HERE,
+        "Context",
+        Raw::implicit_lam(
+            HERE,
+            "Answer",
+            lam("context", lam("step", matching(var("step"), vec![ran]))),
+        ),
+    );
+    RawTopLevel {
+        origin: HERE,
+        name: Arc::from("run_syntax_step"),
+        visibility: Visibility::Public,
+        // Written *in* [`PHASE`], because its body matches on the private case
+        // and nothing else may. Public, so a transformer standing in
+        // [`SOURCE`] calls it — which is the whole shape of the seal: the one
+        // operation that opens a step is the module's own, and it exports the
+        // answer rather than the constructor.
+        module: Some(PHASE),
+        ty: Some(ty),
+        value,
+    }
 }
 
 /// The term naming `name` in `cx`, for a caller assembling a builtin's type.
@@ -681,9 +1219,45 @@ fn var(name: &str) -> Raw {
 }
 
 fn applied(head: &str, arguments: impl IntoIterator<Item = Raw>) -> Raw {
+    calling(var(head), arguments)
+}
+
+fn calling(head: Raw, arguments: impl IntoIterator<Item = Raw>) -> Raw {
     arguments
         .into_iter()
-        .fold(var(head), |function, argument| Raw::app(HERE, function, argument))
+        .fold(head, |function, argument| Raw::app(HERE, function, argument))
+}
+
+fn arrow(domain: Raw, codomain: Raw) -> Raw {
+    Raw::pi(HERE, "_", domain, codomain)
+}
+
+fn lam(name: &str, body: Raw) -> Raw {
+    Raw::lam(HERE, name, body)
+}
+
+fn matching(subject: Raw, arms: Vec<RawArm>) -> Raw {
+    Raw::match_on(HERE, [subject], arms)
+}
+
+fn arm(patterns: Vec<RawPattern>, body: Raw) -> RawArm {
+    RawArm { patterns, body }
+}
+
+fn con(name: &str, fields: impl IntoIterator<Item = RawPattern>) -> RawPattern {
+    RawPattern::constructor(HERE, name, fields)
+}
+
+fn held(name: &str) -> RawPattern {
+    RawPattern::bind(HERE, name)
+}
+
+fn list_of(element: Raw) -> Raw {
+    applied("List", [element])
+}
+
+fn option_of(element: Raw) -> Raw {
+    applied("Option", [element])
 }
 
 fn type0() -> Raw {

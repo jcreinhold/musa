@@ -21,9 +21,15 @@ impl SourceSpan {
     }
 }
 
-/// The declaration an event originates from: an ordinal over the piece's
-/// declarations in source order. Stable within one compilation; not a
-/// permanent project identity.
+/// The declaration an event originates from: an ordinal over the blocks of
+/// notation a document reads — a motif, a fragment, a named bar, a `music`
+/// value, and a voice — handed out in reading order. Stable within one
+/// compilation; not a permanent project identity.
+///
+/// Zero means *no declaration to name*, and is a fact about the event rather
+/// than a gap in the table: a piece's own header is the piece speaking, and a
+/// `play(…)` call in a `fn` body is written in no block at all. `factext`
+/// prints `#n` only for a non-zero one.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct DeclarationId(pub u32);
 

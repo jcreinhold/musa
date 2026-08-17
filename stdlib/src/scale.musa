@@ -1,5 +1,4 @@
 library {
-    import std::option;
 
     // A scale is a tonic pitch class, an ordered cycle of spelled offsets, and
     // a spelled period. It carries no register: a degree names a coordinate,
@@ -30,7 +29,10 @@ library {
 
     // Whether a written pitch belongs to a scale at all.
     fn belongs_to(collection: Scale, written: Pitch) -> Bool {
-        option_fold(false, degree_is_present, scale_pitch(collection, written))
+        scale_pitch(collection, written).fold_from_end(
+            false,
+            fn (located, absent) { degree_is_present(located) },
+        )
     }
 
     // The present case of `belongs_to`: a located degree means the pitch is a

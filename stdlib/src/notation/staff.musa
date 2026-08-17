@@ -1,6 +1,5 @@
 library {
     import std::list;
-    import std::nat;
 
     // A staff document: what is written on a staff, as data, with nothing
     // about how it sounds.
@@ -380,10 +379,9 @@ library {
     // same reason one step down: a literal infers, and the whole-number token
     // is a `Nat` wherever it stands.
     fn ratio_of(count: Nat) -> Ratio {
-        nat_fold(
+        range(count).fold_from_start(
             0/1,
-            fn (step_index: Nat, sofar: Ratio) -> Ratio { ratio_add(sofar, 1/1) },
-            count,
+            fn (sofar: Ratio, step_index: Nat) -> Ratio { ratio_add(sofar, 1/1) },
         )
     }
 
@@ -434,15 +432,14 @@ library {
     // What a value covers once its dots are added: each dot adds half of what
     // the dot before it added.
     fn dotted_span(base: Ratio, dots: Nat) -> Ratio {
-        match nat_fold(
+        match range(dots).fold_from_start(
             Dotted {
                 total = base,
                 added = base
             },
-            fn (step_index: Nat, sofar: Dotted) -> Dotted {
+            fn (sofar: Dotted, step_index: Nat) -> Dotted {
                 dotted_by(sofar, ratio_div(sofar.added, 2/1))
             },
-            dots,
         ) {
             Dotted { total, added } -> total,
         }

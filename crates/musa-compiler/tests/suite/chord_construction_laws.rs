@@ -84,11 +84,11 @@ const PRELUDE: &str = "\
     import std::voicing;
 
     fn held(chosen: Voicing) -> EventTrack<WrittenTime> { play(chosen, duration_of(1/1)) }
-    fn sounded(chosen: Option<Voicing>) -> EventTrack<WrittenTime> { option_fold(music { rest/1 }, held, chosen) }
+    fn sounded(chosen: Option<Voicing>) -> EventTrack<WrittenTime> { chosen.fold_from_end(music { rest/1 }, fn (found, otherwise) { held(found) }) }
     fn tonic_of(register: Frame) -> EventTrack<WrittenTime> {
         map_note_pitches(fn (written: Pitch) -> Pitch { frame_degree(register, 1) }, music { c4/1 })
     }
-    fn named(root: NoteName) -> EventTrack<WrittenTime> { option_fold(music { rest/1 }, tonic_of, frame_on(major_on(root), c4)) }
+    fn named(root: NoteName) -> EventTrack<WrittenTime> { frame_on(major_on(root), c4).fold_from_end(music { rest/1 }, fn (found, otherwise) { tonic_of(found) }) }
 ";
 
 // --- The reference spelling formula -----------------------------------------
@@ -202,7 +202,7 @@ fn the_triad_refinement_admits_major_and_minor_and_refuses_the_rest() {
     let source = piece_with(
         &format!(
             "{PRELUDE}
-    fn refined(content: ChordClass) -> EventTrack<WrittenTime> {{ option_fold(music {{ rest/1 }}, voiced, as_triad(content)) }}
+    fn refined(content: ChordClass) -> EventTrack<WrittenTime> {{ as_triad(content).fold_from_end(music {{ rest/1 }}, fn (found, otherwise) {{ voiced(found) }}) }}
     fn voiced(shape: Triad) -> EventTrack<WrittenTime> {{ sounded(close_position(triad_content(shape), c4)) }}
 
     let major: EventTrack<WrittenTime> = refined(chord c major);
@@ -226,8 +226,8 @@ fn an_inversion_designates_a_bass_and_leaves_the_root_alone() {
 
     let content: ChordClass = chord c major;
     let first: Option<ChordClass> = inversion(content, 1);
-    let voiced: EventTrack<WrittenTime> = sounded(option_fold(None, from_e, first));
-    let root_after: EventTrack<WrittenTime> = named(option_fold(root_of(content), root_of, first));"
+    let voiced: EventTrack<WrittenTime> = sounded(first.fold_from_end(None, fn (found, otherwise) {{ from_e(found) }}));
+    let root_after: EventTrack<WrittenTime> = named(first.fold_from_end(root_of(content), fn (found, otherwise) {{ root_of(found) }}));"
         ),
         "        use voiced;\n        use root_after;",
     );
@@ -248,8 +248,8 @@ fn a_slash_bass_is_not_an_inversion() {
 
     let slash: ChordClass = slash_bass(chord c major, pitchclass_of(d3));
     let under_d: EventTrack<WrittenTime> = sounded(close_position(slash, d3));
-    let absent: EventTrack<WrittenTime> = sounded(option_fold(None, from_d, inversion(chord c major, 7)));
-    let slash_bass_class: EventTrack<WrittenTime> = named(option_fold(c_root, root_of, some_slash));
+    let absent: EventTrack<WrittenTime> = sounded(inversion(chord c major, 7).fold_from_end(None, fn (found, otherwise) {{ from_d(found) }}));
+    let slash_bass_class: EventTrack<WrittenTime> = named(some_slash.fold_from_end(c_root, fn (found, otherwise) {{ root_of(found) }}));
     let some_slash: Option<ChordClass> = Some(slash);
     let c_root: NoteName = root_of(chord c major);"
         ),
@@ -304,9 +304,9 @@ fn an_omission_keeps_the_class_it_omits_from() {
 
     let content: ChordClass = chord c major7;
     let close: Option<Voicing> = close_position(content, c4);
-    let without_root: Option<Voicing> = option_fold(None, rootless, close);
+    let without_root: Option<Voicing> = close.fold_from_end(None, fn (found, otherwise) {{ rootless(found) }});
     let voiced: EventTrack<WrittenTime> = sounded(without_root);
-    let still_c: EventTrack<WrittenTime> = named(option_fold(root_of(content), class_root, without_root));"
+    let still_c: EventTrack<WrittenTime> = named(without_root.fold_from_end(root_of(content), fn (found, otherwise) {{ class_root(found) }}));"
         ),
         "        use voiced;\n        use still_c;",
     );

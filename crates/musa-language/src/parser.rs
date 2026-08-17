@@ -2477,7 +2477,19 @@ impl<'a> Parser<'a> {
         self.bump();
         while !self.at(SyntaxKind::RParen) && self.current().is_some() {
             self.start(SyntaxKind::ExprArg);
-            if self.at(SyntaxKind::Identifier) && self.nth_significant(1) == Some(SyntaxKind::Colon) {
+            // A label is one colon, and `::` is two. `f(in: key c major)`
+            // names an argument; `f(Delimiter::Layout)` writes a path, and
+            // reading its first segment as a label would eat the name and
+            // leave the second colon where an expression has to start. The
+            // two are told apart by the token after the colon and by nothing
+            // else, which is why the path form gets the third token of
+            // lookahead rather than a capitalization test: `10-traits.md` §6
+            // gives `::` to namespaces, and a lowercase item is as legal
+            // after it as an uppercase one.
+            if self.at(SyntaxKind::Identifier)
+                && self.nth_significant(1) == Some(SyntaxKind::Colon)
+                && !self.at_path_separator_next()
+            {
                 self.bump();
                 self.bump();
             }
