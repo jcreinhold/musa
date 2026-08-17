@@ -525,9 +525,7 @@ impl Lowering<'_> {
     /// [`RawShape::Annot`](musa_core::RawShape::Annot) is the one place the core
     /// admits a written type inside a term.
     pub(super) fn lambda(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
-        let parameters = child(node, |kind| kind == SyntaxKind::ParamList)
-            .map(|list| children(&list, |kind| kind == SyntaxKind::Param))
-            .unwrap_or_default();
+        let parameters = self.parameters(node)?;
         let body = child(node, is_expr_node)?;
         let mut built = self.expr(&body)?;
         if let Some(result) = super::child(node, super::is_type_node) {

@@ -354,7 +354,7 @@ impl Lowering<'_> {
         // Innermost binder first, which is the order both folds below want: the
         // Π is built from its codomain outwards, and the λ from its body.
         let mut bound: Vec<(Origin, Name)> = Vec::new();
-        for parameter in written_parameters(node).iter().rev() {
+        for parameter in self.parameters(node)?.iter().rev() {
             let at = self.origin(parameter);
             let name = declared_name(parameter)?;
             let Some(written) = child(parameter, is_type_node) else {
@@ -444,7 +444,7 @@ impl Lowering<'_> {
         let origin = self.origin(node);
         let name = declared_name(node)?;
         let context = self.written_constraints(node)?;
-        let parameters = written_parameters(node);
+        let parameters = self.parameters(node)?;
         let signed = child(node, is_type_node).is_some()
             && parameters
                 .iter()
@@ -484,6 +484,42 @@ impl Lowering<'_> {
             ty: Some(ty),
             value,
         })
+    }
+
+    /// A declaration's parameters, refusing a name the list writes twice.
+    ///
+    /// The rule is the surface's and cannot be the core's. A telescope binds by
+    /// position, so `(value : Nat) → (value : Nat) → Nat` is a perfectly good Π
+    /// in which the second binder shadows the first — the core has a
+    /// `DuplicateField` and a `DuplicateCase` and deliberately no duplicate
+    /// *binder*, because shadowing is what a de Bruijn index is for. What the
+    /// core cannot know is that both names were written by an author who can
+    /// only ever reach one of them: every mention of `value` in the body means
+    /// the second parameter, so the first is a value the function takes and no
+    /// program can read. That is a mistake at the place it was made, and it is
+    /// refused here for the same reason `quotes.rs` refuses two holes of one
+    /// name.
+    ///
+    /// One reader for three callers — a signature's Π, a method's dictionary
+    /// field, and a bare λ — because the rule is a property of the list rather
+    /// than of what any one of them builds out of it.
+    pub(super) fn parameters(&mut self, node: &SyntaxNode) -> Option<Vec<SyntaxNode>> {
+        let written = written_parameters(node);
+        let mut seen: Vec<(Name, crate::SourceSpan)> = Vec::with_capacity(written.len());
+        for parameter in &written {
+            let name = declared_name(parameter)?;
+            if let Some((_, previous)) = seen.iter().find(|(taken, _)| *taken == name) {
+                return self.refuse(
+                    Diagnostic::error(Code::DuplicateName, format!("parameter `{name}` is written twice"))
+                        .at(trimmed_span(parameter), "written again here")
+                        .also(*previous, "first written here")
+                        .help("give the two parameters different names")
+                        .note("the second binding shadows the first, so nothing in the body could read it"),
+                );
+            }
+            seen.push((name, trimmed_span(parameter)));
+        }
+        Some(written)
     }
 
     /// `let tonic: Key = key c major;`.
@@ -657,6 +693,10 @@ pub(super) fn declared_name(node: &SyntaxNode) -> Option<Name> {
 }
 
 /// Every `Param` of a declaration's parameter list, in order.
+///
+/// Reading only. [`Lowering::parameters`] is what a caller that can refuse
+/// should use; this is here for the one caller that only wants to know whether
+/// the list is empty.
 pub(super) fn written_parameters(node: &SyntaxNode) -> Vec<SyntaxNode> {
     child(node, |kind| kind == SyntaxKind::ParamList)
         .map(|list| children(&list, |kind| kind == SyntaxKind::Param))
