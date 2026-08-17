@@ -320,6 +320,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 141o | document-elaboration | 3 | Elaborate a whole document |
 | 141p | piece-structure | 3 | Give the fold a voice to belong to |
 | 141q | canonical-readback | 3 | Read canonical data back out of a term |
+| 141r | instances-in-the-program | 3 | Declare a document's instances with its definitions |
 | 142 | surface-cutover | 3 | Move the whole language over, once |
 | 143 | builtin-collapse | 3 | Collapse the builtin registry behind traits and namespaces |
 | 144 | diagnostics-and-performance | 3 | Make the new failures legible and the new checker fast enough |
