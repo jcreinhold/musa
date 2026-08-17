@@ -285,7 +285,7 @@ impl Lowering<'_> {
             SyntaxKind::TrueKw => Raw::hosted(origin, "Bool.True"),
             SyntaxKind::FalseKw => Raw::hosted(origin, "Bool.False"),
             SyntaxKind::Integer => whole(origin, self.whole_number(&token)?),
-            SyntaxKind::Rational => plain_literal(origin, "Ratio", exact(&token)?),
+            SyntaxKind::Rational => plain_literal(origin, "Ratio", self.exact(&token)?),
             SyntaxKind::String => plain_literal(origin, "Text", musa_language::ast::unquote(token.text())),
             SyntaxKind::PitchLiteral => {
                 let Some(pitch) = crate::WrittenPitch::parse(token.text()) else {
@@ -311,6 +311,39 @@ impl Lowering<'_> {
                     .at(token_span(token), "outside Musa's exact natural range"),
             )
         })
+    }
+
+    /// `p/q`, as an exact rational, or [`None`] with the reason it is not one.
+    ///
+    /// A refusal rather than a bare [`None`], for the reason [`Lowering::not_yet`]
+    /// gives: an empty `None` out of [`Lowering::literal`] means "this node is not
+    /// an expression", and a `Rational` token always is one. Returning it silently
+    /// made `999999999999999999999/1` compile clean — the overflow reached the `?`
+    /// in the literal arm and left with it, and the piece was accepted holding no
+    /// value for the number the author wrote.
+    ///
+    /// Two ways to fail and two messages, because they are two mistakes: a
+    /// numerator or denominator past `i64` is a number outside the exact range
+    /// musical time is measured in, and a zero denominator is not a number at all.
+    fn exact(&mut self, token: &SyntaxToken) -> Option<Ratio<i64>> {
+        let Some((numerator, denominator)) = token.text().split_once('/') else {
+            return None;
+        };
+        let (Ok(numerator), Ok(denominator)) = (numerator.parse::<i64>(), denominator.parse::<i64>()) else {
+            return self.refuse(
+                Diagnostic::error(Code::OutOfRange, "this rational number is too large")
+                    .at(token_span(token), "outside Musa's exact rational range")
+                    .note("musical time is exact, so a ratio is held as a pair of 64-bit integers"),
+            );
+        };
+        if denominator == 0 {
+            return self.refuse(
+                Diagnostic::error(Code::OutOfRange, "this rational number is divided by zero")
+                    .at(token_span(token), "the denominator is zero")
+                    .help("write a denominator other than `0`"),
+            );
+        }
+        Some(Ratio::new(numerator, denominator))
     }
 
     /// A form the grammar reads and the core cannot yet be told about.
@@ -1019,15 +1052,6 @@ where
         origin,
         crate::registry::literal(crate::registry::plain_type(base), value),
     )
-}
-
-/// `p/q`, as an exact rational.
-fn exact(token: &SyntaxToken) -> Option<Ratio<i64>> {
-    let (numerator, denominator) = token.text().split_once('/')?;
-    let (Ok(numerator), Ok(denominator)) = (numerator.parse::<i64>(), denominator.parse::<i64>()) else {
-        return None;
-    };
-    (denominator != 0).then(|| Ratio::new(numerator, denominator))
 }
 
 /// The last identifier a musical literal writes, which is the word naming

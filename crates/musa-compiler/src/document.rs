@@ -414,6 +414,7 @@ pub(crate) fn elaborate(
         }
     }
     let names: Vec<Name> = read.definitions.iter().map(|held| Arc::clone(&held.name)).collect();
+    refused |= !named_once(resolver, &sites, &read.definitions);
     let program = RawProgram {
         definitions: read.definitions,
         instances: read.instances,
@@ -437,6 +438,52 @@ pub(crate) fn elaborate(
         modules,
         standing: made.map(|instance| crate::lower::expansion(instance.span(), instance.step())),
     })
+}
+
+/// That no two of `definitions` bind one name, reporting each repeat.
+///
+/// The document is the scope, so this is the one place the whole list exists at
+/// once and the only place the question can be asked. `declare_program` cannot
+/// ask it: a definition is a global name rather than a binder, and the core's
+/// duplicate refusals — `DuplicateField`, `DuplicateCase`, `DuplicateMethod`,
+/// `DuplicateInstance` — are each about a *declaration's own* parts, where the
+/// second entry has a first entry to be compared against. Handing it two
+/// definitions of `value` would leave it deciding which document meant which,
+/// which is a question about sources it does not have.
+///
+/// Returns whether the list was clean, and reports every repeat rather than the
+/// first: two names written twice are two mistakes, and an author who fixed one
+/// and recompiled to find the other would be paying for this function's
+/// convenience.
+///
+/// Every source the document reads is in one list here — the piece's own
+/// declarations and each import's — so a name an import already bound is a
+/// repeat too. That is the right answer while imports bind flat, and if a
+/// future `as` alias gives an import a namespace of its own, this is the
+/// function that has to learn about it.
+fn named_once(resolver: &mut Resolver, sites: &Sites, definitions: &[RawTopLevel]) -> bool {
+    let mut seen: Vec<(&Name, Origin)> = Vec::with_capacity(definitions.len());
+    let mut clean = true;
+    for held in definitions {
+        if let Some((_, previous)) = seen.iter().find(|(taken, _)| **taken == held.name) {
+            clean = false;
+            let said = Diagnostic::error(
+                Code::DuplicateName,
+                format!("`{}` is declared twice in this document", held.name),
+            );
+            let said = match sites.span(held.origin) {
+                Some(span) => said.at(span, "declared again here"),
+                None => said,
+            };
+            resolver.report(
+                said.maybe_also(sites.span(*previous), "first declared here")
+                    .help("give one of them another name"),
+            );
+        } else {
+            seen.push((&held.name, held.origin));
+        }
+    }
+    clean
 }
 
 /// What one walk of a document's declarations collected, by which door each

@@ -15,7 +15,12 @@ fn diagnostics(declarations: &str) -> Vec<Code> {
 #[test]
 fn each_static_failure_has_a_stable_diagnostic_code() {
     for (declarations, expected) in [
-        ("let value: Nat = true;", Code::TypeMismatch),
+        // `ConversionMismatch`, not `TypeMismatch`: the two types are compared
+        // by normalizing both and deciding convertibility, so the refusal names
+        // that question rather than a shape mismatch in a unifier.
+        // `diagnose.rs` introduced the code as distinct from `TypeMismatch`,
+        // "which the rank-1 checker raises".
+        ("let value: Nat = true;", Code::ConversionMismatch),
         ("let value: unknown = 1;", Code::UnknownName),
         ("let value: Nat = absent;", Code::UnknownName),
         ("let value: Ratio = 999999999999999999999/1;", Code::OutOfRange),
@@ -44,12 +49,29 @@ fn a_parameter_cannot_be_bound_twice() {
     assert!(actual.contains(&Code::DuplicateName), "{actual:?}");
 }
 
+/// An argument is not labelled at all, and the refusal says so.
+///
+/// This law used to check that a label naming no parameter, or naming one
+/// twice, was refused as `WrongArity`. There are no labels to get wrong now:
+/// prompt 130's rewrite of `01-surface.md` left the name at the declaration —
+/// §1.2 names fields where the name does work — and every argument passes by
+/// position. Checking a label at a use site would need the declaration in hand,
+/// and a label that agrees with the position it is already in earns nothing for
+/// the second way to pass an argument that it costs.
+///
+/// So the law changes from "a label must be right" to "a label is not a thing",
+/// and it is still worth stating: the two programs below are what an author
+/// migrating from the old language writes first, and they get told the feature
+/// is gone rather than a mismatch further downstream.
 #[test]
-fn named_arguments_must_name_a_parameter_once() {
-    let unknown = diagnostics("fn one(x: Nat) -> Nat { x } let value: Nat = one(y: 1);");
-    assert!(unknown.contains(&Code::WrongArity), "{unknown:?}");
-    let repeated = diagnostics("fn one(x: Nat) -> Nat { x } let value: Nat = one(x: 1, x: 2);");
-    assert!(repeated.contains(&Code::WrongArity), "{repeated:?}");
+fn an_argument_cannot_be_labelled() {
+    for written in [
+        "fn one(x: Nat) -> Nat { x } let value: Nat = one(y: 1);",
+        "fn one(x: Nat) -> Nat { x } let value: Nat = one(x: 1, x: 2);",
+    ] {
+        let said = diagnostics(written);
+        assert!(said.contains(&Code::UnsupportedLanguageStage), "{said:?}");
+    }
 }
 
 #[test]
