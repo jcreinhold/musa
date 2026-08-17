@@ -1,7 +1,7 @@
 ---
 id: 141r
 slug: instances-in-the-program
-status: pending
+status: in-progress
 depends_on: [137, 141n, 141o]
 phase: 3
 ---
@@ -95,8 +95,11 @@ caller two lists to re-combine would be handing back the question the module exi
    first: not "before that one" but "before *one of* these", because which one it is depends on the receiver's type, and
    the receiver's type is not known until the declaration this edge belongs to has been elaborated.
 
-**A soft edge orders and never refuses.** In the traversal, a back edge that is soft is *dropped*; a back edge that is
-hard is the cycle refusal it always was. This is the whole answer to the over-approximation, and it is what keeps
+**A soft edge orders and never refuses.** In the traversal, a back edge that is soft is *dropped*. A back edge that is
+hard closes a cycle, and that cycle is `DefinitionCycle` only when it is hard the whole way round; if any edge inside it
+was soft, the *deepest* such edge is dropped instead and the walk continues from there. The refusal belongs to the
+cycle, not to the edge that happened to close it, and a cycle holding a soft edge is a cycle the graph guessed at — so
+the guess is what gives way. This is the whole answer to the over-approximation, and it is what keeps
 
 ```musa
 impl Eq<Pitch>    { fn equal(a, b) { a.name == b.name } }
@@ -114,6 +117,12 @@ naming the method and the head type. That is a sentence about the program, and i
 between a definition and a dictionary deserves — an instance is never `rec`, so a cycle through one has nowhere to go
 even if the graph admitted it. What must not happen is the same program refused as a cycle among declarations that do
 not name each other, which is what the naive edge produces and what this rule is for.
+
+The two rules meet exactly where the graph's own shape puts them, which is why the "deepest soft edge" clause needs no
+case analysis: a hard edge only ever points at a *definition* and a soft edge only ever points at an *instance*, so
+every cycle that passes through an instance holds a soft edge and breaks at one, and a cycle among definitions alone
+holds none and is refused by name. `DefinitionCycle` stays what 141n made it — a statement about definitions naming each
+other — and no instance can be caught in one.
 
 **Nothing about resolution changes.** §6 already resolves `x.m(y)` by the head of `x`'s concrete type against the
 instances in scope, and that code is not touched. This prompt changes *which instances are in scope when a definition is
@@ -147,8 +156,9 @@ moves eleven thousand lines of `.musa`, for the reason 142's own Design gives ab
   what it now takes and what it now refuses.
 - One dependency graph over both kinds in one index space, with the two edge kinds above. An `impl`'s free names read
   from its parameters, its arguments, its `where` clause, and its method bodies.
-- `ordering` distinguishing the two: a hard back edge is `Refusal::DefinitionCycle` with the cycle named, a soft back
-  edge is dropped, a self-edge is 141n's recursive case for a definition and dropped for an instance.
+- `ordering` distinguishing the two: a soft back edge is dropped, a hard back edge is `Refusal::DefinitionCycle` with
+  the cycle named *unless* the cycle it closes holds a soft edge, in which case that edge is dropped instead; a
+  self-edge is 141n's recursive case for a definition and dropped for an instance.
 - `document.rs`'s `elaborate` losing its `declare_impl` loop, and its module documentation rewritten to **three** doors
   in a forced order, with the third taking definitions and instances as one group and saying why.
 - Laws in [`crates/musa-core/tests/suite/program_laws.rs`](../../../crates/musa-core/tests/suite/program_laws.rs):
