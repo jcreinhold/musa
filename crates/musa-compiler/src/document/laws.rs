@@ -237,13 +237,37 @@ fn a_refusal_about_a_name_is_restated_through_the_documents_own_sites() {
 /// without them would report missing names that are not missing. One list rather
 /// than two, so a library added to `stdlib/` cannot appear in one survey and not
 /// the other.
+///
+/// [`Source::imported`] and not [`Source::own`], which is the difference between
+/// surveying the corpus and inventing a document nobody writes. A library is a
+/// *file the piece imported*, and [`crate::document::elaborate`] asks which of
+/// the two a source is for a reason: this document's own declarations are the
+/// ones a reader sees at once and must not repeat, and an import's are the ones
+/// compared against other imports. Handed over as own sources, seventeen files'
+/// worth of names became the example's own, so `examples/anonymous-functions`
+/// declaring `let counted` beside `nat.musa`'s `private fn counted` was reported
+/// as a name written twice in one file — a collision of the harness's making,
+/// which the compiler does not report on that file and `01-surface.md` §1 has
+/// not asked anyone to report.
+///
+/// The path is the file's, because it is what the collision between two imports
+/// is *named* by. The span is not: there is no `import` statement here to point
+/// at, and a survey has no text of its own for one to be in.
 pub(crate) fn library_sources() -> Vec<Source> {
     STANDARD_LIBRARY
         .iter()
         .map(|&(name, source)| {
             let held = musa_language::parse(source);
             assert!(held.errors().is_empty(), "`{name}` parses: {:?}", held.errors());
-            Source::own(&written_library(&held.syntax()).expect("every standard library file writes a library"))
+            let path = format!("stdlib/src/{name}.musa");
+            Source::imported(
+                &written_library(&held.syntax()).expect("every standard library file writes a library"),
+                crate::imports::Imported {
+                    path: &path,
+                    qualifier: None,
+                    at: crate::origin::SourceSpan::new(0, 0),
+                },
+            )
         })
         .collect()
 }
