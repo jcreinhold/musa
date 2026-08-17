@@ -41,10 +41,32 @@ pub struct Origin {
     pub declaration: DeclarationId,
     /// The expansion steps from declaration to event; empty for directly
     /// authored notes.
+    ///
+    /// **Outside-in, in containment order.** `docs/rules/desktop/04-provenance.md`
+    /// fixes it: a `use sigh()` written inside a `transpose down P5` block reads
+    /// `transpose down P5 ▸ sigh() ▸ note 3`, because that is the order a reader
+    /// asking "where did this come from" walks — from the widest thing that
+    /// produced the event down to the narrowest. It is *not* the order the
+    /// evaluator reaches the steps in, which is the reverse: the innermost
+    /// material is built first and each enclosing transform is applied to it
+    /// afterwards. [`Origin::enclosed_by`] is where that reversal is undone,
+    /// and it is the only way a step should ever join this list.
     pub expansion_path: Vec<ExpansionStep>,
 }
 
 impl Origin {
+    /// Record that `step` happened *around* whatever produced this event.
+    ///
+    /// At the front, because [`Origin::expansion_path`] reads outside-in and a
+    /// transform is handed facts that already carry everything narrower than
+    /// itself. A `stretch 2` wrapped around a `use motif()` reaches the facts
+    /// after the motif application did, and the path still has to say
+    /// `stretch 2 ▸ motif` — so the one thing a caller must not have to know is
+    /// which end of the vector that is.
+    pub(crate) fn enclosed_by(&mut self, step: ExpansionStep) {
+        self.expansion_path.insert(0, step);
+    }
+
     /// Move every place this points at back into the composer's own text.
     ///
     /// Exhaustive over [`ExpansionStep`] on purpose: the workspace forbids

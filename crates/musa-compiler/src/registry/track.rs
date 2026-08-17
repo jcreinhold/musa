@@ -44,10 +44,11 @@
 //! # Provenance
 //!
 //! §5.7 requires every fact to carry a complete `Origin`. The transforms are
-//! handed facts that have one and append their own step —
-//! [`ExpansionStep::Transposition`], `Stretch`, `Retrograde`, `Inversion`, and
+//! handed facts that have one and record their own step as having *enclosed* it
+//! — [`ExpansionStep::Transposition`], `Stretch`, `Retrograde`, `Inversion`, and
 //! `MapNotePitches` each carry no span, so a `fn` pointer can build one out of
-//! its own arguments. `play` *constructs*, and a source span is not something a
+//! its own arguments, and [`Origin::enclosed_by`] puts it where a path that
+//! reads outside-in needs it. `play` *constructs*, and a source span is not something a
 //! `fn` pointer can invent, so its origin and its scope are arguments: the one
 //! thing a rule cannot compute is the thing the caller supplies, exactly as
 //! `instantiate_quote` takes the anchor it builds under. `instanced` takes one
@@ -132,7 +133,15 @@ pub(super) const SPELLINGS: [&str; 8] = [
 /// player's staff, which is the same false claim `set_note_pitches` and
 /// `instanced` exist to prevent, about place rather than about pitch or
 /// provenance.
-pub(super) const TRACK_BEYOND: [&str; 4] = ["set_note_pitches", "instanced", "spliced", "scoped"];
+///
+/// `respelled` is the fifth and is `set_note_pitches` with a position: a `with`
+/// clause names one note of one occurrence and writes a pitch onto it. It is out
+/// of both tables for the first one's reason exactly — a source word for it
+/// would let a program put any pitch on any note of any track it can name, and
+/// the whole control is that the *reading* chose the occurrence. The position is
+/// counted rather than chosen for the same reason: `01-surface.md`'s `with`
+/// clause is the only thing that writes one.
+pub(super) const TRACK_BEYOND: [&str; 5] = ["set_note_pitches", "instanced", "spliced", "scoped", "respelled"];
 
 /// The term naming an event track in written time.
 ///
@@ -247,6 +256,17 @@ pub(super) fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
             track(),
             SCOPED,
         ),
+        delta(
+            TRACK_BEYOND[4],
+            vec![
+                plain_type("Origin"),
+                crate::prelude::constant(cx, "Nat")?,
+                plain_type("Pitch"),
+                track(),
+            ],
+            track(),
+            RESPELLED,
+        ),
     ])
 }
 
@@ -288,14 +308,18 @@ pub(super) fn built(track: VoiceTrack) -> Datum {
     Datum::Lit(literal(track_type(), track))
 }
 
-/// The same track with each fact rewritten by `each` and `step` appended to
-/// every fact's expansion path.
+/// The same track with each fact rewritten by `each` and `step` recorded as
+/// having happened around every fact's expansion path.
 ///
 /// One helper for four of the eight, because "transform each payload and record
 /// that it happened" is what a controlled transform *is*: a version that let a
 /// caller do one without the other would be the provenance hole §7 exists to
 /// close. `each` answers `None` for a fact it cannot transform, and the whole
 /// track is then refused rather than the untransformed fact silently kept.
+///
+/// [`Origin::enclosed_by`] rather than a push, because a transform *is* the
+/// enclosing thing: the track it was handed was built first and the path reads
+/// outside-in.
 fn rewritten(
     track: &VoiceTrack,
     step: &ExpansionStep,
@@ -306,7 +330,7 @@ fn rewritten(
         .iter()
         .map(|occurrence| {
             let mut fact = each(occurrence.payload())?;
-            fact.origin.expansion_path.push(step.clone());
+            fact.origin.enclosed_by(step.clone());
             Some(Occurrence::new(occurrence.span(), fact))
         })
         .collect::<Option<Vec<_>>>()?;
@@ -361,7 +385,7 @@ const RETROGRADE: Rule = |arguments| {
             )
             .ok()?;
             let mut fact = occurrence.payload().clone();
-            fact.origin.expansion_path.push(ExpansionStep::Retrograde);
+            fact.origin.enclosed_by(ExpansionStep::Retrograde);
             Some(Occurrence::new(mirrored, fact))
         })
         .collect::<Option<Vec<_>>>()?;
@@ -432,7 +456,105 @@ const SET_NOTE_PITCHES: Rule = |arguments| {
                 && let Some(replacement) = replacements.next()
             {
                 *pitch = replacement;
-                fact.origin.expansion_path.push(ExpansionStep::MapNotePitches);
+                fact.origin.enclosed_by(ExpansionStep::MapNotePitches);
+            }
+            Occurrence::new(occurrence.span(), fact)
+        })
+        .collect();
+    reduced(built(musa_kernel::track(track.duration(), occurrences).ok()?))
+};
+
+/// The occurrences of `track` that a `with` clause counts, grouped into
+/// positions.
+///
+/// One position per group of *event* occurrences sharing a span, which is how a
+/// chord's pitches become one position and how a slur laid over the body becomes
+/// none: `04-provenance.md`'s inspector numbers what a reader can point at, and
+/// a reader points at noteheads and rests. Skipping a rest instead would
+/// renumber every note after it, so a rest holds its position and refuses to be
+/// written on.
+fn positions_of(track: &VoiceTrack) -> Vec<Vec<usize>> {
+    let mut positions: Vec<Vec<usize>> = Vec::new();
+    let mut previous = None;
+    for (index, occurrence) in track.occurrences().iter().enumerate() {
+        if !occurrence.payload().kind.is_event() {
+            continue;
+        }
+        match positions.last_mut() {
+            Some(group) if previous == Some(occurrence.span()) => group.push(index),
+            _ => positions.push(vec![index]),
+        }
+        previous = Some(occurrence.span());
+    }
+    positions
+}
+
+/// `respelled(at, position, pitch, t)` — the one note `position` names, written
+/// as `pitch` instead.
+///
+/// The three ways of naming no such note are three refusals rather than a silent
+/// no-op, because a `with` clause that quietly did nothing would be a composer's
+/// edit that never happened. None of the three is knowable while reading: the
+/// material is a term until it is evaluated, so how many positions it has, and
+/// what stands at each, are answers only this rule has. What *is* knowable
+/// there — a position of zero, a clause with no pitch, one note named twice —
+/// [`crate::lower::notation`] refuses where it is written, and this rule never
+/// sees it.
+///
+/// `at` carries the override's own [`ExpansionStep::Specialization`], and the
+/// path is spliced in front for [`INSTANCED`]'s reason: everything the
+/// respelled note already carried happened inside the occurrence being
+/// specialized, and only this note is touched — its siblings were not
+/// specialized and their paths must not say they were.
+const RESPELLED: Rule = |arguments| {
+    let Datum::Lit(ref written) = *arguments.first()? else {
+        return None;
+    };
+    let path = held::<Provenance>(written)?.0.expansion_path.clone();
+    let position = usize::try_from(nat(arguments.get(1)?)?).ok()?;
+    let pitch = read::<WrittenPitch>(arguments.get(2)?)?;
+    let track = track_of(arguments.get(3)?)?;
+
+    let positions = positions_of(&track);
+    let Some(group) = position.checked_sub(1).and_then(|at| positions.get(at)) else {
+        let count = positions.len();
+        let plural = if count == 1 { "" } else { "s" };
+        return Some(refused(&format!(
+            "this occurrence has {count} note{plural}, so there is no note {position}"
+        )));
+    };
+    if group.len() > 1 {
+        return Some(refused(&format!(
+            "note {position} is a chord, and an override respells one note"
+        )));
+    }
+    let &[only] = group.as_slice() else {
+        return None;
+    };
+    if track
+        .occurrences()
+        .get(only)
+        .and_then(|occurrence| occurrence.payload().pitch_of())
+        .is_none()
+    {
+        return Some(refused(&format!(
+            "note {position} is a rest, and a rest has no pitch to respell"
+        )));
+    }
+
+    let occurrences = track
+        .occurrences()
+        .iter()
+        .enumerate()
+        .map(|(index, occurrence)| {
+            let mut fact = occurrence.payload().clone();
+            if index == only
+                && let FactKind::Note {
+                    pitch: ref mut written, ..
+                } = fact.kind
+            {
+                *written = pitch;
+                fact.origin.expansion_path.splice(0..0, path.iter().cloned());
             }
             Occurrence::new(occurrence.span(), fact)
         })

@@ -1788,7 +1788,78 @@ impl Lowering<'_> {
     fn used(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
         let called = child(node, is_expr_node)?;
         let material = self.value(&called)?;
-        Some(self.spoken(origin, reading, crate::resolve::trimmed_span(node), material))
+        let specialized = self.specialized(node, origin, material)?;
+        Some(self.spoken(origin, reading, crate::resolve::trimmed_span(node), specialized))
+    }
+
+    /// `material` with this `use`'s `with { note n = p; }` clause applied, or
+    /// `material` unchanged when it wrote none.
+    ///
+    /// One `respelled` per override, innermost first, so a clause that names
+    /// two notes reads as two edits of one occurrence rather than one edit of a
+    /// list. Inside [`Lowering::spoken`]'s `instanced` rather than around it,
+    /// because the respelling happened *within* this playing of the material
+    /// and `04-provenance.md` reads the path outside-in: the note comes out
+    /// `motif ▸ specialized`, which is the order a reader asking about it walks.
+    ///
+    /// **Three refusals here and three in the builtin, and the split is not
+    /// arbitrary.** A position of zero, a clause with no pitch, and one note
+    /// named twice are properties of the *text*, so they are answered where the
+    /// text is. How many notes the occurrence has, whether the one named is a
+    /// chord, and whether it is a rest are properties of the material, and the
+    /// material is a term until it is evaluated — 141k's fold reported those by
+    /// elaborating the body while it walked, and there is nothing to elaborate
+    /// here. [`crate::registry::track`]'s `respelled` answers them on 141m's
+    /// refusal channel instead.
+    fn specialized(&mut self, node: &SyntaxNode, origin: Origin, material: Raw) -> Option<Raw> {
+        use musa_language::ast::AstNode as _;
+
+        let Some(call) = musa_language::ast::UseStmt::cast(node.clone()) else {
+            return Some(material);
+        };
+        let mut named: Vec<u64> = Vec::new();
+        let mut specialized = material;
+        for each in call.overrides() {
+            let at = crate::resolve::trimmed_span(each.syntax());
+            let Some(position) = each
+                .position()
+                .and_then(|text| text.parse::<u64>().ok())
+                .filter(|counted| *counted > 0)
+            else {
+                return self.refuse(
+                    Diagnostic::error(Code::OutOfRange, "notes are counted from `note 1`")
+                        .at(at, "there is no note 0")
+                        .note("the first note of the occurrence is `note 1`"),
+                );
+            };
+            let Some(pitch) = each.pitch().as_deref().and_then(crate::pitch::WrittenPitch::parse) else {
+                return self.refuse(
+                    Diagnostic::error(Code::NotAValue, "this override names no pitch")
+                        .at(at, "expected a pitch")
+                        .note("`note 2 = f5;` writes `f5` onto the second note"),
+                );
+            };
+            if named.contains(&position) {
+                return self.refuse(
+                    Diagnostic::error(Code::DuplicateName, format!("note {position} is overridden twice"))
+                        .at(at, "the second of two")
+                        .note("one note takes one spelling, so one of these two says nothing"),
+                );
+            }
+            named.push(position);
+            let step = crate::lower::expansion(at, crate::origin::ExpansionStep::Specialization { override_site: at });
+            specialized = applied(
+                origin,
+                Raw::hosted(origin, "respelled"),
+                [
+                    Raw::lit(origin, crate::registry::origin_literal(step)),
+                    crate::lower::whole(origin, position),
+                    plain(origin, "Pitch", pitch),
+                    specialized,
+                ],
+            );
+        }
+        Some(specialized)
     }
 
     /// `material`, played here — the two builtins [`Lowering::used`] documents,

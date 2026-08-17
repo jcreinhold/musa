@@ -9,9 +9,9 @@
 //! [`every_example_elaborates`] is the point of the prompt rather than a check
 //! on it, exactly as prompt 141o's standard-library survey was. Fifty-four
 //! pieces, read through the new structure and checked through the new core, with
-//! every remaining fault recorded: each is a spelling prompt 142's Target
-//! already owns, and one that appeared without one would be a defect in the
-//! reading rather than a migration.
+//! every remaining fault recorded and named to the prompt that owns it. A fault
+//! that appeared without one would be a defect in the reading rather than a
+//! migration.
 //!
 //! The recorded list is exact. A file that starts failing for a new reason fails
 //! the build; a reason that stops applying has to be struck from the list in the
@@ -878,37 +878,58 @@ fn a_parts_own_meter_is_a_fact_at_the_parts_scope() {
 /// Every piece in `examples/`, read and checked with the standard library in
 /// scope.
 ///
-/// Three reasons remain, in three classes, and none is about the structure
-/// 141k built:
+/// **No reason left here is a language fault.** Two remain and they are one
+/// fact twice: `diatonic-sequences` and `rule-of-the-octave` build chord
+/// voicings by index arithmetic over a scale, and doing that costs more
+/// reduction steps than §4's default of 200,000 allows.
 ///
-/// - **a scale the phrase does not name** — the `step` in a free `music { … }`
-///   that no `in scale` encloses. What is left of the contextual `music` value
-///   after 142 deleted the rest of it: a phrase whose meaning depends on where
-///   it is used, and the scale has to become something the phrase says.
-/// - **an argument written by name** — `Against(first: Plain, …)` in
-///   `gesture-data`, which [`crate::lower::values`] refuses. A field's name is
-///   written at the declaration; repeating it at a use is a second way to pass
-///   an argument, and the migration drops the labels.
-/// - **a trait a document cannot use in itself** — `no method `transposed` for
-///   `PitchClass``, from `triad_root(refined) up M3` in
-///   `stdlib/src/transformational.musa`. `Transposable` and both its instances
-///   are declared in `stdlib/src/pitch.musa`, and the reading is right: `up` is
-///   one action over two domains and the receiver decides which
-///   ([`crate::lower::values::Lowering::transposition`]). What refuses it is
-///   [`crate::document::elaborate`]'s declaration order — every definition is
-///   elaborated before any `impl` is declared, so `10-traits.md` §6's
-///   exact-receiver lookup finds the trait and no instance at the head. The
-///   order is deliberate and its reason is real (an impl's method bodies are
-///   ordinary terms and may name the document's definitions), so the two want
-///   one dependency graph rather than two passes — which is a change to what
-///   the language accepts, and 142's Stop is explicit that a migration records
-///   such a thing rather than slipping it in. Recorded here; the fix is its
-///   own prompt.
+/// The size of it, measured by bisecting `Budget::LANGUAGE`'s step limit
+/// against this survey and reading which examples still say anything:
+///
+/// | limit | examples that exhaust |
+/// | --- | --- |
+/// | 50,000 | `diatonic-sequences`, `in-c`, `rule-of-the-octave`, `shuffle` |
+/// | 100,000 | `diatonic-sequences`, `rule-of-the-octave` |
+/// | 215,000 | `diatonic-sequences`, `rule-of-the-octave` |
+/// | 220,000 | `rule-of-the-octave` |
+/// | 255,000 | `rule-of-the-octave` |
+/// | 260,000 | none |
+///
+/// So it is a tail of two and not a slope. Every other example fits inside half
+/// the limit, `examples/in-c.musa` — 590 lines, the longest in the corpus —
+/// among them, which is what says there is no base cost the whole corpus pays
+/// and nothing here that is quadratic in the length of the music. The two that
+/// do not fit want 1.1× and 1.3× of it.
+///
+/// **This is the one thing standing between the survey and 142's Check**, and
+/// it is recorded rather than answered because both ways of answering it belong
+/// to prompt 144. Making the checker spend fewer steps on this shape is 144's
+/// performance half, which already names the left-nested `follow` spine
+/// ([`crate::lower::notation`]) and the re-normalization conversion does.
+/// Raising 200,000 is a cost-table version bump: `02-core-calculus.md` §4 calls
+/// it a language-version constant, and 144 says in as many words that it is
+/// "never a threshold quietly raised to make the suite pass". A migration may
+/// not do the second and cannot do the first in passing, so the honest record
+/// is this table.
 ///
 /// Everything else holds on the real corpus: fifty-four pieces' worth of
 /// notation statements, motifs, fragments, transformations, part and voice
 /// numbering, header and per-part context, and the scope every fact in them is
 /// constructed at.
+///
+/// Three language faults were here and went with the migration itself. **A
+/// scale the phrase does not name** — a `step` in a free `music { … }` — went
+/// when the contextual `music` value did: every `step` in the corpus now stands
+/// inside the `in scale` that gives it a coordinate system, which is what
+/// `scale-context.musa` was always saying. **An argument written by name** —
+/// `Against(first: …, second: …)` at a *use* in `gesture-data` — went by
+/// dropping the labels: a field's name is written at its declaration, and
+/// repeating it at a use was a second way to pass an argument. And **a trait a
+/// document cannot use in itself** — `transposed` on the receiver of
+/// `triad_root(refined) up M3` in `stdlib/src/transformational.musa` — went at
+/// prompt 141r, which declares a document's instances with its definitions
+/// rather than after them, so `10-traits.md` §6's exact-receiver lookup finds
+/// the instance at the head where the reading always said it should.
 ///
 /// Five classes were here and are gone. The **kernel quote** —
 /// `kernel EventTrack[WrittenTime, ScoreFact] { … }`, which
@@ -959,11 +980,10 @@ fn every_example_elaborates() {
     assert_eq!(
         said,
         [
-            "Misplaced: `step` needs a scale to count in",
-            "NoMethodForType: no method `transposed` for `PitchClass`",
-            "UnsupportedLanguageStage: an argument cannot be labelled here",
+            "ResourceLimit: evaluation exceeded the budget for reduction steps at 200001 of 200000",
+            "ResourceLimit: function application exceeded the budget for reduction steps at 200001 of 200000",
         ],
-        "the examples need exactly what 142 owns"
+        "the corpus reads and checks; what is left is the step budget, and prompt 144 owns it"
     );
 }
 
