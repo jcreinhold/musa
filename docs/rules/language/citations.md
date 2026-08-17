@@ -246,6 +246,7 @@ verified by `scripts/check-docs.sh`: the corpus is outside the repository and is
 | coherence, and the design space that overlap, specialization, and defaulting sit in — Musa refuses all three and `10-traits.md` §9 says why | Peyton Jones, Jones, and Meijer (1997), "Type classes: an exploration of the design space" |
 | the orphan rule as the module-level condition that makes coherence checkable rather than aspirational | the same paper's treatment of instance scoping, and the Haskell 98 Report's rule that instances are program-global regardless of import |
 | termination of instance resolution by a measure that decreases from an instance head to its context | the Paterson conditions, as recorded in Sulzmann, Duck, Peyton Jones, and Stuckey (2007), "Understanding functional dependencies via constraint handling rules" |
+| a closed value of a counting family represented as a literal count over an unchanged declaration, unfolded one constructor at a time by the eliminator (`02-core-calculus.md` §5.10) | Lean 4's kernel, `~/Code/lean4/src/kernel/`: `Expr.lit (Literal.natVal n)` over an unchanged `inductive Nat`, `type_checker.cpp`'s `reduce_nat` for the collapse, `inductive.cpp`'s `nat_lit_to_constructor` for the one-level unfold, and `is_def_eq_offset` for conversion without a walk. Musa keeps **one** canonical form where Lean tolerates two, derives the counting property from the declaration's shape where Lean hard-wires `Nat`, and adds no kernel arithmetic |
 
 ### 13.3 Musa's own, and priced
 

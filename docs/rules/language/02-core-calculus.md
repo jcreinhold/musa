@@ -525,6 +525,7 @@ still land on the obligations they were pointing at.
 | **Track-construction safety** (§5.7) | re-derived against the dependent core | 148 |
 | **Musical domains are a conservative extension** (§5.8) | re-derived against the dependent core | 148 |
 | **The expansion phase, including law 11** (§5.9) | re-derived against the dependent core and prompt 140's syntax patterns | 147, 148 |
+| **Numerals are a conservative extension** (§5.10) | convertibility with the tower at every count, and an elimination that agrees at each | 141s states and tests, 148 audits |
 | **Budget independence** (§4) | the three-outcome law, tested across budget pairs | 144, 148 |
 
 Three of these were previously proved and are now *owed again*, and the reason is worth stating rather than leaving to
@@ -634,6 +635,46 @@ argument instead. Prompt 147 owes the phase-boundary freeze; prompt 148 owes the
 Prompt 127da's design law — "the fold is the only way into a syntax value" — was superseded before this amendment and
 stays superseded. `Syntax` remains opaque, paths remain compiler-derived, `SourceInfo` remains unreadable, and
 provenance remains derived rather than written.
+
+### 5.10 Numerals as a conservative extension
+
+A **counting family** is a declared family with no parameters, no indices, and exactly two constructors: one with no
+fields — its *floor* — and one whose single field is a recursive occurrence of the family itself — its *step*. That
+sentence is both the recognition rule and the reason the extension is sound, which is why it is one sentence and not
+two. The property is derived from the declaration's own shape rather than nominated by the host, so `Nat` is not
+privileged: any family of that shape gets what follows, and a family that loses the shape loses it.
+
+A closed value of a counting family is represented as **one node holding a count**, not as a tower of step applications.
+The representation is definitionally the tower it stands for, and that is the obligation:
+
+> **Conservativity.** For every count `n` and every counting family `N`, the numeral `n : N` and the `n`-fold step
+> applied to the floor are convertible, and every elimination computes the same answer at each. No program's meaning
+> moves, and no type gains or loses an inhabitant.
+
+Three consequences fix the design rather than merely describing it.
+
+**One canonical form, not two.** Normalization collapses *toward* the numeral: the floor evaluates to the numeral zero,
+and the step applied to a numeral evaluates to a numeral one higher. A value at a counting family therefore never holds
+a floor-or-step spine, and conversion at one is a comparison of counts rather than a walk. Admitting both forms would
+make conversion — which §3 requires to be decidable *and* an equivalence — reconcile two representations at every site
+that inspects a value, which is the cost NbE exists to avoid.
+
+**The tower reappears one level per elimination, and no further.** ι-reduction on a numeral answers the floor's method
+at zero and the step's method at `n`, with the field bound to the numeral `n-1`. A `match` does the same through §6.2's
+case trees. So a fold over a count of `n` costs the `n` steps of real work it names, and *writing* the number costs one
+step and one nesting level whatever it is.
+
+**A count crosses the storable-data boundary as a count.** §1.2's storable data admits a counting family, and what
+crosses is the number, not the tower. This is not an optimization: §4.1 charges one nesting level per level of a term,
+so a tower deep enough to be worth writing is a value the boundary could not carry at all.
+
+A count that would exceed the representation's range does not saturate and is not refused. The step constructor stays an
+ordinary blocked spine there — a form the calculus already has, already types, and already means the right thing — so no
+new failure mode is added for a case that costs more steps to reach than the budget admits.
+
+**What this obligation does not cover.** Arithmetic. `+` on numerals is a δ-rule in the compiler's registry under §5.8's
+first family, and it is bound by that section's obligations rather than by this one. §5.10 is a claim about
+representation only: that a number written as a number is the number written as a tower.
 
 ## 6. Implementation boundary
 

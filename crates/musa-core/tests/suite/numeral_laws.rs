@@ -1,7 +1,7 @@
 //! Numerals: that they mean the tower, that they cost nothing like it, and
 //! which types they may be written at.
 //!
-//! `02-core-calculus.md` §5.9 admits a *representation* rather than a new kind
+//! `02-core-calculus.md` §5.10 admits a *representation* rather than a new kind
 //! of value, so the obligation is conservativity: for every closed count, the
 //! numeral and the constructor tower it stands for are definitionally equal, and
 //! no program's meaning moves. That obligation is the first law here, and the
@@ -121,7 +121,7 @@ fn depth(term: &Term) -> u32 {
     }
 }
 
-/// §5.9's conservativity obligation: a numeral *is* the tower it stands for.
+/// §5.10's conservativity obligation: a numeral *is* the tower it stands for.
 ///
 /// Two claims per count, because either alone would be too weak. Convertibility
 /// says the two terms are equal under §3, and computing the same answer through
@@ -274,7 +274,7 @@ fn a_numeral_prints_as_the_number_it_is() {
     assert!(said.contains("384"), "the report spelled the length as `{said}`");
 }
 
-/// The programs §5.9 refuses, for the coverage gate in `elaboration_laws.rs`.
+/// The programs §5.10 refuses, for the coverage gate in `elaboration_laws.rs`.
 ///
 /// They carry their own contexts because the question is about a *declaration*:
 /// what a family has to look like for a number to be writable at it. One context

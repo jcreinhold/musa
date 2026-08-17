@@ -331,7 +331,7 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
         assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
         reached.insert(kind(&refusal));
     }
-    // §5.9's numeral is refused against the *family* it is written at, and the
+    // §5.10's numeral is refused against the *family* it is written at, and the
     // three conditions a family can fail are three declarations, so each of
     // these carries the context whose declaration fails the condition.
     for crate::numeral_laws::RefusedNumeral {

@@ -1,7 +1,7 @@
 ---
 id: 141s
 slug: numeral-representation
-status: in-progress
+status: done
 depends_on: [135, 141b]
 phase: 3
 ---

@@ -170,6 +170,13 @@ pub(crate) struct Counting {
     pub(crate) step: u32,
 }
 
+impl Counting {
+    /// Which constructor a numeral of `count` was built by, as its index.
+    pub(crate) const fn case_of(self, count: u64) -> u32 {
+        if count == 0 { self.floor } else { self.step }
+    }
+}
+
 /// One family of a declaration group.
 #[derive(Debug)]
 pub struct Declared {
@@ -687,19 +694,14 @@ impl Constant {
     ///
     /// `None` at zero — the floor takes no argument, so there is nothing below
     /// it — and otherwise the argument the step constructor was applied to.
-    /// [`Self::case_of`] says which constructor it is either way; the two are
-    /// separate because a caller that only needs to know *which* branch to take
-    /// should not have to build the value under it.
+    /// [`Counting::case_of`] says which constructor it is either way; the two
+    /// are separate because a caller that only needs to know *which* branch to
+    /// take should not have to build the value under it.
     pub(crate) fn below(&self, count: u64) -> Option<Numeral> {
         count.checked_sub(1).map(|below| Numeral {
             family: self.clone(),
             count: below,
         })
-    }
-
-    /// Which constructor a numeral of `count` was built by, as its index.
-    pub(crate) fn case_of(&self, counting: Counting, count: u64) -> u32 {
-        if count == 0 { counting.floor } else { counting.step }
     }
 
     /// This constant as a value: a rigid neutral, which is what a constant is —
@@ -1077,7 +1079,7 @@ impl<'a> Telescope<'a> {
     ///
     /// Read with [`quote`] at that type rather than with [`quote_type`], because
     /// an index is a term: `Vec A Zero` chooses a `Nat` and does not choose a
-    /// type. §5.9's numeral is the value that makes the difference visible —
+    /// type. §5.10's numeral is the value that makes the difference visible —
     /// `Zero` evaluates to one node that inhabits a type and is not one, so
     /// reading it as a type is [`Malformed::NotAType`] for a program the
     /// elaborator had just accepted.
@@ -1387,7 +1389,7 @@ fn ready(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Reduction>, Core
             let Some(counting) = numeral.family.counting() else {
                 return Ok(None);
             };
-            let which = numeral.family.case_of(counting, numeral.count);
+            let which = counting.case_of(numeral.count);
             let below = numeral
                 .family
                 .below(numeral.count)
