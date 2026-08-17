@@ -369,9 +369,23 @@ pub(crate) fn elaborate(
     let mut sites = Sites::default();
     let modules = modules_in(resolver, sources);
     let mut read = Read::default();
+    // The names this file wrote itself, picked out as they are read: every
+    // source's declarations go into one flat list, and [`named_once`] is about
+    // the ones a span in *this* document can point at. See its doc for why the
+    // imported ones are a different question.
+    let mut here: Vec<(Name, Origin)> = Vec::new();
     for source in sources {
+        let already = read.definitions.len();
         read.gather(resolver, &mut sites, source, &modules);
         read.barred(resolver, &mut sites, source, &modules);
+        if source.from.is_none() {
+            here.extend(
+                read.definitions
+                    .iter()
+                    .skip(already)
+                    .map(|held| (Arc::clone(&held.name), held.origin)),
+            );
+        }
     }
     read.flatten(resolver, &mut sites, &modules);
     // Here rather than beside the core's own refusals below, because a
@@ -414,7 +428,7 @@ pub(crate) fn elaborate(
         }
     }
     let names: Vec<Name> = read.definitions.iter().map(|held| Arc::clone(&held.name)).collect();
-    refused |= !named_once(resolver, &sites, &read.definitions);
+    refused |= !named_once(resolver, &sites, &here);
     let program = RawProgram {
         definitions: read.definitions,
         instances: read.instances,
@@ -440,7 +454,7 @@ pub(crate) fn elaborate(
     })
 }
 
-/// That no two of `definitions` bind one name, reporting each repeat.
+/// That no two of `written` bind one name, reporting each repeat.
 ///
 /// The document is the scope, so this is the one place the whole list exists at
 /// once and the only place the question can be asked. `declare_program` cannot
@@ -456,31 +470,44 @@ pub(crate) fn elaborate(
 /// and recompiled to find the other would be paying for this function's
 /// convenience.
 ///
-/// Every source the document reads is in one list here — the piece's own
-/// declarations and each import's — so a name an import already bound is a
-/// repeat too. That is the right answer while imports bind flat, and if a
-/// future `as` alias gives an import a namespace of its own, this is the
-/// function that has to learn about it.
-fn named_once(resolver: &mut Resolver, sites: &Sites, definitions: &[RawTopLevel]) -> bool {
-    let mut seen: Vec<(&Name, Origin)> = Vec::with_capacity(definitions.len());
+/// # Why an import's names are not in this list
+///
+/// They *are* in the same flat namespace — `01-surface.md` §1 puts imported
+/// definitions there deliberately, so a score writes `numeral_chord(home, five)`
+/// and not a qualified path — so a piece that writes `let repeated = …` beside
+/// `import std::list;` really has two things called `repeated`. But that is a
+/// different sentence with a different repair. §1 says two imports exporting one
+/// name is "an error naming both", resolved by `import p::q as alias;`, and both
+/// halves of that need what this function does not have: the *paths*. A span
+/// inside a foreign CST means nothing against this document's text — see
+/// [`Source::from`], which carries the path for exactly that reason — so the
+/// second label of an import collision cannot be a span at all.
+///
+/// So the collision between a local name and an imported one is left to the
+/// import machinery, which knows the file names and owns the `as` that repairs
+/// it. What is checked here is what this document's own text can be pointed at
+/// for: two declarations a reader can see at once.
+fn named_once(resolver: &mut Resolver, sites: &Sites, written: &[(Name, Origin)]) -> bool {
+    let mut seen: Vec<&(Name, Origin)> = Vec::with_capacity(written.len());
     let mut clean = true;
-    for held in definitions {
-        if let Some((_, previous)) = seen.iter().find(|(taken, _)| **taken == held.name) {
+    for held in written {
+        let (name, at) = (&held.0, held.1);
+        if let Some(&&(_, previous)) = seen.iter().find(|(taken, _)| *taken == *name) {
             clean = false;
             let said = Diagnostic::error(
                 Code::DuplicateName,
-                format!("`{}` is declared twice in this document", held.name),
+                format!("`{name}` is declared twice in this document"),
             );
-            let said = match sites.span(held.origin) {
+            let said = match sites.span(at) {
                 Some(span) => said.at(span, "declared again here"),
                 None => said,
             };
             resolver.report(
-                said.maybe_also(sites.span(*previous), "first declared here")
+                said.maybe_also(sites.span(previous), "first declared here")
                     .help("give one of them another name"),
             );
         } else {
-            seen.push((&held.name, held.origin));
+            seen.push(held);
         }
     }
     clean

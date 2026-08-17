@@ -404,6 +404,33 @@ fn word(node: &SyntaxNode) -> String {
     significant_tokens(node).map(|token| token.text().to_owned()).collect()
 }
 
+/// A written claim, spelled back: `pitches_in(scale c major)`, `fills_meter()`.
+///
+/// What Origin view prints for an `assert` and what `crate::factext` parses
+/// back, so it is written from the source rather than from
+/// [`crate::assert::Claim`]: the arguments are terms here, and a term has no
+/// value until the document it stands in is elaborated. The name comes from the
+/// registry row instead of the token, because the row was found by matching that
+/// token exactly and a `&'static str` cannot be a spelling nothing claims.
+///
+/// Runs of whitespace close up so that a claim written across two lines reads as
+/// one, which is the only difference this allows itself from the bytes.
+fn spelled_claim(predicate: &crate::assert::Predicate, statement: &musa_language::ast::AssertStmt) -> String {
+    let arguments: Vec<String> = statement
+        .args()
+        .iter()
+        .map(|argument| {
+            argument
+                .syntax()
+                .to_string()
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" ")
+        })
+        .collect();
+    format!("{}({})", predicate.name, arguments.join(", "))
+}
+
 /// Where a claim's name is written, falling back to the whole statement.
 fn claim_span(statement: &musa_language::ast::AssertStmt, node: &SyntaxNode) -> SourceSpan {
     statement.claim_span().map_or_else(
@@ -618,6 +645,41 @@ impl Lowering<'_> {
         whole.then(|| placed.built(origin))
     }
 
+    /// `node`'s body under one transformation, and every claim raised inside it
+    /// under the same one.
+    ///
+    /// A claim is about the passage *as instantiated* (`05-verification.md`), and
+    /// a transformation block is part of how it was instantiated:
+    /// `transpose up m2 { assert pitches_in(scale c major) { … } }` claims about
+    /// the transposed notes, which is what makes one motif under two
+    /// transpositions two verdicts. [`Claimed`] holds terms rather than notes —
+    /// the notes do not exist until the document is elaborated — so the
+    /// transformation is applied to the *terms*, here, where the reading still
+    /// knows which one it is.
+    ///
+    /// Both of a claim's terms travel, for two reasons that happen to agree.
+    /// `passage` is the music the claim is about, so a `transpose` changes what
+    /// sounds in it; `before` is read only for its duration, so a `stretch`
+    /// changes where the passage begins. [`Lowering::folded`] threads the
+    /// *prefix* into `before` for the same reason this threads the
+    /// *transformation* into both, and the two compose in written order — the
+    /// fold prepends outside whatever this wrapped inside.
+    ///
+    /// The four transformation blocks are the whole of it, because they are the
+    /// four statements that change what their body sounds. `in scale`, `senza`,
+    /// a region, and a repeat each enclose a body and leave what is inside the
+    /// braces sounding exactly as written, so a claim under one of those is
+    /// already about the right music.
+    fn transforming(&mut self, node: &SyntaxNode, reading: Reading, under: impl Fn(Raw) -> Raw) -> Option<Raw> {
+        let raised = self.claims.len();
+        let body = self.notated(node, reading)?;
+        for claim in self.claims.iter_mut().skip(raised) {
+            claim.before = under(claim.before.clone());
+            claim.passage = under(claim.passage.clone());
+        }
+        Some(under(body))
+    }
+
     /// One notation statement, as the track it denotes.
     ///
     /// The table this module exists for. Every arm answers a track; the ones
@@ -661,13 +723,13 @@ impl Lowering<'_> {
                             .note("a quality and a number: `P5`, `M3`, `m6`, `A4`, `d5`"),
                     );
                 };
-                let body = self.notated(node, reading)?;
-                let call = applied(
-                    origin,
-                    Raw::hosted(origin, "transpose"),
-                    [plain(origin, "Interval", interval), body],
-                );
-                Some(call)
+                self.transforming(node, reading, |body| {
+                    applied(
+                        origin,
+                        Raw::hosted(origin, "transpose"),
+                        [plain(origin, "Interval", interval), body],
+                    )
+                })
             }
             SyntaxKind::StretchStmt => {
                 let text = musa_language::ast::StretchStmt::cast(node.clone())
@@ -682,18 +744,17 @@ impl Lowering<'_> {
                             .at(span, "expected a positive number, like `2` or `3/2`"),
                     );
                 };
-                let body = self.notated(node, reading)?;
-                let call = applied(
-                    origin,
-                    Raw::hosted(origin, "stretch"),
-                    [plain(origin, "Ratio", factor), body],
-                );
-                Some(call)
+                self.transforming(node, reading, |body| {
+                    applied(
+                        origin,
+                        Raw::hosted(origin, "stretch"),
+                        [plain(origin, "Ratio", factor), body],
+                    )
+                })
             }
-            SyntaxKind::RetrogradeStmt => {
-                let body = self.notated(node, reading)?;
-                Some(Raw::app(origin, Raw::hosted(origin, "retrograde"), body))
-            }
+            SyntaxKind::RetrogradeStmt => self.transforming(node, reading, |body| {
+                Raw::app(origin, Raw::hosted(origin, "retrograde"), body)
+            }),
             SyntaxKind::InvertStmt => {
                 let text = musa_language::ast::InvertStmt::cast(node.clone())
                     .and_then(|stmt| stmt.axis())
@@ -704,13 +765,13 @@ impl Lowering<'_> {
                             .at(span, "inversion needs a pitch to mirror about"),
                     );
                 };
-                let body = self.notated(node, reading)?;
-                let call = applied(
-                    origin,
-                    Raw::hosted(origin, "invert"),
-                    [plain(origin, "Pitch", axis), body],
-                );
-                Some(call)
+                self.transforming(node, reading, |body| {
+                    applied(
+                        origin,
+                        Raw::hosted(origin, "invert"),
+                        [plain(origin, "Pitch", axis), body],
+                    )
+                })
             }
 
             // `in scale` changes what a `step` reads and denotes its body. It is
@@ -728,7 +789,7 @@ impl Lowering<'_> {
                 };
                 let scale = self.counting(&written)?;
                 let body = self.notated(node, reading.stepping(scale))?;
-                Some(self.under_scale(node, origin, &written, body))
+                Some(Self::under_scale(node, origin, &written, body))
             }
 
             // The region annotations: a fact over the span its body covers.
@@ -1127,7 +1188,7 @@ impl Lowering<'_> {
 
         let mut passes = Vec::with_capacity(times as usize);
         for iteration in 0..times {
-            let taken = self.expanded(origin, span, iteration, Raw::var(origin, body_name.clone()));
+            let taken = Self::expanded(origin, span, iteration, Raw::var(origin, body_name.clone()));
             passes.push(taken);
             // Fewer endings than passes is legal: the last one covers the rest,
             // which is what `1.–3.` means on a volta bracket.
@@ -1152,7 +1213,7 @@ impl Lowering<'_> {
                 fact,
                 ending_extents.get(index).copied().unwrap_or_default(),
             );
-            let taken = self.expanded(origin, span, iteration, Raw::var(origin, name.clone()));
+            let taken = Self::expanded(origin, span, iteration, Raw::var(origin, name.clone()));
             passes.push(applied(origin, Raw::hosted(origin, "together"), [marker, taken]));
         }
 
@@ -1275,15 +1336,16 @@ impl Lowering<'_> {
 
     /// `track`, recorded as the `iteration`-th time through a repeat.
     ///
-    /// The step is stamped by `instanced` rather than while reading, for
-    /// [`Lowering::used`]'s documented reason: the facts do not exist until the
-    /// term is evaluated, and one binding is referenced by every pass.
-    fn expanded(&self, origin: Origin, span: SourceSpan, iteration: u32, track: Raw) -> Raw {
-        let named = crate::lower::expansion(span, crate::origin::ExpansionStep::RepeatIteration(iteration));
-        applied(
+    /// [`stamped`] for its documented reason, which is sharpest here: a repeat
+    /// reads its body once and every pass references that one binding, so a step
+    /// applied while reading would be one step written on material the passes
+    /// hold in common.
+    fn expanded(origin: Origin, span: SourceSpan, iteration: u32, track: Raw) -> Raw {
+        stamped(
             origin,
-            Raw::hosted(origin, "instanced"),
-            [Raw::lit(origin, crate::registry::origin_literal(named)), track],
+            span,
+            crate::origin::ExpansionStep::RepeatIteration(iteration),
+            track,
         )
     }
 
@@ -1357,23 +1419,43 @@ impl Lowering<'_> {
     /// it with the type its shape declares and records the term —
     /// [`crate::document::Document::passage`] evaluates it and
     /// [`crate::registry::argument`] reads it back.
+    ///
+    /// The one trace an assertion leaves in the music is
+    /// [`crate::origin::ExpansionStep::Assertion`] on the facts inside the
+    /// braces, which is Origin and therefore invisible to `≈facts` — the
+    /// identity `05-verification.md` asks for, that a claim which holds gives
+    /// back exactly the passage it was written on. The step carries the claim
+    /// *as the source spells it*, for [`Self::under_scale`]'s reason: `pitches_in`
+    /// alone would tell a reader an assertion was here and not which one, and
+    /// the value the arguments have is a question this reading cannot answer.
     fn asserted(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
         let statement = musa_language::ast::AssertStmt::cast(node.clone())?;
         let predicate = self.claimed_predicate(&statement, node)?;
         let arguments = self.claim_arguments(predicate, &statement, node)?;
+        let span = crate::resolve::trimmed_span(node);
         let passage = self.notated(node, reading)?;
         self.claims.push(Claimed {
             predicate,
             arguments,
-            span: crate::resolve::trimmed_span(node),
+            span,
             content_end: statement.content_end(),
             noun: "passage",
             // Nothing yet, exactly as a bar records nothing: the fold this
             // assertion stands in prepends what comes before it.
             before: Raw::lit(origin, crate::registry::empty_track()),
+            // Without the step, because a claim is proved against what sounds
+            // and provenance is not part of that. The music the *voice* gets
+            // carries it.
             passage: passage.clone(),
         });
-        Some(passage)
+        Some(stamped(
+            origin,
+            span,
+            crate::origin::ExpansionStep::Assertion {
+                claim: spelled_claim(predicate, &statement),
+            },
+            passage,
+        ))
     }
 
     /// The registry row `statement` names, or a refusal that lists the family.
@@ -1695,7 +1777,7 @@ impl Lowering<'_> {
         self.resolver
             .references
             .record_use(crate::resolve::NameKind::Fragment, name, at);
-        Some(self.spoken(origin, reading, span, Raw::var(origin, name)))
+        Some(Self::spoken(origin, reading, span, Raw::var(origin, name)))
     }
 
     /// The named material this document declares — what each name is, and how
@@ -1789,7 +1871,12 @@ impl Lowering<'_> {
         let called = child(node, is_expr_node)?;
         let material = self.value(&called)?;
         let specialized = self.specialized(node, origin, material)?;
-        Some(self.spoken(origin, reading, crate::resolve::trimmed_span(node), specialized))
+        Some(Self::spoken(
+            origin,
+            reading,
+            crate::resolve::trimmed_span(node),
+            specialized,
+        ))
     }
 
     /// `material` with this `use`'s `with { note n = p; }` clause applied, or
@@ -1865,15 +1952,15 @@ impl Lowering<'_> {
     /// `material`, played here — the two builtins [`Lowering::used`] documents,
     /// with `at` as the call site.
     ///
-    /// Its own method because [`Lowering::arranged`] wants the same two: a name
-    /// in a mobile's list is material spoken by name at a place, which is what
-    /// `use` is.
-    fn spoken(&self, origin: Origin, reading: Reading, at: SourceSpan, material: Raw) -> Raw {
-        let spoken = crate::lower::expansion(at, crate::origin::ExpansionStep::MotifApplication { call_site: at });
-        let played = applied(
+    /// Its own function because [`Lowering::arranged`] wants the same two: a
+    /// name in a mobile's list is material spoken by name at a place, which is
+    /// what `use` is.
+    fn spoken(origin: Origin, reading: Reading, at: SourceSpan, material: Raw) -> Raw {
+        let played = stamped(
             origin,
-            Raw::hosted(origin, "instanced"),
-            [Raw::lit(origin, crate::registry::origin_literal(spoken)), material],
+            at,
+            crate::origin::ExpansionStep::MotifApplication { call_site: at },
+            material,
         );
         applied(
             origin,
@@ -2344,17 +2431,17 @@ impl Lowering<'_> {
     /// `body`, with one [`crate::origin::ExpansionStep::ScaleContext`] step on
     /// every fact it made.
     ///
-    /// The same `instanced` [`Lowering::used`] applies at a `use`, and for the
-    /// same reason: a step is recorded by the builtin rather than stamped while
-    /// reading, because the facts do not exist until the term is evaluated.
+    /// [`stamped`] is the operation, and it is [`Lowering::used`]'s and
+    /// [`Lowering::asserted`]'s too.
     ///
     /// The step carries the collection *as the source spells it*, which is what
     /// Origin view prints and what `factext` parses back. A collection this
     /// reading could not spell — a bound `in scale mode { … }` — records the
     /// words the author wrote, because the step is a record of the source and
     /// not of the value.
-    fn under_scale(&mut self, node: &SyntaxNode, origin: Origin, written: &SyntaxNode, body: Raw) -> Raw {
-        let named = crate::lower::expansion(
+    fn under_scale(node: &SyntaxNode, origin: Origin, written: &SyntaxNode, body: Raw) -> Raw {
+        stamped(
+            origin,
             crate::resolve::trimmed_span(node),
             crate::origin::ExpansionStep::ScaleContext {
                 scale: format!(
@@ -2362,11 +2449,7 @@ impl Lowering<'_> {
                     written.to_string().trim().trim_start_matches("scale").trim()
                 ),
             },
-        );
-        applied(
-            origin,
-            Raw::hosted(origin, "instanced"),
-            [Raw::lit(origin, crate::registry::origin_literal(named)), body],
+            body,
         )
     }
 
@@ -2755,6 +2838,34 @@ pub(super) fn scope_of(origin: Origin, scope: crate::Scope) -> Raw {
             [whole(origin, u64::from(part)), whole(origin, u64::from(voice))],
         ),
     }
+}
+
+/// `body`, with `step` recorded at the front of every fact it makes.
+///
+/// The four enclosures that leave a mark and no music — `in scale`, a `use` of
+/// reusable material, one pass of a `repeat`, and an `assert` — say so through
+/// this one call, because "these facts were made inside this expansion" is one
+/// thing to say.
+///
+/// It is the `instanced` builtin rather than a stamp applied while reading,
+/// because the facts do not exist until the term is evaluated: a `use` inside
+/// the braces answers notes some earlier declaration built, and a walk over the
+/// written tree would reach the notes spelled here and miss those.
+/// [`crate::registry::track`]'s `INSTANCED` makes the argument in full, and is
+/// also where the step lands in *front* of whatever the body already recorded,
+/// which is what makes a path read outside-in.
+fn stamped(origin: Origin, at: SourceSpan, step: crate::origin::ExpansionStep, body: Raw) -> Raw {
+    applied(
+        origin,
+        Raw::hosted(origin, "instanced"),
+        [
+            Raw::lit(
+                origin,
+                crate::registry::origin_literal(crate::lower::expansion(at, step)),
+            ),
+            body,
+        ],
+    )
 }
 
 /// A literal at a plain base type whose payload has a written spelling.
