@@ -23,6 +23,12 @@ alternatives, and the answers to the argument that recommended against all of th
 Where that record and this document disagree, one of them is defective; the record is the argument and this document is
 the contract.
 
+Prompt 142 amended §2.1's list of where metavariables come from, from three sites to five. Neither new site is a new
+decision. One was already built and unlisted — prompt 137's postponed dictionary — and listing it is a repair of drift
+rather than an admission. The other is what implementing §2's constructor rule against real programs showed it was
+missing: a constructor whose family's parameters the expected type does not name. `option_fold(None, present, value)` is
+the program that found it, and before the repair it reported the field it was given as a type error against `Type`.
+
 ## 1. Syntax
 
 There is **one syntactic category**. Types are terms, so the grammar below is the whole language and there is no
@@ -313,11 +319,22 @@ not stop.
 ### 2.1 Metavariables and pattern unification
 
 A metavariable `?α[σ]` stands for an unknown term under an explicit substitution recording the context it was created
-in. Metavariables are created in exactly three places, and listing them is what keeps elaboration predictable:
+in. Metavariables are created in exactly five places, and listing them is what keeps elaboration predictable:
 
 1. at an implicit application, one per inserted implicit argument;
-2. at an unannotated binder whose type the checking type does not supply; and
-3. at a level position the surface did not write.
+2. at an unannotated binder whose type the checking type does not supply;
+3. at a level position the surface did not write;
+4. at a constraint whose head is not yet known, one per postponed dictionary (`10-traits.md` §4); and
+5. at a constructor whose family's parameters the expected type does not name, one per parameter.
+
+The last two are the same admission twice: a use site may leave something out that no *written* type says, and the only
+alternative is to refuse a program the language means to accept. Four is `10-traits.md` §4's postponement, which cannot
+be a plain unknown — a dictionary nothing solved and a dictionary nothing *could* solve are different reports — so it is
+listed as its own site and answered by instance resolution rather than by unification. Five is §2's constructor rule
+meeting a position that does not decide the type: `Some(x)` reads its family's parameters off the expected type, and
+`f(Some(x))` for a generic `f` has none to read, so the parameters become unknowns and the conversion the surrounding
+term forces supplies them instead. A constructor written *bare* is still refused there, because the family would have to
+be guessed from a spelling rather than left unknown, and §1.3 refuses that separately.
 
 They are solved by **pattern-fragment (Miller) unification**: a constraint `?α x₁ … xₙ ≡ t` is solved immediately when
 `x₁ … xₙ` are *distinct bound variables* and every free variable of `t` is among them and the context of `?α`, giving
