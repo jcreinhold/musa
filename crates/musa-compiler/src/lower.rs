@@ -56,6 +56,7 @@
 #[cfg(test)]
 mod laws;
 
+pub(crate) mod documented;
 pub(crate) mod items;
 pub(crate) mod kernel;
 pub(crate) mod notation;

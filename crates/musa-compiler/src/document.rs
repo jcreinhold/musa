@@ -481,6 +481,7 @@ pub(crate) fn elaborate(
         }
     };
     cx = cx.defining(&declared);
+    documented(resolver, &cx, read.declaring);
     if refused {
         return None;
     }
@@ -616,6 +617,9 @@ struct Read {
     classes: Vec<musa_core::RawTrait>,
     instances: Vec<musa_core::RawImpl>,
     definitions: Vec<RawTopLevel>,
+    /// Each definition's declaration beside the name it bound, held until the
+    /// document is elaborated. See [`documented`].
+    declaring: Vec<Declaring>,
     /// Whether a declaration this walk was supposed to read was refused, which
     /// is a property of the walk rather than of any one door: what it collected
     /// is no longer everything the sources declare, and a document built from a
@@ -666,6 +670,7 @@ impl Read {
                         definition.name = Name::from(format!("{alias}{}{}", crate::module::DOT, definition.name));
                     }
                     record(resolver, &node, &definition.name);
+                    self.declaring.push(Declaring::at(&node, &definition, source));
                     self.definitions.push(top_level(definition, visibility));
                 }
                 Declared::Refused => self.refused = true,
@@ -706,7 +711,10 @@ impl Read {
             match read {
                 // Private because a score is not an interface: a bar is written
                 // inside a voice, and no `import` reaches in there to name it.
-                Some(definition) => self.definitions.push(top_level(definition, Visibility::Private)),
+                Some(definition) => {
+                    self.declaring.push(Declaring::at(&node, &definition, source));
+                    self.definitions.push(top_level(definition, Visibility::Private));
+                }
                 None => self.refused = true,
             }
         }
@@ -749,6 +757,12 @@ impl Read {
                     // its own siblings too.
                     definition.name = Name::from(member.name.as_str());
                     record(resolver, &written, &definition.name);
+                    self.declaring.push(Declaring {
+                        node: written.clone(),
+                        name: Arc::clone(&definition.name),
+                        origin: definition.origin,
+                        uri: member.source.clone(),
+                    });
                     self.definitions.push(top_level(definition, Visibility::Public));
                 }
                 Declared::Item(_) | Declared::Elsewhere => {}
@@ -851,6 +865,61 @@ fn top_level(definition: Definition, visibility: Visibility) -> RawTopLevel {
         module: None,
         ty: definition.ty,
         value: definition.value,
+    }
+}
+
+/// One declaration, held from the walk that read it until the document can say
+/// what it means.
+///
+/// [`crate::lower::documented`] states what a reader is told, and every field it
+/// needs but the type is a property of the *declaration* — the word, the name,
+/// the parameters, the comment above it, where it is written. Only the type of a
+/// declaration that wrote none has to wait for elaboration, so the record is
+/// built once, afterwards, rather than built early and patched.
+struct Declaring {
+    node: SyntaxNode,
+    /// The name the flat namespace holds it by, which for a module member is
+    /// `CMajor.tonic` and not the `tonic` the declaration wrote.
+    name: Name,
+    origin: Origin,
+    /// The document it is written in, `None` for the one being compiled.
+    uri: Option<String>,
+}
+
+impl Declaring {
+    /// One declaration, as this walk found it in `source`.
+    fn at(node: &SyntaxNode, definition: &Definition, source: &Source) -> Self {
+        Self {
+            node: node.clone(),
+            name: Arc::clone(&definition.name),
+            origin: definition.origin,
+            uri: source.from.as_ref().map(|from| from.path.clone()),
+        }
+    }
+}
+
+/// Tell the editor what each declaration means, now that the document knows.
+///
+/// The type of a declaration that wrote none is asked for by *inferring its own
+/// name*: `cx` holds every definition this document declared, so the type a use
+/// of the name would have is the type the declaration ended up with. Nothing is
+/// re-elaborated — the name is one node, and what comes back is what
+/// [`musa_core::declare_program`] already settled.
+///
+/// A name that will not infer is passed over silently. It cannot be a name this
+/// document failed to declare — the walk only holds declarations the core
+/// accepted — so a refusal here would be about a document that is already being
+/// refused for the reason that produced it.
+fn documented(resolver: &mut Resolver, cx: &Cx, declaring: Vec<Declaring>) {
+    for held in declaring {
+        let inferred = || {
+            let (_, ty) = musa_core::infer(cx, &Raw::var(held.origin, &*held.name)).ok()?;
+            crate::lower::documented::spelled(&ty)
+        };
+        if let Some(item) = crate::lower::documented::documented(&held.node, &held.name, held.uri.as_deref(), inferred)
+        {
+            resolver.references.document(item);
+        }
     }
 }
 
