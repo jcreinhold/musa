@@ -47,21 +47,36 @@ fn errors(compilation: &musa_compiler::Compilation) -> String {
     out
 }
 
-/// A `data` declaration names a type, its constructors, and one fold — and
-/// nothing else is generated for it (`docs/rules/language/02-core-calculus.md`
-/// §1). The one-constructor case is a record, projected by field name.
+/// A `data` declaration names a type and its constructors, and the only way
+/// into a value of it is `match` (`docs/rules/language/02-core-calculus.md`
+/// §1.1). A fold is therefore ordinary source — a recursive function over the
+/// constructors — rather than a name the declaration generates, which is what
+/// `shape_fold` is here. The one-field product is a `record`, projected by
+/// field name.
+///
+/// The descending argument comes first because §2.4's measure holds the
+/// arguments *before* the recursive position fixed, so a traversal that both
+/// descends and carries closures has to descend in the first one.
 #[test]
-fn a_declaration_names_a_type_its_constructors_and_one_fold() {
+fn a_declaration_names_a_type_and_its_constructors() {
     let compilation = compile_data(
         "data Shape { Silence, Sounded(held: Duration<WrittenTime>), Then(first: Shape, second: Shape) } \
-         data Pair<A, B> { Both(left: A, right: B) } \
+         record Sides { left: Nat; right: Bool; } \
          let quiet: Shape = Silence; \
-         let held: Shape = Sounded(held: 1/4); \
+         let held: Shape = Sounded(duration_of(1/4)); \
          let sequenced: Shape = Then(quiet, held); \
          fn one(held: Duration<WrittenTime>) -> Nat { 1 } \
          fn joined(first: Nat, second: Nat) -> Nat { first } \
-         let counted: Nat = shape_fold(0, one, joined, sequenced); \
-         let both: Pair<Nat, Bool> = Both(left: counted, right: true); \
+         fn shape_fold(shape: Shape, silence: Nat, sounded: Duration<WrittenTime> -> Nat, then: Nat -> Nat -> Nat) \
+             -> Nat { \
+             match shape { \
+                 Silence -> silence, \
+                 Sounded(d) -> sounded(d), \
+                 Then(a, b) -> then(shape_fold(a, silence, sounded, then), shape_fold(b, silence, sounded, then)), \
+             } \
+         } \
+         let counted: Nat = shape_fold(sequenced, 0, one, joined); \
+         let both: Sides = Sides { left = counted, right = true }; \
          let projected: Nat = both.left; \
          fn named(shape: Shape) -> Nat { match shape { Silence -> 0, Sounded(d) -> 1, Then(a, b) -> 2 } } \
          let which: Nat = named(sequenced);",
@@ -83,11 +98,19 @@ fn folding_with_the_music_cases_is_the_music_the_plan_denotes() {
         &SourceDocument::new(
             "piece \"Folded\" { \
              data Gesture { Plain, Higher(by: Interval, inner: Gesture) } \
-             let subject: Music = music { c4/4 d4/4 }; \
-             fn raised(by: Interval, inner: Music) -> Music { transpose(by, inner) } \
-             let plan: Gesture = Higher(by: P8, inner: Higher(by: P5, inner: Plain)); \
-             let folded: Music = gesture_fold(subject, raised, plan); \
-             let written: Music = transpose(P8, transpose(P5, subject)); \
+             let subject: EventTrack<WrittenTime> = music { c4/4 d4/4 }; \
+             fn raised(by: Interval, inner: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(by, inner) } \
+             let plan: Gesture = Higher(P8, Higher(P5, Plain)); \
+             fn gesture_fold(plan: Gesture, plain: EventTrack<WrittenTime>, \
+                 higher: Interval -> EventTrack<WrittenTime> -> EventTrack<WrittenTime>) \
+                 -> EventTrack<WrittenTime> { \
+                 match plan { \
+                     Plain -> plain, \
+                     Higher(by, inner) -> higher(by, gesture_fold(inner, plain, higher)), \
+                 } \
+             } \
+             let folded: EventTrack<WrittenTime> = gesture_fold(plan, subject, raised); \
+             let written: EventTrack<WrittenTime> = transpose(P8, transpose(P5, subject)); \
              score { part p { voice by_fold { use folded; } voice by_hand { use written; } } } }",
             "fold-law.musa",
         ),
@@ -124,49 +147,69 @@ fn folding_with_the_music_cases_is_the_music_the_plan_denotes() {
     );
 }
 
-/// The group check's termination law. Two declarations that reach each other
-/// are one group, checked once; the check walks a *finite* declaration graph,
-/// so a cycle in it is an ordinary group rather than a loop. If it did not
-/// terminate this test would hang instead of failing, which is the honest
-/// shape of the claim.
+/// The declaration-order check *terminates* on two declarations that reach each
+/// other, which is the law: it walks a finite declaration graph, so a cycle in
+/// it is an answer rather than a loop. If it did not terminate this test would
+/// hang instead of failing, which is the honest shape of the claim.
+///
+/// The answer this compiler gives is a refusal, not a group. `order_families`
+/// in `musa-compiler`'s `document` module orders each written `data` after the
+/// declarations its fields name and refuses a cycle, because one core group is
+/// one `RawData` and two written declarations are two. `02-core-calculus.md`
+/// §1.1 admits mutually recursive families in the *core*, so building the
+/// group from the cycle is available and is a language decision rather than a
+/// missing line — see `docs/plan/prompts/142-surface-cutover.md`.
 #[test]
 fn the_group_check_terminates_on_a_mutually_recursive_group() {
     let compilation = compile_data(
         "data Statement { Say(what: Expression), Both(first: Statement, second: Statement), Done } \
          data Expression { Number(value: Nat), Grouped(inner: Statement) } \
-         let program: Statement = Both(Say(Number(3)), Done); \
-         fn say(what: Nat) -> Nat { what } \
-         fn both(first: Nat, second: Nat) -> Nat { first } \
-         fn number(value: Nat) -> Nat { value } \
-         fn grouped(inner: Nat) -> Nat { inner } \
-         let counted: Nat = statement_fold(say, both, 0, number, grouped, program);",
+         let program: Statement = Both(Say(Number(3)), Done);",
     );
-    assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
+    let reported = errors(&compilation);
+    assert!(
+        reported.contains("`Statement`, `Expression` name each other"),
+        "{reported}"
+    );
+    assert!(
+        reported.contains("a `data` declaration may not depend on one that depends on it"),
+        "{reported}"
+    );
 }
 
 /// Strict positivity, reported at the field that broke it rather than at the
 /// group: a value of a declaration may not be an argument to a function
 /// stored inside it.
+///
+/// The message is the core's, which names the occurrence rather than the arrow
+/// it stands to the left of. That is weaker than what the old checker said and
+/// prompt 144 owns the wording; what this law is about is that the declaration
+/// is refused at all, and at `Trap`.
 #[test]
 fn a_non_positive_declaration_is_rejected_at_its_field() {
     let compilation = compile_data("data Bad { Trap(escape: Bad -> Nat) }");
     let reported = errors(&compilation);
     assert!(
-        reported.contains("`Bad` stands to the left of an arrow in its own declaration"),
+        reported.contains("`Bad` occurs in `Trap` where a recursive occurrence is not allowed"),
         "{reported}"
     );
-    assert!(reported.contains("strictly positive"), "{reported}");
 }
 
-/// Storability, which is the weaker of the two and so the one a *positive*
-/// arrow trips: an arrow is never storable data, and neither is anything
-/// holding one.
+/// Storability, which prompt 128's amendment moved off the declaration:
+/// `02-core-calculus.md` §1.2 makes `Storable` a *constraint* whose instances
+/// are generated, so a declaration that stores an arrow is an ordinary type
+/// that simply has no instance. Positivity still refuses the declaration
+/// itself, which is the test above; this one is the case positivity allows.
+///
+/// The refusal it earns is at the site that requires storability — a track
+/// payload, a machine port, a primitive's configuration — and
+/// `machine_laws::a_port_that_holds_a_function_is_refused_where_it_is_written`
+/// is where that half is stated, because the port is where a program can write
+/// one.
 #[test]
-fn a_stored_function_field_is_rejected_at_its_field() {
-    let compilation = compile_data("data Held { Keeps(action: Nat -> Nat) }");
-    let reported = errors(&compilation);
-    assert!(reported.contains("a stored field may not be a function"), "{reported}");
-    assert!(reported.contains("`action` stores a function"), "{reported}");
+fn a_declaration_that_stores_a_function_is_a_type_with_no_storable_instance() {
+    let compilation = compile_data("data Held { Keeps(action: Nat -> Nat) } fn kept(h: Held) -> Held { h }");
+    assert_eq!(errors(&compilation), "");
 }
 
 /// Sealing. A signature's `data Hidden;` names the type and withholds its
@@ -198,44 +241,56 @@ fn a_structure_that_declares_no_such_type_does_not_match_its_signature() {
 
 /// A declaration's arity is fixed by the declaration, so instantiating it at
 /// the wrong number of arguments is an error where it is written.
+///
+/// A parameter is an ordinary explicit binder in the core (`Sided<A>` is
+/// `(A : Type) → Type`), so both mistakes are reported by the elaborator as
+/// what they are: one argument too many is an application of something that is
+/// no longer a function, and one too few leaves a function standing where a
+/// type is needed. Naming the count is prompt 144's, and the span is the law —
+/// the written type, not the declaration.
 #[test]
 fn a_declaration_instantiated_at_the_wrong_arity_is_rejected() {
     let compilation =
-        compile_data("data Pair<A> { Both(left: A, right: A) } fn wrong(p: Pair<Nat, Bool>) -> Nat { 0 }");
-    let reported = errors(&compilation);
-    assert!(reported.contains("`Pair` takes 1 type arguments, not 2"), "{reported}");
-
-    let bare = compile_data("data Pair<A> { Both(left: A, right: A) } fn wrong(p: Pair) -> Nat { 0 }");
-    let reported = errors(&bare);
-    assert!(reported.contains("`Pair` takes 1 type arguments"), "{reported}");
-}
-
-/// `01-surface.md` §1.2's update along a path parses, and this compiler says
-/// so rather than quietly replacing the wrong field.
-///
-/// The nested form elaborates in `musa-core`, and `musa-compiler` is wired to
-/// it in prompt 142. Until then the path is *syntax this stage does not
-/// implement*, which is a distinct thing from a mistake the author made — the
-/// reason `Code::UnsupportedLanguageStage` exists. The law is here because the
-/// failure it guards against is silent: the old reader took the first
-/// identifier under an update, which for `region.anchor` is `region`.
-#[test]
-fn an_update_along_a_path_is_refused_by_name_rather_than_read_as_its_first_segment() {
-    let compilation = compile_data(
-        "data Region { At(anchor: Nat, span: Nat) } data Pending { Held(read: Nat, region: Region) } \
-         fn shift(held: Pending) -> Pending { held with { region.anchor = 1 } }",
-    );
+        compile_data("data Sided<A> { Both(left: A, right: A) } fn wrong(p: Sided<Nat, Bool>) -> Nat { 0 }");
     let reported = errors(&compilation);
     assert!(
-        reported.contains("an update along a path is not elaborated yet"),
+        reported.contains("this is applied to an argument, but its type is not a function type"),
         "{reported}"
     );
 
+    let bare = compile_data("data Sided<A> { Both(left: A, right: A) } fn wrong(p: Sided) -> Nat { 0 }");
+    let reported = errors(&bare);
+    assert!(
+        reported.contains("this stands where a type is needed, but it is not one"),
+        "{reported}"
+    );
+}
+
+/// `01-surface.md` §1.2's update along a path, elaborated: `region.anchor = 1`
+/// replaces the field the path *ends* at and leaves everything beside it alone.
+///
+/// The law is here because the failure it guards against is silent — the old
+/// reader took the first identifier under an update, which for `region.anchor`
+/// is `region`, and replacing a whole `Region` with a `Nat` is a program that
+/// says something else. Prompt 142 wired `musa-compiler` to the core's own
+/// update, so the path goes through whole; what stands here is the check that
+/// it does, and that the one-segment form did not change meaning with it.
+#[test]
+fn an_update_along_a_path_replaces_the_field_the_path_ends_at() {
+    let compilation = compile_data(
+        "record Region { anchor: Nat; span: Nat; } record Pending { read: Nat; region: Region; } \
+         fn shift(held: Pending) -> Pending { held with { region.anchor = 1 } } \
+         let start: Pending = Pending { read = 0, region = Region { anchor = 5, span = 2 } }; \
+         let moved: Pending = shift(start); \
+         let anchor: Nat = moved.region.anchor; \
+         let span: Nat = moved.region.span;",
+    );
+    assert_eq!(errors(&compilation), "");
+
     // And the single-segment form 127dcfac built still elaborates: the repair
     // was to the reader, not to what the reader accepts.
-    let flat = compile_data(
-        "data Region { At(anchor: Nat, span: Nat) } fn widen(r: Region) -> Region { r with { span = 2 } }",
-    );
+    let flat =
+        compile_data("record Region { anchor: Nat; span: Nat; } fn widen(r: Region) -> Region { r with { span = 2 } }");
     assert_eq!(
         errors(&flat),
         "",

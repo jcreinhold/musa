@@ -239,7 +239,8 @@ fn core_pressure() -> String {
          // Total-core pressure: deep calls, a long fold, and a named function value.\n\n\
          piece \"Core Pressure Baseline\" {\n\
              import std::core;\n\
-             import std::list;\n\n\
+             import std::list;\n\
+             import std::nat;\n\n\
              tempo 1/4 = 96;\n\
              meter 4/4;\n\
              key c major;\n\n\
@@ -257,9 +258,9 @@ fn core_pressure() -> String {
         "\n    let deep: Nat = depth_63(0);\n\
          \x20   let counted: List<Nat> = naturals(512);\n\
          \x20   let folded: Nat = list_fold_from_start(0, keep, counted);\n\n\
-         \x20   let raise: Music -> Music = fn (line: Music) -> Music { transpose(P8, line) };\n\
-         \x20   let subject: Music = music { c4/4 d4/4 e4/4 f4/4 };\n\
-         \x20   let answer: Music = compose_music(raise, retrograde, subject);\n\n\
+         \x20   let raise: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(P8, line) };\n\
+         \x20   let subject: EventTrack<WrittenTime> = music { c4/4 d4/4 e4/4 f4/4 };\n\
+         \x20   let answer: EventTrack<WrittenTime> = compose_music(raise, retrograde, subject);\n\n\
          \x20   score {\n\
          \x20       part strings {\n\
          \x20           voice line {\n\
@@ -286,11 +287,11 @@ fn template_pressure() -> String {
          // Functor instances, nested template expansion, scale contexts, and an import.\n\n\
          import std::context;\n\n\
          signature CellMaterial {\n\
-         \x20   let cell: Music;\n\
-         \x20   let answer: Music -> Music;\n\
+         \x20   let cell: EventTrack<WrittenTime>;\n\
+         \x20   let answer: EventTrack<WrittenTime> -> EventTrack<WrittenTime>;\n\
          }\n\n\
          template structure Cell(C: TonalContext, lift: Interval): CellMaterial {\n\
-         \x20   let cell: Music = music {\n\
+         \x20   let cell: EventTrack<WrittenTime> = music {\n\
          \x20       in scale C.collection {\n\
          \x20           c5/8\n\
          \x20           (c5 step 1)/8\n\
@@ -298,7 +299,7 @@ fn template_pressure() -> String {
          \x20           (c5 step 3)/8\n\
          \x20       }\n\
          \x20   };\n\n\
-         \x20   fn answer(line: Music) -> Music { transpose(lift, line) }\n\
+         \x20   fn answer(line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(lift, line) }\n\
          }\n\n",
     );
     const LIFTS: [&str; 8] = ["P5", "P4", "M3", "m3", "M2", "m7", "P8", "M6"];
@@ -309,7 +310,7 @@ fn template_pressure() -> String {
         let _ = writeln!(source, "make Cell({context}, {lift}) as Cell_{name};");
     }
     source.push_str(
-        "\ntemplate voice strand(subject: Music, transform: Music -> Music) {\n\
+        "\ntemplate voice strand(subject: EventTrack<WrittenTime>, transform: EventTrack<WrittenTime> -> EventTrack<WrittenTime>) {\n\
          \x20   repeat 4 {\n\
          \x20       in scale c major { use subject; }\n\
          \x20       in scale c dorian { use transform(subject); }\n\
@@ -434,14 +435,14 @@ fn kernel_pressure() -> String {
     for index in 0..32 {
         let _ = writeln!(
             source,
-            "    let cell_{index}: Music = music {{ {}4/8 {}4/8 {}4/8 {}4/8 }};",
+            "    let cell_{index}: EventTrack<WrittenTime> = music {{ {}4/8 {}4/8 {}4/8 {}4/8 }};",
             letter(index),
             letter(index.saturating_add(2)),
             letter(index.saturating_add(4)),
             letter(index.saturating_add(6)),
         );
     }
-    source.push_str("\n    let assembled: Music = kernel EventTrack[WrittenTime, ScoreFact] {\n");
+    source.push_str("\n    let assembled: EventTrack<WrittenTime> = kernel EventTrack[WrittenTime, ScoreFact] {\n");
     for index in 0..32 {
         let _ = writeln!(source, "        let held_{index} = ${{cell_{index}}} in");
     }

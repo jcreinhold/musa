@@ -35,25 +35,26 @@ const TONAL_CONSTRUCTION: &str = include_str!("../../../../examples/tonal-constr
 /// The imports and the one voicing policy every probe reads values through.
 const PRELUDE: &str = r"
     import std::harmony;
+    import std::list;
     import std::scale;
     import std::tonal::harmony;
     import std::voicing;
 
     meter 4/4;
 
-    fn spelled(bass: Pitch, content: Option<ChordClass>) -> Music { match content {
+    fn spelled(bass: Pitch, content: Option<ChordClass>) -> EventTrack<WrittenTime> { match content {
         None -> music { rest/1 },
         Some(sounding) -> stacked(close_position(sounding, bass)),
     } }
 
-    fn stacked(chosen: Option<Voicing>) -> Music { match chosen {
+    fn stacked(chosen: Option<Voicing>) -> EventTrack<WrittenTime> { match chosen {
         None -> music { rest/1 },
-        Some(spread) -> sound_for(spread, 1),
+        Some(spread) -> sound_for(spread, duration_of(1/1)),
     } }
 
-    fn tick(one: Music, carried: Music) -> Music { together(one, carried) }
-    fn beat() -> Music { music { c4/1 } }
-    fn tally(count: Nat) -> Music { list_fold_from_start(music { rest/1 }, tick, repeat(beat(), count)) }
+    fn tick(one: EventTrack<WrittenTime>, carried: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { together(one, carried) }
+    fn beat() -> EventTrack<WrittenTime> { music { c4/1 } }
+    fn tally(count: Nat) -> EventTrack<WrittenTime> { list_fold_from_start(music { rest/1 }, tick, repeated(beat(), count)) }
 
     fn numeral_in(collection: Scale, written: Option<Roman>) -> Option<ChordClass> { match written {
             None -> None,
@@ -110,7 +111,7 @@ fn sounded(bindings: &str, expression: &str) -> Vec<WrittenPitch> {
 /// the collection itself computed, which is what every caller below does.
 fn spelling(bindings: &str, bass: &str, content: &str) -> Vec<String> {
     let sounded = sounded(
-        &format!("{bindings}\n    let probed: Music = spelled({bass}, {content});"),
+        &format!("{bindings}\n    let probed: EventTrack<WrittenTime> = spelled({bass}, {content});"),
         "probed",
     );
     sounded
@@ -481,7 +482,7 @@ fn the_augmented_sixths_spell_their_sixth_as_a_sixth() {
 /// law that the letters cannot state.
 fn sounded_semitones(bindings: &str, bass: &str, content: &str) -> Vec<i64> {
     sounded(
-        &format!("{bindings}\n    let probed: Music = spelled({bass}, {content});"),
+        &format!("{bindings}\n    let probed: EventTrack<WrittenTime> = spelled({bass}, {content});"),
         "probed",
     )
     .into_iter()
@@ -557,7 +558,7 @@ fn a_numerals_parts_are_what_it_was_built_from() {
         None -> 0,
         Some(numbered) -> {accessor}(numbered),
     }} }}
-    let counted: Music = tally(read(numeral(6, 4, 2)));"
+    let counted: EventTrack<WrittenTime> = tally(read(numeral(6, 4, 2)));"
         )
     };
     assert_eq!(sounded(&reader("numeral_step"), "counted").len(), 6, "the degree");

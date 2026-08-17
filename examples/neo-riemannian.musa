@@ -15,6 +15,7 @@
 // hear.
 piece "Neo-Riemannian" {
     import std::harmony;
+    import std::option;
     import std::transformational;
     import std::voicing;
 
@@ -41,15 +42,15 @@ piece "Neo-Riemannian" {
     // Two voicing policies. Each takes its bass and its triad together; the
     // `triad -> music` a fold wants is written where it is wanted, with the
     // bass of that chord closed over.
-    fn whole(chosen: Voicing) -> Music { sound_for(chosen, 1) }
+    fn whole(chosen: Voicing) -> EventTrack<WrittenTime> { sound_for(chosen, duration_of(1/1)) }
 
-    fn close_on(bass: Pitch, refined: Triad) -> Music {
+    fn close_on(bass: Pitch, refined: Triad) -> EventTrack<WrittenTime> {
         option_fold(music {
             rest/1
         }, whole, close_position(triad_content(refined), bass))
     }
 
-    fn drop_on(bass: Pitch, refined: Triad) -> Music {
+    fn drop_on(bass: Pitch, refined: Triad) -> EventTrack<WrittenTime> {
         option_fold(music {
             rest/1
         }, whole, drop_position(triad_content(refined), bass, 2))
@@ -58,102 +59,106 @@ piece "Neo-Riemannian" {
     // The cycle in close position. The bass under each chord is a pitch of
     // that chord's own spelling — `ab3` under the A flat triads, `fb3` under
     // the F flat ones — because a voicing is spelled or it does not exist.
-    let close_one: Music = option_fold(
+    let close_one: EventTrack<WrittenTime> = option_fold(
         music {
             rest/1
         },
-        fn (refined: Triad) -> Music { close_on(c4, refined) },
+        fn (refined: Triad) -> EventTrack<WrittenTime> { close_on(c4, refined) },
         tonic,
     );
-    let close_two: Music = option_fold(
+    let close_two: EventTrack<WrittenTime> = option_fold(
         music {
             rest/1
         },
-        fn (start: Triad) -> Music { compose_close(c4, at_p, start) },
+        fn (start: Triad) -> EventTrack<WrittenTime> { compose_close(c4, at_p, start) },
         tonic,
     );
-    let close_three: Music = option_fold(
+    let close_three: EventTrack<WrittenTime> = option_fold(
         music {
             rest/1
         },
-        fn (start: Triad) -> Music { compose_close(ab3, at_pl, start) },
+        fn (start: Triad) -> EventTrack<WrittenTime> { compose_close(ab3, at_pl, start) },
         tonic,
     );
-    let close_four: Music = option_fold(
+    let close_four: EventTrack<WrittenTime> = option_fold(
         music {
             rest/1
         },
-        fn (start: Triad) -> Music { compose_close(ab3, at_plp, start) },
+        fn (start: Triad) -> EventTrack<WrittenTime> { compose_close(ab3, at_plp, start) },
         tonic,
     );
-    let close_five: Music = option_fold(
+    let close_five: EventTrack<WrittenTime> = option_fold(
         music {
             rest/1
         },
-        fn (start: Triad) -> Music { compose_close(fb3, at_plpl, start) },
+        fn (start: Triad) -> EventTrack<WrittenTime> { compose_close(fb3, at_plpl, start) },
         tonic,
     );
-    let close_six: Music = option_fold(
+    let close_six: EventTrack<WrittenTime> = option_fold(
         music {
             rest/1
         },
-        fn (start: Triad) -> Music { compose_close(fb3, at_plplp, start) },
+        fn (start: Triad) -> EventTrack<WrittenTime> { compose_close(fb3, at_plplp, start) },
         tonic,
     );
 
     // The same six under drop-2, which is the same chord classes and a
     // different sound: the policy is the caller's, never the library's.
-    let drop_one: Music = option_fold(
+    let drop_one: EventTrack<WrittenTime> = option_fold(
         music {
             rest/1
         },
-        fn (refined: Triad) -> Music { drop_on(c4, refined) },
+        fn (refined: Triad) -> EventTrack<WrittenTime> { drop_on(c4, refined) },
         tonic,
     );
-    let drop_two: Music = option_fold(
+    let drop_two: EventTrack<WrittenTime> = option_fold(
         music {
             rest/1
         },
-        fn (start: Triad) -> Music { compose_drop(c4, at_p, start) },
+        fn (start: Triad) -> EventTrack<WrittenTime> { compose_drop(c4, at_p, start) },
         tonic,
     );
-    let drop_three: Music = option_fold(
+    let drop_three: EventTrack<WrittenTime> = option_fold(
         music {
             rest/1
         },
-        fn (start: Triad) -> Music { compose_drop(ab3, at_pl, start) },
+        fn (start: Triad) -> EventTrack<WrittenTime> { compose_drop(ab3, at_pl, start) },
         tonic,
     );
-    let drop_four: Music = option_fold(
+    let drop_four: EventTrack<WrittenTime> = option_fold(
         music {
             rest/1
         },
-        fn (start: Triad) -> Music { compose_drop(ab3, at_plp, start) },
+        fn (start: Triad) -> EventTrack<WrittenTime> { compose_drop(ab3, at_plp, start) },
         tonic,
     );
-    let drop_five: Music = option_fold(
+    let drop_five: EventTrack<WrittenTime> = option_fold(
         music {
             rest/1
         },
-        fn (start: Triad) -> Music { compose_drop(fb3, at_plpl, start) },
+        fn (start: Triad) -> EventTrack<WrittenTime> { compose_drop(fb3, at_plpl, start) },
         tonic,
     );
-    let drop_six: Music = option_fold(
+    let drop_six: EventTrack<WrittenTime> = option_fold(
         music {
             rest/1
         },
-        fn (start: Triad) -> Music { compose_drop(fb3, at_plplp, start) },
+        fn (start: Triad) -> EventTrack<WrittenTime> { compose_drop(fb3, at_plplp, start) },
         tonic,
     );
 
     // Reach a waypoint, then voice it. Written out because a composition of
     // two functions is a function and this language has no operator for it.
-    fn compose_close(bass: Pitch, reach: Triad -> Triad, start: Triad) -> Music {
-        close_on(bass, reach(start))
-    }
-    fn compose_drop(bass: Pitch, reach: Triad -> Triad, start: Triad) -> Music {
-        drop_on(bass, reach(start))
-    }
+    fn compose_close(
+        bass: Pitch,
+        reach: Triad -> Triad,
+        start: Triad,
+    ) -> EventTrack<WrittenTime> { close_on(bass, reach(start)) }
+    fn compose_drop(
+        bass: Pitch,
+        reach: Triad -> Triad,
+        start: Triad,
+    ) -> EventTrack<WrittenTime> { drop_on(bass, reach(start)) }
 
     // What the cycle returned, asked two ways.
     //

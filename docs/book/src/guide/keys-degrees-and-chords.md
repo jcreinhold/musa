@@ -37,7 +37,7 @@ modes, the three minors, both octatonics, whole-tone, hexatonic, acoustic, and t
 Inside a scale, `step` counts through the collection rather than through semitones:
 
 ```musa
-fn figure() -> Music {
+fn figure() -> EventTrack<WrittenTime> {
     music {
         c5/8
         (c5 step 1)/8
@@ -111,8 +111,8 @@ Sounding one takes `play`, and an absent voicing becomes silence rather than a g
 ```musa
 // A voicing sounds only through `play`. A policy whose preconditions fail
 // sounds a rest, so an absent answer is silence rather than a guess.
-fn held(chosen: Voicing) -> Music { play(chosen, 1/1) }
-fn sounded(chosen: Option<Voicing>) -> Music {
+fn held(chosen: Voicing) -> EventTrack<WrittenTime> { play(chosen, duration_of(1/1)) }
+fn sounded(chosen: Option<Voicing>) -> EventTrack<WrittenTime> {
     option_fold(music {
         rest/1
     }, held, chosen)

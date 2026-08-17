@@ -226,6 +226,33 @@ impl ReferenceIndex {
         self.record_use_from(kind, name, span, None);
     }
 
+    /// Record that `name` was spoken here, whatever kind of thing it names.
+    ///
+    /// The reading that lowers a written name into a core term knows a name was
+    /// spoken and where; it does not know whether that name is a motif, a
+    /// fragment, a `let`, or a `fn`, because the core resolves names and the
+    /// reading writes them through. This index already knows — the structural
+    /// walk declared every one of them before any body was read — so the kind is
+    /// answered here rather than passed in. That is the whole difference from
+    /// [`Self::record_use`], whose callers hold a symbol and can say.
+    ///
+    /// A name no declaration claims is silently not recorded: a local binder, a
+    /// prelude constructor, and a builtin are all spoken names with nothing in
+    /// this document to point at, and an entry for one would be a reference list
+    /// full of `Nat.Succ`.
+    pub(crate) fn speak(&mut self, name: &str, span: SourceSpan) {
+        let Some(entry) = self
+            .entries
+            .iter_mut()
+            .find(|entry| entry.name == name && entry.declaration.is_some())
+        else {
+            return;
+        };
+        if !entry.uses.contains(&span) {
+            entry.uses.push(span);
+        }
+    }
+
     /// Record one resolved use, retaining an imported declaration's source.
     ///
     /// A use is a span, so a span already held is the same use and is not
@@ -929,12 +956,7 @@ pub(crate) fn lower_studio(
 
 /// Tempo, meter, key — plus registration of motif declarations (expansion
 /// is `expand.rs`'s).
-pub(crate) fn lower_header(
-    resolver: &mut Resolver,
-    piece: &PieceDecl,
-    snapshot: &mut ScoreSnapshot,
-    core: &crate::core::Program,
-) {
+pub(crate) fn lower_header(resolver: &mut Resolver, piece: &PieceDecl, snapshot: &mut ScoreSnapshot) {
     snapshot.set_title(piece.name().unwrap_or_default());
     if piece.tempo().is_some() {
         resolver.declare(DeclInfo::Tempo);
@@ -950,33 +972,25 @@ pub(crate) fn lower_header(
                 .note("a piece has one starting tempo; every later one is a place in the music"),
         );
     }
+    // The meter the piece opens in, which is what `crate::elaborate` seeds the
+    // barlines with before it folds in the changes the score states. Read here
+    // and not complained about here: the same statement becomes the piece's
+    // meter fact in `crate::lower::piece`, which refuses one it cannot read, and
+    // two readings of one line saying so twice is two sentences about one
+    // mistake.
     if let Some(meter) = piece.meter() {
         resolver.declare(DeclInfo::Meter);
-        if let Some(map) = parse_meter(&meter) {
-            resolver.meter = map;
+        if let Some(written) = parse_meter(&meter) {
+            resolver.meter = written;
             resolver.meter_written = true;
-        } else {
-            resolver.error(
-                Code::NotAValue,
-                "this meter cannot be read",
-                span_of(meter.syntax()),
-                "expected two numbers, like `4/4`",
-            );
         }
     }
-    if let Some(key) = piece.key() {
+    // Declared and not read at all: nothing outside the timeline asks what key a
+    // piece opens in, and what does ask reads it off the occurrence the header
+    // states — including `key k;` in a template's piece, whose value the
+    // instance supplies and which no spelling here could parse.
+    if piece.key().is_some() {
         resolver.declare(DeclInfo::Key);
-        // Written out, or named: `key k;` in a template's piece is the value
-        // the instance supplied, evaluated with everything else.
-        match parse_key(&key).or_else(|| core.key_at(trimmed_span(key.syntax()))) {
-            Some(map) => resolver.key = Some(map),
-            None => resolver.error(
-                Code::NotAValue,
-                "this key cannot be read",
-                span_of(key.syntax()),
-                "expected a note and a mode, like `a minor`",
-            ),
-        }
     }
     lower_front_matter(resolver, piece, snapshot);
     if let Some(performance) = piece.performance() {
@@ -1689,30 +1703,15 @@ fn time_setting(resolver: &mut Resolver, setting: &SettingStmt) -> Option<Ratio<
     Some(seconds)
 }
 
-/// What a part says about itself before any of it is played.
-///
-/// One struct rather than a tuple because there are now four answers and
-/// three of them are optional: a caller reading `context.meter` cannot
-/// mistake it for `context.clef`, which a four-tuple invites.
-pub(crate) struct PartContext {
-    /// The clef the part is read in.
-    pub(crate) clef: Option<(Clef, SourceSpan)>,
-    /// The part's own meter — polymeter, when it differs from the piece's.
-    pub(crate) meter: Option<(Meter, SourceSpan)>,
-    /// The part's own tempo — polytempo.
-    pub(crate) tempo: Option<(crate::elaborate::FactKind, SourceSpan)>,
-    /// The performance profile that realizes the part.
-    pub(crate) profile: Option<String>,
-}
-
-/// The three things a part states about itself, before either path shapes
+/// The three things a part states about itself, before the reading shapes
 /// them.
 ///
-/// Separate from [`PartContext`] because they are a separate concern: a clef,
-/// a polymeter, and a polytempo are *facts* that enter the piece's context
+/// The profile a part names is deliberately not among them: a clef, a
+/// polymeter, and a polytempo are *facts* that enter the piece's context
 /// track, and a profile is metadata the snapshot carries. The reading that
 /// wants the facts should not have to supply the declared profiles to get
-/// them.
+/// them — see [`crate::lower::piece::Part::profile`], which carries the
+/// written name to the one caller that can check it.
 pub(crate) struct PartFacts {
     /// The clef the part is read in.
     pub(crate) clef: Option<(Clef, SourceSpan)>,
@@ -1776,35 +1775,6 @@ pub(crate) fn part_facts(resolver: &mut Resolver, part: &musa_language::ast::Par
         tempo: part
             .tempo()
             .map(|stmt| (tempo_marking(resolver, &stmt), trimmed_span(stmt.syntax()))),
-    }
-}
-
-/// The same three, with the profile the part names beside them.
-pub(crate) fn part_context(
-    resolver: &mut Resolver,
-    part: &musa_language::ast::PartDecl,
-    profiles: &ProfileSet,
-) -> PartContext {
-    let PartFacts { clef, meter, tempo } = part_facts(resolver, part);
-    let mut profile = None;
-    if let Some(statement) = part.profile() {
-        let name = statement.name().unwrap_or_default();
-        if profiles.declares(&name) {
-            profile = Some(name);
-        } else {
-            let known: Vec<&str> = profiles.names().collect();
-            resolver.report(
-                Diagnostic::error(Code::UnknownName, format!("cannot find profile `{name}`"))
-                    .at(trimmed_span(statement.syntax()), "not declared in this piece")
-                    .help(suggest(&name, &known, "profiles")),
-            );
-        }
-    }
-    PartContext {
-        clef,
-        meter,
-        tempo: tempo.map(|(marking, span)| (marking.into_fact(), span)),
-        profile,
     }
 }
 

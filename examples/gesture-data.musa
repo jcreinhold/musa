@@ -1,13 +1,16 @@
 // A piece may declare its own finite data and fold over it. Nothing here is
 // built in: `Gesture` is three constructors this file names, and
-// `gesture_fold` is the one structural fold the declaration generates — a case
-// per constructor, and the recursive fields already folded
-// (docs/rules/language/02-core-calculus.md §1).
+// `gesture_fold` is the structural fold written over them — a case per
+// constructor, and the recursive fields already folded
+// (docs/rules/language/02-core-calculus.md §1). The fold is source and not a
+// declaration's by-product, because a generated name is one the reader cannot
+// look up and one the author cannot document.
 //
 // What it buys is that the *plan* is a value. A gesture can be built, passed,
 // and matched before any music exists, and the same plan reads two ways: as
-// notation, by folding it into `Music`, and as a count, by folding it into a
-// number. A `Music -> Music` function could do neither.
+// notation, by folding it into `EventTrack<WrittenTime>`, and as a count, by
+// folding it into a number. An `EventTrack<WrittenTime> ->
+// EventTrack<WrittenTime>` function could do neither.
 piece "Gesture Study" {
     meter 4/4;
 
@@ -18,29 +21,56 @@ piece "Gesture Study" {
         Against(first: Gesture, second: Gesture),
     }
 
-    let subject: Music = music {
+    // The one traversal `Gesture` admits: each constructor's case, with the
+    // recursive fields already folded.
+    //
+    // `A` and not `EventTrack<WrittenTime>`, because the whole point of having
+    // the plan as a value is that two readings fold the same plan — one into
+    // notation and one into a count. The gesture comes last because that is
+    // how a case is written at a call, and the recursion descends on it while
+    // every argument before it stays fixed (§2.4's measure).
+    fn gesture_fold<A>(plain: A, higher: Interval -> A -> A, against: A -> A -> A, shape: Gesture) -> A {
+        match shape {
+            Plain -> plain,
+            Higher(by, inner) -> higher(by, gesture_fold(plain, higher, against, inner)),
+            Against(first, second) -> against(
+                gesture_fold(plain, higher, against, first),
+                gesture_fold(plain, higher, against, second),
+            ),
+        }
+    }
+
+    let subject: EventTrack<WrittenTime> = music {
         c4/4
         d4/4
     };
 
     // The three cases, written as ordinary functions. `Plain` takes no
-    // fields, so its case is a `Music` rather than a function of one.
-    fn raised(by: Interval, inner: Music) -> Music { transpose(by, inner) }
+    // fields, so its case is an `EventTrack<WrittenTime>` rather than a
+    // function of one.
+    fn raised(by: Interval, inner: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+        transpose(by, inner)
+    }
 
-    fn stacked(first: Music, second: Music) -> Music { together(first, shift(1/2, second)) }
+    fn stacked(
+        first: EventTrack<WrittenTime>,
+        second: EventTrack<WrittenTime>,
+    ) -> EventTrack<WrittenTime> { together(first, shift(duration_of(1/2), second)) }
 
-    // The plan: the subject against its own octave. Fields are named at the
-    // constructor the way parameters are named at a call.
-    let shape: Gesture = Against(first: Plain, second: Higher(by: P8, inner: Plain));
+    // The plan: the subject against its own octave. A field's name is written
+    // at the declaration and the arguments go in the order it takes them.
+    let shape: Gesture = Against(Plain, Higher(P8, Plain));
 
-    let realized: Music = gesture_fold(subject, raised, stacked, shape);
+    let realized: EventTrack<WrittenTime> = gesture_fold(subject, raised, stacked, shape);
 
     // The same plan, read a second way: the entries where they were, and the
     // octave flattened away. One declaration, one fold, two readings — which
     // is what having the plan as a value is for.
-    fn unraised(by: Interval, inner: Music) -> Music { inner }
+    fn unraised(by: Interval, inner: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+        inner
+    }
 
-    let flattened: Music = gesture_fold(subject, unraised, stacked, shape);
+    let flattened: EventTrack<WrittenTime> = gesture_fold(subject, unraised, stacked, shape);
 
     // `match` is the eliminator a reader uses; the fold is what a total
     // traversal is written with.

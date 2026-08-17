@@ -62,8 +62,9 @@ carry text.
 
 ## Construction
 
-**Write a phrase once and use it in several keys.** Make it a `music` value and place it inside `in scale`;
-`examples/scale-context.musa`. Music values are contextual, so the same phrase elaborates differently at two sites.
+**Write a phrase once and use it in several keys.** Write it against the collection it reads, inside `in scale`;
+`examples/scale-context.musa`. A degree means what the context in force where the phrase is *written* says it means, so
+a phrase that reads two collections is a function of the collection.
 
 **Answer a subject through a transformation the caller picks.** `examples/canon-functions.musa`. Also
 `examples/canon.musa` and `examples/canon-x.musa` for two parts at their own speeds.

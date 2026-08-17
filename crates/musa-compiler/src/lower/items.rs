@@ -113,30 +113,47 @@ pub(crate) struct Definition {
     pub(crate) value: Raw,
 }
 
+/// What a node turned out to be, when a walk over a file's children asked.
+///
+/// Three answers rather than two because a walk has two unrelated reasons to
+/// pass a node by, and only one of them is a failure. [`Self::Elsewhere`] is a
+/// node that is not a declaration at all — a `piece`, a `library`, a
+/// `structure`, an `import` — which some other pass reads for itself, so
+/// answering with a complaint would make walking a document an error.
+/// [`Self::Refused`] is a declaration that *is* this reading's and could not be
+/// read, and the difference is worth a variant because a document that quietly
+/// drops one goes on to report every *use* of the missing name as an unknown
+/// name — burying the one thing that actually went wrong under its own
+/// consequences.
+#[derive(Debug)]
+pub(crate) enum Declared {
+    /// The declaration, through whichever of `musa-core`'s doors it goes.
+    Item(Item),
+    /// A declaration that could not be read. The refusal is already reported at
+    /// whatever could not be read, so a caller states no complaint of its own.
+    Refused,
+    /// Not a declaration — somebody else's node.
+    Elsewhere,
+}
+
 impl Lowering<'_> {
-    /// The item a declaration node denotes, or [`None`] with a diagnostic
-    /// reported at whatever could not be read.
-    ///
-    /// [`None`] *without* a diagnostic for a node that is not a declaration at
-    /// all, which is how a caller walking a file's children asks "is this one of
-    /// mine": a `piece`, a `library`, a `structure`, and an `import` are
-    /// containers and statements that a pass reads for itself, and answering
-    /// with a complaint would make walking a document an error.
-    pub(crate) fn item(&mut self, node: &SyntaxNode) -> Option<Item> {
+    /// What `node` declares, when it declares anything — see [`Declared`].
+    pub(crate) fn item(&mut self, node: &SyntaxNode) -> Declared {
+        let read = |item: Option<Item>| item.map_or(Declared::Refused, Declared::Item);
         match node.kind() {
-            SyntaxKind::DataDecl => self.nominal(node).map(Item::Data),
-            SyntaxKind::EnumDecl => self.enumeration(node).map(Item::Data),
-            SyntaxKind::RecordDecl => self.structural(node).map(Item::Definition),
-            SyntaxKind::TraitDecl => self.class(node).map(Item::Class),
-            SyntaxKind::ImplDecl => self.instance(node).map(Item::Instance),
-            SyntaxKind::FnDecl => self.function(node).map(Item::Definition),
-            SyntaxKind::LetDecl => self.binding(node).map(Item::Definition),
+            SyntaxKind::DataDecl => read(self.nominal(node).map(Item::Data)),
+            SyntaxKind::EnumDecl => read(self.enumeration(node).map(Item::Data)),
+            SyntaxKind::RecordDecl => read(self.structural(node).map(Item::Definition)),
+            SyntaxKind::TraitDecl => read(self.class(node).map(Item::Class)),
+            SyntaxKind::ImplDecl => read(self.instance(node).map(Item::Instance)),
+            SyntaxKind::FnDecl => read(self.function(node).map(Item::Definition)),
+            SyntaxKind::LetDecl => read(self.binding(node).map(Item::Definition)),
             // `01-surface.md` §2's two notation declarations, which desugar to
             // the two above with a role retained. `super::notation` owns them
             // because what they declare is a block.
-            SyntaxKind::MotifDecl => self.motif(node).map(Item::Definition),
-            SyntaxKind::FragmentDecl => self.fragment(node).map(Item::Definition),
-            _ => None,
+            SyntaxKind::MotifDecl => read(self.motif(node).map(Item::Definition)),
+            SyntaxKind::FragmentDecl => read(self.fragment(node).map(Item::Definition)),
+            _ => Declared::Elsewhere,
         }
     }
 

@@ -264,10 +264,7 @@ library {
         match numbers {
             NoNumbers -> None,
             OneNumber(first, value) -> None,
-            TwoNumbers(first, count, second, unit) -> match ratio_div(count, unit) {
-                Ok(span) -> Some(span),
-                Err(why) -> None,
-            },
+            TwoNumbers(first, count, second, unit) -> Some(ratio_div(count, unit)),
         }
     }
 

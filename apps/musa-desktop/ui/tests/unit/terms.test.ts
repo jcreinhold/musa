@@ -34,7 +34,7 @@ function quoted(span: Span): string {
 describe("asking what a word is", () => {
   it("answers with the declaration, wherever the word was written", () => {
     // The declaration and a use are two spellings of one question.
-    expect(termAt(KNOWN, inside("subject: Music"))?.name).toBe("subject");
+    expect(termAt(KNOWN, inside("subject: EventTrack<WrittenTime>"))?.name).toBe("subject");
     expect(termAt(KNOWN, inside("subject, shift"))?.name).toBe("subject");
   });
 
@@ -80,7 +80,7 @@ describe("following a name", () => {
 
 describe("gathering the uses of a name", () => {
   it("takes the declaration and every use the resolver recorded", () => {
-    const uses = usesAt(KNOWN, inside("subject: Music"));
+    const uses = usesAt(KNOWN, inside("subject: EventTrack<WrittenTime>"));
     expect(uses.length).toBeGreaterThan(1);
     for (const use of uses) expect(quoted(use)).toBe("subject");
   });

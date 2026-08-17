@@ -187,6 +187,11 @@ pub(crate) struct PrimitiveDescriptor {
 }
 
 impl PrimitiveDescriptor {
+    /// The registered name, which with [`Self::version`] selects this entry.
+    pub(crate) const fn id(&self) -> &'static str {
+        self.id
+    }
+
     pub(crate) const fn version(&self) -> u32 {
         self.version
     }

@@ -58,7 +58,8 @@ pub struct ItemSource {
 /// reads a type from, so a hover cannot describe a type the language lacks.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeNote {
-    /// As it is spelled in source: `NoteName`, `List<Pitch>`, `Ratio -> Music`.
+    /// As it is spelled in source: `NoteName`, `List<Pitch>`,
+    /// `Ratio -> EventTrack<WrittenTime>`.
     pub name: String,
     /// The one line for the *head* of the type, when the head is a primitive.
     /// A `List<Pitch>` is distinguished by being a list, so it has none.

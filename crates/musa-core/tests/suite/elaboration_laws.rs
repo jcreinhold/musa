@@ -348,11 +348,12 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
 }
 
 /// Every refusal this crate can answer with.
-const ALL_REFUSALS: [&str; 53] = [
+const ALL_REFUSALS: [&str; 54] = [
     "unknown-name",
     "mismatch",
     "unsolved",
     "not-a-function",
+    "underapplied",
     "plicity-mismatch",
     "not-a-record",
     "no-such-field",
@@ -414,6 +415,7 @@ fn kind(refusal: &Refusal) -> &'static str {
         Refusal::Mismatch(_) => "mismatch",
         Refusal::Unsolved { .. } => "unsolved",
         Refusal::NotAFunction { .. } => "not-a-function",
+        Refusal::Underapplied { .. } => "underapplied",
         Refusal::PlicityMismatch { .. } => "plicity-mismatch",
         Refusal::NotARecord { .. } => "not-a-record",
         Refusal::NoSuchField { .. } => "no-such-field",

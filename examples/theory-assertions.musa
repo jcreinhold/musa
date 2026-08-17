@@ -12,6 +12,7 @@
 // warning follows it out.
 piece "Theory Assertions" {
     import std::harmony;
+    import std::option;
 
     fn same(content: ChordClass) -> ChordClass { content }
 

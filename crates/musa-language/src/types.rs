@@ -20,10 +20,12 @@
 ///
 /// `Option` and `List` are absent because they are keywords and carry their
 /// own documentation (`keywords.rs`); everything here is an ordinary
-/// identifier the lexer cannot tell from any other. `Duration` and `Position`
-/// are absent for the other reason in the sentence above: they take a
-/// coordinate, so the bare word names no type, and `musa-compiler` refuses it
-/// with the spelling that does.
+/// identifier the lexer cannot tell from any other. `Duration`, `Position` and
+/// `EventTrack` are absent for the other reason in the sentence above: they
+/// take a coordinate, so the bare word names no type, and `musa-compiler`
+/// refuses it with the spelling that does. `EventTrack` is the one that used to
+/// be here: prompt 142 deleted `Music`, whose whole content was a coordinate
+/// left unwritten, and what replaced it writes the coordinate down.
 ///
 /// This is the vocabulary a composer may *write a type in*, which is not the
 /// same as the vocabulary they may write a *value* in. `Unit` is here because
@@ -63,7 +65,6 @@ pub const BASE_TYPES: &[(&str, &str)] = &[
     ("Pc12", "a pitch class modulo twelve, where C♯ and D♭ are one"),
     ("PcSet12", "a set of `Pc12`s"),
     ("Row12", "an ordering of all twelve `Pc12`s"),
-    ("Music", "notated material"),
 ];
 
 /// Every type spelling this language removed, with the one that replaced it.
@@ -98,7 +99,7 @@ pub const RESPELLED_TYPES: &[(&str, &str)] = &[
     ("pc12", "Pc12"),
     ("pcset12", "PcSet12"),
     ("row12", "Row12"),
-    ("music", "Music"),
+    ("music", "EventTrack<WrittenTime>"),
     ("option", "Option"),
     ("list", "List"),
     ("result", "Result"),

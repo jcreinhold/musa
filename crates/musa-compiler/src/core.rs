@@ -37,7 +37,7 @@ pub(crate) fn check_piece(
     // type *means*: a signature member or a `let` naming `Motive` cannot be
     // lowered until this says what `Motive` is.
     let world = World::read(resolver, &data_owners(libraries, root, Some(piece.syntax())));
-    let modules = Modules::read(resolver, &world, module_owners(libraries, root));
+    let modules = Modules::read(resolver, module_owners(libraries, root));
     check_and_evaluate(
         resolver,
         libraries
@@ -69,7 +69,7 @@ pub(crate) fn check_arguments(
         return None;
     }
     let world = World::read(resolver, &data_owners(libraries, root, None));
-    let modules = Modules::read(resolver, &world, module_owners(libraries, root));
+    let modules = Modules::read(resolver, module_owners(libraries, root));
     check_and_evaluate(
         resolver,
         libraries
@@ -100,7 +100,7 @@ pub(crate) fn check_template_voice(
     bindings: Vec<Binding>,
 ) -> Option<Program> {
     let world = World::read(resolver, &data_owners(libraries, root, Some(voice.syntax())));
-    let modules = Modules::read(resolver, &world, module_owners(libraries, root));
+    let modules = Modules::read(resolver, module_owners(libraries, root));
     check_and_evaluate(
         resolver,
         libraries
@@ -187,7 +187,6 @@ pub(crate) fn check_material(
     );
     let modules = Modules::read(
         resolver,
-        &world,
         libraries
             .each()
             .map(|(from, imported)| (Some(from.path), imported.syntax().clone()))
@@ -229,7 +228,7 @@ fn validate_imports(resolver: &mut Resolver, libraries: &Libraries) -> bool {
         let mut foreign_resolver = Resolver::new();
         let data_owners: Vec<_> = owners.iter().map(|(_, node)| node.clone()).collect();
         let world = World::read(&mut foreign_resolver, &data_owners);
-        let modules = Modules::read(&mut foreign_resolver, &world, owners.iter().cloned());
+        let modules = Modules::read(&mut foreign_resolver, owners.iter().cloned());
         let evaluated = check_and_evaluate(
             &mut foreign_resolver,
             prefix.clone().into_iter(),
@@ -1069,7 +1068,9 @@ pub(crate) enum Builtin {
     PositionEqual,
     IntervalAdd,
     IntervalInverse,
+    IntervalEqual,
     PitchTransposed,
+    PitchEqual,
     PitchClassTransposed,
     PitchClassOf,
     SignatureScale,
@@ -2268,11 +2269,6 @@ const INTERVALS: Shape = Shape::List(&INTERVAL);
 pub(crate) const PC12S: Shape = Shape::List(&PC12);
 const ROW12S: Shape = Shape::List(&ROW12);
 
-const RATIO_OR_TEXT: Shape = Shape::Result(&RATIO, &TEXT);
-const NAT_OR_TEXT: Shape = Shape::Result(&NAT, &TEXT);
-const DURATION_OR_TEXT: Shape = Shape::Result(&DURATION, &TEXT);
-const POSITION_OR_TEXT: Shape = Shape::Result(&POSITION, &TEXT);
-
 const MAYBE_NAT: Shape = Shape::Option(&NAT);
 const MAYBE_CLASS: Shape = Shape::Option(&CLASS);
 const MAYBE_DEGREE: Shape = Shape::Option(&DEGREE);
@@ -2321,7 +2317,7 @@ const fn delta(arguments: &'static [Shape], result: Shape) -> Family {
     Family::Delta { arguments, result }
 }
 
-pub(crate) const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 119] = [
+pub(crate) const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 121] = [
     BuiltinOwnership {
         operation: Builtin::NatFold,
         spelling: "nat_fold",
@@ -2374,25 +2370,25 @@ pub(crate) const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 119] = [
         operation: Builtin::RatioAdd,
         spelling: "ratio_add",
         hidden_information: "exact rational reduction, and whether the reduced result is representable at all",
-        family: delta(&[RATIO, RATIO], RATIO_OR_TEXT),
+        family: delta(&[RATIO, RATIO], RATIO),
     },
     BuiltinOwnership {
         operation: Builtin::RatioSub,
         spelling: "ratio_sub",
         hidden_information: "exact rational reduction, and whether the reduced result is representable at all",
-        family: delta(&[RATIO, RATIO], RATIO_OR_TEXT),
+        family: delta(&[RATIO, RATIO], RATIO),
     },
     BuiltinOwnership {
         operation: Builtin::RatioMul,
         spelling: "ratio_mul",
         hidden_information: "exact rational reduction, and whether the reduced result is representable at all",
-        family: delta(&[RATIO, RATIO], RATIO_OR_TEXT),
+        family: delta(&[RATIO, RATIO], RATIO),
     },
     BuiltinOwnership {
         operation: Builtin::RatioDiv,
         spelling: "ratio_div",
         hidden_information: "exact rational reduction, and whether the reduced result is representable at all",
-        family: delta(&[RATIO, RATIO], RATIO_OR_TEXT),
+        family: delta(&[RATIO, RATIO], RATIO),
     },
     BuiltinOwnership {
         operation: Builtin::RatioLess,
@@ -2457,13 +2453,13 @@ pub(crate) const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 119] = [
         operation: Builtin::NatAdd,
         spelling: "nat_add",
         hidden_information: "the representable range a whole number must stay inside",
-        family: delta(&[NAT, NAT], NAT_OR_TEXT),
+        family: delta(&[NAT, NAT], NAT),
     },
     BuiltinOwnership {
         operation: Builtin::NatMul,
         spelling: "nat_mul",
         hidden_information: "the representable range a whole number must stay inside",
-        family: delta(&[NAT, NAT], NAT_OR_TEXT),
+        family: delta(&[NAT, NAT], NAT),
     },
     BuiltinOwnership {
         operation: Builtin::NatSub,
@@ -2475,7 +2471,7 @@ pub(crate) const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 119] = [
         operation: Builtin::DurationOf,
         spelling: "duration_of",
         hidden_information: "the nonnegativity every duration constructor checks",
-        family: delta(&[RATIO], DURATION_OR_TEXT),
+        family: delta(&[RATIO], DURATION),
     },
     BuiltinOwnership {
         operation: Builtin::DurationRatio,
@@ -2487,13 +2483,13 @@ pub(crate) const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 119] = [
         operation: Builtin::DurationAdd,
         spelling: "duration_add",
         hidden_information: "exact rational reduction, and whether the reduced result is representable at all",
-        family: delta(&[DURATION, DURATION], DURATION_OR_TEXT),
+        family: delta(&[DURATION, DURATION], DURATION),
     },
     BuiltinOwnership {
         operation: Builtin::DurationScale,
         spelling: "duration_scale",
         hidden_information: "the nonnegativity every duration constructor checks",
-        family: delta(&[DURATION, RATIO], DURATION_OR_TEXT),
+        family: delta(&[DURATION, RATIO], DURATION),
     },
     BuiltinOwnership {
         operation: Builtin::DurationLess,
@@ -2523,13 +2519,13 @@ pub(crate) const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 119] = [
         operation: Builtin::PositionShift,
         spelling: "position_shift",
         hidden_information: "exact rational reduction, and whether the reduced result is representable at all",
-        family: delta(&[POSITION, DURATION], POSITION_OR_TEXT),
+        family: delta(&[POSITION, DURATION], POSITION),
     },
     BuiltinOwnership {
         operation: Builtin::PositionBetween,
         spelling: "position_between",
         hidden_information: "the nonnegativity every duration constructor checks",
-        family: delta(&[POSITION, POSITION], DURATION_OR_TEXT),
+        family: delta(&[POSITION, POSITION], DURATION),
     },
     BuiltinOwnership {
         operation: Builtin::PositionLess,
@@ -2556,10 +2552,22 @@ pub(crate) const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 119] = [
         family: delta(&[INTERVAL], INTERVAL),
     },
     BuiltinOwnership {
+        operation: Builtin::IntervalEqual,
+        spelling: "interval_equal",
+        hidden_information: "the evaluator's exact written-interval coordinate representation",
+        family: delta(&[INTERVAL, INTERVAL], BOOL),
+    },
+    BuiltinOwnership {
         operation: Builtin::PitchTransposed,
         spelling: "pitch_transposed",
         hidden_information: "the two coordinates a written pitch moves on at once, and the range either may leave",
         family: delta(&[PITCH, INTERVAL], PITCH),
+    },
+    BuiltinOwnership {
+        operation: Builtin::PitchEqual,
+        spelling: "pitch_equal",
+        hidden_information: "the letter, alteration, and octave a written pitch is stored as",
+        family: delta(&[PITCH, PITCH], BOOL),
     },
     BuiltinOwnership {
         operation: Builtin::PitchClassTransposed,
@@ -3084,7 +3092,9 @@ impl Builtin {
             Self::PositionEqual => "position_equal",
             Self::IntervalAdd => "interval_add",
             Self::IntervalInverse => "interval_inverse",
+            Self::IntervalEqual => "interval_equal",
             Self::PitchTransposed => "pitch_transposed",
+            Self::PitchEqual => "pitch_equal",
             Self::PitchClassTransposed => "pitchclass_transposed",
             Self::PitchClassOf => "pitchclass_of",
             Self::SignatureScale => "signature_scale",
@@ -3260,7 +3270,9 @@ impl Builtin {
             | Self::PositionEqual
             | Self::IntervalAdd
             | Self::IntervalInverse
+            | Self::IntervalEqual
             | Self::PitchTransposed
+            | Self::PitchEqual
             | Self::PitchClassTransposed
             | Self::PitchClassOf
             | Self::SignatureScale
@@ -5059,7 +5071,7 @@ pub(crate) fn check_for_kernel(
     // read only the root would elaborate a piece whose own types are unknown.
     let owners: Vec<SyntaxNode> = std::iter::once(root.clone()).chain(scope.cloned()).collect();
     let world = World::read(resolver, &owners);
-    let modules = Modules::read(resolver, &world, std::iter::once((None, root.clone())));
+    let modules = Modules::read(resolver, std::iter::once((None, root.clone())));
     check_and_evaluate(
         resolver,
         root_preamble(root)
@@ -5510,15 +5522,6 @@ pub(crate) fn declared_type(scope: &TypeScope<'_>, node: &SyntaxNode) -> Option<
     lower_type(None, scope, node)
 }
 
-/// The type a signature member declares.
-///
-/// Reporting, unlike [`declared_type`]: a signature member's type is read
-/// exactly once, here, so this is the only place that can say it is not a
-/// type at all.
-pub(crate) fn signature_type(resolver: &mut Resolver, scope: &TypeScope<'_>, node: &SyntaxNode) -> Option<Type> {
-    lower_type(Some(resolver), scope, node)
-}
-
 /// The type a `data` declaration's field writes, read in the scope of that
 /// declaration's own type parameters.
 ///
@@ -5534,40 +5537,6 @@ pub(crate) fn is_builtin_type_name(name: &str) -> bool {
     named_type(name).is_some()
         || crate::machine::StepTag::named(name).is_some()
         || matches!(name, "Option" | "List" | "Result" | "Machine" | "Primitive")
-}
-
-/// The arrow type a `fn` declares, which is the type a signature member of
-/// arrow type must match.
-///
-/// A declaration that omitted an annotation still declares an arrow — it just
-/// leaves part of it open. Each omission is a hole here, and
-/// [`crate::infer::admits`] is how a signature reads one: the signature says
-/// what goes there, and matching by name and exact type is unchanged for
-/// every part the declaration did write. Returning `None` for an omission
-/// would instead have made a member the signature fully describes look like
-/// a member the module never defined.
-///
-/// The holes are numbered per declaration and belong to no [`Unifier`]. They
-/// are never unified — only compared, by a relation in which any variable
-/// matches — so there is nothing for them to be numbered against.
-pub(crate) fn function_type(scope: &TypeScope<'_>, declaration: &FnDecl) -> Option<Type> {
-    let mut hole = 0u32;
-    let mut open = |node: Option<SyntaxNode>| match node {
-        Some(node) => declared_type(scope, &node),
-        None => {
-            let variable = Type::Var(hole);
-            hole = hole.saturating_add(1);
-            Some(variable)
-        }
-    };
-    let mut parameters = Vec::new();
-    for parameter in declaration.params() {
-        parameters.push(open(child_of(parameter.syntax(), is_type_node))?);
-    }
-    // A parameter's type is written inside the parameter list, so the one
-    // type node a `fn` has as a direct child is its result.
-    let result = open(declaration.syntax().children().find(|node| is_type_node(node.kind())))?;
-    Some(Type::Function(parameters, Box::new(result)))
 }
 
 /// The type a written name denotes in an adapter module, and nowhere else.
@@ -6305,7 +6274,7 @@ impl Checker<'_> {
         let span = crate::resolve::trimmed_span(node);
         let quote = musa_language::ast::KernelQuote::cast(node.clone())?;
         let base = u32::from(node.text_range().start());
-        let text = quote_text(node);
+        let text = crate::lower::kernel::quote_text(node);
 
         if let Some((constructor, at)) = quote.constructor()
             && constructor != "EventTrack"
@@ -6366,14 +6335,14 @@ impl Checker<'_> {
         while text.contains(&stem) {
             stem.push('_');
         }
-        let (source, spans) = substitute_holes(&text, base, body_start, body_end, &stem, &holes);
+        let (source, spans) = crate::lower::kernel::substitute_holes(&text, base, body_start, body_end, &stem, &holes);
         let term = match musa_kernel::parse_expression::<musa_kernel::WrittenTime, crate::elaborate::ScoreFact>(&source)
         {
             Ok(term) => term,
             Err(error) => {
                 self.resolver.report(
                     Diagnostic::error(Code::Syntax, "this kernel quote is not well formed").at(
-                        quote_error_span(&spans, &error, body_start, body_end),
+                        crate::lower::kernel::quote_error_span(&spans, &error, body_start, body_end),
                         error.to_string(),
                     ),
                 );
@@ -6384,7 +6353,7 @@ impl Checker<'_> {
 
         let mut authority = Vec::new();
         term.for_each_payload(&mut |fact| {
-            if let Some(what) = context_authority(&fact.kind) {
+            if let Some(what) = crate::lower::kernel::context_authority(&fact.kind) {
                 authority.push(what);
             }
             if fact.scope != crate::elaborate::SHARED_SCOPE {
@@ -10069,7 +10038,9 @@ fn apply_builtin(builtin: Builtin, provided: Vec<Value>, span: SourceSpan) -> Op
         | Builtin::PositionEqual
         | Builtin::IntervalAdd
         | Builtin::IntervalInverse
+        | Builtin::IntervalEqual
         | Builtin::PitchTransposed
+        | Builtin::PitchEqual
         | Builtin::PitchClassTransposed
         | Builtin::PitchClassOf
         | Builtin::SignatureScale
@@ -10188,54 +10159,25 @@ fn position_value(value: &Value) -> Option<Ratio<i64>> {
     Some(*value)
 }
 
-/// One injection of a `Result<τ, Text>`, which is how every arithmetic builtin
-/// that can refuse says so.
-fn answered(value_type: Type, held: Value) -> Value {
-    Value::Sum {
-        value_type,
-        error_type: Type::Text,
-        error: false,
-        held: Box::new(held),
-    }
-}
-
-/// The other injection, carrying the operation's own sentence about what it
-/// was handed and could not answer for.
-fn refused(value_type: Type, because: &str) -> Value {
-    Value::Sum {
-        value_type,
-        error_type: Type::Text,
-        error: true,
-        held: Box::new(Value::Text(because.to_owned())),
-    }
-}
-
 /// The written-time duration a nonnegative exact rational names.
-fn written_duration(value: Ratio<i64>) -> Value {
-    let ty = Type::Duration(Coordinate::WrittenTime);
-    if value < Ratio::ZERO {
-        return refused(ty, "a duration is nonnegative, and this exact rational is below zero");
-    }
-    answered(ty, Value::Duration(Coordinate::WrittenTime, value))
+///
+/// `None` where the old evaluator answered `Result.Err`. Prompt 142 narrowed
+/// these eleven declared answers onto [`musa_core`]'s refusal channel, and this
+/// evaluator — which prompt 142 keeps only for the expansion phase — has no such
+/// channel. It already answers `None` for exactly this class of mistake in
+/// [`Builtin::Shift`] and [`Builtin::Play`], so the sentence is lost here in the
+/// same place it was already lost, rather than in a new one.
+fn written_duration(value: Ratio<i64>) -> Option<Value> {
+    (value >= Ratio::ZERO).then_some(Value::Duration(Coordinate::WrittenTime, value))
 }
 
 /// One of the four exact rational operations, on already-evaluated arguments.
-///
-/// Division by zero and an unrepresentable reduced result are two different
-/// refusals, and the point of `Result` over `Option` is that the composer is
-/// told which one happened.
 fn ratio_arithmetic(operation: Exact, values: &[Value]) -> Option<Value> {
     let (left, right) = (ratio_value(values.first()?)?, ratio_value(values.get(1)?)?);
     if operation == Exact::Div && right == Ratio::ZERO {
-        return Some(refused(Type::Ratio, "an exact rational is not divided by zero"));
+        return None;
     }
-    Some(match exact_arithmetic(left, right, operation) {
-        Some(value) => answered(Type::Ratio, Value::Ratio(value)),
-        None => refused(
-            Type::Ratio,
-            "these exact rationals have no result this language can represent",
-        ),
-    })
+    exact_arithmetic(left, right, operation).map(Value::Ratio)
 }
 
 /// The old evaluator, reachable for prompt 141e's agreement law and nothing else.
@@ -10493,13 +10435,7 @@ fn eval_builtin(
             } else {
                 left.checked_mul(right)
             };
-            Some(match held {
-                Some(value) => answered(Type::Nat, Value::Nat(value)),
-                None => refused(
-                    Type::Nat,
-                    "these whole numbers have no result this language can represent",
-                ),
-            })
+            held.map(Value::Nat)
         }
         // Below zero is the *only* way this fails, so `Option` says everything
         // a `Result` would: there is no second reason to distinguish it from.
@@ -10510,31 +10446,19 @@ fn eval_builtin(
                 value: left.checked_sub(right).map(|held| Box::new(Value::Nat(held))),
             })
         }
-        Builtin::DurationOf => Some(written_duration(ratio_value(values.first()?)?)),
+        Builtin::DurationOf => written_duration(ratio_value(values.first()?)?),
         Builtin::DurationRatio => Some(Value::Ratio(duration_value(values.first()?)?)),
         Builtin::DurationAdd => {
             let (left, right) = (duration_value(values.first()?)?, duration_value(values.get(1)?)?);
-            Some(match exact_arithmetic(left, right, Exact::Add) {
-                // Two nonnegative durations sum to a nonnegative one, so the
-                // only thing left to fail is representability. The
-                // constructor is still asked, because the law that durations
-                // are nonnegative is stated in one place.
-                Some(value) => written_duration(value),
-                None => refused(
-                    Type::Duration(Coordinate::WrittenTime),
-                    "these durations have no sum this language can represent",
-                ),
-            })
+            // Two nonnegative durations sum to a nonnegative one, so the only
+            // thing left to fail is representability. The constructor is still
+            // asked, because the law that durations are nonnegative is stated
+            // in one place.
+            exact_arithmetic(left, right, Exact::Add).and_then(written_duration)
         }
         Builtin::DurationScale => {
             let (held, factor) = (duration_value(values.first()?)?, ratio_value(values.get(1)?)?);
-            Some(match exact_arithmetic(held, factor, Exact::Mul) {
-                Some(value) => written_duration(value),
-                None => refused(
-                    Type::Duration(Coordinate::WrittenTime),
-                    "this duration and factor have no product this language can represent",
-                ),
-            })
+            exact_arithmetic(held, factor, Exact::Mul).and_then(written_duration)
         }
         Builtin::DurationLess => Some(Value::Bool(
             duration_value(values.first()?)? < duration_value(values.get(1)?)?,
@@ -10549,31 +10473,17 @@ fn eval_builtin(
         Builtin::PositionRatio => Some(Value::Ratio(position_value(values.first()?)?)),
         Builtin::PositionShift => {
             let (from, by) = (position_value(values.first()?)?, duration_value(values.get(1)?)?);
-            let ty = Type::Position(Coordinate::WrittenTime);
-            Some(match exact_arithmetic(from, by, Exact::Add) {
-                Some(value) => answered(ty, Value::Position(Coordinate::WrittenTime, value)),
-                None => refused(
-                    ty,
-                    "this position and duration have no result this language can represent",
-                ),
-            })
+            exact_arithmetic(from, by, Exact::Add).map(|value| Value::Position(Coordinate::WrittenTime, value))
         }
         // The one operation the whole tagging exists for. Two positions do
         // not add — there is no name for that — and their difference is a
         // duration only when the second is not before the first.
         Builtin::PositionBetween => {
             let (from, to) = (position_value(values.first()?)?, position_value(values.get(1)?)?);
-            let ty = Type::Duration(Coordinate::WrittenTime);
             if to < from {
-                return Some(refused(
-                    ty,
-                    "the second position is before the first, and a duration is nonnegative",
-                ));
+                return None;
             }
-            Some(match exact_arithmetic(to, from, Exact::Sub) {
-                Some(value) => written_duration(value),
-                None => refused(ty, "these positions have no difference this language can represent"),
-            })
+            exact_arithmetic(to, from, Exact::Sub).and_then(written_duration)
         }
         Builtin::PositionLess => Some(Value::Bool(
             position_value(values.first()?)? < position_value(values.get(1)?)?,
@@ -10596,11 +10506,23 @@ fn eval_builtin(
             };
             interval.inverse().map(Value::Interval)
         }
+        Builtin::IntervalEqual => {
+            let (Value::Interval(first), Some(Value::Interval(second))) = (values.first()?, values.get(1)) else {
+                return None;
+            };
+            Some(Value::Bool(first == second))
+        }
         Builtin::PitchTransposed => {
             let (Value::Pitch(pitch), Some(Value::Interval(interval))) = (values.first()?, values.get(1)) else {
                 return None;
             };
             pitch.transpose(*interval).map(Value::Pitch)
+        }
+        Builtin::PitchEqual => {
+            let (Value::Pitch(first), Some(Value::Pitch(second))) = (values.first()?, values.get(1)) else {
+                return None;
+            };
+            Some(Value::Bool(first == second))
         }
         Builtin::PitchClassTransposed => {
             let (Value::PitchClass(class), Some(Value::Interval(interval))) = (values.first()?, values.get(1)) else {
@@ -12099,133 +12021,6 @@ fn parse_ratio(resolver: &mut Resolver, token: &SyntaxToken) -> Option<Ratio<i64
     Some(Ratio::new(numerator, denominator))
 }
 
-/// The quote's own text with its comments blanked out, byte for byte.
-///
-/// A quote is written in a `.musa` file, so it is commented the way the rest
-/// of the file is — `//` and `/* */`, which the lexer already reads as trivia
-/// here. The kernel's alphabet has no `//` and Musa's has no `%`, so there is
-/// exactly one comment syntax inside a quote and it is the host's.
-///
-/// Blanked rather than removed: every offset in what comes back is still the
-/// offset it has in the document, which is what lets a complaint from the
-/// kernel's reader point at the character it stopped on. Newlines survive so
-/// the line a complaint lands on is the line it was written on.
-fn quote_text(node: &SyntaxNode) -> String {
-    let mut text = node.text().to_string();
-    let base = usize::from(node.text_range().start());
-    for token in node.descendants_with_tokens().filter_map(SyntaxElement::into_token) {
-        if !matches!(token.kind(), SyntaxKind::LineComment | SyntaxKind::BlockComment) {
-            continue;
-        }
-        let start = usize::from(token.text_range().start()).saturating_sub(base);
-        let end = usize::from(token.text_range().end()).saturating_sub(base);
-        // Byte-wise, and only ASCII bytes are written: a newline is never
-        // part of a multi-byte sequence, so the string stays valid UTF-8 and
-        // stays exactly as long as it was.
-        // SAFETY-BY-CONSTRUCTION: `blanked` is the same length as the range
-        // it replaces, so no later token's offsets move.
-        let Some(comment) = text.get(start..end) else {
-            continue;
-        };
-        let blanked: String = comment
-            .bytes()
-            .map(|byte| if byte == b'\n' { '\n' } else { ' ' })
-            .collect();
-        text.replace_range(start..end, &blanked);
-    }
-    text
-}
-
-/// The quoted body with each hole replaced by its fresh name, and the map
-/// back.
-///
-/// The map is a list of `(offset in the substituted text, offset in the
-/// document)` at each seam, which is what turns a kernel parse error into a
-/// place in the composer's file. Without it every complaint about a quote
-/// would point at the whole quote.
-fn substitute_holes(
-    text: &str,
-    base: u32,
-    body_start: u32,
-    body_end: u32,
-    stem: &str,
-    holes: &[musa_language::ast::KernelHole],
-) -> (String, Vec<(usize, u32)>) {
-    let relative = |absolute: u32| usize::try_from(absolute.saturating_sub(base)).unwrap_or_default();
-    let mut source = String::with_capacity(text.len());
-    let mut spans = Vec::new();
-    let mut at = relative(body_start);
-    for (index, hole) in holes.iter().enumerate() {
-        let (start, end) = hole.span();
-        let (start, end) = (relative(start), relative(end));
-        let Some(before) = text.get(at..start) else {
-            continue;
-        };
-        spans.push((
-            source.len(),
-            body_start.saturating_add(u32::try_from(at).unwrap_or_default()),
-        ));
-        source.push_str(before);
-        source.push(' ');
-        source.push_str(stem);
-        source.push_str(&index.to_string());
-        source.push(' ');
-        at = end;
-    }
-    if let Some(rest) = text.get(at..relative(body_end)) {
-        spans.push((source.len(), base.saturating_add(u32::try_from(at).unwrap_or_default())));
-        source.push_str(rest);
-    }
-    (source, spans)
-}
-
-/// Where a kernel parse error lands in the document.
-fn quote_error_span(
-    spans: &[(usize, u32)],
-    error: &musa_kernel::KernelError,
-    body_start: u32,
-    body_end: u32,
-) -> SourceSpan {
-    let musa_kernel::KernelError::Parse { offset, .. } = error else {
-        return SourceSpan::new(body_start, body_end);
-    };
-    let Some((seam, document)) = spans.iter().rev().find(|(seam, _)| seam <= offset) else {
-        return SourceSpan::new(body_start, body_end);
-    };
-    let at = document.saturating_add(u32::try_from(offset.saturating_sub(*seam)).unwrap_or_default());
-    SourceSpan::new(at, at.saturating_add(1).min(body_end))
-}
-
-/// What a fact would take authority over, if it is one of the four that can.
-///
-/// Key, meter, tempo and clef are *context*: they hold from where they are
-/// written until they are written again, so a value carrying one would change
-/// its caller's context from inside — the very thing a reusable `music` value
-/// must not do (`docs/rules/language/00-semantics.md`, contextual closure).
-fn context_authority(kind: &crate::elaborate::FactKind) -> Option<&'static str> {
-    match kind {
-        crate::elaborate::FactKind::Key { .. } => Some("a key"),
-        crate::elaborate::FactKind::Meter { .. } => Some("a meter"),
-        crate::elaborate::FactKind::Tempo { .. } => Some("a tempo"),
-        crate::elaborate::FactKind::Clef { .. } => Some("a clef"),
-        crate::elaborate::FactKind::Note { .. }
-        | crate::elaborate::FactKind::Rest { .. }
-        | crate::elaborate::FactKind::Mark { .. }
-        | crate::elaborate::FactKind::Grace { .. }
-        | crate::elaborate::FactKind::Slur
-        | crate::elaborate::FactKind::Phrase { .. }
-        | crate::elaborate::FactKind::Tuplet { .. }
-        | crate::elaborate::FactKind::Dynamic { .. }
-        | crate::elaborate::FactKind::Hairpin { .. }
-        | crate::elaborate::FactKind::Section { .. }
-        | crate::elaborate::FactKind::Harmony { .. }
-        | crate::elaborate::FactKind::Repeat { .. }
-        | crate::elaborate::FactKind::Mobile { .. }
-        | crate::elaborate::FactKind::Improvise { .. }
-        | crate::elaborate::FactKind::Ending { .. } => None,
-    }
-}
-
 fn music_items(node: &SyntaxNode) -> Vec<VoiceItem> {
     if let Some(expression) = musa_language::ast::MusicExpr::cast(node.clone()) {
         expression.items()
@@ -12669,7 +12464,7 @@ fn read_adapter_module_metered(
     let mut resolver = Resolver::new();
     let owners = [library.syntax().clone()];
     let world = World::read_in_phase(&mut resolver, &owners);
-    let modules = Modules::read(&mut resolver, &world, std::iter::once((None, library.syntax().clone())));
+    let modules = Modules::read(&mut resolver, std::iter::once((None, library.syntax().clone())));
     let printer = printer_source(library.syntax());
     let program = check_and_evaluate_metered(
         &mut resolver,
@@ -13319,7 +13114,7 @@ fn run_printer(
         return Err(print_failure(meter, &resolver));
     }
     let world = World::read(&mut resolver, &data_owners(&libraries, &root, Some(piece.syntax())));
-    let modules = Modules::read(&mut resolver, &world, module_owners(&libraries, &root));
+    let modules = Modules::read(&mut resolver, module_owners(&libraries, &root));
     let program = check_and_evaluate_metered(
         &mut resolver,
         libraries
@@ -13603,37 +13398,12 @@ mod tests {
             .clone()
     }
 
-    /// The value half of a `Result`, or a panic naming the refusal.
-    fn accepted(value: &Value) -> Value {
-        let Value::Sum { error, held, .. } = value else {
-            panic!("not a `Result`")
-        };
-        assert!(!*error, "refused: {}", literal_key(held));
-        held.as_ref().clone()
-    }
-
-    /// The error half's sentence, or a panic if the operation answered.
-    fn refusal(value: &Value) -> String {
-        let Value::Sum { error, held, .. } = value else {
-            panic!("not a `Result`")
-        };
-        assert!(
-            *error,
-            "answered where the law expects a refusal: {}",
-            literal_key(held)
-        );
-        let Value::Text(because) = held.as_ref() else {
-            panic!("a refusal that is not a sentence")
-        };
-        because.clone()
-    }
-
     /// A negative exact rational, written the only way this language can
     /// write one: no literal carries a sign, so `0 - 1/4` is subtraction, and
-    /// its `Result` is opened by the ordinary match every `Result` is opened
-    /// by. That the language has no negative *literal* is a separate question
-    /// from whether it has negative values, and it has them.
-    const NEGATIVE: &str = "let before: Ratio = match ratio_sub(0, 1/4) { Ok(found) -> found, Err(why) -> 0 };";
+    /// subtraction answers with the rational itself. That the language has no
+    /// negative *literal* is a separate question from whether it has negative
+    /// values, and it has them.
+    const NEGATIVE: &str = "let before: Ratio = ratio_sub(0/1, 1/4);";
 
     /// The exact rational a source expression evaluates to, through
     /// whichever projection its type needs.
@@ -13660,17 +13430,17 @@ mod tests {
             ("ratio_div(3/4, 3/2)", Ratio::new(1, 2)),
             ("duration_of(3/8)", Ratio::new(3, 8)),
             ("duration_add(one_eighth, one_eighth)", Ratio::new(1, 4)),
-            ("duration_scale(one_eighth, 3)", Ratio::new(3, 8)),
+            ("duration_scale(one_eighth, 3/1)", Ratio::new(3, 8)),
             ("position_shift(here, one_eighth)", Ratio::new(9, 8)),
             ("position_between(here, later)", Ratio::new(3, 4)),
         ] {
             let source = format!(
                 "let one_eighth: Duration<WrittenTime> = 1/8; \
-                 let here: Position<WrittenTime> = position_of(1); \
+                 let here: Position<WrittenTime> = position_of(1/1); \
                  let later: Position<WrittenTime> = position_of(7/4); \
                  let answer = {expression};"
             );
-            let held = accepted(&only(&source, "answer"));
+            let held = only(&source, "answer");
             let (Value::Ratio(actual) | Value::Duration(_, actual) | Value::Position(_, actual)) = held else {
                 panic!("`{expression}` answered with {}", literal_key(&held))
             };
@@ -13693,14 +13463,8 @@ mod tests {
     /// Whole-number arithmetic, and the one way subtraction fails.
     #[test]
     fn whole_number_arithmetic_says_when_it_would_go_below_zero() {
-        assert!(matches!(
-            accepted(&only("let answer = nat_add(2, 3);", "answer")),
-            Value::Nat(5)
-        ));
-        assert!(matches!(
-            accepted(&only("let answer = nat_mul(2, 3);", "answer")),
-            Value::Nat(6)
-        ));
+        assert!(matches!(only("let answer = nat_add(2, 3);", "answer"), Value::Nat(5)));
+        assert!(matches!(only("let answer = nat_mul(2, 3);", "answer"), Value::Nat(6)));
         assert!(matches!(
             only("let answer = nat_sub(5, 3);", "answer"),
             Value::Option {
@@ -13727,7 +13491,7 @@ mod tests {
             ("ratio_equal(2/4, 1/2)", true),
             ("duration_less(1/8, 1/4)", true),
             ("duration_equal(2/8, 1/4)", true),
-            ("position_less(position_of(before), position_of(0))", true),
+            ("position_less(position_of(before), position_of(0/1))", true),
             ("position_equal(position_of(3/2), position_of(6/4))", true),
         ] {
             let source = format!("{NEGATIVE} let answer: Bool = {expression};");
@@ -13735,34 +13499,6 @@ mod tests {
                 matches!(only(&source, "answer"), Value::Bool(found) if found == expected),
                 "`{expression}`"
             );
-        }
-    }
-
-    /// Every partial operation says which way it failed, in its own sentence.
-    ///
-    /// D2 puts partiality in the result type, so each of these is a value
-    /// rather than a diagnostic — and a `Result` rather than an `Option`
-    /// wherever there is more than one way to fail, because "it did not work"
-    /// is not what a composer needs to read.
-    #[test]
-    fn every_partial_time_operation_states_its_own_refusal() {
-        for (expression, expected) in [
-            ("ratio_div(3/4, 0)", "an exact rational is not divided by zero"),
-            (
-                "duration_of(before)",
-                "a duration is nonnegative, and this exact rational is below zero",
-            ),
-            (
-                "duration_scale(1/4, before)",
-                "a duration is nonnegative, and this exact rational is below zero",
-            ),
-            (
-                "position_between(position_of(2), position_of(1))",
-                "the second position is before the first, and a duration is nonnegative",
-            ),
-        ] {
-            let source = format!("{NEGATIVE} let answer = {expression};");
-            assert_eq!(refusal(&only(&source, "answer")), expected, "`{expression}`");
         }
     }
 
@@ -15073,8 +14809,7 @@ mod tests {
     /// is a concrete witness that the two source operations are distinguishable.
     #[test]
     fn the_two_list_folds_agree_for_addition_and_disagree_for_projection() {
-        const SUMS: &str = "fn plus(member: Nat, running: Nat) -> Nat { \
-             match nat_add(member, running) { Ok(sum) -> sum, Err(why) -> 0 } } \
+        const SUMS: &str = "fn plus(member: Nat, running: Nat) -> Nat { nat_add(member, running) } \
              let from_start: Nat = list_fold_from_start(0, plus, [1, 2, 3, 4]); \
              let from_end: Nat = list_fold_from_end(0, plus, [1, 2, 3, 4]);";
         assert_eq!(
@@ -15538,13 +15273,13 @@ mod tests {
         const MADE: &str = "fn made(said: Text) -> Result<List<Nat>, Text> { \
              if text_equal(said, \"none\") { Err(\"nothing made\") } else { Ok([1, 2, 3, 4, 5, 6, 7, 8]) } } \
              fn kept(held: List<Nat>) -> Result<Nat, Text> { Ok(4) } ";
-        const ASKED: &str = "fn used(said: Text) -> Result<Nat, Text> { Ok(nat_add(kept(made(said)?)?, 1)?) } \
+        const ASKED: &str = "fn used(said: Text) -> Result<Nat, Text> { Ok(nat_add(kept(made(said)?)?, 1)) } \
              let good: Nat = match used(\"some\") { Ok(v) -> v, Err(why) -> 99 }; \
              let bad: Text = match used(\"none\") { Ok(v) -> \"no\", Err(why) -> why };";
         const BY_HAND: &str = "fn used(said: Text) -> Result<Nat, Text> { \
              match made(said) { \
              Ok(one) -> match kept(one) { \
-             Ok(two) -> match nat_add(two, 1) { Ok(three) -> Ok(three), Err(why) -> Err(why) }, \
+             Ok(two) -> Ok(nat_add(two, 1)), \
              Err(why) -> Err(why), \
              }, \
              Err(why) -> Err(why), \
@@ -15618,9 +15353,9 @@ mod tests {
     fn an_unannotated_function_infers_through_a_question() {
         const SOURCE: &str = "fn made(said: Text) -> Result<Nat, Text> { \
              if text_equal(said, \"none\") { Err(\"nothing made\") } else { Ok(4) } } \
-             fn named(said) { Ok(nat_add(made(said)?, 1)?) } \
+             fn named(said) { Ok(nat_add(made(said)?, 1)) } \
              let by_name: Nat = match named(\"some\") { Ok(v) -> v, Err(why) -> 99 }; \
-             let anonymous = fn (said: Text) { Ok(nat_add(made(said)?, 2)?) }; \
+             let anonymous = fn (said: Text) { Ok(nat_add(made(said)?, 2)) }; \
              let by_lambda: Nat = match anonymous(\"some\") { Ok(v) -> v, Err(why) -> 99 }; \
              let anonymous_bad: Text = match anonymous(\"none\") { Ok(v) -> \"no\", Err(why) -> why };";
         let bound = values(&format!("piece \"law\" {{ {SOURCE} }}")).expect("well-typed source");
@@ -15649,7 +15384,7 @@ mod tests {
         const SOURCE: &str = "fn named(said: Text) -> Result<Nat, Text> { \
              if text_equal(said, \"fine\") { Ok(1) } else { Err(said) } } \
              fn both(first: Text, second: Text) -> Result<Nat, Text> { \
-             Ok(nat_add(named(first)?, named(second)?)?) } \
+             Ok(nat_add(named(first)?, named(second)?)) } \
              let leftmost: Text = match both(\"one bad\", \"two bad\") { Ok(v) -> \"no\", Err(why) -> why }; \
              let rightmost: Text = match both(\"fine\", \"two bad\") { Ok(v) -> \"no\", Err(why) -> why }; \
              let neither: Nat = match both(\"fine\", \"fine\") { Ok(v) -> v, Err(why) -> 99 };";
@@ -15921,10 +15656,7 @@ mod tests {
     fn a_value_the_grammar_has_no_literal_for_is_spelt_as_nothing() {
         let bindings = values(
             "piece \"law\" { \
-             fn or_else(value: Result<Ratio, Text>, fallback: Ratio) -> Ratio { \
-             match value { Ok(held) -> held, Err(why) -> fallback } \
-             } \
-             let below: Option<Text> = ratio_literal(or_else(ratio_sub(1/3, 3/2), 0)); \
+             let below: Option<Text> = ratio_literal(ratio_sub(1/3, 3/2)); \
              let descending: Option<Text> = interval_literal(interval_inverse(P5)); \
              let ordinary: Option<Text> = ratio_literal(3/8); \
              }",

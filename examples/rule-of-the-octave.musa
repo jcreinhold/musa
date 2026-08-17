@@ -27,38 +27,42 @@ piece "The Rule of the Octave" {
     // The first policy: the chord stacked upward from C3, a quarter note long.
     // Absent when the class cannot be voiced from that bass — which happens,
     // and is silence here rather than a substitute.
-    fn low_close(sounding: ChordClass) -> Music {
+    fn low_close(sounding: ChordClass) -> EventTrack<WrittenTime> {
         match close_position(sounding, c3) {
             None -> music {
                 rest/4
             },
-            Some(chosen) -> sound_for(chosen, 1/4),
+            Some(chosen) -> sound_for(chosen, duration_of(1/4)),
         }
     }
 
     // The second policy: drop-2 from C4, twice as long. A different bass, a
     // different spacing, a different rhythm. The chords are the same chords.
-    fn high_drop_two(sounding: ChordClass) -> Music {
+    fn high_drop_two(sounding: ChordClass) -> EventTrack<WrittenTime> {
         match drop_position(sounding, c4, 2) {
             None -> music {
                 rest/2
             },
-            Some(chosen) -> sound_for(chosen, 1/2),
+            Some(chosen) -> sound_for(chosen, duration_of(1/2)),
         }
     }
 
     // One stage under one policy. `stage_music` is `std::tonal::sequences`'
     // own: a skeleton is a list of options, and an absent stage is silence the
     // caller can see.
-    fn low(bass: Nat) -> Music { stage_music(low_close, rule_ascending_chord(major, bass)) }
+    fn low(bass: Nat) -> EventTrack<WrittenTime> {
+        stage_music(low_close, rule_ascending_chord(major, bass))
+    }
 
-    fn high(bass: Nat) -> Music { stage_music(high_drop_two, rule_ascending_chord(major, bass)) }
+    fn high(bass: Nat) -> EventTrack<WrittenTime> {
+        stage_music(high_drop_two, rule_ascending_chord(major, bass))
+    }
 
-    fn low_down(bass: Nat) -> Music {
+    fn low_down(bass: Nat) -> EventTrack<WrittenTime> {
         stage_music(low_close, rule_descending_chord(major, bass))
     }
 
-    fn high_down(bass: Nat) -> Music {
+    fn high_down(bass: Nat) -> EventTrack<WrittenTime> {
         stage_music(high_drop_two, rule_descending_chord(major, bass))
     }
 

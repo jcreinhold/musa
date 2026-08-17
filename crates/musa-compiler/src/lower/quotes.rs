@@ -111,7 +111,7 @@ impl Lowering<'_> {
         let (template, quotation) = self.body(&quote.body()?, &mut walk)?;
         Some(applied(
             origin,
-            Raw::var(origin, "instantiate_quote"),
+            Raw::hosted(origin, "instantiate_quote"),
             [
                 anchor,
                 Raw::lit(origin, crate::registry::template_literal(template, quotation)),
@@ -187,7 +187,7 @@ impl Lowering<'_> {
         for (at, literal, body) in tests.into_iter().rev() {
             let matches = applied(
                 at,
-                Raw::var(at, "match_quote"),
+                Raw::hosted(at, "match_quote"),
                 [Raw::var(at, bound.as_str()), Raw::lit(at, literal)],
             );
             built = Raw::match_on(

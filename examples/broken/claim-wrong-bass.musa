@@ -3,6 +3,7 @@
 // wrong order: root position, under a claim of first inversion.
 piece "Wrong Note Lowest" {
     import std::harmony;
+    import std::option;
 
     fn same(content: ChordClass) -> ChordClass { content }
 

@@ -2,16 +2,17 @@
 // This simple pedal mapping is intentionally replaceable without exposing
 // score events, key signatures, chord symbols, or temporal structure.
 piece "Harmonize Function" {
-    let subject: Music = music {
+    let subject: EventTrack<WrittenTime> = music {
         c4/4
         e4/4
     };
 
     fn pedal(_: Pitch) -> Pitch { c3 }
 
-    fn harmonize(subject: Music, answer_pitch: Pitch -> Pitch) -> Music {
-        together(subject, map_note_pitches(answer_pitch, subject))
-    }
+    fn harmonize(
+        subject: EventTrack<WrittenTime>,
+        answer_pitch: Pitch -> Pitch,
+    ) -> EventTrack<WrittenTime> { together(subject, map_note_pitches(answer_pitch, subject)) }
 
     score {
         part strings {

@@ -285,6 +285,28 @@ impl Instance {
         self.span
     }
 
+    /// Each parameter's name, the type the template declared it at, and the
+    /// expression this site gives it, in declaration order.
+    ///
+    /// Three written nodes rather than a binding, because a reading that
+    /// elaborates into the core writes the binding itself: the parameters
+    /// become λs over the template's body and the arguments become what that
+    /// λ is applied to, so every argument is elaborated in the scope the site
+    /// stands in without a holder name to keep it out of the body's way.
+    /// [`Self::holders`] and [`Self::bindings`] are the same question answered
+    /// for the checker being replaced, which holds values and needs the two
+    /// scopes kept apart by hand.
+    pub(crate) fn bound(&self) -> impl Iterator<Item = Bound<'_>> {
+        self.parameters
+            .iter()
+            .zip(&self.arguments)
+            .map(|(parameter, argument)| Bound {
+                name: &parameter.name,
+                ty: &parameter.ty,
+                argument,
+            })
+    }
+
     /// Bindings that carry this site's arguments into the pass that checks
     /// the scope the site stands in.
     ///
@@ -330,6 +352,20 @@ impl Instance {
         // holder can never be the name of anything the source declares.
         format!("make{UNIT}{}#{parameter}", self.path)
     }
+}
+
+/// One parameter of a template, and the argument an instance site gives it.
+///
+/// Borrowed from the [`Instance`], because the caller writes terms out of these
+/// and never keeps them: the nodes belong to the parsed document, and a copy
+/// would only be a second name for the same tree.
+pub(crate) struct Bound<'a> {
+    /// The name the template's body reads the argument by.
+    pub(crate) name: &'a str,
+    /// The type the template declared it at, as written.
+    pub(crate) ty: &'a SyntaxNode,
+    /// The expression the site wrote for it, in the scope the site stands in.
+    pub(crate) argument: &'a SyntaxNode,
 }
 
 /// The parameters a template declares, with duplicates reported once.

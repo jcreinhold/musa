@@ -1,9 +1,29 @@
 //! Laws for source-level type inference.
 //!
-//! The unifier's own laws are tested beside it, in `src/infer.rs`, because a
-//! substitution is private to the compiler. These are the laws a *writer* can
-//! observe: what may be left unwritten, what one declaration may mean at two
-//! uses, and what happens where the program genuinely does not decide.
+//! These are the laws a *writer* can observe: what may be left unwritten, what
+//! one declaration may mean at two uses, and what happens where the program
+//! genuinely does not decide.
+//!
+//! # What the dependent core changed, and why these laws moved with it
+//!
+//! They used to be Hindley–Milner's laws. A `fn` wrote no types at all, the
+//! unifier found the *principal* one, and the declaration was generalized so
+//! that two uses at two types both went through. `02-core-calculus.md` §2.1 says
+//! the opposite in one sentence — elaboration "never defaults and never
+//! generalizes" — because a dependent core has no generalization to do: a type
+//! may mention a value, so there is no prefix of quantifiers to float out, and a
+//! metavariable still unsolved when a declaration ends is a hole the author left
+//! rather than a variable the checker may bind.
+//!
+//! What replaces it is written polymorphism and bidirectional checking, which
+//! between them keep every observable claim below except the one that was really
+//! a claim about generalization. `fn unchanged<A>(value: A) -> A` serves two
+//! uses at two types, because that is what its type says; `let held =
+//! unchanged(c4)` still needs no annotation, because the call determines it; and
+//! `fn unchanged(value) { value }` — the same declaration with the type
+//! parameter *not* written — is now a located refusal naming the binder rather
+//! than a generalization. Prompt 142's own Target records the same finding one
+//! declaration wider, for `machine_laws`.
 
 #![allow(clippy::expect_used)]
 #![allow(clippy::indexing_slicing)]
@@ -41,16 +61,20 @@ fn voices(score: &ScoreSnapshot) -> Vec<Vec<ScoreEvent>> {
         .collect()
 }
 
-/// The principal type, stated as a writer meets it: one unannotated `unchanged`
-/// serves a use at `Music -> Music` and a use at `Pitch -> Pitch` in the same
-/// piece. A checker that inferred *a* type rather than the *principal* one
-/// would fix the first use's type onto the declaration and reject the second.
+/// One `unchanged` serves a use at `EventTrack<WrittenTime> ->
+/// EventTrack<WrittenTime>` and a use at `Pitch -> Pitch` in the same piece,
+/// because its type parameter is written and each call instantiates it.
+///
+/// The claim that survived generalization's removal. A checker that fixed the
+/// first use's type onto the declaration would reject the second, and one that
+/// needed a second declaration to serve the second use would make polymorphism
+/// a copy-paste. What changed is only that `A` is a word the author writes.
 #[test]
-fn one_unannotated_declaration_serves_two_types() {
+fn one_declaration_serves_two_types() {
     let score = snapshot(
         "piece \"principal\" {
-            let subject: Music = music { c4/4 d4/4 };
-            fn unchanged(value) { value }
+            let subject: EventTrack<WrittenTime> = music { c4/4 d4/4 };
+            fn unchanged<A>(value: A) -> A { value }
             score { part p {
                 voice direct { use subject; }
                 voice music_use { use unchanged(subject); }
@@ -62,7 +86,7 @@ fn one_unannotated_declaration_serves_two_types() {
     assert_eq!(
         shape(&lanes[0]),
         shape(&lanes[1]),
-        "unchanged at `Music` changes nothing"
+        "unchanged at `EventTrack<WrittenTime>` changes nothing"
     );
     assert_eq!(
         shape(&lanes[0]),
@@ -71,16 +95,16 @@ fn one_unannotated_declaration_serves_two_types() {
     );
 }
 
-/// A function whose parameter is itself a function needs no annotation either:
-/// applying `f` twice says `f` takes and returns one type, and that the value
-/// has it. Written out, `twice` is `(a -> a, a) -> a`.
+/// A parameter may itself be a function, and the arrow is spelled in the
+/// signature: `twice` is `(A -> A, A) -> A`, and applying `f` twice is what
+/// makes the two `A`s the same one.
 #[test]
-fn a_higher_order_parameter_needs_no_annotation() {
+fn a_higher_order_parameter_is_written_as_an_arrow() {
     let score = snapshot(
         "piece \"higher order\" {
-            let subject: Music = music { c4/4 d4/4 };
-            fn twice(f, value) { f(f(value)) }
-            fn unchanged(value) { value }
+            let subject: EventTrack<WrittenTime> = music { c4/4 d4/4 };
+            fn twice<A>(f: A -> A, value: A) -> A { f(f(value)) }
+            fn unchanged<A>(value: A) -> A { value }
             score { part p {
                 voice direct { use subject; }
                 voice twice_over { use twice(unchanged, subject); }
@@ -91,14 +115,19 @@ fn a_higher_order_parameter_needs_no_annotation() {
     assert_eq!(shape(&lanes[0]), shape(&lanes[1]));
 }
 
-/// Inference reaches through a chain of unannotated declarations: `held` is a
-/// `Pitch` because `unchanged` returns what it is given, and nothing in either
-/// declaration says the word.
+/// Inference still reaches through a chain of declarations: `held` writes no
+/// type and is a `Pitch`, because `unchanged` returns what it is given and `c4`
+/// is what it was given.
+///
+/// This is the half of the old law that was never generalization. A `let`'s type
+/// comes from its value, which is inference in the direction §2 keeps — "a
+/// projection, a variable, and a literal infer" — and nothing here is left for a
+/// metavariable to hold open.
 #[test]
 fn an_inferred_type_travels_between_declarations() {
     let compilation = compile_text(
         "piece \"chained\" {
-            fn unchanged(value) { value }
+            fn unchanged<A>(value: A) -> A { value }
             let held = unchanged(c4);
             score { part p { voice v { c4/4 } } }
         }",
@@ -112,14 +141,14 @@ fn an_inferred_type_travels_between_declarations() {
     assert_eq!(item.signature, "let held: Pitch");
 }
 
-/// What a reader is shown for a declaration that wrote no type: the type it
-/// has, spelled the way an annotation spells it, with the quantified variable
-/// given a plain name rather than the unifier's number.
+/// What a reader is shown for a declaration, spelled the way an annotation
+/// spells it — the type parameter under the name its author gave it rather than
+/// a number from inside the checker.
 #[test]
-fn hover_shows_an_inferred_signature_in_written_spelling() {
+fn hover_shows_a_signature_in_written_spelling() {
     let compilation = compile_text(
         "piece \"hover\" {
-            fn unchanged(value) { value }
+            fn unchanged<A>(value: A) -> A { value }
             let held: Pitch = unchanged(c4);
             score { part p { voice v { c4/4 } } }
         }",
@@ -130,49 +159,48 @@ fn hover_shows_an_inferred_signature_in_written_spelling() {
         .iter()
         .find(|item| item.name == "unchanged")
         .expect("the piece documents its `fn`");
-    assert_eq!(item.signature, "fn unchanged(value: a) -> a");
-    assert_eq!(item.result.as_ref().map(|result| result.name.as_str()), Some("a"));
-    assert_eq!(item.parameters[0].ty.name, "a");
+    assert_eq!(item.signature, "fn unchanged<A>(value: A) -> A");
+    assert_eq!(item.result.as_ref().map(|result| result.name.as_str()), Some("A"));
+    assert_eq!(item.parameters[0].ty.name, "A");
 }
 
-/// Where the program really does not decide, inference says so at the place
-/// that is undecided rather than choosing a default. `None` alone holds
-/// nothing in particular, and no use fixes it.
+/// Where the program really does not decide, elaboration says so at the place
+/// that is undecided rather than choosing a default or binding a variable of its
+/// own.
+///
+/// A parameter with no type is the one place a writer can leave that hole: the
+/// body says nothing about `value`, no call is in scope to say it, and §2.1
+/// neither defaults nor generalizes. The report is at the binder, which is where
+/// the missing word would be written.
 #[test]
-fn an_undetermined_type_is_a_located_error() {
+fn a_parameter_with_no_type_is_a_located_error() {
     let compilation = compile_text(
         "piece \"ambiguous\" {
-            fn nothing() { None }
+            fn unchanged(value) { value }
+            let held = unchanged(c4);
             score { part p { voice v { c4/4 } } }
         }",
     );
-    assert!(compilation.has_errors(), "an undetermined type is an error");
+    assert!(compilation.has_errors(), "an undetermined binder type is an error");
     let reported = compilation
         .diagnostics()
         .iter()
-        .find(|diagnostic| diagnostic.message == "the program does not say what this holds")
-        .expect("the undetermined type is reported");
+        .find(|diagnostic| diagnostic.message.contains("could not determine the type of a binder"))
+        .unwrap_or_else(|| panic!("the undetermined binder is reported: {:?}", compilation.diagnostics()));
     assert!(
-        reported.labels.iter().any(|label| label.text.contains("Option<")),
-        "the label names the type that is still open: {reported:?}"
-    );
-    assert!(
-        reported
-            .help
-            .as_deref()
-            .is_some_and(|help| help.contains("annotate the declaration")),
-        "the error says what to write"
+        reported.labels.iter().any(|label| label.text == "here"),
+        "and it is reported at the binder that has no type: {reported:?}"
     );
 }
 
-/// An annotation is still accepted everywhere it was accepted before, and
-/// still constrains: writing a type inference would not have chosen is an
-/// error, not a silent widening.
+/// An annotation is still accepted everywhere it was accepted before, and still
+/// constrains: writing a type the value does not have is an error, not a silent
+/// widening.
 #[test]
 fn an_annotation_still_decides_against_inference() {
     let compilation = compile_text(
         "piece \"annotated\" {
-            fn unchanged(value) { value }
+            fn unchanged<A>(value: A) -> A { value }
             let held: Nat = unchanged(c4);
             score { part p { voice v { c4/4 } } }
         }",

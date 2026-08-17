@@ -19,7 +19,7 @@ piece "Named Answer" {
         }
     }
 
-    let subject: Music = music {
+    let subject: EventTrack<WrittenTime> = music {
         c4/4
         d4/4
         e4/4
@@ -27,7 +27,7 @@ piece "Named Answer" {
     };
 
     let imitation: Text = "at_the_fifth";
-    let answer: Music = transpose(answer_interval(imitation), subject);
+    let answer: EventTrack<WrittenTime> = transpose(answer_interval(imitation), subject);
 
     tempo 1/4 = 96;
     meter 4/4;

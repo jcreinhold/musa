@@ -149,6 +149,7 @@
 //   the package could find the same fault and could not point anywhere.
 
 library {
+
     // The highest of the three levels, and a promise the compiler checks where
     // this module is imported: this adapter reads a region, serves one
     // structured command against one, and writes a whole page out of a value.
@@ -596,10 +597,7 @@ library {
         match numbers {
             NoNumbers -> None,
             OneNumber(first, value) -> None,
-            TwoNumbers(first, count, second, unit) -> match ratio_div(count, unit) {
-                Ok(span) -> Some(span),
-                Err(why) -> None,
-            },
+            TwoNumbers(first, count, second, unit) -> Some(ratio_div(count, unit)),
         }
     }
 
@@ -750,10 +748,7 @@ library {
                 Reading(was, span, was_open, was_hanging, head, refusal) -> later with {
                     read = Reading(
                         items,
-                        match ratio_add(span, added) {
-                            Ok(total) -> total,
-                            Err(why) -> span,
-                        },
+                        ratio_add(span, added),
                         opens,
                         hangs,
                         head,
@@ -1329,7 +1324,7 @@ library {
                     node_at(region, spot),
                     "this tuplet states no ratio",
                 ),
-                TwoNumbers(first, played, second, against) -> match ratio_equal(played, 0) {
+                TwoNumbers(first, played, second, against) -> match ratio_equal(played, 0/1) {
                     true -> refusing(
                         later,
                         node_at(region, spot),
@@ -1350,13 +1345,7 @@ library {
                                 after_items(later),
                             ),
                             body,
-                            match ratio_div(against, played) {
-                                Ok(factor) -> match ratio_mul(span, factor) {
-                                    Ok(outside) -> outside,
-                                    Err(why) -> span,
-                                },
-                                Err(why) -> span,
-                            },
+                            ratio_mul(span, ratio_div(against, played)),
                             NoRefusal,
                         ),
                     },
@@ -1723,8 +1712,18 @@ library {
                 option_fold(
                     refusing(later, node_at(region, spot), "this is not a written value"),
                     fn (value: Ratio) -> Pending {
-                        match ratio_div(dotted_factor(dots), value) {
-                            Ok(span) -> holding_length(
+                        // `c4/0` is the one number that names no value, and the
+                        // guard is written rather than caught: dividing by zero
+                        // is a refusal the checker makes, and a refused adapter
+                        // says nothing about the note the author actually wrote.
+                        // The tuplet reader guards its own ratio the same way.
+                        match ratio_equal(value, 0/1) {
+                            true -> refusing(
+                                later,
+                                node_at(region, spot),
+                                "this is not a written value",
+                            ),
+                            false -> holding_length(
                                 region,
                                 spot,
                                 later,
@@ -1735,13 +1734,8 @@ library {
                                         spelling,
                                     ),
                                     dots,
-                                    span,
+                                    ratio_div(dotted_factor(dots), value),
                                 ),
-                            ),
-                            Err(why) -> refusing(
-                                later,
-                                node_at(region, spot),
-                                "this is not a written value",
                             ),
                         }
                     },

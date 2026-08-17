@@ -1,4 +1,5 @@
-//! The eight ways to build or transform an event track, as core builtins.
+//! The eight ways a program can build or transform an event track, and the
+//! three it cannot name, as core builtins.
 //!
 //! §5.8's *third* family. A track builtin is neither a δ-builtin nor a
 //! structural eliminator: `02-core-calculus.md` §5.8 gives it its own
@@ -49,7 +50,14 @@
 //! its own arguments. `play` *constructs*, and a source span is not something a
 //! `fn` pointer can invent, so its origin and its scope are arguments: the one
 //! thing a rule cannot compute is the thing the caller supplies, exactly as
-//! `instantiate_quote` takes the anchor it builds under.
+//! `instantiate_quote` takes the anchor it builds under. `instanced` takes one
+//! for the same reason and reads only its path: an expansion's identity is
+//! minted where the reading resolved it, and nothing here could derive it.
+//!
+//! `spliced` needs none, because a kernel quote's raw payloads were stamped
+//! where they were read (see [`crate::lower::kernel`]): a quote is a written
+//! form, so its span, its scope, and its splice step are all fixed before any
+//! material arrives.
 
 #[cfg(test)]
 mod laws;
@@ -85,15 +93,46 @@ pub(super) const SPELLINGS: [&str; 8] = [
     "play",
 ];
 
-/// The one operation this module registers that neither ownership table names.
+/// The four operations this module registers that neither ownership table
+/// names.
 ///
-/// [`super::rules::BEYOND`]'s reason, in a second place. `map_note_pitches` is
-/// §5.7's *controlled* transform: it applies a mapper to each written pitch and
-/// puts the answers back where they came from, and the control is exactly that a
-/// program cannot choose the places. `set_note_pitches` is the putting-back
-/// half, so a source word for it would be the control removed — it would let any
-/// list of pitches into any track's noteheads.
-pub(super) const TRACK_BEYOND: [&str; 1] = ["set_note_pitches"];
+/// [`super::rules::BEYOND`]'s reason, in a second place, and four times over
+/// for one idea: a program may not write the word that would let it say
+/// something false about where a fact came from.
+///
+/// `map_note_pitches` is §5.7's *controlled* transform: it applies a mapper to
+/// each written pitch and puts the answers back where they came from, and the
+/// control is exactly that a program cannot choose the places.
+/// `set_note_pitches` is the putting-back half, so a source word for it would be
+/// the control removed — it would let any list of pitches into any track's
+/// noteheads.
+///
+/// `instanced` is the same argument about provenance rather than about pitch.
+/// The expansion path it stamps is minted by the reading that resolved the site
+/// — a `make`'s structural address in [`crate::template`], or a `${…}`'s locus
+/// in [`crate::lower::kernel`] — and Origin view reads that path to tell a
+/// composer's notes from generated ones. A source word for it would let a
+/// program claim its notes were made by an expansion that never made them.
+///
+/// `spliced` is the third because the source already spells the whole operation,
+/// as `kernel EventTrack[WrittenTime, ScoreFact] { … }`. A row in either table
+/// would invent a second spelling for it — a *called* word, taking a term no
+/// expression can build and a list of material in an order only the reading
+/// knows. `instantiate_quote` is out of both tables for exactly this reason one
+/// stage up.
+///
+/// `scoped` is the fourth, and the one that makes reusable material *reusable*.
+/// A `fragment`, a `motif`, and a free `music { … }` are read at
+/// [`Scope::Piece`] because they have no voice of their own
+/// (`00-semantics.md` §3), so folding one into a voice has to say which voice it
+/// was folded into — and that cannot be done while reading, for `instanced`'s
+/// reason exactly: the facts do not exist until the term is evaluated, and the
+/// ones a function the body calls produced were read in another declaration
+/// entirely. A source word for it would let a program put its notes in another
+/// player's staff, which is the same false claim `set_note_pitches` and
+/// `instanced` exist to prevent, about place rather than about pitch or
+/// provenance.
+pub(super) const TRACK_BEYOND: [&str; 4] = ["set_note_pitches", "instanced", "spliced", "scoped"];
 
 /// The term naming an event track in written time.
 ///
@@ -102,6 +141,31 @@ pub(super) const TRACK_BEYOND: [&str; 1] = ["set_note_pitches"];
 /// is the same application `Duration ⟨written⟩` is.
 pub(super) fn track_type() -> Term {
     tagged_type("EventTrack", Coordinate::WrittenTime)
+}
+
+/// A kernel quote's term, at the one instantiation this compiler has.
+pub(super) type Quoted = musa_kernel::Term<musa_kernel::WrittenTime, ScoreFact>;
+
+/// A kernel quote's body as a literal's payload: the term, and the name each of
+/// its holes was given.
+///
+/// The two are one value because they are one fact. The names are minted by
+/// [`crate::lower::kernel`] while it substitutes the holes out of the text, and
+/// the *i*th of them is what the *i*th member of `spliced`'s list is bound to;
+/// a term carrying the names and a caller carrying them separately would be two
+/// copies of an order that has to agree.
+#[derive(Debug, PartialEq)]
+pub(super) struct Assembly {
+    /// The parsed term, with its raw payloads already stamped.
+    pub(super) term: Quoted,
+    /// The fresh name standing at each hole, in written order.
+    pub(super) holes: Vec<String>,
+}
+
+impl std::fmt::Display for Assembly {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(out, "kernel term with {} holes", self.holes.len())
+    }
 }
 
 /// An `Origin` as a literal's payload.
@@ -170,6 +234,19 @@ pub(super) fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
             PLAY,
         ),
         set_note_pitches(cx)?,
+        delta(TRACK_BEYOND[1], vec![plain_type("Origin"), track()], track(), INSTANCED),
+        delta(
+            TRACK_BEYOND[2],
+            vec![plain_type("KernelTerm"), super::applied(cx, "List", [track()])?],
+            track(),
+            SPLICED,
+        ),
+        delta(
+            TRACK_BEYOND[3],
+            vec![crate::prelude::constant(cx, "Scope")?, track()],
+            track(),
+            SCOPED,
+        ),
     ])
 }
 
@@ -236,7 +313,7 @@ fn rewritten(
     musa_kernel::track(track.duration(), occurrences).ok()
 }
 
-// ---- the seven rules ----
+// ---- the seven rules that reduce, and the three past both tables ----
 
 /// `transpose(interval, t)` — every written pitch raised, every other fact left
 /// where it is.
@@ -409,6 +486,134 @@ const PLAY: Rule = |arguments| {
         return Some(refused("the chord does not fit the length it was given"));
     };
     reduced(built(sounded))
+};
+
+/// `instanced(origin, t)` — every fact in `t` recorded as having been produced
+/// inside the expansion `origin` names.
+///
+/// The one rule that writes the *front* of an expansion path, and the reason an
+/// instance site needs a builtin at all rather than a reading that stamps as it
+/// walks. A template's body is a term; the facts it answers are made when that
+/// term is evaluated, and some of them come out of definitions elaborated long
+/// before any site made anything. Stamping while reading would reach the notes
+/// written inside the template body and miss every note a function it calls
+/// produced.
+///
+/// Only the path is read, and the other three fields of the origin are not an
+/// oversight: a fact keeps its own span and its own declaration because an
+/// instance does not relocate text. What an editor points at inside a template
+/// body is the line the author wrote, once, for every instance of it
+/// (`04-templates-and-modules.md` §1) — see [`crate::template`], whose expansion
+/// is a binding and never a rewrite.
+///
+/// In front rather than behind, which is why this cannot be [`rewritten`]:
+/// [`ExpansionStep::TemplateInstance`] is the *first* step of anything a `make`
+/// produced, and everything a transform appends happened inside the instance.
+/// Nested sites compose without knowing it — the inner `instanced` has already
+/// run by the time the outer one prepends.
+///
+/// A kernel quote's hole is the second caller and the same claim in different
+/// words: the material a `${…}` splices was produced inside that splice, so
+/// [`crate::lower::kernel`] hands it an origin whose path is one
+/// [`ExpansionStep::KernelSplice`] at the hole's locus. Two readings, one
+/// operation, because "these facts were made inside this expansion" is one
+/// thing to say.
+const INSTANCED: Rule = |arguments| {
+    let Datum::Lit(ref written) = *arguments.first()? else {
+        return None;
+    };
+    let path = &held::<Provenance>(written)?.0.expansion_path;
+    let track = track_of(arguments.get(1)?)?;
+    let occurrences = track
+        .occurrences()
+        .iter()
+        .map(|occurrence| {
+            let mut fact = occurrence.payload().clone();
+            fact.origin.expansion_path.splice(0..0, path.iter().cloned());
+            Occurrence::new(occurrence.span(), fact)
+        })
+        .collect();
+    reduced(built(musa_kernel::track(track.duration(), occurrences).ok()?))
+};
+
+/// `spliced(quote, material)` — the track a kernel quote assembles once its
+/// holes hold the material the host wrote in them.
+///
+/// The half of `01-surface.md` §7 that needs values, and the only half.
+/// [`crate::lower::kernel`] has already decided everything a quote can be wrong
+/// about — that it parses, that it settles nothing its use settles, that every
+/// `${…}` stands where material can, that it is closed — and has stamped the
+/// payloads it wrote raw. What is left is a substitution and an evaluation, and
+/// both need the material, which is a value.
+///
+/// A `let` per hole, first hole outermost, which is what the kernel's own
+/// sharing is: `Term::bind` names an evaluated track, and a name referenced
+/// three times in a quote is three placements of one elaboration rather than
+/// three re-readings of the expression the hole wrote. The names are the fresh
+/// ones the reading minted, so nothing in the quoted text can shadow one and no
+/// hole can capture another's material.
+///
+/// Nothing here can refuse. A term the reading checked is closed, and
+/// [`musa_kernel::evaluate`] is total on a closed term — `Term::duration`'s one
+/// error is a free name, which is the very thing `check` already rejected. The
+/// `None`s below are D2's: a datum of the wrong shape, or a list whose length
+/// disagrees with the term's holes, is this compiler's table being wrong rather
+/// than any program's.
+const SPLICED: Rule = |arguments| {
+    let Datum::Lit(ref quoted) = *arguments.first()? else {
+        return None;
+    };
+    let assembly = held::<Assembly>(quoted)?;
+    let material = items(arguments.get(1)?)?
+        .into_iter()
+        .map(track_of)
+        .collect::<Option<Vec<_>>>()?;
+    if material.len() != assembly.holes.len() {
+        return None;
+    }
+    let mut assembled = assembly.term.clone();
+    for (name, track) in assembly.holes.iter().zip(material).rev() {
+        assembled = musa_kernel::Term::bind(name.clone(), musa_kernel::Term::literal(track), assembled);
+    }
+    reduced(built(musa_kernel::evaluate(assembled)))
+};
+
+/// `scoped(scope, t)` — every fact in `t` that had no voice of its own placed in
+/// `scope`.
+///
+/// What makes reusable material reusable. A `fragment`, a `motif`, and a free
+/// `music { … }` are read at [`Scope::Piece`], because "usable at several
+/// places" is exactly the property of having no one place
+/// (`00-semantics.md` §3); folding one into a voice is what decides which voice
+/// its notes are played by, and the projection buckets by that scope. The
+/// replaced elaborator answered this by *expanding* the material at each use and
+/// constructing its facts in the reader's context. There is no reader here — the
+/// material is one value, evaluated once — so the question moves from
+/// construction to a relabelling, and this is it.
+///
+/// Only [`Scope::Piece`] is rewritten, which is what makes this idempotent and
+/// composable: a `use` inside a fragment relabels `Piece` to `Piece` and changes
+/// nothing, and the `use` in the voice above it then reaches the whole nesting
+/// at once. A fact that already names a part or a voice is left alone, and
+/// nothing reusable can carry one — [`crate::lower::notation::Reading`] refuses
+/// a `key`, a `meter`, a `tempo`, and a `clef` in material that is not placed,
+/// so the only piece-scoped facts a fragment can hold are the ones that belong
+/// to whoever plays it.
+const SCOPED: Rule = |arguments| {
+    let scope = scope_of(arguments.first()?)?;
+    let track = track_of(arguments.get(1)?)?;
+    let occurrences = track
+        .occurrences()
+        .iter()
+        .map(|occurrence| {
+            let mut fact = occurrence.payload().clone();
+            if fact.scope == Scope::Piece {
+                fact.scope = scope;
+            }
+            Occurrence::new(occurrence.span(), fact)
+        })
+        .collect();
+    reduced(built(musa_kernel::track(track.duration(), occurrences).ok()?))
 };
 
 /// The scope a `Scope` datum stands for.

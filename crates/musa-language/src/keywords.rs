@@ -185,7 +185,7 @@ static TRANSPOSE: KeywordDoc = doc!(
     "the same music, moved in pitch",
     "Transpose plays music moved by a written interval such as `P5` or `M3`; the block and function forms have \
      the same musical meaning. Supplying only the interval makes a reusable answer function.\n\n\
-     ```musa\nlet answer: Music -> Music = transpose(P5);\n```"
+     ```musa\nlet answer: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = transpose(P5);\n```"
 );
 static UP: KeywordDoc = doc!(
     "up",
@@ -210,12 +210,12 @@ static REST: KeywordDoc = doc!(
 );
 static REPEAT: KeywordDoc = doc!(
     "repeat",
-    "repeat music, or make a finite list",
+    "repeat music",
     "A repeat block plays its contents more than once: `repeat 4 { … }` is four passes through the same bars, \
-     written once. With `ending` blocks inside, the passes differ where the endings say they do. In expression \
-     position, `repeat(value, count)` is the finite value operation and returns a list of exactly `count` copies; \
-     it never creates an infinite stream.\n\n\
-     ```musa\nrepeat 2 { use verse(); }\nlet pedals: List<Bool> = repeat(true, 4);\n```"
+     written once. With `ending` blocks inside, the passes differ where the endings say they do. The word is a \
+     statement keyword and nothing else: the finite value operation that makes a list of `count` copies is \
+     `repeated(value, count)` in `std::list`, spelled apart because `fn repeat` does not parse.\n\n\
+     ```musa\nrepeat 2 { use verse(); }\nlet pedals: List<Bool> = repeated(true, 4);\n```"
 );
 static ASSERT: KeywordDoc = doc!(
     "assert",
@@ -298,28 +298,28 @@ static STRETCH: KeywordDoc = doc!(
     "the same music, at a different speed ratio",
     "Stretch plays music scaled in written time by an exact factor: `stretch 3/2 { … }` takes half again as \
      long. `stretch(3/2)` is the reusable function form with the same meaning.\n\n\
-     ```musa\nlet broaden: Music -> Music = stretch(3/2);\n```"
+     ```musa\nlet broaden: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = stretch(3/2);\n```"
 );
 static RETROGRADE: KeywordDoc = doc!(
     "retrograde",
     "the block, backwards",
     "Retrograde plays its music backwards — the last event first. The block and `retrograde(subject)` function \
      forms are the same classical transformation.\n\n\
-     ```musa\nlet answer: Music = retrograde(subject);\n```"
+     ```musa\nlet answer: EventTrack<WrittenTime> = retrograde(subject);\n```"
 );
 static INVERT: KeywordDoc = doc!(
     "invert",
     "the block, mirrored in pitch",
     "Invert mirrors music around an axis pitch: what went up goes down by the same written interval. \
      `invert(c5)` makes a reusable function; the block writes the axis with `around`.\n\n\
-     ```musa\nlet mirror: Music -> Music = invert(c5);\n```"
+     ```musa\nlet mirror: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = invert(c5);\n```"
 );
 
 static SHIFT_FUNCTION: KeywordDoc = doc!(
     "shift",
     "the same music, entering later",
     "`shift` delays music by an exact written duration without adding a rest event. Supply only the delay to make \
-     a reusable entrance function.\n\n```musa\nlet later: Music -> Music = shift(1/2);\n```"
+     a reusable entrance function.\n\n```musa\nlet later: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = shift(duration_of(1/2));\n```"
 );
 static TOGETHER_FUNCTION: KeywordDoc = doc!(
     "together",
@@ -530,13 +530,13 @@ static MUSIC: KeywordDoc = doc!(
     "music",
     "a notation-first music value",
     "A `music` block is an expression whose body reads like an ordinary voice: notes remain self-delimiting and reusable material is written with `use`.\n\n\
-     ```musa\nlet call: Music = music { c5/4 d5/4 };\n```"
+     ```musa\nlet call: EventTrack<WrittenTime> = music { c5/4 d5/4 };\n```"
 );
 static KERNEL: KeywordDoc = doc!(
     "kernel",
     "a quoted kernel composition expression",
-    "A `kernel` quote writes a composition term directly, with `${...}` splicing typed `Music` into it. What the quote guarantees is exact extent, closure, and payload typing; what it does not guarantee is that a surface claim made inside a hole still holds after the quote's own `shift`, `scale`, or `restrict` moved it.\n\n\
-     ```musa\nlet doubled: Music = kernel EventTrack[WrittenTime, ScoreFact] {\n    let s = ${subject} in together { s; shift by 1/2 s; }\n};\n```"
+    "A `kernel` quote writes a composition term directly, with `${...}` splicing typed `EventTrack<WrittenTime>` into it. What the quote guarantees is exact extent, closure, and payload typing; what it does not guarantee is that a surface claim made inside a hole still holds after the quote's own `shift`, `scale`, or `restrict` moved it.\n\n\
+     ```musa\nlet doubled: EventTrack<WrittenTime> = kernel EventTrack[WrittenTime, ScoreFact] {\n    let s = ${subject} in together { s; shift by 1/2 s; }\n};\n```"
 );
 static QUOTE: KeywordDoc = doc!(
     "quote",
@@ -685,10 +685,10 @@ static TEMPLATE: KeywordDoc = doc!(
     "template",
     "parameterize a piece or a voice",
     "`template piece study(k: Key) \"Study\" { ... }` writes a family of pieces rather than a piece. Parameters are \
-     ordinary typed values — a `Key`, a `Scale`, a `Music`, or a `Music -> Music` — and a template body reads them and \
+     ordinary typed values — a `Key`, a `Scale`, a `EventTrack<WrittenTime>`, or a `EventTrack<WrittenTime> -> EventTrack<WrittenTime>` — and a template body reads them and \
      the file's root, never the site that makes it. A template is not a value: nothing can pass one, return one, or \
      ask what is inside it.\n\n\
-     ```musa\ntemplate voice answer(subject: Music, transform: Music -> Music) {\n    use transform(subject);\n}\n```"
+     ```musa\ntemplate voice answer(subject: EventTrack<WrittenTime>, transform: EventTrack<WrittenTime> -> EventTrack<WrittenTime>) {\n    use transform(subject);\n}\n```"
 );
 static MAKE: KeywordDoc = doc!(
     "make",

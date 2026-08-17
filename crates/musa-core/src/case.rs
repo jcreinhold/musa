@@ -773,7 +773,15 @@ impl Tree<'_, '_> {
         for binder in rule.fields.iter() {
             let ty = Arc::new(eval(self.elaborator.meter(), &reading, &binder.ty)?);
             let value = inner.fresh_var(self.here, Arc::clone(&ty));
-            inner = inner.assume(Some(Arc::clone(&binder.name)), self.here, Arc::clone(&ty));
+            // Assumed without a name it can be *written*. The λ still carries
+            // the declaration's field name, because that is what a printed
+            // method should read as, but a name in scope is a name the author's
+            // body resolves against, and this one is not the author's: two
+            // matches on the same family would put the same declaration names
+            // in scope twice, and the inner one would silently shadow the outer
+            // row's binding of the same spelling. What a row may write is bound
+            // by [`Self::leaf`] from that row's own pattern.
+            inner = inner.assume(None, self.here, Arc::clone(&ty));
             reading = reading.push(value.clone());
             fields.push(Subject {
                 value,
@@ -782,23 +790,22 @@ impl Tree<'_, '_> {
             });
         }
         // The hypotheses come after every field, which is the order
-        // [`crate::family`] assembles the method type in.
-        //
-        // The λ binder is named after the *declaration's* field, because a method
-        // is one term serving every row. What a row's body may write is named
-        // after that row's own pattern instead, and [`Self::narrowed`] binds the
-        // two together — so `Succ k` gives `k#ih` and `Succ j` gives `j#ih` from
-        // the same method, and a `match` nested inside an arm cannot shadow an
-        // outer hypothesis except the way an author's own shadowing does.
+        // [`crate::family`] assembles the method type in. They are assumed
+        // without names for the reason the fields are: what a row's body may
+        // write is named after that row's own pattern, and [`Self::narrowed`]
+        // binds the two together — so `Succ k` gives `k#ih` and `Succ j` gives
+        // `j#ih` from the same method, and a `match` nested inside an arm
+        // cannot shadow an outer hypothesis except the way an author's own
+        // shadowing does.
         let mut hypotheses = Vec::with_capacity(rule.recursive.len());
         for (position, _) in rule.recursive.iter() {
             let position = usize::try_from(*position).unwrap_or(usize::MAX);
-            let (Some(field), Some(binder)) = (fields.get(position), rule.fields.get(position)) else {
+            let Some(field) = fields.get(position) else {
                 continue;
             };
             let ty = self.hypothesis(motives, field)?;
             let value = inner.fresh_var(self.here, Arc::clone(&ty));
-            inner = inner.assume(Some(hypothesis_name(&binder.name)), self.here, Arc::clone(&ty));
+            inner = inner.assume(None, self.here, Arc::clone(&ty));
             hypotheses.push((
                 position,
                 Subject {

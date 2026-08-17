@@ -6,26 +6,26 @@ right one is mostly a matter of noticing what varies.
 | What varies | Reach for |
 | --- | --- |
 | nothing — the same phrase, repeated | a `motif` |
-| a pitch, an interval, a duration | a `fn` returning `Music` |
+| a pitch, an interval, a duration | a `fn` returning `EventTrack<WrittenTime>` |
 | a whole declaration: a piece, a voice | a `template` |
 | a *bundle* of facts that must travel together | a `signature` and a `structure` |
 
 ## 1. Functions over music
 
-A function takes values and returns one. `Music` is an ordinary value, so a function can take music and return music.
-From `examples/canon-functions.musa`:
+A function takes values and returns one. `EventTrack<WrittenTime>` — a track of written events, which is what `music { …
+}` builds — is an ordinary value, so a function can take music and return music. From `examples/canon-functions.musa`:
 
 ```musa
-fn canon(subject: Music, answer: Music -> Music, gap: Duration<WrittenTime>) -> Music {
+fn canon(subject: EventTrack<WrittenTime>, answer: EventTrack<WrittenTime> -> EventTrack<WrittenTime>, gap: Duration<WrittenTime>) -> EventTrack<WrittenTime> {
     together(subject, shift(gap, answer(subject)))
 }
 ```
 
-`Music -> Music` is a function type, so `answer` is a transformation the caller supplies rather than one this function
-picked:
+`EventTrack<WrittenTime> -> EventTrack<WrittenTime>` is a function type, so `answer` is a transformation the caller
+supplies rather than one this function picked:
 
 ```musa
-let octave_answer: Music -> Music = fn (line: Music) -> Music { transpose(P8, line) };
+let octave_answer: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(P8, line) };
 ```
 
 That right-hand side is an **anonymous function**: a declaration's own words without its name. It is here because
@@ -43,17 +43,19 @@ use canon(subject, octave_answer, 1/2);
 Those three, plus `stretch` for renotating durations and `retrograde` for reversal, are the whole vocabulary — there is
 no fifth combinator hiding somewhere.
 
-Music values are *contextual*: they carry no key and no scale of their own, and take on whichever is in force where they
-are used. That is why `subject` in `examples/scale-context.musa` can be written once and mean two things at two sites,
-and it is a deliberate property rather than a convenience (`../00-semantics.md` §3).
+A track carries no key and no scale of its own. What a degree or a numeral inside it means is settled where the phrase
+is *written*, by the context in force there, so a phrase that reads two collections is written twice or written as a
+function of the collection it reads — `examples/scale-context.musa` shows both. A value that meant two things depending
+on where it was later used would be a value whose meaning its own text does not fix, and this language does not have
+one.
 
-Traversal is controlled rather than open. You cannot walk the events of a `Music` value and look at them; what you can
-do is name what each note's pitch becomes:
+Traversal is controlled rather than open. You cannot walk the events of a track and look at them; what you can do is
+name what each note's pitch becomes:
 
 ```musa
 fn pedal(_: Pitch) -> Pitch { c3 }
 
-fn harmonize(subject: Music, answer_pitch: Pitch -> Pitch) -> Music {
+fn harmonize(subject: EventTrack<WrittenTime>, answer_pitch: Pitch -> Pitch) -> EventTrack<WrittenTime> {
     together(subject, map_note_pitches(answer_pitch, subject))
 }
 ```
@@ -70,7 +72,7 @@ thing can be made more than once. From `examples/template-study.musa`:
 ```musa
 // A voice that answers a subject through whatever transformation it is
 // handed. Twice below: the same body, two instances, two identities.
-template voice answer(subject: Music, transform: Music -> Music) {
+template voice answer(subject: EventTrack<WrittenTime>, transform: EventTrack<WrittenTime> -> EventTrack<WrittenTime>) {
     use transform(subject);
 }
 ```
@@ -80,7 +82,7 @@ and a whole piece can be one:
 ```musa
 // The piece itself is the template. Its key and scale arrive as arguments,
 // so the study exists in whatever key it is made in.
-template piece study(k: Key, mode: Scale, subject: Music) "Study" {
+template piece study(k: Key, mode: Scale, subject: EventTrack<WrittenTime>) "Study" {
     meter 4/4;
     key k;
 ```
@@ -88,8 +90,8 @@ template piece study(k: Key, mode: Scale, subject: Music) "Study" {
 A template is instantiated with `make ... as ...`:
 
 ```musa
-make answer(subject, fn (line: Music) -> Music { transpose(P8, line) }) as upper;
-make answer(subject, fn (line: Music) -> Music { transpose(P15, line) }) as higher;
+make answer(subject, fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(P8, line) }) as upper;
+make answer(subject, fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(P15, line) }) as higher;
 ```
 
 Two rules make instances predictable.
@@ -128,7 +130,7 @@ A `template structure` is a function from structures to a structure. From `examp
 ```musa
 template structure Canon(C: TonalContext, gap: Duration<WrittenTime>): CanonMaterial {
     // The subject steps through whatever collection the context named.
-    let subject: Music = music {
+    let subject: EventTrack<WrittenTime> = music {
         in scale C.collection {
             c5/4
             d5/4
@@ -154,7 +156,7 @@ happens to define is private to `CMajor`. The same rule runs the other way:
 ```musa
 // Private. `CanonMaterial` does not list it, so nothing outside this
 // structure may name `MajorCanon.stretto` — which is what sealing means.
-let stretto: Music = together(subject, shift(1/2, answer(subject)));
+let stretto: EventTrack<WrittenTime> = together(subject, shift(duration_of(1/2), answer(subject)));
 ```
 
 This is also why the generated reference lists a structure's signature members and not the rest: a private member is not

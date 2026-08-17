@@ -103,6 +103,7 @@ mod rec;
 mod recheck;
 mod refuse;
 mod scope;
+mod show;
 mod storable;
 mod term;
 mod unify;
@@ -118,13 +119,14 @@ pub use crate::family::{Binder, Constant, Constructor, Declared, Group, canonica
 pub use crate::level::Level;
 pub use crate::meta::{Meta, MetaSource};
 pub use crate::origin::Origin;
-pub use crate::program::{Def, Definitions};
+pub use crate::program::{Def, Program};
 pub use crate::raw::{
-    Raw, RawArm, RawBinder, RawConstraint, RawConstructor, RawData, RawDefinition, RawFamily, RawField, RawImpl,
-    RawMethod, RawPattern, RawProgram, RawShape, RawTopLevel, RawTrait,
+    ARROW_BINDER, Raw, RawArm, RawBinder, RawConstraint, RawConstructor, RawData, RawDefinition, RawFamily, RawField,
+    RawImpl, RawMethod, RawPattern, RawProgram, RawShape, RawTopLevel, RawTrait,
 };
 pub use crate::recheck::well_typed;
 pub use crate::refuse::{ElabError, Mismatch, PathStep, Refusal};
+pub use crate::storable::requiring_storable;
 pub use crate::term::{DbLevel, Field, Index, Name, Plicity, Shape, Term};
 pub use crate::visibility::{ModuleId, Visibility};
 
@@ -158,19 +160,31 @@ pub fn declare(cx: &Cx, data: &RawData) -> Result<Arc<Group>, ElabError> {
     crate::declare::declare(cx, data)
 }
 
-/// Elaborate a document's top-level definitions, in context `cx`.
+/// Elaborate a document's top-level definitions and instances, in context `cx`.
 ///
 /// The other half of a document, and the same arrangement [`declare`] has for
 /// the first: one call takes all of them, because `02-core-calculus.md` §2.4
 /// lets a body name a declaration written later, and the result is brought into
 /// scope with [`Cx::defining`].
 ///
+/// Instances go through here rather than through a [`declare_impl`] loop of the
+/// caller's own, because they are the same question: an `impl`'s method bodies
+/// name the document's definitions, and a definition writing `x.m(y)` names an
+/// `impl`. Whichever were declared second would be invisible to the first, and
+/// `declare_impl` is left public only for a caller declaring an instance against
+/// a context that is already finished.
+///
 /// # Errors
 ///
-/// [`Refusal::DefinitionCycle`] for definitions that name each other,
+/// [`Refusal::DefinitionCycle`] for *definitions* that name each other, never
+/// for an instance: a definition reaches an instance only through a method
+/// spelling, which stands for "one of these" rather than for a particular one,
+/// and an edge the analysis guessed at is dropped rather than refused. A
+/// definition and an instance that genuinely need each other are refused where
+/// the need is written, as the call's [`Refusal::NoMethodForType`].
 /// [`Refusal::UntypedRecursion`] for a self-recursive definition that wrote no
-/// type, and otherwise as [`check`].
-pub fn declare_program(cx: &Cx, program: &RawProgram) -> Result<Arc<Definitions>, ElabError> {
+/// type, and otherwise as [`check`] and [`declare_impl`].
+pub fn declare_program(cx: &Cx, program: &RawProgram) -> Result<Arc<Program>, ElabError> {
     crate::program::declare_program(cx, program)
 }
 

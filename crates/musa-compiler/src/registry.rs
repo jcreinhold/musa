@@ -73,6 +73,25 @@
 #[cfg(test)]
 mod laws;
 mod machine;
+
+/// The name the registration for one primitive unit is spelled by.
+///
+/// Re-exported because [`crate::lower::values`] is the one reader outside this
+/// module: a written `primitive("scale", 1, c)` selects a signature, and the
+/// selection is a name. The module stays private — nothing else in it is a
+/// caller's business.
+pub(crate) use machine::unit_spelling;
+
+/// What a machine value is, read back: the ports its type decides, and the
+/// nodes its normal form describes.
+///
+/// Two names rather than one because a caller asks them in that order and for
+/// two different reasons. A machine's ports are settled by its *type*, so
+/// [`machine_ports`] is what says a definition is a machine at all — and it
+/// answers before the value has been normalized, which is what keeps a document
+/// of a hundred definitions from evaluating all of them to find the two that
+/// are machines.
+pub(crate) use machine::{is_step_tag, nodes as machine_nodes, ports as machine_ports};
 mod notation;
 mod rules;
 mod track;
@@ -288,7 +307,10 @@ pub(crate) fn owned() -> Result<Cx, ElabError> {
         cx = cx.declaring(&group);
     }
     let builtins = builtins(&cx)?;
-    Ok(cx.with_externs(Arc::new(Registry::new(bases, builtins)?)))
+    // `Eq` last, because an instance body *is* a δ-builtin's name: `impl
+    // Eq<Text>`'s `equal` is `text_equal` and nothing else, so the trait cannot
+    // be declared until the registry that resolves that name is the context's.
+    crate::prelude::equality(cx.with_externs(Arc::new(Registry::new(bases, builtins)?)))
 }
 
 /// A base type at `Type 0`.
@@ -303,6 +325,37 @@ fn plain(name: &'static str) -> Base {
 /// A base type indexed by the values of another base type.
 fn indexed(name: &'static str, index: &'static str) -> Base {
     Base::new(name, Term::pi(HERE, "index", plain(index).term(HERE), type0()))
+}
+
+/// A base type at `Type 0` whose representation this compiler guarantees is
+/// storable data.
+///
+/// `02-core-calculus.md` §1.2 lets a compiler-owned type be storable "only when
+/// its owner guarantees that its hidden representation contains no closure and
+/// supplies the exact encoding", and this crate is that owner: every domain
+/// spelled with this is a spelling and a number, is what a `ScoreFact` already
+/// carries across the kernel boundary, and is what `12-payload-admission.md`
+/// admits. The guarantee is written at the registration rather than in a second
+/// table, so a base type added without it is refused wherever storability is
+/// required — which is §1.2's own safe direction.
+///
+/// What is *not* spelled with it is as much of the statement: the phase-local
+/// types of §5.9 (`Syntax`, `Cat`, `TokenKind`, `Delimiter`, `NodePath`,
+/// `BindingPath`), the two quote bodies held whole (`Template`, `KernelTerm`),
+/// and `Coordinate`, which is an index nothing stores. A step tag is not
+/// storable either, and could not be: §2 gives it no values.
+fn storable(name: &'static str) -> Base {
+    plain(name).storable()
+}
+
+/// A storable base type indexed by the values of another.
+///
+/// The three tagged by a coordinate. §1.2 names two of them outright and gives
+/// the third conditionally — "`EventTrack C A` is storable when `A` is" — and
+/// this build has one payload, so the condition is discharged at the
+/// registration rather than carried as a constraint nothing could vary.
+fn storable_indexed(name: &'static str, index: &'static str) -> Base {
+    indexed(name, index).storable()
 }
 
 /// A base type indexed by a step tag and two ports, all three of them *types*.
@@ -338,16 +391,16 @@ fn bases() -> Vec<Base> {
         // is δ; `Text` is opaque printable text, which is what lets it be the
         // error half of a `Result` without giving a builtin a second way to say
         // what went wrong.
-        plain("Ratio"),
-        plain("Text"),
+        storable("Ratio"),
+        storable("Text"),
         // The index on the two tagged rationals: an enumeration in everything
         // but its representation, inert because nothing matches on it and a
         // literal because a `fn` rule can build one.
         plain("Coordinate"),
         // The two tagged rationals, indexed by their coordinate so that a
         // written beat and a number of seconds do not add.
-        indexed("Duration", "Coordinate"),
-        indexed("Position", "Coordinate"),
+        storable_indexed("Duration", "Coordinate"),
+        storable_indexed("Position", "Coordinate"),
         // §5.7's event track, indexed by the same coordinate for the same
         // reason. Inert by D1's test rather than by convenience: an
         // `EventTrack` is normalized, carries a versioned exact identity
@@ -365,7 +418,7 @@ fn bases() -> Vec<Base> {
         // literal per payload, and this compiler has one payload. The
         // registration fixes it, and a performance payload earns the second
         // index in the prompt that has a caller for it.
-        indexed("EventTrack", "Coordinate"),
+        storable_indexed("EventTrack", "Coordinate"),
         // Why a constructed fact exists. Inert for D1's reason and not for
         // convenience either: an origin is a source span, a definition span, a
         // declaration ordinal, and an expansion path, no program takes one
@@ -374,7 +427,7 @@ fn bases() -> Vec<Base> {
         // [`crate::prelude`]'s `Scope` is the other half of what §5.7 requires
         // a constructed fact to carry — declared rather than registered,
         // because a scope is finite data with three cases and nothing hidden.
-        plain("Origin"),
+        storable("Origin"),
         // `03-machine-calculus.md` §2's machine, and §1's registered unit.
         // Inert for the reason a base type usually is not: not because the
         // compiler owns a representation source may not take apart, but because
@@ -385,22 +438,23 @@ fn bases() -> Vec<Base> {
         //
         // Indexed by three types rather than by a literal, which is
         // [`ported`]'s argument. The eight forms over them are in [`machine`];
-        // `primitive` is the ninth row and is registered nowhere, because its
-        // ports come from a build-local registry rather than from a signature.
+        // `primitive` is the ninth row and is registered once per unit the
+        // build knows, because its ports come from a build-local registry
+        // rather than from a signature — see [`machine::primitives`].
         ported("Machine"),
         ported("Primitive"),
         // The written domains.
-        plain("Pitch"),
-        plain("PitchClass"),
-        plain("Interval"),
-        plain("Key"),
-        plain("Scale"),
-        plain("Degree"),
-        plain("Frame"),
-        plain("ChordClass"),
-        plain("Triad"),
-        plain("Roman"),
-        plain("Voicing"),
+        storable("Pitch"),
+        storable("PitchClass"),
+        storable("Interval"),
+        storable("Key"),
+        storable("Scale"),
+        storable("Degree"),
+        storable("Frame"),
+        storable("ChordClass"),
+        storable("Triad"),
+        storable("Roman"),
+        storable("Voicing"),
         // The notated domains: the payloads of [`crate::prelude`]'s `Fact`, and
         // registered for the reason the written domains above are. A composer
         // writes a clef, a dynamic, or a metronome mark; none of them is taken
@@ -411,21 +465,21 @@ fn bases() -> Vec<Base> {
         // D1's test is inertness and not size: a case that spelled a
         // `NotatedDuration` out of a `Ratio` and a `Text` would let a program
         // build one whose spelling and value disagree.
-        plain("Mode"),
-        plain("Clef"),
-        plain("NotatedDuration"),
-        plain("FreeDuration"),
-        plain("Mark"),
-        plain("MarkArgument"),
-        plain("DynamicMark"),
-        plain("Progress"),
-        plain("Metronome"),
-        plain("Ramp"),
-        plain("ChordSymbol"),
+        storable("Mode"),
+        storable("Clef"),
+        storable("NotatedDuration"),
+        storable("FreeDuration"),
+        storable("Mark"),
+        storable("MarkArgument"),
+        storable("DynamicMark"),
+        storable("Progress"),
+        storable("Metronome"),
+        storable("Ramp"),
+        storable("ChordSymbol"),
         // The twelve-tone domains.
-        plain("Pc12"),
-        plain("PcSet12"),
-        plain("Row12"),
+        storable("Pc12"),
+        storable("PcSet12"),
+        storable("Row12"),
         // The phase-local domains (§5.9). Registered beside the musical ones
         // rather than in a second registry, because a base type is a base type;
         // what §5.9 keeps separate is the *operations*, and those are two tables
@@ -445,7 +499,20 @@ fn bases() -> Vec<Base> {
         // a quote's body something a program could match on, and matching on it
         // is reading provenance, which §4's second rule forbids.
         plain("Template"),
+        // A kernel quote's term, held whole, for exactly [`plain("Template")`]'s
+        // reason one stage down: `01-surface.md` §7 gives it no eliminator and
+        // no spelling beyond the form that writes it, and two of them agree
+        // when the terms do. What a *declared* family of kernel terms would buy
+        // is a program that could match on the assembly a composer wrote by
+        // hand, which is reading provenance by another route.
+        plain("KernelTerm"),
     ]
+    .into_iter()
+    // The step tags this build's units count in, which are types with no
+    // values and therefore nothing a list written here could name: see
+    // [`machine::step_tags`].
+    .chain(machine::step_tags())
+    .collect()
 }
 
 /// The literal holding `value` at plain base type `name`, for a payload with no
@@ -460,15 +527,6 @@ where
     T: Clone + PartialEq + fmt::Debug + Send + Sync + 'static,
 {
     literal(plain_type(name), notation::Opaque(value))
-}
-
-/// The literal holding `written` at `Origin`.
-///
-/// Beside [`opaque_literal`] rather than through it because a [`track::Provenance`]
-/// is not opaque — it has a `Display` of its own, showing the span it points at
-/// — and reaching it needs one name rather than the wrapper's.
-pub(crate) fn provenance_literal(written: crate::origin::Origin) -> Literal {
-    literal(plain_type("Origin"), track::Provenance(written))
 }
 
 /// `nothing` — the empty track, as a literal a lowering can embed.
@@ -528,19 +586,15 @@ pub(crate) fn category_literal(cat: crate::syntax::Cat) -> Literal {
 /// The only way into `play`'s first argument, and the reason `play` has one: a
 /// source span, a definition span, and a `DeclarationId` are not things a `fn`
 /// pointer can invent, so the caller supplies them exactly as it supplies
-/// `instantiate_quote`'s anchor (`11-quotation.md` §3).
+/// `instantiate_quote`'s anchor (`11-quotation.md` §3). `instanced` takes one
+/// for the same reason and reads its expansion path.
 ///
 /// The payload is [`track::Provenance`] and cannot be anything else, for
 /// [`token_kind_literal`]'s reason: `play` reads its argument back at that type,
 /// so a literal built from a bare [`crate::origin::Origin`] would be an origin
-/// no rule can read. The wrapper is reachable only through this function.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "prompt 142 is where the source learns to spell `play`; until then the laws are the caller"
-    )
-)]
+/// no rule can read. The wrapper is reachable only through this function —
+/// beside [`opaque_literal`] rather than through it, because a `Provenance` has
+/// a `Display` of its own showing the span it points at.
 pub(crate) fn origin_literal(origin: crate::origin::Origin) -> Literal {
     literal(plain_type("Origin"), track::Provenance(origin))
 }
@@ -554,6 +608,17 @@ pub(crate) fn origin_literal(origin: crate::origin::Origin) -> Literal {
 /// so the counter cannot be recovered from the template and cannot be shared.
 pub(crate) fn template_literal(template: crate::syntax::Template, quotation: u32) -> Literal {
     literal(plain_type("Template"), rules::Quotation { template, quotation })
+}
+
+/// The literal one kernel quote is written as, at base type `KernelTerm`.
+///
+/// The hole names ride with the term because they are what `spliced` binds: the
+/// material arrives as a list, and the *i*th member is bound to the *i*th name.
+/// Recovering them from the term instead would mean searching it for names this
+/// compiler minted, which is the same fact stored twice and one place for the
+/// two to disagree.
+pub(crate) fn kernel_literal(term: track::Quoted, holes: Vec<String>) -> Literal {
+    literal(plain_type("KernelTerm"), track::Assembly { term, holes })
 }
 
 /// The literal one token kind is written as, at base type `TokenKind`.
@@ -833,6 +898,7 @@ fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
     built.extend(track::builtins(cx)?);
     built.extend(notation::builtins(cx)?);
     built.extend(machine::builtins(cx)?);
+    built.extend(machine::primitives(cx)?);
     Ok(built)
 }
 

@@ -3,7 +3,7 @@ use musa_compiler::{CompileOptions, SourceDocument, compile};
 #[test]
 fn contextual_music_crosses_the_expression_stage_at_use() {
     let source = SourceDocument::new(
-        "piece \"staged\" { let answer: Music = music { c4/4 d4/4 }; score { part p { voice v { use answer; } } } }",
+        "piece \"staged\" { let answer: EventTrack<WrittenTime> = music { c4/4 d4/4 }; score { part p { voice v { use answer; } } } }",
         "staged.musa",
     );
     let compilation = compile(&source, &CompileOptions::default());

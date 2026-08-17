@@ -124,7 +124,32 @@ pub(super) struct Reading {
     /// fold has no cursor to ask. One statement reads it and one writes it, so
     /// what it costs is a copy of two `u32`s per nesting.
     meter: crate::score::Meter,
+    /// How much an enclosing tuplet scales the durations written here.
+    ///
+    /// Read lexically like [`Reading::scale`] and [`Reading::meter`], and
+    /// *multiplied* rather than replaced, because tuplets nest: a triplet inside
+    /// a triplet scales by four ninths, not by two thirds announced twice.
+    /// Roadmap §2's "notated duration ≠ performed duration" one row before
+    /// performance — a triplet eighth is drawn as an eighth and lasts a twelfth,
+    /// so the value moves and the spelling stays.
+    tuplet: Ratio<i64>,
 }
+
+/// One name the document declares as material, and what a `mobile` asks of it.
+///
+/// The two questions are together because they are answered together — see
+/// [`Lowering::declared_material`] — and a caller that had the kind without the
+/// extent would have to walk the document a second time to place the fragment
+/// it just accepted.
+struct Reach {
+    /// Whether the name is a motif, a bar, or a fragment.
+    material: crate::resolve::Material,
+    /// How far the material reaches, as written.
+    reaches: Ratio<i64>,
+}
+
+/// The named material a document declares, by name.
+type Declarations = std::collections::HashMap<String, Reach>;
 
 impl Reading {
     /// The reading a free-standing `music { … }` value is read under.
@@ -138,6 +163,7 @@ impl Reading {
             scale: None,
             placed: false,
             meter: crate::score::Meter::default(),
+            tuplet: Ratio::ONE,
         }
     }
 
@@ -148,7 +174,44 @@ impl Reading {
             scale: None,
             placed: true,
             meter: crate::score::Meter::default(),
+            tuplet: Ratio::ONE,
         }
+    }
+
+    /// The same reading, inside a tuplet that scales durations by `factor`.
+    ///
+    /// Multiplies rather than replaces, which is the whole of what makes nested
+    /// tuplets compose: `tuplet 3/2 { tuplet 5/4 { … } }` scales by eight
+    /// fifteenths, and neither statement has to know the other is there.
+    #[expect(
+        clippy::arithmetic_side_effects,
+        reason = "`Ratio<i64>` multiplication is exact mathematical arithmetic rather than raw integer ops, the same argument `Lowering::lasts` makes below; scoped here because it is the only arithmetic on a reading"
+    )]
+    fn inside(self, factor: Ratio<i64>) -> Self {
+        Self {
+            tuplet: self.tuplet * factor,
+            ..self
+        }
+    }
+
+    /// How long a duration written under this reading lasts, and the freedom on
+    /// it.
+    ///
+    /// [`crate::score::NotatedDuration::scaled`] and not `stretched`: a tuplet
+    /// keeps the symbol the engraver draws and moves only what it sounds for, so
+    /// a triplet eighth stays spelled `1/8` and carries the value `1/12`. The
+    /// freedom moves with it because it is measured in the same time — `c5/4 to
+    /// 2/1` inside a triplet may be held to two thirds of a double whole, not to
+    /// a double whole.
+    fn lasting(
+        self,
+        written: (NotatedDuration, Option<crate::score::FreeDuration>),
+    ) -> (NotatedDuration, Option<crate::score::FreeDuration>) {
+        let (duration, free) = written;
+        if self.tuplet == Ratio::ONE {
+            return (duration, free);
+        }
+        (duration.scaled(self.tuplet), free.map(|held| held.scaled(self.tuplet)))
     }
 
     /// The same reading, counting steps in `scale`.
@@ -157,6 +220,22 @@ impl Reading {
             scale: Some(scale),
             ..self
         }
+    }
+
+    /// The same reading, counting steps in the collection `key` suggests.
+    ///
+    /// The other half of "an absent scale is never an implicit C major": an
+    /// absent scale under a *written* key is not absent and not implicit — the
+    /// author wrote `key c minor`, and C natural minor is the collection that
+    /// says. [`crate::scale::signature_scale`] is the same reading `key_scale`
+    /// gives a program that asks for it as a value, so the default a step takes
+    /// and the default a composer can name are one collection.
+    ///
+    /// A default and not a fact: an `in scale` inside overrides it by the
+    /// ordinary nesting, because [`Self::stepping`] is applied to the reading
+    /// this produced.
+    pub(super) fn keyed(self, key: crate::score::Key) -> Self {
+        self.stepping(Counting::Written(crate::scale::signature_scale(key)))
     }
 
     /// The same reading, under `meter`.
@@ -428,6 +507,43 @@ impl Lowering<'_> {
         })
     }
 
+    /// `bar refrain { … }` — the same `let` a fragment is, for the bar that has
+    /// a name.
+    ///
+    /// A named bar is a declaration written where it sounds. The braces sound in
+    /// place, which is [`Lowering::bar`]'s reading and states the measure claim;
+    /// the name binds the same passage for every `use` that answers it. The
+    /// caller has already read the name off the statement and hands it over —
+    /// there is nothing here to re-derive from the tokens.
+    ///
+    /// # Why the passage is read a second time rather than shared
+    ///
+    /// The two readings are at two scopes. What sounds between the braces is the
+    /// *voice's*, read under the meter and collection in force where it stands;
+    /// what a `use` plays is material relabelled to wherever it is played, which
+    /// is [`Lowering::music`]'s `Reading::free` and the same reading a fragment
+    /// gets. Sharing one term would have to pick one of them, and either choice
+    /// puts a fact in a scope its author did not write.
+    ///
+    /// # Why it is a definition and not a binder over the rest of the voice
+    ///
+    /// A binder introduced inside the fold is invisible to the *claims* the fold
+    /// raises. A [`Claimed`] holds `before` and `passage` as terms that
+    /// [`crate::document::Document::passage`] elaborates in the document's own
+    /// context, so a claim written after `use refrain;` — which
+    /// `examples/refrain.musa` writes — would carry a free `refrain` into a
+    /// context that never bound it. Making the bar a declaration is what the
+    /// replaced core did, and it is the reading under which one name-resolution
+    /// mechanism answers every use of the name, claims included.
+    pub(crate) fn named_bar(&mut self, node: &SyntaxNode, name: &str) -> Option<super::items::Definition> {
+        Some(super::items::Definition {
+            origin: self.origin(node),
+            name: musa_core::Name::from(name),
+            ty: None,
+            value: self.music(node)?,
+        })
+    }
+
     /// The left fold of `node`'s statements, seeded with `nothing`.
     ///
     /// Every statement is read even after one is refused, so a block with three
@@ -442,11 +558,27 @@ impl Lowering<'_> {
     /// at each nesting is what makes [`Claimed::before`] absolute by the time a
     /// voice is finished, without any block having to know where it stands.
     pub(super) fn notated(&mut self, node: &SyntaxNode, reading: Reading) -> Option<Raw> {
+        self.folded(node, statements(node), reading)
+    }
+
+    /// The same fold over a chosen subsequence of `node`'s statements.
+    ///
+    /// One caller passes anything but every statement: [`Lowering::repeat`]
+    /// leaves the endings out of the body, because a volta is not part of what
+    /// the passes have in common. `node` is still handed over, because the
+    /// origin a claim is placed against belongs to the block rather than to the
+    /// statements that survived a filter.
+    fn folded(
+        &mut self,
+        node: &SyntaxNode,
+        statements: impl Iterator<Item = SyntaxNode>,
+        reading: Reading,
+    ) -> Option<Raw> {
         let origin = self.origin(node);
-        let mut built = Raw::lit(origin, crate::registry::empty_track());
+        let mut placed = Placed::default();
         let mut whole = true;
         let mut reading = reading;
-        for statement in statements(node) {
+        for statement in statements {
             // A `meter` is in force from where it is written, so it is read
             // *before* the statement that wrote it is folded and stays in force
             // for everything after — which is the whole of what makes the
@@ -456,19 +588,34 @@ impl Lowering<'_> {
             {
                 reading = reading.metered(meter);
             }
+            // A `key` is read the same way and for the same reason: it is in
+            // force from where it is written, and what it puts in force for a
+            // `step` is the collection it suggests. Two statements read
+            // lexically, and both write only forward.
+            if let Some(written) = musa_language::ast::KeyStmt::cast(statement.clone())
+                && let Some(key) = crate::resolve::parse_key(&written)
+            {
+                reading = reading.keyed(key);
+            }
             let raised = self.claims.len();
             match self.statement(&statement, reading) {
                 Some(next) => {
-                    for claim in self.claims.iter_mut().skip(raised) {
-                        let inside = claim.before.clone();
-                        claim.before = applied(origin, Raw::var(origin, "follow"), [built.clone(), inside]);
+                    // Asked for only when a claim was raised: the prefix is a
+                    // term of its own, and building one per statement would
+                    // spend nodes on blocks that claim nothing.
+                    if self.claims.len() > raised {
+                        let before = placed.built(origin);
+                        for claim in self.claims.iter_mut().skip(raised) {
+                            let inside = claim.before.clone();
+                            claim.before = applied(origin, Raw::hosted(origin, "follow"), [before.clone(), inside]);
+                        }
                     }
-                    built = applied(origin, Raw::var(origin, "follow"), [built, next]);
+                    placed.place(origin, next);
                 }
                 None => whole = false,
             }
         }
-        whole.then_some(built)
+        whole.then(|| placed.built(origin))
     }
 
     /// One notation statement, as the track it denotes.
@@ -482,11 +629,11 @@ impl Lowering<'_> {
         match node.kind() {
             SyntaxKind::NoteStmt => self.note(node, origin, reading),
             SyntaxKind::RestStmt => {
-                let (duration, free) = self.notated_duration(node, span)?;
+                let (duration, free) = self.notated_duration(node, span, reading)?;
                 let held = duration.value.as_ratio();
                 let fact = applied(
                     origin,
-                    Raw::var(origin, "Fact.Rest"),
+                    Raw::hosted(origin, "Fact.Rest"),
                     [
                         payload(origin, "NotatedDuration", duration),
                         listed(origin, Vec::new()),
@@ -498,7 +645,7 @@ impl Lowering<'_> {
             SyntaxKind::ChordStmt => self.chord_statement(node, origin, reading),
             SyntaxKind::StackStmt => self.stack(node, origin, reading),
             SyntaxKind::GraceStmt => self.grace(node, origin, reading),
-            SyntaxKind::UseStmt => self.used(node),
+            SyntaxKind::UseStmt => self.used(node, origin, reading),
 
             // The transformation blocks: each is one track builtin applied to
             // the fold of its body, which is the whole of §3's "the function and
@@ -517,7 +664,7 @@ impl Lowering<'_> {
                 let body = self.notated(node, reading)?;
                 let call = applied(
                     origin,
-                    Raw::var(origin, "transpose"),
+                    Raw::hosted(origin, "transpose"),
                     [plain(origin, "Interval", interval), body],
                 );
                 Some(call)
@@ -538,14 +685,14 @@ impl Lowering<'_> {
                 let body = self.notated(node, reading)?;
                 let call = applied(
                     origin,
-                    Raw::var(origin, "stretch"),
+                    Raw::hosted(origin, "stretch"),
                     [plain(origin, "Ratio", factor), body],
                 );
                 Some(call)
             }
             SyntaxKind::RetrogradeStmt => {
                 let body = self.notated(node, reading)?;
-                Some(Raw::app(origin, Raw::var(origin, "retrograde"), body))
+                Some(Raw::app(origin, Raw::hosted(origin, "retrograde"), body))
             }
             SyntaxKind::InvertStmt => {
                 let text = musa_language::ast::InvertStmt::cast(node.clone())
@@ -558,12 +705,19 @@ impl Lowering<'_> {
                     );
                 };
                 let body = self.notated(node, reading)?;
-                let call = applied(origin, Raw::var(origin, "invert"), [plain(origin, "Pitch", axis), body]);
+                let call = applied(
+                    origin,
+                    Raw::hosted(origin, "invert"),
+                    [plain(origin, "Pitch", axis), body],
+                );
                 Some(call)
             }
 
             // `in scale` changes what a `step` reads and denotes its body. It is
-            // the one statement that contributes no fact of its own.
+            // the one statement that contributes no fact of its own — and the
+            // one that still has to *say* it was here, because a spelling like
+            // `eb4` is the same written pitch whether the source wrote it or a
+            // step arrived at it, and Origin view is where a reader asks which.
             SyntaxKind::InScaleStmt => {
                 let Some(written) = musa_language::ast::InScaleStmt::cast(node.clone()).and_then(|s| s.scale_expr())
                 else {
@@ -573,16 +727,17 @@ impl Lowering<'_> {
                     );
                 };
                 let scale = self.counting(&written)?;
-                self.notated(node, reading.stepping(scale))
+                let body = self.notated(node, reading.stepping(scale))?;
+                Some(self.under_scale(node, origin, &written, body))
             }
 
             // The region annotations: a fact over the span its body covers.
-            SyntaxKind::SlurStmt => self.region(node, origin, reading, Raw::var(origin, "Fact.Slur")),
+            SyntaxKind::SlurStmt => self.region(node, origin, reading, Raw::hosted(origin, "Fact.Slur")),
             SyntaxKind::PhraseStmt => {
                 let name = musa_language::ast::PhraseStmt::cast(node.clone())
                     .and_then(|stmt| stmt.name())
                     .unwrap_or_default();
-                let fact = Raw::app(origin, Raw::var(origin, "Fact.Phrase"), plain(origin, "Text", name));
+                let fact = Raw::app(origin, Raw::hosted(origin, "Fact.Phrase"), plain(origin, "Text", name));
                 self.region(node, origin, reading, fact)
             }
             SyntaxKind::TupletStmt => {
@@ -597,10 +752,18 @@ impl Lowering<'_> {
                 };
                 let fact = applied(
                     origin,
-                    Raw::var(origin, "Fact.Tuplet"),
+                    Raw::hosted(origin, "Fact.Tuplet"),
                     [whole(origin, u64::from(num)), whole(origin, u64::from(den))],
                 );
-                self.region(node, origin, reading, fact)
+                // The one region that changes what its body *means* rather than
+                // only annotating it: `tuplet 3/2` is three in the time of two,
+                // so an eighth written inside lasts a twelfth. The factor is put
+                // in the reading rather than applied to the finished track,
+                // because a track has no duration to rescale — the values are
+                // already literals in the facts by then — and because reading it
+                // lexically is what makes tuplets nest without either statement
+                // knowing about the other.
+                self.region(node, origin, reading.inside(tuplet_factor(node)), fact)
             }
             SyntaxKind::HairpinStmt => {
                 let statement = musa_language::ast::HairpinStmt::cast(node.clone())?;
@@ -611,7 +774,7 @@ impl Lowering<'_> {
                 let grows = if statement.grows() { "Bool.True" } else { "Bool.False" };
                 let fact = applied(
                     origin,
-                    Raw::var(origin, "Fact.Hairpin"),
+                    Raw::hosted(origin, "Fact.Hairpin"),
                     [
                         Raw::var(origin, grows),
                         payload(origin, "DynamicMark", target),
@@ -639,7 +802,7 @@ impl Lowering<'_> {
                 };
                 let fact = Raw::app(
                     origin,
-                    Raw::var(origin, "Fact.Dynamic"),
+                    Raw::hosted(origin, "Fact.Dynamic"),
                     payload(origin, "DynamicMark", mark),
                 );
                 Some(self.sounded(origin, reading, fact, Ratio::ZERO))
@@ -648,7 +811,7 @@ impl Lowering<'_> {
                 let name = musa_language::ast::SectionStmt::cast(node.clone())
                     .and_then(|stmt| stmt.name())
                     .unwrap_or_default();
-                let fact = Raw::app(origin, Raw::var(origin, "Fact.Section"), plain(origin, "Text", name));
+                let fact = Raw::app(origin, Raw::hosted(origin, "Fact.Section"), plain(origin, "Text", name));
                 Some(self.sounded(origin, reading, fact, Ratio::ZERO))
             }
             SyntaxKind::HarmonyStmt => {
@@ -664,7 +827,7 @@ impl Lowering<'_> {
                 };
                 let fact = Raw::app(
                     origin,
-                    Raw::var(origin, "Fact.Harmony"),
+                    Raw::hosted(origin, "Fact.Harmony"),
                     payload(origin, "ChordSymbol", symbol),
                 );
                 Some(self.sounded(origin, reading, fact, Ratio::ZERO))
@@ -698,11 +861,11 @@ impl Lowering<'_> {
         let statement = musa_language::ast::NoteStmt::cast(node.clone())?;
         let span = crate::resolve::trimmed_span(node);
         let pitch = self.pitch_term(&statement, node, origin, reading)?;
-        let (duration, free) = self.notated_duration(node, span)?;
+        let (duration, free) = self.notated_duration(node, span, reading)?;
         let held = duration.value.as_ratio();
         let fact = applied(
             origin,
-            Raw::var(origin, "Fact.Note"),
+            Raw::hosted(origin, "Fact.Note"),
             [
                 pitch,
                 payload(origin, "NotatedDuration", duration),
@@ -710,7 +873,11 @@ impl Lowering<'_> {
                 optional(origin, "FreeDuration", free),
             ],
         );
-        Some(self.sounded(origin, reading, fact, held))
+        Some(continuing(
+            origin,
+            statement.tied(),
+            self.sounded(origin, reading, fact, held),
+        ))
     }
 
     /// `[c4 e4 g4]/2` — the written pitches sounding together.
@@ -725,7 +892,7 @@ impl Lowering<'_> {
     fn chord_statement(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
         let statement = musa_language::ast::ChordStmt::cast(node.clone())?;
         let span = crate::resolve::trimmed_span(node);
-        let (duration, free) = self.notated_duration(node, span)?;
+        let (duration, free) = self.notated_duration(node, span, reading)?;
         let held = duration.value.as_ratio();
         let articulations = self.articulations(origin, &statement.articulations(), span);
         let written = statement.pitches();
@@ -743,7 +910,7 @@ impl Lowering<'_> {
             };
             let fact = applied(
                 origin,
-                Raw::var(origin, "Fact.Note"),
+                Raw::hosted(origin, "Fact.Note"),
                 [
                     plain(origin, "Pitch", pitch),
                     payload(origin, "NotatedDuration", duration.clone()),
@@ -754,10 +921,13 @@ impl Lowering<'_> {
             let one = self.sounded(origin, reading, fact, held);
             sounding = Some(match sounding {
                 None => one,
-                Some(built) => applied(origin, Raw::var(origin, "together"), [built, one]),
+                Some(built) => applied(origin, Raw::hosted(origin, "together"), [built, one]),
             });
         }
-        sounding
+        // Outside the `together` and not on each note, because a chord's `~` is
+        // written once and is about the chord: marking the notes separately
+        // would say the same thing as many times as there are pitches.
+        sounding.map(|track| continuing(origin, statement.tied(), track))
     }
 
     /// `stack c4 major7/2` — a chord class voiced from a written bass.
@@ -770,6 +940,18 @@ impl Lowering<'_> {
         let span = crate::resolve::trimmed_span(node);
         let text = statement.root().unwrap_or_default();
         let Some(bass) = crate::WrittenPitch::parse(&text) else {
+            // A pitch class is refused with its own sentence rather than the
+            // generic one. `stack c major7` is not a typo for a pitch: it names
+            // a class, and the answer is that stacking sounds notes and a class
+            // chooses no octave. Supplying one would be Musa deciding a
+            // register the composer did not write.
+            if statement.root_is_class() {
+                return self.refuse(
+                    Diagnostic::error(Code::NotAValue, "a stacked chord needs a register")
+                        .at(span, "expected a written pitch here")
+                        .note("`stack c4 major7/2` sounds notes, and a pitch class chooses no octave"),
+                );
+            }
             return self.refuse(Self::not_a_pitch(&text, span));
         };
         let word = statement.chord_type().unwrap_or_default();
@@ -780,7 +962,7 @@ impl Lowering<'_> {
                     .note("a chord type is the content; the symbol written above the staff is a separate annotation"),
             );
         };
-        let (duration, _) = self.notated_duration(node, span)?;
+        let (duration, _) = self.notated_duration(node, span, reading)?;
         let class = crate::chord::ChordClass::new(bass.pitch_class(), kind);
         let Ok(voicing) = crate::chord::Voicing::close_position(class, bass) else {
             return self.refuse(
@@ -790,7 +972,7 @@ impl Lowering<'_> {
         };
         let call = applied(
             origin,
-            Raw::var(origin, "play"),
+            Raw::hosted(origin, "play"),
             [
                 self.provenance(origin, span),
                 scope_of(origin, reading.scope),
@@ -826,7 +1008,7 @@ impl Lowering<'_> {
             let at = self.origin(note.syntax());
             let fact = applied(
                 at,
-                Raw::var(at, "Fact.Grace"),
+                Raw::hosted(at, "Fact.Grace"),
                 [
                     plain(at, "Pitch", pitch),
                     self.articulations(at, &note.articulations(), span),
@@ -834,7 +1016,7 @@ impl Lowering<'_> {
                 ],
             );
             let one = self.sounded(at, reading, fact, Ratio::ZERO);
-            built = applied(origin, Raw::var(origin, "follow"), [built, one]);
+            built = applied(origin, Raw::hosted(origin, "follow"), [built, one]);
         }
         Some(built)
     }
@@ -868,10 +1050,10 @@ impl Lowering<'_> {
         });
         let fact = applied(
             origin,
-            Raw::var(origin, "Fact.Mark"),
+            Raw::hosted(origin, "Fact.Mark"),
             [
-                payload(origin, "Mark", mark),
-                optional(origin, "MarkArgument", argument),
+                plain(origin, "Mark", mark),
+                maybe(origin, argument.map(|held| plain(origin, "MarkArgument", held))),
             ],
         );
         if statement.has_block() {
@@ -881,52 +1063,238 @@ impl Lowering<'_> {
         }
     }
 
-    /// `repeat 2 { … }` and `repeat 4 to 16 { … }`.
+    /// `repeat 2 { … }` and `repeat 4 to 16 { … }` — every pass, written out,
+    /// under one fact that says it was written once.
     ///
-    /// The fact and the body, not the body expanded. A repeat over its passes is
-    /// what the timeline holds and the page prints once between barlines; which
-    /// pass a performance takes is a *reading* of the fact, and readings are not
-    /// this module's (roadmap §2's own example of the layer table).
+    /// # Why the passes are folded rather than left to a reading
+    ///
+    /// `../../../rules/kernel/06-surface-elaboration.md` §2 makes `repeat n { … }`
+    /// "an HIR-level `follow` of `n` evaluations", each iteration's occurrences
+    /// carrying a [`crate::origin::ExpansionStep::RepeatIteration`] step. That is
+    /// not a convenience: a timeline holding one pass is a *different piece of
+    /// music* — it is half a bar long where the piece is a bar and a half — and
+    /// every consumer that measures rather than draws would read the short one.
+    /// [`crate::project`]'s own reader says so out loud: it takes a repeat's body
+    /// to end one pass in, `(end − start) / times`, which is an arithmetic
+    /// identity on the unrolled span and nonsense on a folded one.
+    ///
+    /// The page still prints `|:` `:|` rather than three copies, and that is what
+    /// the `Fact.Repeat` region over the whole is for — one statement, two
+    /// projections, roadmap §2's own example. What the layer table forbids is
+    /// letting the *drawing* decide how long the music is.
+    ///
+    /// # Why the body is bound rather than copied
+    ///
+    /// One `let` per repeat, referenced once per pass. The passes differ only in
+    /// the expansion step stamped on them, so a term written out `n` times would
+    /// be `n` copies of one reading for the evaluator to walk — §06's "Sharing
+    /// and provenance" is exactly this, and the mark on each reference is what
+    /// tells the passes apart (T6).
+    ///
+    /// # The ranged form
+    ///
+    /// `repeat 4 to 16` is the piece leaving the count to the performance, and it
+    /// is decided *here*, before a term exists. Everything below this line is the
+    /// ordinary exact repeat, which is the whole of
+    /// `../../../rules/kernel/11-realization.md`'s design in one place.
     fn repeat(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
         let statement = musa_language::ast::RepeatStmt::cast(node.clone())?;
         let span = crate::resolve::trimmed_span(node);
-        let text = statement.count().unwrap_or_default();
-        let (times, range) = match text.split_once(" to ") {
-            Some((least, most)) => {
-                let (Some(least), Some(most)) = (count_of(least), count_of(most)) else {
-                    return self.refuse(Self::not_a_count(&text, span));
-                };
-                (least, Some((least, most)))
-            }
-            None => {
-                let Some(times) = count_of(&text) else {
-                    return self.refuse(Self::not_a_count(&text, span));
-                };
-                (times, None)
-            }
-        };
+        let (times, range) = self.passes(&statement, span)?;
+        let brackets = self.brackets(&statement, times);
+        // A repeat nobody plays is silence, and saying so here keeps every
+        // arithmetic below over a positive count.
+        if times == 0 {
+            return Some(Raw::lit(origin, crate::registry::empty_track()));
+        }
+        // Folded once each, before any pass is built: a body read `times` over
+        // would report every diagnostic inside it `times` over, and speak every
+        // name it uses that many times.
+        let body = self.folded(node, statements(node).filter(is_not_an_ending), reading);
+        let played: Option<Vec<Raw>> = brackets
+            .iter()
+            .map(|bracket| self.notated(bracket.syntax(), reading))
+            .collect();
+        let (body, played) = (body?, played?);
+        let ending_extents: Vec<Ratio<i64>> = brackets.iter().map(|held| self.extent(held.syntax())).collect();
+        let over = spanned(
+            self.reached(statements(node).filter(is_not_an_ending)),
+            &ending_extents,
+            times,
+        );
+        let body_name = self.mint("pass");
+        let ending_names: Vec<String> = (0..brackets.len()).map(|_| self.mint("ending")).collect();
+
+        let mut passes = Vec::with_capacity(times as usize);
+        for iteration in 0..times {
+            let taken = self.expanded(origin, span, iteration, Raw::var(origin, body_name.clone()));
+            passes.push(taken);
+            // Fewer endings than passes is legal: the last one covers the rest,
+            // which is what `1.–3.` means on a volta bracket.
+            let Some(index) = last_at_most(iteration, ending_names.len()) else {
+                continue;
+            };
+            let Some(name) = ending_names.get(index) else {
+                continue;
+            };
+            let bracket = u32::try_from(index.saturating_add(1)).unwrap_or(u32::MAX);
+            let fact = applied(
+                origin,
+                Raw::hosted(origin, "Fact.Ending"),
+                [
+                    whole(origin, u64::from(bracket)),
+                    whole(origin, u64::from(iteration.saturating_add(1))),
+                ],
+            );
+            let marker = self.sounded(
+                origin,
+                reading,
+                fact,
+                ending_extents.get(index).copied().unwrap_or_default(),
+            );
+            let taken = self.expanded(origin, span, iteration, Raw::var(origin, name.clone()));
+            passes.push(applied(origin, Raw::hosted(origin, "together"), [marker, taken]));
+        }
+
         let range = range.map(|(least, most)| {
             applied(
                 origin,
-                Raw::var(origin, "Pair.Both"),
+                Raw::hosted(origin, "Pair.Both"),
                 [whole(origin, u64::from(least)), whole(origin, u64::from(most))],
             )
         });
         let fact = applied(
             origin,
-            Raw::var(origin, "Fact.Repeat"),
+            Raw::hosted(origin, "Fact.Repeat"),
             [whole(origin, u64::from(times)), maybe(origin, range)],
         );
-        self.region(node, origin, reading, fact)
+        let marker = self.sounded(origin, reading, fact, over);
+        let whole_repeat = applied(
+            origin,
+            Raw::hosted(origin, "together"),
+            [marker, followed(origin, passes)],
+        );
+        // The bindings outermost, so a reference inside any pass is in scope:
+        // the body first, then the endings in the order they were written.
+        let bound = ending_names
+            .into_iter()
+            .zip(played)
+            .rev()
+            .fold(whole_repeat, |inner, (name, ending)| {
+                Raw::bind(origin, name, ending, inner)
+            });
+        Some(Raw::bind(origin, body_name, body, bound))
     }
 
-    /// `ending 1 { … }`.
+    /// How many times a repeat plays, and the range it was written with.
     ///
-    /// Read wherever it stands, and not refused for standing outside a `repeat`.
-    /// The old checker refused that because it *expanded* repeats and an ending
-    /// with no pass to belong to had nowhere to go; this module writes the fact
-    /// and lets the pass that reads passes decide, which is the same move as
-    /// leaving a repeat unexpanded above.
+    /// The count is asked once and remembered, because asking the realization
+    /// twice would number two decision sites where the piece wrote one — see
+    /// [`crate::lower::Lowering::counts`].
+    fn passes(
+        &mut self,
+        statement: &musa_language::ast::RepeatStmt,
+        span: SourceSpan,
+    ) -> Option<(u32, Option<(u32, u32)>)> {
+        let text = statement.count().unwrap_or_default();
+        let Some(least) = count_of(&text) else {
+            return self.refuse(Self::not_a_count(&text, span));
+        };
+        let Some(written) = statement.most() else {
+            return Some((least, None));
+        };
+        let Some(most) = count_of(&written).filter(|most| *most >= least) else {
+            return self.refuse(
+                Diagnostic::error(Code::NotAValue, "a repeat range counts upwards")
+                    .at(span, format!("`{least} to {}` never happens", written.trim()))
+                    .help("write the smaller number first"),
+            );
+        };
+        let count = self.resolver.decide_count(&self.choice, least, most, span).1;
+        self.counts.insert(span, count);
+        Some((count, Some((least, most))))
+    }
+
+    /// The endings a repeat writes, in order, with what is wrong with them said.
+    ///
+    /// Three complaints and one answer: the endings are returned whatever was
+    /// said about them, because a mis-numbered volta is still a volta and
+    /// dropping it would answer a shorter piece than the one written.
+    fn brackets(
+        &mut self,
+        statement: &musa_language::ast::RepeatStmt,
+        times: u32,
+    ) -> Vec<musa_language::ast::EndingStmt> {
+        let mut endings: Vec<musa_language::ast::EndingStmt> = Vec::new();
+        // The last ending written so far, until something that is not an ending
+        // follows it — which is the one thing about their placement that is
+        // wrong: every pass plays the body and then its ending, so music after
+        // an ending belongs to no pass.
+        let mut open: Option<musa_language::ast::EndingStmt> = None;
+        for child in statements(statement.syntax()) {
+            let Some(written) = musa_language::ast::EndingStmt::cast(child.clone()) else {
+                if let Some(before) = open.take() {
+                    self.refuse::<()>(
+                        Diagnostic::error(Code::Misplaced, "an ending is the last thing in a repeat")
+                            .at(
+                                crate::resolve::trimmed_span(before.syntax()),
+                                "music is written after this",
+                            )
+                            .help("move the endings below everything the passes have in common")
+                            .note("every pass plays the body, then its ending, so the body comes first"),
+                    );
+                }
+                continue;
+            };
+            let at = crate::resolve::token_span(written.syntax(), SyntaxKind::Integer)
+                .unwrap_or_else(|| crate::resolve::trimmed_span(written.syntax()));
+            let expected = u32::try_from(endings.len().saturating_add(1)).unwrap_or(u32::MAX);
+            let numbered = written.number().and_then(|text| count_of(&text)).unwrap_or_default();
+            if numbered != expected {
+                self.refuse::<()>(
+                    Diagnostic::error(
+                        Code::Misplaced,
+                        format!("this ending is pass {expected}, not pass {numbered}"),
+                    )
+                    .at(at, format!("expected `ending {expected}`"))
+                    .help("number the endings from 1, in the order they are played"),
+                );
+            }
+            if expected > times {
+                self.refuse::<()>(
+                    Diagnostic::error(Code::Misplaced, format!("this repeat never reaches pass {expected}"))
+                        .at(at, "no pass plays this")
+                        .help(format!("write `repeat {expected}`, or delete this ending")),
+                );
+            }
+            open = Some(written.clone());
+            endings.push(written);
+        }
+        endings
+    }
+
+    /// `track`, recorded as the `iteration`-th time through a repeat.
+    ///
+    /// The step is stamped by `instanced` rather than while reading, for
+    /// [`Lowering::used`]'s documented reason: the facts do not exist until the
+    /// term is evaluated, and one binding is referenced by every pass.
+    fn expanded(&self, origin: Origin, span: SourceSpan, iteration: u32, track: Raw) -> Raw {
+        let named = crate::lower::expansion(span, crate::origin::ExpansionStep::RepeatIteration(iteration));
+        applied(
+            origin,
+            Raw::hosted(origin, "instanced"),
+            [Raw::lit(origin, crate::registry::origin_literal(named)), track],
+        )
+    }
+
+    /// `ending 1 { … }` standing outside a repeat.
+    ///
+    /// A repeat reads its own endings — [`Lowering::repeat`] has to, since which
+    /// passes a bracket covers is not a property of the bracket — so what reaches
+    /// here is an ending with no repeat above it. It is read where it stands
+    /// rather than refused: the old checker refused it because it *expanded*
+    /// repeats and an ending with no pass to belong to had nowhere to go, and the
+    /// fact this writes says which bracket it is and that it was played once.
     fn ending(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
         let statement = musa_language::ast::EndingStmt::cast(node.clone())?;
         let span = crate::resolve::trimmed_span(node);
@@ -936,7 +1304,7 @@ impl Lowering<'_> {
         };
         let fact = applied(
             origin,
-            Raw::var(origin, "Fact.Ending"),
+            Raw::hosted(origin, "Fact.Ending"),
             [whole(origin, u64::from(bracket)), whole(origin, u64::from(bracket))],
         );
         self.region(node, origin, reading, fact)
@@ -1192,49 +1560,248 @@ impl Lowering<'_> {
         let closed = self.sounded_at(origin, crate::Scope::Piece, metered(origin, reading.meter), Ratio::ZERO);
         Some(applied(
             origin,
-            Raw::var(origin, "follow"),
-            [applied(origin, Raw::var(origin, "follow"), [opened, body]), closed],
+            Raw::hosted(origin, "follow"),
+            [applied(origin, Raw::hosted(origin, "follow"), [opened, body]), closed],
         ))
     }
 
-    /// `mobile { a; b; c; }` — the fragments as written.
+    /// `mobile { a; b; c; }` — its fragments in an order the performance chose.
     ///
-    /// The order this performance chose is empty here, for the reason the repeat
-    /// count is the written one: choosing is a reading, and a fragment usable at
-    /// several places cannot have chosen already.
+    /// The mobile rule of `docs/rules/kernel/11-realization.md`, which is the
+    /// repeat rule again: the timeline holds the fragments *in the order they
+    /// are played*, and one region fact carries the instruction the page prints
+    /// over them. A timeline that held them as written and left the order to a
+    /// later stage would be a timeline nothing downstream could measure — the
+    /// same argument [`Lowering::repeat`] makes for unrolling.
     fn mobile(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
         let statement = musa_language::ast::MobileStmt::cast(node.clone())?;
-        let fragments = statement
-            .fragments()
-            .into_iter()
-            .map(|name| plain(origin, "Text", name))
-            .collect();
+        let span = crate::resolve::trimmed_span(node);
+        let names = statement.fragments();
+        // One fragment in any order is the fragment. The refusal is the useful
+        // part: a `mobile` with one name is almost always a half-finished edit.
+        if names.len() < 2 {
+            return self.refuse(
+                Diagnostic::error(Code::NotAValue, "a mobile arranges at least two fragments")
+                    .at(span, format!("this one lists {}", names.len()))
+                    .help("write the fragment out instead, or add the ones it is arranged with"),
+            );
+        }
+        let declared = self.declared_material(node);
+        let tokens = statement.fragment_tokens();
+        let order = self.resolver.decide_order(&self.choice, &names, span);
+        let mut played = Vec::with_capacity(order.len());
+        let mut over = Ratio::ZERO;
+        // Every name is read even after one is refused: a mobile listing two
+        // motifs is two mistakes, and stopping at the first would hide the
+        // second behind a recompile.
+        let mut arranged = true;
+        for index in &order {
+            let Some(name) = names.get(*index as usize) else {
+                continue;
+            };
+            // The list and its tokens are read off the same tokens, so they
+            // cannot disagree about which span this name is.
+            let at = tokens.get(*index as usize).map_or(span, crate::resolve::source_span_of);
+            let Some(track) = self.arranged(origin, reading, &declared, name, span, at) else {
+                arranged = false;
+                continue;
+            };
+            over += declared.get(name.as_str()).map_or(Ratio::ZERO, |held| held.reaches);
+            played.push(track);
+        }
+        if !arranged {
+            return None;
+        }
         let fact = applied(
             origin,
-            Raw::var(origin, "Fact.Mobile"),
-            [listed(origin, fragments), listed(origin, Vec::new())],
+            Raw::hosted(origin, "Fact.Mobile"),
+            [
+                listed(
+                    origin,
+                    names.into_iter().map(|name| plain(origin, "Text", name)).collect(),
+                ),
+                listed(
+                    origin,
+                    order.iter().map(|index| whole(origin, u64::from(*index))).collect(),
+                ),
+            ],
         );
-        self.region(node, origin, reading, fact)
+        let marker = self.sounded(origin, reading, fact, over);
+        Some(applied(
+            origin,
+            Raw::hosted(origin, "together"),
+            [marker, followed(origin, played)],
+        ))
+    }
+
+    /// One fragment of a mobile, by name, against what the document declares.
+    ///
+    /// A mobile arranges *fragments* and nothing else: a motif takes arguments
+    /// and a bar is a measure, and neither is material a performance is invited
+    /// to reorder. The refusal names what was found, so the mistake is one
+    /// sentence rather than a type error one layer down.
+    ///
+    /// What comes back is what [`Lowering::used`] builds for `use f;`, because
+    /// a name in a mobile's list *is* a use of that fragment — played here, in
+    /// this voice, and recorded as an expansion so Origin view can say where a
+    /// note came from.
+    ///
+    /// `declared` is handed in rather than looked up. It used to be
+    /// `crate::resolve::Resolver::motifs`, which the replaced pass filled while
+    /// it walked a piece's header and this reading never does — so under the new
+    /// lowering every name in a mobile was refused as undeclared, which is
+    /// nineteen refusals for `examples/mobile.musa` alone. The reading was
+    /// already walking the document for the extents; asking that one walk what
+    /// each name *is* keeps the fix on the side that has the answer, instead of
+    /// filling one pass's map from another pass.
+    fn arranged(
+        &mut self,
+        origin: Origin,
+        reading: Reading,
+        declared: &Declarations,
+        name: &str,
+        span: SourceSpan,
+        at: SourceSpan,
+    ) -> Option<Raw> {
+        match declared.get(name).map(|held| held.material) {
+            Some(crate::resolve::Material::Fragment) => {}
+            Some(other) => {
+                return self.refuse(
+                    Diagnostic::error(
+                        Code::Misplaced,
+                        format!("`{name}` is a {}, not a fragment", other.word()),
+                    )
+                    .at(span, "a mobile arranges fragments")
+                    .help(format!("declare it as `fragment {name} {{ … }}`")),
+                );
+            }
+            None => {
+                let known: Vec<&str> = declared.keys().map(String::as_str).collect();
+                let help = crate::resolve::suggest_name(name, &known);
+                return self.refuse(
+                    Diagnostic::error(Code::UnknownName, format!("cannot find `{name}`"))
+                        .at(span, "not declared in this piece")
+                        .help(help),
+                );
+            }
+        }
+        self.resolver
+            .references
+            .record_use(crate::resolve::NameKind::Fragment, name, at);
+        Some(self.spoken(origin, reading, span, Raw::var(origin, name)))
+    }
+
+    /// The named material this document declares — what each name is, and how
+    /// far it reaches.
+    ///
+    /// Both halves in one walk because a mobile asks both of every name it
+    /// lists, and they are answered in the same place: a fragment's extent is
+    /// the sum of the statements between its braces, and what makes it a
+    /// fragment rather than a motif or a bar is which keyword opened them. A
+    /// region's extent is otherwise read off the statements inside its own
+    /// braces, and a mobile has none — what it writes are *names*.
+    ///
+    /// One pass over the document rather than a search per name, so a mobile of
+    /// fifty-three figures costs one walk instead of fifty-three.
+    fn declared_material(&self, node: &SyntaxNode) -> Declarations {
+        use musa_language::ast::{BarStmt, FragmentDecl, MotifDecl};
+        let Some(root) = node.ancestors().last() else {
+            return Declarations::new();
+        };
+        let mut declared = Declarations::new();
+        for held in root.descendants() {
+            // A `bar` with no name declares nothing: it is a measure written
+            // where it sounds, and only a *named* one is material `use` — or a
+            // mobile — could ever reach.
+            let named = if let Some(fragment) = FragmentDecl::cast(held.clone()) {
+                fragment.name().map(|name| (name, crate::resolve::Material::Fragment))
+            } else if let Some(motif) = MotifDecl::cast(held.clone()) {
+                motif.name().map(|name| (name, crate::resolve::Material::Motif))
+            } else if let Some(bar) = BarStmt::cast(held.clone()) {
+                bar.name().map(|name| (name, crate::resolve::Material::Bar))
+            } else {
+                None
+            };
+            let Some((name, material)) = named else { continue };
+            declared.insert(
+                name,
+                Reach {
+                    material,
+                    reaches: self.extent(&held),
+                },
+            );
+        }
+        declared
     }
 
     /// `improvise 8/1 over "Dm7 | G7";` — a frame that sounds as silence.
     fn improvise(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
         let statement = musa_language::ast::ImproviseStmt::cast(node.clone())?;
         let span = crate::resolve::trimmed_span(node);
-        let (duration, _) = self.notated_duration(node, span)?;
+        let (duration, _) = self.notated_duration(node, span, reading)?;
         let over = statement.over().map(|text| plain(origin, "Text", text));
-        let fact = Raw::app(origin, Raw::var(origin, "Fact.Improvise"), maybe(origin, over));
+        let fact = Raw::app(origin, Raw::hosted(origin, "Fact.Improvise"), maybe(origin, over));
         Some(self.sounded(origin, reading, fact, duration.value.as_ratio()))
     }
 
-    /// `use e;` — the track `e` denotes, folded on.
+    /// `use e;` — the track `e` denotes, in this block's scope, folded on.
     ///
-    /// No call at all: §2 says `use e;` "checks that `e` is a written-time score
-    /// track", and the check is the core's, because `follow`'s signature demands
-    /// one and the refusal lands at the origin this module gave the node.
-    fn used(&mut self, node: &SyntaxNode) -> Option<Raw> {
+    /// Nothing checks that `e` is a track: §2 says `use e;` "checks that `e` is a
+    /// written-time score track", and the check is the core's, because `scoped`'s
+    /// signature demands one and the refusal lands at the origin this module gave
+    /// the node.
+    ///
+    /// Two calls, and they are the two things a `use` says about material that
+    /// was written somewhere else.
+    ///
+    /// `scoped` is what makes reusable material reusable. `e` was read at
+    /// [`crate::Scope::Piece`] — a fragment is "usable at several places" and so
+    /// has none of its own — and this is the place, so its facts take the scope
+    /// of the block that played them. Here rather than around the whole voice,
+    /// because a voice may itself write `key g major;`, which is a piece-scoped
+    /// fact deliberately ([`Self::context`]) and would be relabelled into one
+    /// voice's private key by a wrapper that could not tell the two apart. A
+    /// `use` inside free material relabels `Piece` to `Piece` and costs a
+    /// reduction step, which is the price of the rule having no exception.
+    ///
+    /// `instanced` is what makes it *this* playing of it.
+    /// [`crate::origin::ExpansionStep::MotifApplication`] is the step Origin view reads to tell
+    /// a composer's own notes from material spoken by name, and every consumer of
+    /// it — the derivation graph's key, the fact-text spelling, and the
+    /// repeat-agreement rule in [`crate::project`], which writes a repeat out
+    /// rather than complaining when the repeat came from shared material — asks
+    /// that question of a *use site*. The builtin and not a stamp applied while
+    /// reading, for its own documented reason: the facts do not exist until the
+    /// term is evaluated, and the ones a function `e` calls produced were read in
+    /// another declaration entirely.
+    ///
+    /// Inside `scoped` rather than outside, because relabelling a scope and
+    /// recording an expansion commute and the nesting should read the way the
+    /// sentence does: this material, played here, belongs to this voice.
+    fn used(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
         let called = child(node, is_expr_node)?;
-        self.value(&called)
+        let material = self.value(&called)?;
+        Some(self.spoken(origin, reading, crate::resolve::trimmed_span(node), material))
+    }
+
+    /// `material`, played here — the two builtins [`Lowering::used`] documents,
+    /// with `at` as the call site.
+    ///
+    /// Its own method because [`Lowering::arranged`] wants the same two: a name
+    /// in a mobile's list is material spoken by name at a place, which is what
+    /// `use` is.
+    fn spoken(&self, origin: Origin, reading: Reading, at: SourceSpan, material: Raw) -> Raw {
+        let spoken = crate::lower::expansion(at, crate::origin::ExpansionStep::MotifApplication { call_site: at });
+        let played = applied(
+            origin,
+            Raw::hosted(origin, "instanced"),
+            [Raw::lit(origin, crate::registry::origin_literal(spoken)), material],
+        );
+        applied(
+            origin,
+            Raw::hosted(origin, "scoped"),
+            [scope_of(origin, reading.scope), played],
+        )
     }
 
     // ---- the pieces every arm above is written out of ----
@@ -1264,7 +1831,7 @@ impl Lowering<'_> {
     pub(super) fn sounded_at(&self, origin: Origin, scope: crate::Scope, fact: Raw, held: Ratio<i64>) -> Raw {
         applied(
             origin,
-            Raw::var(origin, "sounded"),
+            Raw::hosted(origin, "sounded"),
             [
                 self.provenance_at(origin),
                 scope_of(origin, scope),
@@ -1331,7 +1898,7 @@ impl Lowering<'_> {
                 // one does.
                 if let Some(written) = child(node, is_expr_node) {
                     let named = self.value(&written)?;
-                    return Some(Raw::app(origin, Raw::var(origin, "Fact.Key"), named));
+                    return Some(Raw::app(origin, Raw::hosted(origin, "Fact.Key"), named));
                 }
                 let Some(key) = crate::resolve::parse_key(&statement) else {
                     return self.refuse(
@@ -1379,18 +1946,37 @@ impl Lowering<'_> {
     /// what it built, so the extent is computed here and written as a literal
     /// rather than asked of the term. That is 141j's argument for registering
     /// `follow` rather than `duration`, used.
-    fn region(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading, fact: Raw) -> Option<Raw> {
-        let body = self.notated(node, reading)?;
-        let over = extent(node);
-        let marker = self.sounded(origin, reading, fact, over);
-        Some(applied(origin, Raw::var(origin, "together"), [marker, body]))
+    ///
+    /// `inside` is the reading the *body* is read under, which for every region
+    /// but a tuplet is the reading the region itself stands in. The marker is
+    /// built under it too, because the one thing [`Lowering::sounded`] takes from
+    /// a reading is its scope and a region never changes that. What the marker
+    /// spans is [`Lowering::lasts`] rather than [`Lowering::extent`], because a
+    /// tuplet's own ratio is part of how long the *statement* lasts and no part
+    /// of how long its body reaches.
+    fn region(&mut self, node: &SyntaxNode, origin: Origin, inside: Reading, fact: Raw) -> Option<Raw> {
+        let body = self.notated(node, inside)?;
+        let over = self.lasts(node);
+        let marker = self.sounded(origin, inside, fact, over);
+        Some(applied(origin, Raw::hosted(origin, "together"), [marker, body]))
     }
 
-    /// A written duration and the freedom written on it.
+    /// A written duration and the freedom written on it, as long as it lasts
+    /// where it stands.
+    ///
+    /// The reading is read last rather than first: [`Lowering::held`] decides
+    /// how far a `to` is taken in the time the composer *wrote*, on the
+    /// realization's own sixteenth-note grid, and [`Reading::lasting`] then
+    /// carries the decided value into the tuplet's time. Deciding first and
+    /// scaling after is what keeps [`Lowering::lasts`] a measurement of the
+    /// written tree plus the decisions already recorded, rather than one that
+    /// depends on a tuplet's body having been lowered before the region above it
+    /// asks how far it reaches.
     fn notated_duration(
         &mut self,
         node: &SyntaxNode,
         span: SourceSpan,
+        reading: Reading,
     ) -> Option<(NotatedDuration, Option<crate::score::FreeDuration>)> {
         let Some(duration) = crate::resolve::parse_duration(node) else {
             // A duration written as a *parameter* is a value, and turning a
@@ -1408,7 +1994,58 @@ impl Lowering<'_> {
                     .note("a duration is a fraction or a whole number of whole notes: `1/4`, `3/8`, `1`"),
             );
         };
-        Some((duration, None))
+        let Some(most) = musa_language::ast::Duration::of(node).and_then(|written| written.held_to()) else {
+            return Some(reading.lasting((duration, None)));
+        };
+        Some(reading.lasting(self.held(duration, &most, span)?))
+    }
+
+    /// `g4/4 to 2/1` — a quarter the performer may hold to a double whole.
+    ///
+    /// Roadmap §2's row with both values kept rather than one standing in for
+    /// the other: what comes back as the duration is what the note *sounds*, so
+    /// everything after it lands where it should, and the
+    /// [`crate::score::FreeDuration`] beside it is what recovers the symbol the
+    /// engraver draws.
+    ///
+    /// The decided length is remembered under `span` for the same reason
+    /// [`Lowering::passes`] remembers a count: [`Lowering::lasts`] asks a second
+    /// time when an enclosing region measures how far its body reaches, and
+    /// asking the realization again would mint a second site.
+    fn held(
+        &mut self,
+        duration: NotatedDuration,
+        most: &str,
+        span: SourceSpan,
+    ) -> Option<(NotatedDuration, Option<crate::score::FreeDuration>)> {
+        let Some(written) = crate::resolve::parse_ratio(most) else {
+            return self.refuse(
+                Diagnostic::error(Code::NotAValue, format!("`{most}` is not a duration"))
+                    .at(span, "expected the longest this note may be held")
+                    .help("write a duration such as `2/1`"),
+            );
+        };
+        let written = crate::MusicalDuration::new(written);
+        if written.as_ratio() < duration.value.as_ratio() {
+            return self.refuse(
+                Diagnostic::error(Code::NotAValue, "a held note counts upwards")
+                    .at(span, format!("`{}` is longer than `{most}`", duration.spelling))
+                    .help("write the written value first and the longest hold second"),
+            );
+        }
+        let least = duration.value;
+        let sounds = self
+            .resolver
+            .decide_duration(&self.choice, least.as_ratio(), written.as_ratio(), span);
+        self.holds.insert(span, sounds);
+        Some((
+            NotatedDuration {
+                value: crate::MusicalDuration::new(sounds),
+                spelling: duration.spelling,
+                pieces: vec![crate::MusicalDuration::new(sounds)],
+            },
+            Some(crate::score::FreeDuration { least, most: written }),
+        ))
     }
 
     /// The `Pitch` a note statement sounds, as a term.
@@ -1464,7 +2101,11 @@ impl Lowering<'_> {
                 let parts = children(node, is_expr_node);
                 let base = self.pitch_of(parts.first()?, reading)?;
                 let interval = self.interval_of(parts.get(1)?, writes(node, SyntaxKind::DownKw))?;
-                Some(applied(origin, Raw::var(origin, "pitch_transposed"), [base, interval]))
+                Some(applied(
+                    origin,
+                    Raw::hosted(origin, "pitch_transposed"),
+                    [base, interval],
+                ))
             }
             _ => {
                 let pitch = self.written_pitch(node, reading)?;
@@ -1483,7 +2124,7 @@ impl Lowering<'_> {
         if named(node) {
             let held = self.value(node)?;
             return Some(if down {
-                Raw::app(origin, Raw::var(origin, "interval_inverse"), held)
+                Raw::app(origin, Raw::hosted(origin, "interval_inverse"), held)
             } else {
                 held
             });
@@ -1615,6 +2256,35 @@ impl Lowering<'_> {
         self.written_scale(node).map(Counting::Written)
     }
 
+    /// `body`, with one [`crate::origin::ExpansionStep::ScaleContext`] step on
+    /// every fact it made.
+    ///
+    /// The same `instanced` [`Lowering::used`] applies at a `use`, and for the
+    /// same reason: a step is recorded by the builtin rather than stamped while
+    /// reading, because the facts do not exist until the term is evaluated.
+    ///
+    /// The step carries the collection *as the source spells it*, which is what
+    /// Origin view prints and what `factext` parses back. A collection this
+    /// reading could not spell — a bound `in scale mode { … }` — records the
+    /// words the author wrote, because the step is a record of the source and
+    /// not of the value.
+    fn under_scale(&mut self, node: &SyntaxNode, origin: Origin, written: &SyntaxNode, body: Raw) -> Raw {
+        let named = crate::lower::expansion(
+            crate::resolve::trimmed_span(node),
+            crate::origin::ExpansionStep::ScaleContext {
+                scale: format!(
+                    "scale {}",
+                    written.to_string().trim().trim_start_matches("scale").trim()
+                ),
+            },
+        );
+        applied(
+            origin,
+            Raw::hosted(origin, "instanced"),
+            [Raw::lit(origin, crate::registry::origin_literal(named)), body],
+        )
+    }
+
     /// `scale c dorian`, as the collection it names.
     fn written_scale(&mut self, node: &SyntaxNode) -> Option<crate::scale::Scale> {
         let span = crate::resolve::trimmed_span(node);
@@ -1643,7 +2313,7 @@ impl Lowering<'_> {
         let mut marks = Vec::new();
         for name in names {
             match crate::Mark::parse(name) {
-                Some(mark) => marks.push(payload(origin, "Mark", mark)),
+                Some(mark) => marks.push(plain(origin, "Mark", mark)),
                 None => {
                     self.resolver.report(
                         Diagnostic::error(Code::UnknownWord, format!("`{name}` is not an articulation"))
@@ -1684,7 +2354,7 @@ impl Lowering<'_> {
             // this module reads is the answer it left behind.
             expansion_path: Vec::new(),
         };
-        Raw::lit(origin, crate::registry::provenance_literal(written))
+        Raw::lit(origin, crate::registry::origin_literal(written))
     }
 
     /// A statement §3 forbids inside a value usable at several places.
@@ -1749,22 +2419,198 @@ impl Lowering<'_> {
     clippy::arithmetic_side_effects,
     reason = "`Ratio<i64>` addition is exact mathematical arithmetic rather than raw integer ops, which is the same argument `realize.rs`, `assert.rs`, `resolve.rs`, and `time.rs` make at module scope; scoped to this function because it is the only arithmetic here"
 )]
-pub(super) fn extent(node: &SyntaxNode) -> Ratio<i64> {
-    let mut total = Ratio::ZERO;
-    for statement in statements(node) {
-        let each = match statement.kind() {
+impl Lowering<'_> {
+    pub(super) fn extent(&self, node: &SyntaxNode) -> Ratio<i64> {
+        self.reached(statements(node))
+    }
+
+    /// The same sum over a chosen subsequence, which is what a repeat's body is.
+    fn reached(&self, statements: impl Iterator<Item = SyntaxNode>) -> Ratio<i64> {
+        let mut total = Ratio::ZERO;
+        for statement in statements {
+            total += self.lasts(&statement);
+        }
+        total
+    }
+
+    /// How long one statement lasts.
+    fn lasts(&self, statement: &SyntaxNode) -> Ratio<i64> {
+        match statement.kind() {
             SyntaxKind::NoteStmt
             | SyntaxKind::RestStmt
             | SyntaxKind::ChordStmt
             | SyntaxKind::StackStmt
             | SyntaxKind::ImproviseStmt => {
-                crate::resolve::parse_duration(&statement).map_or(Ratio::ZERO, |written| written.value.as_ratio())
+                // The decided length first, because `c5/4 to 2/1` is drawn as a
+                // quarter and *sounds* whatever [`Lowering::held`] chose, and
+                // what a region has to measure is the sounding. Asking the
+                // realization again would mint a second site — the same rule
+                // [`Lowering::times`] follows for a ranged repeat.
+                let span = crate::resolve::trimmed_span(statement);
+                if let Some(sounds) = self.holds.get(&span) {
+                    return *sounds;
+                }
+                crate::resolve::parse_duration(statement).map_or(Ratio::ZERO, |written| written.value.as_ratio())
             }
-            _ => extent(&statement),
+            // The one statement whose length is not its body's. Named here
+            // rather than left to the recursion because a repeat plays its body
+            // once per pass, and a sum that counted it once would measure a
+            // three-pass repeat as one.
+            SyntaxKind::RepeatStmt => self.played(statement),
+            // The other one, and for the mirror-image reason: a tuplet plays its
+            // body in less time than the body writes. Named here rather than
+            // left to the recursion so that the ratio is read off the statement
+            // that wrote it — which makes this a measurement of the tree, and
+            // lets a region enclosing a tuplet ask how far it reaches without
+            // the tuplet's body having been lowered first.
+            SyntaxKind::TupletStmt => self.extent(statement) * tuplet_factor(statement),
+            _ => self.extent(statement),
+        }
+    }
+
+    /// How long every pass of a repeat lasts, endings included.
+    fn played(&self, node: &SyntaxNode) -> Ratio<i64> {
+        let endings = endings_of(node);
+        spanned(
+            self.reached(statements(node).filter(is_not_an_ending)),
+            &endings
+                .iter()
+                .map(|held| self.extent(held.syntax()))
+                .collect::<Vec<_>>(),
+            self.times(node),
+        )
+    }
+
+    /// How many passes the repeat at `node` plays.
+    ///
+    /// The written number for the exact form; for a ranged one, the count the
+    /// realization already chose. [`Lowering::passes`] made that decision and
+    /// kept it exactly so this can be asked without making a second one.
+    fn times(&self, node: &SyntaxNode) -> u32 {
+        let span = crate::resolve::trimmed_span(node);
+        if let Some(decided) = self.counts.get(&span) {
+            return *decided;
+        }
+        musa_language::ast::RepeatStmt::cast(node.clone())
+            .and_then(|statement| statement.count())
+            .and_then(|text| count_of(&text))
+            .unwrap_or_default()
+    }
+}
+
+/// How long `times` passes last, given the body's extent and each ending's.
+///
+/// Pass `i` plays the body and then the ending at [`last_at_most`], so the
+/// endings are summed over the passes rather than over themselves: two endings
+/// under three passes contribute three ending-lengths, not two.
+#[expect(
+    clippy::arithmetic_side_effects,
+    reason = "`extent`'s argument, in the function that does its multiplication"
+)]
+fn spanned(body: Ratio<i64>, endings: &[Ratio<i64>], times: u32) -> Ratio<i64> {
+    let mut total = body * Ratio::from_integer(i64::from(times));
+    for iteration in 0..times {
+        let Some(index) = last_at_most(iteration, endings.len()) else {
+            break;
         };
-        total += each;
+        total += endings.get(index).copied().unwrap_or_default();
     }
     total
+}
+
+/// Which ending pass `iteration` takes, and [`None`] when there are none.
+///
+/// The last one covers every pass after it, which is what `1.–3.` means on a
+/// volta bracket.
+fn last_at_most(iteration: u32, endings: usize) -> Option<usize> {
+    Some(
+        usize::try_from(iteration)
+            .unwrap_or(usize::MAX)
+            .min(endings.checked_sub(1)?),
+    )
+}
+
+/// The endings a repeat writes, in written order.
+fn endings_of(node: &SyntaxNode) -> Vec<musa_language::ast::EndingStmt> {
+    statements(node)
+        .filter_map(musa_language::ast::EndingStmt::cast)
+        .collect()
+}
+
+/// Whether a statement is anything but an ending — a repeat's body.
+fn is_not_an_ending(statement: &SyntaxNode) -> bool {
+    statement.kind() != SyntaxKind::EndingStmt
+}
+
+/// `tracks`, one after another, seeded with `nothing`.
+///
+/// [`Lowering::folded`]'s shape, without the statements: a repeat's passes are
+/// already tracks, and the seed is what makes a repeat of no passes silence
+/// rather than a special case.
+fn followed(origin: Origin, tracks: Vec<Raw>) -> Raw {
+    let mut placed = Placed::default();
+    for track in tracks {
+        placed.place(origin, track);
+    }
+    placed.built(origin)
+}
+
+/// Tracks placed one after another, kept as a stack of balanced subtrees.
+///
+/// The obvious accumulator is a left spine — `follow(follow(follow(nothing, a),
+/// b), c)` — and it is as deep as the block is long. The evaluator descends that
+/// spine, spending several frames per `follow`, so
+/// [`crate::core_budget::NESTING`]'s 256 levels are reached at some sixty
+/// statements: `examples/in-c.musa`'s fifty-three-figure voice is refused for
+/// nesting, and a voice of a hundred notes would be. It also costs quadratic
+/// work, since each `follow` translates everything accumulated so far.
+///
+/// `follow` is associative — `musa_kernel::follow` places each track after the
+/// one before it, and where the brackets fall does not move a single occurrence
+/// — so the same music can be written as a *balanced* tree, whose depth is the
+/// logarithm of the count. That is what this builds.
+///
+/// # The stack
+///
+/// Completed subtrees, in written order, with strictly decreasing sizes that are
+/// powers of two. Placing one more merges equal-sized neighbours exactly as
+/// incrementing a binary counter carries, so nothing is ever rebuilt and every
+/// subtree is shared. What the block denotes is [`Self::built`], the stack folded
+/// down — at most log₂ n terms — and what stands *before* statement *i* is the
+/// same fold of the stack as it stood then, sharing all of it rather than
+/// copying a prefix.
+#[derive(Default)]
+struct Placed {
+    /// `(count, track)` for each completed subtree, sizes strictly decreasing.
+    stack: Vec<(usize, Raw)>,
+}
+
+impl Placed {
+    /// One more track, after everything placed so far.
+    fn place(&mut self, origin: Origin, track: Raw) {
+        let mut count = 1;
+        let mut built = track;
+        while self.stack.last().is_some_and(|&(top, _)| top == count) {
+            let (_, earlier) = self.stack.pop().unwrap_or_else(|| unreachable!("just looked at it"));
+            built = applied(origin, Raw::hosted(origin, "follow"), [earlier, built]);
+            count *= 2;
+        }
+        self.stack.push((count, built));
+    }
+
+    /// Everything placed so far, as one track.
+    ///
+    /// Seeded with `nothing`, which is what makes an empty block silence rather
+    /// than a special case, and the reason a single statement still reads as
+    /// `follow(nothing, t)` — the shape every law written against one statement
+    /// already expects.
+    fn built(&self, origin: Origin) -> Raw {
+        self.stack
+            .iter()
+            .fold(Raw::lit(origin, crate::registry::empty_track()), |built, (_, next)| {
+                applied(origin, Raw::hosted(origin, "follow"), [built, next.clone()])
+            })
+    }
 }
 
 /// A duration in written time, as the literal the track builtins take.
@@ -1782,20 +2628,55 @@ fn written_duration(origin: Origin, held: Ratio<i64>) -> Raw {
     )
 }
 
+/// `track`, or `tied(track)` when a `~` was written on the statement.
+///
+/// Every notation statement could carry one and only two can: the grammar puts
+/// `~` on a note and on a chord, and a tie between anything else is not a tie.
+/// So the mark is applied where those two are read rather than in
+/// [`Lowering::statement`], which would have to ask the other fifteen a question
+/// they have no way to answer.
+///
+/// The joining is [`super::piece`]'s, once per voice — see the `joined` rule for
+/// why it cannot be done any nearer to here.
+fn continuing(origin: Origin, tied: bool, track: Raw) -> Raw {
+    if tied {
+        Raw::app(origin, Raw::hosted(origin, "tied"), track)
+    } else {
+        track
+    }
+}
+
 /// `Scope.Piece`, `Scope.Part n`, `Scope.Voice p v`.
 pub(super) fn scope_of(origin: Origin, scope: crate::Scope) -> Raw {
     match scope {
-        crate::Scope::Piece => Raw::var(origin, "Scope.Piece"),
-        crate::Scope::Part { part } => Raw::app(origin, Raw::var(origin, "Scope.Part"), whole(origin, u64::from(part))),
+        crate::Scope::Piece => Raw::hosted(origin, "Scope.Piece"),
+        crate::Scope::Part { part } => Raw::app(
+            origin,
+            Raw::hosted(origin, "Scope.Part"),
+            whole(origin, u64::from(part)),
+        ),
         crate::Scope::Voice { part, voice } => applied(
             origin,
-            Raw::var(origin, "Scope.Voice"),
+            Raw::hosted(origin, "Scope.Voice"),
             [whole(origin, u64::from(part)), whole(origin, u64::from(voice))],
         ),
     }
 }
 
 /// A literal at a plain base type whose payload has a written spelling.
+///
+/// # Which of the two writers a domain takes
+///
+/// Whether a domain implements [`std::fmt::Display`] is not a formatting
+/// preference here; it selects the *representation*, and the reader in
+/// [`crate::registry`] selects the same way. A domain that has a spelling is
+/// written by this function and read back by `rules::read`; one that has none is
+/// wrapped in `notation::Opaque` by [`payload`] and read back by
+/// `notation::unwrapped`. Neither downcast can see the other's wrapper, so a
+/// domain written by one and read by the other is a rule that computes nothing
+/// at arguments it declares it accepts — a defect the core reports against the
+/// builtin rather than against the source. The pairing belongs to the base type,
+/// not to the call site: pick by asking whether `T` has a `Display`.
 fn plain<T>(origin: Origin, base: &'static str, value: T) -> Raw
 where
     T: PartialEq + std::fmt::Debug + std::fmt::Display + Send + Sync + 'static,
@@ -1806,7 +2687,8 @@ where
     )
 }
 
-/// A literal at a plain base type whose payload has none.
+/// A literal at a plain base type whose payload has none — see [`plain`] for
+/// which domains take which of the two.
 fn payload<T>(origin: Origin, base: &'static str, value: T) -> Raw
 where
     T: Clone + PartialEq + std::fmt::Debug + Send + Sync + 'static,
@@ -1814,7 +2696,13 @@ where
     Raw::lit(origin, crate::registry::opaque_literal(base, value))
 }
 
-/// `Option.None` or `Option.Some v`, from a payload that may not be there.
+/// `Option.None` or `Option.Some v`, from an unspelled payload that may not be
+/// there.
+///
+/// Only the [`payload`] half: the four optional fields any fact carries —
+/// `FreeDuration`, `Metronome`, `Ramp` — are all domains without a spelling, and
+/// a spelled one writes `maybe(origin, value.map(…))` where it stands rather
+/// than through a second helper that could pick the wrong wrapper.
 fn optional<T>(origin: Origin, base: &'static str, value: Option<T>) -> Raw
 where
     T: Clone + PartialEq + std::fmt::Debug + Send + Sync + 'static,
@@ -1834,14 +2722,14 @@ where
 
 /// `Fact.Key(key)`, from a key the source spelled out.
 pub(super) fn keyed(origin: Origin, key: crate::score::Key) -> Raw {
-    Raw::app(origin, Raw::var(origin, "Fact.Key"), plain(origin, "Key", key))
+    Raw::app(origin, Raw::hosted(origin, "Fact.Key"), plain(origin, "Key", key))
 }
 
 /// `Fact.Meter(numerator, denominator)`.
 pub(super) fn metered(origin: Origin, meter: crate::score::Meter) -> Raw {
     applied(
         origin,
-        Raw::var(origin, "Fact.Meter"),
+        Raw::hosted(origin, "Fact.Meter"),
         [
             whole(origin, u64::from(meter.numerator())),
             whole(origin, u64::from(meter.denominator())),
@@ -1851,7 +2739,7 @@ pub(super) fn metered(origin: Origin, meter: crate::score::Meter) -> Raw {
 
 /// `Fact.Clef(clef)`.
 pub(super) fn clefed(origin: Origin, clef: crate::score::Clef) -> Raw {
-    Raw::app(origin, Raw::var(origin, "Fact.Clef"), payload(origin, "Clef", clef))
+    Raw::app(origin, Raw::hosted(origin, "Fact.Clef"), payload(origin, "Clef", clef))
 }
 
 /// `Fact.Tempo(metronome, text, ramp)`, from what the statement said.
@@ -1863,7 +2751,7 @@ pub(super) fn clefed(origin: Origin, clef: crate::score::Clef) -> Raw {
 pub(super) fn tempo(origin: Origin, marking: &crate::resolve::Marking) -> Raw {
     applied(
         origin,
-        Raw::var(origin, "Fact.Tempo"),
+        Raw::hosted(origin, "Fact.Tempo"),
         [
             optional(origin, "Metronome", marking.metronome),
             maybe(origin, marking.text.clone().map(|text| plain(origin, "Text", text))),
@@ -1875,8 +2763,8 @@ pub(super) fn tempo(origin: Origin, marking: &crate::resolve::Marking) -> Raw {
 /// The same, from a term that may not be there.
 fn maybe(origin: Origin, value: Option<Raw>) -> Raw {
     match value {
-        None => Raw::var(origin, "Option.None"),
-        Some(held) => Raw::app(origin, Raw::var(origin, "Option.Some"), held),
+        None => Raw::hosted(origin, "Option.None"),
+        Some(held) => Raw::app(origin, Raw::hosted(origin, "Option.Some"), held),
     }
 }
 
@@ -1891,9 +2779,29 @@ fn named(node: &SyntaxNode) -> bool {
 }
 
 /// `3/2`, as a tuplet's two counts, unreduced as the backends need them.
+///
+/// Both counts are positive, which is not pedantry about the grammar: the ratio
+/// is inverted to scale the durations written inside, and `tuplet 0/2` would
+/// name a division into no notes. Refused here so that the refusal is one
+/// sentence at the statement rather than a division by zero somewhere below.
 fn tuplet_ratio(text: &str) -> Option<(u32, u32)> {
     let (num, den) = text.split_once('/')?;
-    Some((count_of(num)?, count_of(den)?))
+    let (num, den) = (count_of(num)?, count_of(den)?);
+    (num > 0 && den > 0).then_some((num, den))
+}
+
+/// How much a tuplet scales the durations written inside it.
+///
+/// The inverse of what it says: `tuplet 3/2` is three notes in the time of two,
+/// so an eighth written inside it lasts two thirds of an eighth. A ratio this
+/// cannot read is [`Ratio::ONE`], because the same statement is refused with its
+/// own sentence by [`Lowering::statement`] and a length nothing will ask for is
+/// better left unscaled than guessed at.
+fn tuplet_factor(node: &SyntaxNode) -> Ratio<i64> {
+    musa_language::ast::TupletStmt::cast(node.clone())
+        .and_then(|statement| statement.ratio())
+        .and_then(|text| tuplet_ratio(&text))
+        .map_or(Ratio::ONE, |(num, den)| Ratio::new(i64::from(den), i64::from(num)))
 }
 
 /// A whole number written as a count.

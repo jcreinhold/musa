@@ -30,4 +30,37 @@ library {
 
     // Forget octave while retaining the written letter and accidental.
     fn written_pitch_class(value: Pitch) -> NoteName { pitchclass_of(value) }
+
+    // What `p up M3` and `p down M3` mean, for the two things that can be
+    // written on either side of them.
+    //
+    // One operator over two domains, because it is one action: a written
+    // interval moves the letter by its generic size and lets the accidental
+    // absorb the rest, and whether an octave is carried along changes nothing
+    // about that. What the two domains do not share is the answer — a `Pitch`
+    // stays a `Pitch` and a `NoteName` stays a `NoteName` — so the receiver
+    // decides which operation runs, which is what a trait is for.
+    //
+    // `down` is not a second method. It is the interval that undoes this one,
+    // and `inverse_interval` above already names it.
+    trait Transposable<A> {
+        fn transposed(subject: A, by: Interval) -> A;
+    }
+
+    // A written pitch moved by a written interval. Partial: the pitch grid is
+    // finite in both coordinates, so a transposition can leave it, and what
+    // leaves it is refused rather than wrapped.
+    impl Transposable<Pitch> {
+        fn transposed(subject: Pitch, by: Interval) -> Pitch { pitch_transposed(subject, by) }
+    }
+
+    // The same move with the octave forgotten. Partial for the other
+    // coordinate: the spelled classes run out of accidentals before they run
+    // out of letters.
+    impl Transposable<NoteName> {
+        fn transposed(subject: NoteName, by: Interval) -> NoteName {
+            pitchclass_transposed(subject, by)
+        }
+    }
+
 }

@@ -135,15 +135,15 @@ let fifth: Interval = P5;
 
 fn third(root: Pitch) -> Pitch { root up M3 }
 
-fn transpose_answer(subject: Music, by: Interval) -> Music {
+fn transpose_answer(subject: EventTrack<WrittenTime>, by: Interval) -> EventTrack<WrittenTime> {
     transpose(by, subject)
 }
 ```
 
-The base types include `Bool`, `Nat`, `Ratio`, `Text`, `Pitch`, `Interval`, `Scale`, `Key`, `ChordClass`, `Voicing`,
-`Row12`, and `Music`, with `Option<...>`, `List<...>`, `Result<..., ...>`, products, and arrows as constructors. `match`
-is the case-analysis spelling. A multi-statement musical body is explicitly `music { ... }`; `use e;` instantiates a
-`Music` value at the current cursor.
+The base types include `Bool`, `Nat`, `Ratio`, `Text`, `Pitch`, `Interval`, `Scale`, `Key`, `ChordClass`, `Voicing`, and
+`Row12`, with `Duration<C>`, `Position<C>`, `EventTrack<C>`, `Option<...>`, `List<...>`, `Result<..., ...>`, products,
+and arrows as constructors. `match` is the case-analysis spelling. A multi-statement musical body is explicitly
+`music { ... }`; `use e;` places an `EventTrack<WrittenTime>` at the current cursor.
 
 ### Exact time
 

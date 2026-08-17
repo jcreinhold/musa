@@ -5,15 +5,15 @@ piece "Standard Library Basics" {
     import std::list;
     import std::option;
 
-    let subject: Music = music {
+    let subject: EventTrack<WrittenTime> = music {
         c4/4
         d4/4
     };
 
     fn same_pitch(p: Pitch) -> Pitch { p }
 
-    let answer: Music = compose_music(
-        fn (line: Music) -> Music { transpose(P8, line) },
+    let answer: EventTrack<WrittenTime> = compose_music(
+        fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(P8, line) },
         retrograde,
         subject,
     );
@@ -23,7 +23,7 @@ piece "Standard Library Basics" {
     score {
         part strings {
             voice duet {
-                use together(subject, shift(1/2, answer));
+                use together(subject, shift(duration_of(1/2), answer));
                 c5/2
                 rest/2
             }

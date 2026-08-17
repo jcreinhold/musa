@@ -1,4 +1,5 @@
 library {
+    import std::list;
 
     // Twelve-tone rows and the operations on them (OMT
     // `108-basics-of-twelve-tone-theory.md`,
@@ -25,7 +26,11 @@ library {
     // classes the sequence never names. Both, rather than a choice between
     // them, because a sequence of the wrong length can have either without
     // the other.
-    fn row(pcs: List<Pc12>) -> Result<Row12, (List<Nat>, List<Pc12>)> { row12_of(pcs) }
+    //
+    // `RowFault` and not a pair of lists, because the two halves are one
+    // musical fact — how this sequence failed to be a row — and a pair would
+    // let a caller take one half and forget it had the other.
+    fn row(pcs: List<Pc12>) -> Result<Row12, RowFault> { row12_of(pcs) }
 
     // The order positions whose pitch class already appeared earlier, asked
     // on their own. The first occurrence is not among them, because that is

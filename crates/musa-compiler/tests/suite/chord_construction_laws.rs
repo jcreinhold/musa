@@ -83,10 +83,12 @@ const PRELUDE: &str = "\
     import std::scale;
     import std::voicing;
 
-    fn held(chosen: Voicing) -> Music { play(chosen, 1/1) }
-    fn sounded(chosen: Option<Voicing>) -> Music { option_fold(music { rest/1 }, held, chosen) }
-    fn tonic_of(register: Frame) -> Music { music { (frame_degree(register, 1))/1 } }
-    fn named(root: NoteName) -> Music { option_fold(music { rest/1 }, tonic_of, frame_on(major_on(root), c4)) }
+    fn held(chosen: Voicing) -> EventTrack<WrittenTime> { play(chosen, duration_of(1/1)) }
+    fn sounded(chosen: Option<Voicing>) -> EventTrack<WrittenTime> { option_fold(music { rest/1 }, held, chosen) }
+    fn tonic_of(register: Frame) -> EventTrack<WrittenTime> {
+        map_note_pitches(fn (written: Pitch) -> Pitch { frame_degree(register, 1) }, music { c4/1 })
+    }
+    fn named(root: NoteName) -> EventTrack<WrittenTime> { option_fold(music { rest/1 }, tonic_of, frame_on(major_on(root), c4)) }
 ";
 
 // --- The reference spelling formula -----------------------------------------
@@ -200,13 +202,13 @@ fn the_triad_refinement_admits_major_and_minor_and_refuses_the_rest() {
     let source = piece_with(
         &format!(
             "{PRELUDE}
-    fn refined(content: ChordClass) -> Music {{ option_fold(music {{ rest/1 }}, voiced, as_triad(content)) }}
-    fn voiced(shape: Triad) -> Music {{ sounded(close_position(triad_content(shape), c4)) }}
+    fn refined(content: ChordClass) -> EventTrack<WrittenTime> {{ option_fold(music {{ rest/1 }}, voiced, as_triad(content)) }}
+    fn voiced(shape: Triad) -> EventTrack<WrittenTime> {{ sounded(close_position(triad_content(shape), c4)) }}
 
-    let major: Music = refined(chord c major);
-    let minor: Music = refined(chord c minor);
-    let diminished: Music = refined(chord c diminished);
-    let seventh: Music = refined(chord c major7);"
+    let major: EventTrack<WrittenTime> = refined(chord c major);
+    let minor: EventTrack<WrittenTime> = refined(chord c minor);
+    let diminished: EventTrack<WrittenTime> = refined(chord c diminished);
+    let seventh: EventTrack<WrittenTime> = refined(chord c major7);"
         ),
         "        use major;\n        use minor;\n        use diminished;\n        use seventh;",
     );
@@ -224,8 +226,8 @@ fn an_inversion_designates_a_bass_and_leaves_the_root_alone() {
 
     let content: ChordClass = chord c major;
     let first: Option<ChordClass> = inversion(content, 1);
-    let voiced: Music = sounded(option_fold(None, from_e, first));
-    let root_after: Music = named(option_fold(root_of(content), root_of, first));"
+    let voiced: EventTrack<WrittenTime> = sounded(option_fold(None, from_e, first));
+    let root_after: EventTrack<WrittenTime> = named(option_fold(root_of(content), root_of, first));"
         ),
         "        use voiced;\n        use root_after;",
     );
@@ -245,9 +247,9 @@ fn a_slash_bass_is_not_an_inversion() {
     fn from_d(content: ChordClass) -> Option<Voicing> {{ close_position(content, d3) }}
 
     let slash: ChordClass = slash_bass(chord c major, pitchclass_of(d3));
-    let under_d: Music = sounded(close_position(slash, d3));
-    let absent: Music = sounded(option_fold(None, from_d, inversion(chord c major, 7)));
-    let slash_bass_class: Music = named(option_fold(c_root, root_of, some_slash));
+    let under_d: EventTrack<WrittenTime> = sounded(close_position(slash, d3));
+    let absent: EventTrack<WrittenTime> = sounded(option_fold(None, from_d, inversion(chord c major, 7)));
+    let slash_bass_class: EventTrack<WrittenTime> = named(option_fold(c_root, root_of, some_slash));
     let some_slash: Option<ChordClass> = Some(slash);
     let c_root: NoteName = root_of(chord c major);"
         ),
@@ -266,9 +268,9 @@ fn a_voicing_policy_says_no_rather_than_nearly() {
         &format!(
             "{PRELUDE}
     let content: ChordClass = chord c major;
-    let good: Music = sounded(voiced_as(content, [c3, g3, e4]));
-    let descending: Music = sounded(voiced_as(content, [g3, c3, e4]));
-    let foreign: Music = sounded(voiced_as(content, [c3, d3, e4]));"
+    let good: EventTrack<WrittenTime> = sounded(voiced_as(content, [c3, g3, e4]));
+    let descending: EventTrack<WrittenTime> = sounded(voiced_as(content, [g3, c3, e4]));
+    let foreign: EventTrack<WrittenTime> = sounded(voiced_as(content, [c3, d3, e4]));"
         ),
         "        use good;\n        use descending;\n        use foreign;",
     );
@@ -283,8 +285,8 @@ fn a_drop_voicing_is_not_its_close_position() {
         &format!(
             "{PRELUDE}
     let content: ChordClass = chord c major7;
-    let close: Music = sounded(close_position(content, c3));
-    let dropped: Music = sounded(drop_position(content, c3, 2));"
+    let close: EventTrack<WrittenTime> = sounded(close_position(content, c3));
+    let dropped: EventTrack<WrittenTime> = sounded(drop_position(content, c3, 2));"
         ),
         "        use close;\n        use dropped;",
     );
@@ -303,8 +305,8 @@ fn an_omission_keeps_the_class_it_omits_from() {
     let content: ChordClass = chord c major7;
     let close: Option<Voicing> = close_position(content, c4);
     let without_root: Option<Voicing> = option_fold(None, rootless, close);
-    let voiced: Music = sounded(without_root);
-    let still_c: Music = named(option_fold(root_of(content), class_root, without_root));"
+    let voiced: EventTrack<WrittenTime> = sounded(without_root);
+    let still_c: EventTrack<WrittenTime> = named(option_fold(root_of(content), class_root, without_root));"
         ),
         "        use voiced;\n        use still_c;",
     );

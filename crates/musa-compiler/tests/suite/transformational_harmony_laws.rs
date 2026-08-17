@@ -38,21 +38,22 @@ const MAJOR: usize = 2;
 /// The counting apparatus, and the two triads every fixture starts from.
 const PRELUDE: &str = r"
     import std::harmony;
+    import std::list;
     import std::post_tonal::pcset;
     import std::transformational;
     import std::voicing;
 
     meter 4/4;
 
-    fn tick(one: Music, carried: Music) -> Music { together(one, carried) }
-    fn beat() -> Music { music { c4/1 } }
-    fn tally(count: Nat) -> Music { list_fold_from_start(music { rest/1 }, tick, repeat(beat(), count)) }
-    fn chorus(voices: List<Music>) -> Music { list_fold_from_start(music { rest/1 }, tick, voices) }
-    fn beat_for_pc(member: Pc12) -> Music { beat() }
-    fn beat_for_voicing(chosen: Voicing) -> Music { beat() }
-    fn beat_for_triad(refined: Triad) -> Music { beat() }
-    fn numbered(member: Pc12) -> Music { together(beat(), tally(number_of(member))) }
-    fn quality(refined: Triad) -> Music { match is_major(refined) {
+    fn tick(one: EventTrack<WrittenTime>, carried: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { together(one, carried) }
+    fn beat() -> EventTrack<WrittenTime> { music { c4/1 } }
+    fn tally(count: Nat) -> EventTrack<WrittenTime> { list_fold_from_start(music { rest/1 }, tick, repeated(beat(), count)) }
+    fn chorus(voices: List<EventTrack<WrittenTime>>) -> EventTrack<WrittenTime> { list_fold_from_start(music { rest/1 }, tick, voices) }
+    fn beat_for_pc(member: Pc12) -> EventTrack<WrittenTime> { beat() }
+    fn beat_for_voicing(chosen: Voicing) -> EventTrack<WrittenTime> { beat() }
+    fn beat_for_triad(refined: Triad) -> EventTrack<WrittenTime> { beat() }
+    fn numbered(member: Pc12) -> EventTrack<WrittenTime> { together(beat(), tally(number_of(member))) }
+    fn quality(refined: Triad) -> EventTrack<WrittenTime> { match is_major(refined) {
         true -> tally(2),
         false -> tally(1),
     } }
@@ -116,9 +117,9 @@ fn asked(start: &str, reached: &str, question: &str) -> usize {
     counted(
         &format!(
             "    fn reached(refined: Triad) -> Triad {{ {reached} }}
-    fn question(probed: Triad) -> Music {{ {question} }}
-    fn combined(refined: Triad) -> Music {{ question(reached(refined)) }}
-    let sounded: Music = option_fold(music {{ rest/1 }}, combined, {start});"
+    fn question(probed: Triad) -> EventTrack<WrittenTime> {{ {question} }}
+    fn combined(refined: Triad) -> EventTrack<WrittenTime> {{ question(reached(refined)) }}
+    let sounded: EventTrack<WrittenTime> = option_fold(music {{ rest/1 }}, combined, {start});"
         ),
         "sounded",
     )
@@ -287,11 +288,11 @@ fn a_chain_is_the_composition_it_is_written_as() {
 #[test]
 fn only_a_triad_is_in_the_domain() {
     let refinements = "
-    fn present(refined: Triad) -> Music { beat_for_triad(refined) }
-    let seventh: Music = option_fold(music { rest/1 }, present, as_triad(chord c major7));
-    let suspended: Music = option_fold(music { rest/1 }, present, as_triad(chord c sus4));
-    let diminished: Music = option_fold(music { rest/1 }, present, as_triad(chord c dim));
-    let minor: Music = option_fold(music { rest/1 }, present, as_triad(chord c minor));
+    fn present(refined: Triad) -> EventTrack<WrittenTime> { beat_for_triad(refined) }
+    let seventh: EventTrack<WrittenTime> = option_fold(music { rest/1 }, present, as_triad(chord c major7));
+    let suspended: EventTrack<WrittenTime> = option_fold(music { rest/1 }, present, as_triad(chord c sus4));
+    let diminished: EventTrack<WrittenTime> = option_fold(music { rest/1 }, present, as_triad(chord c dim));
+    let minor: EventTrack<WrittenTime> = option_fold(music { rest/1 }, present, as_triad(chord c minor));
 ";
     assert_eq!(counted(refinements, "seventh"), 0, "a seventh chord is not a triad");
     assert_eq!(

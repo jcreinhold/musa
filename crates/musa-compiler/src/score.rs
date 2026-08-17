@@ -71,6 +71,22 @@ pub struct FreeDuration {
     pub most: MusicalDuration,
 }
 
+impl FreeDuration {
+    /// The same freedom, `factor` times as long.
+    ///
+    /// Both ends move together, because a tuplet scales the time the whole
+    /// bracket is measured in: `c5/4 to 2/1` written inside a triplet is a
+    /// triplet quarter the performer may hold to two thirds of a double whole,
+    /// and a bracket with only one end scaled would name a range the notation
+    /// does not.
+    pub(crate) fn scaled(self, factor: Ratio<i64>) -> Self {
+        Self {
+            least: MusicalDuration::new(self.least.as_ratio() * factor),
+            most: MusicalDuration::new(self.most.as_ratio() * factor),
+        }
+    }
+}
+
 /// How the language writes a duration value: `1`, `1/4`, `3/8`.
 fn spell_value(value: Ratio<i64>) -> String {
     if *value.denom() == 1 {

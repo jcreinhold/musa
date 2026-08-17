@@ -580,18 +580,6 @@ impl World {
             .collect()
     }
 
-    /// Whether the structure `owner` declares a type called `name`.
-    ///
-    /// This is what a signature's `data Name;` asks: the signature says the
-    /// type exists and says nothing about its constructors, and the
-    /// constructors are the structure's own by [`Self::constructor`]. Matching
-    /// is by name, as everything else in `04-templates-and-modules.md` §4 is.
-    pub(crate) fn declared_by(&self, owner: &str, name: &str) -> bool {
-        self.declarations
-            .values()
-            .any(|declaration| declaration.owner.as_deref() == Some(owner) && declaration.id.name() == name)
-    }
-
     /// Where a declaration's name is written — what a diagnostic about one of
     /// its fields points at second, so a reader can see the field list it was
     /// judged against without going to look for it.

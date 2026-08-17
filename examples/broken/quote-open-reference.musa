@@ -3,12 +3,12 @@
 // reads as a kernel reference nothing bound, which is a free name — the piece's
 // `theme` is not in scope inside the term, and never was.
 piece "Quote Open Reference" {
-    let theme: Music = music {
+    let theme: EventTrack<WrittenTime> = music {
         c4/4
         d4/4
     };
 
-    let assembled: Music = kernel EventTrack[WrittenTime, ScoreFact] {
+    let assembled: EventTrack<WrittenTime> = kernel EventTrack[WrittenTime, ScoreFact] {
         together {
             theme;
             shift by 1/2 theme;

@@ -42,16 +42,16 @@ impl Lowering<'_> {
                 let parts = children(node, is_type_node);
                 let value = self.ty(parts.first()?)?;
                 let error = self.ty(parts.get(1)?)?;
-                Some(applied(origin, Raw::var(origin, "Result"), [value, error]))
+                Some(applied(origin, Raw::hosted(origin, "Result"), [value, error]))
             }
             SyntaxKind::FunctionType => {
                 let parts = children(node, is_type_node);
                 let domain = self.ty(parts.first()?)?;
                 let codomain = self.ty(parts.get(1)?)?;
-                // The binder is named rather than anonymous because a Π always
-                // binds: nothing in a written arrow refers to the argument, so
-                // the name is unreachable and its only job is to be printable.
-                Some(Raw::pi(origin, "argument", domain, codomain))
+                // `arrow` and not `pi`: a written arrow declares no parameter,
+                // and §1.3's completeness rule counts the ones that were
+                // declared. `musa_core::ARROW_BINDER` says the rest.
+                Some(Raw::arrow(origin, domain, codomain))
             }
             // `01-surface.md`'s anonymous product, as the `Pair` the prelude
             // already declares. The value side reads `(a, b)` as `Pair.Both a b`
@@ -71,7 +71,7 @@ impl Lowering<'_> {
                 match members?.as_slice() {
                     [first, second] => Some(applied(
                         origin,
-                        Raw::var(origin, "Pair"),
+                        Raw::hosted(origin, "Pair"),
                         [first.clone(), second.clone()],
                     )),
                     written => self.wide_product(node, written.len()),
@@ -173,9 +173,66 @@ impl Lowering<'_> {
         if let Some((index, help)) = self.indexed_base(&written) {
             return self.written_index(index, &written, node, arguments, help);
         }
+        if matches!(written.as_str(), "Machine" | "Primitive") {
+            return self.machine_type(node, origin, &written, head, arguments);
+        }
         let head = self.ty(head)?;
         let arguments: Option<Vec<Raw>> = arguments.iter().map(|child| self.ty(child)).collect();
         Some(applied(origin, head, arguments?))
+    }
+
+    /// `Machine<K, A, B>` and `Primitive<K, A, B>`: a step tag, then two ports.
+    ///
+    /// The step is position-restricted the way an index word is, and for the
+    /// same reason one step over: `03-machine-calculus.md` §2 gives a step tag
+    /// no values, so nothing computes one and no definition ranges over one —
+    /// the word is looked up in the build's registry and refused if it is not
+    /// there.
+    ///
+    /// It has to be checked *here* rather than in the signature, because the
+    /// signature cannot say it. A step tag is a host notion:
+    /// [`crate::registry`] owns the table and `musa-core` owns the mechanism, so
+    /// `Machine Nat A B` is a well-typed core term and nothing in the core could
+    /// learn otherwise. The one place the surface writes a step is the one place
+    /// left to refuse it.
+    ///
+    /// The other half of §2's premises — a port holds storable data — is *not*
+    /// here, and that is the difference the restatement made: it is `Storable`
+    /// on the registered signatures, so `Machine<K, Ratio -> Ratio, …>` is
+    /// refused by the elaborator rather than by a second reading of the same
+    /// written type.
+    fn machine_type(
+        &mut self,
+        node: &SyntaxNode,
+        origin: Origin,
+        written: &str,
+        head: &SyntaxNode,
+        arguments: &[SyntaxNode],
+    ) -> Option<Raw> {
+        let [step, input, output] = arguments else {
+            return self.refuse(
+                Diagnostic::error(
+                    Code::WrongArity,
+                    format!("`{written}` takes 3 type arguments: a step, an input port, and an output port"),
+                )
+                .at(crate::resolve::trimmed_span(node), "written here")
+                .help(format!("write `{written}<AudioFrameStep, τ, τ>`")),
+            );
+        };
+        let word = step.to_string();
+        if !crate::registry::is_step_tag(word.trim()) {
+            return self.refuse(
+                Diagnostic::error(Code::WrongArity, format!("`{}` is not a step", word.trim()))
+                    .at(crate::resolve::trimmed_span(step), "written where a step belongs")
+                    .help("a step says what one step of the machine counts; `AudioFrameStep` is one".to_owned()),
+            );
+        }
+        let head = self.ty(head)?;
+        let read = [step, input, output]
+            .into_iter()
+            .map(|child| self.ty(child))
+            .collect::<Option<Vec<Raw>>>()?;
+        Some(applied(origin, head, read))
     }
 
     /// The one indexed base type an [`Index`] and a written word name.

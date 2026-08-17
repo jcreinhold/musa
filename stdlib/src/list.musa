@@ -1,4 +1,98 @@
+// Finite lists: how one is built, and the two ways one is read.
+//
+// Every function here is written over `List`'s own constructors and nothing
+// else. That is the point of the module rather than an implementation detail:
+// `List` is a declared family with a generated recursor, so a fold over it is
+// ordinary source, and a compiler builtin for one would be a second reduction
+// rule for a type that already has one. `02-core-calculus.md` §5.8 admits a
+// builtin that hides something; a traversal of a list whose constructors the
+// language writes hides nothing.
+//
+// # Why a fold takes its list last and a helper takes it first
+//
+// The public spellings are the ones the corpus already writes:
+// `list_fold_from_start(seed, combine, values)`. The recursion cannot be
+// written in that order — §2.4's measure holds the arguments *before* the
+// recursive position fixed, so a fold that both descends the list and carries a
+// new accumulator has to descend in the first argument and accumulate in a
+// later one. Each public fold is therefore one line over a private helper whose
+// list comes first, which is where the induction hypothesis is a function of
+// the accumulator rather than of nothing.
 library {
+    // The natural numbers from `first`, `count` of them, ascending.
+    //
+    // The accumulator is `first` and it comes after the list-shaped argument
+    // for the reason above. `Succ` rather than `nat_add`: the successor
+    // constructor *is* "one more", so counting needs no arithmetic and no
+    // failure case.
+    private fn counting_from(count: Nat, first: Nat) -> List<Nat> {
+        match count {
+            Zero -> [],
+            Succ(fewer) -> Cons(first, counting_from(fewer, Succ(first))),
+        }
+    }
+
+    // The natural numbers from zero up to, but not including, `count`.
+    fn range(count: Nat) -> List<Nat> { counting_from(count, 0) }
+
+    // One value, `count` times, as finite data.
+    //
+    // Not `repeat`: that word opens a repeated passage in a score, so it is a
+    // statement keyword and cannot also be a function name. The past participle
+    // is what the list *is* rather than what a player does.
+    fn repeated<A>(value: A, count: Nat) -> List<A> {
+        match count {
+            Zero -> [],
+            Succ(fewer) -> Cons(value, repeated(value, fewer)),
+        }
+    }
+
+    // Apply `function` to every member, in order.
+    fn map<A, B>(function: A -> B, values: List<A>) -> List<B> {
+        match values {
+            [] -> [],
+            [head, .. tail] -> Cons(function(head), map(function, tail)),
+        }
+    }
+
+    // Keep the members for which `predicate` answers true, in order.
+    fn filter<A>(predicate: A -> Bool, values: List<A>) -> List<A> {
+        match values {
+            [] -> [],
+            [head, .. tail] -> if predicate(head) {
+                Cons(head, filter(predicate, tail))
+            } else { filter(predicate, tail) },
+        }
+    }
+
+    // `combine` applied to each member in turn, carrying the answer forward.
+    private fn folded_from_start<A, B>(values: List<A>, carried: B, combine: A -> B -> B) -> B {
+        match values {
+            [] -> carried,
+            [head, .. tail] -> folded_from_start(tail, combine(head, carried), combine),
+        }
+    }
+
+    // Accumulate left to right: `combine` sees the first member first, and each
+    // application is handed what the members before it produced.
+    fn list_fold_from_start<A, B>(seed: B, combine: A -> B -> B, values: List<A>) -> B {
+        folded_from_start(values, seed, combine)
+    }
+
+    // The catamorphism's equation, written as it reads: `combine(x, fold(xs))`.
+    private fn folded_from_end<A, B>(values: List<A>, seed: B, combine: A -> B -> B) -> B {
+        match values {
+            [] -> seed,
+            [head, .. tail] -> combine(head, folded_from_end(tail, seed, combine)),
+        }
+    }
+
+    // Fold from the end: the application nearest the seed is the one over the
+    // last member, which is what lets this build right-nested data.
+    fn list_fold_from_end<A, B>(seed: B, combine: A -> B -> B, values: List<A>) -> B {
+        folded_from_end(values, seed, combine)
+    }
+
     // The natural numbers from zero up to, but not including, count.
     fn naturals(count: Nat) -> List<Nat> { range(count) }
 
@@ -13,5 +107,8 @@ library {
     }
 
     // Repeat one contextual music value count times as finite data.
-    fn repeat_music(value: Music, count: Nat) -> List<Music> { repeat(value, count) }
+    fn repeat_music(
+        value: EventTrack<WrittenTime>,
+        count: Nat,
+    ) -> List<EventTrack<WrittenTime>> { repeated(value, count) }
 }

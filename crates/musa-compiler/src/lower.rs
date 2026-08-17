@@ -57,6 +57,7 @@
 mod laws;
 
 pub(crate) mod items;
+pub(crate) mod kernel;
 pub(crate) mod notation;
 pub(crate) mod piece;
 mod quotes;
@@ -64,10 +65,15 @@ pub(crate) mod refusals;
 mod types;
 mod values;
 
+use std::collections::HashMap;
+
+use num_rational::Ratio;
+
 use musa_core::{Origin, Raw};
 use musa_language::{SyntaxKind, SyntaxNode, SyntaxToken};
 
 use crate::diagnose::Diagnostic;
+use crate::module::{Modules, NameScope};
 use crate::origin::SourceSpan;
 use crate::resolve::Resolver;
 
@@ -153,6 +159,9 @@ pub(crate) struct Lowering<'a> {
     sites: &'a mut Sites,
     /// Whether the phase's own vocabulary is readable here (§5.9).
     in_phase: bool,
+    /// The modules this document writes, and how names read inside the
+    /// declaration being walked. See [`Naming`].
+    naming: Naming<'a>,
     /// The `?`s written since the last position that delimits an answer, in the
     /// order they were written. See [`Lowering::expr`].
     questions: Vec<Question>,
@@ -166,6 +175,84 @@ pub(crate) struct Lowering<'a> {
     /// `examples/theory-assertions.musa` promises it is not. See
     /// [`notation::Claimed`] for why each one holds two terms.
     claims: Vec<notation::Claimed>,
+    /// The named place a decision site inside this walk is addressed under.
+    ///
+    /// `docs/rules/kernel/11-realization.md`'s path identity: a site is the
+    /// named material enclosing it plus its ordinal among unnamed siblings, and
+    /// the ordinal is [`Resolver::decide_count`]'s to mint. So what a walk
+    /// carries is the names, and the empty path is a voice's own — which is
+    /// deliberately the *same* place in every voice, because the k-th site in
+    /// every voice is the k-th site.
+    choice: crate::ChoicePath,
+    /// How many passes each ranged repeat this walk has read plays, by the span
+    /// of the statement that wrote it.
+    ///
+    /// A decision is made once and asked twice: [`notation::Lowering::repeat`]
+    /// makes it while folding, and [`notation::extent`] asks again when an
+    /// enclosing region measures how far its body reaches. Asking the
+    /// realization a second time would mint a second site and could answer
+    /// differently, so the answer is kept rather than re-derived — which is the
+    /// same rule that puts a resolved meter in [`notation::Reading`] rather than
+    /// re-reading the token.
+    counts: HashMap<crate::origin::SourceSpan, u32>,
+    /// How long each freely-held note this walk has read actually sounds, by the
+    /// span of the statement that wrote it.
+    ///
+    /// [`Self::counts`]'s argument, for the other decision a notation statement
+    /// can carry: `c5/4 to 2/1` is drawn as a quarter and sounds whatever the
+    /// realization chose, and the statement's *sounding* length is what the
+    /// region enclosing it has to measure.
+    holds: HashMap<crate::origin::SourceSpan, Ratio<i64>>,
+}
+
+/// How a written name reads here, when a module has a say in it.
+///
+/// Both fields belong to the *document* rather than to the walk:
+/// `04-templates-and-modules.md` §4's modules are read once per pass, and a
+/// scope is one member's entry in that reading. What the walk contributes is
+/// only which entry it is in.
+///
+/// The default is a walk of ordinary source, where no module decides anything —
+/// which is every walk in every document that writes none, and is why this is
+/// [`Default`] rather than a parameter every caller passes.
+#[derive(Clone, Copy)]
+pub(crate) struct Naming<'a> {
+    modules: Option<&'a Modules>,
+    scope: &'a NameScope,
+}
+
+impl Default for Naming<'_> {
+    fn default() -> Self {
+        Self {
+            modules: None,
+            scope: NameScope::empty(),
+        }
+    }
+}
+
+impl<'a> Naming<'a> {
+    /// Names as they read at a document's root: its modules are nameable, and
+    /// no name is a sibling of anything.
+    pub(crate) fn at_root(modules: &'a Modules) -> Self {
+        Self {
+            modules: Some(modules),
+            scope: NameScope::empty(),
+        }
+    }
+
+    /// Names as they read inside one module member, where a bare name may
+    /// reach a sibling and a functor's parameters name what the site passed.
+    pub(crate) fn inside(modules: &'a Modules, scope: &'a NameScope) -> Self {
+        Self {
+            modules: Some(modules),
+            scope,
+        }
+    }
+
+    /// What `written` names here, when a module decides it.
+    fn read(&self, written: &str) -> Option<crate::module::Reading> {
+        self.modules?.resolve(self.scope, written)
+    }
 }
 
 /// One `?`, waiting for the answer it was written inside of.
@@ -188,10 +275,26 @@ impl<'a> Lowering<'a> {
             resolver,
             sites,
             in_phase: false,
+            naming: Naming::default(),
             questions: Vec::new(),
             minted: 0,
             claims: Vec::new(),
+            choice: crate::ChoicePath::default(),
+            counts: HashMap::new(),
+            holds: HashMap::new(),
         }
+    }
+
+    /// The same walk, with a module's say in how its names read.
+    ///
+    /// A method rather than a parameter of [`Self::new`] because almost every
+    /// walk has nothing to pass: a document that writes no `structure` reads
+    /// every name the way it always has, and a constructor that asked all of
+    /// them for the empty answer would put the module system's vocabulary in
+    /// front of the passes that have no use for it.
+    pub(crate) fn naming(mut self, naming: Naming<'a>) -> Self {
+        self.naming = naming;
+        self
     }
 
     /// The claims written over passages in this walk, taken away from it.
@@ -213,7 +316,7 @@ impl<'a> Lowering<'a> {
     }
 
     /// The origin numbering `node`.
-    fn origin(&mut self, node: &SyntaxNode) -> Origin {
+    pub(crate) fn origin(&mut self, node: &SyntaxNode) -> Origin {
         self.sites.node(node)
     }
 
@@ -247,6 +350,17 @@ impl<'a> Lowering<'a> {
         self.minted = self.minted.saturating_add(1);
         format!("?{hint}{}", self.minted)
     }
+
+    /// Number the next voice's own decision sites from zero again.
+    ///
+    /// Sites written among a voice's own items are numbered from zero in every
+    /// voice, so the k-th of them is the *same* site in all of them — which is
+    /// what makes a repeat the page can draw take one count rather than one per
+    /// voice. See [`crate::ChoicePath`], and
+    /// `docs/rules/kernel/11-realization.md` for why identity is the path.
+    fn restart_sites(&mut self) {
+        self.resolver.sites.remove(&crate::ChoicePath::default());
+    }
 }
 
 /// `head a₁ … aₙ`, left-associated, which is what the core's one-argument
@@ -263,12 +377,40 @@ fn applied(origin: Origin, head: Raw, arguments: impl IntoIterator<Item = Raw>) 
 /// build a list from members they already hold: a written `[…]`, a quote's
 /// splices, and the run one hole of a quote pattern stands for. One fold, so a
 /// list a lowering writes has one shape.
+///
+/// [`Raw::hosted`] and not [`Raw::var`], which is what makes an unannotated
+/// `[1, 2]` infer. `List` has a parameter and a parameter is an explicit binder
+/// at an ordinary use, so `List.Cons 1 …` written as an *author* would write it
+/// means `Cons` at the type `1` — see `musa-core`'s `constructed_open`. The
+/// reader knows it wrote no parameter, and `hosted` is how it says so.
 fn listed(origin: Origin, members: Vec<Raw>) -> Raw {
-    let mut built = Raw::var(origin, "List.Empty");
+    let mut built = Raw::hosted(origin, "List.Empty");
     for member in members.into_iter().rev() {
-        built = applied(origin, Raw::var(origin, "List.Cons"), [member, built]);
+        built = applied(origin, Raw::hosted(origin, "List.Cons"), [member, built]);
     }
     built
+}
+
+/// The origin a reading hands `instanced`: one expansion step, and the place
+/// that produced it.
+///
+/// `at` twice and the step the reading minted, which is what an expansion is at
+/// this point: a place in the source, and the identity a site was given there.
+/// Only the path is read — a fact keeps the span of the text it was written as —
+/// and the spans are the site's because an origin without one is a value no
+/// diagnostic could restate.
+///
+/// Two readings mint one, and they are the two ways facts get made somewhere
+/// other than where they were written: [`piece`] at an instance site, whose step
+/// is the site's structural address, and [`kernel`] at a `${…}`, whose step is
+/// the locus the hole stands at.
+pub(crate) fn expansion(at: SourceSpan, step: crate::origin::ExpansionStep) -> crate::origin::Origin {
+    crate::origin::Origin {
+        source_span: at,
+        definition_span: at,
+        declaration: crate::origin::DeclarationId(0),
+        expansion_path: vec![step],
+    }
 }
 
 /// `n`, counted up from `Nat.Zero`.

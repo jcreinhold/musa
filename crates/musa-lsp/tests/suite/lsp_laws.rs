@@ -1034,9 +1034,9 @@ fn hover_on_a_keyword_reports_its_documentation() {
 #[test]
 fn hover_on_a_controlled_music_function_explains_its_boundary() {
     let source = "piece \"hover builtin\" {
-        let subject: Music = music { c4/1 };
+        let subject: EventTrack<WrittenTime> = music { c4/1 };
         fn same(p: Pitch) -> Pitch { p }
-        let transformed: Music = map_note_pitches(same, subject);
+        let transformed: EventTrack<WrittenTime> = map_note_pitches(same, subject);
         score { part p { voice v { use transformed; } } }
     }";
     let mut server = Server::start();
@@ -1063,7 +1063,7 @@ fn hover_on_a_declaration_reports_the_checked_signature_and_its_summary() {
     let content = hover_markdown(&mut server, &uri, at(TOOLING, "lifted(what"));
     // The signature the checker settled on — not the text.
     assert!(
-        content.contains("fn lifted(what: Music, by: Interval) -> Music"),
+        content.contains("fn lifted(what: EventTrack<WrittenTime>, by: Interval) -> EventTrack<WrittenTime>"),
         "{content}"
     );
     // The comment block above the declaration, as prose.
@@ -1091,7 +1091,7 @@ fn hover_draws_the_distinction_between_a_domain_and_the_one_it_is_confused_with(
 fn hover_marks_a_deprecated_binding_with_what_to_write_instead() {
     let mut server = Server::start();
     let (uri, _) = server.open("tooling", TOOLING);
-    let content = hover_markdown(&mut server, &uri, at(TOOLING, "theme: Music"));
+    let content = hover_markdown(&mut server, &uri, at(TOOLING, "theme: EventTrack<WrittenTime>"));
     assert!(content.contains("**Deprecated**"), "{content}");
     assert!(content.contains("write `subject` instead"), "{content}");
     server.stop();
@@ -1105,7 +1105,10 @@ fn signature_help_names_the_parameter_the_caret_is_on() {
     // Inside the first argument.
     let help = signature_help(&mut server, &uri, shifted(call, 7));
     let signature = help.signatures.first().expect("one signature");
-    assert_eq!(signature.label, "fn lifted(what: Music, by: Interval) -> Music");
+    assert_eq!(
+        signature.label,
+        "fn lifted(what: EventTrack<WrittenTime>, by: Interval) -> EventTrack<WrittenTime>"
+    );
     let parameters = signature.parameters.as_ref().expect("parameters");
     let labels: Vec<&str> = parameters
         .iter()
@@ -1114,7 +1117,11 @@ fn signature_help_names_the_parameter_the_caret_is_on() {
             lsp_types::ParameterLabel::LabelOffsets(_) => panic!("expected simple labels"),
         })
         .collect();
-    assert_eq!(labels, ["what: Music", "by: Interval"], "{parameters:?}");
+    assert_eq!(
+        labels,
+        ["what: EventTrack<WrittenTime>", "by: Interval"],
+        "{parameters:?}"
+    );
     assert_eq!(help.active_parameter, Some(0));
     // Past the comma, the second.
     let help = signature_help(&mut server, &uri, shifted(call, 16));
@@ -1192,7 +1199,9 @@ fn completion_in_a_kernel_hole_offers_only_what_a_hole_may_splice() {
     // offered is music. The rest of the vocabulary is still there, unsorted.
     for item in items.iter().filter(|item| item.sort_text.is_some()) {
         assert!(
-            item.detail.as_deref().is_some_and(|detail| detail.contains("Music")),
+            item.detail
+                .as_deref()
+                .is_some_and(|detail| detail.contains("EventTrack<WrittenTime>")),
             "a hole may splice only music: {item:?}"
         );
     }
@@ -1208,8 +1217,8 @@ fn symbols_list_the_declarations_written_here_and_no_others() {
     for expected in [
         "signature Centred",
         "structure Home: Centred",
-        "fn lifted(what: Music, by: Interval) -> Music",
-        "let subject: Music",
+        "fn lifted(what: EventTrack<WrittenTime>, by: Interval) -> EventTrack<WrittenTime>",
+        "let subject: EventTrack<WrittenTime>",
     ] {
         assert!(names.contains(&expected), "`{expected}` missing: {names:?}");
     }

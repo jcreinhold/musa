@@ -564,6 +564,21 @@ pub(crate) mod programs {
                 expected: |refusal| matches!(refusal, Refusal::NotAFunction { .. }),
             },
             Refused {
+                name: "a call that supplies none of the one parameter",
+                // §1.3: "a call must be complete". The other direction of the
+                // program above — that one applied a non-function, and this one
+                // under-applies a function — and written as a *call* rather than
+                // as a bare name, because a name whose type is a function is a
+                // perfectly good value and this rule is about argument lists.
+                raw: Raw::call(
+                    WRITTEN,
+                    Raw::annotated_lam(WRITTEN, "x", unit_type(), var("x")),
+                    Vec::new(),
+                ),
+                ty: None,
+                expected: |refusal| matches!(refusal, Refusal::Underapplied { .. }),
+            },
+            Refused {
                 name: "an implicit argument at an explicit binder",
                 raw: Raw::implicit_app(WRITTEN, Raw::annotated_lam(WRITTEN, "x", unit_type(), var("x")), unit()),
                 ty: None,

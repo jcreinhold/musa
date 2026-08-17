@@ -21,24 +21,27 @@
 //! §2's premises read `data A`: a port holds storable data, never a function.
 //! The old checker enforced it by giving every port a [`crate::infer::Kind::Data`]
 //! variable, whose [`crate::infer::Unifier::bind`] refuses an arrow at any
-//! depth. Half of that survives the restatement exactly and half does not, and
-//! which is which is worth writing down rather than discovering:
+//! depth. Both halves survive the restatement, each as something the signature
+//! *says* rather than something a pass goes looking for:
 //!
-//! - **The step tag survives.** It is one implicit binder shared by every
-//!   argument of a form, so `connect`'s two machines must agree on it and §2's
-//!   "the step tag `K` prevents machines whose steps mean different things from
-//!   being connected" is a property of the signature.
-//! - **Storability does not.** `02-core-calculus.md` §1.2 states it as the
-//!   `Storable` constraint, and a constraint is discharged during elaboration by
-//!   resolving a dictionary — a [`musa_core::Builtin`]'s type is a
-//!   [`Term`], which has explicit and implicit binders and no constraint binder.
-//!   Writing one as an ordinary Π at the empty dictionary type would leave an
-//!   unsolved metavariable at every use, which is a worse answer than none.
+//! - **The step tag** is one implicit binder shared by every argument of a form,
+//!   so `connect`'s two machines must agree on it and §2's "the step tag `K`
+//!   prevents machines whose steps mean different things from being connected"
+//!   is a property of the signature.
+//! - **Storability** is `02-core-calculus.md` §1.2's `Storable` constraint,
+//!   written into these signatures by [`musa_core::requiring_storable`] and
+//!   discharged during elaboration. There is no instance for an arrow — §1.2
+//!   admits instances only on declared types and generates them, so a function
+//!   type is refused before any table is consulted — and the base types this
+//!   compiler owns say for themselves which ones are storable data
+//!   ([`crate::registry`]'s `storable`).
 //!
-//! So `Machine ⟨step⟩ (Nat → Nat) Nat` is writable in the core today and
-//! refused by nothing in this module. The check belongs to the elaboration that
-//! has the constraint solver — prompt 142, which is also where the surface
-//! learns to spell these — and preparation refuses what is left
+//! So `Machine ⟨step⟩ (Nat → Nat) Nat` is refused where it is written, and
+//! refused for §1.2's reason rather than by a rule about arrows. What a
+//! signature still does not say is that the *step* position holds a step tag:
+//! `Machine Nat A B` type-checks here and has to be refused where the surface
+//! writes it, because a step tag is a host notion and this crate's registry is
+//! the only thing that knows the list. Preparation refuses what is left of both
 //! (§5: "a well-typed machine may still fail preparation").
 //!
 //! # The ninth form is not here
@@ -56,15 +59,13 @@ pub(super) const SPELLINGS: [&str; 8] = [
     "machine", "identity", "connect", "beside", "feedback", "copy", "drop", "swap",
 ];
 
-/// The ninth machine row, which is registered nowhere and is prompt 142's.
+/// The ninth machine row, which is registered **per registered unit**.
 ///
 /// `primitive(name, version, configuration)` is typed by a registry rather than
-/// by a signature. [`crate::core::MachineOp::instantiate`] returns `None` for
-/// it and the old checker's `registered_instance` answers instead: the written
-/// name and version select a descriptor from [`crate::machine`], and *that*
-/// supplies the step, the two ports, **and the type of the configuration
-/// argument** — which differs per unit, so it is not one Π short of writable,
-/// it is a different type per registered pair.
+/// by a signature: the written name and version select a descriptor from
+/// [`crate::machine`], and *that* supplies the step, the two ports, **and the
+/// type of the configuration argument** — which differs per unit, so it is not
+/// one Π short of writable, it is a different type per registered pair.
 ///
 /// The registrable alternative was to take all of it explicitly —
 /// `(step input output configuration : Type 0) → Text → Nat → configuration →
@@ -74,11 +75,369 @@ pub(super) const SPELLINGS: [&str; 8] = [
 /// second way to type a `primitive`: the audits' own smell. What is registered
 /// would not be §1's operation, only an operation that shares its spelling.
 ///
-/// It goes to prompt 142 because that is where elaboration replaces the old
-/// checker and therefore where a build-local lookup can happen at all. Counted
-/// in [`super::rules::UNREGISTERED`] so the accounting stays honest in the
-/// meantime.
+/// So the answer is neither one signature nor none: it is [`primitives`], one
+/// closed signature per `(name, version)` the build registers, and a reading
+/// that turns the written call into an application of the one its arguments
+/// name. A pair the build does not register has no signature to be applied to,
+/// which is the refusal stated as a registration rather than as a check.
+///
+/// The spelling itself stays here and stays unregistered, and that is the point
+/// rather than a leftover: `primitive` is a *source word* with no type of its
+/// own, so a program that writes it anywhere but at a call with a name and a
+/// version in hand is naming something that does not exist.
 pub(super) const UNREGISTERED: [&str; 1] = ["primitive"];
+
+/// The name the registration for one unit is spelled by.
+///
+/// Written the way a composer writes the call, because it is the only thing a
+/// diagnostic about it can say: no source file can name this — the spelling is
+/// not an identifier — and [`crate::lower::values`] is the one place that turns
+/// `primitive("scale", 1, c)` into an application of it.
+pub(crate) fn unit_spelling(id: &str, version: u32) -> String {
+    format!("primitive({id:?}, {version})")
+}
+
+/// A base type per step tag this build's units count in.
+///
+/// A step tag is a *type* — `Machine`'s first index — and §2 gives it no values,
+/// which is the whole of what it is for: two machines connect when their tags
+/// are the same type, and a tag with an inhabitant would be a tag a program
+/// could compute. Read off the registry rather than listed, so a build that
+/// registers a unit counting something new registers the type that says so.
+/// Whether `written` names one of them.
+///
+/// Read off the same registry [`step_tags`] is, so a build that registers a
+/// unit counting something new accepts the word that names it without a second
+/// list to keep in step.
+///
+/// One caller, and it is why this exists: the surface's `Machine<K, A, B>` is
+/// the only position a step tag can be written, and the *core* signature cannot
+/// refuse `Machine Nat A B` for it — a step tag is a host notion, and `base.rs`
+/// keeps the mechanism in the core and the table in the host. So the position
+/// restriction is checked where the position is, in [`crate::lower::types`].
+pub(crate) fn is_step_tag(written: &str) -> bool {
+    units()
+        .into_iter()
+        .any(|descriptor| descriptor.step().spelling() == written)
+}
+
+pub(super) fn step_tags() -> Vec<musa_core::Base> {
+    let mut tags: Vec<&'static str> = Vec::new();
+    for descriptor in units() {
+        let spelling = descriptor.step().spelling();
+        if !tags.contains(&spelling) {
+            tags.push(spelling);
+        }
+    }
+    tags.into_iter().map(super::plain).collect()
+}
+
+/// One constructor per `(name, version)` this build registers, at the closed
+/// type its descriptor decides.
+///
+/// `configuration → Primitive step input output`, with every one of the four
+/// read from [`crate::machine`]. No binder, implicit or otherwise: a unit's
+/// ports are decided by which unit it is, so there is nothing for a use site to
+/// supply and nothing for the elaborator to solve.
+///
+/// # Errors
+///
+/// [`ElabError`] when a port shape names a prelude family that is not declared
+/// in `cx`, which is a compiler defect.
+pub(super) fn primitives(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
+    let mut registered = Vec::new();
+    for descriptor in units() {
+        let ty = Term::pi(
+            HERE,
+            "configuration",
+            port(cx, descriptor.configuration())?,
+            applied(
+                ported("Primitive").term(HERE),
+                [
+                    super::plain(descriptor.step().spelling()).term(HERE),
+                    port(cx, descriptor.input())?,
+                    port(cx, descriptor.output())?,
+                ],
+            ),
+        );
+        registered.push(Builtin::constructor(
+            unit_spelling(descriptor.id(), descriptor.version()),
+            ty,
+            musa_core::Family::Machine,
+        ));
+    }
+    Ok(registered)
+}
+
+/// Every descriptor this build registers, in registration order.
+fn units() -> Vec<&'static crate::machine::PrimitiveDescriptor> {
+    crate::machine::registered_ids()
+        .into_iter()
+        .flat_map(|id| {
+            crate::machine::versions_of(id)
+                .into_iter()
+                .filter_map(move |version| crate::machine::descriptor(id, version))
+        })
+        .collect()
+}
+
+/// The core type one port shape denotes.
+///
+/// A product is `Pair` folded from the right, which is what `beside`'s own
+/// signature already writes: §2 pairs two ports and says nothing about three,
+/// so three is two of them.
+fn port(cx: &Cx, shape: crate::machine::PortShape) -> Result<Term, ElabError> {
+    match shape {
+        crate::machine::PortShape::Ratio => Ok(super::plain("Ratio").term(HERE)),
+        crate::machine::PortShape::Unit => crate::prelude::constant(cx, "Unit"),
+        crate::machine::PortShape::Bool => crate::prelude::constant(cx, "Bool"),
+        crate::machine::PortShape::Nat => crate::prelude::constant(cx, "Nat"),
+        crate::machine::PortShape::Product(members) => {
+            let pair = crate::prelude::constant(cx, "Pair")?;
+            let mut built = Vec::with_capacity(members.len());
+            for member in members {
+                built.push(port(cx, *member)?);
+            }
+            let Some((last, rest)) = built.split_last() else {
+                return crate::prelude::constant(cx, "Unit");
+            };
+            Ok(rest.iter().rev().fold(last.clone(), |second, first| {
+                applied(pair.clone(), [first.clone(), second])
+            }))
+        }
+    }
+}
+
+// ---- reading one back -------------------------------------------------------
+
+/// The step and the two ports `ty` decides, when it decides all three.
+///
+/// Asked of the *type* and before the value is normalized, because the type is
+/// what says whether there is a machine here at all — and asking it of every
+/// definition in a document has to be cheap.
+///
+/// [`None`] when `ty` is not `Machine step input output`, and when any of the
+/// three is something this build has no spelling for. The second is not a
+/// program a source file can write: §2's forms are polymorphic in their ports,
+/// and a declaration that leaves them undetermined is refused for that before it
+/// is ever read back.
+pub(crate) fn ports(ty: &Term) -> Option<(crate::machine::StepTag, String, String)> {
+    let (head, arguments) = spine(ty);
+    let musa_core::Shape::Base(ref base) = *head.shape() else {
+        return None;
+    };
+    if &**base.name() != "Machine" {
+        return None;
+    }
+    let [step, input, output] = arguments[..] else {
+        return None;
+    };
+    Some((
+        crate::machine::StepTag::named(&spelled(step)?)?,
+        spelled(input)?,
+        spelled(output)?,
+    ))
+}
+
+/// The nodes `normal` describes, children before parents.
+///
+/// The inverse of [`builtins`] and [`primitives`], and here for that reason:
+/// this module wrote the eight spellings and the per-unit ones, so it is the
+/// module that may read a spine built from them without any other having to
+/// learn what a machine's vocabulary is.
+///
+/// [`None`] when the spine is not one of those forms saturated — which, after
+/// [`ports`] has answered, means a compiler defect rather than a program's,
+/// since the term was checked at the machine type it is being read at.
+pub(crate) fn nodes(normal: &Term) -> Option<Vec<crate::machine::SpecNode>> {
+    let mut nodes = Vec::new();
+    node(normal, &mut nodes)?;
+    Some(nodes)
+}
+
+/// Append one form's nodes to `nodes`, children first, and answer where its own
+/// node landed — [`crate::MachineSpec`]'s promised order.
+fn node(term: &Term, nodes: &mut Vec<crate::machine::SpecNode>) -> Option<usize> {
+    use crate::machine::{SpecForm, SpecNode};
+
+    let (head, arguments) = spine(term);
+    let musa_core::Shape::Builtin(ref builtin) = *head.shape() else {
+        return None;
+    };
+    let built = match &**builtin.name() {
+        // `machine(p)` is not a node of its own. §2 gives it a typing rule
+        // because a primitive is not yet a machine, and gives it nothing to do:
+        // what the projection describes is the unit inside it.
+        "machine" => return node(written(&arguments, 1)?.first().copied()?, nodes),
+        "identity" => SpecNode::wiring(SpecForm::Identity, Vec::new()),
+        "copy" => SpecNode::wiring(SpecForm::Copy, Vec::new()),
+        "drop" => SpecNode::wiring(SpecForm::Drop, Vec::new()),
+        "swap" => SpecNode::wiring(SpecForm::Swap, Vec::new()),
+        "connect" => joined(SpecForm::Connect, &arguments, nodes)?,
+        "beside" => joined(SpecForm::Beside, &arguments, nodes)?,
+        "feedback" => {
+            let written = written(&arguments, 2)?;
+            // The stored value before the loop, because the loop's own node
+            // reads it: `initialized` takes bytes and children, and building
+            // the children first would leave nothing to fail on if the value
+            // turned out not to be storable.
+            let initial = stored(written.first().copied()?)?;
+            let children = vec![node(written.get(1).copied()?, nodes)?];
+            SpecNode::initialized(SpecForm::Feedback, children, initial)
+        }
+        // The ninth form, whose spelling is a registration rather than a word:
+        // see [`UNREGISTERED`].
+        spelling => SpecNode::primitive(
+            unit_named(spelling)?,
+            stored(written(&arguments, 1)?.first().copied()?)?,
+        ),
+    };
+    nodes.push(built);
+    Some(nodes.len().saturating_sub(1))
+}
+
+/// `connect` and `beside`, which differ only in which form they are.
+fn joined(
+    form: crate::machine::SpecForm,
+    arguments: &[&Term],
+    nodes: &mut Vec<crate::machine::SpecNode>,
+) -> Option<crate::machine::SpecNode> {
+    let written = written(arguments, 2)?;
+    let children = vec![
+        node(written.first().copied()?, nodes)?,
+        node(written.get(1).copied()?, nodes)?,
+    ];
+    Some(crate::machine::SpecNode::wiring(form, children))
+}
+
+/// The last `count` arguments of a spine: the ones a source program wrote.
+///
+/// Counted from the end because every signature above binds its step tag and
+/// its ports implicitly and an elaborated term carries the solutions —
+/// `machine(p)` is `machine K A B p`, so the argument a reader wants is the
+/// last rather than the first, and its position depends on how many binders the
+/// form has.
+fn written<'a, 'b>(arguments: &'b [&'a Term], count: usize) -> Option<&'b [&'a Term]> {
+    arguments.get(arguments.len().checked_sub(count)?..)
+}
+
+/// The descriptor whose registration is spelled `spelling`.
+///
+/// Matched against [`unit_spelling`] rather than parsed out of it: the spelling
+/// is this module's own construction, and a reader that took it apart would be
+/// a second place that decides what a unit's registration is called.
+fn unit_named(spelling: &str) -> Option<&'static crate::machine::PrimitiveDescriptor> {
+    units()
+        .into_iter()
+        .find(|descriptor| unit_spelling(descriptor.id(), descriptor.version()) == spelling)
+}
+
+/// The exact bytes a configuration or a feedback value stores.
+///
+/// §1.1's storable data, restated over the core's canonical data: a port shape
+/// is a `Ratio`, a `Unit`, a `Bool`, a `Nat`, or a product of those, so those
+/// are the cases, and a value that is none of them is one no port could have
+/// held. Each case writes a distinguishing tag and every part is either fixed
+/// width or a known arity, so two different values cannot write one string —
+/// which is what makes a machine's digest an identity rather than a hint.
+fn stored(term: &Term) -> Option<Vec<u8>> {
+    let mut bytes = Vec::new();
+    write_stored(&musa_core::canonical(term)?, &mut bytes)?;
+    Some(bytes)
+}
+
+fn write_stored(datum: &musa_core::Datum, bytes: &mut Vec<u8>) -> Option<()> {
+    match *datum {
+        musa_core::Datum::Lit(ref literal) => {
+            let exact = super::held::<num_rational::Ratio<i64>>(literal)?;
+            bytes.push(0);
+            bytes.extend_from_slice(&exact.numer().to_be_bytes());
+            bytes.extend_from_slice(&exact.denom().to_be_bytes());
+        }
+        musa_core::Datum::Case {
+            ref constructor,
+            ref fields,
+        } => match &**constructor {
+            "Unit.Only" => bytes.push(1),
+            "Bool.False" => bytes.extend_from_slice(&[2, 0]),
+            "Bool.True" => bytes.extend_from_slice(&[2, 1]),
+            "Nat.Zero" | "Nat.Succ" => {
+                bytes.push(3);
+                bytes.extend_from_slice(&super::rules::nat(datum)?.to_be_bytes());
+            }
+            "Pair.Both" => {
+                bytes.push(4);
+                write_stored(fields.first()?, bytes)?;
+                write_stored(fields.get(1)?, bytes)?;
+            }
+            _ => return None,
+        },
+    }
+    Some(())
+}
+
+/// How this build spells the type `ty`, in the vocabulary
+/// [`crate::MachineSpec`] reports ports in.
+///
+/// Base types and the prelude's own nullary families print their names, and a
+/// product prints as source writes it. [`None`] for anything else, which is
+/// what makes an undecided port answer no projection: a metavariable and a
+/// variable have no spelling a consumer could prepare.
+fn spelled(ty: &Term) -> Option<String> {
+    let (head, arguments) = spine(ty);
+    match *head.shape() {
+        musa_core::Shape::Base(ref base) if arguments.is_empty() => Some(base.name().to_string()),
+        musa_core::Shape::Const(ref constant) => {
+            let name = constant.to_string();
+            if name == "Pair" {
+                let [first, second] = arguments[..] else {
+                    return None;
+                };
+                return Some(format!("({}, {})", spelled(first)?, spelled(second)?));
+            }
+            arguments.is_empty().then_some(name)
+        }
+        // Written out rather than left to a wildcard, so that a shape added to
+        // the core has to be classified here before this crate builds again —
+        // `musa_core::canonical`'s own discipline, and for its reason.
+        musa_core::Shape::Base(_)
+        | musa_core::Shape::Var(_)
+        | musa_core::Shape::Def(_)
+        | musa_core::Shape::Lit(_)
+        | musa_core::Shape::Builtin(_)
+        | musa_core::Shape::Universe(_)
+        | musa_core::Shape::Pi { .. }
+        | musa_core::Shape::Lam { .. }
+        // `App` cannot appear — the peel above ended because the head was not
+        // one — and it is named anyway, because an arm that says "unreachable"
+        // is a claim a later reader has to re-derive.
+        | musa_core::Shape::App { .. }
+        | musa_core::Shape::RecordType(_)
+        | musa_core::Shape::Record(_)
+        | musa_core::Shape::Project { .. }
+        | musa_core::Shape::Id { .. }
+        | musa_core::Shape::Refl(_)
+        | musa_core::Shape::J { .. }
+        | musa_core::Shape::Meta(_)
+        | musa_core::Shape::Let { .. } => None,
+    }
+}
+
+/// A term as its head and the arguments applied to it, in written order.
+fn spine(term: &Term) -> (&Term, Vec<&Term>) {
+    let mut head = term;
+    let mut arguments = Vec::new();
+    while let musa_core::Shape::App {
+        ref function,
+        ref argument,
+    } = *head.shape()
+    {
+        arguments.push(argument);
+        head = function;
+    }
+    arguments.reverse();
+    (head, arguments)
+}
 
 /// The eight forms, read off [`crate::core::MachineOp::instantiate`] rather than
 /// retyped.
@@ -153,9 +512,10 @@ const STEP: usize = 0;
 
 fn machine_type() -> Term {
     let (step, input, output) = (STEP, 1, 2);
-    let bound = 3;
+    let bound = 5;
     scheme(
         &["step", "input", "output"],
+        &[input, output],
         vec![ported_type("Primitive", bound, step, input, output)],
         ported_type("Machine", bound + 1, step, input, output),
     )
@@ -165,8 +525,9 @@ fn identity_type() -> Term {
     let (step, port) = (STEP, 1);
     scheme(
         &["step", "port"],
+        &[port],
         Vec::new(),
-        ported_type("Machine", 2, step, port, port),
+        ported_type("Machine", 3, step, port, port),
     )
 }
 
@@ -175,6 +536,7 @@ fn connect_type() -> Term {
     let bound = 4;
     scheme(
         &["step", "input", "middle", "output"],
+        &[],
         vec![
             ported_type("Machine", bound, step, input, middle),
             ported_type("Machine", bound + 1, step, middle, output),
@@ -189,6 +551,7 @@ fn beside_type(words: &Words) -> Term {
     let at_depth = bound + 2;
     scheme(
         &["step", "input", "output", "other_input", "other_output"],
+        &[],
         vec![
             ported_type("Machine", bound, step, input, output),
             ported_type("Machine", bound + 1, step, other_input, other_output),
@@ -206,10 +569,11 @@ fn beside_type(words: &Words) -> Term {
 
 fn feedback_type(words: &Words) -> Term {
     let (step, input, output, stored) = (STEP, 1, 2, 3);
-    let bound = 4;
+    let bound = 5;
     let inner = bound + 1;
     scheme(
         &["step", "input", "output", "stored"],
+        &[stored],
         vec![
             at(bound, stored),
             applied(
@@ -230,6 +594,7 @@ fn copy_type(words: &Words) -> Term {
     let bound = 2;
     scheme(
         &["step", "port"],
+        &[],
         Vec::new(),
         applied(
             ported("Machine").term(HERE),
@@ -247,6 +612,7 @@ fn drop_type(words: &Words) -> Term {
     let bound = 2;
     scheme(
         &["step", "port"],
+        &[],
         Vec::new(),
         applied(
             ported("Machine").term(HERE),
@@ -260,6 +626,7 @@ fn swap_type(words: &Words) -> Term {
     let bound = 3;
     scheme(
         &["step", "first", "second"],
+        &[],
         Vec::new(),
         applied(
             ported("Machine").term(HERE),
@@ -274,21 +641,37 @@ fn swap_type(words: &Words) -> Term {
 
 // ---- writing a signature ----------------------------------------------------
 
-/// `{v₁ … vₙ : Type 0} → α₁ → … → αₘ → ρ`.
+/// `{v₁ … vₙ : Type 0} → [Storable v_{s₁}] … → α₁ → … → αₘ → ρ`.
 ///
 /// Every argument must already be written at the depth its own position gives it
-/// — `n` for the first and `n + k` for the k-th — and the result at `n + m`.
-/// Folding from the right is what makes that true, exactly as in
-/// [`super::traversal`]'s telescope.
-fn scheme(binders: &[&'static str], arguments: Vec<Term>, result: Term) -> Term {
+/// — `n + c` for the first and `n + c + k` for the k-th, where `c` is
+/// `storable.len()` — and the result at `n + c + m`. Folding from the right is
+/// what makes that true, exactly as in [`super::traversal`]'s telescope.
+///
+/// `storable` names the binders §2's typing rules write `data A` above, and
+/// nothing else: `machine(p)` for both ports, `identity` for its one, and
+/// `feedback` for the value it stores. The forms whose rules carry no `data`
+/// premise carry no constraint here — a `connect` inherits its ports from the
+/// two machines it chains, and inventing a premise the document does not write
+/// would refuse a program §2 admits.
+fn scheme(binders: &[&'static str], storable: &[usize], arguments: Vec<Term>, result: Term) -> Term {
+    let bound = binders.len();
     let applied = arguments
         .into_iter()
         .rev()
         .fold(result, |built, argument| Term::pi(HERE, "argument", argument, built));
-    binders
+    // Innermost constraint first, so the k-th from the *outside* stands under
+    // `bound + k` binders and reads its port there.
+    let constrained = storable
         .iter()
+        .enumerate()
         .rev()
-        .fold(applied, |built, name| Term::implicit_pi(HERE, *name, type0(), built))
+        .fold(applied, |built, (which, position)| {
+            musa_core::requiring_storable(HERE, at(bound.saturating_add(which), *position), built)
+        });
+    binders.iter().rev().fold(constrained, |built, name| {
+        Term::implicit_pi(HERE, *name, type0(), built)
+    })
 }
 
 /// `Machine step input output` or `Primitive step input output`, where all three

@@ -1,7 +1,9 @@
 // A scale is a lexical coordinate system, not a key signature. `in scale`
 // changes only what `step` means for the music it encloses; it emits no key
-// fact and claims no modulation. Because a `music` value is contextual, the
-// same saved phrase elaborates differently at two use sites.
+// fact and claims no modulation. *Lexical* is the whole of it: a step is
+// finished where it is written, so the same three notes written under two
+// collections are two passages, and a phrase saved in a binding is already
+// finished and no later `in scale` reaches back into it.
 piece "Scale Context" {
     import std::scale;
     import std::collections;
@@ -10,15 +12,11 @@ piece "Scale Context" {
     // score fact; the scale statements below never touch it.
     key c minor;
 
-    fn figure() -> Music {
-        music {
-            c5/8
-            (c5 step 1)/8
-            (c5 step 2)/4
-        }
+    // A saved phrase steps in no collection, so it spells its pitches. This is
+    // the half of the figure that means the same thing everywhere.
+    fn opening() -> EventTrack<WrittenTime> {
+        music { c5/8 }
     }
-
-    let subject: Music = figure();
 
     // Read as values, the domains stay separate: a key is a signature and a
     // mode, and the collection it suggests is a default a passage may refuse.
@@ -30,13 +28,19 @@ piece "Scale Context" {
     score {
         part keyboard {
             voice upper {
-                // One phrase, two coordinate systems. Under C major the thirds
-                // are `e5` and `g5`; under C dorian the third is `eb5`.
+                // The same three notes, two coordinate systems. Under C major
+                // the steps are `e5` and `g5`; under C dorian the first is
+                // `eb5`. Both are written here, because that is where the
+                // collection is.
                 in scale c major {
-                    use subject;
+                    use opening();
+                    (c5 step 1)/8
+                    (c5 step 2)/4
                 }
                 in scale c dorian {
-                    use subject;
+                    use opening();
+                    (c5 step 1)/8
+                    (c5 step 2)/4
                 }
 
                 // Natural and harmonic minor are distinct collections, and

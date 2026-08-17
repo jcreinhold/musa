@@ -110,6 +110,7 @@ pub struct Base(Arc<BaseDeclaration>);
 struct BaseDeclaration {
     name: Name,
     kind: Term,
+    storable: bool,
 }
 
 /// Two base types are the same when they have the same name.
@@ -139,12 +140,46 @@ impl Base {
     /// for a parameterized one. It is read in the empty context: a base type is
     /// closed, which is what lets [`Registry`] check a signature without an
     /// environment.
+    ///
+    /// Not storable, which is `02-core-calculus.md` §1.2's own default for a
+    /// compiler-owned type: it is storable "only when its owner guarantees that
+    /// its hidden representation contains no closure and supplies the exact
+    /// encoding", and a host that has not said so has not guaranteed it. See
+    /// [`Self::storable`].
     #[must_use]
     pub fn new(name: impl Into<Name>, kind: Term) -> Self {
         Self(Arc::new(BaseDeclaration {
             name: name.into(),
             kind,
+            storable: false,
         }))
+    }
+
+    /// The same base type, with its owner's guarantee that it is storable data.
+    ///
+    /// §1.2 states storability as a `Storable` constraint whose instances are
+    /// generated and never written, and a base type is the one shape this crate
+    /// cannot decide for itself: there is nothing to look inside. So the host
+    /// says it here and the core generates the instance, exactly as it does for
+    /// a declaration group — and a host that says nothing gets the smaller set
+    /// of instances, which is §1.2's "exception in the safe direction".
+    ///
+    /// Unconditional, because that is the whole of what has a caller. §1.2 also
+    /// admits a *conditional* base instance — `Machine K A B` is storable when
+    /// `A` and `B` are — and a base type that wants one is registered without
+    /// this and refused at the site that needs it, which errs the same safe way.
+    #[must_use]
+    pub fn storable(&self) -> Self {
+        Self(Arc::new(BaseDeclaration {
+            name: Arc::clone(&self.0.name),
+            kind: self.0.kind.clone(),
+            storable: true,
+        }))
+    }
+
+    /// Whether its owner guaranteed it storable.
+    pub(crate) fn is_storable(&self) -> bool {
+        self.0.storable
     }
 
     /// Its name.
@@ -830,6 +865,19 @@ impl Registry {
     #[must_use]
     pub fn named(&self, name: &str) -> Option<&Extern> {
         self.names.get(name)
+    }
+
+    /// Every base type registered here, in no particular order.
+    ///
+    /// One caller, and it is the reason there is an accessor at all:
+    /// [`crate::storable`] turns the ones their owner guaranteed into the
+    /// `Storable` instances a use site resolves. Order does not matter because
+    /// each answers a different key.
+    pub(crate) fn bases(&self) -> impl Iterator<Item = &Base> {
+        self.names.values().filter_map(|entry| match entry {
+            Extern::Base(base) => Some(base),
+            Extern::Builtin(_) => None,
+        })
     }
 
     /// Every structural eliminator's target: an argument of its own signature,

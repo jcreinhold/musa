@@ -135,9 +135,10 @@ fn file(refusal: &Refusal) -> Filed {
         | Refusal::NotAType { at, .. }
         | Refusal::RecordShape { at, .. } => one(Code::TypeMismatch, *at),
         // Too many, too few, or the wrong kind of argument.
-        Refusal::PlicityMismatch { at, .. } | Refusal::IndexCount { at, .. } | Refusal::ClassArity { at, .. } => {
-            one(Code::WrongArity, *at)
-        }
+        Refusal::PlicityMismatch { at, .. }
+        | Refusal::IndexCount { at, .. }
+        | Refusal::ClassArity { at, .. }
+        | Refusal::Underapplied { at, .. } => one(Code::WrongArity, *at),
         // A name the declaration it is read against does not have.
         Refusal::NoSuchField { at, .. } | Refusal::NoSuchConstructor { at, .. } => one(Code::UnknownName, *at),
         // One name written twice, in a record type, an enum, or a `with`.

@@ -72,18 +72,42 @@ fn a_scale_walks_its_own_reference_map() {
 }
 
 #[test]
-fn one_bound_phrase_elaborates_differently_under_two_scales() {
-    // The open-binding law: `subject` is evaluated once, and each use reads
-    // the scale in force where it is written. Saving a phrase does not freeze
-    // its coordinates.
-    let source = piece_with(
-        "    fn figure() -> Music { music {\n        c5/8\n        (c5 step 1)/8\n        (c5 step 2)/4\n    } }\n\n    let subject: Music = figure();",
-        "        in scale c major { use subject; }\n        in scale c dorian { use subject; }",
+fn a_saved_phrase_is_finished_where_it_is_written_and_no_later_scale_reaches_it() {
+    // *Lexical* is the whole of it. `in scale` supplies the collection to the
+    // pitches written inside its braces, and a phrase written elsewhere is
+    // already pitches by the time a `use` puts it here — so the scale a use
+    // stands in changes nothing about what it plays.
+    //
+    // This law used to say the opposite, and the design it described is the
+    // contextual `Music` prompt 127a deleted: a saved phrase that meant
+    // different notes at each use site, which is to say a value whose meaning
+    // its own definition did not fix. What replaced it is written below —
+    // steps go where the scale is, and what a function saves is the part that
+    // means the same thing everywhere.
+    let saved = piece_with(
+        "    fn opening() -> EventTrack<WrittenTime> { music { c5/8 } }\n\n    let subject: EventTrack<WrittenTime> = opening();",
+        "        in scale c major { use subject; (c5 step 1)/8 (c5 step 2)/4 }\n        in scale c dorian { use subject; (c5 step 1)/8 (c5 step 2)/4 }",
     );
     assert_eq!(
-        pitches(&source),
+        pitches(&saved),
         ["c5", "d5", "e5", "c5", "d5", "eb5"],
-        "the same music value must read the scale at each use site"
+        "the steps written under each scale read that scale, and the saved phrase reads neither"
+    );
+}
+
+#[test]
+fn a_phrase_that_steps_outside_a_scale_is_refused_where_it_is_written() {
+    // The other half, and the reason the law above is not merely a change of
+    // spelling: a `step` in a saved phrase is not waiting for a use site to
+    // supply a collection, because no use site can. It is refused at the
+    // definition, which is where the mistake is.
+    let reported = errors(&piece_with(
+        "    fn figure() -> EventTrack<WrittenTime> { music { c5/8 (c5 step 1)/8 } }",
+        "        in scale c major { use figure(); }",
+    ));
+    assert!(
+        reported.contains("`step` needs a scale to count in"),
+        "expected the missing-scale diagnostic at the definition, got: {reported}"
     );
 }
 
@@ -104,10 +128,13 @@ fn the_scale_distributes_over_sequence_and_overlay() {
         "in scale c dorian { (c4 step 2)/4 (c4 step 6)/4 (c4 step 2)/4 }",
     ));
     assert_eq!(sequenced, ["eb4", "bb4", "eb4"]);
-    // Overlaid: a `use` inside the context reads it too, in both branches.
+    // Overlaid: the same statement about a tree rather than a list. Each
+    // branch names the collection inside its own braces, because a `music { … }`
+    // value is its own lexical region — an `in scale` outside it does not reach
+    // in, for the reason a scale at a `use` does not reach the phrase it names.
     let overlaid = pitches(&piece_with(
-        "    let low: Music = music { (c4 step 2)/2 };\n    let high: Music = music { (c5 step 2)/2 };",
-        "        in scale c dorian { use together(low, high); }",
+        "    let low: EventTrack<WrittenTime> = music { in scale c dorian { (c4 step 2)/2 } };\n    let high: EventTrack<WrittenTime> = music { in scale c dorian { (c5 step 2)/2 } };",
+        "        use together(low, high);",
     ));
     assert_eq!(overlaid, ["eb4", "eb5"]);
 }
@@ -129,8 +156,14 @@ fn the_scale_is_independent_of_the_rest_of_the_environment() {
 fn a_numbered_degree_realizes_in_the_frame_that_registers_it() {
     // Degrees are written from one: degree 1 of a C major frame rooted on c4
     // is c4 itself, and 1/3/5 spell that frame's triad in its own register.
+    //
+    // A degree is a *computed* pitch, and the pitch positions of a `music { … }`
+    // block are the ones the source spells — a literal, a transposition of one,
+    // or a step from one. So the note is a one-note track whose pitch the degree
+    // replaces, which is what `map_note_pitches` is for, and the block sequences
+    // the three.
     let source = piece_with(
-        "    import std::scale;\n\n    fn triad(register: Frame) -> Music { music {\n        (frame_degree(register, 1))/4\n        (frame_degree(register, 3))/4\n        (frame_degree(register, 5))/4\n    } }\n\n    let anchored: Music = option_fold(music { rest/4 }, triad, frame_on(scale c major, c4));",
+        "    import std::collections;\n    import std::scale;\n\n    fn sounding(register: Frame, ordinal: Nat) -> EventTrack<WrittenTime> {\n        map_note_pitches(fn (written: Pitch) -> Pitch { frame_degree(register, ordinal) }, music { c4/4 })\n    }\n\n    fn triad(register: Frame) -> EventTrack<WrittenTime> { music {\n        use sounding(register, 1);\n        use sounding(register, 3);\n        use sounding(register, 5);\n    } }\n\n    let anchored: EventTrack<WrittenTime> = option_fold(music { rest/4 }, triad, frame_on(scale c major, c4));",
         "        use anchored;",
     );
     assert_eq!(pitches(&source), ["c4", "e4", "g4"]);
@@ -205,7 +238,7 @@ fn chromatic_motion_and_scale_stepping_do_not_commute() {
     // the operations do not commute, and one of them is not even defined here.
     let reported = errors(&piece("in scale c major { ((c4 up m2) step 1)/4 }"));
     assert!(
-        reported.contains("is not a member of"),
+        reported.contains("`db4` is not in scale c major"),
         "expected a membership diagnostic, got: {reported}"
     );
 }
@@ -251,7 +284,7 @@ fn a_key_supplies_the_default_collection_and_a_scale_overrides_it() {
 fn an_absent_scale_is_a_diagnostic_rather_than_c_major() {
     let reported = errors(&piece("c4/4 (c4 step 1)/4"));
     assert!(
-        reported.contains("needs a scale in force"),
+        reported.contains("`step` needs a scale to count in"),
         "expected the missing-scale diagnostic, got: {reported}"
     );
 }
@@ -260,7 +293,7 @@ fn an_absent_scale_is_a_diagnostic_rather_than_c_major() {
 fn a_note_outside_the_scale_has_no_coordinate() {
     let reported = errors(&piece("in scale c major { f#5/4 (f#5 step 1)/4 }"));
     assert!(
-        reported.contains("is not a member of"),
+        reported.contains("`f#5` is not in scale c major"),
         "expected the membership diagnostic, got: {reported}"
     );
 }

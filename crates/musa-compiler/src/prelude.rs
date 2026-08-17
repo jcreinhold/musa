@@ -34,7 +34,8 @@
 //! shorter, and `Option`, `List`, and `Result` are what §1's `τ + τ` and its
 //! relatives become once families exist. All five are declared here rather than
 //! registered, and the eight collection eliminators prompt 141c left out of the
-//! core's registry are the traversals over three of them.
+//! core's registry are the traversals over three of them — written in `.musa`,
+//! over the constructors declared here, in `stdlib/src/{nat,list,option}.musa`.
 //!
 //! `Ratio` stays a base type, and that is not an inconsistency with `Nat`: an
 //! exact rational has no least element to descend to, which is the same reason
@@ -55,7 +56,8 @@
 use std::sync::Arc;
 
 use musa_core::{
-    Cx, ElabError, Level, ModuleId, Origin, Raw, RawBinder, RawConstructor, RawData, RawFamily, Term, Visibility,
+    Cx, ElabError, Level, ModuleId, Origin, Raw, RawBinder, RawConstructor, RawData, RawDefinition, RawFamily, RawImpl,
+    RawMethod, RawTrait, Term, Visibility,
 };
 
 /// Where a declaration this module writes comes from.
@@ -482,6 +484,126 @@ pub(crate) fn structural() -> Vec<RawData> {
 /// rather than declared.
 pub(crate) fn musical() -> Vec<RawData> {
     vec![row_fault_data(), fact_data()]
+}
+
+/// `trait Eq<A> { fn equal(x: A, y: A) -> Bool; }` — `10-traits.md` §1's own
+/// example, and the one trait the compiler owns.
+///
+/// # Why the compiler owns it rather than the standard library
+///
+/// A **literal pattern** is core syntax. `match kind { "at_the_fifth" -> P5, … }`
+/// has no constructors to split on — `Text` is a base type — so
+/// [`crate::lower::values`] lowers it to a chain of equality tests, and
+/// `x == y` lowers to `Eq.equal(x, y)` by §5's table. Both are readings the
+/// compiler performs on source that imported nothing, and `examples/named-answer.musa`
+/// is a piece that writes one and imports nothing. A trait in `stdlib/` would
+/// make that piece's meaning depend on a line it did not write; worse, an
+/// *adapter* module imports nothing by rule (`crate::core`'s "an adapter module
+/// imports nothing"), so a library `Eq` would be unreachable from the phase
+/// where string dispatch is most of the work.
+///
+/// # Why a trait rather than a per-type builtin
+///
+/// The lowering does not know the subject's type: `3/8` is a `Ratio` token that
+/// may stand at `Duration<WrittenTime>`, and a pattern is checked against the
+/// type of what it matches rather than against its own spelling. Exact-receiver
+/// method resolution (`10-traits.md` §6) runs *after* the subject is inferred,
+/// which is the only place the question has an answer. So the lowering writes
+/// one name and the checker picks the instance — which is also what prompt 143
+/// needs standing before it can collapse `text_equal` and its four siblings onto
+/// `==`.
+fn eq_class() -> RawTrait {
+    RawTrait {
+        origin: HERE,
+        name: Arc::from("Eq"),
+        visibility: Visibility::Public,
+        params: vec![binder("A", type0())],
+        context: Vec::new(),
+        methods: vec![RawMethod {
+            origin: HERE,
+            name: Arc::from("equal"),
+            params: Vec::new(),
+            context: Vec::new(),
+            ty: Raw::pi(HERE, "x", var("A"), Raw::pi(HERE, "y", var("A"), var("Bool"))),
+            body: None,
+        }],
+    }
+}
+
+/// Every type a literal pattern can name, with the δ-builtin that decides it.
+///
+/// Five, and the list is closed by the grammar rather than by taste:
+/// `Lowering::matches_a_literal` fires for a string, a rational, a pitch, and an
+/// interval, and a rational stands at `Ratio` or at `Duration<WrittenTime>`.
+/// `Bool` and `Nat` are absent because they are *declared* families — `true` and
+/// `7` are constructor patterns, split by the case tree, and an instance for
+/// them would be a second way to ask a question ι already answers.
+///
+/// `Position<WrittenTime>` is absent for the opposite reason: `position_equal`
+/// exists, but no literal spells a position and no source program can therefore
+/// reach the instance. Prompt 143 adds it in the commit that gives `==` its
+/// meaning, where it will have a caller.
+///
+/// Each body is the builtin itself rather than a λ around it. The dictionary
+/// field's type is `A → A → Bool` and `text_equal`'s type is `Text → Text → Bool`,
+/// so η-contraction is not a trick here — the two are the same term, and writing
+/// `λx y. text_equal(x, y)` would only add a redex for the evaluator to undo.
+fn eq_instances() -> Vec<RawImpl> {
+    let written = |name: &'static str| {
+        Raw::app(
+            HERE,
+            var(name),
+            Raw::lit(
+                HERE,
+                crate::registry::coordinate_literal(crate::core::Coordinate::WrittenTime),
+            ),
+        )
+    };
+    vec![
+        eq_instance(var("Text"), "text_equal"),
+        eq_instance(var("Ratio"), "ratio_equal"),
+        eq_instance(written("Duration"), "duration_equal"),
+        eq_instance(var("Pitch"), "pitch_equal"),
+        eq_instance(var("Interval"), "interval_equal"),
+    ]
+}
+
+/// `impl Eq<head> { fn equal(x, y) { rule(x, y) } }`, written as the one term it
+/// elaborates to.
+fn eq_instance(head: Raw, rule: &'static str) -> RawImpl {
+    RawImpl {
+        origin: HERE,
+        name: Arc::from("Eq"),
+        params: Vec::new(),
+        args: vec![head],
+        context: Vec::new(),
+        methods: vec![RawDefinition {
+            origin: HERE,
+            name: Arc::from("equal"),
+            value: var(rule),
+        }],
+    }
+}
+
+/// `cx` with [`eq_class`] declared and every [`eq_instances`] entry in it.
+///
+/// Last in [`crate::registry::owned`] and necessarily so: an instance body is a
+/// δ-builtin's name, and a name resolves only once the registry holding it is
+/// the context's.
+///
+/// # Errors
+///
+/// As [`musa_core::declare_trait`] and [`musa_core::declare_impl`] — in practice
+/// never, since the declarations are this module's own and a failure here is a
+/// compiler defect rather than a program's.
+pub(crate) fn equality(cx: Cx) -> Result<Cx, ElabError> {
+    let class = musa_core::declare_trait(&cx, &eq_class())?;
+    let mut cx = cx.declaring_class(&class);
+    for instance in eq_instances() {
+        let declared = musa_core::declare_impl(&cx, &instance)?;
+        cx = cx.declaring_instance(&declared);
+    }
+    Ok(cx)
 }
 
 /// The term naming `name` in `cx`, for a caller assembling a builtin's type.

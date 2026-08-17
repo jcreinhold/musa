@@ -23,12 +23,20 @@
     reason = "a law that cannot fail loudly is not a law"
 )]
 
+use musa_language::ast::AstNode as _;
 use musa_language::{SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 
 use crate::document::{Document, Source, elaborate};
 use crate::elaborate::{FactKind, VoiceTrack};
 use crate::resolve::Resolver;
+
+/// The document name every law below reads its piece under.
+///
+/// One name for all of them, because the only thing it decides is what a
+/// template instance's generated identity is minted in, and a law that varied
+/// it would be varying a digest nothing here reads.
+const DOCUMENT: &str = "law";
 
 // ---- reading a written piece back out of a parse ----
 
@@ -66,15 +74,44 @@ fn checked(node: &SyntaxNode) -> (Option<musa_core::Term>, Vec<String>) {
 /// the structure around it is a term. What `libraries` adds is what an `import`
 /// would — [`every_example_elaborates`] passes the standard library, because a
 /// survey that reported `harmonize` missing would be measuring its own harness.
+///
+/// The document's own root goes in beside the piece, and a root `make` is read
+/// before either — the two halves of [`crate::elaborate`]'s `declaring`. Both
+/// matter to the same file: `examples/template-study.musa` writes `fn theme()`
+/// at the root and its piece is a *template's* body, whose parameters no source
+/// binds and the instance does. A harness that read the body without the `make`
+/// standing under it would report `subject` unbound — which is a fault of the
+/// reading rather than of the file, and the compiler accepts that file.
+///
+/// Which piece is read follows from the same two: a document's piece is the one
+/// written at its root, or the one its root `make` names, and only when it has
+/// neither is it the node the caller handed over. The distinction is not
+/// pedantic — `examples/module-functor-study.musa` declares two template pieces
+/// and makes the *second*, so the first `piece` node under the root is a
+/// template nothing in that file instantiates.
 fn checked_with(node: &SyntaxNode, libraries: &[Source]) -> (Option<musa_core::Term>, Vec<String>) {
     let mut resolver = Resolver::new();
-    let mut sources = libraries.to_vec();
-    sources.push(Source {
-        root: node.clone(),
-        in_phase: false,
+    let root = node.ancestors().last().unwrap_or_else(|| node.clone());
+    let made = musa_language::ast::MakeStmt::from_root(&root).and_then(|site| {
+        crate::template::Templates::collect(&mut resolver, &root).instance(
+            &mut resolver,
+            &site,
+            "piece".to_owned(),
+            crate::template::Kind::Piece,
+            None,
+            DOCUMENT,
+        )
     });
-    let elaborated = elaborate(&mut resolver, &sources);
-    let answer = read(&mut resolver, elaborated, node);
+    let declared = musa_language::ast::PieceDecl::from_root(&root)
+        .or_else(|| made.as_ref().and_then(crate::template::Instance::piece))
+        .map_or_else(|| node.clone(), |piece| piece.syntax().clone());
+    let mut sources = libraries.to_vec();
+    if root != declared {
+        sources.push(Source::own(&root));
+    }
+    sources.push(Source::own(&declared));
+    let elaborated = elaborate(&mut resolver, &sources, made.as_ref());
+    let answer = read(&mut resolver, elaborated, &declared);
     let mut said: Vec<String> = resolver
         .diagnostics
         .iter()
@@ -95,10 +132,10 @@ fn checked_with(node: &SyntaxNode, libraries: &[Source]) -> (Option<musa_core::T
 fn read(resolver: &mut Resolver, elaborated: Option<Document>, node: &SyntaxNode) -> Option<musa_core::Term> {
     let Some(mut document) = elaborated else {
         let mut sites = crate::lower::Sites::default();
-        crate::lower::Lowering::new(resolver, &mut sites).piece(node);
+        crate::lower::Lowering::new(resolver, &mut sites).piece(node, DOCUMENT, None);
         return None;
     };
-    let piece = document.piece(resolver, node)?;
+    let piece = document.piece(resolver, node, DOCUMENT)?;
     match document.term(&piece.track) {
         Ok((normal, _)) => Some(normal),
         Err(error) => {
@@ -123,12 +160,9 @@ fn piece(source: &str) -> musa_core::Term {
 fn sounding(source: &str) -> (VoiceTrack, Vec<(String, VoiceTrack)>) {
     let node = written(source);
     let mut resolver = Resolver::new();
-    let sources = [Source {
-        root: node.clone(),
-        in_phase: false,
-    }];
-    let mut document = elaborate(&mut resolver, &sources).expect("the document elaborates");
-    let read = document.piece(&mut resolver, &node).expect("the piece reads");
+    let sources = [Source::own(&node)];
+    let mut document = elaborate(&mut resolver, &sources, None).expect("the document elaborates");
+    let read = document.piece(&mut resolver, &node, DOCUMENT).expect("the piece reads");
     let lanes = read
         .parts
         .iter()
@@ -152,12 +186,9 @@ fn sounding(source: &str) -> (VoiceTrack, Vec<(String, VoiceTrack)>) {
 fn claimed(source: &str) -> Vec<(Ratio<i64>, Ratio<i64>, String)> {
     let node = written(source);
     let mut resolver = Resolver::new();
-    let sources = [Source {
-        root: node.clone(),
-        in_phase: false,
-    }];
-    let mut document = elaborate(&mut resolver, &sources).expect("the document elaborates");
-    let read = document.piece(&mut resolver, &node).expect("the piece reads");
+    let sources = [Source::own(&node)];
+    let mut document = elaborate(&mut resolver, &sources, None).expect("the document elaborates");
+    let read = document.piece(&mut resolver, &node, DOCUMENT).expect("the piece reads");
     read.parts
         .iter()
         .flat_map(|part| part.voices.iter())
@@ -339,12 +370,9 @@ fn a_value_argument_is_checked_at_the_shape_the_claim_declares() {
         }",
     );
     let mut resolver = Resolver::new();
-    let sources = [Source {
-        root: node.clone(),
-        in_phase: false,
-    }];
-    let mut document = elaborate(&mut resolver, &sources).expect("the document elaborates");
-    let read = document.piece(&mut resolver, &node).expect("the piece reads");
+    let sources = [Source::own(&node)];
+    let mut document = elaborate(&mut resolver, &sources, None).expect("the document elaborates");
+    let read = document.piece(&mut resolver, &node, DOCUMENT).expect("the piece reads");
     let claim = read
         .parts
         .iter()
@@ -484,7 +512,7 @@ fn structure(source: &str) -> (Option<super::Piece>, Vec<String>) {
     let node = written(source);
     let mut resolver = Resolver::new();
     let mut sites = crate::lower::Sites::default();
-    let held = crate::lower::Lowering::new(&mut resolver, &mut sites).piece(&node);
+    let held = crate::lower::Lowering::new(&mut resolver, &mut sites).piece(&node, DOCUMENT, None);
     let mut said: Vec<String> = resolver
         .diagnostics
         .iter()
@@ -520,33 +548,141 @@ fn a_voice_is_read_at_its_own_scope() {
     );
 }
 
-/// An instance site is stated, not skipped.
+/// An instance site makes a voice where it stands, named by its `as` name.
 ///
-/// The other half of the positional rule — that a written voice keeps its
-/// number when the site beside it is expanded — has nothing to assert against
-/// yet, because every piece containing a site is refused and no [`super::Piece`]
-/// comes back to read ids out of. What the rule buys is that prompt 142 does not
-/// have to renumber anything when it stops refusing; what this law protects
-/// until then is that the site is *reported* rather than silently dropped.
+/// The other half of the positional rule this module's header states: the
+/// written voice *after* a site keeps the number it would have had, which is
+/// what "the numbering counts every item" was for. The site's own voice is
+/// numbered where it was written, so a `make` between two voices makes a voice
+/// there and nothing renumbers.
 #[test]
-fn an_instance_site_is_refused_rather_than_skipped() {
+fn an_instance_site_makes_a_voice_where_it_stands() {
     let (held, said) = structure(
-        "piece \"numbered\" {
+        "template voice echo(root: Pitch) { root/4 }
+        piece \"numbered\" {
             score {
                 part strings {
                     voice first { c4/4 }
-                    make doubled(first) as second;
-                    voice third { e4/4 }
+                    make echo(e4) as second;
+                    voice third { g4/4 }
                 }
             }
         }",
     );
-    assert!(held.is_none(), "the instance site is refused: {said:?}");
+    let held = held.unwrap_or_else(|| panic!("the piece reads: {said:?}"));
+    let voices: Vec<(u32, &str)> = held
+        .parts
+        .first()
+        .expect("the score writes one part")
+        .voices
+        .iter()
+        .map(|voice| (voice.id, voice.name.as_str()))
+        .collect();
     assert_eq!(
-        said,
-        ["UnsupportedLanguageStage: a voice made from a template has no core spelling yet"],
-        "and refused as something prompt 142 owns rather than skipped"
+        voices,
+        [(0, "first"), (1, "second"), (2, "third")],
+        "the instance is the part's second voice, and the written one after it is still its third"
     );
+}
+
+/// What an instance sounds is the template's body with the site's arguments
+/// bound, and every fact of it says which site made it.
+///
+/// Both halves of what a `make` is, in one piece. The binding half is what makes
+/// two instances of one template two different tracks; the provenance half is
+/// what makes Origin view able to tell either of them from a note a composer
+/// wrote, and it is *first* in the path because everything a transform appends
+/// happened inside the instance.
+#[test]
+fn an_instance_sounds_the_template_bound_to_its_own_arguments() {
+    let (_, lanes) = sounding(
+        "template voice echo(root: Pitch) { root/4 }
+        piece \"twice\" {
+            score {
+                part strings {
+                    make echo(e4) as high;
+                    make echo(c4) as low;
+                }
+            }
+        }",
+    );
+    let named: Vec<&str> = lanes.iter().map(|(name, _)| name.as_str()).collect();
+    assert_eq!(named, ["strings.high", "strings.low"], "two instances, two voices");
+    let shown = format!("{:?}", lanes.first().expect("the part writes two voices").1);
+    assert!(
+        shown.contains("letter: E") && !shown.contains("letter: C"),
+        "the argument the site gave, not the one the other site gave: {shown}"
+    );
+    assert!(
+        shown.contains("expansion_path: [TemplateInstance { template: \"echo\", alias: \"high\""),
+        "and every fact of it came from this site: {shown}"
+    );
+}
+
+/// Two tied noteheads are one sound, and the tie is gone by the time anything
+/// reads the voice.
+///
+/// Roadmap §6.3: a tie is duration structure rather than an annotation, so the
+/// merged occurrence spans both noteheads and is spelled as the compound the
+/// composer wrote. `~` is the only surface mark that means something about *two*
+/// statements, which is why it takes two words — `tied` on the notehead, applied
+/// where the note is read, and `joined` on the voice, applied where the whole of
+/// it exists.
+#[test]
+fn a_tie_is_one_occurrence_spanning_both_noteheads() {
+    let (_, lanes) = sounding(
+        "piece \"held\" {
+            score { part strings { voice line { c4/4 ~ c4/4 g4/4 } } }
+        }",
+    );
+    let track = &lanes.first().expect("the part writes one voice").1;
+    let sounded: Vec<(Ratio<i64>, Ratio<i64>, String)> = track
+        .occurrences()
+        .iter()
+        .filter_map(|occurrence| {
+            let pitch = occurrence.payload().pitch_of()?;
+            Some((
+                occurrence.span().start().as_ratio(),
+                occurrence.span().end().as_ratio(),
+                pitch.to_string(),
+            ))
+        })
+        .collect();
+    assert_eq!(
+        sounded,
+        [
+            (Ratio::new(0, 1), Ratio::new(1, 2), "c4".to_owned()),
+            (Ratio::new(1, 2), Ratio::new(3, 4), "g4".to_owned()),
+        ],
+        "the two quarters are one half, and the note after them is where it was"
+    );
+    assert!(
+        track.occurrences().iter().all(|occurrence| !occurrence.payload().tied),
+        "no fact leaves a voice still claiming to continue into something"
+    );
+}
+
+/// A tie onto a different note, and a tie onto nothing, are both refused.
+///
+/// The two ways `~` can be written and mean nothing, and the reason `joined` is
+/// applied at a voice rather than at each block: "nothing follows it" is only
+/// answerable where there is nothing after, and a merge inside a `repeat` body
+/// would report every tie that continues past the block as dangling.
+#[test]
+fn a_tie_that_joins_nothing_is_refused() {
+    for (line, expected) in [
+        ("c4/4 ~ g4/4", "a tie joins two of the same note"),
+        ("c4/4 ~", "this tie has nothing to tie to"),
+    ] {
+        let (held, said) = checked(&written(&format!(
+            "piece \"dangling\" {{ score {{ part strings {{ voice line {{ {line} }} }} }} }}"
+        )));
+        assert!(held.is_none(), "`{line}` was accepted: {said:?}");
+        assert!(
+            said.iter().any(|complaint| complaint.contains(expected)),
+            "`{line}` reported something else: {said:?}"
+        );
+    }
 }
 
 #[test]
@@ -742,28 +878,52 @@ fn a_parts_own_meter_is_a_fact_at_the_parts_scope() {
 /// Every piece in `examples/`, read and checked with the standard library in
 /// scope.
 ///
-/// Five reasons remain, in four classes, and none of them is about the
-/// structure 141k built:
+/// Three reasons remain, in three classes, and none is about the structure
+/// 141k built:
 ///
-/// - **the contextual `music` value** — `Music` in a signature, and the `step`
-///   in a free `music { … }` that no `in scale` encloses. One thing twice:
-///   prompt 142 deletes contextual `Music`, and a phrase whose meaning depends
-///   on where it is used is the thing being deleted.
-/// - **the instance site** — `make` inside a part, which needs the expansion
-///   path 141k's Stop leaves to 142.
+/// - **a scale the phrase does not name** — the `step` in a free `music { … }`
+///   that no `in scale` encloses. What is left of the contextual `music` value
+///   after 142 deleted the rest of it: a phrase whose meaning depends on where
+///   it is used, and the scale has to become something the phrase says.
 /// - **an argument written by name** — `Against(first: Plain, …)` in
 ///   `gesture-data`, which [`crate::lower::values`] refuses. A field's name is
 ///   written at the declaration; repeating it at a use is a second way to pass
 ///   an argument, and the migration drops the labels.
-/// - **a kernel quote** — `kernel { … }`, whose core spelling 141h's laws
-///   already record as 142's.
+/// - **a trait a document cannot use in itself** — `no method `transposed` for
+///   `PitchClass``, from `triad_root(refined) up M3` in
+///   `stdlib/src/transformational.musa`. `Transposable` and both its instances
+///   are declared in `stdlib/src/pitch.musa`, and the reading is right: `up` is
+///   one action over two domains and the receiver decides which
+///   ([`crate::lower::values::Lowering::transposition`]). What refuses it is
+///   [`crate::document::elaborate`]'s declaration order — every definition is
+///   elaborated before any `impl` is declared, so `10-traits.md` §6's
+///   exact-receiver lookup finds the trait and no instance at the head. The
+///   order is deliberate and its reason is real (an impl's method bodies are
+///   ordinary terms and may name the document's definitions), so the two want
+///   one dependency graph rather than two passes — which is a change to what
+///   the language accepts, and 142's Stop is explicit that a migration records
+///   such a thing rather than slipping it in. Recorded here; the fix is its
+///   own prompt.
 ///
 /// Everything else holds on the real corpus: fifty-four pieces' worth of
 /// notation statements, motifs, fragments, transformations, part and voice
 /// numbering, header and per-part context, and the scope every fact in them is
 /// constructed at.
 ///
-/// Three classes were here and are gone. A notation statement whose argument is
+/// Five classes were here and are gone. The **kernel quote** —
+/// `kernel EventTrack[WrittenTime, ScoreFact] { … }`, which
+/// [`crate::lower::kernel`] reads: the reading answers everything the quote can
+/// be wrong about, the term rides in a literal, and one builtin binds the holes
+/// and evaluates. The **instance site** — a `make` among
+/// a part's items — went with the whole of what a `make` is: the template's
+/// body read once at the site's own scope, its parameters λ-bound to the
+/// argument expressions the site wrote, and the result wrapped in `instanced`
+/// so that every fact it produces carries the site's step first. The expansion
+/// path 141k's Stop left to this prompt turned out not to need a number `Sites`
+/// hands out, because provenance is stamped where the facts are *made* rather
+/// than where the term is read.
+///
+/// A notation statement whose argument is
 /// a *name* — `root/4` in `motif turn(root: Pitch)`, `key k;` and `in scale
 /// mode` in a `template piece` — which 141k's fold reported as though a literal
 /// had been misspelled, because it folded to a value while it walked and a
@@ -800,9 +960,7 @@ fn every_example_elaborates() {
         said,
         [
             "Misplaced: `step` needs a scale to count in",
-            "UnknownName: no binder named `Music` is in scope",
-            "UnsupportedLanguageStage: a kernel quote has no core spelling yet",
-            "UnsupportedLanguageStage: a voice made from a template has no core spelling yet",
+            "NoMethodForType: no method `transposed` for `PitchClass`",
             "UnsupportedLanguageStage: an argument cannot be labelled here",
         ],
         "the examples need exactly what 142 owns"

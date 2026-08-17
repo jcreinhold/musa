@@ -54,5 +54,7 @@ library {
 
     // Sound a chosen voicing for a written length. This is the only way a
     // chord class becomes notes.
-    fn sound_for(chosen: Voicing, held: Duration<WrittenTime>) -> Music { play(chosen, held) }
+    fn sound_for(chosen: Voicing, held: Duration<WrittenTime>) -> EventTrack<WrittenTime> {
+        play(chosen, held)
+    }
 }

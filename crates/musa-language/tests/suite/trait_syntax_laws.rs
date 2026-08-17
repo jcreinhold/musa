@@ -409,7 +409,7 @@ fn written(node: &musa_language::SyntaxNode) -> String {
 /// One of each: a duration written after a pitch and after a rational, a
 /// transposed note whose duration follows the transposition, an accent mark, a
 /// hairpin, a type argument, and the negative rational of a send level.
-const MUSIC: &str = r#"piece "Music" {
+const MUSIC: &str = r#"piece "EventTrack<WrittenTime>" {
     tempo 1/4 = 96;
     meter 7/8;
     key c major;

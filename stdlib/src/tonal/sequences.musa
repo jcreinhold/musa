@@ -1,5 +1,7 @@
 library {
     import std::harmony;
+    import std::list;
+    import std::nat;
     import std::scale;
 
     // A diatonic sequence is a pattern applied a finite number of times. OMT
@@ -188,7 +190,10 @@ library {
     // policy is a function because the library has no opinion: a stage that
     // cannot be voiced from the bass the caller named is silence here, and the
     // caller can see that it was.
-    fn stage_music(policy: ChordClass -> Music, content: Option<ChordClass>) -> Music {
+    fn stage_music(
+        policy: ChordClass -> EventTrack<WrittenTime>,
+        content: Option<ChordClass>,
+    ) -> EventTrack<WrittenTime> {
         match content {
             None -> music {
                 rest/1

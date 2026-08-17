@@ -17,9 +17,9 @@
 //! must mean the empty walk and the start alone.
 //!
 //! How a list is read back. The language has no combinator that turns a
-//! `List<Music>` into sequential music — `use` sequences at the cursor and
+//! `List<EventTrack<WrittenTime>>` into sequential music — `use` sequences at the cursor and
 //! `together` is simultaneous — so the probes below build one out of the two
-//! builtins that do exist: fold with `together(one, shift(1, carried))`, which
+//! builtins that do exist: fold with `together(one, shift(duration_of(1/1), carried))`, which
 //! lands each element a whole note after the rest of the accumulator. The fold
 //! accumulates left to right, so that lays the list out backwards, and
 //! `retrograde` turns it round again. A test proves the pair reads forwards
@@ -58,22 +58,22 @@ const PRELUDE: &str = r"
         Some(located) -> frame_pitch(located, written),
     } }
 
-    fn degree_note(written: Degree) -> Music {
+    fn degree_note(written: Degree) -> EventTrack<WrittenTime> {
         map_note_pitches(fn (ignored: Pitch) -> Pitch { placed(written) }, music { c0/1 })
     }
 
-    fn after(one: Music, carried: Music) -> Music { together(one, shift(1, carried)) }
-    fn laid_out(values: List<Music>) -> Music { list_fold_from_start(music { rest/1 }, after, values) }
-    fn line(written: List<Degree>) -> Music { retrograde(laid_out(map(degree_note, written))) }
+    fn after(one: EventTrack<WrittenTime>, carried: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { together(one, shift(duration_of(1/1), carried)) }
+    fn laid_out(values: List<EventTrack<WrittenTime>>) -> EventTrack<WrittenTime> { list_fold_from_start(music { rest/1 }, after, values) }
+    fn line(written: List<Degree>) -> EventTrack<WrittenTime> { retrograde(laid_out(map(degree_note, written))) }
 
-    fn spelled(bass: Pitch, content: Option<ChordClass>) -> Music { match content {
+    fn spelled(bass: Pitch, content: Option<ChordClass>) -> EventTrack<WrittenTime> { match content {
         None -> music { rest/1 },
         Some(sounding) -> stacked(close_position(sounding, bass)),
     } }
 
-    fn stacked(chosen: Option<Voicing>) -> Music { match chosen {
+    fn stacked(chosen: Option<Voicing>) -> EventTrack<WrittenTime> { match chosen {
         None -> music { rest/1 },
-        Some(spread) -> sound_for(spread, 1),
+        Some(spread) -> sound_for(spread, duration_of(1/1)),
     } }
 ";
 
@@ -450,21 +450,25 @@ fn the_plural_form_agrees_with_the_singular_at_every_index() {
 /// function, one of these starts compiling and this test says so.
 #[test]
 fn the_schema_libraries_add_no_compiler_builtin() {
-    for call in [
-        "romanesca_bass()",
-        "prinner_bass()",
-        "fonte_bass()",
-        "quiescenza_bass()",
-        "rule_ascending_chord(scale c major, 1)",
-        "rule_descending_chord(scale c major, 1)",
-        "descending_fifths_degree(degree_of(1), 0)",
-        "ascending_seconds_degree(degree_of(1), 0)",
+    for (name, call) in [
+        ("romanesca_bass", "romanesca_bass()"),
+        ("prinner_bass", "prinner_bass()"),
+        ("fonte_bass", "fonte_bass()"),
+        ("quiescenza_bass", "quiescenza_bass()"),
+        ("rule_ascending_chord", "rule_ascending_chord(scale c major, 1)"),
+        ("rule_descending_chord", "rule_descending_chord(scale c major, 1)"),
+        ("descending_fifths_degree", "descending_fifths_degree(degree_of(1), 0)"),
+        ("ascending_seconds_degree", "ascending_seconds_degree(degree_of(1), 0)"),
     ] {
-        let source =
-            format!("piece \"Unimported\" {{\n    let probed: Nat = 0;\n    let asked: Nat = named({call});\n}}\n");
+        // The call stands alone rather than inside a wrapper: a wrapper would
+        // be a second unresolved name, and the refusal that came back would be
+        // about the wrapper rather than about the schema this asks after.
+        let source = format!("piece \"Unimported\" {{\n    let asked: Nat = {call};\n}}\n");
         let errors = errors_of(&source);
         assert!(
-            errors.iter().any(|(_, message)| message.contains("cannot find")),
+            errors
+                .iter()
+                .any(|(code, message)| *code == Code::UnknownName && message.contains(name)),
             "`{call}` resolved without its module, so it is compiler-owned rather than library source: {errors:?}"
         );
     }

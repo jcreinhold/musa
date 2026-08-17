@@ -8,7 +8,7 @@
 //! one of them — [`super::track`]'s `play` — makes a fact at all. It makes
 //! `FactKind::Note` and nothing else, out of the nineteen kinds a score says.
 //!
-//! Three words are missing and this module supplies them — two as
+//! Five words are missing and this module supplies them — four as
 //! registrations, one as a literal:
 //!
 //! - `sounded` puts **one** fact of any kind over `[0, held]`, which is what
@@ -17,11 +17,17 @@
 //!   deleted design placement was the evaluator's *cursor* rather than an
 //!   operation: a fragment was instantiated at a context, so nothing ever had to
 //!   name the act of placing.
+//! - `tied` marks what a `~` was written on, and `joined` is where a tie stops
+//!   existing. Two words rather than one because a tie is a property of *two*
+//!   facts (roadmap §6.3): the notehead can only say "I continue", and what it
+//!   continues into is not known until the block that holds both has been
+//!   composed. `sounded` therefore writes no tie and never could — it builds one
+//!   fact and a tie is a relation between two.
 //! - `nothing` is `follow`'s identity — the empty block, the voice with no
 //!   statements, and the seed of the fold — and it is a *literal* rather than a
 //!   registration for the reason given at [`nothing`].
 //!
-//! # Why none of the three is a source word
+//! # Why none of the five is a source word
 //!
 //! For `sounded`, it is `set_note_pitches`'s argument one domain over
 //! ([`super::track`]'s `TRACK_BEYOND`): a registered word that would be the
@@ -34,7 +40,10 @@
 //! weaker reason worth stating: `use` is the source spelling of sequencing
 //! (`01-surface.md` §2), §3's worked programs write `together`, `shift`, and
 //! `map_note_pitches` and never write `follow`, and a second source spelling for
-//! sequencing is a surface change with its own evidence.
+//! sequencing is a surface change with its own evidence. `tied` and `joined` are
+//! out because `~` is already the source spelling of the whole idea, and a
+//! *called* pair would let a program mark material it did not write as
+//! continuing, or join two noteheads a composer wrote as two.
 //!
 //! # Why `sounded` admits a span of no length and `play` does not
 //!
@@ -60,14 +69,14 @@ use crate::harmony::ChordSymbol;
 use crate::marks::MarkArgument;
 use crate::score::{Clef, DynamicMark, FreeDuration, Metronome, NotatedDuration, Ramp};
 
-/// The two operations this module registers, in the order [`builtins`] writes
+/// The four operations this module registers, in the order [`builtins`] writes
 /// them.
 ///
 /// Named rather than counted, for [`super::traversal::SPELLINGS`]'s reason:
-/// "which two" is the claim the accounting law checks, and a count agrees with a
-/// wrong set as readily as with the right one. `nothing` is not here because it
-/// is not registered — see [`nothing`].
-pub(super) const BEYOND: [&str; 2] = ["sounded", "follow"];
+/// "which four" is the claim the accounting law checks, and a count agrees with
+/// a wrong set as readily as with the right one. `nothing` is not here because
+/// it is not registered — see [`nothing`].
+pub(super) const BEYOND: [&str; 4] = ["sounded", "follow", "tied", "joined"];
 
 /// A payload whose domain has no written spelling.
 ///
@@ -104,7 +113,7 @@ where
     read::<Opaque<T>>(datum).map(|held| held.0)
 }
 
-/// The two registrations, at the types `../../rules/language/00-semantics.md`
+/// The four registrations, at the types `../../rules/language/00-semantics.md`
 /// §3 gives them.
 ///
 /// # Errors
@@ -134,6 +143,8 @@ pub(super) fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
             Family::Track,
             FOLLOW,
         ),
+        Builtin::new(BEYOND[2], super::arrow(vec![track()], track()), Family::Track, TIED),
+        Builtin::new(BEYOND[3], super::arrow(vec![track()], track()), Family::Track, JOINED),
     ])
 }
 
@@ -202,6 +213,154 @@ const FOLLOW: Rule = |arguments| {
     let next = track_of(arguments.get(1)?)?;
     reduced(built(musa_kernel::follow(vec![first, next])))
 };
+
+/// `tied(t)` — every fact of `t` continues into whatever follows it.
+///
+/// Marks the whole track and not "its last statement", because the only thing
+/// this is ever applied to is one notehead statement: `g4/4 ~` is one `sounded`
+/// and `[c4 e4]/2 ~` is a `together` of two, and in both the written `~` is
+/// about all of them. Widening it to a general "tie the end of this block" would
+/// be a word for a shape no source writes.
+///
+/// Total: a track with no occurrences is marked to no effect, which is what a
+/// `~` on a rest already means one line down.
+const TIED: Rule = |arguments| {
+    let track = track_of(arguments.first()?)?;
+    let occurrences: Vec<Occurrence<_, ScoreFact>> = track
+        .occurrences()
+        .iter()
+        .map(|occurrence| {
+            let mut fact = occurrence.payload().clone();
+            fact.tied = true;
+            Occurrence::new(occurrence.span(), fact)
+        })
+        .collect();
+    let Ok(marked) = musa_kernel::track(track.duration(), occurrences) else {
+        return Some(refused("a tie changes no time and this one did"));
+    };
+    reduced(built(marked))
+};
+
+/// `joined(t)` — tied noteheads read as the single sounds they spell
+/// (roadmap §6.3: a tie is duration structure, not an annotation).
+///
+/// This is where a tie stops existing. The merged occurrence's span is the sum,
+/// its written duration is the compound spelling, its articulations are both
+/// noteheads', and nothing downstream ever sees a tie flag.
+///
+/// # Why it is applied once per voice and not by `follow`
+///
+/// Because both of its refusals are about the *whole* of a voice. "Nothing to
+/// tie to" is only true at the end of one: a tie at the end of a repeat body or
+/// a slur continues into whatever comes after the block, and a `follow` that
+/// judged its own two arguments would report that as a dangling tie in every
+/// nested block. Merging at the voice sees the composed music once, which is
+/// also the only place the question has an answer.
+const JOINED: Rule = |arguments| {
+    let track = track_of(arguments.first()?)?;
+    if !track.occurrences().iter().any(|occurrence| occurrence.payload().tied) {
+        return reduced(built(track));
+    }
+    let mut merged: Vec<Vec<Occurrence<_, ScoreFact>>> = Vec::new();
+    for statement in statements(track.occurrences()) {
+        let continues = merged
+            .last()
+            .and_then(|previous| previous.first())
+            .is_some_and(|first| first.payload().tied);
+        match merged.last_mut().filter(|_| continues) {
+            Some(previous) if same_sound(previous, &statement) => join(previous, &statement),
+            Some(_) => return Some(refused("a tie joins two of the same note")),
+            _ => merged.push(statement),
+        }
+    }
+    if merged
+        .last()
+        .and_then(|last| last.first())
+        .is_some_and(|first| first.payload().tied)
+    {
+        return Some(refused("this tie has nothing to tie to"));
+    }
+    let Ok(joined) = musa_kernel::track(track.duration(), merged.into_iter().flatten().collect()) else {
+        return Some(refused("a tied note reaches past the music it is written in"));
+    };
+    reduced(built(joined))
+};
+
+/// One occurrence of a written-time track, which is all three helpers below
+/// take and all any of them answers.
+type Written = Occurrence<musa_kernel::WrittenTime, ScoreFact>;
+
+/// The occurrences grouped into *statements*: one written note or rest, or the
+/// pitches of one chord, which share a span and an origin.
+///
+/// Region and point facts are statements of one and never merge: only a notehead
+/// can be tied.
+fn statements(occurrences: &[Written]) -> Vec<Vec<Written>> {
+    let mut grouped: Vec<Vec<Occurrence<_, ScoreFact>>> = Vec::with_capacity(occurrences.len());
+    for occurrence in occurrences {
+        let joins = grouped.last().and_then(|group| group.first()).is_some_and(|first| {
+            first.span() == occurrence.span()
+                && first.payload().origin == occurrence.payload().origin
+                && first.payload().pitch_of().is_some()
+                && occurrence.payload().pitch_of().is_some()
+        });
+        match (joins, grouped.last_mut()) {
+            (true, Some(group)) => group.push(occurrence.clone()),
+            _ => grouped.push(vec![occurrence.clone()]),
+        }
+    }
+    grouped
+}
+
+/// Whether two statements are the same sound: the same pitches, in order.
+fn same_sound(left: &[Written], right: &[Written]) -> bool {
+    let pitches = |statement: &[Written]| {
+        statement
+            .iter()
+            .map(|occurrence| occurrence.payload().pitch_of())
+            .collect::<Option<Vec<_>>>()
+    };
+    match (pitches(left), pitches(right)) {
+        (Some(left), Some(right)) => !left.is_empty() && left == right,
+        _ => false,
+    }
+}
+
+/// Extend `previous` through `statement`: one occurrence per pitch, spanning
+/// both, spelled as the noteheads the composer wrote.
+fn join(previous: &mut [Written], statement: &[Written]) {
+    let Some(end) = statement.first().map(|first| first.span().end()) else {
+        return;
+    };
+    // The tie travels: three noteheads tied in a row are one sound, and the
+    // second one's `~` is what says the third belongs to it.
+    let tied = statement.first().is_some_and(|first| first.payload().tied);
+    for (index, occurrence) in previous.iter_mut().enumerate() {
+        let mut fact = occurrence.payload().clone();
+        fact.tied = tied;
+        if let (
+            FactKind::Note {
+                duration,
+                articulations,
+                ..
+            },
+            Some(next),
+        ) = (&mut fact.kind, statement.get(index).map(Occurrence::payload))
+        {
+            if let Some(added) = next.kind.duration_of() {
+                *duration = duration.tied_to(added);
+            }
+            if let FactKind::Note {
+                articulations: more, ..
+            } = &next.kind
+            {
+                articulations.extend(more.iter().copied());
+            }
+        }
+        let span = Span::new(occurrence.span().start(), end).unwrap_or_else(|_| occurrence.span());
+        *occurrence = Occurrence::new(span, fact);
+    }
+}
 
 /// The origin a literal holds, as [`super::track`] wraps one.
 fn held_origin(value: &musa_core::Literal) -> Option<&Provenance> {

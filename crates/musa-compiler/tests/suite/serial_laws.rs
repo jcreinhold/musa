@@ -33,27 +33,29 @@ const SERIAL_FORMS: &str = include_str!("../../../../examples/serial-forms.musa"
 /// against: one generic row, one the chromatic ascent, one sequence that is
 /// not a row at all.
 const PRELUDE: &str = r"
+    import std::list;
+    import std::option;
     import std::post_tonal::pcset;
     import std::post_tonal::serial;
 
     meter 4/4;
 
-    fn tick(one: Music, carried: Music) -> Music { together(one, carried) }
-    fn beat() -> Music { music { c4/1 } }
-    fn tally(count: Nat) -> Music { list_fold_from_start(music { rest/1 }, tick, repeat(beat(), count)) }
-    fn beat_for_pc(member: Pc12) -> Music { beat() }
-    fn beat_for_nat(count: Nat) -> Music { beat() }
-    fn beat_for_row(series: Row12) -> Music { beat() }
-    fn beat_for_spelling(spelled: NoteName) -> Music { beat() }
-    fn chorus(voices: List<Music>) -> Music { list_fold_from_start(music { rest/1 }, tick, voices) }
-    fn sounded(cell: Option<NoteName>) -> Music { option_fold(music { rest/1 }, beat_for_spelling, cell) }
+    fn tick(one: EventTrack<WrittenTime>, carried: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { together(one, carried) }
+    fn beat() -> EventTrack<WrittenTime> { music { c4/1 } }
+    fn tally(count: Nat) -> EventTrack<WrittenTime> { list_fold_from_start(music { rest/1 }, tick, repeated(beat(), count)) }
+    fn beat_for_pc(member: Pc12) -> EventTrack<WrittenTime> { beat() }
+    fn beat_for_nat(count: Nat) -> EventTrack<WrittenTime> { beat() }
+    fn beat_for_row(series: Row12) -> EventTrack<WrittenTime> { beat() }
+    fn beat_for_spelling(spelled: NoteName) -> EventTrack<WrittenTime> { beat() }
+    fn chorus(voices: List<EventTrack<WrittenTime>>) -> EventTrack<WrittenTime> { list_fold_from_start(music { rest/1 }, tick, voices) }
+    fn sounded(cell: Option<NoteName>) -> EventTrack<WrittenTime> { option_fold(music { rest/1 }, beat_for_spelling, cell) }
 
     let generic_pcs: List<Pc12> = pcs([0, 1, 4, 9, 5, 8, 3, 10, 2, 11, 6, 7]);
     let chromatic_pcs: List<Pc12> = pcs([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
     let flawed_pcs: List<Pc12> = pcs([0, 1, 2, 0, 4, 5, 6, 7, 8, 9, 10, 3]);
 
-    let generic: Result<Row12, (List<Nat>, List<Pc12>)> = row(generic_pcs);
-    let chromatic: Result<Row12, (List<Nat>, List<Pc12>)> = row(chromatic_pcs);
+    let generic: Result<Row12, RowFault> = row(generic_pcs);
+    let chromatic: Result<Row12, RowFault> = row(chromatic_pcs);
 ";
 
 /// A piece whose one voice sounds `expression`.
@@ -105,8 +107,8 @@ fn counted(bindings: &str, expression: &str) -> usize {
 fn admitted(sequence: &str) -> usize {
     counted(
         &format!(
-            "    fn one(series: Row12) -> Music {{ beat() }}
-    let admitted: Music = match row({sequence}) {{
+            "    fn one(series: Row12) -> EventTrack<WrittenTime> {{ beat() }}
+    let admitted: EventTrack<WrittenTime> = match row({sequence}) {{
         Ok(series) -> one(series),
         Err(reason) -> music {{ rest/1 }},
     }};"
@@ -177,12 +179,12 @@ fn the_refusal_itself_carries_both_reasons() {
     // returned rather than asked of the sequence a second time. That is what
     // the sum buys: the reason travels with the failure.
     let bindings = "
-    let flawed: Result<Row12, (List<Nat>, List<Pc12>)> = row(flawed_pcs);
-    fn repeats_of(reason: (List<Nat>, List<Pc12>)) -> List<Nat> {
-        match reason { (repeats, missing) -> repeats }
+    let flawed: Result<Row12, RowFault> = row(flawed_pcs);
+    fn repeats_of(reason: RowFault) -> List<Nat> {
+        match reason { Fault(repeats, missing) -> repeats }
     }
-    fn missing_of(reason: (List<Nat>, List<Pc12>)) -> List<Pc12> {
-        match reason { (repeats, missing) -> missing }
+    fn missing_of(reason: RowFault) -> List<Pc12> {
+        match reason { Fault(repeats, missing) -> missing }
     }
     let carried_repeats: List<Nat> = match flawed { Ok(series) -> [], Err(reason) -> repeats_of(reason) };
     let carried_missing: List<Pc12> = match flawed { Ok(series) -> [], Err(reason) -> missing_of(reason) };
@@ -200,7 +202,7 @@ fn the_refusal_itself_carries_both_reasons() {
     assert_eq!(
         counted(
             "
-    let intact: Result<Row12, (List<Nat>, List<Pc12>)> = row(generic_pcs);
+    let intact: Result<Row12, RowFault> = row(generic_pcs);
     let is_row: Nat = match intact { Ok(series) -> 1, Err(reason) -> 0 };
 ",
             "tally(is_row)"
@@ -213,8 +215,8 @@ fn the_refusal_itself_carries_both_reasons() {
 #[test]
 fn a_row_has_twelve_order_positions() {
     let bindings = "
-    fn spread(series: Row12) -> Music { chorus(map(beat_for_pc, pcs_of(series))) }
-    let positions: Music = match generic { Ok(series) -> spread(series), Err(reason) -> music { rest/1 } };
+    fn spread(series: Row12) -> EventTrack<WrittenTime> { chorus(map(beat_for_pc, pcs_of(series))) }
+    let positions: EventTrack<WrittenTime> = match generic { Ok(series) -> spread(series), Err(reason) -> music { rest/1 } };
 ";
     assert_eq!(
         counted(bindings, "positions"),
@@ -266,7 +268,7 @@ fn every_row_stands_in_a_twelve_by_twelve_matrix() {
         counted(
             "
     fn matrix_of(series: Row12) -> List<Row12> { matrix(series) }
-    fn spread(series: Row12) -> Music { chorus(map(beat_for_pc, pcs_of(series))) }
+    fn spread(series: Row12) -> EventTrack<WrittenTime> { chorus(map(beat_for_pc, pcs_of(series))) }
     let rows: List<Row12> = match generic { Ok(series) -> matrix_of(series), Err(reason) -> [] };
 ",
             "chorus(map(spread, rows))"

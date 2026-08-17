@@ -1,4 +1,6 @@
 library {
+    import std::option;
+
     // A chord class is rooted spelled content and nothing else: a root pitch
     // class, a stack of spelled intervals above it, and an optionally
     // designated bass. It chooses no register, no spacing, and no doubling —

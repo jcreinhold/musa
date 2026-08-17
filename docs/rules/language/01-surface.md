@@ -634,20 +634,29 @@ spelling needs its own prompt and its own evidence.
 A track value is an ordinary value, and `in scale` is lexical rather than captured:
 
 ```musa
-fn figure() -> EventTrack[WrittenTime, ScoreFact] { music {
-    c5/8
-    (c5 step 1)/8
-    (c5 step 2)/4
-} }
+fn opening() -> EventTrack[WrittenTime, ScoreFact] { music { c5/8 } }
 
-let subject = figure();
-in scale c major { use subject; }
-in scale c dorian { use subject; }
+let subject = opening();
+in scale c major  { use subject; (c5 step 1)/8 (c5 step 2)/4 }
+in scale c dorian { use subject; (c5 step 1)/8 (c5 step 2)/4 }
 ```
 
-The two uses differ under `≈facts`, because `in scale` is resolved where the pitches are resolved; saving `subject` does
-not freeze the scale. `in scale` is lexical and emits no key fact. An absent scale makes `step` a type-context
-diagnostic, not an implicit C-major choice.
+*Lexical* is the whole of it: `in scale` supplies the collection to the pitch positions written inside its braces, and
+to nothing else. A `step` is finished where it stands, so the two blocks above differ under `≈facts` at the steps they
+each wrote, and `subject` — already a track by the time either `use` names it — plays the same `c5` in both. A phrase
+that steps and is written outside any scale is refused at its own definition, because no use site can supply what it is
+missing; a phrase parameterized by its collection is a `fn` over the pitches, not a track waiting for a context. A
+`music { … }` value is its own lexical region for the same reason, so an `in scale` outside its braces does not reach
+inside them.
+
+This paragraph said the opposite through prompt 141n, and the design it described is the contextual `Music` prompt 127a
+deleted: a saved phrase whose notes its own definition did not fix. Prompt 142 is where the sentence caught up with the
+decision.
+
+`in scale` emits no key fact and adds one `ScaleContext` step to the origin of every fact made under it, which is how a
+reader tells a spelling the source wrote from one a step arrived at. An absent scale makes `step` a type-context
+diagnostic, not an implicit C-major choice — but a written `key` is not absence: it suggests a collection (`key_scale`),
+and that suggestion is the default a `step` counts in until an `in scale` overrides it.
 
 ## 3. Higher-order construction with controlled traversal
 
@@ -721,7 +730,7 @@ let sonority: ChordClass = chord c major7;
 let close: Option<Voicing> = close_position(sonority, c4);
 let open: Option<Voicing> = drop_position(sonority, c3, 2);
 
-fn sound(chosen: Voicing) -> EventTrack[WrittenTime, ScoreFact] { play(chosen, 1/2) }
+fn sound(chosen: Voicing) -> EventTrack[WrittenTime, ScoreFact] { play(chosen, duration_of(1/2)) }
 fn sounded(chosen: Option<Voicing>) -> EventTrack[WrittenTime, ScoreFact] {
     match chosen {
         Some(voicing) -> sound(voicing),

@@ -29,7 +29,7 @@
 use musa_core::{Cx, Level, Plicity, Raw, RawData, RawPattern, RawShape, Term};
 use musa_language::{SyntaxKind, SyntaxNode};
 
-use super::items::{Definition, Item};
+use super::items::{Declared, Definition, Item};
 use super::{Lowering, Sites, is_type_node};
 use crate::diagnose::{Code, Diagnostic};
 use crate::resolve::Resolver;
@@ -428,7 +428,10 @@ fn lowered_item(written: &str, wanted: SyntaxKind) -> (Option<Item>, Vec<Diagnos
     let node = first(&root, wanted);
     let mut resolver = Resolver::new();
     let mut sites = Sites::default();
-    let item = Lowering::new(&mut resolver, &mut sites).item(&node);
+    let item = match Lowering::new(&mut resolver, &mut sites).item(&node) {
+        Declared::Item(item) => Some(item),
+        Declared::Refused | Declared::Elsewhere => None,
+    };
     (item, resolver.diagnostics)
 }
 
@@ -635,21 +638,22 @@ fn a_method_with_a_block_is_derived_and_its_body_binds_what_its_type_quantifies(
 
 // ---- refusals ----
 
-/// The subject used to be `music { … }`. Prompt 141k gave the notated block a
-/// core shape — [`crate::lower::notation`] folds it, and the laws beside that
-/// module say what it folds to — so the form left standing here is the kernel
-/// quote, whose interior spells `musa-kernel`'s grammar rather than this
-/// crate's and which the parser therefore recognizes without reading.
+/// The subject used to be `music { … }`, and then the kernel quote. Prompt 141k
+/// gave the notated block a core shape and [`crate::lower::kernel`] gave the
+/// quote one, so the form left standing here is the **quote pattern** — the
+/// inverse of `quote at here { … }`, which `11-quotation.md` §5 gives a
+/// `match_quote` and `quote_hole` to read with and which prompt 142's Target
+/// still owns the reading of.
 #[test]
 fn a_form_with_no_core_shape_is_refused_at_the_node_with_its_prompt_named() {
-    let root = parsed("library { let subject: Music = kernel EventTrack[WrittenTime, ScoreFact] { track 1 { } }; }");
-    let node = first(&root, SyntaxKind::KernelQuote);
+    let root = parsed("library { fn read(node: Syntax<TokenTree>) -> Nat { match node { quote { a } -> 1, } } }");
+    let node = first(&root, SyntaxKind::Pattern);
     let mut resolver = Resolver::new();
     let mut sites = Sites::default();
-    let raw = Lowering::new(&mut resolver, &mut sites).value(&node);
+    let raw = Lowering::new(&mut resolver, &mut sites).pattern(&node);
     assert!(
         raw.is_none(),
-        "a kernel quote has no core *spelling* until prompt 142 gives it one, though 141h gave the track a core shape"
+        "a quote pattern has no core *spelling* until 142 gives it one"
     );
     let complaints = resolver.diagnostics;
     assert_eq!(complaints.len(), 1, "one complaint, at the form");
@@ -670,7 +674,7 @@ fn a_definition_is_numbered_at_the_declaration_that_wrote_it() {
     let mut resolver = Resolver::new();
     let mut sites = Sites::default();
     let lowered = Lowering::new(&mut resolver, &mut sites).item(&node);
-    let Some(Item::Definition(defined)) = lowered else {
+    let Declared::Item(Item::Definition(defined)) = lowered else {
         panic!("a `let` is a definition");
     };
     let span = sites.span(defined.origin).expect("the definition was numbered");
@@ -911,7 +915,7 @@ fn a_module_prefix_reads_to_the_name_it_qualifies() {
             "`{written}` is read, not refused: {complaints:?}"
         );
         match built.unwrap_or_else(|| panic!("`{written}` lowers")).shape() {
-            RawShape::Var(name) => name.to_string(),
+            RawShape::Var(name) | RawShape::Hosted(name) => name.to_string(),
             other => panic!("a path is a name for the core to resolve, not {other:?}"),
         }
     };

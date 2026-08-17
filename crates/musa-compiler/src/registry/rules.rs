@@ -64,15 +64,15 @@ use crate::time::{Exact, exact_arithmetic, exact_ratio, written_rational};
 
 /// How many rows of the two ownership tables reach the core's registry.
 ///
-/// 110 of `BUILTIN_OWNERSHIP`'s 119 and 16 of `SYNTAX_OWNERSHIP`'s 17. The rows
-/// past this module's 94 and fourteen are registered where their reduction is:
+/// 112 of `BUILTIN_OWNERSHIP`'s 121 and 16 of `SYNTAX_OWNERSHIP`'s 17. The rows
+/// past this module's 96 and fourteen are registered where their reduction is:
 /// the two traversals in [`super::traversal`], the eight track builtins in
 /// [`super::track`], and the eight machine forms in [`super::machine`], which
 /// are §5.8's second, third, and fourth families rather than its first. A
 /// δ-builtin's rule is a [`Rule`] and lives here; the others carry a rewrite, a
 /// family, or no reduction at all, and live beside the argument that admits
 /// them.
-pub(super) const REGISTERED: usize = 126;
+pub(super) const REGISTERED: usize = 128;
 
 /// The rows that do not, by family and by count.
 ///
@@ -82,14 +82,19 @@ pub(super) const REGISTERED: usize = 126;
 /// - a **structural eliminator** traverses `Nat`, `List`, or `Option`, which are
 ///   declared families with generated recursors, and
 ///   [`musa_core::Registry::new`] refuses a structural target that is not a base
-///   type. Registering one would be a second ι-rule for a type that has one;
-///   prompt 142 makes them library code.
-/// - the one **machine** builtin left is `primitive`, whose ports and whose
-///   configuration type are read out of the build-local registry rather than
-///   written in a signature. [`super::machine::UNREGISTERED`] argues it and
-///   names prompt 142, which is where elaboration replaces the old checker and
-///   a build-local lookup becomes possible at all. Its eight siblings are
-///   registered.
+///   type. Registering one would be a second ι-rule for a type that has one, so
+///   all eight are library code: `stdlib/src/nat.musa` holds `nat_fold`,
+///   `stdlib/src/option.musa` holds `option_fold`, and `stdlib/src/list.musa`
+///   holds the other six. Seven keep their old spelling; `repeat` could not,
+///   because a `repeat { … }` in a score means the word is a statement keyword
+///   and `fn repeat` does not parse. It is `repeated` there.
+/// - the one **machine** builtin left is `primitive`, which has no type of its
+///   own: its ports and its configuration type are read out of the build-local
+///   registry rather than written in a signature, so what is registered is one
+///   closed signature per unit the build knows
+///   ([`super::machine::primitives`]) and the *word* is registered nowhere.
+///   [`super::machine::UNREGISTERED`] argues it. Its eight siblings are
+///   registered under their own spellings.
 /// - a **phase projection** is `run_syntax_step`, which hides nothing: it is the
 ///   `run` field of a `SyntaxStep` applied to a context, and a projection is not
 ///   a compiler-owned operation. [`musa_core::Registry::new`] would have refused
@@ -328,17 +333,13 @@ pub(super) fn refused(because: &str) -> Answer {
     Answer::Refused(because.to_owned())
 }
 
-/// The accepting half of a `Result`, for the operations still answering one.
+/// The accepting half of the one `Result` this table still answers with.
 ///
-/// The arithmetic below is classified exactly as the notation vocabulary is —
-/// nobody branches on "no result this language can represent" and no source edit
-/// but the arguments can fix it — and it keeps the `Result` anyway, for a reason
-/// that is about *when* rather than about *what*. `BUILTIN_OWNERSHIP` is one
-/// table read by two checkers: this registry and the one compiling `stdlib/`
-/// today, where `stdlib/src/notation/staff.musa:153` and eight of its
-/// neighbours read these answers with `match … { Ok(v) -> … }`. Narrowing the
-/// declared result here rewrites those files, and rewriting them is prompt 142.
-/// The survey in `docs/plan/prompts/141m-rule-refusal.md` records each site.
+/// Prompt 141m moved the notation and track refusals; prompt 142 moved the
+/// eleven arithmetic, duration, and position rules that were waiting on their
+/// callers. What is left is [`SyntaxOp::Checked`], and 141m's survey says why it
+/// stays: the gate exists so a transformer can *decide* what to say about a tree
+/// it built badly, and refusing would take that decision away.
 fn answered(value: Datum) -> Answer {
     Answer::Reduced(case("Result.Ok", vec![value]))
 }
@@ -353,9 +354,9 @@ fn errored(because: &str) -> Answer {
 /// The one place the law is stated, exactly as the old evaluator stated it once.
 fn written_duration(value: Ratio<i64>) -> Answer {
     if value < Ratio::ZERO {
-        return errored("a duration is nonnegative, and this exact rational is below zero");
+        return refused("a duration is nonnegative, and this exact rational is below zero");
     }
-    answered(duration(value))
+    Answer::Reduced(duration(value))
 }
 
 /// The four exact-rational operations, which differ only in the operation and in
@@ -363,11 +364,11 @@ fn written_duration(value: Ratio<i64>) -> Answer {
 fn ratio_arithmetic(operation: Exact, arguments: &[Datum]) -> Option<Answer> {
     let (left, right) = (ratio(arguments.first()?)?, ratio(arguments.get(1)?)?);
     if matches!(operation, Exact::Div) && right == Ratio::ZERO {
-        return Some(errored("an exact rational is not divided by zero"));
+        return Some(refused("an exact rational is not divided by zero"));
     }
     Some(match exact_arithmetic(left, right, operation) {
-        Some(value) => answered(exact(value)),
-        None => errored("these exact rationals have no result this language can represent"),
+        Some(value) => Answer::Reduced(exact(value)),
+        None => refused("these exact rationals have no result this language can represent"),
     })
 }
 
@@ -425,15 +426,15 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
         Builtin::NatAdd => |arguments| {
             let (left, right) = (nat(arguments.first()?)?, nat(arguments.get(1)?)?);
             Some(match left.checked_add(right) {
-                Some(value) => answered(whole(value)),
-                None => errored("these whole numbers have no result this language can represent"),
+                Some(value) => Answer::Reduced(whole(value)),
+                None => refused("these whole numbers have no result this language can represent"),
             })
         },
         Builtin::NatMul => |arguments| {
             let (left, right) = (nat(arguments.first()?)?, nat(arguments.get(1)?)?);
             Some(match left.checked_mul(right) {
-                Some(value) => answered(whole(value)),
-                None => errored("these whole numbers have no result this language can represent"),
+                Some(value) => Answer::Reduced(whole(value)),
+                None => refused("these whole numbers have no result this language can represent"),
             })
         },
         // Below zero is the *only* way this fails, so `Option` says everything a
@@ -453,14 +454,14 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
             let (left, right) = (ratio(arguments.first()?)?, ratio(arguments.get(1)?)?);
             Some(match exact_arithmetic(left, right, Exact::Add) {
                 Some(value) => written_duration(value),
-                None => errored("these durations have no sum this language can represent"),
+                None => refused("these durations have no sum this language can represent"),
             })
         },
         Builtin::DurationScale => |arguments| {
             let (held, factor) = (ratio(arguments.first()?)?, ratio(arguments.get(1)?)?);
             Some(match exact_arithmetic(held, factor, Exact::Mul) {
                 Some(value) => written_duration(value),
-                None => errored("this duration and factor have no product this language can represent"),
+                None => refused("this duration and factor have no product this language can represent"),
             })
         },
         Builtin::DurationLess | Builtin::PositionLess => {
@@ -477,8 +478,8 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
         Builtin::PositionShift => |arguments| {
             let (from, by) = (ratio(arguments.first()?)?, ratio(arguments.get(1)?)?);
             Some(match exact_arithmetic(from, by, Exact::Add) {
-                Some(value) => answered(position(value)),
-                None => errored("this position and duration have no result this language can represent"),
+                Some(value) => Answer::Reduced(position(value)),
+                None => refused("this position and duration have no result this language can represent"),
             })
         },
         // The one operation the whole tagging exists for. Two positions do not
@@ -487,13 +488,13 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
         Builtin::PositionBetween => |arguments| {
             let (from, to) = (ratio(arguments.first()?)?, ratio(arguments.get(1)?)?);
             if to < from {
-                return Some(errored(
+                return Some(refused(
                     "the second position is before the first, and a duration is nonnegative",
                 ));
             }
             Some(match exact_arithmetic(to, from, Exact::Sub) {
                 Some(value) => written_duration(value),
-                None => errored("these positions have no difference this language can represent"),
+                None => refused("these positions have no difference this language can represent"),
             })
         },
 
@@ -507,6 +508,18 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
             read::<Interval>(arguments.first()?)?
                 .inverse()
                 .map(|inverse| plain("Interval", inverse).into())
+        },
+        // Written equality, and deliberately not enharmonic: `M3` and `d4` span
+        // the same number of semitones and are different intervals, exactly as
+        // §2's layer table separates a written pitch from a MIDI number. A
+        // literal pattern is the caller — `match by { M3 -> …, }` is the only
+        // way a source program asks this question today — and a pattern that
+        // matched a spelling the author did not write would be the same defect
+        // this suite's text arm was.
+        Builtin::IntervalEqual => |arguments| {
+            reduced(boolean(
+                read::<Interval>(arguments.first()?)? == read::<Interval>(arguments.get(1)?)?,
+            ))
         },
         // `c4 up M3` and `c up M3` were arms of the replaced checker rather
         // than rows of this table, so `141e` had nothing to translate: an
@@ -522,6 +535,14 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
             Some(pitch.transpose(interval).map_or_else(
                 || refused("this transposition leaves the range of written pitches"),
                 |moved| Answer::Reduced(plain("Pitch", moved)),
+            ))
+        },
+        // [`Builtin::IntervalEqual`]'s argument at the other written coordinate:
+        // `e#5` and `f5` sound alike and are two pitches, so this is equality of
+        // letter, alteration, and octave and never of semitone number.
+        Builtin::PitchEqual => |arguments| {
+            reduced(boolean(
+                read::<WrittenPitch>(arguments.first()?)? == read::<WrittenPitch>(arguments.get(1)?)?,
             ))
         },
         Builtin::PitchClassTransposed => |arguments| {

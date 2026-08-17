@@ -1,4 +1,6 @@
 library {
+    import std::option;
+
     // A scale is a tonic pitch class, an ordered cycle of spelled offsets, and
     // a spelled period. It carries no register: a degree names a coordinate,
     // and a frame is what turns that coordinate into a written pitch. Every

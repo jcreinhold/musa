@@ -995,20 +995,12 @@ impl SignatureMember {
     ///
     /// A written type is one of several node kinds rather than one wrapper,
     /// so this answers with the node itself, the way every other reader of a
-    /// type annotation takes it.
+    /// type annotation takes it — through [`is_type`], so that a kind added to
+    /// the type grammar is a type here too. Spelling the list again is how
+    /// `EventTrack<WrittenTime>` came to be unreadable in a signature and
+    /// nowhere else.
     pub fn ty(&self) -> Option<SyntaxNode> {
-        self.0.children().find(|node| {
-            matches!(
-                node.kind(),
-                SyntaxKind::TypeExpr
-                    | SyntaxKind::TypeName
-                    | SyntaxKind::FunctionType
-                    | SyntaxKind::ProductType
-                    | SyntaxKind::OptionType
-                    | SyntaxKind::ListType
-                    | SyntaxKind::ResultType
-            )
-        })
+        self.0.children().find(|node| is_type(node.kind()))
     }
 }
 

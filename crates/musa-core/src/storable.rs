@@ -389,6 +389,98 @@ fn built(group: &Arc<Group>, which: usize, needed: Option<&BTreeSet<usize>>) -> 
     })
 }
 
+/// The instances a host's registered base types generate: one per base type
+/// whose owner called [`Base::storable`](crate::Base::storable), none for the
+/// rest.
+///
+/// [`headed`] already asks for exactly these — "a base type stands for the
+/// host's own data, so whether it can be stored is the host's claim and not
+/// this crate's guess" — and until a registry generated them the claim had no
+/// way to arrive, so *every* declaration storing a host domain came out not
+/// storable. This is the other half of that sentence.
+///
+/// A parameterized base type gets its telescope from its kind: `Duration` is
+/// registered at `(index : Coordinate) → Type 0`, so its instance is
+/// `impl<index> Storable (Duration index)`. The parameters are not constrained,
+/// which is what makes this the *unconditional* guarantee [`Base::storable`]
+/// documents — a base type whose storability depends on an argument is
+/// registered without it.
+pub(crate) fn registered<'a>(bases: impl Iterator<Item = &'a crate::base::Base>) -> Vec<Arc<Instance>> {
+    bases.filter(|base| base.is_storable()).map(one).collect()
+}
+
+/// The instance for one storable base type.
+fn one(base: &crate::base::Base) -> Arc<Instance> {
+    let at = Origin::UNKNOWN;
+    let params = telescope(base.kind());
+    let depth = params.len();
+    let applied = (0..depth).fold(base.term(at), |function, level| {
+        Term::app(at, function, variable(at, depth, level))
+    });
+
+    // `λp⃗. {}` — the empty dictionary this module's own header argues for, under
+    // one binder per kind parameter.
+    let mut dictionary = Term::record(at, core::iter::empty());
+    for binder in params.iter().rev() {
+        dictionary = Term::lam(at, Arc::clone(&binder.name), dictionary);
+    }
+
+    Arc::new(Instance {
+        origin: at,
+        key: Key::rigid(&storable_name(), base.name()),
+        params: Arc::from(params),
+        args: Arc::from(vec![applied]),
+        context: Arc::from(Vec::new()),
+        dictionary,
+    })
+}
+
+/// The binders a base type's kind takes before it lands in a universe.
+///
+/// A kind is closed and read in the empty context, so each domain is already
+/// the term this telescope wants and nothing has to be shifted.
+fn telescope(kind: &Term) -> Vec<Binder> {
+    let mut binders = Vec::new();
+    let mut rest = kind;
+    while let Shape::Pi {
+        name, domain, codomain, ..
+    } = rest.shape()
+    {
+        binders.push(Binder::explicit(Arc::clone(name), domain.clone()));
+        rest = codomain;
+    }
+    binders
+}
+
+/// `[Storable A] → codomain`: §1.2's premise, written into a host's registered
+/// signature.
+///
+/// The one way anything outside this crate names `Storable`, and it *requires*
+/// the constraint rather than supplying it — which is the whole of §1.2's
+/// "a signature may only require the constraint". A host cannot reach
+/// [`Constraint`] to build one for another trait, and cannot reach this to claim
+/// an instance.
+///
+/// The domain is `{}` rather than `Storable A` unreduced, because the trait's
+/// dictionary is `λA. {}` and the two are the same type by β. The binder takes
+/// the trait's name for [`crate::Trait::super_field`]'s reason: a diagnostic
+/// about the dictionary and the constraint that demanded it say one word.
+#[must_use]
+pub fn requiring_storable(origin: Origin, argument: Term, codomain: Term) -> Term {
+    let constraint = Arc::new(Constraint {
+        origin,
+        class: storable_name(),
+        args: Arc::from(vec![argument]),
+    });
+    Term::constrained_pi(
+        origin,
+        constraint,
+        STORABLE,
+        Term::record_type(origin, core::iter::empty()),
+        codomain,
+    )
+}
+
 /// `Storable` as a name, which every key and constraint here needs.
 fn storable_name() -> Name {
     Arc::from(STORABLE)

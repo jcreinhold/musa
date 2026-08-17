@@ -364,8 +364,9 @@ impl Rewrite<'_> {
                 return Ok(raw.clone());
             }
             // A universe and a literal are both closed: neither can hold a call,
-            // so neither needs rewriting.
-            RawShape::Universe(_) | RawShape::Lit(_) => return Ok(raw.clone()),
+            // so neither needs rewriting. A hosted name is closed for the same
+            // purpose — it names the host, never the definition being measured.
+            RawShape::Hosted(_) | RawShape::Universe(_) | RawShape::Lit(_) => return Ok(raw.clone()),
             // The dictionary binder takes the trait's own name — see
             // [`crate::elab`]'s constrained Π — so the codomain is walked under
             // it for the same reason an ordinary Π's is.
@@ -415,6 +416,17 @@ impl Rewrite<'_> {
                 plicity: plicity.clone(),
                 function: self.term(function, bound)?,
                 argument: self.term(argument, bound)?,
+            },
+            // A call whose head is not the definition being defined: `spine`
+            // read it as one and `self.call` declined it, so what is left is an
+            // ordinary walk into the parts.
+            RawShape::Call { function, arguments } => RawShape::Call {
+                function: self.term(function, bound)?,
+                arguments: arguments
+                    .iter()
+                    .map(|argument| self.term(argument, bound))
+                    .collect::<Result<Vec<_>, _>>()?
+                    .into(),
             },
             RawShape::RecordType(fields) => RawShape::RecordType(self.fields(fields, bound, true)?),
             RawShape::Record(fields) => RawShape::Record(self.fields(fields, bound, false)?),
@@ -611,6 +623,12 @@ fn binders(pattern: &RawPattern, into: &mut Vec<Name>) {
 /// recursive call that wrote one has written the same thing the definition's own
 /// binder did.
 fn spine(raw: &Raw) -> (&Raw, Vec<&Raw>) {
+    // A written call already *is* the spine, with its head and arguments told
+    // apart by the author rather than by a walk. Read directly, so that a
+    // recursive call reaches the measure check whichever form the reader built.
+    if let RawShape::Call { function, arguments } = raw.shape() {
+        return (function, arguments.iter().collect());
+    }
     let mut arguments = Vec::new();
     let mut head = raw;
     while let RawShape::App {

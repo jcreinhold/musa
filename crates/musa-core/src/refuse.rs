@@ -161,6 +161,41 @@ pub enum Refusal {
         /// The type the applied term turned out to have.
         ty: Term,
     },
+    /// A written call that leaves a declared parameter unsupplied.
+    ///
+    /// `02-core-calculus.md` §1.3: "A call must be complete: an application
+    /// supplies every declared parameter, and an under-applied call is a type
+    /// error rather than a value." The other direction is [`Self::NotAFunction`],
+    /// and they are told apart because the repairs are opposite ones — a
+    /// function applied to too much was the wrong function, and a call with too
+    /// little is the right one missing an argument.
+    ///
+    /// The parameters are *named*, and that is what makes this report worth
+    /// more than a count. A reader who is told `lifted` takes two arguments has
+    /// to go and look at `lifted` to find out which one they left out; a reader
+    /// told that nothing is given for `by` is already at the edit. The names
+    /// are the declaration's own, which is also the only place a parameter is
+    /// declared at all — see
+    /// [`declared_parameters`](crate::elab::declared_parameters).
+    #[error(
+        "`{function}` takes {wanted} argument{}, and {written} {} written: nothing is given for {}",
+        if *.wanted == 1 { "" } else { "s" },
+        if *.written == 1 { "was" } else { "were" },
+        crate::show::listed(.missing),
+    )]
+    Underapplied {
+        /// The call.
+        at: Origin,
+        /// How the function was spelled, from the head of its own spine.
+        function: String,
+        /// How many arguments a complete call writes.
+        wanted: usize,
+        /// How many this one wrote.
+        written: usize,
+        /// The parameters no argument reached, in the order they were declared.
+        /// Never empty.
+        missing: Vec<Name>,
+    },
     /// An implicit argument was written in braces at an explicit binder, or an
     /// explicit binder was abstracted where the type wanted an implicit one.
     #[error("this argument is written implicitly, but the binder it fills is not")]
@@ -636,12 +671,18 @@ pub enum Refusal {
     /// [`Self::UnresolvedInstance`] because there is no instance anyone could
     /// write to repair it — which is exactly what `02-core-calculus.md` §1.2
     /// says about `Storable` and an arrow.
-    #[error("`{class}` cannot be implemented for this type: only a declared type has instances")]
+    #[error("`{class}` cannot be implemented for `{}`: only a declared type has instances", crate::show::spelled(.ty))]
     UnkeyedConstraint {
         /// The use.
         at: Origin,
         /// The trait.
         class: Name,
+        /// The first argument, which is the type no key could hold.
+        ///
+        /// Said rather than described, for [`Mismatch`]'s reason: a machine port
+        /// that turned out to be `Ratio → Ratio` is a sentence a reader can act
+        /// on, and "this type" is one they have to go and reconstruct.
+        ty: Term,
     },
     /// One name registered twice in a [`Registry`](crate::Registry).
     ///
@@ -778,20 +819,32 @@ pub struct Mismatch {
     pub path: Vec<PathStep>,
 }
 
+/// The route, and then the two subterms it ends at.
+///
+/// Both halves, because either alone leaves the reader to reconstruct the
+/// other: a path with no types says a mismatch happened somewhere in an
+/// argument, and two types with no path leaves a reader holding `Bool` and
+/// `Ratio` and no idea which position of which type they came out of. The
+/// spelling is [`crate::show`]'s, so it is the *core*'s vocabulary — a surface
+/// `Machine<K, A, B>` reads back as an application, which is what the term is.
 impl fmt::Display for Mismatch {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.path.is_empty() {
-            out.write_str("type mismatch")
-        } else {
-            out.write_str("type mismatch at ")?;
+        out.write_str("type mismatch")?;
+        if !self.path.is_empty() {
+            out.write_str(" at ")?;
             for (position, step) in self.path.iter().enumerate() {
                 if position > 0 {
                     out.write_str(", ")?;
                 }
                 write!(out, "{step}")?;
             }
-            Ok(())
         }
+        write!(
+            out,
+            ": expected `{}`, found `{}`",
+            crate::show::spelled(&self.expected),
+            crate::show::spelled(&self.found)
+        )
     }
 }
 

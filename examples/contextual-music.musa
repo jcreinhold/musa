@@ -2,14 +2,14 @@
 // elaboration path. A saved phrase is instantiated where each `use` appears;
 // it is not a frozen timeline or a hidden copy of these notes.
 piece "Contextual Music" {
-    fn figure(root: Pitch) -> Music {
+    fn figure(root: Pitch) -> EventTrack<WrittenTime> {
         music {
             root/4
             d4/4
         }
     }
 
-    let subject: Music = figure(c4);
+    let subject: EventTrack<WrittenTime> = figure(c4);
 
     motif answer(root: Pitch) {
         root/4

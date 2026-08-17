@@ -32,8 +32,8 @@ use crate::scope::Scope;
 use crate::score::{DynamicMark, Meter, Mode, NotatedDuration, Part, PartId, ScoreSnapshot, Voice, VoiceId};
 use crate::time::MusicalTime;
 use musa_kernel::{Duration, EventTrack, Occurrence, Position, Span, Term, WrittenTime, empty, follow, track};
+use musa_language::SyntaxNode;
 use musa_language::ast::{AstNode as _, PieceDecl, VoiceItem};
-use musa_language::{SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 use std::fmt::Write as _;
 
@@ -596,22 +596,8 @@ pub(crate) fn elaborate_parsed(
     let mut imports = musa_language::ast::ImportStmt::all_at_root(&root);
     imports.extend(piece.imports());
     let libraries = crate::imports::load(resolver, name, &imports, &options.imports);
-    // Every `make` inside this piece is resolved before it is checked: the
-    // arguments belong to the scope the sites stand in, so they are evaluated
-    // with the piece's own declarations, in one pass, and each instance reads
-    // its own values back out afterwards.
-    let enclosing = made.as_ref().map(crate::template::Instance::template);
-    let sites = collect_voice_sites(resolver, &mut templates, &piece, enclosing, name);
-    let mut bindings: Vec<crate::core::Binding> = Vec::new();
-    if let Some(instance) = &made {
-        let arguments = crate::core::check_arguments(resolver, &libraries, &root, instance.holders());
-        let Some(arguments) = arguments else {
-            return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
-        };
-        bindings.extend(instance.bindings(&arguments));
-    }
-    bindings.extend(sites.values().flat_map(crate::template::Instance::holders));
-    let Some(core) = crate::core::check_piece(resolver, &libraries, &root, &piece, bindings) else {
+    let sources = declaring(&root, &libraries, piece.syntax());
+    let Some(mut elaborated) = crate::document::elaborate(resolver, &sources, made.as_ref()) else {
         tracing::debug!(
             phase = "check",
             diagnostics = resolver.diagnostics.len(),
@@ -620,17 +606,13 @@ pub(crate) fn elaborate_parsed(
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     };
     tracing::debug!(phase = "check", diagnostics = resolver.diagnostics.len(), "checked");
-    let expansion = Expansion {
-        root: root.clone(),
-        libraries: Some(&libraries),
-        sites: &sites,
-        prefix: made.as_ref().map(crate::template::Instance::step).into_iter().collect(),
-    };
+    // Before the piece is read, because reading it mutates the site table and
+    // a machine is a *declaration*: what this answers is the same either way,
+    // and asking first is what keeps the two readings independent.
+    let machines = elaborated.machines();
     elaborate_libraries(resolver, &libraries, &mut snapshot);
-    resolve::lower_header(resolver, &piece, &mut snapshot, &core);
-    let identity = piece.score().map_or_else(musa_kernel::SemanticHash::default, |score| {
-        elaborate_score(resolver, &piece, &score, &mut snapshot, &core, &expansion)
-    });
+    resolve::lower_header(resolver, &piece, &mut snapshot);
+    let identity = elaborate_score(resolver, &mut elaborated, &piece, name, &mut snapshot);
     // The identity hash is the one fact that says *which* piece was produced,
     // and it is what two runs that should agree are compared on.
     tracing::debug!(phase = "elaborate", %identity, "elaborated");
@@ -674,370 +656,289 @@ pub(crate) fn elaborate_parsed(
     }
     Compilation::new(Some(snapshot), std::mem::take(&mut resolver.diagnostics))
         .with_studio(studio)
-        .with_machines(core.machines())
+        .with_machines(machines)
         .with_identity(identity)
         .with_decisions(std::mem::take(&mut resolver.decisions))
         .with_references(references)
 }
 
-/// What a score needs to expand the instance sites written in it.
+/// Every node whose declarations this piece is read against, in reading order.
 ///
-/// One value rather than four parameters because it is one idea — where the
-/// templates are, and how far in from the document the score already is —
-/// and because a voice instance and a made piece read the same fields.
-struct Expansion<'a> {
-    root: SyntaxNode,
-    /// The import closure a template body is read against, or `None` on the
-    /// import-free interchange path (see [`piece_term`]).
-    libraries: Option<&'a crate::imports::Libraries>,
-    /// Every voice instance in this piece, by the span of its `make`. The
-    /// sites are resolved once, before the piece is checked, because their
-    /// arguments are part of what the piece's own pass evaluates.
-    sites: &'a indexmap::IndexMap<u64, crate::template::Instance>,
-    /// The expansion steps this whole piece already stands behind: one, when
-    /// the piece itself was made.
-    prefix: Vec<crate::origin::ExpansionStep>,
-}
-
-impl Expansion<'_> {
-    /// Check one instance's body with its arguments bound, by whichever rule
-    /// this elaboration reads declarations under.
-    fn check_voice(
-        &self,
-        resolver: &mut Resolver,
-        voice: &musa_language::ast::VoiceDecl,
-        bindings: Vec<crate::core::Binding>,
-    ) -> Option<crate::core::Program> {
-        match self.libraries {
-            Some(libraries) => crate::core::check_template_voice(resolver, libraries, &self.root, voice, bindings),
-            None => crate::core::check_for_kernel(resolver, &self.root, Some(voice.syntax()), bindings),
-        }
-    }
-}
-
-/// One item of a part, read as the voice it stands for.
+/// The import closure first, then the document's own root, then the piece —
+/// which is a source of its own because a `piece` *declares*: its motifs, its
+/// fragments and its `let`s are the names its voices write, and a walk that
+/// stopped at the root would leave every one of them unbound. A template's body
+/// arrives the same way, since the piece a root `make` names is a node like any
+/// other.
 ///
-/// A written voice is itself, read with the piece's own program; a `make` is
-/// the template's voice, read with a program of its own arguments, standing
-/// one expansion step deeper than the score around it.
-struct VoiceSite {
-    voice: musa_language::ast::VoiceDecl,
-    name: String,
-    /// The instance's program, when the site is a `make`. A written voice
-    /// borrows the piece's, which this value cannot hold.
-    program: Option<crate::core::Program>,
-    name_span: Option<SourceSpan>,
-    path: Vec<crate::origin::ExpansionStep>,
+/// None of them is in phase: [`crate::imports::load`] leaves an
+/// `import … changes syntax` out of the closure, and a phase module is
+/// elaborated by [`crate::expand`] under vocabulary of its own.
+fn declaring(
+    root: &SyntaxNode,
+    libraries: &crate::imports::Libraries,
+    piece: &SyntaxNode,
+) -> Vec<crate::document::Source> {
+    libraries
+        .each()
+        .map(|(from, library)| crate::document::Source::imported(library.syntax(), from.path))
+        .chain([crate::document::Source::own(root), crate::document::Source::own(piece)])
+        .collect()
 }
 
-impl VoiceSite {
-    /// The part item as a voice, or `None` when it is not one: an instance of
-    /// a template that failed to resolve or to check, or a parameterized
-    /// voice written where only a plain one belongs.
-    fn read(
-        resolver: &mut Resolver,
-        expansion: &Expansion<'_>,
-        core: &crate::core::Program,
-        item: &musa_language::ast::PartItem,
-    ) -> Option<Self> {
-        match item {
-            musa_language::ast::PartItem::Voice(voice) => {
-                if voice.is_template() {
-                    resolver.report(
-                        Diagnostic::error(Code::Misplaced, "a voice with parameters needs `template`")
-                            .at(resolve::trimmed_span(voice.syntax()), "this voice takes parameters")
-                            .help("write it as `template voice …` at the top of the file, and `make` it here"),
-                    );
-                    return None;
-                }
-                Some(Self {
-                    voice: voice.clone(),
-                    name: voice.name().unwrap_or_default(),
-                    program: None,
-                    name_span: resolve::token_span(voice.syntax(), SyntaxKind::Identifier),
-                    path: expansion.prefix.clone(),
-                })
-            }
-            musa_language::ast::PartItem::Make(stmt) => {
-                let instance = expansion.sites.get(&site_key(resolve::trimmed_span(stmt.syntax())))?;
-                let voice = instance.voice()?;
-                let program = expansion.check_voice(resolver, &voice, instance.bindings(core))?;
-                let mut path = expansion.prefix.clone();
-                path.push(instance.step());
-                Some(Self {
-                    voice,
-                    name: instance.alias().to_owned(),
-                    program: Some(program),
-                    name_span: Some(instance.span()),
-                    path,
-                })
-            }
-        }
-    }
-
-    /// The program this voice's body is read with.
-    fn program<'a>(&'a self, core: &'a crate::core::Program) -> &'a crate::core::Program {
-        self.program.as_ref().unwrap_or(core)
-    }
-}
-
-/// Resolve every voice instance written among this piece's parts.
+/// The piece, read and evaluated: everything it claims proved, everything it
+/// sounds projected into `snapshot`, and the identity of the whole.
 ///
-/// Once, here, rather than during elaboration: resolving twice would report
-/// an unknown template twice, and the arguments have to be known before the
-/// piece is checked in any case.
-fn collect_voice_sites(
-    resolver: &mut Resolver,
-    templates: &mut crate::template::Templates,
-    piece: &PieceDecl,
-    enclosing: Option<&str>,
-    namespace: &str,
-) -> indexmap::IndexMap<u64, crate::template::Instance> {
-    let mut sites = indexmap::IndexMap::new();
-    let Some(score) = piece.score() else {
-        return sites;
-    };
-    for part in score.parts() {
-        let part_name = part.name().unwrap_or_default();
-        for (index, item) in part.items().into_iter().enumerate() {
-            let musa_language::ast::PartItem::Make(stmt) = item else {
-                continue;
-            };
-            let path = format!("score/part[{part_name}]/{index}");
-            let span = resolve::trimmed_span(stmt.syntax());
-            if let Some(instance) = templates.instance(
-                resolver,
-                &stmt,
-                path,
-                crate::template::Kind::Voice,
-                enclosing,
-                namespace,
-            ) {
-                sites.insert(site_key(span), instance);
-            }
-        }
-    }
-    sites
-}
-
-/// A site's span, as the key the resolved instances are held under.
-const fn site_key(span: SourceSpan) -> u64 {
-    ((span.start as u64) << 32) | span.end as u64
-}
-
-/// What the piece timeline says about the piece as a whole, for the callers
-/// that need it after the projection has run.
+/// One compilation, one temporal object
+/// (docs/rules/kernel/06-surface-elaboration.md). Part and voice identity live
+/// in `Scope` rather than in a timeline per voice, which is why nothing here
+/// holds a lane: the projection buckets the piece's own occurrences by the scope
+/// each fact was constructed at.
 ///
-/// Both fields are read *off the timeline* — the extent is the kernel's own,
-/// and the barlines are folded from the meter occurrences — which is why no
-/// function in this module recomputes either from the snapshot.
-/// Walk parts and voices exactly as the direct lowerer does, elaborating
-/// each voice into kernel facts — and then stack every one of them, plus
-/// the piece's key, meter, form markers and chord symbols, into a single
-/// `VoiceTrack` for the whole piece, which is projected once.
-///
-/// One compilation, one temporal object (docs/rules/kernel/06-surface-elaboration.md).
-/// Part and
-/// voice identity live in `Scope`, not in a timeline per voice, which is the
-/// evidence Q3's working stance asked for.
+/// The order below is forced, and worth saying because three of the steps could
+/// look independent and are not. The piece is evaluated before the barlines,
+/// because the meters it states are occurrences *in* it. The barlines come
+/// before the claims, because "this bar is a quarter short" is a sentence
+/// measured in bars. And the markers come after the barlines and before the
+/// hash, because `at bar 9` is a coordinate the meters decide, and because the
+/// piece's identity is the identity of the whole piece, markers included.
 fn elaborate_score(
     resolver: &mut Resolver,
+    elaborated: &mut crate::document::Document,
     piece: &PieceDecl,
-    score: &musa_language::ast::ScoreDecl,
+    namespace: &str,
     snapshot: &mut ScoreSnapshot,
-    core: &crate::core::Program,
-    expansion: &Expansion<'_>,
 ) -> musa_kernel::SemanticHash {
-    let mut voice_names: indexmap::IndexMap<PartId, indexmap::IndexMap<VoiceId, String>> = indexmap::IndexMap::new();
-    let mut metadata: Vec<(PartId, String)> = Vec::new();
-    // A part's clef, meter and tempo are context, so they enter the timeline
-    // with the piece's rather than riding on the part; the part loop only
-    // collects them.
-    let mut declared: Vec<(u32, resolve::PartContext)> = Vec::new();
-    let mut lanes: Vec<Segment> = Vec::new();
-    // One set of bindings for the whole piece: two voices calling the same
-    // motif elaborate its body once between them.
-    let mut share = Share::default();
+    let Some(score) = piece.score() else {
+        return musa_kernel::SemanticHash::default();
+    };
     // Named bars join the namespace before any voice is read, so a bar in the
     // cello can be answered by the violin above it — or refused, if the answer
     // comes first. Either way the name exists.
-    resolve::register_bars(resolver, snapshot, score);
-    for part in score.parts() {
-        let name = part.name().unwrap_or_default();
-        let part_key = resolver.declare(crate::resolve::DeclInfo::Part);
-        let _ = resolve::ordinal(resolver, part_key);
-        if metadata.iter().any(|(_, existing)| *existing == name) {
-            resolver.error(
-                Code::DuplicateName,
-                format!("this score already has a part called `{name}`"),
-                resolve::span_of(part.syntax()),
-                "declared again here",
-            );
-            continue;
-        }
-        if !name.is_empty()
-            && let Some(name_span) = resolve::token_span(part.syntax(), SyntaxKind::Identifier)
+    resolve::register_bars(resolver, snapshot, &score);
+    let Some(read) = elaborated.piece(resolver, piece.syntax(), namespace) else {
+        return musa_kernel::SemanticHash::default();
+    };
+    let Some(sounding) = evaluated(resolver, elaborated, &read.track) else {
+        return musa_kernel::SemanticHash::default();
+    };
+    for part in &read.parts {
+        if !part.name.is_empty()
+            && let Some(span) = part.name_span
         {
             resolver
                 .references
-                .declare(crate::resolve::NameKind::Part, &name, name_span);
-        }
-        let id = PartId(resolver.next_part);
-        resolver.next_part = resolver.next_part.saturating_add(1);
-
-        let mut context = resolve::part_context(resolver, &part, snapshot.profiles());
-        if let Some(profile) = context.profile.take() {
-            snapshot.profiles_mut().assign(&name, profile);
+                .declare(crate::resolve::NameKind::Part, &part.name, span);
         }
         // A part's own meter is what the barlines in *this* part are counted
-        // against, and the checks below run before the projection exists, so
-        // the resolver carries it rather than reading it back off the score.
-        if let Some((meter, _)) = context.meter {
-            resolver.part_meters.insert(id.0, meter);
+        // against, and the claims below are proved before any projection exists,
+        // so the resolver carries it rather than reading it back off the score.
+        if let Some(meter) = part.meter {
+            resolver.part_meters.insert(part.id, meter);
         }
-        declared.push((id.0, context));
-
-        let mut names = indexmap::IndexMap::new();
-        // A part's voices are its written ones and the ones its instance
-        // sites make, in the order they stand: a `make` between two voices
-        // makes a voice there, and the numbering is positional.
-        for (index, item) in part.items().into_iter().enumerate() {
-            let Some(site) = VoiceSite::read(resolver, expansion, core, &item) else {
-                continue;
-            };
-            let voice = &site.voice;
-            let voice_name = site.name.clone();
-            let name_span = site.name_span;
-            let voice_key = resolver.declare(crate::resolve::DeclInfo::Voice);
-            let declaration = resolve::ordinal(resolver, voice_key);
-            if names.values().any(|existing| *existing == voice_name) {
-                resolver.error(
-                    Code::DuplicateName,
-                    format!("part `{name}` already has a voice called `{voice_name}`"),
-                    resolve::span_of(voice.syntax()),
-                    "declared again here",
-                );
-                continue;
-            }
-            if !voice_name.is_empty()
-                && let Some(name_span) = name_span
+        assign_profile(resolver, snapshot, part);
+        for voice in &part.voices {
+            if !voice.name.is_empty()
+                && let Some(span) = voice.name_span
             {
                 resolver
                     .references
-                    .declare(crate::resolve::NameKind::Voice, &voice_name, name_span);
+                    .declare(crate::resolve::NameKind::Voice, &voice.name, span);
             }
-            let voice_id = VoiceId(u32::try_from(index).unwrap_or(u32::MAX));
-            lanes.push(elaborate_voice(
-                resolver,
-                &mut share,
-                voice,
-                declaration,
-                id.0,
-                voice_id.0,
-                site.program(core),
-                site.path.clone(),
-            ));
-            names.insert(voice_id, voice_name);
-        }
-        voice_names.insert(id, names);
-        metadata.push((id, name));
-    }
-
-    // The stack's extent without building the stack: D3 says it is the
-    // maximum of the parts', and the context facts need it before they exist.
-    let extent = lanes.iter().map(|lane| lane.extent).max().unwrap_or(Duration::ZERO);
-    // The meters first: every check below is measured against the barlines,
-    // and where the barlines fall is what the meters decide.
-    let bars = resolve_meters(resolver);
-    check_keys(resolver, &bars);
-    for obligation in std::mem::take(&mut resolver.obligations) {
-        let here = part_bars(resolver, obligation.scope);
-        let settled = crate::assert::Settled {
-            bars: here.as_ref().unwrap_or(&bars),
-            meter_written: resolver.meter_written,
-        };
-        if let Some(diagnostic) = crate::assert::check(&obligation.claim, &obligation.passage, &settled) {
-            resolver.report(diagnostic);
         }
     }
-    let context = context_facts(resolver, piece, score, &declared, &bars, extent);
-    let lane_occurrences = lanes
-        .iter()
-        .fold(0u64, |count, lane| count.saturating_add(lane.occurrences));
-    let context_occurrences = u64::try_from(context.occurrences().len()).unwrap_or(u64::MAX);
-    let output_occurrences = lane_occurrences.saturating_add(context_occurrences);
-    if !share.reserve_output(
-        "elaborating the piece timeline",
-        output_occurrences,
-        resolve::trimmed_span(score.syntax()),
-    ) {
-        share.report_exhaustion(resolver);
-        return musa_kernel::SemanticHash::default();
+    // The meters first: every check below is measured against the barlines, and
+    // where the barlines fall is what the meters decide.
+    let bars = resolve_meters(resolver, stated(&sounding, meter_of));
+    check_keys(resolver, &bars, stated(&sounding, key_of));
+    prove(resolver, elaborated, &read, &bars);
+    if resolver.track_sink.is_some() {
+        // Measurement only, and the one place a voice is wanted on its own; the
+        // piece itself is one term and was evaluated once, above.
+        let lanes: Vec<VoiceTrack> = read
+            .parts
+            .iter()
+            .flat_map(|part| part.voices.iter())
+            .filter_map(|voice| elaborated.track(&voice.track).ok())
+            .collect();
+        if let Some(sink) = &mut resolver.track_sink {
+            sink.extend(lanes);
+        }
     }
-    if let Some(sink) = &mut resolver.track_sink {
-        // Measurement only, and the one place a voice is wanted on its own;
-        // the piece itself is evaluated once, below.
-        let voices: Vec<_> = lanes.iter().map(|lane| share.evaluate(lane.term.clone())).collect();
-        sink.extend(voices);
-    }
-    // One close and one evaluation for the whole piece: closing wraps the live
-    // bindings, and doing it per voice would clone every shared body once per
-    // voice — the cost this structure exists to remove.
-    let parts: Vec<_> = lanes
-        .into_iter()
-        .map(|lane| lane.term)
-        .chain(std::iter::once(Term::literal(context)))
-        .collect();
-    let open = Term::together(parts).unwrap_or_else(|_| musa_kernel::Term::literal(empty_segment()));
-    let closed = share.close(open);
-    if let Err(error) = closed.check() {
-        resolver.report(
-            Diagnostic::error(Code::TypeMismatch, "elaboration produced an invalid kernel term")
-                .at(resolve::trimmed_span(score.syntax()), error.to_string())
-                .note("this is a compiler invariant failure"),
-        );
-        return musa_kernel::SemanticHash::default();
-    }
-    let whole = musa_kernel::evaluate_marked(closed, instantiate);
-    // The piece's identity, taken where the piece exists as one temporal
-    // object and nowhere else: after this line the timeline is a projection,
-    // and a hash of the projection would be a hash of a view.
+    let whole = musa_kernel::together(vec![placed(resolver, &score, &bars, sounding.duration()), sounding]);
+    // The piece's identity, taken where the piece exists as one temporal object
+    // and nowhere else: after this line the timeline is a projection, and a hash
+    // of the projection would be a hash of a view.
     let identity = whole.semantic_hash();
     let projection = crate::project::project(resolver, &whole);
     snapshot.set_contexts(projection.contexts);
     let mut projected = projection.voices;
-    for (id, name) in metadata {
-        let names = voice_names.swap_remove(&id).unwrap_or_default();
-        let mut voices = indexmap::IndexMap::with_capacity(names.len());
-        for voice_id in names.keys() {
-            let voice = projected
-                .swap_remove(&(id.0, voice_id.0))
-                .unwrap_or_else(|| Voice::new(Vec::new()));
-            voices.insert(*voice_id, voice);
+    for part in &read.parts {
+        let id = PartId(part.id);
+        let mut names = indexmap::IndexMap::with_capacity(part.voices.len());
+        let mut voices = indexmap::IndexMap::with_capacity(part.voices.len());
+        for voice in &part.voices {
+            let held = VoiceId(voice.id);
+            names.insert(held, voice.name.clone());
+            voices.insert(
+                held,
+                projected
+                    .swap_remove(&(part.id, voice.id))
+                    .unwrap_or_else(|| Voice::new(Vec::new())),
+            );
         }
-        snapshot.parts_mut().insert(id, Part::new(id, name, voices, names));
+        snapshot
+            .parts_mut()
+            .insert(id, Part::new(id, part.name.clone(), voices, names));
     }
     identity
 }
 
-/// The facts that are about the piece rather than about a voice: its key,
-/// its meter, its form markers, and its chord symbols (roadmap §8.2).
+/// Record which profile realizes `part`, or say the piece declares no such
+/// profile.
 ///
-/// Key and meter are *regions*. Today they cover `[0, d]`, because the
-/// grammar has no `modulate` and no mid-piece `meter`; when it grows one the
-/// change is more occurrences, not a second representation of the same
-/// question. A region that happens to cover everything is not a
-/// special case; a piece-wide scalar is.
+/// Here rather than in the reading that walked the part, because this is the
+/// one place both halves are in hand: [`crate::lower::piece::Part::profile`] is
+/// what the part says, and `snapshot` is what the piece declares. A profile
+/// changes no note and no barline — it is how the marks a note carries become
+/// numbers, which is `lower_performance`'s question and nothing the notation
+/// asks.
+fn assign_profile(resolver: &mut Resolver, snapshot: &mut ScoreSnapshot, part: &crate::lower::piece::Part) {
+    let Some((profile, span)) = &part.profile else {
+        return;
+    };
+    if snapshot.profiles().declares(profile) {
+        snapshot.profiles_mut().assign(&part.name, profile.clone());
+        return;
+    }
+    let known: Vec<&str> = snapshot.profiles().names().collect();
+    let help = resolve::suggest(profile, &known, "profiles");
+    resolver.report(
+        Diagnostic::error(Code::UnknownName, format!("cannot find profile `{profile}`"))
+            .at(*span, "not declared in this piece")
+            .help(help),
+    );
+}
+
+/// `raw` as the track it denotes, with any refusal restated where it was
+/// written.
 ///
-/// Sections and chord symbols are *points*, resolved here because a position
-/// is only meaningful once the piece has a length to be inside of. Nothing
-/// interprets them: a chord symbol is parsed so a later library can read it,
-/// and that is the end of the core's involvement.
-fn context_facts(
+/// [`None`] rather than an empty track, because a piece that did not evaluate is
+/// not a piece that sounds nothing: every check below it would then be run
+/// against silence and report a second complaint about the first one.
+fn evaluated(
     resolver: &mut Resolver,
-    piece: &PieceDecl,
+    elaborated: &crate::document::Document,
+    raw: &musa_core::Raw,
+) -> Option<VoiceTrack> {
+    match elaborated.track(raw) {
+        Ok(track) => Some(track),
+        Err(error) => {
+            resolver.report(crate::lower::refusals::restate(elaborated.sites(), &error));
+            None
+        }
+    }
+}
+
+/// Prove every claim the piece writes, each against the barlines its own part
+/// counts by.
+///
+/// Per part rather than per piece because `Meter` inherits by `Override`
+/// (`crate::scope`): a part in 7/8 does not hear the piece's changes at all, so
+/// a bar written in it is a measure nothing else in the score agrees about.
+///
+/// The claims are placed by [`crate::document::Document::passage`] rather than
+/// by a cursor this walk keeps, which is the whole of what a fold buys: where a
+/// passage begins is how long the music before it lasts, and both are exact
+/// rational arithmetic on terms the reading already recorded.
+fn prove(
+    resolver: &mut Resolver,
+    elaborated: &crate::document::Document,
+    read: &crate::lower::piece::Piece,
+    bars: &crate::BarLines,
+) {
+    for part in &read.parts {
+        let here = part_bars(resolver, Scope::Part { part: part.id });
+        for claimed in part.voices.iter().flat_map(|voice| voice.claims.iter()) {
+            let (claim, passage) = match elaborated.passage(claimed) {
+                Ok(placed) => placed,
+                Err(error) => {
+                    resolver.report(crate::lower::refusals::restate(elaborated.sites(), &error));
+                    continue;
+                }
+            };
+            let settled = crate::assert::Settled {
+                bars: here.as_ref().unwrap_or(bars),
+                meter_written: resolver.meter_written,
+            };
+            if let Some(diagnostic) = crate::assert::check(&claim, &passage, &settled) {
+                resolver.report(diagnostic);
+            }
+        }
+    }
+}
+
+/// Every change of one kind of context the evaluated piece states, in the order
+/// the barlines are folded in.
+///
+/// A **change** is a fact that begins somewhere, and that is what tells the two
+/// kinds of statement apart here: [`crate::lower::notation`] writes a `meter` or
+/// a `key` among a voice's items as a *point*, at the instant the fold had
+/// reached, while [`crate::lower::piece`] writes a header's over the region it
+/// governs. A header says what is in force, not what changes, so a fold that
+/// counted it would start the piece over at its own first barline.
+///
+/// A part's own meter is not a change either, and needs no test: it is
+/// constructed at `Scope::Part` and read through [`part_bars`], because `Meter`
+/// inherits by `Override` and a part that states one does not hear the piece's.
+fn stated<T>(sounding: &VoiceTrack, select: impl Fn(&FactKind) -> Option<T>) -> Vec<(MusicalTime, T, SourceSpan)> {
+    let mut changes: Vec<(MusicalTime, T, SourceSpan)> = sounding
+        .occurrences()
+        .iter()
+        .filter(|occurrence| {
+            occurrence.payload().scope == Scope::Piece && occurrence.span().start() == occurrence.span().end()
+        })
+        .filter_map(|occurrence| {
+            let fact = occurrence.payload();
+            Some((
+                MusicalTime::new(occurrence.span().start().as_ratio()),
+                select(&fact.kind)?,
+                fact.origin.source_span,
+            ))
+        })
+        .collect();
+    changes.sort_by_key(|(at, _, span)| (*at, span.start));
+    changes
+}
+
+/// The meter a fact states, when it states one.
+fn meter_of(kind: &FactKind) -> Option<Meter> {
+    if let FactKind::Meter { numerator, denominator } = *kind {
+        return Some(Meter::new(numerator, denominator));
+    }
+    None
+}
+
+/// The key a fact states, when it states one.
+fn key_of(kind: &FactKind) -> Option<crate::Key> {
+    if let FactKind::Key { tonic, mode } = *kind {
+        return Some(crate::Key::new(tonic, mode));
+    }
+    None
+}
+
+/// The markers a score places by coordinate rather than by where a fold
+/// reached: its form sections and its chord symbols (roadmap §8.2).
+///
+/// Here rather than in the reading, because `at bar 9` is a position in *bars*
+/// and where the bars fall is what the meters decide — which is not settled
+/// until the piece has been evaluated. Both are points, because a position is
+/// only meaningful once the piece has a length to be inside of, and nothing
+/// interprets either: a chord symbol is parsed so that a later library can read
+/// it, and that is the end of the core's involvement.
+fn placed(
+    resolver: &mut Resolver,
     score: &musa_language::ast::ScoreDecl,
-    declared: &[(u32, resolve::PartContext)],
     bars: &crate::BarLines,
     extent: Duration<WrittenTime>,
 ) -> VoiceTrack {
@@ -1048,99 +949,8 @@ fn context_facts(
         declaration,
         expansion_path: Vec::new(),
     };
-    // `lower_header` parsed the key and the meter out of the header and left
-    // them on the resolver; the only thing that puts either into the snapshot
-    // is the projection of the timeline they are about to enter.
-    let meter = resolver.meter;
-    let key = resolver.key;
-
-    let region = Span::new(Position::ZERO, extent.reach()).unwrap_or(Span::ZERO);
-    let mut occurrences = vec![Occurrence::new(
-        region,
-        ScoreFact::new(
-            Scope::Piece,
-            FactKind::Meter {
-                numerator: meter.numerator(),
-                denominator: meter.denominator(),
-            },
-            // An unwritten meter is still a meter — 4/4 governs the piece
-            // whether or not anybody said so — so the fact exists either way
-            // and points at the header when there is one to point at.
-            at_span(
-                piece
-                    .meter()
-                    .map_or_else(|| SourceSpan::new(0, 0), |node| resolve::span_of(node.syntax())),
-            ),
-        ),
-    )];
-    // Unlike the meter, an unwritten tempo is *not* a tempo: a page with no
-    // marking on it is a page with no marking on it, and the 120 a performance
-    // falls back to is the performance layer's default, not something the
-    // piece said. So the fact exists only where a marking does.
-    if let Some(header) = piece.tempo() {
-        occurrences.push(Occurrence::new(
-            region,
-            ScoreFact::new(
-                Scope::Piece,
-                resolve::tempo_fact(resolver, &header),
-                at_span(resolve::span_of(header.syntax())),
-            ),
-        ));
-    }
-    if let Some(key) = key {
-        occurrences.push(Occurrence::new(
-            region,
-            ScoreFact::new(
-                Scope::Piece,
-                FactKind::Key {
-                    tonic: key.tonic(),
-                    mode: key.mode(),
-                },
-                at_span(
-                    piece
-                        .key()
-                        .map_or_else(|| SourceSpan::new(0, 0), |node| resolve::span_of(node.syntax())),
-                ),
-            ),
-        ));
-    }
-
-    // A clef is context, not part metadata: it is in force from where it is
-    // written until something replaces it, in the scope of one part, which is
-    // the same shape the key and the meter have. A part's own meter and tempo
-    // are the same shape again, and that is all polymeter and polytempo are:
-    // the fact a scope in, with `Override` inheritance (`scope.rs`) already
-    // saying that a 7/8 part does not rejoin the piece's 4/4.
-    for (part, context) in declared {
-        let scope = Scope::Part { part: *part };
-        if let Some((clef, span)) = context.clef {
-            occurrences.push(Occurrence::new(
-                region,
-                ScoreFact::new(scope, FactKind::Clef { clef }, at_span(span)),
-            ));
-        }
-        if let Some((meter, span)) = context.meter {
-            occurrences.push(Occurrence::new(
-                region,
-                ScoreFact::new(
-                    scope,
-                    FactKind::Meter {
-                        numerator: meter.numerator(),
-                        denominator: meter.denominator(),
-                    },
-                    at_span(span),
-                ),
-            ));
-        }
-        if let Some((tempo, span)) = &context.tempo {
-            occurrences.push(Occurrence::new(
-                region,
-                ScoreFact::new(scope, tempo.clone(), at_span(*span)),
-            ));
-        }
-    }
-
     let extent_time = MusicalTime::new(extent.as_ratio());
+    let mut occurrences = Vec::new();
     for section in score.sections() {
         let span = resolve::trimmed_span(section.syntax());
         let Some(at) = resolve_position(resolver, section.position().as_ref(), span, bars, extent_time) else {
@@ -3263,9 +3073,7 @@ fn part_bars(resolver: &Resolver, scope: Scope) -> Option<crate::BarLines> {
 /// changes before it and by nothing else. This is why the meters are a pass
 /// of their own rather than a lookup: a measure coordinate is a position in
 /// bars, and where the bars fall is what the meters decide.
-fn resolve_meters(resolver: &mut Resolver) -> crate::BarLines {
-    let mut changes = std::mem::take(&mut resolver.meter_changes);
-    changes.sort_by_key(|(at, _, span)| (*at, span.start));
+fn resolve_meters(resolver: &mut Resolver, changes: Vec<(MusicalTime, Meter, SourceSpan)>) -> crate::BarLines {
     let mut bars = crate::BarLines::uniform(resolver.meter);
     let mut stated: Vec<(MusicalTime, Meter, SourceSpan)> = Vec::new();
     for (at, meter, span) in changes {
@@ -3293,9 +3101,7 @@ fn resolve_meters(resolver: &mut Resolver) -> crate::BarLines {
 /// way through a measure is a page nobody can engrave. Same refusal as the
 /// meter's, and deliberately *not* the clef's: run after the meters, because
 /// the barlines it is measured against are what the meters decided.
-fn check_keys(resolver: &mut Resolver, bars: &crate::BarLines) {
-    let mut changes = std::mem::take(&mut resolver.key_changes);
-    changes.sort_by_key(|(at, _, span)| (*at, span.start));
+fn check_keys(resolver: &mut Resolver, bars: &crate::BarLines, changes: Vec<(MusicalTime, crate::Key, SourceSpan)>) {
     let mut stated: Vec<(MusicalTime, crate::Key, SourceSpan)> = Vec::new();
     for (at, key, span) in changes {
         if let Some((_, already, first)) = stated.iter().find(|(other, _, _)| *other == at) {
@@ -4372,10 +4178,13 @@ pub fn kernel_normal_form(source: &SourceDocument, realization: &crate::Realizat
 /// The piece as a **term** (docs/rules/kernel/10): its name, and an `over` of one
 /// literal per voice plus one for the piece-wide context.
 ///
-/// The shared bodies are `let`-bound around the whole `over`, because a motif
-/// called from two voices is one body and its binding has to dominate both.
-/// Bindings nothing references — a level that had to be evaluated spent its
-/// sharing — are dropped, so the printed term names only what it uses.
+/// One literal per voice and not one for the whole, because that shape is what
+/// the interchange spelling is *for*: a reader of the text can see which lane a
+/// fact belongs to without taking a scope apart, and the normalized spelling
+/// ([`crate::kernel_normalized_text`]) is the one that collapses it. The sharing
+/// the replaced elaborator wrapped around the `over` is gone with it: a motif
+/// called from two voices is one definition of the *document* now, and its body
+/// is shared where documents share things rather than in the kernel text.
 pub(crate) fn piece_term(
     source: &SourceDocument,
     realization: &crate::Realization,
@@ -4406,76 +4215,54 @@ pub(crate) fn piece_term(
     });
     let piece = PieceDecl::from_root(&root).or_else(|| made.as_ref().and_then(crate::template::Instance::piece))?;
     let mut snapshot = ScoreSnapshot::default();
-    let enclosing = made.as_ref().map(crate::template::Instance::template);
-    let sites = collect_voice_sites(&mut resolver, &mut templates, &piece, enclosing, source.name());
-    let mut bindings: Vec<crate::core::Binding> = Vec::new();
-    if let Some(instance) = &made {
-        let arguments = crate::core::check_for_kernel(&mut resolver, &root, None, instance.holders())?;
-        bindings.extend(instance.bindings(&arguments));
-    }
-    bindings.extend(sites.values().flat_map(crate::template::Instance::holders));
     // This interchange helper historically has no import-source parameter.
-    // Preserve that contract: local material elaborates, and a use whose
-    // declaration only an unavailable import could supply is the empty error
-    // segment the pre-core helper produced. Full compilation always uses the
-    // checked build closure above.
-    let core = crate::core::check_for_kernel(&mut resolver, &root, Some(piece.syntax()), bindings)?;
-    let expansion = Expansion {
-        root: root.clone(),
-        libraries: None,
-        sites: &sites,
-        prefix: made.as_ref().map(crate::template::Instance::step).into_iter().collect(),
-    };
-    resolve::lower_header(&mut resolver, &piece, &mut snapshot, &core);
+    // Preserve that contract: the document is read against itself, so local
+    // material elaborates and a use whose declaration only an unavailable import
+    // could supply is a name this reading does not know. Full compilation always
+    // reads the checked closure ([`declaring`]).
+    let sources = [
+        crate::document::Source::own(&root),
+        crate::document::Source::own(piece.syntax()),
+    ];
+    let mut elaborated = crate::document::elaborate(&mut resolver, &sources, made.as_ref())?;
+    resolve::lower_header(&mut resolver, &piece, &mut snapshot);
     let score = piece.score()?;
-    let mut share = Share::default();
     resolve::register_bars(&mut resolver, &mut snapshot, &score);
-    let mut lanes = Vec::new();
-    let mut declared = Vec::new();
-    for (part_index, part) in score.parts().iter().enumerate() {
-        let part_id = u32::try_from(part_index).unwrap_or(u32::MAX);
-        declared.push((part_id, resolve::part_context(&mut resolver, part, snapshot.profiles())));
-        for (index, item) in part.items().into_iter().enumerate() {
-            let Some(site) = VoiceSite::read(&mut resolver, &expansion, &core, &item) else {
-                continue;
-            };
-            let voice_key = resolver.declare(crate::resolve::DeclInfo::Voice);
-            let declaration = resolve::ordinal(&resolver, voice_key);
-            lanes.push(elaborate_voice(
-                &mut resolver,
-                &mut share,
-                &site.voice,
-                declaration,
-                part_id,
-                u32::try_from(index).unwrap_or(u32::MAX),
-                site.program(&core),
-                site.path.clone(),
-            ));
-        }
-    }
-    // The stack's extent without building the stack: D3 says it is the
-    // maximum of the parts', and the context facts need it before they exist.
-    let extent = lanes.iter().map(|lane| lane.extent).max().unwrap_or(Duration::ZERO);
-    let bars = resolve_meters(&mut resolver);
-    check_keys(&mut resolver, &bars);
-    let context = context_facts(&mut resolver, &piece, &score, &declared, &bars, extent);
-    let lane_occurrences = lanes
+    let read = elaborated.piece(&mut resolver, piece.syntax(), source.name())?;
+    let sounding = elaborated.track(&read.track).ok()?;
+    // The barlines, and only because the markers below are placed in them: this
+    // helper answers a term rather than a diagnosis, so the meters are folded for
+    // the coordinates they decide and the refusals go nowhere.
+    let bars = resolve_meters(&mut resolver, stated(&sounding, meter_of));
+    let mut parts = read
+        .parts
         .iter()
-        .fold(0u64, |count, lane| count.saturating_add(lane.occurrences));
-    let context_occurrences = u64::try_from(context.occurrences().len()).unwrap_or(u64::MAX);
-    if !share.reserve_output(
-        "elaborating the piece timeline",
-        lane_occurrences.saturating_add(context_occurrences),
-        resolve::trimmed_span(score.syntax()),
-    ) {
-        return None;
-    }
-    let parts: Vec<musa_kernel::Term<WrittenTime, ScoreFact>> = lanes
-        .into_iter()
-        .map(|lane| lane.term)
-        .chain(std::iter::once(musa_kernel::Term::literal(context)))
-        .collect();
-    let term = share.close(musa_kernel::Term::together(parts).ok()?);
+        .flat_map(|part| part.voices.iter())
+        .map(|voice| elaborated.track(&voice.track).map(musa_kernel::Term::literal))
+        .collect::<Result<Vec<_>, _>>()
+        .ok()?;
+    let marked = placed(&mut resolver, &score, &bars, sounding.duration());
+    parts.push(musa_kernel::Term::literal(spoken_of(&sounding, &marked)));
+    let term = musa_kernel::Term::together(parts).ok()?;
     term.check().ok()?;
     Some((piece.name().unwrap_or_default(), term, resolver.decisions))
+}
+
+/// Everything the piece states about itself rather than about a voice, as one
+/// track: the header's context, each part's, and the markers a coordinate
+/// placed.
+///
+/// Split off the evaluated piece by the same test the projection buckets with —
+/// a fact's scope names a voice or it does not — because [`piece_term`]'s shape
+/// is one literal per voice and one for the piece, and each voice is a term of
+/// its own already.
+fn spoken_of(sounding: &VoiceTrack, marked: &VoiceTrack) -> VoiceTrack {
+    let occurrences = sounding
+        .occurrences()
+        .iter()
+        .filter(|occurrence| occurrence.payload().scope.voice().is_none())
+        .chain(marked.occurrences().iter())
+        .cloned()
+        .collect();
+    track_or_empty(sounding.duration(), occurrences)
 }

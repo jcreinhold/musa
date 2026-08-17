@@ -28,7 +28,7 @@ fn answer(annotation: &str, subject: &str, pattern: &str) -> String {
             "piece \"Literal patterns\" {{\n\
              \x20   let subject: {annotation} = {subject};\n\
              \x20   let chosen: Interval = match subject {{ {pattern} -> P1, _ -> P8 }};\n\
-             \x20   let tune: Music = transpose(chosen, music {{ c4/1 }});\n\n\
+             \x20   let tune: EventTrack<WrittenTime> = transpose(chosen, music {{ c4/1 }});\n\n\
              \x20   tempo 1/4 = 84;\n\
              \x20   meter 4/4;\n\n\
              \x20   score {{ part p {{ voice v {{ use tune; }} }} }}\n\
@@ -54,21 +54,30 @@ fn answer(annotation: &str, subject: &str, pattern: &str) -> String {
     }
 }
 
-/// Every literal pattern `Checker::pattern_literal` admits: the annotation to
-/// write, the subject the arm should match, a subject it should not, and the
-/// pattern itself.
+/// Every literal pattern the lowering admits: the annotation to write, the
+/// subject the arm should match, a subject it should not, and the pattern
+/// itself.
 ///
-/// An integer and a rational each stand at two types, and both readings are
-/// here: a pattern is checked against the type of what it matches, so `2` at
-/// `Duration` and `2` at `Nat` are two patterns that happen to be spelled the
-/// same.
-const ADMITTED: [(&str, &str, &str, &str); 8] = [
+/// **A literal has one type**, and this table used to say otherwise. Two rows
+/// stood here reading `2` and `3/8` at `Duration<WrittenTime>`, on the replaced
+/// checker's rule that an integer and a rational each stood at two types. The
+/// core `02-core-calculus.md` §2 fixes has no such rule — "a projection, a
+/// variable, and a literal infer", so a rational infers `Ratio` and `Switch`
+/// asks for `Ratio ≡ Duration WrittenTime`, which is false. A duration is
+/// written `duration_of(3/8)` and matched by matching what it is *made of*:
+/// `match duration_ratio(held) { 3/8 -> …, _ -> … }`. That is one call, and it
+/// is the alternative to return-type-directed literal overloading, which
+/// `01-surface.md` §1.6's table refuses by name.
+///
+/// `Bool` and `Nat` stay because they are *declared* families: `true` and `7`
+/// are constructor patterns split by the case tree, not equality tests. The
+/// other four are the base types a token spells — and the four the prelude's
+/// `Eq` instances answer for.
+const ADMITTED: [(&str, &str, &str, &str); 6] = [
     ("Bool", "true", "false", "true"),
     ("Nat", "7", "8", "7"),
-    ("Duration<WrittenTime>", "2", "3", "2"),
     ("Text", "\"staff\"", "\"studio\"", "\"staff\""),
     ("Ratio", "3/8", "5/8", "3/8"),
-    ("Duration<WrittenTime>", "3/8", "5/8", "3/8"),
     ("Pitch", "e5", "f5", "e5"),
     ("Interval", "M3", "m3", "M3"),
 ];
@@ -93,6 +102,29 @@ fn a_literal_pattern_matches_nothing_else() {
             "`{pattern}` at `{annotation}` matched `{other}`, which is a different value"
         );
     }
+}
+
+/// A duration is matched by matching the rational it is made of.
+///
+/// The positive half of the two rows [`ADMITTED`] lost. Nothing about durations
+/// became unaskable when the literal stopped standing at two types: the question
+/// "is this an eighth" is `duration_ratio(held) == 3/8`, and a `match` over it
+/// is the same three lines with one call in front. What went away is the
+/// coincidence that made `3/8` mean two things depending on where it was read.
+#[test]
+fn a_duration_is_matched_through_the_ratio_it_is_made_of() {
+    let source = SourceDocument::new(
+        "piece \"Durations\" {\n\
+         \x20   let held: Duration<WrittenTime> = duration_of(3/8);\n\
+         \x20   let chosen: Interval = match duration_ratio(held) { 3/8 -> P1, _ -> P8 };\n\
+         \x20   let tune: EventTrack<WrittenTime> = transpose(chosen, music { c4/1 });\n\n\
+         \x20   score { part p { voice v { use tune; } } }\n\
+         }\n"
+        .to_owned(),
+        "durations.musa",
+    );
+    let compilation = compile(&source, &CompileOptions::default());
+    assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
 }
 
 /// The law the defect broke, written on its own so that a regression names

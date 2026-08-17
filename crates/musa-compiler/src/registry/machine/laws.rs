@@ -124,14 +124,15 @@ fn spine(term: &Term) -> (Term, usize) {
 // ---- the laws ----
 
 /// The eight forms are registered under the names `03-machine-calculus.md` §2
-/// gives them, and the ninth row is registered nowhere.
+/// gives them, and the ninth *word* is registered nowhere.
 ///
 /// Both halves matter. The first is the claim `rules::UNREGISTERED` no longer
 /// makes — it now counts one machine row instead of nine, and a count is only
 /// honest if something checks the other side. The second is what keeps
 /// `primitive`'s absence a decision: a spelling that quietly appeared in the
 /// registry would be the build-local lookup answered by a signature that cannot
-/// know it.
+/// know it. What *is* registered is one signature per unit, which is
+/// [`each_registered_unit_has_a_signature_of_its_own`].
 #[test]
 fn the_eight_machine_rows_are_registered_and_the_ninth_is_not() {
     let cx = context();
@@ -375,4 +376,72 @@ fn a_saturated_form_normalizes_to_itself() {
         musa_core::convertible(&cx, &at, &term, &normal).expect("conversion decides"),
         "a machine and its normal form are the same machine"
     );
+}
+
+/// Every unit the build registers has a signature of its own, at the ports its
+/// descriptor decides, and none of them is a word.
+///
+/// The other side of [`the_eight_machine_rows_are_registered_and_the_ninth_is_not`]:
+/// `primitive` has no type, so the thing that has one is the unit. Three claims,
+/// and each is a way the registration could be wrong without the count noticing
+/// — a signature under a name nothing produces, a signature at the wrong family,
+/// and a signature spelled as something a source file could write, which would
+/// put the build-local lookup back inside an adapter's reach.
+#[test]
+fn each_registered_unit_has_a_signature_of_its_own() {
+    let cx = context();
+    let registered = crate::registry::builtins(&cx).expect("both tables translate");
+    let units = super::primitives(&cx).expect("the port shapes name declared families");
+    assert!(!units.is_empty(), "this build registers at least one unit");
+    for id in crate::machine::registered_ids() {
+        for version in crate::machine::versions_of(id) {
+            let spelling = super::unit_spelling(id, version);
+            let builtin = registered
+                .iter()
+                .find(|builtin| **builtin.name() == *spelling)
+                .unwrap_or_else(|| panic!("`{spelling}` is registered"));
+            assert_eq!(
+                builtin.family(),
+                musa_core::Family::Machine,
+                "`{spelling}` is §5.8's fourth family"
+            );
+            assert!(
+                !BUILTIN_OWNERSHIP.iter().any(|entry| entry.spelling == spelling),
+                "`{spelling}` is in no ownership table: it is read out of this build, not written in one"
+            );
+            assert!(
+                spelling.contains(|written: char| !written.is_alphanumeric() && written != '_'),
+                "and no source file can write it: `{spelling}` is not a token this lexer produces, which is what \
+                 keeps the build-local lookup reachable only by writing the call"
+            );
+        }
+    }
+}
+
+/// Every step tag this build counts in is a type, and no two of them are one
+/// type.
+///
+/// §2's whole reason for the tag is that `connect` shares one implicit binder
+/// between its two machines, so two units counting different things fail to
+/// unify. That only means anything if the tags really are distinct types, which
+/// is what a registration could get wrong: one base type reused for two tags
+/// would let a frame-counting unit connect to a note-counting one and nothing
+/// would say so.
+#[test]
+fn each_step_tag_is_its_own_type() {
+    let cx = context();
+    let tags = super::step_tags();
+    assert!(!tags.is_empty(), "a build with units counts in at least one tag");
+    let mut named: Vec<&str> = Vec::new();
+    for tag in &tags {
+        let (_, sort) =
+            musa_core::infer(&cx, &name(tag.name())).unwrap_or_else(|why| panic!("`{}` is a type: {why}", tag.name()));
+        assert!(
+            matches!(*sort.shape(), Shape::Universe(_)),
+            "`{}` is a type and not a value",
+            tag.name()
+        );
+        assert!(!named.contains(&&**tag.name()), "`{}` is registered twice", tag.name());
+        named.push(tag.name());
+    }
 }

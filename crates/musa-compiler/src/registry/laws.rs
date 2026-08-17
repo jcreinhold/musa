@@ -73,7 +73,15 @@ fn every_delta_spelling_is_registered_exactly_once() {
     assert_eq!(spellings, unique, "a spelling was registered twice");
     assert_eq!(
         spellings.len(),
-        rules::REGISTERED + rules::BEYOND.len() + super::track::TRACK_BEYOND.len() + super::notation::BEYOND.len(),
+        rules::REGISTERED
+            + rules::BEYOND.len()
+            + super::track::TRACK_BEYOND.len()
+            + super::notation::BEYOND.len()
+            // Counted from the build's own primitive registry rather than
+            // stated, because that is where the number comes from: one closed
+            // signature per unit, and a build that registers another unit
+            // registers another signature with it.
+            + super::machine::primitives(&cx).expect("the port shapes name declared families").len(),
         "the registered count and the counts this module states have drifted"
     );
     for builtin in &registered {
@@ -81,14 +89,14 @@ fn every_delta_spelling_is_registered_exactly_once() {
     }
 }
 
-/// The operations past both tables are exactly the seven that are said to be
+/// The operations past both tables are exactly the eleven that are said to be
 /// past them, counted off the registry rather than off a table.
 ///
 /// Two claims, and the second is the one that needs a test: that each is
 /// registered, and that each is in *neither* ownership table. The second is what
-/// keeps `instantiate_quote` and `set_note_pitches` out of an adapter's reach —
-/// the tables are the old checker's name lookup, and a row added to one of them
-/// would be a word a transformer could write, silently.
+/// keeps `instantiate_quote`, `set_note_pitches`, `instanced`, and `spliced` out
+/// of an adapter's reach — the tables are the old checker's name lookup, and a
+/// row added to one of them would be a word a transformer could write, silently.
 #[test]
 fn the_operations_past_both_tables_are_named_and_in_neither() {
     let cx = owned().expect("the compiler's own context builds");
@@ -290,16 +298,23 @@ fn each_rule_agrees_with_the_old_evaluator() {
 /// Whether a rule and the old evaluator gave the same answer.
 ///
 /// Equality everywhere except one outcome, and the exception is prompt 141m's
-/// whole subject: where the old evaluator answered a `Result.Err` carrying a
-/// sentence, a rule now refuses the program and the sentence becomes a
-/// diagnostic. Those are one judgment written in two vocabularies, so reading
-/// them as agreement is what keeps this law about the *translation* rather than
-/// about the move.
+/// whole subject: where the old evaluator declined to answer, a rule now refuses
+/// the program and says why. Those are one judgment written in two vocabularies,
+/// so reading them as agreement is what keeps this law about the *translation*
+/// rather than about the move.
+///
+/// The old vocabulary had two spellings for declining and the new one has one.
+/// A `Result.Err` carrying a sentence is the declined answer an operation
+/// *declared*; a bare absence is the one it did not — `ratio_div` at a zero
+/// divisor is the standing example, total in its signature and partial in its
+/// arm, which is the shape D2 exists to forbid. Both become
+/// [`Answer::Refused`], and the second is why: a refusal carries the sentence
+/// the absence never had a place to put.
 fn agrees(answered: Option<&Answer>, old: Option<&Datum>) -> bool {
     match (answered, old) {
         (Some(Answer::Reduced(datum)), Some(other)) => datum == other,
         (Some(Answer::Refused(_)), Some(Datum::Case { constructor, .. })) => &**constructor == "Result.Err",
-        (None, None) => true,
+        (Some(Answer::Refused(_)) | None, None) => true,
         _ => false,
     }
 }
@@ -500,4 +515,75 @@ fn data_holding_the_same_domain_value_are_equal() {
     assert_ne!(one, different, "two literals of one domain and two values are not");
     let elsewhere = Datum::Lit(super::literal(super::plain_type("Ratio"), "same".to_owned()));
     assert_ne!(one, elsewhere, "one value at two domains is two data");
+}
+
+/// Every partial exact-time operation states its own refusal.
+///
+/// D2 puts partiality where the composer reads it, and prompt 142 moved *where*
+/// that is: these eleven rules used to answer `Result<τ, Text>`, so the law read
+/// the error half out of the value. Now they answer bare `τ` and refuse through
+/// [`Answer::Refused`], which is the same sentence delivered one layer down —
+/// the caller no longer writes a `match` to get at a number that is always
+/// there. The law follows the sentence rather than the encoding, so it is stated
+/// here, against the rules themselves, instead of against a program the old
+/// evaluator ran.
+#[test]
+fn every_partial_exact_time_operation_states_its_own_refusal() {
+    let below = num_rational::Ratio::new(-1, 4);
+    for (spelling, operation, arguments, expected) in [
+        (
+            "ratio_div",
+            crate::core::Builtin::RatioDiv,
+            vec![exact(num_rational::Ratio::new(3, 4)), exact(num_rational::Ratio::ZERO)],
+            "an exact rational is not divided by zero",
+        ),
+        (
+            "duration_of",
+            crate::core::Builtin::DurationOf,
+            vec![exact(below)],
+            "a duration is nonnegative, and this exact rational is below zero",
+        ),
+        (
+            "duration_scale",
+            crate::core::Builtin::DurationScale,
+            vec![beat(num_rational::Ratio::new(1, 4)), exact(below)],
+            "a duration is nonnegative, and this exact rational is below zero",
+        ),
+        (
+            "position_between",
+            crate::core::Builtin::PositionBetween,
+            vec![
+                instant(num_rational::Ratio::new(2, 1)),
+                instant(num_rational::Ratio::new(1, 1)),
+            ],
+            "the second position is before the first, and a duration is nonnegative",
+        ),
+    ] {
+        let rule = rules::source(operation).expect("a registered arithmetic rule");
+        let Some(Answer::Refused(ref because)) = rule(&arguments) else {
+            panic!("`{spelling}` answered where the law expects a refusal");
+        };
+        assert_eq!(&**because, expected, "`{spelling}`");
+    }
+}
+
+/// A `Ratio` argument.
+fn exact(value: num_rational::Ratio<i64>) -> Datum {
+    Datum::Lit(super::literal(super::plain_type("Ratio"), value))
+}
+
+/// A `Duration ⟨written⟩` argument.
+fn beat(value: num_rational::Ratio<i64>) -> Datum {
+    Datum::Lit(super::literal(
+        super::tagged_type("Duration", crate::core::Coordinate::WrittenTime),
+        value,
+    ))
+}
+
+/// A `Position ⟨written⟩` argument.
+fn instant(value: num_rational::Ratio<i64>) -> Datum {
+    Datum::Lit(super::literal(
+        super::tagged_type("Position", crate::core::Coordinate::WrittenTime),
+        value,
+    ))
 }

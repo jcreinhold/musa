@@ -1,0 +1,26 @@
+---
+source: crates/musa-compiler/tests/suite/transform_laws.rs
+assertion_line: 299
+expression: dump
+---
+voice VoiceId(0):
+  0 1/4 c5 [motif]
+  1/4 1/4 e5 [motif]
+  1/2 1/4 g5 [motif]
+  3/4 1/4 e5 [motif]
+  1 1/2 c5 [motif → stretch 2]
+  3/2 1/2 e5 [motif → stretch 2]
+  2 1/2 g5 [motif → stretch 2]
+  5/2 1/2 e5 [motif → stretch 2]
+  3 1/4 e5 [motif → retrograde]
+  13/4 1/4 g5 [motif → retrograde]
+  7/2 1/4 e5 [motif → retrograde]
+  15/4 1/4 c5 [motif → retrograde]
+  4 1/4 c5 [motif → invert around c5]
+  17/4 1/4 ab4 [motif → invert around c5]
+  9/2 1/4 f4 [motif → invert around c5]
+  19/4 1/4 ab4 [motif → invert around c5]
+  5 1/4 c5 [motif]
+  21/4 1/4 e5 [motif]
+  11/2 1/4 g5 [motif]
+  23/4 1/4 e5 [motif]

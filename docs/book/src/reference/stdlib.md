@@ -13,9 +13,10 @@ The modules:
 | `std::context` | The `TonalContext` signature and its `CMajor` / `ANaturalMinor` modules |
 | `std::core` | Identity and composition combinators |
 | `std::harmony` | Chord classes: roots, bass, members, inversions, slash basses, the triad refinement |
-| `std::list` | Finite lists and folds |
+| `std::list` | Finite lists: `range`, `repeated`, `map`, `filter`, and the two folds |
+| `std::nat` | `nat_fold`: counting upward, told which repetition it is in |
 | `std::notation::staff` | Staff documents as data: written values, the items on a staff, and realizing them into exact time |
-| `std::option` | The `option` type and its fold |
+| `std::option` | Reading an `Option` by naming both cases |
 | `std::post_tonal::pcset` | Pitch-class sets |
 | `std::pitch` | Pitch and interval operations |
 | `std::scale` | Scales, degrees, stepwise spelling |
@@ -41,7 +42,7 @@ region is named — by the name the import gave — and delimited, so the lexer 
 never extends them. What is inside is the adapter's language, and until an adapter promises to *print* one, the
 formatter reflows a region by the compiler's own rules rather than by the notation's.
 
-`doubled` expands `syntax doubled { … }` to `(repeat(…, 2), 0)`: whatever the region holds, twice, paired with an
+`doubled` expands `syntax doubled { … }` to `(repeated(…, 2), 0)`: whatever the region holds, twice, paired with an
 *anchor* — a number the adapter emits and the compiler keeps a table for, so that a value produced by an expansion can
 still say which part of the region it came from. It exists to be run rather than to be used — it is the phase's fixture,
 and the adapters worth writing music with are their own modules.

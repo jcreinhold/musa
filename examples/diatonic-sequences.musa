@@ -27,51 +27,51 @@ piece "Diatonic Sequences" {
     let first: Degree = degree_of(1);
 
     // Close position from C3, a quarter long.
-    fn close_quarter(sounding: ChordClass) -> Music {
+    fn close_quarter(sounding: ChordClass) -> EventTrack<WrittenTime> {
         match close_position(sounding, c3) {
             None -> music {
                 rest/4
             },
-            Some(chosen) -> sound_for(chosen, 1/4),
+            Some(chosen) -> sound_for(chosen, duration_of(1/4)),
         }
     }
 
     // Drop-2 from C4, a half long.
-    fn drop_half(sounding: ChordClass) -> Music {
+    fn drop_half(sounding: ChordClass) -> EventTrack<WrittenTime> {
         match drop_position(sounding, c4, 2) {
             None -> music {
                 rest/2
             },
-            Some(chosen) -> sound_for(chosen, 1/2),
+            Some(chosen) -> sound_for(chosen, duration_of(1/2)),
         }
     }
 
     // One stage of a walk, under a policy, at an index. The library answers
     // for one index as readily as for a count, which is what lets a score
     // place bars where it wants them.
-    fn fifths_close(index: Nat) -> Music {
+    fn fifths_close(index: Nat) -> EventTrack<WrittenTime> {
         stage_music(close_quarter, descending_fifths_chord(major, first, 3, index))
     }
 
-    fn fifths_drop(index: Nat) -> Music {
+    fn fifths_drop(index: Nat) -> EventTrack<WrittenTime> {
         stage_music(drop_half, descending_fifths_chord(major, first, 3, index))
     }
 
     // The same pattern as seventh chords, which is how OMT 49 most often
     // prints it: the sevenths chain the resolutions together.
-    fn sevenths_close(index: Nat) -> Music {
+    fn sevenths_close(index: Nat) -> EventTrack<WrittenTime> {
         stage_music(close_quarter, stacked_on(major, 4, descending_fifths_degree(first, index)))
     }
 
     // Descending thirds, the skeleton under the descending 5–6 pattern.
-    fn thirds_close(index: Nat) -> Music {
+    fn thirds_close(index: Nat) -> EventTrack<WrittenTime> {
         stage_music(close_quarter, stacked_on(major, 3, descending_thirds_degree(first, index)))
     }
 
     // Ascending seconds, in the natural minor collection, so that the same
     // index arithmetic produces a different succession of qualities without
     // being written a second time.
-    fn seconds_minor(index: Nat) -> Music {
+    fn seconds_minor(index: Nat) -> EventTrack<WrittenTime> {
         stage_music(close_quarter, stacked_on(minor, 3, ascending_seconds_degree(first, index)))
     }
 

@@ -14,18 +14,18 @@ piece "Tooling" {
     key c major;
 
     // The subject, stated once and read everywhere.
-    let subject: Music = music { c4/4 e4/4 g4/4 e4/4 };
+    let subject: EventTrack<WrittenTime> = music { c4/4 e4/4 g4/4 e4/4 };
 
     // Raise a passage by the interval the caller names.
-    fn lifted(what: Music, by: Interval) -> Music {
+    fn lifted(what: EventTrack<WrittenTime>, by: Interval) -> EventTrack<WrittenTime> {
         transpose(by, what)
     }
 
     // deprecated: write `subject` instead.
-    let theme: Music = music { c4/1 };
+    let theme: EventTrack<WrittenTime> = music { c4/1 };
 
     let centre: NoteName = Home.tonic;
-    let raised: Music = lifted(subject, P4);
+    let raised: EventTrack<WrittenTime> = lifted(subject, P4);
 
     score {
         part piano {

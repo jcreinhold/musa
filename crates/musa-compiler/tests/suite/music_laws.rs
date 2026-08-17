@@ -34,8 +34,8 @@ fn voices(score: &ScoreSnapshot) -> Vec<Vec<ScoreEvent>> {
 #[test]
 fn sequence_adds_extent_and_each_use_reads_its_own_placement() {
     let source = "piece \"music\" {
-        fn figure(root: Pitch) -> Music { music { root/4 d4/4 } }
-        let subject: Music = figure(c4);
+        fn figure(root: Pitch) -> EventTrack<WrittenTime> { music { root/4 d4/4 } }
+        let subject: EventTrack<WrittenTime> = figure(c4);
         score { part p { voice v {
             use subject;
             rest/4
@@ -66,7 +66,7 @@ fn sequence_adds_extent_and_each_use_reads_its_own_placement() {
 #[test]
 fn voice_overlay_takes_the_maximum_of_contextual_sequence_extents() {
     let source = "piece \"overlay\" {
-        let cell: Music = music { c4/2 };
+        let cell: EventTrack<WrittenTime> = music { c4/2 };
         score { part p {
             voice upper { use cell; }
             voice lower { use cell; use cell; }
@@ -95,7 +95,7 @@ fn voice_overlay_takes_the_maximum_of_contextual_sequence_extents() {
 #[test]
 fn contextual_music_is_neutral_with_respect_to_structural_context() {
     let compilation = compiled(
-        "piece \"neutral\" { let cell: Music = music { meter 3/4; c4/4 }; \
+        "piece \"neutral\" { let cell: EventTrack<WrittenTime> = music { meter 3/4; c4/4 }; \
          score { part p { voice v { use cell; } } } }",
     );
     assert!(compilation.has_errors());
@@ -111,7 +111,7 @@ fn contextual_music_is_neutral_with_respect_to_structural_context() {
 #[test]
 fn shared_instantiations_are_closed_and_keep_definition_and_call_provenance() {
     let source = "piece \"sharing\" {
-        let cell: Music = music { c4/4 d4/4 };
+        let cell: EventTrack<WrittenTime> = music { c4/4 d4/4 };
         score { part p { voice v { use cell; use cell; } } }
     }";
     let score = snapshot(source);
@@ -138,7 +138,7 @@ fn shared_instantiations_are_closed_and_keep_definition_and_call_provenance() {
 #[test]
 fn an_oversized_music_value_is_rejected_before_repeat_expansion() {
     let compilation = compiled(
-        "piece \"finite\" { let cell: Music = music { c4/4 }; \
+        "piece \"finite\" { let cell: EventTrack<WrittenTime> = music { c4/4 }; \
          score { part p { voice v { repeat 1000001 { use cell; } } } } }",
     );
     assert!(compilation.snapshot().is_none());

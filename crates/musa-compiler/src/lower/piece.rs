@@ -25,11 +25,20 @@
 //! # The numbering is positional and counts every item
 //!
 //! A part's id is a running count over the score; a voice's is its position
-//! among the part's items, *including* the instance sites this module does not
-//! expand. `PartDecl::items` says why the grammar keeps them interleaved — "a
-//! `make` between two voices makes a voice *there*" — and counting them here
-//! means the number a written voice gets does not move when prompt 142 teaches
-//! the reading to expand its neighbour.
+//! among the part's items, and an instance site is an item like any other.
+//! `PartDecl::items` says why the grammar keeps them interleaved — "a `make`
+//! between two voices makes a voice *there*".
+//!
+//! # An instance is a binding, and its provenance is a builtin
+//!
+//! `make N(…) as I;` reads `N`'s body once, at the scope of the voice the site
+//! stands in, and applies λs over its parameters to the argument expressions the
+//! site wrote. That is `04-templates-and-modules.md` §1's "expansion is a
+//! binding, never a rewrite", written in the core's own λ. What the site adds is
+//! provenance, and that is [`crate::registry`]'s `instanced` rather than
+//! anything this walk does: the facts do not exist until the term is evaluated,
+//! and the ones a function the body calls produced were read in another
+//! declaration entirely.
 //!
 //! # A region is the longest voice
 //!
@@ -56,8 +65,8 @@ use musa_language::SyntaxNode;
 use musa_language::ast::AstNode as _;
 use num_rational::Ratio;
 
-use super::notation::{Context, Reading, extent};
-use super::{Lowering, applied};
+use super::notation::{Context, Reading};
+use super::{Lowering, applied, expansion};
 use crate::diagnose::{Code, Diagnostic};
 
 /// A piece, read.
@@ -79,6 +88,32 @@ pub(crate) struct Part {
     pub(crate) id: u32,
     /// What the score calls it.
     pub(crate) name: String,
+    /// Where the name is written, when the part has one to point at.
+    ///
+    /// The reference index and the lint pass are about *text*, and a name
+    /// without a place in it is a name neither can say anything about.
+    pub(crate) name_span: Option<crate::origin::SourceSpan>,
+    /// The meter this part counts its own barlines in, when it states one.
+    ///
+    /// Carried rather than re-read, because `Meter` inherits by `Override`
+    /// (`crate::scope`): a part that states 7/8 does not hear the piece's
+    /// changes, so a claim written in it is proved against bars nothing else
+    /// in the score knows about. [`crate::resolve::part_facts`] answered this
+    /// while the part was being read, and asking the CST a second time would
+    /// be the re-derivation `AGENTS.md` names.
+    pub(crate) meter: Option<crate::Meter>,
+    /// The performance profile the part names, and where it names it.
+    ///
+    /// Read here and *checked* by the caller, because the two questions have
+    /// two owners: what the part says is written in the part, and whether the
+    /// piece declares a profile by that name is the snapshot's to answer —
+    /// [`crate::resolve::lower_header`] has not necessarily filled it when a
+    /// part is walked, and a reading that had to be handed the declared set to
+    /// answer "what does this part say" would be answering two questions at
+    /// once. It is not a fact either: a clef and a polymeter enter the piece's
+    /// context track, and a profile is metadata about how the notation is
+    /// played (roadmap §2 — a dynamic marking is not a number of decibels).
+    pub(crate) profile: Option<(String, crate::origin::SourceSpan)>,
     /// Its voices, in written order.
     pub(crate) voices: Vec<Voice>,
 }
@@ -89,6 +124,9 @@ pub(crate) struct Voice {
     pub(crate) id: u32,
     /// What the part calls it.
     pub(crate) name: String,
+    /// Where the name is written — a voice's own identifier, or the `as` name
+    /// at the site that made it. See [`Part::name_span`].
+    pub(crate) name_span: Option<crate::origin::SourceSpan>,
     /// What this voice alone sounds, as a term.
     ///
     /// Beside [`Piece::track`] rather than instead of it, because the two answer
@@ -114,20 +152,37 @@ impl Lowering<'_> {
     /// reason one level up: a piece missing a voice is a different piece, not a
     /// shorter one. Every part and every voice is read even after one is
     /// refused, so a score with three bad voices reports three diagnostics.
-    pub(crate) fn piece(&mut self, node: &SyntaxNode) -> Option<Piece> {
+    ///
+    /// `standing` is the expansion a `make … as …;` at the document's root put
+    /// this whole piece behind, when the file writes one instead of a piece. It
+    /// is applied per *voice* and not to [`Piece::track`], because a voice is
+    /// what a made piece produces: a context fact keeps the empty path the
+    /// replaced walk gave it, since a header states what it states wherever the
+    /// piece was made.
+    pub(crate) fn piece(
+        &mut self,
+        node: &SyntaxNode,
+        namespace: &str,
+        standing: Option<&crate::origin::Origin>,
+    ) -> Option<Piece> {
         let declaration = musa_language::ast::PieceDecl::cast(node.clone())?;
         let origin = self.origin(node);
         let mut whole = true;
+        let mut instances = Instances::of(self.resolver, node, namespace);
         let mut context = self.header(&declaration, &mut whole);
-        // The meter every voice starts in. Read off the header rather than
-        // carried out of [`Lowering::header`], because a header states three
-        // different facts and only one of them is a *reading context*: a `senza`
-        // asks what meter to put back, and no voice asks about the key or the
-        // tempo the piece opened with.
+        // The meter and the collection every voice starts in. Read off the
+        // header rather than carried out of [`Lowering::header`], because a
+        // header states three facts and only two of them are a *reading
+        // context*: a `senza` asks what meter to put back and a `step` asks what
+        // collection to count in, while nothing asks about the tempo the piece
+        // opened with.
         let opening = declaration
             .meter()
             .and_then(|statement| crate::resolve::parse_meter(&statement))
             .unwrap_or_default();
+        let suggested = declaration
+            .key()
+            .and_then(|statement| crate::resolve::parse_key(&statement));
         let mut parts: Vec<Part> = Vec::new();
         let mut tracks = Vec::new();
         for written in declaration.score().map(|score| score.parts()).unwrap_or_default() {
@@ -144,45 +199,84 @@ impl Lowering<'_> {
             // Numbered only once the name is accepted, so a refused part costs
             // no id and the surviving ones keep the numbers they would have had.
             let id = u32::try_from(parts.len()).unwrap_or(u32::MAX);
-            context.extend(self.part_context(&written, id, &mut whole));
+            let (stated, counted) = self.part_context(&written, id, &mut whole);
+            context.extend(stated);
             let mut voices: Vec<Voice> = Vec::new();
             for (index, item) in written.items().into_iter().enumerate() {
                 let voice = u32::try_from(index).unwrap_or(u32::MAX);
-                let held = match item {
-                    musa_language::ast::PartItem::Voice(held) => held,
-                    musa_language::ast::PartItem::Make(site) => {
-                        self.made(&mut whole, site.syntax());
-                        continue;
-                    }
+                // Both kinds of item name a voice before anything of it is
+                // read: a written one by its own identifier, an instance by
+                // the `as` name at the site. Asked here rather than in either
+                // branch because "this part already has a voice called that"
+                // is one question about both.
+                let (voice_name, span, named_at) = match item {
+                    musa_language::ast::PartItem::Voice(ref held) => (
+                        held.name().unwrap_or_default(),
+                        crate::resolve::trimmed_span(held.syntax()),
+                        crate::resolve::token_span(held.syntax(), musa_language::SyntaxKind::Identifier),
+                    ),
+                    musa_language::ast::PartItem::Make(ref site) => (
+                        site.alias().unwrap_or_default(),
+                        crate::resolve::trimmed_span(site.syntax()),
+                        Some(crate::resolve::trimmed_span(site.syntax())),
+                    ),
                 };
-                let voice_name = held.name().unwrap_or_default();
                 if voices.iter().any(|earlier| earlier.name == voice_name) {
                     self.repeated(
                         &mut whole,
                         format!("part `{name}` already has a voice called `{voice_name}`"),
-                        crate::resolve::trimmed_span(held.syntax()),
+                        span,
                     );
                     continue;
                 }
-                let held_at = Reading::at(crate::Scope::Voice { part: id, voice }).metered(opening);
-                let Some(track) = self.notated(held.syntax(), held_at) else {
+                let read_under = Reading::at(crate::Scope::Voice { part: id, voice }).metered(opening);
+                let held_at = match suggested {
+                    Some(key) => read_under.keyed(key),
+                    None => read_under,
+                };
+                let read = match item {
+                    musa_language::ast::PartItem::Voice(held) => {
+                        self.plain(&held, voice, voice_name, named_at, held_at)
+                    }
+                    musa_language::ast::PartItem::Make(site) => self.made(
+                        &mut instances,
+                        &site,
+                        format!("score/part[{name}]/{index}"),
+                        voice,
+                        named_at,
+                        held_at,
+                    ),
+                };
+                let Some(mut read) = read else {
                     whole = false;
                     continue;
                 };
-                tracks.push(track.clone());
-                voices.push(Voice {
-                    id: voice,
-                    name: voice_name,
-                    track,
-                    // Taken here, where the voice they were written in is still
-                    // the thing being read: the walk is shared across the score,
-                    // so leaving them would give the next voice this one's bars.
-                    claims: self.claimed(),
-                });
+                if let Some(made) = standing {
+                    let at = self.origin(node);
+                    read.track = applied(
+                        at,
+                        Raw::hosted(at, "instanced"),
+                        [Raw::lit(at, crate::registry::origin_literal(made.clone())), read.track],
+                    );
+                }
+                tracks.push(read.track.clone());
+                voices.push(read);
             }
-            parts.push(Part { id, name, voices });
+            parts.push(Part {
+                id,
+                name_span: crate::resolve::token_span(written.syntax(), musa_language::SyntaxKind::Identifier),
+                name,
+                meter: counted,
+                profile: written.profile().map(|statement| {
+                    (
+                        statement.name().unwrap_or_default(),
+                        crate::resolve::trimmed_span(statement.syntax()),
+                    )
+                }),
+                voices,
+            });
         }
-        let over = reach(&declaration);
+        let over = self.reach(&declaration);
         let laid: Vec<Raw> = context
             .into_iter()
             .map(|(scope, said, fact)| self.sounded_at(said, scope, fact, over))
@@ -269,11 +363,12 @@ impl Lowering<'_> {
         part: &musa_language::ast::PartDecl,
         id: u32,
         whole: &mut bool,
-    ) -> Vec<(crate::Scope, Origin, Raw)> {
+    ) -> (Vec<(crate::Scope, Origin, Raw)>, Option<crate::Meter>) {
         let Some(facts) = self.heard(|resolver| crate::resolve::part_facts(resolver, part)) else {
             *whole = false;
-            return Vec::new();
+            return (Vec::new(), None);
         };
+        let counted = facts.meter.map(|(meter, _)| meter);
         let scope = crate::Scope::Part { part: id };
         let mut said = Vec::new();
         if let Some((clef, span)) = facts.clef {
@@ -288,7 +383,7 @@ impl Lowering<'_> {
             let origin = self.sites.at(span);
             said.push((scope, origin, super::notation::tempo(origin, &marking)));
         }
-        said
+        (said, counted)
     }
 
     /// One header statement, as the fact it states and the origin that states it.
@@ -298,23 +393,174 @@ impl Lowering<'_> {
         Some((origin, fact))
     }
 
-    /// A `make` standing where a voice would.
+    /// A voice written out among a part's items.
     ///
-    /// Prompt 142's, and stated rather than skipped: an instance site mints an
-    /// expansion path, and `Sites` numbers written nodes and has no way to say
-    /// that a term came from a template applied here. Reading the site as an
-    /// ordinary application would answer a piece whose provenance pointed at
-    /// the template instead of at the score.
-    fn made(&mut self, whole: &mut bool, site: &SyntaxNode) {
-        *whole = false;
-        self.refuse::<()>(
-            Diagnostic::error(
-                Code::UnsupportedLanguageStage,
-                "a voice made from a template has no core spelling yet",
-            )
-            .at(crate::resolve::trimmed_span(site), "an instance site")
-            .note("prompt 142 gives an expansion a provenance to be numbered by"),
+    /// [`None`] when its body was refused, and when it takes parameters: a voice
+    /// with parameters is a template, and a template standing among a part's
+    /// items is one declared in the wrong place rather than an instance of
+    /// anything.
+    fn plain(
+        &mut self,
+        held: &musa_language::ast::VoiceDecl,
+        voice: u32,
+        name: String,
+        name_span: Option<crate::origin::SourceSpan>,
+        reading: Reading,
+    ) -> Option<Voice> {
+        if held.is_template() {
+            return self.refuse(
+                Diagnostic::error(Code::Misplaced, "a voice with parameters needs `template`")
+                    .at(
+                        crate::resolve::trimmed_span(held.syntax()),
+                        "this voice takes parameters",
+                    )
+                    .help("write it as `template voice …` at the top of the file, and `make` it here"),
+            );
+        }
+        self.restart_sites();
+        let track = self.notated(held.syntax(), reading)?;
+        Some(Voice {
+            id: voice,
+            name,
+            name_span,
+            track: joined(self.origin(held.syntax()), track),
+            // Taken here, where the voice they were written in is still the
+            // thing being read: the walk is shared across the score, so leaving
+            // them would give the next voice this one's bars.
+            claims: self.claimed(),
+        })
+    }
+
+    /// A `make` standing where a voice would, as the voice it makes.
+    ///
+    /// Expansion is a **binding** and never a rewrite
+    /// (`04-templates-and-modules.md` §1), and in a core with λ that sentence is
+    /// the implementation: the template's body is read once, at the scope of the
+    /// voice the site stands in, and its parameters become λs applied to the
+    /// argument expressions the site wrote. λ rather than `let` because every
+    /// argument then elaborates in the scope the *site* stands in — a chain of
+    /// `let`s would put the first parameter in scope of the second argument, so
+    /// a site inside a template that passed on its own `subject` would silently
+    /// pass the template's parameter of that name instead. No syntax is copied
+    /// and no span moves, so a refusal inside a template body points at the text
+    /// the author wrote once, however many instances there are.
+    ///
+    /// The reading needs no re-scoping afterwards for the same reason: a
+    /// `Reading` carries the scope down, and the one handed here is the voice's
+    /// own. What the site adds beyond the binding is provenance, and that is
+    /// `instanced` rather than anything this walk could do — the facts do not
+    /// exist until the term is evaluated, and the ones a function the body calls
+    /// produced were read in another declaration entirely.
+    fn made(
+        &mut self,
+        instances: &mut Instances,
+        site: &musa_language::ast::MakeStmt,
+        path: String,
+        voice: u32,
+        name_span: Option<crate::origin::SourceSpan>,
+        reading: Reading,
+    ) -> Option<Voice> {
+        let instance = instances.templates.instance(
+            self.resolver,
+            site,
+            path,
+            crate::template::Kind::Voice,
+            instances.enclosing.as_deref(),
+            &instances.namespace,
+        )?;
+        let held = instance.voice()?;
+        let at = self.sites.at(instance.span());
+        self.restart_sites();
+        let read = self.notated(held.syntax(), reading);
+        let claims = self.claimed();
+        // Every parameter is read even after one is refused, for the reason the
+        // score walk reads every voice: a site with two bad arguments is two
+        // mistakes.
+        let mut whole = read.is_some();
+        let mut bound = Vec::new();
+        for parameter in instance.bound() {
+            let origin = self.origin(parameter.argument);
+            match (self.ty(parameter.ty), self.expr(parameter.argument)) {
+                (Some(ty), Some(argument)) => bound.push((parameter.name.to_owned(), origin, ty, argument)),
+                _ => whole = false,
+            }
+        }
+        let stamped = applied(
+            at,
+            Raw::hosted(at, "instanced"),
+            [
+                Raw::lit(
+                    at,
+                    crate::registry::origin_literal(expansion(instance.span(), instance.step())),
+                ),
+                read?,
+            ],
         );
+        let abstracted = bound.iter().rev().fold(stamped, |body, (name, origin, ty, _)| {
+            Raw::annotated_lam(*origin, name.clone(), ty.clone(), body)
+        });
+        let track = bound
+            .into_iter()
+            .fold(abstracted, |function, (_, origin, _, argument)| {
+                Raw::app(origin, function, argument)
+            });
+        whole.then(|| Voice {
+            id: voice,
+            name: instance.alias().to_owned(),
+            name_span,
+            track: joined(at, track),
+            claims,
+        })
+    }
+}
+
+/// `joined(track)` — the voice's tied noteheads read as the sounds they spell.
+///
+/// Applied here, at a voice, and at no smaller thing, because both halves of
+/// what `joined` answers are questions about a whole voice. A tie at the end of
+/// a repeat body or a slur continues into whatever follows the block, so a
+/// merge done inside one would report a dangling tie at every nesting level; and
+/// "this tie has nothing to tie to" is only true at the end of a voice, which is
+/// the one place there is nothing after.
+///
+/// Unconditionally, rather than only when the voice writes a `~`: the reading
+/// folds statements without looking at them, a `use` can bring in material that
+/// ends in a tie, and the rule answers its argument unchanged when no fact is
+/// marked.
+fn joined(origin: Origin, track: Raw) -> Raw {
+    Raw::app(origin, Raw::hosted(origin, "joined"), track)
+}
+
+/// What every `make` in one piece is resolved against.
+///
+/// One per piece, because all three are the same for every site and none of
+/// them can be read off a part item: the templates a document declares stand at
+/// its lexical root, the namespace a generated identity is minted in is the
+/// document's own name, and the template whose body this piece is — when it is
+/// one — is the one name a site inside it may not write.
+struct Instances {
+    templates: crate::template::Templates,
+    namespace: String,
+    enclosing: Option<String>,
+}
+
+impl Instances {
+    /// The templates `node`'s document declares, and the two facts about `node`
+    /// every site inside it is resolved with.
+    ///
+    /// Collected whether or not the piece contains a site, because a template
+    /// declared twice is reported here and that is where the mistake is: the
+    /// second declaration is the error and a site that calls it is innocent.
+    fn of(resolver: &mut crate::resolve::Resolver, node: &SyntaxNode, namespace: &str) -> Self {
+        let root = node.ancestors().last().unwrap_or_else(|| node.clone());
+        Self {
+            templates: crate::template::Templates::collect(resolver, &root),
+            namespace: namespace.to_owned(),
+            enclosing: node
+                .parent()
+                .and_then(musa_language::ast::TemplateDecl::cast)
+                .and_then(|template| template.name()),
+        }
     }
 }
 
@@ -328,25 +574,31 @@ fn simultaneous(origin: Origin, tracks: Vec<Raw>) -> Raw {
         .into_iter()
         .rev()
         .fold(Raw::lit(origin, crate::registry::empty_track()), |rest, track| {
-            applied(origin, Raw::var(origin, "together"), [track, rest])
+            applied(origin, Raw::hosted(origin, "together"), [track, rest])
         })
 }
 
-/// How far the longest voice in `declaration` reaches.
-///
-/// D3's `max(d, e)` over the parts, and the reason it is not
-/// [`super::notation::extent`] of the piece: that function sums, because a
-/// block is a fold.
-fn reach(declaration: &musa_language::ast::PieceDecl) -> Ratio<i64> {
-    declaration
-        .score()
-        .map(|score| score.parts())
-        .unwrap_or_default()
-        .iter()
-        .flat_map(|part| part.voices())
-        .map(|voice| extent(voice.syntax()))
-        .max()
-        .unwrap_or(Ratio::ZERO)
+impl Lowering<'_> {
+    /// How far the longest voice in `declaration` reaches.
+    ///
+    /// D3's `max(d, e)` over the parts, and the reason it is not
+    /// [`Lowering::extent`] of the piece: that method sums, because a block is a
+    /// fold.
+    ///
+    /// Asked after every voice has been read, and necessarily so: a ranged
+    /// repeat's length is the count the realization chose, and the choice is
+    /// made while the voice holding it is folded.
+    fn reach(&self, declaration: &musa_language::ast::PieceDecl) -> Ratio<i64> {
+        declaration
+            .score()
+            .map(|score| score.parts())
+            .unwrap_or_default()
+            .iter()
+            .flat_map(|part| part.voices())
+            .map(|voice| self.extent(voice.syntax()))
+            .max()
+            .unwrap_or(Ratio::ZERO)
+    }
 }
 
 /// `Fact.Meter 4 4`, for a piece that wrote none.
@@ -354,7 +606,7 @@ fn unmeasured(origin: Origin) -> Raw {
     let meter = crate::score::Meter::default();
     applied(
         origin,
-        Raw::var(origin, "Fact.Meter"),
+        Raw::hosted(origin, "Fact.Meter"),
         [
             super::whole(origin, u64::from(meter.numerator())),
             super::whole(origin, u64::from(meter.denominator())),

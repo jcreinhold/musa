@@ -126,7 +126,7 @@ fn a_chain_whose_ends_do_not_meet_is_refused() {
     let compiled = compile_machines(
         "let m = connect(machine(primitive(\"reached\", 1, 4)), machine(primitive(\"scale\", 1, 3/2)));",
     );
-    assert_eq!(errors(&compiled), vec![Code::TypeMismatch]);
+    assert_eq!(errors(&compiled), vec![Code::ConversionMismatch]);
     assert!(
         complaint(&compiled).contains("Bool"),
         "the complaint names the port that did not meet: {}",
@@ -221,13 +221,27 @@ fn the_three_wiring_machines_are_names_and_type_as_wiring() {
     assert_eq!(machine(&swapped, "m").input(), "(Ratio, Ratio)");
 }
 
-/// `identity` is a machine at every step and every port, so it is a value with
-/// a scheme rather than a machine anyone can prepare. Written with a type, it
-/// becomes one.
+/// `identity` is a machine at every step and every port, so written alone it
+/// decides none of them and the declaration is refused. Written with a type, it
+/// is a machine like any other.
+///
+/// The replaced checker generalized an unannotated `let` and kept the open
+/// machine as a *value with a scheme*, projecting nothing — which is the
+/// reading this law used to state. A dependent core has no generalization:
+/// `02-core-calculus.md` §2.1 leaves an undetermined metavariable as a refusal
+/// rather than defaulting it, so the composer is told at the declaration, which
+/// is where the ports they meant to write are missing from.
+/// `document::laws::an_open_machine_is_refused_until_its_ports_are_written` is
+/// the same law from the document's side, and the two agreeing is the point:
+/// one program cannot be accepted by the elaborator and refused by the reading.
 #[test]
 fn an_undecided_machine_is_a_value_and_not_yet_a_projection() {
     let open = compile_machines("let m = identity;");
-    assert!(errors(&open).is_empty(), "{}", complaint(&open));
+    assert!(
+        complaint(&open).contains("implicit argument"),
+        "the refusal names what was not determined: {}",
+        complaint(&open)
+    );
     assert!(
         open.machine("m").is_none(),
         "a port whose type nothing decided is not a port a consumer can prepare"
@@ -274,34 +288,47 @@ fn the_order_of_a_chain_is_part_of_its_identity() {
 }
 
 /// §1.1: a machine's ports are storable data. An arrow is refused where the
-/// port is written, before there is anything for the unifier to be wrong about.
+/// port is written, and refused as `02-core-calculus.md` §1.2's `Storable`:
+/// instances exist only on declared types and are generated, so a function type
+/// has none and no author could write one.
+///
+/// *Both* ports hold the arrow, because `identity`'s two are one binder: a
+/// program that wrote the arrow in one of them would disagree with itself about
+/// that binder and be refused for the disagreement, one refusal short of the
+/// one this law is about.
 #[test]
 fn a_port_that_holds_a_function_is_refused_where_it_is_written() {
-    let compiled = compile_machines("let m: Machine<AudioFrameStep, Ratio -> Ratio, Ratio> = identity;");
-    assert_eq!(errors(&compiled), vec![Code::WrongArity]);
+    let compiled = compile_machines("let m: Machine<AudioFrameStep, Ratio -> Ratio, Ratio -> Ratio> = identity;");
+    assert_eq!(errors(&compiled), vec![Code::UnkeyedConstraint]);
     assert!(
-        complaint(&compiled).contains("storable data"),
-        "{}",
+        complaint(&compiled).contains("Storable") && complaint(&compiled).contains("Ratio → Ratio"),
+        "the complaint names the constraint and the type that cannot have it: {}",
         complaint(&compiled)
     );
 }
 
 /// The same rule reached the other way: a feedback value is storable data, so a
 /// closure cannot be smuggled around the loop. Nothing checks for a closure —
-/// the port is a data variable, and a data variable refuses an arrow at any
-/// depth.
+/// `feedback`'s signature requires `Storable` of the value it stores, and an
+/// arrow is the one type §1.2 says can never have it.
 #[test]
 fn a_closure_cannot_be_carried_through_a_feedback_loop() {
-    let compiled = compile_machines(
-        "let m = feedback(fn (x: Ratio) -> Ratio { x }, \
-         connect(machine(primitive(\"mix\", 1, (1/1, 1/1))), copy));",
+    let compiled = compile_machines("let m = feedback(fn (x: Ratio) -> Ratio { x }, identity);");
+    assert_eq!(errors(&compiled), vec![Code::UnkeyedConstraint]);
+    assert!(
+        complaint(&compiled).contains("Storable") && complaint(&compiled).contains("Ratio → Ratio"),
+        "{}",
+        complaint(&compiled)
     );
-    assert_eq!(errors(&compiled), vec![Code::TypeMismatch]);
-    assert!(complaint(&compiled).contains("function"), "{}", complaint(&compiled));
 }
 
 /// A step says what one step *counts*. Something that is not a step is refused
 /// at the one place a step can be written.
+///
+/// Refused by the *reading* and not by the signature, which is the one premise
+/// of §2 that could not become a constraint: a step tag is a host notion, the
+/// build's registry owns the list of them, and `Machine Nat A B` is a perfectly
+/// well-typed core term. So the position is restricted where the position is.
 #[test]
 fn a_step_position_takes_a_step_and_nothing_else() {
     let compiled = compile_machines("let m: Machine<Nat, Ratio, Ratio> = identity;");
@@ -325,20 +352,23 @@ fn there_is_no_lift_from_a_source_function() {
 #[test]
 fn a_registered_unit_is_named_by_a_written_name_and_version() {
     let computed = compile_machines("let n = 1; let m = primitive(\"scale\", n, 3/2);");
-    assert_eq!(errors(&computed), vec![Code::TypeMismatch]);
+    assert_eq!(errors(&computed), vec![Code::NotAValue]);
     assert!(
         complaint(&computed).contains("written name and version"),
         "{}",
         complaint(&computed)
     );
 
+    // `UnknownWord` and not `UnknownName`: a unit id is not a name any scope
+    // could have bound, it is a word out of a closed vocabulary this build
+    // registers, and the report says which words are in it.
     let unknown = compile_machines("let m = primitive(\"nope\", 1, 3/2);");
-    assert_eq!(errors(&unknown), vec![Code::UnknownName]);
+    assert_eq!(errors(&unknown), vec![Code::UnknownWord]);
 
     let wrong_version = compile_machines("let m = primitive(\"scale\", 7, 3/2);");
-    assert_eq!(errors(&wrong_version), vec![Code::UnknownName]);
+    assert_eq!(errors(&wrong_version), vec![Code::UnknownWord]);
     assert!(
-        complaint(&wrong_version).contains("no registered unit `scale` at version 7"),
+        complaint(&wrong_version).contains("no version 7 of `scale`"),
         "{}",
         complaint(&wrong_version)
     );
@@ -349,12 +379,12 @@ fn a_registered_unit_is_named_by_a_written_name_and_version() {
 #[test]
 fn a_configuration_is_checked_against_the_version_it_configures() {
     let wrong_shape = compile_machines("let m = primitive(\"scale\", 1, true);");
-    assert_eq!(errors(&wrong_shape), vec![Code::TypeMismatch]);
+    assert_eq!(errors(&wrong_shape), vec![Code::ConversionMismatch]);
 
     let other_version = compile_machines("let m = primitive(\"scale\", 2, 3/2);");
     assert_eq!(
         errors(&other_version),
-        vec![Code::TypeMismatch],
+        vec![Code::ConversionMismatch],
         "version 2 takes a pair, and version 1's configuration is not one"
     );
 
@@ -364,12 +394,16 @@ fn a_configuration_is_checked_against_the_version_it_configures() {
 
 /// A registered unit is not a machine until `machine(p)` says so, and a machine
 /// is never a registered unit. Two type formers, not one.
+///
+/// The complaint spells them the *core*'s way — `Primitive ?0 ?1 ?2`, an
+/// application — because that is what the term is, and this crate has never
+/// heard of the angle brackets the surface writes.
 #[test]
 fn a_machine_and_a_registered_unit_are_two_types() {
     let compiled = compile_machines("let m = machine(identity);");
-    assert_eq!(errors(&compiled), vec![Code::TypeMismatch]);
+    assert_eq!(errors(&compiled), vec![Code::ConversionMismatch]);
     assert!(
-        complaint(&compiled).contains("Primitive<") && complaint(&compiled).contains("Machine<"),
+        complaint(&compiled).contains("Primitive ") && complaint(&compiled).contains("Machine "),
         "the complaint names both: {}",
         complaint(&compiled)
     );

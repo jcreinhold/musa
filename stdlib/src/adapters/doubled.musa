@@ -1,6 +1,6 @@
 // `doubled` — the smallest adapter there is, and the phase's fixture.
 //
-// A region `syntax doubled { c4 }` expands to `(repeat(c4, 2), 0)`: whatever
+// A region `syntax doubled { c4 }` expands to `(repeated(c4, 2), 0)`: whatever
 // the region holds, twice, paired with the anchor of the group it was rebuilt
 // from. It is here to be run rather than to be useful — it exercises
 // resolution, expansion, refusal, the record, the anchor table, the source map,
@@ -93,11 +93,12 @@ library {
     // held no printer would be refused there rather than found out later.
     //
     // Editable and not generative, and the reason is worth writing down. A
-    // region of this adapter produces `(Music, Nat)`, and a printer would have
+    // region of this adapter produces `(EventTrack<WrittenTime>, Nat)`, and a
+    // printer would have
     // to write a musical value back as source text — which the source language
     // gives it no way to do. The spellings of prompt 127dcfah are the reader's
     // inverse over the five domains that *have* a literal — a whole number, an
-    // exact rational, a pitch, a key, an interval — and a `Music` is not one of
+    // exact rational, a pitch, a key, an interval — and a track is not one of
     // them: what names it is the expression that built it, and no operation
     // hands that back. Spelling a value the language has no literal for is the
     // staff adapter's problem, and prompt 127dcf is where it is solved.
@@ -140,7 +141,7 @@ library {
                 fn (here, delimiter, children) {
                     syntax_group(syntax_built(here, 9, 0), Delimiter.Parentheses, [
                         syntax_group(syntax_built(here, 3, 0), Delimiter.Layout, [
-                            syntax_identifier(syntax_built(here, 4, 0), "repeat"),
+                            syntax_identifier(syntax_built(here, 4, 0), "repeated"),
                             syntax_group(syntax_built(here, 5, 0), Delimiter.Parentheses, [
                                 syntax_group(
                                     syntax_built(here, 6, 0),

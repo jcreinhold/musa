@@ -5,6 +5,7 @@
 // collections built on it, then the two theory subtrees.
 
 mod core;
+mod nat;
 mod list;
 mod option;
 mod pitch;

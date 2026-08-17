@@ -29,14 +29,11 @@ use musa_compiler::{CompileOptions, ScoreEventKind, SourceDocument, compile};
 const PRELUDE: &str = r#"
 import std::notation::staff;
 
-fn one(start: Position<WrittenTime>, held: Duration<WrittenTime>) -> Music {
-    match position_between(position_of(0), start) {
-        Ok(offset) -> shift(offset, stretch(duration_ratio(held), music { c5/1 })),
-        Err(why) -> music { rest/1 },
-    }
+fn one(start: Position<WrittenTime>, held: Duration<WrittenTime>) -> EventTrack<WrittenTime> {
+    shift(position_between(position_of(0/1), start), stretch(duration_ratio(held), music { c5/1 }))
 }
 
-fn heard(spans: WrittenSpans) -> Music {
+fn heard(spans: WrittenSpans) -> EventTrack<WrittenTime> {
     written_spans_fold(
         music { rest/1 },
         fn (
@@ -44,41 +41,42 @@ fn heard(spans: WrittenSpans) -> Music {
             start: Position<WrittenTime>,
             held: Duration<WrittenTime>,
             tied: Tie,
-            after: Music,
-        ) -> Music { together(one(start, held), after) },
+            after: EventTrack<WrittenTime>,
+        ) -> EventTrack<WrittenTime> { together(one(start, held), after) },
         spans,
     )
 }
 
-fn shown(answer: Result<Realization, Text>) -> Music {
+fn shown(answer: Result<Realization, Text>) -> EventTrack<WrittenTime> {
     match answer {
         Ok(reached) -> heard(reached.spans),
         Err(why) -> music { rest/1 },
     }
 }
 
-fn base_span(value: WrittenDuration) -> Result<Duration<WrittenTime>, Text> {
+fn base_span(value: WrittenDuration) -> Duration<WrittenTime> {
     match value {
+        // No value this bridge is handed divides the whole note by zero, so
+        // the refusing arm never runs; it is written because the package's
+        // answer says a division may have no span and a test does not get to
+        // contradict the package about its own data.
         NoteValue(division, dots) -> match division_span(division) {
             Ok(base) -> duration_of(base),
-            Err(why) -> Err(why),
+            Err(why) -> duration_of(1/1),
         },
         ExactSpan(span) -> duration_of(span),
     }
 }
 
-fn spelled_one(start: Position<WrittenTime>, value: WrittenDuration) -> Music {
-    match base_span(value) {
-        Ok(base) -> one(start, base),
-        Err(why) -> music { rest/1 },
-    }
+fn spelled_one(start: Position<WrittenTime>, value: WrittenDuration) -> EventTrack<WrittenTime> {
+    one(start, base_span(value))
 }
 
-fn engraved(answer: Result<Spelled, Text>) -> Music {
+fn engraved(answer: Result<Spelled, Text>) -> EventTrack<WrittenTime> {
     match answer {
         Ok(chosen) -> spelled_fold(
             music { rest/1 },
-            fn (anchor: Nat, start: Position<WrittenTime>, value: WrittenDuration, after: Music) -> Music {
+            fn (anchor: Nat, start: Position<WrittenTime>, value: WrittenDuration, after: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
                 together(spelled_one(start, value), after)
             },
             chosen,
@@ -185,61 +183,25 @@ let every_item: StaffItem =
 let clarinet: StaffDocument =
     Document(\"bb_clarinet\", interval_inverse(M2), Treble, key d major, Beats(4, 4), ShortestReadable, every_item);
 
-fn plus_one(after: Result<Nat, Text>) -> Result<Nat, Text> {
-    match after {
-        Ok(sofar) -> nat_add(1, sofar),
-        Err(why) -> Err(why),
-    }
-}
+fn one_more(body: Nat, after: Nat) -> Nat { nat_add(1, nat_add(body, after)) }
 
-fn both_counts(body: Result<Nat, Text>, after: Result<Nat, Text>) -> Result<Nat, Text> {
-    match body {
-        Ok(inner) -> match after {
-            Ok(later) -> nat_add(inner, later),
-            Err(why) -> Err(why),
-        },
-        Err(why) -> Err(why),
-    }
-}
-
-fn touched(items: StaffItem) -> Result<Nat, Text> {
+fn touched(items: StaffItem) -> Nat {
     staff_item_fold(
-        Ok(0),
-        fn (anchor: Nat, event: StaffEvent, after: Result<Nat, Text>) -> Result<Nat, Text> { plus_one(after) },
-        fn (anchor: Nat, beats: Meter, body: Result<Nat, Text>, after: Result<Nat, Text>) -> Result<Nat, Text> {
-            plus_one(both_counts(body, after))
+        0,
+        fn (anchor: Nat, event: StaffEvent, after: Nat) -> Nat { nat_add(1, after) },
+        fn (anchor: Nat, beats: Meter, body: Nat, after: Nat) -> Nat { one_more(body, after) },
+        fn (anchor: Nat, body: Nat, after: Nat) -> Nat { one_more(body, after) },
+        fn (anchor: Nat, played: Nat, against: Nat, body: Nat, after: Nat) -> Nat {
+            one_more(body, after)
         },
-        fn (anchor: Nat, body: Result<Nat, Text>, after: Result<Nat, Text>) -> Result<Nat, Text> {
-            plus_one(both_counts(body, after))
-        },
-        fn (
-            anchor: Nat,
-            played: Nat,
-            against: Nat,
-            body: Result<Nat, Text>,
-            after: Result<Nat, Text>,
-        ) -> Result<Nat, Text> { plus_one(both_counts(body, after)) },
-        fn (anchor: Nat, times: Nat, body: Result<Nat, Text>, after: Result<Nat, Text>) -> Result<Nat, Text> {
-            plus_one(both_counts(body, after))
-        },
-        fn (anchor: Nat, pass: Nat, body: Result<Nat, Text>, after: Result<Nat, Text>) -> Result<Nat, Text> {
-            plus_one(both_counts(body, after))
-        },
+        fn (anchor: Nat, times: Nat, body: Nat, after: Nat) -> Nat { one_more(body, after) },
+        fn (anchor: Nat, pass: Nat, body: Nat, after: Nat) -> Nat { one_more(body, after) },
         items,
     )
 }
 
-fn counted(answer: Result<Nat, Text>) -> Music {
-    match answer {
-        Ok(total) -> match ratio_of(total) {
-            Ok(many) -> match ratio_div(many, 64) {
-                Ok(factor) -> stretch(factor, music { c5/1 }),
-                Err(why) -> music { rest/1 },
-            },
-            Err(why) -> music { rest/1 },
-        },
-        Err(why) -> music { rest/1 },
-    }
+fn counted(total: Nat) -> EventTrack<WrittenTime> {
+    stretch(ratio_div(ratio_of(total), 64/1), music { c5/1 })
 }
 ";
 
@@ -255,7 +217,7 @@ fn counted(answer: Result<Nat, Text>) -> Music {
 #[test]
 fn the_fold_reaches_every_one_of_the_fourteen_written_items() {
     assert_eq!(
-        notes(FOURTEEN, "counted(touched(clarinet.items))"),
+        notes(FOURTEEN, "counted(touched(document_items(clarinet)))"),
         spans(&[("0/1", "9/32")]),
         "the traversal did not visit all eighteen constructors exactly once"
     );

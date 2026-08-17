@@ -154,12 +154,12 @@ fn at_site(document: &Document, position: Position, items: &mut BTreeMap<String,
     let parsed = musa_language::parse(snapshot.source());
     if in_kernel_hole(&parsed.syntax(), byte) {
         // A hole splices music and nothing else, so the names that fit are
-        // exactly the ones whose declared result is `Music`.
-        for item in snapshot
-            .items()
-            .iter()
-            .filter(|item| item.result.as_ref().is_some_and(|result| result.name == "Music"))
-        {
+        // exactly the ones whose declared result is `EventTrack<WrittenTime>`.
+        for item in snapshot.items().iter().filter(|item| {
+            item.result
+                .as_ref()
+                .is_some_and(|result| result.name == "EventTrack<WrittenTime>")
+        }) {
             site(items, &item.name, CompletionItemKind::VALUE, item.signature.clone());
         }
         return;

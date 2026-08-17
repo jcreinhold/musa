@@ -96,6 +96,21 @@ struct Typed {
     ty: Value,
 }
 
+/// Where a constructor's family parameters come from.
+///
+/// The two halves of §2's constructor rule and its limit. A constructor checks
+/// against its family "at known parameters", and when the position knows them
+/// they are values already checked — [`Self::Read`]. When it does not, they are
+/// unknowns like any other, and the count is all this needs to carry: their
+/// types are the constructor's own telescope, which
+/// [`Elaborator::holes`](Elaborator) is already walking.
+enum Params {
+    /// Read off the expected type, which named the family at them.
+    Read(Vec<Value>),
+    /// This many, none of them determined yet.
+    Holes(u32),
+}
+
 /// One elaboration.
 ///
 /// Scoped to a declaration rather than to a session, because §2.1 reports a
@@ -301,14 +316,7 @@ impl Elaborator {
             // shadows a base type or a builtin of the same spelling rather than
             // the other way round. A registry that won would let the host
             // silently redefine a name in a program it never read.
-            if let Some(entry) = scope.cx().extern_named(name) {
-                let ty = eval(&mut self.meter, &Env::EMPTY, entry.ty())?;
-                return Ok(Typed {
-                    term: entry.term(here),
-                    ty,
-                });
-            }
-            return Err(self.unresolved(scope, here, name));
+            return self.registered(scope, here, name);
         };
         // Found, and possibly not for this reader. The check is here rather
         // than inside the lookup so that the answer is "private" and not "not
@@ -333,6 +341,40 @@ impl Elaborator {
             term: constant.term(here),
             ty,
         })
+    }
+
+    /// A registered builtin or base type, and nothing else.
+    fn registered(&mut self, scope: &Scope, here: Origin, name: &Name) -> Result<Typed, ElabError> {
+        let Some(entry) = scope.cx().extern_named(name) else {
+            return Err(self.unresolved(scope, here, name));
+        };
+        let ty = eval(&mut self.meter, &Env::EMPTY, entry.ty())?;
+        Ok(Typed {
+            term: entry.term(here),
+            ty,
+        })
+    }
+
+    /// [`RawShape::Hosted`]: a name the *reader* wrote, resolved in the host's
+    /// namespaces only.
+    ///
+    /// Declarations then the registry, and neither binders nor top-level
+    /// definitions. [`Self::constant`]'s order is the author's — the more local
+    /// answer wins, so a program may name a value `sounded` and mean its own —
+    /// and this one is the reader's, which is why the two orders differ. A
+    /// desugaring that went through the author's namespace would let an
+    /// ordinary binding change what `music { c5/1 }` means, and would make two
+    /// definitions that never mentioned each other look like a cycle.
+    fn hosted(&mut self, scope: &Scope, here: Origin, name: &Name) -> Result<Typed, ElabError> {
+        if scope.declared(name).is_some() {
+            return self.constant(scope, here, name);
+        }
+        // A trait's methods, for the reason [`Self::constant`] gives: they live
+        // in the trait's namespace, which is the host's here as well.
+        if let Some((term, ty)) = crate::dictionary::method_at(self, scope, here, name)? {
+            return Ok(Typed { term, ty });
+        }
+        self.registered(scope, here, name)
     }
 
     /// Why a name resolved to nothing, as precisely as the context can say.
@@ -462,11 +504,13 @@ impl Elaborator {
                 body,
             } => crate::rec::define(self, scope, here, name, written, body, ty).map(Some),
             RawShape::Var(_)
+            | RawShape::Hosted(_)
             | RawShape::Lit(_)
             | RawShape::Universe(_)
             | RawShape::Pi { .. }
             | RawShape::ConstrainedPi { .. }
             | RawShape::App { .. }
+            | RawShape::Call { .. }
             | RawShape::RecordType(_)
             | RawShape::Method { .. }
             | RawShape::Project { .. }
@@ -499,14 +543,14 @@ impl Elaborator {
     ///
     /// # What it declines
     ///
-    /// Answers `None` — leaving `Switch` to infer, exactly as before — when the
-    /// expected type is not a family, when the head is not a case of it, when a
-    /// nearer binder or declaration answers to a bare word, when the author
-    /// wrote an implicit argument, or when there are *more* written arguments
-    /// than the constructor has fields. That last one is what keeps the fully
-    /// written `Option.Some Nat 0` on the path it has always taken: its
-    /// parameter is one of its arguments, so it has one argument too many to be
-    /// a term whose parameters are missing.
+    /// Answers `None` — leaving `Switch` to infer, exactly as before — when
+    /// nothing names a family, when the head is not a case of it, when a nearer
+    /// binder or declaration answers to a bare word, when the author wrote an
+    /// implicit argument, or when there are *more* written arguments than the
+    /// constructor has fields. That last one is what keeps the fully written
+    /// `Option.Some Nat 0` on the path it has always taken: its parameter is one
+    /// of its arguments, so it has one argument too many to be a term whose
+    /// parameters are missing.
     ///
     /// Fewer arguments than fields is not declined, and that is where §1.3's
     /// `bare` rule now lives: a word standing alone is qualified against the
@@ -516,21 +560,26 @@ impl Elaborator {
     /// element of a family — so this only decides which refusal it earns, and
     /// "expected `Option Nat`, found `Nat → Option Nat`" is the one that names
     /// what is missing.
+    ///
+    /// # When the expected type does not name a family
+    ///
+    /// A checking position can still fail to say one: `f(x)` for a generic `f`
+    /// checks its argument against a metavariable, and the constructor is
+    /// elaborated now or never. The parameters then become holes, one each, and
+    /// the type this answers is `Option ?α` rather than a family at known
+    /// parameters; `Switch` unifies it with whatever the position wanted, which
+    /// is the same conversion that would have supplied them, run in the other
+    /// direction. [`Self::constructed_open`] argues why that route is the
+    /// *reader's* only, and this shares its rule rather than keeping a second
+    /// one: a constructor is read against the family it is expected at whoever
+    /// wrote it, and read against the family its own name says only when the
+    /// reader wrote it.
     fn constructed(&mut self, scope: &Scope, raw: &Raw, ty: &Value) -> Result<Option<Typed>, ElabError> {
         let here = raw.origin();
         let Some((head, arguments)) = written_spine(raw) else {
             return Ok(None);
         };
-        let RawShape::Var(name) = head.shape() else {
-            return Ok(None);
-        };
-        let Some(element) = crate::family::element(&mut self.meter, ty)? else {
-            return Ok(None);
-        };
-        let Some(declared) = element.group.family_at(element.family) else {
-            return Ok(None);
-        };
-        let Some((case, fields)) = case_named(scope, name, declared) else {
+        let Some((case, fields, params)) = self.case_of(scope, head, ty)? else {
             return Ok(None);
         };
         if arguments.len() > fields {
@@ -539,15 +588,160 @@ impl Elaborator {
         // Through the ordinary constant rule, so that a case a module keeps to
         // itself is refused here the same way it is refused when its qualified
         // name is written out.
-        let qualified = Raw::var(here, format!("{}.{case}", declared.name));
+        let qualified = Raw::var(here, case);
         let mut built = self.infer(scope, &qualified)?;
-        for param in &element.params {
-            built = self.given(scope, here, built, param)?;
-        }
+        built = match params {
+            Params::Read(values) => {
+                for param in &values {
+                    built = self.given(scope, here, built, param)?;
+                }
+                built
+            }
+            Params::Holes(count) => self.holes(scope, here, built, count)?,
+        };
         for argument in arguments {
             built = self.applied(scope, here, built, &Plicity::Explicit, argument)?;
         }
         Ok(Some(built))
+    }
+
+    /// The qualified case `head` denotes, how many fields it takes, and where
+    /// its family's parameters come from.
+    ///
+    /// The expected type first, because that is the rule §2 states and the only
+    /// one a bare case name can use — and it applies to a name from either
+    /// namespace, since which namespace a name came from decides how it
+    /// *resolves* and not what it may be checked against.
+    ///
+    /// The written name second, and only for [`RawShape::Hosted`]. An author's
+    /// `Option.Some Int` is `Some` at the parameter `Int`, still wanting its
+    /// field; a reader's is `Some` holding the field `Int` at an unknown
+    /// parameter. Both are well-typed readings of the same spine, so the
+    /// namespace is what tells them apart — see [`Self::constructed_open`],
+    /// which draws the same line where there is no expected type at all.
+    fn case_of(&mut self, scope: &Scope, head: &Raw, ty: &Value) -> Result<Option<(String, usize, Params)>, ElabError> {
+        let (RawShape::Var(name) | RawShape::Hosted(name)) = head.shape() else {
+            return Ok(None);
+        };
+        if let Some(element) = crate::family::element(&mut self.meter, ty)?
+            && let Some(declared) = element.group.family_at(element.family)
+            && let Some((case, fields)) = case_named(scope, name, declared)
+        {
+            return Ok(Some((
+                format!("{}.{case}", declared.name),
+                fields,
+                Params::Read(element.params),
+            )));
+        }
+        if !matches!(head.shape(), RawShape::Hosted(_)) {
+            return Ok(None);
+        }
+        let Some((fields, params)) = written_case(scope, name) else {
+            return Ok(None);
+        };
+        Ok(Some((name.to_string(), fields, Params::Holes(params))))
+    }
+
+    /// §2's constructor rule reached from the other direction: `C a⃗ ⇒ N ?p⃗`,
+    /// for a constructor the **reader** wrote and only for one.
+    ///
+    /// [`Self::constructed`]'s "when the expected type does not name a family"
+    /// paragraph, applied where there is no expected type at all. That paragraph
+    /// makes the family parameters holes and lets `Switch` supply them; here
+    /// there is no `Switch` to answer into, so the holes are the answer.
+    ///
+    /// # Why the reader and not the author
+    ///
+    /// The distinction is `01-surface.md` §1.6's own. A written **product** and
+    /// a written **list** are among "the core literals introduced here", and §2
+    /// says a literal infers — but both lower to a constructor of a
+    /// *parameterized* family, and a constructor checks. Without this rule
+    /// `let d = [1, 2];` read `List.Cons` as applied to `1` *for its parameter*
+    /// `A` and reported a type mismatch against `Type 0`, because a parameter is
+    /// an explicit binder at an ordinary use and an inferring position that did
+    /// not supply one misread the first field as the first parameter.
+    ///
+    /// That misreading is not a defect to route around; it is a real ambiguity.
+    /// `C x` where `C` has one parameter and one field can be `C` at parameter
+    /// `x` awaiting its field, or `C` at an unknown parameter holding field `x`,
+    /// and nothing in the term says which. [`RawShape::Hosted`] is what says
+    /// which: it means a name the reader wrote rather than the author, and the
+    /// reader knows it wrote no parameters. So `[1, 2]` infers and
+    /// `List::Cons(1, List::Empty)` still does not, which is exactly the line
+    /// §1.6 and §2 draw between a literal and a constructor.
+    ///
+    /// Two further bounds keep this from being a second reading of anything: a
+    /// spine with `params + fields` arguments is the fully written
+    /// `Option.Some Nat 0` and already infers, and a family with no parameters
+    /// has nothing to supply, so `Nat.Succ 0` keeps the one path it has.
+    fn constructed_open(&mut self, scope: &Scope, raw: &Raw) -> Result<Option<Typed>, ElabError> {
+        let here = raw.origin();
+        let Some((head, arguments)) = written_spine(raw) else {
+            return Ok(None);
+        };
+        let RawShape::Hosted(name) = head.shape() else {
+            return Ok(None);
+        };
+        let Some((fields, params)) = written_case(scope, name) else {
+            return Ok(None);
+        };
+        if params == 0 || arguments.len() != fields {
+            return Ok(None);
+        }
+        let qualified = Raw::var(here, name.to_string());
+        let mut built = self.infer(scope, &qualified)?;
+        built = self.holes(scope, here, built, params)?;
+        for argument in arguments {
+            built = self.applied(scope, here, built, &Plicity::Explicit, argument)?;
+        }
+        Ok(Some(built))
+    }
+
+    /// Apply `built` to one metavariable per family parameter.
+    ///
+    /// The same loop [`Self::inserted`] runs, driven by a count rather than by
+    /// plicity: a parameter is written at every ordinary use, so its binder is
+    /// explicit and nothing about the type says it may be left out here. A
+    /// constraint parameter — a `where` clause on the declaration — is still
+    /// answered by `10-traits.md` §4 rather than by a hole, because a dictionary
+    /// nothing solved and a dictionary nothing could solve are different stories
+    /// and only [`crate::dictionary::resolve`] can tell them apart.
+    fn holes(&mut self, scope: &Scope, here: Origin, mut built: Typed, count: u32) -> Result<Typed, ElabError> {
+        for _ in 0..count {
+            let unfolded = force(&mut self.meter, &built.ty)?;
+            let function_ty = unfolded.as_ref().unwrap_or(&built.ty);
+            let Form::Pi {
+                plicity,
+                domain,
+                codomain,
+                ..
+            } = &function_ty.form
+            else {
+                return Err(Refusal::NotAFunction {
+                    at: here,
+                    ty: scope.quote_type(&mut self.meter, function_ty)?,
+                }
+                .into());
+            };
+            let (plicity, domain, codomain) = (plicity.clone(), Arc::clone(domain), codomain.clone());
+            let argument = match &plicity {
+                Plicity::Explicit | Plicity::Implicit => {
+                    self.fresh_meta(scope, here, MetaSource::FamilyParameter, &domain)?
+                }
+                Plicity::Constraint(constraint) => {
+                    let constraint = Arc::clone(constraint);
+                    let needed = crate::dictionary::instantiated(self, scope, &constraint, &codomain.env)?;
+                    let classes = scope.cx().classes().clone();
+                    crate::dictionary::resolve(self, scope, &classes, &needed)?
+                }
+            };
+            let value = scope.eval(&mut self.meter, &argument)?;
+            built = Typed {
+                term: Term::app(here, built.term, argument),
+                ty: apply_closure(&mut self.meter, &codomain, value)?,
+            };
+        }
+        Ok(built)
     }
 
     /// `head p`, where `p` is a value already in hand rather than a raw term.
@@ -759,6 +953,7 @@ impl Elaborator {
                     ty: Value::clone(&found.ty),
                 })
             }
+            RawShape::Hosted(name) => self.hosted(scope, here, name),
             // A literal carries the base type it inhabits, so it infers rather
             // than checks: the host wrote the type down when it made the
             // literal, and reading it off anything else would be guessing at
@@ -796,7 +991,18 @@ impl Elaborator {
                 plicity,
                 function,
                 argument,
-            } => self.application(scope, here, plicity, function, argument),
+            } => match self.constructed_open(scope, raw)? {
+                Some(built) => Ok(built),
+                None => self.application(scope, here, plicity, function, argument),
+            },
+            // The same two steps the arm above takes, because a constructor
+            // written with its fields is the form an author actually writes and
+            // `Succ(fewer)` is one: `written_spine` reads both forms, so the
+            // constructor rule sees the same head and the same arguments here.
+            RawShape::Call { function, arguments } => match self.constructed_open(scope, raw)? {
+                Some(built) => Ok(built),
+                None => self.complete_call(scope, here, function, arguments),
+            },
             RawShape::RecordType(fields) => self.record_type(scope, here, fields),
             // §2: a record literal is an introduction form, so it checks. The
             // type it "obviously" has is a guess rather than a principal type —
@@ -905,6 +1111,12 @@ impl Elaborator {
                     // metavariable standing for `A` rather than with `A`.
                     let constraint = Arc::clone(constraint);
                     let needed = crate::dictionary::instantiated(self, scope, &constraint, &codomain.env)?;
+                    // A constraint a *host* wrote — `Storable A` on a registered
+                    // signature — has no place in any source file, so the refusal
+                    // it raises is filed at the use that inserted it. A `where`
+                    // clause keeps the place it was written; this only fills in
+                    // the one that never had one.
+                    let needed = needed.at_use(here);
                     let classes = scope.cx().classes().clone();
                     crate::dictionary::resolve(self, scope, &classes, &needed)?
                 }
@@ -1021,6 +1233,54 @@ impl Elaborator {
         Ok(Typed {
             term: Term::lam(here, Arc::clone(name), inferred.term),
             ty,
+        })
+    }
+
+    /// `f(a₁, …, aₙ) ⇒ B`, and §1.3's rule that the list is the whole of `f`'s
+    /// parameters.
+    ///
+    /// The head is inferred once and the arguments are then applied by
+    /// [`Self::applied`], which is the loop every other application already
+    /// runs — implicit insertion, conversion, and the plicity check are the
+    /// ones a spine would have got. What is new is the count taken between the
+    /// two, and it is the one a spine cannot take: a prefix of an application
+    /// does not know it is a prefix, so nothing in the iterated form can say
+    /// that a parameter went unwritten.
+    ///
+    /// **Measured on the function, not on the result.** §1.3's word is
+    /// "declared", and [`declared_parameters`] is what reads it: the named
+    /// explicit binders of `f`'s own type, taken before an argument has solved
+    /// anything. Counting what stands after the last argument instead would
+    /// count a *result* that happens to be a function, which is what a generic
+    /// answer becomes the moment a caller instantiates it.
+    ///
+    /// Over-application is left to [`Self::applied`]. §1.3 names one direction,
+    /// and "supplies every declared parameter" is silent about an argument list
+    /// that runs past them into a result that takes more — which either
+    /// applies, or earns [`Refusal::NotAFunction`] from the argument that could
+    /// not.
+    fn complete_call(
+        &mut self,
+        scope: &Scope,
+        here: Origin,
+        function: &Raw,
+        arguments: &[Raw],
+    ) -> Result<Typed, ElabError> {
+        let head = self.infer(scope, function)?;
+        let stated = scope.quote_type(&mut self.meter, &head.ty)?;
+        let declared = declared_parameters(&head.term, &stated);
+        if let Some(missing) = declared.get(arguments.len()..).filter(|rest| !rest.is_empty()) {
+            return Err(Refusal::Underapplied {
+                at: here,
+                function: crate::show::head_spelled(&head.term),
+                wanted: declared.len(),
+                written: arguments.len(),
+                missing: missing.to_vec(),
+            }
+            .into());
+        }
+        arguments.iter().try_fold(head, |built, argument| {
+            self.applied(scope, here, built, &Plicity::Explicit, argument)
         })
     }
 
@@ -1887,6 +2147,7 @@ fn stated(
     let name = match source {
         MetaSource::Dictionary => "method",
         MetaSource::ImplicitArgument => "implicit",
+        MetaSource::FamilyParameter => "parameter",
         MetaSource::BinderType | MetaSource::UniverseLevel => "solved",
     };
     let stated = quote_type(meter, Depth(depth), ty)?.at(at);
@@ -1919,28 +2180,123 @@ fn zonk_telescope(meter: &mut Meter, depth: u32, fields: &[Field]) -> Result<Arc
         .collect()
 }
 
+/// The parameters a call to `head`, whose type is `ty`, must supply — in the
+/// order they were declared.
+///
+/// Explicit binders only, and the implicit and constraint ones are skipped
+/// rather than collected: neither is written at a call site, so neither is a
+/// parameter an argument list can be measured against. The walk stops at the
+/// first form that is not a Π, so a generic answer `A` contributes nothing: it
+/// is a parameter's worth of nothing until a caller instantiates it, and a
+/// caller that instantiates it to a function did not thereby leave an argument
+/// out.
+///
+/// # Why the head decides how the type is read
+///
+/// §1.3's word is "declared", and there are two kinds of declaration.
+///
+/// A *source* definition writes a parameter list, and the names in it survive
+/// into the binders — so a named binder is a declared parameter and
+/// [`ARROW_BINDER`](crate::raw::ARROW_BINDER) is the mark of one that is not.
+/// The distinction is load-bearing rather than cosmetic: `walked(items:
+/// StaffItem) -> (Position<τ> → Result<…>)` declares one parameter and returns
+/// a function, a two-parameter definition has the same type, and only the
+/// names tell them apart. Without this the corpus would be refused for writing
+/// down the functions it returns.
+///
+/// A *registered* signature has no such second reading. There is no surface
+/// declaration beside it to disagree with, so the arrow it was built from **is**
+/// its parameter list, names or none — which is `base.rs`'s law again, the
+/// shape of the table being the host's to state. That is why `transpose(P8)` is
+/// under-applied even though the host wrote its binders anonymously.
+fn declared_parameters(head: &Term, ty: &Term) -> Vec<Name> {
+    let registered = matches!(head.shape(), Shape::Builtin(_));
+    let mut declared = Vec::new();
+    let mut rest = ty;
+    while let Shape::Pi {
+        plicity,
+        name,
+        codomain,
+        ..
+    } = rest.shape()
+    {
+        if *plicity == Plicity::Explicit {
+            if !registered && &**name == crate::raw::ARROW_BINDER {
+                break;
+            }
+            declared.push(Arc::clone(name));
+        }
+        rest = codomain;
+    }
+    declared
+}
+
 /// A raw term as a head and the arguments the author wrote after it.
 ///
 /// [`None`] where any of them is implicit: an author supplying an implicit
 /// argument is telling the elaborator which binder they mean, and
 /// [`Elaborator::constructed`] would be filling a different one.
+///
+/// Both application forms, because the question here is what the *author*
+/// wrote and [`RawShape::Call`] is the form they wrote it in: `Succ(fewer)`
+/// reaches [`Elaborator::constructed`] as one node with its arguments beside
+/// it, and a reader that only knew the iterated [`RawShape::App`] would see a
+/// head it could not name and leave the constructor to infer — which is
+/// [`Refusal::BareConstructor`](crate::Refusal::BareConstructor), for a term
+/// whose family the expected type was holding all along.
 fn written_spine(raw: &Raw) -> Option<(&Raw, Vec<&Raw>)> {
     let mut arguments = Vec::new();
     let mut head = raw;
-    while let RawShape::App {
-        plicity,
-        function,
-        argument,
-    } = head.shape()
-    {
-        if *plicity != Plicity::Explicit {
-            return None;
+    loop {
+        if let RawShape::App {
+            plicity,
+            function,
+            argument,
+        } = head.shape()
+        {
+            if *plicity != Plicity::Explicit {
+                return None;
+            }
+            arguments.push(argument);
+            head = function;
+            continue;
         }
-        arguments.push(argument);
-        head = function;
+        // Pushed in reverse because the whole vector is reversed below, which
+        // is what lets the two forms nest in either order.
+        if let RawShape::Call {
+            function,
+            arguments: written,
+        } = head.shape()
+        {
+            arguments.extend(written.iter().rev());
+            head = function;
+            continue;
+        }
+        break;
     }
     arguments.reverse();
     Some((head, arguments))
+}
+
+/// How many fields the constructor `name` names takes, and how many parameters
+/// its family has — or [`None`] for a name that is not a declared case.
+///
+/// The written name's half of [`Elaborator::case_of`], read out so that
+/// [`Elaborator::constructed_open`] asks the same question in the direction that
+/// has no expected type to ask it of.
+fn written_case(scope: &Scope, name: &Name) -> Option<(usize, u32)> {
+    let crate::family::Found::Rigid(constant) = scope.declared(name)? else {
+        return None;
+    };
+    let crate::family::Role::Constructor(which) = constant.role else {
+        return None;
+    };
+    let fields = constant
+        .group
+        .family_at(constant.family)
+        .and_then(|declared| declared.constructor_at(which))
+        .map(|constructor| constructor.fields.len())?;
+    Some((fields, constant.group.params()))
 }
 
 /// The case of `declared` that a written name denotes, and how many fields it

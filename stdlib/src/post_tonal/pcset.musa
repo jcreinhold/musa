@@ -1,4 +1,6 @@
 library {
+    import std::list;
+
     // Unspelled pitch classes and finite sets of them: the chromatic
     // quotient `pc12 = Z/12Z` and the set-class apparatus built on it
     // (OMT `099-pitch-and-pitch-class.md`,

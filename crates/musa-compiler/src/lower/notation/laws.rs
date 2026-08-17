@@ -33,7 +33,7 @@
 use musa_core::{Cx, Origin, Raw, RawShape, Term};
 use musa_language::{SyntaxKind, SyntaxNode};
 
-use super::super::items::{Definition, Item};
+use super::super::items::{Declared, Definition, Item};
 use super::super::{Lowering, Sites};
 use crate::diagnose::{Code, Diagnostic};
 use crate::resolve::Resolver;
@@ -112,7 +112,8 @@ fn collect<'a>(raw: &'a Raw, found: &mut Vec<&'a Raw>) {
     for argument in &arguments {
         collect(argument, found);
     }
-    if matches!(head.shape(), RawShape::Var(name) if &**name == "sounded" || &**name == "play") {
+    if matches!(head.shape(), RawShape::Var(name) | RawShape::Hosted(name) if &**name == "sounded" || &**name == "play")
+    {
         found.push(raw);
     }
 }
@@ -140,7 +141,10 @@ fn declared(written: &str, wanted: SyntaxKind) -> (Option<Item>, Vec<Diagnostic>
     let node = first(&root, wanted);
     let mut resolver = Resolver::new();
     let mut sites = Sites::default();
-    let item = Lowering::new(&mut resolver, &mut sites).item(&node);
+    let item = match Lowering::new(&mut resolver, &mut sites).item(&node) {
+        Declared::Item(item) => Some(item),
+        Declared::Refused | Declared::Elsewhere => None,
+    };
     (item, resolver.diagnostics)
 }
 
@@ -214,7 +218,7 @@ fn spine(raw: &Raw) -> (&Raw, Vec<&Raw>) {
 /// The name a spine's head writes, or `<not a name>` for a law's message.
 fn head(raw: &Raw) -> String {
     match spine(raw).0.shape() {
-        RawShape::Var(name) => name.to_string(),
+        RawShape::Var(name) | RawShape::Hosted(name) => name.to_string(),
         RawShape::Lit(literal) => format!("#{literal}"),
         other => format!("<{other:?}>"),
     }
@@ -236,7 +240,10 @@ fn argument(raw: &Raw, n: usize) -> &Raw {
 
 /// How many times `name` heads an application anywhere in `raw`.
 fn counted(raw: &Raw, name: &str) -> usize {
-    shape(raw).matches(&format!("Var({name:?})")).count()
+    // Either namespace: the law is about how many times the reading wrote the
+    // name, not about which of `Var` and `Hosted` it wrote it in.
+    let printed = shape(raw);
+    printed.matches(&format!("Var({name:?})")).count() + printed.matches(&format!("Hosted({name:?})")).count()
 }
 
 // ---- the context and the types the core answers in ----
@@ -271,6 +278,12 @@ fn an_empty_block_is_the_track_of_no_occurrences() {
 }
 
 /// The fold itself: one `follow` per statement, over the seed.
+///
+/// The count is what the reading promises and the *shape* is not: a block is
+/// accumulated into [`super::Placed`]'s balanced subtrees rather than a left
+/// spine, so where the brackets fall moves with the statement count. One
+/// `follow` per statement survives that, because merging two subtrees spends the
+/// bracket the merged pair would have spent anyway.
 #[test]
 fn the_fold_writes_one_follow_for_each_statement() {
     for (written, statements) in [
@@ -288,34 +301,50 @@ fn the_fold_writes_one_follow_for_each_statement() {
     }
 }
 
-/// A two-statement block is one term the core admits, and the same term the
-/// left-nested fold describes.
+/// A two-statement block is one term the core admits, and the seed is still
+/// under it.
+///
+/// The outer call is `follow(nothing, …)` rather than `follow(…, d4/4)`, because
+/// [`super::Placed`] merges the two statements into one balanced subtree before
+/// the seed is folded on. Which side the deeper `follow` is on is the reading's
+/// business and not this law's; that the block is *one* `follow` term over the
+/// seed, and that the core admits it at the track type, is the claim.
 #[test]
 fn two_statements_are_one_follow_the_core_accepts() {
     let cx = host();
     let read = read("music { c4/4 d4/4 }");
     let (head, arguments) = spine(read.term());
     assert!(
-        matches!(head.shape(), RawShape::Var(name) if &**name == "follow"),
+        matches!(head.shape(), RawShape::Var(name) | RawShape::Hosted(name) if &**name == "follow"),
         "the outer call is a `follow`, not {:?}",
         head.shape()
     );
     assert_eq!(
         arguments.len(),
         2,
-        "`follow` takes the fold so far and the next statement"
+        "`follow` takes what stands before and what comes next"
     );
     assert_eq!(
         counted(argument(read.term(), 0), "follow"),
+        0,
+        "and the seed is the empty track itself, not a fold of one"
+    );
+    assert_eq!(
+        counted(argument(read.term(), 1), "follow"),
         1,
-        "and the fold so far is itself a `follow`, because the fold is left-nested"
+        "with both statements merged into the one subtree the seed is folded onto"
     );
     musa_core::check(&cx, &track(), read.term())
         .unwrap_or_else(|failure| panic!("the core accepts what the fold wrote, not {failure:?}"));
 }
 
 /// §2: "`use e;` checks that `e` is a written-time score track" — and the check
-/// is the core's, so the reading is the expression and nothing else.
+/// is the core's, so the reading names `e` and says only where it is played.
+///
+/// Two calls stand around the name, and both are placement rather than reading:
+/// `instanced` records the use site, and `scoped` gives the facts the scope of
+/// the block that played them ([`super::Lowering::used`]). Neither looks *into*
+/// `e`, which is the claim — a track written elsewhere is folded on whole.
 #[test]
 fn use_folds_on_the_expression_it_names() {
     let read = read("music { use saved; }");
@@ -323,12 +352,15 @@ fn use_folds_on_the_expression_it_names() {
         read.constructions().is_empty(),
         "naming a track constructs no fact of its own"
     );
-    let (_, arguments) = spine(read.term());
-    let named = arguments.get(1).expect("`follow` takes the statement second");
+    let named = argument(read.term(), 1);
+    assert_eq!(head(named), "scoped", "the statement takes this block's scope");
+    let played = argument(named, 1);
+    assert_eq!(head(played), "instanced", "and is recorded as this playing of it");
+    let material = argument(played, 1);
     assert!(
-        matches!(named.shape(), RawShape::Var(name) if &**name == "saved"),
-        "`use saved;` is `saved`, with no call around it: {:?}",
-        named.shape()
+        matches!(material.shape(), RawShape::Var(name) | RawShape::Hosted(name) if &**name == "saved"),
+        "and inside both is `saved`, with nothing read out of it: {:?}",
+        material.shape()
     );
 }
 
@@ -436,7 +468,7 @@ fn a_transformation_block_is_the_builtin_applied_to_its_body() {
         // instead, because three of them could fail.
         let (head, arguments) = spine(argument(enclosing.term(), 1));
         assert!(
-            matches!(head.shape(), RawShape::Var(name) if &**name == word),
+            matches!(head.shape(), RawShape::Var(name) | RawShape::Hosted(name) if &**name == word),
             "`{block}` calls `{word}`, not {:?}",
             head.shape()
         );
@@ -618,10 +650,14 @@ fn a_saved_fragment_folds_into_another_block_through_use() {
     let cx = host();
     let saved = definition("fragment answer { c4/4 d4/4 }", SyntaxKind::FragmentDecl);
     let read = read("music { use answer; e4/4 }");
-    let used = argument(argument(read.term(), 0), 1);
+    // Both statements are one balanced subtree ([`super::Placed`]), so the `use`
+    // is the *first* half of the seed's second argument rather than the second
+    // half of its first.
+    let used = argument(argument(read.term(), 1), 0);
+    let material = argument(argument(used, 1), 1);
     assert!(
-        matches!(used.shape(), RawShape::Var(name) if &**name == "answer"),
-        "the fragment is folded on as it stands, not as {:?}",
+        matches!(material.shape(), RawShape::Var(name) | RawShape::Hosted(name) if &**name == "answer"),
+        "the fragment is folded on as it stands, under its placement and nothing else, not as {:?}",
         used.shape()
     );
     assert_eq!(

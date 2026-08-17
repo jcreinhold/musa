@@ -44,6 +44,23 @@ use crate::origin::Origin;
 use crate::term::{Name, Plicity};
 use crate::visibility::{ModuleId, Visibility};
 
+/// What a written arrow's binder is called.
+///
+/// A Π always binds, and nothing in `A → B` refers to the argument, so the
+/// binder needs a spelling whose only job is to be printable. This is that
+/// spelling — and it is also the mark that tells an arrow's domain from a
+/// *declared parameter*, which is what `02-core-calculus.md` §1.3's
+/// completeness rule counts. `fn walked(items: StaffItem) -> (Position<τ> →
+/// Result<…>)` and `fn lifted(what: Nat, by: Nat) -> Nat` are the same shape of
+/// type and different declarations; the second binder is named `by` in one and
+/// unnamed in the other, and that is the whole of the difference.
+///
+/// A parameter an author actually spells `argument` is therefore invisible to
+/// the rule. That is a miss and not a wrong answer — the call is elaborated as
+/// it always was — and the style guide's naming rules are where a word this
+/// plain gets discouraged.
+pub const ARROW_BINDER: &str = "argument";
+
 /// One binder of a raw telescope: a parameter, an index, or a constructor field.
 #[derive(Clone, Debug)]
 pub struct RawBinder {
@@ -123,7 +140,7 @@ pub struct RawData {
     pub families: Vec<RawFamily>,
 }
 
-/// A document's top-level definitions, before elaboration.
+/// A document's top-level definitions and instances, before elaboration.
 ///
 /// A group rather than one definition at a time for [`RawData`]'s reason, one
 /// word over: `02-core-calculus.md` §2.4 lets a body name a declaration written
@@ -131,10 +148,24 @@ pub struct RawData {
 /// *is not* is an ordering — the order below is the order they were written,
 /// and [`declare_program`](crate::declare_program) computes the order they are
 /// elaborated in from what each one names.
+///
+/// # Why the instances travel with the definitions
+///
+/// Because each can name the other, and neither comes first. An `impl`'s method
+/// bodies are ordinary terms and may call the document's functions; a function
+/// may write `x.m(y)`, and `10-traits.md` §6 resolves that by finding the
+/// instance at the receiver's head. Declaring one kind and then the other makes
+/// whichever went second invisible to the first — with instances last, no
+/// definition in a document can use a trait the same document implements, which
+/// is most of what a standard library's traits are for. One dependency
+/// analysis over both kinds is what §2.4's forward reference already means,
+/// widened by one word.
 #[derive(Clone, Debug)]
 pub struct RawProgram {
     /// The definitions, in the order the document wrote them.
     pub definitions: Vec<RawTopLevel>,
+    /// The instances, in the order the document wrote them.
+    pub instances: Vec<RawImpl>,
 }
 
 /// One top-level definition, before elaboration.
@@ -327,6 +358,23 @@ pub struct Raw {
 pub enum RawShape {
     /// A name, to be resolved against the binders in scope.
     Var(Name),
+    /// A name in the *host's* namespaces — a declared family or a registered
+    /// builtin — and nowhere else.
+    ///
+    /// The reader builds calls the author did not write: `music { c5/1 }`
+    /// becomes an application of `sounded`, a list literal becomes `List.Cons`,
+    /// a written product becomes `Pair.Both`. A name standing in one of those
+    /// positions is the *reader's* word, so it is resolved the way the reader
+    /// meant it and cannot be captured by a binding that happens to share its
+    /// spelling. `sounded` is an ordinary word for an ordinary value, and an
+    /// author who binds one is not thereby redefining what a music literal
+    /// means — under [`Self::Var`] they would be, and the program would report
+    /// a dependency cycle between two definitions that never named each other.
+    ///
+    /// A name the *author* wrote stays a [`Self::Var`], so a declaration still
+    /// shadows a builtin of the same spelling where the author is the one
+    /// naming it.
+    Hosted(Name),
     /// One closed value of a base type, already built by whoever read the
     /// source: `3`, `"c"`, `1/4`.
     ///
@@ -385,6 +433,36 @@ pub enum RawShape {
         function: Raw,
         /// `a`.
         argument: Raw,
+    },
+    /// `f(a₁, …, aₙ)` as an author writes it — §1.3's **complete** call.
+    ///
+    /// Not sugar for iterated [`Self::App`], and the rule is the difference.
+    /// §1.3: "an application supplies every declared parameter, and an
+    /// under-applied call is a type error rather than a value." A spine cannot
+    /// state that, because every prefix of one is itself an application and none
+    /// of them knows it is the last. This holds the whole argument list, so
+    /// what is left after all of them is the type of the *call*, and an explicit
+    /// Π there is a parameter nobody wrote.
+    ///
+    /// Everything else about it is [`Self::App`]'s: the arguments are applied
+    /// left to right, implicits are inserted before each one, and the plicity
+    /// rules are the ones already written. Only the last step is new.
+    ///
+    /// A function is still first class. §1.3 refuses partial *application*, not
+    /// higher-order values — a bare name passed to a higher-order argument is a
+    /// [`Self::Var`] and this rule never sees it. What the rule buys is §1.2's:
+    /// an argument list stops being a place where a value silently becomes a
+    /// function, which is the one kind of value that may not be stored.
+    ///
+    /// Written calls only. A reader that builds an application the author did
+    /// not write — `music { c5/1 }` becoming `sounded(…)` — builds it complete
+    /// by construction and uses [`Self::App`], because a refusal about *its*
+    /// arity would be a sentence about the reading rather than about the source.
+    Call {
+        /// `f`.
+        function: Raw,
+        /// `a₁ … aₙ`, in the order written.
+        arguments: Arc<[Raw]>,
     },
     /// `{ f₁ : A₁, …, fₙ : Aₙ }`, a telescope: each field's type is read under
     /// binders for the fields before it.
@@ -609,6 +687,13 @@ impl Raw {
         Self::new(origin, RawShape::Var(name.into()))
     }
 
+    /// A name in the host's namespaces, written by the reader rather than by
+    /// the author. See [`RawShape::Hosted`].
+    #[must_use]
+    pub fn hosted(origin: Origin, name: impl Into<Name>) -> Self {
+        Self::new(origin, RawShape::Hosted(name.into()))
+    }
+
     /// One closed value of a base type, already built.
     #[must_use]
     pub fn lit(origin: Origin, literal: crate::base::Literal) -> Self {
@@ -631,6 +716,21 @@ impl Raw {
     #[must_use]
     pub fn pi(origin: Origin, name: impl Into<Name>, domain: Self, codomain: Self) -> Self {
         Self::binder(origin, Plicity::Explicit, name, domain, codomain)
+    }
+
+    /// `domain → codomain`, the arrow with nothing bound.
+    ///
+    /// A Π always binds, so the binder still needs a spelling and gets
+    /// [`ARROW_BINDER`]. Separate from [`Self::pi`] because the two say
+    /// different things and one of them is load-bearing: a *named* binder is a
+    /// parameter the author declared, and `02-core-calculus.md` §1.3's
+    /// completeness rule is about exactly those. `walked(items: StaffItem) ->
+    /// (Position<WrittenTime> -> Result<…>)` declares one parameter and returns
+    /// a function; a two-parameter declaration has the same type and a second
+    /// name in it.
+    #[must_use]
+    pub fn arrow(origin: Origin, domain: Self, codomain: Self) -> Self {
+        Self::binder(origin, Plicity::Explicit, ARROW_BINDER, domain, codomain)
     }
 
     /// `{name : domain} → codomain`.
@@ -714,6 +814,22 @@ impl Raw {
                 plicity: Plicity::Explicit,
                 function,
                 argument,
+            },
+        )
+    }
+
+    /// `function(a₁, …, aₙ)` as the author wrote it, which is the one form
+    /// §1.3's completeness rule applies to.
+    ///
+    /// A reader that builds an application nobody wrote uses [`Self::app`]; see
+    /// [`RawShape::Call`] for why the two are told apart.
+    #[must_use]
+    pub fn call(origin: Origin, function: Self, arguments: impl IntoIterator<Item = Self>) -> Self {
+        Self::new(
+            origin,
+            RawShape::Call {
+                function,
+                arguments: arguments.into_iter().collect(),
             },
         )
     }

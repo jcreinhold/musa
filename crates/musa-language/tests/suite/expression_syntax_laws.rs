@@ -21,7 +21,7 @@ const EXPRESSIONS: &str = r#"piece "Expressions" {
     let attempted: Result<Pitch, Text> = Ok(c4);
     let refused: Result<Pitch, Text> = Err("no such note");
 
-    fn melody(root: Pitch) -> Music { music {
+    fn melody(root: Pitch) -> EventTrack<WrittenTime> { music {
         root/4
         use answer(root);
     } }
@@ -131,7 +131,7 @@ fn incomplete_expressions_recover_without_losing_source() {
 
 #[test]
 fn a_note_line_and_a_general_expression_are_unambiguous_in_music() {
-    let source = "piece \"x\" { fn p() -> Music { music { c4/4 use answer(c4); } } }";
+    let source = "piece \"x\" { fn p() -> EventTrack<WrittenTime> { music { c4/4 use answer(c4); } } }";
     let document = parse(source);
     assert!(document.errors().is_empty(), "{:?}", document.errors());
     let root = document.syntax();
@@ -152,7 +152,7 @@ fn a_note_line_and_a_general_expression_are_unambiguous_in_music() {
 #[test]
 fn pitch_translation_is_a_single_non_associative_expression_layer() {
     let source = r#"piece "pitch" {
-        fn turn(root: Pitch, by: Interval) -> Music { music {
+        fn turn(root: Pitch, by: Interval) -> EventTrack<WrittenTime> { music {
             (root up M2)/4
             ((root up by) down m2)/4
         } }
@@ -198,10 +198,18 @@ fn diminished_interval_spelling_does_not_steal_the_note_d4() {
     );
 }
 
+/// `repeat` opens a repeated passage and nothing else.
+///
+/// It was a statement keyword *and* a value operation until prompt 142 wrote
+/// the eight collection eliminators as library code and found that one of the
+/// eight had no name available: `fn repeat` does not parse, so the operation is
+/// `repeated` in `std::list` and the keyword keeps the word. The law is the same
+/// shape it always was — one call and one repeated passage in one piece — and
+/// what it now says is that the call is an ordinary identifier's.
 #[test]
-fn repeat_is_a_statement_keyword_and_a_finite_value_operation() {
+fn repeat_is_a_statement_keyword_and_the_list_operation_is_a_name() {
     let source =
-        "piece \"x\" { let copies: List<Nat> = repeat(1, 4); score { part p { voice v { repeat 2 { c4/4 } } } } }";
+        "piece \"x\" { let copies: List<Nat> = repeated(1, 4); score { part p { voice v { repeat 2 { c4/4 } } } } }";
     let document = parse(source);
     assert!(document.errors().is_empty(), "{:?}", document.errors());
     let root = document.syntax();
@@ -405,7 +413,7 @@ fn a_use_statement_keeps_its_with_and_an_expression_does_not() {
             0,
         ),
         (
-            "piece \"x\" { data P { P(a: Nat) } fn t(p: P) -> Music { music { c4/4 } } \
+            "piece \"x\" { data P { P(a: Nat) } fn t(p: P) -> EventTrack<WrittenTime> { music { c4/4 } } \
              score { part p { voice v { use t(held with { a = 1 }); } } } }",
             1,
             0,

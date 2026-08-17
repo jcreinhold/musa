@@ -528,10 +528,12 @@ fn a_function_body_keeps_its_line_until_it_cannot() {
 /// statements, and this language writes only a *bar* horizontally.
 #[test]
 fn a_music_body_stacks_however_short_it_is() {
-    let source = "piece \"P\" {\nfn figure() -> Music { music { c5/4 } }\n}\n";
+    let source = "piece \"P\" {\nfn figure() -> EventTrack<WrittenTime> { music { c5/4 } }\n}\n";
     let formatted = fmt(source);
     assert!(
-        formatted.contains("    fn figure() -> Music {\n        music {\n            c5/4\n        }\n    }\n"),
+        formatted.contains(
+            "    fn figure() -> EventTrack<WrittenTime> {\n        music {\n            c5/4\n        }\n    }\n"
+        ),
         "{formatted}"
     );
     assert_eq!(fmt(&formatted), formatted, "idempotent");

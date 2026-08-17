@@ -4,6 +4,7 @@
 piece "Core Pressure Baseline" {
 import std::core;
 import std::list;
+import std::nat;
 
 tempo 1/4 = 96;
 meter 4/4;
@@ -79,9 +80,9 @@ fn depth_0(seed: Nat) -> Nat { nat_fold(seed, keep, 1) }
     let counted: List<Nat> = naturals(512);
     let folded: Nat = list_fold_from_start(0, keep, counted);
 
-    let raise: Music -> Music = fn (line: Music) -> Music { transpose(P8, line) };
-    let subject: Music = music { c4/4 d4/4 e4/4 f4/4 };
-    let answer: Music = compose_music(raise, retrograde, subject);
+    let raise: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(P8, line) };
+    let subject: EventTrack<WrittenTime> = music { c4/4 d4/4 e4/4 f4/4 };
+    let answer: EventTrack<WrittenTime> = compose_music(raise, retrograde, subject);
 
     score {
         part strings {

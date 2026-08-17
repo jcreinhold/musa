@@ -4,12 +4,12 @@
 import std::context;
 
 signature CellMaterial {
-    let cell: Music;
-    let answer: Music -> Music;
+    let cell: EventTrack<WrittenTime>;
+    let answer: EventTrack<WrittenTime> -> EventTrack<WrittenTime>;
 }
 
 template structure Cell(C: TonalContext, lift: Interval): CellMaterial {
-    let cell: Music = music {
+    let cell: EventTrack<WrittenTime> = music {
         in scale C.collection {
             c5/8
             (c5 step 1)/8
@@ -18,7 +18,7 @@ template structure Cell(C: TonalContext, lift: Interval): CellMaterial {
         }
     };
 
-    fn answer(line: Music) -> Music { transpose(lift, line) }
+    fn answer(line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(lift, line) }
 }
 
 make Cell(CMajor, P5) as Cell_a;
@@ -30,7 +30,7 @@ make Cell(ANaturalMinor, m7) as Cell_f;
 make Cell(CMajor, P8) as Cell_g;
 make Cell(ANaturalMinor, M6) as Cell_h;
 
-template voice strand(subject: Music, transform: Music -> Music) {
+template voice strand(subject: EventTrack<WrittenTime>, transform: EventTrack<WrittenTime> -> EventTrack<WrittenTime>) {
     repeat 4 {
         in scale c major { use subject; }
         in scale c dorian { use transform(subject); }

@@ -29,18 +29,20 @@ use musa_compiler::{Code, CompileOptions, ScoreEventKind, ScoreSnapshot, Severit
 /// member of a list, so a count that has no other way out of the compiler
 /// leaves as notes in a voice.
 const PRELUDE: &str = r"
+    import std::list;
+    import std::option;
     import std::post_tonal::pcset;
     import std::post_tonal::serial;
 
     meter 4/4;
 
-    fn tick(one: Music, carried: Music) -> Music { together(one, carried) }
-    fn beat() -> Music { music { c4/1 } }
-    fn tally(count: Nat) -> Music { list_fold_from_start(music { rest/1 }, tick, repeat(beat(), count)) }
-    fn beat_for_pc(member: Pc12) -> Music { beat() }
-    fn beat_for_nat(count: Nat) -> Music { beat() }
-    fn beat_for_spelling(spelled: NoteName) -> Music { beat() }
-    fn chorus(voices: List<Music>) -> Music { list_fold_from_start(music { rest/1 }, tick, voices) }
+    fn tick(one: EventTrack<WrittenTime>, carried: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { together(one, carried) }
+    fn beat() -> EventTrack<WrittenTime> { music { c4/1 } }
+    fn tally(count: Nat) -> EventTrack<WrittenTime> { list_fold_from_start(music { rest/1 }, tick, repeated(beat(), count)) }
+    fn beat_for_pc(member: Pc12) -> EventTrack<WrittenTime> { beat() }
+    fn beat_for_nat(count: Nat) -> EventTrack<WrittenTime> { beat() }
+    fn beat_for_spelling(spelled: NoteName) -> EventTrack<WrittenTime> { beat() }
+    fn chorus(voices: List<EventTrack<WrittenTime>>) -> EventTrack<WrittenTime> { list_fold_from_start(music { rest/1 }, tick, voices) }
 ";
 
 /// A piece whose one voice sounds `expression`.
@@ -93,14 +95,14 @@ fn a_spelled_pitch_class_is_not_an_unspelled_one() {
     let spelled_where_unspelled_belongs = probe("    let wrong: Pc12 = pitchclass_of(c4);", "beat()");
     let errors = errors_of(&spelled_where_unspelled_belongs);
     assert!(
-        errors.iter().any(|(code, _)| *code == Code::TypeMismatch),
+        errors.iter().any(|(code, _)| *code == Code::ConversionMismatch),
         "a `pitchclass` must not stand where a `pc12` belongs: {errors:?}"
     );
 
     let unspelled_where_spelled_belongs = probe("    let wrong: NoteName = pc(0);", "beat()");
     let errors = errors_of(&unspelled_where_spelled_belongs);
     assert!(
-        errors.iter().any(|(code, _)| *code == Code::TypeMismatch),
+        errors.iter().any(|(code, _)| *code == Code::ConversionMismatch),
         "and a `pc12` must not stand where a `pitchclass` belongs: {errors:?}"
     );
 }
@@ -109,7 +111,7 @@ fn a_spelled_pitch_class_is_not_an_unspelled_one() {
 fn a_pitch_class_is_not_the_number_that_names_it() {
     let errors = errors_of(&probe("    let wrong: Nat = pc(3);", "beat()"));
     assert!(
-        errors.iter().any(|(code, _)| *code == Code::TypeMismatch),
+        errors.iter().any(|(code, _)| *code == Code::ConversionMismatch),
         "reading a residue as a number must be asked for: {errors:?}"
     );
 }
@@ -144,9 +146,9 @@ fn forgetting_a_spelling_is_total_and_not_injective() {
 #[test]
 fn a_spelling_needs_a_collection_and_may_not_exist_in_it() {
     let bindings = "
-    fn present(spelled: NoteName) -> Music { beat() }
-    let in_c: Music = option_fold(music { rest/1 }, present, spelled_in(pc(1), scale c major));
-    let in_d: Music = option_fold(music { rest/1 }, present, spelled_in(pc(1), scale d major));
+    fn present(spelled: NoteName) -> EventTrack<WrittenTime> { beat() }
+    let in_c: EventTrack<WrittenTime> = option_fold(music { rest/1 }, present, spelled_in(pc(1), scale c major));
+    let in_d: EventTrack<WrittenTime> = option_fold(music { rest/1 }, present, spelled_in(pc(1), scale d major));
 ";
     assert_eq!(
         counted(bindings, "in_c"),
@@ -172,8 +174,8 @@ fn a_set_holds_a_repeated_member_once() {
 fn a_set_reads_out_ascending_and_normal_order_need_not() {
     let bindings = "
     let set: PcSet12 = pcset(pcs([0, 5, 8]));
-    let ascending: Music = chorus(map(tally, map(number_of, set_members(set))));
-    let normal: Music = chorus(map(tally, map(number_of, normal_order(set))));
+    let ascending: EventTrack<WrittenTime> = chorus(map(tally, map(number_of, set_members(set))));
+    let normal: EventTrack<WrittenTime> = chorus(map(tally, map(number_of, normal_order(set))));
 ";
     assert_eq!(counted(bindings, "ascending"), 13, "0 + 5 + 8 read ascending");
     assert_eq!(

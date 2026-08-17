@@ -55,16 +55,13 @@ fn written_library(root: &SyntaxNode) -> Option<SyntaxNode> {
 /// pinned spans would fail on a blank line and the span is
 /// [`crate::lower::refusals`]'s to get right.
 fn elaborated(source: &str) -> (Option<Document>, Vec<String>) {
-    faults(&[Source {
-        root: library(source),
-        in_phase: false,
-    }])
+    faults(&[Source::own(&library(source))])
 }
 
 /// The same for a document already assembled out of several sources.
 fn faults(sources: &[Source]) -> (Option<Document>, Vec<String>) {
     let mut resolver = Resolver::new();
-    let document = elaborate(&mut resolver, sources);
+    let document = elaborate(&mut resolver, sources, None);
     let mut said: Vec<String> = resolver
         .diagnostics
         .iter()
@@ -155,10 +152,7 @@ fn the_phase_vocabulary_is_readable_only_in_a_phase_source() {
     const WRITTEN: &str = "library { fn probe(held: Syntax<Expr>) -> Syntax<Expr> { held } }";
     let (ordinary, said) = elaborated(WRITTEN);
     assert!(ordinary.is_none(), "ordinary source cannot name `Syntax`: {said:?}");
-    let (phase, said) = faults(&[Source {
-        root: library(WRITTEN),
-        in_phase: true,
-    }]);
+    let (phase, said) = faults(&[Source::own(&library(WRITTEN)).in_phase()]);
     assert!(phase.is_some(), "an adapter phase can: {said:?}");
 }
 
@@ -249,10 +243,7 @@ pub(crate) fn library_sources() -> Vec<Source> {
         .map(|&(name, source)| {
             let held = musa_language::parse(source);
             assert!(held.errors().is_empty(), "`{name}` parses: {:?}", held.errors());
-            Source {
-                root: written_library(&held.syntax()).expect("every standard library file writes a library"),
-                in_phase: false,
-            }
+            Source::own(&written_library(&held.syntax()).expect("every standard library file writes a library"))
         })
         .collect()
 }
@@ -266,6 +257,7 @@ pub(crate) fn library_sources() -> Vec<Source> {
 const STANDARD_LIBRARY: &[(&str, &str)] = &[
     ("core", include_str!("../../../../stdlib/src/core.musa")),
     ("collections", include_str!("../../../../stdlib/src/collections.musa")),
+    ("nat", include_str!("../../../../stdlib/src/nat.musa")),
     ("list", include_str!("../../../../stdlib/src/list.musa")),
     ("option", include_str!("../../../../stdlib/src/option.musa")),
     ("pitch", include_str!("../../../../stdlib/src/pitch.musa")),
@@ -303,32 +295,30 @@ const STANDARD_LIBRARY: &[(&str, &str)] = &[
     ),
 ];
 
-/// The whole standard library, elaborated as one document.
+/// The whole standard library, elaborated as one document, with nothing left
+/// over.
 ///
-/// One fault, and it is a row in prompt 142's Target rather than a defect here:
-/// **`Music`**, the contextual type 142 deletes. `list.musa` and `voicing.musa`
-/// write it in a signature, and after the migration a fragment is an
+/// Two faults stood here while 142 was in progress and both are now migrated
+/// rather than pending. **`Music`**, the contextual type this prompt deletes,
+/// was written in a `list.musa` and a `voicing.musa` signature; a fragment is an
 /// `EventTrack ⟨written⟩` and a motif is a function to one, which is what
-/// `00-semantics.md` §3 already says.
+/// `00-semantics.md` §3 already said. The **anonymous product** was the second,
+/// until 142 found that only *half* of it was missing: `(a, b)` had lowered here
+/// since 141g and it was the type `(A, B)` alone that refused, which is one
+/// construct disagreeing with itself rather than a stage. Both halves now read
+/// `Pair`, the family 141ha declared for the machine calculus's wiring — a
+/// written product is a constructor application and therefore canonical data,
+/// which a structural record is not.
 ///
-/// The anonymous product was the second, until 142 found that only *half* of it
-/// was missing: `(a, b)` had lowered here since 141g and it was the type
-/// `(A, B)` alone that refused, which is one construct disagreeing with itself
-/// rather than a stage. Both halves now read `Pair`, the family 141ha declared
-/// for the machine calculus's wiring — a written product is a constructor
-/// application and therefore canonical data, which a structural record is not.
-///
-/// Everything else the thirteen prompts built holds on the standard library's
-/// real Musa: every `data` declaration, every generic signature, the qualified
-/// paths 141l reads, and the notation vocabulary 141j and 141k registered.
+/// Everything the thirteen prompts built holds on the standard library's real
+/// Musa: every `data` declaration, every generic signature, the qualified paths
+/// 141l reads, the notation vocabulary 141j and 141k registered, and the eight
+/// collection eliminators this prompt wrote as library code — which is why
+/// `nat.musa` is a row in [`STANDARD_LIBRARY`] and not only in `lib.musa`.
 #[test]
 fn the_standard_library_elaborates() {
     let (_, said) = faults(&library_sources());
-    assert_eq!(
-        said,
-        ["UnknownName: no binder named `Music` is in scope"],
-        "the standard library needs exactly what 142 already owns"
-    );
+    assert!(said.is_empty(), "the standard library elaborates whole: {said:?}");
 }
 
 /// `stdlib/src/adapters/doubled.musa`, elaborated in phase scope.
@@ -352,6 +342,11 @@ fn the_doubled_adapter_elaborates() {
 /// a rule 141m left answering `Result τ Text` — one of the twenty sites 141m's
 /// survey table lists and 142's Target moves onto the refusal channel.
 ///
+/// The message names the pair now, which is what makes the *remaining* work
+/// legible rather than merely counted: `expected Ratio, found Nat` is the
+/// numeric-literal conversion 142 still owes, and a bare "type mismatch" said
+/// only that something was left.
+///
 /// This file is prompt 145's benchmark and 142's Stop forbids rewriting it, so
 /// the reason here is the one a *migration* has to answer and not the ones a
 /// rewrite would.
@@ -360,7 +355,7 @@ fn the_staff_adapter_elaborates() {
     let (_, said) = adapter(include_str!("../../../../stdlib/src/adapters/staff.musa"));
     assert_eq!(
         said,
-        ["ConversionMismatch: type mismatch"],
+        ["ConversionMismatch: type mismatch: expected `Ratio`, found `Nat`"],
         "the staff adapter needs exactly what 142 already owns"
     );
 }
@@ -374,8 +369,120 @@ fn the_staff_adapter_elaborates() {
 fn adapter(source: &str) -> (Option<Document>, Vec<String>) {
     let held = musa_language::parse(source);
     assert!(held.errors().is_empty(), "the adapter parses: {:?}", held.errors());
-    faults(&[Source {
-        root: written_library(&held.syntax()).expect("an adapter writes a library"),
-        in_phase: true,
-    }])
+    faults(&[Source::own(&written_library(&held.syntax()).expect("an adapter writes a library")).in_phase()])
+}
+
+/// A written `primitive("name", version, c)` is the registration that pair
+/// selects, and an unregistered pair is refused where it is written.
+///
+/// `03-machine-calculus.md` §1 lets the name and version decide the step, both
+/// ports, and the type of the configuration, so there is nothing for a signature
+/// to say and nothing for the elaborator to solve: the reading selects, and what
+/// it selects is a closed type. The negative half is the whole of the check —
+/// with no signature for an unregistered pair, "this build knows no such unit"
+/// is a refusal at the call rather than an unsolved metavariable somewhere
+/// downstream.
+#[test]
+fn a_written_unit_selects_the_signature_its_name_and_version_name() {
+    let (built, said) = faults(&[Source::own(&library(
+        "library { let gain = machine(primitive(\"scale\", 1, 3/2)); }",
+    ))]);
+    let built = built.unwrap_or_else(|| panic!("a registered unit elaborates: {said:?}"));
+    let (_, ty) = built.value("gain").expect("`gain` is bound");
+    assert!(
+        format!("{ty:?}").contains("Machine"),
+        "a unit wrapped in `machine` is a machine, and its type says so: {ty:?}"
+    );
+
+    for (written, expected) in [
+        (
+            "machine(primitive(\"gian\", 1, 3/2))",
+            "not a unit this build registers",
+        ),
+        ("machine(primitive(\"scale\", 99, 3/2))", "no version 99"),
+    ] {
+        let (refused, said) = faults(&[Source::own(&library(&format!("library {{ let gain = {written}; }}")))]);
+        assert!(refused.is_none(), "`{written}` is refused");
+        assert!(
+            said.iter().any(|complaint| complaint.contains(expected)),
+            "`{written}` says why: {said:?}"
+        );
+    }
+}
+
+/// A machine reads back as the description a consumer prepares, and a machine
+/// whose ports nothing decided does not read back at all.
+///
+/// `03-machine-calculus.md` §2 gives the eight forms no reductions, so what
+/// comes back is the description the declaration built rather than anything the
+/// value computed: the nodes are the forms that were written, children before
+/// parents, and the ports are the *unit's* — nothing in the source below spells
+/// `Ratio` and both ends of the projection say it anyway.
+#[test]
+fn a_machine_reads_back_as_its_description_once_its_ports_are_decided() {
+    let built = document(
+        "library {
+            let one = machine(primitive(\"scale\", 1, 3/2));
+            let chained = connect(machine(primitive(\"scale\", 1, 3/2)), identity);
+            let counted: Nat = 3;
+        }",
+    );
+    let machines = built.machines();
+    assert_eq!(
+        machines.iter().map(|(name, _)| name.as_str()).collect::<Vec<_>>(),
+        ["one", "chained"],
+        "a definition that is not a machine is not one, and costs no readback"
+    );
+    let (_, one) = machines.first().expect("`one` is a machine");
+    assert_eq!(
+        (one.step(), one.input(), one.output()),
+        ("AudioFrameStep", "Ratio", "Ratio")
+    );
+    assert_eq!(one.nodes().len(), 1, "`machine(p)` describes the unit inside it");
+    assert_eq!(
+        one.nodes().first().and_then(crate::machine::SpecNode::id),
+        Some("scale")
+    );
+
+    let (_, chained) = machines.get(1).expect("`chained` is a machine");
+    assert_eq!(chained.nodes().len(), 3, "the unit, the identity, and the join");
+    let root = chained.root().expect("a projection has a root");
+    for child in chained
+        .nodes()
+        .get(root)
+        .map(crate::machine::SpecNode::children)
+        .unwrap_or_default()
+    {
+        assert!(*child < root, "a node's children precede it");
+    }
+}
+
+/// `identity` is a machine at every step and every port, so written alone it
+/// leaves its implicit arguments undetermined and the declaration is refused.
+/// Written with its type it is a machine like any other.
+///
+/// The replaced checker generalized an unannotated `let` and kept the open
+/// machine as a value with a scheme, projecting nothing. A dependent core does
+/// not generalize — `02-core-calculus.md` §2.1 leaves an undetermined
+/// metavariable as a refusal rather than defaulting it — so the composer is
+/// told at the declaration, which is where the ports they meant to write are
+/// missing from.
+#[test]
+fn an_open_machine_is_refused_until_its_ports_are_written() {
+    let (open, said) = elaborated("library { let open = identity; }");
+    assert!(open.is_none(), "a machine at every port is not a machine: {said:?}");
+    assert!(
+        said.iter().any(|complaint| complaint.contains("implicit argument")),
+        "the refusal names what was not determined: {said:?}"
+    );
+
+    let decided = document("library { let decided: Machine<AudioFrameStep, Ratio, Ratio> = identity; }");
+    let machines = decided.machines();
+    let (name, described) = machines.first().expect("a written type decides the ports");
+    assert_eq!(name, "decided");
+    assert_eq!((described.input(), described.output()), ("Ratio", "Ratio"));
+    assert_eq!(
+        described.nodes().first().map(crate::machine::SpecNode::form),
+        Some(crate::machine::SpecForm::Identity)
+    );
 }

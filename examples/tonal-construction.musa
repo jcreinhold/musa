@@ -133,7 +133,7 @@ piece "Tonal construction" {
     // bass. It is absent when the bass is not a member of the class as
     // spelled, which is why every chord below names its own bass instead of
     // sharing one.
-    fn stacked(bass: Pitch, content: Option<ChordClass>) -> Music {
+    fn stacked(bass: Pitch, content: Option<ChordClass>) -> EventTrack<WrittenTime> {
         match content {
             None -> music {
                 rest/1
@@ -142,42 +142,42 @@ piece "Tonal construction" {
         }
     }
 
-    fn voiced(chosen: Option<Voicing>) -> Music {
+    fn voiced(chosen: Option<Voicing>) -> EventTrack<WrittenTime> {
         match chosen {
             None -> music {
                 rest/1
             },
-            Some(spread) -> sound_for(spread, 1),
+            Some(spread) -> sound_for(spread, duration_of(1/1)),
         }
     }
 
     // The diatonic progression, each chord over a bass that is one of its own
     // members. `V6` takes B in the bass because the numeral put the third
     // there, and this piece chooses which B.
-    let phrase_one: Music = stacked(c3, tonic);
-    let phrase_two: Music = stacked(d3, supertonic);
-    let phrase_three: Music = stacked(g3, dominant);
-    let phrase_four: Music = stacked(b2, dominant_sixth);
-    let phrase_five: Music = stacked(c3, tonic);
+    let phrase_one: EventTrack<WrittenTime> = stacked(c3, tonic);
+    let phrase_two: EventTrack<WrittenTime> = stacked(d3, supertonic);
+    let phrase_three: EventTrack<WrittenTime> = stacked(g3, dominant);
+    let phrase_four: EventTrack<WrittenTime> = stacked(b2, dominant_sixth);
+    let phrase_five: EventTrack<WrittenTime> = stacked(c3, tonic);
 
     // The same five bars in the parallel minor, plus the harmonic collection's
     // dominant, so the two dominants are heard next to each other.
-    let minor_one: Music = stacked(c3, minor_tonic);
-    let minor_two: Music = stacked(g3, minor_dominant);
-    let minor_three: Music = stacked(g3, harmonic_dominant);
-    let minor_four: Music = stacked(c3, minor_tonic);
+    let minor_one: EventTrack<WrittenTime> = stacked(c3, minor_tonic);
+    let minor_two: EventTrack<WrittenTime> = stacked(g3, minor_dominant);
+    let minor_three: EventTrack<WrittenTime> = stacked(g3, harmonic_dominant);
+    let minor_four: EventTrack<WrittenTime> = stacked(c3, minor_tonic);
 
     // The chromatic chords, each on a bass drawn from its own spelling.
-    let chromatic_one: Music = stacked(d3, applied_dominant);
-    let chromatic_two: Music = stacked(e3, applied_seventh);
-    let chromatic_three: Music = stacked(ab3, borrowed_submediant);
-    let chromatic_four: Music = stacked(f3, borrowed_subdominant);
-    let chromatic_five: Music = stacked(db3, naples);
-    let chromatic_six: Music = stacked(ab3, italian);
-    let chromatic_seven: Music = stacked(ab3, french);
-    let chromatic_eight: Music = stacked(ab3, german);
-    let chromatic_nine: Music = stacked(g3, flat_nine);
-    let chromatic_ten: Music = stacked(g3, sharp_five);
+    let chromatic_one: EventTrack<WrittenTime> = stacked(d3, applied_dominant);
+    let chromatic_two: EventTrack<WrittenTime> = stacked(e3, applied_seventh);
+    let chromatic_three: EventTrack<WrittenTime> = stacked(ab3, borrowed_submediant);
+    let chromatic_four: EventTrack<WrittenTime> = stacked(f3, borrowed_subdominant);
+    let chromatic_five: EventTrack<WrittenTime> = stacked(db3, naples);
+    let chromatic_six: EventTrack<WrittenTime> = stacked(ab3, italian);
+    let chromatic_seven: EventTrack<WrittenTime> = stacked(ab3, french);
+    let chromatic_eight: EventTrack<WrittenTime> = stacked(ab3, german);
+    let chromatic_nine: EventTrack<WrittenTime> = stacked(g3, flat_nine);
+    let chromatic_ten: EventTrack<WrittenTime> = stacked(g3, sharp_five);
 
     meter 4/4;
 

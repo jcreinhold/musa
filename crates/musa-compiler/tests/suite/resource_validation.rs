@@ -61,7 +61,7 @@ fn aggregate_allocation_is_rejected_before_it_is_built() {
 
 #[test]
 fn logical_value_bytes_have_a_limit_distinct_from_node_count() {
-    let compilation = compile_declarations("let values: List<Ratio> = repeat(1/2, 65536);");
+    let compilation = compile_declarations("let values: List<Ratio> = repeated(1/2, 65536);");
     let diagnostic = compilation
         .diagnostics()
         .iter()

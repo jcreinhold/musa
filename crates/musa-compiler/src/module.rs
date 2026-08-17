@@ -28,7 +28,6 @@ use musa_language::ast::{
 };
 use musa_language::{SyntaxKind, SyntaxNode};
 
-use crate::core::Type;
 use crate::diagnose::{Code, Diagnostic};
 use crate::origin::SourceSpan;
 use crate::resolve::{NameKind, Resolver, trimmed_span};
@@ -145,8 +144,126 @@ struct Signature {
 }
 
 struct Required {
-    ty: Type,
+    ty: Written,
     span: SourceSpan,
+}
+
+/// A type as the two sides of a match wrote it.
+///
+/// §4 matches "by name and exact type", and the language has no type aliases,
+/// so two members' types agree exactly when their spellings do. Comparing
+/// spellings rather than checked types is also the only reading that can carry
+/// *every* type the language has: a signature that writes
+/// `EventTrack<WrittenTime>` is an ordinary signature, and a module system that
+/// could only match the types one pass happened to have a constructor for would
+/// be a module system for part of the language.
+///
+/// A [`Vec`] and not a string because a `fn` writes its arrow in pieces and a
+/// signature writes it whole, and because a part a declaration left unannotated
+/// matches whatever the signature puts there — the one liberty §4 allows, and
+/// the reason each part is an [`Option`].
+#[derive(Clone, PartialEq, Eq)]
+struct Written(Vec<Option<String>>);
+
+impl Written {
+    /// The spelling of one written type node, layout collapsed.
+    fn one(node: &SyntaxNode) -> Self {
+        Self(vec![Some(spelling(node))])
+    }
+
+    /// The spelling of an arrow, split at its arrows: `Nat -> Option<Pitch>`
+    /// reads as the same two parts a `fn` of that type writes separately.
+    fn arrow(node: &SyntaxNode) -> Self {
+        let inner = if node.kind() == SyntaxKind::TypeExpr {
+            node.children().find(|child| is_type(child.kind()))
+        } else {
+            Some(node.clone())
+        };
+        let Some(inner) = inner else { return Self::one(node) };
+        if inner.kind() != SyntaxKind::FunctionType {
+            return Self::one(&inner);
+        }
+        Self(
+            inner
+                .children()
+                .filter(|child| is_type(child.kind()))
+                .map(|child| Some(spelling(&child)))
+                .collect(),
+        )
+    }
+
+    /// Whether a module providing this satisfies a signature requiring
+    /// `required`.
+    fn matches(&self, required: &Self) -> bool {
+        self.0.len() == required.0.len()
+            && self
+                .0
+                .iter()
+                .zip(&required.0)
+                .all(|(provided, required)| provided.is_none() || provided == required)
+    }
+}
+
+impl std::fmt::Display for Written {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut parts = self.0.iter();
+        if let Some(first) = parts.next() {
+            out.write_str(first.as_deref().unwrap_or("_"))?;
+        }
+        for part in parts {
+            write!(out, " -> {}", part.as_deref().unwrap_or("_"))?;
+        }
+        Ok(())
+    }
+}
+
+/// Whether a structure body declares a type called `name`.
+///
+/// What a signature's `data Name;` asks. Matching is by name, as everything
+/// else in §4 is, and the question is answered off the structure's own
+/// declarations because that is where a `data` written inside one is: an
+/// instance's abstract types are the functor's, so asking the body asks the
+/// right node for a written module and a made one alike.
+fn declares_type(body: &StructureDecl, name: &str) -> bool {
+    musa_language::ast::DataDecl::all_at_root(body.syntax())
+        .iter()
+        .any(|declaration| declaration.name().as_deref() == Some(name))
+}
+
+/// One written type node's text, with every run of layout collapsed to one
+/// space, so `List< Pitch >` and `List<Pitch>` are the one type they are.
+fn spelling(node: &SyntaxNode) -> String {
+    node.to_string().split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// The arrow a `fn` declares, in the parts a signature writes it in.
+///
+/// A parameter's type is written inside the parameter list and the result is
+/// the one type node the `fn` has as a direct child, so the two are read
+/// separately and joined here. An omitted annotation stays [`None`]: the
+/// declaration did not say, and a signature that does say is entitled to.
+fn written_arrow(declaration: &FnDecl) -> Written {
+    let mut parts: Vec<Option<String>> = declaration
+        .params()
+        .iter()
+        .map(|parameter| {
+            parameter
+                .syntax()
+                .children()
+                .find(|node| is_type(node.kind()))
+                .as_ref()
+                .map(spelling)
+        })
+        .collect();
+    parts.push(
+        declaration
+            .syntax()
+            .children()
+            .find(|node| is_type(node.kind()))
+            .as_ref()
+            .map(spelling),
+    );
+    Written(parts)
 }
 
 /// A module in scope, and the signature that says what may be named in it.
@@ -185,28 +302,49 @@ impl Modules {
     /// with the document it belongs to when that is not this one.
     pub(crate) fn read<'a>(
         resolver: &mut Resolver,
-        world: &crate::data::World,
         owners: impl Iterator<Item = (Option<&'a str>, SyntaxNode)>,
     ) -> Self {
         let mut modules = Self::default();
         let owners: Vec<_> = owners.collect();
         for (source, owner) in &owners {
-            modules.read_signatures(resolver, world, *source, owner);
+            modules.read_signatures(resolver, *source, owner);
         }
         for (source, owner) in &owners {
             Self::read_templates(resolver, *source, owner);
         }
         for (source, owner) in &owners {
-            modules.read_modules(resolver, world, *source, owner);
+            modules.read_modules(resolver, *source, owner);
         }
         let mut sites = Vec::new();
         for (source, owner) in &owners {
             sites.extend(instance_sites(*source, owner));
         }
         for site in order(resolver, sites) {
-            modules.read_instance(resolver, world, &site);
+            modules.read_instance(resolver, &site);
         }
         modules
+    }
+
+    /// Whether any of `owners` writes a module declaration at all.
+    ///
+    /// Asked before [`Self::read`] because reading needs a [`crate::data::World`]
+    /// and building one is a pass over every `data` declaration in the import
+    /// closure. Almost no document writes a module, and the answer for one that
+    /// does not is [`Self::default`] — so the cost of the module system is paid
+    /// by the documents that use it rather than by all of them.
+    ///
+    /// A `make` is not on the list. It names a template, and the template it
+    /// names is a `template structure` or it is a template *piece* and no
+    /// module at all; either way a `template structure` had to be written
+    /// somewhere in the same closure, so looking for one is both cheaper and
+    /// exact where looking for a `make` would be neither.
+    pub(crate) fn written_in<'a>(owners: impl Iterator<Item = &'a SyntaxNode>) -> bool {
+        owners.flat_map(SyntaxNode::children).any(|node| {
+            matches!(
+                node.kind(),
+                SyntaxKind::SignatureDecl | SyntaxKind::StructureDecl | SyntaxKind::TemplateDecl
+            )
+        })
     }
 
     /// The flattened members, in the order they were read.
@@ -217,6 +355,40 @@ impl Modules {
     /// The value arguments every instance site wrote.
     pub(crate) fn arguments(&self) -> &[Argument] {
         &self.arguments
+    }
+
+    /// How `name`, written inside `scope`, reads — when a module decides it at
+    /// all.
+    ///
+    /// [`None`] when none does, which is the answer for almost every name in
+    /// almost every document, and is what lets a reading fall through to what
+    /// `.` means everywhere else. `10-traits.md` §6 gives `.` to projection, so
+    /// a walk that read every dotted name as a module member would take
+    /// `pending.anchor` away from records; a walk that read none as one would
+    /// take `Away.tonic` away from modules. The question the two readings turn
+    /// on is not the spelling but whether the head *is* a module here, and that
+    /// is a question only this type can answer.
+    ///
+    /// Three ways it can be one: the head is a functor's parameter bound by the
+    /// scope, the head is a module this pass read, or the name is bare and the
+    /// module it is written in has a member by that name. Everything else
+    /// belongs to somebody else.
+    pub(crate) fn resolve(&self, scope: &NameScope, name: &str) -> Option<Reading> {
+        let head = name.split_once(DOT).map_or(name, |(head, _)| head);
+        let decides = scope.heads.contains_key(head)
+            || self.identities.contains_key(head)
+            || (!name.contains(DOT)
+                && scope
+                    .owner
+                    .as_ref()
+                    .is_some_and(|owner| self.defines(&format!("{owner}{DOT}{name}"))));
+        decides.then(|| self.read_name(scope, name, &|candidate| self.defines(candidate)))
+    }
+
+    /// Whether a member of that qualified name was flattened out of some
+    /// module.
+    fn defines(&self, name: &str) -> bool {
+        self.members.iter().any(|member| member.name == name)
     }
 
     /// How `name`, written inside `scope`, reads.
@@ -278,13 +450,7 @@ impl Modules {
         Some((signature.to_owned(), ascription.unwrap_or(declared.span)))
     }
 
-    fn read_signatures(
-        &mut self,
-        resolver: &mut Resolver,
-        world: &crate::data::World,
-        source: Option<&str>,
-        owner: &SyntaxNode,
-    ) {
+    fn read_signatures(&mut self, resolver: &mut Resolver, source: Option<&str>, owner: &SyntaxNode) {
         for declaration in SignatureDecl::all_at_root(owner) {
             let Some(name) = declaration.name() else { continue };
             let span = name_span(declaration.syntax());
@@ -298,10 +464,7 @@ impl Modules {
             for member in declaration.members() {
                 let Some(member_name) = member.name() else { continue };
                 let member_span = name_span(member.syntax());
-                let Some(ty) = member
-                    .ty()
-                    .and_then(|ty| crate::core::signature_type(resolver, &world.scope(), &ty))
-                else {
+                let Some(ty) = member.ty().map(|ty| Written::arrow(&ty)) else {
                     continue;
                 };
                 if let Some(first) = members.get(&member_name) {
@@ -390,13 +553,7 @@ impl Modules {
         }
     }
 
-    fn read_modules(
-        &mut self,
-        resolver: &mut Resolver,
-        world: &crate::data::World,
-        source: Option<&str>,
-        owner: &SyntaxNode,
-    ) {
+    fn read_modules(&mut self, resolver: &mut Resolver, source: Option<&str>, owner: &SyntaxNode) {
         for declaration in StructureDecl::all_at_root(owner) {
             let Some(name) = declaration.name() else { continue };
             let span = name_span(declaration.syntax());
@@ -404,13 +561,13 @@ impl Modules {
                 owner: Some(name.clone()),
                 heads: IndexMap::new(),
             };
-            let provided = self.flatten(resolver, world, &name, &declaration, &scope, source);
+            let provided = self.flatten(resolver, &name, &declaration, &scope, source);
             let Some(signature) = declaration.signature() else {
                 continue;
             };
             let ascription = ascription_span(declaration.syntax());
             self.match_signature(resolver, &signature, ascription, &name, span, &provided);
-            self.match_abstract_types(resolver, world, &signature, &name, span);
+            self.match_abstract_types(resolver, &declaration, &signature, &name, span);
             if source.is_none() {
                 resolver.references.declare(NameKind::Module, &name, span);
                 resolver.references.record_use(NameKind::Module, &signature, ascription);
@@ -437,7 +594,7 @@ impl Modules {
     fn match_abstract_types(
         &self,
         resolver: &mut Resolver,
-        world: &crate::data::World,
+        body: &StructureDecl,
         signature: &str,
         module: &str,
         span: SourceSpan,
@@ -446,7 +603,7 @@ impl Modules {
             return;
         };
         for (name, required) in &declared.types {
-            if world.declared_by(module, name) {
+            if declares_type(body, name) {
                 continue;
             }
             resolver.report(
@@ -458,19 +615,12 @@ impl Modules {
         }
     }
 
-    fn read_instance(&mut self, resolver: &mut Resolver, world: &crate::data::World, site: &Site) {
+    fn read_instance(&mut self, resolver: &mut Resolver, site: &Site) {
         let span = trimmed_span(site.stmt.syntax());
         let Some(scope) = self.apply(resolver, site, span) else {
             return;
         };
-        let provided = self.flatten(
-            resolver,
-            world,
-            &site.alias,
-            &site.functor,
-            &scope,
-            site.source.as_deref(),
-        );
+        let provided = self.flatten(resolver, &site.alias, &site.functor, &scope, site.source.as_deref());
         let Some(signature) = site.functor.signature() else {
             return;
         };
@@ -622,7 +772,7 @@ impl Modules {
                     // than plain equality: a member that left its annotation
                     // out is still the member the signature named, and one
                     // question decided two ways is two languages.
-                    Some(found) if crate::infer::admits(&found.ty, &required.ty) => continue,
+                    Some(found) if found.ty.matches(&required.ty) => continue,
                     Some(found) => format!("`{module}` gives it type {}", found.ty),
                     None => format!("`{module}` does not provide it"),
                 };
@@ -643,26 +793,25 @@ impl Modules {
     fn flatten(
         &mut self,
         resolver: &mut Resolver,
-        world: &crate::data::World,
         qualifier: &str,
         declaration: &StructureDecl,
         scope: &NameScope,
         source: Option<&str>,
     ) -> IndexMap<String, Required> {
         let mut provided: IndexMap<String, Required> = IndexMap::new();
-        let mut items: Vec<(String, SourceSpan, MemberItem, Option<Type>)> = Vec::new();
+        let mut items: Vec<(String, SourceSpan, MemberItem, Option<Written>)> = Vec::new();
         for binding in declaration.lets() {
             let Some(name) = binding.name() else { continue };
             let ty = binding
                 .syntax()
                 .children()
                 .find(|node| is_type(node.kind()))
-                .and_then(|node| crate::core::declared_type(&world.scope(), &node));
+                .map(|node| Written::one(&node));
             items.push((name, name_span(binding.syntax()), MemberItem::Let(binding), ty));
         }
         for function in declaration.fns() {
             let Some(name) = function.name() else { continue };
-            let ty = crate::core::function_type(&world.scope(), &function);
+            let ty = Some(written_arrow(&function));
             items.push((name, name_span(function.syntax()), MemberItem::Function(function), ty));
         }
         for (name, span, item, ty) in items {
@@ -715,7 +864,7 @@ impl Modules {
             match provided.get(name) {
                 // Exact type, part for part — except where the member left an
                 // annotation out, which the signature is entitled to supply.
-                Some(found) if crate::infer::admits(&found.ty, &required.ty) => {}
+                Some(found) if found.ty.matches(&required.ty) => {}
                 Some(found) => resolver.report(
                     Diagnostic::error(Code::TypeMismatch, format!("`{module}` gives `{name}` the wrong type"))
                         .at(found.span, format!("this is a {}", found.ty))
@@ -827,7 +976,7 @@ fn document(
 /// generated reference lists the contract a structure must meet.
 fn member_document(
     name: &str,
-    ty: &crate::core::Type,
+    ty: &Written,
     span: SourceSpan,
     source: Option<&str>,
     declaration: &SyntaxNode,

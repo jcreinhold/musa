@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 9f5f3aa1f723504a3865c007dea158f832b2e2629e32b741b33a4d5d3254ed82 # shrinks to (source, expected) = ("piece \"gen\" { meter 4/4; motif m(root: Pitch) { root 1/8 c4 1/8 } score { part p { voice v { use m(c4); repeat 2 { transpose down P5 { use m(c4); } } } } } }", GeneratedVoice { body: "", statements: 6, duration: Ratio { numer: 3, denom: 4 } })
+cc ac7e1bdc215971fc6ed8a658fb62f27ac9ec2f239d600339a542946af948658d # shrinks to (source, upper, lower) = ("piece \"gen\" { tempo 1/4 = 96; meter 4/4; key c major; score { part p { voice a { repeat 2 { c4 1/8  } } voice b { c4 1/8  } } } }", GeneratedVoice { body: "repeat 2 { c4 1/8  }", statements: 2, duration: Ratio { numer: 1, denom: 4 } }, GeneratedVoice { body: "c4 1/8 ", statements: 1, duration: Ratio { numer: 1, denom: 8 } })

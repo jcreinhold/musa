@@ -53,6 +53,17 @@ pub enum MetaSource {
     ImplicitArgument,
     /// A binder whose type the checking type did not supply.
     BinderType,
+    /// A parameter of the family a constructor belongs to, where the type the
+    /// constructor was checked against did not say what it is.
+    ///
+    /// `Some(x)` names a case and supplies a field; its family's parameter is
+    /// read off the expected type — see
+    /// [`Elaborator::constructed`](crate::elab::Elaborator). When the expected
+    /// type is itself unknown, as it is at `f(Some(x))` for a generic `f`, there
+    /// is nothing to read it off and the parameter becomes a hole like any
+    /// other. It is filled by the conversion the surrounding term forces, and if
+    /// nothing forces one, the program really did not say.
+    FamilyParameter,
     /// A universe whose level the surface did not write.
     UniverseLevel,
     /// A dictionary for a constraint whose head was not yet known.
@@ -76,6 +87,7 @@ impl MetaSource {
         match self {
             Self::ImplicitArgument => "an implicit argument",
             Self::BinderType => "the type of a binder",
+            Self::FamilyParameter => "a constructor's family parameter",
             Self::UniverseLevel => "the level of a universe",
             Self::Dictionary => "the instance a constraint needs",
         }

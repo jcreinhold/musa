@@ -30,14 +30,11 @@ const PRELUDE: &str = r"
 import std::notation::staff;
 import syntax std::adapters::staff as staff;
 
-fn one(start: Position<WrittenTime>, held: Duration<WrittenTime>) -> Music {
-    match position_between(position_of(0), start) {
-        Ok(offset) -> shift(offset, stretch(duration_ratio(held), music { c5/1 })),
-        Err(why) -> music { rest/1 },
-    }
+fn one(start: Position<WrittenTime>, held: Duration<WrittenTime>) -> EventTrack<WrittenTime> {
+    shift(position_between(position_of(0/1), start), stretch(duration_ratio(held), music { c5/1 }))
 }
 
-fn heard(spans: WrittenSpans) -> Music {
+fn heard(spans: WrittenSpans) -> EventTrack<WrittenTime> {
     written_spans_fold(
         music { rest/1 },
         fn (
@@ -45,13 +42,13 @@ fn heard(spans: WrittenSpans) -> Music {
             start: Position<WrittenTime>,
             held: Duration<WrittenTime>,
             tied: Tie,
-            after: Music,
-        ) -> Music { together(one(start, held), after) },
+            after: EventTrack<WrittenTime>,
+        ) -> EventTrack<WrittenTime> { together(one(start, held), after) },
         spans,
     )
 }
 
-fn shown(answer: Result<Realization, Text>) -> Music {
+fn shown(answer: Result<Realization, Text>) -> EventTrack<WrittenTime> {
     match answer {
         Ok(reached) -> heard(reached.spans),
         Err(why) -> music { rest/1 },

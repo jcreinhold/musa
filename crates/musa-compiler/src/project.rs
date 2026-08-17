@@ -50,6 +50,17 @@ pub(crate) struct Projection {
 /// Ids are assigned to note and rest facts in the order they are visited,
 /// which is the order the parts and voices were elaborated in.
 ///
+/// Each lane is then read in time order, which is what every walk below
+/// assumes: `chord_len` gathers a chord from occurrences that share a span and
+/// stand next to each other, a grace note waits at its onset for the note it
+/// leans on, and a region is closed by the event at its end. A track is a
+/// multiset and its occurrence list carries no order
+/// (`docs/rules/kernel/03-denotational-semantics.md` N4), so `retrograde`
+/// answers a lane whose notes are listed last-first and is right to. The
+/// reading sorts; the construction is not asked to promise. Sorting the
+/// buckets rather than the track keeps it allocation-free, and it is stable, so
+/// a chord's pitches stay in the order they were written.
+///
 /// **Invariant:** a region fact's boundaries coincide with event boundaries
 /// in its own scope, because the region is built from the extent of the items
 /// it encloses ([`crate::elaborate`]'s `over`). The projection relies on it to
@@ -68,9 +79,11 @@ pub(crate) fn project(resolver: &mut Resolver, track: &EventTrack<WrittenTime, S
             None => piece.push(occurrence),
         }
     }
+    piece.sort_by_key(sounding);
     let mut voices = Voices::with_capacity(buckets.len());
     let mut stated: Vec<Vec<crate::score::RepeatRegion>> = Vec::with_capacity(buckets.len());
-    for (key, occurrences) in buckets {
+    for (key, mut occurrences) in buckets {
+        occurrences.sort_by_key(sounding);
         let (voice, repeats) = project_voice(resolver, &occurrences);
         stated.push(repeats);
         voices.insert(key, voice);
@@ -79,6 +92,15 @@ pub(crate) fn project(resolver: &mut Resolver, track: &EventTrack<WrittenTime, S
     resolver.annotations.set_repeats(repeats);
     let contexts = project_piece(resolver, &piece);
     Projection { voices, contexts }
+}
+
+/// When an occurrence sounds, which is the order a lane is read in.
+///
+/// The end is the tiebreak so that a point sorts before a span starting with
+/// it: a grace note is written at the onset of the note it leans on, and it has
+/// to arrive first to be waiting there.
+fn sounding(occurrence: &&Occurrence<WrittenTime, ScoreFact>) -> (Position<WrittenTime>, Position<WrittenTime>) {
+    (occurrence.span().start(), occurrence.span().end())
 }
 
 /// The repeats every voice agrees about.

@@ -1,5 +1,6 @@
 library {
     import std::harmony;
+    import std::list;
     import std::scale;
 
     // A galant schema is a short prototype: a bass line, a melody above it,

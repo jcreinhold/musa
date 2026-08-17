@@ -243,6 +243,11 @@ fn a_metavariable_nothing_determines_is_refused_rather_than_defaulted() {
 /// types that agree on their argument type and differ under it must report the
 /// codomain pair, not the two Π types: a conversion error that prints both
 /// normal forms in full has made the reader do the diffing.
+///
+/// Both halves are said, and the sentence is the test: the path alone reports
+/// that something disagreed somewhere in a result type, and the pair alone
+/// leaves a reader holding two types and no idea which position they came out
+/// of. The pair is spelled the *core*'s way, because that is what the terms are.
 #[test]
 fn a_mismatch_reports_the_smallest_pair_that_disagrees() {
     // `let f : {} → {} = λx. x in f`, checked at `{} → Type 0`.
@@ -260,7 +265,10 @@ fn a_mismatch_reports_the_smallest_pair_that_disagrees() {
     assert_eq!(mismatch.path, vec![PathStep::Codomain]);
     assert_eq!(mismatch.expected, Term::universe(WRITTEN, Level::ZERO));
     assert_eq!(mismatch.found, core_unit_type());
-    assert_eq!(mismatch.to_string(), "type mismatch at the result type");
+    assert_eq!(
+        mismatch.to_string(),
+        "type mismatch at the result type: expected `Type 0`, found `{ }`"
+    );
 }
 
 /// The same policy one step further in: a field of a record type.

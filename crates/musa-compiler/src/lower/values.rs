@@ -7,12 +7,11 @@
 //!
 //! # Where a surface form has no core term
 //!
-//! Four kinds are read by the grammar and denote nothing yet, and each answers a
-//! diagnostic rather than an unhelpful `None`:
+//! Two kinds are read by the grammar and denote nothing yet, and each answers a
+//! diagnostic rather than an unhelpful `None`. `MusicExpr` and `KernelQuote`
+//! were here and are gone: prompt 141k folded the first and
+//! [`super::kernel`] reads the second.
 //!
-//! - `MusicExpr` and `KernelQuote` need `EventTrack`. Prompt 141h gave it a core
-//!   shape — a base type and eight builtins over it — and deliberately left it
-//!   unspellable; prompt 142 is where the source learns the word.
 //! - `(a, b, c)`, and every wider product. The pair is `Pair.Both a b`, which
 //!   the prelude already declares; three positions and no names would have to
 //!   choose between `(a, (b, c))` and `((a, b), c)`, and the corpus writes 36
@@ -94,7 +93,7 @@ impl Lowering<'_> {
                         )],
                         body: Raw::app(
                             origin,
-                            Raw::var(origin, "Result.Err"),
+                            Raw::hosted(origin, "Result.Err"),
                             Raw::var(origin, failure.as_str()),
                         ),
                     },
@@ -140,7 +139,7 @@ impl Lowering<'_> {
             SyntaxKind::QuestionExpr => self.question(node, origin),
             SyntaxKind::QuoteExpr => self.quote(node, origin),
             SyntaxKind::MusicExpr => self.music(node),
-            SyntaxKind::KernelQuote => self.not_yet(node, "a kernel quote", "a track"),
+            SyntaxKind::KernelQuote => self.kernel_quote(node, origin),
             _ => None,
         }
     }
@@ -149,28 +148,62 @@ impl Lowering<'_> {
 
     /// A written name.
     ///
-    /// Three readings, and the node decides between them without resolving
-    /// anything:
+    /// Four readings, and only one of them asks anything to be resolved:
     ///
     /// - `TokenKind.Comma` and `Delimiter.Parentheses` are **literals** of the
     ///   phase's own enumerations, readable only where an adapter is read
     ///   (`02-core-calculus.md` §5.9). They are compiler-owned constants whose
     ///   spelling happens to contain a dot, so nothing an adapter declares can
     ///   collide with one and ordinary source cannot reach them at all.
+    /// - `Away.tonic`, where `Away` is a module, is that module's **member**,
+    ///   which `04-templates-and-modules.md` §4 flattened into `Away.tonic` in
+    ///   the one namespace the core has. The module reading goes first because
+    ///   it is the only one that can be *wrong* about a spelling: it answers
+    ///   only where a module really decides the name, and the two readings
+    ///   below take everything else.
     /// - `x.f` is a **projection**. `10-traits.md` §6 gives `::` to namespaces,
     ///   which leaves `.` meaning one thing in an expression rather than two.
     /// - Anything else is a variable, written through for the core to resolve.
-    fn name(&self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
+    fn name(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
         let written = written_name(node)?;
         if self.in_phase
             && let Some(literal) = phase_literal(&written)
         {
             return Some(Raw::lit(origin, literal));
         }
-        match written.split_once('.') {
-            Some((record, field)) => Some(Raw::project(origin, Raw::var(origin, record), field)),
-            None => Some(Raw::var(origin, written.as_str())),
+        if let Some(reading) = self.naming.read(&written) {
+            let span = crate::resolve::trimmed_span(node);
+            if let Some((signature, ascription)) = reading.sealed_by {
+                return self.refuse(
+                    Diagnostic::error(Code::UnknownName, format!("`{written}` is private"))
+                        .at(span, "named from outside the structure that defines it")
+                        .also(ascription, format!("`{signature}` does not export it"))
+                        .help("a structure exports exactly what its signature lists; everything else is its own"),
+                );
+            }
+            self.resolver.references.speak(&reading.name, span);
+            return Some(Raw::var(origin, reading.name.as_str()));
         }
+        // Every segment after the first, and not just the second: §1.2 lets a
+        // record hold a record, so `moved.region.anchor` is two projections and
+        // reading it as one field named `region.anchor` would look for a field
+        // no declaration has. The parser already declined to say where a path
+        // stops and a projection starts — this is where the answer is, and the
+        // module reading above is the half that had to go first.
+        let mut segments = written.split('.');
+        let subject = segments.next()?;
+        if subject.len() == written.len() {
+            // Told to the index rather than resolved here: what this document
+            // declares was recorded before any body was read, and the core
+            // answers what the name means.
+            self.resolver
+                .references
+                .speak(&written, crate::resolve::trimmed_span(node));
+            return Some(Raw::var(origin, subject));
+        }
+        Some(segments.fold(Raw::var(origin, subject), |record, field| {
+            Raw::project(origin, record, field)
+        }))
     }
 
     /// `std::tonal::TokenKind::PitchLiteral` — an item in a type's namespace.
@@ -249,8 +282,8 @@ impl Lowering<'_> {
     fn literal(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
         let token = significant_tokens(node).next()?;
         Some(match token.kind() {
-            SyntaxKind::TrueKw => Raw::var(origin, "Bool.True"),
-            SyntaxKind::FalseKw => Raw::var(origin, "Bool.False"),
+            SyntaxKind::TrueKw => Raw::hosted(origin, "Bool.True"),
+            SyntaxKind::FalseKw => Raw::hosted(origin, "Bool.False"),
             SyntaxKind::Integer => whole(origin, self.whole_number(&token)?),
             SyntaxKind::Rational => plain_literal(origin, "Ratio", exact(&token)?),
             SyntaxKind::String => plain_literal(origin, "Text", musa_language::ast::unquote(token.text())),
@@ -319,7 +352,7 @@ impl Lowering<'_> {
         match self.every(node)?.as_slice() {
             [first, second] => Some(applied(
                 origin,
-                Raw::var(origin, "Pair.Both"),
+                Raw::hosted(origin, "Pair.Both"),
                 [first.clone(), second.clone()],
             )),
             written => self.wide_product(node, written.len()),
@@ -336,9 +369,9 @@ impl Lowering<'_> {
         match child(node, is_expr_node) {
             Some(held) => {
                 let held = self.value(&held)?;
-                Some(Raw::app(origin, Raw::var(origin, "Option.Some"), held))
+                Some(Raw::app(origin, Raw::hosted(origin, "Option.Some"), held))
             }
-            None => Some(Raw::var(origin, "Option.None")),
+            None => Some(Raw::hosted(origin, "Option.None")),
         }
     }
 
@@ -384,9 +417,24 @@ impl Lowering<'_> {
             ];
             return Some(applied(
                 origin,
-                Raw::var(origin, "play"),
+                Raw::hosted(origin, "play"),
                 supplied.into_iter().chain(arguments),
             ));
+        }
+        // The other call whose head is not what was written. `primitive` has no
+        // type of its own: `03-machine-calculus.md` §1 lets the *name and
+        // version* decide the step, both ports, and the type of the
+        // configuration, so what is registered is one closed signature per unit
+        // this build knows (`crate::registry::machine::primitives`) and the word
+        // is registered nowhere. Reading it here is what turns the written pair
+        // into the signature it selects — which is also the whole of the
+        // refusal, since a pair the build does not register selects nothing.
+        if arguments.len() == 3
+            && head.kind() == SyntaxKind::NameExpr
+            && written_name(&head).as_deref() == Some("primitive")
+        {
+            let unit = self.unit(node, origin)?;
+            return Some(Raw::app(origin, unit, arguments.into_iter().nth(2)?));
         }
         // A dotted head is `10-traits.md` §6's method syntax, which resolves by
         // exact receiver *in the core*. Writing it as a projection applied would
@@ -398,10 +446,45 @@ impl Lowering<'_> {
             && !(self.in_phase && phase_literal(&written).is_some())
         {
             let receiver = Raw::var(self.origin(&head), receiver);
-            return Some(applied(origin, Raw::method(origin, receiver, method), arguments));
+            return Some(Raw::call(origin, Raw::method(origin, receiver, method), arguments));
         }
         let head = self.value(&head)?;
-        Some(applied(origin, head, arguments))
+        // `Raw::call` and not `applied`, at the two sites that read an argument
+        // list an author wrote: `02-core-calculus.md` §1.3 makes a call complete,
+        // and the core can only say so where it can see the whole list. The
+        // reader's own constructions above stay applications, because an arity
+        // sentence about `play`'s four arguments would be about this reading
+        // rather than about the two the composer wrote.
+        Some(Raw::call(origin, head, arguments))
+    }
+
+    /// The registered unit `primitive("name", version, …)` selects.
+    ///
+    /// Read off the *tokens* and not off the lowered arguments, because that is
+    /// what selecting a signature means here: the name and the version are
+    /// consulted by the compiler before there is a type to check anything at,
+    /// so they have to be written out at the call and cannot be computed. A
+    /// composer who wants one chosen at compile time writes the two calls.
+    fn unit(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
+        let written = written_arguments(node);
+        let [name, version, _] = written.as_slice() else {
+            return None;
+        };
+        let span = crate::resolve::trimmed_span(node);
+        let (Some(id), Some(number)) = (text_of(name), whole_of(version)) else {
+            return self.refuse(
+                Diagnostic::error(Code::NotAValue, "a registered unit is named by a written name and version")
+                    .at(span, "expected `primitive(\"name\", version, configuration)`")
+                    .note("the name and the version decide the ports and the configuration, so this compiler reads them before it checks anything"),
+            );
+        };
+        let Some(descriptor) = crate::machine::descriptor(&id, number) else {
+            return self.refuse(unknown_unit(&id, number, span));
+        };
+        Some(Raw::var(
+            origin,
+            crate::registry::unit_spelling(descriptor.id(), descriptor.version()),
+        ))
     }
 
     /// The written arguments of an ordinary call, in order.
@@ -490,7 +573,7 @@ impl Lowering<'_> {
         let parts = children(node, is_expr_node);
         let container = self.value(parts.first()?)?;
         let index = self.value(parts.get(1)?)?;
-        Some(applied(origin, Raw::var(origin, "Index.at"), [container, index]))
+        Some(applied(origin, Raw::hosted(origin, "Index.at"), [container, index]))
     }
 
     // ---- the musical forms ----
@@ -502,16 +585,24 @@ impl Lowering<'_> {
     /// `10-traits.md` §6's exact-receiver lookup is what tells them apart. The
     /// old checker asked the type itself, which is the same question one pass
     /// earlier and in the pass that no longer decides types.
+    ///
+    /// One method and not two, because `down` is a fact about the *interval*.
+    /// `p down M2` is `p` moved by the interval that undoes an `M2`, which is
+    /// what [`crate::Interval::inverse`] answers and what
+    /// [`super::notation::Lowering::interval_of`] already writes for the same
+    /// two words inside a `music` block. A `transpose_down` beside a
+    /// `transpose_up` would be a second method every implementor had to write
+    /// and every implementor would write the same way.
     fn transposition(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
         let parts = children(node, is_expr_node);
         let pitch = self.value(parts.first()?)?;
         let interval = self.value(parts.get(1)?)?;
-        let method = if writes(node, SyntaxKind::DownKw) {
-            "transpose_down"
+        let interval = if writes(node, SyntaxKind::DownKw) {
+            Raw::app(origin, Raw::hosted(origin, "interval_inverse"), interval)
         } else {
-            "transpose_up"
+            interval
         };
-        Some(Raw::app(origin, Raw::method(origin, pitch, method), interval))
+        Some(Raw::app(origin, Raw::method(origin, pitch, "transposed"), interval))
     }
 
     /// `p step n` and `p step down n`.
@@ -879,14 +970,24 @@ impl Lowering<'_> {
     }
 
     /// `P { f = g }` — a record pattern binding the fields it names.
+    ///
+    /// A field written without an `=` is the shorthand `01-surface.md` §9.2
+    /// gives patterns and withholds from literals: `Dotted { total }` binds the
+    /// field to its own name. The grammar records it by writing no nested
+    /// pattern at all ([`musa_language::ast::FieldPattern::pattern`] answers
+    /// `None`), so the binding is made here rather than read.
     fn record_pattern(&mut self, fields: &SyntaxNode, origin: Origin) -> Option<RawPattern> {
         let mut bound = Vec::new();
         for written in children(fields, |kind| kind == SyntaxKind::FieldPattern) {
+            let at = self.origin(&written);
             let name = own_tokens(&written)
                 .find(|token| token.kind() == SyntaxKind::Identifier)
                 .map(|token| token.text().to_owned())?;
-            let held = child(&written, |kind| kind == SyntaxKind::Pattern)?;
-            bound.push((name, self.pattern(&held)?));
+            let held = match child(&written, |kind| kind == SyntaxKind::Pattern) {
+                Some(nested) => self.pattern(&nested)?,
+                None => RawPattern::bind(at, name.as_str()),
+            };
+            bound.push((name, held));
         }
         Some(RawPattern::record(
             origin,
@@ -1036,7 +1137,13 @@ fn phase_literal(written: &str) -> Option<musa_core::Literal> {
     }
 }
 
-/// The name a `NameExpr` writes: one identifier, or two joined by a dot.
+/// The name a `NameExpr` writes: one identifier, or several joined by dots.
+///
+/// As many as were written, because the parser reads as many as were written:
+/// `held.region.anchor` is one node with three identifiers, and stopping at the
+/// second would hand [`Lowering::name`] a name whose last segment is silently
+/// missing. Which of the segments is a module, which is the value, and which are
+/// projections is that reader's question — see its documentation.
 ///
 /// A transformation's word counts as an identifier here, because the parser
 /// already says so: `expr_atom` routes `transpose`, `stretch`, `retrograde`,
@@ -1060,13 +1167,55 @@ fn written_name(node: &SyntaxNode) -> Option<String> {
         )
     })?;
     let mut written = first.text().to_owned();
-    if tokens.next().is_some_and(|token| token.kind() == SyntaxKind::Dot)
-        && let Some(member) = tokens.next().filter(|token| token.kind() == SyntaxKind::Identifier)
-    {
+    while tokens.next().is_some_and(|token| token.kind() == SyntaxKind::Dot) {
+        let Some(member) = tokens.next().filter(|token| token.kind() == SyntaxKind::Identifier) else {
+            break;
+        };
         written.push('.');
         written.push_str(member.text());
     }
     Some(written)
+}
+
+/// The text a written string literal spells, if that is what this node is.
+fn text_of(node: &SyntaxNode) -> Option<String> {
+    let token = significant_tokens(node).next()?;
+    (token.kind() == SyntaxKind::String).then(|| musa_language::ast::unquote(token.text()))
+}
+
+/// The natural a written integer literal spells, if that is what this node is.
+fn whole_of(node: &SyntaxNode) -> Option<u32> {
+    let token = significant_tokens(node).next()?;
+    (token.kind() == SyntaxKind::Integer).then(|| token.text().parse().ok())?
+}
+
+/// The expression node each written argument holds, in written order.
+fn written_arguments(node: &SyntaxNode) -> Vec<SyntaxNode> {
+    let Some(list) = child(node, |kind| kind == SyntaxKind::ExprArgList) else {
+        return Vec::new();
+    };
+    children(&list, |kind| kind == SyntaxKind::ExprArg)
+        .into_iter()
+        .filter_map(|argument| child(&argument, is_expr_node))
+        .collect()
+}
+
+/// "this build registers no such unit", with what it does register.
+fn unknown_unit(id: &str, version: u32, span: SourceSpan) -> Diagnostic {
+    let versions = crate::machine::versions_of(id);
+    if versions.is_empty() {
+        return Diagnostic::error(Code::UnknownWord, format!("`{id}` is not a unit this build registers"))
+            .at(span, "unknown unit")
+            .help(crate::resolve::suggest(id, &crate::machine::registered_ids(), "units"));
+    }
+    let spelled: Vec<String> = versions.iter().map(u32::to_string).collect();
+    Diagnostic::error(
+        Code::UnknownWord,
+        format!("this build registers no version {version} of `{id}`"),
+    )
+    .at(span, "unknown version")
+    .help(format!("it registers {}", spelled.join(", ")))
+    .note("a unit's version is part of its identity: two versions are two units with two projections")
 }
 
 /// Where a token was written.

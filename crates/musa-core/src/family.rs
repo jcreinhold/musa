@@ -1037,6 +1037,25 @@ fn spine(neutral: &Neutral) -> Option<(Constant, Vec<Value>)> {
 /// that descent terminate; the meter is what makes a violated invariant a refusal
 /// rather than a hang.
 ///
+/// A hypothesis whose method never names it is **not computed**. `01-surface.md`
+/// §1.3's `match` compiles to nested recursors (§6.2), and a case tree does case
+/// analysis rather than recursion — every method it writes binds its hypothesis
+/// and ignores it. Computing one anyway makes each level of a tree cost the
+/// descent twice, once for the hypothesis and once for the branch that reads the
+/// same field, so a tree `d` levels deep costs `2^d`: `match n { 12 -> … }` at
+/// `n = 12` spent the whole 200,000-step budget on values no method read. That
+/// is Peyton Jones ch. 22's analysis with its sign reversed — not "this argument
+/// is certainly needed" but "this binder is certainly absent" — and
+/// [`crate::class::occurrences`] decides it exactly, so nothing is skipped that
+/// a body could have named.
+///
+/// The saving is in *what is built*, not in what is charged: an unread
+/// hypothesis costs no reduction steps because it is never reduced. §4's law is
+/// untouched in the direction that matters — a program that was accepted still
+/// evaluates to the same value, since the argument that changed is one no body
+/// mentions — and it moves in the only safe direction for the budget, which is
+/// that a program refused for exhaustion may now be accepted.
+///
 /// # Errors
 ///
 /// As [`apply`].
@@ -1049,10 +1068,32 @@ pub(crate) fn iota(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Value>
     for field in &reduction.fields {
         answer = apply(meter, here, answer, field.clone())?;
     }
-    for hypothesis in hypotheses(meter, &reduction)? {
+    for pending in hypotheses(meter, &reduction)? {
+        let hypothesis = match unread(&answer) {
+            Some(ignored) => ignored,
+            None => pending.force(meter, here)?,
+        };
         answer = apply(meter, here, answer, hypothesis)?;
     }
     Ok(Some(answer))
+}
+
+/// The value to hand a binder that is provably absent from the body it binds.
+///
+/// `Some` exactly when `method` is a λ whose body never names its own binder, in
+/// which case β discards whatever is pushed and the cheapest thing to push is
+/// what this returns. `Type 0` and not the field or a fresh variable: those are
+/// values a body could plausibly have wanted, so a mistake in the analysis would
+/// read as a wrong answer, while a universe standing where a proof belongs is
+/// wrong in a way the next conversion says out loud.
+fn unread(method: &Value) -> Option<Value> {
+    let Form::Lam(closure) = &method.form else {
+        return None;
+    };
+    // Depth one and level zero: at the top of a closure body the binder just
+    // pushed is the innermost, and `occurrences` counts from the outside.
+    (crate::class::occurrences(&closure.body, 1, 0) == 0)
+        .then(|| Value::new(method.origin, Form::Universe(crate::level::Level::ZERO)))
 }
 
 /// Everything ι needs once it has decided the elimination fires.
@@ -1122,13 +1163,32 @@ fn ready(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Reduction>, Core
     }))
 }
 
-/// One induction hypothesis per recursive field, in field order.
+/// An induction hypothesis assembled up to its last argument.
+///
+/// The recursor at the parameters, motives, methods, and the field's own
+/// indices — everything that builds a blocked spine and reduces nothing. The
+/// *field* is held back, because applying it is the moment the descent fires,
+/// and [`iota`] only wants that moment for a hypothesis some method reads.
+struct Pending {
+    recursor: Value,
+    field: Value,
+}
+
+impl Pending {
+    /// The hypothesis itself: one more application, and the recursion happens.
+    fn force(self, meter: &mut Meter, here: Origin) -> Result<Value, CoreError> {
+        apply(meter, here, self.recursor, self.field)
+    }
+}
+
+/// One induction hypothesis per recursive field, in field order, each stopped
+/// one argument short of firing.
 ///
 /// Which fields are recursive is read off [`Constructor::recursive`] rather than
 /// re-derived from the field types here, so that the method the hypothesis is
 /// passed to and the hypothesis itself cannot disagree about how many arguments
 /// there are: they are the same list.
-fn hypotheses(meter: &mut Meter, reduction: &Reduction) -> Result<Vec<Value>, CoreError> {
+fn hypotheses(meter: &mut Meter, reduction: &Reduction) -> Result<Vec<Pending>, CoreError> {
     let group = &reduction.group;
     let here = group.origin;
     let Some(rule) = group
@@ -1169,7 +1229,10 @@ fn hypotheses(meter: &mut Meter, reduction: &Reduction) -> Result<Vec<Value>, Co
             for argument in arguments {
                 hypothesis = apply(meter, here, hypothesis, argument)?;
             }
-            built.push(apply(meter, here, hypothesis, field.clone())?);
+            built.push(Pending {
+                recursor: hypothesis,
+                field: field.clone(),
+            });
         }
         reading = reading.push(field.clone());
     }

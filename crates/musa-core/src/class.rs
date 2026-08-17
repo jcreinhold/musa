@@ -148,6 +148,27 @@ impl Constraint {
             args,
         }
     }
+
+    /// The same demand, placed at `use_site` if it has no place of its own.
+    ///
+    /// Not every constraint is written in a source file. A host registers a
+    /// signature that *requires* one — `Storable A` on a machine's port,
+    /// `02-core-calculus.md` §1.2 — and there is no span to point at, because
+    /// the demand is part of the compiler rather than part of the program. A
+    /// refusal still has to land somewhere a reader can look, and the use that
+    /// inserted the dictionary is the only place in the program that has
+    /// anything to do with it. A constraint that *was* written keeps its own
+    /// place: a `where` clause is worth pointing at.
+    pub(crate) fn at_use(&self, use_site: Origin) -> Self {
+        if self.origin != Origin::UNKNOWN {
+            return self.clone();
+        }
+        Self {
+            origin: use_site,
+            class: Arc::clone(&self.class),
+            args: Arc::clone(&self.args),
+        }
+    }
 }
 
 /// Which of §1's two kinds a method is, and how a use site reaches it.

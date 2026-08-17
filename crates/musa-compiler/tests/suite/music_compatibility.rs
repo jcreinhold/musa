@@ -39,7 +39,7 @@ fn sounding_facts(declaration: &str, uses: &str) -> Vec<String> {
 fn motif_sugar_and_a_music_function_have_the_same_score_facts() {
     let legacy = sounding_facts("motif turn(root: Pitch) { root/4 d4/4 }", "use turn(c4); use turn(e4);");
     let general = sounding_facts(
-        "fn turn(root: Pitch) -> Music { music { root/4 d4/4 } }",
+        "fn turn(root: Pitch) -> EventTrack<WrittenTime> { music { root/4 d4/4 } }",
         "use turn(c4); use turn(e4);",
     );
     assert_eq!(legacy, general);
@@ -48,6 +48,9 @@ fn motif_sugar_and_a_music_function_have_the_same_score_facts() {
 #[test]
 fn fragment_sugar_and_a_music_binding_have_the_same_score_facts() {
     let legacy = sounding_facts("fragment answer { g4/8 a4/8 }", "use answer;");
-    let general = sounding_facts("let answer: Music = music { g4/8 a4/8 };", "use answer;");
+    let general = sounding_facts(
+        "let answer: EventTrack<WrittenTime> = music { g4/8 a4/8 };",
+        "use answer;",
+    );
     assert_eq!(legacy, general);
 }

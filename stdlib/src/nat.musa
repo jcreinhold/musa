@@ -1,0 +1,35 @@
+// Counting: the one traversal a natural number admits.
+//
+// `Nat` is in the language to be the inductive numeric type — `Zero | Succ` is
+// well founded, so a fold over it terminates by construction — and this module
+// is that fold, written in source over the constructors rather than registered
+// as a builtin. Its own module because a module here is named for the type its
+// functions are about, and this one is about `Nat` the way `list` is about
+// `List`.
+library {
+    // `combine` applied `count` times, told which application it is.
+    //
+    // The count comes first because it is the argument the recursion descends
+    // on, and §2.4's measure holds everything written before that argument
+    // fixed: an index that ascends and an answer that changes have to be
+    // written after it. The public spelling below puts them back in the order
+    // the corpus writes.
+    private fn counted<A>(count: Nat, index: Nat, carried: A, combine: Nat -> A -> A) -> A {
+        match count {
+            Zero -> carried,
+            Succ(fewer) -> counted(fewer, Succ(index), combine(index, carried), combine),
+        }
+    }
+
+    // Fold `count` upward from `seed`, applying `combine` to each index in
+    // turn: zero first, `count` minus one last, and `seed` itself when the
+    // count is zero.
+    //
+    // The index is passed rather than left implicit because the applications
+    // are not interchangeable — a sequence that rises by a step per repetition
+    // needs to know which repetition it is in, and a fold that hid the number
+    // would make every such pattern carry its own counter.
+    fn nat_fold<A>(seed: A, combine: Nat -> A -> A, count: Nat) -> A {
+        counted(count, 0, seed, combine)
+    }
+}

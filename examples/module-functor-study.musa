@@ -11,9 +11,9 @@ import std::context;
 // definition — a function is a value of arrow type, so one member form
 // covers values, functions, and music alike.
 signature CanonMaterial {
-    let subject: Music;
-    let answer: Music -> Music;
-    let canon: Music;
+    let subject: EventTrack<WrittenTime>;
+    let answer: EventTrack<WrittenTime> -> EventTrack<WrittenTime>;
+    let canon: EventTrack<WrittenTime>;
 }
 
 // The functor. It reads a tonal context through `TonalContext` and nothing
@@ -25,7 +25,7 @@ signature CanonMaterial {
 // copied and every span an editor points at is the one written here.
 template structure Canon(C: TonalContext, gap: Duration<WrittenTime>): CanonMaterial {
     // The subject steps through whatever collection the context named.
-    let subject: Music = music {
+    let subject: EventTrack<WrittenTime> = music {
         in scale C.collection {
             c5/4
             d5/4
@@ -36,25 +36,28 @@ template structure Canon(C: TonalContext, gap: Duration<WrittenTime>): CanonMate
 
     // The answer, a fifth above. Ordinary music functions: a structure exports
     // values, and a value of arrow type is a function.
-    fn answer(line: Music) -> Music { transpose(P5, line) }
+    fn answer(line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(P5, line) }
 
     // The canon itself: subject against its own answer, delayed by whatever
     // the site asked for.
-    let canon: Music = together(subject, shift(gap, answer(subject)));
+    let canon: EventTrack<WrittenTime> = together(subject, shift(gap, answer(subject)));
 
     // Private. `CanonMaterial` does not list it, so nothing outside this
     // structure may name `MajorCanon.stretto` — which is what sealing means.
-    let stretto: Music = together(subject, shift(1/2, answer(subject)));
+    let stretto: EventTrack<WrittenTime> = together(
+        subject,
+        shift(duration_of(1/2), answer(subject)),
+    );
 }
 
 // Two instances, two structures. Identity is generative and comes from the
 // *site*: making the same functor twice with equal arguments would still be
 // two declarations, and here the arguments differ as well.
-make Canon(CMajor, 1/1) as MajorCanon;
-make Canon(ANaturalMinor, 2/1) as MinorCanon;
+make Canon(CMajor, duration_of(1/1)) as MajorCanon;
+make Canon(ANaturalMinor, duration_of(2/1)) as MinorCanon;
 
 // One piece template reads a single canon.
-template piece study(material: Music, home: Key) "Canon Study" {
+template piece study(material: EventTrack<WrittenTime>, home: Key) "Canon Study" {
     meter 4/4;
     key home;
 
@@ -70,7 +73,11 @@ template piece study(material: Music, home: Key) "Canon Study" {
 // Another reads two, which is the point of exporting ordinary music values
 // rather than a structure object: what leaves a structure is a value like any
 // other, and the template that takes it never learns where it came from.
-template piece duet(major: Music, minor: Music, home: Key) "Canon Duet" {
+template piece duet(
+    major: EventTrack<WrittenTime>,
+    minor: EventTrack<WrittenTime>,
+    home: Key,
+) "Canon Duet" {
     meter 4/4;
     key home;
 

@@ -1,12 +1,11 @@
 ---
-source: crates/musa-language/tests/parser.rs
-assertion_line: 679
+source: crates/musa-language/tests/suite/parser.rs
 expression: print_errors(&doc)
 ---
 27..32: a type is spelled with a capital
-  label: this is `Music`
-  help: every type the compiler owns is spelled with a capital, so `music` is `Music`
-  fix: write `Music` -> "Music"
+  label: this is `EventTrack<WrittenTime>`
+  help: every type the compiler owns is spelled with a capital, so `music` is `EventTrack<WrittenTime>`
+  fix: write `EventTrack<WrittenTime>` -> "EventTrack<WrittenTime>"
 64..74: a type is spelled with a capital
   label: this is `NoteName`
   help: `pitchclass` is `NoteName`: a pitch class forgets spelling, and this is the type that keeps it, so C♯ and D♭ are two things here and one `Pc12`

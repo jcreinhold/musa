@@ -88,19 +88,19 @@ fn instances(snapshot: &ScoreSnapshot) -> Vec<String> {
 
 /// The bundled example, which is the shape every law here varies.
 const MADE: &str = r#"
-fn theme() -> Music { music { c4/4 d4/4 } }
+fn theme() -> EventTrack<WrittenTime> { music { c4/4 d4/4 } }
 
-template voice answer(subject: Music, transform: Music -> Music) {
+template voice answer(subject: EventTrack<WrittenTime>, transform: EventTrack<WrittenTime> -> EventTrack<WrittenTime>) {
     use transform(subject);
 }
 
-template piece study(k: Key, mode: Scale, subject: Music) "Study" {
+template piece study(k: Key, mode: Scale, subject: EventTrack<WrittenTime>) "Study" {
     meter 4/4;
     key k;
     score {
         part piano {
             voice right { in scale mode { use subject; } }
-            make answer(subject, fn (line: Music) -> Music { transpose(P8, line) }) as upper;
+            make answer(subject, fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(P8, line) }) as upper;
         }
     }
 }
@@ -203,8 +203,8 @@ fn identity_survives_an_unrelated_edit() {
 fn renaming_a_parameter_changes_nothing() {
     let renamed = MADE
         .replace(
-            "study(k: Key, mode: Scale, subject: Music)",
-            "study(tonality: Key, sc: Scale, tune: Music)",
+            "study(k: Key, mode: Scale, subject: EventTrack<WrittenTime>)",
+            "study(tonality: Key, sc: Scale, tune: EventTrack<WrittenTime>)",
         )
         .replace("key k;", "key tonality;")
         .replace("in scale mode", "in scale sc")
@@ -217,7 +217,7 @@ fn renaming_a_parameter_changes_nothing() {
 /// Two sites are two declarations, however alike their arguments are.
 #[test]
 fn distinct_sites_have_distinct_identities() {
-    let upper = "make answer(subject, fn (line: Music) -> Music { transpose(P8, line) }) as upper;";
+    let upper = "make answer(subject, fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(P8, line) }) as upper;";
     let twice = MADE.replace(
         upper,
         &format!("{upper}\n            {}", upper.replace("as upper", "as twin")),
@@ -387,7 +387,7 @@ template voice answer() {
 }
 piece "P" {
     meter 4/4;
-    let local: Music = music { c4/4 };
+    let local: EventTrack<WrittenTime> = music { c4/4 };
     score { part p { make answer() as v; } }
 }
 "#;

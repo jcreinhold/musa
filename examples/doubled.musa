@@ -2,7 +2,7 @@
 //
 // `syntax doubled { c4 }` is not ordinary Musa: the region's contents are read
 // by the fixed lexer and grouper and handed to `std::adapters::doubled`, which
-// answers with `(repeat(c4, 2), 0)` — the contents twice, and the anchor of the
+// answers with `(repeated(c4, 2), 0)` — the contents twice, and the anchor of the
 // group they were rebuilt from. Everything after that is ordinary — the
 // expression is resolved, checked, and evaluated exactly as if it had been
 // written here, which is what makes an adapter a reader rather than a second
@@ -13,6 +13,9 @@
 // it came from without the adapter ever being able to read a range.
 
 piece "Doubled" {
+    // The adapter names `repeated` in what it writes, and an adapter's output is
+    // resolved here, in this file's scope: what it calls, this file imports.
+    import std::list;
     import syntax std::adapters::doubled as doubled;
 
     let pair = syntax doubled { c4 };

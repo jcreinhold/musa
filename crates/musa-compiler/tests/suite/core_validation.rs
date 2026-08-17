@@ -25,7 +25,10 @@ fn each_static_failure_has_a_stable_diagnostic_code() {
             "fn left(x: Nat) -> Nat { right(x) } fn right(x: Nat) -> Nat { left(x) }",
             Code::DependencyCycle,
         ),
-        ("let value: Music = music { meter 3/4; c4/1 };", Code::Misplaced),
+        (
+            "let value: EventTrack<WrittenTime> = music { meter 3/4; c4/1 };",
+            Code::Misplaced,
+        ),
     ] {
         let actual = diagnostics(declarations);
         assert!(

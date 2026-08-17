@@ -443,6 +443,7 @@ fn lookup(
             return Err(Refusal::UnkeyedConstraint {
                 at,
                 class: Arc::clone(&needed.class),
+                ty: first.clone(),
             }
             .into());
         }

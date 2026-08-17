@@ -73,10 +73,10 @@ fn a_lambda_captures_the_parameter_of_the_function_that_writes_it() {
     let raised = |interval: &str| {
         format!(
             "piece \"Capture\" {{ import std::core; \
-             fn raised(by: Interval, line: Music) -> Music {{ \
-                 compose_music(fn (inner: Music) -> Music {{ transpose(by, inner) }}, retrograde, line) \
+             fn raised(by: Interval, line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {{ \
+                 compose_music(fn (inner: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {{ transpose(by, inner) }}, retrograde, line) \
              }} \
-             let subject: Music = music {{ c4/4 e4/4 }}; \
+             let subject: EventTrack<WrittenTime> = music {{ c4/4 e4/4 }}; \
              score {{ part p {{ voice v {{ use raised({interval}, subject); }} }} }} }}"
         )
     };
@@ -111,7 +111,7 @@ fn a_call_that_omits_an_argument_is_refused_by_name() {
 /// builtin is a call with a missing argument like any other.
 #[test]
 fn an_under_applied_builtin_is_refused() {
-    let reported = errors("let raise: Music -> Music = transpose(P8);");
+    let reported = errors("let raise: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = transpose(P8);");
     assert!(
         reported.iter().any(|(code, _)| *code == Code::WrongArity),
         "{reported:?}"

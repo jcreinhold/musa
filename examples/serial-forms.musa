@@ -19,18 +19,18 @@ piece "Serial Forms" {
     // The only way into `row12`, and it can fail: twelve entries, each pitch
     // class once. The failure carries its own reason, so a caller that has
     // the failure never has to ask the question again to learn why.
-    let generic: Result<Row12, (List<Nat>, List<Pc12>)> = row(generic_pcs);
+    let generic: Result<Row12, RowFault> = row(generic_pcs);
 
     // The ascending chromatic row, which is a row and is also symmetric: the
     // retrograde inversion about eleven sends it to itself.
     let chromatic_pcs: List<Pc12> = pcs([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
-    let chromatic: Result<Row12, (List<Nat>, List<Pc12>)> = row(chromatic_pcs);
+    let chromatic: Result<Row12, RowFault> = row(chromatic_pcs);
 
     // Not a row, and the `Err` says which two ways: the position that
     // repeated and the pitch class that never arrived — `[3]` and `[11]`.
     // Asked separately here, because a pattern binds the reason whole.
     let flawed_pcs: List<Pc12> = pcs([0, 1, 2, 0, 4, 5, 6, 7, 8, 9, 10, 3]);
-    let flawed: Result<Row12, (List<Nat>, List<Pc12>)> = row(flawed_pcs);
+    let flawed: Result<Row12, RowFault> = row(flawed_pcs);
     let flawed_is_row: Bool = match flawed {
         Ok(series) -> true,
         Err(reason) -> false,

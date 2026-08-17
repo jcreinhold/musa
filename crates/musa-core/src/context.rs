@@ -27,7 +27,7 @@ use crate::eval::eval;
 use crate::family::{Constant, Found, Group};
 use crate::list::List;
 use crate::origin::Origin;
-use crate::program::{Defined, Definitions};
+use crate::program::{Defined, Program};
 use crate::quote::Depth;
 use crate::term::{DbLevel, Index, Name, Term};
 use crate::value::{Env, Value};
@@ -204,9 +204,20 @@ impl Cx {
     /// Registered once by the caller and then immutable, which is what keeps a
     /// δ-rule's answer independent of when it was asked — see
     /// [`Registry`](crate::Registry).
+    ///
+    /// The registry's `Storable` instances arrive with it, for the reason
+    /// [`Self::declaring`] gives one shape over: §1.2's instances are generated
+    /// and never written, and a base type's guarantee is made where the base
+    /// type is registered. A second call replaces the first registry's
+    /// instances by key rather than clashing with them, because coherence is
+    /// decided at an `impl` and these are not one.
     #[must_use]
     pub fn with_externs(&self, externs: Arc<Registry>) -> Self {
+        let generated = crate::storable::registered(externs.bases());
         Self {
+            classes: (!generated.is_empty())
+                .then(|| Arc::new(self.classes().declaring_instances(&generated)))
+                .or_else(|| self.classes.clone()),
             externs: Some(externs),
             ..self.clone()
         }
@@ -302,24 +313,30 @@ impl Cx {
             .collect()
     }
 
-    /// This context with `definitions` in scope as global names.
+    /// This context with `program`'s definitions in scope as global names, and
+    /// its instances answering the keys they were declared for.
     ///
     /// What a caller brings a declared program into scope with, so that the
     /// next document — or the next `check` against a term the caller wrote by
     /// hand — may name what it defined. The group arrives whole because that is
     /// the unit [`declare_program`](crate::declare_program) answers: §2.4
     /// collects signatures before bodies, so no member of a group is finished
-    /// until all of them are.
+    /// until all of them are — and an instance is a member, because a
+    /// definition may name one and one may name a definition.
     #[must_use]
-    pub fn defining(&self, definitions: &Definitions) -> Self {
-        let extended = definitions
+    pub fn defining(&self, program: &Program) -> Self {
+        let extended = program
             .members()
             .iter()
             .fold(self.definitions.clone(), |scope, defined| {
                 scope.push(Arc::clone(defined))
             });
+        let instances = program.instances();
         Self {
             definitions: extended,
+            classes: (!instances.is_empty())
+                .then(|| Arc::new(self.classes().declaring_instances(instances)))
+                .or_else(|| self.classes.clone()),
             ..self.clone()
         }
     }
