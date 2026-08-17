@@ -113,7 +113,11 @@ is what a constructor *chooses*, and it is the index that unification interrogat
 **Strict positivity is checked on the declaration group**, so mutually recursive families are checked together. A
 recursive occurrence may not appear to the left of an arrow at any depth, which is the same refusal the old §5.6 made
 for the same reason: a negative occurrence admits a fixed point and a fixed point admits divergence, and this language
-may not diverge.
+may not diverge. An occurrence **nested** inside another family's positive parameter — `Body(items : List<StaffRead>)` —
+is therefore admitted, and carries **no induction hypothesis**: the generated recursor's method takes such a field and
+nothing more, because a hypothesis for it would have to be a synthesized functorial map rather than an application. A
+fold *through* a container is consequently not yet writable, since §2.4's measure sees no descent from `Body(items)` to
+an element of `items`.
 
 **The core's elimination form is the generated dependent recursor `elim_N`**, and nothing else eliminates a family.
 Surface `match` compiles through a case tree to nested recursors, which is where coverage is decided (§6.2).

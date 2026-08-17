@@ -1,7 +1,7 @@
 ---
 id: 141t
 slug: nested-occurrences
-status: pending
+status: done
 depends_on: [135, 141]
 phase: 3
 ---

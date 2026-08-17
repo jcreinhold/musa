@@ -140,6 +140,13 @@ pub struct Constructor {
     /// Computed once by the positivity check rather than recovered at every
     /// reduction: ι needs exactly this list to know which arguments take an
     /// induction hypothesis.
+    ///
+    /// **Direct occurrences only.** A field that merely *contains* the family —
+    /// `items : List StaffRead` — is an ordinary field and appears nowhere here,
+    /// so the generated method takes it and no hypothesis. §1.1 promises the
+    /// recursor exists and does not promise a hypothesis per field, and giving
+    /// none is what keeps this module's standing invariant exactly: a hypothesis
+    /// stays an application rather than a synthesized closure.
     pub(crate) recursive: Arc<[(u32, u32)]>,
     /// The index arguments its result chooses, read under the declaration
     /// context, the parameters, and its own fields.
@@ -216,6 +223,17 @@ pub struct Group {
     pub(crate) origin: Origin,
     /// The parameters, read under the declaration context.
     pub(crate) params: Arc<[Binder]>,
+    /// Whether each parameter occurs only strictly positively in the fields this
+    /// group stores, in parameter order.
+    ///
+    /// Read by a *later* declaration's positivity check, which is the whole
+    /// reason it is stored: `data StaffRead { Body(items: List<StaffRead>) }` is
+    /// admitted exactly when `List` is positive in its element, and that is a
+    /// question about `List`'s declaration rather than about this field. Answered
+    /// once, where the constructors are in hand, for
+    /// [`Constructor::recursive`]'s reason — a check and its readers that
+    /// re-derive the same fact can disagree about it.
+    pub(crate) positive: Arc<[bool]>,
     /// The families, in declaration order.
     pub(crate) families: Arc<[Declared]>,
     /// The module the declaration was written in, when the declaring context
@@ -517,6 +535,16 @@ impl Group {
     /// How many parameters they share.
     pub(crate) fn params(&self) -> u32 {
         u32::try_from(self.params.len()).unwrap_or(u32::MAX)
+    }
+
+    /// Whether a later declaration may put itself at parameter `which`.
+    ///
+    /// [`Self::positive`], read defensively: a position past the parameters is
+    /// an *index*, and an index is not a place a family may hold itself — what
+    /// a constructor chooses there is data the type is indexed by, and a
+    /// recursive occurrence in one is inductive-induction rather than nesting.
+    pub(crate) fn positive_at(&self, which: usize) -> bool {
+        self.positive.get(which).copied().unwrap_or(false)
     }
 
     /// How many methods a recursor over this group takes: one per constructor of

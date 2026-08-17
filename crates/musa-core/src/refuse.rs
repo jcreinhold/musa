@@ -304,7 +304,17 @@ pub enum Refusal {
     /// The occurrence is named rather than the constructor alone, because the
     /// edit an author makes is at the occurrence: the field is usually right and
     /// one argument of it is wrong.
-    #[error("`{family}` occurs in `{constructor}` where a recursive occurrence is not allowed")]
+    ///
+    /// The sentence states what *is* admitted before naming the fault, because
+    /// there are several faults and one rule: an occurrence to the left of an
+    /// arrow, at an index, at a parameter another family is not positive in, or
+    /// inside a record field are four ways to fail the one sentence the message
+    /// says. The arrow is named last because it is much the commonest, and it is
+    /// named rather than left implied because "not allowed" alone was true of
+    /// two rules until a nested occurrence became legal.
+    #[error(
+        "`{family}` occurs in `{constructor}` where a recursive occurrence is not allowed: it may be the field itself, or stand at a parameter of a family that is positive in it — never to the left of an arrow"
+    )]
     NonPositive {
         /// The offending occurrence.
         at: Origin,

@@ -110,9 +110,17 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<Arc<Group>, ElabError> 
     }
 
     elaborator.settled()?;
+    // Answered here, after the constructors and before anything can read them:
+    // a later declaration asks this group whether it may put itself at one of
+    // these parameters, and the fields that decide it are all in hand exactly
+    // once.
+    let positive: Vec<bool> = (0..u32::try_from(params.len()).unwrap_or(u32::MAX))
+        .map(|which| parameter_is_positive(&families, arity, under_params.depth(), which))
+        .collect();
     Ok(Arc::new(Group {
         origin: here,
         params: Arc::from(params),
+        positive: Arc::from(positive),
         families: Arc::from(families),
         module: cx.module(),
         package: cx.package(),
@@ -179,7 +187,7 @@ fn telescope(
         // signature the first pass stands the families at: a parameter whose type
         // is the family being declared has no meaning, and the first pass is
         // exactly where it would look like it did.
-        if let Some(at) = mentions(&ty, arity, inner.depth(), 0) {
+        if let Some(at) = mentions(&ty, Watched::families(arity), inner.depth(), 0) {
             return Err(Refusal::NonPositive {
                 at,
                 family: Arc::clone(&binder.name),
@@ -428,32 +436,193 @@ fn chosen_indices(
 ///
 /// Three answers rather than two, because "mentions the declaration" is not the
 /// question — *where* it mentions it is. A field that is `N p⃗ i⃗` is the recursive
-/// field the recursor gives an induction hypothesis for; a field that mentions
+/// field the recursor gives an induction hypothesis for; a field that only
+/// *contains* `N`, at a positive parameter of some other family, is an ordinary
+/// field whose type happens to mention the declaration; and a field that mentions
 /// `N` anywhere else is refused.
 ///
-/// Refused includes two things §1.1 itself permits, and both are argued in
-/// [`crate::family`]'s module doc: an occurrence to the right of an arrow
-/// (`(Nat → W) → W`), and an occurrence nested inside another family's argument
-/// (`List (Rose A)`). The second is written as a mutual declaration instead,
-/// which this module already supports.
+/// The middle answer is why `Ok(None)` is not the same as "does not mention".
+/// `Body(items : List StaffRead)` stores a list, and the list is a field like any
+/// other: `case.rs` binds it at `List StaffRead`, and the recursor hands the
+/// method no induction hypothesis for it. §1.1 promises the recursor exists and
+/// does not promise a hypothesis per field, and giving none is what keeps
+/// [`crate::family`]'s standing invariant exactly — an induction hypothesis is an
+/// application rather than a synthesized closure, so ι never builds syntax.
+/// A fold that recurses *into* such a field therefore cannot be written yet: the
+/// only route is mutual recursion through `List`'s own eliminator, and §2.4's
+/// measure has no reason to believe an element of `items` is smaller than
+/// `Body(items)`.
+///
+/// Refused still includes one thing §1.1 permits, argued in [`crate::family`]'s
+/// module doc: an occurrence anywhere inside an arrow (`(Nat → W) → W`), which
+/// would be a recursive field whose hypothesis is a function.
 type Occurrence = Result<Option<u32>, Origin>;
 
 fn occurrence(ty: &Term, arity: u32, depth: u32) -> Occurrence {
+    let watched = Watched::families(arity);
     let (head, arguments) = spine(ty);
     if let Shape::Var(index) = head.shape()
         && let Some(family) = declared_by(arity, depth, *index)
     {
+        // The arguments of a *direct* occurrence stay closed to the declaration.
+        // `Tree (List Tree)` is non-uniform recursion, whose recursor is not the
+        // one this module generates, and admitting it here would produce methods
+        // at a type no ι rule can fire against.
         for argument in &arguments {
-            if let Some(at) = mentions(argument, arity, depth, 0) {
+            if let Some(at) = mentions(argument, watched, depth, 0) {
                 return Err(at);
             }
         }
         return Ok(Some(family));
     }
-    match mentions(ty, arity, depth, 0) {
-        Some(at) => Err(at),
-        None => Ok(None),
+    stored_positively(ty, watched, depth).map(|()| None)
+}
+
+/// Where a field type that is not a direct occurrence mentions the declaration
+/// outside a strictly positive position.
+///
+/// Descends only through an applied family's *parameters*, and only through the
+/// ones that family declared positive, bottoming out on the occurrence itself:
+/// `List StaffRead` is admitted because
+/// [`Group::positive_at`] says `List` is positive in its element, and
+/// `Cont StaffRead` — a family with a field `A → Nat` — is refused because it
+/// says the opposite. An argument past the parameters is an index, which
+/// [`Group::positive_at`] answers `false` for; see its doc.
+///
+/// No arm for [`Shape::Pi`]: a mention inside an arrow, on either side, is
+/// refused by the fall-through, which is what [`crate::family`]'s "recursive
+/// fields are direct" narrowing *is*. That narrowing is deliberately kept, so
+/// this walk widens exactly one rule rather than two.
+fn stored_positively(ty: &Term, watched: Watched, depth: u32) -> Result<(), Origin> {
+    let (head, arguments) = spine(ty);
+    // The occurrence itself, reached by descending into a positive parameter.
+    // This is the arm that admits `List StaffRead`: the descent bottoms out on
+    // the bare `StaffRead`, and refusing it here would refuse the very shape the
+    // parameter was found positive for. Its own arguments stay closed to the
+    // declaration for [`occurrence`]'s reason one branch up.
+    if let Shape::Var(index) = head.shape()
+        && watched.holds(depth, *index)
+    {
+        for argument in &arguments {
+            if let Some(at) = mentions(argument, watched, depth, 0) {
+                return Err(at);
+            }
+        }
+        return Ok(());
     }
+    if let Shape::Const(constant) = head.shape()
+        && matches!(constant.role, crate::family::Role::Family)
+    {
+        for (position, argument) in arguments.iter().enumerate() {
+            let Some(at) = mentions(argument, watched, depth, 0) else {
+                continue;
+            };
+            if !constant.group.positive_at(position) {
+                return Err(at);
+            }
+            stored_positively(argument, watched, depth)?;
+        }
+        return Ok(());
+    }
+    match mentions(ty, watched, depth, 0) {
+        Some(at) => Err(at),
+        None => Ok(()),
+    }
+}
+
+/// Which de Bruijn levels a walk is looking for.
+///
+/// One type rather than two `u32` parameters everywhere, because the two
+/// questions this module asks — *does this field mention the declaration* and
+/// *does this field mention one parameter* — are the same walk over a different
+/// set, and spelling the set once is what lets [`mentions`] serve both.
+#[derive(Clone, Copy)]
+struct Watched {
+    start: u32,
+    end: u32,
+}
+
+impl Watched {
+    /// The declaration's families: the outermost `arity` binders.
+    const fn families(arity: u32) -> Self {
+        Self { start: 0, end: arity }
+    }
+
+    /// One parameter, which stands just inside them.
+    const fn parameter(arity: u32, which: u32) -> Self {
+        let level = arity.saturating_add(which);
+        Self {
+            start: level,
+            end: level.saturating_add(1),
+        }
+    }
+
+    /// Whether `index`, read at `depth`, is one of them.
+    fn holds(self, depth: u32, index: Index) -> bool {
+        depth
+            .checked_sub(1)
+            .and_then(|last| last.checked_sub(index.0))
+            .is_some_and(|level| level >= self.start && level < self.end)
+    }
+}
+
+/// Whether parameter `which` occurs only strictly positively in what this group
+/// stores.
+///
+/// Answered here so that a *later* declaration can put itself at that parameter
+/// — see [`Group::positive`]. Every constructor field of every family is walked,
+/// each at the depth its own binder stands at, which is the depth
+/// [`constructors`] hands [`occurrence`].
+fn parameter_is_positive(families: &[Declared], arity: u32, under_params: u32, which: u32) -> bool {
+    let watched = Watched::parameter(arity, which);
+    families.iter().all(|declared| {
+        declared.constructors.iter().all(|case| {
+            case.fields.iter().enumerate().all(|(position, field)| {
+                let depth = under_params.saturating_add(u32::try_from(position).unwrap_or(u32::MAX));
+                positive_in(&field.ty, watched, arity, depth, 0)
+            })
+        })
+    })
+}
+
+/// Whether every occurrence of `watched` in `ty` is strictly positive.
+///
+/// The textbook walk, and it differs from [`stored_positively`] in the two
+/// places the two questions differ. It descends into an arrow's *codomain*,
+/// because a parameter to the right of an arrow is positive even though a
+/// recursive occurrence there is refused for a reason that is not positivity.
+/// And it passes straight through a family of *this* group, applied to anything:
+/// `Cons : A → List A → List A` carries `A` through the very declaration whose
+/// polarity is being decided, so the alternative to assuming it positive is not
+/// answering at all. That optimism is the fixed point, and it is the same one
+/// [`crate::storable`] takes for the same reason one section over.
+fn positive_in(ty: &Term, watched: Watched, arity: u32, depth: u32, bound: u32) -> bool {
+    let own = Watched::families(arity);
+    let here = depth.saturating_add(bound);
+    let (head, arguments) = spine(ty);
+    // The parameter itself, or a family of this group carrying it. One arm for
+    // both: what each does with its arguments is the same walk, and the second
+    // is the optimism the doc argues for.
+    if let Shape::Var(index) = head.shape()
+        && (watched.holds(here, *index) || own.holds(here, *index))
+    {
+        return arguments
+            .iter()
+            .all(|argument| positive_in(argument, watched, arity, depth, bound));
+    }
+    if let Shape::Const(constant) = head.shape()
+        && matches!(constant.role, crate::family::Role::Family)
+    {
+        return arguments.iter().enumerate().all(|(position, argument)| {
+            mentions(argument, watched, depth, bound).is_none()
+                || (constant.group.positive_at(position) && positive_in(argument, watched, arity, depth, bound))
+        });
+    }
+    if let Shape::Pi { domain, codomain, .. } = head.shape() {
+        return mentions(domain, watched, depth, bound).is_none()
+            && positive_in(codomain, watched, arity, depth, bound.saturating_add(1));
+    }
+    mentions(ty, watched, depth, bound).is_none()
 }
 
 /// The head of an application spine, and what is applied to it.
@@ -485,11 +654,11 @@ fn declared_by(arity: u32, depth: u32, index: Index) -> Option<u32> {
 ///
 /// `bound` counts the binders entered inside `term`, so that a variable local to
 /// it is never mistaken for one of the declaration's.
-fn mentions(term: &Term, arity: u32, depth: u32, bound: u32) -> Option<Origin> {
+fn mentions(term: &Term, watched: Watched, depth: u32, bound: u32) -> Option<Origin> {
     let here = term.origin();
     let under = bound.saturating_add(1);
     match term.shape() {
-        Shape::Var(index) => declared_by(arity, depth.saturating_add(bound), *index).map(|_| here),
+        Shape::Var(index) => watched.holds(depth.saturating_add(bound), *index).then_some(here),
         Shape::Const(_)
         | Shape::Def(_)
         | Shape::Base(_)
@@ -499,24 +668,24 @@ fn mentions(term: &Term, arity: u32, depth: u32, bound: u32) -> Option<Origin> {
         | Shape::Universe(_)
         | Shape::Meta(_) => None,
         Shape::Pi { domain, codomain, .. } => {
-            mentions(domain, arity, depth, bound).or_else(|| mentions(codomain, arity, depth, under))
+            mentions(domain, watched, depth, bound).or_else(|| mentions(codomain, watched, depth, under))
         }
-        Shape::Lam { body, .. } => mentions(body, arity, depth, under),
+        Shape::Lam { body, .. } => mentions(body, watched, depth, under),
         Shape::App { function, argument } => {
-            mentions(function, arity, depth, bound).or_else(|| mentions(argument, arity, depth, bound))
+            mentions(function, watched, depth, bound).or_else(|| mentions(argument, watched, depth, bound))
         }
         Shape::RecordType(fields) => fields.iter().enumerate().find_map(|(position, field)| {
             let inside = bound.saturating_add(u32::try_from(position).unwrap_or(u32::MAX));
-            mentions(&field.term, arity, depth, inside)
+            mentions(&field.term, watched, depth, inside)
         }),
         Shape::Record(fields) => fields
             .iter()
-            .find_map(|field| mentions(&field.term, arity, depth, bound)),
-        Shape::Project { record, .. } => mentions(record, arity, depth, bound),
+            .find_map(|field| mentions(&field.term, watched, depth, bound)),
+        Shape::Project { record, .. } => mentions(record, watched, depth, bound),
         Shape::Id { ty, left, right } => [ty, left, right]
             .into_iter()
-            .find_map(|part| mentions(part, arity, depth, bound)),
-        Shape::Refl(value) => mentions(value, arity, depth, bound),
+            .find_map(|part| mentions(part, watched, depth, bound)),
+        Shape::Refl(value) => mentions(value, watched, depth, bound),
         Shape::J {
             ty,
             from,
@@ -526,9 +695,9 @@ fn mentions(term: &Term, arity: u32, depth: u32, bound: u32) -> Option<Origin> {
             proof,
         } => [ty, from, motive, base, to, proof]
             .into_iter()
-            .find_map(|part| mentions(part, arity, depth, bound)),
-        Shape::Let { ty, value, body, .. } => mentions(ty, arity, depth, bound)
-            .or_else(|| mentions(value, arity, depth, bound))
-            .or_else(|| mentions(body, arity, depth, under)),
+            .find_map(|part| mentions(part, watched, depth, bound)),
+        Shape::Let { ty, value, body, .. } => mentions(ty, watched, depth, bound)
+            .or_else(|| mentions(value, watched, depth, bound))
+            .or_else(|| mentions(body, watched, depth, under)),
     }
 }
