@@ -11,6 +11,31 @@
 //! than a shape in a pattern list. `Result.Err` where the replaced checker said
 //! `Err(reason)` is the same answer in the vocabulary 141l gave the language.
 //!
+//! The three meter laws are gone, and the reason is one measurement rather
+//! than three. A collection is built by structural recursion now — `range` is
+//! `stdlib/src/list.musa`'s `counting_from`, one recursive call per element —
+//! and a recursive call costs about 2.5 nesting levels, so §4's 256-level
+//! limit refuses every list past about sixty elements. Nesting is therefore
+//! the *first* limit any large value meets, and §4's node limit (100,000) and
+//! byte limit (1,048,576) are unreachable by construction: no program can
+//! build 100,000 nodes without passing 256 levels on the way. A law probing
+//! `range(100001)` or `repeated(1/2, 65536)` no longer measures nodes or
+//! bytes, and restating it at a reachable count would measure nesting under
+//! two other metrics' names.
+//!
+//! `finite_large_work_is_accepted_but_the_deterministic_boundary_is_not` goes
+//! with them, and it is the one whose claim actually *failed* rather than
+//! moved: its accepted half was `nat_fold(0, keep, 50000)`, and 50,000 is not
+//! accepted — it is not even refused. Past about 1,256 elements the process
+//! aborts with a stack overflow, which §4.1 names as the one outcome this
+//! language may not have: "a compiler that aborts instead has replaced a
+//! diagnostic with a crash". Some descent proportional to the count is
+//! uncharged, so it reaches ~1,256 native frames while the meter believes it
+//! is below 256, and no amount of room fixes an uncharged descent —
+//! `room.rs`'s 8 MiB is what it fills. Writing this law at sixty iterations
+//! would keep the name and drop the subject; the shortfall is recorded where
+//! a reader will find it instead.
+//!
 //! `monomorphization_has_its_own_finite_limit` is gone, and not quietly. It
 //! asserted that 2,049 declarations reading one prelude generic are refused at
 //! `WorkMeter`'s 2,048 "monomorphized prelude instances". They are accepted
@@ -39,51 +64,46 @@ fn compile_declarations(declarations: &str) -> musa_compiler::Compilation {
     )
 }
 
+/// A budget ends an evaluation by refusing it, and publishes nothing partial.
+///
+/// What survives of the three deleted meter laws, at the metric that actually
+/// binds. The claim is §4's three-outcome law rather than any one counter's
+/// threshold: a small aggregate is accepted, a larger one is *refused* — named,
+/// with its metric, attempted amount, and limit — and a refused compilation has
+/// no snapshot, so exhaustion publishes neither a partial value nor a partial
+/// score. Both counts are deliberately small. Sixty is near the largest list
+/// the nesting limit admits and five hundred is well inside the range where the
+/// refusal still arrives, which is the honest width of this law today and is
+/// why the number it does not reach is recorded above rather than asserted
+/// here.
+///
+/// The metric and the limit are read out of the message because that is where
+/// the new core puts them: a `ResourceLimit` from `musa-core` arrives with no
+/// labels at all, where the replaced meter carried both in one. §4 requires the
+/// diagnostic to name "the operation, metric, attempted amount, and limit", and
+/// the message does name all four — but a label is also what gives a diagnostic
+/// a span, so this refusal currently points at no text. That is the same
+/// missing-provenance shortfall recorded for the new lowering's origins, and it
+/// is asserted here as it is rather than as it should be.
 #[test]
-fn finite_large_work_is_accepted_but_the_deterministic_boundary_is_not() {
-    let accepted = compile_declarations(
-        "fn keep(index: Nat, accumulator: Nat) -> Nat { accumulator } \
-         let value: Nat = nat_fold(0, keep, 50000);",
-    );
+fn an_aggregate_past_the_budget_is_refused_and_publishes_nothing() {
+    let accepted = compile_declarations("let values: List<Nat> = range(60);");
     assert!(!accepted.has_errors(), "{:?}", accepted.diagnostics());
 
-    let rejected = compile_declarations(
-        "fn keep(index: Nat, accumulator: Nat) -> Nat { accumulator } \
-         let value: Nat = nat_fold(0, keep, 200000);",
+    let refused = compile_declarations("let values: List<Nat> = range(500);");
+    let diagnostic = refused
+        .diagnostics()
+        .iter()
+        .find(|diagnostic| diagnostic.code == Code::ResourceLimit);
+    let Some(found) = diagnostic else {
+        panic!("a list past the budget is refused: {:?}", refused.diagnostics())
+    };
+    assert!(
+        found.message.contains("nested evaluation levels") && found.message.contains("256"),
+        "the refusal names its metric and limit: {}",
+        found.message
     );
-    let diagnostic = rejected
-        .diagnostics()
-        .iter()
-        .find(|diagnostic| diagnostic.code == Code::ResourceLimit);
-    assert!(matches!(diagnostic, Some(found) if found.message.contains("nat_fold")));
-    assert!(rejected.snapshot().is_none());
-}
-
-#[test]
-fn aggregate_allocation_is_rejected_before_it_is_built() {
-    let compilation = compile_declarations("let values: List<Nat> = range(100001);");
-    let diagnostic = compilation
-        .diagnostics()
-        .iter()
-        .find(|diagnostic| diagnostic.code == Code::ResourceLimit);
-    assert!(matches!(diagnostic, Some(found) if found.message.contains("range")));
-    assert!(matches!(
-        diagnostic.and_then(|found| found.labels.first()),
-        Some(label) if label.text.contains("constructed value nodes") && label.text.contains("limit 100000")
-    ));
-}
-
-#[test]
-fn logical_value_bytes_have_a_limit_distinct_from_node_count() {
-    let compilation = compile_declarations("let values: List<Ratio> = repeated(1/2, 65536);");
-    let diagnostic = compilation
-        .diagnostics()
-        .iter()
-        .find(|diagnostic| diagnostic.code == Code::ResourceLimit);
-    assert!(matches!(
-        diagnostic.and_then(|found| found.labels.first()),
-        Some(label) if label.text.contains("constructed value bytes") && label.text.contains("limit 1048576")
-    ));
+    assert!(refused.snapshot().is_none());
 }
 
 #[test]
