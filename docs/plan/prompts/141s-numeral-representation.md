@@ -1,7 +1,7 @@
 ---
 id: 141s
 slug: numeral-representation
-status: pending
+status: in-progress
 depends_on: [135, 141b]
 phase: 3
 ---
@@ -38,6 +38,11 @@ adding a language feature under a migration diff, which is why it is a prompt of
 - Peyton Jones ch. 4 §4.1–§4.3 — a structured type's *representation* is a separate question from its constructors, and
   `case` is what has to agree with the representation. That separation is the whole of this prompt. Ch. 10 §10.1 makes
   the same point one level down: a program's representation is chosen for the evaluator that walks it.
+- Lean 4's kernel, `~/Code/lean4/src/kernel/` — the same design in a shipped dependently typed kernel, read *after* the
+  design above rather than as its source, and cited because a decision two systems reach independently is checkable in a
+  way an assertion is not. `type_checker.cpp`'s `reduce_nat` is the collapse; `inductive.h`'s major-premise handling is
+  the one-level unfold; `is_def_eq_offset` is conversion without a walk. `inductive.cpp`'s `nat_lit_to_constructor` is
+  the exact shape of ι here: a literal major premise becomes `Nat.zero` or `Nat.succ (lit (v-1))`, one node.
 
 ## Design
 
@@ -95,8 +100,44 @@ over a large numeral, and should — `nat_fold(0, keep, 50000)` is fifty thousan
 the correct answer. What changes is that it *refuses* rather than aborting. Prompt 7's budget-independence law must
 still hold: the numeral's cost is charged the same way under every configuration.
 
-A count that would exceed `u64` refuses as a resource limit rather than saturating. Silence there would be a wrong
-answer, and no budget admits a number that large anyway.
+A count that would exceed `u64` must not saturate, and does not need a refusal either: the step constructor stays an
+ordinary blocked spine, which is a representation the core already has and already means the right thing. That is rule 5
+of `module-design` — a normal result covers the edge case, so no error path is added for it — and the case is
+unreachable regardless, since climbing there costs 2⁶⁴ steps and the step budget answers first.
+
+### A numeral crosses the δ boundary as a number
+
+`Datum` gains a `Count { family, count }` arm, and the readback answers it. The alternative — read a numeral back as the
+`count` nested [`Datum::Case`](../../../crates/musa-core/src/base.rs)s it denotes — is the same mistake one layer out
+and it is worse there than in the term. Worse because a `Datum` tower costs a node per unit *and* recurses on the host
+stack when it is **dropped**, so a host asking for a large `Nat` as data would abort where the term never could; and
+because [`rules::nat`](../../../crates/musa-compiler/src/registry/rules.rs) exists only to count that tower back down to
+the `u64` the core already had. `AGENTS.md`'s "hand a consumer what we already computed" names exactly this. Note that
+before this prompt the tree was capped: `canonical` charges §4.1's nesting metric per level, so the deepest readable
+`Datum` was 256 — a numeral that bypassed that charge would be a hole in the budget rather than a feature.
+
+Lean has no analogue because it has no such boundary: its kernel literal *is* the host datum. Musa's δ-rules read
+[`Datum`](../../../crates/musa-core/src/base.rs) and never a value, which is roadmap §15.12's privacy boundary, so the
+count has to cross it as a count.
+
+### Where Lean 4 agrees, and where this deliberately does not
+
+Three of the four decisions above are Lean's as well, which is worth writing down because the argument for each is then
+not merely internal. Lean's `Nat` stays `inductive Nat where zero | succ`, with `Expr.lit (Literal.natVal n)` as a
+*representation*; `reduce_nat` collapses `Nat.succ e` at a literal `e` into the literal one higher; the recursor unfolds
+a literal major premise exactly one level. Four differences remain, and each is a decision rather than an omission:
+
+1. **One canonical form, not two.** Lean lets `Nat.zero` and `lit 0` both be normal forms and reconciles them at every
+   comparison site. A syntactic kernel can afford that; NbE cannot, because a value with two shapes makes conversion ask
+   the question twice, and prompt 148's canonicity obligation wants one normal form per value.
+2. **Derived, not hard-wired.** Lean names `Nat.zero`, `Nat.succ`, and fourteen arithmetic operations as kernel globals.
+   `musa-core` names no family at all; the counting property is read off the declaration's shape, for the reason the
+   section above gives.
+3. **`u64`, not a bignum.** Lean's literal is arbitrary precision. Overflow here falls back to a blocked spine, and the
+   step budget answers long before 2⁶⁴ steps could be climbed.
+4. **No arithmetic in the core.** Lean's kernel accelerates `add`/`mul`/`div`/`mod`/`beq`/`ble` and eight more, because
+   the alternative for a proof kernel is unary arithmetic. Musa's arithmetic is a registered δ-rule in the *compiler*
+   (prompt 143), so the core keeps no privileged type. Cite Lean there when 143 weighs the same tradeoff.
 
 ### The raw layer names the family
 
@@ -125,12 +166,19 @@ moves. That obligation is a law here, not an assertion — see **Target**.
 - `Raw::numeral`, and `Refusal::NotANumeralFamily { name, reason }` with its `musa explain` code and negative program.
 - `show` prints `384`.
 - `lower.rs::whole` builds one node, and its doc comment stops claiming the numbers are small.
-- **The conservativity law**: for a spread of counts including 0, 1, and numbers past the old nesting limit, the numeral
-  and the hand-built tower are convertible, and a `match` on each computes the same answer.
+- `Datum::Count`, answered by the readback and realized back to a numeral against the type the signature declares;
+  `rules::nat` reads one arm and walks nothing.
+- **The conservativity law**: for every count the tower can still be written at — 0, 1, and counts up to the nesting
+  limit — the numeral and the hand-built tower are convertible, and a `match` on each computes the same answer. Past
+  that limit the law is stated the other way round, because it is the finding: the tower **exhausts** where the numeral
+  answers. A tower of depth `n` costs `n` evaluator frames and §4.1's limit is 256, which no budget this crate exposes
+  can raise — so "the numeral agrees with the tower at 5,000" is not a sentence about two terms, it is a sentence about
+  one term and a term the calculus cannot evaluate. Stating it as agreement would require a knob added for a test.
 - **The cost law**: elaborating and evaluating a numeral of count `n` charges a nesting depth independent of `n`, stated
   as a test over at least two counts three orders of magnitude apart.
 - **The no-deep-tree law**: constructing and dropping a numeral of count 50,000 neither overflows the stack nor builds a
-  term whose depth grows with the count.
+  term whose depth grows with the count — and neither does reading it back as data, which is the same claim at the δ
+  boundary and the one a `Datum` tower would have broken.
 - `02-core-calculus.md`'s new subsection, and the `docs/plan/code-map/` rows for the changed files.
 
 ## Check
