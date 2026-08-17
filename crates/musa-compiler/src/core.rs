@@ -13918,7 +13918,7 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(
             entries.len(),
-            119,
+            121,
             "new compiler operations must enter the ownership registry"
         );
         let unique = entries.iter().map(|(spelling, _)| *spelling).collect::<IndexSet<_>>();
@@ -14225,7 +14225,7 @@ mod tests {
         );
         assert_eq!(
             delta + eliminator + track + machine,
-            119,
+            121,
             "a new compiler operation must be classified before it is admitted"
         );
     }
