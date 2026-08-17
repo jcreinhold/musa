@@ -379,9 +379,11 @@ impl Cx {
     /// [`CoreError::Exhausted`] or [`CoreError::Malformed`] from evaluating
     /// `ty`, which is read in *this* context and so must be closed under it.
     pub fn assume(&self, binder: Origin, ty: &Term) -> Result<Self, CoreError> {
-        let mut meter = Meter::new(self.budget);
-        let ty = Arc::new(eval(&mut meter, &self.env, ty)?);
-        Ok(self.assumed(binder, ty))
+        crate::room::with_room(|| {
+            let mut meter = Meter::new(self.budget);
+            let ty = Arc::new(eval(&mut meter, &self.env, ty)?);
+            Ok(self.assumed(binder, ty))
+        })
     }
 
     /// This context extended by a definition of `value` at type `ty`.
@@ -394,14 +396,16 @@ impl Cx {
     ///
     /// As [`Self::assume`], for either term.
     pub fn define(&self, ty: &Term, value: &Term) -> Result<Self, CoreError> {
-        let mut meter = Meter::new(self.budget);
-        // Nothing in this crate checks that `value` inhabits `ty` — the
-        // elaborator does — but a type that cannot be evaluated is a defect
-        // worth reporting where it was written rather than at the first
-        // conversion that trips over it.
-        let ty = Arc::new(eval(&mut meter, &self.env, ty)?);
-        let value = eval(&mut meter, &self.env, value)?;
-        Ok(self.defined(ty, value))
+        crate::room::with_room(|| {
+            let mut meter = Meter::new(self.budget);
+            // Nothing in this crate checks that `value` inhabits `ty` — the
+            // elaborator does — but a type that cannot be evaluated is a defect
+            // worth reporting where it was written rather than at the first
+            // conversion that trips over it.
+            let ty = Arc::new(eval(&mut meter, &self.env, ty)?);
+            let value = eval(&mut meter, &self.env, value)?;
+            Ok(self.defined(ty, value))
+        })
     }
 
     /// How many binders are in scope.

@@ -68,9 +68,11 @@ use crate::value::{Closure, Env, Form, Telescope, Value};
 /// limit, and [`ElabError::Malformed`] when the term is not one this crate could
 /// have produced — a leftover metavariable among them.
 pub fn well_typed(cx: &Cx, ty: &Term, term: &Term) -> Result<(), ElabError> {
-    let mut meter = cx.meter();
-    let ty = eval(&mut meter, cx.env(), ty)?;
-    Checker { meter: &mut meter }.check(cx, term, &ty)
+    crate::room::with_room(|| {
+        let mut meter = cx.meter();
+        let ty = eval(&mut meter, cx.env(), ty)?;
+        Checker { meter: &mut meter }.check(cx, term, &ty)
+    })
 }
 
 /// The universe a type inhabits, from the core rules alone.

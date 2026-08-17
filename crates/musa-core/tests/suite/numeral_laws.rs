@@ -160,13 +160,16 @@ fn a_numeral_and_the_tower_it_stands_for_are_one_program() {
 
 /// `Nat` under a budget divided by sixteen, which leaves sixteen nesting levels.
 ///
-/// The narrow budget is what lets the next two laws be stated at all. §4.1's
-/// nesting limit is 256 and [`Budget::scaled`] only divides, so at the full
-/// budget a tower deep enough to reach the limit cannot be *elaborated* first:
-/// the host stack gives out around 215 levels in a debug build and the process
-/// aborts, which is not a refusal and not something a test can assert. Dividing
-/// the budget moves the limit below that cliff, so the exhaustion the calculus
-/// owes is the one that actually happens.
+/// Sixteen levels rather than 256 so that the law below can put a count of five
+/// thousand and a count of five under the *same* narrow limit: three orders of
+/// magnitude apart and both fitting, which is a sharper way of saying that no
+/// per-unit nesting is charged than 256 levels would be.
+///
+/// It used to be here for a worse reason — at the full budget a tower deep
+/// enough to reach 256 aborted the process around 215 levels, so the narrow
+/// budget was dodging a crash rather than making a point. `musa-core`'s `room`
+/// module discharges §4.1's second half now, and the tower law that used to
+/// share this context is stated at the language budget again.
 ///
 /// # Panics
 ///
@@ -179,22 +182,29 @@ fn narrow_nat_context() -> Cx {
 
 /// The finding this representation exists for, as a law.
 ///
-/// Past the nesting limit in force the tower is not a term the calculus can
-/// evaluate: `eval` charges one level per level of the term, so a tower of depth
-/// `n` costs `n` levels and a count is not a small number. The pair here is not
-/// two terms to compare — it is one term and one exhaustion, and the exhaustion
-/// is what `repeat 384` used to be.
+/// Past the nesting limit the tower is not a term the calculus can evaluate:
+/// `eval` charges one level per level of the term, so a tower of depth `n` costs
+/// `n` levels and a count is not a small number. The pair here is not two terms
+/// to compare — it is one term and one exhaustion, and the exhaustion is what
+/// `repeat 384` used to be.
 ///
-/// The two counts are three orders of magnitude apart in the direction that
-/// makes the point: the *smaller* one is the one that cannot be written.
+/// The two counts are an order of magnitude apart in the direction that makes
+/// the point: the *smaller* one is the one that cannot be written.
+///
+/// Stated at [`Budget::LANGUAGE`] rather than at a narrowed share of it, which
+/// is what §4.1's room obligation buys. Before `musa-core`'s `room` module a
+/// tower deep enough to reach the real limit of 256 aborted the process at
+/// about 215 levels, so this law could only be stated at a divided budget —
+/// about the language's limit, but not at it.
 #[test]
 fn a_tower_past_the_nesting_limit_exhausts_where_the_numeral_answers() {
-    let cx = narrow_nat_context();
+    let (cx, _) = nat_context();
     let nat = nat(&cx);
     let counted = musa_core::check(&cx, &nat, &numeral(5_000)).expect("a numeral is one node at any count");
     musa_core::normalize(&cx, &nat, &counted).expect("and evaluating one is reading it");
 
-    match musa_core::check(&cx, &nat, &tower(63)) {
+    let past = Budget::NESTING.saturating_add(1);
+    match musa_core::check(&cx, &nat, &tower(past)) {
         Err(ElabError::Exhausted(exhausted)) => {
             assert_eq!(
                 exhausted.metric,
@@ -203,7 +213,10 @@ fn a_tower_past_the_nesting_limit_exhausts_where_the_numeral_answers() {
             );
         }
         Err(other) => panic!("the tower was refused rather than exhausted: {other}"),
-        Ok(_) => panic!("a tower 63 deep elaborated under sixteen nesting levels"),
+        Ok(_) => panic!(
+            "a tower {past} deep elaborated under {} nesting levels",
+            Budget::NESTING
+        ),
     }
 }
 

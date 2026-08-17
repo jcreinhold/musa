@@ -102,6 +102,7 @@ mod raw;
 mod rec;
 mod recheck;
 mod refuse;
+mod room;
 mod scope;
 mod show;
 mod storable;
@@ -135,6 +136,7 @@ use std::sync::Arc;
 use crate::elab::Elaborator;
 use crate::eval::eval;
 use crate::quote::{quote, quote_type};
+use crate::room::with_room;
 use crate::scope::Scope;
 use crate::unify::Unifier;
 
@@ -157,7 +159,7 @@ use crate::unify::Unifier;
 /// [`check`] — a declaration's parameters, indices, fields, and chosen index
 /// arguments are ordinary elaboration and fail in the ordinary ways.
 pub fn declare(cx: &Cx, data: &RawData) -> Result<Arc<Group>, ElabError> {
-    crate::declare::declare(cx, data)
+    with_room(|| crate::declare::declare(cx, data))
 }
 
 /// Elaborate a document's top-level definitions and instances, in context `cx`.
@@ -185,7 +187,7 @@ pub fn declare(cx: &Cx, data: &RawData) -> Result<Arc<Group>, ElabError> {
 /// [`Refusal::UntypedRecursion`] for a self-recursive definition that wrote no
 /// type, and otherwise as [`check`] and [`declare_impl`].
 pub fn declare_program(cx: &Cx, program: &RawProgram) -> Result<Arc<Program>, ElabError> {
-    crate::program::declare_program(cx, program)
+    with_room(|| crate::program::declare_program(cx, program))
 }
 
 /// Elaborate a `trait` declaration, in context `cx`.
@@ -204,7 +206,7 @@ pub fn declare_program(cx: &Cx, program: &RawProgram) -> Result<Arc<Program>, El
 /// [`check`] — a trait's parameters, constraints, and method types are ordinary
 /// elaboration and fail in the ordinary ways.
 pub fn declare_trait(cx: &Cx, raw: &RawTrait) -> Result<Arc<Trait>, ElabError> {
-    crate::dictionary::declare_trait(cx, raw)
+    with_room(|| crate::dictionary::declare_trait(cx, raw))
 }
 
 /// Elaborate an `impl` declaration, in context `cx`.
@@ -221,7 +223,7 @@ pub fn declare_trait(cx: &Cx, raw: &RawTrait) -> Result<Arc<Trait>, ElabError> {
 /// mismatches [`Refusal::DerivedMethod`], [`Refusal::NoSuchMethod`] and
 /// [`Refusal::MissingMethod`], and otherwise as [`check`].
 pub fn declare_impl(cx: &Cx, raw: &RawImpl) -> Result<Arc<Instance>, ElabError> {
-    crate::dictionary::declare_impl(cx, raw)
+    with_room(|| crate::dictionary::declare_impl(cx, raw))
 }
 
 /// Elaborate `raw` against the type `ty`, in context `cx`.
@@ -242,10 +244,12 @@ pub fn declare_impl(cx: &Cx, raw: &RawImpl) -> Result<Arc<Instance>, ElabError> 
 /// when the budget ended the judgment — which is **not** a type error — and
 /// [`ElabError::Malformed`] when `ty` is not a term this crate could produce.
 pub fn check(cx: &Cx, ty: &Term, raw: &Raw) -> Result<Term, ElabError> {
-    let mut elaborator = Elaborator::new(cx);
-    let scope = Scope::new(cx);
-    let ty = scope.eval(&mut cx.meter(), ty)?;
-    elaborator.run_check(&scope, raw, &ty)
+    with_room(|| {
+        let mut elaborator = Elaborator::new(cx);
+        let scope = Scope::new(cx);
+        let ty = scope.eval(&mut cx.meter(), ty)?;
+        elaborator.run_check(&scope, raw, &ty)
+    })
 }
 
 /// Elaborate `raw`, answering it and the type it was found to have.
@@ -261,7 +265,7 @@ pub fn check(cx: &Cx, ty: &Term, raw: &Raw) -> Result<Term, ElabError> {
 ///
 /// As [`check`].
 pub fn infer(cx: &Cx, raw: &Raw) -> Result<(Term, Term), ElabError> {
-    Elaborator::new(cx).run_infer(&Scope::new(cx), raw)
+    with_room(|| Elaborator::new(cx).run_infer(&Scope::new(cx), raw))
 }
 
 /// The normal form of `term` at type `ty`, in context `cx`.
@@ -277,10 +281,12 @@ pub fn infer(cx: &Cx, raw: &Raw) -> Result<(Term, Term), ElabError> {
 /// [`CoreError::Exhausted`] when the deterministic budget ends the operation,
 /// [`CoreError::Malformed`] when the term does not fit the shape `ty` demands.
 pub fn normalize(cx: &Cx, ty: &Term, term: &Term) -> Result<Term, CoreError> {
-    let mut meter = cx.meter();
-    let ty = eval(&mut meter, cx.env(), ty)?;
-    let value = eval(&mut meter, cx.env(), term)?;
-    quote(&mut meter, cx.quoting_depth(), &ty, &value)
+    with_room(|| {
+        let mut meter = cx.meter();
+        let ty = eval(&mut meter, cx.env(), ty)?;
+        let value = eval(&mut meter, cx.env(), term)?;
+        quote(&mut meter, cx.quoting_depth(), &ty, &value)
+    })
 }
 
 /// The normal form of a type.
@@ -293,9 +299,11 @@ pub fn normalize(cx: &Cx, ty: &Term, term: &Term) -> Result<Term, CoreError> {
 ///
 /// As [`normalize`].
 pub fn normalize_type(cx: &Cx, ty: &Term) -> Result<Term, CoreError> {
-    let mut meter = cx.meter();
-    let value = eval(&mut meter, cx.env(), ty)?;
-    quote_type(&mut meter, cx.quoting_depth(), &value)
+    with_room(|| {
+        let mut meter = cx.meter();
+        let value = eval(&mut meter, cx.env(), ty)?;
+        quote_type(&mut meter, cx.quoting_depth(), &value)
+    })
 }
 
 /// Whether `left` and `right` are definitionally equal at type `ty`.
@@ -319,11 +327,13 @@ pub fn normalize_type(cx: &Cx, ty: &Term) -> Result<Term, CoreError> {
 ///
 /// As [`normalize`].
 pub fn convertible(cx: &Cx, ty: &Term, left: &Term, right: &Term) -> Result<bool, CoreError> {
-    let mut meter = cx.meter();
-    let ty = eval(&mut meter, cx.env(), ty)?;
-    let left = eval(&mut meter, cx.env(), left)?;
-    let right = eval(&mut meter, cx.env(), right)?;
-    decided(Unifier::deciding().unify(&mut meter, cx.depth(), Origin::UNKNOWN, &ty, &left, &right))
+    with_room(|| {
+        let mut meter = cx.meter();
+        let ty = eval(&mut meter, cx.env(), ty)?;
+        let left = eval(&mut meter, cx.env(), left)?;
+        let right = eval(&mut meter, cx.env(), right)?;
+        decided(Unifier::deciding().unify(&mut meter, cx.depth(), Origin::UNKNOWN, &ty, &left, &right))
+    })
 }
 
 /// Whether two *types* are definitionally equal.
@@ -332,10 +342,12 @@ pub fn convertible(cx: &Cx, ty: &Term, left: &Term, right: &Term) -> Result<bool
 ///
 /// As [`normalize`].
 pub fn convertible_types(cx: &Cx, left: &Term, right: &Term) -> Result<bool, CoreError> {
-    let mut meter = cx.meter();
-    let left = eval(&mut meter, cx.env(), left)?;
-    let right = eval(&mut meter, cx.env(), right)?;
-    decided(Unifier::deciding().unify_types(&mut meter, cx.depth(), Origin::UNKNOWN, &left, &right))
+    with_room(|| {
+        let mut meter = cx.meter();
+        let left = eval(&mut meter, cx.env(), left)?;
+        let right = eval(&mut meter, cx.env(), right)?;
+        decided(Unifier::deciding().unify_types(&mut meter, cx.depth(), Origin::UNKNOWN, &left, &right))
+    })
 }
 
 /// A conversion question's answer, read off what the unifier did.

@@ -135,6 +135,21 @@ _Third, nothing arranges the room._ `musa-compiler` honours §4.1 for the *old* 
 `with_room` runs a transformer on a scoped thread of `NESTING × FRAME_CEILING`. Every `musa-core` entry point — `check`,
 `infer`, `normalize`, `convertible`, `declare` — runs on whatever stack the caller happened to have.
 
+> **Step 1 landed early, out of stack order.** Prompt 141s found the same defect from the other end — elaborating a
+> hand-built `Nat` tower of 220 aborted at about 215 levels while `Budget::NESTING` promised a refusal at 256 — and the
+> room was arranged then rather than left waiting for this prompt, because §4 does not admit an abort and the fix
+> touches no acceptance. `crates/musa-core/src/room.rs` is `with_room` at the `musa-core` seam, over `check`, `infer`,
+> `normalize`, `normalize_type`, `convertible`, `convertible_types`, `declare`, `declare_program`, `declare_trait`,
+> `declare_impl`, `well_typed`, and `Cx::assume`/`define`, with `FRAME_CEILING` at 32 KiB against a measured 10 KiB a
+> level for the `infer → check → eval → quote` chain in a debug build on arm64 and under 3 KiB in a release one. The law
+> is `budget_laws.rs`'s `elaborating_a_term_nested_past_the_limit_is_refused`, stated on a 2 MiB thread.
+>
+> **What that leaves this prompt** is steps 2 and 3 below, undiminished, and one measurement it should not have to
+> rediscover: the room bounds the stack only where the charge tracks the descent. The elaborator reaches the bottom of a
+> raw term before any value on the way back up is charged, so the counter hits the limit `NESTING` levels from the
+> *bottom* rather than from the top, and a term far enough past the limit still aborts — measured on a raw `let` chain
+> in a debug build, 756 levels are refused and 1,256 abort. No ceiling repairs that; only the charge does.
+
 **What follows, and what does not.** Lowering `Budget::NESTING` to something a 2 MiB thread survives is the one option
 to reject outright: the counter that would be lowered is not the counter that grows, so it would refuse programs without
 saving the ones that crash. Charging `check` and `infer` for nesting is right by §4.1 and insufficient alone — at 256 it
@@ -145,7 +160,9 @@ today is a cost-table version bump and a bad one. So:
    a diagnostic without touching acceptance. Move `with_room`'s shape to the `musa-core` seam and give `musa-core` a
    measured `FRAME_CEILING` of its own — measured on the `infer → check → eval` chain that real programs drive, not on
    `eval` recursing into itself, which is what the existing ~2 KiB note measured and why it reads five times too low.
-   Every host gets it, including the desktop session thread, which today asks for none.
+   Every host gets it, including the desktop session thread, which today asks for none. **Done at prompt 141s** — see
+   the note above; what is left here is to confirm the ceiling still holds once (2) has changed what a level costs, and
+   to decide whether the session thread wants room of its own now that the seam has some.
 2. **Then take the depth out of the spine**, so that the room needed stops being a function of how long a voice is.
    Either the fold builds a shape whose elaboration is not `N` deep, or the elaborator walks an application spine
    iteratively with an explicit work stack. Both are behaviour-preserving; measure both against P1/P2 before choosing,
@@ -210,7 +227,8 @@ and never a quietly raised threshold.
 - A closing line in note 44 for each item this prompt settles, so the audit ends rather than being inherited again.
 - The room obligation discharged at the `musa-core` seam, with a `FRAME_CEILING` constant in `musa-core` carrying the
   measurement that justifies it — of the `infer → check → eval` chain, in a debug build, with the command that produced
-  the number in the doc comment beside it, as `core_budget.rs`'s already does.
+  the number in the doc comment beside it, as `core_budget.rs`'s already does. **Delivered at prompt 141s**; what
+  remains is re-measuring the ceiling after the spine walk below changes what a level costs.
 - The elaborator's recursion charged for nesting, and the spine walk that lets 256 stay 256. If either forces a
   cost-table version bump, the bump lands in `02-core-calculus.md` §4 with its reason, and `06-performance.md` records
   what the change cost.

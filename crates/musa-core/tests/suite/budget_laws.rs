@@ -9,7 +9,9 @@
 //! deterministic rather than flaky-by-construction. That is the property being
 //! protected — a timeout here would make acceptance a property of the host.
 
-use musa_core::{Budget, CoreError, Cx, Level, Metric, Origin, Term, convertible, convertible_types, normalize_type};
+use musa_core::{
+    Budget, CoreError, Cx, ElabError, Level, Metric, Origin, Raw, Term, convertible, convertible_types, normalize_type,
+};
 
 use crate::fixtures::{Sample, corpus, corpus_at};
 
@@ -158,14 +160,99 @@ fn a_wide_term_is_not_a_deep_one() {
 /// `NbE` gives the machine a second way to stand inside itself — `quote` walks a
 /// value the way `eval` walks a term — and a total language may refuse but may
 /// not crash.
+///
+/// Stated on [`smallest_host`], because a law about not crashing that is only
+/// checked where the stack happens to be generous is a law about the checker's
+/// luck.
 #[test]
 fn a_term_nested_past_the_limit_is_refused() {
-    let cx = Cx::new();
-    let too_deep = nested_lets(1_000);
-    match normalize_type(&cx, &too_deep) {
-        Err(CoreError::Exhausted(error)) => assert_eq!(error.metric, Metric::Nesting),
-        other => panic!("expected a nesting refusal, got {other:?}"),
-    }
+    on_the_smallest_host(|| {
+        let cx = Cx::new();
+        let too_deep = nested_lets(1_000);
+        match normalize_type(&cx, &too_deep) {
+            Err(CoreError::Exhausted(error)) => assert_eq!(error.metric, Metric::Nesting),
+            other => panic!("expected a nesting refusal, got {other:?}"),
+        }
+    });
+}
+
+/// §4.1's *second* half: the same law over the chain a program actually drives.
+///
+/// The one above descends through `eval` alone, which is the cheapest way into
+/// the meter and so the measurement that reads lowest. A program reaches the
+/// same counter through `infer → check → eval → quote`, which is five times the
+/// frame, and that is the chain that aborted: elaborating a tower of 220
+/// constructors ended the process at about 215 levels — thirty short of the
+/// limit that was supposed to refuse it, with `Metric::Nesting` never consulted
+/// because nothing was left alive to consult it.
+///
+/// What makes this pass is not a larger limit but the room under it: §4.1 owes
+/// `nesting limit × frame ceiling` bytes of stack, `musa-core`'s `room` module
+/// arranges them, and the budget does not move, so the same terms are accepted
+/// and refused as before. A regression here shows up as an *abort* rather than
+/// as a failed assertion, which is the point — that is what the defect looked
+/// like.
+///
+/// **Sixty-four past the limit and not a thousand**, because the law is only
+/// this strong today. The elaborator descends the whole raw term before the
+/// counter — charged on the way back up, where the values are evaluated —
+/// reaches the limit, and that descent is charged nothing at all. So the room
+/// covers a term some way past the limit and not one arbitrarily past it:
+/// measured on this shape in a debug build, 756 levels refuse and 1,256 abort.
+/// Charging `Elaborator::check` and `Elaborator::infer` is what closes that,
+/// and it is prompt 144's third step rather than this repair's, because at 256
+/// it would refuse programs that compile today — a cost-table version bump,
+/// which §4.1 says is argued in the specification and never made to pass a
+/// test.
+#[test]
+fn elaborating_a_term_nested_past_the_limit_is_refused() {
+    on_the_smallest_host(|| {
+        let cx = Cx::new();
+        let too_deep = nested_raw_lets(NESTING_LIMIT.saturating_add(64));
+        match musa_core::infer(&cx, &too_deep) {
+            Err(ElabError::Exhausted(error)) => assert_eq!(error.metric, Metric::Nesting),
+            other => panic!("expected a nesting refusal, got {other:?}"),
+        }
+    });
+}
+
+/// [`Budget::NESTING`], as the `u32` a term's depth is counted in.
+const NESTING_LIMIT: u32 = if Budget::NESTING > u32::MAX as u64 {
+    u32::MAX
+} else {
+    Budget::NESTING as u32
+};
+
+/// The stack of the smallest host this workspace runs the checker on, in bytes.
+///
+/// Rust's default for a spawned thread. `cargo nextest` gives a test that much,
+/// and `apps/musa-desktop/src-tauri/src/session.rs` gives the session thread
+/// exactly that and no more — so a law stated here is stated at the size a
+/// musician's machine actually has, rather than at the 8 MiB the main thread
+/// happens to start with.
+const SMALLEST_HOST: usize = 2 * 1024 * 1024;
+
+/// Run `law` on a thread the size of [`SMALLEST_HOST`], and fail with its panic.
+///
+/// A stack overflow inside is not catchable and does not want to be: it aborts
+/// the process, the run reports `SIGABRT`, and that is the honest report of the
+/// thing these two laws exist to forbid.
+fn on_the_smallest_host(law: impl FnOnce() + Send) {
+    let mut ran = false;
+    std::thread::scope(|scope| {
+        let run = || {
+            law();
+            ran = true;
+        };
+        let running = std::thread::Builder::new()
+            .stack_size(SMALLEST_HOST)
+            .spawn_scoped(scope, run)
+            .expect("a host that can spawn a thread");
+        if let Err(panic) = running.join() {
+            std::panic::resume_unwind(panic);
+        }
+    });
+    assert!(ran, "the law never ran");
 }
 
 /// `let z : Type 0 = Type 0 in … Type 0`, nested `depth` deep.
@@ -177,5 +264,19 @@ fn nested_lets(depth: u32) -> Term {
     let type0 = Term::universe(HERE, Level::ZERO);
     (0..depth).fold(type0.clone(), |body, _| {
         Term::bind(HERE, "z", type0.clone(), type0.clone(), body)
+    })
+}
+
+/// The same nest, written as the *raw* term an author would have written.
+///
+/// Not the same measurement as [`nested_lets`] and that is why both are here:
+/// this one is elaborated rather than evaluated, so one level of it is a level
+/// of `infer` standing inside a level of `check` standing inside `eval`, which
+/// is the chain §4.1's frame ceiling is measured on.
+fn nested_raw_lets(depth: u32) -> Raw {
+    let type0 = Raw::universe(HERE, Level::ZERO);
+    let type1 = Raw::universe(HERE, Level::ZERO.succ());
+    (0..depth).fold(type0, |value, _| {
+        Raw::annotated_bind(HERE, "z", type1.clone(), value, Raw::var(HERE, "z"))
     })
 }
