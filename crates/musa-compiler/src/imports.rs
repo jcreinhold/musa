@@ -202,10 +202,19 @@ struct Entry {
 /// wrote after `as`, and it is `None` on nearly every import because binding
 /// is flat. Both travel together because a name and where it came from are
 /// the same question asked twice.
+///
+/// `at` is the `import` statement itself, and it travels with them for the
+/// reason [`crate::document::Source::from`] gives: every diagnostic about an
+/// imported declaration is stated *here*, so the span it needs is the one span
+/// in this document that is about that library. Carrying it beside the path
+/// rather than beside the iterator is what lets a consumer that took the path
+/// report against it without the loader handing it a second value to keep in
+/// step.
 #[derive(Clone, Copy)]
 pub(crate) struct Imported<'a> {
     pub(crate) path: &'a str,
     pub(crate) qualifier: Option<&'a str>,
+    pub(crate) at: SourceSpan,
 }
 
 impl Libraries {
@@ -217,19 +226,18 @@ impl Libraries {
         })
     }
 
-    /// Each library, the `import` span through which it was reached, and the
-    /// libraries it may read — its own transitive imports, in reading order.
+    /// Each library and the libraries it may read — its own transitive
+    /// imports, in reading order.
     ///
     /// A library is checked against *that* and not against everything already
     /// registered: two libraries a piece happens to import side by side are
     /// nothing to each other, and a name they share is the piece's collision
     /// to report, not evidence that either one fails to compile.
     ///
-    /// Semantic consumers use the span to remap a foreign failure instead of
-    /// displaying another document's byte offsets in this one.
-    pub(crate) fn each_with_dependencies(
-        &self,
-    ) -> impl Iterator<Item = (Imported<'_>, LibraryDecl, SourceSpan, Vec<LibraryDecl>)> {
+    /// The `import` span a semantic consumer needs to remap a foreign failure
+    /// — rather than display another document's byte offsets in this one — is
+    /// [`Imported::at`], and arrives with the library.
+    pub(crate) fn each_with_dependencies(&self) -> impl Iterator<Item = (Imported<'_>, LibraryDecl, Vec<LibraryDecl>)> {
         self.order.iter().filter_map(|entry| {
             let document = self.documents.get(entry.document)?;
             let mut needed: Vec<&str> = Vec::new();
@@ -242,7 +250,6 @@ impl Libraries {
             Some((
                 entry.imported(),
                 LibraryDecl::from_root(&document.syntax())?,
-                entry.span,
                 dependencies,
             ))
         })
@@ -278,6 +285,7 @@ impl Entry {
         Imported {
             path: &self.path,
             qualifier: self.alias.as_deref(),
+            at: self.span,
         }
     }
 }

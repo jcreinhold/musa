@@ -47,6 +47,16 @@ struct Filed {
     /// cannot name because it is not the core's to know — a form the surface
     /// offers and the core has never heard of.
     help: Option<&'static str>,
+    /// The sentence, where the core's own names a thing the composer did not
+    /// write.
+    ///
+    /// [`None`] for fifty-two of the fifty-three, and the module documentation
+    /// says why: a refusal's wording is the core's, written beside the rule
+    /// that raises it, and prompt 144 owns the pass over all of them. This is
+    /// not that pass — it is the narrower case where the core's vocabulary and
+    /// the language's are *different words for the same thing*, so forwarding
+    /// the core's would teach a composer a term the language does not use.
+    said: Option<String>,
 }
 
 /// What the elaborator said, as a diagnostic at the node that caused it.
@@ -72,7 +82,8 @@ pub(crate) fn restate(sites: &Sites, error: &ElabError) -> Diagnostic {
                 Some((origin, text)) => (sites.span(origin), text),
                 None => (None, ""),
             };
-            let restated = Diagnostic::error(filed.code, refusal.to_string())
+            let said = filed.said.unwrap_or_else(|| refusal.to_string());
+            let restated = Diagnostic::error(filed.code, said)
                 .maybe_at(sites.span(filed.at), "here")
                 .maybe_also(also, text);
             match filed.help {
@@ -103,15 +114,26 @@ fn file(refusal: &Refusal) -> Filed {
         at,
         also: None,
         help: None,
+        said: None,
     };
     let two = |code: Code, at: Origin, previous: Origin, text: &'static str| Filed {
         code,
         at,
         also: Some((previous, text)),
         help: None,
+        said: None,
     };
     match refusal {
-        Refusal::UnknownName { at, .. } => one(Code::UnknownName, *at),
+        // "cannot find", not "no binder named … is in scope". A binder is the
+        // core's word and a composer writing `use nope()` wrote no binder — they
+        // wrote a name, and the language has always called this "cannot find":
+        // an unknown profile, an unknown import path, and an unknown mark all
+        // say so already. Restating it here is what keeps one sentence for one
+        // situation now that the name reaches the core to be resolved.
+        Refusal::UnknownName { name, at } => Filed {
+            said: Some(format!("cannot find `{name}`")),
+            ..one(Code::UnknownName, *at)
+        },
         Refusal::Mismatch(mismatch) => one(Code::ConversionMismatch, mismatch.at),
         Refusal::Private { at, .. } => one(Code::PrivateName, *at),
         Refusal::MixedVisibility { at, .. } => one(Code::MixedVisibility, *at),
@@ -125,6 +147,7 @@ fn file(refusal: &Refusal) -> Filed {
             at: *created,
             also: blocked.map(|origin| (origin, "still waiting on this")),
             help: None,
+            said: None,
         },
         Refusal::BareConstructor { at, .. } | Refusal::Uninferable { at, .. } => one(Code::UnsolvedMetavariable, *at),
         // Applying, projecting, or checking something whose type is not the
@@ -189,6 +212,7 @@ fn file(refusal: &Refusal) -> Filed {
             help: Some(
                 "name the trait — `Trait::m(x, y)` resolves wherever its dictionary does, and a `where` clause on this signature is what supplies one",
             ),
+            said: None,
         },
         Refusal::NoMethodForType { at, .. } => one(Code::NoMethodForType, *at),
         Refusal::AmbiguousMethod { at, .. } => one(Code::AmbiguousMethod, *at),

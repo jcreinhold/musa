@@ -211,12 +211,19 @@ pub(crate) fn check_material(
 /// restated at the importing document's `import` span: spans inside the
 /// foreign CST must never be published as spans in this document.
 fn validate_imports(resolver: &mut Resolver, libraries: &Libraries) -> bool {
-    for (from, library, import_span, dependencies) in libraries.each_with_dependencies() {
+    for (from, library, dependencies) in libraries.each_with_dependencies() {
         let path = from.path;
+        let import_span = from.at;
         // Validated as written, never as the importer qualified it: an `as`
         // belongs to the statement that wrote it, and a library must compile
         // on its own terms or the diagnostic is about the wrong document.
-        let unqualified = |path| Some(crate::imports::Imported { path, qualifier: None });
+        let unqualified = |path| {
+            Some(crate::imports::Imported {
+                path,
+                qualifier: None,
+                at: import_span,
+            })
+        };
         let mut prefix = Vec::new();
         let mut owners: Vec<(Option<&str>, SyntaxNode)> = Vec::new();
         for dependency in &dependencies {

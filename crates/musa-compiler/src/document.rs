@@ -72,15 +72,39 @@ use crate::resolve::Resolver;
 pub(crate) struct Source {
     /// The node itself: a `library`, a document root, a `piece`, or a `voice`.
     pub(crate) root: SyntaxNode,
-    /// The document it was written in, when that is not this one.
+    /// The `import` that supplied it, when this document did not write it.
     ///
     /// Carried because a diagnostic about an imported declaration is stated at
     /// the `import` that pulled it in rather than at a span in a file this one
     /// is not: a span inside a foreign CST is meaningless here, so what a
-    /// refusal needs is the path.
-    pub(crate) from: Option<String>,
+    /// refusal needs is the statement.
+    pub(crate) from: Option<Import>,
     /// Whether `02-core-calculus.md` §5.9's phase vocabulary is readable here.
     pub(crate) in_phase: bool,
+}
+
+/// The `import` statement one source arrived through.
+///
+/// [`crate::imports::Imported`] said the same three things while the loader
+/// held the libraries; this is the owned copy, because a [`Source`] outlives
+/// the borrow and a corpus is elaborated many times.
+#[derive(Clone)]
+pub(crate) struct Import {
+    /// The file the text came from.
+    pub(crate) path: String,
+    /// What the importer wrote after `as`, on the rare import that wrote one.
+    ///
+    /// `01-surface.md` §1: "Importing two modules that export the same name is
+    /// an error naming both; `import p::q as alias;` resolves it by qualifying
+    /// that one, so an alias is required exactly at a real conflict and absent
+    /// otherwise." So this is [`None`] on nearly every import, and where it is
+    /// [`Some`] it is the whole of what the alias does — [`Read::gather`] files
+    /// the library's definitions under `alias.name`, and
+    /// [`crate::lower::Naming`] is how a use site reaches them.
+    pub(crate) alias: Option<String>,
+    /// The statement itself, which is the one span in this document that is
+    /// about that library.
+    pub(crate) at: crate::origin::SourceSpan,
 }
 
 impl Source {
@@ -98,10 +122,14 @@ impl Source {
         }
     }
 
-    /// A node the import at `from` supplied.
-    pub(crate) fn imported(root: &SyntaxNode, from: &str) -> Self {
+    /// A node the import `from` supplied.
+    pub(crate) fn imported(root: &SyntaxNode, from: crate::imports::Imported<'_>) -> Self {
         Self {
-            from: Some(from.to_owned()),
+            from: Some(Import {
+                path: from.path.to_owned(),
+                alias: from.qualifier.map(str::to_owned),
+                at: from.at,
+            }),
             ..Self::own(root)
         }
     }
@@ -368,23 +396,34 @@ pub(crate) fn elaborate(
 ) -> Option<Document> {
     let mut sites = Sites::default();
     let modules = modules_in(resolver, sources);
+    let aliases: Vec<String> = sources
+        .iter()
+        .filter_map(|source| source.from.as_ref()?.alias.clone())
+        .collect();
     let mut read = Read::default();
     // The names this file wrote itself, picked out as they are read: every
     // source's declarations go into one flat list, and [`named_once`] is about
     // the ones a span in *this* document can point at. See its doc for why the
     // imported ones are a different question.
     let mut here: Vec<(Name, Origin)> = Vec::new();
+    // And the names a *flat* import brought in, beside the statement that
+    // brought them, which is what [`imports_agree`] compares. An aliased import
+    // is not on the list because it cannot collide: its names all begin with a
+    // qualifier `as` took out of circulation.
+    let mut brought: Vec<(Name, &Import)> = Vec::new();
     for source in sources {
         let already = read.definitions.len();
-        read.gather(resolver, &mut sites, source, &modules);
+        read.gather(resolver, &mut sites, source, &modules, &aliases);
         read.barred(resolver, &mut sites, source, &modules);
-        if source.from.is_none() {
-            here.extend(
-                read.definitions
-                    .iter()
-                    .skip(already)
-                    .map(|held| (Arc::clone(&held.name), held.origin)),
-            );
+        let named = read.definitions.iter().skip(already);
+        match &source.from {
+            None => here.extend(named.map(|held| (Arc::clone(&held.name), held.origin))),
+            Some(import) if import.alias.is_none() => brought.extend(
+                named
+                    .filter(|held| held.visibility == Visibility::Public)
+                    .map(|held| (Arc::clone(&held.name), import)),
+            ),
+            Some(_) => {}
         }
     }
     read.flatten(resolver, &mut sites, &modules);
@@ -429,6 +468,7 @@ pub(crate) fn elaborate(
     }
     let names: Vec<Name> = read.definitions.iter().map(|held| Arc::clone(&held.name)).collect();
     refused |= !named_once(resolver, &sites, &here);
+    refused |= !imports_agree(resolver, &brought);
     let program = RawProgram {
         definitions: read.definitions,
         instances: read.instances,
@@ -483,10 +523,14 @@ pub(crate) fn elaborate(
 /// [`Source::from`], which carries the path for exactly that reason — so the
 /// second label of an import collision cannot be a span at all.
 ///
-/// So the collision between a local name and an imported one is left to the
-/// import machinery, which knows the file names and owns the `as` that repairs
-/// it. What is checked here is what this document's own text can be pointed at
-/// for: two declarations a reader can see at once.
+/// So an import's names are [`imports_agree`]'s to compare, and what is checked
+/// here is what this document's own text can be pointed at for: two
+/// declarations a reader can see at once. The remaining case — a local name
+/// that collides with an imported one — is neither function's, because §1 does
+/// not say what it means. Two imports colliding is stated there and `as` is its
+/// repair; a local name shadowing an import is a question the surface
+/// specification has not answered, and answering it here would be inventing a
+/// rule rather than enforcing one.
 fn named_once(resolver: &mut Resolver, sites: &Sites, written: &[(Name, Origin)]) -> bool {
     let mut seen: Vec<&(Name, Origin)> = Vec::with_capacity(written.len());
     let mut clean = true;
@@ -508,6 +552,55 @@ fn named_once(resolver: &mut Resolver, sites: &Sites, written: &[(Name, Origin)]
             );
         } else {
             seen.push(held);
+        }
+    }
+    clean
+}
+
+/// That no two flat imports export one name, reporting each clash.
+///
+/// `01-surface.md` §1, exactly: "Importing two modules that export the same
+/// name is an error naming both; `import p::q as alias;` resolves it by
+/// qualifying that one, so an alias is required exactly at a real conflict and
+/// absent otherwise." So the message names both files, the help offers `as`,
+/// and both labels are `import` statements — the two spans in this document
+/// that are about those files, and the two lines the author will edit.
+///
+/// Not the same question as [`named_once`], and worth its own function for the
+/// reason its message shows: a repeat inside one document is repaired by
+/// renaming a declaration, and a clash between two imports is repaired by
+/// qualifying one of the *statements*. Neither party did anything wrong, which
+/// is why the second label reads "and here" rather than "first declared here".
+///
+/// Only the public names, and only the unaliased imports. A `private`
+/// declaration in a library is not exported, so two libraries that each keep a
+/// helper called `step` are nothing to each other; and an aliased import's
+/// names all begin with a qualifier `as` took out of circulation, so it has
+/// already answered the question this asks.
+fn imports_agree(resolver: &mut Resolver, brought: &[(Name, &Import)]) -> bool {
+    let mut seen: Vec<&(Name, &Import)> = Vec::with_capacity(brought.len());
+    let mut clean = true;
+    for held in brought {
+        let (name, from) = (&held.0, held.1);
+        match seen.iter().find(|(taken, _)| *taken == *name) {
+            // The same file reached twice is one import, not two: a library
+            // imported by two others is loaded once and its names arrive once.
+            Some((_, first)) if first.path == from.path => {}
+            Some((_, first)) => {
+                clean = false;
+                resolver.report(
+                    Diagnostic::error(
+                        Code::DuplicateName,
+                        format!("`{}` and `{}` both declare `{name}`", first.path, from.path),
+                    )
+                    .at(from.at, "the second of two imports declaring it")
+                    .also(first.at, "and here")
+                    .help(format!(
+                        "qualify one of them: `as` binds it under a name of its own, so `{name}` means one thing again"
+                    )),
+                );
+            }
+            None => seen.push(held),
         }
     }
     clean
@@ -536,7 +629,24 @@ impl Read {
     /// Directly inside, and not every descendant: a `fn` written inside a
     /// `piece` is the piece's and is gathered when the piece is a source of its
     /// own, which is what keeps a template's body out of the root's scope.
-    fn gather(&mut self, resolver: &mut Resolver, sites: &mut Sites, source: &Source, modules: &Modules) {
+    ///
+    /// An `import … as alias;` files what it supplies under `alias.name`, which
+    /// is the whole of what an alias does. It reaches only the *definitions*: a
+    /// `data`, a `trait`, and an `impl` are still declared flat, because
+    /// `01-surface.md` §1 gives the alias one job — resolving a collision
+    /// between two modules exporting the same name — and the collision the same
+    /// section reports is between names in "the current **flat** value
+    /// namespace". Qualifying a type as well would be a namespace rule nothing
+    /// asks for and no source writes.
+    fn gather(
+        &mut self,
+        resolver: &mut Resolver,
+        sites: &mut Sites,
+        source: &Source,
+        modules: &Modules,
+        aliases: &[String],
+    ) {
+        let alias = source.from.as_ref().and_then(|from| from.alias.as_deref());
         for node in source.root.children() {
             let visibility = visibility_of(&node);
             let item = {
@@ -545,13 +655,16 @@ impl Read {
                 } else {
                     Lowering::new(resolver, sites)
                 };
-                lowering.naming(Naming::at_root(modules)).item(&node)
+                lowering.naming(Naming::at_root(modules).under(aliases)).item(&node)
             };
             match item {
                 Declared::Item(Item::Data(data)) => self.families.push((node, data)),
                 Declared::Item(Item::Class(class)) => self.classes.push(class),
                 Declared::Item(Item::Instance(instance)) => self.instances.push(instance),
-                Declared::Item(Item::Definition(definition)) => {
+                Declared::Item(Item::Definition(mut definition)) => {
+                    if let Some(alias) = alias {
+                        definition.name = Name::from(format!("{alias}{}{}", crate::module::DOT, definition.name));
+                    }
                     record(resolver, &node, &definition.name);
                     self.definitions.push(top_level(definition, visibility));
                 }
@@ -676,7 +789,7 @@ fn modules_in(resolver: &mut Resolver, sources: &[Source]) -> Modules {
         resolver,
         sources
             .iter()
-            .map(|source| (source.from.as_deref(), source.root.clone())),
+            .map(|source| (source.from.as_ref().map(|from| from.path.as_str()), source.root.clone())),
     )
 }
 

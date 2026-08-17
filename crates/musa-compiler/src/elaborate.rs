@@ -681,7 +681,7 @@ fn declaring(
 ) -> Vec<crate::document::Source> {
     libraries
         .each()
-        .map(|(from, library)| crate::document::Source::imported(library.syntax(), from.path))
+        .map(|(from, library)| crate::document::Source::imported(library.syntax(), from))
         .chain([crate::document::Source::own(root), crate::document::Source::own(piece)])
         .collect()
 }

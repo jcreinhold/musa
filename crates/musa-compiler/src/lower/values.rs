@@ -476,9 +476,20 @@ impl Lowering<'_> {
         // exact receiver *in the core*. Writing it as a projection applied would
         // be a different form — a record field that happened to be a function —
         // and would not find a trait's method at all.
+        //
+        // Unless [`Naming`](crate::lower::Naming) decides the whole spelling, in
+        // which case it is one name and there is no receiver: `Away.tonic(x)`
+        // calls a module member and `low.rise()` calls what an aliased import
+        // brought in. That reading goes first here for the reason
+        // [`Self::name`] gives for putting it first there — it is the only one
+        // that can be *wrong* about a spelling, so it answers where it decides
+        // and stays out of everything else. Falling through hands the head to
+        // [`Self::value`], which asks the same question and is the one place the
+        // answer is turned into a term.
         if head.kind() == SyntaxKind::NameExpr
             && let Some(written) = written_name(&head)
             && let Some((receiver, method)) = written.split_once('.')
+            && self.naming.read(&written).is_none()
             && !(self.in_phase && phase_literal(&written).is_some())
         {
             let receiver = Raw::var(self.origin(&head), receiver);

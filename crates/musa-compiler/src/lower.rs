@@ -205,20 +205,35 @@ pub(crate) struct Lowering<'a> {
     holds: HashMap<crate::origin::SourceSpan, Ratio<i64>>,
 }
 
-/// How a written name reads here, when a module has a say in it.
+/// How a written name reads here, when something above ordinary scoping has a
+/// say in it.
 ///
-/// Both fields belong to the *document* rather than to the walk:
-/// `04-templates-and-modules.md` §4's modules are read once per pass, and a
-/// scope is one member's entry in that reading. What the walk contributes is
-/// only which entry it is in.
+/// Two authorities can, and both belong to the *document* rather than to the
+/// walk. `04-templates-and-modules.md` §4's modules are read once per pass, and
+/// a scope is one member's entry in that reading; `01-surface.md` §1's import
+/// aliases are what the file's own `import … as …;` statements wrote. What the
+/// walk contributes is only which module entry it is in.
 ///
-/// The default is a walk of ordinary source, where no module decides anything —
-/// which is every walk in every document that writes none, and is why this is
-/// [`Default`] rather than a parameter every caller passes.
+/// One type and one question rather than two, because the caller has one
+/// question: [`values::Lowering::name`] is deciding whether `low.rise` is a
+/// name it should write through or a projection out of a record, and asking two
+/// oracles in sequence would make the *caller* responsible for the order they
+/// have to be asked in.
+///
+/// The default is a walk of ordinary source, where neither decides anything —
+/// which is every walk in every document that writes no module and aliases no
+/// import, and is why this is [`Default`] rather than a parameter every caller
+/// passes.
 #[derive(Clone, Copy)]
 pub(crate) struct Naming<'a> {
     modules: Option<&'a Modules>,
     scope: &'a NameScope,
+    /// The `as` qualifiers this document's imports wrote, in no order.
+    ///
+    /// A slice rather than a set: an alias is required exactly where two
+    /// modules collide, so this is empty in nearly every document and one entry
+    /// long in the rest.
+    aliases: &'a [String],
 }
 
 impl Default for Naming<'_> {
@@ -226,6 +241,7 @@ impl Default for Naming<'_> {
         Self {
             modules: None,
             scope: NameScope::empty(),
+            aliases: &[],
         }
     }
 }
@@ -236,7 +252,7 @@ impl<'a> Naming<'a> {
     pub(crate) fn at_root(modules: &'a Modules) -> Self {
         Self {
             modules: Some(modules),
-            scope: NameScope::empty(),
+            ..Self::default()
         }
     }
 
@@ -246,12 +262,40 @@ impl<'a> Naming<'a> {
         Self {
             modules: Some(modules),
             scope,
+            ..Self::default()
         }
     }
 
-    /// What `written` names here, when a module decides it.
+    /// The same names, in a document whose imports wrote these `as` qualifiers.
+    ///
+    /// Separate from the two constructors because it is a property of the
+    /// document and they are about where in it the walk is: a member of a
+    /// structure and the root it is written at read the same aliases.
+    pub(crate) fn under(mut self, aliases: &'a [String]) -> Self {
+        self.aliases = aliases;
+        self
+    }
+
+    /// What `written` names here, when a module or an import alias decides it.
+    ///
+    /// The alias answers second because it can only be right: a module reading
+    /// is the one that could be *wrong* about a spelling — see
+    /// [`Modules::resolve`] — while an alias head is a name no declaration can
+    /// have, `as` having taken it. What it answers is the written name itself,
+    /// because that is the name [`crate::document::Read::gather`] filed the
+    /// definition under.
     fn read(&self, written: &str) -> Option<crate::module::Reading> {
-        self.modules?.resolve(self.scope, written)
+        if let Some(reading) = self.modules.and_then(|modules| modules.resolve(self.scope, written)) {
+            return Some(reading);
+        }
+        let (head, _) = written.split_once(crate::module::DOT)?;
+        self.aliases
+            .iter()
+            .any(|alias| alias == head)
+            .then(|| crate::module::Reading {
+                name: written.to_owned(),
+                sealed_by: None,
+            })
     }
 }
 
