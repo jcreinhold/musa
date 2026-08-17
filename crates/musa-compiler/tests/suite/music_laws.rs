@@ -129,8 +129,14 @@ fn shared_instantiations_are_closed_and_keep_definition_and_call_provenance() {
         &SourceDocument::new(source, "music-laws.musa"),
         &Realization::deterministic(),
     )
-    .expect("contextual music closes to a term");
-    assert!(printed.contains("let shared0 ="), "{printed}");
+    .expect("reusable material closes to a term");
+    // Not `let shared0 =`. Since prompt 142 the kernel term is a projection of
+    // the evaluated piece rather than the shape elaboration was carried in, and
+    // `docs/rules/kernel/06-surface-elaboration.md` §Sharing was repaired to
+    // say so; what survives here is that the projection is *closed* — a term
+    // naming nothing it does not bind — which is the half of this law that was
+    // ever about the printing.
+    assert!(!printed.contains("let shared"), "{printed}");
     let checked = check_kernel_text(&printed).expect("the emitted term is closed and checked");
     assert_eq!(checked.occurrences, 5, "four notes plus the piece's meter fact");
 }

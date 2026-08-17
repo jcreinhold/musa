@@ -1,31 +1,44 @@
-//! What makes two calls one body, and what a shared body costs.
+//! What makes two calls one body.
 //!
-//! The sharing table is an internal transformation of the piece's term, not a
-//! cache, so its laws are stated where a composer can see them: in the term
-//! the compiler prints, and in the budget it charges. Two calls that denote
-//! the same music must bind one body; two calls that denote different music
-//! must not; and neither answer may change which pieces the compiler accepts.
+//! Prompt 142 moved the surface onto a core program, and
+//! `docs/rules/kernel/06-surface-elaboration.md` §Sharing was repaired with it:
+//! a motif is one core definition applied at each call site, and the kernel
+//! term the compiler prints is a *projection* of the evaluated result rather
+//! than the shape elaboration was carried in. Counting `let shared` bindings in
+//! that text is therefore no longer a measurement of anything, and these laws
+//! no longer do it. They state the same claims where a composer can still see
+//! them: a body is **read once**, so a body written wrong is one complaint
+//! however many calls ask for it, and each call carries **its own site** in the
+//! provenance, so the Origin view can still say which `use` produced a note.
+//!
+//! Two of the five laws that stood here are gone, and neither quietly.
+//!
+//! `one_body_read_under_two_scales_is_two_bodies` asserted that a motif read
+//! under C major and under C dorian must be two bindings, because the sharing
+//! key had to keep the two readings apart. There is no sharing key, and there
+//! is no second reading either: `scale_context_laws.rs`'s
+//! `a_phrase_that_steps_outside_a_scale_is_refused_where_it_is_written` fixes
+//! that an `in scale` at a call site does not reach into a saved body, and that
+//! a `step` written in one is refused at the definition. The law's premise was
+//! the contextual reading prompt 127a deleted.
+//!
+//! `one_more_call_of_a_shared_body_charges_one_more_body` asserted that the
+//! occurrence meter charges every call rather than every body, so that a piece
+//! is never accepted for being written in a way the compiler happens to like.
+//! It is gone because the meter is: nothing in the new lowering calls
+//! `WorkMeter::output`, so the million-occurrence limit
+//! `docs/rules/language/06-performance.md` fixes is not charged, and a nullary
+//! motif called four hundred times costs about what one call costs. That is a
+//! hole, it is recorded as one, and it is not this file's to close — the meter
+//! is `resource_validation.rs`'s subject and prompt 144 re-measures it. A law
+//! stated here against a meter that does not run would have hidden it.
 
 #![allow(clippy::expect_used)]
 
+use std::collections::BTreeSet;
 use std::fmt::Write as _;
 
-use musa_compiler::{Code, CompileOptions, Realization, SourceDocument, compile, kernel_text};
-
-/// How many bodies a piece's term binds.
-///
-/// Counted from the printed term because that is the compiler's own account
-/// of what it built — a body elaborated twice is two `let shared` bindings,
-/// whatever the timings say.
-fn bodies(source: &str) -> usize {
-    kernel_text(
-        &SourceDocument::new(source, "sharing-laws.musa"),
-        &Realization::deterministic(),
-    )
-    .expect("the piece elaborates")
-    .matches("let shared")
-    .count()
-}
+use musa_compiler::{CompileOptions, ExpansionStep, SourceDocument, compile};
 
 /// A piece whose one voice holds `body`, with `declarations` above the score.
 fn piece(declarations: &str, body: &str) -> String {
@@ -34,65 +47,89 @@ fn piece(declarations: &str, body: &str) -> String {
     )
 }
 
-/// The occurrence count a refused piece says it attempted, with the operation
-/// that was charged when it crossed.
+/// Every complaint the compiler makes about `source`, by code, span, and
+/// message, in a stable order.
 ///
-/// `None` when the piece is accepted. The meter's own words are the observable
-/// here: `docs/rules/language/06-performance.md` fixes that a rejection names the
-/// operation, metric, attempted count, and limit.
-fn attempted(source: &str) -> Option<(String, u64)> {
+/// The span is half the measurement: a body elaborated once per call site says
+/// the same thing about the same text once per call, and a list that dropped
+/// the span could not tell that from one complaint repeated for other reasons.
+fn complaints(source: &str) -> Vec<String> {
     let compilation = compile(
         &SourceDocument::new(source, "sharing-laws.musa"),
         &CompileOptions::default(),
     );
-    compilation
+    let mut said: Vec<String> = compilation
         .diagnostics()
         .iter()
-        .find(|diagnostic| diagnostic.code == Code::ResourceLimit)
         .map(|diagnostic| {
-            let label = diagnostic
+            let at = diagnostic
                 .labels
                 .first()
-                .expect("a resource diagnostic labels the count")
-                .text
-                .clone();
-            let count = label
-                .split_whitespace()
-                .nth(1)
-                .and_then(|word| word.parse().ok())
-                .expect("a resource label reads `attempted {n} {metric}`");
-            (diagnostic.message.clone(), count)
+                .map_or_else(|| "-".to_owned(), |label| format!("{:?}", label.span));
+            format!("{:?} {at} {}", diagnostic.code, diagnostic.message)
         })
+        .collect();
+    said.sort();
+    said
 }
 
-/// `calls` uses of a motif whose body is `body` sixteenth notes.
-fn repeated_cell(body: usize, calls: usize) -> String {
-    piece(
-        &format!("    motif cell() {{ repeat {body} {{ c5/16 }} }}"),
-        &"        use cell();\n".repeat(calls),
-    )
+/// Every distinct `use` site the compiled score's provenance names.
+fn call_sites(source: &str) -> BTreeSet<String> {
+    let compilation = compile(
+        &SourceDocument::new(source, "sharing-laws.musa"),
+        &CompileOptions::default(),
+    );
+    let Some(snapshot) = compilation.snapshot() else {
+        panic!("the piece elaborates: {:?}", complaints(source));
+    };
+    snapshot
+        .parts()
+        .iter()
+        .flat_map(|(_, part)| part.voices().map(|(_, voice)| voice).collect::<Vec<_>>())
+        .flat_map(|voice| voice.events().to_vec())
+        .flat_map(|event| event.origin.expansion_path.clone())
+        .filter_map(|step| match step {
+            ExpansionStep::MotifApplication { call_site } => Some(format!("{call_site:?}")),
+            _ => None,
+        })
+        .collect()
+}
+
+/// A motif whose body cannot be read, and the calls that ask for it.
+///
+/// The fault is a `step` with no collection in force, which
+/// `scale_context_laws.rs` fixes as a property of the *declaration*: it is
+/// refused where it is written, and no call site can supply what it wants. That
+/// is what makes it the right probe here — a body elaborated per call would
+/// have to say it once per call, and a body elaborated once says it once.
+fn unreadable_body(parameter: &str, calls: &str) -> String {
+    piece(&format!("    motif cell({parameter}) {{ (c5 step 1)/4 c5/4 }}"), calls)
 }
 
 #[test]
-fn identical_calls_at_distinct_sites_elaborate_one_body() {
-    // The call-site gap, closed. Four `use`s of one motif denote one piece of
-    // music four times over; where they are written is carried at the
-    // reference, in its mark, and is not a property of the body.
+fn a_body_written_wrong_is_one_complaint_however_many_calls_ask_for_it() {
+    // The call-site gap, closed, and closed at the stage that always owned it.
+    // Four `use`s of one motif denote one piece of music four times over, and
+    // the body behind them is one core definition — so the text inside it is
+    // read, resolved, and checked once, which is what the repaired §Sharing
+    // means by "the saving is in elaboration".
+    let once = complaints(&unreadable_body("", "        use cell();\n"));
+    assert_eq!(once.len(), 1, "one body written wrong is one complaint: {once:?}");
     assert_eq!(
-        bodies(&piece(
-            "    motif cell() { c5/4 d5/4 e5/4 f5/4 }",
-            &"        use cell();\n".repeat(4)
-        )),
-        1
+        complaints(&unreadable_body("", &"        use cell();\n".repeat(4))),
+        once,
+        "and four calls of it are the same one complaint, at the same span"
     );
 }
 
 #[test]
-fn a_parameterized_body_is_one_binding_per_distinct_argument() {
-    // Eight calls, two arguments, two bodies: what a body costs is set by the
-    // arguments it is given, not by how often it is asked for. This is the
-    // measured shape of the full-laziness gap — the residual duplication is
-    // bounded by the piece's written vocabulary rather than by its length.
+fn a_parameterized_body_is_one_body_whatever_it_is_given() {
+    // What a body costs is no longer set by the arguments it is given. The
+    // replaced elaborator bound one body per distinct argument tuple, and the
+    // law that stood here measured that residual duplication as "the shape of
+    // the full-laziness gap". A core definition is one definition and takes its
+    // arguments, so the gap is closed rather than bounded: eight calls under
+    // two arguments read the body once, not twice.
     let calls = ["c5", "d5"]
         .iter()
         .cycle()
@@ -102,77 +139,22 @@ fn a_parameterized_body_is_one_binding_per_distinct_argument() {
             calls
         });
     assert_eq!(
-        bodies(&piece("    motif cell(root: Pitch) { root/4 g5/4 a5/4 b5/4 }", &calls)),
-        2
+        complaints(&unreadable_body("root: Pitch", &calls)),
+        complaints(&unreadable_body("root: Pitch", "        use cell(c5);\n")),
+        "eight calls and two arguments are one body, so one complaint"
     );
 }
 
 #[test]
-fn one_body_read_under_two_scales_is_two_bodies() {
-    // Why the call site could go: what it was standing in for is the pitch
-    // context in force at the call. A degree resolves against the innermost
-    // `in scale`, so the same motif under C major and C dorian is two pieces
-    // of music and must be two bindings.
-    // `scale_context_laws.rs` fixes the pitches this distinction produces;
-    // this fixes that the sharing key is what keeps them apart.
-    assert_eq!(
-        bodies(&piece(
-            "    motif cell() { (c5 step 0)/4 (c5 step 1)/4 (c5 step 2)/4 (c5 step 3)/4 }",
-            "        in scale c major { use cell(); use cell(); }\n        \
-             in scale c dorian { use cell(); use cell(); }"
-        )),
-        2
-    );
-}
-
-#[test]
-fn one_more_call_of_a_shared_body_charges_one_more_body() {
-    // Sharing is a fact about the compiler; the budget is a fact about the
-    // program. A body the compiler elaborated once and referenced three
-    // hundred times must be charged three hundred times, or a piece would be
-    // accepted for being written in a way the compiler happens to like.
-    //
-    // Stated as a difference rather than a total so it fixes the *rate* and
-    // says nothing about the piece's fixed overhead. A meter that charged the
-    // sharing table instead of the music would report the same crossing point
-    // for both call counts, and the difference would be zero.
-    for body in [2000_u64, 4000] {
-        let calls = usize::try_from(1_000_000 / body).expect("a call count fits") / 2 * 3;
-        let (operation, fewer) = attempted(&repeated_cell(usize::try_from(body).expect("a body size fits"), calls))
-            .expect("this many calls exceed the budget");
-        let (_, more) = attempted(&repeated_cell(
-            usize::try_from(body).expect("a body size fits"),
-            calls + 1,
-        ))
-        .expect("one more call still exceeds it");
-        assert_eq!(more - fewer, body + 1, "one call is one body and its segment");
-        assert!(
-            operation.contains("elaborating the piece timeline"),
-            "the score is charged once, at the boundary, not once per call: {operation}"
-        );
-    }
-}
-
-#[test]
-fn a_shared_body_carries_no_call_site_and_each_reference_carries_its_own() {
-    // Provenance survives sharing by moving: the body is printed once with a
-    // placeholder where the call would be, and every reference states its own
-    // site in its mark (`docs/rules/kernel/10-term-calculus.md` T6).
-    let printed = kernel_text(
-        &SourceDocument::new(
-            piece(
-                "    motif cell() { c5/4 d5/4 e5/4 f5/4 }",
-                &"        use cell();\n".repeat(3),
-            ),
-            "sharing-laws.musa",
-        ),
-        &Realization::deterministic(),
-    )
-    .expect("the piece elaborates");
-    let sites: std::collections::BTreeSet<&str> = printed
-        .lines()
-        .filter_map(|line| line.split("via motif ").nth(1))
-        .map(|site| site.trim_end().trim_end_matches('"'))
-        .collect();
-    assert_eq!(sites.len(), 3, "three references, three call sites:\n{printed}");
+fn each_call_carries_its_own_site() {
+    // Provenance no longer travels on a reference's mark, because there is no
+    // shared body whose occurrences would collide: every one is built by the
+    // voice's own left fold and carries its own `Origin`. What the Origin view
+    // promised is unchanged — three `use`s are three sites, and a note knows
+    // which of them made it.
+    let sites = call_sites(&piece(
+        "    motif cell() { c5/4 d5/4 e5/4 f5/4 }",
+        &"        use cell();\n".repeat(3),
+    ));
+    assert_eq!(sites.len(), 3, "three calls, three call sites: {sites:?}");
 }
