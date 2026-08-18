@@ -2,7 +2,7 @@
 id: 143
 slug: builtin-collapse
 status: pending
-depends_on: [142]
+depends_on: [145]
 phase: 3
 ---
 
@@ -15,6 +15,10 @@ language had no way to overload a name. Traits, methods, and type namespaces exi
 `nat_add`/`ratio_add`/`duration_add` into `Add`, `text_equal` into `==`, `duration_of`/`position_of` into
 `Duration::of`/`Position::of`, and every other entry whose ownership entry no longer names anything the compiler
 actually hides. Record what shrank and what did not, and why.
+
+*Repaired ordering:* this prompt now follows the staff rewrite — prompt 145 was pulled ahead of it and of 144 when the
+step-budget measurement said the rewrite could not wait for the cost table. That is the order prompt 140 already assumed
+("prompt 143 removes what is dead after 145"): the collapse audits a registry the rewritten adapter calls.
 
 ## Read
 
@@ -95,6 +99,9 @@ cargo bench -p musa-compiler -- p1_compile p2_elaborate
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 ```
+
+The two `nextest` lines still show the tonal budget class red — `diatonic-sequences` and `rule-of-the-octave`, named in
+prompt 142's Check and closed at 144 — and nothing else. The staff class is green since 145.
 
 The oracle stays fixed: a collapse that changes a semantic hash, a diagnostic code, or a rendered corpus file has
 changed behaviour, and behaviour changes belonged to prompt 142.

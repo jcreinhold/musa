@@ -2,7 +2,7 @@
 id: 145
 slug: staff-rewrite
 status: pending
-depends_on: [144]
+depends_on: [142]
 phase: 3
 ---
 
@@ -17,6 +17,17 @@ A rather than an implementation.
 
 ## Read
 
+- **The ordering, repaired.** This prompt sat behind 143 and 144 until the measurement they were waiting for arrived and
+  said not to wait. `examples/staff-page.musa`, 77 lines, instrumented on the migrated checker: 1,605,182,361 reduction
+  steps, of which 1,108,756,085 are `eval` entries over 2,719 distinct source origins; 18,922,391 δ-unfoldings over 84
+  distinct definitions; and a per-term closedness tally — every distinct term shape walked once for a `Var` anywhere
+  under it, the sufficient condition under which a pointer-keyed cache could fire — answering 198,753,114 closed
+  entries, **17.9%**, with **zero** at the five hottest sites, all of them closed-looking type annotations in
+  `stdlib/src/notation/staff.musa` whose elaborated terms carry the context elaboration glued on. So caching caps below
+  a fifth of the spend and never fires where the spend is, a specified cache would be a cost-table version bump besides
+  (`02-core-calculus.md` §4: it changes what the meter charges), and the spend itself is the call count this rewrite
+  deletes. The rewrite therefore lands before the registry collapse and the cost table, and it is what turns prompt
+  142's staff budget failures green.
 - `docs/notes/research/language-design-closure/42-dependent-core-decision.md` — the failing program and the measurements
   it recorded, which are the "before" side of this comparison.
 - Prompt 132's trial and its **predicted** line and byte count. That number was written before any code existed and is
@@ -49,6 +60,11 @@ A rather than an implementation.
   either adopts or argues against.
 
 ## Design
+
+**This runs before 143 and 144.** The registry the anchor change lands in is the one prompt 141e translated,
+uncollapsed; the diagnostics are the ones the migrated checker already prints, not 144's improved ones; and the suite
+this prompt leaves green includes every staff budget test 142's Check names. Neither reordering changes the gate below:
+the rewrite is measured against 2,404 lines and prompt 132's prediction, whenever it runs.
 
 **Five things must be gone, and each is checkable.** Zero `callN` helpers. Zero hand-allocated role integers. Zero
 string dispatch on token kinds or delimiters. `Pending` as a record with named fields rather than an eight-field
@@ -140,6 +156,8 @@ possible way to make the number look worse for a good reason and better for a ba
   repaired to name the prompt that actually removes the argument.
 - The oracle check recorded: manifest, rendered corpus, and snapshots compared, and the result stated rather than
   assumed.
+- **Every test in the staff budget class prompt 142's Check names, green.** That class is the reason this prompt moved;
+  the two tonal examples it names beside the staff class stay red here and stay 144's.
 
 ## Check
 
@@ -165,6 +183,11 @@ was — it asked for a literal role integer and now asks for the operation at al
 place argument there is nothing left in this file for `syntax_built` to serve. The fourth says the same thing about
 every remaining caller. Arity itself needs no grep: a three-argument `syntax_anchor` is a `WrongArity` diagnostic, so
 `cargo nextest run --workspace` is the check that every call site moved.
+
+The two `nextest` lines close the staff budget class: `staff_expansion_laws`, `every_example_elaborates`' staff-page
+case, and `the_staff_page_example_compiles_and_renders` are green, and the only red they may still show is the tonal
+class 142's Check names beside them — `diatonic-sequences` and `rule-of-the-octave` exhausting the same step budget with
+no adapter involved — which is 144's measurement to make. Any other red means this prompt is not done.
 
 The oracle stays fixed: a rewrite of a library file has no business changing a semantic hash or a rendered corpus file,
 and the Design section's analysis says the anchor's derived path is not observable in any of them. If one moves, stop

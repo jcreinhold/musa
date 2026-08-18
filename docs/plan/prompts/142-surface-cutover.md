@@ -201,7 +201,9 @@ follow-up.
 
 **`staff.musa` migrates; it is not rewritten.** It moves onto the new language with its structure intact, still
 backwards, still without quotation. Prompt 145 rewrites it and measures the result against 2,404 lines, and a partial
-rewrite here would destroy that measurement. The same applies to the studio adapter and prompt 146.
+rewrite here would destroy that measurement. The same applies to the studio adapter and prompt 146. *Repaired ordering:*
+145 now lands immediately after this prompt, ahead of 143 and 144, because the staff budget failures this migration
+leaves close with the rewrite and with nothing smaller — 145's **Read** carries the measurement that reordered it.
 
 **The phase stops subtracting the standard library.** *Found during implementation, and written here because the
 migration is what made it observable.*
@@ -524,11 +526,21 @@ rules never authorized.
     does. That is core work, and this prompt's **Stop** says a migration that wants a language feature records it.
     Recorded here. Reassigning the `Fact` payloads to a base type is *not* the smaller version of it: it would fix the
     repeat count and leave `anchor` alone, and the line between the two would be magnitude rather than meaning.
-  - **Three examples still exhaust the step budget, and that is 144's measurement rather than this prompt's.**
-    `diatonic-sequences`, `rule-of-the-octave`, and `staff-page` reach 200,000 reduction steps. §4 sets that number as a
-    language-version constant against the *replaced* checker; prompt 144 measures the finished one and sets the cost
-    table, and this prompt's **Stop** forbids performance work and a benchmark rerun on a half-migrated compiler. Both
-    counts here are evidence 144 should have.
+  - **Three examples still exhaust the step budget, and the measurement they were waiting for split them between two
+    prompts.** `diatonic-sequences`, `rule-of-the-octave`, and `staff-page` reach 200,000 reduction steps. §4 sets that
+    number as a language-version constant against the *replaced* checker, and this prompt's **Stop** forbids performance
+    work and a benchmark rerun on a half-migrated compiler. *Repaired after the measurement this bullet deferred.*
+    `staff-page` goes to prompt 145, pulled ahead of 143 and 144 for exactly this: instrumented on the migrated checker,
+    the 77-line file spends 1,605,182,361 reduction steps, 1,108,756,085 of them `eval` entries over 2,719 distinct
+    source origins, with 18,922,391 δ-unfoldings over 84 distinct definitions — the adapter's backwards reading calling
+    through the library. A per-term closedness tally (each distinct term shape walked once for a `Var` anywhere under
+    it) found 198,753,114 of those entries, 17.9%, on closed terms, and **zero** at the five hottest sites, all
+    closed-looking type annotations in `stdlib/src/notation/staff.musa` whose elaborated terms carry the context
+    elaboration glued on. A pointer-keyed closed-term cache therefore caps below a fifth of the spend and never fires
+    where the spend is — and since a cache changes what the meter charges, §4 makes one a cost-table version bump
+    besides. The spend is the call count, the call count is the adapter's structure, and the structure is 145's.
+    `diatonic-sequences` and `rule-of-the-octave` exhaust the same budget through `std::tonal` with no adapter involved;
+    they remain 144's measurement, made against a checker 145 has already rewritten the adapter on.
 - The eight collection eliminators 141c left out of the registry written as library code: `stdlib/src/nat.musa` holds
   `nat_fold`, `stdlib/src/option.musa` holds `option_fold`, and `stdlib/src/list.musa` holds the other six, each over
   the prelude's own constructors and nothing else. Two things the writing forced, recorded here rather than left as
@@ -591,6 +603,15 @@ PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 
 Every example in `examples/` must still compile and render, and every rendered corpus file must be byte-identical unless
 its change is argued in `elaboration-expected-changes.json`.
+
+**Two classes of budget exhaustion are expected red at this commit, and they are named rather than silent.** The *staff
+class*: every test whose only failure is `reduction steps at 200001 of 200000` out of the staff adapter's expansion —
+today `staff_expansion_laws`'s expansion regions, `every_example_elaborates`' staff-page case, and
+`the_staff_page_example_compiles_and_renders`. It closes at prompt 145, which lands next and whose Check runs the same
+two `nextest` lines with this class green. The *tonal class*: the same failure mode out of `diatonic-sequences` and
+`rule-of-the-octave`, ordinary `std::tonal` evaluation with no adapter involved. It closes at prompt 144, which measures
+it and sets the cost table. This prompt's closing commit lists every red test in both classes by name; anything red
+outside them means the prompt is not done.
 
 Commit as `Move the whole language over, once`.
 
