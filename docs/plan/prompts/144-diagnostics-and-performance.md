@@ -63,8 +63,9 @@ says what the implementation owes instead. This prompt discharges it.
   what Musa sounds like when it refuses.
 - [`docs/notes/research/language-design-closure/44-audit-against-smalltt-and-peyton-jones.md`](../../notes/research/language-design-closure/44-audit-against-smalltt-and-peyton-jones.md)
   in full, and its closing section. Prompt 136b removed the audit's ad hoc divergences and left this prompt six items it
-  could not decide without real code going through the checker. They are named in **Design** below and each is cited
-  there; do not rediscover them by reading the code.
+  could not decide without real code going through the checker; [prompt 141u](141u-glued-evaluation.md) has since taken
+  the first two, so four remain. They are named in **Design** below and each is cited there; do not rediscover them by
+  reading the code.
 - `~/Code/smalltt`'s README on glued evaluation, approximate conversion, the three quotation modes, and approximate
   occurs checking — the techniques the items below are, stated by the implementation this core was audited against.
 - Peyton Jones ch. 5 §5.4.1 and ch. 6's let-bound right-hand side, for Finding A, plus
@@ -204,17 +205,20 @@ A stack that is merely *larger* is step 1 and is not steps 2 and 3. `RUST_MIN_ST
 config, or CI is not any of them: it hides the defect from the suite while leaving every host that is not the suite
 exactly as it was.
 
-**The six items prompt 136b left here, and what each one waits on.** Note 44 audited `musa-core` against smalltt and
+**The four items prompt 136b left here, and what each one waits on.** Note 44 audited `musa-core` against smalltt and
 Peyton Jones and found seven divergences. 136b removed the ad hoc ones; these are the ones it could not, and the reason
-is the same for all six: none of them can be _priced_ until prompt 142 points the standard library at this checker, and
-five of them cannot be _built_ until there is a top-level definition scope to hold folded.
+is the same for all four: none of them can be _priced_ until prompt 142 points the standard library at this checker, and
+each of them waits on a top-level definition scope held folded.
 
-- **Glued evaluation (Finding C).** `musa-core` evaluates one way and unfolds everything it meets. smalltt keeps a
-  definition's folded and unfolded forms side by side so that conversion can try the cheap comparison first and unfold
-  only where it must. Nothing is foldable in the core today — there is no definition scope — so this becomes a real
-  divergence exactly at 142 and not before. It is the prerequisite for the next three.
-- **`Head::Def` and the `G` pair (Finding C's representation).** The head that carries both forms, which is what makes
-  everything below expressible.
+> **Finding C landed early, out of stack order.** The audit's first two items — glued evaluation and its representation,
+> `Head::Def` with both forms — were this prompt's until the migration measured them. Elaborating
+> [`examples/staff-page.musa`](../../../examples/staff-page.musa), 77 lines, spent **1,605,182,361** reduction steps
+> against the 200,000 the same adapter cost on the evaluator 142 replaces, with `evaluation` and `field projection`
+> taking 1.38 billion of them between them. Note 44 §6 had said this arrives "exactly at 142 and not before", and it
+> did, so [prompt 141u](141u-glued-evaluation.md) builds it there rather than leaving 142 to be measured against a
+> normalizer that rebuilds the standard library at every call site. What that leaves this prompt is the four items
+> below, whose prerequisite is now met, and the cost table 141u deliberately does not move.
+
 - **Approximate conversion (Finding D's remainder).** 136b gave conversion structural and η arms with early exit;
   smalltt's rigid/flex/full distinction is a further refinement that only pays where heads can stay folded.
 - **The flexible quotation mode (Finding E's remainder).** `rigidQuote`/`flexQuote`/`fullCheck` keep folded heads folded
@@ -248,10 +252,11 @@ and never a quietly raised threshold.
 - `docs/rules/language/06-performance.md` updated with post-migration P1/P2 rows and, if the gate was exceeded, the
   argument and its resolution.
 - `docs/rules/desktop/06-performance.md`'s B1/B2 confirmed still met, measured rather than assumed.
-- A verdict on each of note 44's six remaining items, measured on 142's output rather than argued: glued evaluation and
-  `Head::Def`, approximate conversion, the flexible quotation mode, the per-metavariable occurs cache, and the hoisting
-  of `match` arm bodies. Building one is an outcome; declining one with a number attached is equally an outcome, and
-  leaving one unmeasured is not.
+- A verdict on each of note 44's four remaining items, measured on 142's output rather than argued: approximate
+  conversion, the flexible quotation mode, the per-metavariable occurs cache, and the hoisting of `match` arm bodies.
+  Glued evaluation and `Head::Def` are [141u](141u-glued-evaluation.md)'s and arrive already built; this prompt measures
+  what they left rather than deciding them. Building one is an outcome; declining one with a number attached is equally
+  an outcome, and leaving one unmeasured is not.
 - A closing line in note 44 for each item this prompt settles, so the audit ends rather than being inherited again.
 - The room obligation discharged at the `musa-core` seam, with a `FRAME_CEILING` constant in `musa-core` carrying the
   measurement that justifies it — of the `infer → check → eval` chain, in a debug build, with the command that produced
