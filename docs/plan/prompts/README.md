@@ -323,6 +323,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 141r | instances-in-the-program | 3 | Declare a document's instances with its definitions |
 | 141s | numeral-representation | 3 | A numeral is one node, not a tower |
 | 141t | nested-occurrences | 3 | A family may hold a list of itself |
+| 141u | glued-evaluation | 3 | A definition stays folded until something needs it open |
 | 142 | surface-cutover | 3 | Move the whole language over, once |
 | 143 | builtin-collapse | 3 | Collapse the builtin registry behind traits and namespaces |
 | 144 | diagnostics-and-performance | 3 | Make the new failures legible and the new checker fast enough |
