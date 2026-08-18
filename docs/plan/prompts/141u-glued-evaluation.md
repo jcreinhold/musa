@@ -134,9 +134,30 @@ sites already call `force` before matching because a solved metavariable hides t
 folded definition at the same moment, through the same shared operation.
 
 So the change is one `unfold` — a `Def` head replaced by its carried value with the spine replayed over it — and one
-fixed point of `force`-then-`unfold` built on it, rather than a new pass over anything. Every unfold is charged a step,
-which is what δ always cost: the charge moves from the `Var` lookup to the forcing, and the total work a conversion does
-never grows.
+fixed point of `force`-then-`unfold` built on it, rather than a new pass over anything.
+
+**The replay carries no bookkeeping charge.** The sketch charged the unfold a step and let the replay charge each
+elimination again, and the corpus answered: `neo-riemannian.musa`, green at the base at 200,000 steps, exhausted at
+200,001 — the spine-building `apply` had already charged every elimination, so charging the replay counts every
+application of a definition twice. Neither the unfold nor its replay charges; the elimination was charged when it
+entered the spine, and the replay's real work — a β body, an ι step, a builtin's rule — carries its own charges either
+way. Termination needs no meter on the chain: a definition's value names only what was declared before it (a local's
+carried heads sit at strictly smaller levels, a global's at earlier declarations, a recursive definition's
+self-reference under a λ), so the chain is finite by the ordering argument below. Note the asymmetry this sets: the
+*metavariable* replay in `force` keeps its charges, because a spine behind a metavariable waited behind something and
+its replay is where the waiting work runs; a spine behind a definition waited behind nothing. That distinction is what
+keeps the calibrated budgets exact.
+
+**A definition's body is still paid for at its declaration.** δ deferred is δ *lazy*: with the use staying folded,
+`let values = range(500)` never runs the recursion when nothing reads `values`, and the corpus answered that too —
+`an_aggregate_past_the_budget_is_refused_and_publishes_nothing` lost its refusal. The budget laws were calibrated
+against evaluation that ran a definition's body when the declaration was elaborated, and "acceptance does not move"
+covers the laws as much as the programs. So the boundary keeps the old strictness: `Cx::defined` for a `let` and
+`program::elaborate` for a top-level definition each open the body's value to weak-head form — one `opened` at the
+definition, before the folded reference is what the environment stores — while every *use* stays folded. The sharing and
+the conversion win are untouched: the body is still evaluated once, and a use still compares by name. What is genuinely
+lazier is a definition's use inside another value — an application behind a constructor — which runs at the first unfold
+site that reaches it; that is Finding C working as designed, and no law in the corpus is calibrated against it.
 
 The unfold order is fixed by **the one that can mention the other goes first**: a local before a global (a `let`'s value
 may name a program definition and a program definition is closed to locals), the larger level before the smaller, and
@@ -161,9 +182,16 @@ and a spine disagreement there unfolds either side, since both unfold to the sam
 
 `quote` takes a mode with exactly two values:
 
-- **`Keep`** — stop at a `Def` head and write the definition's name. The diagnostic path takes this, so a conversion
-  mismatch names `pitch_of` instead of its normal form. That is half of what [144](144-diagnostics-and-performance.md)'s
-  conversion-error work asks for, arriving as a consequence rather than as work.
+- **`Keep`** — stop at a `Def` head and write the definition's name. The diagnostic path takes this. Where that shows up
+  is worth stating precisely, because the sketch's "a mismatch names `pitch_of`" is true one level *around* the mismatch
+  pair rather than in it: the pair itself is found after unfolding (a folded disagreement is retried open, for
+  completeness), but everything quoted *about* the pair — the type a refusal reports, the spine failure a same-head
+  retry also fails with, the readbacks the elaborator hands on — keeps the author's names. Two rules make that concrete:
+  a refusal that would quote a type it just opened quotes the value *before* opening instead, so applying a value of an
+  aliased type is refused at the alias's name; and when a same-head folded comparison fails and the unfolded retry also
+  fails, the folded failure is the one reported — the unfolded comparison decides the question, and the folded one says
+  it better. That is half of what [144](144-diagnostics-and-performance.md)'s conversion-error work asks for, arriving
+  as a consequence rather than as work.
 - **`Open`** — unfold `Def` heads. Metavariable solutions take this, because a solution mentioning a definition that
   escapes its scope is unsound; so does the canonical readback in
   [`lower/values.rs`](../../../crates/musa-compiler/src/lower/values.rs), because a musical value must be a value and
@@ -215,7 +243,11 @@ change it.
   deliberately large.
 - **The unchanged-acceptance law**: the corpus that checks before checks after, to the same values and the same normal
   forms. This is a representation change; if it moves acceptance, the design is wrong.
-- **The diagnostic law**: a conversion mismatch between two uses of named definitions prints the names.
+- **The diagnostic law**: a refusal quotes the type the author wrote — a definition's name, not the unfolding the
+  elaborator matched against — tested at a `NotAFunction` refusal through a type alias, plus the folded-failure rule for
+  same-head comparisons above.
+- `convertible_metered`, the `Spend`-reading twin the folded-comparison law is stated through, in the pattern of the
+  other `*_metered` facades.
 - The re-measurement of `examples/staff-page.musa`, recorded in `budget.rs` with its command, and the residual against
   `Budget::LANGUAGE` stated plainly whichever way it falls — including, if it is still far past it, that the remainder
   is prompt 145's.
@@ -237,11 +269,14 @@ PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 python3 scripts/renumber-prompts.py audit
 ```
 
-`musa-compiler`'s full suite and its clippy run are not gates here, for the reason
-[141s](141s-numeral-representation.md)'s and [141t](141t-nested-occurrences.md)'s **Check** sections state and measure:
-this prompt lands inside 142's migration, that suite is red for migration reasons this prompt neither causes nor can
-fix, and `-D warnings` is red on `core.rs`'s superseded checking paths that 142's own Target deletes. The staff tests
-are named because they are what this prompt is _for_; the whole corpus answers at 142's Check.
+One truth-table line moves with this prompt and is not a stop: `every_example_elaborates`'s expected budget walls for
+the staff page drop from two to one, because the wall the page hits first is a different one when δ is lazy. The example
+is still refused at the same budget; prompt 145's rewrite still owns the class. `musa-compiler`'s full suite and its
+clippy run are not gates here, for the reason [141s](141s-numeral-representation.md)'s and
+[141t](141t-nested-occurrences.md)'s **Check** sections state and measure: this prompt lands inside 142's migration,
+that suite is red for migration reasons this prompt neither causes nor can fix, and `-D warnings` is red on `core.rs`'s
+superseded checking paths that 142's own Target deletes. The staff tests are named because they are what this prompt is
+_for_; the whole corpus answers at 142's Check.
 
 Commit as `A definition stays folded until something needs it open`.
 
