@@ -1,7 +1,7 @@
 ---
 id: 141u
 slug: glued-evaluation
-status: pending
+status: in-progress
 depends_on: [141n, 141t]
 phase: 3
 ---
@@ -91,40 +91,71 @@ callee, and the callee's callees, and the cost is the product where it should be
 ### `Head::Def`: one new head, flexible-rigid
 
 ```rust
-/// A top-level or `let` definition, held folded.
-Def(DbLevel, Arc<Value>),
+/// A definition held folded: what it is known as, its type, and its unfolded value.
+Def(DefHead, Arc<Value>, Arc<Value>),
 ```
 
-- **The identity is the binder's level.** A definition is already a telescope entry with a stable level, so this needs
-  no new table, no interning, and no second notion of identity that could disagree with the first.
-- **The unfolded value travels in the head.** δ stays a _local_ rule: `eval` takes `&Env` and not a `Cx`, and a head
-  that had to consult a context to unfold would make δ a lookup that the evaluator cannot perform where it needs to.
+*Repaired against the code, which falsified the sketched `Def(DbLevel, Arc<Value>)` in three places.*
+
+- **The identity is one enum with two disjoint constructors**, not a bare `DbLevel`. A `let` or context definition is
+  its binder's level — a definition is already a telescope entry with a stable level, so this needs no new table and no
+  interning. A top-level definition is the `Def` itself, whose name is its equality. The sketch's single `DbLevel` does
+  not survive contact: the diagnostic law below needs _program_ definitions folded (a `let`'s name never reaches the
+  value domain, so "prints the names" is only testable on top-level ones), and a program position and a binder level are
+  two numberings that both start at zero — one program definition plus one `let` is a constructible wrong-`true`
+  conversion if they share a constructor. Two constructors of one enum cannot disagree with each other; two uses of one
+  numbering could.
+- **The type travels beside the unfolded value.** `neutral_type` and `head_type` answer a head's type with no context to
+  ask, which is why `Head::Var` carries one; a folded definition is the same question. The unfolded value travels for
+  the sketch's reason: δ stays a _local_ rule — `eval` takes `&Env` and not a `Cx`, and a head that had to consult a
+  context to unfold would make δ a lookup the evaluator cannot perform where it needs to.
 - **Flexible-rigid.** It never becomes a metavariable, so unification treats it as rigid; it computes on demand, so
   conversion treats it as reducible. That pairing is why it is one head rather than a second `Form`.
 
 ### δ becomes demand-driven, and the demand has exactly four sources
 
-`eval` at a definition builds the folded neutral in constant time. Applying, projecting, or `J`-eliminating a
-`Def`-headed neutral extends the spine and stays folded. Unfolding is forced at four sites and nowhere else, and each of
-them is a place that already asks whether it is looking at a canonical form:
+`eval` at a definition builds the folded neutral in constant time: `Shape::Def` from the declaration it names, and
+`Cx::defined` from the binder's level. Applying, projecting, or `J`-eliminating a `Def`-headed neutral extends the spine
+and stays folded. Unfolding is forced at five kinds of site and nowhere else, and each of them is a place that already
+asks whether it is looking at a canonical form:
 
 1. **conversion**, when the folded comparison disagrees;
-2. **ι**, when a recursor's target must become a constructor;
+2. **ι**, when a recursor's target must become a constructor — and `stepped`, when a step constructor's argument must
+   become a numeral;
 3. **δ-builtin reduction**, when an argument must become a literal;
-4. **quotation in the opening mode**, below.
+4. **quotation in the opening mode**, below;
+5. **the elaborator's existing force-before-match sites**, which already ask exactly this of metavariables.
 
-So the change is one `unfold` at each of four existing questions, not a new pass over anything.
+The fifth kind is a repair, not an extension: the sketch listed four, and the fourth's absence from the elaborator moves
+acceptance, which this prompt's own Target forbids. A `let T = … in` whose uses stay folded makes every
+`force`-then-match in `elab.rs`, `case.rs`, `dictionary.rs`, and `recheck.rs` read a type synonym as `Neutral` rather
+than as the `Π` it names, and a program that applies a function through one is refused where it was accepted. Those
+sites already call `force` before matching because a solved metavariable hides the same forms; they now see through a
+folded definition at the same moment, through the same shared operation.
+
+So the change is one `unfold` — a `Def` head replaced by its carried value with the spine replayed over it — and one
+fixed point of `force`-then-`unfold` built on it, rather than a new pass over anything. Every unfold is charged a step,
+which is what δ always cost: the charge moves from the `Var` lookup to the forcing, and the total work a conversion does
+never grows.
+
+The unfold order is fixed by **the one that can mention the other goes first**: a local before a global (a `let`'s value
+may name a program definition and a program definition is closed to locals), the larger level before the smaller, and
+between two globals the lexicographically larger name — arbitrary, and fixed, which is all §3 asks: a conversion whose
+answer depended on which branch ran first would not be a decision procedure. Unfold chains terminate because a local's
+stored value was evaluated before its binder was pushed, so the `Def` heads inside it carry strictly smaller levels, and
+a global's carry only earlier definitions — a recursive global's self-reference stands under a λ the recursor plan
+built, never at the head.
 
 ### Conversion tries folded first, and unfolds in a fixed order
 
 Two `Def` heads with the same level and convertible spines answer `true` without unfolding either side. That is the
 whole of the win on the conversion path and it is smalltt's speculation.
 
-On disagreement, **one** side unfolds and the comparison is retried, and the side is chosen by the rule _unfold the
-larger level_ — the definition written later, which is the one that can mention the other. Fixing the order matters for
-§3 rather than for speed: a conversion whose answer depended on which branch ran first would not be the decision
-procedure §3 requires. Where the levels are equal the heads are the same definition, which the folded comparison already
-answered.
+On disagreement, **one** side unfolds and the comparison is retried, and the side is chosen by the order the section
+above fixes — the one that can mention the other first: a local before a global, then the larger level, then the larger
+name. Fixing the order matters for §3 rather than for speed: a conversion whose answer depended on which branch ran
+first would not be the decision procedure §3 requires. Where the identities are equal the heads are the same definition,
+and a spine disagreement there unfolds either side, since both unfold to the same value.
 
 ### Quotation gains two modes, and they are two because there are two callers
 
@@ -168,8 +199,10 @@ change it.
 
 ## Target
 
-- `Head::Def(DbLevel, Arc<Value>)`, with `Cx::defined` building the folded neutral and `Cx::assumed` unchanged.
-- δ forced at exactly the four sites named above, each through one shared `unfold` rather than four spellings of it.
+- `Head::Def(DefHead, Arc<Value>, Arc<Value>)` — identity, type, unfolded value — with `Cx::defined` and `eval`'s
+  `Shape::Def` arm building the folded neutral and `Cx::assumed` unchanged.
+- δ forced at exactly the five kinds of site named above, each through one shared `unfold` rather than five spellings of
+  it.
 - Conversion answering same-level `Def` heads with convertible spines without unfolding, and unfolding the larger level
   first on disagreement.
 - `quote`'s two modes, with the diagnostic path on `Keep` and metavariable solutions and the canonical readback on
