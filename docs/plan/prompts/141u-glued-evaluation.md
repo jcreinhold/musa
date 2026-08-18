@@ -33,6 +33,26 @@ fix to prompt 144 because until 142 there was nothing foldable. There is now. Bu
 uses stay folded, `Head::Def` as the head that carries both forms, and conversion that tries the folded comparison
 first.
 
+**What the same measurement says this prompt is _not_ the lever for**, taken by tallying `eval` entries by term shape on
+the same run:
+
+| shape | entries |
+| --- | --- |
+| record, projection, `let`, `J` | 383,002,707 |
+| `Var` | 291,535,753 |
+| `App` | 196,516,743 |
+| `Lam` | 87,772,277 |
+| `Const` | 51,676,883 |
+| `Def` | **18,922,391** |
+
+`Shape::Def` already hands back a value computed once at the declaration — `eval`'s arm clones an `Arc`-backed value
+rather than re-evaluating one — so the 1.6 billion is not one definition rebuilt at many use sites. It is **18.9 million
+distinct calls**, each costing some eighty-five evaluation entries of β through the library. Nineteen million calls to
+read a 77-line page is the adapter's own reading algorithm, and
+[`staff.musa`](../../../stdlib/src/adapters/staff.musa)'s header says why in its own words: a list cannot be built, so
+the reading runs backwards. Prompt 141 closed that language gap and **prompt 145 is the prompt that rewrites the adapter
+on it**. This prompt does not make nineteen million calls cheaper by two orders of magnitude and must not claim to.
+
 ## Read
 
 - [Note 44](../../notes/research/language-design-closure/44-audit-against-smalltt-and-peyton-jones.md) **§6 in full** —
@@ -130,16 +150,21 @@ against a checker that rebuilds the standard library at every call site would be
 
 ### The gate
 
-A product becoming a sum over some two hundred definitions predicts two orders of magnitude, so the gate is stated at
-one, conservatively: **`examples/staff-page.musa` expands in fewer than 16,000,000 reduction steps**, against
-1,605,182,361 today. The measurement is taken the same way it was taken to write this prompt — a `Drop` print on `Meter`
-and a per-operation tally, both temporary — and the number is recorded in `budget.rs`'s doc comment beside
-`Budget::LANGUAGE` with the command that produced it, in the shape
-[`core_budget.rs`](../../../crates/musa-compiler/src/core_budget.rs)'s `FRAME_CEILING` already uses.
+The gate is on the path this prompt actually changes, and it is stated as a property rather than as a number the corpus
+happens to produce, because the corpus's number is the adapter's and belongs to 145.
 
-If the residual still exceeds `Budget::LANGUAGE`'s 200,000, that is recorded rather than fixed here: it is what the next
-prompt sets a table from. If the gate is _missed_, the prediction above was wrong and this is a repair of the design,
-not a lowered gate.
+**Conversion.** Two uses of the same definition at the same arguments are convertible in a spend that does not grow with
+the size of the definition's normal form, stated over a definition whose normal form is deliberately large so that a
+regression fails rather than merely slows.
+
+**Sharing.** A term using one definition _n_ times costs its evaluation once, within a constant.
+
+**The corpus, recorded rather than gated.** `examples/staff-page.musa`'s spend is re-measured and written into
+`budget.rs`'s doc comment beside `Budget::LANGUAGE` with the command that produced it, in the shape
+[`core_budget.rs`](../../../crates/musa-compiler/src/core_budget.rs)'s `FRAME_CEILING` already uses — against
+1,605,182,361 before. Whatever it becomes is the number the cost-table prompt and prompt 145 both argue from. No
+prediction is offered, because the tally above says the residual is the adapter's call count and this prompt does not
+change it.
 
 ## Target
 
@@ -153,12 +178,14 @@ not a lowered gate.
   using one definition ten times and asserts the spend is within a constant of using it once — the property, not a
   recorded number.
 - **The folded-comparison law**: two uses of the same definition at the same arguments are convertible with a spend that
-  does not depend on the size of the definition's normal form.
+  does not depend on the size of the definition's normal form, stated over a definition whose normal form is
+  deliberately large.
 - **The unchanged-acceptance law**: the corpus that checks before checks after, to the same values and the same normal
   forms. This is a representation change; if it moves acceptance, the design is wrong.
 - **The diagnostic law**: a conversion mismatch between two uses of named definitions prints the names.
-- The measurement above, recorded in `budget.rs` with its command, and the residual against `Budget::LANGUAGE` stated
-  plainly whichever way it falls.
+- The re-measurement of `examples/staff-page.musa`, recorded in `budget.rs` with its command, and the residual against
+  `Budget::LANGUAGE` stated plainly whichever way it falls — including, if it is still far past it, that the remainder
+  is prompt 145's.
 - A closing line in [note 44](../../notes/research/language-design-closure/44-audit-against-smalltt-and-peyton-jones.md)
   §6 for Finding C and for `Head::Def`, so the audit's first two remaining items end here rather than being inherited
   again.
