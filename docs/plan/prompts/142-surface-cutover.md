@@ -187,8 +187,10 @@ ambient context. `00-semantics.md` §3 already says this; this prompt makes the 
   - **A header fact's extent is read off the evaluated music, not summed off the tree.** `reach`'s static sum measures a
     `use` as zero because a `use`'s length lives in the material it names, so canon's header facts covered one bar of
     fifteen. A second compiler-owned word, `track_duration : EventTrack ⟨written⟩ ⟨ScoreFact⟩ → Duration ⟨written⟩`,
-    answers the evaluated extent, and the header facts are sounded with it. The cost is one extra evaluation of the
-    music under glued evaluation (no thunk update until 144's verdict); measured below.
+    answers the evaluated extent, and the header facts are sounded with it. The music is bound once with `Raw::bind` and
+    the variable read at both uses, because `Shape::Let` evaluates the bound term once and shares the *value* — an
+    earlier cut of this change inlined the music twice, and the doubled charge moved the staff page's budget crossing
+    from the evaluation site to an application site (`every_example_elaborates`' pin tracks it).
 
 **The oracle moves once, and every move is argued.** A changed semantic hash, kernel digest, diagnostic code, Origin
 path, or rendered corpus file is an entry in `elaboration-expected-changes.json` with a defect and an observation,
