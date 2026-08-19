@@ -1,10 +1,12 @@
 ---
 id: 145
 slug: staff-rewrite
-status: pending
+status: superseded
 depends_on: [142]
 phase: 3
 ---
+
+> Superseded by the course correction: `docs/notes/research/language-design-closure/50-the-course-correction-audit.md`. Its staff rewrite is phase 5, run as the benchmark of the simplified language rather than as a defense of the old one.
 
 # Rewrite the Staff Adapter, and Find Out Whether Any of This Worked
 

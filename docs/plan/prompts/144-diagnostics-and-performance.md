@@ -1,10 +1,12 @@
 ---
 id: 144
 slug: diagnostics-and-performance
-status: pending
+status: superseded
 depends_on: [143]
 phase: 3
 ---
+
+> Superseded by the course correction: `docs/notes/research/language-design-closure/50-the-course-correction-audit.md`. Its budgets are re-derived after the excision; the tonal and pressure classes belong to the simplified core.
 
 # Make the New Failures Legible and the New Checker Fast Enough
 

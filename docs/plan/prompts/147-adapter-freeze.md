@@ -1,10 +1,12 @@
 ---
 id: 147
 slug: adapter-freeze
-status: pending
+status: superseded
 depends_on: [146]
 phase: 3
 ---
+
+> Superseded by the course correction: `docs/notes/research/language-design-closure/50-the-course-correction-audit.md`. The adapter freeze lands on the simplified phase interface instead.
 
 # Freeze the Adapter Rules and Carry Them Through Hostile Review
 

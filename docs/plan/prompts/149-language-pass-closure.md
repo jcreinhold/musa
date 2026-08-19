@@ -1,10 +1,12 @@
 ---
 id: 149
 slug: language-pass-closure
-status: pending
+status: superseded
 depends_on: [148]
 phase: 3
 ---
+
+> Superseded by the course correction: `docs/notes/research/language-design-closure/50-the-course-correction-audit.md`. The pass this prompt closed has been replaced; closure is the correction's final report.
 
 # Close the Language Pass and Repair What It Left Behind
 
