@@ -2,7 +2,7 @@
 source: crates/musa/tests/cli.rs
 expression: "String::from_utf8_lossy(&output.stderr)"
 ---
-type-mismatch
+conversion-mismatch
 
   × expected `Scale`, found `Key`
    ╭─[examples/broken/a-key-is-not-a-scale.musa:8:23]

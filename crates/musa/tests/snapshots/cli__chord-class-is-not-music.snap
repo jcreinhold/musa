@@ -2,9 +2,9 @@
 source: crates/musa/tests/cli.rs
 expression: "String::from_utf8_lossy(&output.stderr)"
 ---
-type-mismatch
+conversion-mismatch
 
-  × expected `Music`, found `ChordClass`
+  × type mismatch: expected `EventTrack WrittenTime`, found `ChordClass`
     ╭─[examples/broken/chord-class-is-not-music.musa:14:21]
  13 │             voice line {
  14 │                 use tonic;

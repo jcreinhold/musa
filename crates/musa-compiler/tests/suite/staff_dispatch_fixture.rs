@@ -163,8 +163,11 @@ fn a_sixteenth_staff_word_does_not_compile_until_it_is_read() {
         "the sixteenth-word edit did not apply; `StaffWord` was respelled"
     );
     let found = errors("bar", &extended);
+    // The core's wording for §6.2's exhaustiveness refusal: "this match has no
+    // arm for `StaffWord.Caesura`" — the old checker's "leaves a possible
+    // value uncovered" was the same rule in the old voice.
     assert!(
-        found.iter().any(|error| error.contains("uncovered")),
+        found.iter().any(|error| error.contains("no arm for")),
         "a sixteenth staff word compiled without being read: {found:?}"
     );
 }

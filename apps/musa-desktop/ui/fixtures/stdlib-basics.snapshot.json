@@ -1086,31 +1086,22 @@
     {
       "name": "identity_ratio",
       "kind": "function",
-      "declaration": {
-        "start": 156,
-        "end": 170
-      },
-      "external": null,
+      "declaration": null,
+      "external": "musa-stdlib:/std/core.musa",
       "uses": []
     },
     {
       "name": "identity_nat",
       "kind": "function",
-      "declaration": {
-        "start": 254,
-        "end": 266
-      },
-      "external": null,
+      "declaration": null,
+      "external": "musa-stdlib:/std/core.musa",
       "uses": []
     },
     {
       "name": "compose_music",
       "kind": "function",
-      "declaration": {
-        "start": 368,
-        "end": 381
-      },
-      "external": null,
+      "declaration": null,
+      "external": "musa-stdlib:/std/core.musa",
       "uses": [
         {
           "start": 403,
@@ -1121,21 +1112,15 @@
     {
       "name": "compose_pitch",
       "kind": "function",
-      "declaration": {
-        "start": 680,
-        "end": 693
-      },
-      "external": null,
+      "declaration": null,
+      "external": "musa-stdlib:/std/core.musa",
       "uses": []
     },
     {
       "name": "counting_from",
       "kind": "function",
-      "declaration": {
-        "start": 1896,
-        "end": 1909
-      },
-      "external": null,
+      "declaration": null,
+      "external": "musa-stdlib:/std/list.musa",
       "uses": [
         {
           "start": 2199,
@@ -1146,11 +1131,8 @@
     {
       "name": "range",
       "kind": "function",
-      "declaration": {
-        "start": 2166,
-        "end": 2171
-      },
-      "external": null,
+      "declaration": null,
+      "external": "musa-stdlib:/std/list.musa",
       "uses": [
         {
           "start": 3402,
@@ -1161,11 +1143,8 @@
     {
       "name": "repeated",
       "kind": "function",
-      "declaration": {
-        "start": 2510,
-        "end": 2518
-      },
-      "external": null,
+      "declaration": null,
+      "external": "musa-stdlib:/std/list.musa",
       "uses": [
         {
           "start": 3986,
@@ -1176,11 +1155,8 @@
     {
       "name": "map",
       "kind": "function",
-      "declaration": {
-        "start": 2742,
-        "end": 2745
-      },
-      "external": null,
+      "declaration": null,
+      "external": "musa-stdlib:/std/list.musa",
       "uses": [
         {
           "start": 3581,
@@ -1191,11 +1167,8 @@
     {
       "name": "filter",
       "kind": "function",
-      "declaration": {
-        "start": 3013,
-        "end": 3019
-      },
-      "external": null,
+      "declaration": null,
+      "external": "musa-stdlib:/std/list.musa",
       "uses": [
         {
           "start": 3762,
@@ -1206,11 +1179,8 @@
     {
       "name": "naturals",
       "kind": "function",
-      "declaration": {
-        "start": 3366,
-        "end": 3374
-      },
-      "external": null,
+      "declaration": null,
+      "external": "musa-stdlib:/std/list.musa",
       "uses": [
         {
           "start": 684,
@@ -1221,31 +1191,22 @@
     {
       "name": "map_pitches",
       "kind": "function",
-      "declaration": {
-        "start": 3497,
-        "end": 3508
-      },
-      "external": null,
+      "declaration": null,
+      "external": "musa-stdlib:/std/list.musa",
       "uses": []
     },
     {
       "name": "filter_pitches",
       "kind": "function",
-      "declaration": {
-        "start": 3675,
-        "end": 3689
-      },
-      "external": null,
+      "declaration": null,
+      "external": "musa-stdlib:/std/list.musa",
       "uses": []
     },
     {
       "name": "repeat_music",
       "kind": "function",
-      "declaration": {
-        "start": 3871,
-        "end": 3883
-      },
-      "external": null,
+      "declaration": null,
+      "external": "musa-stdlib:/std/list.musa",
       "uses": []
     },
     {

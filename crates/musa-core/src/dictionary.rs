@@ -190,6 +190,7 @@ pub(crate) fn declare_impl(cx: &Cx, raw: &RawImpl) -> Result<(Arc<Instance>, cra
         return Err(Refusal::UnknownName {
             name: Arc::clone(&raw.name),
             at: here,
+            candidates: Vec::new(),
         }
         .into());
     };
@@ -688,6 +689,7 @@ fn dictionary_type(
         return Err(Refusal::UnknownName {
             name: Arc::clone(&needed.class),
             at: needed.origin,
+            candidates: Vec::new(),
         }
         .into());
     };
@@ -1021,6 +1023,7 @@ pub(crate) fn constraint_at(
         return Err(Refusal::UnknownName {
             name: Arc::clone(&raw.name),
             at: raw.origin,
+            candidates: Vec::new(),
         }
         .into());
     };
@@ -1194,6 +1197,7 @@ pub(crate) fn method_at(
                 return Err(Refusal::UnknownName {
                     name: Arc::clone(qualified),
                     at,
+                    candidates: Vec::new(),
                 }
                 .into());
             };

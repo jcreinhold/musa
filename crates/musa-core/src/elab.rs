@@ -472,6 +472,7 @@ impl Elaborator {
         Refusal::UnknownName {
             name: Arc::clone(name),
             at: here,
+            candidates: scope.nameable(),
         }
         .into()
     }

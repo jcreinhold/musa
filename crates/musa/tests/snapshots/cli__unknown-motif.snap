@@ -5,11 +5,11 @@ expression: "String::from_utf8_lossy(&output.stderr)"
 unknown-name
 
   × cannot find `sihg`
-    ╭─[examples/broken/unknown-motif.musa:14:17]
+    ╭─[examples/broken/unknown-motif.musa:14:21]
  13 │                 use sigh(c5);
  14 │                 use sihg(e5);
-    ·                 ──────┬──────
-    ·                       ╰── not declared in this piece
+    ·                     ──┬─
+    ·                       ╰── here
  15 │                 rest/2
     ╰────
   help: did you mean `sigh`?

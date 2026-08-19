@@ -828,6 +828,7 @@ fn a_refusal_carrying_no_written_origin_points_nowhere() {
         &musa_core::Refusal::UnknownName {
             at: musa_core::Origin::UNKNOWN,
             name: "nowhere".into(),
+            candidates: Vec::new(),
         }
         .into(),
     );

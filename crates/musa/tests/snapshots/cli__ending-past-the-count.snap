@@ -5,17 +5,7 @@ expression: "String::from_utf8_lossy(&output.stderr)"
 misplaced
 
   × this repeat never reaches pass 3
-    ╭─[examples/broken/ending-past-the-count.musa:11:24]
- 10 │             voice right {
- 11 │                 repeat 2 {
-    ·                        ┬
-    ·                        ╰── 2 passes
- 12 │                     | c4/4 d4/4 e4/4 f4/4
- 13 │                     ending 1 {
- 14 │                         | g4/1
- 15 │                     }
- 16 │                     ending 2 {
- 17 │                         | a4/1
+    ╭─[examples/broken/ending-past-the-count.musa:19:28]
  18 │                     }
  19 │                     ending 3 {
     ·                            ┬

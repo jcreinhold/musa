@@ -1061,6 +1061,7 @@ fn unnameable(what: &str) -> ElabError {
     Refusal::UnknownName {
         name: Arc::from(what),
         at: HERE,
+        candidates: Vec::new(),
     }
     .into()
 }

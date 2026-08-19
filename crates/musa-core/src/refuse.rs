@@ -91,6 +91,16 @@ pub enum Refusal {
         name: Name,
         /// Where it was written.
         at: Origin,
+        /// The names of the raiser's own namespace that *were* in scope.
+        ///
+        /// Handed over rather than re-collected by the caller, because the
+        /// raiser is the one holding the scope ("hand a consumer what we
+        /// already computed"): which names are near the written one is the
+        /// surface's judgment to make, but what the candidates *are* is a
+        /// fact of the context at the refusal point. Empty where the raiser
+        /// has no such list — a trait name looked up among classes is a
+        /// different namespace than a value among binders.
+        candidates: Vec<Name>,
     },
     /// §2's `Switch` called conversion and conversion said no.
     #[error("{0}")]
@@ -849,6 +859,18 @@ pub struct Mismatch {
     pub found: Term,
     /// The route from the two whole types to that pair, outermost step first.
     pub path: Vec<PathStep>,
+    /// The whole pair the comparison started from, when the comparison knows.
+    ///
+    /// The endpoints say *where* the types disagree; the roots say *what* was
+    /// being asked, in the shape the author wrote it — "expected
+    /// `Option<Pitch>`, found `Option<Degree>`" is a sentence about the
+    /// program, and "expected `Pitch`, found `Degree` at the argument" is a
+    /// sentence about the machine's walk. Unification's entry points attach
+    /// the pair they were handed; a comparison that began mid-term (a
+    /// retried constraint, the rechecker's two normal forms) leaves this
+    /// `None`, and a renderer falls back to the endpoints, which there are
+    /// the whole types.
+    pub whole: Option<Box<(Term, Term)>>,
 }
 
 /// The route, and then the two subterms it ends at.

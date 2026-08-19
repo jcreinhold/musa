@@ -2,7 +2,7 @@
 source: crates/musa/tests/cli.rs
 expression: "String::from_utf8_lossy(&output.stderr)"
 ---
-type-mismatch
+conversion-mismatch
 
   × expected `Option<Pitch>`, found `Option<Degree>`
     ╭─[examples/broken/a-degree-is-not-a-pitch.musa:10:31]

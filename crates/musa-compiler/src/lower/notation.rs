@@ -93,7 +93,9 @@ use musa_language::ast::AstNode as _;
 use musa_language::{SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 
-use super::{Lowering, applied, child, children, is_expr_node, is_type_node, listed, significant_tokens, whole, writes};
+use super::{
+    Lowering, applied, child, children, is_expr_node, is_type_node, listed, significant_tokens, whole, writes,
+};
 use crate::diagnose::{Code, Diagnostic};
 use crate::origin::{DeclarationId, SourceSpan};
 use crate::score::NotatedDuration;
@@ -760,7 +762,11 @@ impl Lowering<'_> {
                 let fact = applied(
                     origin,
                     Raw::hosted(origin, "Fact.Rest"),
-                    [field, listed(origin, Vec::new()), optional(origin, "FreeDuration", free)],
+                    [
+                        field,
+                        listed(origin, Vec::new()),
+                        optional(origin, "FreeDuration", free),
+                    ],
                 );
                 Some(self.sounded_term(origin, reading, fact, held))
             }

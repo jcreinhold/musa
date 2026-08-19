@@ -252,5 +252,8 @@ library {
         )
     }
 
-    let expand = fn (region) { Ok(built(region)) };
+    // Annotated, as `stdlib/src/adapters/staff.musa`'s own `expand` is: the
+    // total core does not generalize, so `Ok`'s other side is a metavariable
+    // nobody solves unless the signature says it.
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<Expr>, Text> { Ok(built(region)) };
 }

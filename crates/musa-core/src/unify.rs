@@ -148,7 +148,7 @@ impl Unifier {
         right: &Value,
     ) -> Result<(), ElabError> {
         self.step(meter, depth, At::Type, at, left, right)
-            .map_err(|failure| failure.into_error(at))?;
+            .map_err(|failure| failure.into_error(at).rooted(At::Type, meter, depth, left, right))?;
         self.retry_postponed(meter)
     }
 
@@ -171,7 +171,7 @@ impl Unifier {
         right: &Value,
     ) -> Result<(), ElabError> {
         self.step(meter, depth, At::Term(ty), at, left, right)
-            .map_err(|failure| failure.into_error(at))?;
+            .map_err(|failure| failure.into_error(at).rooted(At::Term(ty), meter, depth, left, right))?;
         self.retry_postponed(meter)
     }
 
@@ -785,6 +785,25 @@ enum Flexible {
     Rigid,
 }
 
+impl ElabError {
+    /// This error, with the two values its comparison started from attached
+    /// when it is a [`Refusal::Mismatch`].
+    ///
+    /// Read back in the entry point's own sort, so the roots are spelled the
+    /// way the sides were compared; a read-back that cannot complete — the
+    /// budget the comparison just spent, for one — leaves the refusal to its
+    /// endpoints rather than spending a second refusal on the first.
+    fn rooted(self, at: At<'_>, meter: &mut Meter, depth: u32, left: &Value, right: &Value) -> Self {
+        let mut error = self;
+        if let ElabError::Refused(Refusal::Mismatch(mismatch)) = &mut error
+            && let (Ok(expected), Ok(found)) = (at.quote(meter, depth, left), at.quote(meter, depth, right))
+        {
+            mismatch.whole = Some(Box::new((expected, found)));
+        }
+        error
+    }
+}
+
 /// What one step of unification answers.
 type Step = Result<(), Failure>;
 
@@ -837,6 +856,7 @@ impl Failure {
                     expected,
                     found,
                     path,
+                    whole: None,
                 }))
                 .into()
             }

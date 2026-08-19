@@ -1,13 +1,13 @@
-// `beats()` takes no arguments, and taking none is not the same as being a
-// value. Its type is `() -> Nat`, which is what the editor's record says, and
-// the empty parameter list a reader writes at the call site is the one the
-// declaration wrote. A track is the single exception: a bare nullary
-// `EventTrack<WrittenTime>` function is applied where music is wanted, which
-// is what makes `use sigh;` read like music.
+// `echo` takes an argument, and taking one is not the same as being a
+// value: the function's type is `Pitch -> Pitch`, and naming it without the
+// argument names the function, not a pitch. (The old checker's nullary case
+// is gone rather than excepted: `fn beats() -> Nat` binds no parameter, so
+// there is no arrow for it to have — the declaration is a plain `Nat`, and
+// `beats` and `beats()` are two spellings of the same use.)
 piece "A Function Is Not Its Result" {
-    fn beats() -> Nat { 4 }
+    fn echo(tone: Pitch) -> Pitch { tone }
 
-    let count: Nat = beats;
+    let start: Pitch = echo;
 
     score {
         part solo {

@@ -477,6 +477,9 @@ impl Checker<'_> {
             expected,
             found,
             path: Vec::new(),
+            // The endpoints *are* the whole forms here — see above — so the
+            // pair is not repeated under `whole`.
+            whole: None,
         }))
         .into())
     }

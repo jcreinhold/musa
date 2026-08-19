@@ -170,11 +170,13 @@ library {
     // --------------------------------------------------------------- emitting
 
     // Nothing said yet.
-    let no_head = Head(Absent, Absent, Absent, Absent, Absent, Absent);
+    // Annotated: a constructor builds a value in checking position, where the
+    // expected type says the family; inferring one would hole its fields.
+    let no_head: Head = Head(Absent, Absent, Absent, Absent, Absent, Absent);
 
     // Nothing read at all.
     fn nothing_read(here: NodePath) -> Reading {
-        Reading(quote at here { NoItems }, 0, Silent, Closed, no_head, NoRefusal)
+        Reading(quote at here { NoItems }, 0/1, Silent, Closed, no_head, NoRefusal)
     }
 
     // A reader that has read nothing, ready to be threaded through children.
@@ -401,5 +403,8 @@ library {
         )
     }
 
-    let expand = fn (region) { Ok(built(region)) };
+    // Annotated, as `stdlib/src/adapters/staff.musa`'s own `expand` is: the
+    // total core does not generalize, so `Ok`'s other side is a metavariable
+    // nobody solves unless the signature says it.
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<Expr>, Text> { Ok(built(region)) };
 }

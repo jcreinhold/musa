@@ -436,6 +436,22 @@ pub(crate) enum Claim {
 }
 
 impl Claim {
+    /// The claim as the author wrote it, for a report that quotes it back.
+    pub(crate) fn describe(&self) -> String {
+        match self {
+            Self::FillsMeter => "fills_meter()".to_owned(),
+            Self::PitchesIn(scale) => format!("pitches_in({scale})"),
+            Self::Realizes { chord, policy } => format!("realizes({chord}, {})", policy.as_str()),
+            Self::Voices(count) => format!("voices({count})"),
+            Self::WithinRanges(ranges) => format!("within_ranges({} ranges)", ranges.len()),
+            Self::Follows(rule) => format!("follows({rule})"),
+        }
+    }
+
+    /// How the claim reads back: the name with its arguments, spelled the way
+    /// a composer would write them.
+    ///
+
     /// Build the claim `name` names from its evaluated arguments.
     ///
     /// Returns `None` only when the arguments do not have the shapes the
@@ -466,24 +482,6 @@ impl Claim {
     /// pitches themselves.
     pub(crate) const fn reads_notes(&self) -> bool {
         !matches!(*self, Self::FillsMeter)
-    }
-
-    /// How the claim reads back: the name with its arguments, spelled the way
-    /// a composer would write them.
-    ///
-    /// This is what the [`crate::ExpansionStep::Assertion`] on every fact
-    /// underneath the assertion records. The arguments belong in it because
-    /// "this note exists under `pitches_in(scale c major)`" is a provenance
-    /// line someone can act on, and "under `pitches_in`" is not.
-    pub(crate) fn describe(&self) -> String {
-        match self {
-            Self::FillsMeter => "fills_meter()".to_owned(),
-            Self::PitchesIn(scale) => format!("pitches_in({scale})"),
-            Self::Realizes { chord, policy } => format!("realizes({chord}, {})", policy.as_str()),
-            Self::Voices(count) => format!("voices({count})"),
-            Self::WithinRanges(ranges) => format!("within_ranges({} ranges)", ranges.len()),
-            Self::Follows(rule) => format!("follows({rule})"),
-        }
     }
 }
 

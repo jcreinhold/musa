@@ -2,16 +2,16 @@
 source: crates/musa/tests/cli.rs
 expression: "String::from_utf8_lossy(&output.stderr)"
 ---
-type-mismatch
+conversion-mismatch
 
-  × expected `Nat`, found `() -> Nat`
-    ╭─[examples/broken/a-function-is-not-its-result.musa:10:22]
+  × type mismatch: expected `Pitch`, found `Pitch → Pitch`
+    ╭─[examples/broken/a-function-is-not-its-result.musa:10:24]
   9 │ 
- 10 │     let count: Nat = beats;
-    ·                      ──┬──
-    ·                        ╰── this has type `() -> Nat`
+ 10 │     let start: Pitch = echo;
+    ·                        ──┬─
+    ·                          ╰── here
  11 │ 
     ╰────
-  help: this is a function, not its result: call it, as in `name()`
+  help: this is a function, not its result: apply it to its arguments
 
 1 problem (1 error)

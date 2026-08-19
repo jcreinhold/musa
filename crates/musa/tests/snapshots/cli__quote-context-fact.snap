@@ -5,9 +5,9 @@ expression: "String::from_utf8_lossy(&output.stderr)"
 misplaced
 
   × a quote cannot carry a key
-    ╭─[examples/broken/quote-context-fact.musa:6:28]
+    ╭─[examples/broken/quote-context-fact.musa:6:46]
   5 │     piece "Quote Context Fact" {
-  6 │ ╭─▶     let assembled: Music = kernel EventTrack[WrittenTime, ScoreFact] {
+  6 │ ╭─▶     let assembled: EventTrack<WrittenTime> = kernel EventTrack[WrittenTime, ScoreFact] {
   7 │ │           together {
   8 │ │               track 1 {
   9 │ │                   occurrence "key c major" from 0 to 1;

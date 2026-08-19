@@ -141,8 +141,14 @@ pub(super) const SPELLINGS: [&str; 8] = [
 /// the whole control is that the *reading* chose the occurrence. The position is
 /// counted rather than chosen for the same reason: `01-surface.md`'s `with`
 /// clause is the only thing that writes one.
-pub(super) const TRACK_BEYOND: [&str; 6] =
-    ["set_note_pitches", "instanced", "spliced", "scoped", "respelled", "track_duration"];
+pub(super) const TRACK_BEYOND: [&str; 6] = [
+    "set_note_pitches",
+    "instanced",
+    "spliced",
+    "scoped",
+    "respelled",
+    "track_duration",
+];
 
 /// The term naming an event track in written time.
 ///

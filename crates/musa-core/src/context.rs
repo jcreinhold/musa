@@ -467,6 +467,15 @@ impl Cx {
     /// that wants them — a metavariable abstracting over its context — wants all
     /// of them in that order, and asking by index would make it recover the
     /// depth arithmetic this already knows.
+    /// The names of the top-level definitions in scope.
+    ///
+    /// What an [`crate::Refusal::UnknownName`] offers as its candidates: the
+    /// answer to "what could this name have meant" is read off the context the
+    /// name failed in, not re-derived by whoever reports it.
+    pub(crate) fn defined_names(&self) -> impl Iterator<Item = Name> + '_ {
+        self.definitions.iter().map(|defined| Arc::clone(&defined.name))
+    }
+
     pub(crate) const fn binder_types(&self) -> &List<Arc<Value>> {
         &self.types
     }

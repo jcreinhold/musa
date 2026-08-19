@@ -23,152 +23,6 @@ use crate::pitch::{PitchClass, WrittenPitch};
 use crate::resolve::{NameKind, Resolver};
 use crate::time::{Exact, exact_arithmetic, exact_ratio, written_rational};
 
-/// Check and evaluate imported definitions followed by a piece's definitions.
-pub(crate) fn check_piece(
-    resolver: &mut Resolver,
-    libraries: &Libraries,
-    root: &SyntaxNode,
-    piece: &musa_language::ast::PieceDecl,
-    bindings: Vec<Binding>,
-) -> Option<Program> {
-    if !validate_imports(resolver, libraries) {
-        return None;
-    }
-    // The data world is built first, because a declaration is what a written
-    // type *means*: a signature member or a `let` naming `Motive` cannot be
-    // lowered until this says what `Motive` is.
-    let world = World::read(resolver, &data_owners(libraries, root, Some(piece.syntax())));
-    let modules = Modules::read(resolver, module_owners(libraries, root));
-    check_and_evaluate(
-        resolver,
-        libraries
-            .each()
-            .flat_map(|(from, library)| declarations(library.syntax(), Some(from)))
-            .chain(root_preamble(root))
-            .chain(bindings.into_iter().map(SurfaceDefinition::Bound))
-            .chain(declarations(piece.syntax(), None)),
-        Some(piece.syntax()),
-        UnknownRootMusic::Defer,
-        &modules,
-        &world,
-        Reading::Source,
-    )
-}
-
-/// Check and evaluate a root instance site's arguments, in the only scope a
-/// document root has: its imports and its own values and functions.
-///
-/// This exists as its own pass because a piece made at the root has no piece
-/// to be checked with — the piece *is* what the arguments are for.
-pub(crate) fn check_arguments(
-    resolver: &mut Resolver,
-    libraries: &Libraries,
-    root: &SyntaxNode,
-    bindings: Vec<Binding>,
-) -> Option<Program> {
-    if !validate_imports(resolver, libraries) {
-        return None;
-    }
-    let world = World::read(resolver, &data_owners(libraries, root, None));
-    let modules = Modules::read(resolver, module_owners(libraries, root));
-    check_and_evaluate(
-        resolver,
-        libraries
-            .each()
-            .flat_map(|(from, library)| declarations(library.syntax(), Some(from)))
-            .chain(root_preamble(root))
-            .chain(bindings.into_iter().map(SurfaceDefinition::Bound)),
-        None,
-        UnknownRootMusic::Reject,
-        &modules,
-        &world,
-        Reading::Source,
-    )
-}
-
-/// Check one instance of a voice template: the template's body, read with
-/// its parameters bound and nothing else the site could lend it.
-///
-/// The site's own scope is deliberately absent. A template body that could
-/// read the piece it lands in would mean the same body means different
-/// things in different places, which is the dynamic scoping this design
-/// exists to avoid — the file's root is the one scope it shares.
-pub(crate) fn check_template_voice(
-    resolver: &mut Resolver,
-    libraries: &Libraries,
-    root: &SyntaxNode,
-    voice: &musa_language::ast::VoiceDecl,
-    bindings: Vec<Binding>,
-) -> Option<Program> {
-    let world = World::read(resolver, &data_owners(libraries, root, Some(voice.syntax())));
-    let modules = Modules::read(resolver, module_owners(libraries, root));
-    check_and_evaluate(
-        resolver,
-        libraries
-            .each()
-            .flat_map(|(from, library)| declarations(library.syntax(), Some(from)))
-            .chain(root_preamble(root))
-            .chain(bindings.into_iter().map(SurfaceDefinition::Bound))
-            .chain(declarations(voice.syntax(), None)),
-        Some(voice.syntax()),
-        UnknownRootMusic::Defer,
-        &modules,
-        &world,
-        Reading::Source,
-    )
-}
-
-/// Every place a document's signatures and modules may be written: what its
-/// imports export, in import order, then its own lexical root.
-fn module_owners<'a>(
-    libraries: &'a Libraries,
-    root: &SyntaxNode,
-) -> impl Iterator<Item = (Option<&'a str>, SyntaxNode)> {
-    libraries
-        .each()
-        .map(|(from, library)| (Some(from.path), library.syntax().clone()))
-        .chain(std::iter::once((None, root.clone())))
-}
-
-/// Every place a `data` declaration may be written for this pass: what its
-/// imports declare, its own lexical root, and the piece or voice being
-/// checked when there is one.
-///
-/// A wider list than [`module_owners`] by exactly that last node, because a
-/// piece may declare data of its own while a signature or a structure written
-/// inside one is not a thing the grammar admits.
-fn data_owners(libraries: &Libraries, root: &SyntaxNode, inner: Option<&SyntaxNode>) -> Vec<SyntaxNode> {
-    libraries
-        .each()
-        .map(|(_, library)| library.syntax().clone())
-        .chain(std::iter::once(root.clone()))
-        .chain(inner.cloned())
-        .collect()
-}
-
-/// The definitions written at a document's lexical root, before its piece or
-/// library. Templates are collected separately; these are the ordinary
-/// values and functions their bodies may read.
-fn root_preamble(root: &SyntaxNode) -> Vec<SurfaceDefinition> {
-    root.children()
-        .filter_map(|node| {
-            LetDecl::cast(node.clone())
-                .map(|declaration| SurfaceDefinition::Let {
-                    declaration,
-                    source: None,
-                    qualifier: None,
-                })
-                .or_else(|| {
-                    FnDecl::cast(node).map(|declaration| SurfaceDefinition::Function {
-                        declaration,
-                        source: None,
-                        qualifier: None,
-                    })
-                })
-        })
-        .collect()
-}
-
 /// Check and evaluate imported definitions followed by an opened library's.
 pub(crate) fn check_material(
     resolver: &mut Resolver,
@@ -3818,30 +3672,6 @@ pub(crate) enum MusicOperation {
 #[derive(Clone)]
 pub(crate) struct PitchFunction(Box<Closure>);
 
-pub(crate) fn apply_pitch_function(function: &PitchFunction, pitch: WrittenPitch) -> Option<WrittenPitch> {
-    let mut meter = WorkMeter::default();
-    let value = apply_closure(
-        &function.0,
-        vec![Value::Pitch(pitch)],
-        &mut meter,
-        SourceSpan::default(),
-    )?;
-    let Value::Pitch(pitch) = value else {
-        return None;
-    };
-    Some(pitch)
-}
-
-pub(crate) fn pitch_function_key(function: &PitchFunction) -> String {
-    let closure = &function.0;
-    let mut key = format!("{}:{}", closure.body.span.start, closure.body.span.end);
-    for (name, value) in &closure.captures {
-        use std::fmt::Write as _;
-        let _ = write!(key, "|{name}={}", value.normalization_witness());
-    }
-    key
-}
-
 #[derive(Clone)]
 pub(crate) struct MusicRole {
     pub(crate) name: String,
@@ -5060,40 +4890,6 @@ enum UnknownRootMusic {
     Silent,
 }
 
-/// Check and evaluate on the import-free interchange path (`piece_term`):
-/// the document's own preamble, whatever a template instance bound, and the
-/// items of `scope` when there is a declaration to read them from.
-///
-/// One function rather than one per caller because the interchange path has
-/// exactly one rule — no imports, and a `use` no local declaration supplies
-/// is silence rather than an error — and that rule is the same whether the
-/// scope is a piece, a template's voice, or nothing at all.
-pub(crate) fn check_for_kernel(
-    resolver: &mut Resolver,
-    root: &SyntaxNode,
-    scope: Option<&SyntaxNode>,
-    bindings: Vec<Binding>,
-) -> Option<Program> {
-    // The document's root *and* the piece or voice being elaborated: a `data`
-    // declaration is written where the values that use it are, so a path that
-    // read only the root would elaborate a piece whose own types are unknown.
-    let owners: Vec<SyntaxNode> = std::iter::once(root.clone()).chain(scope.cloned()).collect();
-    let world = World::read(resolver, &owners);
-    let modules = Modules::read(resolver, std::iter::once((None, root.clone())));
-    check_and_evaluate(
-        resolver,
-        root_preamble(root)
-            .into_iter()
-            .chain(bindings.into_iter().map(SurfaceDefinition::Bound))
-            .chain(scope.map(|node| declarations(node, None)).unwrap_or_default()),
-        scope,
-        UnknownRootMusic::Silent,
-        &modules,
-        &world,
-        Reading::Source,
-    )
-}
-
 /// The name a [`SyntaxKind::NameExpr`] writes, starting at its first name
 /// token: one identifier, or the two words of a `Module.member` path joined
 /// the way the flat namespace holds it.
@@ -5518,16 +5314,6 @@ fn function_result(ty: &Type) -> Option<&Type> {
 
 fn parse_type(resolver: &mut Resolver, scope: &TypeScope<'_>, node: &SyntaxNode) -> Option<Type> {
     lower_type(Some(resolver), scope, node)
-}
-
-/// The type a node declares, read without reporting what it is not.
-///
-/// The module stage asks a member what its type *is*, in order to match it
-/// against a signature; whether the type exists at all is a question the core
-/// answers once, where the declaration is lowered, so asking here would
-/// report the same mistake twice.
-pub(crate) fn declared_type(scope: &TypeScope<'_>, node: &SyntaxNode) -> Option<Type> {
-    lower_type(None, scope, node)
 }
 
 /// The type a `data` declaration's field writes, read in the scope of that
@@ -11949,13 +11735,6 @@ fn aggregate_shape<'a>(values: impl Iterator<Item = &'a Value>) -> (u64, u64) {
     })
 }
 
-/// Report the meter's failure, if it has one.
-pub(crate) fn report_exhaustion(resolver: &mut Resolver, meter: &WorkMeter) {
-    if let Some(failure) = meter.failure() {
-        report_resource_error(resolver, failure);
-    }
-}
-
 /// The one resource rejection, naming the operation, metric, attempted amount,
 /// and limit (`docs/rules/language/02-core-calculus.md` §4).
 ///
@@ -12660,11 +12439,6 @@ pub(crate) struct Printer {
 }
 
 impl Printer {
-    /// Whether the phase should leave a declaration to the printer.
-    pub(crate) fn owns(&self, name: &str) -> bool {
-        self.private.contains(name)
-    }
-
     /// Every name the phase leaves to the printer, `print` included.
     ///
     /// What [`crate::document::Source::without`] is handed. `print` is on the

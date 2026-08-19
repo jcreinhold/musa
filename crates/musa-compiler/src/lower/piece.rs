@@ -288,7 +288,11 @@ impl Lowering<'_> {
         // statement's own length is.
         let bound = self.mint("music");
         let music = simultaneous(origin, tracks);
-        let extent = applied(origin, Raw::hosted(origin, "track_duration"), [Raw::var(origin, bound.as_str())]);
+        let extent = applied(
+            origin,
+            Raw::hosted(origin, "track_duration"),
+            [Raw::var(origin, bound.as_str())],
+        );
         let laid: Vec<Raw> = context
             .into_iter()
             // Placed: a header stands at exactly one place in the piece, so its
@@ -299,7 +303,14 @@ impl Lowering<'_> {
             // gap: `tempo 1/4 = 96;` is the piece speaking, and a header is
             // written in no motif, no bar, and no voice.
             .map(|(scope, said, fact)| {
-                self.sounded_in(said, scope, true, crate::origin::DeclarationId::default(), fact, extent.clone())
+                self.sounded_in(
+                    said,
+                    scope,
+                    true,
+                    crate::origin::DeclarationId::default(),
+                    fact,
+                    extent.clone(),
+                )
             })
             .collect();
         // One `let`, not two inlines of the same term: `Shape::Let` evaluates
@@ -309,7 +320,10 @@ impl Lowering<'_> {
             origin,
             bound.clone(),
             music,
-            simultaneous(origin, vec![Raw::var(origin, bound.as_str()), simultaneous(origin, laid)]),
+            simultaneous(
+                origin,
+                vec![Raw::var(origin, bound.as_str()), simultaneous(origin, laid)],
+            ),
         );
         whole.then(|| Piece { track, parts })
     }
@@ -604,8 +618,7 @@ fn simultaneous(origin: Origin, tracks: Vec<Raw>) -> Raw {
         })
 }
 
-impl Lowering<'_> {
-}
+impl Lowering<'_> {}
 
 /// `Fact.Meter 4 4`, for a piece that wrote none.
 fn unmeasured(origin: Origin) -> Raw {

@@ -4,7 +4,7 @@ expression: "String::from_utf8_lossy(&output.stderr)"
 ---
 duplicate-name
 
-  × `rise` is declared twice
+  × `rise` is declared twice in this document
    ╭─[examples/broken/declared-twice.musa:4:5]
  3 │ 
  4 │     motif rise() { c5/8 d5/8 }
@@ -15,7 +15,7 @@ duplicate-name
    ·                  ╰── declared again here
  6 │ 
    ╰────
-  help: rename one of them, or delete this declaration
+  help: give one of them another name
 
   note: musa has no shadowing: a name means one thing everywhere the piece can see it
 

@@ -2,14 +2,14 @@
 source: crates/musa/tests/cli.rs
 expression: "String::from_utf8_lossy(&output.stderr)"
 ---
-type-mismatch
+conversion-mismatch
 
-  × expected `Option<Pitch>`, found `Option<NoteName>`
+  × expected `Option<Pitch>`, found `Option<PitchClass>`
     ╭─[examples/broken/a-note-name-has-no-octave.musa:9:31]
   8 │     let home: Scale = scale c major;
   9 │     let tonic: Option<Pitch> = degree_class(home, 1);
     ·                               ───────────┬──────────
-    ·                                          ╰── this has type `Option<NoteName>`
+    ·                                          ╰── this has type `Option<PitchClass>`
  10 │ 
     ╰────
   help: a note name has no octave: write one (`c4`), or realize the class against a frame

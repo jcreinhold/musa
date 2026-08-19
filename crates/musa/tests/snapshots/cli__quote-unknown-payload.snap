@@ -5,11 +5,11 @@ expression: "String::from_utf8_lossy(&output.stderr)"
 unsupported-payload
 
   × this build has no meaning for `Sample` payloads
-   ╭─[examples/broken/quote-unknown-payload.musa:6:59]
+   ╭─[examples/broken/quote-unknown-payload.musa:6:77]
  5 │ piece "Quote Unknown Payload" {
- 6 │     let assembled: Music = kernel EventTrack[WrittenTime, Sample] {
-   ·                                                           ───┬──
-   ·                                                              ╰── no payload type by this name
+ 6 │     let assembled: EventTrack<WrittenTime> = kernel EventTrack[WrittenTime, Sample] {
+   ·                                                                             ───┬──
+   ·                                                                                ╰── no payload type by this name
  7 │         track 1 {
    ╰────
   help: write `ScoreFact`, the payload a musa score is made of

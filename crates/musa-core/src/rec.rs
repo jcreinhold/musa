@@ -131,7 +131,7 @@ pub(crate) fn define(
 /// the call instead is the honest report; the `#` is what makes the test sound,
 /// since no source identifier can hold one.
 fn unavailable(name: &Name, error: ElabError) -> ElabError {
-    let ElabError::Refused(Refusal::UnknownName { name: missing, at }) = &error else {
+    let ElabError::Refused(Refusal::UnknownName { name: missing, at, .. }) = &error else {
         return error;
     };
     if !missing.contains('#') {

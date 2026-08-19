@@ -152,7 +152,12 @@ fn a_piece_and_its_kernel_printing_have_one_meaning() {
     for (name, source) in sources {
         let document = SourceDocument::new(*source, *name);
         let surface = compile(&document, &CompileOptions::default());
-        let printed = kernel_text(&document, &Realization::seeded(FIXTURE_SEED), &musa_compiler::ImportSources::default()).unwrap_or_else(|| panic!("{name}"));
+        let printed = kernel_text(
+            &document,
+            &Realization::seeded(FIXTURE_SEED),
+            &musa_compiler::ImportSources::default(),
+        )
+        .unwrap_or_else(|| panic!("{name}"));
         let kernel = compiled(&format!("{name}.musa.kernel"), &printed);
         assert!(!kernel.has_errors(), "{name}'s own kernel printing did not compile");
         assert_eq!(
@@ -311,4 +316,3 @@ fn a_malformed_kernel_document_is_refused_as_a_kernel_document() {
             .collect::<Vec<_>>(),
     );
 }
-

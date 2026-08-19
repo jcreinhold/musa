@@ -387,8 +387,12 @@ fn finite_core_rejection(bencher: divan::Bencher<'_, '_>) {
 /// standard library has no printed term here — which is a missing
 /// measurement, not a measurement of zero, and the caller says so.
 fn duplication(source: &SourceDocument) -> Option<(usize, usize)> {
-    musa_compiler::kernel_text(source, &musa_compiler::Realization::default())
-        .map(|text| (text.matches("let shared").count(), text.len()))
+    musa_compiler::kernel_text(
+        source,
+        &musa_compiler::Realization::default(),
+        &musa_compiler::ImportSources::default(),
+    )
+    .map(|text| (text.matches("let shared").count(), text.len()))
 }
 
 fn main() {

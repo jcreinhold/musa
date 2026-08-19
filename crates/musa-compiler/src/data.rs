@@ -184,15 +184,6 @@ impl World {
         }
     }
 
-    /// The same, for an adapter module.
-    ///
-    /// Its declarations may hold the phase's own types, so the flag is set
-    /// before anything is read rather than after: a `data` holding a `Syntax`
-    /// is refused by a world that does not yet know it is a phase world.
-    pub(crate) fn read_in_phase(resolver: &mut Resolver, owners: &[SyntaxNode]) -> Self {
-        Self::read_with(resolver, owners, true)
-    }
-
     /// Read every `data` declaration under `owners`, check each group once,
     /// and answer with what the rest of the pass may name.
     ///

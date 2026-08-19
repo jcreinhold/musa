@@ -671,7 +671,8 @@ fn named_once(resolver: &mut Resolver, sites: &Sites, written: &[(Name, Origin)]
             };
             resolver.report(
                 said.maybe_also(sites.span(previous), "first declared here")
-                    .help("give one of them another name"),
+                    .help("give one of them another name")
+                    .note("musa has no shadowing: a name means one thing everywhere the piece can see it"),
             );
         } else {
             seen.push(held);
@@ -794,7 +795,12 @@ impl Read {
                     if let Some(alias) = alias {
                         definition.name = Name::from(format!("{alias}{}{}", crate::module::DOT, definition.name));
                     }
-                    record(resolver, &node, &definition.name);
+                    record(
+                        resolver,
+                        &node,
+                        &definition.name,
+                        source.from.as_ref().map(|from| from.path.as_str()),
+                    );
                     self.declaring.push(Declaring::at(&node, &definition, source));
                     let held = top_level(definition, visibility);
                     // A `record` declares a *type*, so it goes through the type
@@ -889,7 +895,7 @@ impl Read {
                     // member the core refused to look up would be hidden from
                     // its own siblings too.
                     definition.name = Name::from(member.name.as_str());
-                    record(resolver, &written, &definition.name);
+                    record(resolver, &written, &definition.name, member.source.as_deref());
                     self.declaring.push(Declaring {
                         node: written.clone(),
                         name: Arc::clone(&definition.name),
@@ -1069,7 +1075,7 @@ fn documented(resolver: &mut Resolver, cx: &Cx, declaring: Vec<Declaring>) {
 /// material kinds, which is why they are passed over here rather than filed
 /// under a second kind: one name in two namespaces would make a rename check
 /// the wrong collision.
-fn record(resolver: &mut Resolver, node: &SyntaxNode, name: &str) {
+fn record(resolver: &mut Resolver, node: &SyntaxNode, name: &str, source: Option<&str>) {
     let kind = match node.kind() {
         SyntaxKind::FnDecl => crate::resolve::NameKind::Function,
         SyntaxKind::LetDecl | SyntaxKind::RecordDecl => crate::resolve::NameKind::Value,
@@ -1077,7 +1083,13 @@ fn record(resolver: &mut Resolver, node: &SyntaxNode, name: &str) {
     };
     let span =
         crate::resolve::token_span(node, SyntaxKind::Identifier).unwrap_or_else(|| crate::resolve::trimmed_span(node));
-    resolver.references.declare(kind, name, span);
+    match source {
+        None => resolver.references.declare(kind, name, span),
+        // The span belongs to the imported document's text, which nothing in
+        // this document's coordinates can point at: the name is recorded as
+        // spelled elsewhere, and go-to-definition opens *that* URI.
+        Some(uri) => resolver.references.declare_external(kind, name, uri, span),
+    }
 }
 
 /// The name a declaration is written under, before anything lowers it.

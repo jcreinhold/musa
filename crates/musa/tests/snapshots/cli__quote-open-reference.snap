@@ -5,9 +5,9 @@ expression: "String::from_utf8_lossy(&output.stderr)"
 unknown-name
 
   × this kernel quote does not stand on its own
-    ╭─[examples/broken/quote-open-reference.musa:11:28]
+    ╭─[examples/broken/quote-open-reference.musa:11:46]
  10 │     
- 11 │ ╭─▶     let assembled: Music = kernel EventTrack[WrittenTime, ScoreFact] {
+ 11 │ ╭─▶     let assembled: EventTrack<WrittenTime> = kernel EventTrack[WrittenTime, ScoreFact] {
  12 │ │           together {
  13 │ │               theme;
  14 │ │               shift by 1/2 theme;

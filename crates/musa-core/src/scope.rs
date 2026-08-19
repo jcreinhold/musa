@@ -127,6 +127,19 @@ impl Scope {
         }
     }
 
+    /// Every name a written variable could have meant here.
+    ///
+    /// Binders the elaboration introduced, then the context's definitions:
+    /// the list an unknown-name refusal hands the surface, whose "did you
+    /// mean" is its own policy over exactly these.
+    pub(crate) fn nameable(&self) -> Vec<Name> {
+        self.bindings
+            .iter()
+            .filter_map(|binding| binding.name.clone())
+            .chain(self.cx.defined_names())
+            .collect()
+    }
+
     /// This scope with `key` discharged by the binder at `level`.
     ///
     /// Recorded when a `where` constraint's dictionary is assumed, so that a use

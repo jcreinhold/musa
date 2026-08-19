@@ -579,7 +579,8 @@ impl<'a> Lowering<'a> {
 
     /// Forget what [`Self::push_syntax_categories`] remembered, on every way out.
     pub(super) fn pop_syntax_categories(&mut self, pushed: usize) {
-        self.scrutinee_categories.truncate(self.scrutinee_categories.len().saturating_sub(pushed));
+        self.scrutinee_categories
+            .truncate(self.scrutinee_categories.len().saturating_sub(pushed));
     }
 
     /// Whether `name`'s nearest remembered parameter was written `Syntax<Expr>`.

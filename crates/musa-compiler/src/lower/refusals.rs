@@ -40,6 +40,12 @@ struct Filed {
     /// A second place and what to say about it. [`None`] for the refusals that
     /// are about one node.
     also: Option<(Origin, &'static str)>,
+    /// What to say beside the node, when "here" is not the whole of it.
+    ///
+    /// A mismatch answers the node's *type*, and the type is what the reader
+    /// needs beside the span — "this has type `Option<Degree>`" — because the
+    /// message names the pair and the span alone leaves the finding unsaid.
+    label: Option<String>,
     /// The repair, for a refusal whose repair is a *surface* spelling.
     ///
     /// Almost always [`None`]: what to do about a refusal is the refusal's own
@@ -47,7 +53,7 @@ struct Filed {
     /// prompt 144 owns how good those are. The exception is a repair the core
     /// cannot name because it is not the core's to know — a form the surface
     /// offers and the core has never heard of.
-    help: Option<&'static str>,
+    help: Option<std::borrow::Cow<'static, str>>,
     /// The sentence, where the core's own names a thing the composer did not
     /// write.
     ///
@@ -85,7 +91,7 @@ pub(crate) fn restate(sites: &Sites, error: &ElabError) -> Diagnostic {
             // name is a pattern literal where it was used, the report is the
             // old checker's `QuotedLiteralName` one. `11-quotation.md` §4:
             // a quote pattern binds only its splices.
-            if let Refusal::UnknownName { name, at } = refusal
+            if let Refusal::UnknownName { name, at, .. } = refusal
                 && sites.quoted_literal(*at, name)
             {
                 let span = sites.span(*at);
@@ -107,8 +113,9 @@ pub(crate) fn restate(sites: &Sites, error: &ElabError) -> Diagnostic {
                 None => (None, ""),
             };
             let said = filed.said.unwrap_or_else(|| refusal.to_string());
+            let label = filed.label.as_deref().unwrap_or("here").to_owned();
             let restated = Diagnostic::error(filed.code, said)
-                .maybe_at(sites.span(filed.at), "here")
+                .maybe_at(sites.span(filed.at), &label)
                 .maybe_also(also, text);
             let restated = match filed.help {
                 Some(repair) => restated.help(repair),
@@ -157,6 +164,7 @@ fn file(refusal: &Refusal) -> Filed {
         code,
         at,
         also: None,
+        label: None,
         help: None,
         said: None,
     };
@@ -164,6 +172,7 @@ fn file(refusal: &Refusal) -> Filed {
         code,
         at,
         also: Some((previous, text)),
+        label: None,
         help: None,
         said: None,
     };
@@ -174,11 +183,34 @@ fn file(refusal: &Refusal) -> Filed {
         // an unknown profile, an unknown import path, and an unknown mark all
         // say so already. Restating it here is what keeps one sentence for one
         // situation now that the name reaches the core to be resolved.
-        Refusal::UnknownName { name, at } => Filed {
+        Refusal::UnknownName { name, at, candidates } => Filed {
             said: Some(format!("cannot find `{name}`")),
+            // The near-miss is the surface's sentence — `diagnose::nearest`'s
+            // budget and tie rule — over the core's list: which names were in
+            // scope is a fact of the context at the refusal, not something to
+            // re-collect.
+            help: crate::diagnose::nearest(name, candidates.iter().map(|name| &**name))
+                .map(|near| std::borrow::Cow::Owned(format!("did you mean `{near}`?"))),
             ..one(Code::UnknownName, *at)
         },
-        Refusal::Mismatch(mismatch) => one(Code::ConversionMismatch, mismatch.at),
+        Refusal::Mismatch(mismatch) => {
+            let (expected, found) = mismatch
+                .whole
+                .as_deref()
+                .map_or((&mismatch.expected, &mismatch.found), |(expected, found)| {
+                    (expected, found)
+                });
+            let said = match (spelled_type(expected), spelled_type(found)) {
+                (Some(expected), Some(found)) => format!("expected `{expected}`, found `{found}`"),
+                _ => mismatch.to_string(),
+            };
+            Filed {
+                said: Some(said),
+                label: spelled_type(found).map(|found| format!("this has type `{found}`")),
+                help: crossing(expected, found).map(std::borrow::Cow::Borrowed),
+                ..one(Code::ConversionMismatch, mismatch.at)
+            }
+        }
         Refusal::Private { at, .. } => one(Code::PrivateName, *at),
         Refusal::MixedVisibility { at, .. } => one(Code::MixedVisibility, *at),
         Refusal::AbstractMatch { at, .. } => one(Code::AbstractMatch, *at),
@@ -190,6 +222,7 @@ fn file(refusal: &Refusal) -> Filed {
             code: Code::UnsolvedMetavariable,
             at: *created,
             also: blocked.map(|origin| (origin, "still waiting on this")),
+            label: None,
             help: None,
             said: None,
         },
@@ -253,9 +286,10 @@ fn file(refusal: &Refusal) -> Filed {
             code: Code::MethodOnVariable,
             at: *at,
             also: None,
-            help: Some(
+            label: None,
+            help: Some(std::borrow::Cow::Borrowed(
                 "name the trait — `Trait::m(x, y)` resolves wherever its dictionary does, and a `where` clause on this signature is what supplies one",
-            ),
+            )),
             said: None,
         },
         Refusal::NoMethodForType { at, .. } => one(Code::NoMethodForType, *at),
@@ -277,4 +311,125 @@ fn file(refusal: &Refusal) -> Filed {
         // per operation, and the node is the application the composer wrote.
         Refusal::BuiltinRefused { at, .. } => one(Code::OperationRefused, *at),
     }
+}
+
+/// A type term's surface spelling, when the surface has one.
+///
+/// The core's own [`Display`](std::fmt::Display) spells `Option Pitch` — the
+/// term as the calculus sees it — and this answers `Option<Pitch>`, the
+/// spelling the composer wrote. [`None`] for the shapes the surface cannot
+/// write back (a dependent Π is the one a mismatch can still reach), which
+/// leaves the core's own sentence standing.
+fn spelled_type(term: &musa_core::Term) -> Option<String> {
+    crate::lower::documented::spelled(term)
+}
+
+/// The type head's name and arguments: `Option<Pitch>` is `("Option", [Pitch])`.
+///
+/// Read off the term rather than off the spelling, because the recursion
+/// below is structural — a `List<Option<Degree>>` mismatched against
+/// `List<Option<Pitch>>` is the degree confusion twice wrapped, and the
+/// sentence that answers it is the degree's own.
+fn headed(term: &musa_core::Term) -> Option<(String, Vec<musa_core::Term>)> {
+    let mut head = term;
+    let mut arguments = Vec::new();
+    while let musa_core::Shape::App { function, argument, .. } = head.shape() {
+        arguments.push(argument.clone());
+        head = function;
+    }
+    arguments.reverse();
+    match head.shape() {
+        musa_core::Shape::Base(base) => Some((base.to_string(), arguments)),
+        musa_core::Shape::Const(constant) => Some((constant.to_string(), arguments)),
+        _ => None,
+    }
+}
+
+/// The one-sentence repair for two types that are neighbours in the *domain*
+/// rather than in the calculus.
+///
+/// Ported from the rank-1 checker's `crossing_help`, whose doc said why the
+/// table exists: most mismatches are slips and a slip needs no advice, but
+/// the pairs below are places where the model has a gap a beginner cannot see
+/// — a degree is not a pitch, a key is not a scale — and what the message has
+/// to say is not "these differ" but *which operation crosses the gap*. The
+/// table is one-directional per entry for the same reason it always was, and
+/// every operation it names lives in `stdlib/src/`, so a rename that orphans
+/// one of these strings shows up in `stdlib/reference.md` in the same commit.
+fn crossing(expected: &musa_core::Term, found: &musa_core::Term) -> Option<&'static str> {
+    // A container of the wrong element is the same confusion one layer out.
+    // `Option<Roman>` where `Option<ChordClass>` was wanted is a numeral that
+    // has not met a collection, and the sentence about that is the sentence
+    // about numerals — the `Option` is not the problem and mentioning it
+    // would bury the one that is.
+    if let (Some((want, want_arguments)), Some((got, got_arguments))) = (headed(expected), headed(found))
+        && want == got
+        && matches!(want.as_str(), "Option" | "List")
+        && let ([want_inner], [got_inner]) = (want_arguments.as_slice(), got_arguments.as_slice())
+    {
+        return crossing(want_inner, got_inner);
+    }
+    let expected_name = headed(expected).map(|(name, _)| name);
+    let found_name = headed(found).map(|(name, _)| name);
+    Some(match (expected_name.as_deref(), found_name.as_deref()) {
+        (Some("EventTrack"), Some("ChordClass")) => {
+            "a chord class has no register: `close_position` or `voiced_as` chooses the pitches, \
+             and `sound_for` gives the result a duration"
+        }
+        (Some("EventTrack"), Some("Voicing")) => {
+            "a voicing is pitches with no duration: `sound_for(chosen, held)` sounds it"
+        }
+        (Some("EventTrack"), Some("Pitch") | Some("PitchClass")) => {
+            "a pitch is not music until it lasts: write the duration, as in `c4/4`"
+        }
+        (Some("Pitch"), Some("Degree")) => {
+            "a degree is an ordinal with no octave: `frame_on` registers the collection, and \
+             `frame_degree` reads a pitch out of the frame"
+        }
+        (Some("Pitch"), Some("PitchClass")) => {
+            "a note name has no octave: write one (`c4`), or realize the class against a frame"
+        }
+        (Some("Degree"), Some("Pitch")) => {
+            "`degree_in(collection, written)` locates a pitch in a collection, and is absent when \
+             it is not a member"
+        }
+        (Some("PitchClass"), Some("Pc12")) => {
+            "a `Pc12` has forgotten its spelling: `spelled_in` chooses one back, against the \
+             collection that decides it"
+        }
+        (Some("Pc12"), Some("PitchClass")) => "`forget_spelling` is the map into `Pc12`, and it is total",
+        (Some("Scale"), Some("Key")) => {
+            "a key is not a collection — C minor is three of them: `key_scale` takes the \
+             signature's own collection, or name the one you mean"
+        }
+        (Some("ChordClass"), Some("Roman")) => {
+            "a numeral carries no collection: `numeral_chord(collection, written)` reads it in one"
+        }
+        (Some("ChordClass"), Some("Voicing")) => "`chord_of(chosen)` forgets a voicing down to its class",
+        (Some("Voicing"), Some("ChordClass")) => {
+            "`close_position(content, bass)` chooses the pitches, and the bass is yours to name"
+        }
+        // A function standing where its result was wanted. The core sees the
+        // Π; the sentence is the surface's. A codomain that mentions the
+        // binder is nobody's slip — it is a type that computes — and earns no
+        // advice.
+        _ if matches!(found.shape(), musa_core::Shape::Pi { .. }) => {
+            return crossing_function(expected, found);
+        }
+        _ => return None,
+    })
+}
+
+/// The function row of [`crossing`], kept apart because it reads the Π.
+fn crossing_function(expected: &musa_core::Term, found: &musa_core::Term) -> Option<&'static str> {
+    let musa_core::Shape::Pi { codomain, .. } = found.shape() else {
+        return None;
+    };
+    // `expected` is closed here — a mismatch's sides are both elaborated
+    // types — so it compares equal to a codomain that never mentions the
+    // binder, and to nothing that does.
+    if codomain != expected {
+        return None;
+    }
+    Some("this is a function, not its result: apply it to its arguments")
 }
