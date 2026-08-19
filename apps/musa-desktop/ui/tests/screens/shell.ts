@@ -223,6 +223,7 @@ export async function stubShell(
                   ],
                   help: null,
                   note: null,
+                  causes: [],
                   fixes: [
                     {
                       title: "add `}`",

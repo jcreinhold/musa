@@ -110,7 +110,7 @@ test("origin view marks the declaration and the use, in the workspace too", asyn
 
   const marks = await marked(page);
   expect(marks.join("\n")).toContain("motif sigh");
-  expect(marks.at(-1)).toBe("use sigh();");
+  expect(marks.at(-1)).toBe("use sigh(e5);");
 });
 
 /**

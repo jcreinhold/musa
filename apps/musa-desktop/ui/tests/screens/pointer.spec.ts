@@ -205,7 +205,7 @@ test("a drag on generated music asks the same question a keystroke does", async 
   const choice = page.getByRole("group", { name: "Editing generated music" });
   await expect(choice).toBeVisible();
   await expect(choice).toContainText("changes 2 occurrences, 2 notes");
-  await expect(choice).toContainText("sigh()");
+  await expect(choice).toContainText("sigh(e5)");
   expect(await edits(page)).toHaveLength(0);
 
   await choice.getByRole("button", { name: /Edit the motif/ }).click();

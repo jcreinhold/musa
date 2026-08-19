@@ -96,7 +96,7 @@ test("editing a generated note asks first, and states what it would change", asy
   // The count is the number of notes that *change* — one per occurrence, not
   // the ten notes the two expansions contain.
   await expect(choice).toContainText("changes 2 occurrences, 2 notes");
-  await expect(choice).toContainText("sigh()");
+  await expect(choice).toContainText("sigh(e5)");
   // Nothing has been asked of the core yet: the question comes first.
   expect(await edits(page)).toHaveLength(0);
   // And the notes the count names are the notes that are haloed, so the

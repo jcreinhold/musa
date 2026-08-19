@@ -107,7 +107,7 @@ test("pointing at a line in the source marks the notes it produced", async ({ pa
 });
 
 test("pointing at a use statement marks the whole expansion", async ({ page }) => {
-  await page.locator(".cm-line", { hasText: "use sigh();" }).first().hover();
+  await page.locator(".cm-line", { hasText: "use sigh(e5);" }).first().hover();
   // Five notes, one of them tied across a barline and therefore drawn twice.
   await expect(hairlines(page)).toHaveCount(6);
 });

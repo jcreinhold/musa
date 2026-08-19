@@ -72,8 +72,8 @@ test("every occurrence gets a bracket that names it", async ({ page }) => {
   const labels = page.locator(".overlay g.bracket text.label");
   // Two occurrences of one motif, one of them transposed (§1).
   await expect(labels).toHaveCount(2);
-  await expect(labels.nth(0)).toHaveText("sigh()");
-  await expect(labels.nth(1)).toHaveText("transpose down P5 ▸ sigh()");
+  await expect(labels.nth(0)).toHaveText("sigh(e5)");
+  await expect(labels.nth(1)).toHaveText("transpose down P5 ▸ sigh(e5)");
 });
 
 test("hovering a generated note draws one trace to its bracket", async ({ page }) => {
@@ -133,7 +133,7 @@ test("the source says where too, and the parts list dims what is authored", asyn
   await expect.poll(() => marked(page)).not.toHaveLength(0);
   const marks = await marked(page);
   expect(marks.join("\n")).toContain("motif sigh");
-  expect(marks.at(-1)).toBe("use sigh();");
+  expect(marks.at(-1)).toBe("use sigh(e5);");
 
   await inScore(page);
   await page.keyboard.down("o");
@@ -147,7 +147,7 @@ test("the origin row's line number opens the source at the use statement", async
   await page.locator(".inspector button.segment.line").click();
 
   await expect(source(page)).toBeVisible();
-  await expect.poll(() => selected(page)).toBe("use sigh();");
+  await expect.poll(() => selected(page)).toBe("use sigh(e5);");
 });
 
 test("a diagnostic is a place in the source, not a notification", async ({ page }) => {

@@ -66,7 +66,7 @@ test("selecting a note halos it and fills the inspector", async ({ page }) => {
   await expect(page.locator(".inspector")).toContainText("A4");
   await expect(page.locator(".inspector")).toContainText("2:3");
   // The Origin row is present whether or not the lens is held (§3).
-  await expect(page.locator(".inspector")).toContainText("sigh()");
+  await expect(page.locator(".inspector")).toContainText("sigh(e5)");
   await expect(page).toHaveScreenshot("compose-selection-light.png");
 });
 
