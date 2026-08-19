@@ -1,5 +1,6 @@
 ---
-source: crates/musa-compiler/tests/compiler.rs
+source: crates/musa-compiler/tests/suite/compiler.rs
+assertion_line: 60
 expression: "format!(\"{snapshot:#?}\")"
 ---
 ScoreSnapshot {
@@ -38,7 +39,7 @@ ScoreSnapshot {
                                         end: 193,
                                     },
                                     declaration: DeclarationId(
-                                        5,
+                                        1,
                                     ),
                                     expansion_path: [],
                                 },
@@ -90,7 +91,7 @@ ScoreSnapshot {
                                         end: 198,
                                     },
                                     declaration: DeclarationId(
-                                        5,
+                                        1,
                                     ),
                                     expansion_path: [],
                                 },
@@ -142,7 +143,7 @@ ScoreSnapshot {
                                         end: 221,
                                     },
                                     declaration: DeclarationId(
-                                        5,
+                                        1,
                                     ),
                                     expansion_path: [],
                                 },
@@ -194,7 +195,7 @@ ScoreSnapshot {
                                         end: 243,
                                     },
                                     declaration: DeclarationId(
-                                        5,
+                                        1,
                                     ),
                                     expansion_path: [],
                                 },
@@ -283,7 +284,7 @@ ScoreSnapshot {
                                         end: 361,
                                     },
                                     declaration: DeclarationId(
-                                        7,
+                                        2,
                                     ),
                                     expansion_path: [],
                                 },
@@ -335,7 +336,7 @@ ScoreSnapshot {
                                         end: 366,
                                     },
                                     declaration: DeclarationId(
-                                        7,
+                                        2,
                                     ),
                                     expansion_path: [],
                                 },
@@ -387,7 +388,7 @@ ScoreSnapshot {
                                         end: 390,
                                     },
                                     declaration: DeclarationId(
-                                        7,
+                                        2,
                                     ),
                                     expansion_path: [],
                                 },
@@ -439,7 +440,7 @@ ScoreSnapshot {
                                         end: 403,
                                     },
                                     declaration: DeclarationId(
-                                        7,
+                                        2,
                                     ),
                                     expansion_path: [],
                                 },
@@ -607,7 +608,7 @@ ScoreSnapshot {
                         end: 243,
                     },
                     declaration: DeclarationId(
-                        5,
+                        1,
                     ),
                     expansion_path: [],
                 },
@@ -627,7 +628,7 @@ ScoreSnapshot {
                         end: 403,
                     },
                     declaration: DeclarationId(
-                        7,
+                        2,
                     ),
                     expansion_path: [],
                 },

@@ -171,8 +171,11 @@ fn the_group_check_terminates_on_a_mutually_recursive_group() {
         reported.contains("`Statement`, `Expression` name each other"),
         "{reported}"
     );
+    // The help speaks of "a type declaration" since the cutover's diagnostic
+    // rewrite (285bdf3): the word the author writes is `data`, and the word
+    // the rule is about is the type.
     assert!(
-        reported.contains("a `data` declaration may not depend on one that depends on it"),
+        reported.contains("a type declaration may not depend on one that depends on it"),
         "{reported}"
     );
 }

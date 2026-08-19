@@ -576,7 +576,14 @@ impl Lowering<'_> {
     pub(super) fn lambda(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
         let parameters = self.parameters(node)?;
         let body = child(node, is_expr_node)?;
-        let mut built = self.expr(&body)?;
+        // The body's quote patterns read these back off the scrutinee's
+        // written category — 11-quotation §4 through the lowering's one type
+        // fact. Popped on every way out, which the ?-style of this walk makes
+        // an explicit call rather than a guard.
+        let remembered = self.push_syntax_categories(&parameters);
+        let built = self.expr(&body);
+        self.pop_syntax_categories(remembered);
+        let mut built = built?;
         if let Some(result) = super::child(node, super::is_type_node) {
             let annotation = self.ty(&result)?;
             built = Raw::annot(origin, built, annotation);
@@ -810,7 +817,7 @@ impl Lowering<'_> {
         // quote pattern holds its body in a child node — and because the quote
         // chain is the one that refuses a match written with both.
         if arms.iter().any(matches_a_quote) {
-            return self.quote_chain(origin, subject, &arms);
+            return self.quote_chain(node, origin, subject, &arms);
         }
         if arms.iter().any(matches_a_literal) {
             return self.equality_chain(origin, subject, &arms);

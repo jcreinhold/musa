@@ -63,7 +63,6 @@ mod laws;
 use musa_core::{Origin, Raw};
 use musa_language::SyntaxNode;
 use musa_language::ast::AstNode as _;
-use num_rational::Ratio;
 
 use super::notation::{Context, Reading};
 use super::{Lowering, applied, expansion};
@@ -281,7 +280,15 @@ impl Lowering<'_> {
                 voices,
             });
         }
-        let over = self.reach(&declaration);
+        // The header's facts cover the piece, and the piece's extent is a
+        // fact about its *music*: a voice whose length arrives through a `use`
+        // is as long as the material it names, which the written tree does not
+        // say, so the number is read off the evaluated tracks
+        // (`track_duration`) rather than summed off the source the way one
+        // statement's own length is.
+        let bound = self.mint("music");
+        let music = simultaneous(origin, tracks);
+        let extent = applied(origin, Raw::hosted(origin, "track_duration"), [Raw::var(origin, bound.as_str())]);
         let laid: Vec<Raw> = context
             .into_iter()
             // Placed: a header stands at exactly one place in the piece, so its
@@ -292,14 +299,19 @@ impl Lowering<'_> {
             // gap: `tempo 1/4 = 96;` is the piece speaking, and a header is
             // written in no motif, no bar, and no voice.
             .map(|(scope, said, fact)| {
-                self.sounded_at(said, scope, true, crate::origin::DeclarationId::default(), fact, over)
+                self.sounded_in(said, scope, true, crate::origin::DeclarationId::default(), fact, extent.clone())
             })
             .collect();
-        tracks.push(simultaneous(origin, laid));
-        whole.then(|| Piece {
-            track: simultaneous(origin, tracks),
-            parts,
-        })
+        // One `let`, not two inlines of the same term: `Shape::Let` evaluates
+        // the bound term once and shares the *value*, so the music is folded
+        // a single time whether or not the header stated anything.
+        let track = Raw::bind(
+            origin,
+            bound.clone(),
+            music,
+            simultaneous(origin, vec![Raw::var(origin, bound.as_str()), simultaneous(origin, laid)]),
+        );
+        whole.then(|| Piece { track, parts })
     }
 
     /// A name the score already used, at the declaration that used it again.
@@ -593,26 +605,6 @@ fn simultaneous(origin: Origin, tracks: Vec<Raw>) -> Raw {
 }
 
 impl Lowering<'_> {
-    /// How far the longest voice in `declaration` reaches.
-    ///
-    /// D3's `max(d, e)` over the parts, and the reason it is not
-    /// [`Lowering::extent`] of the piece: that method sums, because a block is a
-    /// fold.
-    ///
-    /// Asked after every voice has been read, and necessarily so: a ranged
-    /// repeat's length is the count the realization chose, and the choice is
-    /// made while the voice holding it is folded.
-    fn reach(&self, declaration: &musa_language::ast::PieceDecl) -> Ratio<i64> {
-        declaration
-            .score()
-            .map(|score| score.parts())
-            .unwrap_or_default()
-            .iter()
-            .flat_map(|part| part.voices())
-            .map(|voice| self.extent(voice.syntax()))
-            .max()
-            .unwrap_or(Ratio::ZERO)
-    }
 }
 
 /// `Fact.Meter 4 4`, for a piece that wrote none.

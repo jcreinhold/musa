@@ -802,6 +802,8 @@ fn arrow(arguments: Vec<Term>, result: Term) -> Term {
 /// match_quote       : Syntax ⟨token-tree⟩ → Template → Bool
 /// quote_hole        : Syntax ⟨token-tree⟩ → Template → Nat → Syntax ⟨token-tree⟩
 /// quote_holes       : Syntax ⟨token-tree⟩ → Template → Nat → List (Syntax ⟨token-tree⟩)
+/// quote_hole_expr   : Syntax ⟨expr⟩ → Template → Nat → Syntax ⟨expr⟩
+/// quote_holes_expr  : Syntax ⟨expr⟩ → Template → Nat → List (Syntax ⟨expr⟩)
 /// ```
 ///
 /// # Why these are not table rows
@@ -813,15 +815,19 @@ fn arrow(arguments: Vec<Term>, result: Term) -> Term {
 /// counted instead by [`rules::BEYOND`], and the accounting law reads them back
 /// off the registry.
 ///
-/// # Why the pattern side reads at `⟨token-tree⟩`
+/// # Why the pattern side reads at a literal index, in one pair per category
 ///
 /// The signature §4 asks for is `(c : Cat) → Syntax c → …`, and the finite-data
 /// check refuses it: a δ signature admits a base type at a *literal* index and
 /// nothing else, because a `fn` rule can build a literal and cannot build a
-/// constructor. So the pattern side reads and binds at the category every other
-/// phase operation reads at, and §1's forgetting rule is what a `Syntax ⟨expr⟩`
-/// scrutinee arrives by — an acceptance rule the core does not have yet, and
-/// prompt 142's to supply.
+/// constructor. What the literal-index rule *admits* is one reader per
+/// category, which is §4's sentence said another way — "a pattern is read at
+/// the scrutinee's category" — so the readers come in a pair and the lowering
+/// picks from the scrutinee's written annotation (prompt 142's repair; the
+/// lowering runs before types exist, and the annotation is the category the
+/// author stated). `match_quote` needs no twin: a `Syntax ⟨expr⟩` scrutinee
+/// reaches its `⟨tokentree⟩` parameter through §1's forgetting rule, which
+/// prompt 142 supplied as [`FORGOTTEN`](rules::FORGOTTEN) below.
 ///
 /// # Errors
 ///
@@ -840,7 +846,7 @@ fn quotation(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
         delta(
             rules::BEYOND[0],
             vec![plain_type("NodePath"), template.clone(), splices],
-            expression,
+            expression.clone(),
             rules::INSTANTIATE,
         ),
         delta(
@@ -857,9 +863,21 @@ fn quotation(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
         ),
         delta(
             rules::BEYOND[3],
-            vec![read.clone(), template, index],
+            vec![read.clone(), template.clone(), index.clone()],
             applied(cx, "List", [read])?,
             rules::HOLES,
+        ),
+        delta(
+            rules::BEYOND[4],
+            vec![expression.clone(), template.clone(), index.clone()],
+            expression.clone(),
+            rules::HOLE_EXPR,
+        ),
+        delta(
+            rules::BEYOND[5],
+            vec![expression.clone(), template, index],
+            applied(cx, "List", [expression])?,
+            rules::HOLES_EXPR,
         ),
     ])
 }

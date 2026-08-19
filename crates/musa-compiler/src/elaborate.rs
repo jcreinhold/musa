@@ -4232,8 +4232,12 @@ fn check_tuplets(resolver: &mut Resolver, snapshot: &ScoreSnapshot) {
 /// one temporal object, and the normal form is the text of that object —
 /// key, meter, form markers and chord symbols included.
 #[doc(hidden)]
-pub fn kernel_normal_form(source: &SourceDocument, realization: &crate::Realization) -> Option<String> {
-    let (_, term, _) = piece_term(source, realization)?;
+pub fn kernel_normal_form(
+    source: &SourceDocument,
+    realization: &crate::Realization,
+    imports: &crate::imports::ImportSources,
+) -> Option<String> {
+    let (_, term, _) = piece_term(source, realization, imports)?;
     Some(musa_kernel::evaluate_marked(term, instantiate).to_string())
 }
 
@@ -4250,6 +4254,7 @@ pub fn kernel_normal_form(source: &SourceDocument, realization: &crate::Realizat
 pub(crate) fn piece_term(
     source: &SourceDocument,
     realization: &crate::Realization,
+    imports: &crate::imports::ImportSources,
 ) -> Option<(
     String,
     musa_kernel::Term<WrittenTime, ScoreFact>,
@@ -4277,15 +4282,13 @@ pub(crate) fn piece_term(
     });
     let piece = PieceDecl::from_root(&root).or_else(|| made.as_ref().and_then(crate::template::Instance::piece))?;
     let mut snapshot = ScoreSnapshot::default();
-    // This interchange helper historically has no import-source parameter.
-    // Preserve that contract: the document is read against itself, so local
-    // material elaborates and a use whose declaration only an unavailable import
-    // could supply is a name this reading does not know. Full compilation always
-    // reads the checked closure ([`declaring`]).
-    let sources = [
-        crate::document::Source::own(&root),
-        crate::document::Source::own(piece.syntax()),
-    ];
+    // The same closure full compilation reads: a `use` of imported material
+    // is the piece's own music, and an export that could not name it would be
+    // an export some pieces cannot make.
+    let mut wanted = musa_language::ast::ImportStmt::all_at_root(&root);
+    wanted.extend(piece.imports());
+    let libraries = crate::imports::load(&mut resolver, source.name(), &wanted, imports);
+    let sources = declaring(&root, &libraries, piece.syntax());
     let mut elaborated = crate::document::elaborate(&mut resolver, &sources, made.as_ref())?;
     resolve::lower_header(&mut resolver, &piece, &mut snapshot);
     let score = piece.score()?;
@@ -4296,13 +4299,24 @@ pub(crate) fn piece_term(
     // helper answers a term rather than a diagnosis, so the meters are folded for
     // the coordinates they decide and the refusals go nowhere.
     let bars = resolve_meters(&mut resolver, stated(&sounding, meter_of));
-    let mut parts = read
-        .parts
-        .iter()
-        .flat_map(|part| part.voices.iter())
-        .map(|voice| elaborated.track(&voice.track).map(musa_kernel::Term::literal))
-        .collect::<Result<Vec<_>, _>>()
-        .ok()?;
+    let mut parts = Vec::new();
+    for part in &read.parts {
+        for voice in &part.voices {
+            let lane = elaborated.track(&voice.track).ok()?;
+            // A voice's fold sounds the *piece's* and the *part's* facts too
+            // — a `key` written mid-voice is the piece's from there — and the
+            // piece layer below carries exactly those (`spoken_of` splits by
+            // the same test). Printed in both, one fact would hash as two on
+            // reparse: `a_piece_and_its_kernel_printing_have_one_meaning`.
+            let own = lane
+                .occurrences()
+                .iter()
+                .filter(|occurrence| occurrence.payload().scope.voice() == Some((part.id, voice.id)))
+                .cloned()
+                .collect();
+            parts.push(musa_kernel::Term::literal(track_or_empty(lane.duration(), own)));
+        }
+    }
     let marked = placed(&mut resolver, &score, &bars, sounding.duration());
     parts.push(musa_kernel::Term::literal(spoken_of(&sounding, &marked)));
     let term = musa_kernel::Term::together(parts).ok()?;

@@ -98,6 +98,22 @@ use crate::resolve::Resolver;
 pub(crate) struct Sites {
     spans: Vec<SourceSpan>,
     brought: Vec<Brought>,
+    /// Each quote-pattern arm this document lowered: the origin of the arm's
+    /// body, its span, and the identifiers the pattern matches *literally*.
+    ///
+    /// Recorded so [`lower::refusals::restate`] can answer the one confusing
+    /// case of §4's "a quote pattern binds only its splices": an arm whose
+    /// body uses a name the pattern wrote as a literal. The elaborator's
+    /// `UnknownName` is true there and says nothing about the `$` that was
+    /// left off, so the restatement asks this table whether the name was a
+    /// pattern literal at that place and upgrades the report when it was.
+    /// Recording rather than reporting at the lowering is what keeps the
+    /// upgrade free of false positives: it fires only on a name the
+    /// elaborator really could not resolve. The origin rides along because
+    /// spans from two files are both byte ranges — containment means the body
+    /// and the use are in the *same* file, which the site numbers know and
+    /// the spans alone do not.
+    quoted_arms: Vec<(Origin, SourceSpan, Vec<String>)>,
     /// How many blocks of notation this document has entered.
     ///
     /// Beside the span table because it is the other thing a document numbers
@@ -144,6 +160,43 @@ impl Sites {
     /// The origin naming `node`'s written span.
     pub(crate) fn node(&mut self, node: &SyntaxNode) -> Origin {
         self.at(crate::resolve::trimmed_span(node))
+    }
+
+    /// Record a quote-pattern arm: its body's origin and span, and the
+    /// identifiers its pattern matches literally. See the field for the why.
+    pub(crate) fn quote_arm(&mut self, body: Origin, span: SourceSpan, literals: Vec<String>) {
+        if !literals.is_empty() {
+            self.quoted_arms.push((body, span, literals));
+        }
+    }
+
+    /// Whether `at` — an unresolved name's origin — sits in the body of a
+    /// quote-pattern arm that wrote `name` literally, in the same file.
+    pub(crate) fn quoted_literal(&self, at: Origin, name: &str) -> bool {
+        let Some(use_span) = self.span(at) else {
+            return false;
+        };
+        self.quoted_arms.iter().any(|(body, body_span, literals)| {
+            self.same_file(*body, at)
+                && body_span.start <= use_span.start
+                && use_span.end <= body_span.end
+                && literals.iter().any(|literal| literal == name)
+        })
+    }
+
+    /// Whether two origins were numbered out of the same file: both from the
+    /// home document, or both from one import's run.
+    fn same_file(&self, one: Origin, other: Origin) -> bool {
+        let run_of = |origin: Origin| {
+            let index = usize::try_from(origin.node_number()?).ok()?;
+            self.brought
+                .iter()
+                .position(|run| run.from <= index && index < run.upto)
+        };
+        match (one.node_number(), other.node_number()) {
+            (Some(_), Some(_)) => run_of(one) == run_of(other),
+            _ => false,
+        }
     }
 
     /// How many sites have been numbered, so a caller can say where a source's
@@ -251,6 +304,19 @@ pub(crate) struct Lowering<'a> {
     /// The `?`s written since the last position that delimits an answer, in the
     /// order they were written. See [`Lowering::expr`].
     questions: Vec<Question>,
+    /// The written `Syntax<…>` category of each annotated parameter in scope,
+    /// innermost last.
+    ///
+    /// The lowering runs before types exist, and 11-quotation §4's "a pattern
+    /// is read at the scrutinee's category" needs one anyway: the category is
+    /// what the author wrote on the parameter the scrutinee stands behind.
+    /// `true` is `Syntax<Expr>` written out; every other annotation and every
+    /// other binding is `false` or absent, the token-tree readers being the
+    /// default the chain already had. A `let` or pattern binding that reuses a
+    /// parameter's name is not tracked, so a shadowed name can be answered
+    /// stale — whose failure is a category mismatch naming both categories at
+    /// the hole reader, never a wrongly accepted program.
+    scrutinee_categories: Vec<(String, bool)>,
     /// How many unspellable binders this walk has minted.
     minted: u32,
     /// The claims written over passages in this walk, in source order.
@@ -407,6 +473,7 @@ impl<'a> Lowering<'a> {
             in_phase: false,
             naming: Naming::default(),
             questions: Vec::new(),
+            scrutinee_categories: Vec::new(),
             minted: 0,
             claims: Vec::new(),
             choice: crate::ChoicePath::default(),
@@ -479,6 +546,49 @@ impl<'a> Lowering<'a> {
     fn mint(&mut self, hint: &str) -> String {
         self.minted = self.minted.saturating_add(1);
         format!("?{hint}{}", self.minted)
+    }
+
+    /// Remember the written categories of a parameter list while its body is
+    /// lowered, answering how many entries were pushed for
+    /// [`Self::pop_syntax_categories`].
+    pub(super) fn push_syntax_categories(&mut self, parameters: &[SyntaxNode]) -> usize {
+        let mut pushed: usize = 0;
+        for parameter in parameters {
+            let Some(name) = own_tokens(parameter)
+                .find(|token| token.kind() == SyntaxKind::Identifier)
+                .map(|token| token.text().to_owned())
+            else {
+                continue;
+            };
+            // `Syntax<Expr>` written out, and nothing else: an applied type
+            // whose head is the `Syntax` word and whose one index is the
+            // `Expr` one — the same reading [`types`] gives it, kept syntactic
+            // because the lowering has no types to ask.
+            let expression = child(parameter, is_type_node).is_some_and(|written| {
+                let parts = children(&written, is_type_node);
+                matches!(
+                    parts.split_first(),
+                    Some((head, [index])) if head.to_string().trim() == "Syntax" && index.to_string().trim() == "Expr"
+                )
+            });
+            self.scrutinee_categories.push((name, expression));
+            pushed = pushed.saturating_add(1);
+        }
+        pushed
+    }
+
+    /// Forget what [`Self::push_syntax_categories`] remembered, on every way out.
+    pub(super) fn pop_syntax_categories(&mut self, pushed: usize) {
+        self.scrutinee_categories.truncate(self.scrutinee_categories.len().saturating_sub(pushed));
+    }
+
+    /// Whether `name`'s nearest remembered parameter was written `Syntax<Expr>`.
+    pub(super) fn scrutinee_is_expression(&self, name: &str) -> bool {
+        self.scrutinee_categories
+            .iter()
+            .rev()
+            .find(|(taken, _)| taken == name)
+            .is_some_and(|(_, expression)| *expression)
     }
 
     /// Number the next voice's own decision sites from zero again.

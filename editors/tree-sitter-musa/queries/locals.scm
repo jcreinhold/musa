@@ -19,7 +19,6 @@
 
 (motif_declaration name: (identifier) @local.definition)
 (fragment_declaration name: (identifier) @local.definition)
-(motif_parameter name: (identifier) @local.definition)
 (part_declaration name: (identifier) @local.definition)
 (voice_declaration name: (identifier) @local.definition)
 (piece_declaration template_name: (identifier) @local.definition)

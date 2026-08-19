@@ -4,33 +4,33 @@ kernel "Chant" {
   composition main : EventTrack[WrittenTime, ScoreFact] =
     together {
       track 27/4 {
-        occurrence "voice 0 0 dynamic mp [888:899 #4]" from 0 to 0;
-        occurrence "voice 0 0 note d4 1/4 [995:999 #4]" from 0 to 1/4;
-        occurrence "voice 0 0 note f4 1/4 [1016:1020 #4]" from 1/4 to 1/2;
-        occurrence "voice 0 0 note g4 1/4 [1037:1041 #4]" from 1/2 to 3/4;
-        occurrence "voice 0 0 note a4 1/2 [1058:1062 #4]" from 3/4 to 5/4;
-        occurrence "voice 0 0 note a4 1/4 [1080:1084 #4]" from 5/4 to 3/2;
-        occurrence "voice 0 0 note bb4 1/4 [1101:1106 #4]" from 3/2 to 7/4;
-        occurrence "voice 0 0 note a4 1/4 [1123:1127 #4]" from 7/4 to 2;
-        occurrence "voice 0 0 note g4 1/4 [1144:1148 #4]" from 2 to 9/4;
-        occurrence "voice 0 0 note a4 1/2 [1165:1169 #4]" from 9/4 to 11/4;
-        occurrence "voice 0 0 note g4 1/4 [1187:1191 #4]" from 11/4 to 3;
-        occurrence "voice 0 0 note f4 1/4 [1208:1212 #4]" from 3 to 13/4;
-        occurrence "voice 0 0 note g4 1/4 [1229:1233 #4]" from 13/4 to 7/2;
-        occurrence "voice 0 0 note a4 1/4 [1250:1254 #4]" from 7/2 to 15/4;
-        occurrence "voice 0 0 note g4 1/4 [1271:1275 #4]" from 15/4 to 4;
-        occurrence "voice 0 0 note f4 1/4 [1292:1296 #4]" from 4 to 17/4;
-        occurrence "voice 0 0 note e4 1/2 [1313:1317 #4]" from 17/4 to 19/4;
-        occurrence "voice 0 0 note d4 1/4 [1335:1339 #4]" from 19/4 to 5;
-        occurrence "voice 0 0 note e4 1/4 [1356:1360 #4]" from 5 to 21/4;
-        occurrence "voice 0 0 note f4 1/4 [1377:1381 #4]" from 21/4 to 11/2;
-        occurrence "voice 0 0 note e4 1/4 [1398:1402 #4]" from 11/2 to 23/4;
-        occurrence "voice 0 0 note d4 1 [1419:1423 #4]" from 23/4 to 27/4;
+        occurrence "voice 0 0 dynamic mp [888:899 #1]" from 0 to 0;
+        occurrence "voice 0 0 note d4 1/4 [995:999 #1]" from 0 to 1/4;
+        occurrence "voice 0 0 note f4 1/4 [1016:1020 #1]" from 1/4 to 1/2;
+        occurrence "voice 0 0 note g4 1/4 [1037:1041 #1]" from 1/2 to 3/4;
+        occurrence "voice 0 0 note a4 1/2 [1058:1062 #1]" from 3/4 to 5/4;
+        occurrence "voice 0 0 note a4 1/4 [1080:1084 #1]" from 5/4 to 3/2;
+        occurrence "voice 0 0 note bb4 1/4 [1101:1106 #1]" from 3/2 to 7/4;
+        occurrence "voice 0 0 note a4 1/4 [1123:1127 #1]" from 7/4 to 2;
+        occurrence "voice 0 0 note g4 1/4 [1144:1148 #1]" from 2 to 9/4;
+        occurrence "voice 0 0 note a4 1/2 [1165:1169 #1]" from 9/4 to 11/4;
+        occurrence "voice 0 0 note g4 1/4 [1187:1191 #1]" from 11/4 to 3;
+        occurrence "voice 0 0 note f4 1/4 [1208:1212 #1]" from 3 to 13/4;
+        occurrence "voice 0 0 note g4 1/4 [1229:1233 #1]" from 13/4 to 7/2;
+        occurrence "voice 0 0 note a4 1/4 [1250:1254 #1]" from 7/2 to 15/4;
+        occurrence "voice 0 0 note g4 1/4 [1271:1275 #1]" from 15/4 to 4;
+        occurrence "voice 0 0 note f4 1/4 [1292:1296 #1]" from 4 to 17/4;
+        occurrence "voice 0 0 note e4 1/2 [1313:1317 #1]" from 17/4 to 19/4;
+        occurrence "voice 0 0 note d4 1/4 [1335:1339 #1]" from 19/4 to 5;
+        occurrence "voice 0 0 note e4 1/4 [1356:1360 #1]" from 5 to 21/4;
+        occurrence "voice 0 0 note f4 1/4 [1377:1381 #1]" from 21/4 to 11/2;
+        occurrence "voice 0 0 note e4 1/4 [1398:1402 #1]" from 11/2 to 23/4;
+        occurrence "voice 0 0 note d4 1 [1419:1423 #1]" from 23/4 to 27/4;
       };
       track 27/4 {
-        occurrence "piece meter 0/4 [752:768]" from 0 to 27/4;
-        occurrence "piece tempo 1/4=96 [732:752]" from 0 to 27/4;
-        occurrence "piece key c major [768:785]" from 0 to 27/4;
+        occurrence "piece meter 0/4 [757:768]" from 0 to 27/4;
+        occurrence "piece tempo 1/4=96 [737:752]" from 0 to 27/4;
+        occurrence "piece key c major [773:785]" from 0 to 27/4;
         occurrence "part 0 clef treble [833:845]" from 0 to 27/4;
       }
     };

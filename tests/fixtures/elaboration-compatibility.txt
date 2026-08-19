@@ -11,8 +11,8 @@ break=114:a type parameter is angle-bracketed: `Option<Pitch>` replaces `Option[
 break=116:`assert` is a statement keyword, so it is no longer available as a name:parser::assert_is_no_longer_available_as_a_name
 
 [fixture open-shape]
-identity=7c87d3df7fba467d8a9b5521e1679778
-kernel-normal-form=e4e74ab3f08dcb8beeafe7df02208e3a
+identity=d02b0ca348280f5d97a82c50eba67749
+kernel-normal-form=79f7789e7a322671989bcc54c975e3c1
 origin=part:0:flute:voice:0:upper:event:0:1009-1022:241-245:[MotifApplication { call_site: SourceSpan { start: 1009, end: 1022 } }]
 origin=part:0:flute:voice:0:upper:event:1:1009-1022:246-250:[MotifApplication { call_site: SourceSpan { start: 1009, end: 1022 } }]
 origin=part:0:flute:voice:0:upper:event:2:1009-1022:251-255:[MotifApplication { call_site: SourceSpan { start: 1009, end: 1022 } }]
@@ -141,12 +141,12 @@ origin=part:1:cello:voice:0:lower:event:124:2207-2220:886-890:[MotifApplication 
 origin=part:1:cello:voice:0:lower:event:125:2207-2220:891-895:[MotifApplication { call_site: SourceSpan { start: 2207, end: 2220 } }]
 origin=part:1:cello:voice:0:lower:event:126:2207-2220:896-900:[MotifApplication { call_site: SourceSpan { start: 2207, end: 2220 } }]
 origin=part:1:cello:voice:0:lower:event:127:2207-2220:901-905:[MotifApplication { call_site: SourceSpan { start: 2207, end: 2220 } }]
-lane=0:flute:128:6ddd6d386b77c8632c13942708855f6e
-lane=1:cello:128:0a8a2d19e97c11f55f5080a31c651d4a
+lane=0:flute:128:77a99b868e94d3a1fcd8ad26f495af1c
+lane=1:cello:128:cdec157cbc055da9a2b4feb1734d95f2
 
 [fixture higher-order-shape]
-identity=bf26f470307783587dd7559609d32663
-kernel-normal-form=818fcdb54462ef75dc0e0298c46d01b3
+identity=7916d9f2ea98fb99c8de1dfc3b4e5b2c
+kernel-normal-form=4e0d5eb1e4cb26a2b03baad222ab6a32
 origin=part:0:flute:voice:0:upper:event:0:373-384:252-256:[RepeatIteration(0), Stretch(Ratio { numer: 1, denom: 1 }), Retrograde, Retrograde, MotifApplication { call_site: SourceSpan { start: 373, end: 384 } }]
 origin=part:0:flute:voice:0:upper:event:1:373-384:257-261:[RepeatIteration(0), Stretch(Ratio { numer: 1, denom: 1 }), Retrograde, Retrograde, MotifApplication { call_site: SourceSpan { start: 373, end: 384 } }]
 origin=part:0:flute:voice:0:upper:event:2:373-384:262-266:[RepeatIteration(0), Stretch(Ratio { numer: 1, denom: 1 }), Retrograde, Retrograde, MotifApplication { call_site: SourceSpan { start: 373, end: 384 } }]
@@ -275,12 +275,12 @@ origin=part:1:cello:voice:0:lower:event:124:485-496:252-256:[RepeatIteration(15)
 origin=part:1:cello:voice:0:lower:event:125:485-496:257-261:[RepeatIteration(15), Inversion { axis: "c4" }, Inversion { axis: "c4" }, MotifApplication { call_site: SourceSpan { start: 485, end: 496 } }]
 origin=part:1:cello:voice:0:lower:event:126:485-496:262-266:[RepeatIteration(15), Inversion { axis: "c4" }, Inversion { axis: "c4" }, MotifApplication { call_site: SourceSpan { start: 485, end: 496 } }]
 origin=part:1:cello:voice:0:lower:event:127:485-496:267-271:[RepeatIteration(15), Inversion { axis: "c4" }, Inversion { axis: "c4" }, MotifApplication { call_site: SourceSpan { start: 485, end: 496 } }]
-lane=0:flute:128:e1e1244d720916b1c2b4f50f11422837
-lane=1:cello:128:32051af752c73df83f168d607617c169
+lane=0:flute:128:28ebbf99853c854d38038004910b7161
+lane=1:cello:128:d7afa00828b4100bd47697d1e0d7546d
 
 [fixture declaration-heavy]
-identity=8e6f890a5e6b20c5e8ac64d602abb35b
-kernel-normal-form=1a9603deb1c98b310f0f906fb71fb44e
+identity=2d218ab8d3ce6d82a87fc2583f1f7ded
+kernel-normal-form=7c1438bb2167e2fc9b3fc049fc06d615
 diagnostic=1:unused-material:500-507:true:declared here
 diagnostic=1:unused-material:544-551:true:declared here
 diagnostic=1:unused-material:588-595:true:declared here
@@ -358,11 +358,11 @@ origin=part:0:ensemble:voice:0:line:event:12:3425-3459:2654-2658:[MotifApplicati
 origin=part:0:ensemble:voice:0:line:event:13:3425-3459:2659-2663:[MotifApplication { call_site: SourceSpan { start: 3425, end: 3459 } }]
 origin=part:0:ensemble:voice:0:line:event:14:3425-3459:2664-2668:[MotifApplication { call_site: SourceSpan { start: 3425, end: 3459 } }]
 origin=part:0:ensemble:voice:0:line:event:15:3425-3459:2669-2673:[MotifApplication { call_site: SourceSpan { start: 3425, end: 3459 } }]
-lane=0:ensemble:32:c4d50343231272a60046ad7d22909f87
+lane=0:ensemble:32:e2e057e59023265d42132dbfa882ddc1
 
 [fixture audio-bridge]
-identity=216d9c30befaa8be2da6c38a4cfa7dbe
-kernel-normal-form=4f73be74ad496bb164ce045c7cb80085
+identity=9f670408d1267e94642131d9c0b777b1
+kernel-normal-form=a8cc801649f05b13fc84f88455840e24
 origin=part:0:oboe:voice:0:melody:event:0:673-686:673-686:[]
 origin=part:0:oboe:voice:0:melody:event:1:687-691:687-691:[]
 origin=part:0:oboe:voice:0:melody:event:2:692-698:692-698:[]
@@ -371,8 +371,8 @@ origin=part:1:viola:voice:0:countermelody:event:4:791-797:791-797:[]
 origin=part:1:viola:voice:0:countermelody:event:5:798-802:798-802:[]
 origin=part:1:viola:voice:0:countermelody:event:6:803-816:803-816:[]
 origin=part:1:viola:voice:0:countermelody:event:7:817-821:817-821:[]
-lane=0:oboe:8:616b41cebb0cd337dd4acb8cd0f3be15
-lane=1:viola:8:4d59c9d10b1e0baa600814b0de3c4daa
+lane=0:oboe:8:933115eb67c8e2b25ad3d82406552f0d
+lane=1:viola:8:07918b9a646987c5ff8c93e0f7e2d192
 patch=reed:output=Some(1):oscillator:None:440Hz:1:lowpass:None:1800Hz:0.7
 patch=bow:output=Some(1):oscillator:None:440Hz:0.5:envelope:None:0.015s:0s:1:0.3s
 bus=hall:["reverb"]

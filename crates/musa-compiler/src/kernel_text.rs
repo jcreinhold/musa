@@ -47,8 +47,12 @@ pub struct KernelCheck {
 /// condition as [`crate::kernel_normal_form`], and for the same reason: there
 /// is no term to print for a document that does not have one.
 #[doc(hidden)]
-pub fn kernel_text(source: &SourceDocument, realization: &crate::Realization) -> Option<String> {
-    let (name, term, decisions) = piece_term(source, realization)?;
+pub fn kernel_text(
+    source: &SourceDocument,
+    realization: &crate::Realization,
+    imports: &crate::imports::ImportSources,
+) -> Option<String> {
+    let (name, term, decisions) = piece_term(source, realization, imports)?;
     Some(musa_kernel::print(&name, &term, &notes(realization, &decisions)))
 }
 
@@ -93,8 +97,12 @@ fn notes(realization: &crate::Realization, decisions: &[crate::DecisionRecord]) 
 /// that `--normalized` output is parseable: `--check` accepts it, which N5
 /// bytes never could.
 #[doc(hidden)]
-pub fn kernel_normalized_text(source: &SourceDocument, realization: &crate::Realization) -> Option<String> {
-    let (name, term, decisions) = piece_term(source, realization)?;
+pub fn kernel_normalized_text(
+    source: &SourceDocument,
+    realization: &crate::Realization,
+    imports: &crate::imports::ImportSources,
+) -> Option<String> {
+    let (name, term, decisions) = piece_term(source, realization, imports)?;
     let value = musa_kernel::evaluate_marked(term, crate::elaborate::instantiate);
     Some(musa_kernel::print(
         &name,

@@ -2556,40 +2556,14 @@
       }
     },
     "children": {
-      "multiple": true,
-      "required": false,
+      "multiple": false,
+      "required": true,
       "types": [
         {
-          "type": "motif_parameter",
+          "type": "parameter_list",
           "named": true
         }
       ]
-    }
-  },
-  {
-    "type": "motif_parameter",
-    "named": true,
-    "fields": {
-      "name": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "identifier",
-            "named": true
-          }
-        ]
-      },
-      "type": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "type_name",
-            "named": true
-          }
-        ]
-      }
     }
   },
   {

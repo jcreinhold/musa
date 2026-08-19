@@ -141,7 +141,8 @@ pub(super) const SPELLINGS: [&str; 8] = [
 /// the whole control is that the *reading* chose the occurrence. The position is
 /// counted rather than chosen for the same reason: `01-surface.md`'s `with`
 /// clause is the only thing that writes one.
-pub(super) const TRACK_BEYOND: [&str; 5] = ["set_note_pitches", "instanced", "spliced", "scoped", "respelled"];
+pub(super) const TRACK_BEYOND: [&str; 6] =
+    ["set_note_pitches", "instanced", "spliced", "scoped", "respelled", "track_duration"];
 
 /// The term naming an event track in written time.
 ///
@@ -267,8 +268,24 @@ pub(super) fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
             track(),
             RESPELLED,
         ),
+        delta(TRACK_BEYOND[5], vec![track()], beat(), TRACK_DURATION),
     ])
 }
+
+/// `track_duration(t)` — how long `t` sounds, read off the value.
+///
+/// The piece's header facts are sounded for exactly this long: "a header's
+/// facts cover the piece" is a statement about the piece's *evaluated* extent
+/// — a voice whose length arrives through a `use` is as long as the material
+/// it names, which the written tree does not say — so the lowering hands the
+/// sounding the music as a term and this rule answers the number. A source
+/// word for it would be a second way to ask what `01-surface.md` gives no
+/// composer-facing reason to ask; it is out of both tables for
+/// [`super::rules::BEYOND`]'s reason.
+const TRACK_DURATION: Rule = |arguments| {
+    let track = track_of(arguments.first()?)?;
+    reduced(super::rules::duration(track.duration().as_ratio()))
+};
 
 /// `set_note_pitches : EventTrack ⟨written⟩ → List Pitch → EventTrack ⟨written⟩`.
 ///

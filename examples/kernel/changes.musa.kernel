@@ -4,103 +4,193 @@
 % decision #0 duration=9/8
 kernel "Changes" {
   composition main : EventTrack[WrittenTime, ScoreFact] =
-    let shared0 = track 8 {
-        occurrence "voice 4294967295 4294967295 note d5 1/4 [4294967295:4294967295 def 1181:1185 #4]" from 0 to 1/4;
-        occurrence "voice 4294967295 4294967295 note f5 1/4 [4294967295:4294967295 def 1194:1198 #4]" from 1/4 to 1/2;
-        occurrence "voice 4294967295 4294967295 note a5 1/4 [4294967295:4294967295 def 1207:1211 #4]" from 1/2 to 3/4;
-        occurrence "voice 4294967295 4294967295 note c6 1/4 [4294967295:4294967295 def 1220:1224 #4]" from 3/4 to 1;
-        occurrence "voice 4294967295 4294967295 note b5 1/2 [4294967295:4294967295 def 1233:1237 #4]" from 1 to 3/2;
-        occurrence "voice 4294967295 4294967295 note g5 1/2 [4294967295:4294967295 def 1246:1250 #4]" from 3/2 to 2;
-        occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 1259:1263 #4]" from 2 to 9/4;
-        occurrence "voice 4294967295 4294967295 note b5 1/4 [4294967295:4294967295 def 1272:1276 #4]" from 9/4 to 5/2;
-        occurrence "voice 4294967295 4294967295 note d6 1/4 [4294967295:4294967295 def 1285:1289 #4]" from 5/2 to 11/4;
-        occurrence "voice 4294967295 4294967295 note f6 1/4 [4294967295:4294967295 def 1298:1302 #4]" from 11/4 to 3;
-        occurrence "voice 4294967295 4294967295 note e6 1 [4294967295:4294967295 def 1311:1315 #4]" from 3 to 4;
-        occurrence "voice 4294967295 4294967295 note c6 1/4 [4294967295:4294967295 def 1324:1328 #4]" from 4 to 17/4;
-        occurrence "voice 4294967295 4294967295 note a5 1/4 [4294967295:4294967295 def 1337:1341 #4]" from 17/4 to 9/2;
-        occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 1350:1354 #4]" from 9/2 to 19/4;
-        occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 1363:1367 #4]" from 19/4 to 5;
-        occurrence "voice 4294967295 4294967295 note d5 1/2 [4294967295:4294967295 def 1376:1380 #4]" from 5 to 11/2;
-        occurrence "voice 4294967295 4294967295 note f5 1/2 [4294967295:4294967295 def 1389:1393 #4]" from 11/2 to 6;
-        occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 1402:1406 #4]" from 6 to 25/4;
-        occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 1415:1419 #4]" from 25/4 to 13/2;
-        occurrence "voice 4294967295 4294967295 note b5 1/4 [4294967295:4294967295 def 1428:1432 #4]" from 13/2 to 27/4;
-        occurrence "voice 4294967295 4294967295 note d6 1/4 [4294967295:4294967295 def 1441:1445 #4]" from 27/4 to 7;
-        occurrence "voice 4294967295 4294967295 note c6 1 [4294967295:4294967295 def 1454:1458 #4]" from 7 to 8;
-      }
-    in let shared1 = track 1 {
-        occurrence "voice 4294967295 4294967295 note d3 1/4 [4294967295:4294967295 def 1673:1677 #5]" from 0 to 1/4;
-        occurrence "voice 4294967295 4294967295 note f3 1/4 [4294967295:4294967295 def 1690:1694 #5]" from 1/4 to 1/2;
-        occurrence "voice 4294967295 4294967295 note a3 1/4 [4294967295:4294967295 def 1707:1711 #5]" from 1/2 to 3/4;
-        occurrence "voice 4294967295 4294967295 note c4 1/4 [4294967295:4294967295 def 1724:1728 #5]" from 3/4 to 1;
-      }
-    in let shared2 = together {
-        follow {
-          shared1 @ "depth 0 via repeat 0";
-          shared1 @ "depth 0 via repeat 1";
-          shared1 @ "depth 0 via repeat 2";
-          shared1 @ "depth 0 via repeat 3";
-          shared1 @ "depth 0 via repeat 4";
-          shared1 @ "depth 0 via repeat 5";
-          shared1 @ "depth 0 via repeat 6";
-          shared1 @ "depth 0 via repeat 7"
-        };
-        track 8 {
-          occurrence "voice 4294967295 4294967295 repeat 8 [4294967295:4294967295 def 1650:1738 #5]" from 0 to 8;
-        }
-      }
-    in let shared3 = track 1 {
-        occurrence "voice 4294967295 4294967295 note d3 1/4 [4294967295:4294967295 def 1802:1806 #6]" from 0 to 1/4;
-        occurrence "voice 4294967295 4294967295 note f3 1/4 [4294967295:4294967295 def 1819:1823 #6]" from 1/4 to 1/2;
-        occurrence "voice 4294967295 4294967295 note g3 1/4 [4294967295:4294967295 def 1836:1840 #6]" from 1/2 to 3/4;
-        occurrence "voice 4294967295 4294967295 note b3 1/4 [4294967295:4294967295 def 1853:1857 #6]" from 3/4 to 1;
-      }
-    in let shared4 = together {
-        follow {
-          shared3 @ "depth 0 via repeat 0";
-          shared3 @ "depth 0 via repeat 1";
-          shared3 @ "depth 0 via repeat 2";
-          shared3 @ "depth 0 via repeat 3";
-          shared3 @ "depth 0 via repeat 4";
-          shared3 @ "depth 0 via repeat 5";
-          shared3 @ "depth 0 via repeat 6";
-          shared3 @ "depth 0 via repeat 7";
-          shared3 @ "depth 0 via repeat 8";
-          shared3 @ "depth 0 via repeat 9";
-          shared3 @ "depth 0 via repeat 10";
-          shared3 @ "depth 0 via repeat 11";
-          shared3 @ "depth 0 via repeat 12";
-          shared3 @ "depth 0 via repeat 13";
-          shared3 @ "depth 0 via repeat 14";
-          shared3 @ "depth 0 via repeat 15"
-        };
-        track 16 {
-          occurrence "voice 4294967295 4294967295 repeat 16 [4294967295:4294967295 def 1778:1867 #6]" from 0 to 16;
-        }
-      }
-    in together {
-      follow {
-        shared0 @ "depth 0 origin 1948:1957 scope voice 0 0 via motif 1948:1957";
-        track 16 {
-          occurrence "voice 0 0 improvise over 'Dm7 | G7 | Cmaj7 | Cmaj7' [1974:2021 #7]" from 0 to 16;
-        };
-        shared0 @ "depth 0 origin 2038:2047 scope voice 0 0 via motif 2038:2047";
-        track 9/8 {
-          occurrence "voice 0 0 note c6 9/8 spelled '1' free 1 4 [2064:2075 #7]" from 0 to 9/8;
-        }
-      };
-      follow {
-        shared2 @ "depth 0 origin 2162:2176 scope voice 1 0 via motif 2162:2176";
-        shared4 @ "depth 0 origin 2193:2207 scope voice 1 0 via motif 2193:2207";
-        shared2 @ "depth 0 origin 2224:2238 scope voice 1 0 via motif 2224:2238";
-        track 9/8 {
-          occurrence "voice 1 0 note c3 9/8 spelled '1' free 1 4 [2255:2266 #8]" from 0 to 9/8;
-        }
+    together {
+      track 265/8 {
+        occurrence "voice 0 0 note d5 1/4 [1948:1957 def 1181:1185 #1 via motif 1948:1957]" from 0 to 1/4;
+        occurrence "voice 0 0 note f5 1/4 [1948:1957 def 1194:1198 #1 via motif 1948:1957]" from 1/4 to 1/2;
+        occurrence "voice 0 0 note a5 1/4 [1948:1957 def 1207:1211 #1 via motif 1948:1957]" from 1/2 to 3/4;
+        occurrence "voice 0 0 note c6 1/4 [1948:1957 def 1220:1224 #1 via motif 1948:1957]" from 3/4 to 1;
+        occurrence "voice 0 0 note b5 1/2 [1948:1957 def 1233:1237 #1 via motif 1948:1957]" from 1 to 3/2;
+        occurrence "voice 0 0 note g5 1/2 [1948:1957 def 1246:1250 #1 via motif 1948:1957]" from 3/2 to 2;
+        occurrence "voice 0 0 note g5 1/4 [1948:1957 def 1259:1263 #1 via motif 1948:1957]" from 2 to 9/4;
+        occurrence "voice 0 0 note b5 1/4 [1948:1957 def 1272:1276 #1 via motif 1948:1957]" from 9/4 to 5/2;
+        occurrence "voice 0 0 note d6 1/4 [1948:1957 def 1285:1289 #1 via motif 1948:1957]" from 5/2 to 11/4;
+        occurrence "voice 0 0 note f6 1/4 [1948:1957 def 1298:1302 #1 via motif 1948:1957]" from 11/4 to 3;
+        occurrence "voice 0 0 note e6 1 [1948:1957 def 1311:1315 #1 via motif 1948:1957]" from 3 to 4;
+        occurrence "voice 0 0 note c6 1/4 [1948:1957 def 1324:1328 #1 via motif 1948:1957]" from 4 to 17/4;
+        occurrence "voice 0 0 note a5 1/4 [1948:1957 def 1337:1341 #1 via motif 1948:1957]" from 17/4 to 9/2;
+        occurrence "voice 0 0 note g5 1/4 [1948:1957 def 1350:1354 #1 via motif 1948:1957]" from 9/2 to 19/4;
+        occurrence "voice 0 0 note e5 1/4 [1948:1957 def 1363:1367 #1 via motif 1948:1957]" from 19/4 to 5;
+        occurrence "voice 0 0 note d5 1/2 [1948:1957 def 1376:1380 #1 via motif 1948:1957]" from 5 to 11/2;
+        occurrence "voice 0 0 note f5 1/2 [1948:1957 def 1389:1393 #1 via motif 1948:1957]" from 11/2 to 6;
+        occurrence "voice 0 0 note e5 1/4 [1948:1957 def 1402:1406 #1 via motif 1948:1957]" from 6 to 25/4;
+        occurrence "voice 0 0 note g5 1/4 [1948:1957 def 1415:1419 #1 via motif 1948:1957]" from 25/4 to 13/2;
+        occurrence "voice 0 0 note b5 1/4 [1948:1957 def 1428:1432 #1 via motif 1948:1957]" from 13/2 to 27/4;
+        occurrence "voice 0 0 note d6 1/4 [1948:1957 def 1441:1445 #1 via motif 1948:1957]" from 27/4 to 7;
+        occurrence "voice 0 0 note c6 1 [1948:1957 def 1454:1458 #1 via motif 1948:1957]" from 7 to 8;
+        occurrence "voice 0 0 improvise over 'Dm7 | G7 | Cmaj7 | Cmaj7' [1974:2021 #4]" from 8 to 24;
+        occurrence "voice 0 0 note d5 1/4 [2038:2047 def 1181:1185 #1 via motif 2038:2047]" from 24 to 97/4;
+        occurrence "voice 0 0 note f5 1/4 [2038:2047 def 1194:1198 #1 via motif 2038:2047]" from 97/4 to 49/2;
+        occurrence "voice 0 0 note a5 1/4 [2038:2047 def 1207:1211 #1 via motif 2038:2047]" from 49/2 to 99/4;
+        occurrence "voice 0 0 note c6 1/4 [2038:2047 def 1220:1224 #1 via motif 2038:2047]" from 99/4 to 25;
+        occurrence "voice 0 0 note b5 1/2 [2038:2047 def 1233:1237 #1 via motif 2038:2047]" from 25 to 51/2;
+        occurrence "voice 0 0 note g5 1/2 [2038:2047 def 1246:1250 #1 via motif 2038:2047]" from 51/2 to 26;
+        occurrence "voice 0 0 note g5 1/4 [2038:2047 def 1259:1263 #1 via motif 2038:2047]" from 26 to 105/4;
+        occurrence "voice 0 0 note b5 1/4 [2038:2047 def 1272:1276 #1 via motif 2038:2047]" from 105/4 to 53/2;
+        occurrence "voice 0 0 note d6 1/4 [2038:2047 def 1285:1289 #1 via motif 2038:2047]" from 53/2 to 107/4;
+        occurrence "voice 0 0 note f6 1/4 [2038:2047 def 1298:1302 #1 via motif 2038:2047]" from 107/4 to 27;
+        occurrence "voice 0 0 note e6 1 [2038:2047 def 1311:1315 #1 via motif 2038:2047]" from 27 to 28;
+        occurrence "voice 0 0 note c6 1/4 [2038:2047 def 1324:1328 #1 via motif 2038:2047]" from 28 to 113/4;
+        occurrence "voice 0 0 note a5 1/4 [2038:2047 def 1337:1341 #1 via motif 2038:2047]" from 113/4 to 57/2;
+        occurrence "voice 0 0 note g5 1/4 [2038:2047 def 1350:1354 #1 via motif 2038:2047]" from 57/2 to 115/4;
+        occurrence "voice 0 0 note e5 1/4 [2038:2047 def 1363:1367 #1 via motif 2038:2047]" from 115/4 to 29;
+        occurrence "voice 0 0 note d5 1/2 [2038:2047 def 1376:1380 #1 via motif 2038:2047]" from 29 to 59/2;
+        occurrence "voice 0 0 note f5 1/2 [2038:2047 def 1389:1393 #1 via motif 2038:2047]" from 59/2 to 30;
+        occurrence "voice 0 0 note e5 1/4 [2038:2047 def 1402:1406 #1 via motif 2038:2047]" from 30 to 121/4;
+        occurrence "voice 0 0 note g5 1/4 [2038:2047 def 1415:1419 #1 via motif 2038:2047]" from 121/4 to 61/2;
+        occurrence "voice 0 0 note b5 1/4 [2038:2047 def 1428:1432 #1 via motif 2038:2047]" from 61/2 to 123/4;
+        occurrence "voice 0 0 note d6 1/4 [2038:2047 def 1441:1445 #1 via motif 2038:2047]" from 123/4 to 31;
+        occurrence "voice 0 0 note c6 1 [2038:2047 def 1454:1458 #1 via motif 2038:2047]" from 31 to 32;
+        occurrence "voice 0 0 note c6 9/8 spelled '1' free 1 4 [2064:2075 #4]" from 32 to 265/8;
       };
       track 265/8 {
-        occurrence "piece meter 4/4 [1076:1091]" from 0 to 265/8;
-        occurrence "piece tempo 1/4=132 [1054:1076]" from 0 to 265/8;
-        occurrence "piece key c major [1091:1108]" from 0 to 265/8;
+        occurrence "voice 1 0 repeat 8 [2162:2176 def 1650:1738 #2 via motif 2162:2176]" from 0 to 8;
+        occurrence "voice 1 0 note d3 1/4 [1650:1738 def 1673:1677 #2 via motif 2162:2176 repeat 0]" from 0 to 1/4;
+        occurrence "voice 1 0 note f3 1/4 [1650:1738 def 1690:1694 #2 via motif 2162:2176 repeat 0]" from 1/4 to 1/2;
+        occurrence "voice 1 0 note a3 1/4 [1650:1738 def 1707:1711 #2 via motif 2162:2176 repeat 0]" from 1/2 to 3/4;
+        occurrence "voice 1 0 note c4 1/4 [1650:1738 def 1724:1728 #2 via motif 2162:2176 repeat 0]" from 3/4 to 1;
+        occurrence "voice 1 0 note d3 1/4 [1650:1738 def 1673:1677 #2 via motif 2162:2176 repeat 1]" from 1 to 5/4;
+        occurrence "voice 1 0 note f3 1/4 [1650:1738 def 1690:1694 #2 via motif 2162:2176 repeat 1]" from 5/4 to 3/2;
+        occurrence "voice 1 0 note a3 1/4 [1650:1738 def 1707:1711 #2 via motif 2162:2176 repeat 1]" from 3/2 to 7/4;
+        occurrence "voice 1 0 note c4 1/4 [1650:1738 def 1724:1728 #2 via motif 2162:2176 repeat 1]" from 7/4 to 2;
+        occurrence "voice 1 0 note d3 1/4 [1650:1738 def 1673:1677 #2 via motif 2162:2176 repeat 2]" from 2 to 9/4;
+        occurrence "voice 1 0 note f3 1/4 [1650:1738 def 1690:1694 #2 via motif 2162:2176 repeat 2]" from 9/4 to 5/2;
+        occurrence "voice 1 0 note a3 1/4 [1650:1738 def 1707:1711 #2 via motif 2162:2176 repeat 2]" from 5/2 to 11/4;
+        occurrence "voice 1 0 note c4 1/4 [1650:1738 def 1724:1728 #2 via motif 2162:2176 repeat 2]" from 11/4 to 3;
+        occurrence "voice 1 0 note d3 1/4 [1650:1738 def 1673:1677 #2 via motif 2162:2176 repeat 3]" from 3 to 13/4;
+        occurrence "voice 1 0 note f3 1/4 [1650:1738 def 1690:1694 #2 via motif 2162:2176 repeat 3]" from 13/4 to 7/2;
+        occurrence "voice 1 0 note a3 1/4 [1650:1738 def 1707:1711 #2 via motif 2162:2176 repeat 3]" from 7/2 to 15/4;
+        occurrence "voice 1 0 note c4 1/4 [1650:1738 def 1724:1728 #2 via motif 2162:2176 repeat 3]" from 15/4 to 4;
+        occurrence "voice 1 0 note d3 1/4 [1650:1738 def 1673:1677 #2 via motif 2162:2176 repeat 4]" from 4 to 17/4;
+        occurrence "voice 1 0 note f3 1/4 [1650:1738 def 1690:1694 #2 via motif 2162:2176 repeat 4]" from 17/4 to 9/2;
+        occurrence "voice 1 0 note a3 1/4 [1650:1738 def 1707:1711 #2 via motif 2162:2176 repeat 4]" from 9/2 to 19/4;
+        occurrence "voice 1 0 note c4 1/4 [1650:1738 def 1724:1728 #2 via motif 2162:2176 repeat 4]" from 19/4 to 5;
+        occurrence "voice 1 0 note d3 1/4 [1650:1738 def 1673:1677 #2 via motif 2162:2176 repeat 5]" from 5 to 21/4;
+        occurrence "voice 1 0 note f3 1/4 [1650:1738 def 1690:1694 #2 via motif 2162:2176 repeat 5]" from 21/4 to 11/2;
+        occurrence "voice 1 0 note a3 1/4 [1650:1738 def 1707:1711 #2 via motif 2162:2176 repeat 5]" from 11/2 to 23/4;
+        occurrence "voice 1 0 note c4 1/4 [1650:1738 def 1724:1728 #2 via motif 2162:2176 repeat 5]" from 23/4 to 6;
+        occurrence "voice 1 0 note d3 1/4 [1650:1738 def 1673:1677 #2 via motif 2162:2176 repeat 6]" from 6 to 25/4;
+        occurrence "voice 1 0 note f3 1/4 [1650:1738 def 1690:1694 #2 via motif 2162:2176 repeat 6]" from 25/4 to 13/2;
+        occurrence "voice 1 0 note a3 1/4 [1650:1738 def 1707:1711 #2 via motif 2162:2176 repeat 6]" from 13/2 to 27/4;
+        occurrence "voice 1 0 note c4 1/4 [1650:1738 def 1724:1728 #2 via motif 2162:2176 repeat 6]" from 27/4 to 7;
+        occurrence "voice 1 0 note d3 1/4 [1650:1738 def 1673:1677 #2 via motif 2162:2176 repeat 7]" from 7 to 29/4;
+        occurrence "voice 1 0 note f3 1/4 [1650:1738 def 1690:1694 #2 via motif 2162:2176 repeat 7]" from 29/4 to 15/2;
+        occurrence "voice 1 0 note a3 1/4 [1650:1738 def 1707:1711 #2 via motif 2162:2176 repeat 7]" from 15/2 to 31/4;
+        occurrence "voice 1 0 note c4 1/4 [1650:1738 def 1724:1728 #2 via motif 2162:2176 repeat 7]" from 31/4 to 8;
+        occurrence "voice 1 0 repeat 16 [2193:2207 def 1778:1867 #3 via motif 2193:2207]" from 8 to 24;
+        occurrence "voice 1 0 note d3 1/4 [1778:1867 def 1802:1806 #3 via motif 2193:2207 repeat 0]" from 8 to 33/4;
+        occurrence "voice 1 0 note f3 1/4 [1778:1867 def 1819:1823 #3 via motif 2193:2207 repeat 0]" from 33/4 to 17/2;
+        occurrence "voice 1 0 note g3 1/4 [1778:1867 def 1836:1840 #3 via motif 2193:2207 repeat 0]" from 17/2 to 35/4;
+        occurrence "voice 1 0 note b3 1/4 [1778:1867 def 1853:1857 #3 via motif 2193:2207 repeat 0]" from 35/4 to 9;
+        occurrence "voice 1 0 note d3 1/4 [1778:1867 def 1802:1806 #3 via motif 2193:2207 repeat 1]" from 9 to 37/4;
+        occurrence "voice 1 0 note f3 1/4 [1778:1867 def 1819:1823 #3 via motif 2193:2207 repeat 1]" from 37/4 to 19/2;
+        occurrence "voice 1 0 note g3 1/4 [1778:1867 def 1836:1840 #3 via motif 2193:2207 repeat 1]" from 19/2 to 39/4;
+        occurrence "voice 1 0 note b3 1/4 [1778:1867 def 1853:1857 #3 via motif 2193:2207 repeat 1]" from 39/4 to 10;
+        occurrence "voice 1 0 note d3 1/4 [1778:1867 def 1802:1806 #3 via motif 2193:2207 repeat 2]" from 10 to 41/4;
+        occurrence "voice 1 0 note f3 1/4 [1778:1867 def 1819:1823 #3 via motif 2193:2207 repeat 2]" from 41/4 to 21/2;
+        occurrence "voice 1 0 note g3 1/4 [1778:1867 def 1836:1840 #3 via motif 2193:2207 repeat 2]" from 21/2 to 43/4;
+        occurrence "voice 1 0 note b3 1/4 [1778:1867 def 1853:1857 #3 via motif 2193:2207 repeat 2]" from 43/4 to 11;
+        occurrence "voice 1 0 note d3 1/4 [1778:1867 def 1802:1806 #3 via motif 2193:2207 repeat 3]" from 11 to 45/4;
+        occurrence "voice 1 0 note f3 1/4 [1778:1867 def 1819:1823 #3 via motif 2193:2207 repeat 3]" from 45/4 to 23/2;
+        occurrence "voice 1 0 note g3 1/4 [1778:1867 def 1836:1840 #3 via motif 2193:2207 repeat 3]" from 23/2 to 47/4;
+        occurrence "voice 1 0 note b3 1/4 [1778:1867 def 1853:1857 #3 via motif 2193:2207 repeat 3]" from 47/4 to 12;
+        occurrence "voice 1 0 note d3 1/4 [1778:1867 def 1802:1806 #3 via motif 2193:2207 repeat 4]" from 12 to 49/4;
+        occurrence "voice 1 0 note f3 1/4 [1778:1867 def 1819:1823 #3 via motif 2193:2207 repeat 4]" from 49/4 to 25/2;
+        occurrence "voice 1 0 note g3 1/4 [1778:1867 def 1836:1840 #3 via motif 2193:2207 repeat 4]" from 25/2 to 51/4;
+        occurrence "voice 1 0 note b3 1/4 [1778:1867 def 1853:1857 #3 via motif 2193:2207 repeat 4]" from 51/4 to 13;
+        occurrence "voice 1 0 note d3 1/4 [1778:1867 def 1802:1806 #3 via motif 2193:2207 repeat 5]" from 13 to 53/4;
+        occurrence "voice 1 0 note f3 1/4 [1778:1867 def 1819:1823 #3 via motif 2193:2207 repeat 5]" from 53/4 to 27/2;
+        occurrence "voice 1 0 note g3 1/4 [1778:1867 def 1836:1840 #3 via motif 2193:2207 repeat 5]" from 27/2 to 55/4;
+        occurrence "voice 1 0 note b3 1/4 [1778:1867 def 1853:1857 #3 via motif 2193:2207 repeat 5]" from 55/4 to 14;
+        occurrence "voice 1 0 note d3 1/4 [1778:1867 def 1802:1806 #3 via motif 2193:2207 repeat 6]" from 14 to 57/4;
+        occurrence "voice 1 0 note f3 1/4 [1778:1867 def 1819:1823 #3 via motif 2193:2207 repeat 6]" from 57/4 to 29/2;
+        occurrence "voice 1 0 note g3 1/4 [1778:1867 def 1836:1840 #3 via motif 2193:2207 repeat 6]" from 29/2 to 59/4;
+        occurrence "voice 1 0 note b3 1/4 [1778:1867 def 1853:1857 #3 via motif 2193:2207 repeat 6]" from 59/4 to 15;
+        occurrence "voice 1 0 note d3 1/4 [1778:1867 def 1802:1806 #3 via motif 2193:2207 repeat 7]" from 15 to 61/4;
+        occurrence "voice 1 0 note f3 1/4 [1778:1867 def 1819:1823 #3 via motif 2193:2207 repeat 7]" from 61/4 to 31/2;
+        occurrence "voice 1 0 note g3 1/4 [1778:1867 def 1836:1840 #3 via motif 2193:2207 repeat 7]" from 31/2 to 63/4;
+        occurrence "voice 1 0 note b3 1/4 [1778:1867 def 1853:1857 #3 via motif 2193:2207 repeat 7]" from 63/4 to 16;
+        occurrence "voice 1 0 note d3 1/4 [1778:1867 def 1802:1806 #3 via motif 2193:2207 repeat 8]" from 16 to 65/4;
+        occurrence "voice 1 0 note f3 1/4 [1778:1867 def 1819:1823 #3 via motif 2193:2207 repeat 8]" from 65/4 to 33/2;
+        occurrence "voice 1 0 note g3 1/4 [1778:1867 def 1836:1840 #3 via motif 2193:2207 repeat 8]" from 33/2 to 67/4;
+        occurrence "voice 1 0 note b3 1/4 [1778:1867 def 1853:1857 #3 via motif 2193:2207 repeat 8]" from 67/4 to 17;
+        occurrence "voice 1 0 note d3 1/4 [1778:1867 def 1802:1806 #3 via motif 2193:2207 repeat 9]" from 17 to 69/4;
+        occurrence "voice 1 0 note f3 1/4 [1778:1867 def 1819:1823 #3 via motif 2193:2207 repeat 9]" from 69/4 to 35/2;
+        occurrence "voice 1 0 note g3 1/4 [1778:1867 def 1836:1840 #3 via motif 2193:2207 repeat 9]" from 35/2 to 71/4;
+        occurrence "voice 1 0 note b3 1/4 [1778:1867 def 1853:1857 #3 via motif 2193:2207 repeat 9]" from 71/4 to 18;
+        occurrence "voice 1 0 note d3 1/4 [1778:1867 def 1802:1806 #3 via motif 2193:2207 repeat 10]" from 18 to 73/4;
+        occurrence "voice 1 0 note f3 1/4 [1778:1867 def 1819:1823 #3 via motif 2193:2207 repeat 10]" from 73/4 to 37/2;
+        occurrence "voice 1 0 note g3 1/4 [1778:1867 def 1836:1840 #3 via motif 2193:2207 repeat 10]" from 37/2 to 75/4;
+        occurrence "voice 1 0 note b3 1/4 [1778:1867 def 1853:1857 #3 via motif 2193:2207 repeat 10]" from 75/4 to 19;
+        occurrence "voice 1 0 note d3 1/4 [1778:1867 def 1802:1806 #3 via motif 2193:2207 repeat 11]" from 19 to 77/4;
+        occurrence "voice 1 0 note f3 1/4 [1778:1867 def 1819:1823 #3 via motif 2193:2207 repeat 11]" from 77/4 to 39/2;
+        occurrence "voice 1 0 note g3 1/4 [1778:1867 def 1836:1840 #3 via motif 2193:2207 repeat 11]" from 39/2 to 79/4;
+        occurrence "voice 1 0 note b3 1/4 [1778:1867 def 1853:1857 #3 via motif 2193:2207 repeat 11]" from 79/4 to 20;
+        occurrence "voice 1 0 note d3 1/4 [1778:1867 def 1802:1806 #3 via motif 2193:2207 repeat 12]" from 20 to 81/4;
+        occurrence "voice 1 0 note f3 1/4 [1778:1867 def 1819:1823 #3 via motif 2193:2207 repeat 12]" from 81/4 to 41/2;
+        occurrence "voice 1 0 note g3 1/4 [1778:1867 def 1836:1840 #3 via motif 2193:2207 repeat 12]" from 41/2 to 83/4;
+        occurrence "voice 1 0 note b3 1/4 [1778:1867 def 1853:1857 #3 via motif 2193:2207 repeat 12]" from 83/4 to 21;
+        occurrence "voice 1 0 note d3 1/4 [1778:1867 def 1802:1806 #3 via motif 2193:2207 repeat 13]" from 21 to 85/4;
+        occurrence "voice 1 0 note f3 1/4 [1778:1867 def 1819:1823 #3 via motif 2193:2207 repeat 13]" from 85/4 to 43/2;
+        occurrence "voice 1 0 note g3 1/4 [1778:1867 def 1836:1840 #3 via motif 2193:2207 repeat 13]" from 43/2 to 87/4;
+        occurrence "voice 1 0 note b3 1/4 [1778:1867 def 1853:1857 #3 via motif 2193:2207 repeat 13]" from 87/4 to 22;
+        occurrence "voice 1 0 note d3 1/4 [1778:1867 def 1802:1806 #3 via motif 2193:2207 repeat 14]" from 22 to 89/4;
+        occurrence "voice 1 0 note f3 1/4 [1778:1867 def 1819:1823 #3 via motif 2193:2207 repeat 14]" from 89/4 to 45/2;
+        occurrence "voice 1 0 note g3 1/4 [1778:1867 def 1836:1840 #3 via motif 2193:2207 repeat 14]" from 45/2 to 91/4;
+        occurrence "voice 1 0 note b3 1/4 [1778:1867 def 1853:1857 #3 via motif 2193:2207 repeat 14]" from 91/4 to 23;
+        occurrence "voice 1 0 note d3 1/4 [1778:1867 def 1802:1806 #3 via motif 2193:2207 repeat 15]" from 23 to 93/4;
+        occurrence "voice 1 0 note f3 1/4 [1778:1867 def 1819:1823 #3 via motif 2193:2207 repeat 15]" from 93/4 to 47/2;
+        occurrence "voice 1 0 note g3 1/4 [1778:1867 def 1836:1840 #3 via motif 2193:2207 repeat 15]" from 47/2 to 95/4;
+        occurrence "voice 1 0 note b3 1/4 [1778:1867 def 1853:1857 #3 via motif 2193:2207 repeat 15]" from 95/4 to 24;
+        occurrence "voice 1 0 repeat 8 [2224:2238 def 1650:1738 #2 via motif 2224:2238]" from 24 to 32;
+        occurrence "voice 1 0 note d3 1/4 [1650:1738 def 1673:1677 #2 via motif 2224:2238 repeat 0]" from 24 to 97/4;
+        occurrence "voice 1 0 note f3 1/4 [1650:1738 def 1690:1694 #2 via motif 2224:2238 repeat 0]" from 97/4 to 49/2;
+        occurrence "voice 1 0 note a3 1/4 [1650:1738 def 1707:1711 #2 via motif 2224:2238 repeat 0]" from 49/2 to 99/4;
+        occurrence "voice 1 0 note c4 1/4 [1650:1738 def 1724:1728 #2 via motif 2224:2238 repeat 0]" from 99/4 to 25;
+        occurrence "voice 1 0 note d3 1/4 [1650:1738 def 1673:1677 #2 via motif 2224:2238 repeat 1]" from 25 to 101/4;
+        occurrence "voice 1 0 note f3 1/4 [1650:1738 def 1690:1694 #2 via motif 2224:2238 repeat 1]" from 101/4 to 51/2;
+        occurrence "voice 1 0 note a3 1/4 [1650:1738 def 1707:1711 #2 via motif 2224:2238 repeat 1]" from 51/2 to 103/4;
+        occurrence "voice 1 0 note c4 1/4 [1650:1738 def 1724:1728 #2 via motif 2224:2238 repeat 1]" from 103/4 to 26;
+        occurrence "voice 1 0 note d3 1/4 [1650:1738 def 1673:1677 #2 via motif 2224:2238 repeat 2]" from 26 to 105/4;
+        occurrence "voice 1 0 note f3 1/4 [1650:1738 def 1690:1694 #2 via motif 2224:2238 repeat 2]" from 105/4 to 53/2;
+        occurrence "voice 1 0 note a3 1/4 [1650:1738 def 1707:1711 #2 via motif 2224:2238 repeat 2]" from 53/2 to 107/4;
+        occurrence "voice 1 0 note c4 1/4 [1650:1738 def 1724:1728 #2 via motif 2224:2238 repeat 2]" from 107/4 to 27;
+        occurrence "voice 1 0 note d3 1/4 [1650:1738 def 1673:1677 #2 via motif 2224:2238 repeat 3]" from 27 to 109/4;
+        occurrence "voice 1 0 note f3 1/4 [1650:1738 def 1690:1694 #2 via motif 2224:2238 repeat 3]" from 109/4 to 55/2;
+        occurrence "voice 1 0 note a3 1/4 [1650:1738 def 1707:1711 #2 via motif 2224:2238 repeat 3]" from 55/2 to 111/4;
+        occurrence "voice 1 0 note c4 1/4 [1650:1738 def 1724:1728 #2 via motif 2224:2238 repeat 3]" from 111/4 to 28;
+        occurrence "voice 1 0 note d3 1/4 [1650:1738 def 1673:1677 #2 via motif 2224:2238 repeat 4]" from 28 to 113/4;
+        occurrence "voice 1 0 note f3 1/4 [1650:1738 def 1690:1694 #2 via motif 2224:2238 repeat 4]" from 113/4 to 57/2;
+        occurrence "voice 1 0 note a3 1/4 [1650:1738 def 1707:1711 #2 via motif 2224:2238 repeat 4]" from 57/2 to 115/4;
+        occurrence "voice 1 0 note c4 1/4 [1650:1738 def 1724:1728 #2 via motif 2224:2238 repeat 4]" from 115/4 to 29;
+        occurrence "voice 1 0 note d3 1/4 [1650:1738 def 1673:1677 #2 via motif 2224:2238 repeat 5]" from 29 to 117/4;
+        occurrence "voice 1 0 note f3 1/4 [1650:1738 def 1690:1694 #2 via motif 2224:2238 repeat 5]" from 117/4 to 59/2;
+        occurrence "voice 1 0 note a3 1/4 [1650:1738 def 1707:1711 #2 via motif 2224:2238 repeat 5]" from 59/2 to 119/4;
+        occurrence "voice 1 0 note c4 1/4 [1650:1738 def 1724:1728 #2 via motif 2224:2238 repeat 5]" from 119/4 to 30;
+        occurrence "voice 1 0 note d3 1/4 [1650:1738 def 1673:1677 #2 via motif 2224:2238 repeat 6]" from 30 to 121/4;
+        occurrence "voice 1 0 note f3 1/4 [1650:1738 def 1690:1694 #2 via motif 2224:2238 repeat 6]" from 121/4 to 61/2;
+        occurrence "voice 1 0 note a3 1/4 [1650:1738 def 1707:1711 #2 via motif 2224:2238 repeat 6]" from 61/2 to 123/4;
+        occurrence "voice 1 0 note c4 1/4 [1650:1738 def 1724:1728 #2 via motif 2224:2238 repeat 6]" from 123/4 to 31;
+        occurrence "voice 1 0 note d3 1/4 [1650:1738 def 1673:1677 #2 via motif 2224:2238 repeat 7]" from 31 to 125/4;
+        occurrence "voice 1 0 note f3 1/4 [1650:1738 def 1690:1694 #2 via motif 2224:2238 repeat 7]" from 125/4 to 63/2;
+        occurrence "voice 1 0 note a3 1/4 [1650:1738 def 1707:1711 #2 via motif 2224:2238 repeat 7]" from 63/2 to 127/4;
+        occurrence "voice 1 0 note c4 1/4 [1650:1738 def 1724:1728 #2 via motif 2224:2238 repeat 7]" from 127/4 to 32;
+        occurrence "voice 1 0 note c3 9/8 spelled '1' free 1 4 [2255:2266 #5]" from 32 to 265/8;
+      };
+      track 265/8 {
+        occurrence "piece meter 4/4 [1081:1091]" from 0 to 265/8;
+        occurrence "piece tempo 1/4=132 [1060:1076]" from 0 to 265/8;
+        occurrence "piece key c major [1096:1108]" from 0 to 265/8;
       }
     };
 }

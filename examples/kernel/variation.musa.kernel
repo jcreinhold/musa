@@ -2,38 +2,33 @@
 % generated from examples/variation.musa by musa-compiler
 kernel "Variation" {
   composition main : EventTrack[WrittenTime, ScoreFact] =
-    let shared0 = track 1 {
-        occurrence "voice 4294967295 4294967295 note c5 1/4 [4294967295:4294967295 def 485:489 #4]" from 0 to 1/4;
-        occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 498:502 #4]" from 1/4 to 1/2;
-        occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 511:515 #4]" from 1/2 to 3/4;
-        occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 524:528 #4]" from 3/4 to 1;
-      }
-    in together {
-      follow {
-        shared0 @ "depth 0 origin 701:713 scope voice 0 0 via motif 701:713";
-        track 5 {
-          occurrence "voice 0 0 note c5 1/2 [902:914 def 485:489 #4 via stretch 2 motif 902:914]" from 0 to 1/2;
-          occurrence "voice 0 0 note e5 1/2 [902:914 def 498:502 #4 via stretch 2 motif 902:914]" from 1/2 to 1;
-          occurrence "voice 0 0 note g5 1/2 [902:914 def 511:515 #4 via stretch 2 motif 902:914]" from 1 to 3/2;
-          occurrence "voice 0 0 note e5 1/2 [902:914 def 524:528 #4 via stretch 2 motif 902:914]" from 3/2 to 2;
-          occurrence "voice 0 0 note e5 1/4 [1039:1051 def 524:528 #4 via retrograde motif 1039:1051]" from 2 to 9/4;
-          occurrence "voice 0 0 note g5 1/4 [1039:1051 def 511:515 #4 via retrograde motif 1039:1051]" from 9/4 to 5/2;
-          occurrence "voice 0 0 note e5 1/4 [1039:1051 def 498:502 #4 via retrograde motif 1039:1051]" from 5/2 to 11/4;
-          occurrence "voice 0 0 note c5 1/4 [1039:1051 def 485:489 #4 via retrograde motif 1039:1051]" from 11/4 to 3;
-          occurrence "voice 0 0 note c5 1/4 [1312:1324 def 485:489 #4 via invert 'c5' motif 1312:1324]" from 3 to 13/4;
-          occurrence "voice 0 0 note ab4 1/4 [1312:1324 def 498:502 #4 via invert 'c5' motif 1312:1324]" from 13/4 to 7/2;
-          occurrence "voice 0 0 note f4 1/4 [1312:1324 def 511:515 #4 via invert 'c5' motif 1312:1324]" from 7/2 to 15/4;
-          occurrence "voice 0 0 note ab4 1/4 [1312:1324 def 524:528 #4 via invert 'c5' motif 1312:1324]" from 15/4 to 4;
-          occurrence "voice 0 0 note c5 1/4 [1498:1567 def 485:489 #4 via motif 1498:1567]" from 4 to 17/4;
-          occurrence "voice 0 0 note e5 1/4 [1498:1567 def 498:502 #4 via motif 1498:1567]" from 17/4 to 9/2;
-          occurrence "voice 0 0 note a5 1/4 [1498:1567 def 511:515 #4 via motif 1498:1567 special 1537:1549]" from 9/2 to 19/4;
-          occurrence "voice 0 0 note e5 1/4 [1498:1567 def 524:528 #4 via motif 1498:1567]" from 19/4 to 5;
-        }
+    together {
+      track 6 {
+        occurrence "voice 0 0 note c5 1/4 [701:713 def 485:489 #1 via motif 701:713]" from 0 to 1/4;
+        occurrence "voice 0 0 note e5 1/4 [701:713 def 498:502 #1 via motif 701:713]" from 1/4 to 1/2;
+        occurrence "voice 0 0 note g5 1/4 [701:713 def 511:515 #1 via motif 701:713]" from 1/2 to 3/4;
+        occurrence "voice 0 0 note e5 1/4 [701:713 def 524:528 #1 via motif 701:713]" from 3/4 to 1;
+        occurrence "voice 0 0 note c5 1/2 [902:914 def 485:489 #1 via stretch 2 motif 902:914]" from 1 to 3/2;
+        occurrence "voice 0 0 note e5 1/2 [902:914 def 498:502 #1 via stretch 2 motif 902:914]" from 3/2 to 2;
+        occurrence "voice 0 0 note g5 1/2 [902:914 def 511:515 #1 via stretch 2 motif 902:914]" from 2 to 5/2;
+        occurrence "voice 0 0 note e5 1/2 [902:914 def 524:528 #1 via stretch 2 motif 902:914]" from 5/2 to 3;
+        occurrence "voice 0 0 note c5 1/4 [1039:1051 def 485:489 #1 via retrograde motif 1039:1051]" from 15/4 to 4;
+        occurrence "voice 0 0 note e5 1/4 [1039:1051 def 498:502 #1 via retrograde motif 1039:1051]" from 7/2 to 15/4;
+        occurrence "voice 0 0 note g5 1/4 [1039:1051 def 511:515 #1 via retrograde motif 1039:1051]" from 13/4 to 7/2;
+        occurrence "voice 0 0 note e5 1/4 [1039:1051 def 524:528 #1 via retrograde motif 1039:1051]" from 3 to 13/4;
+        occurrence "voice 0 0 note c5 1/4 [1312:1324 def 485:489 #1 via invert 'c5' motif 1312:1324]" from 4 to 17/4;
+        occurrence "voice 0 0 note ab4 1/4 [1312:1324 def 498:502 #1 via invert 'c5' motif 1312:1324]" from 17/4 to 9/2;
+        occurrence "voice 0 0 note f4 1/4 [1312:1324 def 511:515 #1 via invert 'c5' motif 1312:1324]" from 9/2 to 19/4;
+        occurrence "voice 0 0 note ab4 1/4 [1312:1324 def 524:528 #1 via invert 'c5' motif 1312:1324]" from 19/4 to 5;
+        occurrence "voice 0 0 note c5 1/4 [1498:1567 def 485:489 #1 via motif 1498:1567]" from 5 to 21/4;
+        occurrence "voice 0 0 note e5 1/4 [1498:1567 def 498:502 #1 via motif 1498:1567]" from 21/4 to 11/2;
+        occurrence "voice 0 0 note a5 1/4 [1498:1567 def 511:515 #1 via motif 1498:1567 special 1537:1549]" from 11/2 to 23/4;
+        occurrence "voice 0 0 note e5 1/4 [1498:1567 def 524:528 #1 via motif 1498:1567]" from 23/4 to 6;
       };
       track 6 {
-        occurrence "piece meter 4/4 [423:438]" from 0 to 6;
-        occurrence "piece tempo 1/4=84 [403:423]" from 0 to 6;
-        occurrence "piece key c major [438:455]" from 0 to 6;
+        occurrence "piece meter 4/4 [428:438]" from 0 to 6;
+        occurrence "piece tempo 1/4=84 [408:423]" from 0 to 6;
+        occurrence "piece key c major [443:455]" from 0 to 6;
         occurrence "part 0 clef treble [581:593]" from 0 to 6;
       }
     };

@@ -336,8 +336,8 @@
 (field_path (identifier) @property)
 (expression_argument name: (identifier) @property)
 
-; Parameters are the declaration side of an argument.
-(motif_parameter name: (identifier) @variable.parameter)
+; Parameters are the declaration side of an argument — motif parameters are
+; the same `parameter` node a `fn`'s are, so the one query covers both.
 (parameter name: (identifier) @variable.parameter)
 
 ; --- Vocabulary names: yellow -----------------------------------------------------

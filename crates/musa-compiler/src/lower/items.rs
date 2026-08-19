@@ -460,7 +460,12 @@ impl Lowering<'_> {
         }
         let result = child(node, is_type_node)?;
         let mut ty = self.ty(&result)?;
-        let mut value = self.expr(&child(node, is_expr_node)?)?;
+        // Bracketed as [`values::lambda`]'s is: the body's quote patterns read
+        // the scrutinee's written category off this list.
+        let remembered = self.push_syntax_categories(&parameters);
+        let value = self.expr(&child(node, is_expr_node)?);
+        self.pop_syntax_categories(remembered);
+        let mut value = value?;
         for parameter in parameters.iter().rev() {
             let at = self.origin(parameter);
             let bound = declared_name(parameter)?;

@@ -76,7 +76,7 @@ use crate::score::{Clef, DynamicMark, FreeDuration, Metronome, NotatedDuration, 
 /// "which four" is the claim the accounting law checks, and a count agrees with
 /// a wrong set as readily as with the right one. `nothing` is not here because
 /// it is not registered — see [`nothing`].
-pub(super) const BEYOND: [&str; 4] = ["sounded", "follow", "tied", "joined"];
+pub(super) const BEYOND: [&str; 5] = ["sounded", "follow", "tied", "joined", "notated_duration"];
 
 /// A payload whose domain has no written spelling.
 ///
@@ -145,8 +145,34 @@ pub(super) fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
         ),
         Builtin::new(BEYOND[2], super::arrow(vec![track()], track()), Family::Track, TIED),
         Builtin::new(BEYOND[3], super::arrow(vec![track()], track()), Family::Track, JOINED),
+        Builtin::new(
+            BEYOND[4],
+            super::arrow(
+                vec![super::tagged_type("Duration", crate::core::Coordinate::WrittenTime)],
+                super::plain_type("NotatedDuration"),
+            ),
+            Family::Delta,
+            NOTATED,
+        ),
     ])
 }
+
+/// `notated_duration(d)` — the `NotatedDuration` a *computed* duration stands
+/// in for, spelled the way [`NotatedDuration::spelled`] spells one.
+///
+/// The lowering inserts this word where a duration position holds a term — a
+/// motif's `d: Duration<WrittenTime>` played as `c4 d` — because the payload
+/// every other fact carries is baked in at lowering time and a parameter has
+/// no value until evaluation. Not a table row for the reason
+/// [`super::rules::BEYOND`] gives: a composer writes a fraction, never this
+/// conversion, and a source-visible name for it would be a second way to
+/// spell what `c4/4` already says. The spelling the rule derives is the one
+/// honest answer a computed duration has — the CST's record of the written
+/// form is exactly what a parameter does not have.
+const NOTATED: Rule = |arguments| {
+    let value = read::<Ratio<i64>>(arguments.first()?)?;
+    reduced(opaque("NotatedDuration", crate::score::NotatedDuration::spelled(value)))
+};
 
 /// `nothing` — the track of no duration and no occurrences.
 ///

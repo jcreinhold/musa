@@ -1,13 +1,14 @@
 ---
 source: crates/musa-compiler/tests/suite/elaboration.rs
+assertion_line: 59
 expression: form
 ---
 track 2 {
   occurrence 0|0|note:d4|1/2|189|193|[] from 0 to 1/2;
   occurrence 1|0|note:d3|1/2|357|361|[] from 0 to 1/2;
-  occurrence *|*|key:d:minor||67|84|[] from 0 to 2;
-  occurrence *|*|meter:4/4||52|67|[] from 0 to 2;
-  occurrence *|*|tempo:1/4=90::||28|52|[] from 0 to 2;
+  occurrence *|*|key:d:minor||72|84|[] from 0 to 2;
+  occurrence *|*|meter:4/4||57|67|[] from 0 to 2;
+  occurrence *|*|tempo:1/4=90::||33|52|[] from 0 to 2;
   occurrence 0|*|clef:treble||132|144|[] from 0 to 2;
   occurrence 1|*|clef:alto||302|312|[] from 0 to 2;
   occurrence 0|0|note:f4|1/2|194|198|[] from 1/2 to 1;

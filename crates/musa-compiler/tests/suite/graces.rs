@@ -163,6 +163,7 @@ fn order_survives_normalization() {
         musa_compiler::kernel_text(
             &SourceDocument::new(piece(graces), "order.musa"),
             &musa_compiler::Realization::default(),
+            &musa_compiler::ImportSources::default(),
         )
         .expect("projects")
     };

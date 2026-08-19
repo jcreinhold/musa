@@ -131,11 +131,13 @@ pub(super) const UNREGISTERED: [(&str, usize); 3] = [
 /// Named rather than counted for [`super::traversal::SPELLINGS`]'s reason —
 /// "which" is the claim, and the accounting law reads each of them back out of
 /// the built registry and checks it against both tables.
-pub(super) const BEYOND: [&str; 5] = [
+pub(super) const BEYOND: [&str; 7] = [
     "instantiate_quote",
     "match_quote",
     "quote_hole",
     "quote_holes",
+    "quote_hole_expr",
+    "quote_holes_expr",
     FORGOTTEN,
 ];
 
@@ -288,7 +290,7 @@ fn exact(value: Ratio<i64>) -> Datum {
 }
 
 /// `Duration ⟨written⟩`.
-fn duration(value: Ratio<i64>) -> Datum {
+pub(super) fn duration(value: Ratio<i64>) -> Datum {
     tagged("Duration", Coordinate::WrittenTime, value)
 }
 
@@ -1328,6 +1330,14 @@ pub(super) const INSTANTIATE: Rule = |arguments| {
         });
     }
     let built = crate::syntax::instantiate(&quoted.template, &anchor, quoted.quotation, &spliced)?;
+    // The certificate the `⟨expr⟩` index claims, checked rather than believed:
+    // a splice can carry any tree into the body, so what comes out is an
+    // expression only when the parser says so. None is a stuck term, not a
+    // diagnostic — the adapter that spliced the tree is the defect, and
+    // 147's round-trip obligation owns the reporting of it.
+    if !crate::syntax::parses_as_expression(&built) {
+        return None;
+    }
     reduced(tree(Cat::Expr, built))
 };
 
@@ -1342,30 +1352,53 @@ pub(super) const MATCHES: Rule = |arguments| reduced(boolean(matches!(bound(argu
 /// subject of another shape a question of totality rather than of meaning: a
 /// [`crate::syntax::Syntax::Missing`] at the subject's own place is the node a
 /// reader expected and did not find, which is exactly the situation.
-pub(super) const HOLE: Rule = |arguments| {
+///
+/// One rule body at two categories — [`HOLE`] answers at `⟨token-tree⟩` and
+/// [`HOLE_EXPR`] at `⟨expr⟩` — because 11-quotation §4 reads a pattern at the
+/// scrutinee's category and a δ signature cannot take that category as a
+/// variable (the D1 test in [`super::quotation`]'s doc). The lowering picks
+/// the reader from the scrutinee's *written* category; the rule answers what
+/// it is asked.
+pub(super) const HOLE: Rule = |arguments| hole(arguments, Cat::TokenTree);
+
+/// [`HOLE`] answering at `⟨expr⟩`, for a scrutinee written `Syntax<Expr>`.
+pub(super) const HOLE_EXPR: Rule = |arguments| hole(arguments, Cat::Expr);
+
+/// The shared body of [`HOLE`] and [`HOLE_EXPR`]: the hole's node, claimed at
+/// `cat` — the scrutinee's category, which is the only claim the match that
+/// gates this read supports.
+fn hole(arguments: &[Datum], cat: Cat) -> Option<Answer> {
     let subject = node(arguments.first()?)?;
-    let hole = bound(arguments)?
+    let held = bound(arguments)?
         .hole(which(arguments.get(2)?)?)
         .and_then(|held| match held {
             crate::syntax::Spliced::One(one) => Some(one),
             crate::syntax::Spliced::Many(_) => None,
         });
-    reduced(built(hole.unwrap_or_else(|| {
-        Syntax::Missing(crate::syntax::SourceInfo::Generated(subject.info().path().clone()))
-    })))
-};
+    reduced(tree(
+        cat,
+        held.unwrap_or_else(|| Syntax::Missing(crate::syntax::SourceInfo::Generated(subject.info().path().clone()))),
+    ))
+}
 
 /// `quote_holes(subject, template, i)` — the run hole `i` binds.
 ///
 /// The empty list where [`HOLE`] answers `Missing`, and for the same reason: a
 /// run of no nodes is the answer a spread of nothing already gives, so the
 /// unreachable case needs no case of its own.
-pub(super) const HOLES: Rule = |arguments| {
+pub(super) const HOLES: Rule = |arguments| holes(arguments, Cat::TokenTree);
+
+/// [`HOLES`] answering at `⟨expr⟩`, for a scrutinee written `Syntax<Expr>`.
+pub(super) const HOLES_EXPR: Rule = |arguments| holes(arguments, Cat::Expr);
+
+/// The shared body of [`HOLES`] and [`HOLES_EXPR`] — one list, claimed at the
+/// scrutinee's category for [`hole`]'s reason.
+fn holes(arguments: &[Datum], cat: Cat) -> Option<Answer> {
     let run = bound(arguments)?
         .hole(which(arguments.get(2)?)?)
         .map_or_else(Vec::new, |held| match held {
             crate::syntax::Spliced::One(one) => vec![one],
             crate::syntax::Spliced::Many(many) => many,
         });
-    reduced(listing(run.into_iter().map(built)))
-};
+    reduced(listing(run.into_iter().map(|node| tree(cat, node))))
+}

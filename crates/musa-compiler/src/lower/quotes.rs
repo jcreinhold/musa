@@ -126,10 +126,33 @@ impl Lowering<'_> {
     /// inert values and shaped after it, down to the first catch-all ending the
     /// chain: an arm after it is unreachable, and the core is what says so when
     /// it sees the `Bool` match this becomes.
-    pub(super) fn quote_chain(&mut self, origin: Origin, subject: Raw, arms: &[SyntaxNode]) -> Option<Raw> {
+    pub(super) fn quote_chain(
+        &mut self,
+        node: &SyntaxNode,
+        origin: Origin,
+        subject: Raw,
+        arms: &[SyntaxNode],
+    ) -> Option<Raw> {
+        // 11-quotation §4: the pattern is read at the scrutinee's category, so
+        // its holes bind there — `quote_hole_expr` beside `quote_hole`, at the
+        // literal index the δ signatures can say. The lowering runs before
+        // types exist, so the category is the one the author wrote on the
+        // parameter the scrutinee stands behind; anything else binds at
+        // `⟨token-tree⟩`, and a hole that then reaches an expression position
+        // earns §7's wrong-category refusal rather than a silent crossing.
+        let at_expression = matches!(
+            subject.shape(),
+            musa_core::RawShape::Var(name) if self.scrutinee_is_expression(name)
+        );
         let bound = self.mint("subject");
         let mut fallback = None;
         let mut tests = Vec::new();
+        // The shapes seen so far, for the unreachability half of §4's rule:
+        // one shape is one coverage, so a second arm written with it can never
+        // be selected. The template is the shape — the holes are indices into
+        // it, so the names they bind do not enter the comparison, which is the
+        // law's "a shape is a shape however its holes are spelled".
+        let mut covered: Vec<Template> = Vec::new();
         for arm in arms {
             let written = child(arm, |kind| kind == SyntaxKind::Pattern)?;
             let span = crate::resolve::trimmed_span(&written);
@@ -162,6 +185,35 @@ impl Lowering<'_> {
                 &mut walk,
             )?;
             self.holes_are_distinct(&walk, span)?;
+            // Every word the pattern matches literally, for the restatement's
+            // answer to "the arm uses what the pattern only matched" — see
+            // [`Sites::quoted_literal`]. A splice's own name is the binding,
+            // not a literal.
+            let literals: Vec<String> = quoted
+                .descendants_with_tokens()
+                .filter_map(SyntaxElement::into_token)
+                .filter(|token| token.kind() == SyntaxKind::Identifier)
+                .filter(|token| {
+                    !token
+                        .parent()
+                        .and_then(|held| held.parent())
+                        .is_some_and(|held| matches!(held.kind(), SyntaxKind::Splice | SyntaxKind::SequenceSplice))
+                })
+                .map(|token| token.text().to_owned())
+                .collect();
+            if let Some(written_body) = child(arm, is_expr_node) {
+                let body_origin = self.origin(&written_body);
+                self.sites
+                    .quote_arm(body_origin, crate::resolve::trimmed_span(&written_body), literals);
+            }
+            if covered.contains(&template) {
+                return self.refuse(
+                    Diagnostic::error(Code::UnreachablePattern, "this match arm can never be selected")
+                        .at(span, "already covered above")
+                        .note("a quote pattern is one shape, and an earlier arm wrote the same one"),
+                );
+            }
+            covered.push(template.clone());
             let body = child(arm, is_expr_node)?;
             let mut body = self.expr(&body)?;
             let literal = crate::registry::template_literal(template, quotation);
@@ -169,7 +221,12 @@ impl Lowering<'_> {
             // written. They are independent — each reads the subject the arm
             // already matched — so the order is legibility rather than meaning.
             for (index, (name, sequence)) in walk.bound.iter().enumerate().rev() {
-                let read = if *sequence { "quote_holes" } else { "quote_hole" };
+                let read = match (*sequence, at_expression) {
+                    (false, false) => "quote_hole",
+                    (true, false) => "quote_holes",
+                    (false, true) => "quote_hole_expr",
+                    (true, true) => "quote_holes_expr",
+                };
                 let held = applied(
                     at,
                     Raw::var(at, read),
@@ -183,7 +240,22 @@ impl Lowering<'_> {
             }
             tests.push((at, literal, body));
         }
-        let mut built = fallback?;
+        // §4's other half: a quote pattern constrains and does not enumerate,
+        // so the chain cannot end on its last shape the way a constructor
+        // match can end on its last case. The catch-all is the arm coverage
+        // requires, and its absence is the exhaustiveness refusal — stated
+        // here, because the chain this lowers to is `Bool` matches and the
+        // core's coverage could never see what was not written.
+        let Some(built) = fallback else {
+            return self.refuse(
+                Diagnostic::error(Code::NonExhaustiveMatch, "this match leaves a possible value uncovered")
+                    .at(crate::resolve::trimmed_span(node), "add a fallback arm")
+                    .note(
+                        "a quote pattern constrains and does not enumerate: no finite set of shapes                          exhausts the token trees, so the last arm is a pattern that matches anything",
+                    ),
+            );
+        };
+        let mut built = built;
         for (at, literal, body) in tests.into_iter().rev() {
             let matches = applied(
                 at,

@@ -123,11 +123,17 @@ fn a_written_type_cannot_be_widened_by_a_caller() {
 /// satisfy termination by being wrong.
 #[test]
 fn a_deeply_nested_finite_program_evaluates_to_its_value() {
+    // The binders are annotated because `10-traits.md` §6's rule is exact
+    // receiver: a method on a lambda binder whose type is still a
+    // metavariable is `MethodOnVariable` by design — "the repair is: write
+    // the trait", and the annotation is the writing. Nothing about the
+    // progress-and-termination claim is weaker for it: the eliminators still
+    // nest, and the value is still the one a reader computes by hand.
     let compilation = compile_core(
-        "let rows: List<List<Nat>> = map(fn (index) { range(index) }, range(4)); \
-         let widths: List<Nat> = map(fn (row) { row.fold_from_start(0, fn (running, member) { running }) }, rows); \
-         let total: Nat = widths.fold_from_start(7, fn (running, width) { running }); \
-         let repeated: List<Nat> = rows.fold_from_start(range(3), fn (running, row) { running });",
+        "let rows: List<List<Nat>> = map(fn (index: Nat) { range(index) }, range(4)); \
+         let widths: List<Nat> = map(fn (row: List<Nat>) { row.fold_from_start(0, fn (running: Nat, member: Nat) { running }) }, rows); \
+         let total: Nat = widths.fold_from_start(7, fn (running: Nat, width: Nat) { running }); \
+         let repeated: List<Nat> = rows.fold_from_start(range(3), fn (running: List<Nat>, row: List<Nat>) { running });",
     );
     assert!(
         !compilation.has_errors(),

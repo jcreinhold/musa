@@ -896,10 +896,7 @@
       "kind": "motif",
       "signature": "motif sigh(root: Pitch)",
       "summary": null,
-      "result": {
-        "name": "Music",
-        "distinction": "notated material"
-      },
+      "result": null,
       "parameters": [
         {
           "name": "root",

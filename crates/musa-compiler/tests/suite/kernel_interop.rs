@@ -81,9 +81,9 @@ const EXAMPLES: &[(&str, &str)] = &[
 fn printing_and_parsing_an_example_preserves_its_meaning() {
     for &(name, source) in EXAMPLES {
         let document = SourceDocument::new(source, name);
-        let printed = kernel_text(&document, &pinned()).expect("the fixture elaborates");
+        let printed = kernel_text(&document, &pinned(), &musa_compiler::ImportSources::default()).expect("the fixture elaborates");
         let (form, hash) = kernel_text_meaning(&printed).unwrap_or_else(|error| panic!("{name}: {error}"));
-        let expected = kernel_normal_form(&document, &pinned()).expect("the fixture elaborates");
+        let expected = kernel_normal_form(&document, &pinned(), &musa_compiler::ImportSources::default()).expect("the fixture elaborates");
         assert_eq!(form, expected, "{name}: the round trip changed the normal form");
 
         // N6 follows from N5 by construction, so this asserts the derivation
@@ -100,9 +100,9 @@ fn printing_and_parsing_an_example_preserves_its_meaning() {
 fn normalized_kernel_text_is_still_kernel_text() {
     for &(name, source) in EXAMPLES {
         let document = SourceDocument::new(source, name);
-        let normalized = kernel_normalized_text(&document, &pinned()).expect("the fixture elaborates");
+        let normalized = kernel_normalized_text(&document, &pinned(), &musa_compiler::ImportSources::default()).expect("the fixture elaborates");
         let (form, _) = kernel_text_meaning(&normalized).unwrap_or_else(|error| panic!("{name}: {error}"));
-        let expected = kernel_normal_form(&document, &pinned()).expect("the fixture elaborates");
+        let expected = kernel_normal_form(&document, &pinned(), &musa_compiler::ImportSources::default()).expect("the fixture elaborates");
         assert_eq!(form, expected, "{name}: normalizing changed the meaning");
     }
 }
@@ -113,12 +113,12 @@ fn normalized_kernel_text_is_still_kernel_text() {
 #[test]
 fn printed_kernel_text_keeps_the_terms_structure() {
     let document = SourceDocument::new(include_str!("../../../../examples/counterpoint.musa"), "counterpoint");
-    let printed = kernel_text(&document, &pinned()).expect("elaborates");
+    let printed = kernel_text(&document, &pinned(), &musa_compiler::ImportSources::default()).expect("elaborates");
     assert!(
         printed.contains("together {"),
         "the overlay was flattened away: {printed}"
     );
-    let normalized = kernel_normalized_text(&document, &pinned()).expect("elaborates");
+    let normalized = kernel_normalized_text(&document, &pinned(), &musa_compiler::ImportSources::default()).expect("elaborates");
     assert!(
         !normalized.contains("together {"),
         "the normal form is a value, not a composition: {normalized}"
@@ -132,7 +132,7 @@ fn printed_kernel_text_keeps_the_terms_structure() {
 #[test]
 fn a_hairpin_shape_survives_as_exact_rationals() {
     let source = "piece \"x\" { score { part p { voice v { crescendo to ff { c4/4 d4/4 e4/4 } } } } }";
-    let printed = kernel_text(&SourceDocument::new(source, "hairpin"), &pinned()).expect("elaborates");
+    let printed = kernel_text(&SourceDocument::new(source, "hairpin"), &pinned(), &musa_compiler::ImportSources::default()).expect("elaborates");
     assert!(printed.contains("hairpin cres ff "), "no hairpin printed: {printed}");
     assert!(!printed.contains('.'), "a rational was written as a decimal: {printed}");
     check_kernel_text(&printed).expect("a printed hairpin reads back");
@@ -150,7 +150,7 @@ fn a_whole_rational_survives_the_round_trip() {
     let source = "piece \"p\" { tempo 1/1 = 60 to 30 over 2/1 \"rit.\"; meter 4/4;
         score { part a { voice b { c5/1 c5/1 c5/1 } } } }";
     let document = SourceDocument::new(source, "whole.musa");
-    let printed = kernel_text(&document, &pinned()).expect("elaborates");
+    let printed = kernel_text(&document, &pinned(), &musa_compiler::ImportSources::default()).expect("elaborates");
     assert!(printed.contains("tempo 1=60 'rit.' to 30 over 2 "), "{printed}");
     check_kernel_text(&printed).expect("a printed ramp reads back");
 }
@@ -162,6 +162,7 @@ fn malformed_kernel_text_is_rejected() {
     let good = kernel_text(
         &SourceDocument::new(include_str!("../../../../examples/twinkle.musa"), "twinkle"),
         &pinned(),
+        &musa_compiler::ImportSources::default(),
     )
     .expect("elaborates");
     let cases = [
@@ -197,7 +198,7 @@ fn the_kernel_corpus_is_up_to_date() {
             format!("{name}.musa.kernel"),
             golden(
                 &format!("{name}.musa"),
-                &kernel_text(&document, &pinned()).expect("the fixture elaborates"),
+                &kernel_text(&document, &pinned(), &musa_compiler::ImportSources::default()).expect("the fixture elaborates"),
             ),
         ));
     }
@@ -208,7 +209,7 @@ fn the_kernel_corpus_is_up_to_date() {
         "canon.normal.musa.kernel".to_owned(),
         golden(
             "canon.musa, normalized",
-            &kernel_normalized_text(&canon, &pinned()).expect("elaborates"),
+            &kernel_normalized_text(&canon, &pinned(), &musa_compiler::ImportSources::default()).expect("elaborates"),
         ),
     ));
 

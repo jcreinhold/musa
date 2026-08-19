@@ -49,6 +49,7 @@ piece "canon" {
       (identifier))
     (motif_declaration
       (identifier)
+      (parameter_list)
       (block
         (note_statement
           (pitch_literal)

@@ -93,7 +93,7 @@ use musa_language::ast::AstNode as _;
 use musa_language::{SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 
-use super::{Lowering, applied, child, children, is_expr_node, listed, significant_tokens, whole, writes};
+use super::{Lowering, applied, child, children, is_expr_node, is_type_node, listed, significant_tokens, whole, writes};
 use crate::diagnose::{Code, Diagnostic};
 use crate::origin::{DeclarationId, SourceSpan};
 use crate::score::NotatedDuration;
@@ -557,13 +557,25 @@ impl Lowering<'_> {
     /// names without nodes, each binder is numbered at the declaration. That is
     /// the honest answer: there is no node to point at, and inventing a
     /// plausible one would point a reader at code that is not the cause.
+    /// `motif name(param: τ, …) { … }` — the `fn` `01-surface.md` §2 says it
+    /// desugars to, so the parameters are [`super::items::written_parameters`]
+    /// like a `fn`'s and each annotation that was written binds: a `d:
+    /// Duration<WrittenTime>` the grammar reads is not a spelling the λ drops.
     pub(super) fn motif(&mut self, node: &SyntaxNode) -> Option<super::items::Definition> {
         let origin = self.origin(node);
         let name = super::items::declared_name(node)?;
-        let written = musa_language::ast::MotifDecl::cast(node.clone())?.params();
+        let parameters = super::items::written_parameters(node);
         let mut value = self.music(node)?;
-        for parameter in written.iter().rev() {
-            value = musa_core::Raw::lam(origin, parameter.name.as_str(), value);
+        for parameter in parameters.iter().rev() {
+            let at = self.origin(parameter);
+            let bound = super::items::declared_name(parameter)?;
+            value = match child(parameter, is_type_node) {
+                Some(written) => {
+                    let domain = self.ty(&written)?;
+                    musa_core::Raw::annotated_lam(at, bound, domain, value)
+                }
+                None => musa_core::Raw::lam(at, bound, value),
+            };
         }
         Some(super::items::Definition {
             origin,
@@ -744,18 +756,13 @@ impl Lowering<'_> {
         match node.kind() {
             SyntaxKind::NoteStmt => self.note(node, origin, reading),
             SyntaxKind::RestStmt => {
-                let (duration, free) = self.notated_duration(node, span, reading)?;
-                let held = duration.value.as_ratio();
+                let (field, held, free) = self.notated_duration(node, span, reading)?;
                 let fact = applied(
                     origin,
                     Raw::hosted(origin, "Fact.Rest"),
-                    [
-                        payload(origin, "NotatedDuration", duration),
-                        listed(origin, Vec::new()),
-                        optional(origin, "FreeDuration", free),
-                    ],
+                    [field, listed(origin, Vec::new()), optional(origin, "FreeDuration", free)],
                 );
-                Some(self.sounded(origin, reading, fact, held))
+                Some(self.sounded_term(origin, reading, fact, held))
             }
             SyntaxKind::ChordStmt => self.chord_statement(node, origin, reading),
             SyntaxKind::StackStmt => self.stack(node, origin, reading),
@@ -975,14 +982,13 @@ impl Lowering<'_> {
         let statement = musa_language::ast::NoteStmt::cast(node.clone())?;
         let span = crate::resolve::trimmed_span(node);
         let pitch = self.pitch_term(&statement, node, origin, reading)?;
-        let (duration, free) = self.notated_duration(node, span, reading)?;
-        let held = duration.value.as_ratio();
+        let (field, held, free) = self.notated_duration(node, span, reading)?;
         let fact = applied(
             origin,
             Raw::hosted(origin, "Fact.Note"),
             [
                 pitch,
-                payload(origin, "NotatedDuration", duration),
+                field,
                 self.articulations(origin, &statement.articulations(), span),
                 optional(origin, "FreeDuration", free),
             ],
@@ -990,7 +996,7 @@ impl Lowering<'_> {
         Some(continuing(
             origin,
             statement.tied(),
-            self.sounded(origin, reading, fact, held),
+            self.sounded_term(origin, reading, fact, held),
         ))
     }
 
@@ -1006,8 +1012,7 @@ impl Lowering<'_> {
     fn chord_statement(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
         let statement = musa_language::ast::ChordStmt::cast(node.clone())?;
         let span = crate::resolve::trimmed_span(node);
-        let (duration, free) = self.notated_duration(node, span, reading)?;
-        let held = duration.value.as_ratio();
+        let (field, held, free) = self.notated_duration(node, span, reading)?;
         let articulations = self.articulations(origin, &statement.articulations(), span);
         let written = statement.pitches();
         if written.is_empty() {
@@ -1027,12 +1032,12 @@ impl Lowering<'_> {
                 Raw::hosted(origin, "Fact.Note"),
                 [
                     plain(origin, "Pitch", pitch),
-                    payload(origin, "NotatedDuration", duration.clone()),
+                    field.clone(),
                     articulations.clone(),
                     optional(origin, "FreeDuration", free),
                 ],
             );
-            let one = self.sounded(origin, reading, fact, held);
+            let one = self.sounded_term(origin, reading, fact, held.clone());
             sounding = Some(match sounding {
                 None => one,
                 Some(built) => applied(origin, Raw::hosted(origin, "together"), [built, one]),
@@ -1076,7 +1081,7 @@ impl Lowering<'_> {
                     .note("a chord type is the content; the symbol written above the staff is a separate annotation"),
             );
         };
-        let (duration, _) = self.notated_duration(node, span, reading)?;
+        let (_, held, _) = self.notated_duration(node, span, reading)?;
         let class = crate::chord::ChordClass::new(bass.pitch_class(), kind);
         let Ok(voicing) = crate::chord::Voicing::close_position(class, bass) else {
             return self.refuse(
@@ -1095,7 +1100,7 @@ impl Lowering<'_> {
                 // downcasts to nothing, which the core reports as this
                 // compiler's table disagreeing with itself.
                 plain(origin, "Voicing", voicing),
-                written_duration(origin, duration.value.as_ratio()),
+                held,
             ],
         );
         Some(call)
@@ -1962,10 +1967,10 @@ impl Lowering<'_> {
     fn improvise(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
         let statement = musa_language::ast::ImproviseStmt::cast(node.clone())?;
         let span = crate::resolve::trimmed_span(node);
-        let (duration, _) = self.notated_duration(node, span, reading)?;
+        let (_, held, _) = self.notated_duration(node, span, reading)?;
         let over = statement.over().map(|text| plain(origin, "Text", text));
         let fact = Raw::app(origin, Raw::hosted(origin, "Fact.Improvise"), maybe(origin, over));
-        Some(self.sounded(origin, reading, fact, duration.value.as_ratio()))
+        Some(self.sounded_term(origin, reading, fact, held))
     }
 
     /// `use e;` — the track `e` denotes, in this block's scope, folded on.
@@ -2121,6 +2126,13 @@ impl Lowering<'_> {
         self.sounded_at(origin, reading.scope, reading.placed, reading.declaration, fact, held)
     }
 
+    /// The same, with the sounding duration already a term: a duration written
+    /// as a parameter is a value the evaluation reads, not one this lowering
+    /// can bake.
+    fn sounded_term(&self, origin: Origin, reading: Reading, fact: Raw, held: Raw) -> Raw {
+        self.sounded_in(origin, reading.scope, reading.placed, reading.declaration, fact, held)
+    }
+
     /// The same, at a scope the reading does not supply.
     ///
     /// Three callers want one: a `clef` written in a voice is the *part's*
@@ -2137,6 +2149,23 @@ impl Lowering<'_> {
         fact: Raw,
         held: Ratio<i64>,
     ) -> Raw {
+        self.sounded_in(origin, scope, placed, declaration, fact, written_duration(origin, held))
+    }
+
+    /// The call, with all four arguments in hand.
+    ///
+    /// `pub(super)` for [`super::piece`]'s header: a header fact's `held` is
+    /// the piece's evaluated extent, which is a term, not the ratio a
+    /// statement's own written duration gives [`Self::sounded_at`].
+    pub(super) fn sounded_in(
+        &self,
+        origin: Origin,
+        scope: crate::Scope,
+        placed: bool,
+        declaration: DeclarationId,
+        fact: Raw,
+        held: Raw,
+    ) -> Raw {
         applied(
             origin,
             Raw::hosted(origin, "sounded"),
@@ -2144,7 +2173,7 @@ impl Lowering<'_> {
                 self.provenance_at(origin, placed, declaration),
                 scope_of(origin, scope),
                 fact,
-                written_duration(origin, held),
+                held,
             ],
         )
     }
@@ -2280,21 +2309,43 @@ impl Lowering<'_> {
     /// written tree plus the decisions already recorded, rather than one that
     /// depends on a tuplet's body having been lowered before the region above it
     /// asks how far it reaches.
+    /// A statement's duration as the two *terms* the fact and the span need:
+    /// the `NotatedDuration` field of the fact, and the `Duration ⟨written⟩`
+    /// the fact sounds for. A written fraction bakes both in as literals; a
+    /// parameter is a term already, so the field goes through the
+    /// `notated_duration` δ word, which evaluation fires once the call has
+    /// given the parameter its value.
+    ///
+    /// The pair is read here rather than at each caller for
+    /// [`NotatedDuration::spelled`]'s reason: one duration has one spelling,
+    /// and six statements reading one duration six ways is six spellings of
+    /// it.
+    ///
+    /// Inside a tuplet a parameter's term is scaled the way
+    /// [`Reading::lasting`] scales a written one, and the spelling the rule
+    /// then derives is of the *sounding* value: a computed duration has no
+    /// written symbol for the annotation to point back at, which is the one
+    /// asymmetry with the written case a parameter cannot avoid.
     fn notated_duration(
         &mut self,
         node: &SyntaxNode,
         span: SourceSpan,
         reading: Reading,
-    ) -> Option<(NotatedDuration, Option<crate::score::FreeDuration>)> {
+    ) -> Option<(Raw, Raw, Option<crate::score::FreeDuration>)> {
+        let origin = self.origin(node);
         let Some(duration) = crate::resolve::parse_duration(node) else {
-            // A duration written as a *parameter* is a value, and turning a
-            // `Duration` value into the `NotatedDuration` a fact carries needs a
-            // word no ownership table names. Prompt 142 owns it, with the voice.
-            if musa_language::ast::Duration::of(node)
-                .and_then(|written| written.parameter())
-                .is_some()
-            {
-                return self.not_yet(node, "a duration written as a parameter", "a voice to belong to");
+            if let Some(parameter) = musa_language::ast::Duration::of(node).and_then(|written| written.parameter()) {
+                let term = if reading.tuplet == Ratio::ONE {
+                    Raw::var(origin, parameter)
+                } else {
+                    applied(
+                        origin,
+                        Raw::hosted(origin, "duration_scale"),
+                        [Raw::var(origin, parameter), plain(origin, "Ratio", reading.tuplet)],
+                    )
+                };
+                let field = applied(origin, Raw::hosted(origin, "notated_duration"), [term.clone()]);
+                return Some((field, term, None));
             }
             return self.refuse(
                 Diagnostic::error(Code::NotAValue, "this statement has no duration")
@@ -2302,10 +2353,12 @@ impl Lowering<'_> {
                     .note("a duration is a fraction or a whole number of whole notes: `1/4`, `3/8`, `1`"),
             );
         };
-        let Some(most) = musa_language::ast::Duration::of(node).and_then(|written| written.held_to()) else {
-            return Some(reading.lasting((duration, None)));
+        let (duration, free) = match musa_language::ast::Duration::of(node).and_then(|written| written.held_to()) {
+            None => reading.lasting((duration, None)),
+            Some(most) => reading.lasting(self.held(duration, &most, span)?),
         };
-        Some(reading.lasting(self.held(duration, &most, span)?))
+        let held = written_duration(origin, duration.value.as_ratio());
+        Some((payload(origin, "NotatedDuration", duration), held, free))
     }
 
     /// `g4/4 to 2/1` — a quarter the performer may hold to a double whole.

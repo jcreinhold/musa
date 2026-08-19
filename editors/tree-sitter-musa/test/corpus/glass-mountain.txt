@@ -113,10 +113,12 @@ piece "Glass Mountain" {
       (identifier))
     (motif_declaration
       (identifier)
-      (motif_parameter
-        (identifier)
-        (type_name
-          (identifier)))
+      (parameter_list
+        (parameter
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier)))))
       (block
         (note_statement
           (identifier)

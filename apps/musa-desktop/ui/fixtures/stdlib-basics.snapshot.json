@@ -2,7 +2,7 @@
   "document": 0,
   "name": "stdlib-basics.musa",
   "kind": "piece",
-  "source": "// Standard modules are explicit, version-matched source libraries. Their\n// functions pass through the same checker and evaluator as these definitions.\npiece \"Standard Library Basics\" {\n    import std::core;\n    import std::list;\n    import std::option;\n\n    let subject: Music = music {\n        c4/4\n        d4/4\n    };\n\n    fn same_pitch(p: Pitch) -> Pitch { p }\n\n    let answer: Music = compose_music(\n        fn (line: Music) -> Music { transpose(P8, line) },\n        retrograde,\n        subject,\n    );\n    let chosen: Pitch = pitch_or_else(c4, same_pitch, Some(e4));\n    let counting: List<Nat> = naturals(4);\n\n    score {\n        part strings {\n            voice duet {\n                use together(subject, shift(1/2, answer));\n                c5/2\n                rest/2\n            }\n        }\n    }\n}\n",
+  "source": "// Standard modules are explicit, version-matched source libraries. Their\n// functions pass through the same checker and evaluator as these definitions.\npiece \"Standard Library Basics\" {\n    import std::core;\n    import std::list;\n\n    let subject: EventTrack<WrittenTime> = music {\n        c4/4\n        d4/4\n    };\n\n    fn same_pitch(p: Pitch) -> Pitch { p }\n\n    let answer: EventTrack<WrittenTime> = compose_music(\n        fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(P8, line) },\n        retrograde,\n        subject,\n    );\n    let chosen: Pitch = Some(e4).fold_from_end(c4, fn (found, otherwise) { same_pitch(found) });\n    let counting: List<Nat> = naturals(4);\n\n    score {\n        part strings {\n            voice duet {\n                use together(subject, shift(duration_of(1/2), answer));\n                c5/2\n                rest/2\n            }\n        }\n    }\n}\n",
   "revision": 0,
   "compiles": true,
   "unsaved": true,
@@ -63,33 +63,33 @@
           "generated": true,
           "path": [
             {
-              "label": "together(subject, shift(1/2, answer))",
+              "label": "together(subject, shift(duration_of(1/2), answer))",
               "kind": "occurrence",
               "span": {
-                "start": 694,
-                "end": 736
+                "start": 774,
+                "end": 829
               }
             }
           ],
           "noteIndex": 1,
           "occurrence": "occurrence-0",
-          "line": 26,
+          "line": 25,
           "span": {
-            "start": 694,
-            "end": 736
+            "start": 774,
+            "end": 829
           },
           "definitionSpan": {
-            "start": 297,
-            "end": 301
+            "start": 291,
+            "end": 295
           },
           "supportedBy": [
             {
-              "start": 297,
-              "end": 301
+              "start": 291,
+              "end": 295
             },
             {
-              "start": 694,
-              "end": 736
+              "start": 774,
+              "end": 829
             }
           ],
           "decision": null
@@ -125,33 +125,33 @@
           "generated": true,
           "path": [
             {
-              "label": "together(subject, shift(1/2, answer))",
+              "label": "together(subject, shift(duration_of(1/2), answer))",
               "kind": "occurrence",
               "span": {
-                "start": 694,
-                "end": 736
+                "start": 774,
+                "end": 829
               }
             }
           ],
           "noteIndex": 2,
           "occurrence": "occurrence-0",
-          "line": 26,
+          "line": 25,
           "span": {
-            "start": 694,
-            "end": 736
+            "start": 774,
+            "end": 829
           },
           "definitionSpan": {
-            "start": 310,
-            "end": 314
+            "start": 304,
+            "end": 308
           },
           "supportedBy": [
             {
-              "start": 310,
-              "end": 314
+              "start": 304,
+              "end": 308
             },
             {
-              "start": 694,
-              "end": 736
+              "start": 774,
+              "end": 829
             }
           ],
           "decision": null
@@ -187,11 +187,11 @@
           "generated": true,
           "path": [
             {
-              "label": "together(subject, shift(1/2, answer))",
+              "label": "together(subject, shift(duration_of(1/2), answer))",
               "kind": "occurrence",
               "span": {
-                "start": 694,
-                "end": 736
+                "start": 774,
+                "end": 829
               }
             },
             {
@@ -207,23 +207,23 @@
           ],
           "noteIndex": 1,
           "occurrence": "occurrence-1",
-          "line": 26,
+          "line": 25,
           "span": {
-            "start": 694,
-            "end": 736
+            "start": 774,
+            "end": 829
           },
           "definitionSpan": {
-            "start": 310,
-            "end": 314
+            "start": 304,
+            "end": 308
           },
           "supportedBy": [
             {
-              "start": 310,
-              "end": 314
+              "start": 304,
+              "end": 308
             },
             {
-              "start": 694,
-              "end": 736
+              "start": 774,
+              "end": 829
             }
           ],
           "decision": null
@@ -259,11 +259,11 @@
           "generated": true,
           "path": [
             {
-              "label": "together(subject, shift(1/2, answer))",
+              "label": "together(subject, shift(duration_of(1/2), answer))",
               "kind": "occurrence",
               "span": {
-                "start": 694,
-                "end": 736
+                "start": 774,
+                "end": 829
               }
             },
             {
@@ -279,23 +279,23 @@
           ],
           "noteIndex": 2,
           "occurrence": "occurrence-1",
-          "line": 26,
+          "line": 25,
           "span": {
-            "start": 694,
-            "end": 736
+            "start": 774,
+            "end": 829
           },
           "definitionSpan": {
-            "start": 297,
-            "end": 301
+            "start": 291,
+            "end": 295
           },
           "supportedBy": [
             {
-              "start": 297,
-              "end": 301
+              "start": 291,
+              "end": 295
             },
             {
-              "start": 694,
-              "end": 736
+              "start": 774,
+              "end": 829
             }
           ],
           "decision": null
@@ -332,19 +332,19 @@
           "path": [],
           "noteIndex": null,
           "occurrence": null,
-          "line": 27,
+          "line": 26,
           "span": {
-            "start": 753,
-            "end": 757
+            "start": 846,
+            "end": 850
           },
           "definitionSpan": {
-            "start": 753,
-            "end": 757
+            "start": 846,
+            "end": 850
           },
           "supportedBy": [
             {
-              "start": 753,
-              "end": 757
+              "start": 846,
+              "end": 850
             }
           ],
           "decision": null
@@ -377,19 +377,19 @@
           "path": [],
           "noteIndex": null,
           "occurrence": null,
-          "line": 28,
+          "line": 27,
           "span": {
-            "start": 774,
-            "end": 780
+            "start": 867,
+            "end": 873
           },
           "definitionSpan": {
-            "start": 774,
-            "end": 780
+            "start": 867,
+            "end": 873
           },
           "supportedBy": [
             {
-              "start": 774,
-              "end": 780
+              "start": 867,
+              "end": 873
             }
           ],
           "decision": null
@@ -401,22 +401,22 @@
         "id": "occurrence-0",
         "path": [
           {
-            "label": "together(subject, shift(1/2, answer))",
+            "label": "together(subject, shift(duration_of(1/2), answer))",
             "kind": "occurrence",
             "span": {
-              "start": 694,
-              "end": 736
+              "start": 774,
+              "end": 829
             }
           }
         ],
-        "label": "together(subject, shift(1/2, answer))",
+        "label": "together(subject, shift(duration_of(1/2), answer))",
         "motif": "together",
         "declaration": null,
         "useSite": {
-          "start": 694,
-          "end": 736
+          "start": 774,
+          "end": 829
         },
-        "line": 26,
+        "line": 25,
         "events": [
           "event-0",
           "event-1"
@@ -426,11 +426,11 @@
         "id": "occurrence-1",
         "path": [
           {
-            "label": "together(subject, shift(1/2, answer))",
+            "label": "together(subject, shift(duration_of(1/2), answer))",
             "kind": "occurrence",
             "span": {
-              "start": 694,
-              "end": 736
+              "start": 774,
+              "end": 829
             }
           },
           {
@@ -444,14 +444,14 @@
             "span": null
           }
         ],
-        "label": "together(subject, shift(1/2, answer)) ▸ transpose up P8 ▸ retrograde",
+        "label": "together(subject, shift(duration_of(1/2), answer)) ▸ transpose up P8 ▸ retrograde",
         "motif": "together",
         "declaration": null,
         "useSite": {
-          "start": 694,
-          "end": 736
+          "start": 774,
+          "end": 829
         },
-        "line": 26,
+        "line": 25,
         "events": [
           "event-2",
           "event-3"
@@ -579,35 +579,35 @@
     {
       "name": "compose_music",
       "kind": "function",
-      "signature": "fn compose_music(first: Music -> Music, second: Music -> Music, value: Music) -> Music",
+      "signature": "fn compose_music(first: EventTrack<WrittenTime> -> EventTrack<WrittenTime>, second: EventTrack<WrittenTime> -> EventTrack<WrittenTime>, value: EventTrack<WrittenTime>) -> EventTrack<WrittenTime>",
       "summary": "Apply the second musical transformation, then the first.",
       "result": {
-        "name": "Music",
-        "distinction": "notated material"
+        "name": "EventTrack<WrittenTime>",
+        "distinction": null
       },
       "parameters": [
         {
           "name": "first",
-          "label": "first: Music -> Music",
+          "label": "first: EventTrack<WrittenTime> -> EventTrack<WrittenTime>",
           "ty": {
-            "name": "Music -> Music",
+            "name": "EventTrack<WrittenTime> -> EventTrack<WrittenTime>",
             "distinction": null
           }
         },
         {
           "name": "second",
-          "label": "second: Music -> Music",
+          "label": "second: EventTrack<WrittenTime> -> EventTrack<WrittenTime>",
           "ty": {
-            "name": "Music -> Music",
+            "name": "EventTrack<WrittenTime> -> EventTrack<WrittenTime>",
             "distinction": null
           }
         },
         {
           "name": "value",
-          "label": "value: Music",
+          "label": "value: EventTrack<WrittenTime>",
           "ty": {
-            "name": "Music",
-            "distinction": "notated material"
+            "name": "EventTrack<WrittenTime>",
+            "distinction": null
           }
         }
       ],
@@ -660,8 +660,180 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/core.musa",
-        "start": 553,
-        "end": 566
+        "start": 680,
+        "end": 693
+      }
+    },
+    {
+      "name": "counting_from",
+      "kind": "function",
+      "signature": "fn counting_from(count: Nat, first: Nat) -> List<Nat>",
+      "summary": "The natural numbers from `first`, `count` of them, ascending.  The accumulator is `first` and it comes after the argument the recursion descends on, because §2.4's measure holds everything written *before* that argument fixed: a walk that both descends and accumulates has to descend first and accumulate later. `Succ` rather than `nat_add`: the successor constructor *is* \"one more\", so counting needs no arithmetic and no failure case.",
+      "result": {
+        "name": "List<Nat>",
+        "distinction": null
+      },
+      "parameters": [
+        {
+          "name": "count",
+          "label": "count: Nat",
+          "ty": {
+            "name": "Nat",
+            "distinction": "a whole number, zero or more"
+          }
+        },
+        {
+          "name": "first",
+          "label": "first: Nat",
+          "ty": {
+            "name": "Nat",
+            "distinction": "a whole number, zero or more"
+          }
+        }
+      ],
+      "deprecation": null,
+      "readOnly": true,
+      "site": {
+        "where": "library",
+        "uri": "musa-stdlib:/std/list.musa",
+        "start": 1896,
+        "end": 1909
+      }
+    },
+    {
+      "name": "range",
+      "kind": "function",
+      "signature": "fn range(count: Nat) -> List<Nat>",
+      "summary": "The natural numbers from zero up to, but not including, `count`.",
+      "result": {
+        "name": "List<Nat>",
+        "distinction": null
+      },
+      "parameters": [
+        {
+          "name": "count",
+          "label": "count: Nat",
+          "ty": {
+            "name": "Nat",
+            "distinction": "a whole number, zero or more"
+          }
+        }
+      ],
+      "deprecation": null,
+      "readOnly": true,
+      "site": {
+        "where": "library",
+        "uri": "musa-stdlib:/std/list.musa",
+        "start": 2166,
+        "end": 2171
+      }
+    },
+    {
+      "name": "repeated",
+      "kind": "function",
+      "signature": "fn repeated<A>(value: A, count: Nat) -> List<A>",
+      "summary": "One value, `count` times, as finite data.  Not `repeat`: that word opens a repeated passage in a score, so it is a statement keyword and cannot also be a function name. The past participle is what the list *is* rather than what a player does.",
+      "result": {
+        "name": "List<A>",
+        "distinction": null
+      },
+      "parameters": [
+        {
+          "name": "value",
+          "label": "value: A",
+          "ty": {
+            "name": "A",
+            "distinction": null
+          }
+        },
+        {
+          "name": "count",
+          "label": "count: Nat",
+          "ty": {
+            "name": "Nat",
+            "distinction": "a whole number, zero or more"
+          }
+        }
+      ],
+      "deprecation": null,
+      "readOnly": true,
+      "site": {
+        "where": "library",
+        "uri": "musa-stdlib:/std/list.musa",
+        "start": 2510,
+        "end": 2518
+      }
+    },
+    {
+      "name": "map",
+      "kind": "function",
+      "signature": "fn map<A, B>(function: A -> B, values: List<A>) -> List<B>",
+      "summary": "Apply `function` to every member, in order.",
+      "result": {
+        "name": "List<B>",
+        "distinction": null
+      },
+      "parameters": [
+        {
+          "name": "function",
+          "label": "function: A -> B",
+          "ty": {
+            "name": "A -> B",
+            "distinction": null
+          }
+        },
+        {
+          "name": "values",
+          "label": "values: List<A>",
+          "ty": {
+            "name": "List<A>",
+            "distinction": null
+          }
+        }
+      ],
+      "deprecation": null,
+      "readOnly": true,
+      "site": {
+        "where": "library",
+        "uri": "musa-stdlib:/std/list.musa",
+        "start": 2742,
+        "end": 2745
+      }
+    },
+    {
+      "name": "filter",
+      "kind": "function",
+      "signature": "fn filter<A>(predicate: A -> Bool, values: List<A>) -> List<A>",
+      "summary": "Keep the members for which `predicate` answers true, in order.",
+      "result": {
+        "name": "List<A>",
+        "distinction": null
+      },
+      "parameters": [
+        {
+          "name": "predicate",
+          "label": "predicate: A -> Bool",
+          "ty": {
+            "name": "A -> Bool",
+            "distinction": null
+          }
+        },
+        {
+          "name": "values",
+          "label": "values: List<A>",
+          "ty": {
+            "name": "List<A>",
+            "distinction": null
+          }
+        }
+      ],
+      "deprecation": null,
+      "readOnly": true,
+      "site": {
+        "where": "library",
+        "uri": "musa-stdlib:/std/list.musa",
+        "start": 3013,
+        "end": 3019
       }
     },
     {
@@ -688,8 +860,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 87,
-        "end": 95
+        "start": 3366,
+        "end": 3374
       }
     },
     {
@@ -724,8 +896,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 218,
-        "end": 229
+        "start": 3497,
+        "end": 3508
       }
     },
     {
@@ -760,26 +932,26 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 396,
-        "end": 410
+        "start": 3675,
+        "end": 3689
       }
     },
     {
       "name": "repeat_music",
       "kind": "function",
-      "signature": "fn repeat_music(value: Music, count: Nat) -> List<Music>",
+      "signature": "fn repeat_music(value: EventTrack<WrittenTime>, count: Nat) -> List<EventTrack<WrittenTime>>",
       "summary": "Repeat one contextual music value count times as finite data.",
       "result": {
-        "name": "List<Music>",
+        "name": "List<EventTrack<WrittenTime>>",
         "distinction": null
       },
       "parameters": [
         {
           "name": "value",
-          "label": "value: Music",
+          "label": "value: EventTrack<WrittenTime>",
           "ty": {
-            "name": "Music",
-            "distinction": "notated material"
+            "name": "EventTrack<WrittenTime>",
+            "distinction": null
           }
         },
         {
@@ -796,106 +968,18 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 592,
-        "end": 604
-      }
-    },
-    {
-      "name": "pitch_or_else",
-      "kind": "function",
-      "signature": "fn pitch_or_else(fallback: Pitch, present: Pitch -> Pitch, value: Option<Pitch>) -> Pitch",
-      "summary": "Read an optional pitch, using fallback when it is absent and present when it is available.",
-      "result": {
-        "name": "Pitch",
-        "distinction": "a written pitch: letter, accidental, and octave"
-      },
-      "parameters": [
-        {
-          "name": "fallback",
-          "label": "fallback: Pitch",
-          "ty": {
-            "name": "Pitch",
-            "distinction": "a written pitch: letter, accidental, and octave"
-          }
-        },
-        {
-          "name": "present",
-          "label": "present: Pitch -> Pitch",
-          "ty": {
-            "name": "Pitch -> Pitch",
-            "distinction": null
-          }
-        },
-        {
-          "name": "value",
-          "label": "value: Option<Pitch>",
-          "ty": {
-            "name": "Option<Pitch>",
-            "distinction": null
-          }
-        }
-      ],
-      "deprecation": null,
-      "readOnly": true,
-      "site": {
-        "where": "library",
-        "uri": "musa-stdlib:/std/option.musa",
-        "start": 122,
-        "end": 135
-      }
-    },
-    {
-      "name": "nat_or_else",
-      "kind": "function",
-      "signature": "fn nat_or_else(fallback: Nat, present: Nat -> Nat, value: Option<Nat>) -> Nat",
-      "summary": "Read an optional natural number under the same explicit policy.",
-      "result": {
-        "name": "Nat",
-        "distinction": "a whole number, zero or more"
-      },
-      "parameters": [
-        {
-          "name": "fallback",
-          "label": "fallback: Nat",
-          "ty": {
-            "name": "Nat",
-            "distinction": "a whole number, zero or more"
-          }
-        },
-        {
-          "name": "present",
-          "label": "present: Nat -> Nat",
-          "ty": {
-            "name": "Nat -> Nat",
-            "distinction": null
-          }
-        },
-        {
-          "name": "value",
-          "label": "value: Option<Nat>",
-          "ty": {
-            "name": "Option<Nat>",
-            "distinction": null
-          }
-        }
-      ],
-      "deprecation": null,
-      "readOnly": true,
-      "site": {
-        "where": "library",
-        "uri": "musa-stdlib:/std/option.musa",
-        "start": 342,
-        "end": 353
+        "start": 3871,
+        "end": 3883
       }
     },
     {
       "name": "subject",
       "kind": "value",
-      "signature": "let subject: Music",
+      "signature": "let subject: EventTrack<WrittenTime>",
       "summary": null,
       "result": {
-        "name": "Music",
-        "distinction": "notated material"
+        "name": "EventTrack<WrittenTime>",
+        "distinction": null
       },
       "parameters": [],
       "deprecation": null,
@@ -903,8 +987,8 @@
       "site": {
         "where": "open",
         "span": {
-          "start": 264,
-          "end": 271
+          "start": 240,
+          "end": 247
         }
       }
     },
@@ -932,19 +1016,19 @@
       "site": {
         "where": "open",
         "span": {
-          "start": 330,
-          "end": 340
+          "start": 324,
+          "end": 334
         }
       }
     },
     {
       "name": "answer",
       "kind": "value",
-      "signature": "let answer: Music",
+      "signature": "let answer: EventTrack<WrittenTime>",
       "summary": null,
       "result": {
-        "name": "Music",
-        "distinction": "notated material"
+        "name": "EventTrack<WrittenTime>",
+        "distinction": null
       },
       "parameters": [],
       "deprecation": null,
@@ -952,8 +1036,8 @@
       "site": {
         "where": "open",
         "span": {
-          "start": 375,
-          "end": 381
+          "start": 369,
+          "end": 375
         }
       }
     },
@@ -972,8 +1056,8 @@
       "site": {
         "where": "open",
         "span": {
-          "start": 517,
-          "end": 523
+          "start": 565,
+          "end": 571
         }
       }
     },
@@ -992,29 +1076,194 @@
       "site": {
         "where": "open",
         "span": {
-          "start": 582,
-          "end": 590
+          "start": 662,
+          "end": 670
         }
       }
     }
   ],
   "names": [
     {
-      "name": "subject",
-      "kind": "value",
+      "name": "identity_ratio",
+      "kind": "function",
       "declaration": {
-        "start": 264,
-        "end": 271
+        "start": 156,
+        "end": 170
+      },
+      "external": null,
+      "uses": []
+    },
+    {
+      "name": "identity_nat",
+      "kind": "function",
+      "declaration": {
+        "start": 254,
+        "end": 266
+      },
+      "external": null,
+      "uses": []
+    },
+    {
+      "name": "compose_music",
+      "kind": "function",
+      "declaration": {
+        "start": 368,
+        "end": 381
       },
       "external": null,
       "uses": [
         {
-          "start": 493,
-          "end": 500
+          "start": 403,
+          "end": 416
+        }
+      ]
+    },
+    {
+      "name": "compose_pitch",
+      "kind": "function",
+      "declaration": {
+        "start": 680,
+        "end": 693
+      },
+      "external": null,
+      "uses": []
+    },
+    {
+      "name": "counting_from",
+      "kind": "function",
+      "declaration": {
+        "start": 1896,
+        "end": 1909
+      },
+      "external": null,
+      "uses": [
+        {
+          "start": 2199,
+          "end": 2212
+        }
+      ]
+    },
+    {
+      "name": "range",
+      "kind": "function",
+      "declaration": {
+        "start": 2166,
+        "end": 2171
+      },
+      "external": null,
+      "uses": [
+        {
+          "start": 3402,
+          "end": 3407
+        }
+      ]
+    },
+    {
+      "name": "repeated",
+      "kind": "function",
+      "declaration": {
+        "start": 2510,
+        "end": 2518
+      },
+      "external": null,
+      "uses": [
+        {
+          "start": 3986,
+          "end": 3994
+        }
+      ]
+    },
+    {
+      "name": "map",
+      "kind": "function",
+      "declaration": {
+        "start": 2742,
+        "end": 2745
+      },
+      "external": null,
+      "uses": [
+        {
+          "start": 3581,
+          "end": 3584
+        }
+      ]
+    },
+    {
+      "name": "filter",
+      "kind": "function",
+      "declaration": {
+        "start": 3013,
+        "end": 3019
+      },
+      "external": null,
+      "uses": [
+        {
+          "start": 3762,
+          "end": 3768
+        }
+      ]
+    },
+    {
+      "name": "naturals",
+      "kind": "function",
+      "declaration": {
+        "start": 3366,
+        "end": 3374
+      },
+      "external": null,
+      "uses": [
+        {
+          "start": 684,
+          "end": 692
+        }
+      ]
+    },
+    {
+      "name": "map_pitches",
+      "kind": "function",
+      "declaration": {
+        "start": 3497,
+        "end": 3508
+      },
+      "external": null,
+      "uses": []
+    },
+    {
+      "name": "filter_pitches",
+      "kind": "function",
+      "declaration": {
+        "start": 3675,
+        "end": 3689
+      },
+      "external": null,
+      "uses": []
+    },
+    {
+      "name": "repeat_music",
+      "kind": "function",
+      "declaration": {
+        "start": 3871,
+        "end": 3883
+      },
+      "external": null,
+      "uses": []
+    },
+    {
+      "name": "subject",
+      "kind": "value",
+      "declaration": {
+        "start": 240,
+        "end": 247
+      },
+      "external": null,
+      "uses": [
+        {
+          "start": 541,
+          "end": 548
         },
         {
-          "start": 707,
-          "end": 714
+          "start": 787,
+          "end": 794
         }
       ]
     },
@@ -1022,14 +1271,14 @@
       "name": "same_pitch",
       "kind": "function",
       "declaration": {
-        "start": 330,
-        "end": 340
+        "start": 324,
+        "end": 334
       },
       "external": null,
       "uses": [
         {
-          "start": 551,
-          "end": 561
+          "start": 632,
+          "end": 642
         }
       ]
     },
@@ -1037,14 +1286,14 @@
       "name": "answer",
       "kind": "value",
       "declaration": {
-        "start": 375,
-        "end": 381
+        "start": 369,
+        "end": 375
       },
       "external": null,
       "uses": [
         {
-          "start": 727,
-          "end": 733
+          "start": 820,
+          "end": 826
         }
       ]
     },
@@ -1052,8 +1301,8 @@
       "name": "chosen",
       "kind": "value",
       "declaration": {
-        "start": 517,
-        "end": 523
+        "start": 565,
+        "end": 571
       },
       "external": null,
       "uses": []
@@ -1062,54 +1311,18 @@
       "name": "counting",
       "kind": "value",
       "declaration": {
-        "start": 582,
-        "end": 590
+        "start": 662,
+        "end": 670
       },
       "external": null,
       "uses": []
     },
     {
-      "name": "compose_music",
-      "kind": "function",
-      "declaration": null,
-      "external": "musa-stdlib:/std/core.musa",
-      "uses": [
-        {
-          "start": 391,
-          "end": 404
-        }
-      ]
-    },
-    {
-      "name": "pitch_or_else",
-      "kind": "function",
-      "declaration": null,
-      "external": "musa-stdlib:/std/option.musa",
-      "uses": [
-        {
-          "start": 533,
-          "end": 546
-        }
-      ]
-    },
-    {
-      "name": "naturals",
-      "kind": "function",
-      "declaration": null,
-      "external": "musa-stdlib:/std/list.musa",
-      "uses": [
-        {
-          "start": 604,
-          "end": 612
-        }
-      ]
-    },
-    {
       "name": "strings",
       "kind": "part",
       "declaration": {
-        "start": 643,
-        "end": 650
+        "start": 723,
+        "end": 730
       },
       "external": null,
       "uses": []
@@ -1118,8 +1331,8 @@
       "name": "duet",
       "kind": "voice",
       "declaration": {
-        "start": 671,
-        "end": 675
+        "start": 751,
+        "end": 755
       },
       "external": null,
       "uses": []

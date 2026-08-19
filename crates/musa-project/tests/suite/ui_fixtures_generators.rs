@@ -159,10 +159,13 @@ fn analysis_fixture_is_current() -> Result {
 #[test]
 fn library_fixtures_are_current() -> Result {
     let mut documents = serde_json::Map::new();
+    // `pitch` rather than `option`: 285bdf3 deleted `stdlib/src/option.musa`
+    // when `Option` became a prelude family, and a bundled-modules fixture can
+    // only name modules the package's `mod` tree declares.
     for uri in [
         "musa-stdlib:/std/core.musa",
         "musa-stdlib:/std/list.musa",
-        "musa-stdlib:/std/option.musa",
+        "musa-stdlib:/std/pitch.musa",
     ] {
         let document = musa_project::library_document(uri, None).ok_or("the module is not bundled")?;
         documents.insert(uri.to_owned(), serde_json::to_value(&document)?);

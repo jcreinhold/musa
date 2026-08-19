@@ -527,27 +527,11 @@ module.exports = grammar({
     // and a sharp is a token of its own, so a tonic is one token or three.
     pitch_class: ($) => seq($.identifier, repeat('#')),
 
-    // Parser::motif_decl — parameters inline, as in the hand parser: a
-    // comma-joined run of `name: type (= default)?`, trailing comma allowed.
+    // Parser::motif_decl — the one `param_list` a `fn` writes, since the
+    // surface desugars a motif to a `fn` and its parameters take the same
+    // types the same way (`Duration<WrittenTime>` included).
     motif_declaration: ($) =>
-      seq(
-        'motif',
-        field('name', $.identifier),
-        '(',
-        optional(
-          seq(
-            $.motif_parameter,
-            repeat(seq(',', $.motif_parameter)),
-            optional(','),
-          ),
-        ),
-        ')',
-        field('body', $.block),
-      ),
-
-    // One `name: type` of Parser::motif_decl's loop. No default: a call
-    // supplies every declared parameter, so `= e` is a syntax error there.
-    motif_parameter: ($) => seq(field('name', $.identifier), ':', field('type', $.type_name)),
+      seq('motif', field('name', $.identifier), $.parameter_list, field('body', $.block)),
 
     // Parser::fragment_decl — a motif without parameters, tagged differently.
     fragment_declaration: ($) => seq('fragment', field('name', $.identifier), field('body', $.block)),

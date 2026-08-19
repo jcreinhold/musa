@@ -1,5 +1,6 @@
 ---
-source: crates/musa-language/tests/parser.rs
+source: crates/musa-language/tests/suite/parser.rs
+assertion_line: 96
 expression: print_tree(&doc.syntax())
 ---
 Root@0..2171
@@ -57,13 +58,15 @@ Root@0..2171
       MotifKw@196..201 "motif"
       Whitespace@201..202 " "
       Identifier@202..206 "sigh"
-      LParen@206..207 "("
-      Identifier@207..211 "root"
-      Colon@211..212 ":"
-      Whitespace@212..213 " "
-      TypeName@213..218
-        Identifier@213..218 "Pitch"
-      RParen@218..219 ")"
+      ParamList@206..219
+        LParen@206..207 "("
+        Param@207..218
+          Identifier@207..211 "root"
+          Colon@211..212 ":"
+          Whitespace@212..213 " "
+          TypeName@213..218
+            Identifier@213..218 "Pitch"
+        RParen@218..219 ")"
       Block@219..296
         Whitespace@219..220 " "
         LBrace@220..221 "{"

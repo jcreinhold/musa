@@ -2975,39 +2975,11 @@ impl<'a> Parser<'a> {
         self.start(SyntaxKind::MotifDecl);
         self.bump(); // motif
         self.expect(SyntaxKind::Identifier, "a motif name");
-        self.expect(SyntaxKind::LParen, "`(`");
-        while self.at(SyntaxKind::Identifier) {
-            self.bump(); // parameter name
-            self.expect(SyntaxKind::Colon, "`:`");
-            // A motif parameter is `Pitch` or `Duration` — the same two types
-            // the rest of the language names, so they are written and read
-            // the same way here.
-            self.eat_trivia();
-            self.start(SyntaxKind::TypeName);
-            if self.at(SyntaxKind::Identifier) || self.at_any(MOVED_TYPE_KEYWORDS) {
-                self.respelled_type();
-                self.bump();
-            } else {
-                self.expected("a parameter type (`Pitch` or `Duration`)");
-            }
-            self.finish();
-            if self.at(SyntaxKind::Equals) {
-                let equals = self.significant().map(|token| token.range.start());
-                self.bump();
-                if self.at_any(&[SyntaxKind::PitchLiteral, SyntaxKind::Rational, SyntaxKind::Integer]) {
-                    self.bump(); // the default a motif may no longer declare
-                } else {
-                    self.expected("a value");
-                }
-                self.parameter_default(equals);
-            }
-            if self.at(SyntaxKind::Comma) {
-                self.bump();
-            } else {
-                break;
-            }
-        }
-        self.expect(SyntaxKind::RParen, "`)`");
+        // The one parameter list a `fn` writes: `01-surface.md` §2 desugars a
+        // motif to a `fn`, so its parameters take the same types the same way
+        // — an indexed `Duration<WrittenTime>` included — rather than a loop
+        // of its own that admitted only a bare `Pitch` or `Duration`.
+        self.param_list();
         self.block();
         self.finish();
     }

@@ -251,11 +251,13 @@ fn expansion_is_deterministic() {
     assert_eq!(
         kernel_normal_form(
             &SourceDocument::new(MADE, "test.musa"),
-            &musa_compiler::Realization::default()
+            &musa_compiler::Realization::default(),
+            &musa_compiler::ImportSources::default()
         ),
         kernel_normal_form(
             &SourceDocument::new(MADE, "test.musa"),
-            &musa_compiler::Realization::default()
+            &musa_compiler::Realization::default(),
+            &musa_compiler::ImportSources::default()
         ),
     );
 }
@@ -267,6 +269,7 @@ fn a_made_piece_has_a_kernel_term() {
     let text = kernel_normal_form(
         &SourceDocument::new(MADE, "test.musa"),
         &musa_compiler::Realization::default(),
+        &musa_compiler::ImportSources::default(),
     )
     .expect("a made piece elaborates");
     assert!(text.contains("note:c5"), "the made voice is in the term: {text}");
@@ -380,8 +383,16 @@ fn parameters_without_the_word_template_are_refused() {
 /// A template body reads its own parameters and the file's lexical root —
 /// never the piece the site stands in.
 #[test]
-fn a_template_body_cannot_see_the_site() {
-    let source = r#"
+fn a_template_body_sees_the_document_and_never_the_making_site() {
+    // §1's Template judgment checks the body in the ambient context plus the
+    // template's own parameters — and under one program per document the
+    // ambient context is the document's flat definition list, on which a
+    // piece's own `let` stands beside everything else. What a *site*
+    // contributes is exactly the arguments. (This law's first fixture wrote
+    // the piece's `let` meaning it to be site-local; the migration made
+    // piece-level definitions document-level, and the judgment never promised
+    // otherwise.)
+    let sees_document = r#"
 template voice answer() {
     use local;
 }
@@ -391,5 +402,28 @@ piece "P" {
     score { part p { make answer() as v; } }
 }
 "#;
-    refuses(source, Code::UnknownName);
+    assert!(
+        errors_of(sees_document).is_empty(),
+        "the document's own definition was invisible to a template body"
+    );
+
+    // The capture half is a grammar fact before it is a scoping one. A body's
+    // free name could be caught by a *making* template's binder only if a
+    // template's body could hold another `make` — and the grammar does not
+    // admit one there: a `make` stands where a voice stands, never inside a
+    // voice's statements. What a voice template's site λ-binds therefore
+    // reaches no body but its own, and a piece template's parameters are
+    // document-level definitions (`instantiated`), visible to a nested body
+    // for the flat-program reason above rather than by capture.
+    let make_in_a_body = r#"
+template voice outer(subject: EventTrack<WrittenTime>) {
+    make inner() as i;
+}
+piece "P" { meter 4/4; score { part p { voice v { c4/4 } } } }
+"#;
+    let found = errors_of(make_in_a_body);
+    assert!(
+        found.iter().any(|(code, _)| *code == Code::Syntax),
+        "a `make` inside a voice body must stay ungrammatical: {found:?}"
+    );
 }

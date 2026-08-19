@@ -496,8 +496,10 @@ fn a_pattern_against_a_value_that_is_not_syntax_is_refused() {
 "#,
     );
     let found = plain("held: Nat", "a", &module);
+    // The mismatch names both types at the smallest pair that disagrees: the
+    // pattern's chain asked for a syntax value and the scrutinee is a `Nat`.
     assert!(
-        says(&found, "a quote pattern matches a syntax value, and this is a `Nat`"),
+        says(&found, "type mismatch") && says(&found, "`Nat`") && says(&found, "`Syntax TokenTree`"),
         "a quote pattern was accepted against a natural, or the report did not name the type: {found:?}"
     );
 }

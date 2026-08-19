@@ -55,7 +55,7 @@ fn errors_of(text: &str) -> Vec<String> {
 fn kernel_normal_forms_snapshot() {
     for (name, source) in [("twinkle", TWINKLE), ("canon", CANON), ("counterpoint", COUNTERPOINT)] {
         let form =
-            kernel_normal_form(&SourceDocument::new(source, name), &Realization::deterministic()).expect("elaborates");
+            kernel_normal_form(&SourceDocument::new(source, name), &Realization::deterministic(), &musa_compiler::ImportSources::default()).expect("elaborates");
         insta::assert_snapshot!(name, form);
     }
 }
@@ -93,7 +93,7 @@ fn bars_are_erased_after_they_are_checked() {
     let flat = piece("c4/4 d4/4 e4/4 f4/4 g4/2 a4/2");
     let barred = piece("bar { c4/4 d4/4 e4/4 f4/4 } bar { g4/2 a4/2 }");
     let form = |source: &str| {
-        kernel_normal_form(&SourceDocument::new(source, "b"), &Realization::deterministic()).expect("elaborates")
+        kernel_normal_form(&SourceDocument::new(source, "b"), &Realization::deterministic(), &musa_compiler::ImportSources::default()).expect("elaborates")
     };
     assert_eq!(without_spans(&form(&flat)), without_spans(&form(&barred)));
 }
@@ -105,7 +105,7 @@ fn a_named_bar_plays_the_same_music_it_declared() {
     let source = "piece \"b\" { meter 4/4; score { part p { voice v { \
                   bar head { c4/2 d4/2 } use head; } } } }";
     let form =
-        kernel_normal_form(&SourceDocument::new(source, "b"), &Realization::deterministic()).expect("elaborates");
+        kernel_normal_form(&SourceDocument::new(source, "b"), &Realization::deterministic(), &musa_compiler::ImportSources::default()).expect("elaborates");
     let pitches: Vec<&str> = form
         .lines()
         .filter_map(|line| line.split('|').nth(2))
@@ -120,7 +120,7 @@ fn a_named_bar_plays_the_same_music_it_declared() {
 fn the_key_and_the_meter_are_facts_of_the_timeline() {
     let source = "piece \"x\" { meter 3/4; key bb major; score { part p { voice v { c4/4 } } } }";
     let form =
-        kernel_normal_form(&SourceDocument::new(source, "k"), &Realization::deterministic()).expect("elaborates");
+        kernel_normal_form(&SourceDocument::new(source, "k"), &Realization::deterministic(), &musa_compiler::ImportSources::default()).expect("elaborates");
     assert!(form.contains("meter:3/4"), "meter is not an occurrence: {form}");
     assert!(form.contains("key:bb:major"), "key is not an occurrence: {form}");
 
@@ -146,8 +146,8 @@ fn the_key_and_the_meter_are_facts_of_the_timeline() {
 fn repeat_sounds_the_same_as_its_unrolling() {
     let repeated = "piece \"x\" { score { part p { voice v { repeat 3 { c4/4 d4/4 } } } } }";
     let unrolled = "piece \"x\" { score { part p { voice v { c4/4 d4/4 c4/4 d4/4 c4/4 d4/4 } } } }";
-    let a = kernel_normal_form(&SourceDocument::new(repeated, "a"), &Realization::deterministic()).expect("elaborates");
-    let b = kernel_normal_form(&SourceDocument::new(unrolled, "b"), &Realization::deterministic()).expect("elaborates");
+    let a = kernel_normal_form(&SourceDocument::new(repeated, "a"), &Realization::deterministic(), &musa_compiler::ImportSources::default()).expect("elaborates");
+    let b = kernel_normal_form(&SourceDocument::new(unrolled, "b"), &Realization::deterministic(), &musa_compiler::ImportSources::default()).expect("elaborates");
     // Same temporal facts; provenance (and thus the snapshot) differs, which
     // is exactly the semantic quotient at work (docs/rules/kernel/05-normalization.md).
     assert_ne!(a, b);
@@ -171,7 +171,7 @@ fn repeat_sounds_the_same_as_its_unrolling() {
 fn a_repeat_says_on_the_timeline_that_it_is_one() {
     let source = "piece \"x\" { score { part p { voice v { repeat 3 { c4/4 d4/4 } } } } }";
     let form =
-        kernel_normal_form(&SourceDocument::new(source, "a"), &Realization::deterministic()).expect("elaborates");
+        kernel_normal_form(&SourceDocument::new(source, "a"), &Realization::deterministic(), &musa_compiler::ImportSources::default()).expect("elaborates");
     assert!(
         form.contains("repeat:3"),
         "expected the repeat to state its count: {form}"

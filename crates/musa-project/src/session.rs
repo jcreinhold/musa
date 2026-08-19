@@ -476,7 +476,7 @@ impl ProjectSession {
                 } else {
                     musa_compiler::kernel_text
                 };
-                printer(&document, &self.realization)
+                printer(&document, &self.realization, &self.imports)
                     .map(ExportArtifact::text)
                     // The source compiled, so it elaborates; this arm exists
                     // because the printer is total in its signature, not

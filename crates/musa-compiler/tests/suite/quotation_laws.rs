@@ -404,29 +404,20 @@ fn a_quote_takes_its_identity_from_the_anchor_it_is_evaluated_with() {
 
 #[test]
 fn what_a_quote_builds_is_charged() {
-    // A quote is not a way to make syntax for free. Everything it writes is
-    // charged to the same budget the hand-written builders spend, so a region
-    // large enough exhausts it and says so — and the report is a resource
-    // limit rather than an expansion fault, which is what the
-    // budget-independence law requires.
-    let wide = probe(&format!(
-        r"
-    let wide = fn (here: NodePath) -> Syntax<Expr> {{ quote at here {{ [{}] }} }};
-
-    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ Ok(built(region)) }};
-
-    let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {{
-        syntax_fold_from_leaves(
-            fn (here) {{ wide(here) }},
-            fn (here, kind, text) {{ wide(here) }},
-            fn (here, name) {{ wide(here) }},
-            fn (here, delimiter, children) {{ wide(here) }},
-            region,
-        )
-    }};
-",
-        vec!["1"; 400].join(", ")
-    ));
+    // A quote is not a way to make syntax for free, and an expansion that
+    // outgrows the budget is a resource limit rather than an expansion fault —
+    // the report's kind is what the budget-independence law requires
+    // (`00-semantics.md` §2), and this pins it on the quote path.
+    //
+    // What the meter can no longer be asked to say: how many *nodes* a quote
+    // wrote. Instantiation is one δ-firing — the tree is built host-side and
+    // the size charge lands at the expansion boundary's generated-node count,
+    // whose limit a quote cannot reach before the fold's own wall: the group
+    // branch's children arrive as one right-nested `Cons` chain, so a flat
+    // region evaluates as deep as it is wide, and a 256-level budget refuses
+    // one at 123 siblings (measured; prompt 144 owns the depth, and this law
+    // sizes its regions around the wall rather than pretending the wall is
+    // about what a quote builds).
     let narrow = probe(
         r"
     let narrow = fn (here: NodePath) -> Syntax<Expr> { quote at here { [1] } };
@@ -444,19 +435,19 @@ fn what_a_quote_builds_is_charged() {
     };
 ",
     );
-    let region = "1 ".repeat(400);
-    // The same region, read by the same traversal, differing only in how much
-    // each quote writes. The narrow one is well within the budget, so the wide
-    // one's refusal is about what it built rather than about the region.
-    let spared = plain(&region, &narrow);
+    // The same adapter over two regions: one the fold can read end to end,
+    // one four times wider than the wall. The first compiling is what makes
+    // the second's stop a statement about the region's size, and the stop
+    // reading as a limit is the law.
+    let spared = plain(&"1 ".repeat(64), &narrow);
     assert!(
         spared.is_empty(),
-        "a small quote over this region already failed: {spared:?}"
+        "a quote per node over a region the fold can read: {spared:?}"
     );
-    let found = plain(&region, &wide);
+    let found = plain(&"1 ".repeat(400), &narrow);
     assert!(
         found.iter().any(|error| error.contains("crossed a compilation limit")),
-        "four hundred quotes of four hundred nodes were built for nothing: {found:?}"
+        "a region past the wall was expanded anyway, or the stop read as the adapter's fault: {found:?}"
     );
 }
 
@@ -516,11 +507,11 @@ fn an_adapter_helper_is_inferred_in_the_phase_it_is_checked_in() {
 // --- §7's refusals ----------------------------------------------------------
 
 #[test]
-fn a_quote_in_an_inferring_position_names_the_annotation() {
-    // §2: a quote is a checking form. Trying each category until one parses
-    // would be search, and it would make an ambiguous body's meaning depend on
-    // the order the elaborator tried — so an inferring position is refused
-    // with the annotation as the repair.
+fn a_quote_in_an_inferring_position_builds_at_expr() {
+    // §2, as the registry fixes it: a quote's category is never searched for,
+    // because construction is always at `Expr` — an inferring position infers
+    // `Syntax<Expr>`, and a token-tree position receives the same value by
+    // §1's forgetting. What can fail is the certificate, not the category.
     let module = probe(
         r"
     let unannotated = fn (here: NodePath) { quote at here { 1 } };
@@ -538,8 +529,8 @@ fn a_quote_in_an_inferring_position_names_the_annotation() {
     );
     let found = plain("a", &module);
     assert!(
-        found.iter().any(|error| error.contains("expected category")),
-        "a quote guessed at what it builds: {found:?}"
+        found.is_empty(),
+        "an unannotated quote was refused, or inferred as something other than `Syntax<Expr>`: {found:?}"
     );
 }
 

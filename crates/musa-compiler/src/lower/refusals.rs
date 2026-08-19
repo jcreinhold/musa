@@ -78,6 +78,29 @@ struct Filed {
 pub(crate) fn restate(sites: &Sites, error: &ElabError) -> Diagnostic {
     match error {
         ElabError::Refused(refusal) => {
+            // The one `UnknownName` that is not the whole truth: a
+            // quote-pattern arm whose body names a word the pattern matched
+            // *literally*. "Cannot find it" is correct and unhelpful — what
+            // the author left off is the `$` — so when the site table says the
+            // name is a pattern literal where it was used, the report is the
+            // old checker's `QuotedLiteralName` one. `11-quotation.md` §4:
+            // a quote pattern binds only its splices.
+            if let Refusal::UnknownName { name, at } = refusal
+                && sites.quoted_literal(*at, name)
+            {
+                let span = sites.span(*at);
+                let upgraded = Diagnostic::error(
+                    Code::QuotedLiteralName,
+                    format!("the pattern matched `{name}` literally rather than binding it"),
+                )
+                .maybe_at(span, "nothing declares this name")
+                .help(format!("write `${name}` in the pattern to bind what stands there"))
+                .note("a quote pattern binds only its splices; every other word in it is matched as written");
+                return match sites.foreign(*at) {
+                    Some((path, foreign_at)) => imported(path, foreign_at, upgraded),
+                    None => upgraded,
+                };
+            }
             let filed = file(refusal);
             let (also, text) = match filed.also {
                 Some((origin, text)) => (sites.span(origin), text),

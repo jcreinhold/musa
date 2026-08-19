@@ -1,8 +1,22 @@
 use musa_project::{ProjectCommand, ProjectSession, Validity};
 
-const GOOD: &str = "piece \"Budget\" { let values: List<Nat> = range(8); score { part p { voice v { c4/1 } } } }";
-const TOO_LARGE: &str =
-    "piece \"Budget\" { let values: List<Nat> = range(100001); score { part p { voice v { c4/1 } } } }";
+const GOOD: &str = "piece \"Budget\" { score { part p { voice v { c4/1 } } } }";
+
+/// A piece over the step budget, refused rather than aborted.
+///
+/// Written as a long plain voice rather than the `range(100001)` this fixture
+/// used before the cutover, because deep *recursion* past the nesting limit is
+/// the case prompt 144's own measurement says still aborts rather than refuses
+/// — "756 levels are refused and 1,256 abort" — and a test that aborts takes
+/// the whole suite with it. A voice's fold is δ rules all the way down, so two
+/// thousand notes charge steps and no depth, and the refusal is the one §4
+/// promises.
+fn too_large() -> String {
+    format!(
+        "piece \"Budget\" {{ score {{ part p {{ voice v {{ {} }} }} }} }}",
+        "c4/1 ".repeat(2000)
+    )
+}
 
 #[test]
 fn resource_rejection_keeps_the_last_valid_artifacts() {
@@ -11,7 +25,7 @@ fn resource_rejection_keeps_the_last_valid_artifacts() {
     let good_mei = session.snapshot().mei().unwrap_or_default().to_owned();
     assert!(!good_mei.is_empty());
 
-    let update = session.apply(ProjectCommand::SetSource(TOO_LARGE.to_owned()));
+    let update = session.apply(ProjectCommand::SetSource(too_large()));
     assert!(update.is_ok(), "editing source is not an exceptional operation");
     assert!(matches!(update, Ok(found) if found.validity == Validity::Stale));
     let snapshot = session.snapshot();

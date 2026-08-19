@@ -159,10 +159,13 @@ fn an_expression_position_refuses_a_tree_nobody_parsed() {
 ",
     );
     let found = errors("c4", &module);
+    // The mismatch is reported at the smallest pair that disagrees: the
+    // position's category index against the value's, which is the sentence the
+    // author has to change one word of.
     assert!(
         found
             .iter()
-            .any(|error| error.contains("Syntax<Expr>") && error.contains("Syntax<TokenTree>")),
+            .any(|error| error.contains("`Expr`") && error.contains("`TokenTree`")),
         "an uncertified tree was accepted where an expression stands: {found:?}"
     );
 }
@@ -181,7 +184,11 @@ fn bare_syntax_names_no_type() {
     );
     let found = errors("c4", &module);
     assert!(
-        found.iter().any(|error| error.contains("takes a category")),
+        found.iter().any(|error| {
+            error.contains("`Syntax` takes an argument")
+                && error.contains("Syntax<Expr>")
+                && error.contains("Syntax<TokenTree>")
+        }),
         "bare `Syntax` named a type: {found:?}"
     );
 }

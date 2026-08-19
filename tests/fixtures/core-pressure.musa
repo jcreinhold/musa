@@ -4,8 +4,6 @@
 piece "Core Pressure Baseline" {
 import std::core;
 import std::list;
-import std::nat;
-
 tempo 1/4 = 96;
 meter 4/4;
 key c major;

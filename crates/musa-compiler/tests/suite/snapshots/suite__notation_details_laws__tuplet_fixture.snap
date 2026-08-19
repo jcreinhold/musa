@@ -1,5 +1,6 @@
 ---
-source: crates/musa-compiler/tests/notation_details_laws.rs
+source: crates/musa-compiler/tests/suite/notation_details_laws.rs
+assertion_line: 202
 expression: "format!(\"{snapshot:#?}\")"
 ---
 ScoreSnapshot {
@@ -38,7 +39,7 @@ ScoreSnapshot {
                                         end: 538,
                                     },
                                     declaration: DeclarationId(
-                                        6,
+                                        2,
                                     ),
                                     expansion_path: [],
                                 },
@@ -90,7 +91,7 @@ ScoreSnapshot {
                                         end: 563,
                                     },
                                     declaration: DeclarationId(
-                                        6,
+                                        2,
                                     ),
                                     expansion_path: [],
                                 },
@@ -142,7 +143,7 @@ ScoreSnapshot {
                                         end: 588,
                                     },
                                     declaration: DeclarationId(
-                                        6,
+                                        2,
                                     ),
                                     expansion_path: [],
                                 },
@@ -194,7 +195,7 @@ ScoreSnapshot {
                                         end: 654,
                                     },
                                     declaration: DeclarationId(
-                                        6,
+                                        2,
                                     ),
                                     expansion_path: [],
                                 },
@@ -246,7 +247,7 @@ ScoreSnapshot {
                                         end: 679,
                                     },
                                     declaration: DeclarationId(
-                                        6,
+                                        2,
                                     ),
                                     expansion_path: [],
                                 },
@@ -298,7 +299,7 @@ ScoreSnapshot {
                                         end: 719,
                                     },
                                     declaration: DeclarationId(
-                                        6,
+                                        2,
                                     ),
                                     expansion_path: [],
                                 },
@@ -350,7 +351,7 @@ ScoreSnapshot {
                                         end: 751,
                                     },
                                     declaration: DeclarationId(
-                                        6,
+                                        2,
                                     ),
                                     expansion_path: [],
                                 },
@@ -408,7 +409,7 @@ ScoreSnapshot {
                                         end: 352,
                                     },
                                     declaration: DeclarationId(
-                                        4,
+                                        1,
                                     ),
                                     expansion_path: [
                                         MotifApplication {
@@ -467,7 +468,7 @@ ScoreSnapshot {
                                         end: 365,
                                     },
                                     declaration: DeclarationId(
-                                        4,
+                                        1,
                                     ),
                                     expansion_path: [
                                         MotifApplication {
@@ -526,7 +527,7 @@ ScoreSnapshot {
                                         end: 883,
                                     },
                                     declaration: DeclarationId(
-                                        6,
+                                        2,
                                     ),
                                     expansion_path: [],
                                 },
@@ -578,7 +579,7 @@ ScoreSnapshot {
                                         end: 908,
                                     },
                                     declaration: DeclarationId(
-                                        6,
+                                        2,
                                     ),
                                     expansion_path: [],
                                 },
@@ -630,7 +631,7 @@ ScoreSnapshot {
                                         end: 933,
                                     },
                                     declaration: DeclarationId(
-                                        6,
+                                        2,
                                     ),
                                     expansion_path: [],
                                 },
@@ -682,7 +683,7 @@ ScoreSnapshot {
                                         end: 1000,
                                     },
                                     declaration: DeclarationId(
-                                        6,
+                                        2,
                                     ),
                                     expansion_path: [],
                                 },
@@ -734,7 +735,7 @@ ScoreSnapshot {
                                         end: 1025,
                                     },
                                     declaration: DeclarationId(
-                                        6,
+                                        2,
                                     ),
                                     expansion_path: [],
                                 },
@@ -807,7 +808,7 @@ ScoreSnapshot {
                                         end: 1191,
                                     },
                                     declaration: DeclarationId(
-                                        8,
+                                        3,
                                     ),
                                     expansion_path: [],
                                 },
@@ -868,7 +869,7 @@ ScoreSnapshot {
                                         end: 1212,
                                     },
                                     declaration: DeclarationId(
-                                        8,
+                                        3,
                                     ),
                                     expansion_path: [],
                                 },
@@ -920,7 +921,7 @@ ScoreSnapshot {
                                         end: 1235,
                                     },
                                     declaration: DeclarationId(
-                                        8,
+                                        3,
                                     ),
                                     expansion_path: [],
                                 },
@@ -978,7 +979,7 @@ ScoreSnapshot {
                                         end: 1311,
                                     },
                                     declaration: DeclarationId(
-                                        8,
+                                        3,
                                     ),
                                     expansion_path: [],
                                 },
@@ -1030,7 +1031,7 @@ ScoreSnapshot {
                                         end: 1336,
                                     },
                                     declaration: DeclarationId(
-                                        8,
+                                        3,
                                     ),
                                     expansion_path: [],
                                 },
@@ -1197,7 +1198,7 @@ ScoreSnapshot {
                         end: 697,
                     },
                     declaration: DeclarationId(
-                        6,
+                        2,
                     ),
                     expansion_path: [],
                 },
@@ -1219,7 +1220,7 @@ ScoreSnapshot {
                         end: 1043,
                     },
                     declaration: DeclarationId(
-                        6,
+                        2,
                     ),
                     expansion_path: [],
                 },
@@ -1241,7 +1242,7 @@ ScoreSnapshot {
                         end: 1354,
                     },
                     declaration: DeclarationId(
-                        8,
+                        3,
                     ),
                     expansion_path: [],
                 },
@@ -1267,7 +1268,7 @@ ScoreSnapshot {
                         end: 606,
                     },
                     declaration: DeclarationId(
-                        6,
+                        2,
                     ),
                     expansion_path: [],
                 },
@@ -1291,7 +1292,7 @@ ScoreSnapshot {
                         end: 951,
                     },
                     declaration: DeclarationId(
-                        6,
+                        2,
                     ),
                     expansion_path: [],
                 },
@@ -1313,7 +1314,7 @@ ScoreSnapshot {
                         end: 484,
                     },
                     declaration: DeclarationId(
-                        6,
+                        2,
                     ),
                     expansion_path: [],
                 },
@@ -1333,7 +1334,7 @@ ScoreSnapshot {
                         end: 799,
                     },
                     declaration: DeclarationId(
-                        6,
+                        2,
                     ),
                     expansion_path: [],
                 },
@@ -1353,7 +1354,7 @@ ScoreSnapshot {
                         end: 1165,
                     },
                     declaration: DeclarationId(
-                        8,
+                        3,
                     ),
                     expansion_path: [],
                 },
@@ -1375,7 +1376,7 @@ ScoreSnapshot {
                         end: 719,
                     },
                     declaration: DeclarationId(
-                        6,
+                        2,
                     ),
                     expansion_path: [],
                 },
@@ -1395,7 +1396,7 @@ ScoreSnapshot {
                         end: 751,
                     },
                     declaration: DeclarationId(
-                        6,
+                        2,
                     ),
                     expansion_path: [],
                 },
@@ -1415,7 +1416,7 @@ ScoreSnapshot {
                         end: 352,
                     },
                     declaration: DeclarationId(
-                        4,
+                        1,
                     ),
                     expansion_path: [
                         MotifApplication {
@@ -1442,7 +1443,7 @@ ScoreSnapshot {
                         end: 1000,
                     },
                     declaration: DeclarationId(
-                        6,
+                        2,
                     ),
                     expansion_path: [],
                 },
@@ -1462,7 +1463,7 @@ ScoreSnapshot {
                         end: 1311,
                     },
                     declaration: DeclarationId(
-                        8,
+                        3,
                     ),
                     expansion_path: [],
                 },

@@ -977,9 +977,13 @@ fn every_example_elaborates() {
     }
     said.sort();
     said.dedup();
+    // The charge site moved with 142's header extent: the music is one
+    // let-bound term now, so the 200001st step lands inside an application of
+    // the staff adapter rather than at the evaluation that opened it. One
+    // ResourceLimit remains the corpus's only failure either way.
     assert_eq!(
         said,
-        ["ResourceLimit: evaluation exceeded the budget for reduction steps at 200001 of 200000"],
+        ["ResourceLimit: function application exceeded the budget for reduction steps at 200001 of 200000"],
         "the corpus reads and checks; what is left is the step budget, and prompt 145 owns it"
     );
 }

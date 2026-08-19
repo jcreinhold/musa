@@ -54,8 +54,8 @@ fn the_same_seed_is_the_same_performance() {
     // reproducing the file is promised.
     let document = SourceDocument::new(LOOP_LENGTHS, "loop-lengths");
     assert_eq!(
-        kernel_text(&document, &Realization::seeded(42)),
-        kernel_text(&document, &Realization::seeded(42))
+        kernel_text(&document, &Realization::seeded(42), &musa_compiler::ImportSources::default()),
+        kernel_text(&document, &Realization::seeded(42), &musa_compiler::ImportSources::default())
     );
 }
 
@@ -91,17 +91,17 @@ fn a_different_seed_is_a_different_performance() {
 fn a_determinate_piece_is_the_same_under_every_seed() {
     for &(name, source) in DETERMINATE {
         let document = SourceDocument::new(source, name);
-        let quiet = kernel_normal_form(&document, &Realization::deterministic()).expect("elaborates");
+        let quiet = kernel_normal_form(&document, &Realization::deterministic(), &musa_compiler::ImportSources::default()).expect("elaborates");
         for seed in [1u64, 42, 999, u64::MAX] {
             let realization = Realization::seeded(seed);
             assert_eq!(
-                kernel_normal_form(&document, &realization).expect("elaborates"),
+                kernel_normal_form(&document, &realization, &musa_compiler::ImportSources::default()).expect("elaborates"),
                 quiet,
                 "{name}: seed {seed} changed a piece that decides nothing"
             );
             assert_eq!(
-                kernel_text(&document, &realization),
-                kernel_text(&document, &Realization::deterministic()),
+                kernel_text(&document, &realization, &musa_compiler::ImportSources::default()),
+                kernel_text(&document, &Realization::deterministic(), &musa_compiler::ImportSources::default()),
                 "{name}: seed {seed} changed the interchange file"
             );
             assert!(
@@ -223,6 +223,7 @@ fn the_file_names_the_realization_that_produced_it() {
     let text = kernel_text(
         &SourceDocument::new(LOOP_LENGTHS, "loop-lengths"),
         &Realization::seeded(42),
+        &musa_compiler::ImportSources::default(),
     )
     .expect("elaborates");
     let notes: Vec<&str> = musa_kernel::notes(&text).collect();
@@ -237,6 +238,7 @@ fn the_file_names_the_realization_that_produced_it() {
     let determinate = kernel_text(
         &SourceDocument::new(include_str!("../../../../examples/canon.musa"), "canon"),
         &Realization::seeded(42),
+        &musa_compiler::ImportSources::default(),
     )
     .expect("elaborates");
     assert_eq!(musa_kernel::notes(&determinate).count(), 0);

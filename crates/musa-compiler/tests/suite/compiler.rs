@@ -176,28 +176,45 @@ fn unknown_motif_is_an_error() {
 }
 
 #[test]
-fn motifs_only_see_earlier_motifs() {
-    let compilation = compile_source(
+fn motifs_see_the_whole_program_and_their_own_name_is_not_on_it() {
+    // A motif desugars to a named `fn` (01-surface §2), and a `fn` is one
+    // definition of the document's flat program: signatures are gathered
+    // before any body is checked, so a later declaration may be named. The
+    // replaced checker's "a motif sees only earlier motifs" was positional
+    // scope, which the flat program deliberately does not have
+    // (`neo-riemannian.musa:72` calls the `compose_close` declared at `:151`).
+    let later = compile_source(
         "piece \"x\" {
             motif a() { use b(); }
             motif b() { c4/4 }
             score { part p { voice v { use a(); } } }
         }",
     );
-    assert!(compilation.has_errors());
     assert!(
-        reports(&compilation, musa_compiler::Code::Misplaced, "`b`"),
-        "{:?}",
-        messages(&compilation)
+        !later.has_errors(),
+        "a motif using a later motif is the flat program's ordinary rule: {:?}",
+        messages(&later)
     );
+    // What remains forbidden is the edge that would close the graph: a motif
+    // naming itself is a cycle, and totality admits no cyclic definition.
+    let recursive = compile_source(
+        "piece \"x\" {
+            motif a() { use a(); }
+            score { part p { voice v { use a(); } } }
+        }",
+    );
+    assert!(recursive.has_errors(), "a motif naming itself compiled");
 }
 
 #[test]
 fn nested_motifs_and_duration_parameters_expand() {
+    // `duration_of(1/16)`, not `1/16`: a bare rational is a `Ratio`, and the
+    // language admits no silent `Ratio` → `Duration` conversion — the corpus's
+    // own spelling is `duration_of(1/2)` (canon-functions.musa:23).
     let source = "piece \"x\" {
-        motif cell(d: Duration) { c4 d d4 d }
-        motif pair(d: Duration) { use cell(d); use cell(d); }
-        score { part p { voice v { use pair(1/16); use pair(1/8); } } }
+        motif cell(d: Duration<WrittenTime>) { c4 d d4 d }
+        motif pair(d: Duration<WrittenTime>) { use cell(d); use cell(d); }
+        score { part p { voice v { use pair(duration_of(1/16)); use pair(duration_of(1/8)); } } }
     }";
     let compilation = compile_source(source);
     assert!(
@@ -219,7 +236,10 @@ fn nested_motifs_and_duration_parameters_expand() {
         .iter()
         .map(|event| event.notated_duration.spelling.clone())
         .collect();
-    // 1/16 bound through two levels, then the 1/8 default.
+    // 1/16 bound through two levels, then 1/8: `c4 d d4 d` is two notes
+    // (c4 then d4, each lasting `d`), so a `pair` sounds four and the voice
+    // eight. The spelling is the derived one — a computed duration has no
+    // written form, so `NotatedDuration::spelled` answers `1/16`.
     assert_eq!(
         durations,
         vec!["1/16", "1/16", "1/16", "1/16", "1/8", "1/8", "1/8", "1/8"]

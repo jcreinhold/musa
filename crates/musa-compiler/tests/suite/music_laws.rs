@@ -128,6 +128,7 @@ fn shared_instantiations_are_closed_and_keep_definition_and_call_provenance() {
     let printed = kernel_text(
         &SourceDocument::new(source, "music-laws.musa"),
         &Realization::deterministic(),
+        &musa_compiler::ImportSources::default(),
     )
     .expect("reusable material closes to a term");
     // Not `let shared0 =`. Since prompt 142 the kernel term is a projection of
