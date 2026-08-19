@@ -296,22 +296,36 @@ rules never authorized.
     desugaring (`Desugar.idr:526`), and the pair a program sees is binary either way. Right, not left, for that
     precedent and because it is the direction that makes `(A, B, C)` and `(A, (B, C))` interchangeable in both
     directions — `core_laws::a_wide_product_nests_the_same_way_written_out_by_hand` is where that is checked.
-  - **A splice is a tree the position certifies, so `instantiate_quote`'s splices are read at `⟨token-tree⟩`.** 141ga
+  - **A pattern's holes bind at the scrutinee's category, so the hole readers come in one pair per category.** 141ga
     registered the pattern side at `Syntax ⟨tokentree⟩` — D1 refuses the category-polymorphic signature — and the
     construction side's splice list at `Syntax ⟨expr⟩`, and the two do not meet: a pattern's holes, bound at
     `⟨tokentree⟩`, cannot be spliced into a quote whose list demands `⟨expr⟩`, which is precisely the round trip
-    `syntax_pattern_laws::match_after_build_binds_what_the_quote_spliced` writes down. 11-quotation §1 already says what
-    the boundary is: a `TokenTree` position accepts a value of any category, and every other position requires its own
-    exactly. So the splice list is `List (List (Syntax ⟨token-tree⟩))` — a value already claimed arrives by the
-    forgetting rule this prompt supplies, and a hole arrives as what it is — and `INSTANTIATE` discharges the
-    certificate the index claims: the built tree must parse as an expression (`syntax::parses_as_expression`,
-    `as_expression`'s own machinery), or the rule does not reduce. That is §1's "a certificate nobody checks is a
-    comment" answered at the one boundary the index exists for, cheaply because construction is rare beside matching;
-    147's round-trip obligation still owns the whole surface.
+    `syntax_pattern_laws::match_after_build_binds_what_the_quote_spliced` writes down. The resolution is 11-quotation
+    §4's own sentence, "a pattern is read at the scrutinee's category": beside `quote_hole`/`quote_holes` at
+    `⟨tokentree⟩` stand `quote_hole_expr`/`quote_holes_expr` at `⟨expr⟩` — the *literal* index, so §5.8's D1 check
+    admits them where the variable-indexed signature was refused — same rules, answering the hole's node at the
+    scrutinee's category. The lowering picks the pair from the scrutinee's *written* category: a bare parameter
+    annotated `Syntax<Expr>` reads the `⟨expr⟩` pair, anything else the `⟨tokentree⟩` pair, because the lowering runs
+    before types exist and the annotation is the category the author stated. A non-variable scrutinee falls to
+    `⟨tokentree⟩`, and a hole then spliced into an expression quote earns the refusal §7 already assigns an uncertified
+    tree — the categories named, the repair `as_expression` — which is
+    `quotation_laws::a_splice_of_the_wrong_category_names_both_categories`'s case, not a new hole in it. The match test
+    itself needs no twin: the scrutinee reaches `match_quote`'s `⟨tokentree⟩` parameter through §1's forgetting rule,
+    which this prompt supplies. And `INSTANTIATE` discharges the certificate the index claims: the built tree must parse
+    as an expression (`syntax::parses_as_expression`, `as_expression`'s own machinery), or the rule does not reduce —
+    §1's "a certificate nobody checks is a comment" answered at the one boundary the index exists for, cheaply because
+    construction is rare beside matching. 147's round-trip obligation still owns the whole surface.
 
     *Repaired during implementation.* Not in the sketch at all: the sketch's forgetting rule covers the scrutinee and
     says nothing about the splice, and the hole was discovered by the law above going red — the fixture corpus is where
-    this prompt's assumptions get measured, per its own Check.
+    this prompt's assumptions get measured, per its own Check. The first repair moved the *splice* list to
+    `⟨token-tree⟩` instead, and the corpus refuted it within a run: `syntax_fold_from_leaves` hands a group branch its
+    children at `List Answer` — folded *results*, not raw subtrees — so an adapter folding to `Syntax ⟨expr⟩` splices a
+    `List (Syntax ⟨expr⟩)`, and §1's acceptance is a rule between two `Syntax` indices that does not reach under the
+    `List`. Generalizing acceptance under a type constructor is subtyping by another name, which §1 forbids; moving the
+    category choice to the hole binding, where the literal index makes it sayable, is the reading the spec's sentence
+    already had.
+
   - **`assert` comes after the anonymous product, not before it.** Its arguments are values the readback has to evaluate
     and hand `crate::assert::Claim::build` in its own six shapes, and one of those six is `within_ranges`'s
     `List<(Pitch, Pitch)>` — the spelling that had no core term until the bullet above gave it one. Reading its
