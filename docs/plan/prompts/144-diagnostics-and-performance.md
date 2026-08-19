@@ -203,7 +203,11 @@ today is a cost-table version bump and a bad one. So:
    `benches/pipeline.rs` reads it: the wall makes a benchmark workload unrunnable, which is
    `elaboration_fixture_generators.rs`'s own warning — a benchmark nobody can run is a gate nobody is holding — true of
    the suite's own bench. The workload's size is therefore part of this prompt's verdict, not a constant to edit around
-   it.
+   it. And the step wall has the same sentence to say about *ordinary* music, measured at the same close:
+   `large_score_generators`' 1500-event fixture — no adapter, no recursion, one voice of plain notation — crosses
+   `reduction steps at 200001 of 200000`. The desktop's interface budgets are measured against that fixture
+   (`large_score_is_the_size_the_budgets_assume` says so in its name), so the per-event charge against §4's published
+   table is this prompt's to set, with the bump argued in §4 if the table is where the answer lands.
 3. **Then charge the elaborator's own recursion**, which is what makes §4.1's sentence true rather than aspirational. Do
    it last, because only after (2) is a limit of 256 a limit on nesting an author wrote rather than on the length of a
    phrase. If the charge still refuses a program that compiles today, that is a cost-table version bump with a stated

@@ -688,8 +688,13 @@ never approach it, because a voice fold is `follow` — a δ rule — and charge
 music" finding in its second instance (the first is `registry/traversal.rs`'s Cons chain, repaired there), and it
 carries a consequence the finding's first statement did not: `benches/pipeline.rs` reads this fixture, so the wall makes
 a benchmark workload unrunnable — "a benchmark nobody can run is a gate nobody is holding"
-(`elaboration_fixture_generators.rs`'s own warning, now true of its neighbor). It closes at 144 with the rest of the
-nesting verdict.
+(`elaboration_fixture_generators.rs`'s own warning, now true of its neighbor). The same class takes the step wall's
+plain-music instance: `large_score_generators::large_score_fixture_is_current` and
+`large_score_is_the_size_the_budgets_assume`, whose 1500-event fixture — no adapter, no library recursion, one voice of
+ordinary notation — crosses `reduction steps at 200001 of 200000`. A piece is not supposed to need the adapter's
+argument to be large, and the desktop's own budgets are measured against this fixture, so this is the charge model's
+problem statement in its plainest form: the per-event charge times a real score's size is over the table §4 publishes.
+Both close at 144 with the rest of the nesting and cost-table verdict.
 
 Commit as `Move the whole language over, once`.
 
