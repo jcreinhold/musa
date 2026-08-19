@@ -74,46 +74,6 @@ use crate::time::{Exact, exact_arithmetic, exact_ratio, written_rational};
 /// them.
 pub(super) const REGISTERED: usize = 128;
 
-/// The rows that do not, by family and by count.
-///
-/// Ten, and each group is left for a reason that is about the *core* rather
-/// than about effort:
-///
-/// - a **structural eliminator** traverses `Nat`, `List`, or `Option`, which are
-///   declared families with generated recursors, and
-///   [`musa_core::Registry::new`] refuses a structural target that is not a base
-///   type. Registering one would be a second ι-rule for a type that has one, so
-///   all eight are library code. Four of them no longer exist as *names*: the
-///   prelude declares `Iterable<C, A>`, so a fold over a list, an option, or a
-///   count is `xs.fold_from_start(seed, combine)` and its mirror — one spelling
-///   per direction for every container that can be walked — and `nat_fold`,
-///   `option_fold`, and the two list folds have nothing left to be. The other
-///   four are in `stdlib/src/list.musa`. Three keep their old spelling;
-///   `repeat` could not,
-///   because a `repeat { … }` in a score means the word is a statement keyword
-///   and `fn repeat` does not parse. It is `repeated` there.
-/// - the one **machine** builtin left is `primitive`, which has no type of its
-///   own: its ports and its configuration type are read out of the build-local
-///   registry rather than written in a signature, so what is registered is one
-///   closed signature per unit the build knows
-///   ([`super::machine::primitives`]) and the *word* is registered nowhere.
-///   [`super::machine::UNREGISTERED`] argues it. Its eight siblings are
-///   registered under their own spellings.
-/// - a **phase projection** is `run_syntax_step`, which hides nothing: it is the
-///   `run` field of a `SyntaxStep` applied to a context, and a projection is not
-///   a compiler-owned operation. [`musa_core::Registry::new`] would have refused
-///   it anyway, since its target is a declared family and a rewrite over one is
-///   the second ι-rule that check exists to catch. It is *defined* instead —
-///   [`super::run_syntax_step`].
-///
-/// The suite counts each group again off the tables themselves, so this array
-/// cannot drift from what is actually registered.
-pub(super) const UNREGISTERED: [(&str, usize); 3] = [
-    ("structural eliminators", 8),
-    ("machine builtins", 1),
-    ("phase projections", 1),
-];
-
 /// The operations the core has that neither ownership table names.
 ///
 /// The third count, and it runs the other way from the two above: those are rows
@@ -148,6 +108,47 @@ pub(super) const BEYOND: [&str; 7] = [
 /// other: [`super::syntax_carrier`] registers the builtin under it, and
 /// [`forgets`] answers it to `musa-core`'s elaborator.
 pub(super) const FORGOTTEN: &str = "forget_category";
+
+/// The rows that do not, by family and by count.
+///
+/// Ten, and each group is left for a reason that is about the *core* rather
+/// than about effort:
+///
+/// - a **structural eliminator** traverses `Nat`, `List`, or `Option`, which are
+///   declared families with generated recursors, and
+///   [`musa_core::Registry::new`] refuses a structural target that is not a base
+///   type. Registering one would be a second ι-rule for a type that has one, so
+///   all eight are library code. Four of them no longer exist as *names*: the
+///   prelude declares `Iterable<C, A>`, so a fold over a list, an option, or a
+///   count is `xs.fold_from_start(seed, combine)` and its mirror — one spelling
+///   per direction for every container that can be walked — and `nat_fold`,
+///   `option_fold`, and the two list folds have nothing left to be. The other
+///   four are in `stdlib/src/list.musa`. Three keep their old spelling;
+///   `repeat` could not,
+///   because a `repeat { … }` in a score means the word is a statement keyword
+///   and `fn repeat` does not parse. It is `repeated` there.
+/// - the one **machine** builtin left is `primitive`, which has no type of its
+///   own: its ports and its configuration type are read out of the build-local
+///   registry rather than written in a signature, so what is registered is one
+///   closed signature per unit the build knows
+///   ([`super::machine::primitives`]) and the *word* is registered nowhere.
+///   [`super::machine::UNREGISTERED`] argues it. Its eight siblings are
+///   registered under their own spellings.
+/// - a **phase projection** is `run_syntax_step`, which hides nothing: it is the
+///   `run` field of a `SyntaxStep` applied to a context, and a projection is not
+///   a compiler-owned operation. [`musa_core::Registry::new`] would have refused
+///   it anyway, since its target is a declared family and a rewrite over one is
+///   the second ι-rule that check exists to catch. It is *defined* instead —
+///   [`super::run_syntax_step`].
+///
+/// The suite counts each group again off the tables themselves, so this array
+/// cannot drift from what is actually registered.
+#[cfg(test)]
+pub(super) const UNREGISTERED: [(&str, usize); 3] = [
+    ("structural eliminators", 8),
+    ("machine builtins", 1),
+    ("phase projections", 1),
+];
 
 // ---- reading an argument ----
 

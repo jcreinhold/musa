@@ -59,34 +59,6 @@ pub(super) const SPELLINGS: [&str; 8] = [
     "machine", "identity", "connect", "beside", "feedback", "copy", "drop", "swap",
 ];
 
-/// The ninth machine row, which is registered **per registered unit**.
-///
-/// `primitive(name, version, configuration)` is typed by a registry rather than
-/// by a signature: the written name and version select a descriptor from
-/// [`crate::machine`], and *that* supplies the step, the two ports, **and the
-/// type of the configuration argument** — which differs per unit, so it is not
-/// one Π short of writable, it is a different type per registered pair.
-///
-/// The registrable alternative was to take all of it explicitly —
-/// `(step input output configuration : Type 0) → Text → Nat → configuration →
-/// Primitive step input output` — and it was refused. Four type arguments the
-/// name and version already decide are four chances for a program to say
-/// something the registry contradicts, and a signature that admits them is a
-/// second way to type a `primitive`: the audits' own smell. What is registered
-/// would not be §1's operation, only an operation that shares its spelling.
-///
-/// So the answer is neither one signature nor none: it is [`primitives`], one
-/// closed signature per `(name, version)` the build registers, and a reading
-/// that turns the written call into an application of the one its arguments
-/// name. A pair the build does not register has no signature to be applied to,
-/// which is the refusal stated as a registration rather than as a check.
-///
-/// The spelling itself stays here and stays unregistered, and that is the point
-/// rather than a leftover: `primitive` is a *source word* with no type of its
-/// own, so a program that writes it anywhere but at a call with a name and a
-/// version in hand is naming something that does not exist.
-pub(super) const UNREGISTERED: [&str; 1] = ["primitive"];
-
 /// The name the registration for one unit is spelled by.
 ///
 /// Written the way a composer writes the call, because it is the only thing a
@@ -120,6 +92,35 @@ pub(crate) fn is_step_tag(written: &str) -> bool {
         .into_iter()
         .any(|descriptor| descriptor.step().spelling() == written)
 }
+
+/// The ninth machine row, which is registered **per registered unit**.
+///
+/// `primitive(name, version, configuration)` is typed by a registry rather than
+/// by a signature: the written name and version select a descriptor from
+/// [`crate::machine`], and *that* supplies the step, the two ports, **and the
+/// type of the configuration argument** — which differs per unit, so it is not
+/// one Π short of writable, it is a different type per registered pair.
+///
+/// The registrable alternative was to take all of it explicitly —
+/// `(step input output configuration : Type 0) → Text → Nat → configuration →
+/// Primitive step input output` — and it was refused. Four type arguments the
+/// name and version already decide are four chances for a program to say
+/// something the registry contradicts, and a signature that admits them is a
+/// second way to type a `primitive`: the audits' own smell. What is registered
+/// would not be §1's operation, only an operation that shares its spelling.
+///
+/// So the answer is neither one signature nor none: it is [`primitives`], one
+/// closed signature per `(name, version)` the build registers, and a reading
+/// that turns the written call into an application of the one its arguments
+/// name. A pair the build does not register has no signature to be applied to,
+/// which is the refusal stated as a registration rather than as a check.
+///
+/// The spelling itself stays here and stays unregistered, and that is the point
+/// rather than a leftover: `primitive` is a *source word* with no type of its
+/// own, so a program that writes it anywhere but at a call with a name and a
+/// version in hand is naming something that does not exist.
+#[cfg(test)]
+pub(super) const UNREGISTERED: [&str; 1] = ["primitive"];
 
 pub(super) fn step_tags() -> Vec<musa_core::Base> {
     let mut tags: Vec<&'static str> = Vec::new();

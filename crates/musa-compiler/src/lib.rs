@@ -46,13 +46,6 @@ mod docs;
 /// is distinguishable from a wrong migration. The expectation rather than an
 /// `allow` is the point — prompt 142 calling it makes this unfulfilled, and the
 /// compiler says so.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "prompt 141o builds the walk; prompt 142 is the one cutover that calls it"
-    )
-)]
 mod document;
 mod elaborate;
 mod expand;
@@ -70,13 +63,6 @@ mod lint;
 /// reading is distinguishable from a wrong migration. The expectation rather
 /// than an `allow` is the point — prompt 142 calling it makes this unfulfilled,
 /// and the compiler says so.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "prompt 141g builds the reading; prompt 142 is the one cutover that calls it"
-    )
-)]
 mod lower;
 mod machine;
 mod marks;
@@ -87,13 +73,6 @@ mod pc12;
 mod performance;
 mod pitch;
 /// The compiler's own `data` declarations, reachable only from [`registry`].
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "prompt 141e builds the core's registry; prompt 142 is the one cutover that calls it"
-    )
-)]
 mod prelude;
 mod profile;
 mod project;
@@ -106,13 +85,6 @@ mod reference;
 /// signature is distinguishable from a wrong migration. The expectation rather
 /// than an `allow` is the point — prompt 142 wiring the elaborator makes it
 /// unfulfilled, and the compiler says so.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "prompt 141e builds the core's registry; prompt 142 is the one cutover that calls it"
-    )
-)]
 mod registry;
 mod resolve;
 mod roman;

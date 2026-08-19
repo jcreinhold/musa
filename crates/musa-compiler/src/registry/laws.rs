@@ -422,8 +422,10 @@ fn written(cx: &musa_core::Cx, shape: Shape, datum: &Datum) -> Term {
         // parameters read off the shape — the one datum arm that is as
         // self-describing as a literal.
         Datum::Count { ref family, count } => musa_core::infer(cx, &Raw::numeral(super::HERE, &**family, count))
-            .map(|(term, _)| term)
-            .unwrap_or_else(|why| fail(family, "is not a type a number can be written at", &why)),
+            .map_or_else(
+                |why| fail(family, "is not a type a number can be written at", &why),
+                |(term, _)| term,
+            ),
         Datum::Case {
             ref constructor,
             ref fields,

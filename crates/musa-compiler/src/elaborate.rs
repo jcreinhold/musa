@@ -25,15 +25,15 @@
 
 use crate::compile::{Compilation, SourceDocument};
 use crate::diagnose::{Code, Diagnostic};
-use crate::origin::{ExpansionStep, Origin, SourceSpan};
+use crate::origin::{Origin, SourceSpan};
 use crate::pitch::{PitchClass, WrittenPitch};
 use crate::resolve::{self, Resolver};
 use crate::scope::Scope;
 use crate::score::{DynamicMark, Meter, Mode, NotatedDuration, Part, PartId, ScoreSnapshot, Voice, VoiceId};
 use crate::time::MusicalTime;
-use musa_kernel::{Duration, EventTrack, Occurrence, Position, Span, Term, WrittenTime, empty, follow, track};
+use musa_kernel::{Duration, EventTrack, Occurrence, Position, Span, WrittenTime, empty, track};
 use musa_language::SyntaxNode;
-use musa_language::ast::{AstNode as _, PieceDecl, VoiceItem};
+use musa_language::ast::{AstNode as _, PieceDecl};
 use num_rational::Ratio;
 use std::fmt::Write as _;
 
@@ -620,16 +620,8 @@ pub(crate) fn elaborate_parsed(
     // The piece a document declares: written out, or made by an instance
     // standing where it would be. Both are one piece, and everything after
     // this line reads the same `PieceDecl` either way.
-    let made = musa_language::ast::MakeStmt::from_root(&root).and_then(|site| {
-        templates.instance(
-            resolver,
-            &site,
-            "piece".to_owned(),
-            crate::template::Kind::Piece,
-            None,
-            name,
-        )
-    });
+    let made = musa_language::ast::MakeStmt::from_root(&root)
+        .and_then(|site| templates.instance(resolver, &site, "piece", crate::template::Kind::Piece, None, name));
     let Some(piece) = PieceDecl::from_root(&root).or_else(|| made.as_ref().and_then(crate::template::Instance::piece))
     else {
         if let Some(library) = musa_language::ast::LibraryDecl::from_root(&root) {
@@ -1241,38 +1233,11 @@ pub(crate) fn instantiate(mark: &str, instance: &mut VoiceTrack) {
 /// about what a voicing sounds. The enclosing transposition applies to each
 /// pitch exactly as it does to a written chord: a voicing is notes, and notes
 /// move.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "one sounded chord needs every one of these, and grouping them would name nothing"
-)]
-
 fn reported_an_error(resolver: &Resolver) -> bool {
     resolver
         .diagnostics
         .iter()
         .any(|diagnostic| diagnostic.severity == crate::diagnose::Severity::Error)
-}
-
-/// A claim the compiler has taken on and not yet discharged.
-///
-/// Two constructs raise these and there is exactly one kind, on purpose. A
-/// `bar { … }` claims "this is one measure"; an `assert`
-/// claims whatever it says. Both are a proposition about a passage that can
-/// only be settled once the whole piece has been read — the meter in force at
-/// a bar is decided by every `meter` in every voice, and a `meter` in the
-/// second voice governs the first voice's bars — so both are recorded here
-/// during elaboration and proved afterwards, by [`crate::assert::check`].
-///
-/// Holding them in one list is what keeps the bar's diagnostic and the
-/// assertion's from drifting into two answers to one question.
-pub(crate) struct PendingClaim {
-    /// What is claimed.
-    claim: crate::assert::Claim,
-    /// What it is claimed about.
-    passage: crate::assert::Passage,
-    /// Where it was written, so a polymetric piece checks it against its own
-    /// part's barlines rather than the piece's.
-    scope: Scope,
 }
 
 /// The barlines a scope counts against, when they are not the piece's.
@@ -1442,6 +1407,7 @@ fn check_tuplets(resolver: &mut Resolver, snapshot: &ScoreSnapshot) {
 /// The one exhaustive coverage table for the controlled traversal. Keeping
 /// it at the fact boundary makes a newly-added `FactKind` a compile error
 /// until its sounding-pitch policy is chosen deliberately.
+#[cfg(test)]
 pub(crate) fn map_note_pitch_fact(
     payload: &ScoreFact,
     mut mapper: impl FnMut(WrittenPitch) -> Option<WrittenPitch>,
@@ -1521,7 +1487,7 @@ pub(crate) fn piece_term(
         templates.instance(
             &mut resolver,
             &site,
-            "piece".to_owned(),
+            "piece",
             crate::template::Kind::Piece,
             None,
             source.name(),

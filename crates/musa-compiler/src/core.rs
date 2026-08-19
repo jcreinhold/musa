@@ -53,8 +53,6 @@ pub(crate) fn check_material(
             .each()
             .flat_map(|(from, imported)| declarations(imported.syntax(), Some(from)))
             .chain(declarations(library.syntax(), None)),
-        None,
-        UnknownRootMusic::Reject,
         &modules,
         &world,
         Reading::Source,
@@ -94,8 +92,6 @@ fn validate_imports(resolver: &mut Resolver, libraries: &Libraries) -> bool {
         let evaluated = check_and_evaluate(
             &mut foreign_resolver,
             prefix.clone().into_iter(),
-            None,
-            UnknownRootMusic::Reject,
             &modules,
             &world,
             Reading::Source,
@@ -186,34 +182,6 @@ fn declarations(owner: &SyntaxNode, from: Option<crate::imports::Imported<'_>>) 
     found
 }
 
-fn root_uses(owner: &SyntaxNode) -> Vec<SyntaxNode> {
-    root_nodes(owner, SyntaxKind::UseStmt)
-}
-
-/// Statements written among a piece's own items rather than inside material.
-///
-/// A motif, fragment, named bar or `music { ... }` body is a definition: the
-/// core checks and evaluates it once, under its own name, and what it writes
-/// belongs to that definition. Everything left over is written where the
-/// piece plays it, and is checked here instead.
-fn root_nodes(owner: &SyntaxNode, kind: SyntaxKind) -> Vec<SyntaxNode> {
-    owner
-        .descendants()
-        .filter(|node| node.kind() == kind)
-        .filter(|node| {
-            !node.ancestors().skip(1).any(|ancestor| {
-                matches!(
-                    ancestor.kind(),
-                    SyntaxKind::MusicExpr | SyntaxKind::MotifDecl | SyntaxKind::FragmentDecl
-                ) || (ancestor.kind() == SyntaxKind::BarStmt
-                    && musa_language::ast::BarStmt::cast(ancestor)
-                        .and_then(|bar| bar.name())
-                        .is_some())
-            })
-        })
-        .collect()
-}
-
 #[derive(Clone)]
 enum SurfaceDefinition {
     Let {
@@ -269,8 +237,6 @@ enum StandsFor {
     /// An expression written at the instance site, checked in the scope the
     /// site stands in.
     Argument(SyntaxNode),
-    /// What that expression already evaluated to, one pass earlier.
-    Value(Box<Value>),
 }
 
 impl Binding {
@@ -690,10 +656,6 @@ enum RawDefinitionKind {
         body: SyntaxNode,
         callable: bool,
     },
-    /// A value settled before this pass began.
-    Bound {
-        value: Box<Value>,
-    },
 }
 
 impl RawDefinition {
@@ -709,7 +671,6 @@ impl RawDefinition {
                 .role
                 .as_ref()
                 .map_or(NameKind::Function, |role| role.material.name_kind()),
-            RawDefinitionKind::Bound { .. } => NameKind::Value,
         }
     }
 }
@@ -3504,10 +3465,47 @@ pub(crate) enum MachineTree {
     Swap,
 }
 
+impl std::fmt::Display for PitchTerm {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Written(pitch) => write!(out, "{pitch}"),
+            Self::Stepped { base, steps } => write!(out, "{base}step{steps}"),
+            Self::Moved { base, interval, down } => {
+                write!(out, "{base}{}{:?}", if *down { "-" } else { "+" }, interval)
+            }
+        }
+    }
+}
+
+/// A checked total `pitch -> pitch` closure. Its representation stays inside
+/// the elaboration core, so the controlled traversal cannot become a general
+/// callback over score facts.
+#[derive(Clone)]
+#[expect(
+    dead_code,
+    reason = "a library's music values are still *evaluated* — their errors and their budget are the check, and the tonal class waits on prompt 144's verdict for exactly that evaluation — but since the cutover nothing reads the value that comes out; deleting the product without the evaluation would change what a library is refused for, which is 144's call to make"
+)]
+pub(crate) struct PitchFunction(Box<Closure>);
+
+#[derive(Clone)]
+#[expect(
+    dead_code,
+    reason = "a library's music values are still *evaluated* — their errors and their budget are the check, and the tonal class waits on prompt 144's verdict for exactly that evaluation — but since the cutover nothing reads the value that comes out; deleting the product without the evaluation would change what a library is refused for, which is 144's call to make"
+)]
+pub(crate) struct MusicRole {
+    pub(crate) name: String,
+    pub(crate) material: crate::resolve::Material,
+    pub(crate) foreign: bool,
+}
+
 /// A notation-first value retained until a voice supplies scope and onset.
 /// Its representation is crate-private by design: only the elaborator may
 /// instantiate it, and consumers continue to see a closed kernel term.
 #[derive(Clone)]
+#[expect(
+    dead_code,
+    reason = "a library's music values are still *evaluated* — their errors and their budget are the check, and the tonal class waits on prompt 144's verdict for exactly that evaluation — but since the cutover nothing reads the value that comes out; deleting the product without the evaluation would change what a library is refused for, which is 144's call to make"
+)]
 pub(crate) struct Music {
     pub(crate) items: Vec<VoiceItem>,
     pub(crate) uses: IndexMap<u64, Self>,
@@ -3553,6 +3551,10 @@ pub(crate) enum PitchTerm {
 }
 
 /// Why a deferred pitch could not be finished under the scale in force.
+#[expect(
+    dead_code,
+    reason = "a library's music values are still *evaluated* — their errors and their budget are the check, and the tonal class waits on prompt 144's verdict for exactly that evaluation — but since the cutover nothing reads the value that comes out; deleting the product without the evaluation would change what a library is refused for, which is 144's call to make"
+)]
 pub(crate) enum PitchTermError {
     /// `step` was written where no scale is in force.
     NoScale,
@@ -3602,21 +3604,13 @@ impl PitchTerm {
     }
 }
 
-impl std::fmt::Display for PitchTerm {
-    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Written(pitch) => write!(out, "{pitch}"),
-            Self::Stepped { base, steps } => write!(out, "{base}step{steps}"),
-            Self::Moved { base, interval, down } => {
-                write!(out, "{base}{}{:?}", if *down { "-" } else { "+" }, interval)
-            }
-        }
-    }
-}
-
 /// Opaque contextual constructors. They are interpreted only when a voice
 /// supplies scope and onset; no kernel occurrence is exposed as a value.
 #[derive(Clone)]
+#[expect(
+    dead_code,
+    reason = "a library's music values are still *evaluated* — their errors and their budget are the check, and the tonal class waits on prompt 144's verdict for exactly that evaluation — but since the cutover nothing reads the value that comes out; deleting the product without the evaluation would change what a library is refused for, which is 144's call to make"
+)]
 pub(crate) enum MusicOperation {
     Transpose {
         interval: Interval,
@@ -3666,153 +3660,17 @@ pub(crate) enum MusicOperation {
     },
 }
 
-/// A checked total `pitch -> pitch` closure. Its representation stays inside
-/// the elaboration core, so the controlled traversal cannot become a general
-/// callback over score facts.
-#[derive(Clone)]
-pub(crate) struct PitchFunction(Box<Closure>);
-
-#[derive(Clone)]
-pub(crate) struct MusicRole {
-    pub(crate) name: String,
-    pub(crate) material: crate::resolve::Material,
-    pub(crate) foreign: bool,
-}
-
-impl Music {
-    pub(crate) fn music_at(&self, span: SourceSpan) -> Option<&Self> {
-        self.uses.get(&span_key(span))
-    }
-
-    pub(crate) fn pitch_at(&self, span: SourceSpan) -> Option<&PitchTerm> {
-        self.pitches.get(&span_key(span))
-    }
-
-    pub(crate) fn scale_at(&self, span: SourceSpan) -> Option<crate::scale::Scale> {
-        self.scales.get(&span_key(span)).copied()
-    }
-
-    pub(crate) fn key_at(&self, span: SourceSpan) -> Option<crate::Key> {
-        self.keys.get(&span_key(span)).copied()
-    }
-
-    pub(crate) fn claim_at(&self, span: SourceSpan) -> Option<&crate::assert::Claim> {
-        self.claims.get(&span_key(span))
-    }
-}
-
 /// Checked root `use` expressions. This is the only bridge from the total
 /// value evaluator into contextual score elaboration.
 pub(crate) struct Program {
-    uses: IndexMap<u64, Music>,
-    pitches: IndexMap<u64, PitchTerm>,
-    scales: IndexMap<u64, crate::scale::Scale>,
-    claims: IndexMap<u64, crate::assert::Claim>,
-    keys: IndexMap<u64, crate::Key>,
-    named_music: IndexMap<String, Music>,
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "the pass is the check; only this crate's own laws read the values back"
+        )
+    )]
     values: IndexMap<String, Value>,
-    /// The settled type of each declaration, by name.
-    ///
-    /// Kept because the expansion phase asks a module whether the operation it
-    /// declares is the operation the phase runs — `expand` is a transformer or
-    /// it is not — and that is a question about a type. Nothing else reads it:
-    /// a value leaves this compiler as a value.
-    types: IndexMap<String, Type>,
-}
-
-impl Program {
-    /// Every machine this program names, with its exact projection, in the
-    /// order the source declares them.
-    ///
-    /// This is the whole of how a machine leaves the compiler. The evaluator's
-    /// value stays private: a consumer that could see it could also see the
-    /// source types, environments, and provenance that built it, none of which
-    /// is part of what a machine means.
-    ///
-    /// A machine whose type is still open — `identity` names one at every step
-    /// and every port — is skipped rather than guessed at. It is a perfectly
-    /// good polymorphic value and simply not yet *a* machine: the step and the
-    /// two ports are what a projection is for, and a consumer cannot prepare a
-    /// port whose type has not been decided.
-    pub(crate) fn machines(&self) -> Vec<(String, crate::MachineSpec)> {
-        fn decided(ty: &Type) -> bool {
-            !matches!(ty, Type::Var(_)) && crate::infer::member_types(ty).into_iter().all(decided)
-        }
-        self.values
-            .iter()
-            .filter_map(|(name, value)| {
-                let Value::Machine { ty, tree } = value else {
-                    return None;
-                };
-                let Type::Machine { step, input, output } = ty else {
-                    return None;
-                };
-                let Type::Step(tag) = **step else {
-                    return None;
-                };
-                if !decided(input) || !decided(output) {
-                    return None;
-                }
-                let mut nodes = Vec::new();
-                tree.flatten(&mut nodes);
-                Some((
-                    name.clone(),
-                    crate::MachineSpec::new(tag, input.to_string(), output.to_string(), nodes),
-                ))
-            })
-            .collect()
-    }
-
-    pub(crate) fn root_music(&self) -> Music {
-        Music {
-            items: Vec::new(),
-            uses: self.uses.clone(),
-            pitches: Box::new(self.pitches.clone()),
-            scales: Box::new(self.scales.clone()),
-            claims: Box::new(self.claims.clone()),
-            keys: Box::new(self.keys.clone()),
-            bindings: IndexMap::new(),
-            role: None,
-            definition_span: SourceSpan::default(),
-            operation: None,
-        }
-    }
-
-    /// Rebind what a hidden argument holder evaluated to under the name the
-    /// template's body reads it by.
-    ///
-    /// This is the whole of "substitute the arguments": the value crosses
-    /// from the pass that evaluated it, in the site's scope, into the pass
-    /// that checks the body, under the parameter's own name. Absent when the
-    /// site's argument did not evaluate — the diagnostic for that was
-    /// reported where the argument is written.
-    pub(crate) fn rebind(
-        &self,
-        holder: &str,
-        name: String,
-        name_span: SourceSpan,
-        span: SourceSpan,
-        ty: SyntaxNode,
-    ) -> Option<Binding> {
-        let value = self.values.get(holder)?.clone();
-        Some(Binding {
-            name,
-            name_span,
-            span,
-            ty,
-            stands_for: StandsFor::Value(Box::new(value)),
-            hidden: false,
-        })
-    }
-
-    /// A key the header names rather than spells, at the statement's span.
-    pub(crate) fn key_at(&self, span: SourceSpan) -> Option<crate::Key> {
-        self.keys.get(&span_key(span)).copied()
-    }
-
-    pub(crate) fn named_music_values(&self) -> &IndexMap<String, Music> {
-        &self.named_music
-    }
 }
 
 #[derive(Clone)]
@@ -4300,7 +4158,6 @@ fn mentions(definition: &RawDefinition, named: &IndexMap<&str, usize>) -> Vec<us
         }
     };
     match &definition.kind {
-        RawDefinitionKind::Bound { .. } => {}
         RawDefinitionKind::Let { body } => scan(body),
         RawDefinitionKind::Function { body, .. } | RawDefinitionKind::Music { body, .. } => scan(body),
     }
@@ -4315,13 +4172,6 @@ fn mentions(definition: &RawDefinition, named: &IndexMap<&str, usize>) -> Vec<us
 /// it runs exactly once, from the loop in [`check_and_evaluate`].
 fn check_definition(checker: &mut Checker<'_>, definition: &RawDefinition) -> Option<CheckedDefinitionKind> {
     match &definition.kind {
-        RawDefinitionKind::Bound { value } => Some(CheckedDefinitionKind::Let {
-            body: Expr {
-                kind: ExprKind::Literal(value.as_ref().clone()),
-                ty: definition.ty.clone(),
-                span: definition.span,
-            },
-        }),
         RawDefinitionKind::Let { body } => checker
             .check(body, Some(&definition.ty))
             .map(|body| CheckedDefinitionKind::Let { body }),
@@ -4390,6 +4240,31 @@ fn check_definition(checker: &mut Checker<'_>, definition: &RawDefinition) -> Op
     }
 }
 
+/// Statements written among a piece's own items rather than inside material.
+///
+/// A motif, fragment, named bar or `music { ... }` body is a definition: the
+/// core checks and evaluates it once, under its own name, and what it writes
+/// belongs to that definition. Everything left over is written where the
+/// piece plays it, and is checked here instead.
+#[cfg(test)]
+fn root_nodes(owner: &SyntaxNode, kind: SyntaxKind) -> Vec<SyntaxNode> {
+    owner
+        .descendants()
+        .filter(|node| node.kind() == kind)
+        .filter(|node| {
+            !node.ancestors().skip(1).any(|ancestor| {
+                matches!(
+                    ancestor.kind(),
+                    SyntaxKind::MusicExpr | SyntaxKind::MotifDecl | SyntaxKind::FragmentDecl
+                ) || (ancestor.kind() == SyntaxKind::BarStmt
+                    && musa_language::ast::BarStmt::cast(ancestor)
+                        .and_then(|bar| bar.name())
+                        .is_some())
+            })
+        })
+        .collect()
+}
+
 /// Check and evaluate a document, under one budget and one meter.
 ///
 /// The wrapper exists so that the meter has exactly one boundary. Anything
@@ -4400,8 +4275,6 @@ fn check_definition(checker: &mut Checker<'_>, definition: &RawDefinition) -> Op
 fn check_and_evaluate(
     resolver: &mut Resolver,
     declarations: impl Iterator<Item = SurfaceDefinition>,
-    root: Option<&SyntaxNode>,
-    unknown_root_music: UnknownRootMusic,
     modules: &Modules,
     world: &World,
     reading: Reading,
@@ -4411,8 +4284,6 @@ fn check_and_evaluate(
     let program = check_and_evaluate_metered(
         resolver,
         declarations,
-        root,
-        unknown_root_music,
         modules,
         world,
         reading,
@@ -4431,8 +4302,6 @@ fn check_and_evaluate(
 fn check_and_evaluate_metered(
     resolver: &mut Resolver,
     declarations: impl Iterator<Item = SurfaceDefinition>,
-    root: Option<&SyntaxNode>,
-    unknown_root_music: UnknownRootMusic,
     modules: &Modules,
     world: &World,
     // Which document these declarations belong to: `Reading::Source` for every
@@ -4458,7 +4327,6 @@ fn check_and_evaluate_metered(
     unifier: &mut Unifier,
     meter: &mut WorkMeter,
 ) -> Option<Program> {
-    let root_uses = root.map(root_uses).unwrap_or_default();
     let mut raw = Vec::new();
     // Per bound name: where it was bound, which library it came from if it
     // came from one, and whether it was a legacy material declaration.
@@ -4641,253 +4509,7 @@ fn check_and_evaluate_metered(
 
     let order = dependency_order(resolver, &checked)?;
     let values = evaluate(resolver, &checked, &order, &mut *meter)?;
-    let mut uses = IndexMap::new();
-    for statement in root_uses {
-        let expression = child_of(&statement, is_expr_node)?;
-        let span = crate::resolve::trimmed_span(&statement);
-        // A track builtin heads a `use` the way a declared name does. A δ-builtin does not: it is
-        // not a value, so a `use` naming one is as unknown here as a misspelling.
-        if first_name(&expression)
-            .is_some_and(|name| !symbols.contains_key(&name) && !Builtin::named(&name).is_some_and(Builtin::is_track))
-        {
-            match unknown_root_music {
-                UnknownRootMusic::Reject => {}
-                UnknownRootMusic::Defer => continue,
-                UnknownRootMusic::Silent => {
-                    uses.insert(
-                        span_key(span),
-                        Music {
-                            items: Vec::new(),
-                            uses: IndexMap::new(),
-                            pitches: Box::default(),
-                            scales: Box::default(),
-                            claims: Box::default(),
-                            keys: Box::default(),
-                            bindings: IndexMap::new(),
-                            role: None,
-                            definition_span: span,
-                            operation: None,
-                        },
-                    );
-                    continue;
-                }
-            }
-        }
-        let mut checker = Checker {
-            resolver,
-            definitions: &raw,
-            symbols: &symbols,
-            locals: IndexMap::new(),
-            unifier: &mut *unifier,
-            dependencies: IndexMap::new(),
-            mentioned: Vec::new(),
-            reading: Reading::Source,
-            failed: false,
-            meter: &mut *meter,
-            music_role: None,
-            definition_span: span,
-            deferred_pitch: false,
-            scope: crate::module::NameScope::empty(),
-            modules,
-            world,
-            questions: Vec::new(),
-            asked: 0,
-            tail: false,
-        };
-        let checked_use = checker.check(&expression, Some(&Type::Music))?;
-        let Value::Music(music) = eval(&checked_use, &values, &mut *meter)? else {
-            return None;
-        };
-        uses.insert(span_key(span), music);
-    }
-    // `in scale` and note pitches written among a piece's own items, rather
-    // than inside a definition. `music { ... }` collects its own; these are
-    // what is left, and the elaborator reads both through the same root value.
-    let mut scales = IndexMap::new();
-    let mut claims = IndexMap::new();
-    let mut keys = IndexMap::new();
-    let mut pitches = IndexMap::new();
-    if let Some(root) = root {
-        for statement in root_nodes(root, SyntaxKind::InScaleStmt) {
-            let Some(expression) = child_of(&statement, is_expr_node) else {
-                continue;
-            };
-            let span = crate::resolve::trimmed_span(&statement);
-            let mut checker = root_checker(
-                resolver,
-                &raw,
-                &symbols,
-                &mut *unifier,
-                &mut *meter,
-                span,
-                modules,
-                world,
-            );
-            let checked = checker.check(&expression, Some(&Type::Scale))?;
-            let Value::Scale(scale) = eval(&checked, &values, &mut *meter)? else {
-                return None;
-            };
-            scales.insert(span_key(span), scale);
-        }
-        // `key k;` — a key the source names rather than spells. The written
-        // form has no expression child at all, so it never reaches here and
-        // the two spellings stay one statement.
-        for statement in root_nodes(root, SyntaxKind::KeyStmt) {
-            let Some(expression) = child_of(&statement, is_expr_node) else {
-                continue;
-            };
-            let span = crate::resolve::trimmed_span(&statement);
-            let mut checker = root_checker(
-                resolver,
-                &raw,
-                &symbols,
-                &mut *unifier,
-                &mut *meter,
-                span,
-                modules,
-                world,
-            );
-            let checked = checker.check(&expression, Some(&Type::Key))?;
-            let Value::Key(key) = eval(&checked, &values, &mut *meter)? else {
-                return None;
-            };
-            keys.insert(span_key(span), key);
-        }
-        for statement in root_nodes(root, SyntaxKind::AssertStmt) {
-            let span = crate::resolve::trimmed_span(&statement);
-            let mut checker = root_checker(
-                resolver,
-                &raw,
-                &symbols,
-                &mut *unifier,
-                &mut *meter,
-                span,
-                modules,
-                world,
-            );
-            let checked = checker.claim(&statement)?;
-            claims.insert(span_key(span), eval_claim(&checked, &values, &mut *meter)?);
-        }
-        for statement in root_nodes(root, SyntaxKind::NoteStmt) {
-            let Some(expression) =
-                musa_language::ast::NoteStmt::cast(statement.clone()).and_then(|note| note.pitch_expr())
-            else {
-                continue;
-            };
-            let span = crate::resolve::trimmed_span(&statement);
-            let mut checker = root_checker(
-                resolver,
-                &raw,
-                &symbols,
-                &mut *unifier,
-                &mut *meter,
-                span,
-                modules,
-                world,
-            );
-            let checked = checker.deferring_pitch(|checker| checker.check(&expression, Some(&Type::Pitch)))?;
-            pitches.insert(span_key(span), pitch_term(&checked, &values, &mut *meter)?);
-        }
-    }
-    if meter.failure().is_some() {
-        return None;
-    }
-    let named_music = values
-        .iter()
-        .filter_map(|(name, value)| match value {
-            Value::Music(music) => Some((name.clone(), music.clone())),
-            Value::Bool(_)
-            | Value::Nat(_)
-            | Value::Ratio(_)
-            | Value::Text(_)
-            | Value::Duration(..)
-            | Value::Position(..)
-            | Value::Pitch(_)
-            | Value::PitchClass(_)
-            | Value::Interval(_)
-            | Value::Scale(_)
-            | Value::Key(_)
-            | Value::Degree(_)
-            | Value::Frame(_)
-            | Value::ChordClass(_)
-            | Value::Triad(_)
-            | Value::Roman(_)
-            | Value::Voicing(_)
-            | Value::Pc12(_)
-            | Value::PcSet12(_)
-            | Value::Row12(_)
-            | Value::Product(_)
-            | Value::Sum { .. }
-            | Value::Option { .. }
-            | Value::List { .. }
-            | Value::Data { .. }
-            | Value::Closure(_)
-            | Value::Primitive { .. }
-            | Value::Machine { .. }
-            | Value::Syntax(_)
-            | Value::NodePath(_)
-            | Value::BindingPath(_)
-            | Value::TokenKind(_)
-            | Value::Delimiter(_)
-            | Value::SyntaxStep(_)
-            | Value::Builtin(_) => None,
-        })
-        .collect();
-    let types = checked
-        .iter()
-        .map(|definition| (definition.name.clone(), definition.ty.clone()))
-        .collect();
-    Some(Program {
-        uses,
-        pitches,
-        scales,
-        claims,
-        keys,
-        named_music,
-        values,
-        types,
-    })
-}
-
-/// A checker for one expression written among a piece's own items.
-fn root_checker<'a>(
-    resolver: &'a mut Resolver,
-    definitions: &'a [RawDefinition],
-    symbols: &'a IndexMap<String, Symbol>,
-    unifier: &'a mut Unifier,
-    meter: &'a mut WorkMeter,
-    span: SourceSpan,
-    modules: &'a Modules,
-    world: &'a World,
-) -> Checker<'a> {
-    Checker {
-        resolver,
-        definitions,
-        symbols,
-        locals: IndexMap::new(),
-        unifier,
-        dependencies: IndexMap::new(),
-        mentioned: Vec::new(),
-        reading: Reading::Source,
-        failed: false,
-        meter,
-        music_role: None,
-        definition_span: span,
-        deferred_pitch: false,
-        scope: crate::module::NameScope::empty(),
-        modules,
-        world,
-        questions: Vec::new(),
-        asked: 0,
-        tail: false,
-    }
-}
-
-#[derive(Clone, Copy)]
-enum UnknownRootMusic {
-    Reject,
-    Defer,
-    Silent,
+    Some(Program { values })
 }
 
 /// The name a [`SyntaxKind::NameExpr`] writes, starting at its first name
@@ -4982,7 +4604,7 @@ fn document(definition: &RawDefinition, scheme: &Scheme) -> crate::docs::ItemDoc
                 }
             })
             .collect(),
-        RawDefinitionKind::Let { .. } | RawDefinitionKind::Bound { .. } => Vec::new(),
+        RawDefinitionKind::Let { .. } => Vec::new(),
     };
     // A callable evaluates to its result; everything else evaluates to itself.
     let result = crate::docs::TypeNote::new(if let Type::Function(_, result) = &declared {
@@ -5231,25 +4853,8 @@ fn lower_signature(
         }
         SurfaceDefinition::Bound(binding) => {
             let ty = parse_type(resolver, scope, &binding.ty)?;
-            let kind = match binding.stands_for {
-                StandsFor::Argument(argument) => RawDefinitionKind::Let { body: argument },
-                StandsFor::Value(value) => {
-                    // A value that reached here already type-checked once, at
-                    // the site that produced it. Restating the type is how
-                    // the second pass proves that, rather than assuming it.
-                    if value.ty() != ty {
-                        resolver.report(
-                            Diagnostic::error(
-                                Code::TypeMismatch,
-                                format!("`{name}` was given a {} where a {} was declared", value.ty(), ty),
-                            )
-                            .at(span, "this argument"),
-                        );
-                        return None;
-                    }
-                    RawDefinitionKind::Bound { value }
-                }
-            };
+            let StandsFor::Argument(argument) = binding.stands_for;
+            let kind = RawDefinitionKind::Let { body: argument };
             Some(RawDefinition {
                 name,
                 ty,
@@ -12066,13 +11671,6 @@ fn name_of(node: &SyntaxNode) -> Option<String> {
         .map(|token| token.text().to_owned())
 }
 
-fn first_name(node: &SyntaxNode) -> Option<String> {
-    node.descendants_with_tokens()
-        .filter_map(SyntaxElement::into_token)
-        .find(|token| token.kind() == SyntaxKind::Identifier)
-        .map(|token| token.text().to_owned())
-}
-
 fn argument_name(node: &SyntaxNode) -> Option<String> {
     let direct: Vec<_> = node
         .children_with_tokens()
@@ -12815,10 +12413,6 @@ pub(crate) fn edit_syntax(
     (answer, PhaseWork::of(spent))
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "an edit is a function of exactly these things: bundling them would hide which of them the phase may read"
-)]
 fn run_editor(
     adapter_source: &str,
     imports: PhaseImports<'_>,
@@ -13771,8 +13365,6 @@ mod tests {
         let program = check_and_evaluate_metered(
             &mut resolver,
             declarations(piece.syntax(), None).into_iter(),
-            Some(piece.syntax()),
-            UnknownRootMusic::Reject,
             &Modules::default(),
             &world,
             Reading::Source,
@@ -13802,8 +13394,6 @@ mod tests {
         let program = check_and_evaluate(
             &mut resolver,
             declarations(piece.syntax(), None).into_iter(),
-            Some(piece.syntax()),
-            UnknownRootMusic::Reject,
             &Modules::default(),
             &world,
             Reading::Source,
@@ -13907,8 +13497,6 @@ mod tests {
         check_and_evaluate(
             &mut resolver,
             declarations(piece.syntax(), None).into_iter(),
-            Some(piece.syntax()),
-            UnknownRootMusic::Reject,
             &Modules::default(),
             &World::default(),
             Reading::Source,
@@ -15522,8 +15110,6 @@ mod tests {
         check_and_evaluate(
             &mut resolver,
             declarations(piece.syntax(), None).into_iter(),
-            Some(piece.syntax()),
-            UnknownRootMusic::Reject,
             &Modules::default(),
             &world,
             Reading::Source,
@@ -15541,8 +15127,6 @@ mod tests {
         check_and_evaluate(
             &mut resolver,
             declarations(piece.syntax(), None).into_iter(),
-            Some(piece.syntax()),
-            UnknownRootMusic::Reject,
             &Modules::default(),
             &World::default(),
             Reading::Source,

@@ -101,10 +101,9 @@ use std::any::Any;
 use std::fmt;
 use std::sync::Arc;
 
-use musa_core::{
-    Base, Builtin, Cx, Datum, ElabError, Index, Level, Literal, Origin, Payload, Raw, RawArm, RawPattern, Refusal,
-    Registry, Term,
-};
+use musa_core::{Base, Builtin, Cx, Datum, ElabError, Level, Literal, Origin, Payload, Refusal, Registry, Term};
+#[cfg(test)]
+use musa_core::{Index, Raw, RawArm, RawPattern};
 
 /// The old table's name for one inert domain, renamed on the way in.
 ///
@@ -312,7 +311,7 @@ pub(crate) fn owned() -> Result<Cx, ElabError> {
     // be declared until the registry that resolves that name is the context's.
     // `Iterable`'s bodies name no builtin, but they name `List.Cons`, and one
     // ordering for all of them is one thing to remember rather than two.
-    let cx = crate::prelude::equality(cx.with_externs(Arc::new(Registry::new(bases, builtins)?)))?;
+    let cx = crate::prelude::equality(&cx.with_externs(Arc::new(Registry::new(bases, builtins)?)))?;
     crate::prelude::collections(cx)
 }
 
@@ -987,13 +986,7 @@ fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
 ///
 /// [`ElabError`] when `SyntaxStep` is not declared in `cx`, or when the
 /// definition does not check at its own type — a compiler defect either way.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "prompt 142 is where elaboration binds the phase's spellings; until then the laws are the caller"
-    )
-)]
+#[cfg(test)]
 pub(crate) fn run_syntax_step(cx: &Cx) -> Result<Definition, ElabError> {
     let sealed = crate::prelude::constant(cx, "SyntaxStep")?;
     let step = Term::app(
@@ -1039,6 +1032,7 @@ pub(crate) fn run_syntax_step(cx: &Cx) -> Result<Definition, ElabError> {
 /// Both halves, because a definition is both — [`Cx::define`] takes a type and a
 /// value, and a λ has no inferable type, so handing back the value alone would
 /// leave every caller to reconstruct the type this function already wrote.
+#[cfg(test)]
 pub(crate) struct Definition {
     /// Its type.
     pub(crate) ty: Term,

@@ -330,13 +330,6 @@ impl WorkMeter {
         }
     }
 
-    /// How many reduction steps this meter has charged.
-    ///
-    /// The `evaluation_steps` charge of `26-language-design-decision.md` §3.5.
-    pub(crate) const fn steps(&self) -> u64 {
-        self.steps
-    }
-
     /// How many constructed value nodes this meter has charged.
     ///
     /// Test-only, and it is the charging *locus* the tests read it for: a law
@@ -469,20 +462,6 @@ impl WorkMeter {
     /// fragment reserves zero.
     pub(crate) fn output(&mut self, operation: &'static str, amount: u64, span: SourceSpan) -> Option<()> {
         self.charge(
-            Counter::Output,
-            operation,
-            "estimated music occurrences",
-            amount.saturating_mul(self.costs.occurrence),
-            span,
-        )
-    }
-
-    /// Check an eventual timeline before any occurrence-sized allocation is
-    /// performed. This is deliberately separate from [`Self::output`]: a
-    /// transform may need a temporary value, while the published score is
-    /// charged exactly once at the compilation boundary.
-    pub(crate) fn preflight_output(&mut self, operation: &'static str, amount: u64, span: SourceSpan) -> Option<()> {
-        self.preview(
             Counter::Output,
             operation,
             "estimated music occurrences",

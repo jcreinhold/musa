@@ -1014,8 +1014,8 @@ fn supplies(name: &str, value: Raw) -> RawDefinition {
 /// As [`musa_core::declare_trait`] and [`musa_core::declare_impl`] — in practice
 /// never, since the declarations are this module's own and a failure here is a
 /// compiler defect rather than a program's.
-pub(crate) fn equality(cx: Cx) -> Result<Cx, ElabError> {
-    let class = musa_core::declare_trait(&cx, &eq_class())?;
+pub(crate) fn equality(cx: &Cx) -> Result<Cx, ElabError> {
+    let class = musa_core::declare_trait(cx, &eq_class())?;
     let mut cx = cx.declaring_class(&class);
     for instance in eq_instances() {
         let declared = musa_core::declare_impl(&cx, &instance)?;

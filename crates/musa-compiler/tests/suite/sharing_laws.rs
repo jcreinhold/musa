@@ -33,7 +33,6 @@
 //! is `resource_validation.rs`'s subject and prompt 144 re-measures it. A law
 //! stated here against a meter that does not run would have hidden it.
 
-
 // A failure is more useful reported with what actually happened than with an
 // assertion message alone.
 #![allow(clippy::panic)]
@@ -101,7 +100,10 @@ fn call_sites(source: &str) -> BTreeSet<String> {
             | ExpansionStep::Inversion { .. }
             | ExpansionStep::MapNotePitches
             | ExpansionStep::ScaleContext { .. }
-            | ExpansionStep::TemplateInstance { .. } => None,
+            | ExpansionStep::TemplateInstance { .. }
+            | ExpansionStep::Assertion { .. }
+            | ExpansionStep::KernelSplice { .. }
+            | ExpansionStep::Specialization { .. } => None,
         })
         .collect()
 }

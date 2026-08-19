@@ -79,11 +79,11 @@ pub(crate) fn project(resolver: &mut Resolver, track: &EventTrack<WrittenTime, S
             None => piece.push(occurrence),
         }
     }
-    piece.sort_by_key(sounding);
+    piece.sort_by_key(|occurrence| sounding(occurrence));
     let mut voices = Voices::with_capacity(buckets.len());
     let mut stated: Vec<Vec<crate::score::RepeatRegion>> = Vec::with_capacity(buckets.len());
     for (key, mut occurrences) in buckets {
-        occurrences.sort_by_key(sounding);
+        occurrences.sort_by_key(|occurrence| sounding(occurrence));
         let (voice, repeats) = project_voice(resolver, &occurrences);
         stated.push(repeats);
         voices.insert(key, voice);
@@ -99,7 +99,7 @@ pub(crate) fn project(resolver: &mut Resolver, track: &EventTrack<WrittenTime, S
 /// The end is the tiebreak so that a point sorts before a span starting with
 /// it: a grace note is written at the onset of the note it leans on, and it has
 /// to arrive first to be waiting there.
-fn sounding(occurrence: &&Occurrence<WrittenTime, ScoreFact>) -> (Position<WrittenTime>, Position<WrittenTime>) {
+fn sounding(occurrence: &Occurrence<WrittenTime, ScoreFact>) -> (Position<WrittenTime>, Position<WrittenTime>) {
     (occurrence.span().start(), occurrence.span().end())
 }
 

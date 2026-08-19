@@ -25,7 +25,6 @@
 //! than a generalization. Prompt 142's own Target records the same finding one
 //! declaration wider, for `machine_laws`.
 
-
 // A failure is more useful reported with what actually happened than with an
 // assertion message alone.
 #![allow(clippy::panic)]

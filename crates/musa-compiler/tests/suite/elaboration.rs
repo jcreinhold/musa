@@ -271,8 +271,7 @@ fn an_ending_outside_a_repeat_is_read_where_it_stands() {
         .iter()
         .filter_map(|event| match &event.kind {
             musa_compiler::ScoreEventKind::Note { pitch } => Some(pitch.to_string()),
-            musa_compiler::ScoreEventKind::Rest
-            | musa_compiler::ScoreEventKind::Chord { .. } => None,
+            musa_compiler::ScoreEventKind::Rest | musa_compiler::ScoreEventKind::Chord { .. } => None,
         })
         .collect();
     assert_eq!(sounded, ["c4", "d4"], "the ending's note plays once");

@@ -23,7 +23,6 @@ use indexmap::IndexMap;
 use musa_language::SyntaxNode;
 use musa_language::ast::{AstNode as _, MakeStmt, PieceDecl, TemplateDecl, VoiceDecl};
 
-use crate::core::{Binding, Program};
 use crate::diagnose::{Code, Diagnostic};
 use crate::origin::{ExpansionStep, SourceSpan};
 use crate::resolve::{Resolver, trimmed_span};
@@ -77,7 +76,6 @@ struct Entry {
 #[derive(Clone)]
 struct Parameter {
     name: String,
-    name_span: SourceSpan,
     span: SourceSpan,
     ty: SyntaxNode,
 }
@@ -145,7 +143,7 @@ impl Templates {
         &mut self,
         resolver: &mut Resolver,
         stmt: &MakeStmt,
-        path: String,
+        path: &str,
         want: Kind,
         enclosing: Option<&str>,
         namespace: &str,
@@ -198,7 +196,6 @@ impl Templates {
         );
         let identity = self.claim(resolver, key, span)?;
         Some(Instance {
-            name: name.clone(),
             declaration,
             parameters,
             arguments,
@@ -209,7 +206,6 @@ impl Templates {
                 identity: format!("{identity:032x}"),
             },
             alias,
-            path,
             span,
         })
     }
@@ -235,8 +231,6 @@ impl Templates {
 
 /// One resolved instance site.
 pub(crate) struct Instance {
-    /// The template's name.
-    name: String,
     /// The declaration the template parameterizes.
     declaration: SyntaxNode,
     parameters: Vec<Parameter>,
@@ -247,10 +241,6 @@ pub(crate) struct Instance {
     step: ExpansionStep,
     /// The `as` name: this instance's address in the source.
     alias: String,
-    /// The site's structural address, which is what identity is derived
-    /// from. A span would move whenever anything above it was edited; a path
-    /// moves only when the site does.
-    path: String,
     span: SourceSpan,
 }
 
@@ -273,11 +263,6 @@ impl Instance {
     /// The `as` name.
     pub(crate) fn alias(&self) -> &str {
         &self.alias
-    }
-
-    /// The template this instance names.
-    pub(crate) fn template(&self) -> &str {
-        &self.name
     }
 
     /// The span of the `make` statement.
@@ -305,52 +290,6 @@ impl Instance {
                 ty: &parameter.ty,
                 argument,
             })
-    }
-
-    /// Bindings that carry this site's arguments into the pass that checks
-    /// the scope the site stands in.
-    ///
-    /// The names are unspellable on purpose: they hold values on the way to
-    /// somewhere else, and a name an author could write would be a name an
-    /// author could collide with.
-    pub(crate) fn holders(&self) -> Vec<Binding> {
-        self.parameters
-            .iter()
-            .zip(&self.arguments)
-            .map(|(parameter, argument)| {
-                Binding::argument(
-                    self.holder(&parameter.name),
-                    parameter.name_span,
-                    trimmed_span(argument),
-                    parameter.ty.clone(),
-                    argument.clone(),
-                    true,
-                )
-            })
-            .collect()
-    }
-
-    /// Those same arguments, under the names the template's body reads them
-    /// by. This is the substitution, done as a binding.
-    pub(crate) fn bindings(&self, site_scope: &Program) -> Vec<Binding> {
-        self.parameters
-            .iter()
-            .filter_map(|parameter| {
-                site_scope.rebind(
-                    &self.holder(&parameter.name),
-                    parameter.name.clone(),
-                    parameter.name_span,
-                    parameter.span,
-                    parameter.ty.clone(),
-                )
-            })
-            .collect()
-    }
-
-    fn holder(&self, parameter: &str) -> String {
-        // `#` and the path separators cannot occur in an identifier, so a
-        // holder can never be the name of anything the source declares.
-        format!("make{UNIT}{}#{parameter}", self.path)
     }
 }
 
@@ -395,11 +334,8 @@ fn collect_parameters(resolver: &mut Resolver, template: &TemplateDecl, name: &s
             );
             continue;
         }
-        let name_span =
-            crate::resolve::token_span(parameter.syntax(), musa_language::SyntaxKind::Identifier).unwrap_or(span);
         parameters.push(Parameter {
             name: parameter_name,
-            name_span,
             span,
             ty,
         });

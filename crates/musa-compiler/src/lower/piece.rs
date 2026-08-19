@@ -245,7 +245,7 @@ impl Lowering<'_> {
                     musa_language::ast::PartItem::Make(site) => self.made(
                         &mut instances,
                         &site,
-                        format!("score/part[{name}]/{index}"),
+                        &format!("score/part[{name}]/{index}"),
                         voice,
                         named_at,
                         held_at,
@@ -495,7 +495,7 @@ impl Lowering<'_> {
         &mut self,
         instances: &mut Instances,
         site: &musa_language::ast::MakeStmt,
-        path: String,
+        path: &str,
         voice: u32,
         name_span: Option<crate::origin::SourceSpan>,
         reading: Reading,

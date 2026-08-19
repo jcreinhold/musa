@@ -1808,6 +1808,10 @@ impl Lowering<'_> {
     /// over them. A timeline that held them as written and left the order to a
     /// later stage would be a timeline nothing downstream could measure — the
     /// same argument [`Lowering::repeat`] makes for unrolling.
+    #[expect(
+        clippy::arithmetic_side_effects,
+        reason = "`Ratio<i64>` addition is exact mathematical arithmetic rather than raw integer ops, the same argument `Lowering::extent` makes above; scoped to this function because it is the only arithmetic on it"
+    )]
     fn mobile(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
         let statement = musa_language::ast::MobileStmt::cast(node.clone())?;
         let span = crate::resolve::trimmed_span(node);
@@ -2992,9 +2996,11 @@ impl Placed {
         let mut count = 1;
         let mut built = track;
         while self.stack.last().is_some_and(|&(top, _)| top == count) {
-            let (_, earlier) = self.stack.pop().unwrap_or_else(|| unreachable!("just looked at it"));
+            let Some((_, earlier)) = self.stack.pop() else {
+                break;
+            };
             built = applied(origin, Raw::hosted(origin, "follow"), [earlier, built]);
-            count *= 2;
+            count = count.saturating_mul(2);
         }
         self.stack.push((count, built));
     }

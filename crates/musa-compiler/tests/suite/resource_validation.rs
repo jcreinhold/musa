@@ -49,7 +49,6 @@
 //! real and uncharged. No governing document fixes 2,048; it is a
 //! `core_budget.rs` constant, and it goes with the mechanism it measured.
 
-
 // A failure is more useful reported with what actually happened than with an
 // assertion message alone.
 #![allow(clippy::panic)]

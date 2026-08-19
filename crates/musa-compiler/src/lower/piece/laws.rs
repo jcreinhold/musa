@@ -96,7 +96,7 @@ fn checked_with(node: &SyntaxNode, libraries: &[Source]) -> (Option<musa_core::T
         crate::template::Templates::collect(&mut resolver, &root).instance(
             &mut resolver,
             &site,
-            "piece".to_owned(),
+            "piece",
             crate::template::Kind::Piece,
             None,
             DOCUMENT,

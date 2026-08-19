@@ -130,6 +130,7 @@ pub(crate) struct ReferenceMark {
 }
 
 /// Write a reference mark. See [`ReferenceMark`] for the shape.
+#[cfg(test)]
 pub(crate) fn reference_mark(mark: &ReferenceMark) -> String {
     let mut words = Words::default();
     words.word("depth");

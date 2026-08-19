@@ -13,37 +13,20 @@
 //! arithmetic lint is allowed at module scope for that reason.
 #![allow(clippy::arithmetic_side_effects)]
 
-use indexmap::IndexMap;
+use indexmap::IndexSet;
 use musa_language::ast::{
     AstNode as _, DynamicRule, FrontMatterRole, KeyStmt, MarkRule, PerformanceDecl, PieceDecl, ProfileDecl,
     SettingStmt, TempoStmt,
 };
 use musa_language::{SyntaxElement, SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
-use slotmap::{SlotMap, new_key_type};
 
 use crate::diagnose::{Code, Diagnostic, nearest};
-use crate::origin::{DeclarationId, ExpansionStep, Interval, SourceSpan};
+use crate::origin::SourceSpan;
 use crate::pitch::{PitchClass, WrittenPitch};
 use crate::profile::{ArticulationRealization, PerformanceProfile, ProfileSet};
 use crate::score::{AnnotationStore, Clef, DynamicMark, EventId, Key, Meter, Mode, NotatedDuration, ScoreSnapshot};
 use crate::time::MusicalDuration;
-
-new_key_type! {
-    /// Transient arena key for the declaration table (roadmap §15.3:
-    /// never serialized as a permanent identity).
-    pub(crate) struct DeclKey;
-}
-
-/// A piece-level declaration discovered during the walk.
-pub(crate) enum DeclInfo {
-    Tempo,
-    Meter,
-    Key,
-    Motif,
-    Part,
-    Voice,
-}
 
 /// What kind of material a name was bound to.
 ///
@@ -330,22 +313,12 @@ impl ReferenceIndex {
     }
 }
 
-/// A collected motif or named bar, ready for expansion.
-pub(crate) struct MotifDef {
-    pub(crate) declaration: DeclarationId,
-    pub(crate) material: Material,
-    /// Where the declaration is written.
-    ///
-    /// Motifs are all declared above the score, so nothing can use one before
-    /// it exists. A bar is declared in the middle of the music, so the same
-    /// guarantee has to be checked: a `use` that starts before this span ends
-    /// is either forward reference or the bar quoting itself, and both are the
-    /// same mistake seen from different sides.
-    pub(crate) span: SourceSpan,
-}
-
 /// A parameter bound at a `use` site.
 #[derive(Clone, Debug)]
+#[expect(
+    dead_code,
+    reason = "evaluating a library's music values is still the check — its errors and its budget are prompt 144's tonal-class verdict — but the bound parameter payloads are the product of that evaluation, and since the cutover nothing reads them back"
+)]
 pub(crate) enum BoundValue {
     Pitch(WrittenPitch),
     Duration(NotatedDuration),
@@ -361,11 +334,9 @@ pub(crate) enum BoundValue {
 /// helpers — a resolution that has to be merged is a resolution that can
 /// disagree with itself.
 pub(crate) struct Resolver {
-    pub(crate) declarations: SlotMap<DeclKey, DeclInfo>,
-    pub(crate) motifs: IndexMap<String, MotifDef>,
+    pub(crate) motifs: IndexSet<String>,
     pub(crate) diagnostics: Vec<Diagnostic>,
     pub(crate) next_event: u64,
-    pub(crate) next_part: u32,
     /// Which construction site the next `quote at …` is
     /// (`docs/rules/language/11-quotation.md` §3).
     ///
@@ -388,19 +359,6 @@ pub(crate) struct Resolver {
     /// against.
     pub(crate) meter: Meter,
     pub(crate) meter_written: bool,
-    /// Where elaboration has reached, in the piece's own time.
-    ///
-    /// Maintained by `elaborate_items`, which is the one place that knows how
-    /// long each item is; everything that needs to know *where* it is —
-    /// a `meter` statement, a bar waiting to be measured — reads it here
-    /// rather than recomputing a sum that has already been computed.
-    pub(crate) cursor: crate::MusicalTime,
-    /// Every mid-piece `meter`, in the order the voices were read.
-    ///
-    /// Collected rather than applied, because the meters have to be sorted
-    /// and folded before any of them can be checked: whether a change lands
-    /// on a barline is a question about the changes before it.
-    pub(crate) meter_changes: Vec<(crate::MusicalTime, Meter, SourceSpan)>,
     /// The parts that declared a meter of their own — polymeter.
     ///
     /// Every check about barlines has to ask *whose* barlines, and the
@@ -412,33 +370,11 @@ pub(crate) struct Resolver {
     /// rule that declares it — kept so the check that a groove has a meter to
     /// swing against can point at the groove rather than at the music.
     pub(crate) groove_rules: Vec<(String, SourceSpan)>,
-    /// Every mid-piece `key`, likewise.
-    ///
-    /// A modulation is a barline event, so it is checked against the
-    /// barlines — which the meters decide — and therefore cannot be checked
-    /// where it is written either.
-    pub(crate) key_changes: Vec<(crate::MusicalTime, Key, SourceSpan)>,
-    /// Claims taken on and not yet proved: every `bar`'s measure claim, and
-    /// every `assert`'s.
-    ///
-    /// A claim is proved against the piece as it turned out, and a bar's is
-    /// checked against the meter in force where it sits — which is not known
-    /// until every voice has been read, since a `meter` in one voice governs
-    /// another's bars. So the proofs wait, and `elaborate_score` discharges
-    /// them all once the barlines are known.
-    pub(crate) obligations: Vec<crate::elaborate::PendingClaim>,
     /// How many decision sites have been seen inside each named place, so the
     /// next one there knows its ordinal.
     pub(crate) sites: std::collections::BTreeMap<crate::ChoicePath, u32>,
     /// Every decision this compile took, in the order the sites were reached.
     pub(crate) decisions: Vec<crate::DecisionRecord>,
-    /// The key the header wrote, on its way into the track.
-    ///
-    /// Staged here rather than on the snapshot because the snapshot's answer
-    /// to "what key is this" is the *projection* of the track, and a field
-    /// that held the header's reading until the projection overwrote it would
-    /// be a second answer with a window in which it was the live one.
-    pub(crate) key: Option<Key>,
     /// Where each voice's kernel track goes on its way to the adapter.
     ///
     /// `None` on every production path — nothing keeps a track after the
@@ -459,25 +395,18 @@ pub(crate) struct Resolver {
 impl Resolver {
     pub(crate) fn new() -> Self {
         Self {
-            declarations: SlotMap::with_key(),
-            motifs: IndexMap::new(),
+            motifs: IndexSet::new(),
             diagnostics: Vec::new(),
             next_event: 0,
-            next_part: 0,
             next_quotation: 0,
             annotations: AnnotationStore::default(),
             meter: Meter::default(),
             meter_written: false,
-            cursor: crate::MusicalTime::ZERO,
-            meter_changes: Vec::new(),
             part_meters: std::collections::BTreeMap::new(),
             groove_rules: Vec::new(),
-            key_changes: Vec::new(),
-            obligations: Vec::new(),
             sites: std::collections::BTreeMap::new(),
             references: ReferenceIndex::new(),
             decisions: Vec::new(),
-            key: None,
             track_sink: None,
             realization: crate::Realization::deterministic(),
         }
@@ -576,10 +505,6 @@ impl Resolver {
         });
     }
 
-    pub(crate) fn declare(&mut self, info: DeclInfo) -> DeclKey {
-        self.declarations.insert(info)
-    }
-
     /// The common shape: a code, the claim, the place, and what is wrong
     /// there. Anything that also wants help, a note, a second place, or a fix
     /// builds the diagnostic and hands it to [`Self::report`].
@@ -628,11 +553,6 @@ pub(crate) fn trimmed_span(node: &SyntaxNode) -> SourceSpan {
         ),
         _ => span_of(node),
     }
-}
-
-/// Declaration ordinal = its slot's position in insertion order.
-pub(crate) fn ordinal(_resolver: &Resolver, key: DeclKey) -> DeclarationId {
-    DeclarationId(u32::try_from(key.0.as_ffi() & 0xffff_ffff).unwrap_or(u32::MAX))
 }
 
 /// Text of the first token of `kind` under `node`.
@@ -695,9 +615,6 @@ pub(crate) fn lower_studio(
 /// is `expand.rs`'s).
 pub(crate) fn lower_header(resolver: &mut Resolver, piece: &PieceDecl, snapshot: &mut ScoreSnapshot) {
     snapshot.set_title(piece.name().unwrap_or_default());
-    if piece.tempo().is_some() {
-        resolver.declare(DeclInfo::Tempo);
-    }
     // A second tempo in the header would leave two answers to "how fast does
     // this piece start" — the one thing a header may not do. The reading
     // itself happens in `elaborate.rs`, where the marking enters the timeline.
@@ -715,19 +632,11 @@ pub(crate) fn lower_header(resolver: &mut Resolver, piece: &PieceDecl, snapshot:
     // meter fact in `crate::lower::piece`, which refuses one it cannot read, and
     // two readings of one line saying so twice is two sentences about one
     // mistake.
-    if let Some(meter) = piece.meter() {
-        resolver.declare(DeclInfo::Meter);
-        if let Some(written) = parse_meter(&meter) {
-            resolver.meter = written;
-            resolver.meter_written = true;
-        }
-    }
-    // Declared and not read at all: nothing outside the timeline asks what key a
-    // piece opens in, and what does ask reads it off the occurrence the header
-    // states — including `key k;` in a template's piece, whose value the
-    // instance supplies and which no spelling here could parse.
-    if piece.key().is_some() {
-        resolver.declare(DeclInfo::Key);
+    if let Some(meter) = piece.meter()
+        && let Some(written) = parse_meter(&meter)
+    {
+        resolver.meter = written;
+        resolver.meter_written = true;
     }
     lower_front_matter(resolver, piece, snapshot);
     if let Some(performance) = piece.performance() {
@@ -796,17 +705,11 @@ pub(crate) fn register_motifs(
         {
             resolver.references.declare(NameKind::Motif, &name, name_span);
         }
-        let key = resolver.declare(DeclInfo::Motif);
-        let definition = MotifDef {
-            declaration: ordinal(resolver, key),
-            material: Material::Motif,
-            span,
-        };
         snapshot.push_motif(crate::score::MotifDeclaration {
             name: name.clone(),
             span,
         });
-        resolver.motifs.insert(name, definition);
+        resolver.motifs.insert(name);
     }
 }
 
@@ -833,17 +736,11 @@ pub(crate) fn register_fragments(
         {
             resolver.references.declare(NameKind::Fragment, &name, name_span);
         }
-        let key = resolver.declare(DeclInfo::Motif);
-        let definition = MotifDef {
-            declaration: ordinal(resolver, key),
-            material: Material::Fragment,
-            span,
-        };
         snapshot.push_motif(crate::score::MotifDeclaration {
             name: name.clone(),
             span,
         });
-        resolver.motifs.insert(name, definition);
+        resolver.motifs.insert(name);
     }
 }
 
@@ -869,17 +766,11 @@ pub(crate) fn register_bars(
         if let Some(name_span) = token_span(bar.syntax(), SyntaxKind::Identifier) {
             resolver.references.declare(NameKind::Bar, &name, name_span);
         }
-        let key = resolver.declare(DeclInfo::Motif);
-        let definition = MotifDef {
-            declaration: ordinal(resolver, key),
-            material: Material::Bar,
-            span,
-        };
         snapshot.push_motif(crate::score::MotifDeclaration {
             name: name.clone(),
             span,
         });
-        resolver.motifs.insert(name, definition);
+        resolver.motifs.insert(name);
     }
 }
 
@@ -910,7 +801,7 @@ fn refuses_to_shadow(
     span: SourceSpan,
     from: Option<&str>,
 ) -> bool {
-    if !resolver.motifs.contains_key(name) {
+    if !resolver.motifs.contains(name) {
         return false;
     }
     let first = snapshot

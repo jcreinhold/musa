@@ -437,6 +437,7 @@ pub(crate) enum Claim {
 
 impl Claim {
     /// The claim as the author wrote it, for a report that quotes it back.
+    #[cfg(test)]
     pub(crate) fn describe(&self) -> String {
         match self {
             Self::FillsMeter => "fills_meter()".to_owned(),
@@ -447,10 +448,6 @@ impl Claim {
             Self::Follows(rule) => format!("follows({rule})"),
         }
     }
-
-    /// How the claim reads back: the name with its arguments, spelled the way
-    /// a composer would write them.
-    ///
 
     /// Build the claim `name` names from its evaluated arguments.
     ///

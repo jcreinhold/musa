@@ -379,7 +379,7 @@ fn crossing(expected: &musa_core::Term, found: &musa_core::Term) -> Option<&'sta
         (Some("EventTrack"), Some("Voicing")) => {
             "a voicing is pitches with no duration: `sound_for(chosen, held)` sounds it"
         }
-        (Some("EventTrack"), Some("Pitch")) | (Some("EventTrack"), Some("PitchClass")) => {
+        (Some("EventTrack"), Some("Pitch" | "PitchClass")) => {
             "a pitch is not music until it lasts: write the duration, as in `c4/4`"
         }
         (Some("Pitch"), Some("Degree")) => {

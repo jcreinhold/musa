@@ -239,6 +239,10 @@ fn argument(raw: &Raw, n: usize) -> &Raw {
 }
 
 /// How many times `name` heads an application anywhere in `raw`.
+#[expect(
+    clippy::arithmetic_side_effects,
+    reason = "the sum of two match counts over one printed term is bounded by the term's own size; the alternative spelling, checked arithmetic on a law's counter, would claim a failure mode the law does not have"
+)]
 fn counted(raw: &Raw, name: &str) -> usize {
     // Either namespace: the law is about how many times the reading wrote the
     // name, not about which of `Var` and `Hosted` it wrote it in.
