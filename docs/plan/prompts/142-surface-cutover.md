@@ -674,7 +674,13 @@ its change is argued in `elaboration-expected-changes.json`.
 class*: every test whose only failure is `reduction steps at 200001 of 200000` out of the staff adapter's expansion —
 today `staff_expansion_laws`'s expansion regions, `every_example_elaborates`' staff-page case, and
 `the_staff_page_example_compiles_and_renders`. It closes at prompt 145, which lands next and whose Check runs the same
-two `nextest` lines with this class green. The *tonal class*: the same failure mode out of `diatonic-sequences` and
+two `nextest` lines with this class green.
+
+    *Repaired during implementation.* The class has one downstream member the failure-mode sentence does not name:
+    `musa::cli`'s `wav_export_is_deterministic_for_all_examples`, an ignored test that iterates every example and fails
+    at `staff-page.musa` with "cannot export: the piece has never compiled successfully" — the staff class seen one
+    stage later, at the export boundary rather than at the budget. Its only failure is the staff adapter's; it goes
+    green with the rest of the class at 145. The *tonal class*: the same failure mode out of `diatonic-sequences` and
 `rule-of-the-octave`, ordinary `std::tonal` evaluation with no adapter involved. It closes at prompt 144, which measures
 it and sets the cost table. This prompt's closing commit lists every red test in both classes by name; anything red
 outside them means the prompt is not done.
