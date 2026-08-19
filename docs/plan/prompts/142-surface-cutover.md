@@ -325,6 +325,14 @@ rules never authorized.
     `List`. Generalizing acceptance under a type constructor is subtyping by another name, which §1 forbids; moving the
     category choice to the hole binding, where the literal index makes it sayable, is the reading the spec's sentence
     already had.
+    One more sentence of 11-quotation went stale the same way, and this prompt conforms the candidate rather than the
+    code: §2's "a quote is a checking form" guarded against a *search* — trying each category until one parses — that
+    141ga's registry makes impossible, since `instantiate_quote` is fixed at `⟨expr⟩` and a token-tree position is
+    reached by forgetting, not by building there. §2 and §7's table now say so (an inferring position infers
+    `Syntax<Expr>`; the certificate, not an annotation, is what can fail), and
+    `quotation_laws::a_quote_in_an_inferring_position_names_the_annotation` is migrated to pin the new truth. The
+    certificate's reporting — a stuck instantiation is currently an expansion refusal, not the parser's words — is
+    147's obligation already, named in §8's matrix.
 
   - **`assert` comes after the anonymous product, not before it.** Its arguments are values the readback has to evaluate
     and hand `crate::assert::Claim::build` in its own six shapes, and one of those six is `within_ranges`'s

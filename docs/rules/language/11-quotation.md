@@ -76,7 +76,10 @@ makes and the implementation is believed to keep.
 quote at p { body }        p : NodePath        body : Musa surface syntax
 ```
 
-The quote elaborates to a `Syntax<c>` construction, where `c` is the category the expected type demands.
+The quote elaborates to a `Syntax<c>` construction, where `c` is the category the expected type demands — and the demand
+is always `Expr`, because construction is fixed at `⟨expr⟩` and a `⟨token-tree⟩` position receives the value by §1's
+forgetting rule. What a quote builds is therefore never in doubt; what can fail is that the built tree is no expression,
+which the certificate below checks.
 
 **The body is read by the real parser.** Not a template dialect, not a string, not a token-stream approximation. A
 quotation that does not share the parser is a second grammar to keep in step with the first, and it is the "sublanguage
@@ -84,9 +87,13 @@ by subtraction" root `AGENTS.md` forbids — every convenience the dialect lacke
 instead of once by the compiler. The concrete consequence is that a quote's body is formatted, highlighted, and
 diagnosed by the same machinery as the file around it.
 
-**A quote is a checking form.** `let e: Syntax<Expr> = quote at p { Note($x) };` works; `quote at p { … }` in an
-inferring position is refused, naming the annotation to write. Trying each category until one parses is search, and it
-would make an ambiguous body's meaning depend on the order the elaborator tried.
+**A quote builds at `⟨expr⟩`, and the certificate is checked rather than believed.** Trying each category until one
+parses would be search, and it would make an ambiguous body's meaning depend on the order the elaborator tried — so the
+category is not tried at all: `instantiate_quote` answers `Syntax ⟨expr⟩` for every quote, and before it answers, the
+built tree must parse as an expression or the rule does not reduce. `let e = quote at p { Note($x) };` therefore infers
+`Syntax<Expr>`; the annotation `let e: Syntax<TokenTree> = …` is the same value carried by §1's rule, not a second way
+to build. This is the checking-form discipline this section stated before the registry fixed the category: its reason
+was that two categories tempted a search, and fixing one by construction is that reason discharged.
 
 **Splicing.**
 
@@ -304,8 +311,8 @@ two things have a similar shape. There is no third quotation form, and adding on
 
 | Failure | The diagnostic names |
 | --- | --- |
-| quote in an inferring position | *quote needs an expected category*, with the annotation as the fix |
-| body does not parse at the demanded category | the parse failure, at the position inside the quote, in the ordinary parser's words |
+| body that is not surface grammar | the parse failure, at the position inside the quote, in the ordinary parser's words |
+| spliced tree that is no longer an expression | the instantiate certificate, refusing the expansion — the reporting of it is 147's (§8) |
 | `$x` at a position of a different category | both categories, the splice, and the position |
 | `$..xs` where a sequence is not grammatical | the position, and that it admits one node |
 | two `$..xs` in one sequence pattern | both, and that a split point would be a guess |
