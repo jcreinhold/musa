@@ -191,7 +191,12 @@ today is a cost-table version bump and a bad one. So:
 2. **Then take the depth out of the spine**, so that the room needed stops being a function of how long a voice is.
    Either the fold builds a shape whose elaboration is not `N` deep, or the elaborator walks an application spine
    iteratively with an explicit work stack. Both are behaviour-preserving; measure both against P1/P2 before choosing,
-   and record the number for the one not chosen.
+   and record the number for the one not chosen. The traversal has the same defect one level up, measured at 142's
+   close: `registry/traversal.rs`'s `rewrite_fold` hands the group branch its children as one right-nested `List.Cons`
+   chain, so a *flat* region of `N` siblings evaluates `N` levels deep and the first refusal over a 256 limit is a
+   region of 123–124 plain tokens — "nested" by nobody. The quote-accounting law
+   (`quotation_laws::what_a_quote_builds_is_charged`) is migrated to size its regions around that wall rather than
+   pretend the wall is about what a quote builds.
 3. **Then charge the elaborator's own recursion**, which is what makes §4.1's sentence true rather than aspirational. Do
    it last, because only after (2) is a limit of 256 a limit on nesting an author wrote rather than on the length of a
    phrase. If the charge still refuses a program that compiles today, that is a cost-table version bump with a stated
