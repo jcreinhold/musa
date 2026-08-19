@@ -72,6 +72,11 @@ says what the implementation owes instead. This prompt discharges it.
   [`crates/musa-core/src/case.rs`](../../../crates/musa-core/src/case.rs) and the law
   `a_pattern_binder_is_a_definition_at_every_leaf_it_reaches` in `coverage_laws.rs`, which is the program that falsified
   the hoisting condition 136b was going to ship.
+- Peyton Jones ch. 12 §12.4 — the update of a shared redex's root with its result is what makes shared work happen once,
+  and a pure evaluator is the one that does not get it for free — and `~/Code/Idris2/src/Core/Normalise/Eval.idr`'s
+  `Glued`, whose normal-form side is a suspended *host* computation: Idris2's laziness performs the update musa's strict
+  evaluator must build or decline. These are the two texts the unfold-memo verdict in **Design** is derived from, cited
+  so the verdict can be re-derived rather than trusted.
 
 ## Design
 
@@ -210,6 +215,32 @@ Peyton Jones and found seven divergences. 136b removed the ad hoc ones; these ar
 is the same for all four: none of them can be _priced_ until prompt 142 points the standard library at this checker, and
 each of them waits on a top-level definition scope held folded.
 
+*Repaired before the prompt opens: two obligations it already owned were named nowhere in it.* The first is the decision
+141u's measurement left standing. Note 44 §6's closing records the mechanism — glued evaluation without graph update is
+laziness without memoization; a folded application in a lazy position is re-unfolded by every consumer, because a pure
+`Arc`-shared value has no thunk to overwrite — and assigns the verdict here: whether an unfold memo is worth its
+complexity. The reference point is Peyton Jones ch. 12 §12.4: a shared redex is *physically overwritten* with its
+result, and that update, not the laziness, is what makes shared work happen once. Every NbE this core was audited
+against gets the update from its host — smalltt from GHC's thunks, Idris2's `Glued` (`src/Core/Normalise/Eval.idr:19`)
+from a suspended host computation the runtime runs at most once — and musa's strict pure evaluator is the one that has
+to build it or decline it. Two questions decide it, and they are why the verdict is a measurement rather than a
+paragraph. The *charge*: a memoized unfold is charged once where today every consumer pays, which changes what the meter
+records for the same program, and a program that crosses 200,000 because of it is §4's version-bump sentence — so the
+options are the honest one (first consumer pays; the bump is argued in `02-core-calculus.md` §4 if any accepted program
+flips) and the dishonest-looking one that is actually sound (every consumer charged the recorded spend, the machine work
+done once — the meter prices the language's computation, not the host's, and §4's "a value is charged once, where it is
+constructed" is the sentence both readings are checked against). The *safety*: an unfold whose spine or result mentions
+an unsolved metavariable must never be cached, because the solution arrives later and changes the answer; the expansion
+run the memo exists for is post-elaboration and meta-free, so a conservative meta-freedom test is sound, and its own
+cost is part of the measurement. Declining the memo with the number attached is an outcome; so is building it. The
+second obligation is the tonal class: 142's Check assigns `diatonic-sequences` and `rule-of-the-octave` — ordinary
+`std::tonal` evaluation exhausting 200,000 steps with no adapter involved — to this prompt, which measures them and sets
+the cost table, and this prompt's own **Stop** says "same programs accepted, same programs rejected". The reconciliation
+is the one §4 already provides: either the measurement shows the spend is a library defect and the fix is in
+`std::tonal`'s algorithm (library code, no adapter, so not **Stop**'s 145/146 reservation), or the workload is
+legitimate and the cost table moves by the argued version bump this Design already contemplates for the nesting limit.
+What neither may do is stay unnamed.
+
 > **Finding C landed early, out of stack order.** The audit's first two items — glued evaluation and its representation,
 > `Head::Def` with both forms — were this prompt's until the migration measured them. Elaborating
 > [`examples/staff-page.musa`](../../../examples/staff-page.musa), 77 lines, spent **1,605,182,361** reduction steps
@@ -257,6 +288,14 @@ and never a quietly raised threshold.
   Glued evaluation and `Head::Def` are [141u](141u-glued-evaluation.md)'s and arrive already built; this prompt measures
   what they left rather than deciding them. Building one is an outcome; declining one with a number attached is equally
   an outcome, and leaving one unmeasured is not.
+- A fifth verdict, on what glued evaluation left: the unfold memo, taken the way note 44 §6's closing assigns it —
+  meta-safety condition stated, charge model chosen against §4's sentences and named, both readings' numbers recorded,
+  and any acceptance flip landed as an argued cost-table version bump in `02-core-calculus.md` §4 rather than a quiet
+  one. `cargo nextest run --workspace` with the staff class still red is the measurement that says "declined"; the class
+  is 145's either way, and the memo's job is the wall clock and the step count, not the rewrite.
+- The tonal class closed: `diatonic-sequences` and `rule-of-the-octave` elaborating at the language budget, by a
+  measured `std::tonal` fix or an argued cost-table version bump, with the measurement recorded in
+  `docs/rules/language/06-performance.md` either way.
 - A closing line in note 44 for each item this prompt settles, so the audit ends rather than being inherited again.
 - The room obligation discharged at the `musa-core` seam, with a `FRAME_CEILING` constant in `musa-core` carrying the
   measurement that justifies it — of the `infer → check → eval` chain, in a debug build, with the command that produced
