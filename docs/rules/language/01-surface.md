@@ -136,10 +136,10 @@ value; `_` discards it. Prompt 96 defines exhaustiveness and rejects duplicate o
 constructor meaning of `[head, ..tail]`; `..` is two adjacent `.` tokens, not a new general range operator.
 
 **Patterns nest.** A sub-position holds another pattern rather than only a binder, and `02-core-calculus.md` §6.2 is
-where that is decided: a `match` compiles through a case tree to the generated eliminators, and coverage is
-decided there. This replaces the earlier depth-one rule, whose whole argument was that the case-tree compiler had not
-earned its place; §6.2 states what changed and why. There are still no guards, no conditional equations, and no pattern
-on the left of a definition.
+where that is decided: a `match` compiles through a case tree to the generated eliminators, and coverage is decided
+there. This replaces the earlier depth-one rule, whose whole argument was that the case-tree compiler had not earned its
+place; §6.2 states what changed and why. There are still no guards, no conditional equations, and no pattern on the left
+of a definition.
 
 `if condition { consequent } else { alternative }` is one expression and not a statement. The condition has type `Bool`,
 the two branches have one type between them, and that type is the conditional's. The `else` is mandatory: a one-armed
@@ -366,11 +366,11 @@ Five rules fix it.
   quantities kept apart declares them as one-case enums (§1.3), which are nominal because each declaration generates its
   own family. The declared name is still what diagnostics say, so an error about `Pending` names `Pending`.
 - **Parameters are allowed and are ordinary**: `record Cell<A> { at: Nat; value: A; }`. A record that must carry a
-  dictionary carries it as a field — a `where` on a record would be a constraint discharged at every construction,
-  and `10-traits.md` §4's one-step lookup exists precisely so that there is nothing to discharge.
-- **It adds no term to the calculus.** A `record` declaration elaborates to a core record type, a literal to
-  core record introduction, a projection to core projection, a pattern to the case tree of `02-core-calculus.md` §6.2,
-  and `with` to the `let`-and-literal rule of §1.
+  dictionary carries it as a field — a `where` on a record would be a constraint discharged at every construction, and
+  `10-traits.md` §4's one-step lookup exists precisely so that there is nothing to discharge.
+- **It adds no term to the calculus.** A `record` declaration elaborates to a core record type, a literal to core record
+  introduction, a projection to core projection, a pattern to the case tree of `02-core-calculus.md` §6.2, and `with` to
+  the `let`-and-literal rule of §1.
 
 The measurement this is answering is in the file above. `stdlib/src/adapters/staff.musa` declares `Pending` as an
 eight-field product with the only spelling the language had — a single-constructor `data` — and then destructures all
@@ -423,11 +423,11 @@ therefore a real choice and the document says which is which.
 `02-core-calculus.md` §5's consistency obligation is about and the one `P -> Empty` uses to say *not P*. A `match` on a
 value of it has no arms, and every arm it does not have is covered.
 
-`enum` declares parameters and no indices, and that is final rather than deferred: no committed program narrows a
-type by matching, and the one indexed-looking type in the tooling, `Syntax<Cat>`, is a compiler-owned base type with
-the category a closed literal (`02-core-calculus.md` §1.1, `11-quotation.md` §1). `Option<A>` and `Result<A, E>`
-become ordinary enums declared in `std` rather than grammar; `Some`, `None`, `Ok`, and `Err` read exactly as before under the bare-constructor rule, and
-`option_fold` is replaced by the `match` that was always underneath it.
+`enum` declares parameters and no indices, and that is final rather than deferred: no committed program narrows a type
+by matching, and the one indexed-looking type in the tooling, `Syntax<Cat>`, is a compiler-owned base type with the
+category a closed literal (`02-core-calculus.md` §1.1, `11-quotation.md` §1). `Option<A>` and `Result<A, E>` become
+ordinary enums declared in `std` rather than grammar; `Some`, `None`, `Ok`, and `Err` read exactly as before under the
+bare-constructor rule, and `option_fold` is replaced by the `match` that was always underneath it.
 
 The dispatch table is the other measurement. `text_equal(kind, "PitchLiteral")` appears in the staff adapter at
 twenty-one sites over thirteen distinct string literals, and a misspelling in any of them is a comparison that is
@@ -449,11 +449,11 @@ fn build(symbol: ChordSymbol) -> Chord { Chord::NamedChord(symbol, tones_of(symb
 Inside `Chord`'s own module the constructor is an ordinary name with no ceremony, which is what makes `build` writable.
 Outside it, three things are refused and each names the module rather than falling through to "no such name": the
 constructor (`private-name`), the generated eliminator, and a `match` that takes the value apart (`abstract-match`). The
-eliminator goes with the cases because eliminating an enumeration *is* the case analysis the marker exists to prevent, and the
-`match` is refused where it is written rather than silently becoming inexhaustive — a client eliminates through whatever
-the package exports. What stays reachable is the type itself: a client writes `Chord` in a signature and receives one
-from `build`. The bare-constructor rule above is unaffected inside the module and refuses outside it for the same reason
-and with the same diagnostic.
+eliminator goes with the cases because eliminating an enumeration *is* the case analysis the marker exists to prevent,
+and the `match` is refused where it is written rather than silently becoming inexhaustive — a client eliminates through
+whatever the package exports. What stays reachable is the type itself: a client writes `Chord` in a signature and
+receives one from `build`. The bare-constructor rule above is unaffected inside the module and refuses outside it for
+the same reason and with the same diagnostic.
 
 **All the cases or none of them.** One private case beside a public one is refused (`mixed-visibility`), naming both.
 The reason is coverage: outside the module a `match` on such a type could still be written, and the arms it is allowed
@@ -602,9 +602,9 @@ works because `D` is fixed by *checking* against the annotation, and a type argu
 is the other one: choosing which instance to use *because* of a return type nobody has written down yet, which makes
 elaboration depend on the order constraints are reached.
 
-This is the grammar and not the library. The library owns `List`, its instances, and the builders; nothing here promises what those
-look like. There is no comprehension in v1: a comprehension is sugar over `map`
-and `filter` (Peyton Jones 1987 ch. 7), and adding the sugar before the thing it sugars has a user is the wrong order.
+This is the grammar and not the library. The library owns `List`, its instances, and the builders; nothing here promises
+what those look like. There is no comprehension in v1: a comprehension is sugar over `map` and `filter` (Peyton Jones
+1987 ch. 7), and adding the sugar before the thing it sugars has a user is the wrong order.
 
 ## 2. Functions and music
 

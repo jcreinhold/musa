@@ -7,9 +7,9 @@ any mechanism because every mechanism answers to it:
 > **Resolution is a lookup, not a search.** The complete algorithm is §4's three steps, and they fit in a paragraph
 > because the corpus asked for exactly that much: one user trait with two concrete instances, four compiler-owned
 > traits, and no instance anywhere that carries a constraint of its own. The previous calculus implemented recursive
-> constraint discharge, postponement on unknown heads, and a termination measure for the recursion — a typeclass
-> solver, in everything but name, with no committed program behind a single one of its features. The course correction
-> ([`../notes/research/language-design-closure/50-the-course-correction-audit.md`](../notes/research/language-design-closure/50-the-course-correction-audit.md))
+> constraint discharge, postponement on unknown heads, and a termination measure for the recursion — a typeclass solver,
+> in everything but name, with no committed program behind a single one of its features. The course correction
+> ([`../../notes/research/language-design-closure/50-the-course-correction-audit.md`](../../notes/research/language-design-closure/50-the-course-correction-audit.md))
 > deletes it and fixes this document as the flat replacement.
 
 ## 1. A trait is a record of methods

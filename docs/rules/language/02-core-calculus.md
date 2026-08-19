@@ -1,7 +1,7 @@
 # The one total source language
 
-The source language is a pure, strict, **total** calculus with lightweight dependency: two universes, one function
-type whose result may mention its argument, records with named fields, parameterized enumerations, pattern matching,
+The source language is a pure, strict, **total** calculus with lightweight dependency: two universes, one function type
+whose result may mention its argument, records with named fields, parameterized enumerations, pattern matching,
 structural recursion, definitional equality decided by normalization by evaluation, and exact resource checking. Its
 metaprogramming — hygienic quotation, splicing, provenance, and syntax traversal — is the primary extension mechanism
 and is specified in `11-quotation.md`. Surface conveniences elaborate into the calculus before evaluation. It is
@@ -19,10 +19,10 @@ postponement, a well-founded termination rule, and a trait engine with recursive
 every committed `.musa` program —
 [`../../notes/research/language-design-closure/50-the-course-correction-audit.md`](../../notes/research/language-design-closure/50-the-course-correction-audit.md)
 — found that none of that machinery has a user: no program declares an indexed family, writes an identity proof,
-ascribes a universe level, states an instance constraint, or presents a non-structural measure. This document
-therefore describes the surviving design: the same totality, the same exactness, the same macros, and the dependency
-real programs use, with everything else deleted rather than wrapped. Where a section below refuses a feature the
-checklist would have included, the refusal is priced here and is re-opened only by a committed program that needs it.
+ascribes a universe level, states an instance constraint, or presents a non-structural measure. This document therefore
+describes the surviving design: the same totality, the same exactness, the same macros, and the dependency real programs
+use, with everything else deleted rather than wrapped. Where a section below refuses a feature the checklist would have
+included, the refusal is priced here and is re-opened only by a committed program that needs it.
 
 ## 1. Syntax
 
@@ -51,8 +51,8 @@ stated in §1.4 and §2.1.
 
 **Two universes, fixed.** `Type 0 : Type 1`, and there is no `Type : Type`, no `Type 2`, and no level a program can
 write or a checker can solve. Ordinary types and type constructors live at `Type 0`; `Type 1` exists so that a type of
-types — a trait's dictionary type, an enumeration's parameters — has somewhere to stand. A declaration that would need
-a third level is refused. The hierarchy exists to keep the checker from proving everything: a total language whose type
+types — a trait's dictionary type, an enumeration's parameters — has somewhere to stand. A declaration that would need a
+third level is refused. The hierarchy exists to keep the checker from proving everything: a total language whose type
 theory is inconsistent is not total in any useful sense.
 
 **One function type, and every binder is explicit.** There is no implicit-binder form and no plicity annotation for a
@@ -60,13 +60,13 @@ rule to ignore. A generic function's type parameters are ordinary leading parame
 *omitted*, which is an elaboration rule of §2.1 and not a binder property. Nothing downstream — traits, `Syntax<Cat>`,
 `Duration C` — needs a second binder form, and now nothing anywhere has one.
 
-**Dependency where programs use it.** A result type may mention an earlier explicit parameter — `fn f(n: Nat) ->
-Vec<n>` in schema — and a type constructor may be indexed by a value where a domain needs one: `Duration C`,
-`Position C`, and `Syntax C` are the committed cases, all compiler-owned base types with the index a closed literal of
-an ordinary enumeration. Records are named products: a field's type may mention the type parameters in scope at the
-declaration, and no field's type mentions a sibling field's *value*, because no committed program has one that does.
-That last restriction is the difference between records and a telescope, and it is what keeps projection a lookup
-rather than an instantiation.
+**Dependency where programs use it.** A result type may mention an earlier explicit parameter — `fn f(n: Nat) -> Vec<n>`
+in schema — and a type constructor may be indexed by a value where a domain needs one: `Duration C`, `Position C`, and
+`Syntax C` are the committed cases, all compiler-owned base types with the index a closed literal of an ordinary
+enumeration. Records are named products: a field's type may mention the type parameters in scope at the declaration, and
+no field's type mentions a sibling field's *value*, because no committed program has one that does. That last
+restriction is the difference between records and a telescope, and it is what keeps projection a lookup rather than an
+instantiation.
 
 ### 1.1 Enumerations
 
@@ -82,16 +82,15 @@ data Tree<A> {
 There are no per-constructor indices. A constructor's fields are ordinary types written under the parameters, and a
 constructor at known parameters checks or infers like any function value. The index was the previous calculus's one
 machine for making a `match` narrow a *type*; no committed program narrows a type by matching, and the one
-indexed-looking type the tooling needs, `Syntax<Cat>`, is a parameterized base type with the category a closed literal
-— `11-quotation.md` §1 states why that is the whole of what quotation asks of the type system.
+indexed-looking type the tooling needs, `Syntax<Cat>`, is a parameterized base type with the category a closed literal —
+`11-quotation.md` §1 states why that is the whole of what quotation asks of the type system.
 
 **Strict positivity is checked on the declaration group**, so mutually recursive enumerations are checked together. A
 recursive occurrence may not appear to the left of an arrow at any depth: a negative occurrence admits a fixed point,
 and a fixed point admits divergence. An occurrence **nested** inside another enumeration's parameter —
-`Body(items: List<StaffRead>)` — is admitted and carries **no induction hypothesis**: the eliminator's method takes
-such a field and nothing more, because a hypothesis for it would be a synthesized functorial map rather than an
-application. A fold *through* a container is written with the container's own fold, which is what the corpus already
-does.
+`Body(items: List<StaffRead>)` — is admitted and carries **no induction hypothesis**: the eliminator's method takes such
+a field and nothing more, because a hypothesis for it would be a synthesized functorial map rather than an application.
+A fold *through* a container is written with the container's own fold, which is what the corpus already does.
 
 **The core's elimination form is the generated eliminator `elim_N`**, non-dependent: its motive is a constant function
 of the scrutinee. Surface `match` compiles through a case tree to nested eliminator applications, which is where
@@ -304,9 +303,9 @@ tree is where each hypothesis is bound, and a recursive call that reaches for so
 naming the call.
 
 That is the whole rule. There is no measure language, no well-founded-order argument, and no decreasingness proof to
-write, because the thirteen recursive definitions in the corpus all descend structurally and the audit found no fourteenth
-kind. A definition whose recursion does not fit the rule is rewritten over a fold — which is what the corpus already
-does for everything but the thirteen — or the language is amended for it, with the program as evidence.
+write, because the thirteen recursive definitions in the corpus all descend structurally and the audit found no
+fourteenth kind. A definition whose recursion does not fit the rule is rewritten over a fold — which is what the corpus
+already does for everything but the thirteen — or the language is amended for it, with the program as evidence.
 
 Nothing is opaque to the checker. There is no `partial`, no `fix`, no assumed-terminating annotation, and no way to ask
 the checker to take a definition on trust. A definition whose termination the checker cannot see is **rejected**, and
@@ -527,9 +526,9 @@ rules out.
 
 ### 5.9 The expansion phase
 
-A syntax adapter runs before name resolution and checking: it is handed the region a composer wrote and answers with
-the syntax that stands there instead. The adapter module is written in this same calculus and checked by this same
-checker, under a **phase environment** that adds three things and takes nothing away — the phase-local types (`Syntax`,
+A syntax adapter runs before name resolution and checking: it is handed the region a composer wrote and answers with the
+syntax that stands there instead. The adapter module is written in this same calculus and checked by this same checker,
+under a **phase environment** that adds three things and takes nothing away — the phase-local types (`Syntax`,
 `NodePath`, and `Syntax<Cat>` the parameterized base type); a separate registry of compiler-owned phase operations; and
 the `Reading::Expansion` scope in which those names mean anything at all.
 
@@ -552,8 +551,8 @@ provenance remains derived rather than written.
 
 ### 5.10 Numerals as a conservative extension
 
-A **counting enumeration** is a declared enumeration with no parameters and exactly two constructors: one with no
-fields — its *floor* — and one whose single field is a recursive occurrence of the enumeration itself — its *step*. That
+A **counting enumeration** is a declared enumeration with no parameters and exactly two constructors: one with no fields
+— its *floor* — and one whose single field is a recursive occurrence of the enumeration itself — its *step*. That
 sentence is both the recognition rule and the reason the extension is sound, which is why it is one sentence and not
 two. The property is derived from the declaration's own shape rather than nominated by the host, so `Nat` is not
 privileged: any enumeration of that shape gets what follows, and one that loses the shape loses it.
@@ -609,8 +608,8 @@ The classical arrangement for a functional compiler is surface → *enriched* ca
 enriched layer is the ordinary one plus constructs whose semantics *is* their transformation away (Peyton Jones 1987,
 §3.1). Musa is deliberately not that arrangement:
 
-- This language has functions, records, enumerations, and eliminators. `../kernel/10-term-calculus.md` has none of
-  them — six forms, a reference, and no abstraction at all.
+- This language has functions, records, enumerations, and eliminators. `../kernel/10-term-calculus.md` has none of them
+  — six forms, a reference, and no abstraction at all.
 - So the term calculus is not this language with the sugar removed. There is no simplifying transformation between them.
 
 What connects them is **evaluation, applied twice**:
@@ -637,8 +636,8 @@ Three consequences:
 Patterns nest. A pattern position may hold another pattern, and a `match` may scrutinize several subjects. Surface
 `match` is compiled to a **case tree** and then to nested applications of the generated eliminators, which is where
 coverage is decided: an accepted `match` covers every constructor, and an arm no constructor can reach is rejected as
-unreachable rather than silently kept. Coverage is constructor coverage — with no indices there is no index
-unification, and a reachable arm is one whose pattern some value of the scrutinee's type matches.
+unreachable rather than silently kept. Coverage is constructor coverage — with no indices there is no index unification,
+and a reachable arm is one whose pattern some value of the scrutinee's type matches.
 
 There are still no guards, no conditional equations, and no pattern on the left of a definition. A guard reintroduces
 the fall-through between equations that a case tree exists to eliminate, and coverage in the presence of guards is

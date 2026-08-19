@@ -21,13 +21,13 @@ This candidate therefore specifies one language that builds both core values, an
 add a seventh track operation and does not make sound a track concern. The source remains canonical; every UI edits or
 projects source rather than owning another mutable score, instrument, or mix model.
 
-Third, the constitution's amendment at prompt 128 replaced the *type discipline* this candidate was written
-against, and the course correction then replaced the replacement. Prompt 128's evidence — the staff adapter — stood;
-what prompts 129–142 built around it was the standard proof-assistant checklist, and the audit of every committed
-program found none of that machinery in use. The governing design is now the surviving one: bidirectional checking,
-lightweight dependency where programs use it, flat trait lookup, structural recursion, and typed quotation as the one
-admitted form of metaprogramming. `02-core-calculus.md`, `10-traits.md`, and `11-quotation.md` describe only what
-survived. Both records stand:
+Third, the constitution's amendment at prompt 128 replaced the *type discipline* this candidate was written against, and
+the course correction then replaced the replacement. Prompt 128's evidence — the staff adapter — stood; what prompts
+129–142 built around it was the standard proof-assistant checklist, and the audit of every committed program found none
+of that machinery in use. The governing design is now the surviving one: bidirectional checking, lightweight dependency
+where programs use it, flat trait lookup, structural recursion, and typed quotation as the one admitted form of
+metaprogramming. `02-core-calculus.md`, `10-traits.md`, and `11-quotation.md` describe only what survived. Both records
+stand:
 [`../../notes/research/language-design-closure/42-dependent-core-decision.md`](../../notes/research/language-design-closure/42-dependent-core-decision.md)
 and the correction's
 [`../../notes/research/language-design-closure/50-the-course-correction-audit.md`](../../notes/research/language-design-closure/50-the-course-correction-audit.md).

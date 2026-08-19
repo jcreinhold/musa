@@ -73,9 +73,9 @@ line instead of on the region after a malformed tree has reached `checked_expres
 composer's node is *preferable* to rebuilding one from its text: the spliced node keeps its `Original` source
 information (§3), so Origin, `edit`, and `print` all point back at what was written.
 
-**The obligation the parameter creates**, owed by the course correction's final phases: every value of
-`Syntax<Expr>` prints as source that the parser reads back as an expression, and `as_expression` answers `Some` exactly
-when it does. The parameter is a certificate, and a certificate nobody checks is a comment.
+**The obligation the parameter creates**, owed by the course correction's final phases: every value of `Syntax<Expr>`
+prints as source that the parser reads back as an expression, and `as_expression` answers `Some` exactly when it does.
+The parameter is a certificate, and a certificate nobody checks is a comment.
 
 ## 2. `quote at here { … }`
 
