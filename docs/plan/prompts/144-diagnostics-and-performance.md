@@ -196,7 +196,14 @@ today is a cost-table version bump and a bad one. So:
    chain, so a *flat* region of `N` siblings evaluates `N` levels deep and the first refusal over a 256 limit is a
    region of 123–124 plain tokens — "nested" by nobody. The quote-accounting law
    (`quotation_laws::what_a_quote_builds_is_charged`) is migrated to size its regions around that wall rather than
-   pretend the wall is about what a quote builds.
+   pretend the wall is about what a quote builds. The stdlib's own recursion is the third instance, measured at the same
+   close: `naturals(512)` is `counting_from`, one recursive call per element, and each call costs two nesting levels
+   (the unfold and the match), so `range(128)` alone crosses the 256 wall — user recursion deeper than ~120 is refused
+   no matter how total the termination checker proved it. The fixture that carries this is `core-pressure`, and
+   `benches/pipeline.rs` reads it: the wall makes a benchmark workload unrunnable, which is
+   `elaboration_fixture_generators.rs`'s own warning — a benchmark nobody can run is a gate nobody is holding — true of
+   the suite's own bench. The workload's size is therefore part of this prompt's verdict, not a constant to edit around
+   it.
 3. **Then charge the elaborator's own recursion**, which is what makes §4.1's sentence true rather than aspirational. Do
    it last, because only after (2) is a limit of 256 a limit on nesting an author wrote rather than on the length of a
    phrase. If the charge still refuses a program that compiles today, that is a cost-table version bump with a stated

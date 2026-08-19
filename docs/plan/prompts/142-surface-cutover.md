@@ -172,6 +172,24 @@ would have made a wrong signature indistinguishable from a wrong migration.
 motif is a function returning one, and placement is applied by the enclosing voice's left fold rather than read from an
 ambient context. `00-semantics.md` §3 already says this; this prompt makes the source say it too.
 
+  *Repaired during implementation.* The desugaring's grammar and two of its consequences were not stated:
+
+  - **A motif's parameter list is the one a `fn` writes.** The parser read motif parameters in a loop of its own that
+    admitted only a bare `Pitch` or `Duration` — no index, no arrow — even though §2's desugaring makes the parameter a
+    `fn`'s. `motif_decl` now calls `param_list`, the lowering binds each written annotation (`annotated_lam` rather than
+    dropping the type), and tree-sitter follows under the drift law. The old loop's grammar was the by-subtraction shape
+    AGENTS.md forbids.
+  - **A duration written as a parameter lowers through a new δ word.** `notated_duration : Duration ⟨written⟩ →
+    NotatedDuration` (compiler-owned, in neither ownership table, like the quotation words) is inserted by the lowering
+    where a duration position holds a term; the rule derives the spelling with `NotatedDuration::spelled`, the one
+    honest answer a computed duration has. `Raw::hosted` names it; the sounded duration is the term itself, tuplet
+    scaling included.
+  - **A header fact's extent is read off the evaluated music, not summed off the tree.** `reach`'s static sum measures a
+    `use` as zero because a `use`'s length lives in the material it names, so canon's header facts covered one bar of
+    fifteen. A second compiler-owned word, `track_duration : EventTrack ⟨written⟩ ⟨ScoreFact⟩ → Duration ⟨written⟩`,
+    answers the evaluated extent, and the header facts are sounded with it. The cost is one extra evaluation of the
+    music under glued evaluation (no thunk update until 144's verdict); measured below.
+
 **The oracle moves once, and every move is argued.** A changed semantic hash, kernel digest, diagnostic code, Origin
 path, or rendered corpus file is an entry in `elaboration-expected-changes.json` with a defect and an observation,
 naming the prompt by slug. An unargued move is indistinguishable from a regression, and after this prompt there is no
@@ -386,6 +404,14 @@ rules never authorized.
     - **`Lowering::piece` takes the document's name.** A generated identity is minted in the document's namespace (§2),
       which cannot be read off the tree, so `Document::piece` carries it through. Collecting the templates there also
       reports a template declared twice whether or not a site calls it, which is where that mistake belongs.
+    - **What a template body sees is the flat program, and capture is a grammar fact.** The law this replaces
+      (`a_template_body_cannot_see_the_site`, now `a_template_body_sees_the_document_and_never_the_making_site`) was
+      written for the replaced checker's positional scopes: it put a `let` inside the piece and called that the site.
+      Under one program per document the piece's `let` is a document definition, §1's judgment checks the body in the
+      ambient context, and the body's seeing it is conformance rather than a leak. The capture the law actually guarded
+      is unreachable for a reason one level down: a body's free name could be caught by a making template's binder only
+      if a body could hold a `make`, and the grammar does not admit one there — the λ reading's argument-direction care
+      (above) is exactly the direction the grammar leaves open. The law now pins both halves of that.
   - **`origin_literal` and `provenance_literal` were one function twice.** Byte-identical bodies at `Origin`, one
     reached by the laws and one by `lower/notation.rs`, with the dead-code expectation on the first hiding the
     duplication. The instance site needed a caller for one of them and found two, so `provenance_literal` is deleted and
@@ -650,6 +676,18 @@ two `nextest` lines with this class green. The *tonal class*: the same failure m
 `rule-of-the-octave`, ordinary `std::tonal` evaluation with no adapter involved. It closes at prompt 144, which measures
 it and sets the cost table. This prompt's closing commit lists every red test in both classes by name; anything red
 outside them means the prompt is not done.
+
+*Repaired during implementation.* A third class, and it is the same wall the tonal class is. The *pressure class*:
+`the_pressure_workloads_compile_and_denote_what_they_claim`'s `core-pressure` case, whose only failure is `nested
+evaluation levels at 257 of 256` out of stdlib recursion — `naturals(512)` is `counting_from`, one recursive call per
+element. Measured: `range(128)` alone crosses (each recursion level costs two nesting levels — the unfold and the match
+— so the wall stands at ~120-deep user recursion), the 64-deep call chain alone does not, and the piece's own voices
+never approach it, because a voice fold is `follow` — a δ rule — and charges no depth. This is 144's "linear in the
+music" finding in its second instance (the first is `registry/traversal.rs`'s Cons chain, repaired there), and it
+carries a consequence the finding's first statement did not: `benches/pipeline.rs` reads this fixture, so the wall makes
+a benchmark workload unrunnable — "a benchmark nobody can run is a gate nobody is holding"
+(`elaboration_fixture_generators.rs`'s own warning, now true of its neighbor). It closes at 144 with the rest of the
+nesting verdict.
 
 Commit as `Move the whole language over, once`.
 
