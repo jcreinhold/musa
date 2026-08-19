@@ -1691,8 +1691,8 @@ pub(crate) enum SyntaxOp {
     /// `syntax_at(subject, path)` — the input node at `path`, if there is one.
     /// How a transformer preserves input with its source information intact.
     At,
-    /// `syntax_anchor(subject, path, here)` — the anchor of the input node at
-    /// `path`, as a node built at `here`.
+    /// `syntax_anchor(subject, path)` — the anchor of the input node at
+    /// `path`, as a node built at the place the node itself determines.
     ///
     /// An anchor is how a value remembers where it came from: the number this
     /// builds into the emitted expression is an index into the expansion
@@ -1701,7 +1701,11 @@ pub(crate) enum SyntaxOp {
     /// complaining about the fourth connection. It answers with a *node* and
     /// not with the number because a transformer may emit a place and may not
     /// read one (`26-language-design-decision.md` §3.4) — this hands back
-    /// something to splice, and nothing to compare.
+    /// something to splice, and nothing to compare. The answer stands at
+    /// [`crate::syntax::anchor_place`] of the anchored node: the place derives
+    /// from the arguments alone, because a δ rule is a function of its
+    /// arguments and nothing else (§5.8's D3), and the reservation it uses is
+    /// [`crate::syntax::DELTA_QUOTATION`]'s.
     Anchor,
     /// `syntax_number(node)` — the exact rational a numeric token spells.
     ///
@@ -1774,13 +1778,14 @@ impl SyntaxOp {
         match self {
             Self::Checked | Self::Number | Self::AsExpression => 1,
             Self::At
+            | Self::Anchor
             | Self::Binding
             | Self::Identifier
             | Self::Binder
             | Self::Run
             | Self::KindEqual
             | Self::DelimiterEqual => 2,
-            Self::Anchor | Self::Built | Self::Token | Self::Group | Self::Reference => 3,
+            Self::Built | Self::Token | Self::Group | Self::Reference => 3,
             Self::Fold => 5,
             Self::Recurse => 6,
         }
@@ -1876,15 +1881,16 @@ impl SyntaxOp {
                 };
                 Type::Function(vec![context, sealed], Box::new(to))
             }
-            Self::At => Type::Function(vec![syntax(), path()], Box::new(Type::Option(Box::new(syntax())))),
-            // Three arguments and not two: the node it is *about*, and the
-            // place the node it hands back stands in. The answer is optional
-            // for `syntax_at`'s reason — an adapter anchors a node it holds,
-            // and a path it derived addresses no input node at all.
-            Self::Anchor => Type::Function(
-                vec![syntax(), path(), path()],
-                Box::new(Type::Option(Box::new(syntax()))),
-            ),
+            // The answer is optional for one reason both operations share: an
+            // adapter points at a node it holds, and a path it derived
+            // addresses no input node at all. The anchor's second argument is
+            // the node it is *about*; the place its answer stands at is no
+            // argument at all, because a δ rule is a function of its
+            // arguments (§5.8's D3) and the place derives from them —
+            // `crate::syntax::anchor_place` is the derivation.
+            Self::At | Self::Anchor => {
+                Type::Function(vec![syntax(), path()], Box::new(Type::Option(Box::new(syntax()))))
+            }
             // `Option` because a node that is not a numeric token is not a
             // number, and `Ratio` because one operation covering both numeric
             // kinds is one operation an adapter has to learn.
@@ -10622,10 +10628,13 @@ fn eval_syntax(
         SyntaxOp::Anchor => {
             let subject = syntax(values.first()?)?;
             let wanted = path(values.get(1)?)?;
-            let here = path(values.get(2)?)?;
-            let found = subject
-                .anchor(&wanted)
-                .map(|anchor| crate::syntax::token(here, musa_language::SyntaxKind::Integer, anchor.to_string()));
+            let found = subject.anchor(&wanted).map(|anchor| {
+                crate::syntax::token(
+                    crate::syntax::anchor_place(&wanted),
+                    musa_language::SyntaxKind::Integer,
+                    anchor.to_string(),
+                )
+            });
             let held = match found {
                 Some(node) => Some(built(node, meter)?),
                 None => None,

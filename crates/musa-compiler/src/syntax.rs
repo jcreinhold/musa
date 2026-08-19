@@ -654,6 +654,40 @@ impl Derived {
     }
 }
 
+/// The `quotation` component a construction site that runs at *evaluation*
+/// carries: `u32::MAX`, a reservation and not an allocation.
+///
+/// Quote sites draw their indices upward from zero at lowering time, in both
+/// checkers, so the top of the `u32` range is a site no quote can reach before
+/// the counter itself gives out — disjointness by construction rather than by
+/// a discipline anyone maintains. A δ rule needs this because it is a
+/// function of its argument values alone (`02-core-calculus.md` §5.8's D3 is a
+/// property of the `musa_core::Rule` type, not a promise): it has no counter
+/// to draw from, and its answer's identity must therefore come from structure
+/// the arguments already carry. `48-the-anchors-place-without-a-name-supply.md`
+/// is the argument, from Peyton Jones ch. 9's name supply and Idris2's
+/// `UST.nextName` living in the elaboration monad while `Normalise` mints
+/// nothing.
+pub(crate) const DELTA_QUOTATION: u32 = u32::MAX;
+
+/// The place a δ-built node stands at: derived from the node the operation is
+/// *about*, at the reserved site, one step in.
+///
+/// The node's own path is already a unique, elaboration-time identity — no two
+/// nodes of a region share a reading-order path — so the place needs no fresh
+/// name at all. Two calls about one node produce one place and meet
+/// `check_expression`'s duplicate-path gate, which is the one-call-per-anchor
+/// obligation `11-quotation.md` §5 keeps, stated on the anchored node rather
+/// than on a call site.
+pub(crate) fn anchor_place(anchor_of: &NodePath) -> NodePath {
+    Derived {
+        origin: anchor_of.clone(),
+        quotation: DELTA_QUOTATION,
+        path: vec![0],
+    }
+    .path()
+}
+
 /// A finite syntax value.
 ///
 /// The four forms of `26-language-design-decision.md` §3.3, with the source

@@ -34,11 +34,11 @@
 //   spells them `data`, which is what `staff.musa` spells them today. The
 //   declarations below are `staff.musa`'s own, unchanged but for the fields
 //   that now hold an expression rather than an unparsed tree.
-// - `syntax_anchor` takes the place its answer stands at as a third argument,
-//   and a quote's author has no operation that mints one — `syntax_built` is
-//   exactly what quotation removed. `anchored` passes `here`, which is sound
-//   for one call per node and is why `anchored` is called at most once at any
-//   one place below. Prompt 145 is where the operation's shape is decided.
+// - `syntax_anchor` takes two arguments at prompt 145: the place its answer
+//   stands at derives from the anchored node and nothing else, at a reserved
+//   construction site no quote can draw. One call per node stays the law —
+//   two calls about one node meet the duplicate-path gate — but it is the
+//   operation's own law now rather than a discipline around a third argument.
 library {
     let level = "readable";
 
@@ -202,7 +202,7 @@ library {
     // does — which is the general shape of §1.2's finding rather than a
     // special case of it.
     fn anchored(region: Syntax<TokenTree>, here: NodePath) -> Syntax<Expr> {
-        match syntax_anchor(region, here, here) {
+        match syntax_anchor(region, here) {
             Some(node) -> match as_expression(node) {
                 Some(place) -> place,
                 None -> quote at here { 0 },

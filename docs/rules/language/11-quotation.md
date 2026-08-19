@@ -273,9 +273,12 @@ the four properties above are what discharge them for this form.
 
 Seven of the fourteen phase operations therefore go, leaving `recurse_syntax`, `run_syntax_step`,
 `syntax_fold_from_leaves`, `syntax_at`, `syntax_anchor`, `syntax_number`, and `as_expression`. `syntax_anchor` also
-loses its third argument, because the `SourceInfo` it took is what §3 computes. Prompt 139 owns the deletions; the
-binding three come back when an adapter introduces a name the composer can see and refer to, which neither the staff nor
-the studio adapter does.
+loses its third argument, because the place it took is what §3 computes — as `Derived { origin, quotation, path }` of
+the anchored node, at a reserved site no quote can draw, since a δ rule is a function of its arguments and nothing else
+(`02-core-calculus.md` §5.8's D3) and the node's own path is already the unique name. Prompt 139 owns the deletions;
+prompt 145 owns the anchor's arity, as the prompt that removes the last caller of the place argument. The binding three
+come back when an adapter introduces a name the composer can see and refer to, which neither the staff nor the studio
+adapter does.
 
 ## 6. Two quotations, one discipline, and they are not merged
 

@@ -539,7 +539,7 @@ library {
     // range. An anchor is a number whose meaning is the compiler's table: this
     // adapter hands one over and can read nothing from it.
     fn anchored(region: Syntax<TokenTree>, here: NodePath) -> Syntax<TokenTree> {
-        syntax_anchor(region, here, syntax_built(here, 33, 0)).fold_from_end(
+        syntax_anchor(region, here).fold_from_end(
             syntax_token(syntax_built(here, 32, 0), TokenKind::Integer, "0"),
             fn (node: Syntax<TokenTree>, otherwise: Syntax<TokenTree>) -> Syntax<TokenTree> {
                 node

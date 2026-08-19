@@ -23,7 +23,7 @@ parsed. `Expr` appears in exactly two signatures, and both of them run the real 
 | `run_syntax_step` | `(C, Step<C, A>) -> A` | which child and which algebra a step was minted for | kept (§5) |
 | `syntax_fold_from_leaves` | `((P) -> A, (P, TokenKind, Text) -> A, (P, Text) -> A, (P, Delimiter, List<A>) -> A, Syntax) -> A` | the node representation and each node's path | kept (§5) |
 | `syntax_at` | `(Syntax, P) -> Option<Syntax>` | descent into the representation, and an input node's untouched source information | kept (§5) |
-| `syntax_anchor` | `(Syntax, P, P) -> Option<Syntax>` | a node's place in the region's reading order | kept (§5), loses its third argument in 139 |
+| `syntax_anchor` | `(Syntax, P) -> Option<Syntax>` | a node's place in the region's reading order | kept (§5), lost its third argument in 145 — the place derives from the anchored node at a reserved site (note 48) |
 | `syntax_number` | `(Syntax) -> Option<Ratio>` | the reader's own numeric reading of a literal token | kept (§5) |
 | `syntax_built` | `(P, Nat, Nat) -> NodePath` | path derivation, which keeps output paths disjoint from input paths | **139** — the quote computes it |
 | `syntax_binding` | `(P, Nat) -> BindingPath` | name identity as a derived coordinate | **139** |

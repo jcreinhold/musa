@@ -1044,10 +1044,14 @@ pub(super) fn phase(operation: SyntaxOp) -> Option<Rule> {
         // reaches one is as a literal the ordinary parser reads.
         SyntaxOp::Anchor => |arguments| {
             let subject = node(arguments.first()?)?;
-            let (wanted, here) = (path(arguments.get(1)?)?, path(arguments.get(2)?)?);
-            let found = subject
-                .anchor(&wanted)
-                .map(|anchor| crate::syntax::token(here, musa_language::SyntaxKind::Integer, anchor.to_string()));
+            let wanted = path(arguments.get(1)?)?;
+            let found = subject.anchor(&wanted).map(|anchor| {
+                crate::syntax::token(
+                    crate::syntax::anchor_place(&wanted),
+                    musa_language::SyntaxKind::Integer,
+                    anchor.to_string(),
+                )
+            });
             reduced(optional(found.map(built)))
         },
         // The reader's own reading, handed back rather than re-derived. Both

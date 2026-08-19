@@ -153,7 +153,7 @@ library {
                             ]),
                         ]),
                         syntax_token(syntax_built(here, 10, 0), TokenKind::Comma, ","),
-                        syntax_anchor(region, here, syntax_built(here, 11, 0)).fold_from_end(
+                        syntax_anchor(region, here).fold_from_end(
                             syntax_token(syntax_built(here, 12, 0), TokenKind::Integer, "0"),
                             fn (
                                 anchored: Syntax<TokenTree>,

@@ -1712,7 +1712,7 @@ mod tests {
         // learn one it was not given.
         let built = answer(
             &answering(
-                r#"syntax_anchor(region, syntax_built(here, 0, 0), syntax_built(here, 10, 0)).fold_from_start(syntax_token(syntax_built(here, 9, 0), TokenKind.Integer, "404"), fn (held, node) { node })"#,
+                r#"syntax_anchor(region, syntax_built(here, 0, 0)).fold_from_start(syntax_token(syntax_built(here, 9, 0), TokenKind.Integer, "404"), fn (held, node) { node })"#,
             ),
             "{ c4 }",
         )
@@ -1724,7 +1724,7 @@ mod tests {
         );
         let given = answer(
             &answering(
-                r#"syntax_anchor(region, here, syntax_built(here, 10, 0)).fold_from_start(syntax_token(syntax_built(here, 9, 0), TokenKind.Integer, "404"), fn (held, node) { node })"#,
+                r#"syntax_anchor(region, here).fold_from_start(syntax_token(syntax_built(here, 9, 0), TokenKind.Integer, "404"), fn (held, node) { node })"#,
             ),
             "{ c4 }",
         )
