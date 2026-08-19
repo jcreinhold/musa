@@ -67,7 +67,7 @@ use std::sync::{Arc, OnceLock};
 use crate::budget::Meter;
 use crate::elab::Elaborator;
 use crate::error::CoreError;
-use crate::eval::{apply, apply_closure, eval, field_type, force, project};
+use crate::eval::{apply, apply_closure, eval, field_type, opened, project};
 use crate::family::{Constant, Element, element};
 use crate::level::Level;
 use crate::list::List;
@@ -260,7 +260,7 @@ impl Tree<'_, '_> {
             return Ok(None);
         };
         let meter = self.elaborator.meter();
-        let unfolded = force(meter, &subject.ty)?;
+        let unfolded = opened(meter, &subject.ty)?;
         let Form::Neutral(neutral) = &unfolded.as_ref().unwrap_or(&subject.ty).form else {
             return Ok(None);
         };
@@ -344,12 +344,12 @@ impl Tree<'_, '_> {
             return Err(refusal);
         }
         let meter = self.elaborator.meter();
-        let unfolded = force(meter, &subject.ty)?;
+        let unfolded = opened(meter, &subject.ty)?;
         let record_ty = Value::clone(unfolded.as_ref().unwrap_or(&subject.ty));
         let Form::RecordType(telescope) = &record_ty.form else {
             return Err(Refusal::NotARecord {
                 at,
-                ty: scope.quote_type(meter, &record_ty)?,
+                ty: scope.quote_type(meter, &subject.ty)?,
             }
             .into());
         };
@@ -509,9 +509,9 @@ impl Tree<'_, '_> {
         for (name, value, ty) in row.bindings.iter().chain(left.iter()) {
             let meter = self.elaborator.meter();
             let ty_term = inner.quote_type(meter, ty)?;
-            let value_term = quote(meter, Depth(inner.depth()), ty, value)?;
+            let value_term = quote(meter, Depth(inner.depth()), crate::quote::Mode::Keep, ty, value)?;
             bound.push((Arc::clone(name), ty_term, value_term));
-            inner = inner.define(Arc::clone(name), Arc::clone(ty), value.clone());
+            inner = inner.define(self.elaborator.meter(), Arc::clone(name), Arc::clone(ty), value.clone())?;
         }
         let mut term = self.elaborator.check_open(&inner, &arm.body, goal)?;
         for (name, ty, value) in bound.into_iter().rev() {
@@ -698,8 +698,18 @@ impl Tree<'_, '_> {
                 // `Π (_ : G). G`, not `{}`: universes are not cumulative (§1),
                 // so the empty record inhabits `Type 0` and nothing above it.
                 let under = depth.saturating_add(indices).saturating_add(1);
-                let domain = quote_type(self.elaborator.meter(), Depth(under), &problem.goal)?;
-                let codomain = quote_type(self.elaborator.meter(), Depth(under.saturating_add(1)), &problem.goal)?;
+                let domain = quote_type(
+                    self.elaborator.meter(),
+                    Depth(under),
+                    crate::quote::Mode::Keep,
+                    &problem.goal,
+                )?;
+                let codomain = quote_type(
+                    self.elaborator.meter(),
+                    Depth(under.saturating_add(1)),
+                    crate::quote::Mode::Keep,
+                    &problem.goal,
+                )?;
                 Term::pi(self.here, "impossible", domain, codomain)
             };
             let mut term = Term::lam(self.here, "target", body);
@@ -727,7 +737,12 @@ impl Tree<'_, '_> {
         under: u32,
     ) -> Result<Term, ElabError> {
         let depth = scope.depth();
-        let goal = quote_type(self.elaborator.meter(), Depth(depth), &problem.goal)?;
+        let goal = quote_type(
+            self.elaborator.meter(),
+            Depth(depth),
+            crate::quote::Mode::Keep,
+            &problem.goal,
+        )?;
         let mut replacements: Vec<(u32, Value)> = Vec::new();
         for (position, level) in split.pattern.iter().enumerate() {
             let position = u32::try_from(position).unwrap_or(u32::MAX);
@@ -750,6 +765,7 @@ impl Tree<'_, '_> {
         Ok(quote_type(
             self.elaborator.meter(),
             Depth(under.saturating_add(1)),
+            crate::quote::Mode::Keep,
             &value,
         )?)
     }
@@ -1177,7 +1193,7 @@ fn meta_level(meter: &mut Meter, goal: &Value) -> Result<Option<Level>, ElabErro
         let Elim::App { argument, .. } = elimination else {
             return Ok(None);
         };
-        let unfolded = force(meter, &ty)?;
+        let unfolded = opened(meter, &ty)?;
         let forced = unfolded.as_ref().unwrap_or(&ty);
         let Form::Pi { codomain, .. } = &forced.form else {
             return Ok(None);
@@ -1185,7 +1201,7 @@ fn meta_level(meter: &mut Meter, goal: &Value) -> Result<Option<Level>, ElabErro
         let codomain = codomain.clone();
         ty = apply_closure(meter, &codomain, argument.as_ref().clone())?;
     }
-    let unfolded = force(meter, &ty)?;
+    let unfolded = opened(meter, &ty)?;
     let forced = unfolded.as_ref().unwrap_or(&ty);
     let Form::Universe(level) = &forced.form else {
         return Ok(None);
@@ -1222,7 +1238,7 @@ impl Split {
     ) -> Result<Self, ElabError> {
         let depth = scope.depth();
         let meter = tree.elaborator.meter();
-        let ty = quote_type(meter, Depth(depth), &subject.ty)?;
+        let ty = quote_type(meter, Depth(depth), crate::quote::Mode::Keep, &subject.ty)?;
         let (_, arguments) = spine(&ty);
         let params = usize::try_from(found.group.params()).unwrap_or(usize::MAX);
         let indices: Vec<Term> = arguments.get(params..).unwrap_or_default().to_vec();
@@ -1255,7 +1271,13 @@ impl Split {
         }
         // Cheap because [`Subject`]'s value is a variable: this reads back a
         // variable, η-expanded at its type, and never a call's normal form.
-        let target = quote(meter, Depth(depth), &subject.ty, &subject.value)?;
+        let target = quote(
+            meter,
+            Depth(depth),
+            crate::quote::Mode::Keep,
+            &subject.ty,
+            &subject.value,
+        )?;
         let level = motive_level(meter, scope, goal)?;
         Ok(Self {
             element: Element {
@@ -1320,6 +1342,7 @@ fn variable(value: &Value) -> Option<u32> {
             crate::value::Head::Const(_)
             | crate::value::Head::Base(_)
             | crate::value::Head::Builtin(_)
+            | crate::value::Head::Def(_, _, _)
             | crate::value::Head::Meta(_) => None,
         },
         crate::value::Form::Neutral(_) => None,

@@ -74,7 +74,7 @@ use crate::class::{Constraint, Head, Key, Trait, head_of};
 use crate::context::Cx;
 use crate::dictionary::{Postponed, Wanted};
 use crate::error::{CoreError, Malformed};
-use crate::eval::{apply, apply_closure, eval, field_type, force};
+use crate::eval::{apply, apply_closure, eval, field_type, force, opened};
 use crate::family::Found;
 use crate::level::{Level, LevelMeta};
 use crate::meta::{Meta, MetaSource};
@@ -221,7 +221,16 @@ impl Elaborator {
     pub(crate) fn run_infer(&mut self, scope: &Scope, raw: &Raw) -> Result<(Term, Term), ElabError> {
         let inferred = self.infer(scope, raw)?;
         let inferred = self.inserted(scope, inferred)?;
-        let ty = scope.quote_type(&mut self.meter, &inferred.ty)?;
+        // The inferred type is answered *outside* the term: an inference like
+        // `let r = … in r.val` has a type mentioning `r`, and the binder is not
+        // in scope where the answer is read — so definitions are opened, as for
+        // a metavariable solution.
+        let ty = quote_type(
+            &mut self.meter,
+            Depth(scope.depth()),
+            crate::quote::Mode::Open,
+            &inferred.ty,
+        )?;
         self.settled()?;
         let depth = scope.depth();
         Ok((
@@ -479,7 +488,7 @@ impl Elaborator {
 
     /// `Γ ⊢ raw ⇐ ty ⇝ t`.
     fn check(&mut self, scope: &Scope, raw: &Raw, ty: &Value) -> Result<Term, ElabError> {
-        let unfolded = force(&mut self.meter, ty)?;
+        let unfolded = opened(&mut self.meter, ty)?;
         let ty = unfolded.as_ref().unwrap_or(ty);
         match self.checked(scope, raw, ty)? {
             Some(term) => Ok(term),
@@ -491,7 +500,7 @@ impl Elaborator {
             None => {
                 let inferred = match self.constructed(scope, raw, ty)? {
                     Some(supplied) => supplied,
-                    None if self.waits_for_a_family(scope, raw, ty) => return self.delay(scope, raw, ty),
+                    None if Self::waits_for_a_family(scope, raw, ty) => return self.delay(scope, raw, ty),
                     None => {
                         let inferred = self.infer(scope, raw)?;
                         self.inserted(scope, inferred)?
@@ -584,7 +593,7 @@ impl Elaborator {
         // without forcing sees `Head::Meta` and answers that this is not a type
         // at a literal index, one layer of indirection away from the type that
         // plainly is.
-        let unfolded = force(&mut self.meter, ty)?;
+        let unfolded = opened(&mut self.meter, ty)?;
         let ty = unfolded.as_ref().unwrap_or(ty);
         let Form::Neutral(ref neutral) = ty.form else {
             return Ok(None);
@@ -595,7 +604,7 @@ impl Elaborator {
         let [crate::value::Elim::App { ref argument, .. }] = neutral.spine[..] else {
             return Ok(None);
         };
-        let unfolded = force(&mut self.meter, argument)?;
+        let unfolded = opened(&mut self.meter, argument)?;
         let index = unfolded.as_ref().unwrap_or(argument);
         let Form::Lit(ref literal) = index.form else {
             return Ok(None);
@@ -808,7 +817,7 @@ impl Elaborator {
     /// rule at an unknown type — [`Self::constructed_open`] makes its parameters
     /// holes — because the reader knows it wrote none. An author's `Nothing`
     /// carries no such promise, which is why it is the one that has to wait.
-    fn waits_for_a_family(&self, scope: &Scope, raw: &Raw, ty: &Value) -> bool {
+    fn waits_for_a_family(scope: &Scope, raw: &Raw, ty: &Value) -> bool {
         crate::unify::flexible_head(ty).is_some() && bare_case(scope, raw).is_some()
     }
 
@@ -877,7 +886,7 @@ impl Elaborator {
     /// The refusal it would have earned had it been read where it was written,
     /// stated at the same origin: waiting is what the elaborator did about the
     /// program, not something the program did.
-    fn stubborn(&mut self) -> Result<(), ElabError> {
+    fn stubborn(&self) -> Result<(), ElabError> {
         let Some(item) = self.delayed.first() else {
             return Ok(());
         };
@@ -959,7 +968,7 @@ impl Elaborator {
     /// and only [`crate::dictionary::resolve`] can tell them apart.
     fn holes(&mut self, scope: &Scope, here: Origin, mut built: Typed, count: u32) -> Result<Typed, ElabError> {
         for _ in 0..count {
-            let unfolded = force(&mut self.meter, &built.ty)?;
+            let unfolded = opened(&mut self.meter, &built.ty)?;
             let function_ty = unfolded.as_ref().unwrap_or(&built.ty);
             let Form::Pi {
                 plicity,
@@ -970,7 +979,7 @@ impl Elaborator {
             else {
                 return Err(Refusal::NotAFunction {
                     at: here,
-                    ty: scope.quote_type(&mut self.meter, function_ty)?,
+                    ty: scope.quote_type(&mut self.meter, &built.ty)?,
                 }
                 .into());
             };
@@ -1001,17 +1010,25 @@ impl Elaborator {
     /// type, so they are values and there is nothing to check them against:
     /// they were checked when the type they were read from was.
     fn given(&mut self, scope: &Scope, here: Origin, head: Typed, param: &Value) -> Result<Typed, ElabError> {
-        let unfolded = force(&mut self.meter, &head.ty)?;
+        let unfolded = opened(&mut self.meter, &head.ty)?;
         let function_ty = unfolded.as_ref().unwrap_or(&head.ty);
         let Form::Pi { domain, codomain, .. } = &function_ty.form else {
+            // The refusal quotes the type as it stands — a definition the
+            // author wrote keeps its name; the unfolding is what was matched.
             return Err(Refusal::NotAFunction {
                 at: here,
-                ty: scope.quote_type(&mut self.meter, function_ty)?,
+                ty: scope.quote_type(&mut self.meter, &head.ty)?,
             }
             .into());
         };
         let (domain, codomain) = (Arc::clone(domain), codomain.clone());
-        let term = quote(&mut self.meter, Depth(scope.depth()), &domain, param)?;
+        let term = quote(
+            &mut self.meter,
+            Depth(scope.depth()),
+            crate::quote::Mode::Keep,
+            &domain,
+            param,
+        )?;
         Ok(Typed {
             term: Term::app(here, head.term, term),
             ty: apply_closure(&mut self.meter, &codomain, param.clone())?,
@@ -1333,7 +1350,7 @@ impl Elaborator {
     /// §4 answers or postpones, and `resolve` is what does both.
     fn inserted(&mut self, scope: &Scope, mut inferred: Typed) -> Result<Typed, ElabError> {
         loop {
-            let unfolded = force(&mut self.meter, &inferred.ty)?;
+            let unfolded = opened(&mut self.meter, &inferred.ty)?;
             let ty = unfolded.as_ref().unwrap_or(&inferred.ty);
             let Form::Pi {
                 plicity,
@@ -1573,7 +1590,7 @@ impl Elaborator {
             // than panicked on, and the plicity comparison below refuses it.
             Plicity::Implicit | Plicity::Constraint(_) => inferred,
         };
-        let unfolded = force(&mut self.meter, &inferred.ty)?;
+        let unfolded = opened(&mut self.meter, &inferred.ty)?;
         let function_ty = unfolded.as_ref().unwrap_or(&inferred.ty);
         let Form::Pi {
             plicity: expected,
@@ -1584,7 +1601,7 @@ impl Elaborator {
         else {
             return Err(Refusal::NotAFunction {
                 at: here,
-                ty: scope.quote_type(&mut self.meter, function_ty)?,
+                ty: scope.quote_type(&mut self.meter, &inferred.ty)?,
             }
             .into());
         };
@@ -1621,7 +1638,7 @@ impl Elaborator {
     fn method(&mut self, scope: &Scope, here: Origin, receiver: &Raw, method: &Name) -> Result<Typed, ElabError> {
         let inferred = self.infer(scope, receiver)?;
         let inferred = self.inserted(scope, inferred)?;
-        let unfolded = force(&mut self.meter, &inferred.ty)?;
+        let unfolded = opened(&mut self.meter, &inferred.ty)?;
         let receiver_ty = unfolded.as_ref().unwrap_or(&inferred.ty);
         let stated = scope.quote_type(&mut self.meter, receiver_ty)?;
         // A local head is §6's generic parameter and `None` is a type with no
@@ -1683,7 +1700,7 @@ impl Elaborator {
     /// trait arguments `method_at` left as metavariables.
     fn receiving(&mut self, scope: &Scope, here: Origin, function: Typed, receiver: Typed) -> Result<Typed, ElabError> {
         let function = self.inserted(scope, function)?;
-        let unfolded = force(&mut self.meter, &function.ty)?;
+        let unfolded = opened(&mut self.meter, &function.ty)?;
         let function_ty = unfolded.as_ref().unwrap_or(&function.ty);
         let Form::Pi {
             plicity: Plicity::Explicit,
@@ -1694,7 +1711,7 @@ impl Elaborator {
         else {
             return Err(Refusal::NotAFunction {
                 at: here,
-                ty: scope.quote_type(&mut self.meter, function_ty)?,
+                ty: scope.quote_type(&mut self.meter, &function.ty)?,
             }
             .into());
         };
@@ -1740,12 +1757,12 @@ impl Elaborator {
     fn projection(&mut self, scope: &Scope, here: Origin, record: &Raw, field: &Name) -> Result<Typed, ElabError> {
         let inferred = self.infer(scope, record)?;
         let inferred = self.inserted(scope, inferred)?;
-        let unfolded = force(&mut self.meter, &inferred.ty)?;
+        let unfolded = opened(&mut self.meter, &inferred.ty)?;
         let record_ty = unfolded.as_ref().unwrap_or(&inferred.ty);
         let Form::RecordType(telescope) = &record_ty.form else {
             return Err(Refusal::NotARecord {
                 at: here,
-                ty: scope.quote_type(&mut self.meter, record_ty)?,
+                ty: scope.quote_type(&mut self.meter, &inferred.ty)?,
             }
             .into());
         };
@@ -1776,12 +1793,12 @@ impl Elaborator {
         overlapping(updates)?;
         let inferred = self.infer(scope, record)?;
         let inferred = self.inserted(scope, inferred)?;
-        let unfolded = force(&mut self.meter, &inferred.ty)?;
+        let unfolded = opened(&mut self.meter, &inferred.ty)?;
         let record_ty = Value::clone(unfolded.as_ref().unwrap_or(&inferred.ty));
         let Form::RecordType(telescope) = &record_ty.form else {
             return Err(Refusal::NotARecord {
                 at: record.origin(),
-                ty: scope.quote_type(&mut self.meter, &record_ty)?,
+                ty: scope.quote_type(&mut self.meter, &inferred.ty)?,
             }
             .into());
         };
@@ -1792,7 +1809,12 @@ impl Elaborator {
         // per field it carries over, and a record of eight fields updated at one
         // of them would evaluate the thing being updated eight times.
         let name: Name = Arc::from("with");
-        let inner = scope.define(Arc::clone(&name), Arc::new(record_ty.clone()), subject.clone());
+        let inner = scope.define(
+            &mut self.meter,
+            Arc::clone(&name),
+            Arc::new(record_ty.clone()),
+            subject.clone(),
+        )?;
         let replacements: Vec<Replacement<'_>> = updates.iter().map(Replacement::of).collect();
         let literal = self.rebuilt(
             &inner,
@@ -1881,13 +1903,13 @@ impl Elaborator {
         expected: &Value,
         updates: &[Replacement<'_>],
     ) -> Result<Term, ElabError> {
-        let unfolded = force(&mut self.meter, expected)?;
+        let unfolded = opened(&mut self.meter, expected)?;
         let field_ty = Value::clone(unfolded.as_ref().unwrap_or(expected));
         let Form::RecordType(inner) = &field_ty.form else {
             let at = updates.first().map_or(here, |update| update.origin);
             return Err(Refusal::NotARecord {
                 at,
-                ty: scope.quote_type(&mut self.meter, &field_ty)?,
+                ty: scope.quote_type(&mut self.meter, expected)?,
             }
             .into());
         };
@@ -1895,7 +1917,12 @@ impl Elaborator {
         let projected = Term::project(here, subject.clone(), Arc::clone(field));
         let projected_value = scope.eval(&mut self.meter, &projected)?;
         let ty_term = scope.quote_type(&mut self.meter, &field_ty)?;
-        let under = scope.define(Arc::clone(field), Arc::new(field_ty), projected_value.clone());
+        let under = scope.define(
+            &mut self.meter,
+            Arc::clone(field),
+            Arc::new(field_ty),
+            projected_value.clone(),
+        )?;
         let body = self.rebuilt(
             &under,
             here,
@@ -2005,7 +2032,7 @@ impl Elaborator {
         let witness = under.fresh_var(at, Arc::new(proof_domain));
         let inside = under.assume(None, at, Arc::new(expected_proof));
         let result = apply_closure(&mut self.meter, &proof_codomain, witness)?;
-        let unfolded = force(&mut self.meter, &result)?;
+        let unfolded = opened(&mut self.meter, &result)?;
         let result = unfolded.as_ref().unwrap_or(&result);
         let Form::Universe(_) = result.form else {
             return Err(Refusal::NotAType {
@@ -2019,9 +2046,9 @@ impl Elaborator {
 
     /// Take a Π type apart, refusing what is not one.
     fn function_parts(&mut self, scope: &Scope, at: Origin, ty: &Value) -> Result<(Value, Closure), ElabError> {
-        let unfolded = force(&mut self.meter, ty)?;
-        let ty = unfolded.as_ref().unwrap_or(ty);
-        let Form::Pi { domain, codomain, .. } = &ty.form else {
+        let unfolded = opened(&mut self.meter, ty)?;
+        let opened_ty = unfolded.as_ref().unwrap_or(ty);
+        let Form::Pi { domain, codomain, .. } = &opened_ty.form else {
             return Err(Refusal::NotAFunction {
                 at,
                 ty: scope.quote_type(&mut self.meter, ty)?,
@@ -2037,12 +2064,12 @@ impl Elaborator {
     pub(crate) fn check_type(&mut self, scope: &Scope, raw: &Raw) -> Result<(Term, Level), ElabError> {
         let inferred = self.infer(scope, raw)?;
         let inferred = self.inserted(scope, inferred)?;
-        let unfolded = force(&mut self.meter, &inferred.ty)?;
+        let unfolded = opened(&mut self.meter, &inferred.ty)?;
         let ty = unfolded.as_ref().unwrap_or(&inferred.ty);
         let Form::Universe(level) = &ty.form else {
             return Err(Refusal::NotAType {
                 at: raw.origin(),
-                ty: scope.quote_type(&mut self.meter, ty)?,
+                ty: scope.quote_type(&mut self.meter, &inferred.ty)?,
             }
             .into());
         };
@@ -2073,7 +2100,7 @@ impl Elaborator {
         };
         let bound = scope.eval(&mut self.meter, &value_term)?;
         Ok(Bound {
-            scope: scope.define(Arc::clone(name), Arc::new(ty_value), bound),
+            scope: scope.define(&mut self.meter, Arc::clone(name), Arc::new(ty_value), bound)?,
             ty_term,
             value_term,
         })
@@ -2377,7 +2404,7 @@ impl<'a> MetaSpine<'a> {
         let mut ty = self.meta.ty().clone();
         let mut value = solution.clone();
         for level in 0..arity {
-            let unfolded = force(meter, &ty)?;
+            let unfolded = crate::eval::opened(meter, &ty)?;
             let forced = unfolded.as_ref().unwrap_or(&ty);
             let Form::Pi { domain, codomain, .. } = &forced.form else {
                 return Err(Malformed::NotAFunction.into());
@@ -2387,7 +2414,7 @@ impl<'a> MetaSpine<'a> {
             value = apply(meter, self.origin, value, variable.clone())?;
             ty = apply_closure(meter, &codomain, variable)?;
         }
-        let read = quote(meter, Depth(depth), &ty, &value)?.at(self.origin);
+        let read = quote(meter, Depth(depth), crate::quote::Mode::Keep, &ty, &value)?.at(self.origin);
         let mut read = stated(meter, depth, self.origin, self.meta.source(), &ty, read)?;
         for argument in self.extra {
             read = Term::app(self.origin, read, zonk(meter, depth, argument)?);
@@ -2436,7 +2463,7 @@ fn stated(
         MetaSource::PostponedTerm => "postponed",
         MetaSource::BinderType | MetaSource::UniverseLevel => "solved",
     };
-    let stated = quote_type(meter, Depth(depth), ty)?.at(at);
+    let stated = quote_type(meter, Depth(depth), crate::quote::Mode::Keep, ty)?.at(at);
     Ok(Term::bind(at, name, stated, read, Term::var(at, Index(0))))
 }
 

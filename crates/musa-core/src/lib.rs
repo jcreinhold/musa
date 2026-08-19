@@ -137,7 +137,7 @@ use std::sync::Arc;
 
 use crate::elab::Elaborator;
 use crate::eval::eval;
-use crate::quote::{quote, quote_type};
+use crate::quote::{Mode, quote, quote_type};
 use crate::room::with_room;
 use crate::scope::Scope;
 use crate::unify::Unifier;
@@ -351,7 +351,7 @@ pub fn normalize_metered(cx: &Cx, ty: &Term, term: &Term) -> Result<(Term, Spend
         let mut meter = cx.meter();
         let ty = eval(&mut meter, cx.env(), ty)?;
         let value = eval(&mut meter, cx.env(), term)?;
-        let normal = quote(&mut meter, cx.quoting_depth(), &ty, &value)?;
+        let normal = quote(&mut meter, cx.quoting_depth(), Mode::Open, &ty, &value)?;
         Ok((normal, meter.spent()))
     })
 }
@@ -369,7 +369,7 @@ pub fn normalize_type(cx: &Cx, ty: &Term) -> Result<Term, CoreError> {
     with_room(|| {
         let mut meter = cx.meter();
         let value = eval(&mut meter, cx.env(), ty)?;
-        quote_type(&mut meter, cx.quoting_depth(), &value)
+        quote_type(&mut meter, cx.quoting_depth(), Mode::Open, &value)
     })
 }
 
@@ -394,12 +394,26 @@ pub fn normalize_type(cx: &Cx, ty: &Term) -> Result<Term, CoreError> {
 ///
 /// As [`normalize`].
 pub fn convertible(cx: &Cx, ty: &Term, left: &Term, right: &Term) -> Result<bool, CoreError> {
+    convertible_metered(cx, ty, left, right).map(|(answer, _)| answer)
+}
+
+/// [`convertible`], and what deciding it charged.
+///
+/// The folded-comparison law is stated in spend: two uses of one definition
+/// compare as *references*, and the only way to say so from outside the crate
+/// is to read the meter. `glued_laws.rs` is the caller.
+///
+/// # Errors
+///
+/// As [`convertible`].
+pub fn convertible_metered(cx: &Cx, ty: &Term, left: &Term, right: &Term) -> Result<(bool, Spend), CoreError> {
     with_room(|| {
         let mut meter = cx.meter();
         let ty = eval(&mut meter, cx.env(), ty)?;
         let left = eval(&mut meter, cx.env(), left)?;
         let right = eval(&mut meter, cx.env(), right)?;
-        decided(Unifier::deciding().unify(&mut meter, cx.depth(), Origin::UNKNOWN, &ty, &left, &right))
+        let answer = decided(Unifier::deciding().unify(&mut meter, cx.depth(), Origin::UNKNOWN, &ty, &left, &right))?;
+        Ok((answer, meter.spent()))
     })
 }
 

@@ -84,7 +84,7 @@ use crate::base::Datum;
 use crate::budget::Meter;
 use crate::class::PackageId;
 use crate::error::{CoreError, Malformed};
-use crate::eval::{apply, eval, force};
+use crate::eval::{apply, eval};
 use crate::level::Level;
 use crate::list::List;
 use crate::origin::Origin;
@@ -290,9 +290,10 @@ impl Element {
 ///
 /// # Errors
 ///
-/// As [`force`], from unfolding the type far enough to see its head.
+/// As [`opened`](crate::eval::opened), from unfolding the type far enough to
+/// see its head.
 pub(crate) fn element(meter: &mut Meter, ty: &Value) -> Result<Option<Element>, CoreError> {
-    let ty = force(meter, ty)?.unwrap_or_else(|| ty.clone());
+    let ty = crate::eval::opened(meter, ty)?.unwrap_or_else(|| ty.clone());
     let Form::Neutral(neutral) = &ty.form else {
         return Ok(None);
     };
@@ -957,7 +958,7 @@ impl<'a> Telescope<'a> {
         let mut introduced = Vec::with_capacity(binders.len());
         for binder in binders {
             let value = eval(meter, &self.reading, &binder.ty)?;
-            let ty = quote_type(meter, Depth(self.depth), &value)?;
+            let ty = quote_type(meter, Depth(self.depth), crate::quote::Mode::Open, &value)?;
             // A constraint binder's arguments are terms read under exactly the
             // binders its *type* was read under, so they travel by the same
             // eval-then-quote this line already does for the type. Re-indexing
@@ -984,7 +985,7 @@ impl<'a> Telescope<'a> {
         let mut args = Vec::with_capacity(constraint.args.len());
         for argument in constraint.args.iter() {
             let value = eval(meter, &self.reading, argument)?;
-            args.push(quote_type(meter, Depth(self.depth), &value)?);
+            args.push(quote_type(meter, Depth(self.depth), crate::quote::Mode::Open, &value)?);
         }
         Ok(Plicity::Constraint(Arc::new(constraint.at(Arc::from(args)))))
     }
@@ -1087,7 +1088,7 @@ impl<'a> Telescope<'a> {
         field: At,
         ty: &Value,
     ) -> Result<Term, CoreError> {
-        let written = quote_type(meter, Depth(self.depth), ty)?;
+        let written = quote_type(meter, Depth(self.depth), crate::quote::Mode::Open, ty)?;
         let indices = index_arguments(&written, self.group.params.len());
         let motive = self.reference(motives.get(usize::try_from(family).unwrap_or(usize::MAX)).copied());
         Ok(Term::app(
@@ -1127,13 +1128,13 @@ impl<'a> Telescope<'a> {
             read.push(match binder {
                 Some(binder) => {
                     let ty = eval(meter, &env, &binder.ty)?;
-                    quote(meter, Depth(self.depth), &ty, &value)?
+                    quote(meter, Depth(self.depth), crate::quote::Mode::Open, &ty, &value)?
                 }
                 // A constructor choosing more indices than its family declares
                 // is refused where it is declared, so this arm is unreachable
                 // from an accepted group; reading as a type keeps it total
                 // without inventing a type nothing wrote.
-                None => quote_type(meter, Depth(self.depth), &value)?,
+                None => quote_type(meter, Depth(self.depth), crate::quote::Mode::Open, &value)?,
             });
             env = env.push(value);
         }
@@ -1329,7 +1330,8 @@ fn unread(method: &Value) -> Option<Value> {
 ///
 /// # Errors
 ///
-/// As [`force`], from looking through a solved metavariable at the argument.
+/// As [`opened`](crate::eval::opened), from looking through a solved
+/// metavariable or a folded definition at the argument.
 pub(crate) fn stepped(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Value>, CoreError> {
     let Head::Const(ref constructor) = neutral.head else {
         return Ok(None);
@@ -1348,7 +1350,7 @@ pub(crate) fn stepped(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Val
     let [Elim::App { ref argument, .. }] = *neutral.spine else {
         return Ok(None);
     };
-    let below = force(meter, argument)?;
+    let below = crate::eval::opened(meter, argument)?;
     let Form::Numeral(ref below) = below.as_ref().unwrap_or(argument).form else {
         return Ok(None);
     };
@@ -1404,7 +1406,7 @@ fn ready(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Reduction>, Core
     let Some(target) = arguments.last() else {
         return Ok(None);
     };
-    let target = force(meter, target)?.unwrap_or_else(|| target.clone());
+    let target = crate::eval::opened(meter, target)?.unwrap_or_else(|| target.clone());
     let params = usize::try_from(group.params()).unwrap_or(usize::MAX);
     let (family, which, fields) = match target.form {
         // This is where the tower reappears, one level and no more: a numeral

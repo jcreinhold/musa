@@ -39,10 +39,10 @@ use crate::error::CoreError;
 use crate::eval::{apply, apply_closure, eval, field_type, force, head_type, project};
 use crate::meta::Meta;
 use crate::origin::Origin;
-use crate::quote::{Depth, quote, quote_solution, quote_type};
+use crate::quote::{Depth, Mode, quote, quote_solution, quote_type};
 use crate::refuse::{ElabError, Mismatch, PathStep, Refusal};
 use crate::term::{DbLevel, Field, Term};
-use crate::value::{Closure, Elim, Env, Form, Head, Neutral, Telescope, Value};
+use crate::value::{Closure, DefHead, Elim, Env, Form, Head, Neutral, Telescope, Value};
 
 /// What a pair of values is being compared at.
 ///
@@ -59,8 +59,8 @@ enum At<'a> {
 impl<'a> At<'a> {
     fn quote(self, meter: &mut Meter, depth: u32, value: &Value) -> Result<Term, CoreError> {
         match self {
-            Self::Type => quote_type(meter, Depth(depth), value),
-            Self::Term(ty) => quote(meter, Depth(depth), ty, value),
+            Self::Type => quote_type(meter, Depth(depth), Mode::Keep, value),
+            Self::Term(ty) => quote(meter, Depth(depth), Mode::Keep, ty, value),
         }
     }
 
@@ -237,9 +237,80 @@ impl Unifier {
                     });
                     Ok(())
                 }
-                Flexible::Rigid => self.rigid(meter, depth, at, origin, left, right),
+                Flexible::Rigid => self.folded(meter, depth, at, origin, left, right),
             })
         })?
+    }
+
+    /// Neither side is flexible: the folded-definition cases, and then the
+    /// structural descent.
+    ///
+    /// Two uses of the *same* definition try the folded comparison first — same
+    /// head, convertible spines, nothing unfolded — which is the whole of the
+    /// win on this path. On a spine disagreement either side opens, since both
+    /// unfold to the same value. Otherwise one side opens and the comparison is
+    /// retried, with the side chosen by **the one that can mention the other
+    /// goes first**: a local before a global (a `let`'s value may name a
+    /// program definition and the reverse is impossible), the larger level
+    /// before the smaller, the larger name between two globals. The order is
+    /// fixed so that the answer never depends on which branch ran first — §3's
+    /// decision procedure rather than a heuristic — and the choice between two
+    /// names is arbitrary because a definition's position is not stored and
+    /// determinism is all that is owed.
+    ///
+    /// Retrying terminates: a local's value was evaluated before its binder was
+    /// pushed, so the folded heads inside it carry strictly smaller levels, and
+    /// a global's carry only earlier definitions — a recursive global's
+    /// self-reference stands under a λ the recursor plan built, never at the
+    /// head. An unfold chain is therefore finite before any meter is consulted.
+    fn folded(
+        &mut self,
+        meter: &mut Meter,
+        depth: u32,
+        at: At<'_>,
+        origin: Origin,
+        left: &Value,
+        right: &Value,
+    ) -> Step {
+        let open = |meter: &mut Meter, folded: FoldedDef<'_>| -> Result<Value, Failure> {
+            Ok(crate::eval::unfold_spine(meter, folded.value, &folded.neutral.spine)?)
+        };
+        match (folded_def(left), folded_def(right)) {
+            (None, None) => self.rigid(meter, depth, at, origin, left, right),
+            (Some(one), None) => {
+                let left = open(meter, one)?;
+                self.step(meter, depth, at, origin, &left, right)
+            }
+            (None, Some(other)) => {
+                let right = open(meter, other)?;
+                self.step(meter, depth, at, origin, left, &right)
+            }
+            (Some(one), Some(other)) if one.identity == other.identity => {
+                match self.rigid(meter, depth, at, origin, left, right) {
+                    // The unfolded comparison decides the question — the spines
+                    // may agree once the definition is open — but when it also
+                    // fails, the folded failure is the one reported: it names
+                    // what the author wrote.
+                    Err(folded @ Failure::Mismatch { .. }) => {
+                        let left = open(meter, one)?;
+                        match self.step(meter, depth, at, origin, &left, right) {
+                            Err(Failure::Mismatch { .. }) => Err(folded),
+                            decided => decided,
+                        }
+                    }
+                    decided => decided,
+                }
+            }
+            (Some(one), Some(other)) => {
+                if unfolds_first(one.identity, other.identity) {
+                    let left = open(meter, one)?;
+                    self.step(meter, depth, at, origin, &left, right)
+                } else {
+                    let right = open(meter, other)?;
+                    self.step(meter, depth, at, origin, left, &right)
+                }
+            }
+        }
     }
 
     /// What the metavariable-headed cases decided.
@@ -567,8 +638,20 @@ impl Unifier {
             // constant.
             (Head::Base(left), Head::Base(right)) => left == right,
             (Head::Builtin(left), Head::Builtin(right)) => left == right,
+            // Reached only at one identity: [`Self::folded`] opens a definition
+            // facing anything but itself, so two `Def` heads here are the same
+            // definition and the spines decide.
+            (Head::Def(one, _, _), Head::Def(other, _, _)) => one == other,
             // Two different kinds of head, which never agree.
-            (Head::Meta(_) | Head::Var(_, _) | Head::Const(_) | Head::Base(_) | Head::Builtin(_), _) => false,
+            (
+                Head::Meta(_)
+                | Head::Var(_, _)
+                | Head::Const(_)
+                | Head::Base(_)
+                | Head::Builtin(_)
+                | Head::Def(_, _, _),
+                _,
+            ) => false,
         };
         // One comparison decides a length disagreement, before any argument is
         // compared. The chain representation had to walk both to find out.
@@ -773,8 +856,8 @@ fn blocked_mismatch(
     other: &Arc<Neutral>,
 ) -> Result<Failure, CoreError> {
     Ok(Failure::Mismatch {
-        expected: quote_type(meter, Depth(depth), &Value::shared_neutral(one))?,
-        found: quote_type(meter, Depth(depth), &Value::shared_neutral(other))?,
+        expected: quote_type(meter, Depth(depth), Mode::Keep, &Value::shared_neutral(one))?,
+        found: quote_type(meter, Depth(depth), Mode::Keep, &Value::shared_neutral(other))?,
         path: Vec::new(),
     })
 }
@@ -789,7 +872,44 @@ pub(crate) fn flexible_head(value: &Value) -> Option<&Meta> {
         return None;
     };
     match &neutral.head {
-        Head::Var(_, _) | Head::Const(_) | Head::Base(_) | Head::Builtin(_) => None,
+        Head::Var(_, _) | Head::Const(_) | Head::Base(_) | Head::Builtin(_) | Head::Def(_, _, _) => None,
         Head::Meta(meta) => Some(meta),
+    }
+}
+
+/// A neutral whose head is a folded definition, with what the match on the
+/// head proved already in hand: the identity the folded comparison keys on,
+/// and the value an unfold replays the spine over. Returning the parts rather
+/// than the neutral keeps the callers out of the re-match an `unreachable`
+/// would otherwise paper over.
+struct FoldedDef<'a> {
+    neutral: &'a Neutral,
+    identity: &'a DefHead,
+    value: &'a Value,
+}
+
+/// The folded use of a definition a value is, if it is one.
+fn folded_def(value: &Value) -> Option<FoldedDef<'_>> {
+    let Form::Neutral(neutral) = &value.form else {
+        return None;
+    };
+    let Head::Def(identity, _, carried) = &neutral.head else {
+        return None;
+    };
+    Some(FoldedDef {
+        neutral,
+        identity,
+        value: carried,
+    })
+}
+
+/// Which of two different folded definitions opens first: the one that can
+/// mention the other. See [`Unifier::folded`].
+fn unfolds_first(one: &DefHead, other: &DefHead) -> bool {
+    match (one, other) {
+        (DefHead::Local(_), DefHead::Global(_)) => true,
+        (DefHead::Global(_), DefHead::Local(_)) => false,
+        (DefHead::Local(this), DefHead::Local(that)) => this.0 > that.0,
+        (DefHead::Global(this), DefHead::Global(that)) => this.name() > that.name(),
     }
 }

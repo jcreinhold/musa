@@ -95,6 +95,21 @@ impl Budget {
     /// compilers disagree about, and the two evaluators become one at prompt
     /// 142.
     ///
+    /// **Measured against the migration's worst workload.** Prompt 141u's
+    /// probe — `cargo build -p musa` with `steps` and `nesting` here and in
+    /// `musa-compiler`'s `core_budget.rs` raised, then `musa check
+    /// examples/staff-page.musa` — reads, after glued evaluation: declaring
+    /// the piece and the standard library costs 226,873 steps, and the staff
+    /// adapter's expansion run exceeds 4×10⁹ steps (stopped at the probe
+    /// ceiling; at 141u's base the whole compile measured 1,605,182,361).
+    /// Glued evaluation won the declaration phase and lost the expansion run:
+    /// a folded application in a lazy position is re-unfolded by every
+    /// consumer, because a pure `Arc`-shared value has no thunk to update, and
+    /// the adapter reads shared partial applications nineteen million times.
+    /// The residual is the adapter's algorithm and prompt 145's to remove;
+    /// note 44 §6's closing records the mechanism. The budget does not move
+    /// for any of it.
+    ///
     /// **Quoted nodes, metavariables, and retries are charged and not
     /// limited.** §4 says so in as many words: "Conversion and metavariable
     /// metrics have no defaults yet: prompt 144 measures the new checker and

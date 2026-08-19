@@ -58,11 +58,11 @@ use std::sync::Arc;
 
 use crate::budget::Meter;
 use crate::error::{CoreError, Malformed};
-use crate::eval::{apply, apply_closure, field_type, force, head_type, project};
+use crate::eval::{apply, apply_closure, field_type, force, head_type, opened, project};
 use crate::meta::Meta;
 use crate::origin::Origin;
 use crate::term::{DbLevel, Field, Index, Term};
-use crate::value::{Elim, Form, Head, Neutral, Telescope, Value};
+use crate::value::{DefHead, Elim, Form, Head, Neutral, Telescope, Value};
 
 /// How many binders are in scope while quoting.
 ///
@@ -70,6 +70,26 @@ use crate::value::{Elim, Form, Head, Neutral, Telescope, Value};
 /// during quotation into the [`Index`] that names it.
 #[derive(Clone, Copy)]
 pub(crate) struct Depth(pub(crate) u32);
+
+/// Whether quotation opens a folded definition or keeps it.
+///
+/// Two modes, because there are two callers. Diagnostics **keep**: a
+/// conversion mismatch should name `pitch_of`, not print its normal form.
+/// Metavariable solutions and the canonical readback **open**: a solution
+/// mentioning a definition that escapes its scope is unsound, and a musical
+/// value must be a value rather than a name for one. There is no third
+/// caller, so there is no third mode.
+///
+/// The mode governs the *value* being read back. The *type* directing η is
+/// always opened — it is never written into the term, and a folded type
+/// synonym would otherwise skip the η the answer is owed.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Mode {
+    /// Stop at a folded definition and write its name.
+    Keep,
+    /// Unfold folded definitions.
+    Open,
+}
 
 /// The depth, and — when the term being written is a metavariable's solution —
 /// what that solution is allowed to mention.
@@ -80,6 +100,7 @@ pub(crate) struct Depth(pub(crate) u32);
 #[derive(Clone, Copy)]
 struct Reading<'a> {
     depth: u32,
+    mode: Mode,
     solving: Option<Solving<'a>>,
 }
 
@@ -143,22 +164,37 @@ impl Escape {
 
 impl<'a> Reading<'a> {
     /// A plain quotation: no metavariable to fit the answer into.
-    const fn open(depth: Depth) -> Self {
+    const fn open(depth: Depth, mode: Mode) -> Self {
         Self {
             depth: depth.0,
+            mode,
             solving: None,
         }
     }
 
     /// A quotation whose answer must live in `meta`'s own context.
+    ///
+    /// Always [`Mode::Open`]: a solution that named a definition which escapes
+    /// the metavariable's context would be unsound, so definitions are
+    /// unfolded and the scope check decides on what they unfold to.
     const fn solving(depth: Depth, meta: &'a Meta, arity: u32) -> Self {
         Self {
             depth: depth.0,
+            mode: Mode::Open,
             solving: Some(Solving {
                 meta,
                 arity,
                 outer: depth.0,
             }),
+        }
+    }
+
+    /// The value with whatever the head hides seen through: solved
+    /// metavariables always, folded definitions in [`Mode::Open`].
+    fn seen(&self, meter: &mut Meter, value: &Value) -> Result<Option<Value>, Escape> {
+        match self.mode {
+            Mode::Keep => Ok(force(meter, value)?),
+            Mode::Open => Ok(opened(meter, value)?),
         }
     }
 
@@ -216,8 +252,8 @@ impl<'a> Reading<'a> {
 ///
 /// [`CoreError::Exhausted`] at a budget limit, [`CoreError::Malformed`] when
 /// the value does not inhabit the shape the type demands.
-pub(crate) fn quote(meter: &mut Meter, depth: Depth, ty: &Value, value: &Value) -> Result<Term, CoreError> {
-    read(meter, Reading::open(depth), ty, value).map_err(Escape::core)
+pub(crate) fn quote(meter: &mut Meter, depth: Depth, mode: Mode, ty: &Value, value: &Value) -> Result<Term, CoreError> {
+    read(meter, Reading::open(depth, mode), ty, value).map_err(Escape::core)
 }
 
 /// Read `value` back as a metavariable's solution, or refuse to.
@@ -258,9 +294,11 @@ fn read(meter: &mut Meter, reading: Reading<'_>, ty: &Value, value: &Value) -> R
         // `as_ref().unwrap_or` rather than `unwrap_or_else(clone)`: the common
         // case is a value with no metavariable in it, and that case must not pay
         // an allocation per quoted node.
-        let unfolded_ty = force(meter, ty)?;
+        // The type is opened in either mode: it directs η and is never written
+        // into the term, so a folded type synonym must not hide a Π.
+        let unfolded_ty = opened(meter, ty)?;
         let ty = unfolded_ty.as_ref().unwrap_or(ty);
-        let unfolded_value = force(meter, value)?;
+        let unfolded_value = reading.seen(meter, value)?;
         let value = unfolded_value.as_ref().unwrap_or(value);
         let here = value.origin;
         match &ty.form {
@@ -339,14 +377,14 @@ fn read(meter: &mut Meter, reading: Reading<'_>, ty: &Value, value: &Value) -> R
 ///
 /// As [`quote`], plus [`Malformed::NotAType`] when the value is a canonical
 /// form no universe contains.
-pub(crate) fn quote_type(meter: &mut Meter, depth: Depth, value: &Value) -> Result<Term, CoreError> {
-    read_type(meter, Reading::open(depth), value).map_err(Escape::core)
+pub(crate) fn quote_type(meter: &mut Meter, depth: Depth, mode: Mode, value: &Value) -> Result<Term, CoreError> {
+    read_type(meter, Reading::open(depth, mode), value).map_err(Escape::core)
 }
 
 fn read_type(meter: &mut Meter, reading: Reading<'_>, value: &Value) -> Result<Term, Escape> {
     meter.nested("quotation", |meter| {
         meter.quoted_node("quotation")?;
-        let unfolded = force(meter, value)?;
+        let unfolded = reading.seen(meter, value)?;
         let value = unfolded.as_ref().unwrap_or(value);
         let here = value.origin;
         match &value.form {
@@ -421,6 +459,13 @@ fn read_neutral(meter: &mut Meter, reading: Reading<'_>, neutral: &Neutral) -> R
         // it may not name, and itself.
         let mut term = match &neutral.head {
             Head::Var(level, _) => Term::var(here, reading.index(*level)?),
+            // The whole of [`Mode::Keep`]: a definition writes its name — the
+            // binder for a local, the declaration for a global — rather than
+            // its normal form.
+            Head::Def(which, _, _) => match which {
+                DefHead::Local(level) => Term::var(here, reading.index(*level)?),
+                DefHead::Global(def) => def.term(here),
+            },
             // Reached only unsolved: [`quote`] forces first, and a spine whose
             // head is solved forces whole.
             Head::Meta(meta) => {

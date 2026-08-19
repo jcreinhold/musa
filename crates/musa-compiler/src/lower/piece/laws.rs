@@ -979,11 +979,8 @@ fn every_example_elaborates() {
     said.dedup();
     assert_eq!(
         said,
-        [
-            "ResourceLimit: evaluation exceeded the budget for reduction steps at 200001 of 200000",
-            "ResourceLimit: function application exceeded the budget for reduction steps at 200001 of 200000",
-        ],
-        "the corpus reads and checks; what is left is the step budget, and prompt 144 owns it"
+        ["ResourceLimit: evaluation exceeded the budget for reduction steps at 200001 of 200000"],
+        "the corpus reads and checks; what is left is the step budget, and prompt 145 owns it"
     );
 }
 

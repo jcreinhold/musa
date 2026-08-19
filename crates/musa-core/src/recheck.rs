@@ -52,10 +52,10 @@ use std::sync::Arc;
 use crate::budget::Meter;
 use crate::context::Cx;
 use crate::error::Malformed;
-use crate::eval::{apply, apply_closure, eval, field_type, force};
+use crate::eval::{apply, apply_closure, eval, field_type, opened};
 use crate::level::Level;
 use crate::origin::Origin;
-use crate::quote::{quote, quote_type};
+use crate::quote::{Mode, quote, quote_type};
 use crate::refuse::{ElabError, Mismatch, Refusal};
 use crate::term::{DbLevel, Field, Shape, Term};
 use crate::value::{Closure, Env, Form, Telescope, Value};
@@ -100,7 +100,7 @@ struct Checker<'a> {
 impl Checker<'_> {
     /// `Γ ⊢ term ⇐ ty`.
     fn check(&mut self, cx: &Cx, term: &Term, ty: &Value) -> Result<(), ElabError> {
-        let unfolded = force(self.meter, ty)?;
+        let unfolded = opened(self.meter, ty)?;
         let ty = unfolded.as_ref().unwrap_or(ty);
         let here = term.origin();
         match (term.shape(), &ty.form) {
@@ -132,7 +132,8 @@ impl Checker<'_> {
                 // The goal is unchanged rather than weakened: a value indexes
                 // its variables by level, so one built here still names the same
                 // binders one binder deeper.
-                self.check(&cx.defined(Arc::new(declared), bound), body, ty)
+                let cx = cx.defined(self.meter, Arc::new(declared), bound)?;
+                self.check(&cx, body, ty)
             }
             (Shape::Refl(witness), Form::Id { ty: at, left, right }) => {
                 self.check(cx, witness, at)?;
@@ -222,12 +223,14 @@ impl Checker<'_> {
             Shape::Record(_) => Err(Refusal::Uninferable { at: here }.into()),
             Shape::Project { record, field } => {
                 let record_ty = self.infer(cx, record)?;
-                let unfolded = force(self.meter, &record_ty)?;
-                let record_ty = unfolded.as_ref().unwrap_or(&record_ty);
-                let Form::RecordType(telescope) = &record_ty.form else {
+                let unfolded = opened(self.meter, &record_ty)?;
+                let opened_ty = unfolded.as_ref().unwrap_or(&record_ty);
+                // The refusal quotes the type as it stands — a definition the
+                // author wrote keeps its name; the unfolding is what matched.
+                let Form::RecordType(telescope) = &opened_ty.form else {
                     return Err(Refusal::NotARecord {
                         at: here,
-                        ty: quote_type(self.meter, cx.quoting_depth(), record_ty)?,
+                        ty: quote_type(self.meter, cx.quoting_depth(), crate::quote::Mode::Keep, &record_ty)?,
                     }
                     .into());
                 };
@@ -280,7 +283,8 @@ impl Checker<'_> {
                 let ty_value = eval(self.meter, cx.env(), ty)?;
                 self.check(cx, value, &ty_value)?;
                 let bound = eval(self.meter, cx.env(), value)?;
-                self.infer(&cx.defined(Arc::new(ty_value), bound), body)
+                let cx = cx.defined(self.meter, Arc::new(ty_value), bound)?;
+                self.infer(&cx, body)
             }
         }
     }
@@ -376,12 +380,12 @@ impl Checker<'_> {
         let witness = Value::var(at, DbLevel(under.depth()), Arc::new(proof_domain));
         let inside = under.assumed(at, Arc::new(expected_proof));
         let result = apply_closure(self.meter, &proof_codomain, witness)?;
-        let unfolded = force(self.meter, &result)?;
-        let result = unfolded.as_ref().unwrap_or(&result);
-        let Form::Universe(_) = result.form else {
+        let unfolded = opened(self.meter, &result)?;
+        let opened_result = unfolded.as_ref().unwrap_or(&result);
+        let Form::Universe(_) = opened_result.form else {
             return Err(Refusal::NotAType {
                 at,
-                ty: quote_type(self.meter, inside.quoting_depth(), result)?,
+                ty: quote_type(self.meter, inside.quoting_depth(), crate::quote::Mode::Keep, &result)?,
             }
             .into());
         };
@@ -415,12 +419,12 @@ impl Checker<'_> {
     /// The level of a term standing in type position.
     fn universe(&mut self, cx: &Cx, term: &Term) -> Result<Level, ElabError> {
         let ty = self.infer(cx, term)?;
-        let unfolded = force(self.meter, &ty)?;
-        let ty = unfolded.as_ref().unwrap_or(&ty);
-        let Form::Universe(level) = &ty.form else {
+        let unfolded = opened(self.meter, &ty)?;
+        let opened_ty = unfolded.as_ref().unwrap_or(&ty);
+        let Form::Universe(level) = &opened_ty.form else {
             return Err(Refusal::NotAType {
                 at: term.origin(),
-                ty: quote_type(self.meter, cx.quoting_depth(), ty)?,
+                ty: quote_type(self.meter, cx.quoting_depth(), crate::quote::Mode::Keep, &ty)?,
             }
             .into());
         };
@@ -429,12 +433,12 @@ impl Checker<'_> {
 
     /// Take a Π type apart, refusing what is not one.
     fn function_parts(&mut self, cx: &Cx, at: Origin, ty: &Value) -> Result<(Value, Closure), ElabError> {
-        let unfolded = force(self.meter, ty)?;
-        let ty = unfolded.as_ref().unwrap_or(ty);
-        let Form::Pi { domain, codomain, .. } = &ty.form else {
+        let unfolded = opened(self.meter, ty)?;
+        let opened_ty = unfolded.as_ref().unwrap_or(ty);
+        let Form::Pi { domain, codomain, .. } = &opened_ty.form else {
             return Err(Refusal::NotAFunction {
                 at,
-                ty: quote_type(self.meter, cx.quoting_depth(), ty)?,
+                ty: quote_type(self.meter, cx.quoting_depth(), crate::quote::Mode::Keep, ty)?,
             }
             .into());
         };
@@ -442,16 +446,20 @@ impl Checker<'_> {
     }
 
     /// Conversion at the level of types: both sides read back, compared up to α.
+    ///
+    /// The read-back is [`Mode::Open`] — this is conversion *by* normal forms,
+    /// so the normal forms must be the canonical ones: kept folded, a
+    /// definition's name never α-equals its unfolding.
     fn same_types(&mut self, cx: &Cx, at: Origin, expected: &Value, found: &Value) -> Result<(), ElabError> {
-        let expected = quote_type(self.meter, cx.quoting_depth(), expected)?;
-        let found = quote_type(self.meter, cx.quoting_depth(), found)?;
+        let expected = quote_type(self.meter, cx.quoting_depth(), Mode::Open, expected)?;
+        let found = quote_type(self.meter, cx.quoting_depth(), Mode::Open, found)?;
         Self::agree(at, expected, found)
     }
 
     /// Conversion at a type.
     fn same(&mut self, cx: &Cx, at: Origin, ty: &Value, expected: &Value, found: &Value) -> Result<(), ElabError> {
-        let expected = quote(self.meter, cx.quoting_depth(), ty, expected)?;
-        let found = quote(self.meter, cx.quoting_depth(), ty, found)?;
+        let expected = quote(self.meter, cx.quoting_depth(), Mode::Open, ty, expected)?;
+        let found = quote(self.meter, cx.quoting_depth(), Mode::Open, ty, found)?;
         Self::agree(at, expected, found)
     }
 

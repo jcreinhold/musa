@@ -972,7 +972,7 @@ fn methods_in_scope(
         let value_term = Term::project(at, Term::var(at, reached), Arc::clone(name));
         let value = inner.eval(elaborator.meter(), &value_term)?;
         wrappers.push((Arc::clone(name), ty_term, value_term));
-        inner = inner.define(Arc::clone(name), Arc::new(ty), value);
+        inner = inner.define(elaborator.meter(), Arc::clone(name), Arc::new(ty), value)?;
     }
     Ok((inner, wrappers))
 }

@@ -180,6 +180,37 @@ pub(crate) enum Head {
     /// variable can never compute, while this one computes the moment the meta
     /// is solved, which is exactly the distinction unification turns on.
     Meta(Meta),
+    /// A definition, held folded: what it is known as, its type, and the value
+    /// it unfolds to.
+    ///
+    /// **Flexible-rigid.** It never blocks like a variable and never solves
+    /// like a meta — unification treats it as rigid — but it computes on
+    /// demand, so conversion treats it as reducible. That pairing is why it is
+    /// one head rather than a second [`Form`].
+    ///
+    /// The type travels beside the value for [`Head::Var`]'s reason:
+    /// [`crate::eval::neutral_type`] answers a head's type with no context to
+    /// ask. The value travels so that δ stays a *local* rule — `eval` takes an
+    /// `&Env` and not a `Cx`, and a head that had to consult a context to
+    /// unfold would make δ a lookup the evaluator cannot perform where it
+    /// needs to.
+    Def(DefHead, Arc<Value>, Arc<Value>),
+}
+
+/// What a folded definition is known as.
+///
+/// One notion of identity with two disjoint constructors — disjoint is the
+/// soundness property: a binder level and a program position are two
+/// numberings that both start at zero, so a single constructor for both would
+/// equate a `let` with whichever top-level definition happened to share its
+/// number, and one such program plus one `let` is a constructible wrong
+/// answer. Two constructors of one enum cannot disagree with each other.
+#[derive(Clone, PartialEq, Eq)]
+pub(crate) enum DefHead {
+    /// A `let` or context definition, named by the binder's level.
+    Local(DbLevel),
+    /// A top-level definition, named by the declaration itself.
+    Global(crate::program::Def),
 }
 
 /// One elimination applied to a blocked head.

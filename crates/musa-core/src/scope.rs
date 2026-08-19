@@ -199,12 +199,18 @@ impl Scope {
 
     /// This scope extended by a definition, so that a use of `name` unfolds to
     /// `value` (δ).
-    pub(crate) fn define(&self, name: Name, ty: Arc<Value>, value: Value) -> Self {
-        Self {
-            cx: self.cx.defined(Arc::clone(&ty), value),
+    pub(crate) fn define(
+        &self,
+        meter: &mut Meter,
+        name: Name,
+        ty: Arc<Value>,
+        value: Value,
+    ) -> Result<Self, CoreError> {
+        Ok(Self {
+            cx: self.cx.defined(meter, Arc::clone(&ty), value)?,
             bindings: self.pushed(Some(name), ty),
             locals: self.locals.clone(),
-        }
+        })
     }
 
     fn pushed(&self, name: Option<Name>, ty: Arc<Value>) -> List<Binding> {
@@ -246,7 +252,7 @@ impl Scope {
     ///
     /// As [`quote_type`].
     pub(crate) fn quote_type(&self, meter: &mut Meter, value: &Value) -> Result<Term, CoreError> {
-        quote_type(meter, Depth(self.depth()), value)
+        quote_type(meter, Depth(self.depth()), crate::quote::Mode::Keep, value)
     }
 
     /// Wrap `body` in one Π per binder in scope, outermost first.
@@ -296,7 +302,7 @@ impl Binding {
         if let Some(term) = self.ty_term.get() {
             return Ok(term.clone());
         }
-        let term = quote_type(meter, Depth(self.level), &self.ty)?;
+        let term = quote_type(meter, Depth(self.level), crate::quote::Mode::Keep, &self.ty)?;
         // A second thread losing the race wrote an α-equal term, so which one
         // wins does not matter; only that one of them does.
         drop(self.ty_term.set(term.clone()));

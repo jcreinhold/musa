@@ -34,7 +34,7 @@ use crate::budget::Meter;
 use crate::error::{CoreError, Malformed};
 use crate::origin::Origin;
 use crate::term::{Field, Name, Plicity, Shape, Term};
-use crate::value::{Closure, Elim, Env, Form, Head, Neutral, Telescope, Value};
+use crate::value::{Closure, DefHead, Elim, Env, Form, Head, Neutral, Telescope, Value};
 
 /// Evaluate `term` in `env`.
 ///
@@ -65,11 +65,16 @@ pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, C
             // here, so evaluating it charges one step and one nesting level
             // rather than 384 of each.
             Shape::Numeral(numeral) => Ok(Value::new(here, Form::Numeral(numeral.clone()))),
-            // δ on a top-level definition: the value was computed once, at the
-            // declaration, and this hands it back. The origins inside it are
-            // the definition's own, which is §7 working — the value came from
-            // where it was written, not from where it was named.
-            Shape::Def(def) => Ok((*def.value()).clone()),
+            // δ on a top-level definition, *deferred*: the use evaluates to a
+            // folded neutral that carries the value computed once at the
+            // declaration, and [`unfold`] opens it where something needs it
+            // open. The origins inside it are the definition's own, which is
+            // §7 working — the value came from where it was written, not from
+            // where it was named.
+            Shape::Def(def) => Ok(Value::neutral(Neutral::head(
+                here,
+                Head::Def(DefHead::Global(def.clone()), def.ty(), def.value()),
+            ))),
             // §5.8's extension. A base type is rigid forever — nothing
             // eliminates it — and a builtin is rigid until its arguments are
             // literals, which is a question [`apply`] asks once the spine is
@@ -274,13 +279,132 @@ pub(crate) fn force(meter: &mut Meter, value: &Value) -> Result<Option<Value>, C
     }
 }
 
+/// The value with a folded definition at its head unfolded, or `None` when
+/// the head is not a definition.
+///
+/// δ on demand — the one operation all five kinds of forcing site share. The
+/// definition's value was computed once at the declaration; unfolding replays
+/// the spine over it, which is [`replay`] for a head that was never a
+/// metavariable. Neither the unfold nor the replay carries a bookkeeping
+/// charge: evaluation charged each elimination when it entered the spine, and
+/// charging again here would count every application of a definition twice —
+/// what changed is *when* the work runs, not what it costs. Termination needs
+/// no meter here: a definition's value names only what was declared before it
+/// (a local's carried heads sit at strictly smaller levels, a global's at
+/// earlier declarations, and a recursive definition's self-reference stands
+/// under a λ), so an unfold chain is finite, and the real work the replay
+/// runs — β bodies, ι steps, builtin rules — is charged by itself.
+///
+/// # Errors
+///
+/// As [`eval`]: replaying the spine is ordinary evaluation.
+pub(crate) fn unfold(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Value>, CoreError> {
+    let Head::Def(_, _, value) = &neutral.head else {
+        return Ok(None);
+    };
+    Ok(Some(unfold_spine(meter, value, &neutral.spine)?))
+}
+
+/// [`unfold`] with the head question already answered: the caller matched the
+/// `Def` head itself, so the value and the spine are what it holds.
+pub(crate) fn unfold_spine(meter: &mut Meter, value: &Value, spine: &[Elim]) -> Result<Value, CoreError> {
+    let mut answer = value.clone();
+    // Innermost first, which is the order the spine is stored in.
+    for elimination in spine {
+        answer = eliminate_replayed(meter, answer, elimination)?;
+    }
+    Ok(answer)
+}
+
+/// One elimination replayed over a definition's value at an unfold, uncharged
+/// — see [`unfold`]'s doc for the accounting. [`eliminate`] is the charging
+/// twin the metavariable replay keeps, because a spine behind a metavariable
+/// is charged when it is built *and* its replay is where the waiting work
+/// finally runs; a spine behind a definition waited behind nothing.
+fn eliminate_replayed(meter: &mut Meter, target: Value, elimination: &Elim) -> Result<Value, CoreError> {
+    match elimination {
+        Elim::App { origin, argument } => applying(meter, *origin, target, Value::clone(argument)),
+        Elim::Project { origin, field } => projecting(meter, *origin, target, field),
+        Elim::J {
+            origin,
+            ty,
+            from,
+            motive,
+            base,
+            to,
+        } => jaying(
+            meter,
+            *origin,
+            Value::clone(ty),
+            Value::clone(from),
+            Value::clone(motive),
+            Value::clone(base),
+            Value::clone(to),
+            target,
+        ),
+    }
+}
+
+/// The value seen through solved metavariables *and* folded definitions at
+/// its head, or `None` when there was nothing to see through.
+///
+/// The fixed point of [`force`] and [`unfold`], and the operation every place
+/// that asks "is this a canonical form yet" takes: conversion on a folded
+/// disagreement, ι at a recursor target, δ at a builtin's arguments, quotation
+/// in the opening mode, and the elaborator wherever it already forced a value
+/// before matching its form. [`force`] alone remains what conversion's folded
+/// comparison and quotation's keeping mode use, because both exist to *not*
+/// open definitions.
+///
+/// The loop, as [`force`]'s: unfolding a definition can answer a value headed
+/// by another one (a definition whose value is an earlier definition), and
+/// the postcondition is the fixed point — the head of what comes back is
+/// neither a solved metavariable nor a folded definition.
+///
+/// # Errors
+///
+/// As [`force`] and [`unfold`].
+pub(crate) fn opened(meter: &mut Meter, value: &Value) -> Result<Option<Value>, CoreError> {
+    let mut answer = match force(meter, value)? {
+        Some(forced) => forced,
+        None => match &value.form {
+            Form::Neutral(neutral) => match unfold(meter, neutral)? {
+                Some(unfolded) => unfolded,
+                None => return Ok(None),
+            },
+            Form::Universe(_)
+            | Form::Pi { .. }
+            | Form::Lam(_)
+            | Form::RecordType(_)
+            | Form::Record(_)
+            | Form::Id { .. }
+            | Form::Refl(_)
+            | Form::Lit(_)
+            | Form::Numeral(_) => return Ok(None),
+        },
+    };
+    loop {
+        if let Some(forced) = force(meter, &answer)? {
+            answer = forced;
+            continue;
+        }
+        let Form::Neutral(neutral) = &answer.form else {
+            return Ok(Some(answer));
+        };
+        match unfold(meter, neutral)? {
+            Some(unfolded) => answer = unfolded,
+            None => return Ok(Some(answer)),
+        }
+    }
+}
+
 /// Whether the head of a spine is a metavariable that now has a solution.
 ///
 /// One field read rather than a walk to the deepest node: that is the whole
 /// point of storing the head beside the spine instead of under it.
 fn head_is_solved(neutral: &Neutral) -> bool {
     match &neutral.head {
-        Head::Var(_, _) | Head::Const(_) | Head::Base(_) | Head::Builtin(_) => false,
+        Head::Var(_, _) | Head::Const(_) | Head::Base(_) | Head::Builtin(_) | Head::Def(_, _, _) => false,
         Head::Meta(meta) => meta.is_solved(),
     }
 }
@@ -347,6 +471,15 @@ pub(crate) fn apply_closure(meter: &mut Meter, closure: &Closure, argument: Valu
 /// [`Malformed::NotAFunction`] when `function` is neither a lambda nor neutral.
 pub(crate) fn apply(meter: &mut Meter, here: Origin, function: Value, argument: Value) -> Result<Value, CoreError> {
     meter.step("function application")?;
+    applying(meter, here, function, argument)
+}
+
+/// [`apply`] without the bookkeeping charge, for a spine being replayed at an
+/// unfold: the elimination was charged when it entered the spine, and charging
+/// the replay as well would count every application of a definition twice.
+/// The work inside — a β body, an ι step, a builtin's rule — carries its own
+/// charges either way.
+fn applying(meter: &mut Meter, here: Origin, function: Value, argument: Value) -> Result<Value, CoreError> {
     let function = force(meter, &function)?.unwrap_or(function);
     match function.form {
         Form::Lam(body) => apply_closure(meter, &body, argument),
@@ -479,7 +612,7 @@ fn delta(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreError>
 /// allows.
 fn canonical(meter: &mut Meter, value: &Value) -> Result<Option<Datum>, CoreError> {
     meter.nested("canonical data", |meter| {
-        let forced = force(meter, value)?;
+        let forced = opened(meter, value)?;
         match forced.as_ref().unwrap_or(value).form {
             Form::Lit(ref literal) => Ok(Some(Datum::Lit(literal.clone()))),
             // The count read back as the tower it stands for. See
@@ -593,7 +726,7 @@ fn structural(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreE
     let Some(subject) = arguments.get(target) else {
         return Ok(None);
     };
-    let forced = force(meter, subject)?;
+    let forced = opened(meter, subject)?;
     let rewritten = match forced.as_ref().unwrap_or(subject).form {
         Form::Lit(ref literal) => {
             meter.step("structural reduction")?;
@@ -628,6 +761,11 @@ fn structural(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreE
 /// [`Malformed::NoSuchField`] when it is a record without that field.
 pub(crate) fn project(meter: &mut Meter, here: Origin, record: Value, field: &Name) -> Result<Value, CoreError> {
     meter.step("field projection")?;
+    projecting(meter, here, record, field)
+}
+
+/// [`project`] without the bookkeeping charge — see [`applying`].
+fn projecting(meter: &mut Meter, here: Origin, record: Value, field: &Name) -> Result<Value, CoreError> {
     let record = force(meter, &record)?.unwrap_or(record);
     match record.form {
         Form::Record(fields) => fields
@@ -672,6 +810,21 @@ pub(crate) fn jay(
     proof: Value,
 ) -> Result<Value, CoreError> {
     meter.step("identity elimination")?;
+    jaying(meter, here, ty, from, motive, base, to, proof)
+}
+
+/// [`jay`] without the bookkeeping charge — see [`applying`].
+#[allow(clippy::too_many_arguments)]
+fn jaying(
+    meter: &mut Meter,
+    here: Origin,
+    ty: Value,
+    from: Value,
+    motive: Value,
+    base: Value,
+    to: Value,
+    proof: Value,
+) -> Result<Value, CoreError> {
     let proof = force(meter, &proof)?.unwrap_or(proof);
     match proof.form {
         Form::Refl(_) => Ok(base),
@@ -743,6 +896,8 @@ pub(crate) fn neutral_type(meter: &mut Meter, neutral: &Neutral) -> Result<Value
     meter.nested("neutral typing", |meter| {
         let mut ty = match &neutral.head {
             Head::Var(_, ty) => Value::clone(ty),
+            // The type travels in the head, as it does for a variable.
+            Head::Def(_, ty, _) => Value::clone(ty),
             // A meta is closed and carries its own type, which is why creating
             // one has to build that type rather than remember a context.
             Head::Meta(meta) => meta.ty().clone(),
@@ -762,9 +917,10 @@ pub(crate) fn neutral_type(meter: &mut Meter, neutral: &Neutral) -> Result<Value
         let mut prefix = Neutral::head(neutral.origin, neutral.head.clone());
         for elimination in &neutral.spine {
             // A type written as a metavariable is blocked until that meta is
-            // solved; matching it unforced would answer `NotAFunction` for a
+            // solved, and one written as a definition stays folded until it is
+            // opened; matching it as either would answer `NotAFunction` for a
             // term the elaborator had just proved well typed.
-            let head = force(meter, &ty)?.unwrap_or(ty);
+            let head = opened(meter, &ty)?.unwrap_or(ty);
             ty = eliminated_type(meter, head, &prefix, elimination)?;
             prefix.spine.push(elimination.clone());
         }
@@ -823,5 +979,7 @@ fn eliminated_type(meter: &mut Meter, head: Value, prefix: &Neutral, elimination
 /// As [`neutral_type`].
 pub(crate) fn head_type(meter: &mut Meter, neutral: &Neutral) -> Result<Value, CoreError> {
     let ty = neutral_type(meter, neutral)?;
-    Ok(force(meter, &ty)?.unwrap_or(ty))
+    // Opened rather than merely forced: the answer is matched against `Π` and
+    // record types, and a type that names a definition hides both while folded.
+    Ok(opened(meter, &ty)?.unwrap_or(ty))
 }

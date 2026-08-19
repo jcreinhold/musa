@@ -404,7 +404,7 @@ impl Cx {
             // conversion that trips over it.
             let ty = Arc::new(eval(&mut meter, &self.env, ty)?);
             let value = eval(&mut meter, &self.env, value)?;
-            Ok(self.defined(ty, value))
+            self.defined(&mut meter, ty, value)
         })
     }
 
@@ -431,8 +431,34 @@ impl Cx {
     }
 
     /// This context extended by an already-evaluated definition.
-    pub(crate) fn defined(&self, ty: Arc<Value>, value: Value) -> Self {
-        self.pushed(ty, value)
+    ///
+    /// The value is first opened to weak-head form: the work a definition's
+    /// body stands for is paid at its declaration, once, which is the
+    /// strictness evaluation had when δ ran at the lookup and what the budget
+    /// laws are calibrated against. The binder's entry in the environment is
+    /// then the definition *folded*: a neutral headed by
+    /// [`Head::Def`](crate::value) that carries the opened value, so a use of
+    /// the definition is a reference to it rather than its value written out
+    /// again. δ opens it where something needs a canonical form — see
+    /// [`crate::eval::unfold`] — and conversion tries the folded comparison
+    /// first. The binder's level is the identity: a definition is already a
+    /// telescope entry, so no second numbering exists to disagree with this
+    /// one.
+    ///
+    /// # Errors
+    ///
+    /// As [`crate::eval::opened`]: opening the value is ordinary evaluation.
+    pub(crate) fn defined(&self, meter: &mut Meter, ty: Arc<Value>, value: Value) -> Result<Self, CoreError> {
+        let value = crate::eval::opened(meter, &value)?.unwrap_or(value);
+        let folded = Value::neutral(crate::value::Neutral::head(
+            value.origin,
+            crate::value::Head::Def(
+                crate::value::DefHead::Local(DbLevel(self.depth)),
+                Arc::clone(&ty),
+                Arc::new(value),
+            ),
+        ));
+        Ok(self.pushed(ty, folded))
     }
 
     /// The type of every binder in scope, innermost first.

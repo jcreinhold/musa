@@ -206,6 +206,11 @@ impl core::fmt::Display for Def {
 }
 
 impl Def {
+    /// The name the definition binds.
+    pub(crate) fn name(&self) -> &Name {
+        &self.0.name
+    }
+
     /// This use as a term.
     pub(crate) fn term(&self, origin: Origin) -> Term {
         Term::new(origin, Shape::Def(self.clone()))
@@ -434,7 +439,14 @@ fn elaborate(cx: &Cx, held: &RawTopLevel, recursive: bool) -> Result<(Defined, c
             (scope.eval(elaborator.meter(), &ty)?, term)
         }
     };
+    // The body is opened to weak-head form before it is stored — the
+    // strictness evaluation had when δ ran at the lookup. The work a top-level
+    // definition stands for is paid at its declaration, once, and the budget
+    // laws keep the meaning they were calibrated with; uses of the definition
+    // still evaluate to the folded reference, so nothing about sharing or
+    // diagnostics changes.
     let value = eval(elaborator.meter(), &Env::EMPTY, &value)?;
+    let value = crate::eval::opened(elaborator.meter(), &value)?.unwrap_or(value);
     let defined = Defined {
         name: Arc::clone(&held.name),
         visibility: held.visibility,

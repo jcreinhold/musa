@@ -300,6 +300,34 @@ most-reduced value. Concretely:
 This is squarely a prompt-144 concern and 144's own Design should name it, because 144 re-measures the P1/P2 budget
 against exactly the workload that exposes it.
 
+**Landed at prompt 141u**, one rank earlier than this note assigned it, because 142's migration measured the cliff
+rather than approaching it. What landed is the design above, widened in the ways the implementation forced and recorded
+in the prompt's repair history: the head carries its *type* as well as its value (quotation writes a `Def` head back as
+a name without type-directed help); the identity is one `DefHead` enum with disjoint local and global constructors (a
+shared numbering would equate a `let` with whichever top-level definition shared its number); the elaborator's
+force-before-form-match sites are a fifth unfold source, without which acceptance moves; the unfold and its spine replay
+carry **no bookkeeping charge** (the eliminations were charged when the spine was built — charging the replay
+double-counts every application of a definition, and the corpus is calibrated to the single count); and a definition's
+body is opened to weak-head form once at its declaration, because δ deferred is δ *lazy* and the budget laws are written
+against the strict boundary. Two quotation modes, `Keep` and `Open`, and the refusal sites quote the value as it stood
+before opening, so a refusal names the definition the author wrote. The laws live in `tests/suite/glued_laws.rs`: a body
+is paid for once however many uses it has, and a folded comparison's spend does not measure the definition's normal
+form.
+
+The re-measurement is two-sided, and the second side is the finding this note did not predict. The declaration phase
+collapsed: declaring the staff page's piece plus the standard library costs 226,873 reduction steps, against
+1,605,182,361 for the whole compile at this note's base. The adapter's expansion run did not collapse — it *grew*, past
+4×10⁹ steps where the base measured 1.6×10⁹ for everything. The mechanism is Peyton Jones ch. 3's, stated from the other
+side: glued evaluation without graph update is laziness without memoization. An application of a definition in a lazy
+position — a record field, a constructor argument — stays a folded neutral, and a pure `Arc`-shared value has no thunk
+to overwrite, so every consumer that forces it re-runs the unfold and the spine's β-work. smalltt does not pay this
+because Haskell's runtime updates the thunk; this evaluator is pure and cannot. The staff adapter's workload — the same
+partially-applied functions read field by field, nineteen million calls over a 77-line page — is the worst case for
+exactly that. The folded comparison's win is real where the workload offers it (the laws measure it), the staff page
+offers none of it, and the residual stands exactly where the tally said it stands: the adapter's call count, which
+prompt 145's rewrite attacks. Whether an unfold memo (interior state behind the `Arc`, or a keyed cache at the unfold
+site) is worth its complexity is a decision prompt 144 now has the measurement to take.
+
 ## §7 Finding D — conversion has no approximate mode, and no structural rule at Π or at record types for _terms_
 
 **Ad hoc. The stated justification argues correctness, not cost, and its premise is wrong for the roadmap.**
