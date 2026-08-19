@@ -78,9 +78,18 @@ mints a fresh place — and that operation is `syntax_built` under a new name, w
 a role integer by another name — no"). Re-introducing one to serve a single builtin would reverse the pass's own result
 in the last prompt that could still be said to have measured it. So the shape becomes `syntax_anchor(subject, path)`,
 answering the anchor of the input node at `path` as before, and the place its answer stands at is
-`Derived { origin: path, quotation: <this call site's index>, path: [0] }` — the origin being the node the anchor is
-*about*, the site index drawn from `Resolver::next_quotation`, the same counter `syntax_quote` draws from, and `[0]`
-because a site's outermost node is `[0]` and this site builds exactly one node.
+`Derived { origin: path, quotation: <a reserved site>, path: [0] }` — the origin being the node the anchor is *about*,
+and `[0]` because a site's outermost node is `[0]` and this site builds exactly one node.
+
+    *Repaired during implementation.* The sentence this replaces drew the site index from `Resolver::next_quotation`,
+    "the same counter `syntax_quote` draws from". The code said no: the anchor executes as a δ rule,
+    `musa_core::Rule` is `fn(&[Datum]) -> Option<Answer>` with no compiler state by design (D3 is a property of the
+    type), and since prompt 142 the adapter's calls never pass through the lowering that owns the counter. The
+    mechanism is the one `48-the-anchors-place-without-a-name-supply.md` argues from Peyton Jones ch. 9 and Idris2's
+    `UST.nextName`: the place derives from the arguments alone — `origin` is the anchored node's path, already unique
+    per node, and `quotation` is `u32::MAX`, a reservation the upward-counting quote counters never draw. Disjointness
+    by construction rather than by allocation; `PhaseFamily::Builder`'s "no counter, no clock, no compiler state"
+    stays true of the anchor, and that Target item's doc repair falls out.
 
 **That does not remove the one-call-per-anchor obligation; it makes it the obligation every quote already carries.** Two
 calls of one anchor site at one `here` still mint one path, exactly as calling a helper whose body is

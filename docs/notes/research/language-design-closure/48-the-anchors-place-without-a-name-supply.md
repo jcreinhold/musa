@@ -6,11 +6,11 @@ is repaired to match this note; the decision itself is argued here once rather t
 
 ## The question
 
-`docs/rules/language/11-quotation.md` §5 retires `syntax_anchor`'s third argument — the place its answer stands at —
-and prompt 139 deferred the deletion to the prompt that removes the last caller, which is prompt 145. The answer token
-still needs a `Derived` triple (`11-quotation.md` §3): the `origin` is the node the anchor is about (the second
-argument), the `path` is `[0]` (a site that builds exactly one node), and the question is the middle component — which
-construction site, when the operation no longer receives one.
+`docs/rules/language/11-quotation.md` §5 retires `syntax_anchor`'s third argument — the place its answer stands at — and
+prompt 139 deferred the deletion to the prompt that removes the last caller, which is prompt 145. The answer token still
+needs a `Derived` triple (`11-quotation.md` §3): the `origin` is the node the anchor is about (the second argument), the
+`path` is `[0]` (a site that builds exactly one node), and the question is the middle component — which construction
+site, when the operation no longer receives one.
 
 ## What the prompt's Design said, and what the code said back
 
@@ -50,15 +50,15 @@ the reading algorithm's correctness is the question.
 ## The options, weighed
 
 **(a) Thread a call site through `musa_core::Rule`.** Change the signature to hand each δ call its origin, then derive
-the index from that. Rejected: D3 is stated as a property of the type — "the result is a function of the argument
-values alone" — and a call-site channel is a function of the *call*, not the values. One builtin's convenience is not
-worth a hole in the core's determinism statement, and the change is the constitution's to make, not a prompt's.
+the index from that. Rejected: D3 is stated as a property of the type — "the result is a function of the argument values
+alone" — and a call-site channel is a function of the *call*, not the values. One builtin's convenience is not worth a
+hole in the core's determinism statement, and the change is the constitution's to make, not a prompt's.
 
 **(b) Special-case the call at elaboration.** Teach musa-core's elaborator to recognize `syntax_anchor` and rewrite it
 into an internal three-argument form with a site index baked in. Rejected: a hidden third argument is the
-hidden-information failure the registry exists to name, and it builds a second, invisible mechanism beside quotation
-for the same job. The trial's own falsifier — "a hand-written provenance path, or a role integer by another name — no"
-— fires on a mechanism the author cannot see just as much as on one they must maintain.
+hidden-information failure the registry exists to name, and it builds a second, invisible mechanism beside quotation for
+the same job. The trial's own falsifier — "a hand-written provenance path, or a role integer by another name — no" —
+fires on a mechanism the author cannot see just as much as on one they must maintain.
 
 **(c) Derive the place from the arguments alone — adopted.** The anchored node's own path is already a unique,
 elaboration-time identity: no two nodes of a region share a reading-order path, by the same argument that makes anchor
@@ -68,11 +68,11 @@ elaboration-time identity: no two nodes of a region share a reading-order path, 
 Derived { origin: <the anchored node's path>, quotation: u32::MAX, path: [0] }
 ```
 
-The `quotation` component is a **reservation**, not an allocation: the quote counters count upward from zero
-(`core.rs` and `lower/quotes.rs` both), and `u32::MAX` is the value no quote can draw before the counter itself gives
-out. Disjointness from quotes holds by construction — Peyton Jones's `split`, with the whole upper endpoint as one
-half. The reservation is named once, in `syntax.rs` beside `Derived`, which owns the namespace, and both evaluator arms
-(the old checker's and the registry rule's) build the place through it.
+The `quotation` component is a **reservation**, not an allocation: the quote counters count upward from zero (`core.rs`
+and `lower/quotes.rs` both), and `u32::MAX` is the value no quote can draw before the counter itself gives out.
+Disjointness from quotes holds by construction — Peyton Jones's `split`, with the whole upper endpoint as one half. The
+reservation is named once, in `syntax.rs` beside `Derived`, which owns the namespace, and both evaluator arms (the old
+checker's and the registry rule's) build the place through it.
 
 ## The collision analysis, stated rather than assumed
 
@@ -80,14 +80,14 @@ Three pairs matter:
 
 - **Two anchors of one node** produce one `Derived` — and collide, exactly as the prompt's Design requires: the
   one-call-per-anchor obligation stays, reported by `check_expression`'s duplicate-path gate in the same words. The
-  obligation is now stated on the *anchored node* rather than the call site, which is the stronger and more honest
-  form: the staff adapter's discipline is one `anchored` call per node read, and two sites anchoring one node were
-  never a case it could use.
+  obligation is now stated on the *anchored node* rather than the call site, which is the stronger and more honest form:
+  the staff adapter's discipline is one `anchored` call per node read, and two sites anchoring one node were never a
+  case it could use.
 - **An anchor and a quote at one node** cannot collide: the quote's site index is drawn from a counter that starts at
   zero and increments; the anchor's is `u32::MAX`. Reaching it would take four billion quote sites in one module, at
   which point the module has worse problems than provenance.
-- **An anchor and an input node** cannot collide: `Derived` paths carry only `PathStep::Built` steps, disjoint from
-  the `Child` steps of input paths — the invariant `syntax.rs` already states at `Derived::path`.
+- **An anchor and an input node** cannot collide: `Derived` paths carry only `PathStep::Built` steps, disjoint from the
+  `Child` steps of input paths — the invariant `syntax.rs` already states at `Derived::path`.
 
 What changes for an author: the workaround recorded in `tests/fixtures/staff-construction.musa`'s header — pass `here`
 for the place, sound only for one call per node — becomes the law of the operation rather than a discipline around it,
@@ -110,13 +110,13 @@ coincidence to note and move past.
 ## The performance contract this enables
 
 The arity change itself is step-neutral — same arguments minus one, same token built. Its performance content is what it
-unblocks: the staff rewrite's `anchored` is the form trial note 43 §1.1 measured, and the rewrite is the deletion of
-the call count 141u's instrumentation recorded. The measured baseline, restated so the closing measurement has something
-to answer to:
+unblocks: the staff rewrite's `anchored` is the form trial note 43 §1.1 measured, and the rewrite is the deletion of the
+call count 141u's instrumentation recorded. The measured baseline, restated so the closing measurement has something to
+answer to:
 
-- `examples/staff-page.musa`, whole-compile on the migrated checker: 1,605,182,361 reduction steps; the declaration
-  path alone after 141u: 226,873. The spend is the adapter's expansion — the `callN` chains and re-folded reading the
-  rewrite removes.
+- `examples/staff-page.musa`, whole-compile on the migrated checker: 1,605,182,361 reduction steps; the declaration path
+  alone after 141u: 226,873. The spend is the adapter's expansion — the `callN` chains and re-folded reading the rewrite
+  removes.
 - The staff class fails at `reduction steps at 200001 of 200000` — the budget the rewrite must fit, not by raising it
   (144's table owns that number) but by spending less.
 
