@@ -21,23 +21,24 @@ This candidate therefore specifies one language that builds both core values, an
 add a seventh track operation and does not make sound a track concern. The source remains canonical; every UI edits or
 projects source rather than owning another mutable score, instrument, or mix model.
 
-Third — and this is the newest of the three — the constitution's amendment at prompt 128 replaced the *type discipline*
-this candidate was written against. Rank-1 inference and principal types are gone; §9 now says bidirectional
-elaboration, dependent types are admitted, totality is well-founded rather than structural, and typed quotation is the
-one admitted form of metaprogramming. Prompt 129 rewrote `02-core-calculus.md` against the dependent core and prompt 130
-rewrote `01-surface.md` and added `10-traits.md`; prompt 131 added `11-quotation.md` and amended `00-semantics.md` §2 to
-admit a second, controlled descent into a syntax value. The record is
-[`../../notes/research/language-design-closure/42-dependent-core-decision.md`](../../notes/research/language-design-closure/42-dependent-core-decision.md).
+Third, the constitution's amendment at prompt 128 replaced the *type discipline* this candidate was written
+against, and the course correction then replaced the replacement. Prompt 128's evidence — the staff adapter — stood;
+what prompts 129–142 built around it was the standard proof-assistant checklist, and the audit of every committed
+program found none of that machinery in use. The governing design is now the surviving one: bidirectional checking,
+lightweight dependency where programs use it, flat trait lookup, structural recursion, and typed quotation as the one
+admitted form of metaprogramming. `02-core-calculus.md`, `10-traits.md`, and `11-quotation.md` describe only what
+survived. Both records stand:
+[`../../notes/research/language-design-closure/42-dependent-core-decision.md`](../../notes/research/language-design-closure/42-dependent-core-decision.md)
+and the correction's
+[`../../notes/research/language-design-closure/50-the-course-correction-audit.md`](../../notes/research/language-design-closure/50-the-course-correction-audit.md).
 
-Prompt 132 then trialled all four on ten complete programs before any code implemented them, and corrected them where a
-program contradicted them:
+Prompt 132 then trialled the language on ten complete programs before any code implemented it, and corrected the
+specifications where a program contradicted them:
 [`../../notes/research/language-design-closure/43-dependent-language-trial.md`](../../notes/research/language-design-closure/43-dependent-language-trial.md)
-§13 lists each correction with the program that forced it. The load-bearing ones: `02-core-calculus.md` §1.4 **no longer
-admits K as an axiom**, because no program unifies an index and `DecEq` supplies K as a theorem for every family Musa
-declares; `11-quotation.md`'s `Cat` has two cases rather than four and gains a checked-parse introduction form;
-`01-surface.md`'s type grammar gains a multi-parameter function type, and its record literal and pattern heads admit a
-qualified name so a named-field enum case can be written at all. The trial also predicts prompt 145's rewrite will *not*
-clear its stated line-count gate, and says why the gate is the wrong measurement.
+§13 lists each correction with the program that forced it. The trial's deepest finding is the one the course correction
+took seriously: no program unifies an index, and none ever needed the identity type the index machine existed to
+support. Its surviving corrections stand — `11-quotation.md`'s `Cat` has two cases and a checked-parse introduction
+form, and `01-surface.md`'s type grammar has a multi-parameter function type.
 
 ## Document map
 
@@ -45,7 +46,7 @@ clear its stated line-count gate, and says why the gate is the wrong measurement
 | --- | --- |
 | `00-semantics.md` | representations, staging judgments, ownership, closure, equality, provenance |
 | `01-surface.md` | settled surface grammar, desugarings, and acceptance corpus |
-| `02-core-calculus.md` | the one total dependently typed source language, and the obligations it owes |
+| `02-core-calculus.md` | the one total source language, and the obligations it owes |
 | `03-musical-domains.md` | typed theory domains, definitions, sources, and counterexamples |
 | `04-templates-and-modules.md` | declaration templates, stable identity, signatures, static functors |
 | `05-verification.md` | invariants, assertions, analyses, laws, and implementation gates |
@@ -75,9 +76,9 @@ Prompt 172 may mark this specification governing only after all of the following
    `02-core-calculus.md` §5 carried before it;
 2. every pre-candidate example either retains its meaning or has an explicit, tested migration diagnostic;
 3. the core law suite passes and no surface convenience has entered `musa-kernel` or `musa-core`. It does *not* pass
-   unchanged: prompt 148 re-derives the metatheory matrix against the dependent core, and prompt 142 is the one prompt
-   permitted to move the compatibility oracle. Both are audited by the entries they leave behind, not by the suite being
-   untouched;
+   unchanged: the course correction's final phases re-derive the metatheory matrix against the surviving calculus, and
+   prompt 142 remains the one prompt permitted to have moved the compatibility oracle. Both are audited by the entries
+   they leave behind, not by the suite being untouched;
 4. live and offline rendering agree, part routing is isolated, and builds are reproducible from the project closure;
 5. the roadmap, governance decisions, kernel and across-stage documents, style guide, implementation, and prompt stack
    pass a final contradiction audit.

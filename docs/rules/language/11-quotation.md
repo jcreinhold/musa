@@ -21,20 +21,28 @@ ordinary source: an adapter module is checked in a scope where these names resol
 they do not. Law 11 of the recursor — phase conservativity — is unchanged and is the reason that separation is stated
 rather than assumed.
 
-## 1. `Syntax<Cat>` is an indexed family
+## 1. `Syntax<Cat>` is a parameterized base type
 
-`Cat` is an ordinary two-case enum, and `Syntax` is an inductive family indexed by it (`02-core-calculus.md` §1.1):
+`Cat` is an ordinary two-case enum, and `Syntax` is a compiler-owned **base type parameterized by a closed literal of
+it** (`02-core-calculus.md` §1.1 and §5.8), not an inductive family:
 
 ```text
 enum Cat { Expr, TokenTree }
 
-Syntax : (c : Cat) → Type        % the constructors are compiler-owned (127da's builder facade)
+Syntax⟨expr⟩, Syntax⟨token-tree⟩ : Type 0        % compiler-owned; there is no declaration form
 ```
+
+That distinction is the course correction's, and it is the whole reason quotation costs the type system nothing. A
+family would make `Cat` an index a `match` could unify, and would pull the indexed-family machine into the core for one
+type. As a base type the parameter is inert: no reduction inspects it, conversion compares it by literal equality, and
+the only rule that ever reads it is the splice boundary below — which is exactly the safety the index was for, without
+the machinery. The previous framing is recorded in note 50's audit as the audit's own example: the implementation had
+already made `Syntax` a base type, and only this document still said "family".
 
 The representation does not change. A syntax value is still the lossless token tree prompt 127da declared — `Missing`,
 `Token`, `Identifier`, `Group` over a `SourceInfo` with no eliminator — and `Syntax<TokenTree>` is that tree with
-nothing claimed about it. **The index is a claim about how the tree parses**, and `Expr` says that the real parser read
-this tree as an expression.
+nothing claimed about it. **The parameter is a claim about how the tree parses**, and `Expr` says that the real parser
+read this tree as an expression.
 
 **Two cases, not four.** Prompt 131 wrote `Item` and `Pattern` beside them and prompt 132's trial found that no program
 constructs either: both trialled adapters build expressions and read token trees, and each unused case carries its own
@@ -53,10 +61,10 @@ Two rules follow, and between them they are the whole discipline:
   other position requires its own category exactly. This is one acceptance rule rather than a `forget` operation the
   author writes, and it is why splicing an expression into an argument list needs no ceremony.
 
-**What the index buys, and where.** Prompt 131 argued it at *construction*: an adapter that builds something in
+**What the parameter buys, and where.** Prompt 131 argued it at *construction*: an adapter that builds something in
 expression position and gets it wrong would learn at the line that made it rather than at expansion time. Prompt 132's
 trial found that argument does not survive its own conclusion — once construction goes through §2's quote, the parser
-has already read the body, so a constructed node cannot be miscategorized and the index catches nothing there.
+has already read the body, so a constructed node cannot be miscategorized and the parameter catches nothing there.
 
 **What it buys is the splice boundary**, and that is a real thing to buy. An adapter that lifts a node out of the
 composer's own region holds a `Syntax<TokenTree>` and must put it where an expression stands; `bar (4, 4) { { } }` puts
@@ -65,10 +73,9 @@ line instead of on the region after a malformed tree has reached `checked_expres
 composer's node is *preferable* to rebuilding one from its text: the spliced node keeps its `Original` source
 information (§3), so Origin, `edit`, and `print` all point back at what was written.
 
-**The obligation the index creates**, owed by prompts 138 and 147: every value of `Syntax<Expr>` prints as source that
-the parser reads back as an expression, and `as_expression` answers `Some` exactly when it does. The index is a
-certificate, and a certificate nobody checks is a comment. Until that is discharged, the index is a claim the elaborator
-makes and the implementation is believed to keep.
+**The obligation the parameter creates**, owed by the course correction's final phases: every value of
+`Syntax<Expr>` prints as source that the parser reads back as an expression, and `as_expression` answers `Some` exactly
+when it does. The parameter is a certificate, and a certificate nobody checks is a comment.
 
 ## 2. `quote at here { … }`
 

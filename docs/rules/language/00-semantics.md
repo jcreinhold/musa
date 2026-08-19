@@ -9,7 +9,7 @@ Compilation has one source stage that produces **two** core values, and each cor
 
 ```text
 lossless surface/CST
-    │ resolve names, expand bounded syntax adapters, elaborate bidirectionally into the dependent core
+    │ resolve names, expand bounded syntax adapters, check bidirectionally into the core
     ▼
 typed total source expression
     │ evaluate, under a versioned cost budget
@@ -77,7 +77,7 @@ because a step is not storable data (`02-core-calculus.md` §1.2, §5.9).
 unchanged by it. Descent into a syntax value happens in exactly **two** places: `recurse_syntax` for syntax of unknown
 shape — with `run_syntax_step` resuming a descent it did not start and `syntax_fold_from_leaves` derived from the first
 at a context nothing reads — and a **quote pattern** for a shape the adapter can write down (`11-quotation.md` §4).
-Prompt 127da's earlier law that a bottom-up fold is the only way into a syntax value was superseded by the recursor,
+Prompt 127da's earlier law that a bottom-up fold is the only way into a syntax value was superseded by the traversal,
 with its reason; prompt 131 admits the second entry, and the reason the rule existed is unchanged: the phase must not
 grow a second *uncontrolled* traversal, because an uncontrolled traversal is where totality, path uniqueness, and
 opacity would be lost together. A quote pattern is controlled because it is not a traversal — it destructures one level

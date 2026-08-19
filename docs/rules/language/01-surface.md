@@ -136,7 +136,7 @@ value; `_` discards it. Prompt 96 defines exhaustiveness and rejects duplicate o
 constructor meaning of `[head, ..tail]`; `..` is two adjacent `.` tokens, not a new general range operator.
 
 **Patterns nest.** A sub-position holds another pattern rather than only a binder, and `02-core-calculus.md` §6.2 is
-where that is decided: a `match` compiles through a case tree to the generated dependent recursors, and coverage is
+where that is decided: a `match` compiles through a case tree to the generated eliminators, and coverage is
 decided there. This replaces the earlier depth-one rule, whose whole argument was that the case-tree compiler had not
 earned its place; §6.2 states what changed and why. There are still no guards, no conditional equations, and no pattern
 on the left of a definition.
@@ -365,9 +365,10 @@ Five rules fix it.
   (`02-core-calculus.md` §1), and it is what makes dictionaries work in `10-traits.md`. An author who wants two
   quantities kept apart declares them as one-case enums (§1.3), which are nominal because each declaration generates its
   own family. The declared name is still what diagnostics say, so an error about `Pending` names `Pending`.
-- **Parameters and `where` are allowed and are ordinary**: `record Cell<A> where Eq<A> { at: Nat; value: A; }` requires
-  the constraint at every construction and carries it to every reader.
-- **It adds no term to the calculus.** A `record` declaration elaborates to a core dependent record type, a literal to
+- **Parameters are allowed and are ordinary**: `record Cell<A> { at: Nat; value: A; }`. A record that must carry a
+  dictionary carries it as a field — a `where` on a record would be a constraint discharged at every construction,
+  and `10-traits.md` §4's one-step lookup exists precisely so that there is nothing to discharge.
+- **It adds no term to the calculus.** A `record` declaration elaborates to a core record type, a literal to
   core record introduction, a projection to core projection, a pattern to the case tree of `02-core-calculus.md` §6.2,
   and `with` to the `let`-and-literal rule of §1.
 
@@ -422,9 +423,10 @@ therefore a real choice and the document says which is which.
 `02-core-calculus.md` §5's consistency obligation is about and the one `P -> Empty` uses to say *not P*. A `match` on a
 value of it has no arms, and every arm it does not have is covered.
 
-`enum` declares parameters and no indices. The indexed form — the one `Vec<A, n>` and `Syntax<Cat>` need — is prompt
-135's, and this document does not fix its spelling. `Option<A>` and `Result<A, E>` become ordinary enums declared in
-`std` rather than grammar; `Some`, `None`, `Ok`, and `Err` read exactly as before under the bare-constructor rule, and
+`enum` declares parameters and no indices, and that is final rather than deferred: no committed program narrows a
+type by matching, and the one indexed-looking type in the tooling, `Syntax<Cat>`, is a compiler-owned base type with
+the category a closed literal (`02-core-calculus.md` §1.1, `11-quotation.md` §1). `Option<A>` and `Result<A, E>`
+become ordinary enums declared in `std` rather than grammar; `Some`, `None`, `Ok`, and `Err` read exactly as before under the bare-constructor rule, and
 `option_fold` is replaced by the `match` that was always underneath it.
 
 The dispatch table is the other measurement. `text_equal(kind, "PitchLiteral")` appears in the staff adapter at
@@ -446,8 +448,8 @@ fn build(symbol: ChordSymbol) -> Chord { Chord::NamedChord(symbol, tones_of(symb
 
 Inside `Chord`'s own module the constructor is an ordinary name with no ceremony, which is what makes `build` writable.
 Outside it, three things are refused and each names the module rather than falling through to "no such name": the
-constructor (`private-name`), the generated recursor, and a `match` that takes the value apart (`abstract-match`). The
-recursor goes with the cases because eliminating a family *is* the case analysis the marker exists to prevent, and the
+constructor (`private-name`), the generated eliminator, and a `match` that takes the value apart (`abstract-match`). The
+eliminator goes with the cases because eliminating an enumeration *is* the case analysis the marker exists to prevent, and the
 `match` is refused where it is written rather than silently becoming inexhaustive — a client eliminates through whatever
 the package exports. What stays reachable is the type itself: a client writes `Chord` in a signature and receives one
 from `build`. The bare-constructor rule above is unaffected inside the module and refuses outside it for the same reason
@@ -520,7 +522,7 @@ fn same<A>(x: A, y: A) -> Bool where Eq<A> { x == y }
   trait or to a type, and a name that is neither is an error saying so.
 
 **It adds no term to the calculus.** A trait elaborates to a function from its parameters to a core record type — `Eq :
-(A : Type ℓ) → Type ℓ` with `Eq A = { equal : A → A → Bool }` — an impl to a definition of that type, a `where`
+(A : Type 0) → Type 0` with `Eq A = { equal : A → A → Bool }` — an impl to a definition of that type, a `where`
 constraint to an extra parameter holding the dictionary, and a use of a method to a projection from it. `x == y` inside
 `same` is `d.equal(x, y)` for the `d` the caller supplied, while the same operator inside `is_untied` is the global
 `Eq<Tying>` instance projected directly. The η rule on core records is what makes two elaborations of the same
@@ -600,8 +602,8 @@ works because `D` is fixed by *checking* against the annotation, and a type argu
 is the other one: choosing which instance to use *because* of a return type nobody has written down yet, which makes
 elaboration depend on the order constraints are reached.
 
-This is the grammar and not the library. Prompt 141 owns `List`, its instances, the builders, and the length-indexed
-vector; nothing here promises what those look like. There is no comprehension in v1: a comprehension is sugar over `map`
+This is the grammar and not the library. The library owns `List`, its instances, and the builders; nothing here promises what those
+look like. There is no comprehension in v1: a comprehension is sugar over `map`
 and `filter` (Peyton Jones 1987 ch. 7), and adding the sugar before the thing it sugars has a user is the wrong order.
 
 ## 2. Functions and music
@@ -1016,7 +1018,7 @@ is a rule nobody can implement, which is why the third column is not optional.
 | abstract elimination | inside the module, `match c { NamedChord(s, t) -> … }` ⇝ a case tree; outside it, whatever the package exports | the same `match` outside the module — *abstract match* (`abstract-match`), naming the type and its module rather than reporting an inexhaustive one |
 | misplaced marker | — | `private use x;` — *`private` does not mark this*, since only a declaration can be private |
 | redundant marker | — | `private` on a structure member — *this is already private*, naming the signature that hides everything it does not list |
-| trait declaration | `trait Eq<A> { fn equal(x: A, y: A) -> Bool; }` ⇝ `Eq : (A : Type ℓ) → Type ℓ` over a record type | a required method with no parameter mentioning a trait parameter — *method does not use the trait's parameter* |
+| trait declaration | `trait Eq<A> { fn equal(x: A, y: A) -> Bool; }` ⇝ `Eq : (A : Type 0) → Type 0` over a record type | a required method with no parameter mentioning a trait parameter — *method does not use the trait's parameter* |
 | impl | `impl Eq<Tying> { … }` ⇝ a definition of `Eq Tying` | an impl omitting a required method — *missing method*; an impl supplying a derived one — *derived methods are not replaceable* |
 | coherence | one impl per trait and head type | a second `impl Eq<Tying>` anywhere in the program — *duplicate instance*, naming both declarations |
 | orphan rule | an impl in the trait's package or the head type's | either package's impl for two foreign names — *orphan instance*, naming the two packages that could hold it |
