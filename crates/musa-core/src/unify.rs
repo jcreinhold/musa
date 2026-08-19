@@ -795,7 +795,7 @@ impl ElabError {
     /// endpoints rather than spending a second refusal on the first.
     fn rooted(self, at: At<'_>, meter: &mut Meter, depth: u32, left: &Value, right: &Value) -> Self {
         let mut error = self;
-        if let ElabError::Refused(Refusal::Mismatch(mismatch)) = &mut error
+        if let Self::Refused(Refusal::Mismatch(mismatch)) = &mut error
             && let (Ok(expected), Ok(found)) = (at.quote(meter, depth, left), at.quote(meter, depth, right))
         {
             mismatch.whole = Some(Box::new((expected, found)));

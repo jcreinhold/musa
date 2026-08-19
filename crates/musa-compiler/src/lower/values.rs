@@ -324,9 +324,7 @@ impl Lowering<'_> {
     /// numerator or denominator past `i64` is a number outside the exact range
     /// musical time is measured in, and a zero denominator is not a number at all.
     fn exact(&mut self, token: &SyntaxToken) -> Option<Ratio<i64>> {
-        let Some((numerator, denominator)) = token.text().split_once('/') else {
-            return None;
-        };
+        let (numerator, denominator) = token.text().split_once('/')?;
         let (Ok(numerator), Ok(denominator)) = (numerator.parse::<i64>(), denominator.parse::<i64>()) else {
             return self.refuse(
                 Diagnostic::error(Code::OutOfRange, "this rational number is too large")

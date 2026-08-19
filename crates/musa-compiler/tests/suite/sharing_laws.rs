@@ -33,6 +33,10 @@
 //! is `resource_validation.rs`'s subject and prompt 144 re-measures it. A law
 //! stated here against a meter that does not run would have hidden it.
 
+
+// A failure is more useful reported with what actually happened than with an
+// assertion message alone.
+#![allow(clippy::panic)]
 #![allow(clippy::expect_used)]
 
 use std::collections::BTreeSet;
@@ -87,10 +91,17 @@ fn call_sites(source: &str) -> BTreeSet<String> {
         .iter()
         .flat_map(|(_, part)| part.voices().map(|(_, voice)| voice).collect::<Vec<_>>())
         .flat_map(|voice| voice.events().to_vec())
-        .flat_map(|event| event.origin.expansion_path.clone())
+        .flat_map(|event| event.origin.expansion_path)
         .filter_map(|step| match step {
             ExpansionStep::MotifApplication { call_site } => Some(format!("{call_site:?}")),
-            _ => None,
+            ExpansionStep::RepeatIteration(_)
+            | ExpansionStep::Transposition(_)
+            | ExpansionStep::Stretch(_)
+            | ExpansionStep::Retrograde
+            | ExpansionStep::Inversion { .. }
+            | ExpansionStep::MapNotePitches
+            | ExpansionStep::ScaleContext { .. }
+            | ExpansionStep::TemplateInstance { .. } => None,
         })
         .collect()
 }

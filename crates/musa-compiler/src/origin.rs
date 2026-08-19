@@ -21,10 +21,12 @@ impl SourceSpan {
     }
 }
 
-/// The declaration an event originates from: an ordinal over the blocks of
-/// notation a document reads — a motif, a fragment, a named bar, a `music`
-/// value, and a voice — handed out in reading order. Stable within one
-/// compilation; not a permanent project identity.
+/// The declaration an event originates from.
+///
+/// An ordinal over the blocks of notation a document reads — a motif, a
+/// fragment, a named bar, a `music` value, and a voice — handed out in
+/// reading order. Stable within one compilation; not a permanent project
+/// identity.
 ///
 /// Zero means *no declaration to name*, and is a fact about the event rather
 /// than a gap in the table: a piece's own header is the piece speaking, and a

@@ -12192,7 +12192,9 @@ impl AdapterModule {
         let call = Raw::call(here, Raw::var(here, name), arguments);
         let ((normal, _), spend) = self.read.term_metered(&call).map_err(|error| match error {
             musa_core::ElabError::Exhausted(_) => Unrun::Stopped,
-            error => Unrun::Refused(vec![crate::lower::refusals::restate(self.read.sites(), &error)]),
+            error @ (musa_core::ElabError::Refused(_) | musa_core::ElabError::Malformed(_)) => {
+                Unrun::Refused(vec![crate::lower::refusals::restate(self.read.sites(), &error)])
+            }
         })?;
         // Canonicity, and the whole of what it is for: the call was checked
         // before it was normalized, so a closed answer at a declared family *is*

@@ -1075,6 +1075,10 @@ fn documented(resolver: &mut Resolver, cx: &Cx, declaring: Vec<Declaring>) {
 /// material kinds, which is why they are passed over here rather than filed
 /// under a second kind: one name in two namespaces would make a rename check
 /// the wrong collision.
+#[expect(
+    clippy::wildcard_enum_match_arm,
+    reason = "the dispatch is over `SyntaxKind`'s three hundred variants, of which three carry a name an editor indexes; writing the other variants out would hide the reading rather than check it"
+)]
 fn record(resolver: &mut Resolver, node: &SyntaxNode, name: &str, source: Option<&str>) {
     let kind = match node.kind() {
         SyntaxKind::FnDecl => crate::resolve::NameKind::Function,
