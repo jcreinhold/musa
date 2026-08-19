@@ -296,6 +296,22 @@ rules never authorized.
     desugaring (`Desugar.idr:526`), and the pair a program sees is binary either way. Right, not left, for that
     precedent and because it is the direction that makes `(A, B, C)` and `(A, (B, C))` interchangeable in both
     directions — `core_laws::a_wide_product_nests_the_same_way_written_out_by_hand` is where that is checked.
+  - **A splice is a tree the position certifies, so `instantiate_quote`'s splices are read at `⟨token-tree⟩`.** 141ga
+    registered the pattern side at `Syntax ⟨tokentree⟩` — D1 refuses the category-polymorphic signature — and the
+    construction side's splice list at `Syntax ⟨expr⟩`, and the two do not meet: a pattern's holes, bound at
+    `⟨tokentree⟩`, cannot be spliced into a quote whose list demands `⟨expr⟩`, which is precisely the round trip
+    `syntax_pattern_laws::match_after_build_binds_what_the_quote_spliced` writes down. 11-quotation §1 already says what
+    the boundary is: a `TokenTree` position accepts a value of any category, and every other position requires its own
+    exactly. So the splice list is `List (List (Syntax ⟨token-tree⟩))` — a value already claimed arrives by the
+    forgetting rule this prompt supplies, and a hole arrives as what it is — and `INSTANTIATE` discharges the
+    certificate the index claims: the built tree must parse as an expression (`syntax::parses_as_expression`,
+    `as_expression`'s own machinery), or the rule does not reduce. That is §1's "a certificate nobody checks is a
+    comment" answered at the one boundary the index exists for, cheaply because construction is rare beside matching;
+    147's round-trip obligation still owns the whole surface.
+
+    *Repaired during implementation.* Not in the sketch at all: the sketch's forgetting rule covers the scrutinee and
+    says nothing about the splice, and the hole was discovered by the law above going red — the fixture corpus is where
+    this prompt's assumptions get measured, per its own Check.
   - **`assert` comes after the anonymous product, not before it.** Its arguments are values the readback has to evaluate
     and hand `crate::assert::Claim::build` in its own six shapes, and one of those six is `within_ranges`'s
     `List<(Pitch, Pitch)>` — the spelling that had no core term until the bullet above gave it one. Reading its
