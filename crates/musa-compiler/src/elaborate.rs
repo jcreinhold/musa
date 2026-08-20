@@ -1096,7 +1096,21 @@ fn elaborate_material(
 ) -> Compilation {
     let mut snapshot = ScoreSnapshot::default();
     let libraries = crate::imports::load(resolver, name, &library.imports(), &options.imports);
-    if !crate::core::check_material(resolver, &libraries, library) {
+    // The one checker, here as everywhere: the library and its imports as a
+    // document, declared by musa-core. A document that came back is not yet a
+    // library that checks — `elaborate` answers `Some` beside refusals it
+    // reported — so the diagnostics decide.
+    let sources: Vec<crate::document::Source> = libraries
+        .each()
+        .map(|(from, imported)| crate::document::Source::imported(imported.syntax(), from))
+        .chain(std::iter::once(crate::document::Source::own(library.syntax())))
+        .collect();
+    let _ = crate::document::elaborate(resolver, &sources, None);
+    if resolver
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.severity == crate::diagnose::Severity::Error)
+    {
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics)).into_material();
     }
     elaborate_libraries(resolver, &libraries, &mut snapshot);

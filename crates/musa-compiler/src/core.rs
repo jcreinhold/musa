@@ -23,42 +23,6 @@ use crate::pitch::{PitchClass, WrittenPitch};
 use crate::resolve::{NameKind, Resolver};
 use crate::time::{Exact, exact_arithmetic, exact_ratio, written_rational};
 
-/// Check and evaluate imported definitions followed by an opened library's.
-pub(crate) fn check_material(
-    resolver: &mut Resolver,
-    libraries: &Libraries,
-    library: &musa_language::ast::LibraryDecl,
-) -> bool {
-    if !validate_imports(resolver, libraries) {
-        return false;
-    }
-    let world = World::read(
-        resolver,
-        &libraries
-            .each()
-            .map(|(_, imported)| imported.syntax().clone())
-            .chain(std::iter::once(library.syntax().clone()))
-            .collect::<Vec<_>>(),
-    );
-    let modules = Modules::read(
-        resolver,
-        libraries
-            .each()
-            .map(|(from, imported)| (Some(from.path), imported.syntax().clone()))
-            .chain(std::iter::once((None, library.syntax().clone()))),
-    );
-    check_and_evaluate(
-        resolver,
-        libraries
-            .each()
-            .flat_map(|(from, imported)| declarations(imported.syntax(), Some(from)))
-            .chain(declarations(library.syntax(), None)),
-        &modules,
-        &world,
-        Reading::Source,
-    )
-    .is_some()
-}
 
 /// Check each library against precisely what it imports. A failure is then
 /// restated at the importing document's `import` span: spans inside the
@@ -12802,41 +12766,16 @@ fn print_failure(diagnostics: Vec<Diagnostic>) -> PrintFailure {
 /// printing is allowed to normalize.
 #[cfg(test)]
 pub(crate) fn evaluate_text(expression: &str) -> Option<String> {
-    let parsed = musa_language::parse(&format!("piece \"value\" {{\n  let it = {expression}\n}}"));
-    let mut unifier = Unifier::default();
-    let mut meter = WorkMeter::default();
-    let mut resolver = Resolver::new();
-    let body = root_nodes(&parsed.syntax(), SyntaxKind::LetDecl)
-        .first()
-        .and_then(|declaration| child_of(declaration, is_expr_node))?;
-    let span = crate::resolve::trimmed_span(&body);
-    let mut checker = Checker {
-        resolver: &mut resolver,
-        definitions: &[],
-        symbols: &IndexMap::new(),
-        locals: IndexMap::new(),
-        unifier: &mut unifier,
-        dependencies: IndexMap::new(),
-        mentioned: Vec::new(),
-        reading: Reading::Foreign,
-        failed: false,
-        meter: &mut meter,
-        music_role: None,
-        definition_span: span,
-        deferred_pitch: false,
-        scope: crate::module::NameScope::empty(),
-        modules: &Modules::default(),
-        world: &World::default(),
-        questions: Vec::new(),
-        asked: 0,
-        tail: false,
-    };
-    let checked = checker.check(&body, Some(&Type::Text))?;
-    let environment = IndexMap::new();
-    let Value::Text(text) = eval(&checked, &environment, &mut meter)? else {
+    let parsed = musa_language::parse(&format!("library {{\n  let it: Text = {expression};\n}}"));
+    if !parsed.errors().is_empty() {
         return None;
-    };
-    Some(text)
+    }
+    let mut resolver = Resolver::new();
+    let document = crate::document::elaborate(&mut resolver, &[crate::document::Source::own(&parsed.syntax())], None)?;
+    let (normal, _ty) = document
+        .term(&musa_core::Raw::var(musa_core::Origin::UNKNOWN, "it"))
+        .ok()?;
+    crate::registry::read_back::<String>(&normal).ok().cloned()
 }
 
 /// Run one transformer over one already-read region, in the phase environment.
