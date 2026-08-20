@@ -554,7 +554,7 @@ impl Tree<'_, '_> {
         let split = Split::read(self, scope, subject, &found, &problem.goal, at)?;
         let motives = self.motives(scope, problem, &split, column)?;
 
-        let mut applied = Constant::recursor(&found.group, found.family, split.level.clone()).term(self.here);
+        let mut applied = Constant::recursor(&found.group, found.family, split.level).term(self.here);
         for param in &split.params {
             applied = Term::app(self.here, applied, param.clone());
         }
@@ -960,7 +960,13 @@ impl Tree<'_, '_> {
             }
             .into());
         };
-        apply(self.elaborator.meter(), self.here, motive.value.clone(), built.value.clone()).map_err(ElabError::from)
+        apply(
+            self.elaborator.meter(),
+            self.here,
+            motive.value.clone(),
+            built.value.clone(),
+        )
+        .map_err(ElabError::from)
     }
 
     /// The rows that survive a split, with the split column replaced by the
@@ -1117,7 +1123,6 @@ fn motive_level(meter: &mut Meter, scope: &Scope, goal: &Value) -> Result<Level,
     let quoted = scope.quote_type(meter, goal)?;
     Ok(Term::level_of(&quoted)?)
 }
-
 
 /// What reading a subject's type told the splitter.
 struct Split {

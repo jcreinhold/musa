@@ -748,9 +748,9 @@ impl Constant {
             Role::Family => params,
             Role::Constructor(which) => {
                 let fields = self.group.family_at(self.family).and_then(|declared| {
-                    declared.constructor_at(*which).map(|constructor| {
-                        u32::try_from(constructor.fields.len()).unwrap_or(u32::MAX)
-                    })
+                    declared
+                        .constructor_at(*which)
+                        .map(|constructor| u32::try_from(constructor.fields.len()).unwrap_or(u32::MAX))
                 });
                 params.saturating_add(fields.unwrap_or(0))
             }
@@ -789,7 +789,7 @@ impl Constant {
         match &self.role {
             Role::Family => self.family_type(meter, &mut builder),
             Role::Constructor(which) => self.constructor_type(meter, builder, *which),
-            Role::Recursor(level) => self.recursor_type(meter, builder, level),
+            Role::Recursor(level) => self.recursor_type(meter, builder, *level),
         }
     }
 
@@ -815,12 +815,16 @@ impl Constant {
         };
         let params = builder.extend(meter, &self.group.params)?;
         builder.extend(meter, &constructor.fields)?;
-        let result = applied(self.group.origin, builder.family(self.family), builder.references(&params));
+        let result = applied(
+            self.group.origin,
+            builder.family(self.family),
+            builder.references(&params),
+        );
         Ok(builder.close(result))
     }
 
     /// The recursor's type, at the universe its motives land in.
-    fn recursor_type(&self, meter: &mut Meter, mut builder: Telescope<'_>, level: &Level) -> Result<Term, CoreError> {
+    fn recursor_type(&self, meter: &mut Meter, mut builder: Telescope<'_>, level: Level) -> Result<Term, CoreError> {
         let Some(_declared) = self.group.family_at(self.family) else {
             return Ok(Term::universe(self.group.origin, Level::ZERO));
         };
@@ -958,7 +962,7 @@ impl<'a> Telescope<'a> {
     }
 
     /// One motive per family in the group: `P_j : N_j p⃗ → Type ℓ`.
-    fn motives(&mut self, meter: &mut Meter, params: &[Introduced], level: &Level) -> Result<Vec<At>, CoreError> {
+    fn motives(&mut self, meter: &mut Meter, params: &[Introduced], level: Level) -> Result<Vec<At>, CoreError> {
         let mut introduced = Vec::with_capacity(self.group.families.len());
         for which in 0..self.group.arity() {
             let ty = self.motive_type(meter, params, which, level)?;
@@ -972,7 +976,7 @@ impl<'a> Telescope<'a> {
         meter: &mut Meter,
         params: &[Introduced],
         which: u32,
-        level: &Level,
+        level: Level,
     ) -> Result<Term, CoreError> {
         if self.group.family_at(which).is_none() {
             return Ok(Term::universe(self.origin, Level::ZERO));
@@ -980,7 +984,7 @@ impl<'a> Telescope<'a> {
         let mut inner = self.nested();
         let subject = inner.applied_family(which, [params, &[]]);
         inner.assume(meter, "t", subject)?;
-        Ok(inner.close(Term::universe(self.origin, *level)))
+        Ok(inner.close(Term::universe(self.origin, level)))
     }
 
     /// One method per constructor of every family in the group.
@@ -1041,8 +1045,6 @@ impl<'a> Telescope<'a> {
         let motive = self.reference(motives.get(usize::try_from(family).unwrap_or(usize::MAX)).copied());
         Term::app(self.origin, motive, self.reference(Some(field)))
     }
-
-
 
     /// The variable naming the binder at `at`, seen from here.
     fn reference(&self, at: Option<At>) -> Term {
@@ -1111,8 +1113,6 @@ fn applied(origin: Origin, head: Term, args: impl IntoIterator<Item = Term>) -> 
     args.into_iter()
         .fold(head, |function, argument| Term::app(origin, function, argument))
 }
-
-
 
 /// The constant at the head of a blocked spine, and what has been applied to it.
 fn spine(neutral: &Neutral) -> Option<(Constant, Vec<Value>)> {
@@ -1324,12 +1324,9 @@ fn ready(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Reduction>, Core
                 built.get(params..).unwrap_or_default().to_vec(),
             )
         }
-        Form::Universe(_)
-        | Form::Pi { .. }
-        | Form::Lam(_)
-        | Form::RecordType(_)
-        | Form::Record(_)
-        | Form::Lit(_) => return Ok(None),
+        Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) | Form::RecordType(_) | Form::Record(_) | Form::Lit(_) => {
+            return Ok(None);
+        }
     };
     let motives = usize::try_from(group.arity()).unwrap_or(usize::MAX);
     let position = usize::try_from(group.method_position(family, which)).unwrap_or(usize::MAX);
@@ -1405,7 +1402,7 @@ fn hypotheses(meter: &mut Meter, reduction: &Reduction) -> Result<Vec<Pending>, 
                 role: Role::Recursor(reduction.level),
             }
             .value(here);
-            for argument in reduction.prefix.iter() {
+            for argument in &reduction.prefix {
                 hypothesis = apply(meter, here, hypothesis, argument.clone())?;
             }
             built.push(Pending {
@@ -1681,5 +1678,3 @@ fn realize_case(
     }
     Ok(value)
 }
-
-

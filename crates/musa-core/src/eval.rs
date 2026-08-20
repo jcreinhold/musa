@@ -531,11 +531,7 @@ fn canonical(meter: &mut Meter, value: &Value) -> Result<Option<Datum>, CoreErro
             // up and carries the argument for building it with a loop.
             Form::Numeral(ref numeral) => Ok(crate::family::counted(numeral)),
             Form::Neutral(ref neutral) => constructed(meter, neutral),
-            Form::Universe(_)
-            | Form::Pi { .. }
-            | Form::Lam(_)
-            | Form::RecordType(_)
-            | Form::Record(_) => Ok(None),
+            Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) | Form::RecordType(_) | Form::Record(_) => Ok(None),
         }
     })
 }
@@ -685,12 +681,9 @@ fn projecting(_meter: &mut Meter, here: Origin, record: Value, field: &Name) -> 
                 field: Arc::clone(field),
             },
         ))),
-        Form::Universe(_)
-        | Form::Pi { .. }
-        | Form::Lam(_)
-        | Form::RecordType(_)
-        | Form::Lit(_)
-        | Form::Numeral(_) => Err(Malformed::NotARecord.into()),
+        Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) | Form::RecordType(_) | Form::Lit(_) | Form::Numeral(_) => {
+            Err(Malformed::NotARecord.into())
+        }
     }
 }
 

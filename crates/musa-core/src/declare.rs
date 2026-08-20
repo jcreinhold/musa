@@ -130,7 +130,7 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
                         name: Arc::clone(&constructor.name),
                         visibility: constructor.visibility,
                         fields: Arc::from(fields),
-                        recursive: constructor.recursive.clone(),
+                        recursive: Arc::clone(&constructor.recursive),
                     })
                 })
                 .collect::<Result<Vec<_>, ElabError>>()?;
@@ -630,7 +630,7 @@ fn mentions(term: &Term, watched: Watched, depth: u32, bound: u32) -> Option<Ori
         | Shape::Lit(_)
         | Shape::Numeral(_)
         | Shape::Hole(_)
-        | Shape::Universe(_)         => None,
+        | Shape::Universe(_) => None,
         Shape::Pi { domain, codomain, .. } => {
             mentions(domain, watched, depth, bound).or_else(|| mentions(codomain, watched, depth, under))
         }

@@ -197,10 +197,7 @@ fn scope_data() -> RawData {
 /// §2's `feedback` threads a stored value through a machine — a piece that
 /// stores nothing has to be able to write the value it stores.
 fn unit_data() -> RawData {
-    data(
-        Vec::new(),
-        vec![family("Unit", vec![constructor("Only", Vec::new())])],
-    )
+    data(Vec::new(), vec![family("Unit", vec![constructor("Only", Vec::new())])])
 }
 
 /// `data Pair (A : Type 0) (B : Type 0) { Both(first : A, second : B) }`.

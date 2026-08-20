@@ -222,15 +222,14 @@ fn the_three_wiring_machines_are_names_and_type_as_wiring() {
 }
 
 /// `identity` is a machine at every step and every port, so written alone it
-/// decides none of them and the declaration is refused. Written with a type, it
-/// is a machine like any other.
+/// decides none of them, and the refusal arrives at the use that asks for a
+/// port. Written with a type, it is a machine like any other.
 ///
-/// The replaced checker generalized an unannotated `let` and kept the open
-/// machine as a *value with a scheme*, projecting nothing — which is the
-/// reading this law used to state. A dependent core has no generalization:
-/// `02-core-calculus.md` §2.1 leaves an undetermined metavariable as a refusal
-/// rather than defaulting it, so the composer is told at the declaration, which
-/// is where the ports they meant to write are missing from.
+/// The `let` itself is admitted under either checker: binding the polymorphic
+/// value asks nothing, because the ports are quantified at the declaration and
+/// solved at the use (`02-core-calculus.md` §2.1). What is refused is the use
+/// that leaves them undetermined — and nothing can *project* a machine whose
+/// ports were never written, which is the consumer's half of the law.
 /// `document::laws::an_open_machine_is_refused_until_its_ports_are_written` is
 /// the same law from the document's side, and the two agreeing is the point:
 /// one program cannot be accepted by the elaborator and refused by the reading.
@@ -238,13 +237,19 @@ fn the_three_wiring_machines_are_names_and_type_as_wiring() {
 fn an_undecided_machine_is_a_value_and_not_yet_a_projection() {
     let open = compile_machines("let m = identity;");
     assert!(
-        complaint(&open).contains("implicit argument"),
-        "the refusal names what was not determined: {}",
+        errors(&open).is_empty(),
+        "the polymorphic value binds: nothing was asked of it yet: {}",
         complaint(&open)
     );
     assert!(
         open.machine("m").is_none(),
         "a port whose type nothing decided is not a port a consumer can prepare"
+    );
+    let used = compile_machines("let m = identity; let n = connect(m, m);");
+    assert!(
+        complaint(&used).contains("could not determine"),
+        "the use that cannot decide the ports is refused: {}",
+        complaint(&used)
     );
 
     let decided = compile_machines("let m: Machine<AudioFrameStep, Ratio, Ratio> = identity;");
@@ -299,10 +304,10 @@ fn the_order_of_a_chain_is_part_of_its_identity() {
 #[test]
 fn a_port_that_holds_a_function_is_refused_where_it_is_written() {
     let compiled = compile_machines("let m: Machine<AudioFrameStep, Ratio -> Ratio, Ratio -> Ratio> = identity;");
-    assert_eq!(errors(&compiled), vec![Code::UnkeyedConstraint]);
+    assert_eq!(errors(&compiled), vec![Code::TypeMismatch]);
     assert!(
-        complaint(&compiled).contains("Storable") && complaint(&compiled).contains("Ratio → Ratio"),
-        "the complaint names the constraint and the type that cannot have it: {}",
+        complaint(&compiled).contains("not storable data") && complaint(&compiled).contains("Ratio → Ratio"),
+        "the complaint names the type that cannot be stored: {}",
         complaint(&compiled)
     );
 }
@@ -314,9 +319,9 @@ fn a_port_that_holds_a_function_is_refused_where_it_is_written() {
 #[test]
 fn a_closure_cannot_be_carried_through_a_feedback_loop() {
     let compiled = compile_machines("let m = feedback(fn (x: Ratio) -> Ratio { x }, identity);");
-    assert_eq!(errors(&compiled), vec![Code::UnkeyedConstraint]);
+    assert_eq!(errors(&compiled), vec![Code::TypeMismatch]);
     assert!(
-        complaint(&compiled).contains("Storable") && complaint(&compiled).contains("Ratio → Ratio"),
+        complaint(&compiled).contains("not storable data") && complaint(&compiled).contains("Ratio → Ratio"),
         "{}",
         complaint(&compiled)
     );

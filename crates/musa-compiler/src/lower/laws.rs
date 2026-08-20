@@ -738,15 +738,22 @@ fn a_constraint_on_a_free_definition_is_admitted_where_it_is_written() {
 
 /// §1.2's sentence, lowered: the constraint is a parameter of the type former.
 ///
-/// "Requires the constraint at every construction and carries it to every
-/// reader" is a *binder*, and this is the shape of it — a reader cannot name
-/// `Cell A` without an argument the trait answers.
+/// A `where` on a record is refused where it is written — §1's flat law is the
+/// same answer the enum above gets: a constraint lives on the function that
+/// uses the type, not on the type.
 #[test]
-fn a_constraint_on_a_record_becomes_a_parameter_of_its_type() {
-    let cx = with_same();
-    let written = "record Cell<A> where Same<A> { index: Nat; value: A; }";
-    let defined = definition(written, SyntaxKind::RecordDecl);
-    inhabits_its_written_type(&cx, written, &defined);
+fn a_constraint_on_a_record_is_refused_where_it_is_written() {
+    let (item, complaints) = lowered_item(
+        "record Cell<A> where Same<A> { index: Nat; value: A; }",
+        SyntaxKind::RecordDecl,
+    );
+    assert!(item.is_none(), "a constrained record is not a declaration");
+    assert_eq!(complaints.len(), 1, "one complaint, at the clause");
+    assert_eq!(
+        complaints.first().expect("one complaint").code,
+        Code::ConstrainedData,
+        "the flat law's answer"
+    );
 }
 
 /// The same at a family: §1's flat law admits no `where` on an enum either —

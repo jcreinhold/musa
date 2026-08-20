@@ -37,7 +37,8 @@ pub(crate) fn tying_context() -> Cx {
                 vec![
                     constructor("Untied", Vec::new()),
                     constructor("TiedOn", vec![binder("n", var("Nat"))]),
-                ])],
+                ],
+            )],
         ),
     )
     .expect("Tying is a declaration");
@@ -46,9 +47,7 @@ pub(crate) fn tying_context() -> Cx {
         &cx,
         &data(
             Vec::new(),
-            vec![family(
-                "Slur",
-                vec![constructor("Untied", Vec::new())])],
+            vec![family("Slur", vec![constructor("Untied", Vec::new())])],
         ),
     )
     .expect("Slur is a declaration");
@@ -460,14 +459,7 @@ pub(crate) fn refused_records() -> Vec<RefusedRecord> {
                 WRITTEN,
                 "v",
                 counted(),
-                Raw::update(
-                    WRITTEN,
-                    var("v"),
-                    [(
-                        &["A"][..],
-                        Raw::record_type(WRITTEN, []),
-                    )],
-                ),
+                Raw::update(WRITTEN, var("v"), [(&["A"][..], Raw::record_type(WRITTEN, []))]),
             ),
             ty: arrow(counted(), counted()),
             expected: |refusal| matches!(refusal, Refusal::Mismatch(_)),

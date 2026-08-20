@@ -6,7 +6,8 @@ depends_on: [147]
 phase: 3
 ---
 
-> Superseded by the course correction: `docs/notes/research/language-design-closure/50-the-course-correction-audit.md`. Conformance is stated against the surviving calculus, not the dependent one.
+> Superseded by the course correction: `docs/notes/research/language-design-closure/50-the-course-correction-audit.md`.
+> Conformance is stated against the surviving calculus, not the dependent one.
 
 # Discharge the Core's Obligation Matrix
 

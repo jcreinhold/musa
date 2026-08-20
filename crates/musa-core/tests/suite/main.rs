@@ -147,7 +147,7 @@ pub(crate) mod fixtures {
         let dependent_pair_type = Term::record_type(TYPES, [("ty", type0()), ("val", type_var(0))]);
         let dependent_pair = empty.assume(BINDERS, &dependent_pair_type)?;
 
-                Ok(vec![
+        Ok(vec![
             Sample {
                 name: "β",
                 cx: a_x.clone(),
@@ -218,7 +218,7 @@ pub(crate) mod fixtures {
             },
             Sample {
                 name: "projection",
-                cx: a_x.clone(),
+                cx: a_x,
                 ty: type_var(1),
                 left: Term::project(TERMS, Term::record(TERMS, [("fst", var(0)), ("snd", var(0))]), "fst"),
                 right: var(0),
@@ -351,8 +351,6 @@ pub(crate) mod programs {
         Raw::implicit_lam(WRITTEN, "X", Raw::lam(WRITTEN, "x", var("x")))
     }
 
-    /// `(y : {}) → Id {} {} y → Type 0`'s inhabitant, written unannotated so
-    /// that both of its binder types are metavariables.
     /// `{X : Type 0} → X → X` as a core term, for a checking question.
     fn core_implicit_identity_type() -> Term {
         Term::implicit_pi(
@@ -472,6 +470,19 @@ pub(crate) mod programs {
                 raw: type0(),
                 ty: Some(Term::universe(WRITTEN, Level::One)),
             },
+            Program {
+                name: "an implicit written against an implicit binder",
+                // The one written-implicit rule: a host scheme's implicit
+                // binder may be filled in braces at the use site.
+                raw: Raw::annotated_bind(
+                    WRITTEN,
+                    "id",
+                    implicit_identity_type(),
+                    implicit_identity(),
+                    Raw::app(WRITTEN, Raw::implicit_app(WRITTEN, var("id"), unit_type()), unit()),
+                ),
+                ty: Some(core_unit_type()),
+            },
         ]
     }
 
@@ -484,15 +495,15 @@ pub(crate) mod programs {
                 expected: |refusal| matches!(refusal, Refusal::UnknownName { .. }),
             },
             Refused {
-                name: "an implicit written at the use site rather than inserted",
-                // An implicit binder is the host's, in a generated scheme; an
-                // author never writes one, so an author never fills one in
-                // braces either — §2.1's one fixed call-site rule.
+                name: "an implicit written against an explicit binder",
+                // A written `{…}` fills the implicit binder of a
+                // host-generated scheme and nothing else; against an ordinary
+                // function it is refused where it is written.
                 raw: Raw::annotated_bind(
                     WRITTEN,
                     "id",
-                    implicit_identity_type(),
-                    implicit_identity(),
+                    Raw::pi(WRITTEN, "X", type0(), Raw::pi(WRITTEN, "_", var("X"), var("X"))),
+                    Raw::lam(WRITTEN, "X", Raw::lam(WRITTEN, "x", var("x"))),
                     Raw::app(WRITTEN, Raw::implicit_app(WRITTEN, var("id"), unit_type()), unit()),
                 ),
                 ty: None,

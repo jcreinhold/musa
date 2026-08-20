@@ -977,14 +977,14 @@ fn every_example_elaborates() {
     }
     said.sort();
     said.dedup();
-    // The charge site moved with 142's header extent: the music is one
-    // let-bound term now, so the 200001st step lands inside an application of
-    // the staff adapter rather than at the evaluation that opened it. One
-    // ResourceLimit remains the corpus's only failure either way.
+    // The charge site moves with the engine: under the course correction's
+    // checker the 200001st step lands at the evaluation walk itself rather
+    // than inside an application of the staff adapter. One ResourceLimit
+    // remains the corpus's only failure either way.
     assert_eq!(
         said,
-        ["ResourceLimit: function application exceeded the budget for reduction steps at 200001 of 200000"],
-        "the corpus reads and checks; what is left is the step budget, and prompt 145 owns it"
+        ["ResourceLimit: evaluation exceeded the budget for reduction steps at 200001 of 200000"],
+        "the corpus reads and checks; what is left is the step budget, and the adapter's rewrite owns it"
     );
 }
 

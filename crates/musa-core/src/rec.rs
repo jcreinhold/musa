@@ -444,7 +444,7 @@ impl Rewrite<'_> {
                         path: update.path.clone(),
                         value: self.term(&update.value, bound)?,
                     });
-                    }
+                }
                 RawShape::Update {
                     record: self.term(record, bound)?,
                     updates: Arc::from(rewritten),

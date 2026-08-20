@@ -288,8 +288,14 @@ impl Elaborator {
                     &solution,
                 )?);
             }
-            Shape::Var(_) | Shape::Const(_) | Shape::Def(_) | Shape::Numeral(_) | Shape::Base(_) | Shape::Lit(_)
-            | Shape::Builtin(_) | Shape::Universe(_) => return Ok(term.clone()),
+            Shape::Var(_)
+            | Shape::Const(_)
+            | Shape::Def(_)
+            | Shape::Numeral(_)
+            | Shape::Base(_)
+            | Shape::Lit(_)
+            | Shape::Builtin(_)
+            | Shape::Universe(_) => return Ok(term.clone()),
             Shape::Pi {
                 plicity,
                 name,
@@ -365,7 +371,8 @@ impl Elaborator {
         ty: &Value,
     ) -> crate::meta::Hole {
         let hole = self.fresh_hole(at, ty);
-        self.constraints.push((constraint, scope.clone(), env, at, hole.clone()));
+        self.constraints
+            .push((constraint, scope.clone(), env, at, hole.clone()));
         hole
     }
 
@@ -473,7 +480,7 @@ impl Elaborator {
     /// A registered builtin or base type, and nothing else.
     fn registered(&mut self, scope: &Scope, here: Origin, name: &Name) -> Result<Typed, ElabError> {
         let Some(entry) = scope.cx().extern_named(name) else {
-            return Err(self.unresolved(scope, here, name));
+            return self.unresolved(scope, here, name);
         };
         let ty = eval(&mut self.meter, &Env::EMPTY, entry.ty())?;
         Ok(Typed {
@@ -513,7 +520,7 @@ impl Elaborator {
     /// same argument [`RawShape::Lit`] makes, one namespace over.
     fn numeral(&mut self, scope: &Scope, here: Origin, family: &Name, count: u64) -> Result<Typed, ElabError> {
         let Some(Found::Rigid(constant)) = scope.declared(family) else {
-            return Err(self.unresolved(scope, here, family));
+            return self.unresolved(scope, here, family);
         };
         let Some(reason) = constant.uncounted() else {
             return Ok(Typed {
@@ -536,35 +543,62 @@ impl Elaborator {
     /// exists and has no such case; a bare `Untied` is a case of something, and
     /// this position does not say of what; anything else is a name nobody
     /// declared.
-    fn unresolved(&mut self, scope: &Scope, here: Origin, name: &Name) -> ElabError {
+    fn unresolved(&mut self, scope: &Scope, here: Origin, name: &Name) -> Result<Typed, ElabError> {
         if let Some(family) = scope.cx().stranger(name) {
-            let ty = match family.ty_term(&mut self.meter) {
-                Ok(ty) => ty,
-                Err(error) => return error.into(),
-            };
-            return Refusal::NoSuchConstructor {
+            let ty = family.ty_term(&mut self.meter)?;
+            return Err(Refusal::NoSuchConstructor {
                 at: here,
                 name: Arc::clone(name),
                 ty,
                 cases: family.cases(),
             }
-            .into();
+            .into());
         }
         let families = scope.cx().cases(name);
+        // §2.1's uniqueness rule: exactly one family in scope declares the
+        // case, so the bare name *is* that constructor — written without its
+        // family because there is nothing to disambiguate against. Its
+        // parameters are holes for the position to solve, which is what makes
+        // `fold(Nothing, step)` an ordinary call rather than a guessing game.
+        // Two families declaring the case is the ambiguity the qualified
+        // spelling exists for, and that stays a refusal.
+        if let [only] = families.as_slice() {
+            let qualified: Name = Arc::clone(only);
+            let built = self.constant(scope, here, &qualified)?;
+            let params = match &built.term.shape() {
+                Shape::Const(constant) => constant.group.params(),
+                Shape::Hole(_)
+                | Shape::Var(_)
+                | Shape::Def(_)
+                | Shape::Numeral(_)
+                | Shape::Base(_)
+                | Shape::Lit(_)
+                | Shape::Builtin(_)
+                | Shape::Universe(_)
+                | Shape::Pi { .. }
+                | Shape::Lam { .. }
+                | Shape::App { .. }
+                | Shape::RecordType(_)
+                | Shape::Record(_)
+                | Shape::Project { .. }
+                | Shape::Let { .. } => 0,
+            };
+            return self.holes(scope, here, built, params);
+        }
         if !families.is_empty() {
-            return Refusal::BareConstructor {
+            return Err(Refusal::BareConstructor {
                 at: here,
                 name: Arc::clone(name),
                 families,
             }
-            .into();
+            .into());
         }
-        Refusal::UnknownName {
+        Err(Refusal::UnknownName {
             name: Arc::clone(name),
             at: here,
             candidates: scope.nameable(),
         }
-        .into()
+        .into())
     }
 
     // ---- checking ----------------------------------------------------------
@@ -585,14 +619,17 @@ impl Elaborator {
                     Some(supplied) => supplied,
                     None => self.infer(scope, raw)?,
                 };
+                // The host's index-acceptance rule answers before conversion
+                // is asked: it is a *carrying*, not an equality, and a unify
+                // that ran first would only report the pair as disagreeing.
+                if let Some(carried) = self.carried(scope, ty, &inferred)? {
+                    return Ok(carried);
+                }
                 // §2.1 at the one place it can fire from below: a term whose
                 // inferred type still quantifies over parameters the expected
                 // type can determine — a bare constructor, a generic's name —
                 // is matched against `ty` before conversion is asked.
                 let inferred = self.apply_spine(scope, raw.origin(), inferred, &[], Some(ty))?;
-                if let Some(carried) = self.carried(scope, ty, &inferred)? {
-                    return Ok(carried);
-                }
                 self.unifier
                     .unify_types(&mut self.meter, scope.depth(), raw.origin(), ty, &inferred.ty)?;
                 Ok(inferred.term)
@@ -918,7 +955,24 @@ impl Elaborator {
                 let built = self.holes(scope, here, built, params)?;
                 Ok(Some(self.apply_spine(scope, here, built, &arguments, None)?))
             }
-            _ => Ok(None),
+            RawShape::Var(_)
+            | RawShape::Numeral { .. }
+            | RawShape::Lit(_)
+            | RawShape::Universe(_)
+            | RawShape::ConstrainedPi { .. }
+            | RawShape::Pi { .. }
+            | RawShape::Lam { .. }
+            | RawShape::App { .. }
+            | RawShape::Call { .. }
+            | RawShape::RecordType(_)
+            | RawShape::Record(_)
+            | RawShape::Method { .. }
+            | RawShape::Project { .. }
+            | RawShape::Update { .. }
+            | RawShape::Let { .. }
+            | RawShape::Annot { .. }
+            | RawShape::Match { .. }
+            | RawShape::Rec { .. } => Ok(None),
         }
     }
 
@@ -956,13 +1010,27 @@ impl Elaborator {
         // no-arguments case only.
         let head = match head.term.shape() {
             Shape::Const(constant)
-                if arguments.is_empty()
-                    && matches!(constant.role, crate::family::Role::Constructor(_)) =>
+                if arguments.is_empty() && matches!(constant.role, crate::family::Role::Constructor(_)) =>
             {
                 let params = constant.group.params();
                 self.holes(scope, here, head, params)?
             }
-            _ => head,
+            Shape::Hole(_)
+            | Shape::Var(_)
+            | Shape::Const(_)
+            | Shape::Def(_)
+            | Shape::Numeral(_)
+            | Shape::Base(_)
+            | Shape::Lit(_)
+            | Shape::Builtin(_)
+            | Shape::Universe(_)
+            | Shape::Pi { .. }
+            | Shape::Lam { .. }
+            | Shape::App { .. }
+            | Shape::RecordType(_)
+            | Shape::Record(_)
+            | Shape::Project { .. }
+            | Shape::Let { .. } => head,
         };
         let mut walk = Walk::default();
         let mut ty = head.ty.clone();
@@ -989,7 +1057,8 @@ impl Elaborator {
                 // the empty walk peels those into holes and does the matching,
                 // which is §2.1's one rule rather than a second path here.
                 let inferred = self.infer(scope, argument)?;
-                self.apply_spine(scope, argument.origin(), inferred, &[], Some(&domain))?.term
+                self.apply_spine(scope, argument.origin(), inferred, &[], Some(&domain))?
+                    .term
             } else {
                 self.check(scope, argument, &domain)?
             };
@@ -1007,7 +1076,7 @@ impl Elaborator {
             self.unifier
                 .unify_types(&mut self.meter, scope.depth(), here, expected, &ty)?;
         }
-        Ok(self.finish_walk(scope, here, head.term, ty, walk)?)
+        Self::finish_walk(here, head.term, ty, &walk)
     }
 
     /// Skip the binders §2.1 fills rather than the author: an implicit
@@ -1033,7 +1102,7 @@ impl Elaborator {
                     let hole = self.fresh_hole(current.origin, domain);
                     walk.slots.push(Slot::Parameter(hole.clone()));
                     let value = Value::neutral(Neutral::head(current.origin, crate::value::Head::Hole(hole)));
-                    *ty = apply_closure(&mut self.meter, &codomain, value)?;
+                    *ty = apply_closure(&mut self.meter, codomain, value)?;
                 }
                 Plicity::Constraint(constraint) => {
                     let constraint = Arc::clone(constraint);
@@ -1051,7 +1120,7 @@ impl Elaborator {
                     ));
                     walk.slots.push(Slot::Dictionary(hole.clone()));
                     let value = Value::neutral(Neutral::head(current.origin, crate::value::Head::Hole(hole)));
-                    *ty = apply_closure(&mut self.meter, &codomain, value)?;
+                    *ty = apply_closure(&mut self.meter, codomain, value)?;
                 }
             }
         }
@@ -1060,15 +1129,7 @@ impl Elaborator {
     /// The walk's end: build the spine, and leave the residual type with the
     /// holes it still mentions — solved or not, which [`Self::settled`]
     /// audits.
-    fn finish_walk(
-        &mut self,
-        scope: &Scope,
-        here: Origin,
-        head: Term,
-        ty: Value,
-        walk: Walk,
-    ) -> Result<Typed, ElabError> {
-        let _ = scope;
+    fn finish_walk(here: Origin, head: Term, ty: Value, walk: &Walk) -> Result<Typed, ElabError> {
         let mut term = head;
         for slot in &walk.slots {
             let argument = match slot {
@@ -1444,7 +1505,6 @@ impl Elaborator {
         })
     }
 
-
     /// §1.3's arity law: a `Call` supplies every declared parameter, and this
     /// is where the count is checked.
     ///
@@ -1492,10 +1552,31 @@ impl Elaborator {
         function: &Raw,
         argument: &Raw,
     ) -> Result<Typed, ElabError> {
-        if *plicity != Plicity::Explicit {
-            return Err(Refusal::PlicityMismatch { at: argument.origin() }.into());
-        }
         let inferred = self.infer(scope, function)?;
+        if *plicity == Plicity::Implicit {
+            // The one written-implicit rule: the argument fills the next
+            // binder when that binder is the implicit one — the spelling the
+            // host's schemes and the suite's fixtures use for a type argument
+            // a use site writes out — and is refused otherwise, which is the
+            // refusal's own sentence.
+            let unfolded = crate::eval::opened(&mut self.meter, &inferred.ty)?;
+            let ty = unfolded.as_ref().unwrap_or(&inferred.ty);
+            let Form::Pi {
+                plicity: Plicity::Implicit,
+                domain,
+                codomain,
+                ..
+            } = &ty.form
+            else {
+                return Err(Refusal::PlicityMismatch { at: argument.origin() }.into());
+            };
+            let argument_term = self.check(scope, argument, &Arc::clone(domain))?;
+            let value = scope.eval(&mut self.meter, &argument_term)?;
+            return Ok(Typed {
+                term: Term::app(here, inferred.term, argument_term),
+                ty: apply_closure(&mut self.meter, codomain, value)?,
+            });
+        }
         self.apply_spine(scope, here, inferred, &[argument], None)
     }
 
@@ -1568,7 +1649,7 @@ impl Elaborator {
             }
             .into());
         };
-        self.receiving(scope, here, Typed { term, ty }, inferred)
+        self.receiving(scope, here, Typed { term, ty }, &inferred)
     }
 
     /// A method applied to the receiver it was found for.
@@ -1579,7 +1660,13 @@ impl Elaborator {
     /// differ in what they do with the domain: there the argument is *checked*
     /// against it, here the two types are unified, which is what solves the
     /// trait arguments `method_at` left as metavariables.
-    fn receiving(&mut self, scope: &Scope, here: Origin, function: Typed, receiver: Typed) -> Result<Typed, ElabError> {
+    fn receiving(
+        &mut self,
+        scope: &Scope,
+        here: Origin,
+        function: Typed,
+        receiver: &Typed,
+    ) -> Result<Typed, ElabError> {
         let mut walk = Walk::default();
         let mut ty = function.ty.clone();
         self.advance(scope, &mut ty, &mut walk)?;
@@ -1600,7 +1687,7 @@ impl Elaborator {
         walk.slots.push(Slot::Argument(receiver.term.clone()));
         let value = scope.eval(&mut self.meter, &receiver.term)?;
         let ty = apply_closure(&mut self.meter, &codomain, value)?;
-        self.finish_walk(scope, here, function.term, ty, walk)
+        Self::finish_walk(here, function.term, ty, &walk)
     }
 
     /// `{ f : A, … } ⇒ Type (max …)`.

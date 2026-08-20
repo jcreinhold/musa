@@ -487,10 +487,22 @@ impl Term {
                 .succ()
                 .ok_or(crate::Refusal::BeyondUniverses { at: term.origin() }),
             Shape::Pi { domain, codomain, .. } => Ok(Self::level_of(domain)?.max(Self::level_of(codomain)?)),
-            Shape::RecordType(fields) => fields.iter().try_fold(Level::ZERO, |join, field| {
-                Ok(Self::level_of(&field.term)?.max(join))
-            }),
-            _ => Ok(Level::ZERO),
+            Shape::RecordType(fields) => fields
+                .iter()
+                .try_fold(Level::ZERO, |join, field| Ok(Self::level_of(&field.term)?.max(join))),
+            Shape::Hole(_)
+            | Shape::Var(_)
+            | Shape::Const(_)
+            | Shape::Def(_)
+            | Shape::Numeral(_)
+            | Shape::Base(_)
+            | Shape::Lit(_)
+            | Shape::Builtin(_)
+            | Shape::Lam { .. }
+            | Shape::App { .. }
+            | Shape::Record(_)
+            | Shape::Project { .. }
+            | Shape::Let { .. } => Ok(Level::ZERO),
         }
     }
 
@@ -587,11 +599,8 @@ impl Term {
         Self::new(origin, Shape::Record(collect_fields(fields)))
     }
 
-    /// A metavariable, as a term.
-    #[must_use]
-
     /// `let name : ty = value in body`.
-    
+    #[must_use]
     pub fn bind(origin: Origin, name: impl Into<Name>, ty: Self, value: Self, body: Self) -> Self {
         Self::new(
             origin,

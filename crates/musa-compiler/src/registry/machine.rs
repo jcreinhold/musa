@@ -189,7 +189,11 @@ fn units() -> Vec<&'static crate::machine::PrimitiveDescriptor> {
 /// so three is two of them.
 fn port(cx: &Cx, shape: crate::machine::PortShape) -> Result<Term, ElabError> {
     match shape {
-        crate::machine::PortShape::Ratio => Ok(super::plain("Ratio").term(HERE)),
+        // The storable spelling: §1.2's constraint on a port is discharged by
+        // computing over this base, and a `Ratio` port is storable data —
+        // which the owner says at the registration, per the one shape this
+        // crate cannot look inside.
+        crate::machine::PortShape::Ratio => Ok(super::storable("Ratio").term(HERE)),
         crate::machine::PortShape::Unit => crate::prelude::constant(cx, "Unit"),
         crate::machine::PortShape::Bool => crate::prelude::constant(cx, "Bool"),
         crate::machine::PortShape::Nat => crate::prelude::constant(cx, "Nat"),

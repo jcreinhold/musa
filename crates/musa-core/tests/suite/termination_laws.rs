@@ -117,7 +117,6 @@ fn a_call_on_a_smaller_argument_is_admitted_and_computes() {
     }
 }
 
-
 /// A definition elaboration must refuse, and the refusal it owes.
 ///
 /// Shared with `elaboration_laws.rs`'s coverage gate, for the reason

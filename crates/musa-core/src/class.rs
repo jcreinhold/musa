@@ -212,7 +212,6 @@ impl Trait {
     pub(crate) fn derivation(&self, name: &str) -> Option<&Derived> {
         self.derived.iter().find(|derived| *derived.name == *name)
     }
-
 }
 
 /// An `impl` declaration, elaborated.
@@ -238,7 +237,7 @@ pub struct Instance {
 /// mutated, because a [`Cx`](crate::Cx) is persistent — an elaborator descends
 /// into two branches from one context and neither may see the other's
 /// declarations — and a declaration is rare where a lookup is not.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct Classes {
     traits: HashMap<Name, Arc<Trait>>,
     instances: HashMap<Key, Arc<Instance>>,
@@ -251,16 +250,6 @@ pub(crate) struct Classes {
     /// a use site reads one bucket, and rebuilt with it, since a trait
     /// declaration is rare where a method call is not.
     by_method: HashMap<Name, Vec<Name>>,
-}
-
-impl Default for Classes {
-    fn default() -> Self {
-        Self {
-            traits: HashMap::new(),
-            instances: HashMap::new(),
-            by_method: HashMap::new(),
-        }
-    }
 }
 
 impl Classes {
@@ -363,7 +352,7 @@ pub(crate) fn occurrences(term: &Term, depth: u32, level: u32) -> u32 {
         | Shape::Lit(_)
         | Shape::Numeral(_)
         | Shape::Hole(_)
-        | Shape::Universe(_)         => 0,
+        | Shape::Universe(_) => 0,
         Shape::Pi { domain, codomain, .. } => deeper(domain, 0).saturating_add(deeper(codomain, 1)),
         Shape::Lam { body, .. } => deeper(body, 1),
         Shape::App { function, argument, .. } => deeper(function, 0).saturating_add(deeper(argument, 0)),

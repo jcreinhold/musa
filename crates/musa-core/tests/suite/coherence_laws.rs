@@ -174,9 +174,7 @@ fn measured() -> Cx {
         &cx,
         &data(
             vec![binder("A", type0())],
-            vec![family(
-                "F",
-                vec![constructor("Wrapped", vec![binder("a", var("A"))])])],
+            vec![family("F", vec![constructor("Wrapped", vec![binder("a", var("A"))])])],
         ),
     )
     .expect("F is a declaration");
@@ -187,9 +185,8 @@ fn measured() -> Cx {
             vec![binder("A", type0()), binder("B", type0())],
             vec![family(
                 "G",
-                vec![constructor(
-                    "Both",
-                    vec![binder("a", var("A")), binder("b", var("B"))])])],
+                vec![constructor("Both", vec![binder("a", var("A")), binder("b", var("B"))])],
+            )],
         ),
     )
     .expect("G is a declaration");

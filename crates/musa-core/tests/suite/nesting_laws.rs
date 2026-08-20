@@ -58,8 +58,10 @@ fn lists() -> RawData {
                 constructor("Nil", Vec::new()),
                 constructor(
                     "Cons",
-                    vec![binder("head", var("A")), binder("tail", apply(var("List"), [var("A")]))]),
-            ])],
+                    vec![binder("head", var("A")), binder("tail", apply(var("List"), [var("A")]))],
+                ),
+            ],
+        )],
     )
 }
 
@@ -72,7 +74,8 @@ fn options() -> RawData {
             vec![
                 constructor("None", Vec::new()),
                 constructor("Some", vec![binder("value", var("A"))]),
-            ])],
+            ],
+        )],
     )
 }
 
@@ -88,7 +91,8 @@ fn results() -> RawData {
             vec![
                 constructor("Err", vec![binder("error", var("E"))]),
                 constructor("Ok", vec![binder("value", var("A"))]),
-            ])],
+            ],
+        )],
     )
 }
 
@@ -104,9 +108,8 @@ fn continuations() -> RawData {
         vec![binder("A", type0())],
         vec![family(
             "Cont",
-            vec![constructor(
-                "mk",
-                vec![binder("k", arrow(var("A"), var("Nat")))])])],
+            vec![constructor("mk", vec![binder("k", arrow(var("A"), var("Nat")))])],
+        )],
     )
 }
 
@@ -138,10 +141,9 @@ fn staff_read() -> RawData {
             "StaffRead",
             vec![
                 constructor("Sung", Vec::new()),
-                constructor(
-                    "Body",
-                    vec![binder("items", apply(var("List"), [var("StaffRead")]))]),
-            ])],
+                constructor("Body", vec![binder("items", apply(var("List"), [var("StaffRead")]))]),
+            ],
+        )],
     )
 }
 
@@ -261,14 +263,17 @@ fn an_occurrence_may_sit_at_any_depth_of_positive_parameters() {
                 constructor("Flat", Vec::new()),
                 constructor(
                     "Perhaps",
-                    vec![binder("m", apply(var("Option"), [apply(var("List"), [var("Deep")])]))]),
+                    vec![binder("m", apply(var("Option"), [apply(var("List"), [var("Deep")])]))],
+                ),
                 constructor(
                     "Either",
                     vec![binder(
                         "e",
                         apply(var("Result"), [var("Nat"), apply(var("List"), [var("Deep")])]),
-                    )]),
-            ])],
+                    )],
+                ),
+            ],
+        )],
     );
     musa_core::declare(&cx, &declaration).expect("nesting is about position rather than depth");
 }
@@ -297,9 +302,8 @@ fn an_occurrence_outside_a_positive_position_is_still_refused() {
                 Vec::new(),
                 vec![family(
                     "Bad",
-                    vec![constructor(
-                        "mk",
-                        vec![binder("f", arrow(var("Bad"), var("Nat")))])])],
+                    vec![constructor("mk", vec![binder("f", arrow(var("Bad"), var("Nat")))])],
+                )],
             ),
         },
         Negative {
@@ -310,7 +314,9 @@ fn an_occurrence_outside_a_positive_position_is_still_refused() {
                     "Bad",
                     vec![constructor(
                         "mk",
-                        vec![binder("f", apply(var("List"), [arrow(var("Bad"), var("Nat"))]))])])],
+                        vec![binder("f", apply(var("List"), [arrow(var("Bad"), var("Nat"))]))],
+                    )],
+                )],
             ),
         },
         Negative {
@@ -319,9 +325,8 @@ fn an_occurrence_outside_a_positive_position_is_still_refused() {
                 Vec::new(),
                 vec![family(
                     "Held",
-                    vec![constructor(
-                        "mk",
-                        vec![binder("k", apply(var("Cont"), [var("Held")]))])])],
+                    vec![constructor("mk", vec![binder("k", apply(var("Cont"), [var("Held")]))])],
+                )],
             ),
         },
     ] {

@@ -172,8 +172,8 @@ impl Unifier {
     /// mismatch it is, which is §2.1's "the program did not say" with the
     /// application as the place that could not say it.
     fn assignment(
-        &mut self,
-        meter: &mut Meter,
+        &self,
+        meter: &Meter,
         depth: u32,
         at: At<'_>,
         origin: Origin,
@@ -213,7 +213,8 @@ impl Unifier {
             return Err(Failure::Occurs);
         }
         let _ = (meter, depth, at, origin);
-        hole.solve(right.clone()).map_err(|malformed| Failure::Core(malformed.into()))?;
+        hole.solve(right.clone())
+            .map_err(|malformed| Failure::Core(malformed.into()))?;
         Ok(Some(()))
     }
 
@@ -735,8 +736,7 @@ fn mentions_hole(value: &Value, target: &crate::meta::Hole) -> bool {
     match &value.form {
         Form::Universe(_) | Form::Lit(_) | Form::Numeral(_) => false,
         Form::Pi { domain, codomain, .. } => {
-            mentions_hole(domain, target)
-                || codomain.env.iter().any(|item| mentions_hole(item, target))
+            mentions_hole(domain, target) || codomain.env.iter().any(|item| mentions_hole(item, target))
         }
         Form::Lam(closure) => closure.env.iter().any(|item| mentions_hole(item, target)),
         Form::RecordType(telescope) => telescope.env.iter().any(|item| mentions_hole(item, target)),
@@ -767,9 +767,7 @@ fn mentions_hole(value: &Value, target: &crate::meta::Hole) -> bool {
 pub(crate) fn mentions_unsolved(value: &Value) -> bool {
     match &value.form {
         Form::Universe(_) | Form::Lit(_) | Form::Numeral(_) => false,
-        Form::Pi { domain, codomain, .. } => {
-            mentions_unsolved(domain) || codomain.env.iter().any(mentions_unsolved)
-        }
+        Form::Pi { domain, codomain, .. } => mentions_unsolved(domain) || codomain.env.iter().any(mentions_unsolved),
         Form::Lam(closure) => closure.env.iter().any(mentions_unsolved),
         Form::RecordType(telescope) => telescope.env.iter().any(mentions_unsolved),
         Form::Record(fields) => fields.iter().any(|(_, item)| mentions_unsolved(item)),

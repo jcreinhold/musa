@@ -100,12 +100,10 @@ fn ty(cx: &Cx, raw: &Raw) -> Term {
         .unwrap_or_else(|why| panic!("a law's own type does not elaborate: {why}"))
 }
 
-/// `program`, checked at `at` and re-checked independently of the elaborator
-/// that produced it.
+/// `program`, checked at `at`.
 fn checked(cx: &Cx, at: &Term, program: &Raw, what: &str) -> Term {
-    let term = musa_core::check(cx, at, program)
-        .unwrap_or_else(|why| panic!("`{what}` is not well typed at the type §2 gives it: {why}"));
-    term
+    musa_core::check(cx, at, program)
+        .unwrap_or_else(|why| panic!("`{what}` is not well typed at the type §2 gives it: {why}"))
 }
 
 /// A spine's head and how many arguments it carries.

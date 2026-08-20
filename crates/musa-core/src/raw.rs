@@ -804,12 +804,10 @@ impl Raw {
     /// the slot's Pi descends around it, and an annotation inside is what the
     /// hole is solved from.
     pub(crate) fn checks_only(&self) -> bool {
-        match self.shape() {
-            RawShape::Record(_) | RawShape::Match { .. } | RawShape::Rec { .. } | RawShape::Lam { .. } => {
-                true
-            }
-            _ => false,
-        }
+        matches!(
+            self.shape(),
+            RawShape::Record(_) | RawShape::Match { .. } | RawShape::Rec { .. } | RawShape::Lam { .. }
+        )
     }
 
     /// `function argument`.

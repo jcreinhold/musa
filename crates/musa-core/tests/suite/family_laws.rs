@@ -9,7 +9,9 @@
 
 use std::sync::Arc;
 
-use musa_core::{Cx, Group, Level, Raw, RawArm, RawBinder, RawConstructor, RawData, RawFamily, RawPattern, Refusal, Term, Visibility};
+use musa_core::{
+    Cx, Group, Level, Raw, RawArm, RawBinder, RawConstructor, RawData, RawFamily, RawPattern, Refusal, Term, Visibility,
+};
 
 use crate::programs::{WRITTEN, refusal};
 
@@ -84,7 +86,8 @@ pub(crate) fn nat() -> RawData {
             vec![
                 constructor("Zero", Vec::new()),
                 constructor("Succ", vec![binder("n", var("Nat"))]),
-            ])],
+            ],
+        )],
     )
 }
 
@@ -111,11 +114,10 @@ pub(crate) fn vec() -> RawData {
                 constructor("Nil", Vec::new()),
                 constructor(
                     "Cons",
-                    vec![
-                        binder("x", var("A")),
-                        binder("xs", apply(var("Vec"), [var("A")])),
-                    ]),
-            ])],
+                    vec![binder("x", var("A")), binder("xs", apply(var("Vec"), [var("A")]))],
+                ),
+            ],
+        )],
     )
 }
 
@@ -128,7 +130,8 @@ pub(crate) fn option() -> RawData {
             vec![
                 constructor("None", Vec::new()),
                 constructor("Some", vec![binder("x", var("A"))]),
-            ])],
+            ],
+        )],
     )
 }
 
@@ -142,7 +145,8 @@ pub(crate) fn result() -> RawData {
             vec![
                 constructor("Ok", vec![binder("x", var("A"))]),
                 constructor("Err", vec![binder("e", var("E"))]),
-            ])],
+            ],
+        )],
     )
 }
 
@@ -248,10 +252,11 @@ fn a_constructor_given_the_wrong_number_of_arguments_is_still_refused() {
         // Under-applied: the parameter is supplied, and what is left is a
         // function type rather than an `Option`.
         ("Some", var("Some"), |refusal| matches!(*refusal, Refusal::Mismatch(_))),
-        // Over-applied: more arguments than the constructor has fields, so the
-        // rule declines and the ordinary path answers exactly as before.
+        // Over-applied: the uniqueness rule reads bare `None` as
+        // `Option.None`, and the over-application is refused exactly as the
+        // qualified spelling's is — one term, one answer.
         ("None(0)", apply(var("None"), [var("Nat.Zero")]), |refusal| {
-            matches!(*refusal, Refusal::BareConstructor { .. })
+            matches!(*refusal, Refusal::NotAFunction { .. })
         }),
         (
             "Option.Some Nat 0 0",
@@ -455,7 +460,11 @@ fn a_match_computes_a_type() {
                 body: var("Nat"),
             },
             RawArm {
-                patterns: vec![RawPattern::constructor(WRITTEN, "Nat.Succ", [RawPattern::bind(WRITTEN, "k")])],
+                patterns: vec![RawPattern::constructor(
+                    WRITTEN,
+                    "Nat.Succ",
+                    [RawPattern::bind(WRITTEN, "k")],
+                )],
                 body: var("Nat"),
             },
         ],
@@ -481,14 +490,14 @@ fn a_parameterized_family_declares_over_an_earlier_one() {
     let unit = Raw::record(WRITTEN, []);
     let singleton = apply(
         var("Vec.Cons"),
-        [
-            unit_type.clone(),
-            unit,
-            apply(var("Vec.Nil"), [unit_type.clone()]),
-        ],
+        [unit_type.clone(), unit, apply(var("Vec.Nil"), [unit_type.clone()])],
     );
-    let ty = musa_core::check(&cx, &Term::universe(WRITTEN, Level::ZERO), &apply(var("Vec"), [unit_type]))
-        .expect("`Vec {}` is a type");
+    let ty = musa_core::check(
+        &cx,
+        &Term::universe(WRITTEN, Level::ZERO),
+        &apply(var("Vec"), [unit_type]),
+    )
+    .expect("`Vec {}` is a type");
     musa_core::check(&cx, &ty, &singleton).expect("a one-element vector inhabits it");
 }
 
@@ -508,10 +517,9 @@ fn mutual_families_share_one_declaration_and_one_set_of_motives() {
                     vec![
                         constructor("Zero", Vec::new()),
                         constructor("FromOdd", vec![binder("o", var("Odd"))]),
-                    ]),
-                family(
-                    "Odd",
-                    vec![constructor("FromEven", vec![binder("e", var("Even"))])]),
+                    ],
+                ),
+                family("Odd", vec![constructor("FromEven", vec![binder("e", var("Even"))])]),
             ],
         ),
     )
@@ -579,7 +587,9 @@ pub(crate) fn refused_declarations() -> Vec<RefusedData> {
                     "Bad",
                     vec![constructor(
                         "mk",
-                        vec![binder("f", Raw::pi(WRITTEN, "_", var("Bad"), var("Bad")))])])],
+                        vec![binder("f", Raw::pi(WRITTEN, "_", var("Bad"), var("Bad")))],
+                    )],
+                )],
             ),
         ),
         positive(
@@ -593,7 +603,9 @@ pub(crate) fn refused_declarations() -> Vec<RefusedData> {
                     "Inf",
                     vec![constructor(
                         "sup",
-                        vec![binder("f", Raw::pi(WRITTEN, "_", var("Nat"), var("Inf")))])])],
+                        vec![binder("f", Raw::pi(WRITTEN, "_", var("Nat"), var("Inf")))],
+                    )],
+                )],
             ),
         ),
         positive(
@@ -604,7 +616,9 @@ pub(crate) fn refused_declarations() -> Vec<RefusedData> {
                     "Boxed",
                     vec![constructor(
                         "wrap",
-                        vec![binder("r", Raw::record_type(WRITTEN, [("here", var("Boxed"))]))])])],
+                        vec![binder("r", Raw::record_type(WRITTEN, [("here", var("Boxed"))]))],
+                    )],
+                )],
             ),
         ),
         positive(
@@ -616,7 +630,9 @@ pub(crate) fn refused_declarations() -> Vec<RefusedData> {
                         "Tree",
                         vec![constructor(
                             "node",
-                            vec![binder("kids", apply(var("Forest"), [var("A")]))])]),
+                            vec![binder("kids", apply(var("Forest"), [var("A")]))],
+                        )],
+                    ),
                     family(
                         "Forest",
                         vec![constructor(
@@ -624,7 +640,9 @@ pub(crate) fn refused_declarations() -> Vec<RefusedData> {
                             vec![binder(
                                 "f",
                                 Raw::pi(WRITTEN, "_", apply(var("Tree"), [var("A")]), var("A")),
-                            )])]),
+                            )],
+                        )],
+                    ),
                 ],
             ),
         ),
@@ -632,9 +650,7 @@ pub(crate) fn refused_declarations() -> Vec<RefusedData> {
             "a parameter whose type is the declaration",
             data(
                 vec![binder("p", var("Loop"))],
-                vec![family(
-                    "Loop",
-                    vec![constructor("mk", Vec::new())])],
+                vec![family("Loop", vec![constructor("mk", Vec::new())])],
             ),
         ),
         RefusedData {
@@ -646,7 +662,8 @@ pub(crate) fn refused_declarations() -> Vec<RefusedData> {
                     vec![
                         constructor("Untied", Vec::new()),
                         constructor("Untied", vec![binder("n", var("Nat"))]),
-                    ])],
+                    ],
+                )],
             ),
             expected: |refusal: &Refusal| matches!(*refusal, Refusal::DuplicateCase { .. }),
         },
@@ -663,7 +680,8 @@ pub(crate) fn refused_declarations() -> Vec<RefusedData> {
                     vec![
                         constructor("Open", Vec::new()),
                         hidden_case(constructor("Shut", Vec::new())),
-                    ])],
+                    ],
+                )],
             ),
             expected: |refusal: &Refusal| matches!(*refusal, Refusal::MixedVisibility { .. }),
         },
@@ -716,4 +734,3 @@ pub(crate) fn core_constant(cx: &Cx, name: &str) -> Term {
         .unwrap_or_else(|error| panic!("{name}: {error}"))
         .0
 }
-

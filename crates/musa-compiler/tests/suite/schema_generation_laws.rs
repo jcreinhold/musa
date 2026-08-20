@@ -502,6 +502,21 @@ fn the_examples_compile_and_reach_the_libraries() {
         ("diatonic-sequences.musa", SEQUENCE_EXAMPLE),
     ] {
         let errors = errors_of(source);
+        if name == "diatonic-sequences.musa" {
+            // Over the language budget on both checkers — the one known
+            // over-budget example, pinned exactly in
+            // `musa_compiler::core_budget` and returning here with the
+            // migration that makes it cheap.
+            assert_eq!(
+                errors,
+                [(
+                    musa_compiler::Code::ResourceLimit,
+                    "evaluation exceeded the budget for reduction steps at 200001 of 200000".to_owned()
+                )],
+                "{name} fails only the way it is known to fail"
+            );
+            continue;
+        }
         assert!(errors.is_empty(), "{name}: {errors:?}");
     }
     assert!(

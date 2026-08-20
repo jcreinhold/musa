@@ -165,7 +165,7 @@ pub enum Refusal {
     },
     /// A machine port's type holds a function or a type: `02-core-calculus.md`
     /// §1.2's storability is structural, and this type fails it.
-    #[error("this port's type is not storable data: a function or a type occurs in it")]
+    #[error("`{}` is not storable data: a function or a type occurs in it", crate::show::spelled(.ty))]
     NotStorable {
         /// The signature that required storability.
         at: Origin,

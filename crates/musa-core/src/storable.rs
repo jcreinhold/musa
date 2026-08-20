@@ -23,7 +23,6 @@ use crate::origin::Origin;
 use crate::term::{DbLevel, Term};
 use crate::value::{Elim, Form, Head, Value};
 
-
 /// The one constraint name this crate reserves and no author may write.
 pub(crate) const STORABLE: &str = "Storable";
 
@@ -65,19 +64,25 @@ pub fn requiring_storable(origin: Origin, argument: Term, codomain: Term) -> Ter
 /// defect, since a constraint's argument is checked before it is discharged.
 pub(crate) fn is_storable(
     meter: &mut crate::budget::Meter,
+    cx: &crate::context::Cx,
     ty: &Value,
 ) -> Result<bool, CoreError> {
-    stor(meter, ty, &mut Vec::new(), &mut 0)
+    stor(meter, cx, ty, &mut Vec::new(), &mut 0)
 }
 
 /// [`is_storable`], under `visiting` (the families currently being decided, by
 /// group identity) and `depth` (the next fresh variable's level).
 fn stor(
     meter: &mut crate::budget::Meter,
+    cx: &crate::context::Cx,
     ty: &Value,
     visiting: &mut Vec<(usize, u32)>,
     depth: &mut u32,
 ) -> Result<bool, CoreError> {
+    // A hole solved after this value was built still heads it — open first,
+    // which is also what unfolds a definition standing in type position.
+    let opened = crate::eval::opened(meter, ty)?;
+    let ty = opened.as_ref().unwrap_or(ty);
     match &ty.form {
         // A function is never storable, and neither is a type standing where
         // data should: §1.2's two negative rules.
@@ -86,7 +91,7 @@ fn stor(
             let mut env = telescope.env.clone();
             for field in telescope.fields.iter() {
                 let field_ty = crate::eval::eval(meter, &env, &field.term)?;
-                if !stor(meter, &field_ty, visiting, depth)? {
+                if !stor(meter, cx, &field_ty, visiting, depth)? {
                     return Ok(false);
                 }
                 let fresh = Value::var(ty.origin, DbLevel(*depth), Arc::new(field_ty));
@@ -96,7 +101,18 @@ fn stor(
             Ok(true)
         }
         Form::Neutral(neutral) => match &neutral.head {
-            Head::Base(base) => Ok(base.is_storable()),
+            Head::Base(base) => {
+                // The flag is the *registry's*: a base type's term is written
+                // at many sites and `Base` compares by name, so the decorated
+                // copy is the registered one — the same authority the carrier
+                // rule in `elab` reads. A base the registry does not know is
+                // the host's own object, and its own flag answers.
+                let registered = match cx.extern_named(base.name()) {
+                    Some(crate::base::Extern::Base(declared)) => declared.is_storable(),
+                    Some(crate::base::Extern::Builtin(_)) | None => base.is_storable(),
+                };
+                Ok(registered)
+            }
             Head::Const(constant) => match &constant.role {
                 Role::Family => {
                     let key = (Arc::as_ptr(&constant.group) as usize, constant.family);
@@ -106,7 +122,7 @@ fn stor(
                     let Some(declared) = constant.group.family_at(constant.family) else {
                         return Ok(true);
                     };
-                    let params = usize::try_from(constant.group.params.len()).unwrap_or(usize::MAX);
+                    let params = constant.group.params.len();
                     let mut arguments = Vec::with_capacity(params);
                     for elimination in neutral.spine.iter().take(params) {
                         let Elim::App { argument, .. } = elimination else {
@@ -127,7 +143,7 @@ fn stor(
                         }
                         for field in constructor.fields.iter() {
                             let field_ty = crate::eval::eval(meter, &env, &field.ty)?;
-                            if !stor(meter, &field_ty, visiting, depth)? {
+                            if !stor(meter, cx, &field_ty, visiting, depth)? {
                                 answer = false;
                                 break;
                             }

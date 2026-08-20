@@ -253,8 +253,6 @@ impl Meter {
         Ok(())
     }
 
-
-
     /// Run `body` one evaluation level down, or refuse at the limit.
     ///
     /// A wrapper rather than a pair of enter/leave calls because the level has

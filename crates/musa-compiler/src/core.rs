@@ -12337,19 +12337,17 @@ fn refusal_of(held: &musa_core::Datum) -> Option<ExpansionFailure> {
 /// elaborated and normalized by the ordinary machinery and a separate accounting
 /// of the same work would be a second opinion about it.
 pub(crate) struct PhaseWork {
-    pub(crate) type_constraints: u64,
     pub(crate) evaluation_steps: u64,
 }
 
 impl PhaseWork {
-    /// §3.5's two counters, from what the core charged.
+    /// §3.5's checking counter, from what the core charged.
     ///
     /// `evaluation_steps` is the core's reduction count, which is the same
-    /// quantity under the same name. `type_constraints` is the metavariables the
-    /// elaboration made plus the postponements it retried: those *are* the
-    /// constraints a bidirectional elaborator raises, where the replaced checker
-    /// raised them as unification equations. §3.5 asks the counter to be
-    /// deterministic and to grow with the checking, and both are.
+    /// quantity under the same name — and the whole of the checking half's
+    /// cost: the flat dictionary law postpones no constraint and retries none,
+    /// so there is no second quantity to carry. The phase's four counters are
+    /// three, and §3.5's determinism-and-growth requirement is met by the one.
     ///
     /// The cost of reading the adapter *module* is in here too, added by
     /// [`AdapterModule::spend`] before the run. It has to be: an adapter whose
@@ -12360,9 +12358,6 @@ impl PhaseWork {
     /// estimate on this side, which is what the paragraph above requires.
     const fn of(spent: musa_core::Spend) -> Self {
         Self {
-            // No constraints are postponed or retried under the flat
-            // dictionary law, so the checking half's cost is its evaluation.
-            type_constraints: 0,
             evaluation_steps: spent.steps,
         }
     }

@@ -588,22 +588,27 @@ fn a_machine_reads_back_as_its_description_once_its_ports_are_decided() {
     }
 }
 
-/// `identity` is a machine at every step and every port, so written alone it
-/// leaves its implicit arguments undetermined and the declaration is refused.
-/// Written with its type it is a machine like any other.
-///
-/// The replaced checker generalized an unannotated `let` and kept the open
-/// machine as a value with a scheme, projecting nothing. A dependent core does
-/// not generalize — `02-core-calculus.md` §2.1 leaves an undetermined
-/// metavariable as a refusal rather than defaulting it — so the composer is
-/// told at the declaration, which is where the ports they meant to write are
-/// missing from.
+/// `identity` is a machine at every step and every port. Written alone it
+/// binds the polymorphic value — the ports are quantified at the declaration
+/// and solved at the use (`02-core-calculus.md` §2.1), and nothing about the
+/// `let` asks for them. The refusal arrives where a port is *needed* and
+/// still not written: a use that leaves them undetermined. Written with its
+/// type it is a machine like any other.
 #[test]
 fn an_open_machine_is_refused_until_its_ports_are_written() {
     let (open, said) = elaborated("library { let open = identity; }");
-    assert!(open.is_none(), "a machine at every port is not a machine: {said:?}");
     assert!(
-        said.iter().any(|complaint| complaint.contains("implicit argument")),
+        open.is_some(),
+        "the polymorphic value binds: nothing was asked of it yet: {said:?}"
+    );
+
+    let (used, said) = elaborated("library { let open = identity; let joined = connect(open, open); }");
+    assert!(
+        used.is_none(),
+        "a machine whose ports nothing determines connects to nothing"
+    );
+    assert!(
+        said.iter().any(|complaint| complaint.contains("could not determine")),
         "the refusal names what was not determined: {said:?}"
     );
 

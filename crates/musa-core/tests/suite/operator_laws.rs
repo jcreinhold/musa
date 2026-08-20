@@ -69,9 +69,7 @@ fn box_context(cx: &Cx) -> Cx {
         cx,
         &data(
             vec![binder("A", type0())],
-            vec![family(
-                "Box",
-                vec![constructor("Boxed", vec![binder("x", var("A"))])])],
+            vec![family("Box", vec![constructor("Boxed", vec![binder("x", var("A"))])])],
         ),
     )
     .expect("Box is a declaration");

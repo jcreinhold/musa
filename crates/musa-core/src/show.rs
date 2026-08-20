@@ -271,6 +271,6 @@ fn occurs(term: &Term, depth: u32) -> bool {
         | Shape::Numeral(_)
         | Shape::Hole(_)
         | Shape::Builtin(_)
-        | Shape::Universe(_)         => false,
+        | Shape::Universe(_) => false,
     }
 }

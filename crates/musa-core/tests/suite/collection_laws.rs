@@ -82,10 +82,8 @@ fn booleans() -> RawData {
         Vec::new(),
         vec![family(
             "Bool",
-            vec![
-                constructor("False", Vec::new()),
-                constructor("True", Vec::new()),
-            ])],
+            vec![constructor("False", Vec::new()), constructor("True", Vec::new())],
+        )],
     )
 }
 
@@ -103,7 +101,8 @@ fn options() -> RawData {
             vec![
                 constructor("None", Vec::new()),
                 constructor("Some", vec![binder("value", var("A"))]),
-            ])],
+            ],
+        )],
     )
 }
 
@@ -117,8 +116,10 @@ fn lists() -> RawData {
                 constructor("Nil", Vec::new()),
                 constructor(
                     "Cons",
-                    vec![binder("head", var("A")), binder("tail", list_of(var("A")))]),
-            ])],
+                    vec![binder("head", var("A")), binder("tail", list_of(var("A")))],
+                ),
+            ],
+        )],
     )
 }
 
@@ -171,7 +172,10 @@ fn iterable() -> RawTrait {
                 derived(
                     "map",
                     arrow(var("C"), arrow(arrow(var("A"), var("B")), var("D"))),
-                    lam("source", lam("f", accumulating(var("D"), apply(var("f"), [var("item")])))),
+                    lam(
+                        "source",
+                        lam("f", accumulating(var("D"), apply(var("f"), [var("item")]))),
+                    ),
                 ),
                 vec![binder("D", type0()), binder("B", type0())],
                 vec![constraint("Buildable", vec![var("D"), var("B")])],
@@ -228,7 +232,11 @@ fn accumulating(accumulator: Raw, contributed: Raw) -> Raw {
                 WRITTEN,
                 "built",
                 accumulator,
-                Raw::lam(WRITTEN, "item", apply(var("Buildable.push"), [var("built"), contributed])),
+                Raw::lam(
+                    WRITTEN,
+                    "item",
+                    apply(var("Buildable.push"), [var("built"), contributed]),
+                ),
             ),
         ],
     )
@@ -817,5 +825,3 @@ fn a_nested_forward_traversal_joins_what_a_map_could_not() {
         &numbers([0, 1, 2]),
     );
 }
-
-

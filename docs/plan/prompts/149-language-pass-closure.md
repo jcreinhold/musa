@@ -6,7 +6,8 @@ depends_on: [148]
 phase: 3
 ---
 
-> Superseded by the course correction: `docs/notes/research/language-design-closure/50-the-course-correction-audit.md`. The pass this prompt closed has been replaced; closure is the correction's final report.
+> Superseded by the course correction: `docs/notes/research/language-design-closure/50-the-course-correction-audit.md`.
+> The pass this prompt closed has been replaced; closure is the correction's final report.
 
 # Close the Language Pass and Repair What It Left Behind
 

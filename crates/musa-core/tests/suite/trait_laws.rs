@@ -136,7 +136,12 @@ pub(crate) fn eq() -> RawTrait {
 /// more than one row in it. No `where`: §1's flat law — an `Ord<τ>` that needed
 /// `Eq<τ>` would be a function `Eq<τ> → Ord<τ>`, written out by hand.
 pub(crate) fn ord() -> RawTrait {
-    class("Ord", vec![binder("A", type0())], Vec::new(), vec![method("least", var("A"))])
+    class(
+        "Ord",
+        vec![binder("A", type0())],
+        Vec::new(),
+        vec![method("least", var("A"))],
+    )
 }
 
 /// `trait Keyed<K, V> where Eq<V> { fn key : K; }`.
@@ -165,9 +170,7 @@ pub(crate) fn boxed_context(cx: &Cx) -> Cx {
         cx,
         &data(
             vec![binder("A", type0())],
-            vec![family(
-                "Box",
-                vec![constructor("Boxed", vec![binder("x", var("A"))])])],
+            vec![family("Box", vec![constructor("Boxed", vec![binder("x", var("A"))])])],
         ),
     )
     .expect("Box is a declaration");
@@ -427,11 +430,7 @@ pub(crate) fn refused_declarations() -> Vec<RefusedDeclaration> {
             // §1.2 computed rather than assumed: a function is not storable,
             // and the refusal names the type rather than a missing instance.
             name: "a function type asked to be storable",
-            outcome: probe(
-                &cx,
-                "Storable",
-                Raw::pi(WRITTEN, "n", var("Nat"), var("Nat")),
-            ),
+            outcome: probe(&cx, "Storable", Raw::pi(WRITTEN, "n", var("Nat"), var("Nat"))),
             expected: |refusal| matches!(refusal, Refusal::NotStorable { .. }),
         },
         RefusedDeclaration {
@@ -440,11 +439,7 @@ pub(crate) fn refused_declarations() -> Vec<RefusedDeclaration> {
             // head's argument back into the table — the refusal is the
             // missing entry.
             name: "a constraint whose head the table has no entry for",
-            outcome: probe(
-                &with_eq_nat,
-                "Eq",
-                crate::family_laws::apply(var("Box"), [var("Nat")]),
-            ),
+            outcome: probe(&with_eq_nat, "Eq", crate::family_laws::apply(var("Box"), [var("Nat")])),
             expected: |refusal| matches!(refusal, Refusal::UnresolvedInstance { .. }),
         },
         RefusedDeclaration {
@@ -470,11 +465,7 @@ pub(crate) fn refused_declarations() -> Vec<RefusedDeclaration> {
             // author could not write the repair, since no instance's head is
             // a function type.
             name: "a constraint on a function type",
-            outcome: probe(
-                &with_eq_nat,
-                "Eq",
-                Raw::pi(WRITTEN, "n", var("Nat"), var("Nat")),
-            ),
+            outcome: probe(&with_eq_nat, "Eq", Raw::pi(WRITTEN, "n", var("Nat"), var("Nat"))),
             expected: |refusal| matches!(refusal, Refusal::UnkeyedConstraint { .. }),
         },
     ]
@@ -605,7 +596,9 @@ fn a_family_that_stores_a_function_is_not_storable() {
                 "Rule",
                 vec![constructor(
                     "Made",
-                    vec![binder("f", Raw::pi(WRITTEN, "n", var("Nat"), var("Nat")))])])],
+                    vec![binder("f", Raw::pi(WRITTEN, "n", var("Nat"), var("Nat")))],
+                )],
+            )],
         ),
     )
     .expect("Rule is a declaration");
@@ -658,7 +651,6 @@ fn a_family_holding_a_function_at_depth_is_not_storable() {
         "a container holding a function was refused as `{refusal}`"
     );
 }
-
 
 // ---- §1.4's `where` on a free definition ----
 //
@@ -829,4 +821,3 @@ fn a_constrained_record_type_is_the_record_it_would_be_without_the_clause() {
         "a constrained record type is not the record its fields make it"
     );
 }
-

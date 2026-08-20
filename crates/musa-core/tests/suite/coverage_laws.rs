@@ -275,7 +275,6 @@ fn several_subjects_are_matched_as_one_matrix() {
     }
 }
 
-
 /// A `match` elaboration must refuse, and the refusal it owes.
 ///
 /// Shared with `elaboration_laws.rs`'s coverage gate for the reason

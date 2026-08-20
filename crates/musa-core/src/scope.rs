@@ -22,7 +22,7 @@
 //! telescope that skipped them would produce a solution mentioning variables it
 //! never bound.
 
-use std::sync::{Arc, };
+use std::sync::Arc;
 
 use crate::budget::Meter;
 use crate::class::Key;
@@ -256,5 +256,4 @@ impl Scope {
     pub(crate) fn quote_type(&self, meter: &mut Meter, value: &Value) -> Result<Term, CoreError> {
         quote_type(meter, Depth(self.depth()), crate::quote::Mode::Keep, value)
     }
-
 }

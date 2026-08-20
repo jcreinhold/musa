@@ -188,7 +188,11 @@ fn a_parameter_with_no_type_is_a_located_error() {
     let reported = compilation
         .diagnostics()
         .iter()
-        .find(|diagnostic| diagnostic.message.contains("could not determine the type of a binder"))
+        .find(|diagnostic| {
+            diagnostic
+                .message
+                .contains("this cannot be given a type on its own; write the type it should have")
+        })
         .unwrap_or_else(|| panic!("the undetermined binder is reported: {:?}", compilation.diagnostics()));
     assert!(
         reported.labels.iter().any(|label| label.text == "here"),

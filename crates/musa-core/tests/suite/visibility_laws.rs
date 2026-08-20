@@ -37,15 +37,12 @@ fn chord() -> RawData {
         vec![
             family(
                 "Symbol",
-                vec![
-                    constructor("GSeven", Vec::new()),
-                    constructor("CMajor", Vec::new()),
-                ]),
+                vec![constructor("GSeven", Vec::new()), constructor("CMajor", Vec::new())],
+            ),
             family(
                 "Chord",
-                vec![hidden_case(constructor(
-                    "Named",
-                    vec![binder("symbol", var("Symbol"))]))]),
+                vec![hidden_case(constructor("Named", vec![binder("symbol", var("Symbol"))]))],
+            ),
         ],
     )
 }
@@ -197,9 +194,7 @@ fn the_package_matches_on_its_own_type() {
 fn a_private_family_hides_the_type_as_well_as_its_cases() {
     let declaration = data(
         Vec::new(),
-        vec![hidden_family(family(
-            "Ledger",
-            vec![constructor("Empty", Vec::new())]))],
+        vec![hidden_family(family("Ledger", vec![constructor("Empty", Vec::new())]))],
     );
     let cx = Cx::new().in_module(INSIDE);
     let group = declare(&cx, &declaration).expect("a private family is a declaration");
@@ -272,13 +267,12 @@ fn open_chord() -> RawData {
         vec![
             family(
                 "Symbol",
-                vec![
-                    constructor("GSeven", Vec::new()),
-                    constructor("CMajor", Vec::new()),
-                ]),
+                vec![constructor("GSeven", Vec::new()), constructor("CMajor", Vec::new())],
+            ),
             family(
                 "Chord",
-                vec![constructor("Named", vec![binder("symbol", var("Symbol"))])]),
+                vec![constructor("Named", vec![binder("symbol", var("Symbol"))])],
+            ),
         ],
     )
 }

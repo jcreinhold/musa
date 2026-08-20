@@ -131,23 +131,15 @@ impl Escape {
     }
 }
 
-impl<'a> Reading {
+impl Reading {
     /// A plain quotation: no metavariable to fit the answer into.
     const fn open(depth: Depth, mode: Mode) -> Self {
-        Self {
-            depth: depth.0,
-            mode,
-        }
+        Self { depth: depth.0, mode }
     }
-
-    /// A quotation whose answer must live in `meta`'s own context.
-    ///
-    /// Always [`Mode::Open`]: a solution that named a definition which escapes
-    /// the metavariable's context would be unsound, so definitions are
 
     /// The value with whatever the head hides seen through: solved
     /// metavariables always, folded definitions in [`Mode::Open`].
-    fn seen(&self, meter: &mut Meter, value: &Value) -> Result<Option<Value>, Escape> {
+    fn seen(self, meter: &mut Meter, value: &Value) -> Result<Option<Value>, Escape> {
         match self.mode {
             Mode::Keep => Ok(None),
             Mode::Open => Ok(opened(meter, value)?),
@@ -245,15 +237,11 @@ fn read(meter: &mut Meter, reading: Reading, ty: &Value, value: &Value) -> Resul
                 // of them — which is what keeps quotation's node charge
                 // independent of the number the author wrote.
                 Form::Numeral(numeral) => Ok(Term::new(here, crate::term::Shape::Numeral(numeral.clone()))),
-                Form::Universe(_)
-                | Form::Pi { .. }
-                | Form::Lam(_)
-                | Form::RecordType(_)
-                | Form::Record(_) => read_type(meter, reading, value),
+                Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) | Form::RecordType(_) | Form::Record(_) => {
+                    read_type(meter, reading, value)
+                }
             },
-            Form::Lam(_) | Form::Record(_) | Form::Lit(_) | Form::Numeral(_) => {
-                Err(Malformed::NotAType.into())
-            }
+            Form::Lam(_) | Form::Record(_) | Form::Lit(_) | Form::Numeral(_) => Err(Malformed::NotAType.into()),
         }
     })
 }
@@ -294,9 +282,7 @@ fn read_type(meter: &mut Meter, reading: Reading, value: &Value) -> Result<Term,
             }
             Form::RecordType(telescope) => read_telescope(meter, here, reading, telescope),
             Form::Neutral(neutral) => read_neutral(meter, reading, neutral),
-            Form::Lam(_) | Form::Record(_) | Form::Lit(_) | Form::Numeral(_) => {
-                Err(Malformed::NotAType.into())
-            }
+            Form::Lam(_) | Form::Record(_) | Form::Lit(_) | Form::Numeral(_) => Err(Malformed::NotAType.into()),
         }
     })
 }
@@ -306,12 +292,7 @@ fn read_type(meter: &mut Meter, reading: Reading, value: &Value) -> Result<Term,
 /// Unlike [`quote`]'s record case, the earlier fields become *variables* rather
 /// than projections, because a record type binds them and a record value only
 /// has them.
-fn read_telescope(
-    meter: &mut Meter,
-    here: Origin,
-    reading: Reading,
-    telescope: &Telescope,
-) -> Result<Term, Escape> {
+fn read_telescope(meter: &mut Meter, here: Origin, reading: Reading, telescope: &Telescope) -> Result<Term, Escape> {
     let mut env = telescope.env.clone();
     let mut at = reading;
     let mut fields = Vec::with_capacity(telescope.fields.len());
@@ -395,4 +376,3 @@ fn read_elimination(
         Elim::Project { origin, field } => Ok(Term::project(*origin, quoted, Arc::clone(field))),
     }
 }
-

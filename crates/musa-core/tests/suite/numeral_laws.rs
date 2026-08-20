@@ -252,7 +252,6 @@ fn a_numeral_of_fifty_thousand_neither_overflows_nor_deepens() {
     );
 }
 
-
 /// The programs §5.10 refuses, for the coverage gate in `elaboration_laws.rs`.
 ///
 /// They carry their own contexts because the question is about a *declaration*:
@@ -322,11 +321,10 @@ fn any_family_of_the_counting_shape_takes_a_numeral() {
             vec![
                 // Declared step-first, so that the recognition cannot be reading
                 // constructor *order* instead of constructor shape.
-                crate::family_laws::constructor(
-                    "Deeper",
-                    vec![crate::family_laws::binder("under", var("Depth"))]),
+                crate::family_laws::constructor("Deeper", vec![crate::family_laws::binder("under", var("Depth"))]),
                 crate::family_laws::constructor("Surface", Vec::new()),
-            ])],
+            ],
+        )],
     );
     let group = musa_core::declare(&cx, &declaration).expect("Depth is a declaration");
     let cx = cx.declaring(&group);

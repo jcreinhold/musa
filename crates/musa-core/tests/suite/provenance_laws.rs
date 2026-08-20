@@ -177,8 +177,7 @@ fn an_assumptions_occurrences_point_at_its_binder() {
         .assume(BINDER_A, &Term::universe(TYPE, Level::ZERO))
         .expect("A : Type 0");
 
-    let normal =
-        normalize(&a, &Term::universe(TYPE, Level::One), &Term::var(USE, Index(0))).expect("normalizes");
+    let normal = normalize(&a, &Term::universe(TYPE, Level::One), &Term::var(USE, Index(0))).expect("normalizes");
     assert_eq!(normal.origin(), BINDER_A, "A was written where A was assumed");
 }
 
@@ -303,7 +302,7 @@ fn restamp(term: &Term, origin: Origin) -> Term {
         Shape::Builtin(builtin) => Shape::Builtin(builtin.clone()),
         Shape::Lit(literal) => Shape::Lit(literal.clone()),
         Shape::Numeral(numeral) => Shape::Numeral(numeral.clone()),
-        Shape::Universe(level) => Shape::Universe(level.clone()),
+        Shape::Universe(level) => Shape::Universe(*level),
         Shape::Pi {
             plicity,
             name,

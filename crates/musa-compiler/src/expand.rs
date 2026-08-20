@@ -60,7 +60,6 @@ pub(crate) struct Charges {
     /// Nodes a transformer built rather than preserved.
     pub(crate) generated_syntax_nodes: u64,
     /// Equations the transformer's own checking solved.
-    pub(crate) type_constraints: u64,
     /// Reductions the transformer's own evaluation took.
     pub(crate) evaluation_steps: u64,
 }
@@ -69,7 +68,6 @@ impl Charges {
     fn add(&mut self, other: Self) {
         self.expansion_steps = self.expansion_steps.saturating_add(other.expansion_steps);
         self.generated_syntax_nodes = self.generated_syntax_nodes.saturating_add(other.generated_syntax_nodes);
-        self.type_constraints = self.type_constraints.saturating_add(other.type_constraints);
         self.evaluation_steps = self.evaluation_steps.saturating_add(other.evaluation_steps);
     }
 }
@@ -983,7 +981,6 @@ fn expand_one(
     let charged = |generated_syntax_nodes| Charges {
         expansion_steps: 1,
         generated_syntax_nodes,
-        type_constraints: work.type_constraints,
         evaluation_steps: work.evaluation_steps,
     };
     let output = match answer {
@@ -1306,10 +1303,6 @@ mod tests {
             two.charges.generated_syntax_nodes,
             one.charges.generated_syntax_nodes.saturating_mul(2)
         );
-        assert_eq!(
-            two.charges.type_constraints,
-            one.charges.type_constraints.saturating_mul(2)
-        );
     }
 
     #[test]
@@ -1623,8 +1616,8 @@ mod tests {
             "one region was expanded, whatever it answered"
         );
         assert!(
-            refused.charges.evaluation_steps > 0 && refused.charges.type_constraints > 0,
-            "the run that refused was checked and evaluated, and is charged for both: {:?}",
+            refused.charges.evaluation_steps > 0,
+            "the run that refused was checked and evaluated, and is charged for it: {:?}",
             refused.charges
         );
         let accepted = run(&piece("c4 d4"));

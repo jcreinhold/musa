@@ -50,7 +50,7 @@
 
 use std::sync::Arc;
 
-use crate::class::{Classes, Constraint, Derived, Head, Instance, Key, Kind, Trait, head_of, };
+use crate::class::{Classes, Constraint, Derived, Head, Instance, Key, Kind, Trait, head_of};
 use crate::context::Cx;
 use crate::elab::Elaborator;
 use crate::eval::eval;
@@ -145,7 +145,11 @@ pub(crate) fn declare_trait(cx: &Cx, raw: &RawTrait) -> Result<(Arc<Trait>, crat
             term: elaborator.zonk(&field.term)?,
         });
     }
-    let dictionary = closed_lambda(here, &params, Term::new(here, Shape::RecordType(Arc::from(zonked_fields))));
+    let dictionary = closed_lambda(
+        here,
+        &params,
+        Term::new(here, Shape::RecordType(Arc::from(zonked_fields))),
+    );
     let mut zonked_derived = Vec::with_capacity(derived.len());
     for method in derived {
         zonked_derived.push(Derived {
@@ -461,7 +465,22 @@ pub(crate) fn resolve_at(
             }
             .into());
         };
-        return if crate::storable::is_storable(elaborator.meter(), ty)? {
+        // A port nothing determined is *undetermined*, not unstorable: the
+        // refusal is the unsolved hole's, the same one the parameter audit
+        // would have given.
+        if let Some(opened) = crate::eval::opened(elaborator.meter(), ty)?
+            && let crate::value::Form::Neutral(neutral) = &opened.form
+            && let crate::value::Head::Hole(hole) = &neutral.head
+            && !hole.is_solved()
+        {
+            return Err(Refusal::Unsolved {
+                site: crate::meta::MetaSource::TypeParameter,
+                created: hole.origin(),
+                blocked: None,
+            }
+            .into());
+        }
+        return if crate::storable::is_storable(elaborator.meter(), scope.cx(), ty)? {
             Ok(Term::record(at, core::iter::empty()))
         } else {
             Err(Refusal::NotStorable { at, ty: first.clone() }.into())
@@ -549,11 +568,7 @@ fn unkeyed(term: &Term) -> bool {
         // Canonical formers. None of them is a name, so no `impl` could ever be
         // keyed on one, and `02-core-calculus.md` §1.2 says so of the arrow in
         // particular.
-        Shape::Pi { .. }
-        | Shape::Universe(_)
-        | Shape::RecordType(_)
-        | Shape::Lam { .. }
-        | Shape::Record(_) => true,
+        Shape::Pi { .. } | Shape::Universe(_) | Shape::RecordType(_) | Shape::Lam { .. } | Shape::Record(_) => true,
         // Neutral: stuck on a metavariable, and solving it is what postponement
         // is for.
         Shape::Project { .. } | Shape::Let { .. } => false,
@@ -590,7 +605,10 @@ fn apply_instance(
     for binder in instance.params.iter() {
         let ty = eval(elaborator.meter(), &env, &binder.ty)?;
         let hole = elaborator.fresh_hole(at, &ty);
-        env = env.push(Value::neutral(crate::value::Neutral::head(at, crate::value::Head::Hole(hole.clone()))));
+        env = env.push(Value::neutral(crate::value::Neutral::head(
+            at,
+            crate::value::Head::Hole(hole.clone()),
+        )));
         supplied.push(Term::hole(at, hole));
     }
     for (written, wanted) in instance.args.iter().zip(wanted.iter()) {
@@ -1053,7 +1071,10 @@ pub(crate) fn method_at(
     for binder in class.params.iter() {
         let ty = eval(elaborator.meter(), &env, &binder.ty)?;
         let hole = elaborator.fresh_hole(at, &ty);
-        env = env.push(Value::neutral(crate::value::Neutral::head(at, crate::value::Head::Hole(hole.clone()))));
+        env = env.push(Value::neutral(crate::value::Neutral::head(
+            at,
+            crate::value::Head::Hole(hole.clone()),
+        )));
         args.push(Term::hole(at, hole));
     }
     let needed = Arc::new(Constraint {
@@ -1102,7 +1123,10 @@ pub(crate) fn method_at(
             for binder in derived.params.iter() {
                 let ty = eval(elaborator.meter(), &env, &binder.ty)?;
                 let hole = elaborator.fresh_hole(at, &ty);
-                env = env.push(Value::neutral(Neutral::head(at, crate::value::Head::Hole(hole.clone()))));
+                env = env.push(Value::neutral(Neutral::head(
+                    at,
+                    crate::value::Head::Hole(hole.clone()),
+                )));
                 filled.push(Term::hole(at, hole));
             }
             for constraint in derived.context.iter() {

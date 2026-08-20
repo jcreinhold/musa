@@ -209,14 +209,8 @@ pub(crate) enum DefHead {
 /// One elimination applied to a blocked head.
 #[derive(Clone)]
 pub(crate) enum Elim {
-    App {
-        origin: Origin,
-        argument: Arc<Value>,
-    },
-    Project {
-        origin: Origin,
-        field: Name,
-    },
+    App { origin: Origin, argument: Arc<Value> },
+    Project { origin: Origin, field: Name },
 }
 
 impl Elim {

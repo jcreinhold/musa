@@ -241,7 +241,8 @@ fn options() -> RawData {
             vec![
                 constructor("None", Vec::new()),
                 constructor("Some", vec![binder("value", var("A"))]),
-            ])],
+            ],
+        )],
     )
 }
 
@@ -261,8 +262,10 @@ fn lists() -> RawData {
                 constructor("Empty", Vec::new()),
                 constructor(
                     "Cons",
-                    vec![binder("first", var("A")), binder("rest", calls("List", [var("A")]))]),
-            ])],
+                    vec![binder("first", var("A")), binder("rest", calls("List", [var("A")]))],
+                ),
+            ],
+        )],
     )
 }
 
@@ -927,7 +930,7 @@ fn a_builtin_short_of_literals_is_neutral() {
         calls("int_add", [Raw::var(TERMS, "n"), Raw::lit(TERMS, int_lit(1))]),
     );
     let term = check(&cx, &arrow(int_ty.clone(), int_ty.clone()), &open).expect("an open body checks");
-    let normal = normalize_at(&cx, &arrow(int_ty.clone(), int_ty.clone()), &term);
+    let normal = normalize_at(&cx, &arrow(int_ty.clone(), int_ty), &term);
     assert_eq!(
         normal, term,
         "stuck on a variable, so the normal form is the term itself"
