@@ -749,14 +749,18 @@ fn a_constraint_on_a_record_becomes_a_parameter_of_its_type() {
     inhabits_its_written_type(&cx, written, &defined);
 }
 
-/// The same at a family, which is where the binder has to live on a `Group`.
+/// The same at a family: §1's flat law admits no `where` on an enum either —
+/// the refusal lands where the clause is written.
 #[test]
-fn a_constraint_on_an_enum_becomes_a_parameter_of_its_family() {
-    let cx = with_same();
-    let written = "enum Held<A> where Same<A> { Empty, Full(A) }";
-    let data = declaration(written, SyntaxKind::EnumDecl);
-    assert_eq!(data.context.len(), 1, "the `where` clause is read, not dropped");
-    musa_core::declare(&cx, &data).expect("the core declares what the surface wrote");
+fn a_constraint_on_an_enum_is_refused_where_it_is_written() {
+    let (item, complaints) = lowered_item("enum Held<A> where Same<A> { Empty, Full(A) }", SyntaxKind::EnumDecl);
+    assert!(item.is_none(), "a constrained family is not a declaration");
+    assert_eq!(complaints.len(), 1, "one complaint, at the clause");
+    assert_eq!(
+        complaints.first().expect("one complaint").code,
+        Code::ConstrainedData,
+        "the flat law's answer"
+    );
 }
 
 /// An impl method's `where` is misplaced rather than unsupported, and the

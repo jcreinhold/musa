@@ -130,7 +130,6 @@ fn answer(cx: &Cx, program: &Raw, cat: Cat) -> Syntax {
     let term = musa_core::check(cx, &ty, program).unwrap_or_else(|why| panic!("the program does not check: {why}"));
     let normal =
         musa_core::normalize(cx, &ty, &term).unwrap_or_else(|why| panic!("the program does not reduce: {why}"));
-    musa_core::well_typed(cx, &ty, &normal).unwrap_or_else(|why| panic!("the answer does not re-check: {why}"));
     let musa_core::Shape::Lit(ref built) = *normal.shape() else {
         panic!("the answer is not a literal: {normal:?}")
     };

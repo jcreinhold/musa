@@ -19,7 +19,6 @@ use std::sync::Arc;
 use crate::class::Constraint;
 use crate::error::CoreError;
 use crate::family::Role;
-use crate::list::List;
 use crate::origin::Origin;
 use crate::term::{DbLevel, Term};
 use crate::value::{Elim, Form, Head, Value};

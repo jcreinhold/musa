@@ -337,7 +337,11 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
 }
 
 /// Every refusal this crate can answer with.
-const ALL_REFUSALS: [&str; 55] = [
+const ALL_REFUSALS: [&str; 56] = [
+    "super-class",
+    "constrained-instance",
+    "beyond-universes",
+    "not-storable",
     "unknown-name",
     "mismatch",
     "unsolved",
@@ -350,11 +354,9 @@ const ALL_REFUSALS: [&str; 55] = [
     "not-a-type",
     "uninferable",
     "non-positive",
-    "index-count",
     "no-such-constructor",
     "incomplete-match",
     "unreachable-branch",
-    "forced-index",
     "unchecked-recursion",
     "untyped-recursion",
     "definition-cycle",
@@ -374,7 +376,6 @@ const ALL_REFUSALS: [&str; 55] = [
     "blanket-instance",
     "duplicate-instance",
     "orphan-instance",
-    "unbounded-instance",
     "derived-method",
     "no-such-method",
     "missing-method",

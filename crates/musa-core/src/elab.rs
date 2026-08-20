@@ -945,6 +945,25 @@ impl Elaborator {
         arguments: &[&Raw],
         expected: Option<&Value>,
     ) -> Result<Typed, ElabError> {
+        // A *bare* constructor reference — no written fields — has nothing
+        // for its family parameters to be learned from, so each becomes a
+        // hole (§2.1): `None` is `None<?>` wherever it stands, and the slot it
+        // is checked against solves the hole by ordinary first-order matching.
+        // Without this a bare constructor at an undetermined slot would lend
+        // the slot its Π-scheme, and the program that then drew a value from
+        // the slot would meet a function type where its data was. A written
+        // field does the same job later in the walk, so this is the
+        // no-arguments case only.
+        let head = match head.term.shape() {
+            Shape::Const(constant)
+                if arguments.is_empty()
+                    && matches!(constant.role, crate::family::Role::Constructor(_)) =>
+            {
+                let params = constant.group.params();
+                self.holes(scope, here, head, params)?
+            }
+            _ => head,
+        };
         let mut walk = Walk::default();
         let mut ty = head.ty.clone();
         self.advance(scope, &mut ty, &mut walk)?;
@@ -965,15 +984,12 @@ impl Elaborator {
             // either way: inference has no rule for it, and the slot's Pi is
             // the type it was always going to be read against, holes included.
             let argument_term = if crate::unify::mentions_unsolved(&domain) && !argument.checks_only() {
+                // Inferred — but an inferred head can still quantify over
+                // parameters the domain determines (`identity` used unapplied):
+                // the empty walk peels those into holes and does the matching,
+                // which is §2.1's one rule rather than a second path here.
                 let inferred = self.infer(scope, argument)?;
-                self.unifier.unify_types(
-                    &mut self.meter,
-                    scope.depth(),
-                    argument.origin(),
-                    &domain,
-                    &inferred.ty,
-                )?;
-                inferred.term
+                self.apply_spine(scope, argument.origin(), inferred, &[], Some(&domain))?.term
             } else {
                 self.check(scope, argument, &domain)?
             };
@@ -986,9 +1002,10 @@ impl Elaborator {
             // Checking position: the rest of the type is matched against what
             // the position wants, which is where a bare constructor's family
             // parameters — and any argument's still-unsolved ones — are
-            // learned.
+            // learned. The position is the mismatch's *expected*: it is the
+            // type the author wrote and the walked type the one found.
             self.unifier
-                .unify_types(&mut self.meter, scope.depth(), here, &ty, expected)?;
+                .unify_types(&mut self.meter, scope.depth(), here, expected, &ty)?;
         }
         Ok(self.finish_walk(scope, here, head.term, ty, walk)?)
     }

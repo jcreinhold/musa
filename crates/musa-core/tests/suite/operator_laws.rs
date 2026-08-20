@@ -321,5 +321,14 @@ pub(crate) fn refused_methods() -> Vec<RefusedMethod> {
             raw: call(var("Nat.Zero")),
             expected: |refusal| matches!(refusal, Refusal::AmbiguousMethod { .. }),
         },
+        RefusedMethod {
+            name: "a method whose target nothing determines",
+            // `xs.collect()` in an inferring position: the target would have to
+            // be chosen from a result type nobody wrote — return-type-directed
+            // selection, which §2.1 refuses as the unsolved hole it is.
+            cx: crate::collection_laws::context(),
+            raw: Raw::method(WRITTEN, crate::collection_laws::numbers([0, 1]), "collect"),
+            expected: |refusal| matches!(refusal, Refusal::Unsolved { .. }),
+        },
     ]
 }

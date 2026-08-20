@@ -584,6 +584,14 @@ pub(crate) mod programs {
                 expected: |refusal| matches!(refusal, Refusal::NotAType { .. }),
             },
             Refused {
+                name: "a function whose domain is the second universe",
+                // §1.1's two fixed universes: `Type 1` would have to be a term
+                // of a third, and there is no third.
+                raw: Raw::pi(WRITTEN, "x", Raw::universe(WRITTEN, Level::One), unit_type()),
+                ty: None,
+                expected: |refusal| matches!(refusal, Refusal::BeyondUniverses { .. }),
+            },
+            Refused {
                 name: "a binder type nothing determines",
                 // §2.1: no hole is invented for a binder's type and defaulted
                 // later — the λ is checking-only, and at `infer` the report is

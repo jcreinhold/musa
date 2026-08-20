@@ -408,57 +408,73 @@ pub(crate) fn refused_declarations() -> Vec<RefusedDeclaration> {
             expected: |refusal| matches!(refusal, Refusal::MissingMethod { .. }),
         },
         RefusedDeclaration {
-            // The super-constraint is what makes this reachable at a
-            // declaration: `Ord<Nat>` needs `Eq<Nat>` for its field, the head is
-            // known, and the table has no entry.
-            name: "a super-constraint nothing implements",
-            outcome: declare_impl(
+            // §1's flat law: a `where` on a `trait` is a super-class, and there
+            // are none — the dictionary is the methods and nothing else.
+            name: "a trait with a super-constraint",
+            outcome: declare_trait(
                 &cx,
-                &instance(
-                    "Ord",
+                &class(
+                    "Ordered",
+                    vec![binder("A", type0())],
+                    vec![constraint("Eq", vec![var("A")])],
                     Vec::new(),
-                    vec![var("Nat")],
-                    Vec::new(),
-                    vec![defines("least", var("Nat.Zero"))],
                 ),
             )
             .map(|_| ()),
+            expected: |refusal| matches!(refusal, Refusal::SuperClass { .. }),
+        },
+        RefusedDeclaration {
+            // §1.2 computed rather than assumed: a function is not storable,
+            // and the refusal names the type rather than a missing instance.
+            name: "a function type asked to be storable",
+            outcome: probe(
+                &cx,
+                "Storable",
+                Raw::pi(WRITTEN, "n", var("Nat"), var("Nat")),
+            ),
+            expected: |refusal| matches!(refusal, Refusal::NotStorable { .. }),
+        },
+        RefusedDeclaration {
+            // The flat law's one-step lookup: `Eq<Box Nat>` is asked, the
+            // table holds only `Eq<Nat>`, and there is no recursion from the
+            // head's argument back into the table — the refusal is the
+            // missing entry.
+            name: "a constraint whose head the table has no entry for",
+            outcome: probe(
+                &with_eq_nat,
+                "Eq",
+                crate::family_laws::apply(var("Box"), [var("Nat")]),
+            ),
             expected: |refusal| matches!(refusal, Refusal::UnresolvedInstance { .. }),
         },
         RefusedDeclaration {
-            // The same constraint at a *variable* head, which no global instance
-            // can ever answer — so the repair is on the signature and the
-            // refusal says so.
-            name: "a super-constraint on a type variable nothing constrains",
-            outcome: declare_impl(
-                &cx,
-                &instance(
-                    "Keyed",
-                    vec![binder("A", type0())],
-                    vec![var("Nat"), var("A")],
-                    Vec::new(),
-                    vec![defines("key", var("Nat.Zero"))],
+            // The same constraint at a *variable* head, which no global
+            // instance can ever answer and no `where` here binds — the repair
+            // is on the signature and the refusal says so.
+            name: "a constraint on a type variable nothing discharges",
+            outcome: musa_core::check(
+                &with_eq_nat,
+                &Term::pi(
+                    WRITTEN,
+                    "A",
+                    Term::universe(WRITTEN, Level::ZERO),
+                    crate::family_laws::core_constant(&with_eq_nat, "Nat"),
                 ),
+                &Raw::annotated_lam(WRITTEN, "A", type0(), probe_program("Eq", var("A"))),
             )
             .map(|_| ()),
             expected: |refusal| matches!(refusal, Refusal::UnconstrainedVariable { .. }),
         },
         RefusedDeclaration {
-            // `02-core-calculus.md` §1.2's arrow, reached as an ordinary
-            // constraint: the key would have to be filed under a name and a
-            // function type has none, so no author could write the repair.
-            name: "a super-constraint on a function type",
-            outcome: declare_impl(
-                &cx,
-                &instance(
-                    "Keyed",
-                    Vec::new(),
-                    vec![var("Nat"), Raw::pi(WRITTEN, "n", var("Nat"), var("Nat"))],
-                    Vec::new(),
-                    vec![defines("key", var("Nat.Zero"))],
-                ),
-            )
-            .map(|_| ()),
+            // A constraint whose argument has no head to file under: an
+            // author could not write the repair, since no instance's head is
+            // a function type.
+            name: "a constraint on a function type",
+            outcome: probe(
+                &with_eq_nat,
+                "Eq",
+                Raw::pi(WRITTEN, "n", var("Nat"), var("Nat")),
+            ),
             expected: |refusal| matches!(refusal, Refusal::UnkeyedConstraint { .. }),
         },
     ]
@@ -481,20 +497,31 @@ fn storing() -> Cx {
 /// that declared nothing still asks it — which is exactly the property under
 /// test.
 fn storable(cx: &Cx, argument: Raw) -> Result<(), ElabError> {
+    probe(cx, "Storable", argument)
+}
+
+/// The same probe with the constraint named: `probe : [C τ] → Nat → Nat`,
+/// applied once, so that resolution's answer for `C τ` is observable.
+fn probe(cx: &Cx, class: &'static str, argument: Raw) -> Result<(), ElabError> {
+    let nat = crate::family_laws::core_constant(cx, "Nat");
+    musa_core::check(cx, &nat, &probe_program(class, argument)).map(|_| ())
+}
+
+/// The probe program itself, so that a law can ask the question under a
+/// binder: `let probe : [C τ] → Nat → Nat = λx. x in probe Nat.Zero`.
+fn probe_program(class: &'static str, argument: Raw) -> Raw {
     let probe_ty = Raw::constrained_pi(
         WRITTEN,
-        constraint("Storable", vec![argument]),
+        constraint(class, vec![argument]),
         Raw::pi(WRITTEN, "_", var("Nat"), var("Nat")),
     );
-    let program = Raw::annotated_bind(
+    Raw::annotated_bind(
         WRITTEN,
         "probe",
         probe_ty,
         Raw::lam(WRITTEN, "x", var("x")),
         crate::family_laws::apply(var("probe"), [var("Nat.Zero")]),
-    );
-    let nat = crate::family_laws::core_constant(cx, "Nat");
-    musa_core::check(cx, &nat, &program).map(|_| ())
+    )
 }
 
 #[test]

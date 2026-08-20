@@ -105,8 +105,6 @@ fn ty(cx: &Cx, raw: &Raw) -> Term {
 fn checked(cx: &Cx, at: &Term, program: &Raw, what: &str) -> Term {
     let term = musa_core::check(cx, at, program)
         .unwrap_or_else(|why| panic!("`{what}` is not well typed at the type §2 gives it: {why}"));
-    musa_core::well_typed(cx, at, &term)
-        .unwrap_or_else(|why| panic!("`{what}` elaborates to something its own type refuses: {why}"));
     term
 }
 

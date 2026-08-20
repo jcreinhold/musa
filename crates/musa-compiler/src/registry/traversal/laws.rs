@@ -58,7 +58,6 @@ fn new(cx: &Cx, program: &Raw) -> Syntax {
     let term = musa_core::check(cx, &ty, program).unwrap_or_else(|why| panic!("the program does not check: {why}"));
     let normal =
         musa_core::normalize(cx, &ty, &term).unwrap_or_else(|why| panic!("the program does not reduce: {why}"));
-    musa_core::well_typed(cx, &ty, &normal).unwrap_or_else(|why| panic!("the answer does not re-check: {why}"));
     let musa_core::Shape::Lit(ref answer) = *normal.shape() else {
         panic!("the answer is not a literal: {normal:?}")
     };
@@ -380,10 +379,8 @@ fn a_traversal_at_a_variable_stays_neutral() {
         );
         let term = musa_core::check(&cx, &ty, &blocked)
             .unwrap_or_else(|why| panic!("`{spelling}` at a variable does not check: {why}"));
-        let normal = musa_core::normalize(&cx, &ty, &term)
+        let _normal = musa_core::normalize(&cx, &ty, &term)
             .unwrap_or_else(|why| panic!("`{spelling}` at a variable does not reduce: {why}"));
-        musa_core::well_typed(&cx, &ty, &normal)
-            .unwrap_or_else(|why| panic!("`{spelling}` at a variable does not re-check: {why}"));
     }
 }
 
@@ -451,10 +448,7 @@ fn trees(term: &Term, into: &mut Vec<Syntax>) {
         | musa_core::Shape::RecordType(_)
         | musa_core::Shape::Record(_)
         | musa_core::Shape::Project { .. }
-        | musa_core::Shape::Id { .. }
-        | musa_core::Shape::Refl(_)
-        | musa_core::Shape::J { .. }
-        | musa_core::Shape::Meta(_)
+        | musa_core::Shape::Hole(_)
         | musa_core::Shape::Let { .. } => {}
     }
 }

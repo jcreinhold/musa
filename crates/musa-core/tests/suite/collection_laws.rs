@@ -543,7 +543,7 @@ fn listed(element: &Raw, items: impl IntoIterator<Item = Raw>) -> Raw {
 }
 
 /// `[m, n, …] : List Nat`.
-fn numbers(items: impl IntoIterator<Item = u32>) -> Raw {
+pub(crate) fn numbers(items: impl IntoIterator<Item = u32>) -> Raw {
     listed(&var("Nat"), items.into_iter().map(number))
 }
 
