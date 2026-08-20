@@ -965,8 +965,7 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
         | Builtin::Feedback
         | Builtin::Copy
         | Builtin::Drop
-        | Builtin::Swap
-        | Builtin::Syntax(_) => return None,
+        | Builtin::Swap => return None,
     })
 }
 

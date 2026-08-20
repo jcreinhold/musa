@@ -1,13 +1,11 @@
 //! What has to be true of the compiler's registrations.
 //!
 //! Unit tests rather than a file in `tests/suite/`, and that is forced rather
-//! than chosen: the agreement law runs a rule and the corresponding arm of the
-//! old evaluator on the same input, and [`crate::core`]'s `eval_builtin`,
-//! `Expr`, and `Value` are private to it. A test outside this crate links
-//! against `parse`/`compile`/`render_notation` and can reach none of them, and
-//! widening the facade so it could would leave the crate's most doomed types
-//! visible from everywhere. Prompt 142 moves whatever survives the cutover into
-//! the suite, once there is a public path to it.
+//! than chosen: the laws read `crate::core`'s registration tables directly, and
+//! those are private to it. A test outside this crate links against
+//! `parse`/`compile`/`render_notation` and can reach none of them, and
+//! widening the facade so it could would leave the crate's internal types
+//! visible from everywhere.
 
 #![expect(
     clippy::expect_used,
@@ -15,10 +13,10 @@
     reason = "a law that cannot fail loudly is not a law"
 )]
 
-use musa_core::{Answer, Datum, Raw, Refusal, Term};
+use musa_core::{Answer, Datum, Refusal, Term};
 
 use super::{bases, builtins, owned, rules};
-use crate::core::{BUILTIN_OWNERSHIP, Family, PhaseFamily, SYNTAX_OWNERSHIP, Shape};
+use crate::core::{BUILTIN_OWNERSHIP, Family, PhaseFamily, SYNTAX_OWNERSHIP};
 
 /// The whole context builds: declarations, base types, and every registration
 /// check [`musa_core::Registry::new`] makes.
@@ -119,6 +117,30 @@ fn the_operations_past_both_tables_are_named_and_in_neither() {
             "`{spelling}` is not a phase word either"
         );
         named(&cx, &std::sync::Arc::from(spelling));
+    }
+}
+
+/// Every row of either ownership table names the information it hides.
+///
+/// The rationale is the row's own claim to being compiler-owned: an operation
+/// whose hidden information is not stated is an operation whose ownership is
+/// not argued. Prompt 141e made the column load-bearing; this keeps it from
+/// going decorative.
+#[test]
+fn every_owned_operation_names_its_hidden_information() {
+    for entry in &BUILTIN_OWNERSHIP {
+        assert!(
+            !entry.hidden_information.is_empty(),
+            "`{}` does not say what it hides",
+            entry.spelling
+        );
+    }
+    for entry in &SYNTAX_OWNERSHIP {
+        assert!(
+            !entry.hidden_information.is_empty(),
+            "`{}` does not say what it hides",
+            entry.spelling
+        );
     }
 }
 
@@ -253,236 +275,6 @@ fn applied(head: Term, arguments: impl IntoIterator<Item = Term>) -> Term {
     arguments
         .into_iter()
         .fold(head, |function, argument| Term::app(super::HERE, function, argument))
-}
-
-/// Each rule answers what the corresponding arm of the old evaluator answers.
-///
-/// This is the law that makes prompt 141e a translation rather than a rewrite,
-/// and everything else in this file is scaffolding around it. The samples come
-/// from the signatures themselves ([`crate::core::oracle`]), so a rule cannot be
-/// checked at inputs chosen to suit it, and every δ row is required to be
-/// *reached*: an operation whose arguments could not be sampled is reported by
-/// name rather than skipped, because a law with a silent hole is the shape of a
-/// translation nobody checked.
-#[test]
-fn each_rule_agrees_with_the_old_evaluator() {
-    let mut unreached = Vec::new();
-    for entry in &BUILTIN_OWNERSHIP {
-        let Some(rule) = rules::source(entry.operation) else {
-            continue;
-        };
-        let cases = crate::core::oracle::cases(entry.operation);
-        if cases.is_empty() {
-            unreached.push(entry.spelling);
-            continue;
-        }
-        for case in cases {
-            let answered = rule(&case.arguments);
-            assert!(
-                agrees(answered.as_ref(), case.answer.as_ref()),
-                "`{}` disagrees with the old evaluator at {:?}: {answered:?} rather than {:?}",
-                entry.spelling,
-                case.arguments,
-                case.answer
-            );
-        }
-    }
-    assert!(unreached.is_empty(), "no sample reached {unreached:?}");
-}
-
-/// Whether a rule and the old evaluator gave the same answer.
-///
-/// Equality everywhere except one outcome, and the exception is prompt 141m's
-/// whole subject: where the old evaluator declined to answer, a rule now refuses
-/// the program and says why. Those are one judgment written in two vocabularies,
-/// so reading them as agreement is what keeps this law about the *translation*
-/// rather than about the move.
-///
-/// The old vocabulary had two spellings for declining and the new one has one.
-/// A `Result.Err` carrying a sentence is the declined answer an operation
-/// *declared*; a bare absence is the one it did not — `ratio_div` at a zero
-/// divisor is the standing example, total in its signature and partial in its
-/// arm, which is the shape D2 exists to forbid. Both become
-/// [`Answer::Refused`], and the second is why: a refusal carries the sentence
-/// the absence never had a place to put.
-fn agrees(answered: Option<&Answer>, old: Option<&Datum>) -> bool {
-    match (answered, old) {
-        (Some(Answer::Reduced(datum)), Some(other)) => datum == other,
-        (Some(Answer::Refused(_)), Some(Datum::Case { constructor, .. })) => &**constructor == "Result.Err",
-        (Some(Answer::Refused(_)) | None, None) => true,
-        _ => false,
-    }
-}
-
-/// Every sampled application is well typed at its signature and either reduces
-/// and re-checks or refuses the program in words.
-///
-/// The agreement law compares two implementations to each other; this one
-/// compares one to its *type*, and they fail on different mistakes. Two
-/// implementations can agree perfectly on an answer neither of them may give —
-/// an `Option.Some` where the signature says `Result`, a `List.Cons` whose
-/// members are of the wrong domain, a `Nat` where a `Ratio` was declared — and
-/// only the core can say so.
-///
-/// It asks in three steps, each of which can fail on its own: the application is
-/// re-checked at the result type [`super::shape_type`] read out of the same
-/// signature the builtin was registered with, so an argument of the wrong domain
-/// is refused before the rule ever runs; [`musa_core::normalize`] fires the rule
-/// and realizes what it answered against that declared result, which is where a
-/// rule that answered the wrong shape becomes `MisfitAnswer`; and
-/// [`musa_core::well_typed`] re-checks the normal form independently of the
-/// evaluator that produced it.
-///
-/// Elaboration is deliberately not in that path. Nothing elaborates *to* these
-/// builtins until prompt 142 wires the surface language to them, and going
-/// through [`musa_core::infer`] here would be testing that unwritten path's
-/// implicit insertion rather than this prompt's registrations.
-#[test]
-fn every_sampled_application_reduces_and_re_checks_or_states_its_refusal() {
-    let cx = owned().expect("the compiler's own context builds");
-    let mut checked = 0_usize;
-    for entry in &BUILTIN_OWNERSHIP {
-        let Family::Delta { arguments, result } = entry.family else {
-            continue;
-        };
-        let head = named(&cx, entry.spelling);
-        let ty = super::shape_type(&cx, result)
-            .unwrap_or_else(|why| fail(entry.spelling, "has a result type the core cannot name", &why));
-        for case in crate::core::oracle::cases(entry.operation) {
-            // Where the old evaluator declined, the rule owes a *sentence*. This
-            // is the second half of §5.8's D2, and it is stated here because the
-            // old evaluator cannot state it: `eval_builtin` has two answers and
-            // the rule has three, so absence there is the old vocabulary's only
-            // spelling for both "the program is wrong" and "this table is". D2
-            // forbids the second, and what tells them apart is whether the
-            // registered rule refuses — `ratio_div` at a zero divisor and
-            // `duration_of` below zero are the two the sample reaches.
-            if case.answer.is_none() {
-                let rule = rules::source(entry.operation)
-                    .unwrap_or_else(|| fail(entry.spelling, "declined with no rule to say why", &"the core owns it"));
-                let because = match rule(&case.arguments) {
-                    Some(Answer::Refused(because)) => because,
-                    Some(Answer::Reduced(_)) | None => fail(
-                        entry.spelling,
-                        "declined without declaring that it cannot answer",
-                        &"D2",
-                    ),
-                };
-                assert!(
-                    !because.is_empty(),
-                    "`{}` refused with nothing to say about the program",
-                    entry.spelling
-                );
-                continue;
-            }
-            let applied = arguments
-                .iter()
-                .zip(&case.arguments)
-                .fold(head.clone(), |function, (shape, argument)| {
-                    Term::app(super::HERE, function, written(&cx, *shape, argument))
-                });
-            let _normal = musa_core::normalize(&cx, &ty, &applied)
-                .unwrap_or_else(|why| fail(entry.spelling, "does not reduce", &why));
-            checked = checked.checked_add(1).expect("the count fits");
-        }
-    }
-    assert!(checked > 0, "no application was checked against its signature");
-}
-
-/// Why one sampled application did not survive the path its own signature
-/// promises.
-///
-/// Generic in its answer so that it can stand where any of the steps would have
-/// produced a value; every call diverges.
-fn fail<T>(spelling: &str, what: &str, why: &dyn std::fmt::Display) -> T {
-    panic!("`{spelling}` {what}: {why}")
-}
-
-/// One argument as the term a call would have built for it.
-///
-/// Type-directed, because the core is. A literal carries its own type and goes
-/// in as one, but a constructor does not carry its family's parameters: `Cons`
-/// cannot be applied without saying what it is a list of, and `Empty` says
-/// nothing at all about what it is empty of. The signature already knows, which
-/// is the same reason the core realizes a rule's answer against the declared
-/// result rather than guessing it from the datum.
-fn written(cx: &musa_core::Cx, shape: Shape, datum: &Datum) -> Term {
-    match *datum {
-        Datum::Lit(ref held) => held.term(super::HERE),
-        // A count is closed and says which family it stands at, so it needs no
-        // parameters read off the shape — the one datum arm that is as
-        // self-describing as a literal.
-        Datum::Count { ref family, count } => musa_core::infer(cx, &Raw::numeral(super::HERE, &**family, count))
-            .map_or_else(
-                |why| fail(family, "is not a type a number can be written at", &why),
-                |(term, _)| term,
-            ),
-        Datum::Case {
-            ref constructor,
-            ref fields,
-        } => {
-            let (parameters, shapes) = surrounding(cx, shape, constructor);
-            let head = crate::prelude::constant(cx, constructor)
-                .unwrap_or_else(|why| fail(constructor, "is not a declared constructor", &why));
-            let applied = parameters
-                .into_iter()
-                .fold(head, |function, parameter| Term::app(super::HERE, function, parameter));
-            shapes
-                .into_iter()
-                .zip(fields)
-                .fold(applied, |function, (shape, field)| {
-                    Term::app(super::HERE, function, written(cx, shape, field))
-                })
-        }
-    }
-}
-
-/// A family's parameters, and the shapes of one constructor's own fields.
-///
-/// Both are read off the shape rather than off the datum, because the datum does
-/// not carry them: constructor fields are positional and a family's parameters
-/// are not fields at all. Every recursion here is into a shape the argument's
-/// own signature already named.
-fn surrounding(cx: &musa_core::Cx, shape: Shape, constructor: &str) -> (Vec<Term>, Vec<Shape>) {
-    let ty = |member: Shape| {
-        super::shape_type(cx, member).unwrap_or_else(|why| fail(constructor, "holds a type the core cannot name", &why))
-    };
-    match shape {
-        // `Bool` and `Nat` are the two base shapes whose values are
-        // constructors. Neither family takes a parameter, and a `Nat`'s
-        // predecessor is a `Nat`, so the shape recurses into itself.
-        Shape::Base(_) => (
-            Vec::new(),
-            if constructor == "Nat.Succ" {
-                vec![shape]
-            } else {
-                Vec::new()
-            },
-        ),
-        Shape::Option(member) => (
-            vec![ty(*member)],
-            if constructor == "Option.Some" {
-                vec![*member]
-            } else {
-                Vec::new()
-            },
-        ),
-        // The tail of a list is a list of the same thing, which is why one shape
-        // describes both fields of `Cons`.
-        Shape::List(member) => (
-            vec![ty(*member)],
-            if constructor == "List.Cons" {
-                vec![*member, shape]
-            } else {
-                Vec::new()
-            },
-        ),
-        Shape::Result(value, error) => (
-            vec![ty(*value), ty(*error)],
-            vec![if constructor == "Result.Err" { *error } else { *value }],
-        ),
-        Shape::Fault => (Vec::new(), vec![crate::core::NATS, crate::core::PC12S]),
-    }
 }
 
 /// `name` resolves in `cx`, which is what "registered" means to a program, and

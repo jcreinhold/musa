@@ -914,9 +914,11 @@ mod tests {
     /// spelling that parses back to it.
     #[test]
     fn spellings_round_trip() {
-        for spelling in Collection::spellings() {
-            let collection = Collection::named(spelling).expect("a named collection");
-            assert_eq!(Collection::named(collection.name()), Some(collection));
+        for (_, spellings, _, _) in COLLECTIONS {
+            for spelling in spellings {
+                let collection = Collection::named(spelling).expect("a named collection");
+                assert_eq!(Collection::named(collection.name()), Some(collection));
+            }
         }
         assert_eq!(Collection::named("phyrgian"), None);
     }

@@ -191,10 +191,6 @@ impl BindingPath {
     fn scope(&self) -> Scope {
         Scope(self.0.clone())
     }
-
-    pub(crate) fn write_into(&self, out: &mut Vec<u8>) {
-        self.0.write_into(out);
-    }
 }
 
 /// A binding path, shown as the path it derives from.

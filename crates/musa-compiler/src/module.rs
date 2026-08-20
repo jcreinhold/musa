@@ -70,8 +70,6 @@ pub(crate) enum MemberItem {
 pub(crate) struct Argument {
     /// The unspellable name the value is held under.
     pub(crate) holder: String,
-    pub(crate) name_span: SourceSpan,
-    pub(crate) span: SourceSpan,
     /// The parameter's declared type, as written.
     pub(crate) ty: SyntaxNode,
     /// The expression at the site, checked in the site's own scope.
@@ -707,8 +705,6 @@ impl Modules {
                     let holder = holder(alias, &parameter_name);
                     self.arguments.push(Argument {
                         holder: holder.clone(),
-                        name_span: parameter_span,
-                        span: trimmed_span(&expression),
                         ty,
                         expr: expression,
                     });

@@ -6,7 +6,8 @@ depends_on: [145]
 phase: 3
 ---
 
-> Superseded by the course correction: `docs/notes/research/language-design-closure/50-the-course-correction-audit.md`. The studio rewrite follows the staff adapter's, on the simplified language.
+> Superseded by the course correction: `docs/notes/research/language-design-closure/50-the-course-correction-audit.md`.
+> The studio rewrite follows the staff adapter's, on the simplified language.
 
 # Write the Studio Adapter as an Unprivileged Package on the New Language
 

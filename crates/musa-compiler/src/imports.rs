@@ -191,9 +191,6 @@ struct Entry {
     document: usize,
     span: SourceSpan,
     alias: Option<String>,
-    /// The resolved paths this file itself imports — its own dependencies and
-    /// nothing else, which is what it must be checked against.
-    depends_on: Vec<String>,
 }
 
 /// One library as the importing document sees it.
@@ -224,30 +221,6 @@ impl Libraries {
             let document = self.documents.get(entry.document)?;
             Some((entry.imported(), LibraryDecl::from_root(&document.syntax())?))
         })
-    }
-
-    /// Accumulate `entry`'s transitive dependencies, deepest first, once each.
-    ///
-    /// `seen` starts holding `entry` itself and grows before the recursion, so
-    /// a cycle — which is reported elsewhere, and reported rather than
-    /// followed — terminates here instead of exhausting the stack.
-    fn reach<'a>(&'a self, entry: &'a Entry, seen: &mut Vec<&'a str>, found: &mut Vec<&'a str>) {
-        for path in &entry.depends_on {
-            let Some(dependency) = self.order.iter().find(|other| other.path == *path) else {
-                continue;
-            };
-            if seen.contains(&dependency.path.as_str()) {
-                continue;
-            }
-            seen.push(&dependency.path);
-            self.reach(dependency, seen, found);
-            found.push(&dependency.path);
-        }
-    }
-
-    fn library(&self, path: &str) -> Option<LibraryDecl> {
-        let entry = self.order.iter().find(|entry| entry.path == path)?;
-        LibraryDecl::from_root(&self.documents.get(entry.document)?.syntax())
     }
 }
 
@@ -399,9 +372,7 @@ impl Loader<'_> {
             .filter(|import| !import.changes_syntax())
             .filter_map(musa_language::ast::ImportStmt::path)
             .collect();
-        let mut depends_on = Vec::with_capacity(nested.len());
         for import in nested {
-            depends_on.push(resolve_import(&path, &import));
             self.load_one(resolver, &path, &import, span, None);
         }
         self.stack.pop();
@@ -412,7 +383,6 @@ impl Loader<'_> {
             document,
             span,
             alias,
-            depends_on,
         });
     }
 }

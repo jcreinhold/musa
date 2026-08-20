@@ -1105,7 +1105,7 @@ fn elaborate_material(
         .map(|(from, imported)| crate::document::Source::imported(imported.syntax(), from))
         .chain(std::iter::once(crate::document::Source::own(library.syntax())))
         .collect();
-    let _ = crate::document::elaborate(resolver, &sources, None);
+    drop(crate::document::elaborate(resolver, &sources, None));
     if resolver
         .diagnostics
         .iter()

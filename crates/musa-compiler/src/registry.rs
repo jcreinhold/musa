@@ -729,38 +729,17 @@ fn phase_type(cx: &Cx, ty: &Type) -> Result<Term, ElabError> {
             built
         }
         // Spelled out rather than wildcarded, because the list is the claim.
-        // Every one of these is a type the *old* checker has and the core is
-        // deliberately not being given: a type variable and a unit belong to the
-        // checker prompt 142 deletes, the musical domains are registered from
-        // the `Shape` table rather than from this one, and `Music`, `Step`,
-        // `Primitive`, `Machine`, and `SyntaxStep` are the shapes prompt 142
-        // reshapes. A variant added to `Type` should stop here and be decided,
-        // not fall through a `_`.
-        Type::Var(_)
-        | Type::Unit
-        | Type::Duration(_)
-        | Type::Position(_)
-        | Type::Pitch
-        | Type::PitchClass
-        | Type::Interval
-        | Type::Scale
-        | Type::Key
-        | Type::Degree
-        | Type::Frame
-        | Type::ChordClass
-        | Type::Triad
-        | Type::Roman
-        | Type::Voicing
-        | Type::Pc12
-        | Type::PcSet12
-        | Type::Row12
-        | Type::Product(_)
-        | Type::Nominal(..)
-        | Type::Music
-        | Type::Step(_)
-        | Type::Primitive { .. }
-        | Type::Machine { .. }
-        | Type::SyntaxStep { .. } => return Err(unnameable("a phase type with no core spelling")),
+        // Every one of these is a type the *old* checker had and the core is
+        // deliberately not given: a type variable and a unit belong to the
+        // checker prompt 142 deleted, and `SyntaxStep` is the sealed-call tag
+        // an adapter's recursion carries, not a type a signature names. The
+        // musical domains and the machine forms are registered from the
+        // `Shape` table and the machine registry, not from `Type`. A variant
+        // added to `Type` should stop here and be decided, not fall through a
+        // `_`.
+        Type::Var(_) | Type::Unit | Type::SyntaxStep { .. } => {
+            return Err(unnameable("a phase type with no core spelling"));
+        }
     })
 }
 
@@ -925,6 +904,13 @@ fn syntax_carrier() -> Builtin {
 fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
     let mut built = Vec::with_capacity(rules::REGISTERED);
     for entry in &BUILTIN_OWNERSHIP {
+        // The rationale is load-bearing, not decoration: a row that cannot say
+        // what it hides has not argued its ownership.
+        debug_assert!(
+            !entry.hidden_information.is_empty(),
+            "`{}` does not say what it hides",
+            entry.spelling
+        );
         let Family::Delta { arguments, result } = entry.family else {
             continue;
         };
@@ -936,14 +922,19 @@ fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
             rule,
         ));
     }
-    let mut unifier = crate::infer::Unifier::default();
+    let mut minter = crate::infer::Minter::default();
     for entry in &SYNTAX_OWNERSHIP {
+        debug_assert!(
+            !entry.hidden_information.is_empty(),
+            "`{}` does not say what it hides",
+            entry.spelling
+        );
         let Some(rule) = rules::phase(entry.operation) else {
             continue;
         };
         built.push(Builtin::new(
             entry.spelling,
-            phase_type(cx, &entry.operation.instantiate(&mut unifier))?,
+            phase_type(cx, &entry.operation.instantiate(&mut minter))?,
             musa_core::Family::Delta,
             rule,
         ));

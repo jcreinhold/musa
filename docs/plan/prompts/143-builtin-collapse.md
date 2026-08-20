@@ -6,7 +6,8 @@ depends_on: [145]
 phase: 3
 ---
 
-> Superseded by the course correction: `docs/notes/research/language-design-closure/50-the-course-correction-audit.md`. Its builtin collapse is phase 3's retarget of the registry onto the surviving core.
+> Superseded by the course correction: `docs/notes/research/language-design-closure/50-the-course-correction-audit.md`.
+> Its builtin collapse is phase 3's retarget of the registry onto the surviving core.
 
 # Collapse the Builtin Registry Behind Traits and Namespaces
 

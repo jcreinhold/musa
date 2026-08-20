@@ -961,9 +961,11 @@ mod tests {
     /// parses back to it.
     #[test]
     fn spellings_round_trip() {
-        for spelling in ChordType::spellings() {
-            let kind = ChordType::named(spelling).expect("a named type");
-            assert_eq!(ChordType::named(kind.name()), Some(kind));
+        for (_, spellings, _, _) in TYPES {
+            for spelling in spellings {
+                let kind = ChordType::named(spelling).expect("a named type");
+                assert_eq!(ChordType::named(kind.name()), Some(kind));
+            }
         }
         assert_eq!(ChordType::named("majr7"), None);
     }

@@ -12,8 +12,6 @@
 //! version, the step it counts in, its ports, and the shape of its
 //! configuration — which is exactly what the type checker needs and no more.
 
-use crate::core::Type;
-
 /// One kind of machine step — `docs/rules/language/02-core-calculus.md` §1's
 /// `K`.
 ///
