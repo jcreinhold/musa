@@ -526,24 +526,6 @@ fn free(raw: &crate::raw::Raw, bound: &mut Vec<Name>, names: &[&Name], found: &m
                 walk(&update.value, bound);
             }
         }
-        RawShape::Id { ty, left, right } => {
-            walk(ty, bound);
-            walk(left, bound);
-            walk(right, bound);
-        }
-        RawShape::Refl(witness) => walk(witness, bound),
-        RawShape::J {
-            ty,
-            from,
-            motive,
-            base,
-            to,
-            proof,
-        } => {
-            for part in [ty, from, motive, base, to, proof] {
-                walk(part, bound);
-            }
-        }
         RawShape::Let { name, ty, value, body } => {
             if let Some(ty) = ty {
                 walk(ty, bound);

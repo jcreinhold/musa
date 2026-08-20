@@ -68,9 +68,6 @@ pub enum Malformed {
     /// A value stood where a type was needed.
     #[error("a value that is not a type stood in type position")]
     NotAType,
-    /// `J` was applied to something that is not an identity proof.
-    #[error("eliminated a value that is not an identity proof")]
-    NotAnIdentity,
     /// Quotation reached a level that its own depth does not name, which can
     /// only mean levels and indices were confused somewhere above.
     #[error("quotation reached a variable outside the scope it was quoting in")]
@@ -79,14 +76,6 @@ pub enum Malformed {
     /// second attempt is a unifier defect rather than a program's fault.
     #[error("metavariable ?{0} was solved twice")]
     AlreadySolved(u32),
-    /// A metavariable stood applied to fewer arguments than it abstracts.
-    ///
-    /// Every metavariable is created applied to the identity spine of its
-    /// creation context (§2.1), which is what makes its solution closed. A
-    /// shorter spine means a term was assembled by something other than the
-    /// elaborator.
-    #[error("metavariable ?{0} stands applied to fewer arguments than it abstracts")]
-    UnderappliedMeta(u32),
     /// A δ-rule answered nothing at closed literal arguments of its declared
     /// types.
     ///

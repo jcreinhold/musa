@@ -163,6 +163,15 @@ pub enum Refusal {
         /// The term whose constraint was still postponed, when one was.
         blocked: Option<Origin>,
     },
+    /// A machine port's type holds a function or a type: `02-core-calculus.md`
+    /// §1.2's storability is structural, and this type fails it.
+    #[error("this port's type is not storable data: a function or a type occurs in it")]
+    NotStorable {
+        /// The signature that required storability.
+        at: Origin,
+        /// The type that failed it.
+        ty: Term,
+    },
     /// Something that is not a function was applied.
     #[error("this is applied to an argument, but its type is not a function type")]
     NotAFunction {
@@ -299,6 +308,13 @@ pub enum Refusal {
         /// The families that declare a case of this name, so the report can
         /// offer the qualified form the author meant.
         families: Vec<Name>,
+    },
+    /// A declaration would need a universe above `Type 1`, which the calculus
+    /// does not have (§1: two universes, fixed).
+    #[error("this declaration needs a universe above Type 1, and there are two")]
+    BeyondUniverses {
+        /// The declaration.
+        at: Origin,
     },
     /// A term stood in type position whose own type is not a universe.
     #[error("this stands where a type is needed, but it is not one")]

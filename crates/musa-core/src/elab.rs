@@ -72,12 +72,12 @@ use std::sync::Arc;
 use crate::budget::Meter;
 use crate::class::{Constraint, Head, Key, Trait, head_of};
 use crate::context::Cx;
-use crate::dictionary::{Postponed, Wanted};
+
 use crate::error::{CoreError, Malformed};
 use crate::eval::{apply, apply_closure, eval, field_type, force, opened};
 use crate::family::Found;
-use crate::level::{Level, LevelMeta};
-use crate::meta::{Meta, MetaSource};
+use crate::level::Level;
+use crate::meta::MetaSource;
 use crate::origin::Origin;
 use crate::quote::{Depth, quote, quote_type};
 use crate::raw::{Raw, RawConstraint, RawField, RawShape, RawUpdate};
@@ -85,7 +85,7 @@ use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
 use crate::term::{DbLevel, Field, Index, Name, Plicity, Shape, Term};
 use crate::unify::Unifier;
-use crate::value::{Closure, Env, Form, Telescope, Value};
+use crate::value::{Closure, Env, Form, Neutral, Telescope, Value};
 
 /// A term and the type it was elaborated at.
 ///
@@ -97,61 +97,61 @@ struct Typed {
     ty: Value,
 }
 
-/// Where a constructor's family parameters come from.
+/// One instantiation pass's local state — see [`Elaborator::apply_spine`].
 ///
-/// The two halves of §2's constructor rule and its limit. A constructor checks
-/// against its family "at known parameters", and when the position knows them
-/// they are values already checked — [`Self::Read`]. When it does not, they are
-/// unknowns like any other, and the count is all this needs to carry: their
-/// types are the constructor's own telescope, which
-/// [`Elaborator::holes`](Elaborator) is already walking.
-enum Params {
-    /// Read off the expected type, which named the family at them.
-    Read(Vec<Value>),
-    /// This many, none of them determined yet.
-    Holes(u32),
+/// Just the spine: constraints are the elaborator's business, resolved at
+/// declaration end, and an argument's term is pushed as it is elaborated.
+#[derive(Default)]
+struct Walk {
+    /// The spine slots to fill when the walk ends, in walk order.
+    slots: Vec<Slot>,
+}
+
+/// One spine slot of a [`Walk`].
+enum Slot {
+    /// An implicit parameter: the hole stands in the term whether or not the
+    /// walk solved it, and [`Elaborator::settled`] audits at declaration end.
+    Parameter(crate::meta::Hole),
+    /// A constraint's dictionary, resolved at declaration end.
+    Dictionary(crate::meta::Hole),
+    /// An argument the author wrote, elaborated.
+    Argument(Term),
 }
 
 /// One elaboration.
 ///
-/// Scoped to a declaration rather than to a session, because §2.1 reports a
-/// metavariable unsolved "at the end of the declaration it was created in" —
-/// a longer-lived elaborator would have no such end to report at.
+/// There is nothing in here but the budget and the fresh-variable counter: the
+/// calculus has no metavariables to track, no constraints to postpone, and no
+/// levels to solve — `02-core-calculus.md` §2.1's instantiation is one matching
+/// pass per application, and this struct is what a pass borrows.
 pub(crate) struct Elaborator {
     meter: Meter,
+    /// The one matching table every pass in this elaboration shares.
+    ///
+    /// Shared rather than per-application because a solution can arrive from
+    /// anywhere in the expression: `xs.fold_from_end(None, step)` learns the
+    /// seed's parameter only when `step`'s annotation meets the fold's type.
+    /// What makes sharing sound is that assignment is the *only* thing a pass
+    /// can do to the table, and an assignment is justified by the match that
+    /// made it wherever the variable was created.
     unifier: Unifier,
-    /// Every metavariable created here, in creation order.
+    /// The constraints the walks have met, each with the hole its dictionary
+    /// will fill — resolved once, at [`Self::settled`], when matching has said
+    /// everything it can.
     ///
-    /// Kept so that the unsolved report names the *first* hole the author left
-    /// rather than whichever one a walk of the output happened to reach — the
-    /// earliest is the one their next edit is about.
-    metas: Vec<Meta>,
-    /// Every *level* metavariable, with the term that created it.
+    /// Declaration-end rather than walk-end because a method's constraint is
+    /// created before the receiver that solves its parameter is applied, and
+    /// walk-end would be a second, earlier place the same failure could be
+    /// reported — one place, one message.
+    constraints: Vec<(Arc<crate::class::Constraint>, Scope, Env, Origin, crate::meta::Hole)>,
+    /// Every hole an instantiation walk has created, in creation order.
     ///
-    /// A separate list because a level is a separate sort: its solution is a
-    /// level and not a value, so it cannot live in [`Meta`]. What it shares is
-    /// the report, which is why the origin travels with it.
-    levels: Vec<(LevelMeta, Origin)>,
-    /// The constraints `10-traits.md` §4 postponed, each with the hole it left.
-    ///
-    /// Postponement is only half a mechanism without this list: a constraint
-    /// whose head was unknown when it was written is one whose head some *later*
-    /// part of the same declaration usually determines, and nothing would go
-    /// back and look. [`Self::settled`] is where they are retried, which is the
-    /// same place the report about the ones that stayed blocked is made.
-    postponed: Vec<Postponed>,
-    /// The terms §1.3 could not read yet, each with the hole it left.
-    ///
-    /// [`Self::postponed`]'s twin one sort down: that list waits for a
-    /// constraint's head and this one waits for a *type*. A bare constructor is
-    /// read against the family the expected type names, and a checking position
-    /// does not always name one at the moment it is reached —
-    /// `xs.fold_from_end(Nothing, step)` checks the seed at the method's
-    /// implicit `B`, which the argument after it determines. Reading it now
-    /// would mean guessing among the families that declare `Nothing`; refusing
-    /// now would mean the author writing a type the surface has no expression
-    /// for. So it is read later, which is neither. See [`Self::delay`].
-    delayed: Vec<Delayed>,
+    /// Kept so that [`Self::settled`] names the *first* parameter nothing
+    /// determined rather than whichever one a walk of the output happened to
+    /// reach — the earliest is the one the author's next edit is about.
+    created: Vec<crate::meta::Hole>,
+    /// The next hole's identity.
+    next_hole: u32,
 }
 
 impl Elaborator {
@@ -159,124 +159,10 @@ impl Elaborator {
         Self {
             meter: cx.meter(),
             unifier: Unifier::default(),
-            metas: Vec::new(),
-            levels: Vec::new(),
-            postponed: Vec::new(),
-            delayed: Vec::new(),
+            constraints: Vec::new(),
+            created: Vec::new(),
+            next_hole: 0,
         }
-    }
-
-    /// Record a constraint §4 postponed, and the hole standing for its
-    /// dictionary.
-    pub(crate) fn postpone(
-        &mut self,
-        scope: &Scope,
-        needed: &Constraint,
-        hole: &Term,
-        ty: &Value,
-        wanted: Option<Wanted>,
-    ) {
-        self.postponed.push(Postponed {
-            scope: scope.clone(),
-            needed: needed.clone(),
-            hole: hole.clone(),
-            ty: ty.clone(),
-            wanted,
-        });
-    }
-
-    /// Every postponed constraint, leaving none behind.
-    pub(crate) fn waiting(&mut self) -> Vec<Postponed> {
-        core::mem::take(&mut self.postponed)
-    }
-
-    /// Put back the constraints a retry could not answer.
-    pub(crate) fn keep_waiting(&mut self, blocked: Vec<Postponed>) {
-        self.postponed.extend(blocked);
-    }
-
-    /// What this elaboration has charged.
-    pub(crate) const fn spent(&self) -> crate::budget::Spend {
-        self.meter.spent()
-    }
-
-    /// `term` with every solved metavariable replaced by its solution.
-    ///
-    /// Reached by evaluating and quoting rather than by walking the syntax,
-    /// because that is the only substitution this crate performs (`lib.rs`) and
-    /// a second one would be free to disagree with it.
-    pub(crate) fn resolved(&mut self, scope: &Scope, term: &Term) -> Result<Term, ElabError> {
-        let value = scope.eval(&mut self.meter, term)?;
-        Ok(scope.quote_type(&mut self.meter, &value)?)
-    }
-
-    /// Elaborate `raw` against the type `ty`, and finish.
-    pub(crate) fn run_check(&mut self, scope: &Scope, raw: &Raw, ty: &Value) -> Result<Term, ElabError> {
-        let term = self.check(scope, raw, ty)?;
-        self.settled()?;
-        Ok(zonk(&mut self.meter, scope.depth(), &term)?)
-    }
-
-    /// Elaborate `raw`, answering it and its type, and finish.
-    pub(crate) fn run_infer(&mut self, scope: &Scope, raw: &Raw) -> Result<(Term, Term), ElabError> {
-        let inferred = self.infer(scope, raw)?;
-        let inferred = self.inserted(scope, inferred)?;
-        // The inferred type is answered *outside* the term: an inference like
-        // `let r = … in r.val` has a type mentioning `r`, and the binder is not
-        // in scope where the answer is read — so definitions are opened, as for
-        // a metavariable solution.
-        let ty = quote_type(
-            &mut self.meter,
-            Depth(scope.depth()),
-            crate::quote::Mode::Open,
-            &inferred.ty,
-        )?;
-        self.settled()?;
-        let depth = scope.depth();
-        Ok((
-            zonk(&mut self.meter, depth, &inferred.term)?,
-            zonk(&mut self.meter, depth, &ty)?,
-        ))
-    }
-
-    /// Answer every postponed constraint that can now be answered, then refuse
-    /// if any metavariable — of either sort — is still undetermined.
-    pub(crate) fn settled(&mut self) -> Result<(), ElabError> {
-        // Alternated rather than run in turn: reading a postponed term can solve
-        // the head a constraint waited on, and discharging a constraint can
-        // solve the type a term waited on. Each round either answers something
-        // or answers nothing, and a round that answered nothing ends the loop —
-        // which is the same bound [`crate::budget::Metric::Retries`] charges.
-        while {
-            crate::dictionary::discharge(self)?;
-            self.read_delayed()?
-        } {}
-        self.stubborn()?;
-        self.unsolved()
-    }
-
-    /// Refuse if any metavariable — of either sort — is still undetermined.
-    fn unsolved(&self) -> Result<(), ElabError> {
-        if let Some(unsolved) = self.metas.iter().find(|meta| !meta.is_solved()) {
-            return Err(Refusal::Unsolved {
-                site: unsolved.source(),
-                created: unsolved.origin(),
-                blocked: self.unifier.blocked(),
-            }
-            .into());
-        }
-        // Levels are checked after terms rather than before, because a level is
-        // usually determined *by* a term constraint: reporting the level first
-        // would name a consequence where the cause is a hole the author can see.
-        let Some((_, created)) = self.levels.iter().find(|(level, _)| !level.is_solved()) else {
-            return Ok(());
-        };
-        Err(Refusal::Unsolved {
-            site: MetaSource::UniverseLevel,
-            created: *created,
-            blocked: self.unifier.blocked(),
-        }
-        .into())
     }
 
     /// The meter this elaboration is spending.
@@ -289,12 +175,99 @@ impl Elaborator {
         &mut self.meter
     }
 
+    /// What this elaboration has charged.
+    pub(crate) const fn spent(&self) -> crate::Spend {
+        self.meter.spent()
+    }
+
+    /// Elaborate `raw` against the type `ty`, and finish.
+    pub(crate) fn run_check(&mut self, scope: &Scope, raw: &Raw, ty: &Value) -> Result<Term, ElabError> {
+        self.check(scope, raw, ty)
+    }
+
+    /// Elaborate `raw`, answering it and its type, and finish.
+    ///
+    /// The inferred type is answered *outside* the term: an inference like
+    /// `let r = … in r.val` has a type mentioning `r`, and the binder is not in
+    /// scope where the answer is read — so definitions are opened.
+    pub(crate) fn run_infer(&mut self, scope: &Scope, raw: &Raw) -> Result<(Term, Term), ElabError> {
+        let inferred = self.infer(scope, raw)?;
+        let ty = quote_type(
+            &mut self.meter,
+            Depth(scope.depth()),
+            crate::quote::Mode::Open,
+            &inferred.ty,
+        )?;
+        Ok((inferred.term, ty))
+    }
+
+    /// The one finish point a declaration shares: refuse the first parameter
+    /// nothing in it determined.
+    ///
+    /// §2.1's discipline, stated where it is enforced: instantiation is one
+    /// matching pass, and the report names the *earliest* unsolved parameter
+    /// because that is the one the author's next edit is about.
+    pub(crate) fn settled(&mut self) -> Result<(), ElabError> {
+        // Constraints first: a dictionary resolved here is a hole solved, and
+        // the parameter audit below should not call an instance's own
+        /// parameters undetermined for having answered one.
+        let waiting = core::mem::take(&mut self.constraints);
+        for (constraint, scope, env, at, hole) in waiting {
+            // Resolved against the *creation* scope: the local dictionaries
+            // step 1 looks up are the `where` binders in scope where the
+            // constraint was met, and a retry anywhere else would prefer a
+            // global instance to the author's own clause.
+            let term = crate::dictionary::resolve_at(self, &scope, &constraint, &env, at)?;
+            let value = crate::eval::eval(&mut self.meter, &env, &term)?;
+            hole.solve(value).map_err(crate::error::CoreError::from)?;
+        }
+        if let Some(hole) = self.created.iter().find(|hole| !hole.is_solved()) {
+            return Err(Refusal::Unsolved {
+                site: MetaSource::TypeParameter,
+                created: hole.origin(),
+                blocked: None,
+            }
+            .into());
+        }
+        Ok(())
+    }
+
+    /// A hole for a constraint's dictionary, registered for resolution at
+    /// [`Self::settled`].
+    ///
+    /// The registration is the whole of postponement that survives the course
+    /// correction: no queue is retried, the constraint is resolved once, when
+    /// the declaration's matching has said everything it can.
+    pub(crate) fn constrain(
+        &mut self,
+        scope: &Scope,
+        constraint: Arc<crate::class::Constraint>,
+        env: Env,
+        at: Origin,
+        ty: &Value,
+    ) -> crate::meta::Hole {
+        let hole = self.fresh_hole(at, ty);
+        self.constraints.push((constraint, scope.clone(), env, at, hole.clone()));
+        hole
+    }
+
+    /// A placeholder for an implicit argument the walk has not solved yet.
+    ///
+    /// Creation is where §2.1's discipline is cheap to state: the hole's type
+    /// was checked before it was made, and solving is write-once, so the audit
+    /// [`Self::settled`] runs is a walk of a list and not a query of a solver.
+    pub(crate) fn fresh_hole(&mut self, here: Origin, ty: &Value) -> crate::meta::Hole {
+        let hole = crate::meta::Hole::new(self.next_hole, here, ty.clone());
+        self.next_hole = self.next_hole.saturating_add(1);
+        self.created.push(hole.clone());
+        hole
+    }
+
     /// Elaborate `raw` against `ty` **without finishing**.
     ///
-    /// [`Self::run_check`] is one whole judgment: it checks that nothing is left
-    /// unsolved and zonks. A declaration is many judgments that share one set of
-    /// metavariables — a constructor's chosen index may be what determines a
-    /// parameter's level — so it checks each part with this and finishes once.
+    /// [`Self::run_check`] is one whole judgment. A declaration is many
+    /// judgments that share one budget, so it checks each part with this and
+    /// finishes once.
     pub(crate) fn check_open(&mut self, scope: &Scope, raw: &Raw, ty: &Value) -> Result<Term, ElabError> {
         self.check(scope, raw, ty)
     }
@@ -307,7 +280,6 @@ impl Elaborator {
     /// undone.
     pub(crate) fn infer_open(&mut self, scope: &Scope, raw: &Raw) -> Result<(Term, Value), ElabError> {
         let inferred = self.infer(scope, raw)?;
-        let inferred = self.inserted(scope, inferred)?;
         Ok((inferred.term, inferred.ty))
     }
 
@@ -367,11 +339,11 @@ impl Elaborator {
             }
             .into());
         }
-        let level = if found.is_recursor() {
-            self.fresh_level(here)?
-        } else {
-            Level::ZERO
-        };
+        // A recursor's motive universe rides on the use site; a bare reference
+        // is always one whose goal is an ordinary type. The match compiler
+        // computes its own from the goal (`case.rs`) and never comes through
+        // here.
+        let level = Level::ZERO;
         let constant = found.at(level);
         let ty = constant.ty(&mut self.meter)?;
         Ok(Typed {
@@ -477,14 +449,6 @@ impl Elaborator {
         .into()
     }
 
-    /// A universe at a level nobody wrote — §2.1's third creation site.
-    pub(crate) fn fresh_level(&mut self, origin: Origin) -> Result<Level, ElabError> {
-        self.meter.metavariable("elaboration")?;
-        let meta = LevelMeta::new(u32::try_from(self.levels.len()).unwrap_or(u32::MAX));
-        self.levels.push((meta.clone(), origin));
-        Ok(Level::variable(meta))
-    }
-
     // ---- checking ----------------------------------------------------------
 
     /// `Γ ⊢ raw ⇐ ty ⇝ t`.
@@ -501,12 +465,13 @@ impl Elaborator {
             None => {
                 let inferred = match self.constructed(scope, raw, ty)? {
                     Some(supplied) => supplied,
-                    None if Self::waits_for_a_family(scope, raw, ty) => return self.delay(scope, raw, ty),
-                    None => {
-                        let inferred = self.infer(scope, raw)?;
-                        self.inserted(scope, inferred)?
-                    }
+                    None => self.infer(scope, raw)?,
                 };
+                // §2.1 at the one place it can fire from below: a term whose
+                // inferred type still quantifies over parameters the expected
+                // type can determine — a bare constructor, a generic's name —
+                // is matched against `ty` before conversion is asked.
+                let inferred = self.apply_spine(scope, raw.origin(), inferred, &[], Some(ty))?;
                 if let Some(carried) = self.carried(scope, ty, &inferred)? {
                     return Ok(carried);
                 }
@@ -631,13 +596,6 @@ impl Elaborator {
                 let telescope = telescope.clone();
                 self.literal(scope, here, fields, &telescope).map(Some)
             }
-            RawShape::Refl(witness) => {
-                let Form::Id { ty: at, left, right } = &ty.form else {
-                    return self.abstracted(scope, raw, ty);
-                };
-                let (at, left, right) = (Value::clone(at), Value::clone(left), Value::clone(right));
-                self.reflexivity(scope, here, witness, &at, &left, &right).map(Some)
-            }
             // A `let` checks by checking its body: the definition is elaborated
             // either way, and its binder is what the body is read under.
             RawShape::Let {
@@ -679,71 +637,25 @@ impl Elaborator {
             | RawShape::Method { .. }
             | RawShape::Project { .. }
             | RawShape::Update { .. }
-            | RawShape::Id { .. }
-            | RawShape::J { .. }
             | RawShape::Annot { .. } => self.abstracted(scope, raw, ty),
         }
     }
 
-    /// §2's constructor rule: `C a⃗ ⇐ N p⃗ i⃗`, with `p⃗` read off the expected
-    /// type rather than written.
+    /// §2's constructor rule in a checking position: `C a⃗ ⇐ N p⃗`.
     ///
-    /// "A constructor checks against its family at known parameters and
-    /// indices." A constructor's type quantifies over its family's parameters
-    /// before its fields, and nothing at a use site writes them: `Some(x)` names
-    /// the case and supplies the field. The parameters are in the expected type,
-    /// by §1.1's definition of a parameter — fixed across the declaration, so
-    /// the family's are the constructor's — and this is where they are read.
-    ///
-    /// **Not the indices.** §1.1's other half is that an index is what a
-    /// constructor *chooses*, so taking one from the expected type would assume
-    /// the answer coverage exists to check. The indices stay the constructor's,
-    /// and the `Switch` this answers into is what compares them.
-    ///
-    /// This is the raw-term twin of [`crate::family::realize`], which does the
-    /// same reading for a δ-rule's answer, where the same decision was already
-    /// taken: [`Datum::Case`](crate::Datum::Case)'s fields carry no parameters
-    /// either.
-    ///
-    /// # What it declines
-    ///
-    /// Answers `None` — leaving `Switch` to infer, exactly as before — when
-    /// nothing names a family, when the head is not a case of it, when a nearer
-    /// binder or declaration answers to a bare word, when the author wrote an
-    /// implicit argument, or when there are *more* written arguments than the
-    /// constructor has fields. That last one is what keeps the fully written
-    /// `Option.Some Nat 0` on the path it has always taken: its parameter is one
-    /// of its arguments, so it has one argument too many to be a term whose
-    /// parameters are missing.
-    ///
-    /// Fewer arguments than fields is not declined, and that is where §1.3's
-    /// `bare` rule now lives: a word standing alone is qualified against the
-    /// expected type's family whether or not the case it names takes fields.
-    /// Supplying the parameters to an under-applied constructor cannot make one
-    /// check — a partial application has a Π type and the expected type is an
-    /// element of a family — so this only decides which refusal it earns, and
-    /// "expected `Option Nat`, found `Nat → Option Nat`" is the one that names
-    /// what is missing.
-    ///
-    /// # When the expected type does not name a family
-    ///
-    /// A checking position can still fail to say one: `f(x)` for a generic `f`
-    /// checks its argument against a metavariable, and the constructor is
-    /// elaborated now or never. The parameters then become holes, one each, and
-    /// the type this answers is `Option ?α` rather than a family at known
-    /// parameters; `Switch` unifies it with whatever the position wanted, which
-    /// is the same conversion that would have supplied them, run in the other
-    /// direction. [`Self::constructed_open`] argues why that route is the
-    /// *reader's* only, and this shares its rule rather than keeping a second
-    /// one: a constructor is read against the family it is expected at whoever
-    /// wrote it, and read against the family its own name says only when the
-    /// reader wrote it.
+    /// A bare case name resolves against the family the expected type names —
+    /// the whole of what "a constructor is checked" means; [`case_named`]
+    /// owns the two spellings and the one coincidence §1.3 allows. The
+    /// family's parameters are no longer read off and applied here: they are
+    /// the constructor's implicit binders, so the application pass matches
+    /// them out of `ty` at the end, which is the same rule §2.1 states for
+    /// every other call.
     fn constructed(&mut self, scope: &Scope, raw: &Raw, ty: &Value) -> Result<Option<Typed>, ElabError> {
         let here = raw.origin();
         let Some((head, arguments)) = written_spine(raw) else {
             return Ok(None);
         };
-        let Some((case, fields, params)) = self.case_of(scope, head, ty)? else {
+        let Some((case, fields)) = self.case_of(scope, head, ty)? else {
             return Ok(None);
         };
         if arguments.len() > fields {
@@ -752,38 +664,25 @@ impl Elaborator {
         // Through the ordinary constant rule, so that a case a module keeps to
         // itself is refused here the same way it is refused when its qualified
         // name is written out.
-        let qualified = Raw::var(here, case);
-        let mut built = self.infer(scope, &qualified)?;
-        built = match params {
-            Params::Read(values) => {
-                for param in &values {
-                    built = self.given(scope, here, built, param)?;
-                }
-                built
-            }
-            Params::Holes(count) => self.holes(scope, here, built, count)?,
-        };
-        for argument in arguments {
-            built = self.applied(scope, here, built, &Plicity::Explicit, argument)?;
-        }
-        Ok(Some(built))
+        let built = self.infer(scope, &Raw::var(here, case))?;
+        Ok(Some(self.apply_spine(scope, here, built, &arguments, Some(ty))?))
     }
 
-    /// The qualified case `head` denotes, how many fields it takes, and where
-    /// its family's parameters come from.
+    /// The qualified case `head` denotes, and how many fields it takes.
     ///
-    /// The expected type first, because that is the rule §2 states and the only
-    /// one a bare case name can use — and it applies to a name from either
-    /// namespace, since which namespace a name came from decides how it
+    /// The expected type first, because that is the rule §2 states and the
+    /// only one a bare case name can use — and it applies to a name from
+    /// either namespace, since which namespace a name came from decides how it
     /// *resolves* and not what it may be checked against.
     ///
-    /// The written name second, and only for [`RawShape::Hosted`]. An author's
-    /// `Option.Some Int` is `Some` at the parameter `Int`, still wanting its
-    /// field; a reader's is `Some` holding the field `Int` at an unknown
-    /// parameter. Both are well-typed readings of the same spine, so the
-    /// namespace is what tells them apart — see [`Self::constructed_open`],
-    /// which draws the same line where there is no expected type at all.
-    fn case_of(&mut self, scope: &Scope, head: &Raw, ty: &Value) -> Result<Option<(String, usize, Params)>, ElabError> {
+    /// The written registry second, and only for [`RawShape::Hosted`]. An
+    /// author's `Option.Some Int` is `Some` at the parameter `Int`, still
+    /// wanting its field; a reader's is `Some` holding the field `Int` at a
+    /// parameter the application pass will solve. Both are well-typed readings
+    /// of the same spine, so the namespace is what tells them apart — see
+    /// [`Self::constructed_open`], which draws the same line where there is no
+    /// expected type at all.
+    fn case_of(&mut self, scope: &Scope, head: &Raw, ty: &Value) -> Result<Option<(String, usize)>, ElabError> {
         let (RawShape::Var(name) | RawShape::Hosted(name)) = head.shape() else {
             return Ok(None);
         };
@@ -791,249 +690,210 @@ impl Elaborator {
             && let Some(declared) = element.group.family_at(element.family)
             && let Some((case, fields)) = case_named(scope, name, declared)
         {
-            return Ok(Some((
-                format!("{}.{case}", declared.name),
-                fields,
-                Params::Read(element.params),
-            )));
+            return Ok(Some((format!("{}.{case}", declared.name), fields)));
         }
         if !matches!(head.shape(), RawShape::Hosted(_)) {
             return Ok(None);
         }
-        let Some((fields, params)) = written_case(scope, name) else {
+        let Some((fields, _)) = written_case(scope, name) else {
             return Ok(None);
         };
-        Ok(Some((name.to_string(), fields, Params::Holes(params))))
-    }
-
-    /// Whether `raw` is a bare constructor whose family `ty` has not yet named.
-    ///
-    /// The exact shape [`Self::unresolved`] would refuse, asked one step
-    /// earlier and with the expected type in hand. Both halves are needed and
-    /// neither is enough: a rigid expected type means [`Self::case_of`] already
-    /// answered or never will, and a name a binder or a declaration answers is
-    /// not a constructor at all.
-    ///
-    /// `Var` and not [`RawShape::Hosted`]. A reader's constructor already has a
-    /// rule at an unknown type — [`Self::constructed_open`] makes its parameters
-    /// holes — because the reader knows it wrote none. An author's `Nothing`
-    /// carries no such promise, which is why it is the one that has to wait.
-    fn waits_for_a_family(scope: &Scope, raw: &Raw, ty: &Value) -> bool {
-        crate::unify::flexible_head(ty).is_some() && bare_case(scope, raw).is_some()
-    }
-
-    /// Elaborate `raw` when its type is known, and stand a hole in for it now.
-    ///
-    /// §4's postponement, applied to a term rather than to a constraint, and for
-    /// the same reason: what blocks it is an unknown some *later* part of the
-    /// same declaration usually determines. `xs.fold_from_end(Nothing, step)` is
-    /// the case that forces it — a method's implicit `B` is a metavariable when
-    /// the seed is checked and the annotation on `step` solves it one argument
-    /// later, and arguments are checked in the order they are written.
-    ///
-    /// The hole is an ordinary metavariable, so a postponement that never
-    /// unblocks needs no second reporting path: [`Self::stubborn`] refuses it as
-    /// the bare constructor it was, which is the sentence about the program
-    /// rather than about this mechanism.
-    fn delay(&mut self, scope: &Scope, raw: &Raw, ty: &Value) -> Result<Term, ElabError> {
-        let here = raw.origin();
-        let hole = self.fresh_meta(scope, here, MetaSource::PostponedTerm, ty)?;
-        self.delayed.push(Delayed {
-            scope: scope.clone(),
-            raw: raw.clone(),
-            ty: ty.clone(),
-            hole: hole.clone(),
-        });
-        Ok(hole)
-    }
-
-    /// Read every postponed term whose type is now known, and say whether any
-    /// was.
-    ///
-    /// [`crate::dictionary::discharge`]'s shape, because it is the same
-    /// mechanism: retry, keep what is still blocked, and report progress so the
-    /// caller knows whether another round could help. The two lists feed each
-    /// other — a term read here can solve the head a constraint waited on, and a
-    /// dictionary discharged there can solve the type a term waited on — which
-    /// is why [`Self::settled`] alternates them rather than running each once.
-    fn read_delayed(&mut self) -> Result<bool, ElabError> {
-        let waiting = core::mem::take(&mut self.delayed);
-        if waiting.is_empty() {
-            return Ok(false);
-        }
-        let mut answered = false;
-        let mut blocked = Vec::new();
-        for item in waiting {
-            let unfolded = force(&mut self.meter, &item.ty)?;
-            let ty = unfolded.unwrap_or_else(|| item.ty.clone());
-            if crate::unify::flexible_head(&ty).is_some() {
-                blocked.push(item);
-                continue;
-            }
-            self.meter.retry("elaboration")?;
-            let here = item.raw.origin();
-            let term = self.check(&item.scope, &item.raw, &ty)?;
-            let read = item.scope.eval(&mut self.meter, &term)?;
-            let hole = item.scope.eval(&mut self.meter, &item.hole)?;
-            self.unify_at(&item.scope, here, &ty, &hole, &read)?;
-            answered = true;
-        }
-        self.delayed.extend(blocked);
-        Ok(answered)
-    }
-
-    /// Refuse the first postponed term nothing ever determined a type for.
-    ///
-    /// The refusal it would have earned had it been read where it was written,
-    /// stated at the same origin: waiting is what the elaborator did about the
-    /// program, not something the program did.
-    fn stubborn(&self) -> Result<(), ElabError> {
-        let Some(item) = self.delayed.first() else {
-            return Ok(());
-        };
-        let Some(name) = bare_case(&item.scope, &item.raw) else {
-            return Ok(());
-        };
-        let families = item.scope.cx().cases(&name);
-        Err(Refusal::BareConstructor {
-            at: item.raw.origin(),
-            name,
-            families,
-        }
-        .into())
+        Ok(Some((name.to_string(), fields)))
     }
 
     /// §2's constructor rule reached from the other direction: `C a⃗ ⇒ N ?p⃗`,
-    /// for a constructor the **reader** wrote and only for one.
+    /// where the `?p⃗` are the application pass's holes.
     ///
-    /// [`Self::constructed`]'s "when the expected type does not name a family"
-    /// paragraph, applied where there is no expected type at all. That paragraph
-    /// makes the family parameters holes and lets `Switch` supply them; here
-    /// there is no `Switch` to answer into, so the holes are the answer.
+    /// Three shapes arrive here. A **reader-written** constructor (a
+    /// [`RawShape::Hosted`] name) knows its family from the name itself. A
+    /// **bare** case name — `Nothing`, not applied — answers to no binder and
+    /// no declaration, and then §2.1's rule is uniqueness: exactly one family
+    /// may declare the case, which is what makes the reading determined rather
+    /// than guessed. Any other shape is not a constructor and answers `None`,
+    /// leaving the name to the ordinary variable rule and its refusal.
     ///
-    /// # Why the reader and not the author
-    ///
-    /// The distinction is `01-surface.md` §1.6's own. A written **product** and
-    /// a written **list** are among "the core literals introduced here", and §2
-    /// says a literal infers — but both lower to a constructor of a
-    /// *parameterized* family, and a constructor checks. Without this rule
-    /// `let d = [1, 2];` read `List.Cons` as applied to `1` *for its parameter*
-    /// `A` and reported a type mismatch against `Type 0`, because a parameter is
-    /// an explicit binder at an ordinary use and an inferring position that did
-    /// not supply one misread the first field as the first parameter.
-    ///
-    /// That misreading is not a defect to route around; it is a real ambiguity.
-    /// `C x` where `C` has one parameter and one field can be `C` at parameter
-    /// `x` awaiting its field, or `C` at an unknown parameter holding field `x`,
-    /// and nothing in the term says which. [`RawShape::Hosted`] is what says
-    /// which: it means a name the reader wrote rather than the author, and the
-    /// reader knows it wrote no parameters. So `[1, 2]` infers and
-    /// `List::Cons(1, List::Empty)` still does not, which is exactly the line
-    /// §1.6 and §2 draw between a literal and a constructor.
-    ///
-    /// Two further bounds keep this from being a second reading of anything: a
-    /// spine with `params + fields` arguments is the fully written
-    /// `Option.Some Nat 0` and already infers, and a family with no parameters
-    /// has nothing to supply, so `Nat.Succ 0` keeps the one path it has.
+    /// A case that is still *applied* afterwards keeps its remaining fields as
+    /// an ordinary Π: `Some` alone is a function value, and §1.3's arity law
+    /// is about calls, not names.
     fn constructed_open(&mut self, scope: &Scope, raw: &Raw) -> Result<Option<Typed>, ElabError> {
         let here = raw.origin();
-        let Some((head, arguments)) = written_spine(raw) else {
-            return Ok(None);
-        };
-        let RawShape::Hosted(name) = head.shape() else {
-            return Ok(None);
-        };
-        let Some((fields, params)) = written_case(scope, name) else {
-            return Ok(None);
-        };
-        if params == 0 || arguments.len() != fields {
-            return Ok(None);
+        let (head, arguments) = written_spine(raw).unwrap_or((raw, Vec::new()));
+        match head.shape() {
+            RawShape::Hosted(name) => {
+                let Some((fields, _)) = written_case(scope, name) else {
+                    return Ok(None);
+                };
+                if arguments.len() > fields {
+                    return Ok(None);
+                }
+                let built = self.infer(scope, &Raw::var(here, name.to_string()))?;
+                Ok(Some(self.apply_spine(scope, here, built, &arguments, None)?))
+            }
+            RawShape::Var(name) => {
+                if scope.lookup(name).is_some() {
+                    return Ok(None);
+                }
+                let families = scope.cx().cases(name);
+                let [family] = families.as_slice() else {
+                    return Ok(None);
+                };
+                let Some(crate::family::Found::Rigid(constant)) = scope.declared(family) else {
+                    return Ok(None);
+                };
+                let Some(declared) = constant.group.family_at(constant.family) else {
+                    return Ok(None);
+                };
+                let Some((case, fields)) = case_named(scope, name, declared) else {
+                    return Ok(None);
+                };
+                if arguments.len() > fields {
+                    return Ok(None);
+                }
+                let qualified: Name = Arc::from(format!("{}.{case}", declared.name).as_str());
+                let built = self.infer(scope, &Raw::var(here, qualified))?;
+                Ok(Some(self.apply_spine(scope, here, built, &arguments, None)?))
+            }
+            _ => Ok(None),
         }
-        let qualified = Raw::var(here, name.to_string());
-        let mut built = self.infer(scope, &qualified)?;
-        built = self.holes(scope, here, built, params)?;
-        for argument in arguments {
-            built = self.applied(scope, here, built, &Plicity::Explicit, argument)?;
-        }
-        Ok(Some(built))
     }
 
-    /// Apply `built` to one metavariable per family parameter.
+    /// §2.1's one instantiation pass: apply `head` to the written arguments,
+    /// then match what remains against `expected` when the call is in a
+    /// checking position.
     ///
-    /// The same loop [`Self::inserted`] runs, driven by a count rather than by
-    /// plicity: a parameter is written at every ordinary use, so its binder is
-    /// explicit and nothing about the type says it may be left out here. A
-    /// constraint parameter — a `where` clause on the declaration — is still
-    /// answered by `10-traits.md` §4 rather than by a hole, because a dictionary
-    /// nothing solved and a dictionary nothing could solve are different stories
-    /// and only [`crate::dictionary::resolve`] can tell them apart.
-    fn holes(&mut self, scope: &Scope, here: Origin, mut built: Typed, count: u32) -> Result<Typed, ElabError> {
-        for _ in 0..count {
-            let unfolded = opened(&mut self.meter, &built.ty)?;
-            let function_ty = unfolded.as_ref().unwrap_or(&built.ty);
+    /// One left-to-right walk, and the discipline is the document's: an
+    /// implicit parameter becomes a [hole](crate::meta::Hole) that the first
+    /// argument to mention it solves; an argument is *inferred* when its
+    /// domain still mentions an unsolved hole and *checked* otherwise, because
+    /// those are the two directions in which information can flow; a
+    /// constraint waits until the walk has said everything matching can say,
+    /// and is then resolved once, by lookup, never postponed. The author sees
+    /// the two errors this can raise — a parameter nothing determined
+    /// ([`Refusal::Unsolved`], at declaration end) and a call against a
+    /// non-function ([`Refusal::NotAFunction`], here) — and neither involves
+    /// a mechanism they have to name.
+    fn apply_spine(
+        &mut self,
+        scope: &Scope,
+        here: Origin,
+        head: Typed,
+        arguments: &[&Raw],
+        expected: Option<&Value>,
+    ) -> Result<Typed, ElabError> {
+        let mut walk = Walk::default();
+        let mut ty = head.ty.clone();
+        self.advance(scope, &mut ty, &mut walk)?;
+        for argument in arguments {
+            let unfolded = opened(&mut self.meter, &ty)?;
+            let current = unfolded.as_ref().unwrap_or(&ty);
+            let Form::Pi { domain, codomain, .. } = &current.form else {
+                return Err(Refusal::NotAFunction {
+                    at: here,
+                    ty: scope.quote_type(&mut self.meter, &ty)?,
+                }
+                .into());
+            };
+            let (domain, codomain) = (Arc::clone(domain), codomain.clone());
+            // The domain decides the direction (§2.1): still quantified, the
+            // argument teaches the parameter — inferred, and matched;
+            // settled, the argument is checked.
+            let argument_term = if crate::unify::mentions_unsolved(&domain) {
+                let inferred = self.infer(scope, argument)?;
+                self.unifier.unify_types(
+                    &mut self.meter,
+                    scope.depth(),
+                    argument.origin(),
+                    &domain,
+                    &inferred.ty,
+                )?;
+                inferred.term
+            } else {
+                self.check(scope, argument, &domain)?
+            };
+            let value = scope.eval(&mut self.meter, &argument_term)?;
+            walk.slots.push(Slot::Argument(argument_term));
+            ty = apply_closure(&mut self.meter, &codomain, value)?;
+            self.advance(scope, &mut ty, &mut walk)?;
+        }
+        if let Some(expected) = expected {
+            // Checking position: the rest of the type is matched against what
+            // the position wants, which is where a bare constructor's family
+            // parameters — and any argument's still-unsolved ones — are
+            // learned.
+            self.unifier
+                .unify_types(&mut self.meter, scope.depth(), here, &ty, expected)?;
+        }
+        Ok(self.finish_walk(scope, here, head.term, ty, walk)?)
+    }
+
+    /// Skip the binders §2.1 fills rather than the author: an implicit
+    /// parameter becomes a fresh hole, a constraint is noted for the walk's
+    /// end.
+    fn advance(&mut self, scope: &Scope, ty: &mut Value, walk: &mut Walk) -> Result<(), ElabError> {
+        let _ = scope;
+        loop {
+            let unfolded = opened(&mut self.meter, ty)?;
+            let current = unfolded.as_ref().unwrap_or(ty);
             let Form::Pi {
                 plicity,
                 domain,
                 codomain,
                 ..
-            } = &function_ty.form
+            } = &current.form
             else {
-                return Err(Refusal::NotAFunction {
-                    at: here,
-                    ty: scope.quote_type(&mut self.meter, &built.ty)?,
-                }
-                .into());
+                return Ok(());
             };
-            let (plicity, domain, codomain) = (plicity.clone(), Arc::clone(domain), codomain.clone());
-            let argument = match &plicity {
-                Plicity::Explicit | Plicity::Implicit => {
-                    self.fresh_meta(scope, here, MetaSource::FamilyParameter, &domain)?
+            match plicity {
+                Plicity::Explicit => return Ok(()),
+                Plicity::Implicit => {
+                    let hole = self.fresh_hole(current.origin, domain);
+                    walk.slots.push(Slot::Parameter(hole.clone()));
+                    let value = Value::neutral(Neutral::head(current.origin, crate::value::Head::Hole(hole)));
+                    *ty = apply_closure(&mut self.meter, &codomain, value)?;
                 }
                 Plicity::Constraint(constraint) => {
                     let constraint = Arc::clone(constraint);
-                    let needed = crate::dictionary::instantiated(self, scope, &constraint, &codomain.env)?;
-                    let classes = scope.cx().classes().clone();
-                    crate::dictionary::resolve(self, scope, &classes, &needed)?
+                    // The codomain reads the dictionary off its binder; a hole
+                    // stands for it, and [`Self::settled`] writes the resolved
+                    // dictionary in — the one place resolution runs, for the
+                    // reason the field's doc gives.
+                    let hole = self.fresh_hole(current.origin, domain);
+                    self.constraints.push((
+                        constraint,
+                        scope.clone(),
+                        codomain.env.clone(),
+                        current.origin,
+                        hole.clone(),
+                    ));
+                    walk.slots.push(Slot::Dictionary(hole.clone()));
+                    let value = Value::neutral(Neutral::head(current.origin, crate::value::Head::Hole(hole)));
+                    *ty = apply_closure(&mut self.meter, &codomain, value)?;
                 }
-            };
-            let value = scope.eval(&mut self.meter, &argument)?;
-            built = Typed {
-                term: Term::app(here, built.term, argument),
-                ty: apply_closure(&mut self.meter, &codomain, value)?,
-            };
+            }
         }
-        Ok(built)
     }
 
-    /// `head p`, where `p` is a value already in hand rather than a raw term.
-    ///
-    /// The parameters [`Self::constructed`] supplies come from the expected
-    /// type, so they are values and there is nothing to check them against:
-    /// they were checked when the type they were read from was.
-    fn given(&mut self, scope: &Scope, here: Origin, head: Typed, param: &Value) -> Result<Typed, ElabError> {
-        let unfolded = opened(&mut self.meter, &head.ty)?;
-        let function_ty = unfolded.as_ref().unwrap_or(&head.ty);
-        let Form::Pi { domain, codomain, .. } = &function_ty.form else {
-            // The refusal quotes the type as it stands — a definition the
-            // author wrote keeps its name; the unfolding is what was matched.
-            return Err(Refusal::NotAFunction {
-                at: here,
-                ty: scope.quote_type(&mut self.meter, &head.ty)?,
-            }
-            .into());
-        };
-        let (domain, codomain) = (Arc::clone(domain), codomain.clone());
-        let term = quote(
-            &mut self.meter,
-            Depth(scope.depth()),
-            crate::quote::Mode::Keep,
-            &domain,
-            param,
-        )?;
-        Ok(Typed {
-            term: Term::app(here, head.term, term),
-            ty: apply_closure(&mut self.meter, &codomain, param.clone())?,
-        })
+    /// The walk's end: build the spine, and leave the residual type with the
+    /// holes it still mentions — solved or not, which [`Self::settled`]
+    /// audits.
+    fn finish_walk(
+        &mut self,
+        scope: &Scope,
+        here: Origin,
+        head: Term,
+        ty: Value,
+        walk: Walk,
+    ) -> Result<Typed, ElabError> {
+        let _ = scope;
+        let mut term = head;
+        for slot in &walk.slots {
+            let argument = match slot {
+                Slot::Parameter(hole) | Slot::Dictionary(hole) => Term::hole(here, hole.clone()),
+                Slot::Argument(term) => term.clone(),
+            };
+            term = Term::app(here, term, argument);
+        }
+        Ok(Typed { term, ty })
     }
 
     /// Wrap `raw` in an implicit λ when the type it is checked against wants
@@ -1188,32 +1048,20 @@ impl Elaborator {
         Ok(Term::new(here, Shape::Record(elaborated.into())))
     }
 
-    /// `refl e ⇐ Id A x y`, which holds when `e`, `x`, and `y` are all the same.
-    fn reflexivity(
-        &mut self,
-        scope: &Scope,
-        here: Origin,
-        witness: &Raw,
-        at: &Value,
-        left: &Value,
-        right: &Value,
-    ) -> Result<Term, ElabError> {
-        let term = self.check(scope, witness, at)?;
-        let value = scope.eval(&mut self.meter, &term)?;
-        for endpoint in [left, right] {
-            self.unifier
-                .unify(&mut self.meter, scope.depth(), witness.origin(), at, &value, endpoint)?;
-        }
-        Ok(Term::refl(here, term))
-    }
-
-    // ---- inference ---------------------------------------------------------
-
     /// `Γ ⊢ raw ⇒ ty ⇝ t`.
     fn infer(&mut self, scope: &Scope, raw: &Raw) -> Result<Typed, ElabError> {
         let here = raw.origin();
         match raw.shape() {
             RawShape::Var(name) => {
+                // §2.1's uniqueness rule: a name no binder answers to may be
+                // the one case exactly one family declares. Tried before the
+                // declaration chain so that the family reading is the one an
+                // argument position can still determine the parameters of.
+                if scope.lookup(name).is_none()
+                    && let Some(built) = self.constructed_open(scope, raw)?
+                {
+                    return Ok(built);
+                }
                 let Some(found) = scope.lookup(name) else {
                     return self.constant(scope, here, name);
                 };
@@ -1233,12 +1081,13 @@ impl Elaborator {
             }),
             RawShape::Numeral { family, count } => self.numeral(scope, here, family, *count),
             RawShape::Universe(written) => {
-                let level = match written {
-                    Some(level) => level.clone(),
-                    None => self.fresh_level(here)?,
+                // §1: two universes, and a bare `Type` is `Type 0`.
+                let level = written.as_ref().copied().unwrap_or(Level::ZERO);
+                let Some(above) = level.succ() else {
+                    return Err(Refusal::BeyondUniverses { at: here }.into());
                 };
                 Ok(Typed {
-                    ty: Value::new(here, Form::Universe(level.succ())),
+                    ty: Value::new(here, Form::Universe(above)),
                     term: Term::universe(here, level),
                 })
             }
@@ -1285,31 +1134,6 @@ impl Elaborator {
             RawShape::Method { receiver, method } => self.method(scope, here, receiver, method),
             RawShape::Project { record, field } => self.projection(scope, here, record, field),
             RawShape::Update { record, updates } => self.update(scope, here, record, updates),
-            RawShape::Id { ty, left, right } => self.identity(scope, here, ty, left, right),
-            RawShape::Refl(witness) => {
-                let inferred = self.infer(scope, witness)?;
-                let inferred = self.inserted(scope, inferred)?;
-                let value = scope.eval(&mut self.meter, &inferred.term)?;
-                Ok(Typed {
-                    term: Term::refl(here, inferred.term),
-                    ty: Value::new(
-                        here,
-                        Form::Id {
-                            ty: Arc::new(inferred.ty),
-                            left: Arc::new(value.clone()),
-                            right: Arc::new(value),
-                        },
-                    ),
-                })
-            }
-            RawShape::J {
-                ty,
-                from,
-                motive,
-                base,
-                to,
-                proof,
-            } => self.elimination(scope, here, [ty, from, motive, base, to, proof]),
             RawShape::Let {
                 name,
                 ty: written,
@@ -1340,65 +1164,6 @@ impl Elaborator {
             RawShape::Match { .. } | RawShape::Rec { .. } => Err(Refusal::Uninferable { at: here }.into()),
         }
     }
-
-    /// Fill every leading binder of an inferred type that a use site does not
-    /// write: an implicit one with a metavariable, a constraint one with the
-    /// dictionary `10-traits.md` §4 finds.
-    ///
-    /// A constraint is *not* filled with a metavariable. A dictionary nothing
-    /// solves would be reported as an unsolved hole, which is the wrong story
-    /// about a constraint that was answerable and about one that was not alike;
-    /// §4 answers or postpones, and `resolve` is what does both.
-    fn inserted(&mut self, scope: &Scope, mut inferred: Typed) -> Result<Typed, ElabError> {
-        loop {
-            let unfolded = opened(&mut self.meter, &inferred.ty)?;
-            let ty = unfolded.as_ref().unwrap_or(&inferred.ty);
-            let Form::Pi {
-                plicity,
-                name: _,
-                domain,
-                codomain,
-            } = &ty.form
-            else {
-                return Ok(inferred);
-            };
-            if *plicity == Plicity::Explicit {
-                return Ok(inferred);
-            }
-            let (plicity, domain, codomain) = (plicity.clone(), Arc::clone(domain), codomain.clone());
-            let here = inferred.term.origin();
-            let argument = match &plicity {
-                // Unreachable: the guard above returned, and the two arms below
-                // are the rest of the enum. Written rather than `unreachable!`
-                // because a fourth plicity should be a compile error here.
-                Plicity::Explicit => return Ok(inferred),
-                Plicity::Implicit => self.fresh_meta(scope, here, MetaSource::ImplicitArgument, &domain)?,
-                Plicity::Constraint(constraint) => {
-                    // The constraint's arguments are terms under the Π's own
-                    // binders, and the codomain closure is what holds that
-                    // environment — including whatever this loop has already
-                    // inserted, which is how `same(x, y)` reaches §4 with the
-                    // metavariable standing for `A` rather than with `A`.
-                    let constraint = Arc::clone(constraint);
-                    let needed = crate::dictionary::instantiated(self, scope, &constraint, &codomain.env)?;
-                    // A constraint a *host* wrote — `Storable A` on a registered
-                    // signature — has no place in any source file, so the refusal
-                    // it raises is filed at the use that inserted it. A `where`
-                    // clause keeps the place it was written; this only fills in
-                    // the one that never had one.
-                    let needed = needed.at_use(here);
-                    let classes = scope.cx().classes().clone();
-                    crate::dictionary::resolve(self, scope, &classes, &needed)?
-                }
-            };
-            let value = scope.eval(&mut self.meter, &argument)?;
-            inferred = Typed {
-                term: Term::app(here, inferred.term, argument),
-                ty: apply_closure(&mut self.meter, &codomain, value)?,
-            };
-        }
-    }
-
     /// `(x : A) → B ⇒ Type (max l l')`.
     fn function_type(
         &mut self,
@@ -1415,7 +1180,7 @@ impl Elaborator {
         let (codomain_term, codomain_level) = self.check_type(&inner, codomain)?;
         Ok(Typed {
             term: Term::function(here, plicity, Arc::clone(name), domain_term, codomain_term),
-            ty: Value::new(here, Form::Universe(domain_level.max(&codomain_level))),
+            ty: Value::new(here, Form::Universe(domain_level.max(codomain_level))),
         })
     }
 
@@ -1441,7 +1206,7 @@ impl Elaborator {
         let classes = scope.cx().classes().clone();
         let (constraint, domain_term) = crate::dictionary::constraint_at(self, scope, &classes, raw)?;
         let domain_value = scope.eval(&mut self.meter, &domain_term)?;
-        let domain_level = crate::recheck::universe_of(&mut self.meter, scope.cx(), &domain_term)?;
+        let domain_level = Term::level_of(&domain_term)?;
         let name = Trait::super_field(&constraint.class);
         let constraint = Arc::new(constraint);
         // Discharged as well as assumed, for [`Self::discharging`]'s reason: a
@@ -1452,11 +1217,11 @@ impl Elaborator {
         let (codomain_term, codomain_level) = self.check_type(&inner, codomain)?;
         Ok(Typed {
             term: Term::constrained_pi(here, constraint, name, domain_term, codomain_term),
-            ty: Value::new(here, Form::Universe(domain_level.max(&codomain_level))),
+            ty: Value::new(here, Form::Universe(domain_level.max(codomain_level))),
         })
     }
 
-    /// `λx. e ⇒ (x : ?A) → B`, where `?A` is §2.1's second metavariable site.
+    /// `λx. e ⇒ (x : A) → B`, where `A` is the annotation §2 asks for.
     fn infer_lambda(
         &mut self,
         scope: &Scope,
@@ -1472,22 +1237,11 @@ impl Elaborator {
                 Arc::new(scope.eval(&mut self.meter, &term)?)
             }
             None => {
-                // §2.1's third site is "a level position *the surface did not
-                // write*", and this is not one: no universe stands here at all,
-                // only the sort a hole's type has to have. A metavariable would
-                // be an unknown no program could determine — the elaborator
-                // never compares a hole's type against anything — so it would
-                // refuse every unannotated binder rather than describe one.
-                //
-                // The choice is unobservable. A core λ records no domain (§1),
-                // and this level is read only by [`zonk`], which quotes the
-                // solution *as a type* and never looks at which universe it was
-                // told. What it costs is nothing: a binder whose type genuinely
-                // lives higher is one the author annotates, which §2 asks for at
-                // every signature anyway.
-                let universe = Value::new(here, Form::Universe(Level::ZERO));
-                let hole = self.fresh_meta(scope, here, MetaSource::BinderType, &universe)?;
-                Arc::new(scope.eval(&mut self.meter, &hole)?)
+                // §2: a binder the checking type did not describe must be
+                // annotated. No hole stands here, because nothing downstream
+                // of an inferred λ ever determines one — the annotation is the
+                // program saying what it means.
+                return Err(Refusal::Uninferable { at: here }.into());
             }
         };
         let inner = scope.assume(Some(Arc::clone(name)), here, Arc::clone(&domain_value));
@@ -1506,16 +1260,9 @@ impl Elaborator {
         })
     }
 
-    /// `f(a₁, …, aₙ) ⇒ B`, and §1.3's rule that the list is the whole of `f`'s
-    /// parameters.
-    ///
-    /// The head is inferred once and the arguments are then applied by
-    /// [`Self::applied`], which is the loop every other application already
-    /// runs — implicit insertion, conversion, and the plicity check are the
-    /// ones a spine would have got. What is new is the count taken between the
-    /// two, and it is the one a spine cannot take: a prefix of an application
-    /// does not know it is a prefix, so nothing in the iterated form can say
-    /// that a parameter went unwritten.
+
+    /// §1.3's arity law: a `Call` supplies every declared parameter, and this
+    /// is where the count is checked.
     ///
     /// **Measured on the function, not on the result.** §1.3's word is
     /// "declared", and [`declared_parameters`] is what reads it: the named
@@ -1524,11 +1271,11 @@ impl Elaborator {
     /// count a *result* that happens to be a function, which is what a generic
     /// answer becomes the moment a caller instantiates it.
     ///
-    /// Over-application is left to [`Self::applied`]. §1.3 names one direction,
-    /// and "supplies every declared parameter" is silent about an argument list
+    /// Over-application is left to the walk. §1.3 names one direction, and
+    /// "supplies every declared parameter" is silent about an argument list
     /// that runs past them into a result that takes more — which either
-    /// applies, or earns [`Refusal::NotAFunction`] from the argument that could
-    /// not.
+    /// applies, or earns [`Refusal::NotAFunction`] from the argument that
+    /// could not.
     fn complete_call(
         &mut self,
         scope: &Scope,
@@ -1549,9 +1296,7 @@ impl Elaborator {
             }
             .into());
         }
-        arguments.iter().try_fold(head, |built, argument| {
-            self.applied(scope, here, built, &Plicity::Explicit, argument)
-        })
+        self.apply_spine(scope, here, head, &arguments.iter().collect::<Vec<_>>(), None)
     }
 
     /// `f a ⇒ B[a]`.
@@ -1563,59 +1308,11 @@ impl Elaborator {
         function: &Raw,
         argument: &Raw,
     ) -> Result<Typed, ElabError> {
-        let inferred = self.infer(scope, function)?;
-        self.applied(scope, here, inferred, plicity, argument)
-    }
-
-    /// One argument applied to a function already elaborated.
-    ///
-    /// Separate from [`Self::application`] because [`Self::constructed`] has a
-    /// function it did not infer from a raw term, and an application loop
-    /// written twice is two chances to insert differently.
-    fn applied(
-        &mut self,
-        scope: &Scope,
-        here: Origin,
-        inferred: Typed,
-        plicity: &Plicity,
-        argument: &Raw,
-    ) -> Result<Typed, ElabError> {
-        // An argument the author wrote implicitly is the one the binder wanted,
-        // so insertion is skipped: inserting first would fill that binder with a
-        // metavariable and then refuse the argument as one too many.
-        let inferred = match plicity {
-            Plicity::Explicit => self.inserted(scope, inferred)?,
-            // A constraint argument has no surface spelling — a [`Raw`] never
-            // carries one — so `plicity` here is only ever one of the two the
-            // author can write. It is grouped with the implicit case rather
-            // than panicked on, and the plicity comparison below refuses it.
-            Plicity::Implicit | Plicity::Constraint(_) => inferred,
-        };
-        let unfolded = opened(&mut self.meter, &inferred.ty)?;
-        let function_ty = unfolded.as_ref().unwrap_or(&inferred.ty);
-        let Form::Pi {
-            plicity: expected,
-            name: _,
-            domain,
-            codomain,
-        } = &function_ty.form
-        else {
-            return Err(Refusal::NotAFunction {
-                at: here,
-                ty: scope.quote_type(&mut self.meter, &inferred.ty)?,
-            }
-            .into());
-        };
-        if *plicity != *expected {
+        if *plicity != Plicity::Explicit {
             return Err(Refusal::PlicityMismatch { at: argument.origin() }.into());
         }
-        let (domain, codomain) = (Arc::clone(domain), codomain.clone());
-        let argument_term = self.check(scope, argument, &domain)?;
-        let argument_value = scope.eval(&mut self.meter, &argument_term)?;
-        Ok(Typed {
-            term: Term::app(here, inferred.term, argument_term),
-            ty: apply_closure(&mut self.meter, &codomain, argument_value)?,
-        })
+        let inferred = self.infer(scope, function)?;
+        self.apply_spine(scope, here, inferred, &[argument], None)
     }
 
     /// `x.m` — `10-traits.md` §6's method syntax, resolved by exact receiver.
@@ -1638,7 +1335,6 @@ impl Elaborator {
     /// not only of the prose — `x.m(y)` and `Class.m(x, y)` are one term.
     fn method(&mut self, scope: &Scope, here: Origin, receiver: &Raw, method: &Name) -> Result<Typed, ElabError> {
         let inferred = self.infer(scope, receiver)?;
-        let inferred = self.inserted(scope, inferred)?;
         let unfolded = opened(&mut self.meter, &inferred.ty)?;
         let receiver_ty = unfolded.as_ref().unwrap_or(&inferred.ty);
         let stated = scope.quote_type(&mut self.meter, receiver_ty)?;
@@ -1700,29 +1396,27 @@ impl Elaborator {
     /// against it, here the two types are unified, which is what solves the
     /// trait arguments `method_at` left as metavariables.
     fn receiving(&mut self, scope: &Scope, here: Origin, function: Typed, receiver: Typed) -> Result<Typed, ElabError> {
-        let function = self.inserted(scope, function)?;
-        let unfolded = opened(&mut self.meter, &function.ty)?;
-        let function_ty = unfolded.as_ref().unwrap_or(&function.ty);
-        let Form::Pi {
-            plicity: Plicity::Explicit,
-            domain,
-            codomain,
-            ..
-        } = &function_ty.form
-        else {
+        let mut walk = Walk::default();
+        let mut ty = function.ty.clone();
+        self.advance(scope, &mut ty, &mut walk)?;
+        let unfolded = opened(&mut self.meter, &ty)?;
+        let function_ty = unfolded.as_ref().unwrap_or(&ty);
+        let Form::Pi { domain, codomain, .. } = &function_ty.form else {
             return Err(Refusal::NotAFunction {
                 at: here,
-                ty: scope.quote_type(&mut self.meter, &function.ty)?,
+                ty: scope.quote_type(&mut self.meter, &ty)?,
             }
             .into());
         };
         let (domain, codomain) = (Arc::clone(domain), codomain.clone());
-        self.unify_types(scope, here, &receiver.ty, &domain)?;
+        // Matching mode: the receiver is where the method's parameters are
+        // learned — `xs.fold_from_end` reads `A` off `xs`.
+        self.unifier
+            .unify_types(&mut self.meter, scope.depth(), here, &domain, &receiver.ty)?;
+        walk.slots.push(Slot::Argument(receiver.term.clone()));
         let value = scope.eval(&mut self.meter, &receiver.term)?;
-        Ok(Typed {
-            term: Term::app(here, function.term, receiver.term),
-            ty: apply_closure(&mut self.meter, &codomain, value)?,
-        })
+        let ty = apply_closure(&mut self.meter, &codomain, value)?;
+        self.finish_walk(scope, here, function.term, ty, walk)
     }
 
     /// `{ f : A, … } ⇒ Type (max …)`.
@@ -1740,7 +1434,7 @@ impl Elaborator {
                 .into());
             }
             let (term, field_level) = self.check_type(&inner, &field.term)?;
-            level = level.max(&field_level);
+            level = level.max(field_level);
             let value = inner.eval(&mut self.meter, &term)?;
             inner = inner.assume(Some(Arc::clone(&field.name)), field.term.origin(), Arc::new(value));
             elaborated.push(Field {
@@ -1757,7 +1451,6 @@ impl Elaborator {
     /// `e.f ⇒ A[e]`.
     fn projection(&mut self, scope: &Scope, here: Origin, record: &Raw, field: &Name) -> Result<Typed, ElabError> {
         let inferred = self.infer(scope, record)?;
-        let inferred = self.inserted(scope, inferred)?;
         let unfolded = opened(&mut self.meter, &inferred.ty)?;
         let record_ty = unfolded.as_ref().unwrap_or(&inferred.ty);
         let Form::RecordType(telescope) = &record_ty.form else {
@@ -1793,7 +1486,6 @@ impl Elaborator {
     fn update(&mut self, scope: &Scope, here: Origin, record: &Raw, updates: &[RawUpdate]) -> Result<Typed, ElabError> {
         overlapping(updates)?;
         let inferred = self.infer(scope, record)?;
-        let inferred = self.inserted(scope, inferred)?;
         let unfolded = opened(&mut self.meter, &inferred.ty)?;
         let record_ty = Value::clone(unfolded.as_ref().unwrap_or(&inferred.ty));
         let Form::RecordType(telescope) = &record_ty.form else {
@@ -1935,115 +1627,8 @@ impl Elaborator {
         Ok(Term::bind(here, Arc::clone(field), ty_term, projected, body))
     }
 
-    /// `Id A x y ⇒ Type l`.
-    fn identity(&mut self, scope: &Scope, here: Origin, ty: &Raw, left: &Raw, right: &Raw) -> Result<Typed, ElabError> {
-        let (ty_term, level) = self.check_type(scope, ty)?;
-        let ty_value = scope.eval(&mut self.meter, &ty_term)?;
-        Ok(Typed {
-            term: Term::identity(
-                here,
-                ty_term,
-                self.check(scope, left, &ty_value)?,
-                self.check(scope, right, &ty_value)?,
-            ),
-            ty: Value::new(here, Form::Universe(level)),
-        })
-    }
 
-    /// `J A x P p y e ⇒ P y e`.
-    ///
-    /// The motive is *inferred* and then taken apart, rather than checked
-    /// against a type built here. Building `(y : A) → Id A x y → Type l'` would
-    /// need an `l'` nothing has written and this crate cannot yet infer (see the
-    /// module note on levels); taking the inferred type apart needs no such
-    /// number, and each premise it fails is a refusal that names where.
-    fn elimination(&mut self, scope: &Scope, here: Origin, parts: [&Raw; 6]) -> Result<Typed, ElabError> {
-        let [ty, from, motive, base, to, proof] = parts;
-        let (ty_term, _) = self.check_type(scope, ty)?;
-        let ty_value = scope.eval(&mut self.meter, &ty_term)?;
 
-        let from_term = self.check(scope, from, &ty_value)?;
-        let from_value = scope.eval(&mut self.meter, &from_term)?;
-
-        let motive_inferred = self.infer(scope, motive)?;
-        let motive_inferred = self.inserted(scope, motive_inferred)?;
-        let motive_value = scope.eval(&mut self.meter, &motive_inferred.term)?;
-        self.motive_shape(scope, motive.origin(), &motive_inferred.ty, &ty_value, &from_value)?;
-
-        let refl_from = Value::new(from.origin(), Form::Refl(Arc::new(from_value.clone())));
-        let at_from = apply(&mut self.meter, here, motive_value.clone(), from_value.clone())?;
-        let base_ty = apply(&mut self.meter, here, at_from, refl_from)?;
-        let base_term = self.check(scope, base, &base_ty)?;
-
-        let to_term = self.check(scope, to, &ty_value)?;
-        let to_value = scope.eval(&mut self.meter, &to_term)?;
-
-        let proof_ty = Value::new(
-            here,
-            Form::Id {
-                ty: Arc::new(ty_value),
-                left: Arc::new(from_value),
-                right: Arc::new(to_value.clone()),
-            },
-        );
-        let proof_term = self.check(scope, proof, &proof_ty)?;
-        let proof_value = scope.eval(&mut self.meter, &proof_term)?;
-
-        let at_to = apply(&mut self.meter, here, motive_value, to_value)?;
-        Ok(Typed {
-            ty: apply(&mut self.meter, here, at_to, proof_value)?,
-            term: Term::jay(
-                here,
-                ty_term,
-                from_term,
-                motive_inferred.term,
-                base_term,
-                to_term,
-                proof_term,
-            ),
-        })
-    }
-
-    /// Require that `motive_ty` is `(y : at) → Id at from y → Type l'`.
-    fn motive_shape(
-        &mut self,
-        scope: &Scope,
-        at: Origin,
-        motive_ty: &Value,
-        subject: &Value,
-        from: &Value,
-    ) -> Result<(), ElabError> {
-        let (endpoint_domain, endpoint_codomain) = self.function_parts(scope, at, motive_ty)?;
-        self.unifier
-            .unify_types(&mut self.meter, scope.depth(), at, subject, &endpoint_domain)?;
-        let endpoint = scope.fresh_var(at, Arc::new(Value::clone(subject)));
-        let under = scope.assume(None, at, Arc::new(Value::clone(subject)));
-        let after_endpoint = apply_closure(&mut self.meter, &endpoint_codomain, endpoint.clone())?;
-        let (proof_domain, proof_codomain) = self.function_parts(&under, at, &after_endpoint)?;
-        let expected_proof = Value::new(
-            at,
-            Form::Id {
-                ty: Arc::new(Value::clone(subject)),
-                left: Arc::new(Value::clone(from)),
-                right: Arc::new(endpoint),
-            },
-        );
-        self.unifier
-            .unify_types(&mut self.meter, under.depth(), at, &expected_proof, &proof_domain)?;
-        let witness = under.fresh_var(at, Arc::new(proof_domain));
-        let inside = under.assume(None, at, Arc::new(expected_proof));
-        let result = apply_closure(&mut self.meter, &proof_codomain, witness)?;
-        let unfolded = opened(&mut self.meter, &result)?;
-        let result = unfolded.as_ref().unwrap_or(&result);
-        let Form::Universe(_) = result.form else {
-            return Err(Refusal::NotAType {
-                at,
-                ty: inside.quote_type(&mut self.meter, result)?,
-            }
-            .into());
-        };
-        Ok(())
-    }
 
     /// Take a Π type apart, refusing what is not one.
     fn function_parts(&mut self, scope: &Scope, at: Origin, ty: &Value) -> Result<(Value, Closure), ElabError> {
@@ -2064,7 +1649,6 @@ impl Elaborator {
     /// Elaborate a term standing in type position, answering its universe.
     pub(crate) fn check_type(&mut self, scope: &Scope, raw: &Raw) -> Result<(Term, Level), ElabError> {
         let inferred = self.infer(scope, raw)?;
-        let inferred = self.inserted(scope, inferred)?;
         let unfolded = opened(&mut self.meter, &inferred.ty)?;
         let ty = unfolded.as_ref().unwrap_or(&inferred.ty);
         let Form::Universe(level) = &ty.form else {
@@ -2074,7 +1658,7 @@ impl Elaborator {
             }
             .into());
         };
-        Ok((inferred.term, level.resolved()))
+        Ok((inferred.term, *level))
     }
 
     /// Elaborate a `let`'s definition and answer the scope its body is read in.
@@ -2093,8 +1677,11 @@ impl Elaborator {
                 (ty_term, ty_value, value_term)
             }
             None => {
+                // No insertion: the binder keeps the inferred Π as it stands,
+                // and a use of the name instantiates it through the
+                // application walk — §2.1's "quantified at the declaration,
+                // solved at the use".
                 let inferred = self.infer(scope, value)?;
-                let inferred = self.inserted(scope, inferred)?;
                 let ty_term = scope.quote_type(&mut self.meter, &inferred.ty)?;
                 (ty_term, inferred.ty, inferred.term)
             }
@@ -2141,58 +1728,6 @@ impl Elaborator {
         self.unifier
             .unify_types(&mut self.meter, scope.depth(), at, left, right)
     }
-
-    /// A new metavariable, written applied to every binder in scope.
-    pub(crate) fn fresh_meta(
-        &mut self,
-        scope: &Scope,
-        origin: Origin,
-        source: MetaSource,
-        ty: &Value,
-    ) -> Result<Term, ElabError> {
-        self.meter.metavariable("elaboration")?;
-        let stated = scope.quote_type(&mut self.meter, ty)?;
-        // Closed, and applied to the identity spine of its context: §2.1's scope
-        // condition then holds by construction rather than by a check.
-        let closed = scope.close(&mut self.meter, origin, stated)?;
-        let closed_ty = eval(&mut self.meter, &Env::EMPTY, &closed)?;
-        let id = u32::try_from(self.metas.len()).unwrap_or(u32::MAX);
-        let meta = Meta::new(id, origin, source, scope.arity(), closed_ty);
-        self.metas.push(meta.clone());
-        Ok(scope.spine(origin, Term::meta(origin, meta)))
-    }
-}
-
-/// One term §1.3 could not read yet, and the hole standing where it goes.
-///
-/// [`Postponed`]'s counterpart, field for field: the scope it was written in,
-/// what it was, the type it is waiting on, and the metavariable the surrounding
-/// term was handed in the meantime. See [`Elaborator::delay`].
-struct Delayed {
-    scope: Scope,
-    raw: Raw,
-    /// The expected type as it stood when the term was reached. It is re-forced
-    /// on every retry rather than stored resolved, because what the retry is
-    /// waiting for is precisely a solution this value reaches through.
-    ty: Value,
-    hole: Term,
-}
-
-/// The name at the head of `raw`, when `raw` is a constructor no binder or
-/// declaration answers to.
-///
-/// The condition [`Elaborator::unresolved`] tests on its way to
-/// [`Refusal::BareConstructor`], lifted out so that the decision to wait and the
-/// refusal for having waited in vain read the same source.
-fn bare_case(scope: &Scope, raw: &Raw) -> Option<Name> {
-    let (head, _) = written_spine(raw)?;
-    let RawShape::Var(name) = head.shape() else {
-        return None;
-    };
-    if scope.declared(name).is_some() || scope.cx().cases(name).is_empty() {
-        return None;
-    }
-    Some(Arc::clone(name))
 }
 
 /// A `let`'s definition, and the scope its body is read in.
@@ -2248,250 +1783,6 @@ fn overlapping(updates: &[RawUpdate]) -> Result<(), ElabError> {
         }
     }
     Ok(())
-}
-
-/// Replace every metavariable in an elaborated term by what it stands for.
-///
-/// A metavariable is written applied to the identity spine of its creation
-/// context, and this reads that whole application back at the type the
-/// metavariable was created at. Doing it in the semantic domain rather than on
-/// syntax is what keeps the crate's promise that reduction never happens on
-/// terms: the β-redex a naive substitution would leave behind is contracted by
-/// evaluation, and quotation writes the result at `depth` so the indices come
-/// out right wherever the spine stood.
-///
-/// The spine's argument *values* are read off the metavariable's own closed
-/// type — `(x₀ : A₀) → … → T` — rather than from the term, because that
-/// telescope is exactly the context the hole was made in. That is sound because
-/// the spine is the identity one by construction; a spine that is not fully
-/// applied is [`Malformed::UnderappliedMeta`], reported rather than assumed
-/// away.
-///
-/// # Errors
-///
-/// [`CoreError::Exhausted`] at §4.1's limits, or [`CoreError::Malformed`] for a
-/// term the elaborator could not have built.
-fn zonk(meter: &mut Meter, depth: u32, term: &Term) -> Result<Term, CoreError> {
-    meter.nested("zonking", |meter| {
-        meter.quoted_node("zonking")?;
-        let here = term.origin();
-        let under = depth.saturating_add(1);
-        if let Some(spine) = MetaSpine::of(term) {
-            return spine.read_back(meter, depth);
-        }
-        let shape = match term.shape() {
-            // Reached only for a metavariable that is not at the head of an
-            // application, which [`MetaSpine::of`] has already handled.
-            Shape::Meta(meta) => return Err(Malformed::UnderappliedMeta(meta.id()).into()),
-            Shape::Var(index) => Shape::Var(*index),
-            // A recursor's motive universe is the one level a constant carries,
-            // and it is resolved by [`Constant`]'s own equality rather than here:
-            // the level lives inside the group, which zonking does not rebuild.
-            Shape::Const(constant) => Shape::Const(constant.clone()),
-            // A definition holds values, not terms, so there is no
-            // metavariable inside one for zonking to reach — see
-            // [`crate::program`].
-            Shape::Def(def) => Shape::Def(def.clone()),
-            // Closed and holding no metavariable, because a host registers them
-            // before elaboration begins and nothing here rebuilds one.
-            Shape::Base(base) => Shape::Base(base.clone()),
-            Shape::Builtin(builtin) => Shape::Builtin(builtin.clone()),
-            Shape::Lit(literal) => Shape::Lit(literal.clone()),
-            Shape::Numeral(numeral) => Shape::Numeral(numeral.clone()),
-            Shape::Universe(level) => Shape::Universe(level.resolved()),
-            Shape::Pi {
-                plicity,
-                name,
-                domain,
-                codomain,
-            } => Shape::Pi {
-                plicity: plicity.clone(),
-                name: Arc::clone(name),
-                domain: zonk(meter, depth, domain)?,
-                codomain: zonk(meter, under, codomain)?,
-            },
-            Shape::Lam { name, body } => Shape::Lam {
-                name: Arc::clone(name),
-                body: zonk(meter, under, body)?,
-            },
-            Shape::App { function, argument } => Shape::App {
-                function: zonk(meter, depth, function)?,
-                argument: zonk(meter, depth, argument)?,
-            },
-            // A record type is a telescope, so field `i` is read under `i` more
-            // binders; a record value binds nothing.
-            Shape::RecordType(fields) => Shape::RecordType(zonk_telescope(meter, depth, fields)?),
-            Shape::Record(fields) => Shape::Record(zonk_fields(meter, depth, fields)?),
-            Shape::Project { record, field } => Shape::Project {
-                record: zonk(meter, depth, record)?,
-                field: Arc::clone(field),
-            },
-            Shape::Id { ty, left, right } => Shape::Id {
-                ty: zonk(meter, depth, ty)?,
-                left: zonk(meter, depth, left)?,
-                right: zonk(meter, depth, right)?,
-            },
-            Shape::Refl(value) => Shape::Refl(zonk(meter, depth, value)?),
-            Shape::J {
-                ty,
-                from,
-                motive,
-                base,
-                to,
-                proof,
-            } => Shape::J {
-                ty: zonk(meter, depth, ty)?,
-                from: zonk(meter, depth, from)?,
-                motive: zonk(meter, depth, motive)?,
-                base: zonk(meter, depth, base)?,
-                to: zonk(meter, depth, to)?,
-                proof: zonk(meter, depth, proof)?,
-            },
-            Shape::Let { name, ty, value, body } => Shape::Let {
-                name: Arc::clone(name),
-                ty: zonk(meter, depth, ty)?,
-                value: zonk(meter, depth, value)?,
-                body: zonk(meter, under, body)?,
-            },
-        };
-        Ok(Term::new(here, shape))
-    })
-}
-
-/// A metavariable at the head of an application, and how many arguments it is
-/// under.
-struct MetaSpine<'a> {
-    origin: Origin,
-    meta: &'a Meta,
-    applied: u32,
-    /// Arguments beyond the metavariable's own arity, outermost first. Empty in
-    /// every term the elaborator builds; kept so that a metavariable of function
-    /// type applied further still reads back.
-    extra: Vec<&'a Term>,
-}
-
-impl<'a> MetaSpine<'a> {
-    /// The metavariable spine `term` is, if it is one.
-    fn of(term: &'a Term) -> Option<Self> {
-        let mut arguments = Vec::new();
-        let mut head = term;
-        while let Shape::App { function, argument } = head.shape() {
-            arguments.push(argument);
-            head = function;
-        }
-        let Shape::Meta(meta) = head.shape() else {
-            return None;
-        };
-        arguments.reverse();
-        let applied = u32::try_from(arguments.len()).unwrap_or(u32::MAX);
-        let taken = usize::try_from(meta.arity().min(applied)).unwrap_or(usize::MAX);
-        Some(Self {
-            origin: term.origin(),
-            meta,
-            applied,
-            extra: arguments.split_off(taken.min(arguments.len())),
-        })
-    }
-
-    /// The term this spine stands for, at `depth` binders.
-    fn read_back(self, meter: &mut Meter, depth: u32) -> Result<Term, CoreError> {
-        let arity = self.meta.arity();
-        if self.applied < arity {
-            return Err(Malformed::UnderappliedMeta(self.meta.id()).into());
-        }
-        let Some(solution) = self.meta.solution() else {
-            return Err(Malformed::UnderappliedMeta(self.meta.id()).into());
-        };
-        let mut ty = self.meta.ty().clone();
-        let mut value = solution.clone();
-        for level in 0..arity {
-            let unfolded = crate::eval::opened(meter, &ty)?;
-            let forced = unfolded.as_ref().unwrap_or(&ty);
-            let Form::Pi { domain, codomain, .. } = &forced.form else {
-                return Err(Malformed::NotAFunction.into());
-            };
-            let variable = Value::var(self.origin, DbLevel(level), Arc::clone(domain));
-            let codomain = codomain.clone();
-            value = apply(meter, self.origin, value, variable.clone())?;
-            ty = apply_closure(meter, &codomain, variable)?;
-        }
-        let read = quote(meter, Depth(depth), crate::quote::Mode::Keep, &ty, &value)?.at(self.origin);
-        let mut read = stated(meter, depth, self.origin, self.meta.source(), &ty, read)?;
-        for argument in self.extra {
-            read = Term::app(self.origin, read, zonk(meter, depth, argument)?);
-        }
-        Ok(read)
-    }
-}
-
-/// A read-back solution with the type it stood at **written down**, whenever the
-/// normal form it read back to is one §2 gives no inference rule.
-///
-/// A solution is read back as a normal form, and a normal form at a Π is η-long
-/// and at a record type is a literal. Both are introduction forms, so both are
-/// [`Refusal::Uninferable`] to [`crate::well_typed`] — and a hole standing where
-/// a method goes is eliminated by whatever the author applied or projected it
-/// with, which makes the elimination-of-an-introduction that
-/// [`crate::recheck`]'s module doc says elaboration does not produce. `Eq.equal`
-/// at `Nat` read back as `Nat.Zero` and inferred; `Add.add` at `Nat` reads back
-/// as `λx. λy. x`, and `Add.add(Nat.Zero, Nat.Zero)` is then a β-redex nothing
-/// downstream can re-check.
-///
-/// §1's `let x : A = e in b` is the core's annotation form and §2 gives it a
-/// rule, so writing the type there is not a new rule and not a change to what
-/// the term means: δ makes `let x : A = e in x` and `e` one term. The elaborator
-/// knew `A` all along — this is the one place that knowledge was being dropped.
-///
-/// Every other normal form — a constant, a variable, a neutral spine, a
-/// universe, a Π, a record *type*, `refl` — infers on its own, so nothing is
-/// written for it and the ordinary implicit argument reads back exactly as
-/// before.
-fn stated(
-    meter: &mut Meter,
-    depth: u32,
-    at: Origin,
-    source: MetaSource,
-    ty: &Value,
-    read: Term,
-) -> Result<Term, CoreError> {
-    if !matches!(read.shape(), Shape::Lam { .. } | Shape::Record(_)) {
-        return Ok(read);
-    }
-    let name = match source {
-        MetaSource::Dictionary => "method",
-        MetaSource::ImplicitArgument => "implicit",
-        MetaSource::FamilyParameter => "parameter",
-        MetaSource::PostponedTerm => "postponed",
-        MetaSource::BinderType | MetaSource::UniverseLevel => "solved",
-    };
-    let stated = quote_type(meter, Depth(depth), crate::quote::Mode::Keep, ty)?.at(at);
-    Ok(Term::bind(at, name, stated, read, Term::var(at, Index(0))))
-}
-
-fn zonk_fields(meter: &mut Meter, depth: u32, fields: &[Field]) -> Result<Arc<[Field]>, CoreError> {
-    fields
-        .iter()
-        .map(|field| {
-            Ok(Field {
-                name: Arc::clone(&field.name),
-                term: zonk(meter, depth, &field.term)?,
-            })
-        })
-        .collect()
-}
-
-fn zonk_telescope(meter: &mut Meter, depth: u32, fields: &[Field]) -> Result<Arc<[Field]>, CoreError> {
-    fields
-        .iter()
-        .enumerate()
-        .map(|(position, field)| {
-            let under = depth.saturating_add(u32::try_from(position).unwrap_or(u32::MAX));
-            Ok(Field {
-                name: Arc::clone(&field.name),
-                term: zonk(meter, under, &field.term)?,
-            })
-        })
-        .collect()
 }
 
 /// The parameters a call to `head`, whose type is `ty`, must supply — in the

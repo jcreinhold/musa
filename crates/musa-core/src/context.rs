@@ -204,20 +204,9 @@ impl Cx {
     /// Registered once by the caller and then immutable, which is what keeps a
     /// δ-rule's answer independent of when it was asked — see
     /// [`Registry`](crate::Registry).
-    ///
-    /// The registry's `Storable` instances arrive with it, for the reason
-    /// [`Self::declaring`] gives one shape over: §1.2's instances are generated
-    /// and never written, and a base type's guarantee is made where the base
-    /// type is registered. A second call replaces the first registry's
-    /// instances by key rather than clashing with them, because coherence is
-    /// decided at an `impl` and these are not one.
     #[must_use]
     pub fn with_externs(&self, externs: Arc<Registry>) -> Self {
-        let generated = crate::storable::registered(externs.bases());
         Self {
-            classes: (!generated.is_empty())
-                .then(|| Arc::new(self.classes().declaring_instances(&generated)))
-                .or_else(|| self.classes.clone()),
             externs: Some(externs),
             ..self.clone()
         }
@@ -256,17 +245,8 @@ impl Cx {
     /// scope.
     #[must_use]
     pub fn declaring(&self, group: &Arc<Group>) -> Self {
-        // `02-core-calculus.md` §1.2: the group's `Storable` instances arrive
-        // with the group and by no other route. They are generated here rather
-        // than stored on the [`Group`] because an instance's head *is* the
-        // family — `Constant` holds the group it came from — and a group holding
-        // its own instances would be a cycle of `Arc`s that never frees.
-        let generated = crate::storable::instances(self.classes(), group);
         Self {
             declared: self.declared.push(Arc::clone(group)),
-            classes: (!generated.is_empty())
-                .then(|| Arc::new(self.classes().declaring_instances(&generated)))
-                .or_else(|| self.classes.clone()),
             ..self.clone()
         }
     }

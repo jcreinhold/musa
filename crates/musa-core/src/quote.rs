@@ -59,7 +59,6 @@ use std::sync::Arc;
 use crate::budget::Meter;
 use crate::error::{CoreError, Malformed};
 use crate::eval::{apply, apply_closure, field_type, force, head_type, opened, project};
-use crate::meta::Meta;
 use crate::origin::Origin;
 use crate::term::{DbLevel, Field, Index, Term};
 use crate::value::{DefHead, Elim, Form, Head, Neutral, Telescope, Value};
@@ -98,29 +97,9 @@ pub(crate) enum Mode {
 /// exactly one place, [`Reading::index`], and separating them would put the
 /// depth in every signature twice.
 #[derive(Clone, Copy)]
-struct Reading<'a> {
+struct Reading {
     depth: u32,
     mode: Mode,
-    solving: Option<Solving<'a>>,
-}
-
-/// A metavariable's solution under construction.
-///
-/// §2.1 asks three things of a solution — the **scope check** (it mentions no
-/// variable bound after the metavariable was created), the **occurs check** (it
-/// does not mention the metavariable), and the **index shift** into a context of
-/// `arity` binders — and all three are decided at a leaf of the very walk that
-/// writes the term. They used to be a second walk over the finished term, which
-/// built the whole of it even when the first node already refused.
-#[derive(Clone, Copy)]
-struct Solving<'a> {
-    /// The metavariable being solved. It may not appear in its own solution.
-    meta: &'a Meta,
-    /// The binders the solution abstracts: levels `0..arity` survive the move.
-    arity: u32,
-    /// The depth quotation started at. A variable at or above it was introduced
-    /// by quotation itself, is local to the solution, and never moves.
-    outer: u32,
 }
 
 /// Why reading a value back did not produce a term.
@@ -162,13 +141,12 @@ impl Escape {
     }
 }
 
-impl<'a> Reading<'a> {
+impl<'a> Reading {
     /// A plain quotation: no metavariable to fit the answer into.
     const fn open(depth: Depth, mode: Mode) -> Self {
         Self {
             depth: depth.0,
             mode,
-            solving: None,
         }
     }
 
@@ -176,24 +154,12 @@ impl<'a> Reading<'a> {
     ///
     /// Always [`Mode::Open`]: a solution that named a definition which escapes
     /// the metavariable's context would be unsound, so definitions are
-    /// unfolded and the scope check decides on what they unfold to.
-    const fn solving(depth: Depth, meta: &'a Meta, arity: u32) -> Self {
-        Self {
-            depth: depth.0,
-            mode: Mode::Open,
-            solving: Some(Solving {
-                meta,
-                arity,
-                outer: depth.0,
-            }),
-        }
-    }
 
     /// The value with whatever the head hides seen through: solved
     /// metavariables always, folded definitions in [`Mode::Open`].
     fn seen(&self, meter: &mut Meter, value: &Value) -> Result<Option<Value>, Escape> {
         match self.mode {
-            Mode::Keep => Ok(force(meter, value)?),
+            Mode::Keep => Ok(None),
             Mode::Open => Ok(opened(meter, value)?),
         }
     }
@@ -217,32 +183,9 @@ impl<'a> Reading<'a> {
     /// the binders the solution drops for one from the outer context, which is
     /// also where a variable the solution may not mention is refused.
     fn index(self, level: DbLevel) -> Result<Index, Escape> {
-        let named = |depth: u32| {
-            level
-                .to_index(depth)
-                .ok_or_else(|| Escape::Core(Malformed::EscapedVariable.into()))
-        };
-        let Some(Solving { arity, outer, .. }) = self.solving else {
-            return named(self.depth);
-        };
-        if level.0 >= outer {
-            return named(self.depth);
-        }
-        if level.0 >= arity {
-            return Err(Escape::OutOfScope);
-        }
-        // The solution's context is `arity` binders where the value's was
-        // `outer` of them, and the binders quotation entered since are common to
-        // both.
-        named(self.depth.saturating_sub(outer).saturating_add(arity))
-    }
-
-    /// Refuse if `found` is the metavariable whose solution is being written.
-    fn occurs(self, found: &Meta) -> Result<(), Escape> {
-        match self.solving {
-            Some(Solving { meta, .. }) if meta == found => Err(Escape::OutOfScope),
-            Some(_) | None => Ok(()),
-        }
+        level
+            .to_index(self.depth)
+            .ok_or_else(|| Escape::Core(Malformed::EscapedVariable.into()))
     }
 }
 
@@ -256,39 +199,7 @@ pub(crate) fn quote(meter: &mut Meter, depth: Depth, mode: Mode, ty: &Value, val
     read(meter, Reading::open(depth, mode), ty, value).map_err(Escape::core)
 }
 
-/// Read `value` back as a metavariable's solution, or refuse to.
-///
-/// `ty` is the type both the value and the solution are at, or `None` when the
-/// value is itself a type — the same distinction [`quote`] and [`quote_type`]
-/// draw, asked once here because the caller knows it and quotation does not.
-///
-/// `Ok(None)` is the answer §2.1 calls waiting: the value mentions something the
-/// solution may not, which is a reason to postpone the constraint rather than a
-/// verdict about the program.
-///
-/// # Errors
-///
-/// As [`quote`].
-pub(crate) fn quote_solution(
-    meter: &mut Meter,
-    depth: Depth,
-    ty: Option<&Value>,
-    value: &Value,
-    meta: &Meta,
-) -> Result<Option<Term>, CoreError> {
-    let reading = Reading::solving(depth, meta, meta.arity());
-    let written = match ty {
-        Some(ty) => read(meter, reading, ty, value),
-        None => read_type(meter, reading, value),
-    };
-    match written {
-        Ok(term) => Ok(Some(term)),
-        Err(Escape::OutOfScope) => Ok(None),
-        Err(Escape::Core(error)) => Err(error),
-    }
-}
-
-fn read(meter: &mut Meter, reading: Reading<'_>, ty: &Value, value: &Value) -> Result<Term, Escape> {
+fn read(meter: &mut Meter, reading: Reading, ty: &Value, value: &Value) -> Result<Term, Escape> {
     meter.nested("quotation", |meter| {
         meter.quoted_node("quotation")?;
         // `as_ref().unwrap_or` rather than `unwrap_or_else(clone)`: the common
@@ -333,18 +244,6 @@ fn read(meter: &mut Meter, reading: Reading<'_>, ty: &Value, value: &Value) -> R
                 Ok(Term::new(here, crate::term::Shape::Record(fields.into())))
             }
             Form::Universe(_) => read_type(meter, reading, value),
-            Form::Id { ty: at, .. } => match &value.form {
-                Form::Refl(witness) => Ok(Term::refl(here, read(meter, reading, at, witness)?)),
-                Form::Neutral(neutral) => read_neutral(meter, reading, neutral),
-                Form::Universe(_)
-                | Form::Pi { .. }
-                | Form::Lam(_)
-                | Form::RecordType(_)
-                | Form::Record(_)
-                | Form::Lit(_)
-                | Form::Numeral(_)
-                | Form::Id { .. } => Err(Malformed::NotAnIdentity.into()),
-            },
             // A neutral type has no η, so whatever inhabits it is neutral too —
             // with one exception, and it is the one §5.8 adds. A base type
             // evaluates to a spine headed by [`Head::Base`], so *every* literal
@@ -360,11 +259,9 @@ fn read(meter: &mut Meter, reading: Reading<'_>, ty: &Value, value: &Value) -> R
                 | Form::Pi { .. }
                 | Form::Lam(_)
                 | Form::RecordType(_)
-                | Form::Record(_)
-                | Form::Id { .. }
-                | Form::Refl(_) => read_type(meter, reading, value),
+                | Form::Record(_) => read_type(meter, reading, value),
             },
-            Form::Lam(_) | Form::Record(_) | Form::Refl(_) | Form::Lit(_) | Form::Numeral(_) => {
+            Form::Lam(_) | Form::Record(_) | Form::Lit(_) | Form::Numeral(_) => {
                 Err(Malformed::NotAType.into())
             }
         }
@@ -381,14 +278,14 @@ pub(crate) fn quote_type(meter: &mut Meter, depth: Depth, mode: Mode, value: &Va
     read_type(meter, Reading::open(depth, mode), value).map_err(Escape::core)
 }
 
-fn read_type(meter: &mut Meter, reading: Reading<'_>, value: &Value) -> Result<Term, Escape> {
+fn read_type(meter: &mut Meter, reading: Reading, value: &Value) -> Result<Term, Escape> {
     meter.nested("quotation", |meter| {
         meter.quoted_node("quotation")?;
         let unfolded = reading.seen(meter, value)?;
         let value = unfolded.as_ref().unwrap_or(value);
         let here = value.origin;
         match &value.form {
-            Form::Universe(level) => Ok(Term::universe(here, level.resolved())),
+            Form::Universe(level) => Ok(Term::universe(here, *level)),
             Form::Pi {
                 plicity,
                 name,
@@ -406,14 +303,8 @@ fn read_type(meter: &mut Meter, reading: Reading<'_>, value: &Value) -> Result<T
                 ))
             }
             Form::RecordType(telescope) => read_telescope(meter, here, reading, telescope),
-            Form::Id { ty, left, right } => Ok(Term::identity(
-                here,
-                read_type(meter, reading, ty)?,
-                read(meter, reading, ty, left)?,
-                read(meter, reading, ty, right)?,
-            )),
             Form::Neutral(neutral) => read_neutral(meter, reading, neutral),
-            Form::Lam(_) | Form::Record(_) | Form::Refl(_) | Form::Lit(_) | Form::Numeral(_) => {
+            Form::Lam(_) | Form::Record(_) | Form::Lit(_) | Form::Numeral(_) => {
                 Err(Malformed::NotAType.into())
             }
         }
@@ -428,7 +319,7 @@ fn read_type(meter: &mut Meter, reading: Reading<'_>, value: &Value) -> Result<T
 fn read_telescope(
     meter: &mut Meter,
     here: Origin,
-    reading: Reading<'_>,
+    reading: Reading,
     telescope: &Telescope,
 ) -> Result<Term, Escape> {
     let mut env = telescope.env.clone();
@@ -451,7 +342,7 @@ fn read_telescope(
 /// Each argument is quoted at the type the spine gives it, which is why
 /// [`head_type`] exists: an argument quoted untyped would not be η-expanded,
 /// and `f g` would read back differently from `f (λx. g x)`.
-fn read_neutral(meter: &mut Meter, reading: Reading<'_>, neutral: &Neutral) -> Result<Term, Escape> {
+fn read_neutral(meter: &mut Meter, reading: Reading, neutral: &Neutral) -> Result<Term, Escape> {
     meter.nested("quotation", |meter| {
         meter.quoted_node("quotation")?;
         let here = neutral.origin;
@@ -466,12 +357,9 @@ fn read_neutral(meter: &mut Meter, reading: Reading<'_>, neutral: &Neutral) -> R
                 DefHead::Local(level) => Term::var(here, reading.index(*level)?),
                 DefHead::Global(def) => def.term(here),
             },
-            // Reached only unsolved: [`quote`] forces first, and a spine whose
-            // head is solved forces whole.
-            Head::Meta(meta) => {
-                reading.occurs(meta)?;
-                Term::meta(here, meta.clone())
-            }
+            // Reached only unsolved: a solved hole is forced before quotation,
+            // and a spine whose head is solved forces whole.
+            Head::Hole(hole) => Term::hole(here, hole.clone()),
             Head::Const(constant) => constant.term(here),
             // Both rigid, both closed, and both already their own normal form:
             // a base type has no eliminator and a builtin whose arguments were
@@ -495,7 +383,7 @@ fn read_neutral(meter: &mut Meter, reading: Reading<'_>, neutral: &Neutral) -> R
 /// One elimination of an already-quoted prefix, read back.
 fn read_elimination(
     meter: &mut Meter,
-    reading: Reading<'_>,
+    reading: Reading,
     prefix: &Neutral,
     quoted: Term,
     elimination: &Elim,
@@ -508,8 +396,6 @@ fn read_elimination(
                 | Form::Lam(_)
                 | Form::RecordType(_)
                 | Form::Record(_)
-                | Form::Id { .. }
-                | Form::Refl(_)
                 | Form::Lit(_)
                 | Form::Numeral(_)
                 | Form::Neutral(_) => return Err(Malformed::NotAFunction.into()),
@@ -517,63 +403,6 @@ fn read_elimination(
             Ok(Term::app(*origin, quoted, read(meter, reading, &domain, argument)?))
         }
         Elim::Project { origin, field } => Ok(Term::project(*origin, quoted, Arc::clone(field))),
-        Elim::J {
-            origin,
-            ty,
-            from,
-            motive,
-            base,
-            to,
-        } => {
-            let base_type = {
-                let at_from = apply(meter, *origin, Value::clone(motive), Value::clone(from))?;
-                let reflexive = Value::new(from.origin, Form::Refl(Arc::clone(from)));
-                apply(meter, *origin, at_from, reflexive)?
-            };
-            Ok(Term::jay(
-                *origin,
-                read_type(meter, reading, ty)?,
-                read(meter, reading, ty, from)?,
-                read_motive(meter, reading, ty, from, motive)?,
-                read(meter, reading, &base_type, base)?,
-                read(meter, reading, ty, to)?,
-                quoted,
-            ))
-        }
     }
 }
 
-/// Read `J`'s motive back at the shape `(y : A) → Id A x y → Type l`.
-///
-/// The motive's Π type is never built as a value, because `l` is not recorded
-/// anywhere and building it would mean either storing a level nobody needs or
-/// inventing one. η-expanding at the shape gives the same answer: apply the
-/// motive to two fresh variables whose types *are* known, and quote the result
-/// as a type.
-fn read_motive(
-    meter: &mut Meter,
-    reading: Reading<'_>,
-    ty: &Arc<Value>,
-    from: &Arc<Value>,
-    motive: &Value,
-) -> Result<Term, Escape> {
-    let here = motive.origin;
-    let endpoint = Value::var(Origin::UNKNOWN, reading.fresh(), Arc::clone(ty));
-    let under_endpoint = reading.under_binder();
-    let identity = Arc::new(Value::new(
-        here,
-        Form::Id {
-            ty: Arc::clone(ty),
-            left: Arc::clone(from),
-            right: Arc::new(endpoint.clone()),
-        },
-    ));
-    let witness = Value::var(Origin::UNKNOWN, under_endpoint.fresh(), identity);
-    let at_endpoint = apply(meter, here, motive.clone(), endpoint)?;
-    let body = apply(meter, here, at_endpoint, witness)?;
-    Ok(Term::lam(
-        here,
-        "y",
-        Term::lam(here, "e", read_type(meter, under_endpoint.under_binder(), &body)?),
-    ))
-}

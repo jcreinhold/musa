@@ -196,9 +196,6 @@ pub struct Declared {
     /// Its indices, a telescope read under the declaration context and the
     /// group's parameters.
     pub(crate) indices: Arc<[Binder]>,
-    /// The universe it lands in: the join of its constructors' field levels,
-    /// with recursive occurrences contributing nothing.
-    pub(crate) level: Level,
     /// Its constructors, in declaration order.
     pub(crate) constructors: Arc<[Constructor]>,
     /// Which of them make it count, when its shape says it does — see
@@ -361,7 +358,7 @@ impl PartialEq for Constant {
             return false;
         }
         match (&self.role, &other.role) {
-            (Role::Recursor(one), Role::Recursor(two)) => one.resolved() == two.resolved(),
+            (Role::Recursor(one), Role::Recursor(two)) => one == two,
             (Role::Family, Role::Family) | (Role::Constructor(_), Role::Constructor(_)) => true,
             (Role::Family | Role::Constructor(_) | Role::Recursor(_), _) => false,
         }
@@ -828,8 +825,9 @@ impl Constant {
         };
         builder.extend(meter, &self.group.params)?;
         builder.extend(meter, &declared.indices)?;
-        let level = declared.level.clone();
-        Ok(builder.finish(Term::universe(self.group.origin, level)))
+        // §1: a data family stores small types, so it lands at `Type 0`; the
+        // declaration check is what makes that a theorem rather than a hope.
+        Ok(builder.finish(Term::universe(self.group.origin, Level::ZERO)))
     }
 
     /// `(p⃗ : Params) → (a⃗ : Fields) → N p⃗ idx⃗`.
@@ -1444,8 +1442,6 @@ fn ready(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Reduction>, Core
         | Form::Lam(_)
         | Form::RecordType(_)
         | Form::Record(_)
-        | Form::Id { .. }
-        | Form::Refl(_)
         | Form::Lit(_) => return Ok(None),
     };
     let motives = usize::try_from(group.arity()).unwrap_or(usize::MAX);
@@ -1636,6 +1632,7 @@ fn saturated(constant: &Constant, applied: usize) -> Option<(Name, usize)> {
 pub fn canonical(term: &Term) -> Option<Datum> {
     let (head, arguments) = applied_spine(term);
     match *head.shape() {
+        Shape::Hole(_) => None,
         Shape::Lit(ref literal) if arguments.is_empty() => Some(Datum::Lit(literal.clone())),
         Shape::Numeral(ref numeral) if arguments.is_empty() => counted(numeral),
         Shape::Const(ref constant) => {
@@ -1667,10 +1664,6 @@ pub fn canonical(term: &Term) -> Option<Datum> {
         | Shape::RecordType(_)
         | Shape::Record(_)
         | Shape::Project { .. }
-        | Shape::Id { .. }
-        | Shape::Refl(_)
-        | Shape::J { .. }
-        | Shape::Meta(_)
         | Shape::Let { .. } => None,
     }
 }

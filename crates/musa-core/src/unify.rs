@@ -36,10 +36,9 @@ use std::sync::Arc;
 
 use crate::budget::Meter;
 use crate::error::CoreError;
-use crate::eval::{apply, apply_closure, eval, field_type, force, head_type, project};
-use crate::meta::Meta;
+use crate::eval::{apply, apply_closure, eval, field_type, force, head_type, opened, project};
 use crate::origin::Origin;
-use crate::quote::{Depth, Mode, quote, quote_solution, quote_type};
+use crate::quote::{Depth, Mode, quote, quote_type};
 use crate::refuse::{ElabError, Mismatch, PathStep, Refusal};
 use crate::term::{DbLevel, Field, Term};
 use crate::value::{Closure, DefHead, Elim, Env, Form, Head, Neutral, Telescope, Value};
@@ -81,64 +80,45 @@ impl<'a> At<'a> {
 }
 
 /// A constraint that could not be decided yet.
-struct Constraint {
-    depth: u32,
-    /// The type both sides are at, or `None` when both are types.
-    ty: Option<Value>,
-    left: Value,
-    right: Value,
-    at: Origin,
-}
-
-/// The unifier's state: the constraints it has put aside, and whether any pass
-/// has made progress.
+/// The conversion checker's state: which variables a matching pass may solve,
+/// and what it has solved them to.
 ///
-/// Elaboration-scoped rather than global because §2.1 reports a metavariable
-/// unsolved "at the end of the declaration it was created in", so the list has
-/// to end when that declaration does.
+/// Empty in the ordinary case, because conversion is a *rigid* question — two
+/// values are equal or they are not. The one non-rigid question the language
+/// still asks is `02-core-calculus.md` §2.1's: the type parameters of a callee,
+/// which the written arguments determine. That question is first-order
+/// matching, and it is this same engine with the parameter variables listed as
+/// assignable — one algorithm with two modes, which is what keeps "the
+/// conversion checker" one thing rather than two to keep in agreement.
 #[derive(Default)]
 pub(crate) struct Unifier {
-    postponed: Vec<Constraint>,
-    /// How many metavariables have been solved, ever.
-    ///
-    /// The retry loop's progress measure. Counting solutions rather than
-    /// watching the queue shrink is what makes the loop's termination argument
-    /// hold: solutions are write-once (§2.1) and metavariables are finite, so
-    /// this can rise only finitely often.
-    solved: u64,
     /// Whether this unifier answers a question rather than making one true.
     ///
-    /// Set by [`Self::deciding`], and read in exactly one place. `false` is the
-    /// elaborating unifier, which is what `Default` should give.
+    /// Set by [`Self::deciding`], and read in exactly one place: the
+    /// assignment rule, which a deciding pass never fires — a hole is an
+    /// opaque head there, compared by identity like any other.
     deciding: bool,
 }
 
 impl Unifier {
     /// A unifier that decides §3's conversion instead of solving for it.
     ///
-    /// Definitional equality *is* unification's rigid fragment — the same
-    /// type-directed walk with η and early exit, over a term language where a
-    /// metavariable is an opaque head rather than an unknown to determine. So
+    /// Definitional equality *is* the rigid fragment of the one algorithm —
+    /// the same type-directed walk with η and early exit, over values whose
+    /// holes are opaque heads rather than unknowns to determine. So
     /// [`crate::convertible`] is this constructor and not a second procedure:
-    /// normalizing both sides and comparing is the same answer computed the
-    /// most expensive way available, and two implementations of one question
-    /// are two things to keep in agreement.
-    ///
-    /// Nothing is postponed in this mode, because postponing is what a solver
-    /// does when it does not yet know: a decision procedure that cannot solve
-    /// has already learned everything it will.
+    /// two implementations of one question are two things to keep in
+    /// agreement.
     pub(crate) fn deciding() -> Self {
-        Self {
-            deciding: true,
-            ..Self::default()
-        }
+        Self { deciding: true }
     }
 
-    /// Make `left` and `right` equal as types, solving what that requires.
+    /// Make `left` and `right` the same type.
     ///
     /// # Errors
     ///
-    /// [`Refusal::Mismatch`] when they cannot be made equal, or exhaustion.
+    /// [`Refusal::Mismatch`] when they are not, or a [`CoreError`] the walk
+    /// spent itself into.
     pub(crate) fn unify_types(
         &mut self,
         meter: &mut Meter,
@@ -148,14 +128,13 @@ impl Unifier {
         right: &Value,
     ) -> Result<(), ElabError> {
         self.step(meter, depth, At::Type, at, left, right)
-            .map_err(|failure| failure.into_error(at).rooted(At::Type, meter, depth, left, right))?;
-        self.retry_postponed(meter)
+            .map_err(|failure| failure.into_error(at).rooted(At::Type, meter, depth, left, right))
     }
 
     /// Make `left` and `right` equal as inhabitants of `ty`.
     ///
     /// Separate from [`Self::unify_types`] because quotation is type-directed
-    /// (§3): a solution read back at the wrong sort would not be η-long, and
+    /// (§3): a mismatch is read back at the sort the pair was compared at, and
     /// there is no type to state "a type" at without inventing a level.
     ///
     /// # Errors
@@ -171,51 +150,12 @@ impl Unifier {
         right: &Value,
     ) -> Result<(), ElabError> {
         self.step(meter, depth, At::Term(ty), at, left, right)
-            .map_err(|failure| failure.into_error(at).rooted(At::Term(ty), meter, depth, left, right))?;
-        self.retry_postponed(meter)
+            .map_err(|failure| failure.into_error(at).rooted(At::Term(ty), meter, depth, left, right))
     }
 
-    /// The term a still-blocked constraint came from, if one is left.
-    ///
-    /// What a diagnostic names when it reports a metavariable it could not
-    /// determine (§2.1): "what constraint was still blocked".
-    pub(crate) fn blocked(&self) -> Option<Origin> {
-        self.postponed.first().map(|constraint| constraint.at)
-    }
-
-    /// Retry every postponed constraint until a pass solves nothing new.
-    ///
-    /// Terminating for a reason worth stating: a pass either solves at least one
-    /// metavariable or changes nothing at all, and a metavariable cannot be
-    /// solved twice.
-    fn retry_postponed(&mut self, meter: &mut Meter) -> Result<(), ElabError> {
-        while !self.postponed.is_empty() {
-            meter.retry("unification")?;
-            let before = self.solved;
-            let waiting = std::mem::take(&mut self.postponed);
-            for constraint in waiting {
-                let ty = constraint.ty.clone();
-                let at = ty.as_ref().map_or(At::Type, At::Term);
-                self.step(
-                    meter,
-                    constraint.depth,
-                    at,
-                    constraint.at,
-                    &constraint.left,
-                    &constraint.right,
-                )
-                .map_err(|failure| failure.into_error(constraint.at))?;
-            }
-            if self.solved == before {
-                return Ok(());
-            }
-        }
-        Ok(())
-    }
-
-    /// One step: force both sides, try the flexible cases, then descend.
+    /// One step: the one flexible case, then the structural descent.
     fn step(&mut self, meter: &mut Meter, depth: u32, at: At<'_>, origin: Origin, left: &Value, right: &Value) -> Step {
-        // The nesting charge is what keeps unification inside §4.1's limit, and
+        // The nesting charge is what keeps conversion inside §4.1's limit, and
         // it can only report a [`CoreError`], so the step's own answer travels
         // back inside its `Ok`.
         meter.nested::<Step, CoreError>("unification", |meter| {
@@ -224,22 +164,56 @@ impl Unifier {
             let left = unfolded_left.as_ref().unwrap_or(left);
             let unfolded_right = force(meter, right)?;
             let right = unfolded_right.as_ref().unwrap_or(right);
-
-            Ok(match self.flexible(meter, depth, at, left, right)? {
-                Flexible::Solved => Ok(()),
-                Flexible::Postpone => {
-                    self.postponed.push(Constraint {
-                        depth,
-                        ty: at.owned(),
-                        left: left.clone(),
-                        right: right.clone(),
-                        at: origin,
-                    });
-                    Ok(())
-                }
-                Flexible::Rigid => self.folded(meter, depth, at, origin, left, right),
+            Ok(match self.assignment(meter, depth, at, origin, left, right) {
+                Ok(Some(())) => Ok(()),
+                Ok(None) => self.folded(meter, depth, at, origin, left, right),
+                Err(failure) => Err(failure),
             })
         })?
+    }
+
+    /// The one flexible case: an unsolved hole, unapplied, on the pattern
+    /// side.
+    ///
+    /// `Some` is "handled" and `None` is "rigid", which descends as any other
+    /// pair. An applied hole is rigid by choice: solving one would be
+    /// higher-order, and §2.1 admits first-order assignment only — so an
+    /// unsolved applied hole compares by identity and is reported as the
+    /// mismatch it is, which is §2.1's "the program did not say" with the
+    /// application as the place that could not say it.
+    fn assignment(
+        &mut self,
+        meter: &mut Meter,
+        depth: u32,
+        at: At<'_>,
+        origin: Origin,
+        left: &Value,
+        right: &Value,
+    ) -> Result<Option<()>, Failure> {
+        if self.deciding {
+            return Ok(None);
+        }
+        let Form::Neutral(neutral) = &left.form else {
+            return Ok(None);
+        };
+        let Head::Hole(hole) = &neutral.head else {
+            return Ok(None);
+        };
+        if !neutral.spine.is_empty() {
+            return Ok(None);
+        }
+        debug_assert!(
+            hole.solution().is_none(),
+            "a solved hole is forced before the assignment rule can meet it"
+        );
+        // The occurs check, at its first-order strength: the unknown may not
+        // occur in its own answer, transitively included.
+        if mentions_hole(right, hole) {
+            return Err(Failure::Occurs);
+        }
+        let _ = (meter, depth, at, origin);
+        hole.solve(right.clone()).map_err(|malformed| Failure::Core(malformed.into()))?;
+        Ok(Some(()))
     }
 
     /// Neither side is flexible: the folded-definition cases, and then the
@@ -313,74 +287,6 @@ impl Unifier {
         }
     }
 
-    /// What the metavariable-headed cases decided.
-    fn flexible(
-        &mut self,
-        meter: &mut Meter,
-        depth: u32,
-        at: At<'_>,
-        left: &Value,
-        right: &Value,
-    ) -> Result<Flexible, CoreError> {
-        if self.deciding {
-            // Every metavariable is a rigid head here, so `neutrals` compares
-            // two of them by identity and refuses a meta against anything else.
-            return Ok(Flexible::Rigid);
-        }
-        let left_meta = flexible_head(left);
-        let right_meta = flexible_head(right);
-        // The same unknown on both sides is already equal, and solving it
-        // against itself would fail the occurs check for no reason.
-        if let (Some(one), Some(other)) = (left_meta, right_meta)
-            && one == other
-        {
-            return Ok(Flexible::Solved);
-        }
-        for (meta, rigid) in [(left_meta, right), (right_meta, left)] {
-            let Some(meta) = meta else { continue };
-            if self.attempt(meter, depth, at, meta, rigid)? {
-                return Ok(Flexible::Solved);
-            }
-        }
-        if left_meta.is_some() || right_meta.is_some() {
-            // Blocked, not wrong. §2.1 postpones rather than guessing.
-            return Ok(Flexible::Postpone);
-        }
-        Ok(Flexible::Rigid)
-    }
-
-    /// Try to solve `meta` to `rigid`.
-    ///
-    /// Answers `false` when the solution would capture a variable the
-    /// metavariable was not given, or would mention the metavariable itself.
-    /// Both are reasons to wait rather than verdicts, so the caller postpones.
-    fn attempt(
-        &mut self,
-        meter: &mut Meter,
-        depth: u32,
-        at: At<'_>,
-        meta: &Meta,
-        rigid: &Value,
-    ) -> Result<bool, CoreError> {
-        meter.metavariable("unification")?;
-        let Some(body) = quote_solution(meter, Depth(depth), at.subject(), rigid, meta)? else {
-            return Ok(false);
-        };
-        let arity = meta.arity();
-        let origin = meta.origin();
-        let mut abstracted = body;
-        for _ in 0..arity {
-            abstracted = Term::lam(origin, "_", abstracted);
-        }
-        // Evaluated in the *empty* environment, which is what "a metavariable is
-        // closed" means operationally: its solution mentions nothing but the
-        // binders it abstracts.
-        let value = eval(meter, &Env::EMPTY, &abstracted)?;
-        meta.solve(value)?;
-        self.solved = self.solved.saturating_add(1);
-        Ok(true)
-    }
-
     /// Both sides are rigid: compare them structurally.
     fn rigid(
         &mut self,
@@ -404,7 +310,7 @@ impl Unifier {
         if let At::Term(ty) = at
             && !matches!((&left.form, &right.form), (Form::Neutral(_), Form::Neutral(_)))
         {
-            let unfolded = force(meter, ty)?;
+            let unfolded = opened(meter, ty)?;
             let ty = unfolded.as_ref().unwrap_or(ty);
             match &ty.form {
                 Form::Pi { domain, codomain, .. } => {
@@ -416,8 +322,6 @@ impl Unifier {
                 Form::Universe(_)
                 | Form::Lam(_)
                 | Form::Record(_)
-                | Form::Id { .. }
-                | Form::Refl(_)
                 // A base type has no η, because η is a rule about a type's
                 // eliminations and §5.8 gives it none. Neither of the two below
                 // is a type at all; they are here because this match is over
@@ -433,14 +337,10 @@ impl Unifier {
             }
         }
         match (&left.form, &right.form) {
-            // Two universes agree when their levels can be made the same, which
-            // is where a level metavariable is solved. `determine` refuses
-            // rather than searching, and a refusal falls through to the reading
-            // back that every other disagreement uses — so the diagnostic is
-            // built in one place and says `Type 0` against `Type 1` rather than
-            // naming a constraint the author never wrote.
+            // Two universes agree when their levels are the same: §1 fixes the
+            // levels at two, so this is an equality and never a search.
             (Form::Universe(one), Form::Universe(other)) => {
-                if one.determine(other) {
+                if one == other {
                     return Ok(());
                 }
                 Self::by_reading_back(meter, depth, at, left, right)
@@ -474,35 +374,6 @@ impl Unifier {
             }
             (Form::RecordType(one), Form::RecordType(other)) => {
                 self.record_types(meter, depth, at, origin, left, right, one, other)
-            }
-            (
-                Form::Id {
-                    ty: left_ty,
-                    left: left_from,
-                    right: left_to,
-                },
-                Form::Id {
-                    ty: right_ty,
-                    left: right_from,
-                    right: right_to,
-                },
-            ) => {
-                self.step(meter, depth, At::Type, origin, left_ty, right_ty)
-                    .map_err(|failure| failure.under(PathStep::IdType))?;
-                self.step(meter, depth, At::Term(left_ty), origin, left_from, right_from)
-                    .map_err(|failure| failure.under(PathStep::IdLeft))?;
-                self.step(meter, depth, At::Term(left_ty), origin, left_to, right_to)
-                    .map_err(|failure| failure.under(PathStep::IdRight))
-            }
-            (Form::Refl(one), Form::Refl(other)) => {
-                let At::Term(ty) = at else {
-                    return Self::by_reading_back(meter, depth, at, left, right);
-                };
-                let Form::Id { ty: subject, .. } = &ty.form else {
-                    return Self::by_reading_back(meter, depth, at, left, right);
-                };
-                self.step(meter, depth, At::Term(subject), origin, one, other)
-                    .map_err(|failure| failure.under(PathStep::Witness))
             }
             (Form::Neutral(one), Form::Neutral(other)) => self.neutrals(meter, depth, origin, one, other),
             // Two different forms, which is a disagreement: reading both sides
@@ -626,12 +497,12 @@ impl Unifier {
             (Head::Const(left), Head::Const(right)) => left == right,
             // Two metavariables reach this only in [`Self::deciding`] mode,
             // where §3 is being *asked* rather than made true and an unsolved
-            // metavariable is as rigid as a variable: the same one is equal to
-            // itself, and two different ones are two different unknowns. The
-            // elaborating unifier never arrives here with one, because
-            // `flexible` answers `Solved` for a meta against itself and
-            // `Postpone` for two different ones.
-            (Head::Meta(left), Head::Meta(right)) => left == right,
+            // A hole is as rigid as a variable here: the same one is equal
+            // to itself, and two different ones are two different unknowns.
+            // The matching pass never arrives here with an unsolved one on the
+            // left — `assignment` answers first — and a solved one is forced
+            // before the walk sees it.
+            (Head::Hole(left), Head::Hole(right)) => left == right,
             // Rigid for good: §5.8 gives a base type no eliminator, so nothing
             // under one could ever unblock it, and a builtin still headed here
             // has an argument that is not a literal. Both decide by name, like a
@@ -644,7 +515,7 @@ impl Unifier {
             (Head::Def(one, _, _), Head::Def(other, _, _)) => one == other,
             // Two different kinds of head, which never agree.
             (
-                Head::Meta(_)
+                Head::Hole(_)
                 | Head::Var(_, _)
                 | Head::Const(_)
                 | Head::Base(_)
@@ -679,80 +550,14 @@ impl Unifier {
                 }
                 (Elim::Project { field: left_field, .. }, Elim::Project { field: right_field, .. })
                     if left_field == right_field => {}
-                (
-                    Elim::J {
-                        origin: here,
-                        ty: left_ty,
-                        from: left_from,
-                        motive: left_motive,
-                        base: left_base,
-                        to: left_to,
-                    },
-                    Elim::J {
-                        ty: right_ty,
-                        from: right_from,
-                        motive: right_motive,
-                        base: right_base,
-                        to: right_to,
-                        ..
-                    },
-                ) => {
-                    self.step(meter, depth, At::Type, origin, left_ty, right_ty)?;
-                    self.step(meter, depth, At::Term(left_ty), origin, left_from, right_from)?;
-                    self.step(meter, depth, At::Term(left_ty), origin, left_to, right_to)?;
-                    self.motives(meter, depth, origin, left_ty, left_from, left_motive, right_motive)?;
-                    // The base case's type is the motive at `(from, from, refl
-                    // from)`, computed the same way quotation computes it.
-                    let base_type = {
-                        let at_from = apply(meter, *here, Value::clone(left_motive), Value::clone(left_from))?;
-                        let reflexive = Value::new(left_from.origin, Form::Refl(Arc::clone(left_from)));
-                        apply(meter, *here, at_from, reflexive)?
-                    };
-                    self.step(meter, depth, At::Term(&base_type), origin, left_base, right_base)?;
-                }
-                (Elim::App { .. } | Elim::Project { .. } | Elim::J { .. }, _) => {
+
+                (Elim::App { .. } | Elim::Project { .. }, _) => {
                     return Err(blocked_mismatch(meter, depth, one, other)?);
                 }
             }
             prefix.spine.push(mine.clone());
         }
         Ok(())
-    }
-
-    /// Compare two `J` motives at the shape `(y : A) → Id A x y → Type l`.
-    ///
-    /// The motive's Π type is never built as a value — `l` is recorded nowhere
-    /// — so this does what quotation does with the same problem: apply both to
-    /// two fresh variables whose types *are* known, and compare the results as
-    /// types. η at Π says that decides it.
-    fn motives(
-        &mut self,
-        meter: &mut Meter,
-        depth: u32,
-        origin: Origin,
-        ty: &Arc<Value>,
-        from: &Arc<Value>,
-        one: &Value,
-        other: &Value,
-    ) -> Step {
-        let endpoint = Value::var(Origin::UNKNOWN, DbLevel(depth), Arc::clone(ty));
-        let identity = Arc::new(Value::new(
-            one.origin,
-            Form::Id {
-                ty: Arc::clone(ty),
-                left: Arc::clone(from),
-                right: Arc::new(endpoint.clone()),
-            },
-        ));
-        let under = depth.saturating_add(1);
-        let witness = Value::var(Origin::UNKNOWN, DbLevel(under), identity);
-        let mut opened = |motive: &Value| -> Result<Value, CoreError> {
-            let at_endpoint = apply(meter, motive.origin, motive.clone(), endpoint.clone())?;
-            apply(meter, motive.origin, at_endpoint, witness.clone())
-        };
-        let (left, right) = (opened(one)?, opened(other)?);
-        self.step(meter, under.saturating_add(1), At::Type, origin, &left, &right)
-            .map_err(|failure| failure.under(PathStep::Body))
     }
 
     /// The last resort: read both sides back and compare up to α.
@@ -773,16 +578,6 @@ impl Unifier {
             })
         }
     }
-}
-
-/// What the flexible cases decided.
-enum Flexible {
-    /// A metavariable was solved; nothing is left to compare.
-    Solved,
-    /// One side is flexible and could not be solved yet.
-    Postpone,
-    /// Neither side is headed by an unsolved metavariable.
-    Rigid,
 }
 
 impl ElabError {
@@ -809,6 +604,9 @@ type Step = Result<(), Failure>;
 
 /// Why a step did not succeed.
 enum Failure {
+    /// The occurs check refused: the program side mentions a variable the
+    /// match could still solve, so the unknown would occur in its own answer.
+    Occurs,
     /// The two sides disagree here.
     Mismatch {
         expected: Term,
@@ -831,6 +629,7 @@ impl Failure {
     /// This failure, seen from one step further out.
     fn under(self, step: PathStep) -> Self {
         match self {
+            Self::Occurs => Self::Occurs,
             Self::Mismatch {
                 expected,
                 found,
@@ -845,6 +644,12 @@ impl Failure {
 
     fn into_error(self, at: Origin) -> ElabError {
         match self {
+            Self::Occurs => Refusal::Unsolved {
+                site: crate::meta::MetaSource::TypeParameter,
+                created: at,
+                blocked: None,
+            }
+            .into(),
             Self::Mismatch {
                 expected,
                 found,
@@ -885,22 +690,6 @@ fn blocked_mismatch(
 /// The unsolved metavariable at the head of a blocked elimination, if there is
 /// one.
 ///
-/// Asked on both sides of every step, which is why the head is a field rather
-/// than the deepest node of a chain.
-pub(crate) fn flexible_head(value: &Value) -> Option<&Meta> {
-    let Form::Neutral(neutral) = &value.form else {
-        return None;
-    };
-    match &neutral.head {
-        Head::Var(_, _) | Head::Const(_) | Head::Base(_) | Head::Builtin(_) | Head::Def(_, _, _) => None,
-        Head::Meta(meta) => Some(meta),
-    }
-}
-
-/// A neutral whose head is a folded definition, with what the match on the
-/// head proved already in hand: the identity the folded comparison keys on,
-/// and the value an unfold replays the spine over. Returning the parts rather
-/// than the neutral keeps the callers out of the re-match an `unreachable`
 /// would otherwise paper over.
 struct FoldedDef<'a> {
     neutral: &'a Neutral,
@@ -931,5 +720,73 @@ fn unfolds_first(one: &DefHead, other: &DefHead) -> bool {
         (DefHead::Global(_), DefHead::Local(_)) => false,
         (DefHead::Local(this), DefHead::Local(that)) => this.0 > that.0,
         (DefHead::Global(this), DefHead::Global(that)) => this.name() > that.name(),
+    }
+}
+
+/// Does `value` mention this hole, unsolved, transitively?
+///
+/// The occurs check of [`Unifier::assignment`]: the unknown may not occur in
+/// its own answer, and "transitively" is through other holes' solutions. A
+/// closure or telescope's *terms* are not walked: the value this asks about is
+/// one the walk created, and a term can reach one only through the environment
+/// that is walked.
+fn mentions_hole(value: &Value, target: &crate::meta::Hole) -> bool {
+    match &value.form {
+        Form::Universe(_) | Form::Lit(_) | Form::Numeral(_) => false,
+        Form::Pi { domain, codomain, .. } => {
+            mentions_hole(domain, target)
+                || codomain.env.iter().any(|item| mentions_hole(item, target))
+        }
+        Form::Lam(closure) => closure.env.iter().any(|item| mentions_hole(item, target)),
+        Form::RecordType(telescope) => telescope.env.iter().any(|item| mentions_hole(item, target)),
+        Form::Record(fields) => fields.iter().any(|(_, item)| mentions_hole(item, target)),
+        Form::Neutral(neutral) => {
+            let head_mentions = match &neutral.head {
+                Head::Hole(hole) if hole == target => return true,
+                Head::Hole(hole) => hole.solution().is_some_and(|solution| mentions_hole(solution, target)),
+                Head::Var(_, ty) => mentions_hole(ty, target),
+                Head::Const(_) | Head::Base(_) | Head::Builtin(_) => false,
+                Head::Def(_, ty, folded) => mentions_hole(ty, target) || mentions_hole(folded, target),
+            };
+            head_mentions
+                || neutral.spine.iter().any(|elimination| match elimination {
+                    Elim::App { argument, .. } => mentions_hole(argument, target),
+                    Elim::Project { .. } => false,
+                })
+        }
+    }
+}
+
+/// Does `value` mention a hole nothing has solved?
+///
+/// The elaborator's reading of `02-core-calculus.md` §2.1's "inferable": an
+/// argument whose domain still mentions an unsolved hole is one whose type the
+/// call has not determined, so the argument is *inferred* and the match learns
+/// the parameter from it. The same walk as [`mentions_hole`], existentially.
+pub(crate) fn mentions_unsolved(value: &Value) -> bool {
+    match &value.form {
+        Form::Universe(_) | Form::Lit(_) | Form::Numeral(_) => false,
+        Form::Pi { domain, codomain, .. } => {
+            mentions_unsolved(domain) || codomain.env.iter().any(mentions_unsolved)
+        }
+        Form::Lam(closure) => closure.env.iter().any(mentions_unsolved),
+        Form::RecordType(telescope) => telescope.env.iter().any(mentions_unsolved),
+        Form::Record(fields) => fields.iter().any(|(_, item)| mentions_unsolved(item)),
+        Form::Neutral(neutral) => {
+            let head_mentions = match &neutral.head {
+                Head::Hole(hole) => match hole.solution() {
+                    Some(solution) => mentions_unsolved(solution),
+                    None => true,
+                },
+                Head::Var(_, ty) => mentions_unsolved(ty),
+                Head::Const(_) | Head::Base(_) | Head::Builtin(_) => false,
+                Head::Def(_, ty, folded) => mentions_unsolved(ty) || mentions_unsolved(folded),
+            };
+            head_mentions
+                || neutral.spine.iter().any(|elimination| match elimination {
+                    Elim::App { argument, .. } => mentions_unsolved(argument),
+                    Elim::Project { .. } => false,
+                })
+        }
     }
 }

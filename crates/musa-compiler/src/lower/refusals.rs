@@ -233,6 +233,8 @@ fn file(refusal: &Refusal) -> Filed {
         Refusal::NotAFunction { at, .. }
         | Refusal::NotARecord { at, .. }
         | Refusal::NotAType { at, .. }
+        | Refusal::BeyondUniverses { at, .. }
+        | Refusal::NotStorable { at, .. }
         | Refusal::RecordShape { at, .. } => one(Code::TypeMismatch, *at),
         // Too many, too few, or the wrong kind of argument.
         Refusal::PlicityMismatch { at, .. }

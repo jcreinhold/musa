@@ -62,7 +62,7 @@ use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
 use crate::storable::STORABLE;
 use crate::term::{Field, Index, Name, Shape, Term};
-use crate::value::{Env, Form, Telescope, Value};
+use crate::value::{Env, Form, Neutral, Telescope, Value};
 
 /// Elaborate a `trait` declaration.
 pub(crate) fn declare_trait(cx: &Cx, raw: &RawTrait) -> Result<(Arc<Trait>, crate::Spend), ElabError> {
@@ -313,29 +313,19 @@ fn dictionary_value(
     let mut fields = Vec::with_capacity(telescope.fields.len());
     for declared in telescope.fields.iter() {
         let field_ty = eval(elaborator.meter(), &env, &declared.term)?;
-        let term = match class
-            .supers
-            .iter()
-            .find(|constraint| Trait::super_field(&constraint.class) == declared.name)
-        {
-            Some(constraint) => {
-                let needed = instantiated(elaborator, scope, constraint, at_args)?;
-                resolve(elaborator, scope, classes, &needed)?
-            }
-            None => {
-                let supplied = raw
-                    .methods
-                    .iter()
-                    .find(|supplied| supplied.name == declared.name)
-                    .ok_or_else(|| {
-                        ElabError::from(Refusal::MissingMethod {
-                            at: here,
-                            class: Arc::clone(&raw.name),
-                            method: Arc::clone(&declared.name),
-                        })
-                    })?;
-                elaborator.check_open(scope, &supplied.value, &field_ty)?
-            }
+        let term = {
+            let supplied = raw
+                .methods
+                .iter()
+                .find(|supplied| supplied.name == declared.name)
+                .ok_or_else(|| {
+                    ElabError::from(Refusal::MissingMethod {
+                        at: here,
+                        class: Arc::clone(&raw.name),
+                        method: Arc::clone(&declared.name),
+                    })
+                })?;
+            elaborator.check_open(scope, &supplied.value, &field_ty)?
         };
         env = env.push(scope.eval(elaborator.meter(), &term)?);
         fields.push(Field {
@@ -396,41 +386,48 @@ pub(crate) fn instantiated(
     })
 }
 
-/// §4's three steps: the local dictionaries, then the one table entry, then
-/// postponement — and no fourth.
+/// Resolution's three steps, once, at declaration end: a `where`-bound
+/// dictionary, then `Storable` computed, then the one table entry.
 ///
-/// Returns the term that *is* the dictionary, so a caller projects a method out
-/// of it or stores it in a field without asking what kind of answer it got.
-pub(crate) fn resolve(
+/// Where the old calculus postponed a constraint whose head was not yet known,
+/// this one is simply *run later* — [`Elaborator::settled`] is the only caller,
+/// and by then matching has solved every parameter the expression determines.
+/// What remains unknown then is the program's to answer for, and the refusals
+/// below name it: a hole-headed constraint is [`Refusal::Unsolved`], a
+/// variable-headed one is [`Refusal::UnconstrainedVariable`], a key with no
+/// instance is [`Refusal::UnresolvedInstance`].
+///
+/// Returns the term that *is* the dictionary, so the caller stores it in the
+/// hole that stands for it without asking what kind of answer it got.
+pub(crate) fn resolve_at(
     elaborator: &mut Elaborator,
     scope: &Scope,
-    classes: &Classes,
-    needed: &Constraint,
+    constraint: &Constraint,
+    env: &Env,
+    at: Origin,
 ) -> Result<Term, ElabError> {
-    if let Some(dictionary) = lookup(elaborator, scope, classes, needed)? {
-        return Ok(dictionary);
+    // The arguments are read under the environment the constraint was written
+    // against, and opened on quotation: a solved hole's solution is what the
+    // lookup is about, never the hole.
+    let depth = u32::try_from(env.iter().count()).unwrap_or(u32::MAX);
+    let mut args = Vec::with_capacity(constraint.args.len());
+    let mut values = Vec::with_capacity(constraint.args.len());
+    for argument in constraint.args.iter() {
+        let value = eval(elaborator.meter(), env, argument)?;
+        args.push(crate::quote::quote_type(
+            elaborator.meter(),
+            crate::quote::Depth(depth),
+            crate::quote::Mode::Open,
+            &value,
+        )?);
+        values.push(value);
     }
-    // Step 3: the head is not known yet, so the answer is a hole and a note to
-    // come back — see [`discharge`].
-    let at = needed.origin;
-    let ty = dictionary_type(elaborator, scope, classes, needed)?;
-    let hole = elaborator.fresh_meta(scope, at, MetaSource::Dictionary, &ty)?;
-    elaborator.postpone(scope, needed, &hole, &ty, None);
-    Ok(hole)
-}
+    let needed = Constraint {
+        origin: at,
+        class: Arc::clone(&constraint.class),
+        args: Arc::from(args),
+    };
 
-/// §4 steps 1 and 2, with `None` for the head that is not known yet.
-///
-/// Separate from [`resolve`] because a use site does not want the dictionary —
-/// it wants a method read out of one — and the hole it leaves has to stand at
-/// the *method's* type. See [`method_at`].
-fn lookup(
-    elaborator: &mut Elaborator,
-    scope: &Scope,
-    classes: &Classes,
-    needed: &Constraint,
-) -> Result<Option<Term>, ElabError> {
-    let at = needed.origin;
     let Some(first) = needed.args.first() else {
         return Err(Refusal::ClassArity {
             at,
@@ -441,7 +438,35 @@ fn lookup(
         .into());
     };
 
-    let Some(head) = head_of(first, scope.depth()) else {
+    // `Storable` is not looked up at all: §1.2's fact about a type's shape,
+    // computed where it is asked. It stands first because no source program
+    // can write it, so no `where` clause or instance can be preferred to it.
+    if &*needed.class == crate::storable::STORABLE {
+        let Some(ty) = values.first() else {
+            return Err(Refusal::ClassArity {
+                at,
+                class: Arc::clone(&needed.class),
+                wanted: 1,
+                written: 0,
+            }
+            .into());
+        };
+        return if crate::storable::is_storable(elaborator.meter(), ty)? {
+            Ok(Term::record(at, core::iter::empty()))
+        } else {
+            Err(Refusal::NotStorable { at, ty: first.clone() }.into())
+        };
+    }
+
+    let Some(head) = head_of(first, depth) else {
+        if matches!(first.shape(), crate::term::Shape::Hole(_)) {
+            return Err(Refusal::Unsolved {
+                site: MetaSource::Constraint,
+                created: at,
+                blocked: None,
+            }
+            .into());
+        }
         if unkeyed(first) {
             return Err(Refusal::UnkeyedConstraint {
                 at,
@@ -450,7 +475,11 @@ fn lookup(
             }
             .into());
         }
-        return Ok(None);
+        return Err(Refusal::UnconstrainedVariable {
+            at,
+            class: Arc::clone(&needed.class),
+        }
+        .into());
     };
     let key = Key {
         class: Arc::clone(&needed.class),
@@ -467,7 +496,7 @@ fn lookup(
             let wanted = scope.eval(elaborator.meter(), wanted)?;
             elaborator.unify_types(scope, at, written, &wanted)?;
         }
-        return Ok(Some(Term::var(at, level_index(scope.depth(), local.level))));
+        return Ok(Term::var(at, level_index(scope.depth(), local.level)));
     }
 
     // A variable head can never be answered globally, and saying so is a
@@ -483,6 +512,7 @@ fn lookup(
 
     // Step 2, and the last one: a single table read, whose `None` is the
     // refusal.
+    let classes = scope.cx().classes().clone();
     let Some(instance) = classes.instance(&key) else {
         return Err(Refusal::UnresolvedInstance {
             at,
@@ -492,113 +522,7 @@ fn lookup(
         .into());
     };
     let instance = Arc::clone(instance);
-    Ok(Some(apply_instance(elaborator, scope, classes, &instance, needed)?))
-}
-
-/// One constraint §4 postponed, and the hole standing for its dictionary.
-///
-/// The scope travels with it because §4 step 1 is a lookup in the *local*
-/// dictionaries, and a retry that had lost them would prefer a global instance
-/// where the author's own `where` clause was in scope — which is the one thing
-/// local-beats-global exists to stop.
-pub(crate) struct Postponed {
-    /// The binders it was written under, and the local dictionaries among them.
-    pub(crate) scope: Scope,
-    /// What it asks for.
-    pub(crate) needed: Constraint,
-    /// The metavariable the retry solves.
-    pub(crate) hole: Term,
-    /// The type that metavariable stands at, which the retry solves it at.
-    pub(crate) ty: Value,
-    /// What the dictionary is *for*, when it is not the answer itself.
-    pub(crate) wanted: Option<Wanted>,
-}
-
-/// A method waiting on the dictionary it is read out of.
-///
-/// The hole a use site leaves stands at the **method's** type rather than at the
-/// dictionary's, and that is not a preference. A term is only useful downstream
-/// if the independent re-checker (prompt 134) accepts it, and `{ … }.equal` is
-/// not a term it can accept: §2 gives a record literal no inference rule, so a
-/// projection out of one has nothing to infer through. Solving a metavariable
-/// makes the *value* of the projection the solution, and quotation reads back a
-/// normal form — `Nat.Zero`, which infers.
-///
-/// That is half of what the re-checker needs, and the half this module can
-/// supply. A normal form at a **Π** is η-long, so a method that is a function —
-/// which every method `10-traits.md` §5 gives an operator is — reads back as a
-/// λ, and the call around it is an application of an introduction form. Writing
-/// the method's type down is what answers that, and it is done where the
-/// read-back happens rather than here: see [`crate::elab`]'s `stated`.
-pub(crate) struct Wanted {
-    /// The hole standing for the dictionary, solved alongside the method's.
-    pub(crate) dictionary: Term,
-    /// Its type.
-    pub(crate) dictionary_ty: Value,
-    /// The method, written over that hole: a projection, or the trait's derived
-    /// definition applied to it.
-    pub(crate) read: Term,
-}
-
-/// Retry every postponed constraint until none of them can move.
-///
-/// The loop is what makes postponement a mechanism rather than a delay:
-/// answering one constraint solves metavariables, which can determine the head
-/// of another, so a single pass would answer the constraints in the order they
-/// happened to be written. It terminates because every round either solves a
-/// hole — and there are finitely many — or answers nothing and stops.
-///
-/// What is left over is not an error here. A constraint still blocked at the end
-/// of the declaration is a hole nobody filled, and [`Elaborator::settled`]
-/// reports it with every other unsolved hole rather than inventing a second
-/// report for the same fact.
-pub(crate) fn discharge(elaborator: &mut Elaborator) -> Result<(), ElabError> {
-    loop {
-        let waiting = elaborator.waiting();
-        if waiting.is_empty() {
-            return Ok(());
-        }
-        let mut answered = false;
-        let mut blocked = Vec::new();
-        for item in waiting {
-            let mut args = Vec::with_capacity(item.needed.args.len());
-            for argument in item.needed.args.iter() {
-                args.push(elaborator.resolved(&item.scope, argument)?);
-            }
-            let needed = Constraint {
-                args: Arc::from(args),
-                ..item.needed
-            };
-            let classes = item.scope.cx().classes().clone();
-            let Some(dictionary) = lookup(elaborator, &item.scope, &classes, &needed)? else {
-                blocked.push(Postponed { needed, ..item });
-                continue;
-            };
-            let at = needed.origin;
-            let supplied = match &item.wanted {
-                None => item.scope.eval(elaborator.meter(), &dictionary)?,
-                Some(wanted) => {
-                    // Solve the dictionary's own hole first, so that evaluating
-                    // the method reaches through it to the instance.
-                    let stood = item.scope.eval(elaborator.meter(), &wanted.dictionary)?;
-                    let found = item.scope.eval(elaborator.meter(), &dictionary)?;
-                    elaborator.unify_at(&item.scope, at, &wanted.dictionary_ty, &stood, &found)?;
-                    item.scope.eval(elaborator.meter(), &wanted.read)?
-                }
-            };
-            let hole = item.scope.eval(elaborator.meter(), &item.hole)?;
-            // At the hole's *type* rather than as types, because a dictionary is
-            // a record value and a method may be one too: §3 performs η at a
-            // record during quotation, and a unification that did not say what
-            // type it was at could not perform it.
-            elaborator.unify_at(&item.scope, at, &item.ty, &hole, &supplied)?;
-            answered = true;
-        }
-        elaborator.keep_waiting(blocked);
-        if !answered {
-            return Ok(());
-        }
-    }
+    apply_instance(elaborator, scope, &instance, &needed, &values)
 }
 
 /// Whether a constraint's argument is a type no instance could ever answer, as
@@ -610,6 +534,7 @@ pub(crate) fn discharge(elaborator: &mut Elaborator) -> Result<(), ElabError> {
 /// annotation instead of for the arrow they wrote.
 fn unkeyed(term: &Term) -> bool {
     match term.shape() {
+        Shape::Hole(_) => false,
         Shape::App { function, .. } => unkeyed(function),
         // Canonical formers. None of them is a name, so no `impl` could ever be
         // keyed on one, and `02-core-calculus.md` §1.2 says so of the arrow in
@@ -618,12 +543,10 @@ fn unkeyed(term: &Term) -> bool {
         | Shape::Universe(_)
         | Shape::RecordType(_)
         | Shape::Lam { .. }
-        | Shape::Record(_)
-        | Shape::Id { .. }
-        | Shape::Refl(_) => true,
+        | Shape::Record(_) => true,
         // Neutral: stuck on a metavariable, and solving it is what postponement
         // is for.
-        Shape::Meta(_) | Shape::Project { .. } | Shape::J { .. } | Shape::Let { .. } => false,
+        Shape::Project { .. } | Shape::Let { .. } => false,
         // Reached only when `head_of` answered, so unreachable here. `false`
         // keeps the answer conservative rather than inventing a refusal. A base
         // type is on this list for the same reason: `head_of` keys on it.
@@ -643,39 +566,32 @@ fn unkeyed(term: &Term) -> bool {
 fn apply_instance(
     elaborator: &mut Elaborator,
     scope: &Scope,
-    classes: &Classes,
     instance: &Instance,
     needed: &Constraint,
+    wanted: &[Value],
 ) -> Result<Term, ElabError> {
     let at = needed.origin;
-    // One metavariable per instance parameter, and the instance's own terms read
-    // in an environment of them — which is what turns `impl<T> Eq<List<T>>` into
-    // `Eq (List ?T)` without substituting on syntax.
+    // One hole per instance parameter, and the instance's head read in an
+    // environment of them: the head match below is what solves them, which is
+    // the whole of instance instantiation under §2.1 — first-order, and
+    /// determined by the constraint being answered.
     let mut env = Env::EMPTY;
     let mut supplied = Vec::with_capacity(instance.params.len());
     for binder in instance.params.iter() {
         let ty = eval(elaborator.meter(), &env, &binder.ty)?;
-        let term = elaborator.fresh_meta(scope, at, MetaSource::Dictionary, &ty)?;
-        env = env.push(scope.eval(elaborator.meter(), &term)?);
-        supplied.push(term);
+        let hole = elaborator.fresh_hole(at, &ty);
+        env = env.push(Value::neutral(crate::value::Neutral::head(at, crate::value::Head::Hole(hole.clone()))));
+        supplied.push(Term::hole(at, hole));
     }
-    for (written, wanted) in instance.args.iter().zip(needed.args.iter()) {
+    for (written, wanted) in instance.args.iter().zip(wanted.iter()) {
         let written = eval(elaborator.meter(), &env, written)?;
-        let wanted = scope.eval(elaborator.meter(), wanted)?;
-        elaborator.unify_types(scope, at, &written, &wanted)?;
+        elaborator.unify_types(scope, at, &written, wanted)?;
     }
 
-    // Its own context, resolved at those arguments. This terminates because
-    // `decreasing` refused every instance whose context is not smaller than its
-    // head, checked when the instance was declared rather than here.
-    let mut dictionary = applied(at, instance.dictionary.clone(), &supplied);
-    for constraint in instance.context.iter() {
-        let inner = instantiated(elaborator, scope, constraint, &env)?;
-        let inner = Constraint { origin: at, ..inner };
-        let argument = resolve(elaborator, scope, classes, &inner)?;
-        dictionary = Term::app(at, dictionary, argument);
-    }
-    Ok(dictionary)
+    // Its context is empty — the flat law: an `impl` carries no `where`
+    // clause, so there is nothing to resolve here. The dictionary is the
+    // impl's own value applied to the parameters the head match solved.
+    Ok(applied(at, instance.dictionary.clone(), &supplied))
 }
 
 /// The type a constraint's dictionary has, as a value in `scope`.
@@ -782,13 +698,10 @@ fn constant(term: &Term) -> Option<&Constant> {
         | Shape::RecordType(_)
         | Shape::Record(_)
         | Shape::Project { .. }
-        | Shape::Id { .. }
-        | Shape::Refl(_)
-        | Shape::J { .. }
-        | Shape::Meta(_)
         | Shape::Builtin(_)
         | Shape::Lit(_)
         | Shape::Numeral(_)
+        | Shape::Hole(_)
         | Shape::Let { .. } => None,
         // A base type has no declaration and so no package. §3's orphan rule
         // asks whether an `impl` shares a package with the *declaration* of its
@@ -1120,58 +1033,43 @@ fn parameters(at: Origin, count: usize) -> Vec<Term> {
         .collect()
 }
 
-/// `Class.method` at a use site: the dictionary its constraint needs, the
-/// method read out of it, and its type.
-///
-/// §4's lookup with nothing before it and nothing after it. The trait's
-/// arguments are unknown here — `Eq.equal` says which trait and not at which
-/// type — so each becomes a metavariable, and whether the constraint can be
-/// answered *now* is then the same question as whether that metavariable is
-/// solved. A required method is a projection out of the dictionary; a derived
-/// one is the trait's definition applied to it, which is the whole difference
-/// between §1's two kinds.
-///
-/// The type is read off the trait here rather than inferred from the term by the
-/// caller, and that is not a shortcut: the term is a projection whose record may
-/// be an unsolved metavariable spine, and inferring through one would force the
-/// very constraint §4 is entitled to postpone.
 pub(crate) fn method_at(
     elaborator: &mut Elaborator,
     scope: &Scope,
     at: Origin,
     qualified: &Name,
 ) -> Result<Option<(Term, Value)>, ElabError> {
-    let classes = scope.cx().classes().clone();
-    let Some((class, method, kind)) = classes.method(qualified) else {
+    let Some((class, method, kind)) = scope.cx().classes().method(qualified) else {
         return Ok(None);
     };
     let class = Arc::clone(class);
 
-    // One metavariable per trait parameter, each read at the type the parameter
-    // was declared with — which may mention the ones before it, so they are
-    // evaluated through an environment of the metas already made.
+    // One hole per trait parameter, each read at the type the parameter was
+    // declared with — which may mention the ones before it, so they are
+    // evaluated through an environment of the holes already made. The
+    // application walk solves them by matching; `Eq.equal` says which trait
+    // and not at which type, and the receiver or the arguments say the rest.
     let mut env = Env::EMPTY;
     let mut args = Vec::with_capacity(class.params.len());
     for binder in class.params.iter() {
         let ty = eval(elaborator.meter(), &env, &binder.ty)?;
-        let term = elaborator.fresh_meta(scope, at, MetaSource::Dictionary, &ty)?;
-        env = env.push(scope.eval(elaborator.meter(), &term)?);
-        args.push(term);
+        let hole = elaborator.fresh_hole(at, &ty);
+        env = env.push(Value::neutral(crate::value::Neutral::head(at, crate::value::Head::Hole(hole.clone()))));
+        args.push(Term::hole(at, hole));
     }
-    let needed = Constraint {
+    let needed = Arc::new(Constraint {
         origin: at,
         class: Arc::clone(&class.name),
         args: Arc::from(args.clone()),
-    };
-    // The dictionary is a hole rather than a lookup, *always*, even where the
-    // lookup would succeed at once. The trait's arguments here are
-    // metavariables — `Eq.equal` says which trait and not at which type — so the
-    // head is unknown by construction and §4 postpones; making the immediate
-    // case a second path would be a path no program takes.
+    });
+    // The dictionary is a hole resolved at declaration end — the one place
+    // resolution runs, for [`Elaborator::constrain`]'s reason.
     let dictionary_ty = scope.eval(elaborator.meter(), &applied(at, class.dictionary.clone(), &args))?;
-    let dictionary = elaborator.fresh_meta(scope, at, MetaSource::Dictionary, &dictionary_ty)?;
+    let dictionary = elaborator.constrain(scope, needed, Env::EMPTY, at, &dictionary_ty);
+    let dictionary_term = Term::hole(at, dictionary.clone());
+    let dictionary_value = Value::neutral(Neutral::head(at, crate::value::Head::Hole(dictionary)));
 
-    let (read, ty) = match kind {
+    match kind {
         Kind::Required => {
             let Form::RecordType(telescope) = &dictionary_ty.form else {
                 return Err(Refusal::NotARecord {
@@ -1180,18 +1078,13 @@ pub(crate) fn method_at(
                 }
                 .into());
             };
-            let subject = scope.eval(elaborator.meter(), &dictionary)?;
-            let ty = field_type(elaborator, telescope, &subject, &method)?;
-            (Term::project(at, dictionary.clone(), method), ty)
+            let ty = field_type(elaborator, telescope, &dictionary_value, &method)?;
+            Ok(Some((Term::project(at, dictionary_term, method), ty)))
         }
-        // A derived method is
-        // `(p⃗ : Params) → (dict : Class p⃗) → (q⃗ : Own) → (d⃗ : Ctx) → τ`
-        // applied to all four, so its type is that Π instantiated the same way
-        // its value is. The four groups are filled by three different rules and
-        // that is the point of the walk: the trait's arguments and the method's
-        // own parameters are metavariables, the trait's dictionary is a hole
-        // §4 postpones, and each of the method's own constraints goes through
-        // §4's lookup at the parameters just made.
+        // A derived method is `(p⃗ : Params) → (dict : Class p⃗) → (q⃗ : Own) →
+        // (d⃗ : Ctx) → τ` applied to all four: the trait's parameters and the
+        // method's own are holes the walk solves, and each constraint is
+        // registered for the one resolution at declaration end.
         Kind::Derived => {
             let Some(derived) = class.derivation(&method) else {
                 return Err(Refusal::UnknownName {
@@ -1202,18 +1095,22 @@ pub(crate) fn method_at(
                 .into());
             };
             let mut filled = args.clone();
-            filled.push(dictionary.clone());
-            env = env.push(scope.eval(elaborator.meter(), &dictionary)?);
+            filled.push(dictionary_term);
+            env = env.push(dictionary_value);
             for binder in derived.params.iter() {
                 let ty = eval(elaborator.meter(), &env, &binder.ty)?;
-                let term = elaborator.fresh_meta(scope, at, MetaSource::ImplicitArgument, &ty)?;
-                env = env.push(scope.eval(elaborator.meter(), &term)?);
-                filled.push(term);
+                let hole = elaborator.fresh_hole(at, &ty);
+                env = env.push(Value::neutral(Neutral::head(at, crate::value::Head::Hole(hole.clone()))));
+                filled.push(Term::hole(at, hole));
             }
             for constraint in derived.context.iter() {
                 let wanted = instantiated(elaborator, scope, constraint, &env)?;
-                let term = resolve(elaborator, scope, &classes, &wanted)?;
-                env = env.push(scope.eval(elaborator.meter(), &term)?);
+                let classes = scope.cx().classes().clone();
+                let ty = dictionary_type(elaborator, scope, &classes, &wanted)?;
+                let wanted = Arc::new(wanted);
+                let hole = elaborator.constrain(scope, wanted, env.clone(), at, &ty);
+                let term = Term::hole(at, hole.clone());
+                env = env.push(Value::neutral(Neutral::head(at, crate::value::Head::Hole(hole))));
                 filled.push(term);
             }
 
@@ -1233,21 +1130,7 @@ pub(crate) fn method_at(
                 let argument = scope.eval(elaborator.meter(), argument)?;
                 ty = crate::eval::apply_closure(elaborator.meter(), &codomain, argument)?;
             }
-            (value, ty)
+            Ok(Some((value, ty)))
         }
-    };
-
-    let hole = elaborator.fresh_meta(scope, at, MetaSource::Dictionary, &ty)?;
-    elaborator.postpone(
-        scope,
-        &needed,
-        &hole,
-        &ty,
-        Some(Wanted {
-            dictionary,
-            dictionary_ty,
-            read,
-        }),
-    );
-    Ok(Some((hole, ty)))
+    }
 }

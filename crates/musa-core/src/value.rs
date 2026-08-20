@@ -43,7 +43,6 @@ use std::sync::Arc;
 
 use crate::level::Level;
 use crate::list::List;
-use crate::meta::Meta;
 use crate::origin::Origin;
 use crate::term::{DbLevel, Field, Name, Plicity, Term};
 
@@ -96,15 +95,8 @@ pub(crate) enum Form {
     Lam(Closure),
     RecordType(Telescope),
     Record(Arc<[(Name, Value)]>),
-    Id {
-        ty: Arc<Value>,
-        left: Arc<Value>,
-        right: Arc<Value>,
-    },
-    Refl(Arc<Value>),
-    /// A closed value of a base type. Canonical, not neutral: a `Text` is a
-    /// value the way `refl x` is a value of `Id A x x`, and §5.8's inertness is
-    /// that nothing eliminates it rather than that it is stuck.
+    /// A closed value of a base type. Canonical, not neutral: §5.8's
+    /// inertness is that nothing eliminates it rather than that it is stuck.
     Lit(crate::base::Literal),
     /// A closed value of a counting family, as how far above the floor it
     /// stands.
@@ -176,10 +168,11 @@ pub(crate) enum Head {
     /// that fires ι for a recursor, so a spine still headed by one here is
     /// genuinely blocked.
     Builtin(crate::base::Builtin),
-    /// An unsolved metavariable. The one *flexible* head: a neutral headed by a
-    /// variable can never compute, while this one computes the moment the meta
-    /// is solved, which is exactly the distinction unification turns on.
-    Meta(Meta),
+    /// An unsolved placeholder for an implicit argument. The one *flexible*
+    /// head: a neutral headed by a variable can never compute, while this one
+    /// computes the moment the hole is solved — which is exactly the
+    /// distinction the matching pass turns on. See [`crate::meta::Hole`].
+    Hole(crate::meta::Hole),
     /// A definition, held folded: what it is known as, its type, and the value
     /// it unfolds to.
     ///
@@ -224,23 +217,13 @@ pub(crate) enum Elim {
         origin: Origin,
         field: Name,
     },
-    /// `J` blocked on a proof that is not `refl`. The proof is what the spine
-    /// leads to, so it is not stored here.
-    J {
-        origin: Origin,
-        ty: Arc<Value>,
-        from: Arc<Value>,
-        motive: Arc<Value>,
-        base: Arc<Value>,
-        to: Arc<Value>,
-    },
 }
 
 impl Elim {
     /// Where this elimination was written.
     pub(crate) const fn origin(&self) -> Origin {
         match self {
-            Self::App { origin, .. } | Self::Project { origin, .. } | Self::J { origin, .. } => *origin,
+            Self::App { origin, .. } | Self::Project { origin, .. } => *origin,
         }
     }
 }

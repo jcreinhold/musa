@@ -66,15 +66,15 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
     params.extend(context);
 
     let mut indices = Vec::with_capacity(data.families.len());
-    let mut levels = Vec::with_capacity(data.families.len());
     for family in &data.families {
         let (bound, _) = telescope(&mut elaborator, &under_params, &family.indices, arity)?;
-        levels.push(elaborator.fresh_level(here)?);
         indices.push(bound);
     }
 
-    // Pass two: the constructors, with the families at their real types.
-    let signatures = signatures(&mut elaborator, &outline, here, &params, &indices, &levels)?;
+    // Pass two: the constructors, with the families at their real types. §1: a
+    // data family stores small types and so lands at `Type 0`, which is what
+    // every signature says and what the constructor check enforces.
+    let signatures = signatures(&mut elaborator, &outline, here, &params, &indices)?;
     let scope = declaring(&Scope::new(&closed), data, |which| {
         Arc::clone(signatures.get(which).unwrap_or(&opaque))
     });
@@ -82,20 +82,15 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
 
     let mut families = Vec::with_capacity(data.families.len());
     for (which, family) in data.families.iter().enumerate() {
-        let Some((declared_indices, level)) = indices.get(which).zip(levels.get(which)) else {
+        let Some(declared_indices) = indices.get(which) else {
             continue;
         };
         let built = constructors(&mut elaborator, &under_params, data, family, declared_indices, arity)?;
-        // The family's own level is the join of what its constructors store,
-        // which is the constraint `Type l` has to satisfy for every field type
-        // to be a type at or below it.
-        if !level.determine(&built.level) {
-            return Err(Refusal::Unsolved {
-                site: crate::meta::MetaSource::UniverseLevel,
-                created: here,
-                blocked: None,
-            }
-            .into());
+        // The family's level is the join of what its constructors store; §1's
+        // two universes make that join a check — every field small — rather
+        // than an inference.
+        if built.level == Level::One {
+            return Err(Refusal::BeyondUniverses { at: data.origin }.into());
         }
         uniform(family)?;
         let which = u32::try_from(which).unwrap_or(u32::MAX);
@@ -104,7 +99,6 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
             name: Arc::clone(&family.name),
             visibility: family.visibility,
             indices: Arc::from(declared_indices.clone()),
-            level: level.resolved(),
             constructors: Arc::from(built.constructors),
         });
     }
@@ -255,13 +249,11 @@ fn signatures(
     here: Origin,
     params: &[Binder],
     indices: &[Vec<Binder>],
-    levels: &[Level],
 ) -> Result<Vec<Arc<Value>>, CoreError> {
     indices
         .iter()
-        .zip(levels)
-        .map(|(bound, level)| {
-            let result = Term::universe(here, level.clone());
+        .map(|bound| {
+            let result = Term::universe(here, Level::ZERO);
             let term = closed_over(here, params, closed_over(here, bound, result));
             Ok(Arc::new(eval(elaborator.meter(), scope.env(), &term)?))
         })
@@ -323,7 +315,7 @@ fn constructors(
             match occurrence(&binder.ty, arity, depth) {
                 Ok(None) => {
                     if let Some(found) = levels.get(usize::try_from(position).unwrap_or(usize::MAX)) {
-                        level = level.max(found);
+                        level = level.max(*found);
                     }
                 }
                 // A recursive field stands at the level being computed, so it
@@ -666,8 +658,8 @@ fn mentions(term: &Term, watched: Watched, depth: u32, bound: u32) -> Option<Ori
         | Shape::Builtin(_)
         | Shape::Lit(_)
         | Shape::Numeral(_)
-        | Shape::Universe(_)
-        | Shape::Meta(_) => None,
+        | Shape::Hole(_)
+        | Shape::Universe(_)         => None,
         Shape::Pi { domain, codomain, .. } => {
             mentions(domain, watched, depth, bound).or_else(|| mentions(codomain, watched, depth, under))
         }
@@ -683,20 +675,6 @@ fn mentions(term: &Term, watched: Watched, depth: u32, bound: u32) -> Option<Ori
             .iter()
             .find_map(|field| mentions(&field.term, watched, depth, bound)),
         Shape::Project { record, .. } => mentions(record, watched, depth, bound),
-        Shape::Id { ty, left, right } => [ty, left, right]
-            .into_iter()
-            .find_map(|part| mentions(part, watched, depth, bound)),
-        Shape::Refl(value) => mentions(value, watched, depth, bound),
-        Shape::J {
-            ty,
-            from,
-            motive,
-            base,
-            to,
-            proof,
-        } => [ty, from, motive, base, to, proof]
-            .into_iter()
-            .find_map(|part| mentions(part, watched, depth, bound)),
         Shape::Let { ty, value, body, .. } => mentions(ty, watched, depth, bound)
             .or_else(|| mentions(value, watched, depth, bound))
             .or_else(|| mentions(body, watched, depth, under)),

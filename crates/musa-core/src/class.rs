@@ -285,22 +285,13 @@ pub(crate) struct Classes {
     by_method: HashMap<Name, Vec<Name>>,
 }
 
-/// Every context starts with `Storable` in scope and nothing else.
-///
-/// `02-core-calculus.md` §1.2 makes storability a fact about a declaration
-/// rather than a claim, so there is no declaration that puts the trait in scope
-/// and nothing for a caller to remember to do. A signature may require it from
-/// the first line of the first module.
 impl Default for Classes {
     fn default() -> Self {
-        let storable = crate::storable::class();
-        let mut built = Self {
+        Self {
             traits: HashMap::new(),
             instances: HashMap::new(),
             by_method: HashMap::new(),
-        };
-        built.insert(&storable);
-        built
+        }
     }
 }
 
@@ -396,15 +387,16 @@ impl Classes {
 pub(crate) fn size(term: &Term) -> u32 {
     use crate::term::Shape;
     let inner = match term.shape() {
-        Shape::Var(_)
+        Shape::Hole(_)
+        | Shape::Var(_)
         | Shape::Const(_)
         | Shape::Def(_)
         | Shape::Base(_)
         | Shape::Builtin(_)
         | Shape::Lit(_)
         | Shape::Numeral(_)
-        | Shape::Universe(_)
-        | Shape::Meta(_) => 0,
+        | Shape::Hole(_)
+        | Shape::Universe(_)         => 0,
         Shape::Pi { domain, codomain, .. } => size(domain).saturating_add(size(codomain)),
         Shape::Lam { body, .. } => size(body),
         Shape::App { function, argument, .. } => size(function).saturating_add(size(argument)),
@@ -412,18 +404,6 @@ pub(crate) fn size(term: &Term) -> u32 {
             .iter()
             .fold(0_u32, |total, field| total.saturating_add(size(&field.term))),
         Shape::Project { record, .. } => size(record),
-        Shape::Id { ty, left, right } => size(ty).saturating_add(size(left)).saturating_add(size(right)),
-        Shape::Refl(witness) => size(witness),
-        Shape::J {
-            ty,
-            from,
-            motive,
-            base,
-            to,
-            proof,
-        } => [from, motive, base, to, proof]
-            .iter()
-            .fold(size(ty), |total, part| total.saturating_add(size(part))),
         Shape::Let { ty, value, body, .. } => size(ty).saturating_add(size(value)).saturating_add(size(body)),
     };
     inner.saturating_add(1)
@@ -448,8 +428,8 @@ pub(crate) fn occurrences(term: &Term, depth: u32, level: u32) -> u32 {
         | Shape::Builtin(_)
         | Shape::Lit(_)
         | Shape::Numeral(_)
-        | Shape::Universe(_)
-        | Shape::Meta(_) => 0,
+        | Shape::Hole(_)
+        | Shape::Universe(_)         => 0,
         Shape::Pi { domain, codomain, .. } => deeper(domain, 0).saturating_add(deeper(codomain, 1)),
         Shape::Lam { body, .. } => deeper(body, 1),
         Shape::App { function, argument, .. } => deeper(function, 0).saturating_add(deeper(argument, 0)),
@@ -460,20 +440,6 @@ pub(crate) fn occurrences(term: &Term, depth: u32, level: u32) -> u32 {
             .iter()
             .fold(0, |total, field| total.saturating_add(deeper(&field.term, 0))),
         Shape::Project { record, .. } => deeper(record, 0),
-        Shape::Id { ty, left, right } => deeper(ty, 0)
-            .saturating_add(deeper(left, 0))
-            .saturating_add(deeper(right, 0)),
-        Shape::Refl(witness) => deeper(witness, 0),
-        Shape::J {
-            ty,
-            from,
-            motive,
-            base,
-            to,
-            proof,
-        } => [from, motive, base, to, proof]
-            .iter()
-            .fold(deeper(ty, 0), |total, part| total.saturating_add(deeper(part, 0))),
         Shape::Let { ty, value, body, .. } => deeper(ty, 0)
             .saturating_add(deeper(value, 0))
             .saturating_add(deeper(body, 1)),
@@ -510,13 +476,10 @@ pub(crate) fn head_of(term: &Term, depth: u32) -> Option<Head> {
         | Shape::RecordType(_)
         | Shape::Record(_)
         | Shape::Project { .. }
-        | Shape::Id { .. }
-        | Shape::Refl(_)
-        | Shape::J { .. }
-        | Shape::Meta(_)
         | Shape::Builtin(_)
         | Shape::Lit(_)
         | Shape::Numeral(_)
+        | Shape::Hole(_)
         | Shape::Let { .. } => None,
     }
 }

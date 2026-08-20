@@ -1,482 +1,45 @@
-//! `02-core-calculus.md` §1.2: storability as a constraint nobody writes.
+//! `Storable`: a structural fact, discharged by computing it.
 //!
-//! Storability is a *structural fact about a type*, not a claim an author may
-//! assert, so this module is the whole of `Storable`: the trait itself, which
-//! every context has in scope before anything is declared, and the instances
-//! generated from a declaration group. There is no path from source to an
-//! `impl Storable` — [`declare_trait`](crate::declare_trait) refuses the name
-//! and [`declare_impl`](crate::declare_impl) refuses the head — which is what
-//! makes §1.2's exception an exception in the safe direction: the set of
-//! instances is smaller than an author could produce and never larger.
+//! `02-core-calculus.md` §1.2, as the course correction rewrote it: storability
+//! is a fact about a type's shape — no function at any depth — that the checker
+//! computes where the language needs it, which is a machine port's signature
+//! (§2.3) and nothing else. It is not a trait, there is no instance table, and
+//! no source program can name it: the two guards that keep it that way are
+//! `declare_trait`'s and `declare_impl`'s ordinary reserved-name refusals.
 //!
-//! # The evidence is the check, so the dictionary is empty
-//!
-//! `Storable` declares no method. Its dictionary type is `{}` and its value is
-//! `{}`, and nothing projects out of one. That is not a placeholder for an
-//! encoding to be added later: the encoding is a property of the *declaration*,
-//! decided once here, and a field an author could read would be a field an
-//! author could supply. What the constraint carries is the right to have asked;
-//! the answer is that the instance exists.
-//!
-//! # Two questions per stored field, not one
-//!
-//! §1.2 says a family is storable when every field type it stores is, that an
-//! arrow is never storable, and that neither is any container holding one *at
-//! any depth*. Those are two different questions about one term, and answering
-//! them with a single walk is what makes `Vec A n` come out wrong:
-//!
-//! - The field type's **head** decides which instance would answer it, so it has
-//!   to be a family: one of this group's, one already declared and storable, or
-//!   a record type whose own fields answer the same two questions. A field whose
-//!   type is a universe, or is an earlier field's value, has no encoding at all.
-//! - The field type's **arguments** are not all types. `Vec A n` stores `A`s and
-//!   is indexed by a number, and asking whether `n` is storable is a category
-//!   error. So arguments are only scanned for an arrow or a universe — that is
-//!   the at-any-depth rule — and for which of the group's *type* parameters
-//!   occur, which is what the generated instance's context constrains.
-//!
-//! # Why the generated instances terminate without being measured
-//!
-//! §4's measure refuses an instance whose context is not smaller than its head.
-//! Every context generated here is `Storable p` for a parameter `p` of the head
-//! `N p⃗ i⃗`, which is a variable inside an application and so strictly smaller by
-//! that measure. Running the measure over these would be checking an arithmetic
-//! identity at runtime.
+//! This module holds the two pieces that remain. [`requiring_storable`] is how
+//! the host writes the constraint into a machine constructor's scheme — a
+//! constrained Π over the reserved name, exactly as before. [`is_storable`] is
+//! what discharges that constraint at elaboration: a structural walk over the
+//! type the port turned out to have, where the old implementation generated an
+//! instance per declaration group and resolved it from a table.
 
-use std::collections::BTreeSet;
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 
-use crate::class::{Classes, Constraint, Instance, Key, Trait};
-use crate::family::{Binder, Constant, Group};
-use crate::level::Level;
+use crate::class::Constraint;
+use crate::error::CoreError;
+use crate::family::Role;
+use crate::list::List;
 use crate::origin::Origin;
-use crate::term::{Index, Name, Shape, Term};
+use crate::term::{DbLevel, Term};
+use crate::value::{Elim, Form, Head, Value};
 
-/// The one trait whose instances this crate generates and no author may write.
+
+/// The one constraint name this crate reserves and no author may write.
 pub(crate) const STORABLE: &str = "Storable";
 
-/// The `Storable` trait: one type parameter, no supers, no methods.
+/// `Storable argument` as a constrained Π over `codomain` — the way a machine
+/// constructor's scheme states that a port stores data.
 ///
-/// Built once and shared, because it is the same trait in every context — no
-/// declaration introduces it and none can shadow it.
-///
-/// Its parameter stands at `Type 0`, which states §1.2 rather than limiting it:
-/// a storable type stores no type and no function, so its constructors' fields
-/// contribute nothing above level 0 and the family lands there. A `Storable`
-/// constraint at a higher universe is one nothing could ever answer, and
-/// refusing it where the argument is checked says so earlier than a failed
-/// lookup would.
-pub(crate) fn class() -> Arc<Trait> {
-    static CLASS: OnceLock<Arc<Trait>> = OnceLock::new();
-    Arc::clone(CLASS.get_or_init(|| {
-        let at = Origin::UNKNOWN;
-        Arc::new(Trait {
-            name: Arc::from(STORABLE),
-            package: None,
-            params: Arc::from(vec![Binder::explicit(Arc::from("A"), Term::universe(at, Level::ZERO))]),
-            supers: Arc::from(Vec::new()),
-            dictionary: Term::lam(at, "A", Term::record_type(at, core::iter::empty())),
-            methods: Arc::from(Vec::new()),
-            derived: Arc::from(Vec::new()),
-        })
-    }))
-}
-
-/// The instances `group` generates: one per storable family, none for a family
-/// that is not.
-///
-/// `classes` is read for the families declared *earlier* that this group's
-/// fields mention. A family of this same group is not looked up there and could
-/// not be — inside a declaration group the families are binders rather than
-/// constants, so a mutual reference is a variable and the fixed point below is
-/// what decides it. §1.2's "checked once per declaration group with mutually
-/// recursive families grouped together" is that fixed point.
-pub(crate) fn instances(classes: &Classes, group: &Arc<Group>) -> Vec<Arc<Instance>> {
-    let telescope = Telescope {
-        arity: group.families.len(),
-        params: group
-            .params
-            .iter()
-            .map(|param| matches!(param.ty.shape(), Shape::Universe(_)))
-            .collect(),
-    };
-
-    // Start by assuming every family storable and let a field refute one. The
-    // other direction — assuming none and growing — would decide a recursive
-    // family by whether its own recursive field is storable yet, which is the
-    // question being asked.
-    let mut storable = vec![true; telescope.arity];
-    let mut needed = vec![BTreeSet::new(); telescope.arity];
-    while refine(group, &telescope, classes, &mut storable, &mut needed) {}
-
-    (0..telescope.arity)
-        .filter(|which| storable.get(*which).copied().unwrap_or(false))
-        .map(|which| built(group, which, needed.get(which)))
-        .collect()
-}
-
-/// Where a de Bruijn level lands in a declaration group's binders.
-///
-/// A field type is read under the family binders, then the group parameters,
-/// then the fields before it, and every question this module asks about a
-/// variable is which of those three it names.
-struct Telescope {
-    /// How many families the group declares, which is how many binders come
-    /// first.
-    arity: usize,
-    /// Which group parameter is a *type*, and so may carry a constraint.
-    params: Vec<bool>,
-}
-
-impl Telescope {
-    /// The depth a constructor's field `which` is read at.
-    fn depth(&self, which: usize) -> usize {
-        self.arity.saturating_add(self.params.len()).saturating_add(which)
-    }
-
-    /// The level a variable at `index` names, read at `depth`.
-    fn level(depth: usize, index: Index) -> Option<usize> {
-        depth
-            .checked_sub(usize::try_from(index.0).unwrap_or(usize::MAX))
-            .and_then(|above| above.checked_sub(1))
-    }
-
-    /// Which family a level names, if it names one.
-    const fn family(&self, level: usize) -> Option<usize> {
-        if level < self.arity { Some(level) } else { None }
-    }
-
-    /// Which group parameter a level names, if it names one that may carry a
-    /// constraint.
-    fn parameter(&self, level: usize) -> Option<usize> {
-        let which = level.checked_sub(self.arity)?;
-        self.params.get(which).copied().unwrap_or(false).then_some(which)
-    }
-}
-
-/// One pass of the fixed point: drop every family a field refutes, and answer
-/// whether anything was dropped.
-fn refine(
-    group: &Arc<Group>,
-    telescope: &Telescope,
-    classes: &Classes,
-    storable: &mut [bool],
-    needed: &mut [BTreeSet<usize>],
-) -> bool {
-    let mut dropped = false;
-    for (which, family) in group.families.iter().enumerate() {
-        if !storable.get(which).copied().unwrap_or(false) {
-            continue;
-        }
-        let mut required = BTreeSet::new();
-        let mut survives = true;
-        for case in family.constructors.iter() {
-            for (position, field) in case.fields.iter().enumerate() {
-                let depth = telescope.depth(position);
-                if !stored(&field.ty, depth, telescope, classes, storable, &mut required) {
-                    survives = false;
-                }
-            }
-        }
-        if survives {
-            if let Some(slot) = needed.get_mut(which) {
-                *slot = required;
-            }
-        } else {
-            if let Some(slot) = storable.get_mut(which) {
-                *slot = false;
-            }
-            dropped = true;
-        }
-    }
-    dropped
-}
-
-/// Whether a stored field's type is storable, collecting the group parameters
-/// the constraint is needed on.
-fn stored(
-    ty: &Term,
-    depth: usize,
-    telescope: &Telescope,
-    classes: &Classes,
-    storable: &[bool],
-    required: &mut BTreeSet<usize>,
-) -> bool {
-    finite(ty, depth, telescope, required) && headed(ty, depth, telescope, classes, storable, required)
-}
-
-/// Whether the field type's head is one an instance answers.
-///
-/// Only the head, because only the head decides which instance is consulted;
-/// the arguments were scanned by [`finite`] already.
-fn headed(
-    ty: &Term,
-    depth: usize,
-    telescope: &Telescope,
-    classes: &Classes,
-    storable: &[bool],
-    required: &mut BTreeSet<usize>,
-) -> bool {
-    match ty.shape() {
-        Shape::App { function, .. } => headed(function, depth, telescope, classes, storable, required),
-        Shape::Var(index) => {
-            let Some(level) = Telescope::level(depth, *index) else {
-                return false;
-            };
-            if let Some(family) = telescope.family(level) {
-                return storable.get(family).copied().unwrap_or(false);
-            }
-            // A parameter is answered by the constraint the generated instance
-            // carries. Anything deeper is an earlier field, and a field whose
-            // *value* is the type of a later one has no encoding.
-            let Some(which) = telescope.parameter(level) else {
-                return false;
-            };
-            required.insert(which);
-            true
-        }
-        Shape::Const(constant) => {
-            constant.is_family()
-                && classes
-                    .instance(&Key::rigid(&storable_name(), &constant.name()))
-                    .is_some()
-        }
-        // A base type stands for the host's own data, so whether it can be
-        // stored is the host's claim and not this crate's guess: it is answered
-        // by an instance keyed on the base type's name, exactly as a declared
-        // family's is.
-        Shape::Base(base) => classes.instance(&Key::rigid(&storable_name(), base.name())).is_some(),
-        // An anonymous record stores its fields, so it asks the same question
-        // once per field, each read under the ones before it.
-        Shape::RecordType(fields) => fields.iter().enumerate().all(|(position, field)| {
-            stored(
-                &field.term,
-                depth.saturating_add(position),
-                telescope,
-                classes,
-                storable,
-                required,
-            )
-        }),
-        // Everything else is refused by `finite` already, or is not a type a
-        // value can be stored at. A definition is here rather than unfolded
-        // because this walk runs over a *quoted* type, where δ has already
-        // happened: reaching one means the type was never evaluated, and
-        // guessing on its behalf is what this function must not do.
-        Shape::Def(_)
-        | Shape::Universe(_)
-        | Shape::Pi { .. }
-        | Shape::Lam { .. }
-        | Shape::Record(_)
-        | Shape::Project { .. }
-        | Shape::Id { .. }
-        | Shape::Refl(_)
-        | Shape::J { .. }
-        | Shape::Meta(_)
-        | Shape::Builtin(_)
-        | Shape::Lit(_)
-        | Shape::Numeral(_)
-        | Shape::Let { .. } => false,
-    }
-}
-
-/// §1.2's at-any-depth rule: no arrow and no universe anywhere in the term,
-/// collecting the type parameters it mentions on the way.
-///
-/// This half runs over *arguments* as well as over types, which is why it asks a
-/// weaker question than [`headed`]: `Vec A n` is a storable type whose second
-/// argument is a number, and a walk demanding every argument be storable would
-/// refuse it.
-fn finite(ty: &Term, depth: usize, telescope: &Telescope, required: &mut BTreeSet<usize>) -> bool {
-    match ty.shape() {
-        // The two shapes §1.2 names. An arrow has no encoding, and a stored type
-        // is something nobody can encode either.
-        Shape::Pi { .. } | Shape::Universe(_) => false,
-        Shape::Var(index) => {
-            if let Some(which) = Telescope::level(depth, *index).and_then(|level| telescope.parameter(level)) {
-                required.insert(which);
-            }
-            true
-        }
-        // Neither an arrow nor a universe, and neither holds one: a base type
-        // is a name, a literal is a closed value the host owns, and a builtin's
-        // application is walked by the arm below.
-        Shape::Const(_)
-        | Shape::Def(_)
-        | Shape::Base(_)
-        | Shape::Builtin(_)
-        | Shape::Lit(_)
-        | Shape::Numeral(_)
-        | Shape::Meta(_) => true,
-        Shape::App { function, argument } => {
-            finite(function, depth, telescope, required) && finite(argument, depth, telescope, required)
-        }
-        Shape::Lam { body, .. } => finite(body, depth.saturating_add(1), telescope, required),
-        Shape::Project { record, .. } => finite(record, depth, telescope, required),
-        Shape::Refl(value) => finite(value, depth, telescope, required),
-        Shape::Id { ty, left, right } => {
-            finite(ty, depth, telescope, required)
-                && finite(left, depth, telescope, required)
-                && finite(right, depth, telescope, required)
-        }
-        Shape::Let { value, body, .. } => {
-            finite(value, depth, telescope, required) && finite(body, depth.saturating_add(1), telescope, required)
-        }
-        Shape::RecordType(fields) | Shape::Record(fields) => fields
-            .iter()
-            .enumerate()
-            .all(|(position, field)| finite(&field.term, depth.saturating_add(position), telescope, required)),
-        Shape::J {
-            motive,
-            base,
-            ty,
-            from,
-            to,
-            proof,
-        } => [motive, base, ty, from, to, proof]
-            .into_iter()
-            .all(|part| finite(part, depth, telescope, required)),
-    }
-}
-
-/// The instance for family `which`: `impl<p⃗, i⃗> Storable<N p⃗ i⃗> where Storable pⱼ…`.
-///
-/// The parameters are the group's parameters followed by the family's indices,
-/// and their types transfer from the declaration unchanged rather than being
-/// re-indexed. §1.1 forbids a parameter or index type from mentioning the
-/// declaration, so every free index in one stands below the family binders —
-/// which is to say it names the same binder at this shallower depth. This crate
-/// does not shift terms, and this is one of the places where it does not have to.
-fn built(group: &Arc<Group>, which: usize, needed: Option<&BTreeSet<usize>>) -> Arc<Instance> {
-    let at = group.origin;
-    let family = group.families.get(which);
-    let mut params: Vec<Binder> = group.params.to_vec();
-    if let Some(declared) = family {
-        params.extend(declared.indices.iter().cloned());
-    }
-    let depth = params.len();
-
-    let head = Term::new(
-        at,
-        Shape::Const(Constant::family(group, u32::try_from(which).unwrap_or(u32::MAX))),
-    );
-    let applied = (0..depth).fold(head, |function, level| {
-        Term::app(at, function, variable(at, depth, level))
-    });
-
-    let class = storable_name();
-    let context: Vec<Constraint> = needed
-        .into_iter()
-        .flatten()
-        .map(|&parameter| Constraint {
-            origin: at,
-            class: Arc::clone(&class),
-            args: Arc::from(vec![variable(at, depth, parameter)]),
-        })
-        .collect();
-
-    // `λp⃗. λi⃗. λd⃗. {}` — one binder per parameter, one per constraint, and the
-    // empty record the module doc argues for.
-    let mut dictionary = Term::record(at, core::iter::empty());
-    for _ in 0..context.len() {
-        dictionary = Term::lam(at, STORABLE, dictionary);
-    }
-    for binder in params.iter().rev() {
-        dictionary = Term::lam(at, Arc::clone(&binder.name), dictionary);
-    }
-
-    let name = family.map_or_else(|| Arc::from("?"), |declared| Arc::clone(&declared.name));
-    Arc::new(Instance {
-        origin: at,
-        key: Key::rigid(&class, &name),
-        params: Arc::from(params),
-        args: Arc::from(vec![applied]),
-        context: Arc::from(context),
-        dictionary,
-    })
-}
-
-/// The instances a host's registered base types generate: one per base type
-/// whose owner called [`Base::storable`](crate::Base::storable), none for the
-/// rest.
-///
-/// [`headed`] already asks for exactly these — "a base type stands for the
-/// host's own data, so whether it can be stored is the host's claim and not
-/// this crate's guess" — and until a registry generated them the claim had no
-/// way to arrive, so *every* declaration storing a host domain came out not
-/// storable. This is the other half of that sentence.
-///
-/// A parameterized base type gets its telescope from its kind: `Duration` is
-/// registered at `(index : Coordinate) → Type 0`, so its instance is
-/// `impl<index> Storable (Duration index)`. The parameters are not constrained,
-/// which is what makes this the *unconditional* guarantee [`Base::storable`]
-/// documents — a base type whose storability depends on an argument is
-/// registered without it.
-pub(crate) fn registered<'a>(bases: impl Iterator<Item = &'a crate::base::Base>) -> Vec<Arc<Instance>> {
-    bases.filter(|base| base.is_storable()).map(one).collect()
-}
-
-/// The instance for one storable base type.
-fn one(base: &crate::base::Base) -> Arc<Instance> {
-    let at = Origin::UNKNOWN;
-    let params = telescope(base.kind());
-    let depth = params.len();
-    let applied = (0..depth).fold(base.term(at), |function, level| {
-        Term::app(at, function, variable(at, depth, level))
-    });
-
-    // `λp⃗. {}` — the empty dictionary this module's own header argues for, under
-    // one binder per kind parameter.
-    let mut dictionary = Term::record(at, core::iter::empty());
-    for binder in params.iter().rev() {
-        dictionary = Term::lam(at, Arc::clone(&binder.name), dictionary);
-    }
-
-    Arc::new(Instance {
-        origin: at,
-        key: Key::rigid(&storable_name(), base.name()),
-        params: Arc::from(params),
-        args: Arc::from(vec![applied]),
-        context: Arc::from(Vec::new()),
-        dictionary,
-    })
-}
-
-/// The binders a base type's kind takes before it lands in a universe.
-///
-/// A kind is closed and read in the empty context, so each domain is already
-/// the term this telescope wants and nothing has to be shifted.
-fn telescope(kind: &Term) -> Vec<Binder> {
-    let mut binders = Vec::new();
-    let mut rest = kind;
-    while let Shape::Pi {
-        name, domain, codomain, ..
-    } = rest.shape()
-    {
-        binders.push(Binder::explicit(Arc::clone(name), domain.clone()));
-        rest = codomain;
-    }
-    binders
-}
-
-/// `[Storable A] → codomain`: §1.2's premise, written into a host's registered
-/// signature.
-///
-/// The one way anything outside this crate names `Storable`, and it *requires*
-/// the constraint rather than supplying it — which is the whole of §1.2's
-/// "a signature may only require the constraint". A host cannot reach
-/// [`Constraint`] to build one for another trait, and cannot reach this to claim
-/// an instance.
-///
-/// The domain is `{}` rather than `Storable A` unreduced, because the trait's
-/// dictionary is `λA. {}` and the two are the same type by β. The binder takes
-/// the trait's name for [`crate::Trait::super_field`]'s reason: a diagnostic
-/// about the dictionary and the constraint that demanded it say one word.
+/// The dictionary the constraint would hold is the empty record: the evidence
+/// is the check itself, which is §1.2's "the dictionary is empty" stated as a
+/// construction. [`crate::dictionary`] discharges the constraint by computing
+/// [`is_storable`], never by table lookup.
 #[must_use]
 pub fn requiring_storable(origin: Origin, argument: Term, codomain: Term) -> Term {
     let constraint = Arc::new(Constraint {
         origin,
-        class: storable_name(),
+        class: Arc::from(STORABLE),
         args: Arc::from(vec![argument]),
     });
     Term::constrained_pi(
@@ -488,13 +51,106 @@ pub fn requiring_storable(origin: Origin, argument: Term, codomain: Term) -> Ter
     )
 }
 
-/// `Storable` as a name, which every key and constraint here needs.
-fn storable_name() -> Name {
-    Arc::from(STORABLE)
+/// Is this type storable data — no function at any depth (§1.2)?
+///
+/// The walk is over the *value* the type evaluates to, because that is where the
+/// question is asked: a machine port's type at a concrete call site. A family
+/// asks the question of its constructors' fields at the spine's arguments, and a
+/// family already being asked assumes itself storable — the coinductive reading
+/// of §1.2's "checked once per declaration group": a recursive family is
+/// storable exactly when its fields' other types are.
+///
+/// # Errors
+///
+/// [`crate::Malformed::NotAType`] if the value is no type at all — a compiler
+/// defect, since a constraint's argument is checked before it is discharged.
+pub(crate) fn is_storable(
+    meter: &mut crate::budget::Meter,
+    ty: &Value,
+) -> Result<bool, CoreError> {
+    stor(meter, ty, &mut Vec::new(), &mut 0)
 }
 
-/// The variable naming binder `level` of a telescope `depth` deep.
-fn variable(at: Origin, depth: usize, level: usize) -> Term {
-    let index = depth.saturating_sub(level).saturating_sub(1);
-    Term::var(at, Index(u32::try_from(index).unwrap_or(u32::MAX)))
+/// [`is_storable`], under `visiting` (the families currently being decided, by
+/// group identity) and `depth` (the next fresh variable's level).
+fn stor(
+    meter: &mut crate::budget::Meter,
+    ty: &Value,
+    visiting: &mut Vec<(usize, u32)>,
+    depth: &mut u32,
+) -> Result<bool, CoreError> {
+    match &ty.form {
+        // A function is never storable, and neither is a type standing where
+        // data should: §1.2's two negative rules.
+        Form::Pi { .. } | Form::Lam(_) | Form::Universe(_) => Ok(false),
+        Form::RecordType(telescope) => {
+            let mut env = telescope.env.clone();
+            for field in telescope.fields.iter() {
+                let field_ty = crate::eval::eval(meter, &env, &field.term)?;
+                if !stor(meter, &field_ty, visiting, depth)? {
+                    return Ok(false);
+                }
+                let fresh = Value::var(ty.origin, DbLevel(*depth), Arc::new(field_ty));
+                *depth = depth.saturating_add(1);
+                env = env.push(fresh);
+            }
+            Ok(true)
+        }
+        Form::Neutral(neutral) => match &neutral.head {
+            Head::Base(base) => Ok(base.is_storable()),
+            Head::Const(constant) => match &constant.role {
+                Role::Family => {
+                    let key = (Arc::as_ptr(&constant.group) as usize, constant.family);
+                    if visiting.contains(&key) {
+                        return Ok(true);
+                    }
+                    let Some(declared) = constant.group.family_at(constant.family) else {
+                        return Ok(true);
+                    };
+                    let params = usize::try_from(constant.group.params.len()).unwrap_or(usize::MAX);
+                    let mut arguments = Vec::with_capacity(params);
+                    for elimination in neutral.spine.iter().take(params) {
+                        let Elim::App { argument, .. } = elimination else {
+                            return Ok(false);
+                        };
+                        arguments.push(Value::clone(argument));
+                    }
+                    visiting.push(key);
+                    let mut answer = true;
+                    for constructor in declared.constructors.iter() {
+                        let mut env = List::EMPTY;
+                        for argument in &arguments {
+                            env = env.push(argument.clone());
+                        }
+                        for field in constructor.fields.iter() {
+                            let field_ty = crate::eval::eval(meter, &env, &field.ty)?;
+                            if !stor(meter, &field_ty, visiting, depth)? {
+                                answer = false;
+                                break;
+                            }
+                            let fresh = Value::var(ty.origin, DbLevel(*depth), Arc::new(field_ty));
+                            *depth = depth.saturating_add(1);
+                            env = env.push(fresh);
+                        }
+                        if !answer {
+                            break;
+                        }
+                    }
+                    visiting.pop();
+                    Ok(answer)
+                }
+                // A stuck elimination in type position cannot be shown to hold
+                // no function, and a constructor is not a type at all. Both are
+                // the conservative answer; the second is a compiler defect.
+                Role::Recursor(_) => Ok(false),
+                Role::Constructor(_) => Err(crate::error::Malformed::NotAType.into()),
+            },
+            // An unknown type could hold a function, and a definition or a
+            // builtin stuck at the head of one is no more decidable: refused.
+            Head::Var(_, _) | Head::Def(_, _, _) | Head::Builtin(_) | Head::Hole(_) => Ok(false),
+        },
+        // A checked type never evaluates to one of these; reaching one is a
+        // compiler defect rather than a program's fault.
+        Form::Record(_) | Form::Lit(_) | Form::Numeral(_) => Err(crate::error::Malformed::NotAType.into()),
+    }
 }

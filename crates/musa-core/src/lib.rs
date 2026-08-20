@@ -100,7 +100,6 @@ mod program;
 mod quote;
 mod raw;
 mod rec;
-mod recheck;
 mod refuse;
 mod room;
 mod scope;
@@ -120,14 +119,13 @@ pub use crate::context::Cx;
 pub use crate::error::{CoreError, Malformed};
 pub use crate::family::{Binder, Constant, Constructor, Declared, Group, canonical};
 pub use crate::level::Level;
-pub use crate::meta::{Meta, MetaSource};
+pub use crate::meta::MetaSource;
 pub use crate::origin::Origin;
 pub use crate::program::{Def, Program};
 pub use crate::raw::{
     ARROW_BINDER, Raw, RawArm, RawBinder, RawConstraint, RawConstructor, RawData, RawDefinition, RawFamily, RawField,
     RawImpl, RawMethod, RawPattern, RawProgram, RawShape, RawTopLevel, RawTrait,
 };
-pub use crate::recheck::well_typed;
 pub use crate::refuse::{ElabError, Mismatch, PathStep, Refusal};
 pub use crate::storable::requiring_storable;
 pub use crate::term::{DbLevel, Field, Index, Name, Plicity, Shape, Term};

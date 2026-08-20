@@ -523,32 +523,6 @@ pub enum RawShape {
         /// says nothing `p` does not.
         updates: Arc<[RawUpdate]>,
     },
-    /// `Id A x y`.
-    Id {
-        /// `A`.
-        ty: Raw,
-        /// `x`.
-        left: Raw,
-        /// `y`.
-        right: Raw,
-    },
-    /// `refl x`.
-    Refl(Raw),
-    /// `J A x P p y e`, the identity type's dependent eliminator.
-    J {
-        /// `A`.
-        ty: Raw,
-        /// `x`.
-        from: Raw,
-        /// `P : (y : A) → Id A x y → Type l`.
-        motive: Raw,
-        /// `p : P x (refl x)`.
-        base: Raw,
-        /// `y`.
-        to: Raw,
-        /// `e : Id A x y`.
-        proof: Raw,
-    },
     /// `let x : A = v in e`, with `A` written only when inference needs it.
     Let {
         /// The binder's name.
@@ -932,34 +906,6 @@ impl Raw {
                         value,
                     })
                     .collect(),
-            },
-        )
-    }
-
-    /// `Id ty left right`.
-    #[must_use]
-    pub fn identity(origin: Origin, ty: Self, left: Self, right: Self) -> Self {
-        Self::new(origin, RawShape::Id { ty, left, right })
-    }
-
-    /// `refl value`.
-    #[must_use]
-    pub fn refl(origin: Origin, value: Self) -> Self {
-        Self::new(origin, RawShape::Refl(value))
-    }
-
-    /// `J ty from motive base to proof`.
-    #[must_use]
-    pub fn jay(origin: Origin, ty: Self, from: Self, motive: Self, base: Self, to: Self, proof: Self) -> Self {
-        Self::new(
-            origin,
-            RawShape::J {
-                ty,
-                from,
-                motive,
-                base,
-                to,
-                proof,
             },
         )
     }

@@ -74,6 +74,9 @@ enum Level {
 
 fn write(out: &mut String, term: &Term, level: Level, names: &mut Vec<Name>) {
     match term.shape() {
+        Shape::Hole(hole) => {
+            let _ = write!(out, "{hole}");
+        }
         Shape::Var(index) => {
             let depth = names.len();
             match depth
@@ -107,42 +110,9 @@ fn write(out: &mut String, term: &Term, level: Level, names: &mut Vec<Name>) {
         Shape::Builtin(builtin) => {
             let _ = write!(out, "{builtin}");
         }
-        Shape::Meta(meta) => {
-            let _ = write!(out, "{meta}");
-        }
         Shape::Universe(universe) => {
             let _ = write!(out, "Type {universe}");
         }
-        Shape::Refl(value) => parenthesized(out, level, Level::Applied, |out| {
-            out.push_str("refl ");
-            write(out, value, Level::Argument, names);
-        }),
-        Shape::Id { ty, left, right } => parenthesized(out, level, Level::Applied, |out| {
-            out.push_str("Id ");
-            for part in [ty, left, right] {
-                write(out, part, Level::Argument, names);
-                out.push(' ');
-            }
-            out.pop();
-        }),
-        // `J` prints as its own name applied to six arguments, which is what it
-        // is; nothing about a mismatch at one of them is clearer for spelling
-        // the eliminator out.
-        Shape::J {
-            ty,
-            from,
-            motive,
-            base,
-            to,
-            proof,
-        } => parenthesized(out, level, Level::Applied, |out| {
-            out.push_str("J ");
-            for part in [ty, from, motive, base, to, proof] {
-                write(out, part, Level::Argument, names);
-                out.push(' ');
-            }
-            out.pop();
-        }),
         Shape::App { .. } => parenthesized(out, level, Level::Applied, |out| {
             let (head, arguments) = spine(term);
             write(out, head, Level::Applied, names);
@@ -292,18 +262,6 @@ fn occurs(term: &Term, depth: u32) -> bool {
             .any(|(position, field)| occurs(&field.term, depth.saturating_add(u32::try_from(position).unwrap_or(0)))),
         Shape::Record(fields) => fields.iter().any(|field| occurs(&field.term, depth)),
         Shape::Project { record, .. } => occurs(record, depth),
-        Shape::Id { ty, left, right } => [ty, left, right].into_iter().any(|part| occurs(part, depth)),
-        Shape::Refl(value) => occurs(value, depth),
-        Shape::J {
-            ty,
-            from,
-            motive,
-            base,
-            to,
-            proof,
-        } => [ty, from, motive, base, to, proof]
-            .into_iter()
-            .any(|part| occurs(part, depth)),
         // Closed, or a leaf. A metavariable stands for a closed term applied to
         // the binders in scope (`term.rs`), so it holds no index of its own.
         Shape::Const(_)
@@ -311,8 +269,8 @@ fn occurs(term: &Term, depth: u32) -> bool {
         | Shape::Base(_)
         | Shape::Lit(_)
         | Shape::Numeral(_)
+        | Shape::Hole(_)
         | Shape::Builtin(_)
-        | Shape::Universe(_)
-        | Shape::Meta(_) => false,
+        | Shape::Universe(_)         => false,
     }
 }

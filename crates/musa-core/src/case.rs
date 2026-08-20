@@ -1168,46 +1168,10 @@ struct Motive {
 /// accumulator's type is fixed by what the fold is checked against and not by
 /// anything the arms can see.
 fn motive_level(meter: &mut Meter, scope: &Scope, goal: &Value) -> Result<Level, ElabError> {
-    if let Some(level) = meta_level(meter, goal)? {
-        return Ok(level);
-    }
     let quoted = scope.quote_type(meter, goal)?;
-    crate::recheck::universe_of(meter, scope.cx(), &quoted)
+    Ok(Term::level_of(&quoted)?)
 }
 
-/// The universe a metavariable goal stands at, read off the metavariable itself.
-///
-/// `None` for a goal that is not one, which is every goal the re-checker can
-/// answer about.
-fn meta_level(meter: &mut Meter, goal: &Value) -> Result<Option<Level>, ElabError> {
-    let Form::Neutral(neutral) = &goal.form else {
-        return Ok(None);
-    };
-    let Head::Meta(meta) = &neutral.head else {
-        return Ok(None);
-    };
-    // `?α : (x₀ : A₀) → … → Type ℓ` applied to its own context, so each argument
-    // instantiates one binder and what is left after the spine is the universe.
-    let mut ty = meta.ty().clone();
-    for elimination in &neutral.spine {
-        let Elim::App { argument, .. } = elimination else {
-            return Ok(None);
-        };
-        let unfolded = opened(meter, &ty)?;
-        let forced = unfolded.as_ref().unwrap_or(&ty);
-        let Form::Pi { codomain, .. } = &forced.form else {
-            return Ok(None);
-        };
-        let codomain = codomain.clone();
-        ty = apply_closure(meter, &codomain, argument.as_ref().clone())?;
-    }
-    let unfolded = opened(meter, &ty)?;
-    let forced = unfolded.as_ref().unwrap_or(&ty);
-    let Form::Universe(level) = &forced.form else {
-        return Ok(None);
-    };
-    Ok(Some(level.clone()))
-}
 
 /// What reading a subject's type told the splitter.
 struct Split {
@@ -1342,8 +1306,8 @@ fn variable(value: &Value) -> Option<u32> {
             crate::value::Head::Const(_)
             | crate::value::Head::Base(_)
             | crate::value::Head::Builtin(_)
-            | crate::value::Head::Def(_, _, _)
-            | crate::value::Head::Meta(_) => None,
+            | crate::value::Head::Hole(_)
+            | crate::value::Head::Def(_, _, _) => None,
         },
         crate::value::Form::Neutral(_) => None,
         crate::value::Form::Universe(_)
@@ -1351,10 +1315,8 @@ fn variable(value: &Value) -> Option<u32> {
         | crate::value::Form::Lam { .. }
         | crate::value::Form::RecordType(_)
         | crate::value::Form::Record(_)
-        | crate::value::Form::Id { .. }
         | crate::value::Form::Lit(_)
-        | crate::value::Form::Numeral(_)
-        | crate::value::Form::Refl(_) => None,
+        | crate::value::Form::Numeral(_) => None,
     }
 }
 

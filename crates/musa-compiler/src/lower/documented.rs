@@ -253,10 +253,7 @@ pub(crate) fn spelled(ty: &musa_core::Term) -> Option<String> {
         | musa_core::Shape::RecordType(_)
         | musa_core::Shape::Record(_)
         | musa_core::Shape::Project { .. }
-        | musa_core::Shape::Id { .. }
-        | musa_core::Shape::Refl(_)
-        | musa_core::Shape::J { .. }
-        | musa_core::Shape::Meta(_)
+        | musa_core::Shape::Hole(_)
         | musa_core::Shape::Let { .. } => None,
     }
 }

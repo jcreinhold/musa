@@ -51,9 +51,16 @@ pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, C
                 .get(index.0)
                 .cloned()
                 .ok_or_else(|| Malformed::UnboundVariable(*index).into()),
+            // A hole is closed, so the environment says nothing about it: it is
+            // either its solution, with that solution's own origins (§7), or a
+            // flexible head waiting for one.
+            Shape::Hole(hole) => Ok(hole
+                .solution()
+                .cloned()
+                .unwrap_or_else(|| Value::neutral(Neutral::head(here, Head::Hole(hole.clone()))))),
             // Resolved on the way in, so a value carries the level its arms
             // have already been solved to rather than the one written first.
-            Shape::Universe(level) => Ok(Value::new(here, Form::Universe(level.resolved()))),
+            Shape::Universe(level) => Ok(Value::new(here, Form::Universe(*level))),
             // A constant is closed and rigid, so evaluating one is reading it.
             // ι does not fire here: it needs the target, which arrives through
             // [`apply`]. A counting family's floor is the one constant that is
@@ -82,13 +89,6 @@ pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, C
             Shape::Base(base) => Ok(Value::neutral(Neutral::head(here, Head::Base(base.clone())))),
             Shape::Builtin(builtin) => Ok(Value::neutral(Neutral::head(here, Head::Builtin(builtin.clone())))),
             Shape::Lit(literal) => Ok(Value::new(here, Form::Lit(literal.clone()))),
-            // A meta is closed, so the environment says nothing about it: it is
-            // either its solution, with that solution's own origins (§7), or a
-            // flexible head waiting for one.
-            Shape::Meta(meta) => Ok(meta
-                .solution()
-                .cloned()
-                .unwrap_or_else(|| Value::neutral(Neutral::head(here, Head::Meta(meta.clone()))))),
             Shape::Pi {
                 plicity,
                 name,
@@ -112,16 +112,6 @@ pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, C
             )),
             Shape::Record(fields) => literal(meter, env, here, fields),
             Shape::Project { record, field } => projection(meter, env, here, record, field),
-            Shape::Id { ty, left, right } => identity(meter, env, here, ty, left, right),
-            Shape::Refl(value) => Ok(Value::new(here, Form::Refl(Arc::new(eval(meter, env, value)?)))),
-            Shape::J {
-                ty,
-                from,
-                motive,
-                base,
-                to,
-                proof,
-            } => elimination(meter, env, here, [ty, from, motive, base, to, proof]),
             Shape::Let {
                 name: _,
                 ty: _,
@@ -197,36 +187,6 @@ fn projection(meter: &mut Meter, env: &Env, here: Origin, record: &Term, field: 
     project(meter, here, record, field)
 }
 
-fn identity(
-    meter: &mut Meter,
-    env: &Env,
-    here: Origin,
-    ty: &Term,
-    left: &Term,
-    right: &Term,
-) -> Result<Value, CoreError> {
-    Ok(Value::new(
-        here,
-        Form::Id {
-            ty: Arc::new(eval(meter, env, ty)?),
-            left: Arc::new(eval(meter, env, left)?),
-            right: Arc::new(eval(meter, env, right)?),
-        },
-    ))
-}
-
-/// `J`'s six arguments, in the order [`Shape::J`] declares them.
-fn elimination(meter: &mut Meter, env: &Env, here: Origin, arguments: [&Term; 6]) -> Result<Value, CoreError> {
-    let [ty, from, motive, base, to, proof] = arguments;
-    let ty = eval(meter, env, ty)?;
-    let from = eval(meter, env, from)?;
-    let motive = eval(meter, env, motive)?;
-    let base = eval(meter, env, base)?;
-    let to = eval(meter, env, to)?;
-    let proof = eval(meter, env, proof)?;
-    jay(meter, here, ty, from, motive, base, to, proof)
-}
-
 fn binding(meter: &mut Meter, env: &Env, value: &Term, body: &Term) -> Result<Value, CoreError> {
     let value = eval(meter, env, value)?;
     eval(meter, &env.push(value), body)
@@ -248,11 +208,13 @@ fn binding(meter: &mut Meter, env: &Env, value: &Term, body: &Term) -> Result<Va
 /// `?β`. Solve `?β` afterwards and unfolding `?α` once answers a value that is
 /// blocked again. A caller that trusted a single step would then read a solved
 /// metavariable as an unsolved one; in [`crate::unify`] that is not a missed
-/// reduction but a wrong one, because the flex case solves whatever stands at
-/// the head and a metavariable may only be solved once. So the postcondition is
-/// the fixed point: the head of what comes back is never a solved metavariable.
+/// The value with a solved hole at its head seen through, or `None` when the
+/// head is not one.
 ///
-/// Each unfolding after the first is charged, so a chain of solutions is bounded
+/// A loop rather than a step: a solution can itself be headed by a hole that
+/// has since been solved, and a caller that trusted one step would read a
+/// solved hole as an unsolved one — in [`crate::unify`] that is not a missed
+/// reduction but a wrong answer. Each pass is charged, so a chain is bounded
 /// by the budget rather than by a claim that chains are short.
 ///
 /// # Errors
@@ -262,21 +224,37 @@ pub(crate) fn force(meter: &mut Meter, value: &Value) -> Result<Option<Value>, C
     let Form::Neutral(neutral) = &value.form else {
         return Ok(None);
     };
-    if !head_is_solved(neutral) {
+    let Head::Hole(hole) = &neutral.head else {
         return Ok(None);
-    }
-    let mut answer = replay(meter, neutral)?;
+    };
+    let Some(solution) = hole.solution().cloned() else {
+        return Ok(None);
+    };
+    let mut answer = replay(meter, solution, &neutral.spine)?;
     loop {
         let Form::Neutral(blocked) = &answer.form else {
             return Ok(Some(answer));
         };
-        if !head_is_solved(blocked) {
+        let Head::Hole(hole) = &blocked.head else {
             return Ok(Some(answer));
-        }
+        };
+        let Some(solution) = hole.solution().cloned() else {
+            return Ok(Some(answer));
+        };
         let blocked = Arc::clone(blocked);
         meter.step("forcing")?;
-        answer = replay(meter, &blocked)?;
+        answer = replay(meter, solution, &blocked.spine)?;
     }
+}
+
+/// A solution with the blocked spine re-run over it, innermost first — the
+/// order the spine is stored in.
+fn replay(meter: &mut Meter, solution: Value, spine: &[Elim]) -> Result<Value, CoreError> {
+    let mut answer = solution;
+    for elimination in spine {
+        answer = eliminate(meter, answer, elimination)?;
+    }
+    Ok(answer)
 }
 
 /// The value with a folded definition at its head unfolded, or `None` when
@@ -325,23 +303,6 @@ fn eliminate_replayed(meter: &mut Meter, target: Value, elimination: &Elim) -> R
     match elimination {
         Elim::App { origin, argument } => applying(meter, *origin, target, Value::clone(argument)),
         Elim::Project { origin, field } => projecting(meter, *origin, target, field),
-        Elim::J {
-            origin,
-            ty,
-            from,
-            motive,
-            base,
-            to,
-        } => jaying(
-            meter,
-            *origin,
-            Value::clone(ty),
-            Value::clone(from),
-            Value::clone(motive),
-            Value::clone(base),
-            Value::clone(to),
-            target,
-        ),
     }
 }
 
@@ -377,8 +338,6 @@ pub(crate) fn opened(meter: &mut Meter, value: &Value) -> Result<Option<Value>, 
             | Form::Lam(_)
             | Form::RecordType(_)
             | Form::Record(_)
-            | Form::Id { .. }
-            | Form::Refl(_)
             | Form::Lit(_)
             | Form::Numeral(_) => return Ok(None),
         },
@@ -398,56 +357,11 @@ pub(crate) fn opened(meter: &mut Meter, value: &Value) -> Result<Option<Value>, 
     }
 }
 
-/// Whether the head of a spine is a metavariable that now has a solution.
-///
-/// One field read rather than a walk to the deepest node: that is the whole
-/// point of storing the head beside the spine instead of under it.
-fn head_is_solved(neutral: &Neutral) -> bool {
-    match &neutral.head {
-        Head::Var(_, _) | Head::Const(_) | Head::Base(_) | Head::Builtin(_) | Head::Def(_, _, _) => false,
-        Head::Meta(meta) => meta.is_solved(),
-    }
-}
-
-/// Re-run a blocked spine against a head that is no longer blocked.
-fn replay(meter: &mut Meter, neutral: &Arc<Neutral>) -> Result<Value, CoreError> {
-    let Head::Meta(meta) = &neutral.head else {
-        return Ok(Value::shared_neutral(neutral));
-    };
-    let Some(solution) = meta.solution().cloned() else {
-        return Ok(Value::shared_neutral(neutral));
-    };
-    let mut answer = solution;
-    // Innermost first, which is the order the spine is stored in: `?α x .f`
-    // applies before it projects.
-    for elimination in &neutral.spine {
-        answer = eliminate(meter, answer, elimination)?;
-    }
-    Ok(answer)
-}
-
 /// Apply one elimination to a value that is no longer blocked.
 fn eliminate(meter: &mut Meter, target: Value, elimination: &Elim) -> Result<Value, CoreError> {
     match elimination {
         Elim::App { origin, argument } => apply(meter, *origin, target, Value::clone(argument)),
         Elim::Project { origin, field } => project(meter, *origin, target, field),
-        Elim::J {
-            origin,
-            ty,
-            from,
-            motive,
-            base,
-            to,
-        } => jay(
-            meter,
-            *origin,
-            Value::clone(ty),
-            Value::clone(from),
-            Value::clone(motive),
-            Value::clone(base),
-            Value::clone(to),
-            target,
-        ),
     }
 }
 
@@ -480,7 +394,6 @@ pub(crate) fn apply(meter: &mut Meter, here: Origin, function: Value, argument: 
 /// The work inside — a β body, an ι step, a builtin's rule — carries its own
 /// charges either way.
 fn applying(meter: &mut Meter, here: Origin, function: Value, argument: Value) -> Result<Value, CoreError> {
-    let function = force(meter, &function)?.unwrap_or(function);
     match function.form {
         Form::Lam(body) => apply_closure(meter, &body, argument),
         // A blocked application is where ι at an inductive family fires: the
@@ -516,8 +429,6 @@ fn applying(meter: &mut Meter, here: Origin, function: Value, argument: Value) -
         | Form::Pi { .. }
         | Form::RecordType(_)
         | Form::Record(_)
-        | Form::Id { .. }
-        | Form::Refl(_)
         | Form::Lit(_)
         | Form::Numeral(_) => Err(Malformed::NotAFunction.into()),
     }
@@ -625,8 +536,7 @@ fn canonical(meter: &mut Meter, value: &Value) -> Result<Option<Datum>, CoreErro
             | Form::Lam(_)
             | Form::RecordType(_)
             | Form::Record(_)
-            | Form::Id { .. }
-            | Form::Refl(_) => Ok(None),
+            | Form::Lit(_) => Ok(None),
         }
     })
 }
@@ -667,8 +577,7 @@ fn result_type(meter: &mut Meter, builtin: &Builtin, built: &Neutral) -> Result<
         let Elim::App { argument, .. } = elimination else {
             return Err(Malformed::NotAFunction.into());
         };
-        let forced = force(meter, &ty)?.unwrap_or(ty);
-        let Form::Pi { codomain, .. } = forced.form else {
+        let Form::Pi { codomain, .. } = ty.form else {
             return Err(Malformed::NotAFunction.into());
         };
         ty = apply_closure(meter, &codomain, Value::clone(argument))?;
@@ -737,8 +646,6 @@ fn structural(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreE
         | Form::Lam(_)
         | Form::RecordType(_)
         | Form::Record(_)
-        | Form::Id { .. }
-        | Form::Refl(_)
         | Form::Numeral(_)
         | Form::Neutral(_) => return Ok(None),
     };
@@ -766,7 +673,6 @@ pub(crate) fn project(meter: &mut Meter, here: Origin, record: Value, field: &Na
 
 /// [`project`] without the bookkeeping charge — see [`applying`].
 fn projecting(meter: &mut Meter, here: Origin, record: Value, field: &Name) -> Result<Value, CoreError> {
-    let record = force(meter, &record)?.unwrap_or(record);
     match record.form {
         Form::Record(fields) => fields
             .iter()
@@ -784,69 +690,8 @@ fn projecting(meter: &mut Meter, here: Origin, record: Value, field: &Name) -> R
         | Form::Pi { .. }
         | Form::Lam(_)
         | Form::RecordType(_)
-        | Form::Id { .. }
-        | Form::Refl(_)
         | Form::Lit(_)
         | Form::Numeral(_) => Err(Malformed::NotARecord.into()),
-    }
-}
-
-/// ι at the identity type, or a blocked `J`.
-///
-/// `J A x P p x (refl x) ⟶ p`: the motive and both endpoints are discarded,
-/// because there is nothing left for them to decide.
-///
-/// # Errors
-///
-/// [`Malformed::NotAnIdentity`] when `proof` is neither `refl` nor neutral.
-pub(crate) fn jay(
-    meter: &mut Meter,
-    here: Origin,
-    ty: Value,
-    from: Value,
-    motive: Value,
-    base: Value,
-    to: Value,
-    proof: Value,
-) -> Result<Value, CoreError> {
-    meter.step("identity elimination")?;
-    jaying(meter, here, ty, from, motive, base, to, proof)
-}
-
-/// [`jay`] without the bookkeeping charge — see [`applying`].
-#[allow(clippy::too_many_arguments)]
-fn jaying(
-    meter: &mut Meter,
-    here: Origin,
-    ty: Value,
-    from: Value,
-    motive: Value,
-    base: Value,
-    to: Value,
-    proof: Value,
-) -> Result<Value, CoreError> {
-    let proof = force(meter, &proof)?.unwrap_or(proof);
-    match proof.form {
-        Form::Refl(_) => Ok(base),
-        Form::Neutral(proof) => Ok(Value::neutral(Neutral::eliminated(
-            &proof,
-            Elim::J {
-                origin: here,
-                ty: Arc::new(ty),
-                from: Arc::new(from),
-                motive: Arc::new(motive),
-                base: Arc::new(base),
-                to: Arc::new(to),
-            },
-        ))),
-        Form::Universe(_)
-        | Form::Pi { .. }
-        | Form::Lam(_)
-        | Form::RecordType(_)
-        | Form::Record(_)
-        | Form::Id { .. }
-        | Form::Lit(_)
-        | Form::Numeral(_) => Err(Malformed::NotAnIdentity.into()),
     }
 }
 
@@ -896,11 +741,11 @@ pub(crate) fn neutral_type(meter: &mut Meter, neutral: &Neutral) -> Result<Value
     meter.nested("neutral typing", |meter| {
         let mut ty = match &neutral.head {
             Head::Var(_, ty) => Value::clone(ty),
+            // A hole is closed and carries its own type, which is why creating
+            // one has to build that type rather than remember a context.
+            Head::Hole(hole) => hole.ty().clone(),
             // The type travels in the head, as it does for a variable.
             Head::Def(_, ty, _) => Value::clone(ty),
-            // A meta is closed and carries its own type, which is why creating
-            // one has to build that type rather than remember a context.
-            Head::Meta(meta) => meta.ty().clone(),
             // A constant's type is its declaration's, assembled on demand
             // rather than stored beside it — `family.rs` says why.
             Head::Const(constant) => constant.ty(meter)?,
@@ -938,8 +783,6 @@ fn eliminated_type(meter: &mut Meter, head: Value, prefix: &Neutral, elimination
             | Form::Lam(_)
             | Form::RecordType(_)
             | Form::Record(_)
-            | Form::Id { .. }
-            | Form::Refl(_)
             | Form::Lit(_)
             | Form::Numeral(_)
             | Form::Neutral(_) => Err(Malformed::NotAFunction.into()),
@@ -953,16 +796,10 @@ fn eliminated_type(meter: &mut Meter, head: Value, prefix: &Neutral, elimination
             | Form::Pi { .. }
             | Form::Lam(_)
             | Form::Record(_)
-            | Form::Id { .. }
-            | Form::Refl(_)
             | Form::Lit(_)
             | Form::Numeral(_)
             | Form::Neutral(_) => Err(Malformed::NotARecord.into()),
         },
-        Elim::J { origin, motive, to, .. } => {
-            let at_endpoint = apply(meter, *origin, Value::clone(motive), Value::clone(to))?;
-            apply(meter, *origin, at_endpoint, Value::neutral(prefix.clone()))
-        }
     }
 }
 

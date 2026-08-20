@@ -444,33 +444,12 @@ impl Rewrite<'_> {
                         path: update.path.clone(),
                         value: self.term(&update.value, bound)?,
                     });
-                }
+                    }
                 RawShape::Update {
                     record: self.term(record, bound)?,
                     updates: Arc::from(rewritten),
                 }
             }
-            RawShape::Id { ty, left, right } => RawShape::Id {
-                ty: self.term(ty, bound)?,
-                left: self.term(left, bound)?,
-                right: self.term(right, bound)?,
-            },
-            RawShape::Refl(witness) => RawShape::Refl(self.term(witness, bound)?),
-            RawShape::J {
-                ty,
-                from,
-                motive,
-                base,
-                to,
-                proof,
-            } => RawShape::J {
-                ty: self.term(ty, bound)?,
-                from: self.term(from, bound)?,
-                motive: self.term(motive, bound)?,
-                base: self.term(base, bound)?,
-                to: self.term(to, bound)?,
-                proof: self.term(proof, bound)?,
-            },
             RawShape::Let { name, ty, value, body } => RawShape::Let {
                 name: Arc::clone(name),
                 ty: ty.as_ref().map(|written| self.term(written, bound)).transpose()?,

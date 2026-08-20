@@ -1069,14 +1069,11 @@ impl Registry {
             | Shape::RecordType(_)
             | Shape::Record(_)
             | Shape::Project { .. }
-            | Shape::Id { .. }
-            | Shape::Refl(_)
-            | Shape::J { .. }
             | Shape::Let { .. }
             | Shape::Builtin(_)
             | Shape::Lit(_)
             | Shape::Numeral(_)
-            | Shape::Meta(_) => {
+            | Shape::Hole(_) => {
                 return Err(Refusal::NotFiniteData {
                     name: Arc::clone(builtin.name()),
                     at: head.origin(),

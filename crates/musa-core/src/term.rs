@@ -27,7 +27,6 @@ use std::sync::Arc;
 use crate::class::Constraint;
 use crate::family::Constant;
 use crate::level::Level;
-use crate::meta::Meta;
 use crate::origin::Origin;
 
 /// A binder's written name, and a record field's name.
@@ -169,6 +168,9 @@ impl Eq for Term {}
 /// preservation clause checkable node by node.
 #[derive(Clone, Debug)]
 pub enum Shape {
+    /// A placeholder for an implicit argument the instantiation walk has not
+    /// yet solved — see [`crate::meta::Hole`].
+    Hole(crate::meta::Hole),
     /// A variable, named by how many binders out its binder is.
     Var(Index),
     /// A declared constant: an inductive family, one of its constructors, or its
@@ -251,35 +253,6 @@ pub enum Shape {
         /// The field's name.
         field: Name,
     },
-    /// `Id A x y`.
-    Id {
-        /// `A`.
-        ty: Term,
-        /// `x`.
-        left: Term,
-        /// `y`.
-        right: Term,
-    },
-    /// `refl x`, the identity type's sole constructor.
-    Refl(Term),
-    /// `J`, the identity type's dependent eliminator, at all six of its
-    /// arguments. K is *not* here: `02-core-calculus.md` §1.4 declines to admit
-    /// it as an axiom, because `DecEq` supplies it as a theorem for every family
-    /// Musa declares.
-    J {
-        /// `A`, the type the identity is at.
-        ty: Term,
-        /// `x`, the identity's left endpoint.
-        from: Term,
-        /// `P : (y : A) → Id A x y → Type l`, the motive.
-        motive: Term,
-        /// `p : P x (refl x)`, the base case.
-        base: Term,
-        /// `y`, the identity's right endpoint.
-        to: Term,
-        /// `e : Id A x y`, the proof being eliminated.
-        proof: Term,
-    },
     /// A metavariable: a term elaboration has not determined yet (§2.1).
     ///
     /// It is closed and stands for `λx₀ … xₙ₋₁. ?α`, so the elaborator writes it
@@ -288,7 +261,6 @@ pub enum Shape {
     /// unsolved when elaboration ends is a refusal, and one that is solved is
     /// unfolded away — which is why [`crate::check`] and [`crate::infer`] can
     /// promise an output the re-checker accepts.
-    Meta(Meta),
     /// `let x : A = v in e`, non-recursive. Its unfolding is δ.
     Let {
         /// The binder's written name.
@@ -319,6 +291,7 @@ pub enum Shape {
 impl PartialEq for Shape {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
+            (Self::Hole(left), Self::Hole(right)) => left == right,
             (Self::Var(left), Self::Var(right)) => left == right,
             (Self::Const(left), Self::Const(right)) => left == right,
             // Two uses of one definition are one term. Conversion never gets
@@ -385,45 +358,6 @@ impl PartialEq for Shape {
                 },
             ) => left_field == right_field && left_record == right_record,
             (
-                Self::Id {
-                    ty: left_ty,
-                    left: left_left,
-                    right: left_right,
-                },
-                Self::Id {
-                    ty: right_ty,
-                    left: right_left,
-                    right: right_right,
-                },
-            ) => left_ty == right_ty && left_left == right_left && left_right == right_right,
-            (Self::Refl(left), Self::Refl(right)) => left == right,
-            (
-                Self::J {
-                    ty: left_ty,
-                    from: left_from,
-                    motive: left_motive,
-                    base: left_base,
-                    to: left_to,
-                    proof: left_proof,
-                },
-                Self::J {
-                    ty: right_ty,
-                    from: right_from,
-                    motive: right_motive,
-                    base: right_base,
-                    to: right_to,
-                    proof: right_proof,
-                },
-            ) => {
-                left_ty == right_ty
-                    && left_from == right_from
-                    && left_motive == right_motive
-                    && left_base == right_base
-                    && left_to == right_to
-                    && left_proof == right_proof
-            }
-            (Self::Meta(left), Self::Meta(right)) => left == right,
-            (
                 Self::Let {
                     name: _,
                     ty: left_ty,
@@ -442,7 +376,8 @@ impl PartialEq for Shape {
             // non-exhaustive-match error here rather than a silent `false` for
             // the new form.
             (
-                Self::Var(_)
+                Self::Hole(_)
+                | Self::Var(_)
                 | Self::Const(_)
                 | Self::Def(_)
                 | Self::Base(_)
@@ -455,10 +390,6 @@ impl PartialEq for Shape {
                 | Self::RecordType(_)
                 | Self::Record(_)
                 | Self::Project { .. }
-                | Self::Id { .. }
-                | Self::Refl(_)
-                | Self::J { .. }
-                | Self::Meta(_)
                 | Self::Numeral(_)
                 | Self::Let { .. },
                 _,
@@ -504,6 +435,12 @@ impl Term {
         }
     }
 
+    /// A placeholder for an implicit argument — see [`crate::meta::Hole`].
+    #[must_use]
+    pub(crate) fn hole(origin: Origin, hole: crate::meta::Hole) -> Self {
+        Self::new(origin, Shape::Hole(hole))
+    }
+
     /// A variable.
     #[must_use]
     pub fn var(origin: Origin, index: Index) -> Self {
@@ -530,6 +467,31 @@ impl Term {
     #[must_use]
     pub fn universe(origin: Origin, level: Level) -> Self {
         Self::new(origin, Shape::Universe(level))
+    }
+
+    /// The universe a checked type inhabits, computed structurally.
+    ///
+    /// §1 fixes two universes, so this is a walk rather than an inference:
+    /// `Type l` inhabits `succ l` — and `Type 1`'s is the refusal there is no
+    /// level for — a function or record type joins its parts, and every other
+    /// shape a checked type can have stands at `Type 0`: an enumeration, a base
+    /// type, a variable of type `Type 0`, an application of either.
+    ///
+    /// # Errors
+    ///
+    /// [`crate::Refusal::BeyondUniverses`] at a `Type 1` — a type of types of
+    /// types is the third universe the calculus does not have.
+    pub fn level_of(term: &Self) -> Result<Level, crate::Refusal> {
+        match term.shape() {
+            Shape::Universe(level) => level
+                .succ()
+                .ok_or(crate::Refusal::BeyondUniverses { at: term.origin() }),
+            Shape::Pi { domain, codomain, .. } => Ok(Self::level_of(domain)?.max(Self::level_of(codomain)?)),
+            Shape::RecordType(fields) => fields.iter().try_fold(Level::ZERO, |join, field| {
+                Ok(Self::level_of(&field.term)?.max(join))
+            }),
+            _ => Ok(Level::ZERO),
+        }
     }
 
     /// `(name : domain) → codomain`.
@@ -625,39 +587,8 @@ impl Term {
         Self::new(origin, Shape::Record(collect_fields(fields)))
     }
 
-    /// `Id ty left right`.
-    #[must_use]
-    pub fn identity(origin: Origin, ty: Self, left: Self, right: Self) -> Self {
-        Self::new(origin, Shape::Id { ty, left, right })
-    }
-
-    /// `refl value`.
-    #[must_use]
-    pub fn refl(origin: Origin, value: Self) -> Self {
-        Self::new(origin, Shape::Refl(value))
-    }
-
-    /// `J ty from motive base to proof`.
-    #[must_use]
-    pub fn jay(origin: Origin, ty: Self, from: Self, motive: Self, base: Self, to: Self, proof: Self) -> Self {
-        Self::new(
-            origin,
-            Shape::J {
-                ty,
-                from,
-                motive,
-                base,
-                to,
-                proof,
-            },
-        )
-    }
-
     /// A metavariable, as a term.
     #[must_use]
-    pub fn meta(origin: Origin, meta: Meta) -> Self {
-        Self::new(origin, Shape::Meta(meta))
-    }
 
     /// `let name : ty = value in body`.
     #[must_use]
