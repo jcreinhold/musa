@@ -87,15 +87,18 @@ def main() -> None:
     if body[-1] != "}":
         die(f"expected closing brace, got {body[-1]!r}")
 
+    # Methods may carry a visibility prefix (`pub(crate) fn music`, `pub(super)
+    # fn motif`), so the anchor accepts an optional with-visibility lead.
+    METHOD = re.compile(r"^    (?:pub(?:\([^)]*\))? )?fn (\w+)")
     anchors = [
-        (i, m.group(1))
-        for i, l in enumerate(body[1:], start=1)
-        if (m := re.match(r"^    fn (\w+)", l))
+        (i, m.group(1)) for i, l in enumerate(body[1:], start=1) if (m := METHOD.match(l))
     ]
-    m = re.match(r"^impl(<[^>]*>)?\s+(\w+)", header)
-    if not m:
+    # The full header up to the brace, so both `impl<'a> Parser<'a>` and
+    # `impl Lowering<'_>` survive intact in the per-module files.
+    brace = header.find("{")
+    impl_header = header[:brace].rstrip() if brace >= 0 else header.rstrip()
+    if not impl_header.startswith("impl ") and impl_header != "impl":
         die(f"cannot parse impl header: {header!r}")
-    impl_header = f"impl{m.group(1) or ''} {m.group(2)}"
 
     chunks = []
     for k, (i, name) in enumerate(anchors):
@@ -128,6 +131,8 @@ def main() -> None:
     for name, chunk in chunks:
         modules.setdefault(assignments[name], []).extend(chunk + [""])
     for module, chunk in sorted(modules.items()):
+        # Only bare `fn` methods get widened to pub(super); methods that
+        # already carry a visibility keep it.
         cast = [
             re.sub(r"^    fn ", "    pub(super) fn ", l) if re.match(r"^    fn ", l) else l
             for l in chunk
