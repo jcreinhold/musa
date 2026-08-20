@@ -49,17 +49,9 @@ impl std::fmt::Display for NominalId {
     }
 }
 
-
-
-
-impl Declaration {
-}
-
-
-
+impl Declaration {}
 
 impl TypeScope<'_> {
-
     pub(crate) fn named(&self, name: &str, arguments: Vec<Type>) -> Option<Type> {
         if arguments.is_empty()
             && let Some(index) = self.parameters.iter().position(|parameter| parameter == name)
@@ -499,8 +491,6 @@ impl World {
     }
 }
 
-
-
 /// The name of the fold a declaration generates: `motive_fold` for `Motive`,
 /// `chord_shape_fold` for `ChordShape`.
 ///
@@ -522,12 +512,3 @@ pub(crate) fn fold_name(ty: &str) -> String {
     out.push_str("_fold");
     out
 }
-
-
-
-
-
-
-
-
-

@@ -51,7 +51,6 @@ impl Material {
             Self::Fragment => "fragment",
         }
     }
-
 }
 
 /// What kind of thing a recorded name names.

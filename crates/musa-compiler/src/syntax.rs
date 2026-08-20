@@ -130,7 +130,6 @@ impl NodePath {
         BindingPath(self.built(role, 0))
     }
 
-
     pub(crate) fn write_into(&self, out: &mut Vec<u8>) {
         self.expansion.write_into(out);
         push_len(out, self.steps.len());
@@ -192,7 +191,6 @@ impl BindingPath {
     fn scope(&self) -> Scope {
         Scope(self.0.clone())
     }
-
 
     pub(crate) fn write_into(&self, out: &mut Vec<u8>) {
         self.0.write_into(out);
@@ -265,7 +263,6 @@ impl SourceInfo {
             Self::Original { path, .. } | Self::Generated(path) => path,
         }
     }
-
 }
 
 /// How a syntax value parses — `../rules/language/11-quotation.md` §1's index.
@@ -304,7 +301,6 @@ impl Cat {
             .into_iter()
             .find(|candidate| candidate.name() == text)
     }
-
 }
 
 /// The lexer's own token kinds, under the names an adapter writes them by.
@@ -541,7 +537,6 @@ impl Delimiter {
     pub(crate) fn named(case: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|candidate| candidate.name() == case)
     }
-
 }
 
 /// A category, under the name it is written by inside `Syntax<…>`.
@@ -785,7 +780,6 @@ impl Syntax {
             }
         }
     }
-
 
     /// How much of the evaluator's budget this value occupies: one node per
     /// node, and the text it holds as its size.
@@ -1580,7 +1574,6 @@ fn write_syntax(node: &Syntax, marks: &mut Vec<Vec<u8>>, out: &mut Printed) {
 fn push_len(out: &mut Vec<u8>, len: usize) {
     out.extend_from_slice(&u64::try_from(len).unwrap_or(u64::MAX).to_be_bytes());
 }
-
 
 #[cfg(test)]
 // A law suite reports a violated law by failing, and the helpers below take

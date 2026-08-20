@@ -22,9 +22,7 @@
 
 use crate::origin::SourceSpan;
 
-
 impl CostTable {
-
     pub(crate) const fn version(self) -> u32 {
         self.version
     }
@@ -61,10 +59,7 @@ pub(crate) const NESTING: u64 = 256;
 /// matches is how this number comes down; it is not how the refusal happens.
 pub(crate) const FRAME_CEILING: u64 = 128 * 1024;
 
-
-
 impl Budget {
-
     /// The language budget with every limit divided by `divisor`.
     ///
     /// A smaller budget may only turn `done` into `failed`; it may never turn
@@ -91,12 +86,7 @@ impl Budget {
     }
 }
 
-
-impl Reduction {
-}
-
-
-
+impl Reduction {}
 
 // The budget the next meter is built under.
 //
@@ -367,7 +357,6 @@ impl WorkMeter {
         Some(attempted)
     }
 }
-
 
 #[cfg(test)]
 // A law suite reports a violated law by failing, which is what `panic!` and

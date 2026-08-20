@@ -31,9 +31,7 @@ pub(crate) enum Kind {
 /// A type variable, named by the [`Unifier`] that made it.
 pub(crate) type TypeVar = u32;
 
-
 impl Scheme {
-
     /// The body with its variables renumbered in the order they are first
     /// written, so that one scheme reads the same way wherever it is shown.
     ///
@@ -56,13 +54,6 @@ impl std::fmt::Display for Scheme {
         write!(out, "{}", self.renamed())
     }
 }
-
-
-
-
-
-
-
 
 /// One variable's state: what it may stand for, and what it does.
 struct Variable {
@@ -331,8 +322,6 @@ impl Unifier {
         Ok(())
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {

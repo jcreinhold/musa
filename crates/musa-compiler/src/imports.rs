@@ -226,7 +226,6 @@ impl Libraries {
         })
     }
 
-
     /// Accumulate `entry`'s transitive dependencies, deepest first, once each.
     ///
     /// `seen` starts holding `entry` itself and grows before the recursion, so

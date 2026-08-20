@@ -12,25 +12,15 @@ use musa_language::ast::{AstNode as _, FnDecl, LetDecl, VoiceItem};
 use musa_language::{SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken};
 use num_rational::Ratio;
 
-use crate::core_budget::{Evaluation, NESTING_METRIC, Reduction, ResourceError, WorkMeter};
-use crate::data::{TypeScope, World};
 use crate::diagnose::{Code, Diagnostic};
 use crate::imports::Libraries;
-use crate::infer::{Kind, Mismatch, Scheme, Unifier};
 use crate::module::Modules;
 use crate::origin::{Interval, SourceSpan};
 use crate::pitch::{PitchClass, WrittenPitch};
 use crate::resolve::{NameKind, Resolver};
 use crate::time::{Exact, exact_arithmetic, exact_ratio, written_rational};
 
-
-
-
-
-
-
-impl Binding {
-}
+impl Binding {}
 
 /// Which clock a duration or a position is measured against
 /// (`docs/rules/language/02-core-calculus.md` §1's `C`).
@@ -64,7 +54,6 @@ impl Coordinate {
             Self::PhysicalTime => "PhysicalTime",
         }
     }
-
 }
 
 /// A coordinate prints as the word a type is written with.
@@ -307,13 +296,7 @@ impl std::fmt::Display for Type {
     }
 }
 
-
-
-
-
-impl RawDefinition {
-}
-
+impl RawDefinition {}
 
 #[derive(Clone)]
 struct Expr {
@@ -606,7 +589,6 @@ pub(crate) enum Builtin {
 }
 
 impl MachineTree {
-
     /// Append this description's nodes to `nodes`, children first, and answer
     /// where its own node landed.
     ///
@@ -642,8 +624,6 @@ impl MachineTree {
         nodes.len().saturating_sub(1)
     }
 }
-
-
 
 /// A base type as a builtin signature names it.
 ///
@@ -711,7 +691,6 @@ pub(crate) enum Shape {
 }
 
 impl Shape {
-
     /// Whether absence is expressible in this shape's outermost position.
     ///
     /// D2 lets a builtin be partial only by saying so in its result type, so this is what the
@@ -778,7 +757,6 @@ impl Base {
             | Self::Row12 => true,
         }
     }
-
 }
 
 /// Whether every shape in a signature position is storable data.
@@ -838,7 +816,6 @@ pub(crate) enum MachineOp {
 }
 
 impl MachineOp {
-
     /// This form's type, as a rank-1 scheme, instantiated fresh.
     ///
     /// Every port is a **data** variable, which is §1.1's storable-data rule doing the whole of
@@ -952,7 +929,6 @@ pub(crate) enum Eliminator {
 }
 
 impl Eliminator {
-
     /// This eliminator's type, as a rank-1 scheme, instantiated fresh.
     ///
     /// All eight of them *are* rank-1 schemes, which is why none is checked
@@ -1177,7 +1153,6 @@ pub(crate) enum PhaseFamily {
 }
 
 impl SyntaxOp {
-
     /// The operation this name spells, where the phase environment is in scope.
     ///
     /// Separate from [`Builtin::named`] on purpose: ordinary source looks names
@@ -2268,7 +2243,6 @@ pub(crate) const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 121] = [
 ];
 
 impl Builtin {
-
     /// The builtin this name spells, if any.
     ///
     /// One registry, one lookup: a name is a compiler-owned operation exactly when
@@ -2514,14 +2488,11 @@ enum Pattern {
     },
 }
 
-
 #[derive(Clone)]
 struct CallArgument {
     parameter: usize,
     value: Expr,
 }
-
-
 
 #[derive(Clone)]
 struct CheckedParameter {
@@ -2788,7 +2759,6 @@ pub(crate) enum PitchTermError {
 }
 
 impl PitchTerm {
-
     /// Finish the term under the scale in force, if one is.
     pub(crate) fn resolve(&self, scale: Option<crate::scale::Scale>) -> Result<WrittenPitch, PitchTermError> {
         match self {
@@ -2872,7 +2842,6 @@ pub(crate) enum MusicOperation {
     },
 }
 
-
 #[derive(Clone)]
 struct Closure {
     parameters: Vec<CheckedParameter>,
@@ -2882,7 +2851,6 @@ struct Closure {
 }
 
 impl Value {
-
     /// Read the whole finite value into a deterministic witness.  The result
     /// is not a semantic hash or cache key; it makes the executable
     /// normalization check traverse, rather than merely construct, the value
@@ -3012,68 +2980,6 @@ impl Value {
     }
 }
 
-
-
-
-
-
-
-    raw: &[RawDefinition],
-    symbols: &mut IndexMap<String, Symbol>,
-    unifier: &mut Unifier,
-    modules: &Modules,
-    world: &World,
-    reading: Reading,
-) {
-    let open: Vec<usize> = raw
-        .iter()
-        .enumerate()
-        .filter(|(_, definition)| unifier.residue(&definition.ty).is_some())
-        .map(|(index, _)| index)
-        .collect();
-    if open.is_empty() {
-        return;
-    }
-    for index in dependency_first(raw, &open) {
-        let Some(definition) = raw.get(index) else {
-            continue;
-        };
-        let mut scratch = Resolver::new();
-        let mut meter = WorkMeter::default();
-        {
-            let mut checker = Checker {
-                resolver: &mut scratch,
-                definitions: raw,
-                symbols,
-                locals: IndexMap::new(),
-                unifier,
-                dependencies: IndexMap::new(),
-                mentioned: Vec::new(),
-                reading: if definition.foreign { Reading::Foreign } else { reading },
-                failed: false,
-                meter: &mut meter,
-                music_role: definition.role.clone(),
-                deferred_pitch: false,
-                definition_span: definition.span,
-                scope: &definition.scope,
-                modules,
-                world,
-                questions: Vec::new(),
-                asked: 0,
-                tail: false,
-            };
-            check_definition(&mut checker, definition);
-        }
-        let scheme = unifier.generalize(&definition.ty);
-        if let Some(symbol) = symbols.get_mut(&definition.name) {
-            symbol.scheme = scheme;
-        }
-    }
-}
-
-
-
-
 /// Statements written among a piece's own items rather than inside material.
 ///
 /// A motif, fragment, named bar or `music { ... }` body is a definition: the
@@ -3098,16 +3004,6 @@ fn root_nodes(owner: &SyntaxNode, kind: SyntaxKind) -> Vec<SyntaxNode> {
         })
         .collect()
 }
-
-
-
-
-
-
-
-
-
-
 
 /// The type a written name denotes in an adapter module, and nowhere else.
 ///
@@ -3134,18 +3030,6 @@ fn phase_type(text: &str) -> Option<Type> {
         _ => None,
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 impl Checker<'_> {
     fn check(&mut self, node: &SyntaxNode, expected: Option<&Type>) -> Option<Expr> {
@@ -6205,74 +6089,9 @@ impl Checker<'_> {
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /// The old evaluator, reachable for prompt 141e's agreement law and nothing else.
 #[cfg(test)]
 pub(crate) mod oracle;
-
-
-
-
-
-    algebra: &[Value],
-    descent: &Descent,
-    subject: &crate::syntax::Syntax,
-    meter: &mut WorkMeter,
-    expression: &Expr,
-) -> Option<Value> {
-    let reduction = match descent {
-        Descent::Sealed(_) => Reduction::SyntaxRecurse,
-        // Unchanged from the fold this derives, so no shipped adapter's
-        // budget moves when the name does.
-        Descent::FromLeaves => Reduction::SyntaxFold,
-    };
-    meter.nested(reduction, expression.span, |meter| {
-        recurse_syntax_nested(algebra, descent, subject, reduction, meter, expression)
-    })
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 fn child_of(node: &SyntaxNode, predicate: fn(SyntaxKind) -> bool) -> Option<SyntaxNode> {
     node.children().find(|child| predicate(child.kind()))
@@ -6281,8 +6100,6 @@ fn child_of(node: &SyntaxNode, predicate: fn(SyntaxKind) -> bool) -> Option<Synt
 fn is_type_node(kind: SyntaxKind) -> bool {
     musa_language::ast::is_type(kind)
 }
-
-
 
 /// The type a declaration or parameter annotates, as a node.
 pub(crate) fn type_node_of(node: &SyntaxNode) -> Option<SyntaxNode> {
@@ -6321,15 +6138,6 @@ fn is_expr_node(kind: SyntaxKind) -> bool {
             | SyntaxKind::QuoteExpr
     )
 }
-
-
-
-
-
-
-
-
-
 
 /// One adapter module, elaborated in the phase environment.
 ///

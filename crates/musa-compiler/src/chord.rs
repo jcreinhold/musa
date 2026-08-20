@@ -302,7 +302,6 @@ impl ChordType {
             .unwrap_or("major")
     }
 
-
     /// The spelled members above the root, starting at the unison.
     pub(crate) fn members(self) -> &'static [Interval] {
         TYPES

@@ -97,7 +97,6 @@ pub(crate) enum PortShape {
 }
 
 impl PortShape {
-
     /// Whether a value of this shape is one this language can write.
     ///
     /// `Unit` is not, and deliberately so: no source expression produces one

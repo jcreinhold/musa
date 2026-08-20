@@ -96,7 +96,6 @@ pub(crate) struct NameScope {
 }
 
 impl NameScope {
-
     /// The scope everything outside a module reads in.
     ///
     /// One shared value rather than a fresh default per checker: an empty

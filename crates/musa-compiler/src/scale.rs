@@ -251,7 +251,6 @@ impl Collection {
             .unwrap_or("major")
     }
 
-
     /// The ordered spelled offsets above the tonic, starting at the unison.
     pub(crate) fn offsets(self) -> &'static [Interval] {
         COLLECTIONS
