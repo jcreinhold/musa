@@ -96,11 +96,6 @@ pub(crate) struct NameScope {
 }
 
 impl NameScope {
-    /// The structure whose members read in this scope, when it is one. A
-    /// constructor declared inside a structure is nameable exactly here.
-    pub(crate) fn owner(&self) -> Option<&str> {
-        self.owner.as_deref()
-    }
 
     /// The scope everything outside a module reads in.
     ///

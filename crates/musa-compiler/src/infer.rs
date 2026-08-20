@@ -26,34 +26,13 @@ use crate::core::Type;
 pub(crate) enum Kind {
     /// Any value type, a function type included.
     Ordinary,
-    /// Storable data only — `docs/rules/language/02-core-calculus.md` §1.1.
-    Data,
 }
 
 /// A type variable, named by the [`Unifier`] that made it.
 pub(crate) type TypeVar = u32;
 
-/// A type with its variables quantified: what a name means at a use.
-///
-/// Rank 1 is the whole shape of this type. The quantifiers are here, at the
-/// outside, and nowhere else — there is no way to write a `Scheme` inside a
-/// [`Type`], which is what makes [`Unifier::instantiate`] a substitution
-/// rather than a search.
-#[derive(Clone, Debug)]
-pub(crate) struct Scheme {
-    quantified: Vec<(TypeVar, Kind)>,
-    ty: Type,
-}
 
 impl Scheme {
-    /// A scheme quantifying nothing: an annotated declaration, a parameter,
-    /// or a declaration still being inferred.
-    pub(crate) fn monomorphic(ty: Type) -> Self {
-        Self {
-            quantified: Vec::new(),
-            ty,
-        }
-    }
 
     /// The body with its variables renumbered in the order they are first
     /// written, so that one scheme reads the same way wherever it is shown.
@@ -78,192 +57,12 @@ impl std::fmt::Display for Scheme {
     }
 }
 
-/// The immediate members of a type: what a traversal has to look inside.
-///
-/// Every walk in this module goes through this or through [`rebuilt`], and
-/// these two are the only places the shape of a type is written down. Both
-/// matches are exhaustive on purpose: a type added later — `Result`, an event
-/// track — cannot quietly be taken for a leaf whose members no one visits.
-///
-/// [`crate::data`] walks types too, for the group check, and walks them
-/// through here for exactly that reason.
-pub(crate) fn member_types(ty: &Type) -> Vec<&Type> {
-    match ty {
-        Type::Product(members) => members.iter().collect(),
-        Type::Nominal(_, arguments) => arguments.iter().collect(),
-        Type::Sum(value, error) => vec![value, error],
-        Type::Option(member) | Type::List(member) => vec![member],
-        Type::Function(parameters, result) => parameters.iter().chain(std::iter::once(result.as_ref())).collect(),
-        // A machine's step, input, and output are ordinary members: the ports
-        // are types that unify, and the step tag unifies like any other index.
-        Type::Primitive { step, input, output } | Type::Machine { step, input, output } => {
-            vec![step, input, output]
-        }
-        // A step's context and answer are ordinary members: the recursor's
-        // group branch is what unifies them with the rest of the algebra, and
-        // it can only do that if a walk looks inside.
-        Type::SyntaxStep { context, answer } => vec![context, answer],
-        Type::Var(_)
-        | Type::Unit
-        | Type::Bool
-        | Type::Nat
-        | Type::Ratio
-        | Type::Text
-        | Type::Duration(_)
-        | Type::Position(_)
-        | Type::Pitch
-        | Type::PitchClass
-        | Type::Interval
-        | Type::Scale
-        | Type::Key
-        | Type::Degree
-        | Type::Frame
-        | Type::ChordClass
-        | Type::Triad
-        | Type::Roman
-        | Type::Voicing
-        | Type::Pc12
-        | Type::PcSet12
-        | Type::Row12
-        | Type::Step(_)
-        // The phase's own types are leaves: each is an opaque finite value
-        // with nothing inside it that unifies, and `Syntax<Cat>`'s argument is
-        // a category rather than a type, so it has no member either.
-        | Type::Syntax(_)
-        | Type::NodePath
-        | Type::BindingPath
-        | Type::TokenKind
-        | Type::Delimiter
-        | Type::Music => Vec::new(),
-    }
-}
 
-/// A type rebuilt with `member` applied to each of its immediate members. A
-/// leaf has none and rebuilds as itself.
-pub(crate) fn rebuilt(ty: &Type, mut member: impl FnMut(&Type) -> Type) -> Type {
-    match ty {
-        Type::Product(members) => Type::Product(members.iter().map(member).collect()),
-        Type::Nominal(id, arguments) => Type::Nominal(id.clone(), arguments.iter().map(member).collect()),
-        Type::Sum(value, error) => Type::Sum(Box::new(member(value)), Box::new(member(error))),
-        Type::Option(inner) => Type::Option(Box::new(member(inner))),
-        Type::List(inner) => Type::List(Box::new(member(inner))),
-        Type::Function(parameters, result) => {
-            Type::Function(parameters.iter().map(&mut member).collect(), Box::new(member(result)))
-        }
-        Type::Primitive { step, input, output } => Type::Primitive {
-            step: Box::new(member(step)),
-            input: Box::new(member(input)),
-            output: Box::new(member(output)),
-        },
-        Type::Machine { step, input, output } => Type::Machine {
-            step: Box::new(member(step)),
-            input: Box::new(member(input)),
-            output: Box::new(member(output)),
-        },
-        Type::SyntaxStep { context, answer } => Type::SyntaxStep {
-            context: Box::new(member(context)),
-            answer: Box::new(member(answer)),
-        },
-        Type::Var(_)
-        | Type::Unit
-        | Type::Bool
-        | Type::Nat
-        | Type::Ratio
-        | Type::Text
-        | Type::Duration(_)
-        | Type::Position(_)
-        | Type::Pitch
-        | Type::PitchClass
-        | Type::Interval
-        | Type::Scale
-        | Type::Key
-        | Type::Degree
-        | Type::Frame
-        | Type::ChordClass
-        | Type::Triad
-        | Type::Roman
-        | Type::Voicing
-        | Type::Pc12
-        | Type::PcSet12
-        | Type::Row12
-        | Type::Step(_)
-        | Type::Syntax(_)
-        | Type::NodePath
-        | Type::BindingPath
-        | Type::TokenKind
-        | Type::Delimiter
-        | Type::Music => ty.clone(),
-    }
-}
 
-/// The variables of `ty`, in the order they are first written.
-fn appearances(ty: &Type, order: &mut Vec<TypeVar>) {
-    if let Type::Var(variable) = ty
-        && !order.contains(variable)
-    {
-        order.push(*variable);
-    }
-    for member in member_types(ty) {
-        appearances(member, order);
-    }
-}
 
-/// Types in plain form: their variables renamed `a`, `b`, … in the order they
-/// first appear, renamed *together* so that one letter means one type across
-/// every type in the list.
-///
-/// A diagnostic quotes what the checker settled on, and what it settled on is
-/// a term over the substitution's own counter — the fortieth variable a piece
-/// minted prints `n` for no reason a reader can see, and the two sides of a
-/// mismatch print unrelated letters that look related. Renaming by first
-/// appearance says the one thing a reader needs: which positions share a type.
-/// Hover already reads this through [`Scheme::renamed`]; this is the same
-/// spelling for the places that hold a bare type.
-pub(crate) fn plain(types: [&Type; 2]) -> [Type; 2] {
-    let mut order = Vec::new();
-    for ty in types {
-        appearances(ty, &mut order);
-    }
-    types.map(|ty| rename(ty, &order))
-}
 
-/// One type in plain form.
-pub(crate) fn plain_one(ty: &Type) -> Type {
-    let mut order = Vec::new();
-    appearances(ty, &mut order);
-    rename(ty, &order)
-}
 
-/// `ty` with each variable replaced by its position in `order`, so that
-/// printing reads `a`, `b`, … left to right.
-fn rename(ty: &Type, order: &[TypeVar]) -> Type {
-    if let Type::Var(variable) = ty {
-        return Type::Var(
-            order
-                .iter()
-                .position(|found| found == variable)
-                .and_then(|index| u32::try_from(index).ok())
-                .unwrap_or(*variable),
-        );
-    }
-    rebuilt(ty, |member| rename(member, order))
-}
 
-/// Why two types could not be made equal.
-///
-/// Three answers rather than one, because the three want different sentences:
-/// the shapes differ, a solution would have to be infinite, or a value that
-/// must be storable would have to hold a function.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Mismatch {
-    /// The two types are different types.
-    Shape,
-    /// A variable would have to stand for a type containing itself.
-    Recursive,
-    /// A data variable would have to stand for a function, or a container
-    /// holding one — `docs/rules/language/02-core-calculus.md` §1.1.
-    NotStorable,
-}
 
 /// One variable's state: what it may stand for, and what it does.
 struct Variable {
@@ -533,61 +332,7 @@ impl Unifier {
     }
 }
 
-/// Whether `found` is a type `declared` admits.
-///
-/// A variable admits anything. That is not laxity: where a declared type
-/// still holds a variable, the declaration is *polymorphic*, and which type
-/// it stands for was chosen by the caller and already proved by the checker.
-/// This relation is how the parts of the compiler that meet a type without a
-/// unifier — evaluation checking a closure's argument, a module matching a
-/// signature — restate that proof instead of re-deciding it.
-///
-/// A syntax category admits any other for the same reason, one level down.
-/// `Syntax<Expr>` is a claim about how a tree parses, established while
-/// checking and then *erased*: the value is the tree and nothing else, so a
-/// syntax value asked what type it has can only answer with the weakest
-/// category. Comparing categories here would not re-decide the claim, it would
-/// contradict it — see [`crate::core::Value::ty`].
-///
-/// Everywhere else it is equality, which is the whole point: nothing else is
-/// weakened by allowing these two things.
-pub(crate) fn admits(declared: &Type, found: &Type) -> bool {
-    match (declared, found) {
-        (Type::Var(_), _) | (_, Type::Var(_)) | (Type::Syntax(_), Type::Syntax(_)) => true,
-        (Type::Product(ours), Type::Product(theirs)) => {
-            ours.len() == theirs.len() && ours.iter().zip(theirs).all(|(ours, theirs)| admits(ours, theirs))
-        }
-        (Type::Option(ours), Type::Option(theirs)) | (Type::List(ours), Type::List(theirs)) => admits(ours, theirs),
-        (Type::Sum(our_value, our_error), Type::Sum(their_value, their_error)) => {
-            admits(our_value, their_value) && admits(our_error, their_error)
-        }
-        (Type::Nominal(ours, our_arguments), Type::Nominal(theirs, their_arguments)) => {
-            ours == theirs
-                && our_arguments.len() == their_arguments.len()
-                && our_arguments
-                    .iter()
-                    .zip(their_arguments)
-                    .all(|(ours, theirs)| admits(ours, theirs))
-        }
-        (Type::Function(ours, our_result), Type::Function(theirs, their_result)) => {
-            ours.len() == theirs.len()
-                && ours.iter().zip(theirs).all(|(ours, theirs)| admits(ours, theirs))
-                && admits(our_result, their_result)
-        }
-        _ => declared == found,
-    }
-}
 
-/// `ty` with each listed variable replaced by its partner.
-fn substitute(ty: &Type, replacements: &[(TypeVar, Type)]) -> Type {
-    if let Type::Var(variable) = ty {
-        return replacements
-            .iter()
-            .find(|(named, _)| named == variable)
-            .map_or_else(|| ty.clone(), |(_, replacement)| replacement.clone());
-    }
-    rebuilt(ty, |member| substitute(member, replacements))
-}
 
 #[cfg(test)]
 mod tests {

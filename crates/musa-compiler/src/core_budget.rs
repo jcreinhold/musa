@@ -22,70 +22,8 @@
 
 use crate::origin::SourceSpan;
 
-/// The versioned assignment of nonnegative integer costs to reductions and
-/// constructions (`02-core-calculus.md` §3).
-///
-/// Costs are data rather than scattered constants because changing one changes
-/// which projects the language accepts. A change is a version bump with a
-/// stated reason, and [`CostTable::version`] is what a rejection cites and what
-/// a later result cache will have to record: two compilers that agree on the
-/// source and disagree on this table do not agree on acceptance.
-#[derive(Clone, Copy)]
-pub(crate) struct CostTable {
-    version: u32,
-    reduction: u64,
-    node: u64,
-    byte: u64,
-    instance: u64,
-    occurrence: u64,
-    level: u64,
-}
 
 impl CostTable {
-    /// Version 3: one unit per reduction, per constructed node, per logical
-    /// value byte, per instantiated prelude entry, per estimated occurrence,
-    /// and per nested evaluation level.
-    ///
-    /// Uniform on purpose. A weight that differed between reductions would be a
-    /// claim about their relative expense, and that claim needs measurement
-    /// (prompts 124 and 168) rather than an author's intuition. What the
-    /// weights fix is that they exist, are named, and move together.
-    ///
-    /// A new reduction *kind* is therefore not a table change. Prompt 127dcfaa
-    /// added `list_fold_from_start` and `list_fold_from_end` and left this
-    /// version alone: the weights are per metric, not per kind, so the new
-    /// names change what a rejection prints and nothing about what it costs. A
-    /// program naming `list_fold_from_end` is refused by a version-2 compiler
-    /// at resolution, because the builtin is not there to resolve, so there is
-    /// no version at which two compilers disagree about its cost.
-    ///
-    /// Version 2 changed no weight. It changed where a value is charged:
-    /// version 1 charged a value's whole shape at every expression that named
-    /// it and at every closure that captured it, which made a project's cost
-    /// the product of its data size and its program size rather than the count
-    /// of what it built. A value is now charged once, where it is constructed
-    /// (`crate::core::charged_shape`). Every charge is pointwise no larger than
-    /// version 1's, so no project that compiled under version 1 stops
-    /// compiling; a rejection cites the version because two compilers that
-    /// disagree here do not agree on acceptance.
-    ///
-    /// Version 3 added the sixth metric, nested evaluation levels
-    /// (`../rules/language/02-core-calculus.md` §4). That *is* a table change
-    /// rather than a new reduction kind: a program the evaluator would have
-    /// entered 300 levels deep is refused now and was not before, so two
-    /// compilers that disagree about this metric disagree about acceptance and
-    /// must not share a version. Nothing else moved — every version-2 weight is
-    /// still 1, and every charge a version-2 compiler made a version-3 compiler
-    /// makes identically.
-    pub(crate) const V3: Self = Self {
-        version: 3,
-        reduction: 1,
-        node: 1,
-        byte: 1,
-        instance: 1,
-        occurrence: 1,
-        level: 1,
-    };
 
     pub(crate) const fn version(self) -> u32 {
         self.version
@@ -123,41 +61,9 @@ pub(crate) const NESTING: u64 = 256;
 /// matches is how this number comes down; it is not how the refusal happens.
 pub(crate) const FRAME_CEILING: u64 = 128 * 1024;
 
-/// What a nesting refusal prints for its metric.
-///
-/// Named because two places read it: the refusal that records it and the
-/// diagnostic that decides what advice to offer, which for this one metric is
-/// not "make it smaller".
-pub(crate) const NESTING_METRIC: &str = "nested evaluation levels";
 
-/// The limits the cost table is spent against (`02-core-calculus.md` §4).
-#[derive(Clone, Copy)]
-pub(crate) struct Budget {
-    steps: u64,
-    nodes: u64,
-    bytes: u64,
-    instances: u64,
-    output: u64,
-    nesting: u64,
-}
 
 impl Budget {
-    /// The prompt-96 language defaults: 200,000 reduction steps, 100,000
-    /// constructed value nodes, 1,048,576 logical value bytes, 2,048
-    /// instantiated prelude entries, and 1,000,000 estimated occurrences —
-    /// with 256 nested evaluation levels, added to guard the descent prompt
-    /// 127dcfaf's recursor introduced.
-    ///
-    /// These are language-version constants, not timeouts or machine-memory
-    /// observations.
-    pub(crate) const LANGUAGE: Self = Self {
-        steps: 200_000,
-        nodes: 100_000,
-        bytes: 1024 * 1024,
-        instances: 2_048,
-        output: 1_000_000,
-        nesting: NESTING,
-    };
 
     /// The language budget with every limit divided by `divisor`.
     ///
@@ -185,101 +91,12 @@ impl Budget {
     }
 }
 
-/// Which reduction or construction is being charged.
-///
-/// The name is the one the diagnostic prints, so a rejection says what the
-/// project asked for rather than which counter overflowed.
-#[derive(Clone, Copy)]
-pub(crate) enum Reduction {
-    Expression,
-    MatchArm,
-    ScaleStep,
-    Application,
-    Range,
-    Repeat,
-    Map,
-    Filter,
-    NatFold,
-    ListFoldFromStart,
-    ListFoldFromEnd,
-    OptionFold,
-    DataFold,
-    SyntaxFold,
-    SyntaxRecurse,
-    SyntaxStepMint,
-    SyntaxStepRun,
-}
 
 impl Reduction {
-    pub(crate) const fn operation(self) -> &'static str {
-        match self {
-            Self::Expression => "expression evaluation",
-            Self::MatchArm => "match arm",
-            Self::ScaleStep => "scale step",
-            Self::Application => "function application",
-            Self::Range => "range",
-            Self::Repeat => "repeat",
-            Self::Map => "map",
-            Self::Filter => "filter",
-            Self::NatFold => "nat_fold",
-            Self::ListFoldFromStart => "list_fold_from_start",
-            Self::ListFoldFromEnd => "list_fold_from_end",
-            Self::OptionFold => "option_fold",
-            Self::DataFold => "fold",
-            Self::SyntaxFold => "syntax_fold_from_leaves",
-            Self::SyntaxRecurse => "recurse_syntax",
-            // Minting and running are charged apart from entering a node so
-            // that capture and repetition cost what they cost: a step kept and
-            // never run is charged its mint alone, and a step run twice is
-            // charged twice (`../rules/language/02-core-calculus.md` §5.9,
-            // law 10).
-            Self::SyntaxStepMint => "syntax step",
-            Self::SyntaxStepRun => "run_syntax_step",
-        }
-    }
 }
 
-/// The one resource outcome: which operation crossed which limit, and where.
-#[derive(Clone, Copy)]
-pub(crate) struct ResourceError {
-    pub(crate) operation: &'static str,
-    pub(crate) metric: &'static str,
-    pub(crate) limit: u64,
-    pub(crate) attempted: u64,
-    pub(crate) span: SourceSpan,
-    pub(crate) cost_version: u32,
-}
 
-/// A typed evaluation configuration for a result of type `T`.
-///
-/// The language has exactly two outcomes, `done` and `failed`; [`Self::Broken`]
-/// is not a third. A closed well-typed term can always take a step (research
-/// `core-calculus/06-proof-outline.md` Theorem 2.3), so reaching `Broken` means
-/// the checker admitted something the evaluator cannot run — a compiler
-/// invariant failure, reported as one rather than as a language effect.
-pub(crate) enum Evaluation<T> {
-    Done(T),
-    Failed(ResourceError),
-    Broken,
-}
 
-pub(crate) struct WorkMeter {
-    budget: Budget,
-    costs: CostTable,
-    steps: u64,
-    nodes: u64,
-    bytes: u64,
-    instances: u64,
-    output: u64,
-    /// How many evaluator frames are open right now.
-    ///
-    /// The one counter that goes back down. Every other metric measures what a
-    /// run has spent and never returns; this one measures how far in it
-    /// currently is, because what it stands for — machine stack — is given back
-    /// when a frame returns.
-    nesting: u64,
-    failure: Option<ResourceError>,
-}
 
 // The budget the next meter is built under.
 //
@@ -551,15 +368,6 @@ impl WorkMeter {
     }
 }
 
-#[derive(Clone, Copy)]
-enum Counter {
-    Steps,
-    Nodes,
-    Bytes,
-    Instances,
-    Output,
-    Nesting,
-}
 
 #[cfg(test)]
 // A law suite reports a violated law by failing, which is what `panic!` and

@@ -226,34 +226,6 @@ impl Libraries {
         })
     }
 
-    /// Each library and the libraries it may read — its own transitive
-    /// imports, in reading order.
-    ///
-    /// A library is checked against *that* and not against everything already
-    /// registered: two libraries a piece happens to import side by side are
-    /// nothing to each other, and a name they share is the piece's collision
-    /// to report, not evidence that either one fails to compile.
-    ///
-    /// The `import` span a semantic consumer needs to remap a foreign failure
-    /// — rather than display another document's byte offsets in this one — is
-    /// [`Imported::at`], and arrives with the library.
-    pub(crate) fn each_with_dependencies(&self) -> impl Iterator<Item = (Imported<'_>, LibraryDecl, Vec<LibraryDecl>)> {
-        self.order.iter().filter_map(|entry| {
-            let document = self.documents.get(entry.document)?;
-            let mut needed: Vec<&str> = Vec::new();
-            let mut seen: Vec<&str> = vec![entry.path.as_str()];
-            self.reach(entry, &mut seen, &mut needed);
-            let dependencies = needed
-                .into_iter()
-                .filter_map(|path| self.library(path))
-                .collect::<Vec<_>>();
-            Some((
-                entry.imported(),
-                LibraryDecl::from_root(&document.syntax())?,
-                dependencies,
-            ))
-        })
-    }
 
     /// Accumulate `entry`'s transitive dependencies, deepest first, once each.
     ///

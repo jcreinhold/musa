@@ -302,10 +302,6 @@ impl ChordType {
             .unwrap_or("major")
     }
 
-    /// Every word that names a chord type, in declaration order.
-    pub(crate) fn spellings() -> impl Iterator<Item = &'static str> {
-        TYPES.iter().flat_map(|(_, spellings, _, _)| spellings.iter().copied())
-    }
 
     /// The spelled members above the root, starting at the unison.
     pub(crate) fn members(self) -> &'static [Interval] {

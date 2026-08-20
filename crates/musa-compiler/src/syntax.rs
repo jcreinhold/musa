@@ -130,12 +130,6 @@ impl NodePath {
         BindingPath(self.built(role, 0))
     }
 
-    /// How much of the evaluator's budget a path occupies: one node, and one
-    /// step's worth of bytes for each step it took to derive it.
-    pub(crate) fn shape(&self) -> (u64, u64) {
-        let steps = u64::try_from(self.steps.len()).unwrap_or(u64::MAX);
-        (1, steps.saturating_mul(9).saturating_add(4))
-    }
 
     pub(crate) fn write_into(&self, out: &mut Vec<u8>) {
         self.expansion.write_into(out);
@@ -199,9 +193,6 @@ impl BindingPath {
         Scope(self.0.clone())
     }
 
-    pub(crate) fn shape(&self) -> (u64, u64) {
-        self.0.shape()
-    }
 
     pub(crate) fn write_into(&self, out: &mut Vec<u8>) {
         self.0.write_into(out);
@@ -275,20 +266,6 @@ impl SourceInfo {
         }
     }
 
-    fn write_into(&self, out: &mut Vec<u8>) {
-        match self {
-            Self::Original { span, path } => {
-                out.push(0);
-                out.extend_from_slice(&span.start.to_be_bytes());
-                out.extend_from_slice(&span.end.to_be_bytes());
-                path.write_into(out);
-            }
-            Self::Generated(path) => {
-                out.push(1);
-                path.write_into(out);
-            }
-        }
-    }
 }
 
 /// How a syntax value parses — `../rules/language/11-quotation.md` §1's index.
@@ -328,16 +305,6 @@ impl Cat {
             .find(|candidate| candidate.name() == text)
     }
 
-    /// Whether a position of this category accepts a value of `theirs`.
-    ///
-    /// §1's forgetting rule, and the whole of it: a token-tree position accepts
-    /// anything, because a token-tree position is precisely one that has not
-    /// been parsed as anything more specific, and every other position requires
-    /// its own category exactly. Directional on purpose — the reverse is the
-    /// uncertified splice the index exists to refuse.
-    pub(crate) fn accepts(self, theirs: Self) -> bool {
-        self == Self::TokenTree || self == theirs
-    }
 }
 
 /// The lexer's own token kinds, under the names an adapter writes them by.
@@ -575,15 +542,6 @@ impl Delimiter {
         Self::ALL.into_iter().find(|candidate| candidate.name() == case)
     }
 
-    /// The byte this delimiter encodes as, for a syntax value's exact bytes.
-    pub(crate) const fn tag(self) -> u8 {
-        match self {
-            Self::Parentheses => 0,
-            Self::Brackets => 1,
-            Self::Braces => 2,
-            Self::Layout => 3,
-        }
-    }
 }
 
 /// A category, under the name it is written by inside `Syntax<…>`.
@@ -828,43 +786,6 @@ impl Syntax {
         }
     }
 
-    /// This node's exact bytes, for identity.
-    pub(crate) fn write_into(&self, out: &mut Vec<u8>) {
-        match self {
-            Self::Missing(info) => {
-                out.push(0);
-                info.write_into(out);
-            }
-            Self::Token { info, kind, text } => {
-                out.push(1);
-                info.write_into(out);
-                out.extend_from_slice(&u16::from(*kind).to_be_bytes());
-                push_text(out, text);
-            }
-            Self::Identifier { info, name, scopes } => {
-                out.push(2);
-                info.write_into(out);
-                push_text(out, name);
-                push_len(out, scopes.len());
-                for scope in scopes {
-                    scope.0.write_into(out);
-                }
-            }
-            Self::Group {
-                info,
-                delimiter,
-                children,
-            } => {
-                out.push(3);
-                info.write_into(out);
-                out.push(delimiter.tag());
-                push_len(out, children.len());
-                for child in children {
-                    child.write_into(out);
-                }
-            }
-        }
-    }
 
     /// How much of the evaluator's budget this value occupies: one node per
     /// node, and the text it holds as its size.
@@ -1660,10 +1581,6 @@ fn push_len(out: &mut Vec<u8>, len: usize) {
     out.extend_from_slice(&u64::try_from(len).unwrap_or(u64::MAX).to_be_bytes());
 }
 
-fn push_text(out: &mut Vec<u8>, text: &str) {
-    push_len(out, text.len());
-    out.extend_from_slice(text.as_bytes());
-}
 
 #[cfg(test)]
 // A law suite reports a violated law by failing, and the helpers below take

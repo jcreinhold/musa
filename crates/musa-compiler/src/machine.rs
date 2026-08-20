@@ -97,16 +97,6 @@ pub(crate) enum PortShape {
 }
 
 impl PortShape {
-    /// The source type this shape denotes.
-    pub(crate) fn ty(self) -> Type {
-        match self {
-            Self::Unit => Type::Unit,
-            Self::Bool => Type::Bool,
-            Self::Nat => Type::Nat,
-            Self::Ratio => Type::Ratio,
-            Self::Product(members) => Type::Product(members.iter().map(|member| member.ty()).collect()),
-        }
-    }
 
     /// Whether a value of this shape is one this language can write.
     ///

@@ -49,103 +49,16 @@ impl std::fmt::Display for NominalId {
     }
 }
 
-/// One stored field: a name, and the type it stores.
-struct Field {
-    name: String,
-    /// The written type, with each of the declaration's parameters standing as
-    /// `Type::Var(parameter index)`. It is a *template*: nothing reads it
-    /// without substituting arguments first, which is what
-    /// [`substitute_parameters`] does.
-    ty: Type,
-    span: SourceSpan,
-}
 
-/// One constructor.
-struct Variant {
-    name: String,
-    fields: Vec<Field>,
-    span: SourceSpan,
-}
 
-/// One `data` declaration, as everything downstream reads it.
-struct Declaration {
-    id: NominalId,
-    /// What its type parameters are called, in order. A parameter's *index*
-    /// here is the `Type::Var` a field template writes.
-    parameters: Vec<String>,
-    variants: Vec<Variant>,
-    /// Which mutually recursive group it was checked in.
-    group: usize,
-    /// The structure whose members may name its constructors, when it was
-    /// declared inside one. A declaration at a document's root has none, and
-    /// its constructors are nameable wherever its type is.
-    owner: Option<String>,
-    name_span: SourceSpan,
-}
 
 impl Declaration {
-    /// The type this declaration makes, applied to `arguments`.
-    fn applied(&self, arguments: Vec<Type>) -> Type {
-        Type::Nominal(self.id.clone(), arguments)
-    }
 }
 
-/// `template` with each `Type::Var(i)` replaced by `arguments[i]`.
-///
-/// A parameter index is not a unifier variable and never meets one: a template
-/// is substituted the moment it is read, so the two numbering schemes never
-/// share a type.
-fn substitute_parameters(template: &Type, arguments: &[Type]) -> Type {
-    if let Type::Var(index) = template {
-        return arguments
-            .get(usize::try_from(*index).unwrap_or(usize::MAX))
-            .cloned()
-            .unwrap_or_else(|| template.clone());
-    }
-    crate::infer::rebuilt(template, |member| substitute_parameters(member, arguments))
-}
 
-/// Every `data` declaration a checking pass can see.
-///
-/// Built before anything else is checked, because a declaration is what a
-/// written type *means*: `lower_type` cannot read `Motive` until this says
-/// what `Motive` is.
-#[derive(Default)]
-pub(crate) struct World {
-    declarations: IndexMap<NominalId, Declaration>,
-    /// The name a type is written by, and which declaration it reaches.
-    named: IndexMap<String, NominalId>,
-    /// A constructor's name, the declaration it belongs to, and which variant
-    /// it is.
-    constructors: IndexMap<String, (NominalId, usize)>,
-    /// A generated fold's name, and the declaration it folds.
-    folds: IndexMap<String, NominalId>,
-    /// Whether this world belongs to an adapter module rather than to
-    /// ordinary source.
-    ///
-    /// It decides one thing: whether the expansion phase's own types have a
-    /// written spelling. `02-core-calculus.md` §5's "no syntax value" sentence
-    /// is about the source language, and this flag is how that stays true —
-    /// ordinary source is read in a world where `Syntax` names nothing.
-    phase: bool,
-}
 
-/// What a written type name may mean where it is written: the parameters of
-/// the declaration being read stand for themselves, and every declaration in
-/// the world stands for itself.
-pub(crate) struct TypeScope<'a> {
-    world: Option<&'a World>,
-    parameters: &'a [String],
-    phase: bool,
-}
 
 impl TypeScope<'_> {
-    /// What `name` denotes here, if anything: a parameter in scope, or a
-    /// declaration, applied to `arguments`.
-    /// Whether the expansion phase's type names are written names here.
-    pub(crate) const fn in_phase(&self) -> bool {
-        self.phase
-    }
 
     pub(crate) fn named(&self, name: &str, arguments: Vec<Type>) -> Option<Type> {
         if arguments.is_empty()
@@ -586,32 +499,7 @@ impl World {
     }
 }
 
-/// What a constructor's name was found to mean.
-pub(crate) enum Constructing {
-    /// It names a constructor the use may write.
-    Found {
-        id: NominalId,
-        variant: usize,
-        fields: Vec<(String, Type)>,
-        /// The type arguments this use makes it at.
-        arguments: Vec<Type>,
-        result: Type,
-    },
-    /// It names a constructor of a type declared inside a structure, read from
-    /// outside it. The type may well be nameable there; the way in is not.
-    Sealed {
-        declared_in: String,
-        ty: String,
-        declared_at: SourceSpan,
-    },
-}
 
-/// A generated fold: which constructor each of its cases answers for, in
-/// order, and the fold's own type.
-pub(crate) struct Folding {
-    pub(crate) cases: Vec<(NominalId, usize)>,
-    pub(crate) ty: Type,
-}
 
 /// The name of the fold a declaration generates: `motive_fold` for `Motive`,
 /// `chord_shape_fold` for `ChordShape`.
@@ -635,115 +523,11 @@ pub(crate) fn fold_name(ty: &str) -> String {
     out
 }
 
-/// One fresh type argument per parameter: one instantiation per use.
-fn fresh_arguments(declaration: &Declaration, unifier: &mut Unifier) -> Vec<Type> {
-    declaration
-        .parameters
-        .iter()
-        .map(|_| unifier.fresh(Kind::Ordinary))
-        .collect()
-}
 
-/// A field's type as the fold's case sees it: a direct occurrence of a group
-/// member is what the fold already made of it, and everything else is itself.
-///
-/// Direct, and not under a container: a fold replaces *one constructor layer*,
-/// so a `List<Tree>` field arrives as the list it is and the writer maps over
-/// it. Reaching inside containers would be a deriving mechanism, which this
-/// prompt's **Stop** forbids and which no reader could then override.
-fn folded(ty: &Type, results: &IndexMap<NominalId, Type>) -> Type {
-    if let Type::Nominal(id, _) = ty {
-        return results.get(id).cloned().unwrap_or_else(|| ty.clone());
-    }
-    ty.clone()
-}
 
-/// Every declaration a type mentions, at any depth.
-fn mentioned(ty: &Type, out: &mut IndexSet<NominalId>) {
-    if let Type::Nominal(id, _) = ty {
-        out.insert(id.clone());
-    }
-    for member in crate::infer::member_types(ty) {
-        mentioned(member, out);
-    }
-}
 
-/// The first group member standing to the left of an arrow, if any.
-fn negative_occurrence(ty: &Type, group: &IndexSet<NominalId>) -> Option<String> {
-    if let Type::Function(parameters, result) = ty {
-        let mut mentions = IndexSet::new();
-        for parameter in parameters {
-            mentioned(parameter, &mut mentions);
-        }
-        return mentions
-            .iter()
-            .find(|id| group.contains(*id))
-            .map(|id| id.name().to_owned())
-            .or_else(|| negative_occurrence(result, group));
-    }
-    crate::infer::member_types(ty)
-        .into_iter()
-        .find_map(|member| negative_occurrence(member, group))
-}
 
-/// Whether a sealed step appears anywhere inside a type.
-fn holds_sealed_step(ty: &Type) -> bool {
-    matches!(ty, Type::SyntaxStep { .. }) || crate::infer::member_types(ty).into_iter().any(holds_sealed_step)
-}
 
-/// Whether an arrow appears anywhere inside a type.
-fn holds_function(ty: &Type) -> bool {
-    matches!(ty, Type::Function(_, _)) || crate::infer::member_types(ty).into_iter().any(holds_function)
-}
 
-/// Every `data` declaration `owner` holds, each with the structure that owns
-/// it when it is written inside one.
-///
-/// One level down, and not a walk of descendants: the grammar admits a `data`
-/// declaration at a document's root, in a library, in a piece, and in a
-/// structure, and nowhere else.
-fn data_declarations(owner: &SyntaxNode) -> Vec<(Option<String>, DataDecl)> {
-    let mut found: Vec<_> = DataDecl::all_at_root(owner)
-        .into_iter()
-        .map(|declaration| (None, declaration))
-        .collect();
-    for child in owner.children() {
-        if child.kind() != SyntaxKind::StructureDecl {
-            continue;
-        }
-        let structure = StructureDecl::cast(child.clone()).and_then(|structure| structure.name());
-        found.extend(
-            DataDecl::all_at_root(&child)
-                .into_iter()
-                .map(|declaration| (structure.clone(), declaration)),
-        );
-    }
-    found
-}
 
-fn read_variant(resolver: &mut Resolver, scope: &TypeScope<'_>, variant: &DataVariant) -> Variant {
-    let fields = variant
-        .fields()
-        .iter()
-        .filter_map(|field| {
-            let name = field.name()?;
-            let node = field.ty()?;
-            let ty = crate::core::scoped_type(resolver, scope, &node)?;
-            Some(Field {
-                name,
-                ty,
-                span: crate::resolve::trimmed_span(field.syntax()),
-            })
-        })
-        .collect();
-    Variant {
-        name: variant.name().unwrap_or_default(),
-        fields,
-        span: crate::resolve::trimmed_span(variant.syntax()),
-    }
-}
 
-/// Where a declaration's name is written.
-fn name_span(node: &SyntaxNode) -> SourceSpan {
-    crate::resolve::token_span(node, SyntaxKind::Identifier).unwrap_or_else(|| crate::resolve::trimmed_span(node))
-}

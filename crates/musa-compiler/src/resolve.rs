@@ -52,14 +52,6 @@ impl Material {
         }
     }
 
-    /// The kind the reference record files this material under.
-    pub(crate) fn name_kind(self) -> NameKind {
-        match self {
-            Self::Motif => NameKind::Motif,
-            Self::Bar => NameKind::Bar,
-            Self::Fragment => NameKind::Fragment,
-        }
-    }
 }
 
 /// What kind of thing a recorded name names.

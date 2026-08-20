@@ -251,13 +251,6 @@ impl Collection {
             .unwrap_or("major")
     }
 
-    /// Every word that names a collection, in declaration order, including
-    /// the alternative spellings.
-    pub(crate) fn spellings() -> impl Iterator<Item = &'static str> {
-        COLLECTIONS
-            .iter()
-            .flat_map(|(_, spellings, _, _)| spellings.iter().copied())
-    }
 
     /// The ordered spelled offsets above the tonic, starting at the unison.
     pub(crate) fn offsets(self) -> &'static [Interval] {
