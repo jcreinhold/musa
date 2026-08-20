@@ -10,10 +10,14 @@ family, so interleaved items of different families land in their own files.
 Arguments:
     <source.rs> <out-dir> <assign.json> [root-items...]
 
-assign.json: {"types": {family: [type names]}, "fns": {family: [fn names]}}
-Type names match struct/enum of that name, `impl Type` blocks, and macro
+assign.json: {"types": {family: [type names]}, "fns": {family: [fn names]},
+"consts": {family: [const names]}}
+Type names match struct/enum of that name, `impl Type` blocks (including
+`impl Some<Trait> for Type`, which assigns to Type), and macro
 invocations whose first argument is that name (`wrapper!(NoteStmt, ...)`).
 root-items: identifiers that stay in the facade (trait, macros, helpers).
+Pass `--no-crate-imports` to emit only `use super::*;` (the facade re-exports
+crate vocabulary; explicit crate imports are then compiler-driven).
 
 Every item must be assigned exactly once (a type, a fn family, or root);
 unassigned items fail loudly rather than silently dropping code.
@@ -48,9 +52,14 @@ def first_ident(token: str) -> str | None:
 
 def classify(line: str) -> tuple[str, str] | None:
     """Return (kind, name) for a top-level item start, or None."""
-    m = re.match(r"^(pub(?:\([^)]*\))?\s+)?(?:struct|enum|trait)\s+([A-Za-z_]\w*)", line)
+    m = re.match(r"^(pub(?:\([^)]*\))?\s+)?(?:struct|enum|trait|type)\s+([A-Za-z_]\w*)", line)
     if m:
         return ("type", m.group(2))
+    m = re.match(r"^(pub(?:\([^)]*\))?\s+)?const(?:\s+fn)?\s+([A-Za-z_]\w*)", line)
+    if m:
+        # `const fn` is a function (assignment via fn families); a plain
+        # `const` item is a value (via const families).
+        return ("fn" if " fn " in line else "const", m.group(2))
     m = re.match(r"^(pub(?:\([^)]*\))?\s+)?impl", line)
     if m:
         # `impl<...> Name` or `impl Name` — the type after any impl generics.
@@ -69,6 +78,13 @@ def classify(line: str) -> tuple[str, str] | None:
                         break
         if name is None:
             die(f"cannot parse impl header: {line!r}")
+        # `impl std::fmt::Display for Coordinate` targets Coordinate, not the
+        # trait's leading path segment: assign the type after the standalone
+        # `for`, except a bare `impl Type` (no `for`) keeps its own name.
+        tail = line[line.find("impl") + 4 :]
+        m = re.search(r"\bfor\s+([A-Za-z_]\w*)", tail)
+        if m:
+            name = m.group(1)
         return ("type", name)
     m = re.match(r"^(pub(?:\([^)]*\))?\s+)?fn\s+([A-Za-z_]\w*)", line)
     if m:
@@ -95,7 +111,10 @@ def main() -> None:
         die(f"cannot read {assign_path}: {err}")
     type_families = {name: fam for fam, names in assign.get("types", {}).items() for name in names}
     fn_families = {name: fam for fam, names in assign.get("fns", {}).items() for name in names}
+    const_families = {name: fam for fam, names in assign.get("consts", {}).items() for name in names}
     helper_names = set(assign.get("helpers", []))
+    no_crate_imports = "--no-crate-imports" in sys.argv
+    root_items = set(x for x in root_items if not x.startswith("--"))
 
     try:
         lines = open(src_path).read().split("\n")
@@ -113,20 +132,23 @@ def main() -> None:
             s = i
             while s > 0 and (re.match(r"^\s*///|^\s*//!|^#\[", lines[s - 1])):
                 s -= 1
-            # balanced end
+            # balanced end: brace depth for struct/enum/fn/impl bodies, plus
+            # square-bracket depth for `const NAME: [..] = [ ... ];` table
+            # items, whose rows return to brace depth 0 at every entry's `},`.
             depth = 0
+            bracks = 0
             j = i
             ended = False
             while j < len(lines):
                 row = strip(lines[j])
                 depth += row.count("{") - row.count("}")
-                if depth <= 0 and j > i and ("}" in row or row.rstrip().endswith(";")):
-                    # ensure the line actually closes the item (brace or `;`)
-                    if "}" in row or row.rstrip().endswith(";"):
-                        ended = True
-                        j += 1
-                        break
-                if depth < 0:
+                bracks += row.count("[") - row.count("]")
+                closes = "}" in row or row.rstrip().endswith(";")
+                if depth <= 0 and bracks <= 0 and j > i and closes:
+                    ended = True
+                    j += 1
+                    break
+                if depth < 0 or bracks < 0:
                     ended = True
                     j += 1
                     break
@@ -143,8 +165,9 @@ def main() -> None:
     for name, kind, body in items:
         if kind == "type":
             fam = type_families.get(name) or ("root" if name in root_items else None)
-        elif kind == "fn":
-            fam = fn_families.get(name) or ("root" if name in root_items else None)
+        elif kind in ("fn", "const"):
+            table = fn_families if kind == "fn" else const_families
+            fam = table.get(name) or ("root" if name in root_items else None)
         elif kind == "macro_def":
             # A `macro_rules!` definition stays where its name is declared to
             # be: the facade if it is a root helper, else its own family.
@@ -199,6 +222,8 @@ def main() -> None:
         own_items.setdefault(fam, set()).update(names)
     for fam, names in assign.get("fns", {}).items():
         own_items.setdefault(fam, set()).update(names)
+    for fam, names in assign.get("consts", {}).items():
+        own_items.setdefault(fam, set()).update(names)
 
     used_root: dict[str, set[str]] = {}
     used_crate: dict[str, set[str]] = {}
@@ -221,9 +246,12 @@ def main() -> None:
         for outer, inners in macro_deps.items():
             if outer in used_s:
                 used_s.update(inners)
-        # Every wrapper reads `AstNode::cast` by its trait method, so each
-        # family needs the trait in scope whether or not any item names it.
-        used_s.add("AstNode")
+        if no_crate_imports:
+            used_s.add("*")
+        else:
+            # Every wrapper reads `AstNode::cast` by its trait method, so each
+            # family needs the trait in scope whether or not any item names it.
+            used_s.add("AstNode")
         used_root[fam], used_crate[fam] = used_s, used_c
 
     for fam, fam_items in sorted(families.items()):
@@ -245,18 +273,21 @@ def main() -> None:
                         out.append(line)
                 body = out
             parts.extend(body + [""])
-        lines_out = ["//! See `ast` module docs; the items parsed in this family."]
+        lines_out = ["//! One concern of the enclosing module; see its module docs."]
         lines_out.append("")
         lang = sorted(n for n in used_crate.get(fam, ()) if n.startswith("language::"))
         plain = sorted(n for n in used_crate.get(fam, ()) if not n.startswith("language::"))
-        if plain:
+        if not no_crate_imports and plain:
             lines_out.append(f"use crate::{{{', '.join(plain)}}};")
-        if lang:
+        if not no_crate_imports and lang:
             lines_out.append(
                 "use crate::language::{" + ", ".join(n.split("::")[-1] for n in lang) + "};"
             )
         for name in sorted(used_root.get(fam, ())):
-            lines_out.append(f"use super::{name};")
+            if name == "*":
+                lines_out.append("use super::*;")
+            else:
+                lines_out.append(f"use super::{name};")
         lines_out.append("")
         lines_out.extend(parts)
         try:
