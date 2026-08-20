@@ -58,7 +58,7 @@ use std::sync::Arc;
 
 use crate::budget::Meter;
 use crate::error::{CoreError, Malformed};
-use crate::eval::{apply, apply_closure, field_type, force, head_type, opened, project};
+use crate::eval::{apply, apply_closure, field_type, head_type, opened, project};
 use crate::origin::Origin;
 use crate::term::{DbLevel, Field, Index, Term};
 use crate::value::{DefHead, Elim, Form, Head, Neutral, Telescope, Value};

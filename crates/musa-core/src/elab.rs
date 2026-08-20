@@ -70,20 +70,20 @@
 use std::sync::Arc;
 
 use crate::budget::Meter;
-use crate::class::{Constraint, Head, Key, Trait, head_of};
+use crate::class::{Head, Key, head_of};
 use crate::context::Cx;
 
-use crate::error::{CoreError, Malformed};
-use crate::eval::{apply, apply_closure, eval, field_type, force, opened};
+use crate::error::Malformed;
+use crate::eval::{apply_closure, eval, field_type, opened};
 use crate::family::Found;
 use crate::level::Level;
 use crate::meta::MetaSource;
 use crate::origin::Origin;
-use crate::quote::{Depth, quote, quote_type};
+use crate::quote::{Depth, quote_type};
 use crate::raw::{Raw, RawConstraint, RawField, RawShape, RawUpdate};
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
-use crate::term::{DbLevel, Field, Index, Name, Plicity, Shape, Term};
+use crate::term::{Field, Index, Name, Plicity, Shape, Term};
 use crate::unify::Unifier;
 use crate::value::{Closure, Env, Form, Neutral, Telescope, Value};
 
@@ -210,7 +210,7 @@ impl Elaborator {
     pub(crate) fn settled(&mut self) -> Result<(), ElabError> {
         // Constraints first: a dictionary resolved here is a hole solved, and
         // the parameter audit below should not call an instance's own
-        /// parameters undetermined for having answered one.
+        // parameters undetermined for having answered one.
         let waiting = core::mem::take(&mut self.constraints);
         for (constraint, scope, env, at, hole) in waiting {
             // Resolved against the *creation* scope: the local dictionaries
@@ -1207,7 +1207,7 @@ impl Elaborator {
         let (constraint, domain_term) = crate::dictionary::constraint_at(self, scope, &classes, raw)?;
         let domain_value = scope.eval(&mut self.meter, &domain_term)?;
         let domain_level = Term::level_of(&domain_term)?;
-        let name = Trait::super_field(&constraint.class);
+        let name: Name = Arc::clone(&constraint.class);
         let constraint = Arc::new(constraint);
         // Discharged as well as assumed, for [`Self::discharging`]'s reason: a
         // codomain that mentions the trait's own methods is answered by the
@@ -1626,24 +1626,6 @@ impl Elaborator {
         )?;
         Ok(Term::bind(here, Arc::clone(field), ty_term, projected, body))
     }
-
-
-
-
-    /// Take a Π type apart, refusing what is not one.
-    fn function_parts(&mut self, scope: &Scope, at: Origin, ty: &Value) -> Result<(Value, Closure), ElabError> {
-        let unfolded = opened(&mut self.meter, ty)?;
-        let opened_ty = unfolded.as_ref().unwrap_or(ty);
-        let Form::Pi { domain, codomain, .. } = &opened_ty.form else {
-            return Err(Refusal::NotAFunction {
-                at,
-                ty: scope.quote_type(&mut self.meter, ty)?,
-            }
-            .into());
-        };
-        Ok((Value::clone(domain), codomain.clone()))
-    }
-
     // ---- shared premises ---------------------------------------------------
 
     /// Elaborate a term standing in type position, answering its universe.
@@ -1693,28 +1675,6 @@ impl Elaborator {
             value_term,
         })
     }
-
-    /// Make two types equal, solving whatever metavariables that determines.
-    ///
-    /// The one door to the unifier from outside this module, so that
-    /// [`dictionary`](crate::dictionary) — which recovers an instance's
-    /// parameters by unifying its written arguments against the ones asked
-    /// for — uses the unifier 134 built rather than a second matcher beside it.
-    ///
-    /// # Errors
-    ///
-    /// [`Refusal::Mismatch`] when they cannot be made equal, or exhaustion.
-    pub(crate) fn unify_at(
-        &mut self,
-        scope: &Scope,
-        at: Origin,
-        ty: &Value,
-        left: &Value,
-        right: &Value,
-    ) -> Result<(), ElabError> {
-        self.unifier.unify(&mut self.meter, scope.depth(), at, ty, left, right)
-    }
-
     /// # Errors
     ///
     /// [`Refusal::Mismatch`] when they cannot be made equal, or exhaustion.

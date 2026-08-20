@@ -127,8 +127,6 @@ pub enum Code {
     /// the rank-1 pattern list.
     UnreachableBranch,
     /// A `match` whose scrutinee's index is not a distinct variable, which is
-    /// the one shape index refinement is defined for.
-    ForcedIndex,
     /// A recursive call the termination rule cannot see is smaller.
     UncheckedRecursion,
     /// A definition that names itself and wrote no type.
@@ -162,6 +160,12 @@ pub enum Code {
     /// required method a field of the dictionary, and a field has nobody to
     /// discharge a constraint.
     ConstrainedField,
+    /// A trait may not declare a `where` clause: no supertraits.
+    SuperClass,
+    /// An `impl` may not declare a `where` clause: no recursive synthesis.
+    ConstrainedInstance,
+    /// An `enum` or `record` may not declare a `where` clause.
+    ConstrainedData,
     /// A `trait` declaring one method name twice.
     DuplicateMethod,
     /// A trait applied to the wrong number of arguments.
@@ -176,8 +180,6 @@ pub enum Code {
     DuplicateInstance,
     /// An `impl` in a package that declares neither its trait nor its head.
     OrphanInstance,
-    /// An instance whose context the termination measure cannot see decrease.
-    UnboundedInstance,
     /// An `impl` supplying a method its trait derives.
     DerivedMethod,
     /// An `impl` supplying a method its trait does not declare.
@@ -320,7 +322,6 @@ code_table! {
     NonPositiveOccurrence => "non-positive-occurrence",
     IncompleteMatch => "incomplete-match",
     UnreachableBranch => "unreachable-branch",
-    ForcedIndex => "forced-index",
     UncheckedRecursion => "unchecked-recursion",
     UntypedRecursion => "untyped-recursion",
     PrivateName => "private-name",
@@ -336,7 +337,9 @@ code_table! {
     BlanketInstance => "blanket-instance",
     DuplicateInstance => "duplicate-instance",
     OrphanInstance => "orphan-instance",
-    UnboundedInstance => "unbounded-instance",
+    ConstrainedInstance => "constrained-instance",
+    ConstrainedData => "constrained-data",
+    SuperClass => "super-class",
     DerivedMethod => "derived-method",
     NoSuchMethod => "no-such-method",
     MissingMethod => "missing-method",

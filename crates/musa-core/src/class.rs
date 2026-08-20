@@ -82,10 +82,10 @@ impl PackageId {
 /// The two arms are §4's two lookups. A [`Self::Rigid`] head is a declared type
 /// constructor and keys the global table; a [`Self::Local`] head is a type
 /// *variable*, which no global instance can ever be declared for and which only
-/// an enclosing `where` can discharge. A head that is neither — a metavariable —
-/// is not representable here on purpose: that constraint is postponed rather
-/// than looked up, and a `Head` value would be a guess about which lookup it
-/// will eventually take.
+/// an enclosing `where` can discharge. A head that is neither — a hole, a
+/// binder — is not representable here on purpose: that constraint is refused
+/// rather than looked up, and a `Head` value would be a guess about which
+/// lookup it meant.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum Head {
     /// A declared constant: `List`, `Tying`, `Ratio`.
@@ -210,8 +210,6 @@ pub struct Trait {
     pub(crate) package: Option<PackageId>,
     /// Its parameters, in declaration order. The first is the head.
     pub(crate) params: Arc<[Binder]>,
-    /// Its own constraints, as the dictionary fields they became.
-    pub(crate) supers: Arc<[Constraint]>,
     /// The dictionary type as a function of the parameters: `λp⃗. { … }`.
     ///
     /// A closed term, so the type of a dictionary at arguments `τ⃗` is the
@@ -236,14 +234,6 @@ impl Trait {
         self.derived.iter().find(|derived| *derived.name == *name)
     }
 
-    /// The field a super-constraint on `class` occupies.
-    ///
-    /// Named after the trait it constrains, which is what makes §1's "reaching
-    /// `Eq` from `Ord` is one field read" true of the representation and not
-    /// only of the prose.
-    pub(crate) fn super_field(class: &Name) -> Name {
-        Arc::clone(class)
-    }
 }
 
 /// An `impl` declaration, elaborated.
@@ -257,9 +247,8 @@ pub struct Instance {
     pub(crate) params: Arc<[Binder]>,
     /// Its head arguments, under those parameters.
     pub(crate) args: Arc<[Term]>,
-    /// Its own constraints, under those parameters, each smaller than the head.
-    pub(crate) context: Arc<[Constraint]>,
-    /// The dictionary: `λp⃗. λd⃗. { … }`, one `d` per constraint above.
+    /// The dictionary: `λp⃗. { … }`. §4's flat law is why there is no `d⃗`: an
+    /// impl carries no `where` clause, so no dictionary is ever an argument.
     pub(crate) dictionary: Term,
 }
 
@@ -376,45 +365,11 @@ impl Classes {
     }
 }
 
-/// The size §4's termination measure counts: type constructors and variables,
-/// repeats included.
-///
-/// A structural walk and nothing cleverer, because the measure has to be one an
-/// author can compute in their head from the declaration they wrote. Binders
-/// count as the constructor they are: `A → B` is one more than the sum of its
-/// sides, which is what makes a constraint on a function type larger than one on
-/// either half.
-pub(crate) fn size(term: &Term) -> u32 {
-    use crate::term::Shape;
-    let inner = match term.shape() {
-        Shape::Hole(_)
-        | Shape::Var(_)
-        | Shape::Const(_)
-        | Shape::Def(_)
-        | Shape::Base(_)
-        | Shape::Builtin(_)
-        | Shape::Lit(_)
-        | Shape::Numeral(_)
-        | Shape::Hole(_)
-        | Shape::Universe(_)         => 0,
-        Shape::Pi { domain, codomain, .. } => size(domain).saturating_add(size(codomain)),
-        Shape::Lam { body, .. } => size(body),
-        Shape::App { function, argument, .. } => size(function).saturating_add(size(argument)),
-        Shape::RecordType(fields) | Shape::Record(fields) => fields
-            .iter()
-            .fold(0_u32, |total, field| total.saturating_add(size(&field.term))),
-        Shape::Project { record, .. } => size(record),
-        Shape::Let { ty, value, body, .. } => size(ty).saturating_add(size(value)).saturating_add(size(body)),
-    };
-    inner.saturating_add(1)
-}
-
 /// How many times the variable at `level` occurs in `term`.
 ///
-/// The second half of §4's measure. Counting occurrences rather than merely
-/// noticing one is what refuses `impl<A> C<F<A>> where D<G<A, A>>`, whose
-/// argument is smaller and still duplicates its variable — the classic
-/// non-terminating context that a size test alone admits.
+/// A structural count and nothing cleverer. Its one caller is
+/// [`crate::family`] deciding whether a closure's binder is absent from its
+/// body, where β can then discard the argument without evaluating it.
 pub(crate) fn occurrences(term: &Term, depth: u32, level: u32) -> u32 {
     use crate::term::Shape;
     let deeper = |term: &Term, by: u32| occurrences(term, depth.saturating_add(by), level);

@@ -88,7 +88,7 @@ use crate::eval::{apply, eval};
 use crate::level::Level;
 use crate::list::List;
 use crate::origin::Origin;
-use crate::quote::{Depth, quote, quote_type};
+use crate::quote::{Depth, quote_type};
 use crate::term::{DbLevel, Index, Name, Plicity, Shape, Term};
 use crate::value::{Elim, Env, Form, Head, Neutral, Value};
 use crate::visibility::{ModuleId, Visibility};
@@ -148,9 +148,6 @@ pub struct Constructor {
     /// none is what keeps this module's standing invariant exactly: a hypothesis
     /// stays an application rather than a synthesized closure.
     pub(crate) recursive: Arc<[(u32, u32)]>,
-    /// The index arguments its result chooses, read under the declaration
-    /// context, the parameters, and its own fields.
-    pub(crate) indices: Arc<[Term]>,
 }
 
 /// The two constructors that make a family *count*.
@@ -193,9 +190,6 @@ pub struct Declared {
     /// declared in. Independent of its constructors': `01-surface.md` §1.3's
     /// whole point is a public type whose cases are package-maintained.
     pub(crate) visibility: Visibility,
-    /// Its indices, a telescope read under the declaration context and the
-    /// group's parameters.
-    pub(crate) indices: Arc<[Binder]>,
     /// Its constructors, in declaration order.
     pub(crate) constructors: Arc<[Constructor]>,
     /// Which of them make it count, when its shape says it does — see
@@ -246,15 +240,12 @@ pub struct Group {
 /// A type that turned out to be a family applied to its arguments.
 ///
 /// What splitting a `match` subject needs and nothing more: which family, at
-/// which parameters, at which indices. Parameters and indices are separated here
-/// rather than handed over as one spine, because every rule downstream treats
-/// them differently — a motive quantifies over the indices and never over the
-/// parameters (§1.1).
+/// which parameters. A family with no indices (§1.1 admits none) is completely
+/// described by that answer.
 pub(crate) struct Element {
     pub(crate) group: Arc<Group>,
     pub(crate) family: u32,
     pub(crate) params: Vec<Value>,
-    pub(crate) indices: Vec<Value>,
 }
 
 impl Element {
@@ -294,38 +285,36 @@ pub(crate) fn element(meter: &mut Meter, ty: &Value) -> Result<Option<Element>, 
     let Form::Neutral(neutral) = &ty.form else {
         return Ok(None);
     };
-    let Some((constant, mut arguments)) = spine(neutral) else {
+    let Some((constant, arguments)) = spine(neutral) else {
         return Ok(None);
     };
     let Role::Family = constant.role else {
         return Ok(None);
     };
     let params = usize::try_from(constant.group.params()).unwrap_or(usize::MAX);
-    if arguments.len() < params {
+    if arguments.len() != params {
         return Ok(None);
     }
-    let indices = arguments.split_off(params);
     Ok(Some(Element {
         group: Arc::clone(&constant.group),
         family: constant.family,
         params: arguments,
-        indices,
     }))
 }
 
 /// Which of a declaration's three constants this is.
 #[derive(Clone, Debug)]
 pub(crate) enum Role {
-    /// The family itself, `N p⃗ i⃗`.
+    /// The family itself, `N p⃗`.
     Family,
     /// One of its constructors.
     Constructor(u32),
-    /// Its generated dependent recursor, at the universe its motives land in.
+    /// Its generated recursor, at the universe its motive lands in.
     ///
-    /// The level rides on the *use site* rather than on the declaration: §1.3
-    /// admits "no universe polymorphism beyond level metavariables", and a
-    /// recursor whose motive universe was fixed when the family was declared
-    /// would be small-elimination-only or large-elimination-only forever.
+    /// The level rides on the *use site* rather than on the declaration: a
+    /// family is declared once, and an elimination's goal is a type at `Type 0`
+    /// or a type of types at `Type 1` — the use site knows which, and the
+    /// declaration does not.
     Recursor(Level),
 }
 
@@ -595,10 +584,6 @@ impl Declared {
     pub(crate) fn constructor_at(&self, which: u32) -> Option<&Constructor> {
         self.constructors.get(usize::try_from(which).unwrap_or(usize::MAX))
     }
-
-    fn indices(&self) -> u32 {
-        u32::try_from(self.indices.len()).unwrap_or(u32::MAX)
-    }
 }
 
 impl Constant {
@@ -707,9 +692,6 @@ impl Constant {
         if !self.group.params.is_empty() {
             return Some("its declaration takes parameters, and a count does not say what they are");
         }
-        if !declared.indices.is_empty() {
-            return Some("it is indexed, and a count does not say which index the value lands at");
-        }
         if declared.constructors.len() != 2 {
             return Some("it does not have exactly two cases");
         }
@@ -761,27 +743,25 @@ impl Constant {
 
     /// How many arguments saturate it.
     ///
-    /// A family takes its parameters and indices, a constructor takes the
-    /// parameters and its fields, and a recursor takes everything up to and
-    /// including the target. ι fires exactly at this count on a recursor, which
-    /// is why it is one number rather than a shape match at every application.
+    /// A family takes its parameters, a constructor takes the parameters and
+    /// its fields, and a recursor takes everything up to and including the
+    /// target. ι fires exactly at this count on a recursor, which is why it is
+    /// one number rather than a shape match at every application.
     pub(crate) fn arity(&self) -> u32 {
         let params = self.group.params();
-        let Some(declared) = self.group.family_at(self.family) else {
-            return 0;
-        };
         match &self.role {
-            Role::Family => params.saturating_add(declared.indices()),
+            Role::Family => params,
             Role::Constructor(which) => {
-                let fields = declared.constructor_at(*which).map_or(0, |constructor| {
-                    u32::try_from(constructor.fields.len()).unwrap_or(u32::MAX)
+                let fields = self.group.family_at(self.family).and_then(|declared| {
+                    declared.constructor_at(*which).map(|constructor| {
+                        u32::try_from(constructor.fields.len()).unwrap_or(u32::MAX)
+                    })
                 });
-                params.saturating_add(fields)
+                params.saturating_add(fields.unwrap_or(0))
             }
             Role::Recursor(_) => params
                 .saturating_add(self.group.arity())
                 .saturating_add(self.group.methods())
-                .saturating_add(declared.indices())
                 .saturating_add(1),
         }
     }
@@ -820,11 +800,10 @@ impl Constant {
 
     /// `(p⃗ : Params) → (i⃗ : Indices) → Type l`.
     fn family_type(&self, meter: &mut Meter, builder: &mut Telescope<'_>) -> Result<Term, CoreError> {
-        let Some(declared) = self.group.family_at(self.family) else {
+        let Some(_declared) = self.group.family_at(self.family) else {
             return Ok(Term::universe(self.group.origin, Level::ZERO));
         };
         builder.extend(meter, &self.group.params)?;
-        builder.extend(meter, &declared.indices)?;
         // §1: a data family stores small types, so it lands at `Type 0`; the
         // declaration check is what makes that a theorem rather than a hope.
         Ok(builder.finish(Term::universe(self.group.origin, Level::ZERO)))
@@ -840,29 +819,24 @@ impl Constant {
             return Ok(Term::universe(self.group.origin, Level::ZERO));
         };
         let params = builder.extend(meter, &self.group.params)?;
-        let over_params = builder.reading.clone();
         builder.extend(meter, &constructor.fields)?;
-        let indices = builder.chosen(meter, &over_params, self.family, &constructor.indices)?;
-        let arguments = builder.references(&params).into_iter().chain(indices);
-        let result = applied(self.group.origin, builder.family(self.family), arguments);
+        let result = applied(self.group.origin, builder.family(self.family), builder.references(&params));
         Ok(builder.close(result))
     }
 
     /// The recursor's type, at the universe its motives land in.
     fn recursor_type(&self, meter: &mut Meter, mut builder: Telescope<'_>, level: &Level) -> Result<Term, CoreError> {
-        let Some(declared) = self.group.family_at(self.family) else {
+        let Some(_declared) = self.group.family_at(self.family) else {
             return Ok(Term::universe(self.group.origin, Level::ZERO));
         };
         let here = self.group.origin;
         let params = builder.extend(meter, &self.group.params)?;
         let motives = builder.motives(meter, &params, level)?;
         builder.methods(meter, &params, &motives)?;
-        let indices = builder.extend(meter, &declared.indices)?;
-        let subject = builder.applied_family(self.family, [&params, &indices]);
+        let subject = builder.applied_family(self.family, [&params, &[]]);
         let target = builder.assume(meter, "t", subject)?;
         let motive = builder.reference(motives.get(usize::try_from(self.family).unwrap_or(usize::MAX)).copied());
-        let at_indices = applied(here, motive, builder.references(&indices));
-        let result = Term::app(here, at_indices, builder.reference(Some(target)));
+        let result = Term::app(here, motive, builder.reference(Some(target)));
         Ok(builder.close(result))
     }
 }
@@ -988,8 +962,7 @@ impl<'a> Telescope<'a> {
         Ok(Plicity::Constraint(Arc::new(constraint.at(Arc::from(args)))))
     }
 
-    /// One motive per family in the group: `P_j : (i⃗ : Indices_j) → N_j p⃗ i⃗ →
-    /// Type ℓ`.
+    /// One motive per family in the group: `P_j : N_j p⃗ → Type ℓ`.
     fn motives(&mut self, meter: &mut Meter, params: &[Introduced], level: &Level) -> Result<Vec<At>, CoreError> {
         let mut introduced = Vec::with_capacity(self.group.families.len());
         for which in 0..self.group.arity() {
@@ -1006,15 +979,13 @@ impl<'a> Telescope<'a> {
         which: u32,
         level: &Level,
     ) -> Result<Term, CoreError> {
-        let Some(declared) = self.group.family_at(which) else {
+        if self.group.family_at(which).is_none() {
             return Ok(Term::universe(self.origin, Level::ZERO));
-        };
-        let indices = Arc::clone(&declared.indices);
+        }
         let mut inner = self.nested();
-        let bound = inner.extend(meter, &indices)?;
-        let subject = inner.applied_family(which, [params, &bound]);
+        let subject = inner.applied_family(which, [params, &[]]);
         inner.assume(meter, "t", subject)?;
-        Ok(inner.close(Term::universe(self.origin, level.clone())))
+        Ok(inner.close(Term::universe(self.origin, *level)))
     }
 
     /// One method per constructor of every family in the group.
@@ -1036,7 +1007,7 @@ impl<'a> Telescope<'a> {
         Ok(())
     }
 
-    /// `(a⃗ : Fields) → (ih⃗) → P_j idx⃗ (c p⃗ a⃗)`.
+    /// `(a⃗ : Fields) → (ih⃗) → P_j (c p⃗ a⃗)`.
     fn method_type(
         &self,
         meter: &mut Meter,
@@ -1054,90 +1025,29 @@ impl<'a> Telescope<'a> {
         };
         let fields_of = Arc::clone(&constructor.fields);
         let recursive = Arc::clone(&constructor.recursive);
-        let chooses = Arc::clone(&constructor.indices);
-        let over_params = self.reading.clone();
         let mut inner = self.nested();
         let fields = inner.extend(meter, &fields_of)?;
         for (field, of_family) in recursive.iter() {
-            let Some((at, ty)) = fields.get(usize::try_from(*field).unwrap_or(usize::MAX)).cloned() else {
+            let Some((at, _)) = fields.get(usize::try_from(*field).unwrap_or(usize::MAX)).cloned() else {
                 continue;
             };
-            let hypothesis = inner.hypothesis(meter, motives, *of_family, at, &ty)?;
+            let hypothesis = inner.hypothesis(motives, *of_family, at);
             inner.assume(meter, "ih", hypothesis)?;
         }
-        let indices = inner.chosen(meter, &over_params, family, &chooses)?;
         let arguments = inner.references(params).into_iter().chain(inner.references(&fields));
         let built = applied(self.origin, inner.constructor(family, which), arguments);
         let motive = inner.reference(motives.get(usize::try_from(family).unwrap_or(usize::MAX)).copied());
-        let result = Term::app(self.origin, applied(self.origin, motive, indices), built);
+        let result = Term::app(self.origin, motive, built);
         Ok(inner.close(result))
     }
 
-    /// `P_j i⃗ a`, the induction hypothesis for a recursive field.
-    ///
-    /// The index arguments come from the type the field was *declared* at, which
-    /// is the one place they are written; the constructor's own result indices
-    /// describe a different value.
-    fn hypothesis(
-        &self,
-        meter: &mut Meter,
-        motives: &[At],
-        family: u32,
-        field: At,
-        ty: &Value,
-    ) -> Result<Term, CoreError> {
-        let written = quote_type(meter, Depth(self.depth), crate::quote::Mode::Open, ty)?;
-        let indices = index_arguments(&written, self.group.params.len());
+    /// `P_j a`, the induction hypothesis for a recursive field.
+    fn hypothesis(&self, motives: &[At], family: u32, field: At) -> Term {
         let motive = self.reference(motives.get(usize::try_from(family).unwrap_or(usize::MAX)).copied());
-        Ok(Term::app(
-            self.origin,
-            applied(self.origin, motive, indices),
-            self.reference(Some(field)),
-        ))
+        Term::app(self.origin, motive, self.reference(Some(field)))
     }
 
-    /// A constructor's chosen index arguments, re-read at the depth this
-    /// telescope has reached.
-    ///
-    /// `over_params` is the environment the family's *index binders* were
-    /// written in — the parameters alone — because index `k`'s type may mention
-    /// indices `0..k`, and the values those stand at here are the ones this
-    /// constructor chose.
-    ///
-    /// Read with [`quote`] at that type rather than with [`quote_type`], because
-    /// an index is a term: `Vec A Zero` chooses a `Nat` and does not choose a
-    /// type. §5.10's numeral is the value that makes the difference visible —
-    /// `Zero` evaluates to one node that inhabits a type and is not one, so
-    /// reading it as a type is [`Malformed::NotAType`] for a program the
-    /// elaborator had just accepted.
-    fn chosen(
-        &self,
-        meter: &mut Meter,
-        over_params: &Env,
-        family: u32,
-        terms: &[Term],
-    ) -> Result<Vec<Term>, CoreError> {
-        let declared = self.group.family_at(family);
-        let mut env = over_params.clone();
-        let mut read = Vec::with_capacity(terms.len());
-        for (position, term) in terms.iter().enumerate() {
-            let value = eval(meter, &self.reading, term)?;
-            let binder = declared.and_then(|declared| declared.indices.get(position));
-            read.push(match binder {
-                Some(binder) => {
-                    let ty = eval(meter, &env, &binder.ty)?;
-                    quote(meter, Depth(self.depth), crate::quote::Mode::Open, &ty, &value)?
-                }
-                // A constructor choosing more indices than its family declares
-                // is refused where it is declared, so this arm is unreachable
-                // from an accepted group; reading as a type keeps it total
-                // without inventing a type nothing wrote.
-                None => quote_type(meter, Depth(self.depth), crate::quote::Mode::Open, &value)?,
-            });
-            env = env.push(value);
-        }
-        Ok(read)
-    }
+
 
     /// The variable naming the binder at `at`, seen from here.
     fn reference(&self, at: Option<At>) -> Term {
@@ -1207,25 +1117,7 @@ fn applied(origin: Origin, head: Term, args: impl IntoIterator<Item = Term>) -> 
         .fold(head, |function, argument| Term::app(origin, function, argument))
 }
 
-/// The index arguments of `N p⃗ i⃗`, given how many leading arguments are
-/// parameters.
-///
-/// Reads the spine of a type the positivity check has already established is a
-/// family occurrence, so a shape that is not one answers no indices rather than a
-/// diagnostic nobody would see.
-fn index_arguments(ty: &Term, params: usize) -> Vec<Term> {
-    let mut arguments = Vec::new();
-    let mut head = ty;
-    while let Shape::App { function, argument } = head.shape() {
-        arguments.push(argument.clone());
-        head = function;
-    }
-    arguments.reverse();
-    if arguments.len() <= params {
-        return Vec::new();
-    }
-    arguments.split_off(params)
-}
+
 
 /// The constant at the head of a blocked spine, and what has been applied to it.
 fn spine(neutral: &Neutral) -> Option<(Constant, Vec<Value>)> {
@@ -1506,7 +1398,7 @@ fn hypotheses(meter: &mut Meter, reduction: &Reduction) -> Result<Vec<Pending>, 
     let mut built = Vec::new();
     for (position, field) in reduction.fields.iter().enumerate() {
         let position = u32::try_from(position).unwrap_or(u32::MAX);
-        let ty = match rule.fields.get(usize::try_from(position).unwrap_or(usize::MAX)) {
+        let _ty = match rule.fields.get(usize::try_from(position).unwrap_or(usize::MAX)) {
             Some(binder) => eval(meter, &reading, &binder.ty)?,
             None => break,
         };
@@ -1515,16 +1407,11 @@ fn hypotheses(meter: &mut Meter, reduction: &Reduction) -> Result<Vec<Pending>, 
             let mut hypothesis = Constant {
                 group: Arc::clone(group),
                 family: of_family,
-                role: Role::Recursor(reduction.level.clone()),
+                role: Role::Recursor(reduction.level),
             }
             .value(here);
-            let arguments = reduction
-                .prefix
-                .iter()
-                .cloned()
-                .chain(index_values(&ty, group.params()));
-            for argument in arguments {
-                hypothesis = apply(meter, here, hypothesis, argument)?;
+            for argument in reduction.prefix.iter() {
+                hypothesis = apply(meter, here, hypothesis, argument.clone())?;
             }
             built.push(Pending {
                 recursor: hypothesis,
@@ -1800,14 +1687,4 @@ fn realize_case(
     Ok(value)
 }
 
-/// The index arguments of a value of family type.
-fn index_values(ty: &Value, params: u32) -> Vec<Value> {
-    let Form::Neutral(neutral) = &ty.form else {
-        return Vec::new();
-    };
-    let Some((_, arguments)) = spine(neutral) else {
-        return Vec::new();
-    };
-    let params = usize::try_from(params).unwrap_or(usize::MAX);
-    arguments.get(params..).map(<[Value]>::to_vec).unwrap_or_default()
-}
+

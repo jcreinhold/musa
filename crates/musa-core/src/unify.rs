@@ -41,7 +41,7 @@ use crate::origin::Origin;
 use crate::quote::{Depth, Mode, quote, quote_type};
 use crate::refuse::{ElabError, Mismatch, PathStep, Refusal};
 use crate::term::{DbLevel, Field, Term};
-use crate::value::{Closure, DefHead, Elim, Env, Form, Head, Neutral, Telescope, Value};
+use crate::value::{Closure, DefHead, Elim, Form, Head, Neutral, Telescope, Value};
 
 /// What a pair of values is being compared at.
 ///

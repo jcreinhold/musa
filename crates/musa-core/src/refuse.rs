@@ -349,17 +349,6 @@ pub enum Refusal {
         /// The constructor whose field it occurs in.
         constructor: Name,
     },
-    /// A constructor chose a different number of index arguments than the family
-    /// it belongs to declares.
-    #[error("this constructor chooses {found} index arguments, but the family declares {expected}")]
-    IndexCount {
-        /// The constructor.
-        at: Origin,
-        /// How many indices the family declares.
-        expected: usize,
-        /// How many the constructor wrote.
-        found: usize,
-    },
     /// A pattern named something that is not a constructor of the type the
     /// subject it stands against has.
     ///
@@ -395,19 +384,6 @@ pub enum Refusal {
     UnreachableBranch {
         /// The arm.
         at: Origin,
-    },
-    /// A subject whose type fixes an index to something other than a variable.
-    ///
-    /// The rule that would refine it is `02-core-calculus.md` §1.4's deletion,
-    /// which requires K and is therefore not in this checker until a program
-    /// needs it. The index is named because the edit is at the *subject's type*
-    /// — generalize the index and match on it too — and not at the match.
-    #[error("this match's subject fixes an index, which needs a unification rule this checker does not have")]
-    ForcedIndex {
-        /// The subject.
-        at: Origin,
-        /// The index argument that is not a variable.
-        index: Term,
     },
     /// Top-level definitions that name each other (§2.4).
     ///
@@ -500,6 +476,34 @@ pub enum Refusal {
         /// Its name.
         method: Name,
     },
+    /// A trait declaring a `where` clause: a supertrait, which is synthesized
+    /// dictionary search under a quieter spelling.
+    ///
+    /// `10-traits.md` §9's first row. What the author wanted is stated at the
+    /// use instead: the method or function takes the second dictionary as an
+    /// argument, or states it in its own `where`, and the trait stays a record
+    /// of exactly its methods.
+    #[error("`{class}` declares a super-constraint; take the dictionary as an argument instead")]
+    SuperClass {
+        /// The clause.
+        at: Origin,
+        /// The trait.
+        class: Name,
+    },
+    /// An `impl` declaring a `where` clause.
+    ///
+    /// `10-traits.md` §4: resolution is three steps and no recursion, and an
+    /// instance whose own constraints had to be synthesized is the recursion.
+    /// The explicit spelling is an ordinary function from the dictionaries to
+    /// the dictionary — `fn list_eq<A>(eq: Eq<A>) -> Eq<List<A>>` — or a macro
+    /// that writes the concrete instances out.
+    #[error("`impl {class}` carries a `where` clause; write the dictionary-building function instead")]
+    ConstrainedInstance {
+        /// The clause.
+        at: Origin,
+        /// The trait.
+        class: Name,
+    },
     /// A trait declaring one method name twice.
     #[error("`{class}` declares `{method}` twice")]
     DuplicateMethod {
@@ -571,20 +575,6 @@ pub enum Refusal {
         class: Name,
         /// The head type.
         head: Name,
-    },
-    /// An instance whose context §4's measure cannot see decrease.
-    ///
-    /// Checked at the declaration and never at a use, because a use site is the
-    /// wrong place to learn that a library cannot answer: the author reading the
-    /// message is not the author who can fix it.
-    #[error("resolving `{class}` here need not terminate, because {reason}")]
-    UnboundedInstance {
-        /// The constraint.
-        at: Origin,
-        /// The trait it constrains.
-        class: Name,
-        /// Which half of the measure failed.
-        reason: &'static str,
     },
     /// An `impl` supplying a method the trait derives.
     ///

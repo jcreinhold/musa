@@ -238,7 +238,6 @@ fn file(refusal: &Refusal) -> Filed {
         | Refusal::RecordShape { at, .. } => one(Code::TypeMismatch, *at),
         // Too many, too few, or the wrong kind of argument.
         Refusal::PlicityMismatch { at, .. }
-        | Refusal::IndexCount { at, .. }
         | Refusal::ClassArity { at, .. }
         | Refusal::Underapplied { at, .. } => one(Code::WrongArity, *at),
         // A name the declaration it is read against does not have.
@@ -252,7 +251,6 @@ fn file(refusal: &Refusal) -> Filed {
         Refusal::NonPositive { at, .. } => one(Code::NonPositiveOccurrence, *at),
         Refusal::IncompleteMatch { at, .. } => one(Code::IncompleteMatch, *at),
         Refusal::UnreachableBranch { at, .. } => one(Code::UnreachableBranch, *at),
-        Refusal::ForcedIndex { at, .. } => one(Code::ForcedIndex, *at),
         Refusal::UncheckedRecursion { at, .. } => one(Code::UncheckedRecursion, *at),
         Refusal::UntypedRecursion { at, .. } => one(Code::UntypedRecursion, *at),
         // `02-core-calculus.md` §2.4's graph rule, under the code the old
@@ -272,7 +270,8 @@ fn file(refusal: &Refusal) -> Filed {
             two(Code::DuplicateInstance, *at, *previous, "already answered here")
         }
         Refusal::OrphanInstance { at, .. } => one(Code::OrphanInstance, *at),
-        Refusal::UnboundedInstance { at, .. } => one(Code::UnboundedInstance, *at),
+        Refusal::SuperClass { at, .. } => one(Code::SuperClass, *at),
+        Refusal::ConstrainedInstance { at, .. } => one(Code::ConstrainedInstance, *at),
         Refusal::DerivedMethod { at, .. } => one(Code::DerivedMethod, *at),
         Refusal::NoSuchMethod { at, .. } => one(Code::NoSuchMethod, *at),
         Refusal::MissingMethod { at, .. } => one(Code::MissingMethod, *at),

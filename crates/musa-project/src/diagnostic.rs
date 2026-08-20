@@ -592,27 +592,6 @@ pub fn explain(code: &str) -> Option<&'static str> {
              unreachable, an earlier arm covers it, and the report names \
              which one."
         }
-        musa_compiler::Code::ForcedIndex => {
-            "A `match` scrutinee's index is not a distinct variable, and index \
-             refinement is defined only for that shape.\n\n\
-             Splitting refines indices by *generalizing* them into the \
-             recursor's motive: `xs : Vec A n` at a variable `n` becomes a \
-             motive quantified over `n`, and each constructor's own index then \
-             refines it in that constructor's branch. The motive is the \
-             refinement, and it needs no equality proof, no injectivity \
-             lemma, and no deletion rule.\n\n\
-             At `Vec A (succ n)` there is no variable to generalize, so the \
-             refinement has nothing to work with. Making the remaining branch \
-             usable would need the deletion rule, which requires K — an axiom \
-             musa has not adopted, and which a paper trial found no musa \
-             program needs. Refusing here is that decision checked at the \
-             rule rather than at each of its uses.\n\n\
-             The report names the index it was stuck on. The fix is to \
-             scrutinize at a variable and let the branch supply the shape: \
-             match on the vector, not on a vector already known to be \
-             non-empty. The same index written twice — `Vec A n n` — is \
-             refused for the same reason: the second is no longer distinct."
-        }
         musa_compiler::Code::UncheckedRecursion => {
             "A recursive call the termination rule cannot see is smaller.\n\n\
              Musa is total, and a `rec` definition is admitted by rewriting \
@@ -740,8 +719,14 @@ pub fn explain(code: &str) -> Option<&'static str> {
         musa_compiler::Code::OrphanInstance => {
             "An `impl` was written in a package that declares neither its trait nor its head type.\n\nCoherence has to hold across packages that never see each other, and the only way to check that locally is to require every instance to live with one of the two things it mentions. Otherwise two unrelated packages could each add an instance for the same pair, and a program that depended on both would be rejected for a conflict neither author could have known about.\n\nMove the instance into the package that declares the trait or the one that declares the type. Where neither is yours, the usual repair is a wrapper type in your own package."
         }
-        musa_compiler::Code::UnboundedInstance => {
-            "An instance was declared whose `where` clause need not terminate.\n\nResolving a constraint may need the instance's own constraints resolved first, so an instance whose context is not smaller than its head can recurse forever. Two things are checked, both at the declaration: each constraint's first argument must be strictly smaller than the head, and no type variable may occur in it more often than it occurs in the head. The second is what refuses `impl<A> C<F<A>> where D<G<A, A>>`, whose argument is smaller and still duplicates its variable.\n\nThis is checked where the instance is written and never where it is used, because the author reading a use-site failure is not the author who can fix it."
+        musa_compiler::Code::ConstrainedData => {
+            "An `enum` or `record` was declared with a `where` clause.\n\nA constraint on a type would be a dictionary every construction of it had to supply, and finding that dictionary is the synthesis this language refuses: a reader could not name the type without answering a question the declaration did not let it see.\n\nState the constraint on the functions that use the type instead, where it is an ordinary parameter, or take the dictionary as an argument explicitly."
+        }
+        musa_compiler::Code::SuperClass => {
+            "A trait was declared with a `where` clause — a supertrait.\n\nA super-constraint is a dictionary obligation the elaborator would have to synthesize at every use of the trait, and synthesis is the recursive search this language refuses on purpose. The trait's dictionary is a record of exactly its methods, so a use site never has to ask where the rest came from.\n\nState the need where it is used instead: the method or function takes the second dictionary as an argument or states it in its own `where` clause, which is an ordinary parameter and not a synthesis obligation."
+        }
+        musa_compiler::Code::ConstrainedInstance => {
+            "An `impl` was declared with a `where` clause.\n\nResolution is three steps and no recursion: a local dictionary, then one table lookup on the concrete head, then an error. An instance whose own constraints had to be synthesized from other instances is the recursion — `impl<A> Eq<List<A>> where Eq<A>` is the canonical shape.\n\nWrite the composition explicitly instead: an ordinary function from the dictionaries to the dictionary, `fn list_eq<A>(eq: Eq<A>) -> Eq<List<A>>`, or a macro that generates the concrete instances. Composition the author can read is the extensibility mechanism; synthesis the author cannot is what was removed."
         }
         musa_compiler::Code::DerivedMethod => {
             "An `impl` defines a method its trait derives.\n\nA derived method is written once, in the trait, in terms of the required ones. An instance that could replace it would make two dictionaries for the same instance distinguishable, which is what coherence exists to prevent — and it is why specialization is refused as a mechanism rather than as a rule.\n\nDelete the definition. If the derived version is wrong for this type, the method belongs in the required set."

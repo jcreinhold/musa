@@ -176,17 +176,15 @@ impl Lowering<'_> {
         for written in children(node, |kind| kind == SyntaxKind::DataVariant) {
             constructors.push(self.variant(&written, visibility)?);
         }
+        // `data` has no `where` clause to read: `01-surface.md` §1's
+        // `where_clause` is called from `record`, `enum`, `trait`, `impl`,
+        // and a `fn` signature, and `data_decl` is not among them.
         Some(RawData {
             origin,
             params,
-            // `data` has no `where` clause to read: `01-surface.md` §1's
-            // `where_clause` is called from `record`, `enum`, `trait`, `impl`,
-            // and a `fn` signature, and `data_decl` is not among them.
-            context: Vec::new(),
             families: vec![RawFamily {
                 name,
                 visibility,
-                indices: Vec::new(),
                 constructors,
             }],
         })
@@ -205,7 +203,6 @@ impl Lowering<'_> {
             name,
             visibility,
             fields,
-            indices: Vec::new(),
         })
     }
 
@@ -218,7 +215,16 @@ impl Lowering<'_> {
         let origin = self.origin(node);
         let name = declared_name(node)?;
         let params = self.type_parameters(node);
-        let context = self.written_constraints(node)?;
+        // `10-traits.md` §4's flat law reaches declarations too: a constraint
+        // on a type is a dictionary every construction would have to synthesize,
+        // which is the recursion that document refuses.
+        if let Some(clause) = child(node, |kind| kind == SyntaxKind::WhereClause) {
+            return self.refuse(
+                Diagnostic::error(Code::ConstrainedData, "an `enum` does not take a `where` clause")
+                    .at(trimmed_span(&clause), "written here")
+                    .help("a constraint lives on the function that uses the type, not on the type itself"),
+            );
+        }
         let mut constructors = Vec::new();
         for written in children(node, |kind| kind == SyntaxKind::EnumCase) {
             constructors.push(self.case(&written)?);
@@ -226,11 +232,9 @@ impl Lowering<'_> {
         Some(RawData {
             origin,
             params,
-            context,
             families: vec![RawFamily {
                 name,
                 visibility: visibility_of(node),
-                indices: Vec::new(),
                 constructors,
             }],
         })
@@ -260,7 +264,6 @@ impl Lowering<'_> {
             name,
             visibility: visibility_of(node),
             fields,
-            indices: Vec::new(),
         })
     }
 
@@ -278,7 +281,15 @@ impl Lowering<'_> {
         let origin = self.origin(node);
         let name = declared_name(node)?;
         let params = self.type_parameters(node);
-        let context = self.written_constraints(node)?;
+        // As [`Lowering::enumeration`]: a constraint on a type would be a
+        // dictionary every construction had to synthesize.
+        if let Some(clause) = child(node, |kind| kind == SyntaxKind::WhereClause) {
+            return self.refuse(
+                Diagnostic::error(Code::ConstrainedData, "a `record` does not take a `where` clause")
+                    .at(trimmed_span(&clause), "written here")
+                    .help("a constraint lives on the function that uses the type, not on the type itself"),
+            );
+        }
         let mut names = Vec::new();
         let mut types = Vec::new();
         for written in children(node, |kind| kind == SyntaxKind::FieldDecl) {
@@ -288,13 +299,6 @@ impl Lowering<'_> {
         }
         let mut value = Raw::record_type(origin, names.iter().map(|name| &**name).zip(types));
         let mut ty = Raw::universe(origin, Level::ZERO);
-        // §1.2's `record Cell<A> where Eq<A>` is `(A : Type) → [Eq A] → Type`:
-        // the constraint stands between the parameters and the record, so its
-        // arguments may mention them. Only the type gains a binder — the core
-        // wraps the value in the λ for it, exactly as it does for an implicit.
-        for constraint in context.into_iter().rev() {
-            ty = Raw::constrained_pi(origin, constraint, ty);
-        }
         for parameter in params.iter().rev() {
             value = Raw::lam(origin, Arc::clone(&parameter.name), value);
             ty = Raw::pi(origin, Arc::clone(&parameter.name), parameter.ty.clone(), ty);

@@ -50,7 +50,7 @@
 
 use std::sync::Arc;
 
-use crate::class::{Classes, Constraint, Derived, Head, Instance, Key, Kind, Trait, head_of, occurrences, size};
+use crate::class::{Classes, Constraint, Derived, Head, Instance, Key, Kind, Trait, head_of, };
 use crate::context::Cx;
 use crate::elab::Elaborator;
 use crate::eval::eval;
@@ -87,19 +87,18 @@ pub(crate) fn declare_trait(cx: &Cx, raw: &RawTrait) -> Result<(Arc<Trait>, crat
         .into());
     }
 
-    // The super-constraint fields, then the required-method fields, each read in
-    // the scope the ones before it built — see the module doc for why the order
-    // is not a preference.
-    let mut fields: Vec<Field> = Vec::with_capacity(raw.context.len().saturating_add(raw.methods.len()));
-    let mut supers = Vec::with_capacity(raw.context.len());
-    let mut inner = under_params;
-    for constraint in &raw.context {
-        let (elaborated, ty) = constraint_at(&mut elaborator, &inner, cx.classes(), constraint)?;
-        let name = Trait::super_field(&elaborated.class);
-        inner = assumed(&mut elaborator, &inner, constraint.origin, &name, &ty)?;
-        fields.push(Field { name, term: ty });
-        supers.push(elaborated);
+    // §1's flat law: a trait's `where` clause was a supertrait, and a
+    // supertrait is a dictionary obligation synthesized at every use — the
+    // search `10-traits.md` §9 refuses. The methods alone are the fields.
+    if let Some(constraint) = raw.context.first() {
+        return Err(Refusal::SuperClass {
+            at: constraint.origin,
+            class: Arc::clone(&raw.name),
+        }
+        .into());
     }
+    let mut fields: Vec<Field> = Vec::with_capacity(raw.methods.len());
+    let mut inner = under_params;
 
     let mut methods = Vec::with_capacity(raw.methods.len());
     for method in &raw.methods {
@@ -129,7 +128,6 @@ pub(crate) fn declare_trait(cx: &Cx, raw: &RawTrait) -> Result<(Arc<Trait>, crat
         name: Arc::clone(&raw.name),
         package: cx.package(),
         params: Arc::from(params),
-        supers: Arc::from(supers),
         dictionary,
         methods: Arc::from(methods),
         derived: Arc::from(Vec::new()),
@@ -232,47 +230,30 @@ pub(crate) fn declare_impl(cx: &Cx, raw: &RawImpl) -> Result<(Arc<Instance>, cra
         at_args = at_args.push(under_params.eval(elaborator.meter(), argument)?);
     }
 
-    // The `where` clause: each constraint read under the parameters and the
-    // dictionaries before it, each measured against the head, and each recorded
-    // as a local so that §4 step 1 can prefer it to a global instance.
-    let mut context = Vec::with_capacity(raw.context.len());
-    let mut inner = under_params.clone();
-    let head_size = args.first().map_or(0, size);
-    for constraint in &raw.context {
-        let (elaborated, ty) = constraint_at(&mut elaborator, &inner, classes, constraint)?;
-        decreasing(&elaborated, head_size, args.first(), under_params.depth(), &params)?;
-        if let Some(key) = discharges(&elaborated, &inner) {
-            let written = valued(&mut elaborator, &inner, &elaborated)?;
-            inner = inner.discharging(key, inner.depth(), written);
+    // §4's flat law: an `impl` carries no `where` clause, because resolving one
+    // would be synthesis from other instances — the recursion `10-traits.md`
+    // §9 refuses. What the author would have written there is an ordinary
+    // function taking the dictionaries as arguments, and §9's table says so.
+    if let Some(constraint) = raw.context.first() {
+        return Err(Refusal::ConstrainedInstance {
+            at: constraint.origin,
+            class: Arc::clone(&raw.name),
         }
-        inner = assumed(
-            &mut elaborator,
-            &inner,
-            constraint.origin,
-            &Trait::super_field(&elaborated.class),
-            &ty,
-        )?;
-        context.push(elaborated);
+        .into());
     }
+    let inner = under_params.clone();
 
-    // The dictionary itself: a record whose super fields are *resolved* and
-    // whose method fields are checked at the types the trait declared for them.
+    // The dictionary itself: a record whose method fields are checked at the
+    // types the trait declared for them.
     let value = dictionary_value(&mut elaborator, &inner, classes, &class, raw, &at_args, &dictionary_ty)?;
 
-    let dictionary = closed_lambda(
-        here,
-        &params,
-        context.iter().rev().fold(value, |body, constraint| {
-            Term::lam(here, Trait::super_field(&constraint.class), body)
-        }),
-    );
+    let dictionary = closed_lambda(here, &params, value);
     elaborator.settled()?;
     let instance = Arc::new(Instance {
         origin: here,
         key,
         params: Arc::from(params),
         args: Arc::from(args),
-        context: Arc::from(context),
         dictionary,
     });
     Ok((instance, elaborator.spent()))
@@ -289,10 +270,10 @@ pub(crate) fn declare_impl(cx: &Cx, raw: &RawImpl) -> Result<(Arc<Instance>, cra
 fn dictionary_value(
     elaborator: &mut Elaborator,
     scope: &Scope,
-    classes: &Classes,
+    _classes: &Classes,
     class: &Trait,
     raw: &RawImpl,
-    at_args: &Env,
+    _at_args: &Env,
     dictionary_ty: &Value,
 ) -> Result<Term, ElabError> {
     let here = raw.origin;
@@ -574,7 +555,7 @@ fn apply_instance(
     // One hole per instance parameter, and the instance's head read in an
     // environment of them: the head match below is what solves them, which is
     // the whole of instance instantiation under §2.1 — first-order, and
-    /// determined by the constraint being answered.
+    // determined by the constraint being answered.
     let mut env = Env::EMPTY;
     let mut supplied = Vec::with_capacity(instance.params.len());
     for binder in instance.params.iter() {
@@ -712,41 +693,6 @@ fn constant(term: &Term) -> Option<&Constant> {
     }
 }
 
-/// §4's measure, checked at the instance and never at a use.
-fn decreasing(
-    constraint: &Constraint,
-    head_size: u32,
-    head: Option<&Term>,
-    depth: u32,
-    params: &[Binder],
-) -> Result<(), ElabError> {
-    let Some(first) = constraint.args.first() else {
-        return Ok(());
-    };
-    if size(first) >= head_size {
-        return Err(Refusal::UnboundedInstance {
-            at: constraint.origin,
-            class: Arc::clone(&constraint.class),
-            reason: "it is not smaller than the head",
-        }
-        .into());
-    }
-    let Some(head) = head else { return Ok(()) };
-    let count = u32::try_from(params.len()).unwrap_or(u32::MAX);
-    for which in 0..count {
-        let level = depth.saturating_sub(count).saturating_add(which);
-        if occurrences(first, depth, level) > occurrences(head, depth, level) {
-            return Err(Refusal::UnboundedInstance {
-                at: constraint.origin,
-                class: Arc::clone(&constraint.class),
-                reason: "a type variable occurs in it more often than in the head",
-            }
-            .into());
-        }
-    }
-    Ok(())
-}
-
 /// The derived methods of a trait, each a definition over the dictionary.
 fn derivations(elaborator: &mut Elaborator, cx: &Cx, class: &Trait, raw: &RawTrait) -> Result<Vec<Derived>, ElabError> {
     let mut built = Vec::new();
@@ -845,7 +791,7 @@ fn requirements(
             let args = valued(elaborator, &inner, &elaborated)?;
             inner = inner.discharging(key, inner.depth(), args);
         }
-        let name = Trait::super_field(&elaborated.class);
+        let name: Name = Arc::clone(&elaborated.class);
         inner = assumed(elaborator, &inner, constraint.origin, &name, &ty)?;
         binders.push(Binder::explicit(name, ty));
         context.push(elaborated);

@@ -672,7 +672,7 @@ pub(crate) fn project(meter: &mut Meter, here: Origin, record: Value, field: &Na
 }
 
 /// [`project`] without the bookkeeping charge — see [`applying`].
-fn projecting(meter: &mut Meter, here: Origin, record: Value, field: &Name) -> Result<Value, CoreError> {
+fn projecting(_meter: &mut Meter, here: Origin, record: Value, field: &Name) -> Result<Value, CoreError> {
     match record.form {
         Form::Record(fields) => fields
             .iter()

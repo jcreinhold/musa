@@ -41,14 +41,6 @@ pub enum Metric {
     /// How far inside itself an evaluation currently is. The one metric that
     /// goes back down.
     Nesting,
-    /// Metavariables created during one elaboration (§4, §2.1).
-    Metavariables,
-    /// Retries of a postponed constraint (§4, §2.1).
-    ///
-    /// Charged rather than merely bounded by the loop's own progress argument,
-    /// because "each retry either solves something or changes nothing" bounds
-    /// the *rounds*, and a round is quadratic in the queue.
-    Retries,
 }
 
 impl Metric {
@@ -59,8 +51,6 @@ impl Metric {
             Self::Steps => "reduction steps",
             Self::QuotedNodes => "quoted nodes",
             Self::Nesting => "nested evaluation levels",
-            Self::Metavariables => "metavariables",
-            Self::Retries => "postponed-constraint retries",
         }
     }
 }
@@ -74,8 +64,6 @@ pub struct Budget {
     steps: u64,
     quoted_nodes: u64,
     nesting: u64,
-    metavariables: u64,
-    retries: u64,
 }
 
 impl Budget {
@@ -110,7 +98,6 @@ impl Budget {
     /// note 44 §6's closing records the mechanism. The budget does not move
     /// for any of it.
     ///
-    /// **Quoted nodes, metavariables, and retries are charged and not
     /// limited.** §4 says so in as many words: "Conversion and metavariable
     /// metrics have no defaults yet: prompt 144 measures the new checker and
     /// sets them, and until it does, the checker charges them and reports them
@@ -120,8 +107,6 @@ impl Budget {
         steps: 200_000,
         quoted_nodes: u64::MAX,
         nesting: Self::NESTING,
-        metavariables: u64::MAX,
-        retries: u64::MAX,
     };
 
     /// This budget with quotation forbidden outright.
@@ -163,8 +148,6 @@ impl Budget {
             steps: share(self.steps, divisor),
             quoted_nodes: share(self.quoted_nodes, divisor),
             nesting: share(self.nesting, divisor),
-            metavariables: share(self.metavariables, divisor),
-            retries: share(self.retries, divisor),
         }
     }
 
@@ -173,8 +156,6 @@ impl Budget {
             Metric::Steps => self.steps,
             Metric::QuotedNodes => self.quoted_nodes,
             Metric::Nesting => self.nesting,
-            Metric::Metavariables => self.metavariables,
-            Metric::Retries => self.retries,
         }
     }
 }
@@ -216,10 +197,6 @@ pub struct Spend {
     pub steps: u64,
     /// [`Metric::QuotedNodes`].
     pub quoted_nodes: u64,
-    /// [`Metric::Metavariables`].
-    pub metavariables: u64,
-    /// [`Metric::Retries`].
-    pub retries: u64,
 }
 
 impl Spend {
@@ -229,8 +206,6 @@ impl Spend {
         Self {
             steps: self.steps.saturating_add(later.steps),
             quoted_nodes: self.quoted_nodes.saturating_add(later.quoted_nodes),
-            metavariables: self.metavariables.saturating_add(later.metavariables),
-            retries: self.retries.saturating_add(later.retries),
         }
     }
 }
@@ -246,8 +221,6 @@ pub(crate) struct Meter {
     steps: u64,
     quoted_nodes: u64,
     nesting: u64,
-    metavariables: u64,
-    retries: u64,
 }
 
 impl Meter {
@@ -257,8 +230,6 @@ impl Meter {
             steps: 0,
             quoted_nodes: 0,
             nesting: 0,
-            metavariables: 0,
-            retries: 0,
         }
     }
 
@@ -282,25 +253,7 @@ impl Meter {
         Ok(())
     }
 
-    /// Charge one metavariable.
-    ///
-    /// # Errors
-    ///
-    /// [`CoreError::Exhausted`] when the charge would cross the limit.
-    pub(crate) fn metavariable(&mut self, operation: &'static str) -> Result<(), CoreError> {
-        self.metavariables = self.charge(Metric::Metavariables, operation, self.metavariables)?;
-        Ok(())
-    }
 
-    /// Charge one retry of a postponed constraint.
-    ///
-    /// # Errors
-    ///
-    /// [`CoreError::Exhausted`] when the charge would cross the limit.
-    pub(crate) fn retry(&mut self, operation: &'static str) -> Result<(), CoreError> {
-        self.retries = self.charge(Metric::Retries, operation, self.retries)?;
-        Ok(())
-    }
 
     /// Run `body` one evaluation level down, or refuse at the limit.
     ///
@@ -333,8 +286,6 @@ impl Meter {
         Spend {
             steps: self.steps,
             quoted_nodes: self.quoted_nodes,
-            metavariables: self.metavariables,
-            retries: self.retries,
         }
     }
 

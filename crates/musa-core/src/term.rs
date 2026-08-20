@@ -591,7 +591,7 @@ impl Term {
     #[must_use]
 
     /// `let name : ty = value in body`.
-    #[must_use]
+    
     pub fn bind(origin: Origin, name: impl Into<Name>, ty: Self, value: Self, body: Self) -> Self {
         Self::new(
             origin,

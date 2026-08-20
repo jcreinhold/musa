@@ -73,16 +73,15 @@ pub struct RawBinder {
 
 /// One constructor of a family, before elaboration.
 ///
-/// It does **not** write its result type. §1.1 says a parameter is fixed across
-/// the declaration and an index is chosen per constructor, and a constructor that
-/// wrote `Vec A n` in full could write `Vec B n` instead — so the parameters are
-/// supplied by the declaration and only the indices are written here. The rule is
-/// then a property of the representation rather than a check that could be
-/// forgotten.
+/// It does **not** write its result type: §1.1 says a parameter is fixed across
+/// the declaration, and a constructor that wrote `Motive B` in full could name
+/// another family of the group — so the result is supplied by the declaration
+/// and never written here. The rule is a property of the representation rather
+/// than a check that could be forgotten.
 #[derive(Clone, Debug)]
 pub struct RawConstructor {
-    /// Where it was written. A case may have no fields and no indices, so it is
-    /// the only thing a diagnostic about the case itself can point at.
+    /// Where it was written. A case may have no fields, so it is the only
+    /// thing a diagnostic about the case itself can point at.
     pub origin: Origin,
     /// Its name, unqualified: the family qualifies it.
     pub name: Name,
@@ -91,9 +90,6 @@ pub struct RawConstructor {
     pub visibility: Visibility,
     /// Its arguments, read under the family names and the group's parameters.
     pub fields: Vec<RawBinder>,
-    /// The index arguments its result chooses, in the family's index order, read
-    /// under those binders and its own fields.
-    pub indices: Vec<Raw>,
 }
 
 /// One family of a declaration group, before elaboration.
@@ -105,8 +101,6 @@ pub struct RawFamily {
     /// Independent of its cases': a public type with private cases is the shape
     /// `01-surface.md` §1.3 exists for.
     pub visibility: Visibility,
-    /// Its indices, read under the family names and the group's parameters.
-    pub indices: Vec<RawBinder>,
     /// Its constructors.
     pub constructors: Vec<RawConstructor>,
 }
@@ -126,16 +120,6 @@ pub struct RawData {
     pub origin: Origin,
     /// The parameters, shared by every family in the group.
     pub params: Vec<RawBinder>,
-    /// Its `where` clause, read under the parameters.
-    ///
-    /// Each entry becomes one more parameter, appended after [`Self::params`]
-    /// and standing at the dictionary's type — `01-surface.md` §1.2's "requires
-    /// the constraint at every construction and carries it to every reader",
-    /// which is what a parameter every use site has to fill already means. They
-    /// are parameters and not a list beside them because every count in this
-    /// crate — [`Group::params`](crate::Group::params) and the arithmetic that
-    /// splits a spine at it — is then counting the same thing it counted before.
-    pub context: Vec<RawConstraint>,
     /// The families, in declaration order.
     pub families: Vec<RawFamily>,
 }

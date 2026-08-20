@@ -67,7 +67,7 @@ use std::sync::{Arc, OnceLock};
 use crate::budget::Meter;
 use crate::elab::Elaborator;
 use crate::error::CoreError;
-use crate::eval::{apply, apply_closure, eval, field_type, opened, project};
+use crate::eval::{apply, eval, field_type, opened, project};
 use crate::family::{Constant, Element, element};
 use crate::level::Level;
 use crate::list::List;
@@ -77,7 +77,7 @@ use crate::raw::{Raw, RawArm, RawPattern};
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
 use crate::term::{DbLevel, Index, Name, Shape, Term};
-use crate::value::{Elim, Env, Form, Head, Value};
+use crate::value::{Env, Form, Head, Value};
 
 /// Elaborate `match subjects… { arms… }` against `goal`.
 ///
@@ -572,9 +572,6 @@ impl Tree<'_, '_> {
                 applied = Term::app(self.here, applied, method);
             }
         }
-        for index in &split.indices {
-            applied = Term::app(self.here, applied, index.clone());
-        }
         Ok(Term::app(self.here, applied, split.target.clone()))
     }
 
@@ -673,9 +670,9 @@ impl Tree<'_, '_> {
 
     /// One motive per family of the group.
     ///
-    /// The family being split gets the goal, abstracted over the subject and its
-    /// index variables; every other family gets `G → G`, which is inhabited at
-    /// the goal's universe by the identity and says nothing.
+    /// The family being split gets the goal, abstracted over the subject; every
+    /// other family gets `G → G`, which is inhabited at the goal's universe by
+    /// the identity and says nothing.
     fn motives(
         &mut self,
         scope: &Scope,
@@ -686,18 +683,12 @@ impl Tree<'_, '_> {
         let depth = scope.depth();
         let mut built = Vec::new();
         for family in 0..split.element.group.arity() {
-            let indices = split
-                .element
-                .group
-                .family_at(family)
-                .map_or(0, |declared| declared.indices.len());
-            let indices = u32::try_from(indices).unwrap_or(u32::MAX);
             let body = if family == split.element.family {
-                self.abstracted(scope, problem, split, column, depth.saturating_add(indices))?
+                self.abstracted(scope, problem, column, depth)?
             } else {
                 // `Π (_ : G). G`, not `{}`: universes are not cumulative (§1),
                 // so the empty record inhabits `Type 0` and nothing above it.
-                let under = depth.saturating_add(indices).saturating_add(1);
+                let under = depth.saturating_add(1);
                 let domain = quote_type(
                     self.elaborator.meter(),
                     Depth(under),
@@ -712,27 +703,22 @@ impl Tree<'_, '_> {
                 )?;
                 Term::pi(self.here, "impossible", domain, codomain)
             };
-            let mut term = Term::lam(self.here, "target", body);
-            for _ in 0..indices {
-                term = Term::lam(self.here, "index", term);
-            }
+            let term = Term::lam(self.here, "target", body);
             let value = scope.eval(self.elaborator.meter(), &term)?;
             built.push(Motive { term, value });
         }
         Ok(built)
     }
 
-    /// The goal, read again with the subject and its index variables standing for
-    /// the motive's binders.
+    /// The goal, read again with the subject standing for the motive's binder.
     ///
-    /// `under` is the depth the index binders end at; the target binder is one
-    /// deeper. Performed by evaluation rather than by substitution, which is what
-    /// §1's "reduction is never performed on syntax" leaves available.
+    /// `under` is the depth the target binder stands at. Performed by evaluation
+    /// rather than by substitution, which is what §1's "reduction is never
+    /// performed on syntax" leaves available.
     fn abstracted(
         &mut self,
         scope: &Scope,
         problem: &Problem<'_>,
-        split: &Split,
         column: usize,
         under: u32,
     ) -> Result<Term, ElabError> {
@@ -744,17 +730,6 @@ impl Tree<'_, '_> {
             &problem.goal,
         )?;
         let mut replacements: Vec<(u32, Value)> = Vec::new();
-        for (position, level) in split.pattern.iter().enumerate() {
-            let position = u32::try_from(position).unwrap_or(u32::MAX);
-            replacements.push((
-                *level,
-                Value::var(
-                    self.here,
-                    DbLevel(depth.saturating_add(position)),
-                    Arc::new(Value::new(self.here, crate::value::Form::Universe(Level::ZERO))),
-                ),
-            ));
-        }
         if let Some(subject) = problem.columns.get(column)
             && let Some(level) = variable(&subject.value)
         {
@@ -925,14 +900,10 @@ impl Tree<'_, '_> {
             }
             .into());
         };
-        let mut applied = motive.value.clone();
-        for index in &found.indices {
-            applied = apply(self.elaborator.meter(), self.here, applied, index.clone())?;
-        }
         Ok(Arc::new(apply(
             self.elaborator.meter(),
             self.here,
-            applied,
+            motive.value.clone(),
             field.value.clone(),
         )?))
     }
@@ -951,7 +922,7 @@ impl Tree<'_, '_> {
         params: &[Value],
         fields: &[Subject],
     ) -> Result<Built, ElabError> {
-        let Some(rule) = group
+        let Some(_rule) = group
             .family_at(family)
             .and_then(|declared| declared.constructor_at(which))
         else {
@@ -961,20 +932,6 @@ impl Tree<'_, '_> {
             }
             .into());
         };
-        // The declaration context, the parameters, then the fields: the
-        // environment a chosen index argument is written in.
-        let mut reading = crate::family::Group::declarations(group);
-        for param in params {
-            reading = reading.push(param.clone());
-        }
-        for field in fields {
-            reading = reading.push(field.value.clone());
-        }
-        let mut indices = Vec::with_capacity(rule.indices.len());
-        for chosen in rule.indices.iter() {
-            indices.push(eval(self.elaborator.meter(), &reading, chosen)?);
-        }
-
         let mut value = Constant::constructor(group, family, which).value(self.here);
         let mut ty = Constant::family(group, family).value(self.here);
         for param in params {
@@ -984,21 +941,16 @@ impl Tree<'_, '_> {
         for field in fields {
             value = apply(self.elaborator.meter(), self.here, value, field.value.clone())?;
         }
-        for index in &indices {
-            ty = apply(self.elaborator.meter(), self.here, ty, index.clone())?;
-        }
         Ok(Built {
             value,
             ty: Arc::new(ty),
-            indices,
         })
     }
 
-    /// The goal a constructor's method answers: the motive at that
-    /// constructor's chosen indices, and at the constructor itself.
+    /// The goal a constructor's method answers: the motive at the constructor.
     ///
-    /// Computed rather than derived: this is `P idx_c (c p⃗ a⃗)` evaluated, which
-    /// is exactly the type [`crate::family`] assembled the method at. Two
+    /// Computed rather than derived: this is `P (c p⃗ a⃗)` evaluated, which is
+    /// exactly the type [`crate::family`] assembled the method at. Two
     /// computations of it could disagree; one cannot.
     fn method_goal(&mut self, motives: &[Motive], family: u32, built: &Built) -> Result<Value, ElabError> {
         let Some(motive) = motives.get(usize::try_from(family).unwrap_or(usize::MAX)) else {
@@ -1008,11 +960,7 @@ impl Tree<'_, '_> {
             }
             .into());
         };
-        let mut applied = motive.value.clone();
-        for index in &built.indices {
-            applied = apply(self.elaborator.meter(), self.here, applied, index.clone())?;
-        }
-        Ok(apply(self.elaborator.meter(), self.here, applied, built.value.clone())?)
+        apply(self.elaborator.meter(), self.here, motive.value.clone(), built.value.clone()).map_err(ElabError::from)
     }
 
     /// The rows that survive a split, with the split column replaced by the
@@ -1131,12 +1079,10 @@ fn wildcard() -> &'static RawPattern {
     WILDCARD.get_or_init(|| RawPattern::bind(Origin::UNKNOWN, "_"))
 }
 
-/// What a method knows its subject to be: `c p⃗ a⃗`, its type, and the index
-/// arguments that constructor chose.
+/// What a method knows its subject to be: `c p⃗ a⃗`, and its type.
 struct Built {
     value: Value,
     ty: Arc<Value>,
-    indices: Vec<Value>,
 }
 
 /// A motive, as both the term the recursor is applied to and the value the
@@ -1178,16 +1124,9 @@ struct Split {
     element: Element,
     /// The parameters, as terms at the splitting depth.
     params: Vec<Term>,
-    /// The index arguments, as terms at the splitting depth.
-    indices: Vec<Term>,
-    /// The de Bruijn level each index argument is, in index order.
-    ///
-    /// Every one of them: §1.4's solution rule needs each index to be a distinct
-    /// variable, and [`Split::read`] refuses anything else.
-    pattern: Vec<u32>,
     /// The subject itself, as a term at the splitting depth.
     target: Term,
-    /// The universe the motives land in.
+    /// The universe the motive lands in.
     level: Level,
 }
 
@@ -1200,39 +1139,12 @@ impl Split {
         goal: &Value,
         at: Origin,
     ) -> Result<Self, ElabError> {
+        let _ = at;
         let depth = scope.depth();
         let meter = tree.elaborator.meter();
         let ty = quote_type(meter, Depth(depth), crate::quote::Mode::Keep, &subject.ty)?;
         let (_, arguments) = spine(&ty);
         let params = usize::try_from(found.group.params()).unwrap_or(usize::MAX);
-        let indices: Vec<Term> = arguments.get(params..).unwrap_or_default().to_vec();
-        let mut pattern = Vec::with_capacity(indices.len());
-        for index in &indices {
-            let Shape::Var(steps_out) = index.shape() else {
-                return Err(Refusal::ForcedIndex {
-                    at,
-                    index: index.clone(),
-                }
-                .into());
-            };
-            let Some(level) = depth.checked_sub(1).and_then(|last| last.checked_sub(steps_out.0)) else {
-                return Err(Refusal::ForcedIndex {
-                    at,
-                    index: index.clone(),
-                }
-                .into());
-            };
-            // Non-linear index arguments — `Vec A n n` — would need the deletion
-            // rule, which is the one §1.4 says requires K.
-            if pattern.contains(&level) {
-                return Err(Refusal::ForcedIndex {
-                    at,
-                    index: index.clone(),
-                }
-                .into());
-            }
-            pattern.push(level);
-        }
         // Cheap because [`Subject`]'s value is a variable: this reads back a
         // variable, η-expanded at its type, and never a call's normal form.
         let target = quote(
@@ -1248,11 +1160,8 @@ impl Split {
                 group: Arc::clone(&found.group),
                 family: found.family,
                 params: found.params.clone(),
-                indices: found.indices.clone(),
             },
             params: arguments.get(..params).unwrap_or_default().to_vec(),
-            indices,
-            pattern,
             target,
             level,
         })

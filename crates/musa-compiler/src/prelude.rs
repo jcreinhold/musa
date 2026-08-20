@@ -78,7 +78,6 @@ fn bool_data() -> RawData {
         Vec::new(),
         vec![family(
             "Bool",
-            Vec::new(),
             vec![constructor("False", Vec::new()), constructor("True", Vec::new())],
         )],
     )
@@ -96,7 +95,6 @@ fn nat_data() -> RawData {
         Vec::new(),
         vec![family(
             "Nat",
-            Vec::new(),
             vec![
                 constructor("Zero", Vec::new()),
                 constructor("Succ", vec![binder("earlier", var("Nat"))]),
@@ -111,7 +109,6 @@ fn option_data() -> RawData {
         vec![binder("A", type0())],
         vec![family(
             "Option",
-            Vec::new(),
             vec![
                 constructor("None", Vec::new()),
                 constructor("Some", vec![binder("value", var("A"))]),
@@ -126,7 +123,6 @@ fn list_data() -> RawData {
         vec![binder("A", type0())],
         vec![family(
             "List",
-            Vec::new(),
             vec![
                 constructor("Empty", Vec::new()),
                 constructor(
@@ -148,7 +144,6 @@ fn result_data() -> RawData {
         vec![binder("T", type0()), binder("E", type0())],
         vec![family(
             "Result",
-            Vec::new(),
             vec![
                 constructor("Ok", vec![binder("value", var("T"))]),
                 constructor("Err", vec![binder("error", var("E"))]),
@@ -180,7 +175,6 @@ fn scope_data() -> RawData {
         Vec::new(),
         vec![family(
             "Scope",
-            Vec::new(),
             vec![
                 constructor("Piece", Vec::new()),
                 constructor("Part", vec![binder("part", var("Nat"))]),
@@ -205,7 +199,7 @@ fn scope_data() -> RawData {
 fn unit_data() -> RawData {
     data(
         Vec::new(),
-        vec![family("Unit", Vec::new(), vec![constructor("Only", Vec::new())])],
+        vec![family("Unit", vec![constructor("Only", Vec::new())])],
     )
 }
 
@@ -237,7 +231,6 @@ fn pair_data() -> RawData {
         vec![binder("A", type0()), binder("B", type0())],
         vec![family(
             "Pair",
-            Vec::new(),
             vec![constructor(
                 "Both",
                 vec![binder("first", var("A")), binder("second", var("B"))],
@@ -264,7 +257,6 @@ fn row_fault_data() -> RawData {
         Vec::new(),
         vec![family(
             "RowFault",
-            Vec::new(),
             vec![constructor(
                 "Fault",
                 vec![
@@ -306,7 +298,6 @@ fn fact_data() -> RawData {
         Vec::new(),
         vec![family(
             "Fact",
-            Vec::new(),
             vec![
                 constructor(
                     "Note",
@@ -426,7 +417,6 @@ fn syntax_step_data() -> RawData {
         vec![binder("Context", type0()), binder("Answer", type0())],
         vec![family(
             "SyntaxStep",
-            Vec::new(),
             vec![sealed(
                 "Step",
                 vec![binder("run", Raw::pi(HERE, "context", var("Context"), var("Answer")))],
@@ -1170,18 +1160,12 @@ fn binder(name: &str, ty: Raw) -> RawBinder {
     }
 }
 
-/// A constructor with no index arguments.
-///
-/// Every family here is parameterized at most, never indexed, so the index list
-/// is empty in all of them and is not a parameter of this helper. The first
-/// indexed family the compiler declares will want [`RawConstructor`] directly.
 fn constructor(name: &str, fields: Vec<RawBinder>) -> RawConstructor {
     RawConstructor {
         origin: HERE,
         name: Arc::from(name),
         visibility: Visibility::Public,
         fields,
-        indices: Vec::new(),
     }
 }
 
@@ -1196,11 +1180,10 @@ fn sealed(name: &str, fields: Vec<RawBinder>) -> RawConstructor {
     }
 }
 
-fn family(name: &str, indices: Vec<RawBinder>, constructors: Vec<RawConstructor>) -> RawFamily {
+fn family(name: &str, constructors: Vec<RawConstructor>) -> RawFamily {
     RawFamily {
         name: Arc::from(name),
         visibility: Visibility::Public,
-        indices,
         constructors,
     }
 }
@@ -1209,7 +1192,6 @@ fn data(params: Vec<RawBinder>, families: Vec<RawFamily>) -> RawData {
     RawData {
         origin: HERE,
         params,
-        context: Vec::new(),
         families,
     }
 }

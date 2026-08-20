@@ -37,10 +37,10 @@ use crate::eval::eval;
 use crate::family::{Binder, Constructor, Counting, Declared, Group};
 use crate::level::Level;
 use crate::origin::Origin;
-use crate::raw::{RawBinder, RawConstraint, RawConstructor, RawData, RawFamily};
+use crate::raw::{RawBinder, RawConstructor, RawData, RawFamily};
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
-use crate::term::{Index, Name, Plicity, Shape, Term};
+use crate::term::{Index, Name, Shape, Term};
 use crate::value::{Form, Value};
 use crate::visibility::Visibility;
 
@@ -61,20 +61,12 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
     let opaque = Arc::new(Value::new(here, Form::Universe(Level::ZERO)));
     let outline = declaring(&Scope::new(&closed), data, |_| Arc::clone(&opaque));
     let arity = u32::try_from(data.families.len()).unwrap_or(u32::MAX);
-    let (mut params, under_params) = telescope(&mut elaborator, &outline, &data.params, arity)?;
-    let (context, under_params) = constraints(&mut elaborator, &under_params, &data.context)?;
-    params.extend(context);
-
-    let mut indices = Vec::with_capacity(data.families.len());
-    for family in &data.families {
-        let (bound, _) = telescope(&mut elaborator, &under_params, &family.indices, arity)?;
-        indices.push(bound);
-    }
+    let (params, _under_params) = telescope(&mut elaborator, &outline, &data.params, arity)?;
 
     // Pass two: the constructors, with the families at their real types. §1: a
     // data family stores small types and so lands at `Type 0`, which is what
     // every signature says and what the constructor check enforces.
-    let signatures = signatures(&mut elaborator, &outline, here, &params, &indices)?;
+    let signatures = signatures(&mut elaborator, &outline, here, &params, data)?;
     let scope = declaring(&Scope::new(&closed), data, |which| {
         Arc::clone(signatures.get(which).unwrap_or(&opaque))
     });
@@ -82,10 +74,7 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
 
     let mut families = Vec::with_capacity(data.families.len());
     for (which, family) in data.families.iter().enumerate() {
-        let Some(declared_indices) = indices.get(which) else {
-            continue;
-        };
-        let built = constructors(&mut elaborator, &under_params, data, family, declared_indices, arity)?;
+        let built = constructors(&mut elaborator, &under_params, data, family, arity)?;
         // The family's level is the join of what its constructors store; §1's
         // two universes make that join a check — every field small — rather
         // than an inference.
@@ -95,10 +84,9 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
         uniform(family)?;
         let which = u32::try_from(which).unwrap_or(u32::MAX);
         families.push(Declared {
-            counting: counting(which, &params, declared_indices, &built.constructors),
+            counting: counting(which, &params, &built.constructors),
             name: Arc::clone(&family.name),
             visibility: family.visibility,
-            indices: Arc::from(declared_indices.clone()),
             constructors: Arc::from(built.constructors),
         });
     }
@@ -196,37 +184,6 @@ fn telescope(
     Ok((binders, inner))
 }
 
-/// The group's `where` clause, as the parameters it becomes.
-///
-/// One parameter per constraint, appended after the written ones and standing
-/// at the dictionary's type — `01-surface.md` §1.2's `record Cell<A> where
-/// Eq<A>`, whose constraint "is required at every construction and carried to
-/// every reader" because a reader cannot name `Cell A` without an argument for
-/// it. Nothing is stored: the fields do not mention the dictionary, so `Cell Nat
-/// d` unfolds to the same record type a constraint-free declaration would give.
-///
-/// Each is discharged into the scope as well as assumed, so a constructor field
-/// or a later constraint written under it reaches this dictionary by
-/// `10-traits.md` §4 step 1.
-fn constraints(
-    elaborator: &mut Elaborator,
-    scope: &Scope,
-    raw: &[RawConstraint],
-) -> Result<(Vec<Binder>, Scope), ElabError> {
-    let mut binders = Vec::with_capacity(raw.len());
-    let mut inner = scope.clone();
-    for written in raw {
-        let classes = inner.cx().classes().clone();
-        let (constraint, ty) = crate::dictionary::constraint_at(elaborator, &inner, &classes, written)?;
-        let name = crate::class::Trait::super_field(&constraint.class);
-        let plicity = Plicity::Constraint(Arc::new(constraint));
-        inner = elaborator.discharging(&inner, &plicity, inner.env())?;
-        inner = assume(elaborator, &inner, written.origin, &name, &ty)?;
-        binders.push(Binder { name, ty, plicity });
-    }
-    Ok((binders, inner))
-}
-
 /// The scope with already-elaborated binders assumed.
 fn assumed(elaborator: &mut Elaborator, scope: &Scope, binders: &[Binder]) -> Result<Scope, ElabError> {
     let mut inner = scope.clone();
@@ -248,13 +205,12 @@ fn signatures(
     scope: &Scope,
     here: Origin,
     params: &[Binder],
-    indices: &[Vec<Binder>],
+    data: &RawData,
 ) -> Result<Vec<Arc<Value>>, CoreError> {
-    indices
+    data.families
         .iter()
-        .map(|bound| {
-            let result = Term::universe(here, Level::ZERO);
-            let term = closed_over(here, params, closed_over(here, bound, result));
+        .map(|_| {
+            let term = closed_over(here, params, Term::universe(here, Level::ZERO));
             Ok(Arc::new(eval(elaborator.meter(), scope.env(), &term)?))
         })
         .collect()
@@ -282,9 +238,8 @@ struct Built {
 fn constructors(
     elaborator: &mut Elaborator,
     scope: &Scope,
-    data: &RawData,
+    _data: &RawData,
     family: &RawFamily,
-    indices: &[Binder],
     arity: u32,
 ) -> Result<Built, ElabError> {
     let mut built = Vec::with_capacity(family.constructors.len());
@@ -331,13 +286,12 @@ fn constructors(
                 }
             }
         }
-        let chosen = chosen_indices(elaborator, &inner, scope, constructor, indices, data.origin)?;
+        let _ = &inner;
         built.push(Constructor {
             name: Arc::clone(&constructor.name),
             visibility: constructor.visibility,
             fields: Arc::from(fields),
             recursive: Arc::from(recursive),
-            indices: Arc::from(chosen),
         });
     }
     Ok(Built {
@@ -348,10 +302,10 @@ fn constructors(
 
 /// Whether family `which` counts, and by which two constructors.
 ///
-/// The four conditions of [`Counting`], read off the declaration that was just
-/// checked: no group parameters, no indices on the family, exactly two
-/// constructors, and between them one with no fields and one whose single field
-/// is a recursive occurrence of *this* family. Recursion is read off
+/// The three conditions of [`Counting`], read off the declaration that was just
+/// checked: no group parameters, exactly two constructors, and between them one
+/// with no fields and one whose single field is a recursive occurrence of *this*
+/// family. Recursion is read off
 /// [`Constructor::recursive`](crate::family::Constructor) rather than re-derived
 /// from the field's type, so the positivity check and this recognition cannot
 /// disagree about what a recursive field is: they are the same list.
@@ -359,8 +313,8 @@ fn constructors(
 /// Deliberately silent when the shape does not match. A family that misses by
 /// one constructor is an ordinary family, not a mistake — there is nothing to
 /// refuse, only a representation not to use.
-fn counting(which: u32, params: &[Binder], indices: &[Binder], constructors: &[Constructor]) -> Option<Counting> {
-    if !params.is_empty() || !indices.is_empty() {
+fn counting(which: u32, params: &[Binder], constructors: &[Constructor]) -> Option<Counting> {
+    if !params.is_empty() {
         return None;
     }
     let [first, second] = constructors else {
@@ -389,39 +343,6 @@ fn telescope_fields(
         levels.push(level);
     }
     Ok((binders, levels, inner))
-}
-
-/// The index arguments a constructor's result chooses, each checked against the
-/// family's index type at the arguments already chosen.
-fn chosen_indices(
-    elaborator: &mut Elaborator,
-    inner: &Scope,
-    under_params: &Scope,
-    constructor: &RawConstructor,
-    indices: &[Binder],
-    here: Origin,
-) -> Result<Vec<Term>, ElabError> {
-    if constructor.indices.len() != indices.len() {
-        return Err(Refusal::IndexCount {
-            at: here,
-            expected: indices.len(),
-            found: constructor.indices.len(),
-        }
-        .into());
-    }
-    // The family's index telescope is read under the parameters and the indices
-    // before it, which is a different context from the constructor's fields — so
-    // the type is evaluated in that environment and the *argument* is elaborated
-    // in this one.
-    let mut reading = under_params.env().clone();
-    let mut chosen = Vec::with_capacity(indices.len());
-    for (binder, raw) in indices.iter().zip(&constructor.indices) {
-        let ty = eval(elaborator.meter(), &reading, &binder.ty)?;
-        let term = elaborator.check_open(inner, raw, &ty)?;
-        reading = reading.push(inner.eval(elaborator.meter(), &term)?);
-        chosen.push(term);
-    }
-    Ok(chosen)
 }
 
 /// Whether a field type is a recursive occurrence, and where it is one §1.1 does
