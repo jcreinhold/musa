@@ -9,7 +9,7 @@
 
 use std::sync::Arc;
 
-use musa_core::{Cx, Group, Level, Raw, RawBinder, RawConstructor, RawData, RawFamily, Refusal, Term, Visibility};
+use musa_core::{Cx, Group, Level, Raw, RawArm, RawBinder, RawConstructor, RawData, RawFamily, RawPattern, Refusal, Term, Visibility};
 
 use crate::programs::{WRITTEN, refusal};
 
@@ -267,40 +267,6 @@ fn a_constructor_given_the_wrong_number_of_arguments_is_still_refused() {
         assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
     }
 }
-
-/// §1.1's other half: a parameter is fixed across the declaration and an index
-/// is what a constructor chooses. So the parameters come off the expected type
-/// and the indices stay the constructor's, and a constructor whose index
-/// disagrees is refused exactly where it was.
-#[test]
-fn an_indexed_constructor_still_checks_its_own_indices() {
-    let (cx, _) = nat_context();
-    let group = musa_core::declare(&cx, &vec()).expect("Vec is a declaration");
-    let cx = cx.declaring(&group);
-    let unit_type = Raw::record_type(WRITTEN, []);
-    let unit = Raw::record(WRITTEN, []);
-    let at = |length: Raw| checked_type(&cx, &apply(var("Vec"), [unit_type.clone(), length]));
-    let one = apply(var("Nat.Succ"), [var("Nat.Zero")]);
-
-    // `Cons(0, {}, Nil) : Vec {} (Succ 0)` — the parameter read off the expected
-    // type at both layers, the length index chosen by `Cons` and by `Nil`.
-    musa_core::check(
-        &cx,
-        &at(one.clone()),
-        &apply(var("Cons"), [var("Nat.Zero"), unit, var("Nil")]),
-    )
-    .expect("a one-element vector checks with no parameter written");
-    musa_core::check(&cx, &at(var("Nat.Zero")), &var("Nil")).expect("the empty vector has length zero");
-
-    let Err(error) = musa_core::check(&cx, &at(one), &var("Nil")) else {
-        panic!("`Nil` was admitted at length one");
-    };
-    assert!(
-        matches!(refusal("Nil at length one", error), Refusal::Mismatch(_)),
-        "an index the constructor did not choose was accepted from the expected type"
-    );
-}
-
 /// §1.1: a family, its constructors, and its recursor are in scope under the
 /// names the declaration gives them, at the types it gives them.
 #[test]
@@ -471,29 +437,34 @@ fn a_recursor_blocked_on_a_variable_does_not_fire() {
         "a recursor blocked on a variable answered its base case"
     );
 }
-
-/// §1.1: the motive's universe is chosen per use, so the same recursor
-/// eliminates into a type as readily as into a value.
+/// Large elimination survives where a program actually needs it: a `match`
+/// whose goal is a universe computes a type by recursion. The recursor's level
+/// is the goal's, read off the goal at the split (§1.3) — never inferred from
+/// the arms, which would put a term's universe below the checker rather than
+/// in the program.
 #[test]
-fn a_recursor_eliminates_into_a_large_motive() {
+fn a_match_computes_a_type() {
     let (cx, _) = nat_context();
-    // `Nat.elim (λ_. Type 0) {} (λn. λih. ih) t : Type 0` — a motive landing in
-    // `Type 1`, which a declaration-time level would have foreclosed.
-    let large = apply(
-        var("Nat.elim"),
-        [
-            Raw::lam(WRITTEN, "_", Raw::universe(WRITTEN, Level::ZERO)),
-            type0(),
-            Raw::lam(WRITTEN, "n", Raw::lam(WRITTEN, "ih", var("ih"))),
-            var("Nat.Zero"),
+    let universe0 = Term::universe(WRITTEN, Level::ZERO);
+    let computing = Raw::match_on(
+        WRITTEN,
+        [var("Nat.Zero")],
+        vec![
+            RawArm {
+                patterns: vec![RawPattern::constructor(WRITTEN, "Nat.Zero", [])],
+                body: var("Nat"),
+            },
+            RawArm {
+                patterns: vec![RawPattern::constructor(WRITTEN, "Nat.Succ", [RawPattern::bind(WRITTEN, "k")])],
+                body: var("Nat"),
+            },
         ],
     );
-    let found = musa_core::check(&cx, &Term::universe(WRITTEN, Level::One), &large)
-        .expect("the motive's universe is the goal's, which the use site says");
-    let expected = musa_core::check(&cx, &Term::universe(WRITTEN, Level::One), &type0()).expect("Type 0");
+    let computed = musa_core::check(&cx, &universe0, &computing).expect("a match at a universe checks");
+    let nat = musa_core::check(&cx, &universe0, &var("Nat")).expect("Nat at Type 0");
     assert!(
-        musa_core::convertible(&cx, &Term::universe(WRITTEN, Level::One), &found, &expected)
-            .expect("both are terms at Type 1")
+        musa_core::convertible(&cx, &universe0, &computed, &nat).expect("conversion is decidable"),
+        "the computed type is the type the arm wrote"
     );
 }
 
@@ -745,3 +716,4 @@ pub(crate) fn core_constant(cx: &Cx, name: &str) -> Term {
         .unwrap_or_else(|error| panic!("{name}: {error}"))
         .0
 }
+

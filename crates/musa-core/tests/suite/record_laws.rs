@@ -374,7 +374,10 @@ pub(crate) fn refused_records() -> Vec<RefusedRecord> {
         RefusedRecord {
             name: "a record type declaring one field twice",
             raw: Raw::record_type(WRITTEN, [("a", var("Nat")), ("a", var("Tying"))]),
-            ty: Raw::universe(WRITTEN, musa_core::Level::One),
+            // §1.1: two fixed universes, and the second is not itself a type —
+            // the expectation is elaborated by being inferred, so the largest
+            // writable one is the first, which this record's small fields meet.
+            ty: Raw::universe(WRITTEN, musa_core::Level::ZERO),
             expected: |refusal| matches!(refusal, Refusal::DuplicateField { .. }),
         },
         RefusedRecord {
@@ -452,7 +455,7 @@ pub(crate) fn refused_records() -> Vec<RefusedRecord> {
             name: "an update that invalidates a later field's type",
             // §1.2's coherence, and it is not a rule this crate states: rebuilding
             // checks each field at the type the *new* earlier values give it, so
-            // `xs : Vec Nat n` stops fitting the moment `n` moves.
+            // `x : A` stops fitting the moment `A` moves to another type.
             raw: Raw::annotated_lam(
                 WRITTEN,
                 "v",
@@ -461,8 +464,8 @@ pub(crate) fn refused_records() -> Vec<RefusedRecord> {
                     WRITTEN,
                     var("v"),
                     [(
-                        &["n"][..],
-                        apply(var("Nat.Succ"), [Raw::project(WRITTEN, var("v"), "n")]),
+                        &["A"][..],
+                        Raw::record_type(WRITTEN, []),
                     )],
                 ),
             ),
@@ -472,12 +475,13 @@ pub(crate) fn refused_records() -> Vec<RefusedRecord> {
     ]
 }
 
-/// `{ n : Nat, xs : Vec Nat n }` — a record whose second field's type mentions
-/// its first.
+/// `{ A : Type 0, x : A }` — a record whose second field's type mentions its
+/// first, with the dependency a parameter rather than an index: §1's value
+/// dependency needs nothing more.
 fn counted() -> Raw {
     Raw::record_type(
         WRITTEN,
-        [("n", var("Nat")), ("xs", apply(var("Vec"), [var("Nat"), var("n")]))],
+        [("A", Raw::universe(WRITTEN, musa_core::Level::ZERO)), ("x", var("A"))],
     )
 }
 

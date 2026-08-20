@@ -118,7 +118,11 @@ fn stor(
                     visiting.push(key);
                     let mut answer = true;
                     for constructor in declared.constructors.iter() {
-                        let mut env = List::EMPTY;
+                        // The declaration's own environment first: a field
+                        // type's variables name the group's families (a
+                        // recursive occurrence most of all) and then its
+                        // parameters, which the spine's arguments answer.
+                        let mut env = crate::family::Group::declarations(&constant.group);
                         for argument in &arguments {
                             env = env.push(argument.clone());
                         }

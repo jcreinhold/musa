@@ -109,10 +109,13 @@ fn an_instance_is_at_home_with_its_head_type() {
 /// instance be filed under a rigid head while the constraint it has to discharge
 /// falls on a type variable.
 fn held() -> musa_core::RawTrait {
+    // Two parameters and no `where` (§1's flat law): what the law below needs
+    // is a trait whose key is its *first* argument, so that the second can be
+    // the variable a local dictionary constrains.
     class(
         "Held",
         vec![binder("K", type0()), binder("V", type0())],
-        vec![constraint("Eq", vec![var("V")])],
+        Vec::new(),
         vec![method("held", var("V"))],
     )
 }
@@ -128,7 +131,8 @@ fn holding() -> Cx {
     cx.declaring_class(&holder)
 }
 
-/// `impl<A> Held<Box A, A> [where Eq<A>] { held = Eq.equal; }`.
+/// `impl<A> Held<Box A, A> { held = Eq.equal; }` — an instance whose method
+/// needs `Eq<A>`, so that who answers it (or refuses) is observable.
 fn holds(cx: &Cx, context: Vec<RawConstraint>) -> Result<(), musa_core::ElabError> {
     declare_impl(
         cx,
@@ -144,22 +148,14 @@ fn holds(cx: &Cx, context: Vec<RawConstraint>) -> Result<(), musa_core::ElabErro
 }
 
 #[test]
-fn a_local_dictionary_answers_where_no_global_instance_could() {
+fn a_constraint_on_a_variable_no_local_dictionary_answers_is_refused() {
     let cx = holding();
 
-    // With the `where`, both the super-constraint `Eq<A>` and the method's own
-    // use of `Eq.equal` are answered by the same bound dictionary — §4 step 1,
-    // before the table is consulted at all.
-    assert!(
-        holds(&cx, vec![constraint("Eq", vec![var("A")])]).is_ok(),
-        "a `where` dictionary did not answer the constraint it discharges"
-    );
-
-    // Without it, `impl Eq<Nat>` is still in scope and still cannot help: a type
-    // variable is not `Nat`, and no instance for a variable can ever be
-    // declared. That is why the two lookups can never disagree under coherence,
-    // and why local-beats-global buys determinacy rather than a different
-    // answer — instantiating `A` later cannot reroute a call already elaborated.
+    // `held = Eq.equal` at the variable `A`: the flat law gives an `impl` no
+    // `where` to bind a dictionary with — the author who wants one writes the
+    // dictionary-building function — so the constraint is the variable's to
+    // answer for, and `impl Eq<Nat>` in scope cannot help: a type variable is
+    // not `Nat`, and no instance for a variable can ever be declared.
     let Err(error) = holds(&cx, Vec::new()) else {
         panic!("a constraint on an unconstrained variable was answered from the table");
     };

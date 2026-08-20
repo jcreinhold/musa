@@ -98,7 +98,7 @@ impl Hole {
 
     /// Its solution, if the matching pass has found one.
     #[must_use]
-    pub fn solution(&self) -> Option<&Value> {
+    pub(crate) fn solution(&self) -> Option<&Value> {
         self.0.solution.get()
     }
 

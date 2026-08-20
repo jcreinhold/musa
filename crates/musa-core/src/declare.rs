@@ -92,6 +92,56 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
     }
 
     elaborator.settled()?;
+    // The signatures are stored, so the holes elaboration solved in them are
+    // written back as terms first — [`Elaborator::zonk`] gives the reason.
+    let params = params
+        .into_iter()
+        .map(|binder| {
+            Ok::<_, ElabError>(crate::family::Binder {
+                ty: elaborator.zonk(&binder.ty)?,
+                ..binder
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let families = families
+        .into_iter()
+        .map(|declared| {
+            let crate::family::Declared {
+                counting,
+                name,
+                visibility,
+                constructors,
+            } = declared;
+            let constructors = constructors
+                .iter()
+                .map(|constructor| {
+                    let fields = constructor
+                        .fields
+                        .iter()
+                        .map(|field| {
+                            Ok::<_, ElabError>(crate::family::Binder {
+                                name: Arc::clone(&field.name),
+                                ty: elaborator.zonk(&field.ty)?,
+                                plicity: field.plicity.clone(),
+                            })
+                        })
+                        .collect::<Result<Vec<_>, _>>()?;
+                    Ok(crate::family::Constructor {
+                        name: Arc::clone(&constructor.name),
+                        visibility: constructor.visibility,
+                        fields: Arc::from(fields),
+                        recursive: constructor.recursive.clone(),
+                    })
+                })
+                .collect::<Result<Vec<_>, ElabError>>()?;
+            Ok(crate::family::Declared {
+                counting,
+                name,
+                visibility,
+                constructors: Arc::from(constructors),
+            })
+        })
+        .collect::<Result<Vec<_>, ElabError>>()?;
     // Answered here, after the constructors and before anything can read them:
     // a later declaration asks this group whether it may put itself at one of
     // these parameters, and the fields that decide it are all in hand exactly

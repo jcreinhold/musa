@@ -693,7 +693,7 @@ fn calls(function: &str, arguments: impl IntoIterator<Item = Raw>) -> Raw {
 #[test]
 fn a_registered_base_type_is_a_type() {
     let cx = host();
-    let (term, ty) = infer(&cx, &Raw::var(TERMS, "Int")).expect("`Int` resolves");
+    let (_term, ty) = infer(&cx, &Raw::var(TERMS, "Int")).expect("`Int` resolves");
     assert_eq!(ty, Term::universe(TYPES, Level::ZERO), "`Int : Type 0`");
 }
 
@@ -729,7 +729,7 @@ fn a_binder_shadows_a_registered_name() {
 #[test]
 fn a_literal_infers_its_base_type() {
     let cx = host();
-    let (term, ty) = infer(&cx, &Raw::lit(TERMS, int_lit(3))).expect("`3` infers");
+    let (_term, ty) = infer(&cx, &Raw::lit(TERMS, int_lit(3))).expect("`3` infers");
     assert_eq!(ty, int().term(TYPES), "`3 : Int`");
 }
 
@@ -917,7 +917,7 @@ fn a_builtin_short_of_literals_is_neutral() {
     let cx = host();
     let int_ty = int().term(TYPES);
     let partial = calls("int_add", [Raw::lit(TERMS, int_lit(2))]);
-    let term = check(&cx, &arrow(int_ty.clone(), int_ty.clone()), &partial).expect("a partial application checks");
+    let _term = check(&cx, &arrow(int_ty.clone(), int_ty.clone()), &partial).expect("a partial application checks");
 
     // λn. int_add n 1 — saturated, and stuck on the binder.
     let open = Raw::annotated_lam(
@@ -1426,7 +1426,7 @@ fn a_vocabulary_term_is_closed_and_so_means_the_same_everywhere() {
     );
     let cx = host();
     for (entry, name) in traversal.vocabulary().iter().zip(["List.Empty", "List.Cons"]) {
-        let (resolved, ty) = infer(&cx, &Raw::var(TYPES, name)).expect("the constructor is declared");
+        let (resolved, _ty) = infer(&cx, &Raw::var(TYPES, name)).expect("the constructor is declared");
         assert_eq!(*entry, resolved, "the vocabulary holds the constant `{name}` denotes");
     }
 }

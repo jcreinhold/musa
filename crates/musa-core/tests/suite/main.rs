@@ -412,17 +412,6 @@ pub(crate) mod programs {
                 ty: None,
             },
             Program {
-                name: "an implicit written at the use site rather than inserted",
-                raw: Raw::annotated_bind(
-                    WRITTEN,
-                    "id",
-                    implicit_identity_type(),
-                    implicit_identity(),
-                    Raw::app(WRITTEN, Raw::implicit_app(WRITTEN, var("id"), unit_type()), unit()),
-                ),
-                ty: None,
-            },
-            Program {
                 name: "a term checked against an implicit Pi is abstracted, not switched",
                 raw: Raw::lam(WRITTEN, "x", var("x")),
                 ty: Some(Term::implicit_pi(
@@ -493,6 +482,21 @@ pub(crate) mod programs {
                 raw: var("nowhere"),
                 ty: None,
                 expected: |refusal| matches!(refusal, Refusal::UnknownName { .. }),
+            },
+            Refused {
+                name: "an implicit written at the use site rather than inserted",
+                // An implicit binder is the host's, in a generated scheme; an
+                // author never writes one, so an author never fills one in
+                // braces either — §2.1's one fixed call-site rule.
+                raw: Raw::annotated_bind(
+                    WRITTEN,
+                    "id",
+                    implicit_identity_type(),
+                    implicit_identity(),
+                    Raw::app(WRITTEN, Raw::implicit_app(WRITTEN, var("id"), unit_type()), unit()),
+                ),
+                ty: None,
+                expected: |refusal| matches!(refusal, Refusal::PlicityMismatch { .. }),
             },
             Refused {
                 name: "a universe checked one level too low",
@@ -581,9 +585,12 @@ pub(crate) mod programs {
             },
             Refused {
                 name: "a binder type nothing determines",
+                // §2.1: no hole is invented for a binder's type and defaulted
+                // later — the λ is checking-only, and at `infer` the report is
+                // that the author must write the type.
                 raw: Raw::lam(WRITTEN, "x", var("x")),
                 ty: None,
-                expected: |refusal| matches!(refusal, Refusal::Unsolved { .. }),
+                expected: |refusal| matches!(refusal, Refusal::Uninferable { .. }),
             },
         ]
     }

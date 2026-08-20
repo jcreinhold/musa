@@ -187,7 +187,7 @@ fn a_family_may_hold_a_list_of_itself() {
     let cx = staff_context();
     let staff = core(&cx, "StaffRead", &var("StaffRead"));
 
-    let built = musa_core::check(&cx, &staff, &apply(var("StaffRead.Body"), [two_sung()]))
+    let _built = musa_core::check(&cx, &staff, &apply(var("StaffRead.Body"), [two_sung()]))
         .expect("`Body` is applied to a list of `StaffRead`");
 
     // `match` on it binds `items` at `List StaffRead` — asked by checking the
@@ -207,7 +207,7 @@ fn a_family_may_hold_a_list_of_itself() {
             ],
         ),
     );
-    let read = musa_core::check(&cx, &ty, &children).expect("`items` binds at `List StaffRead`");
+    let _read = musa_core::check(&cx, &ty, &children).expect("`items` binds at `List StaffRead`");
 }
 
 /// A nested field gets **no induction hypothesis**, which is the decision rather

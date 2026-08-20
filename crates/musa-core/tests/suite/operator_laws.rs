@@ -174,7 +174,7 @@ fn a_call_of_a_method_re_checks_in_the_core() {
     let binary_ty = Raw::pi(WRITTEN, "x", var("Nat"), Raw::pi(WRITTEN, "y", var("Nat"), var("Nat")));
     let (binary_ty, _) = infer(&cx, &binary_ty).expect("`Nat → Nat → Nat` is a type");
 
-    for (spelling, at, raw) in [
+    for (_spelling, at, raw) in [
         (
             "Add.add(x, y)",
             &ty,
@@ -189,8 +189,7 @@ fn a_call_of_a_method_re_checks_in_the_core() {
         // checking position rather than an inferring one.
         ("Add.add", &binary_ty, var("Add.add")),
     ] {
-        let term = check(&cx, at, &raw).expect("`add` at `Nat` resolves");
-        let _ = term;
+        check(&cx, at, &raw).expect("`add` at `Nat` resolves");
     }
 }
 

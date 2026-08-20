@@ -151,14 +151,19 @@ impl Unifier {
             let right = unfolded_right.as_ref().unwrap_or(right);
             Ok(match self.assignment(meter, depth, at, origin, left, right) {
                 Ok(Some(())) => Ok(()),
-                Ok(None) => self.folded(meter, depth, at, origin, left, right),
+                Ok(None) => match self.assignment(meter, depth, at, origin, right, left) {
+                    Ok(Some(())) => Ok(()),
+                    Ok(None) => self.folded(meter, depth, at, origin, left, right),
+                    Err(failure) => Err(failure),
+                },
                 Err(failure) => Err(failure),
             })
         })?
     }
 
-    /// The one flexible case: an unsolved hole, unapplied, on the pattern
-    /// side.
+    /// The one flexible case: an unsolved hole, unapplied, on either side —
+    /// the step tries both, because "the pattern side" is a direction the
+    /// caller picks, not a property of the values.
     ///
     /// `Some` is "handled" and `None` is "rigid", which descends as any other
     /// pair. An applied hole is rigid by choice: solving one would be
@@ -191,6 +196,17 @@ impl Unifier {
             hole.solution().is_none(),
             "a solved hole is forced before the assignment rule can meet it"
         );
+        // The reflexive case: the right forces back to this same hole, which
+        // happens where two holes have already been chained — `?l ≡ ?r` when
+        // `?r` was solved to `?l` is not an occurs failure, it is the one
+        // solution the pair already has.
+        if let Form::Neutral(right_neutral) = &right.form
+            && let Head::Hole(right_hole) = &right_neutral.head
+            && right_neutral.spine.is_empty()
+            && right_hole == hole
+        {
+            return Ok(Some(()));
+        }
         // The occurs check, at its first-order strength: the unknown may not
         // occur in its own answer, transitively included.
         if mentions_hole(right, hole) {

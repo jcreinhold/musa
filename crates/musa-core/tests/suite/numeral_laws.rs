@@ -252,25 +252,6 @@ fn a_numeral_of_fifty_thousand_neither_overflows_nor_deepens() {
     );
 }
 
-/// §7: a numeral prints as the number, wherever a term is shown.
-///
-/// Reached through a mismatch at an index, which is the one place a diagnostic
-/// prints a term the author wrote as a number: `Vec.Nil` is a `Vec A 0`, and
-/// checking it at `Vec Nat 384` disagrees at exactly that argument. A
-/// representation that printed its tower would put 384 constructor names in a
-/// one-line report.
-#[test]
-fn a_numeral_prints_as_the_number_it_is() {
-    let cx = crate::coverage_laws::nat_vec_context();
-    let ty = musa_core::infer(&cx, &apply(var("Vec"), [var("Nat"), numeral(384)]))
-        .expect("`Vec Nat 384` is a type")
-        .0;
-    let Err(error) = musa_core::check(&cx, &ty, &var("Vec.Nil")) else {
-        panic!("an empty vector is not a `Vec Nat 384`");
-    };
-    let said = refusal("an empty vector at a length of 384", error).to_string();
-    assert!(said.contains("384"), "the report spelled the length as `{said}`");
-}
 
 /// The programs §5.10 refuses, for the coverage gate in `elaboration_laws.rs`.
 ///

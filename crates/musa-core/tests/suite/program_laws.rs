@@ -469,7 +469,7 @@ fn an_instance_method_may_name_a_definition_in_the_same_document() {
 fn instances_that_write_one_spelling_order_rather_than_refuse() {
     let cx = tagged_context();
     let boxed = apply(var("Box"), [var("Nat")]);
-    let vector = apply(var("Vec"), [var("Nat"), var("Nat.Zero")]);
+    let vector = apply(var("Vec"), [var("Nat")]);
     let written = group(
         Vec::new(),
         vec![

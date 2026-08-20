@@ -224,14 +224,14 @@ fn a_solution_that_is_itself_a_metavariable_is_followed_to_the_end() {
         .unwrap_or_else(|error| panic!("two registered constants meeting at a shared implicit: {error}"));
 }
 
-/// §2.1: a metavariable is never defaulted and never generalized, so one nothing
-/// determines is a refusal that names its site.
+/// §2.1: a hole is never defaulted and never generalized, so a binder whose
+/// type nothing determines is a refusal that tells the author to write it.
 #[test]
-fn a_metavariable_nothing_determines_is_refused_rather_than_defaulted() {
+fn a_binder_nothing_determines_is_refused_rather_than_defaulted() {
     let refusal = refuse("an unannotated binder", &Raw::lam(WRITTEN, "x", var("x")), None);
     assert!(
-        matches!(refusal, Refusal::Unsolved { .. }),
-        "expected an unsolved metavariable, got `{refusal}`"
+        matches!(refusal, Refusal::Uninferable { .. }),
+        "expected an uninferable term, got `{refusal}`"
     );
 }
 

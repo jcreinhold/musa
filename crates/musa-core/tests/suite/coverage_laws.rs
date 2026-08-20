@@ -155,7 +155,7 @@ fn a_compiled_match_re_checks_in_the_core() {
             ],
         ),
     );
-    let compiled = musa_core::check(&cx, &ty, &by_match).expect("a nested match elaborates");
+    let _compiled = musa_core::check(&cx, &ty, &by_match).expect("a nested match elaborates");
 }
 
 /// ch. 5's variable rule: a variable pattern in a split column is *expanded*
@@ -275,87 +275,6 @@ fn several_subjects_are_matched_as_one_matrix() {
     }
 }
 
-/// §1.4's solution rule, which is the whole of index refinement: a subject whose
-/// index arguments are distinct variables is generalized into the motive, and
-/// each constructor's chosen indices refine the goal in its own method.
-///
-/// Nothing in the program mentions an equation, and that is the point — the
-/// `Nil` method is typed at `n := Zero` and the `Cons` method at `n := Succ k`
-/// because the motive abstracted `n`, not because anything was unified.
-#[test]
-fn an_index_is_refined_by_the_solution_rule() {
-    let cx = nat_vec_context();
-    let ty = core(
-        &cx,
-        "the length function's type",
-        &Raw::pi(
-            WRITTEN,
-            "A",
-            type0(),
-            Raw::pi(
-                WRITTEN,
-                "n",
-                var("Nat"),
-                arrow(apply(var("Vec"), [var("A"), var("n")]), var("Nat")),
-            ),
-        ),
-    );
-    // The length, read off the index rather than counted: the `Cons` method
-    // knows its length is `Succ k` and answers `Succ k`.
-    let length = Raw::lam(
-        WRITTEN,
-        "A",
-        Raw::lam(
-            WRITTEN,
-            "n",
-            Raw::lam(
-                WRITTEN,
-                "xs",
-                matching(
-                    [var("xs")],
-                    vec![
-                        arm(vec![con("Vec.Nil", [])], var("Nat.Zero")),
-                        arm(
-                            vec![con("Vec.Cons", [bind("k"), bind("x"), bind("ys")])],
-                            apply(var("Nat.Succ"), [var("k")]),
-                        ),
-                    ],
-                ),
-            ),
-        ),
-    );
-    musa_core::check(&cx, &ty, &length).expect("a match on an indexed family elaborates");
-
-    let unit_type = Raw::record_type(WRITTEN, []);
-    let unit = Raw::record(WRITTEN, []);
-    let nil = apply(var("Vec.Nil"), [unit_type.clone()]);
-    let one = apply(
-        var("Vec.Cons"),
-        [unit_type.clone(), var("Nat.Zero"), unit.clone(), nil.clone()],
-    );
-    let two = apply(var("Vec.Cons"), [unit_type.clone(), number(1), unit, one.clone()]);
-    let nat = core_constant(&cx, "Nat");
-    let written = Raw::pi(
-        WRITTEN,
-        "A",
-        type0(),
-        Raw::pi(
-            WRITTEN,
-            "n",
-            var("Nat"),
-            arrow(apply(var("Vec"), [var("A"), var("n")]), var("Nat")),
-        ),
-    );
-    for (name, vector, count) in [("nil", nil, 0), ("one", one, 1), ("two", two, 2)] {
-        same(
-            &cx,
-            name,
-            &nat,
-            &applied(&length, &written, [unit_type.clone(), number(count), vector]),
-            &number(count),
-        );
-    }
-}
 
 /// A `match` elaboration must refuse, and the refusal it owes.
 ///

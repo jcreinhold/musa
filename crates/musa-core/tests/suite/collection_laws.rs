@@ -171,7 +171,7 @@ fn iterable() -> RawTrait {
                 derived(
                     "map",
                     arrow(var("C"), arrow(arrow(var("A"), var("B")), var("D"))),
-                    lam("source", lam("f", accumulating(apply(var("f"), [var("item")])))),
+                    lam("source", lam("f", accumulating(var("D"), apply(var("f"), [var("item")])))),
                 ),
                 vec![binder("D", type0()), binder("B", type0())],
                 vec![constraint("Buildable", vec![var("D"), var("B")])],
@@ -189,7 +189,7 @@ fn iterable() -> RawTrait {
                 derived(
                     "collect",
                     arrow(var("C"), var("D")),
-                    lam("source", accumulating(var("item"))),
+                    lam("source", accumulating(var("D"), var("item"))),
                 ),
                 vec![binder("D", type0())],
                 vec![constraint("Buildable", vec![var("D"), var("A")])],
@@ -216,15 +216,19 @@ fn iterable() -> RawTrait {
 /// method stands in a derived body as an ordinary definition bound to its
 /// projection out of the dictionary, which is what §1 means by "a derived method
 /// is an ordinary function that takes the dictionary".
-fn accumulating(contributed: Raw) -> Raw {
+fn accumulating(accumulator: Raw, contributed: Raw) -> Raw {
     apply(
         var("fold_from_start"),
         [
             var("source"),
             var("Buildable.empty"),
-            lam(
+            // §2.1: the fold's `B` is still the walk's hole here, so the step
+            // carries its type — which is what `B` is solved from.
+            Raw::annotated_lam(
+                WRITTEN,
                 "built",
-                lam("item", apply(var("Buildable.push"), [var("built"), contributed])),
+                accumulator,
+                Raw::lam(WRITTEN, "item", apply(var("Buildable.push"), [var("built"), contributed])),
             ),
         ],
     )
@@ -241,9 +245,14 @@ fn filtering() -> Raw {
                 [
                     var("source"),
                     var("Buildable.empty"),
-                    lam(
+                    // §2.1: the fold's `B` is the walk's hole here, so the step
+                    // carries its type, as in `map`.
+                    Raw::annotated_lam(
+                        WRITTEN,
                         "built",
-                        lam(
+                        var("C"),
+                        Raw::lam(
+                            WRITTEN,
                             "item",
                             matching(
                                 apply(var("keep"), [var("item")]),
@@ -808,3 +817,5 @@ fn a_nested_forward_traversal_joins_what_a_map_could_not() {
         &numbers([0, 1, 2]),
     );
 }
+
+

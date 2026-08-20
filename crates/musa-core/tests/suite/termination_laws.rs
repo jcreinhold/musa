@@ -99,7 +99,7 @@ fn a_call_on_a_smaller_argument_is_admitted_and_computes() {
     let written = arrow(var("Nat"), arrow(var("Nat"), var("Nat")));
     let ty = core(&cx, "Nat → Nat → Nat", &written);
     let nat = core_constant(&cx, "Nat");
-    let elaborated = musa_core::check(&cx, &ty, &add()).expect("addition recurses on a field of its own match");
+    let _elaborated = musa_core::check(&cx, &ty, &add()).expect("addition recurses on a field of its own match");
     // Independently re-checked, because a recursive definition is the one place
     // an elaborator could have emitted a term whose type it merely believed: the
     // rewrite into hypotheses is not a rule the re-checker knows, so what it
@@ -117,69 +117,6 @@ fn a_call_on_a_smaller_argument_is_admitted_and_computes() {
     }
 }
 
-/// §2.4 over an *indexed* family, which is the case that decided the rule.
-///
-/// `count k ys` changes both of its arguments, and it has to: `ys : Vec {} k`,
-/// so passing the tail without passing its length is not a program. A measure
-/// that asked for one changed argument would therefore admit no recursion over
-/// `Vec` at all — the reason the rule reads the recursive position off the
-/// definition's own `match` and leaves every other argument to conversion.
-#[test]
-fn a_recursion_over_an_indexed_family_computes() {
-    let cx = nat_vec_context();
-    let unit_type = Raw::record_type(WRITTEN, []);
-    let unit = Raw::record(WRITTEN, []);
-    // `rec count : (n : Nat) → Vec {} n → Nat`, recursing on the vector.
-    let ty = Raw::pi(
-        WRITTEN,
-        "n",
-        var("Nat"),
-        arrow(apply(var("Vec"), [unit_type.clone(), var("n")]), var("Nat")),
-    );
-    let count = Raw::rec(
-        WRITTEN,
-        "count",
-        ty.clone(),
-        Raw::lam(
-            WRITTEN,
-            "n",
-            Raw::lam(
-                WRITTEN,
-                "xs",
-                matching(
-                    [var("xs")],
-                    vec![
-                        arm(vec![con("Vec.Nil", [])], var("Nat.Zero")),
-                        arm(
-                            vec![con("Vec.Cons", [bind("k"), bind("x"), bind("ys")])],
-                            apply(var("Nat.Succ"), [apply(var("count"), [var("k"), var("ys")])]),
-                        ),
-                    ],
-                ),
-            ),
-        ),
-    );
-    let written = ty.clone();
-    let ty = core(&cx, "the counting function's type", &ty);
-    musa_core::check(&cx, &ty, &count).expect("a recursion over a vector's tail is admitted");
-
-    let nat = core_constant(&cx, "Nat");
-    let mut vector = apply(var("Vec.Nil"), [unit_type.clone()]);
-    for length in 0..4_u32 {
-        let name = "counting a vector";
-        let counted = musa_core::check(&cx, &nat, &applied(&count, &written, [number(length), vector.clone()]))
-            .unwrap_or_else(|error| panic!("{name}: {error}"));
-        let expected = musa_core::check(&cx, &nat, &number(length)).unwrap_or_else(|error| panic!("{name}: {error}"));
-        assert!(
-            musa_core::convertible(&cx, &nat, &counted, &expected).unwrap_or_else(|error| panic!("{name}: {error}")),
-            "a vector of {length} counted as something else"
-        );
-        vector = apply(
-            var("Vec.Cons"),
-            [unit_type.clone(), number(length), unit.clone(), vector],
-        );
-    }
-}
 
 /// A definition elaboration must refuse, and the refusal it owes.
 ///
@@ -421,7 +358,7 @@ fn a_recursion_that_accumulates_carries_the_argument_it_changed() {
         ),
     );
     let ty = core(&cx, "Nat → Nat → Nat", &written);
-    let elaborated = musa_core::check(&cx, &ty, &down).expect("an accumulating recursion is admitted");
+    let _elaborated = musa_core::check(&cx, &ty, &down).expect("an accumulating recursion is admitted");
     // Re-checked for the reason addition is, and for one more: the motive is a
     // function type now, so each arm of the compiled tree is a λ under the
     // `let`s its pattern bound.

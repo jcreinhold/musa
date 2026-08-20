@@ -465,19 +465,24 @@ fn kind(refusal: &Refusal) -> &'static str {
 ///
 /// The diagnostic's content is the test, not merely its variant: "could not
 /// determine something, somewhere" would satisfy a `matches!` and help nobody.
+///
+/// §2.1's rule, stated from the author's side: nothing invents a type for a
+/// binder and asks later — the refusal says to write it.
 #[test]
-fn an_unsolved_metavariable_says_what_could_not_be_determined() {
+fn an_undetermined_binder_is_told_to_write_its_type() {
     let cx = Cx::new();
     let Err(error) = infer(&cx, &Raw::lam(WRITTEN, "x", Raw::var(WRITTEN, "x"))) else {
         panic!("a binder whose type nothing determines must be refused");
     };
     let refusal = refusal("an unannotated identity function", error);
-    let Refusal::Unsolved { site, created, .. } = &refusal else {
-        panic!("expected an unsolved metavariable, got `{refusal}`");
+    let Refusal::Uninferable { at } = &refusal else {
+        panic!("expected an uninferable term, got `{refusal}`");
     };
-    assert_eq!(site.describe(), "the type of a binder");
-    assert_eq!(*created, WRITTEN, "the report points at the term that made it");
-    assert_eq!(refusal.to_string(), "could not determine the type of a binder");
+    assert_eq!(*at, WRITTEN, "the report points at the term that needed it");
+    assert_eq!(
+        refusal.to_string(),
+        "this cannot be given a type on its own; write the type it should have"
+    );
 }
 
 /// §4: exhaustion is its own outcome and never a refusal.

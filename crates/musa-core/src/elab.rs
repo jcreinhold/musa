@@ -118,6 +118,16 @@ enum Slot {
     Argument(Term),
 }
 
+/// A constructor's family parameters, for [`Elaborator::constructed`]: read
+/// off the expected type, or — where no expected type has named the family —
+/// one hole each, solved by the fields as they are written.
+enum Params {
+    /// The values the expected type carries, in family order.
+    Read(Vec<Value>),
+    /// How many the family's telescope declares.
+    Holes(u32),
+}
+
 /// One elaboration.
 ///
 /// There is nothing in here but the budget and the fresh-variable counter: the
@@ -182,7 +192,9 @@ impl Elaborator {
 
     /// Elaborate `raw` against the type `ty`, and finish.
     pub(crate) fn run_check(&mut self, scope: &Scope, raw: &Raw, ty: &Value) -> Result<Term, ElabError> {
-        self.check(scope, raw, ty)
+        let term = self.check(scope, raw, ty)?;
+        self.settled()?;
+        self.zonk(&term)
     }
 
     /// Elaborate `raw`, answering it and its type, and finish.
@@ -192,13 +204,17 @@ impl Elaborator {
     /// scope where the answer is read — so definitions are opened.
     pub(crate) fn run_infer(&mut self, scope: &Scope, raw: &Raw) -> Result<(Term, Term), ElabError> {
         let inferred = self.infer(scope, raw)?;
+        // After resolution, so the type's quotation reads the solutions the
+        // constraints were resolved to rather than the holes they stood at.
+        self.settled()?;
+        let term = self.zonk(&inferred.term)?;
         let ty = quote_type(
             &mut self.meter,
             Depth(scope.depth()),
             crate::quote::Mode::Open,
             &inferred.ty,
         )?;
-        Ok((inferred.term, ty))
+        Ok((term, ty))
     }
 
     /// The one finish point a declaration shares: refuse the first parameter
@@ -230,6 +246,108 @@ impl Elaborator {
             .into());
         }
         Ok(())
+    }
+
+    /// `term` with every solved hole written back as the term it solved to.
+    ///
+    /// Runs after [`Self::settled`] and before the term is *stored*, and that
+    /// ordering is the point, not hygiene: a hole's solution is a *value*, read
+    /// at the levels of the scope that created it, while the term it sits in is
+    /// evaluated later under other environments — a caller's, the normalizer's.
+    /// Only a term variable is re-read under a new environment, so the hole has
+    /// to become one here: quoting the solution at the binder depth the hole
+    /// sits at turns the value back into indices, which is exactly what makes
+    /// the stored term mean the same thing everywhere it is evaluated.
+    ///
+    /// An unsolved hole cannot reach here — [`Self::settled`] has already
+    /// refused it — so one found is the audit's bug, reported as the refusal
+    /// the audit would have given rather than a panic.
+    pub(crate) fn zonk(&mut self, term: &Term) -> Result<Term, ElabError> {
+        self.zonking(term, 0)
+    }
+
+    /// The walk [`Self::zonk`] is the depth-0 case of.
+    fn zonking(&mut self, term: &Term, depth: u32) -> Result<Term, ElabError> {
+        let here = term.origin();
+        let shape = match term.shape() {
+            Shape::Hole(hole) => {
+                let Some(solution) = hole.solution() else {
+                    return Err(Refusal::Unsolved {
+                        site: MetaSource::TypeParameter,
+                        created: hole.origin(),
+                        blocked: None,
+                    }
+                    .into());
+                };
+                let solution = solution.clone();
+                return Ok(crate::quote::quote(
+                    &mut self.meter,
+                    crate::quote::Depth(depth),
+                    crate::quote::Mode::Open,
+                    hole.ty(),
+                    &solution,
+                )?);
+            }
+            Shape::Var(_) | Shape::Const(_) | Shape::Def(_) | Shape::Numeral(_) | Shape::Base(_) | Shape::Lit(_)
+            | Shape::Builtin(_) | Shape::Universe(_) => return Ok(term.clone()),
+            Shape::Pi {
+                plicity,
+                name,
+                domain,
+                codomain,
+            } => {
+                let domain = self.zonking(domain, depth)?;
+                let codomain = self.zonking(codomain, depth.saturating_add(1))?;
+                Shape::Pi {
+                    plicity: plicity.clone(),
+                    name: Arc::clone(name),
+                    domain,
+                    codomain,
+                }
+            }
+            Shape::Lam { name, body } => {
+                let body = self.zonking(body, depth.saturating_add(1))?;
+                Shape::Lam {
+                    name: Arc::clone(name),
+                    body,
+                }
+            }
+            Shape::App { function, argument } => Shape::App {
+                function: self.zonking(function, depth)?,
+                argument: self.zonking(argument, depth)?,
+            },
+            Shape::RecordType(fields) => {
+                let mut zonked = Vec::with_capacity(fields.len());
+                for (which, field) in fields.iter().enumerate() {
+                    zonked.push(crate::term::Field {
+                        name: Arc::clone(&field.name),
+                        term: self.zonking(&field.term, depth.saturating_add(u32::try_from(which).unwrap_or(0)))?,
+                    });
+                }
+                Shape::RecordType(Arc::from(zonked))
+            }
+            Shape::Record(fields) => {
+                let mut zonked = Vec::with_capacity(fields.len());
+                for field in fields.iter() {
+                    zonked.push(crate::term::Field {
+                        name: Arc::clone(&field.name),
+                        term: self.zonking(&field.term, depth)?,
+                    });
+                }
+                Shape::Record(Arc::from(zonked))
+            }
+            Shape::Project { record, field } => Shape::Project {
+                record: self.zonking(record, depth)?,
+                field: Arc::clone(field),
+            },
+            Shape::Let { name, ty, value, body } => Shape::Let {
+                name: Arc::clone(name),
+                ty: self.zonking(ty, depth)?,
+                value: self.zonking(value, depth)?,
+                body: self.zonking(body, depth.saturating_add(1))?,
+            },
+        };
+        Ok(Term::new(here, shape))
     }
 
     /// A hole for a constraint's dictionary, registered for resolution at
@@ -650,12 +768,69 @@ impl Elaborator {
     /// the constructor's implicit binders, so the application pass matches
     /// them out of `ty` at the end, which is the same rule §2.1 states for
     /// every other call.
+    /// `head` applied to one constructor parameter the expected type carried.
+    ///
+    /// The parameter is a *value*: it was read off the type, not written, so
+    /// there is no [`Raw`] to elaborate and nothing to infer — the term is the
+    /// value quoted back at the scope's depth. [`crate::quote::Mode::Keep`]
+    /// because the type is the author's and any definition it folds stays
+    /// folded in what they read back.
+    fn given(&mut self, scope: &Scope, here: Origin, head: Typed, param: &Value) -> Result<Typed, ElabError> {
+        let unfolded = crate::eval::opened(&mut self.meter, &head.ty)?;
+        let function_ty = unfolded.as_ref().unwrap_or(&head.ty);
+        let Form::Pi { domain, codomain, .. } = &function_ty.form else {
+            return Err(Refusal::NotAFunction {
+                at: here,
+                ty: scope.quote_type(&mut self.meter, &head.ty)?,
+            }
+            .into());
+        };
+        let (domain, codomain) = (Arc::clone(domain), codomain.clone());
+        let term = crate::quote::quote(
+            &mut self.meter,
+            crate::quote::Depth(scope.depth()),
+            crate::quote::Mode::Keep,
+            &domain,
+            param,
+        )?;
+        Ok(Typed {
+            term: Term::app(here, head.term, term),
+            ty: apply_closure(&mut self.meter, &codomain, param.clone())?,
+        })
+    }
+
+    /// `head` applied to `count` fresh holes — a constructor's parameters when
+    /// no expected type named the family. The fields solve them through §2.1's
+    /// ordinary matching, and [`Elaborator::settled`] audits what they could
+    /// not.
+    fn holes(&mut self, scope: &Scope, here: Origin, mut built: Typed, count: u32) -> Result<Typed, ElabError> {
+        for _ in 0..count {
+            let unfolded = crate::eval::opened(&mut self.meter, &built.ty)?;
+            let function_ty = unfolded.as_ref().unwrap_or(&built.ty);
+            let Form::Pi { domain, codomain, .. } = &function_ty.form else {
+                return Err(Refusal::NotAFunction {
+                    at: here,
+                    ty: scope.quote_type(&mut self.meter, &built.ty)?,
+                }
+                .into());
+            };
+            let (domain, codomain) = (Arc::clone(domain), codomain.clone());
+            let hole = self.fresh_hole(here, &domain);
+            let value = Value::neutral(Neutral::head(here, crate::value::Head::Hole(hole.clone())));
+            built = Typed {
+                term: Term::app(here, built.term, Term::hole(here, hole)),
+                ty: apply_closure(&mut self.meter, &codomain, value)?,
+            };
+        }
+        Ok(built)
+    }
+
     fn constructed(&mut self, scope: &Scope, raw: &Raw, ty: &Value) -> Result<Option<Typed>, ElabError> {
         let here = raw.origin();
         let Some((head, arguments)) = written_spine(raw) else {
             return Ok(None);
         };
-        let Some((case, fields)) = self.case_of(scope, head, ty)? else {
+        let Some((case, fields, params)) = self.case_of(scope, head, ty)? else {
             return Ok(None);
         };
         if arguments.len() > fields {
@@ -664,7 +839,16 @@ impl Elaborator {
         // Through the ordinary constant rule, so that a case a module keeps to
         // itself is refused here the same way it is refused when its qualified
         // name is written out.
-        let built = self.infer(scope, &Raw::var(here, case))?;
+        let mut built = self.infer(scope, &Raw::var(here, case))?;
+        built = match params {
+            Params::Read(values) => {
+                for param in &values {
+                    built = self.given(scope, here, built, param)?;
+                }
+                built
+            }
+            Params::Holes(count) => self.holes(scope, here, built, count)?,
+        };
         Ok(Some(self.apply_spine(scope, here, built, &arguments, Some(ty))?))
     }
 
@@ -682,7 +866,7 @@ impl Elaborator {
     /// of the same spine, so the namespace is what tells them apart — see
     /// [`Self::constructed_open`], which draws the same line where there is no
     /// expected type at all.
-    fn case_of(&mut self, scope: &Scope, head: &Raw, ty: &Value) -> Result<Option<(String, usize)>, ElabError> {
+    fn case_of(&mut self, scope: &Scope, head: &Raw, ty: &Value) -> Result<Option<(String, usize, Params)>, ElabError> {
         let (RawShape::Var(name) | RawShape::Hosted(name)) = head.shape() else {
             return Ok(None);
         };
@@ -690,15 +874,19 @@ impl Elaborator {
             && let Some(declared) = element.group.family_at(element.family)
             && let Some((case, fields)) = case_named(scope, name, declared)
         {
-            return Ok(Some((format!("{}.{case}", declared.name), fields)));
+            return Ok(Some((
+                format!("{}.{case}", declared.name),
+                fields,
+                Params::Read(element.params),
+            )));
         }
         if !matches!(head.shape(), RawShape::Hosted(_)) {
             return Ok(None);
         }
-        let Some((fields, _)) = written_case(scope, name) else {
+        let Some((fields, params)) = written_case(scope, name) else {
             return Ok(None);
         };
-        Ok(Some((name.to_string(), fields)))
+        Ok(Some((name.to_string(), fields, Params::Holes(params))))
     }
 
     /// §2's constructor rule reached from the other direction: `C a⃗ ⇒ N ?p⃗`,
@@ -720,37 +908,14 @@ impl Elaborator {
         let (head, arguments) = written_spine(raw).unwrap_or((raw, Vec::new()));
         match head.shape() {
             RawShape::Hosted(name) => {
-                let Some((fields, _)) = written_case(scope, name) else {
+                let Some((fields, params)) = written_case(scope, name) else {
                     return Ok(None);
                 };
                 if arguments.len() > fields {
                     return Ok(None);
                 }
                 let built = self.infer(scope, &Raw::var(here, name.to_string()))?;
-                Ok(Some(self.apply_spine(scope, here, built, &arguments, None)?))
-            }
-            RawShape::Var(name) => {
-                if scope.lookup(name).is_some() {
-                    return Ok(None);
-                }
-                let families = scope.cx().cases(name);
-                let [family] = families.as_slice() else {
-                    return Ok(None);
-                };
-                let Some(crate::family::Found::Rigid(constant)) = scope.declared(family) else {
-                    return Ok(None);
-                };
-                let Some(declared) = constant.group.family_at(constant.family) else {
-                    return Ok(None);
-                };
-                let Some((case, fields)) = case_named(scope, name, declared) else {
-                    return Ok(None);
-                };
-                if arguments.len() > fields {
-                    return Ok(None);
-                }
-                let qualified: Name = Arc::from(format!("{}.{case}", declared.name).as_str());
-                let built = self.infer(scope, &Raw::var(here, qualified))?;
+                let built = self.holes(scope, here, built, params)?;
                 Ok(Some(self.apply_spine(scope, here, built, &arguments, None)?))
             }
             _ => Ok(None),
@@ -796,8 +961,10 @@ impl Elaborator {
             let (domain, codomain) = (Arc::clone(domain), codomain.clone());
             // The domain decides the direction (§2.1): still quantified, the
             // argument teaches the parameter — inferred, and matched;
-            // settled, the argument is checked.
-            let argument_term = if crate::unify::mentions_unsolved(&domain) {
+            // settled, the argument is checked. A checking-only form is checked
+            // either way: inference has no rule for it, and the slot's Pi is
+            // the type it was always going to be read against, holes included.
+            let argument_term = if crate::unify::mentions_unsolved(&domain) && !argument.checks_only() {
                 let inferred = self.infer(scope, argument)?;
                 self.unifier.unify_types(
                     &mut self.meter,

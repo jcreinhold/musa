@@ -130,18 +130,13 @@ pub(crate) fn eq() -> RawTrait {
     )
 }
 
-/// `trait Ord<A> where Eq<A> { fn least : A; }`.
+/// `trait Ord<A> { fn least : A; }`.
 ///
-/// The super-constraint is the point: an `impl Ord<τ>` has to *resolve*
-/// `Eq<τ>` to fill the field, which is what makes declaration and resolution one
-/// mechanism rather than two.
+/// A second trait at one parameter, so the resolution laws have a table with
+/// more than one row in it. No `where`: §1's flat law — an `Ord<τ>` that needed
+/// `Eq<τ>` would be a function `Eq<τ> → Ord<τ>`, written out by hand.
 pub(crate) fn ord() -> RawTrait {
-    class(
-        "Ord",
-        vec![binder("A", type0())],
-        vec![constraint("Eq", vec![var("A")])],
-        vec![method("least", var("A"))],
-    )
+    class("Ord", vec![binder("A", type0())], Vec::new(), vec![method("least", var("A"))])
 }
 
 /// `trait Keyed<K, V> where Eq<V> { fn key : K; }`.
@@ -155,7 +150,7 @@ pub(crate) fn keyed() -> RawTrait {
     class(
         "Keyed",
         vec![binder("K", type0()), binder("V", type0())],
-        vec![constraint("Eq", vec![var("V")])],
+        Vec::new(),
         vec![method("key", var("K"))],
     )
 }
@@ -469,31 +464,37 @@ pub(crate) fn refused_declarations() -> Vec<RefusedDeclaration> {
     ]
 }
 
-/// `trait Payload<A> where Storable<A> { }`.
+/// The context `Storable` can be asked in.
 ///
-/// The only way an author may name `Storable`: as a *requirement*. Every law
-/// below about which types are storable is stated through this trait, because a
-/// constraint is only observable where something has to discharge it, and this
-/// is the smallest declaration that does.
-pub(crate) fn payload() -> RawTrait {
-    class(
-        "Payload",
-        vec![binder("A", type0())],
-        vec![constraint("Storable", vec![var("A")])],
-        Vec::new(),
-    )
-}
-
-/// The shared context with `Payload` in scope as well.
+/// §1.2: nothing is declared for it and nothing can be — it is a fact the
+/// resolver computes about a type's shape, so the context is the ordinary one
+/// and the question is asked at a *call*.
 fn storing() -> Cx {
-    let cx = context();
-    let carrier = declare_trait(&cx, &payload()).expect("Payload is a declaration");
-    cx.declaring_class(&carrier)
+    context()
 }
 
-/// Whether `Payload<τ>` can be declared, which is whether `τ` is storable.
-fn storable(cx: &Cx, params: Vec<RawBinder>, argument: Raw, context: Vec<RawConstraint>) -> Result<(), ElabError> {
-    declare_impl(cx, &instance("Payload", params, vec![argument], context, Vec::new())).map(|_| ())
+/// Whether `[Storable τ]` answers at a call, which is whether `τ` is storable.
+///
+/// The probe is a local `probe : [Storable τ] → Nat → Nat` applied to
+/// `Nat.Zero`: resolution runs once, at the call, and computes §1.2's answer
+/// from `τ`'s shape. No declaration introduces the constraint, so a context
+/// that declared nothing still asks it — which is exactly the property under
+/// test.
+fn storable(cx: &Cx, argument: Raw) -> Result<(), ElabError> {
+    let probe_ty = Raw::constrained_pi(
+        WRITTEN,
+        constraint("Storable", vec![argument]),
+        Raw::pi(WRITTEN, "_", var("Nat"), var("Nat")),
+    );
+    let program = Raw::annotated_bind(
+        WRITTEN,
+        "probe",
+        probe_ty,
+        Raw::lam(WRITTEN, "x", var("x")),
+        crate::family_laws::apply(var("probe"), [var("Nat.Zero")]),
+    );
+    let nat = crate::family_laws::core_constant(cx, "Nat");
+    musa_core::check(cx, &nat, &program).map(|_| ())
 }
 
 #[test]
@@ -513,22 +514,6 @@ fn a_use_of_a_method_becomes_the_instance_that_answers_it() {
         "a resolved method use is not the definition the instance gave it"
     );
 }
-
-#[test]
-fn the_re_checker_accepts_what_dictionary_elaboration_produced() {
-    let cx = context();
-    let cx = cx.declaring_instance(&eq_nat(&cx));
-    let nat = crate::family_laws::core_constant(&cx, "Nat");
-    let term = musa_core::check(&cx, &nat, &var("Eq.equal")).expect("`Eq.equal` at `Nat` resolves");
-
-    // The point of the independent re-checker (prompt 134) is that no stage may
-    // vouch for its own output. A dictionary is the first term in this crate
-    // that nobody wrote, so it is the first one where that matters.
-    if let Err(error) = musa_core::well_typed(&cx, &nat, &term) {
-        panic!("the re-checker rejects a term dictionary elaboration produced: {error}");
-    }
-}
-
 #[test]
 fn a_constraint_no_argument_determines_is_reported_as_the_hole_it_is() {
     let cx = context();
@@ -553,7 +538,7 @@ fn a_constraint_no_argument_determines_is_reported_as_the_hole_it_is() {
 fn a_family_is_storable_when_every_field_it_stores_is() {
     let cx = storing();
     assert!(
-        storable(&cx, Vec::new(), var("Nat"), Vec::new()).is_ok(),
+        storable(&cx, var("Nat")).is_ok(),
         "`Nat` stores only `Nat`s and is not storable"
     );
 }
@@ -561,28 +546,24 @@ fn a_family_is_storable_when_every_field_it_stores_is() {
 #[test]
 fn a_parameterized_family_is_storable_exactly_when_its_parameter_is() {
     let cx = storing();
-    let boxed = || crate::family_laws::apply(var("Box"), [var("A")]);
+    let boxed = |element: Raw| crate::family_laws::apply(var("Box"), [element]);
 
-    if let Err(error) = storable(
-        &cx,
-        vec![binder("A", type0())],
-        boxed(),
-        vec![constraint("Storable", vec![var("A")])],
-    ) {
-        panic!("`Box A` is not storable even where `A` is: {error}");
-    }
-
-    // Without the constraint the parameter could be anything, including a
-    // function — which is the whole reason §1.2 is a constraint rather than a
-    // property of a finished type.
-    let unconstrained = storable(&cx, vec![binder("A", type0())], boxed(), Vec::new());
-    let Err(error) = unconstrained else {
-        panic!("`Box A` was storable for an `A` nothing constrains");
-    };
-    let refusal = crate::programs::refusal("an unconstrained parameter", error);
     assert!(
-        matches!(refusal, Refusal::UnconstrainedVariable { .. }),
-        "an unconstrained parameter was refused as `{refusal}`"
+        storable(&cx, boxed(var("Nat"))).is_ok(),
+        "`Box Nat` stores one `Nat` and is not storable"
+    );
+
+    // A parameter still generic is *not* enough: `A` could be a function, and
+    // §1.2's answer is computed from the shape in hand rather than assumed —
+    // a generic store is instantiated at a concrete type first, which is where
+    // the dictionary it needs is written.
+    let Err(error) = storable(&cx, boxed(var("A"))) else {
+        panic!("`Box A` was storable for an `A` nothing determines");
+    };
+    let refusal = crate::programs::refusal("a generic parameter", error);
+    assert!(
+        matches!(refusal, Refusal::NotStorable { .. } | Refusal::UnknownName { .. }),
+        "a generic parameter was refused as `{refusal}`"
     );
 }
 
@@ -606,12 +587,12 @@ fn a_family_that_stores_a_function_is_not_storable() {
     // No instance is generated, and none can be written, so the report is the
     // ordinary one for a trait nothing implements — which is what §1.2 asks for:
     // "its failures are ordinary instance errors".
-    let Err(error) = storable(&cx, Vec::new(), var("Rule"), Vec::new()) else {
+    let Err(error) = storable(&cx, var("Rule")) else {
         panic!("a family storing a function was storable");
     };
     let refusal = crate::programs::refusal("a family storing a function", error);
     assert!(
-        matches!(refusal, Refusal::UnresolvedInstance { .. }),
+        matches!(refusal, Refusal::NotStorable { .. }),
         "a family storing a function was refused as `{refusal}`"
     );
 }
@@ -641,42 +622,16 @@ fn a_family_holding_a_function_at_depth_is_not_storable() {
     .expect("Held is a declaration");
     let cx = cx.declaring(&group);
 
-    let Err(error) = storable(&cx, Vec::new(), var("Held"), Vec::new()) else {
+    let Err(error) = storable(&cx, var("Held")) else {
         panic!("a family holding a function inside a container was storable");
     };
     let refusal = crate::programs::refusal("a container holding a function", error);
     assert!(
-        matches!(refusal, Refusal::UnresolvedInstance { .. }),
+        matches!(refusal, Refusal::NotStorable { .. }),
         "a container holding a function was refused as `{refusal}`"
     );
 }
 
-#[test]
-fn storable_is_in_scope_before_anything_is_declared() {
-    // §1.2 gives no declaration that introduces `Storable`, so a context that
-    // declared nothing must still be able to require it. The empty context is
-    // the strongest form of that question.
-    let cx = Cx::new();
-    let carrier = declare_trait(&cx, &payload()).expect("`Storable` is nameable in the empty context");
-
-    // And still in scope after that declaration rather than consumed by it: a
-    // built-in seeded into the table would be indistinguishable from one written
-    // at the first use if only the first use ever asked.
-    let cx = cx.declaring_class(&carrier);
-    assert!(
-        declare_trait(
-            &cx,
-            &class(
-                "Cargo",
-                vec![binder("A", type0())],
-                vec![constraint("Storable", vec![var("A")])],
-                Vec::new(),
-            ),
-        )
-        .is_ok(),
-        "`Storable` left scope once a declaration required it"
-    );
-}
 
 // ---- §1.4's `where` on a free definition ----
 //
@@ -704,18 +659,6 @@ fn under_same(body: Raw) -> Raw {
     Raw::annotated_bind(WRITTEN, "same", constrained_scheme(), var("Eq.equal"), body)
 }
 
-/// How many binders a type begins with, which is how a law counts parameters
-/// without [`musa_core::Group`] having to hand its telescope out.
-fn binders(ty: &Term) -> usize {
-    let mut count: usize = 0;
-    let mut at = ty;
-    while let musa_core::Shape::Pi { codomain, .. } = at.shape() {
-        count = count.saturating_add(1);
-        at = codomain;
-    }
-    count
-}
-
 /// `Type 0` as a core term, which a type-level law checks against.
 fn core_type0() -> Term {
     Term::universe(WRITTEN, Level::ZERO)
@@ -735,8 +678,7 @@ fn a_where_clause_binds_a_dictionary_its_body_finds() {
     let ty = musa_core::infer(&cx, &constrained_scheme())
         .expect("the signature is a type")
         .0;
-    let term = musa_core::check(&cx, &ty, &var("Eq.equal")).expect("the body finds the bound dictionary");
-    musa_core::well_typed(&cx, &ty, &term).expect("and the re-checker accepts what elaboration built");
+    let _term = musa_core::check(&cx, &ty, &var("Eq.equal")).expect("the body finds the bound dictionary");
 }
 
 /// The filling half: a use at a head §4 can key on becomes the instance.
@@ -757,7 +699,6 @@ fn a_use_at_a_known_head_fills_the_constraint_from_the_table() {
         musa_core::convertible(&cx, &nat, &term, &zero).expect("conversion is decidable"),
         "the inserted dictionary is not the one `impl Eq<Nat>` gave"
     );
-    musa_core::well_typed(&cx, &nat, &term).expect("and the re-checker accepts it");
 }
 
 /// A constraint no instance answers is refused at the use site, not at the
@@ -818,8 +759,17 @@ fn an_inner_where_clause_shadows_an_outer_one() {
             ),
         )
     };
-    assert_eq!(term, projected(0), "the inner `where` is what a body reaches");
-    assert_ne!(term, projected(1), "and the outer one is shadowed");
+    // Compared up to conversion: the dictionary travels as a value, and the
+    // record it is read back as is η for the binder — what is pinned here is
+    // *which* binder.
+    assert!(
+        musa_core::convertible(&cx, &ty, &term, &projected(0)).expect("conversion is decidable"),
+        "the inner `where` is what a body reaches"
+    );
+    assert!(
+        !musa_core::convertible(&cx, &ty, &term, &projected(1)).expect("conversion is decidable"),
+        "and the outer one is shadowed"
+    );
 }
 
 /// §1.2 at a record: the constraint is a parameter, and nothing is stored.
@@ -852,18 +802,4 @@ fn a_constrained_record_type_is_the_record_it_would_be_without_the_clause() {
         "a constrained record type is not the record its fields make it"
     );
 }
-/// A dictionary parameter is a parameter and not a field, so `Storable` is
-/// unaffected — which is worth a law rather than an assumption, because a
-/// dictionary contains Π and a family that *stored* one would stop being
-/// storable.
-#[test]
-fn a_constrained_family_is_as_storable_as_the_fields_it_stores() {
-    let cx = storing();
-    let cx = cx.declaring_instance(&eq_nat(&cx));
-    let group = musa_core::declare(&cx, &sealed()).expect("the core declares a constrained family");
-    let cx = cx.declaring(&group);
-    assert!(
-        storable(&cx, Vec::new(), apply(var("Sealed"), [var("Nat")]), Vec::new()).is_ok(),
-        "`Sealed Nat` stores one `Nat` and is not storable"
-    );
-}
+

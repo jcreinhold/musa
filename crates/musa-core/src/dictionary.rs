@@ -123,19 +123,42 @@ pub(crate) fn declare_trait(cx: &Cx, raw: &RawTrait) -> Result<(Arc<Trait>, crat
         methods.push((Arc::clone(&method.name), Kind::Required));
     }
 
-    let dictionary = closed_lambda(here, &params, Term::new(here, Shape::RecordType(Arc::from(fields))));
+    let params: Arc<[crate::family::Binder]> = Arc::from(params);
+    let fields: Arc<[Field]> = Arc::from(fields);
+    let dictionary = closed_lambda(here, &params, Term::new(here, Shape::RecordType(Arc::clone(&fields))));
     let declared = Trait {
         name: Arc::clone(&raw.name),
         package: cx.package(),
-        params: Arc::from(params),
+        params: Arc::clone(&params),
         dictionary,
         methods: Arc::from(methods),
         derived: Arc::from(Vec::new()),
     };
     let derived = derivations(&mut elaborator, cx, &declared, raw)?;
     elaborator.settled()?;
+    // Everything below is stored: solutions are written back before storage,
+    // for [`Elaborator::zonk`]'s reason.
+    let mut zonked_fields = Vec::with_capacity(fields.len());
+    for field in fields.iter() {
+        zonked_fields.push(Field {
+            name: Arc::clone(&field.name),
+            term: elaborator.zonk(&field.term)?,
+        });
+    }
+    let dictionary = closed_lambda(here, &params, Term::new(here, Shape::RecordType(Arc::from(zonked_fields))));
+    let mut zonked_derived = Vec::with_capacity(derived.len());
+    for method in derived {
+        zonked_derived.push(Derived {
+            name: method.name,
+            params: method.params,
+            context: method.context,
+            ty: elaborator.zonk(&method.ty)?,
+            value: elaborator.zonk(&method.value)?,
+        });
+    }
     let class = Arc::new(Trait {
-        derived: Arc::from(derived),
+        dictionary,
+        derived: Arc::from(zonked_derived),
         ..declared
     });
     Ok((class, elaborator.spent()))
@@ -247,8 +270,14 @@ pub(crate) fn declare_impl(cx: &Cx, raw: &RawImpl) -> Result<(Arc<Instance>, cra
     // types the trait declared for them.
     let value = dictionary_value(&mut elaborator, &inner, classes, &class, raw, &at_args, &dictionary_ty)?;
 
-    let dictionary = closed_lambda(here, &params, value);
     elaborator.settled()?;
+    // Stored, so written back first — [`Elaborator::zonk`]'s reason.
+    let value = elaborator.zonk(&value)?;
+    let args = args
+        .into_iter()
+        .map(|argument| elaborator.zonk(&argument))
+        .collect::<Result<Vec<_>, _>>()?;
+    let dictionary = closed_lambda(here, &params, value);
     let instance = Arc::new(Instance {
         origin: here,
         key,
@@ -878,6 +907,30 @@ pub(crate) fn constraint_at(
     classes: &Classes,
     raw: &RawConstraint,
 ) -> Result<(Constraint, Term), ElabError> {
+    // §1.2's one constraint shape, and not a trait: nothing looks it up, so
+    // nothing has to declare it. Its dictionary is the empty record — the
+    // evidence is that the type's shape was checked, which is why resolution
+    // computes rather than reads.
+    if raw.name.as_ref() == STORABLE {
+        let [argument] = raw.args.as_slice() else {
+            return Err(Refusal::ClassArity {
+                at: raw.origin,
+                class: Arc::clone(&raw.name),
+                wanted: 1,
+                written: raw.args.len(),
+            }
+            .into());
+        };
+        let (term, _) = elaborator.check_type(scope, argument)?;
+        return Ok((
+            Constraint {
+                origin: raw.origin,
+                class: Arc::clone(&raw.name),
+                args: Arc::from([term]),
+            },
+            Term::record_type(raw.origin, core::iter::empty()),
+        ));
+    }
     let Some(class) = classes.class(&raw.name) else {
         return Err(Refusal::UnknownName {
             name: Arc::clone(&raw.name),
@@ -1011,7 +1064,10 @@ pub(crate) fn method_at(
     // The dictionary is a hole resolved at declaration end — the one place
     // resolution runs, for [`Elaborator::constrain`]'s reason.
     let dictionary_ty = scope.eval(elaborator.meter(), &applied(at, class.dictionary.clone(), &args))?;
-    let dictionary = elaborator.constrain(scope, needed, Env::EMPTY, at, &dictionary_ty);
+    // The scope's own environment: the holes' solutions are quoted at the
+    // resolution's depth, and a solution naming a parameter in scope here —
+    // `Eq A` under a generic `A` — has to fit.
+    let dictionary = elaborator.constrain(scope, needed, scope.env().clone(), at, &dictionary_ty);
     let dictionary_term = Term::hole(at, dictionary.clone());
     let dictionary_value = Value::neutral(Neutral::head(at, crate::value::Head::Hole(dictionary)));
 

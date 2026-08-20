@@ -274,9 +274,11 @@ fn nested_lets(depth: u32) -> Term {
 /// of `infer` standing inside a level of `check` standing inside `eval`, which
 /// is the chain §4.1's frame ceiling is measured on.
 fn nested_raw_lets(depth: u32) -> Raw {
-    let type0 = Raw::universe(HERE, Level::ZERO);
-    let type1 = Raw::universe(HERE, Level::One);
-    (0..depth).fold(type0, |value, _| {
-        Raw::annotated_bind(HERE, "z", type1.clone(), value, Raw::var(HERE, "z"))
+    // Unannotated: with two fixed universes an annotation is checked as a type
+    // and the one this nest used no longer is one. The unannotated form keeps
+    // the chain the law measures — one level is still an `infer` standing
+    // inside a `definition` standing inside an `eval`.
+    (0..depth).fold(Raw::universe(HERE, Level::ZERO), |value, _| {
+        Raw::bind(HERE, "z", value, Raw::var(HERE, "z"))
     })
 }

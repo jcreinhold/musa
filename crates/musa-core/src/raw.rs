@@ -793,6 +793,25 @@ impl Raw {
         )
     }
 
+    /// Whether this is a form the elaborator can only *check*: an unannotated
+    /// λ, a record literal, a `match`, a `rec` — the shapes
+    /// [`Refusal::Uninferable`](crate::Refusal::Uninferable) names.
+    ///
+    /// The application walk asks it when an argument's slot still mentions an
+    /// unsolved hole (§2.1's direction rule): inferring the argument to teach
+    /// the hole is right for everything inference has a rule for, but a
+    /// checking-only form has to be checked against the slot as it stands —
+    /// the slot's Pi descends around it, and an annotation inside is what the
+    /// hole is solved from.
+    pub(crate) fn checks_only(&self) -> bool {
+        match self.shape() {
+            RawShape::Record(_) | RawShape::Match { .. } | RawShape::Rec { .. } | RawShape::Lam { .. } => {
+                true
+            }
+            _ => false,
+        }
+    }
+
     /// `function argument`.
     #[must_use]
     pub fn app(origin: Origin, function: Self, argument: Self) -> Self {
