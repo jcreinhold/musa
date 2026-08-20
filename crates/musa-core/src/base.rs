@@ -943,20 +943,6 @@ impl Registry {
     pub fn named(&self, name: &str) -> Option<&Extern> {
         self.names.get(name)
     }
-
-    /// Every base type registered here, in no particular order.
-    ///
-    /// One caller, and it is the reason there is an accessor at all:
-    /// [`crate::storable`] turns the ones their owner guaranteed into the
-    /// `Storable` instances a use site resolves. Order does not matter because
-    /// each answers a different key.
-    pub(crate) fn bases(&self) -> impl Iterator<Item = &Base> {
-        self.names.values().filter_map(|entry| match entry {
-            Extern::Base(base) => Some(base),
-            Extern::Builtin(_) => None,
-        })
-    }
-
     /// Every structural eliminator's target: an argument of its own signature,
     /// at a base type this registry declared inert.
     fn check_structural_targets(&self) -> Result<(), Refusal> {

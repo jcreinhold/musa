@@ -33,18 +33,6 @@ impl MetaSource {
     }
 }
 
-/// Where an unsolved unknown was created, paired with its site.
-///
-/// Kept as one type so [`crate::Refusal::Unsolved`] carries both halves of the
-/// report without repeating this pairing at each refusal.
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct UnsolvedAt {
-    /// Which site created the unknown.
-    pub(crate) site: MetaSource,
-    /// The term whose elaboration created it.
-    pub(crate) created: Origin,
-}
-
 use std::sync::{Arc, OnceLock};
 
 use crate::error::Malformed;
@@ -89,11 +77,6 @@ impl Hole {
         }))
     }
 
-    /// Its identity: two holes are the same unknown exactly when their ids are.
-    pub(crate) fn id(&self) -> u32 {
-        self.0.id
-    }
-
     /// Where the implicit argument was used.
     pub(crate) fn origin(&self) -> Origin {
         self.0.origin
@@ -114,12 +97,14 @@ impl Hole {
     }
 
     /// Its solution, if the matching pass has found one.
-    pub(crate) fn solution(&self) -> Option<&Value> {
+    #[must_use]
+    pub fn solution(&self) -> Option<&Value> {
         self.0.solution.get()
     }
 
     /// Whether it is solved.
-    pub(crate) fn is_solved(&self) -> bool {
+    #[must_use]
+    pub fn is_solved(&self) -> bool {
         self.0.solution.get().is_some()
     }
 }

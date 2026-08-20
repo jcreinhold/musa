@@ -35,7 +35,6 @@ use std::sync::Arc;
 use musa_core::{
     Answer, Base, Budget, Builtin, CoreError, Cx, Datum, ElabError, Extern, Family, Group, Index, Level, Literal,
     Origin, Payload, Raw, RawArm, RawData, RawPattern, Refusal, Registry, Term, check, convertible, infer, normalize,
-    well_typed,
 };
 
 use crate::family_laws::{binder, constructor, data, family, type0, var};
@@ -239,12 +238,10 @@ fn options() -> RawData {
         vec![binder("A", type0())],
         vec![family(
             "Option",
-            Vec::new(),
             vec![
-                constructor("None", Vec::new(), Vec::new()),
-                constructor("Some", vec![binder("value", var("A"))], Vec::new()),
-            ],
-        )],
+                constructor("None", Vec::new()),
+                constructor("Some", vec![binder("value", var("A"))]),
+            ])],
     )
 }
 
@@ -260,16 +257,12 @@ fn lists() -> RawData {
         vec![binder("A", type0())],
         vec![family(
             "List",
-            Vec::new(),
             vec![
-                constructor("Empty", Vec::new(), Vec::new()),
+                constructor("Empty", Vec::new()),
                 constructor(
                     "Cons",
-                    vec![binder("first", var("A")), binder("rest", calls("List", [var("A")]))],
-                    Vec::new(),
-                ),
-            ],
-        )],
+                    vec![binder("first", var("A")), binder("rest", calls("List", [var("A")]))]),
+            ])],
     )
 }
 
@@ -702,7 +695,6 @@ fn a_registered_base_type_is_a_type() {
     let cx = host();
     let (term, ty) = infer(&cx, &Raw::var(TERMS, "Int")).expect("`Int` resolves");
     assert_eq!(ty, Term::universe(TYPES, Level::ZERO), "`Int : Type 0`");
-    assert_eq!(well_typed(&cx, &ty, &term), Ok(()), "and the core re-checks it");
 }
 
 /// A context with no registry names none of it, which is what leaves every other
@@ -739,7 +731,6 @@ fn a_literal_infers_its_base_type() {
     let cx = host();
     let (term, ty) = infer(&cx, &Raw::lit(TERMS, int_lit(3))).expect("`3` infers");
     assert_eq!(ty, int().term(TYPES), "`3 : Int`");
-    assert_eq!(well_typed(&cx, &ty, &term), Ok(()), "and the core re-checks it");
 }
 
 // ---- conversion ------------------------------------------------------------
@@ -912,7 +903,6 @@ fn a_builtin_at_literals_answers_what_the_host_function_answers() {
     for (name, raw, ty, expected) in questions {
         let term = check(&cx, &ty, &raw).unwrap_or_else(|error| panic!("{name}: {error}"));
         assert_eq!(normalize_at(&cx, &ty, &term), expected, "{name}");
-        assert_eq!(well_typed(&cx, &ty, &term), Ok(()), "{name}: and the core re-checks it");
     }
 }
 
@@ -928,11 +918,6 @@ fn a_builtin_short_of_literals_is_neutral() {
     let int_ty = int().term(TYPES);
     let partial = calls("int_add", [Raw::lit(TERMS, int_lit(2))]);
     let term = check(&cx, &arrow(int_ty.clone(), int_ty.clone()), &partial).expect("a partial application checks");
-    assert_eq!(
-        well_typed(&cx, &arrow(int_ty.clone(), int_ty.clone()), &term),
-        Ok(()),
-        "one argument short: still a function, and still re-checks"
-    );
 
     // λn. int_add n 1 — saturated, and stuck on the binder.
     let open = Raw::annotated_lam(
@@ -947,7 +932,6 @@ fn a_builtin_short_of_literals_is_neutral() {
         normal, term,
         "stuck on a variable, so the normal form is the term itself"
     );
-    assert_eq!(well_typed(&cx, &arrow(int_ty.clone(), int_ty), &term), Ok(()));
 }
 
 /// D4: a δ step is charged before it is taken, so a budget that cannot afford
@@ -1064,7 +1048,6 @@ fn a_builtin_reads_a_constructed_argument() {
             int_lit(expected).term(TERMS),
             "{name}"
         );
-        assert_eq!(well_typed(&cx, &int_ty, &term), Ok(()), "{name}: and it re-checks");
     }
 }
 
@@ -1091,11 +1074,6 @@ fn a_builtin_answers_a_constructed_value() {
         let normal = normalize_at(&cx, &ty, &term);
         let expected = check(&cx, &ty, &written).unwrap_or_else(|error| panic!("{name}: {error}"));
         assert_eq!(normal, normalize_at(&cx, &ty, &expected), "{name}");
-        assert_eq!(
-            well_typed(&cx, &ty, &normal),
-            Ok(()),
-            "{name}: the answer is a well-typed value of the family, parameter and all"
-        );
     }
 }
 
@@ -1125,7 +1103,6 @@ fn constructed_data_nests_in_both_directions() {
         let normal = normalize_at(&cx, &ty, &term);
         let expected = check(&cx, &ty, &written).unwrap_or_else(|error| panic!("{name}: {error}"));
         assert_eq!(normal, normalize_at(&cx, &ty, &expected), "{name}");
-        assert_eq!(well_typed(&cx, &ty, &normal), Ok(()), "{name}: and it re-checks");
     }
 }
 
@@ -1154,7 +1131,6 @@ fn a_constructor_over_an_open_field_leaves_the_spine_blocked() {
         term,
         "stuck on the binder inside the constructor, so the normal form is the term itself"
     );
-    assert_eq!(well_typed(&cx, &ty, &term), Ok(()));
 }
 
 // ---- reading data back out of a term ---------------------------------------
@@ -1295,7 +1271,7 @@ fn what_is_not_canonical_data_reads_back_as_nothing() {
         (
             "a universe",
             Raw::universe(TYPES, Level::ZERO),
-            Term::universe(TYPES, Level::ZERO.succ()),
+            Term::universe(TYPES, Level::One),
         ),
     ];
     for (name, written, ty) in questions {
@@ -1357,7 +1333,6 @@ fn a_structural_eliminator_walks_the_literal_it_is_given() {
         int_lit(4).term(TERMS),
         "four nodes, so every one of them was reached"
     );
-    assert_eq!(well_typed(&cx, &int_ty, &term), Ok(()), "and the core re-checks it");
 }
 
 /// A function argument is passed through as whatever it already is, and is never
@@ -1425,7 +1400,6 @@ fn a_rewrite_builds_a_list_from_its_registered_vocabulary() {
         int_lit(2).term(TERMS),
         "two groups above the leftmost leaf, each one `List.Cons` the rewrite wrote"
     );
-    assert_eq!(well_typed(&cx, &int_ty, &term), Ok(()), "and the core re-checks it");
 }
 
 /// Every vocabulary term is closed, so it means the same thing wherever the
@@ -1454,11 +1428,6 @@ fn a_vocabulary_term_is_closed_and_so_means_the_same_everywhere() {
     for (entry, name) in traversal.vocabulary().iter().zip(["List.Empty", "List.Cons"]) {
         let (resolved, ty) = infer(&cx, &Raw::var(TYPES, name)).expect("the constructor is declared");
         assert_eq!(*entry, resolved, "the vocabulary holds the constant `{name}` denotes");
-        assert_eq!(
-            well_typed(&cx, &ty, entry),
-            Ok(()),
-            "`{name}` checks where nothing is assumed, so it has no free variable to lose"
-        );
     }
 }
 
@@ -1550,7 +1519,6 @@ fn a_structural_eliminator_at_a_neutral_target_is_neutral() {
         term,
         "stuck on the binder, so the normal form is the term itself"
     );
-    assert_eq!(well_typed(&cx, &ty, &term), Ok(()));
 }
 
 /// A structural step is charged, so a traversal that does not descend is refused

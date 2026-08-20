@@ -37,21 +37,15 @@ fn chord() -> RawData {
         vec![
             family(
                 "Symbol",
-                Vec::new(),
                 vec![
-                    constructor("GSeven", Vec::new(), Vec::new()),
-                    constructor("CMajor", Vec::new(), Vec::new()),
-                ],
-            ),
+                    constructor("GSeven", Vec::new()),
+                    constructor("CMajor", Vec::new()),
+                ]),
             family(
                 "Chord",
-                Vec::new(),
                 vec![hidden_case(constructor(
                     "Named",
-                    vec![binder("symbol", var("Symbol"))],
-                    Vec::new(),
-                ))],
-            ),
+                    vec![binder("symbol", var("Symbol"))]))]),
         ],
     )
 }
@@ -205,9 +199,7 @@ fn a_private_family_hides_the_type_as_well_as_its_cases() {
         Vec::new(),
         vec![hidden_family(family(
             "Ledger",
-            Vec::new(),
-            vec![constructor("Empty", Vec::new(), Vec::new())],
-        ))],
+            vec![constructor("Empty", Vec::new())]))],
     );
     let cx = Cx::new().in_module(INSIDE);
     let group = declare(&cx, &declaration).expect("a private family is a declaration");
@@ -280,17 +272,13 @@ fn open_chord() -> RawData {
         vec![
             family(
                 "Symbol",
-                Vec::new(),
                 vec![
-                    constructor("GSeven", Vec::new(), Vec::new()),
-                    constructor("CMajor", Vec::new(), Vec::new()),
-                ],
-            ),
+                    constructor("GSeven", Vec::new()),
+                    constructor("CMajor", Vec::new()),
+                ]),
             family(
                 "Chord",
-                Vec::new(),
-                vec![constructor("Named", vec![binder("symbol", var("Symbol"))], Vec::new())],
-            ),
+                vec![constructor("Named", vec![binder("symbol", var("Symbol"))])]),
         ],
     )
 }

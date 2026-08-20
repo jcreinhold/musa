@@ -113,8 +113,8 @@ fn size(term: &Term) -> u32 {
         | Shape::Builtin(_)
         | Shape::Lit(_)
         | Shape::Numeral(_)
-        | Shape::Universe(_)
-        | Shape::Meta(_) => 0,
+        | Shape::Hole(_)
+        | Shape::Universe(_) => 0,
         Shape::Pi { domain, codomain, .. } => size(domain).saturating_add(size(codomain)),
         Shape::Lam { body, .. } => size(body),
         Shape::App { function, argument } => size(function).saturating_add(size(argument)),
@@ -122,18 +122,6 @@ fn size(term: &Term) -> u32 {
             .iter()
             .fold(0_u32, |total, field| total.saturating_add(size(&field.term))),
         Shape::Project { record, .. } => size(record),
-        Shape::Id { ty, left, right } => size(ty).saturating_add(size(left)).saturating_add(size(right)),
-        Shape::Refl(witness) => size(witness),
-        Shape::J {
-            ty,
-            from,
-            motive,
-            base,
-            to,
-            proof,
-        } => [from, motive, base, to, proof]
-            .iter()
-            .fold(size(ty), |total, part| total.saturating_add(size(part))),
         Shape::Let { ty, value, body, .. } => size(ty).saturating_add(size(value)).saturating_add(size(body)),
     };
     inner.saturating_add(1)

@@ -469,11 +469,6 @@ impl Found {
         }
     }
 
-    /// Whether finishing this needs a level the caller has to create.
-    pub(crate) const fn is_recursor(&self) -> bool {
-        matches!(*self, Self::Recursor(_, _))
-    }
-
     /// The module this name is private to, when `viewer` may not name it.
     ///
     /// Three rules and each earns its place. A family answers for itself. A

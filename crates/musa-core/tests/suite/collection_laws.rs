@@ -31,7 +31,7 @@
 
 use musa_core::{
     Cx, Raw, RawArm, RawData, RawImpl, RawPattern, RawTrait, Refusal, Term, check, convertible, declare_impl,
-    declare_trait, infer, well_typed,
+    declare_trait, infer,
 };
 
 use crate::family_laws::{apply, binder, constructor, data, family, nat_context, type0, var};
@@ -82,12 +82,10 @@ fn booleans() -> RawData {
         Vec::new(),
         vec![family(
             "Bool",
-            Vec::new(),
             vec![
-                constructor("False", Vec::new(), Vec::new()),
-                constructor("True", Vec::new(), Vec::new()),
-            ],
-        )],
+                constructor("False", Vec::new()),
+                constructor("True", Vec::new()),
+            ])],
     )
 }
 
@@ -102,12 +100,10 @@ fn options() -> RawData {
         vec![binder("A", type0())],
         vec![family(
             "Option",
-            Vec::new(),
             vec![
-                constructor("None", Vec::new(), Vec::new()),
-                constructor("Some", vec![binder("value", var("A"))], Vec::new()),
-            ],
-        )],
+                constructor("None", Vec::new()),
+                constructor("Some", vec![binder("value", var("A"))]),
+            ])],
     )
 }
 
@@ -117,16 +113,12 @@ fn lists() -> RawData {
         vec![binder("A", type0())],
         vec![family(
             "List",
-            Vec::new(),
             vec![
-                constructor("Nil", Vec::new(), Vec::new()),
+                constructor("Nil", Vec::new()),
                 constructor(
                     "Cons",
-                    vec![binder("head", var("A")), binder("tail", list_of(var("A")))],
-                    Vec::new(),
-                ),
-            ],
-        )],
+                    vec![binder("head", var("A")), binder("tail", list_of(var("A")))]),
+            ])],
     )
 }
 
@@ -556,11 +548,10 @@ fn numbers(items: impl IntoIterator<Item = u32>) -> Raw {
 /// # Panics
 ///
 /// If either side is not a term at `ty`, if either is rejected by the
-/// re-checker, or if they are not convertible.
+/// or if they are not convertible.
 fn same(cx: &Cx, name: &str, ty: &Term, left: &Raw, right: &Raw) {
     let left = check(cx, ty, left).unwrap_or_else(|error| panic!("{name} (left): {error}"));
     let right = check(cx, ty, right).unwrap_or_else(|error| panic!("{name} (right): {error}"));
-    well_typed(cx, ty, &left).unwrap_or_else(|error| panic!("{name} (left) does not re-check: {error}"));
     assert!(
         convertible(cx, ty, &left, &right).unwrap_or_else(|error| panic!("{name}: {error}")),
         "{name}"

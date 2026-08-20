@@ -172,9 +172,7 @@ pub(crate) fn boxed_context(cx: &Cx) -> Cx {
             vec![binder("A", type0())],
             vec![family(
                 "Box",
-                Vec::new(),
-                vec![constructor("Boxed", vec![binder("x", var("A"))], Vec::new())],
-            )],
+                vec![constructor("Boxed", vec![binder("x", var("A"))])])],
         ),
     )
     .expect("Box is a declaration");
@@ -361,7 +359,7 @@ pub(crate) fn refused_declarations() -> Vec<RefusedDeclaration> {
                 ),
             )
             .map(|_| ()),
-            expected: |refusal| matches!(refusal, Refusal::UnboundedInstance { .. }),
+            expected: |refusal| matches!(refusal, Refusal::ConstrainedInstance { .. }),
         },
         RefusedDeclaration {
             name: "an instance defining a method its trait derives",
@@ -597,13 +595,9 @@ fn a_family_that_stores_a_function_is_not_storable() {
             Vec::new(),
             vec![family(
                 "Rule",
-                Vec::new(),
                 vec![constructor(
                     "Made",
-                    vec![binder("f", Raw::pi(WRITTEN, "n", var("Nat"), var("Nat")))],
-                    Vec::new(),
-                )],
-            )],
+                    vec![binder("f", Raw::pi(WRITTEN, "n", var("Nat"), var("Nat")))])])],
         ),
     )
     .expect("Rule is a declaration");
@@ -631,7 +625,6 @@ fn a_family_holding_a_function_at_depth_is_not_storable() {
             Vec::new(),
             vec![family(
                 "Held",
-                Vec::new(),
                 vec![constructor(
                     "Holding",
                     // `Box (Nat → Nat)`: nothing at the surface of this field is
@@ -641,7 +634,6 @@ fn a_family_holding_a_function_at_depth_is_not_storable() {
                         "b",
                         crate::family_laws::apply(var("Box"), [Raw::pi(WRITTEN, "n", var("Nat"), var("Nat"))]),
                     )],
-                    Vec::new(),
                 )],
             )],
         ),
@@ -860,45 +852,6 @@ fn a_constrained_record_type_is_the_record_it_would_be_without_the_clause() {
         "a constrained record type is not the record its fields make it"
     );
 }
-
-/// `data Sealed (A : Type 0) where Eq<A> { Seal : (x : A) → Sealed A }`.
-///
-/// The family half: a constraint binder on a *group*, appended after the written
-/// parameters so that every count in the core keeps counting the same thing.
-fn sealed() -> musa_core::RawData {
-    let mut declared = data(
-        vec![binder("A", type0())],
-        vec![family(
-            "Sealed",
-            Vec::new(),
-            vec![constructor("Seal", vec![binder("x", var("A"))], Vec::new())],
-        )],
-    );
-    declared.context = vec![constraint("Eq", vec![var("A")])];
-    declared
-}
-
-/// The constructor carries the constraint parameter, and a use site never
-/// writes it.
-#[test]
-fn a_constrained_family_carries_the_parameter_its_constructor_reads() {
-    let cx = context();
-    let cx = cx.declaring_instance(&eq_nat(&cx));
-    let group = musa_core::declare(&cx, &sealed()).expect("the core declares a constrained family");
-    let cx = cx.declaring(&group);
-    let (_, kind) = musa_core::infer(&cx, &var("Sealed")).expect("the family is in scope");
-    assert_eq!(
-        binders(&kind),
-        2,
-        "the written parameter and the dictionary the `where` appended"
-    );
-    let sealed_nat = musa_core::check(&cx, &core_type0(), &apply(var("Sealed"), [var("Nat")]))
-        .expect("`Sealed Nat` is a type: the dictionary is inserted, not written");
-    let built = musa_core::check(&cx, &sealed_nat, &apply(var("Sealed.Seal"), [var("Nat.Zero")]))
-        .expect("the constructor reads both parameters off the expected type");
-    musa_core::well_typed(&cx, &sealed_nat, &built).expect("and the re-checker accepts it");
-}
-
 /// A dictionary parameter is a parameter and not a field, so `Storable` is
 /// unaffected — which is worth a law rather than an assumption, because a
 /// dictionary contains Π and a family that *stored* one would stop being

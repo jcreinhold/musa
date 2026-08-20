@@ -29,7 +29,7 @@ use crate::list::List;
 use crate::origin::Origin;
 use crate::program::{Defined, Program};
 use crate::quote::Depth;
-use crate::term::{DbLevel, Index, Name, Term};
+use crate::term::{DbLevel, Name, Term};
 use crate::value::{Env, Value};
 use crate::visibility::ModuleId;
 
@@ -459,17 +459,6 @@ impl Cx {
     pub(crate) const fn binder_types(&self) -> &List<Arc<Value>> {
         &self.types
     }
-
-    /// The type binder `index` was introduced at, counting outward from here.
-    ///
-    /// The other question about the same list, and it earns its own operation
-    /// rather than making a caller index [`Self::binder_types`]: a type checker
-    /// walking a term asks about exactly one binder at a time, and `None` here
-    /// is the unbound variable it must report.
-    pub(crate) fn binder_type(&self, index: Index) -> Option<&Arc<Value>> {
-        self.types.get(index.0)
-    }
-
     pub(crate) const fn quoting_depth(&self) -> Depth {
         Depth(self.depth)
     }

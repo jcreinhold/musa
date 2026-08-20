@@ -55,26 +55,11 @@ enum At<'a> {
     Term(&'a Value),
 }
 
-impl<'a> At<'a> {
+impl At<'_> {
     fn quote(self, meter: &mut Meter, depth: u32, value: &Value) -> Result<Term, CoreError> {
         match self {
             Self::Type => quote_type(meter, Depth(depth), Mode::Keep, value),
             Self::Term(ty) => quote(meter, Depth(depth), Mode::Keep, ty, value),
-        }
-    }
-
-    fn owned(self) -> Option<Value> {
-        match self {
-            Self::Type => None,
-            Self::Term(ty) => Some(ty.clone()),
-        }
-    }
-
-    /// The type the two sides inhabit, or `None` when they are types.
-    const fn subject(self) -> Option<&'a Value> {
-        match self {
-            Self::Type => None,
-            Self::Term(ty) => Some(ty),
         }
     }
 }

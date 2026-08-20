@@ -535,8 +535,7 @@ fn canonical(meter: &mut Meter, value: &Value) -> Result<Option<Datum>, CoreErro
             | Form::Pi { .. }
             | Form::Lam(_)
             | Form::RecordType(_)
-            | Form::Record(_)
-            | Form::Lit(_) => Ok(None),
+            | Form::Record(_) => Ok(None),
         }
     })
 }

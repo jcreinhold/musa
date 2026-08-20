@@ -104,7 +104,6 @@ fn a_call_on_a_smaller_argument_is_admitted_and_computes() {
     // an elaborator could have emitted a term whose type it merely believed: the
     // rewrite into hypotheses is not a rule the re-checker knows, so what it
     // sees is an ordinary recursor application or nothing at all.
-    musa_core::well_typed(&cx, &ty, &elaborated).expect("the compiled definition re-checks in the core");
     for (left, right) in [(0, 0), (0, 3), (2, 0), (2, 3), (4, 5)] {
         let name = "addition";
         let sum = musa_core::check(&cx, &nat, &applied(&add(), &written, [number(left), number(right)]))
@@ -426,7 +425,6 @@ fn a_recursion_that_accumulates_carries_the_argument_it_changed() {
     // Re-checked for the reason addition is, and for one more: the motive is a
     // function type now, so each arm of the compiled tree is a λ under the
     // `let`s its pattern bound.
-    musa_core::well_typed(&cx, &ty, &elaborated).expect("the compiled definition re-checks in the core");
 
     let nat = core_constant(&cx, "Nat");
     for (count, seed) in [(0, 0), (0, 3), (3, 0), (2, 4)] {

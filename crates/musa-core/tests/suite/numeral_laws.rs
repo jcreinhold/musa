@@ -82,7 +82,7 @@ fn depth(term: &Term) -> u32 {
             ref codomain,
             ..
         } => deeper(domain).max(deeper(codomain)),
-        Shape::Lam { ref body, .. } | Shape::Refl(ref body) => deeper(body),
+        Shape::Lam { ref body, .. } => deeper(body),
         Shape::Project { ref record, .. } => deeper(record),
         Shape::Let {
             ref ty,
@@ -90,21 +90,6 @@ fn depth(term: &Term) -> u32 {
             ref body,
             ..
         } => deeper(ty).max(deeper(value)).max(deeper(body)),
-        Shape::Id {
-            ref ty,
-            ref left,
-            ref right,
-        } => deeper(ty).max(deeper(left)).max(deeper(right)),
-        Shape::J {
-            ref ty,
-            ref from,
-            ref motive,
-            ref base,
-            ref to,
-            ref proof,
-        } => [from, motive, base, to, proof]
-            .into_iter()
-            .fold(deeper(ty), |so_far, part| so_far.max(deeper(part))),
         Shape::RecordType(ref fields) | Shape::Record(ref fields) => {
             fields.iter().fold(1, |so_far, field| so_far.max(deeper(&field.term)))
         }
@@ -116,7 +101,7 @@ fn depth(term: &Term) -> u32 {
         | Shape::Lit(_)
         | Shape::Numeral(_)
         | Shape::Builtin(_)
-        | Shape::Meta(_)
+        | Shape::Hole(_)
         | Shape::Universe(_) => 1,
     }
 }
@@ -353,18 +338,14 @@ fn any_family_of_the_counting_shape_takes_a_numeral() {
         Vec::new(),
         vec![crate::family_laws::family(
             "Depth",
-            Vec::new(),
             vec![
                 // Declared step-first, so that the recognition cannot be reading
                 // constructor *order* instead of constructor shape.
                 crate::family_laws::constructor(
                     "Deeper",
-                    vec![crate::family_laws::binder("under", var("Depth"))],
-                    Vec::new(),
-                ),
-                crate::family_laws::constructor("Surface", Vec::new(), Vec::new()),
-            ],
-        )],
+                    vec![crate::family_laws::binder("under", var("Depth"))]),
+                crate::family_laws::constructor("Surface", Vec::new()),
+            ])],
     );
     let group = musa_core::declare(&cx, &declaration).expect("Depth is a declaration");
     let cx = cx.declaring(&group);

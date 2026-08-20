@@ -142,7 +142,7 @@ fn exhaustion_is_monotone_in_the_budget() {
 #[test]
 fn a_wide_term_is_not_a_deep_one() {
     let names: Vec<String> = (0..300).map(|field| format!("f{field}")).collect();
-    let one_up = Term::universe(HERE, Level::ZERO.succ());
+    let one_up = Term::universe(HERE, Level::One);
     let type0 = Term::universe(HERE, Level::ZERO);
     let wide = Term::record_type(HERE, names.iter().map(|name| (name.as_str(), one_up.clone())));
 
@@ -275,7 +275,7 @@ fn nested_lets(depth: u32) -> Term {
 /// is the chain §4.1's frame ceiling is measured on.
 fn nested_raw_lets(depth: u32) -> Raw {
     let type0 = Raw::universe(HERE, Level::ZERO);
-    let type1 = Raw::universe(HERE, Level::ZERO.succ());
+    let type1 = Raw::universe(HERE, Level::One);
     (0..depth).fold(type0, |value, _| {
         Raw::annotated_bind(HERE, "z", type1.clone(), value, Raw::var(HERE, "z"))
     })

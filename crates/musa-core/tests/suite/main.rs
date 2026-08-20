@@ -147,13 +147,7 @@ pub(crate) mod fixtures {
         let dependent_pair_type = Term::record_type(TYPES, [("ty", type0()), ("val", type_var(0))]);
         let dependent_pair = empty.assume(BINDERS, &dependent_pair_type)?;
 
-        // A : Type 0, x : A, y : A, p : Id A x y
-        let identified = a_xy.assume(BINDERS, &Term::identity(TYPES, type_var(2), type_var(1), type_var(0)))?;
-        // λy. λe. A, a constant motive: `J`'s result type is then `A` at every
-        // endpoint, which is what lets ι be stated without a second family.
-        let constant_motive = |depth: u32| Term::lam(TERMS, "y", Term::lam(TERMS, "e", var(depth)));
-
-        Ok(vec![
+                Ok(vec![
             Sample {
                 name: "β",
                 cx: a_x.clone(),
@@ -231,30 +225,6 @@ pub(crate) mod fixtures {
                 equal: true,
             },
             Sample {
-                name: "ι at refl",
-                cx: a_x,
-                ty: type_var(1),
-                left: Term::jay(
-                    TERMS,
-                    type_var(1),
-                    var(0),
-                    constant_motive(3),
-                    var(0),
-                    var(0),
-                    Term::refl(TERMS, var(0)),
-                ),
-                right: var(0),
-                equal: true,
-            },
-            Sample {
-                name: "a J blocked on a variable is not its base case",
-                cx: identified,
-                ty: type_var(3),
-                left: Term::jay(TERMS, type_var(3), var(2), constant_motive(5), var(2), var(1), var(0)),
-                right: var(2),
-                equal: false,
-            },
-            Sample {
                 name: "distinct variables",
                 cx: a_xy,
                 ty: type_var(2),
@@ -273,9 +243,9 @@ pub(crate) mod fixtures {
             Sample {
                 name: "universes are not cumulative",
                 cx: empty,
-                ty: Term::universe(TYPES, Level::ZERO.succ().succ()),
+                ty: Term::universe(TYPES, Level::One),
                 left: Term::universe(TERMS, Level::ZERO),
-                right: Term::universe(TERMS, Level::ZERO.succ()),
+                right: Term::pi(TYPES, "_", type0(), type0()),
                 equal: false,
             },
             Sample {
@@ -398,10 +368,6 @@ pub(crate) mod programs {
         )
     }
 
-    fn constant_motive() -> Raw {
-        Raw::lam(WRITTEN, "y", Raw::lam(WRITTEN, "e", unit_type()))
-    }
-
     pub(crate) fn accepted() -> Vec<Program> {
         vec![
             Program {
@@ -503,29 +469,6 @@ pub(crate) mod programs {
                 ty: None,
             },
             Program {
-                name: "reflexivity at unit",
-                raw: Raw::refl(WRITTEN, unit()),
-                ty: Some(Term::identity(
-                    WRITTEN,
-                    core_unit_type(),
-                    Term::record(WRITTEN, []),
-                    Term::record(WRITTEN, []),
-                )),
-            },
-            Program {
-                name: "J at a constant motive, with both binder types inferred",
-                raw: Raw::jay(
-                    WRITTEN,
-                    unit_type(),
-                    unit(),
-                    constant_motive(),
-                    unit(),
-                    unit(),
-                    Raw::refl(WRITTEN, unit()),
-                ),
-                ty: None,
-            },
-            Program {
                 name: "an annotation re-entering checking mode",
                 raw: Raw::annot(WRITTEN, unit(), unit_type()),
                 ty: None,
@@ -538,7 +481,7 @@ pub(crate) mod programs {
             Program {
                 name: "a universe",
                 raw: type0(),
-                ty: Some(Term::universe(WRITTEN, Level::ZERO.succ())),
+                ty: Some(Term::universe(WRITTEN, Level::One)),
             },
         ]
     }

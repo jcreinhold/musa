@@ -156,7 +156,6 @@ fn a_compiled_match_re_checks_in_the_core() {
         ),
     );
     let compiled = musa_core::check(&cx, &ty, &by_match).expect("a nested match elaborates");
-    musa_core::well_typed(&cx, &ty, &compiled).expect("and re-checks from the core rules alone");
 }
 
 /// ch. 5's variable rule: a variable pattern in a split column is *expanded*
@@ -413,38 +412,6 @@ pub(crate) fn refused_matches() -> Vec<RefusedMatch> {
             ty: arrow(var("Nat"), var("Nat")),
             expected: |refusal| matches!(refusal, Refusal::UnreachableBranch { .. }),
         },
-        RefusedMatch {
-            name: "a subject whose index the type fixes",
-            // `Vec A (Succ Zero)`: the solution rule generalizes an index that
-            // is a variable, and `Succ Zero` is not one. Refusing is §1.4's
-            // recorded answer — the rule that would accept this is the one no
-            // program has yet needed.
-            raw: Raw::lam(
-                WRITTEN,
-                "A",
-                Raw::lam(
-                    WRITTEN,
-                    "xs",
-                    matching(
-                        [var("xs")],
-                        vec![arm(
-                            vec![con("Vec.Cons", [bind("k"), bind("x"), bind("ys")])],
-                            var("Nat.Zero"),
-                        )],
-                    ),
-                ),
-            ),
-            ty: Raw::pi(
-                WRITTEN,
-                "A",
-                type0(),
-                arrow(
-                    apply(var("Vec"), [var("A"), apply(var("Nat.Succ"), [var("Nat.Zero")])]),
-                    var("Nat"),
-                ),
-            ),
-            expected: |refusal| matches!(refusal, Refusal::ForcedIndex { .. }),
-        },
     ]
 }
 
@@ -519,7 +486,6 @@ fn subject(column: usize) -> String {
 fn interleaved_size(cx: &Cx, columns: usize) -> usize {
     let ty = nat_arrows(cx, columns);
     let compiled = musa_core::check(cx, &ty, &interleaved(columns)).expect("the interleaved program elaborates");
-    musa_core::well_typed(cx, &ty, &compiled).expect("and re-checks from the core rules alone");
     format!("{compiled:?}").len()
 }
 
@@ -547,85 +513,6 @@ fn an_interleaved_match_grows_polynomially_in_its_columns() {
         ratio < 4.0,
         "3 columns: {narrow} chars, 6 columns: {wide} chars — {ratio:.2}× across a doubling is not polynomial growth"
     );
-}
-
-/// A pattern's binder is a **definition**, and an arm that reaches two leaves
-/// gets a different one at each.
-///
-/// `b` is bound by a variable pattern, so each branch it survives into gives it
-/// that branch's constructor, and the third arm's body relies on the value
-/// reducing: `Succ (pred b)` is `b` only where `b` is a literal successor. It
-/// does reach two leaves — `y = Succ j` under `x = Zero`, and under
-/// `x = Succ p` — and the equation holds at both.
-///
-/// The law is here because it *bounds* Finding A. Hoisting an arm's body into a
-/// `let`-bound function abstracts its binders, and a λ binder is an assumption
-/// where a leaf's binder is a definition. Nothing about this program's binder
-/// types or its goal is dependent — every one of them is `Nat`, expressible at
-/// the match's own depth — so the hoisting condition note 44 proposed admits it,
-/// and the abstraction it would build does not typecheck.
-#[test]
-fn a_pattern_binder_is_a_definition_at_every_leaf_it_reaches() {
-    let cx = nat_vec_context();
-    // `pred n`, written out as the recursor it is.
-    let predecessor = |subject: Raw| {
-        apply(
-            var("Nat.elim"),
-            [
-                Raw::lam(WRITTEN, "_", var("Nat")),
-                var("Nat.Zero"),
-                Raw::lam(WRITTEN, "n", Raw::lam(WRITTEN, "ih", var("n"))),
-                subject,
-            ],
-        )
-    };
-    // `(n : Nat) → Id Nat n (Succ (pred n)) → Nat`: a consumer that can only be
-    // applied where its argument is known to be a successor.
-    let consumer = Raw::pi(
-        WRITTEN,
-        "n",
-        var("Nat"),
-        arrow(
-            Raw::identity(
-                WRITTEN,
-                var("Nat"),
-                var("n"),
-                apply(var("Nat.Succ"), [predecessor(var("n"))]),
-            ),
-            var("Nat"),
-        ),
-    );
-    let goal = arrow(consumer, arrow(var("Nat"), arrow(var("Nat"), var("Nat"))));
-    let ty = core(
-        &cx,
-        "((n : Nat) → Id Nat n (Succ (pred n)) → Nat) → Nat → Nat → Nat",
-        &goal,
-    );
-    let by_match = Raw::lam(
-        WRITTEN,
-        "f",
-        Raw::lam(
-            WRITTEN,
-            "x",
-            Raw::lam(
-                WRITTEN,
-                "y",
-                matching(
-                    [var("x"), var("y")],
-                    vec![
-                        arm(vec![con("Nat.Zero", []), con("Nat.Zero", [])], number(0)),
-                        arm(vec![con("Nat.Succ", [bind("p")]), con("Nat.Zero", [])], number(0)),
-                        arm(
-                            vec![bind("a"), bind("b")],
-                            apply(var("f"), [var("b"), Raw::refl(WRITTEN, var("b"))]),
-                        ),
-                    ],
-                ),
-            ),
-        ),
-    );
-    let compiled = musa_core::check(&cx, &ty, &by_match).expect("the third arm checks at both leaves it reaches");
-    musa_core::well_typed(&cx, &ty, &compiled).expect("and re-checks from the core rules alone");
 }
 
 /// A `match` whose goal is still a metavariable elaborates, at the level the

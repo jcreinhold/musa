@@ -34,12 +34,10 @@ pub(crate) fn tying_context() -> Cx {
             Vec::new(),
             vec![family(
                 "Tying",
-                Vec::new(),
                 vec![
-                    constructor("Untied", Vec::new(), Vec::new()),
-                    constructor("TiedOn", vec![binder("n", var("Nat"))], Vec::new()),
-                ],
-            )],
+                    constructor("Untied", Vec::new()),
+                    constructor("TiedOn", vec![binder("n", var("Nat"))]),
+                ])],
         ),
     )
     .expect("Tying is a declaration");
@@ -50,9 +48,7 @@ pub(crate) fn tying_context() -> Cx {
             Vec::new(),
             vec![family(
                 "Slur",
-                Vec::new(),
-                vec![constructor("Untied", Vec::new(), Vec::new())],
-            )],
+                vec![constructor("Untied", Vec::new())])],
         ),
     )
     .expect("Slur is a declaration");
@@ -378,7 +374,7 @@ pub(crate) fn refused_records() -> Vec<RefusedRecord> {
         RefusedRecord {
             name: "a record type declaring one field twice",
             raw: Raw::record_type(WRITTEN, [("a", var("Nat")), ("a", var("Tying"))]),
-            ty: Raw::universe(WRITTEN, musa_core::Level::ZERO.succ()),
+            ty: Raw::universe(WRITTEN, musa_core::Level::One),
             expected: |refusal| matches!(refusal, Refusal::DuplicateField { .. }),
         },
         RefusedRecord {

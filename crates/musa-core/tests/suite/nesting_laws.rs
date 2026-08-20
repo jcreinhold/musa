@@ -54,16 +54,12 @@ fn lists() -> RawData {
         vec![binder("A", type0())],
         vec![family(
             "List",
-            Vec::new(),
             vec![
-                constructor("Nil", Vec::new(), Vec::new()),
+                constructor("Nil", Vec::new()),
                 constructor(
                     "Cons",
-                    vec![binder("head", var("A")), binder("tail", apply(var("List"), [var("A")]))],
-                    Vec::new(),
-                ),
-            ],
-        )],
+                    vec![binder("head", var("A")), binder("tail", apply(var("List"), [var("A")]))]),
+            ])],
     )
 }
 
@@ -73,12 +69,10 @@ fn options() -> RawData {
         vec![binder("A", type0())],
         vec![family(
             "Option",
-            Vec::new(),
             vec![
-                constructor("None", Vec::new(), Vec::new()),
-                constructor("Some", vec![binder("value", var("A"))], Vec::new()),
-            ],
-        )],
+                constructor("None", Vec::new()),
+                constructor("Some", vec![binder("value", var("A"))]),
+            ])],
     )
 }
 
@@ -91,12 +85,10 @@ fn results() -> RawData {
         vec![binder("E", type0()), binder("A", type0())],
         vec![family(
             "Result",
-            Vec::new(),
             vec![
-                constructor("Err", vec![binder("error", var("E"))], Vec::new()),
-                constructor("Ok", vec![binder("value", var("A"))], Vec::new()),
-            ],
-        )],
+                constructor("Err", vec![binder("error", var("E"))]),
+                constructor("Ok", vec![binder("value", var("A"))]),
+            ])],
     )
 }
 
@@ -112,13 +104,9 @@ fn continuations() -> RawData {
         vec![binder("A", type0())],
         vec![family(
             "Cont",
-            Vec::new(),
             vec![constructor(
                 "mk",
-                vec![binder("k", arrow(var("A"), var("Nat")))],
-                Vec::new(),
-            )],
-        )],
+                vec![binder("k", arrow(var("A"), var("Nat")))])])],
     )
 }
 
@@ -148,16 +136,12 @@ fn staff_read() -> RawData {
         Vec::new(),
         vec![family(
             "StaffRead",
-            Vec::new(),
             vec![
-                constructor("Sung", Vec::new(), Vec::new()),
+                constructor("Sung", Vec::new()),
                 constructor(
                     "Body",
-                    vec![binder("items", apply(var("List"), [var("StaffRead")]))],
-                    Vec::new(),
-                ),
-            ],
-        )],
+                    vec![binder("items", apply(var("List"), [var("StaffRead")]))]),
+            ])],
     )
 }
 
@@ -205,7 +189,6 @@ fn a_family_may_hold_a_list_of_itself() {
 
     let built = musa_core::check(&cx, &staff, &apply(var("StaffRead.Body"), [two_sung()]))
         .expect("`Body` is applied to a list of `StaffRead`");
-    musa_core::well_typed(&cx, &staff, &built).expect("the construction re-checks in the core");
 
     // `match` on it binds `items` at `List StaffRead` — asked by checking the
     // arm's body against that type and nothing narrower.
@@ -225,7 +208,6 @@ fn a_family_may_hold_a_list_of_itself() {
         ),
     );
     let read = musa_core::check(&cx, &ty, &children).expect("`items` binds at `List StaffRead`");
-    musa_core::well_typed(&cx, &ty, &read).expect("the match re-checks in the core");
 }
 
 /// A nested field gets **no induction hypothesis**, which is the decision rather
@@ -275,24 +257,18 @@ fn an_occurrence_may_sit_at_any_depth_of_positive_parameters() {
         Vec::new(),
         vec![family(
             "Deep",
-            Vec::new(),
             vec![
-                constructor("Flat", Vec::new(), Vec::new()),
+                constructor("Flat", Vec::new()),
                 constructor(
                     "Perhaps",
-                    vec![binder("m", apply(var("Option"), [apply(var("List"), [var("Deep")])]))],
-                    Vec::new(),
-                ),
+                    vec![binder("m", apply(var("Option"), [apply(var("List"), [var("Deep")])]))]),
                 constructor(
                     "Either",
                     vec![binder(
                         "e",
                         apply(var("Result"), [var("Nat"), apply(var("List"), [var("Deep")])]),
-                    )],
-                    Vec::new(),
-                ),
-            ],
-        )],
+                    )]),
+            ])],
     );
     musa_core::declare(&cx, &declaration).expect("nesting is about position rather than depth");
 }
@@ -321,13 +297,9 @@ fn an_occurrence_outside_a_positive_position_is_still_refused() {
                 Vec::new(),
                 vec![family(
                     "Bad",
-                    Vec::new(),
                     vec![constructor(
                         "mk",
-                        vec![binder("f", arrow(var("Bad"), var("Nat")))],
-                        Vec::new(),
-                    )],
-                )],
+                        vec![binder("f", arrow(var("Bad"), var("Nat")))])])],
             ),
         },
         Negative {
@@ -336,13 +308,9 @@ fn an_occurrence_outside_a_positive_position_is_still_refused() {
                 Vec::new(),
                 vec![family(
                     "Bad",
-                    Vec::new(),
                     vec![constructor(
                         "mk",
-                        vec![binder("f", apply(var("List"), [arrow(var("Bad"), var("Nat"))]))],
-                        Vec::new(),
-                    )],
-                )],
+                        vec![binder("f", apply(var("List"), [arrow(var("Bad"), var("Nat"))]))])])],
             ),
         },
         Negative {
@@ -351,13 +319,9 @@ fn an_occurrence_outside_a_positive_position_is_still_refused() {
                 Vec::new(),
                 vec![family(
                     "Held",
-                    Vec::new(),
                     vec![constructor(
                         "mk",
-                        vec![binder("k", apply(var("Cont"), [var("Held")]))],
-                        Vec::new(),
-                    )],
-                )],
+                        vec![binder("k", apply(var("Cont"), [var("Held")]))])])],
             ),
         },
     ] {

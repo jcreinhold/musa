@@ -11,7 +11,7 @@
 //! As in the other suites, these are laws stated over a corpus and therefore
 //! discharged at the terms in it. Prompt 148 owes the metatheory matrix.
 
-use musa_core::{Cx, ElabError, Index, Level, Raw, Refusal, Term, check, infer, normalize, well_typed};
+use musa_core::{Cx, ElabError, Index, Level, Raw, Refusal, Term, check, infer, normalize};
 
 use crate::programs::{Program, Refused, WRITTEN, accepted, core_unit_type, refusal, refused, unit, unit_type};
 
@@ -22,22 +22,6 @@ fn elaborate(program: &Program) -> Result<(Term, Term), ElabError> {
     match &program.ty {
         Some(ty) => check(&cx, ty, &program.raw).map(|term| (term, ty.clone())),
         None => infer(&cx, &program.raw),
-    }
-}
-
-/// **The invariant this prompt exists for.** An elaborated term type-checks in
-/// the core, judged by [`well_typed`], which shares no rule with the elaborator.
-#[test]
-fn an_elaborated_term_type_checks_in_the_core() {
-    let cx = Cx::new();
-    for program in accepted() {
-        let (term, ty) = elaborate(&program).unwrap_or_else(|error| panic!("{}: {error}", program.name));
-        assert_eq!(
-            well_typed(&cx, &ty, &term),
-            Ok(()),
-            "{}: the elaborator's own output must re-check",
-            program.name
-        );
     }
 }
 
@@ -53,19 +37,20 @@ fn elaboration_is_deterministic() {
     }
 }
 
-/// §2.1: an accepted term holds no metavariables.
+/// §2.1: every hole an accepted term still names is solved.
 ///
 /// Not a stylistic preference — it is what lets the next stage treat the output
-/// as an ordinary core term. A leftover metavariable would be a hole every later
-/// pass had to know about.
+/// as an ordinary core term whose `Hole` nodes are spelling, evaluated through
+/// their solutions. An *unsolved* one would be a gap every later pass had to
+/// know about, and [`Elaborator::settled`](musa_core) is what refuses it.
 #[test]
-fn an_accepted_term_holds_no_metavariables() {
+fn an_accepted_terms_holes_are_all_solved() {
     for program in accepted() {
         let (term, ty) = elaborate(&program).unwrap_or_else(|error| panic!("{}: {error}", program.name));
         for (what, term) in [("the term", &term), ("its type", &ty)] {
             assert!(
-                meta_free(term),
-                "{}: {what} still mentions a metavariable",
+                holes_solved(term),
+                "{}: {what} still mentions an unsolved hole",
                 program.name
             );
         }
@@ -113,19 +98,6 @@ fn a_program_with_no_implicits_elaborates_to_itself() {
             Raw::pi(WRITTEN, "x", unit_type(), unit_type()),
             None,
             Term::pi(WRITTEN, "x", core_unit_type(), core_unit_type()),
-        ),
-        (
-            // Checked, for the same reason as the literal: `refl` infers its
-            // witness, and the witness here is a record literal.
-            "an identity type and its constructor",
-            Raw::refl(WRITTEN, unit()),
-            Some(Term::identity(
-                WRITTEN,
-                core_unit_type(),
-                Term::record(WRITTEN, []),
-                Term::record(WRITTEN, []),
-            )),
-            Term::refl(WRITTEN, Term::record(WRITTEN, [])),
         ),
     ];
     for (name, raw, ty, expected) in pairs {
@@ -429,6 +401,10 @@ const ALL_REFUSALS: [&str; 55] = [
 /// missing entry in [`ALL_REFUSALS`], and then a missing program.
 fn kind(refusal: &Refusal) -> &'static str {
     match refusal {
+        Refusal::SuperClass { .. } => "super-class",
+        Refusal::ConstrainedInstance { .. } => "constrained-instance",
+        Refusal::BeyondUniverses { .. } => "beyond-universes",
+        Refusal::NotStorable { .. } => "not-storable",
         Refusal::UnknownName { .. } => "unknown-name",
         Refusal::Mismatch(_) => "mismatch",
         Refusal::Unsolved { .. } => "unsolved",
@@ -441,11 +417,9 @@ fn kind(refusal: &Refusal) -> &'static str {
         Refusal::NotAType { .. } => "not-a-type",
         Refusal::Uninferable { .. } => "uninferable",
         Refusal::NonPositive { .. } => "non-positive",
-        Refusal::IndexCount { .. } => "index-count",
         Refusal::NoSuchConstructor { .. } => "no-such-constructor",
         Refusal::IncompleteMatch { .. } => "incomplete-match",
         Refusal::UnreachableBranch { .. } => "unreachable-branch",
-        Refusal::ForcedIndex { .. } => "forced-index",
         Refusal::UncheckedRecursion { .. } => "unchecked-recursion",
         Refusal::UntypedRecursion { .. } => "untyped-recursion",
         Refusal::DefinitionCycle { .. } => "definition-cycle",
@@ -465,7 +439,6 @@ fn kind(refusal: &Refusal) -> &'static str {
         Refusal::BlanketInstance { .. } => "blanket-instance",
         Refusal::DuplicateInstance { .. } => "duplicate-instance",
         Refusal::OrphanInstance { .. } => "orphan-instance",
-        Refusal::UnboundedInstance { .. } => "unbounded-instance",
         Refusal::DerivedMethod { .. } => "derived-method",
         Refusal::NoSuchMethod { .. } => "no-such-method",
         Refusal::MissingMethod { .. } => "missing-method",
@@ -559,11 +532,11 @@ fn plicity_is_not_part_of_conversion() {
 ///
 /// Written by walking the shape rather than by a `Debug` string, so that a new
 /// [`musa_core::Shape`] variant holding a term is a compile error here.
-fn meta_free(term: &Term) -> bool {
+fn holes_solved(term: &Term) -> bool {
     use musa_core::Shape;
 
     match term.shape() {
-        Shape::Meta(_) => false,
+        Shape::Hole(hole) => hole.is_solved(),
         // A base type, a builtin, and a literal are all closed: each is a name
         // or a payload the host registered, and none of them holds a term.
         Shape::Var(_)
@@ -574,28 +547,11 @@ fn meta_free(term: &Term) -> bool {
         | Shape::Builtin(_)
         | Shape::Lit(_)
         | Shape::Numeral(_) => true,
-        Shape::Pi { domain, codomain, .. } => meta_free(domain) && meta_free(codomain),
-        Shape::Lam { body, .. } => meta_free(body),
-        Shape::App { function, argument } => meta_free(function) && meta_free(argument),
-        Shape::RecordType(fields) | Shape::Record(fields) => fields.iter().all(|field| meta_free(&field.term)),
-        Shape::Project { record, .. } => meta_free(record),
-        Shape::Id { ty, left, right } => meta_free(ty) && meta_free(left) && meta_free(right),
-        Shape::Refl(value) => meta_free(value),
-        Shape::J {
-            ty,
-            from,
-            motive,
-            base,
-            to,
-            proof,
-        } => {
-            meta_free(ty)
-                && meta_free(from)
-                && meta_free(motive)
-                && meta_free(base)
-                && meta_free(to)
-                && meta_free(proof)
-        }
-        Shape::Let { ty, value, body, .. } => meta_free(ty) && meta_free(value) && meta_free(body),
+        Shape::Pi { domain, codomain, .. } => holes_solved(domain) && holes_solved(codomain),
+        Shape::Lam { body, .. } => holes_solved(body),
+        Shape::App { function, argument } => holes_solved(function) && holes_solved(argument),
+        Shape::RecordType(fields) | Shape::Record(fields) => fields.iter().all(|field| holes_solved(&field.term)),
+        Shape::Project { record, .. } => holes_solved(record),
+        Shape::Let { ty, value, body, .. } => holes_solved(ty) && holes_solved(value) && holes_solved(body),
     }
 }

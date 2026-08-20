@@ -20,21 +20,19 @@ pub(crate) fn binder(name: &str, ty: Raw) -> RawBinder {
     }
 }
 
-pub(crate) fn constructor(name: &str, fields: Vec<RawBinder>, indices: Vec<Raw>) -> RawConstructor {
+pub(crate) fn constructor(name: &str, fields: Vec<RawBinder>) -> RawConstructor {
     RawConstructor {
         origin: WRITTEN,
         name: Arc::from(name),
         visibility: Visibility::Public,
         fields,
-        indices,
     }
 }
 
-pub(crate) fn family(name: &str, indices: Vec<RawBinder>, constructors: Vec<RawConstructor>) -> RawFamily {
+pub(crate) fn family(name: &str, constructors: Vec<RawConstructor>) -> RawFamily {
     RawFamily {
         name: Arc::from(name),
         visibility: Visibility::Public,
-        indices,
         constructors,
     }
 }
@@ -59,7 +57,6 @@ pub(crate) fn data(params: Vec<RawBinder>, families: Vec<RawFamily>) -> RawData 
     RawData {
         origin: WRITTEN,
         params,
-        context: Vec::new(),
         families,
     }
 }
@@ -84,12 +81,10 @@ pub(crate) fn nat() -> RawData {
         Vec::new(),
         vec![family(
             "Nat",
-            Vec::new(),
             vec![
-                constructor("Zero", Vec::new(), Vec::new()),
-                constructor("Succ", vec![binder("n", var("Nat"))], Vec::new()),
-            ],
-        )],
+                constructor("Zero", Vec::new()),
+                constructor("Succ", vec![binder("n", var("Nat"))]),
+            ])],
     )
 }
 
@@ -105,26 +100,22 @@ pub(crate) fn nat_context() -> (Cx, Arc<Group>) {
     (cx, group)
 }
 
-/// `data Vec (A : Type 0) : (n : Nat) → Type 0`, over an already-declared `Nat`.
+/// `data Vec (A : Type 0) { Nil, Cons(x: A, xs: Vec A) }` — the suite's
+/// parameterized family, a list under the shorter name.
 pub(crate) fn vec() -> RawData {
     data(
         vec![binder("A", type0())],
         vec![family(
             "Vec",
-            vec![binder("n", var("Nat"))],
             vec![
-                constructor("Nil", Vec::new(), vec![var("Nat.Zero")]),
+                constructor("Nil", Vec::new()),
                 constructor(
                     "Cons",
                     vec![
-                        binder("k", var("Nat")),
                         binder("x", var("A")),
-                        binder("xs", apply(var("Vec"), [var("A"), var("k")])),
-                    ],
-                    vec![apply(var("Nat.Succ"), [var("k")])],
-                ),
-            ],
-        )],
+                        binder("xs", apply(var("Vec"), [var("A")])),
+                    ]),
+            ])],
     )
 }
 
@@ -134,12 +125,10 @@ pub(crate) fn option() -> RawData {
         vec![binder("A", type0())],
         vec![family(
             "Option",
-            Vec::new(),
             vec![
-                constructor("None", Vec::new(), Vec::new()),
-                constructor("Some", vec![binder("x", var("A"))], Vec::new()),
-            ],
-        )],
+                constructor("None", Vec::new()),
+                constructor("Some", vec![binder("x", var("A"))]),
+            ])],
     )
 }
 
@@ -150,12 +139,10 @@ pub(crate) fn result() -> RawData {
         vec![binder("A", type0()), binder("E", type0())],
         vec![family(
             "Result",
-            Vec::new(),
             vec![
-                constructor("Ok", vec![binder("x", var("A"))], Vec::new()),
-                constructor("Err", vec![binder("e", var("E"))], Vec::new()),
-            ],
-        )],
+                constructor("Ok", vec![binder("x", var("A"))]),
+                constructor("Err", vec![binder("e", var("E"))]),
+            ])],
     )
 }
 
@@ -495,48 +482,42 @@ fn a_recursor_eliminates_into_a_large_motive() {
     let large = apply(
         var("Nat.elim"),
         [
-            Raw::lam(WRITTEN, "_", Raw::universe(WRITTEN, Level::ZERO.succ())),
+            Raw::lam(WRITTEN, "_", Raw::universe(WRITTEN, Level::ZERO)),
             type0(),
             Raw::lam(WRITTEN, "n", Raw::lam(WRITTEN, "ih", var("ih"))),
             var("Nat.Zero"),
         ],
     );
-    let found = musa_core::check(&cx, &Term::universe(WRITTEN, Level::ZERO.succ()), &large)
-        .expect("the motive's level is a metavariable the use site solves");
-    let expected = musa_core::check(&cx, &Term::universe(WRITTEN, Level::ZERO.succ()), &type0()).expect("Type 0");
+    let found = musa_core::check(&cx, &Term::universe(WRITTEN, Level::One), &large)
+        .expect("the motive's universe is the goal's, which the use site says");
+    let expected = musa_core::check(&cx, &Term::universe(WRITTEN, Level::One), &type0()).expect("Type 0");
     assert!(
-        musa_core::convertible(&cx, &Term::universe(WRITTEN, Level::ZERO.succ()), &found, &expected)
+        musa_core::convertible(&cx, &Term::universe(WRITTEN, Level::One), &found, &expected)
             .expect("both are terms at Type 1")
     );
 }
 
-/// §1.1: parameters are fixed across the declaration and indices vary per
-/// constructor, and a declaration over an earlier one may use its names.
+/// §1.1: parameters are fixed across the declaration, and a declaration over
+/// an earlier one may use its names.
 #[test]
-fn a_parameterized_indexed_family_declares_over_an_earlier_one() {
+fn a_parameterized_family_declares_over_an_earlier_one() {
     let (cx, _) = nat_context();
     let group = musa_core::declare(&cx, &vec()).expect("Vec is a declaration");
     let cx = cx.declaring(&group);
 
-    // `Vec.Cons A Zero x Nil : Vec A (Succ Zero)`, with `A := {}` and `x := {}`.
+    // `Vec.Cons A x Nil : Vec A`, with `A := {}` and `x := {}`.
     let unit_type = Raw::record_type(WRITTEN, []);
     let unit = Raw::record(WRITTEN, []);
-    let one = apply(var("Nat.Succ"), [var("Nat.Zero")]);
     let singleton = apply(
         var("Vec.Cons"),
         [
             unit_type.clone(),
-            var("Nat.Zero"),
             unit,
             apply(var("Vec.Nil"), [unit_type.clone()]),
         ],
     );
-    let ty = musa_core::check(
-        &cx,
-        &Term::universe(WRITTEN, Level::ZERO),
-        &apply(var("Vec"), [unit_type, one]),
-    )
-    .expect("`Vec {} (Succ Zero)` is a type");
+    let ty = musa_core::check(&cx, &Term::universe(WRITTEN, Level::ZERO), &apply(var("Vec"), [unit_type]))
+        .expect("`Vec {}` is a type");
     musa_core::check(&cx, &ty, &singleton).expect("a one-element vector inhabits it");
 }
 
@@ -553,17 +534,13 @@ fn mutual_families_share_one_declaration_and_one_set_of_motives() {
             vec![
                 family(
                     "Even",
-                    Vec::new(),
                     vec![
-                        constructor("Zero", Vec::new(), Vec::new()),
-                        constructor("FromOdd", vec![binder("o", var("Odd"))], Vec::new()),
-                    ],
-                ),
+                        constructor("Zero", Vec::new()),
+                        constructor("FromOdd", vec![binder("o", var("Odd"))]),
+                    ]),
                 family(
                     "Odd",
-                    Vec::new(),
-                    vec![constructor("FromEven", vec![binder("e", var("Even"))], Vec::new())],
-                ),
+                    vec![constructor("FromEven", vec![binder("e", var("Even"))])]),
             ],
         ),
     )
@@ -629,13 +606,9 @@ pub(crate) fn refused_declarations() -> Vec<RefusedData> {
                 Vec::new(),
                 vec![family(
                     "Bad",
-                    Vec::new(),
                     vec![constructor(
                         "mk",
-                        vec![binder("f", Raw::pi(WRITTEN, "_", var("Bad"), var("Bad")))],
-                        Vec::new(),
-                    )],
-                )],
+                        vec![binder("f", Raw::pi(WRITTEN, "_", var("Bad"), var("Bad")))])])],
             ),
         ),
         positive(
@@ -647,13 +620,9 @@ pub(crate) fn refused_declarations() -> Vec<RefusedData> {
                 Vec::new(),
                 vec![family(
                     "Inf",
-                    Vec::new(),
                     vec![constructor(
                         "sup",
-                        vec![binder("f", Raw::pi(WRITTEN, "_", var("Nat"), var("Inf")))],
-                        Vec::new(),
-                    )],
-                )],
+                        vec![binder("f", Raw::pi(WRITTEN, "_", var("Nat"), var("Inf")))])])],
             ),
         ),
         positive(
@@ -662,13 +631,9 @@ pub(crate) fn refused_declarations() -> Vec<RefusedData> {
                 Vec::new(),
                 vec![family(
                     "Boxed",
-                    Vec::new(),
                     vec![constructor(
                         "wrap",
-                        vec![binder("r", Raw::record_type(WRITTEN, [("here", var("Boxed"))]))],
-                        Vec::new(),
-                    )],
-                )],
+                        vec![binder("r", Raw::record_type(WRITTEN, [("here", var("Boxed"))]))])])],
             ),
         ),
         positive(
@@ -678,25 +643,17 @@ pub(crate) fn refused_declarations() -> Vec<RefusedData> {
                 vec![
                     family(
                         "Tree",
-                        Vec::new(),
                         vec![constructor(
                             "node",
-                            vec![binder("kids", apply(var("Forest"), [var("A")]))],
-                            Vec::new(),
-                        )],
-                    ),
+                            vec![binder("kids", apply(var("Forest"), [var("A")]))])]),
                     family(
                         "Forest",
-                        Vec::new(),
                         vec![constructor(
                             "nested",
                             vec![binder(
                                 "f",
                                 Raw::pi(WRITTEN, "_", apply(var("Tree"), [var("A")]), var("A")),
-                            )],
-                            Vec::new(),
-                        )],
-                    ),
+                            )])]),
                 ],
             ),
         ),
@@ -706,9 +663,7 @@ pub(crate) fn refused_declarations() -> Vec<RefusedData> {
                 vec![binder("p", var("Loop"))],
                 vec![family(
                     "Loop",
-                    Vec::new(),
-                    vec![constructor("mk", Vec::new(), Vec::new())],
-                )],
+                    vec![constructor("mk", Vec::new())])],
             ),
         ),
         RefusedData {
@@ -717,35 +672,12 @@ pub(crate) fn refused_declarations() -> Vec<RefusedData> {
                 Vec::new(),
                 vec![family(
                     "Tying",
-                    Vec::new(),
                     vec![
-                        constructor("Untied", Vec::new(), Vec::new()),
-                        constructor("Untied", vec![binder("n", var("Nat"))], Vec::new()),
-                    ],
-                )],
+                        constructor("Untied", Vec::new()),
+                        constructor("Untied", vec![binder("n", var("Nat"))]),
+                    ])],
             ),
             expected: |refusal: &Refusal| matches!(*refusal, Refusal::DuplicateCase { .. }),
-        },
-        RefusedData {
-            name: "an index the constructor did not choose",
-            declaration: data(
-                Vec::new(),
-                vec![family(
-                    "Counted",
-                    vec![binder("n", var("Nat"))],
-                    vec![constructor("mk", Vec::new(), Vec::new())],
-                )],
-            ),
-            expected: |refusal: &Refusal| {
-                matches!(
-                    *refusal,
-                    Refusal::IndexCount {
-                        expected: 1,
-                        found: 0,
-                        ..
-                    }
-                )
-            },
         },
         RefusedData {
             // §1.3: `private` on a case is what makes a *type* abstract, so a
@@ -757,12 +689,10 @@ pub(crate) fn refused_declarations() -> Vec<RefusedData> {
                 Vec::new(),
                 vec![family(
                     "Half",
-                    Vec::new(),
                     vec![
-                        constructor("Open", Vec::new(), Vec::new()),
-                        hidden_case(constructor("Shut", Vec::new(), Vec::new())),
-                    ],
-                )],
+                        constructor("Open", Vec::new()),
+                        hidden_case(constructor("Shut", Vec::new())),
+                    ])],
             ),
             expected: |refusal: &Refusal| matches!(*refusal, Refusal::MixedVisibility { .. }),
         },

@@ -85,7 +85,7 @@ use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
 use crate::term::{Field, Index, Name, Plicity, Shape, Term};
 use crate::unify::Unifier;
-use crate::value::{Closure, Env, Form, Neutral, Telescope, Value};
+use crate::value::{Env, Form, Neutral, Telescope, Value};
 
 /// A term and the type it was elaborated at.
 ///

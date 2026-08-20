@@ -22,7 +22,7 @@
 //! telescope that skipped them would produce a solution mentioning variables it
 //! never bound.
 
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, };
 
 use crate::budget::Meter;
 use crate::class::Key;
@@ -45,15 +45,6 @@ struct Binding {
     level: u32,
     /// Its type.
     ty: Arc<Value>,
-    /// Its type as a term, quoted the first time a metavariable telescope needs
-    /// it.
-    ///
-    /// Lazy rather than eager because most binders never appear in one, and
-    /// quoting a type at every binder would make elaboration pay for a
-    /// metavariable it may never create. Cached rather than recomputed because
-    /// each new metavariable would otherwise re-quote the whole context, which
-    /// is quadratic in a context that is only ever appended to.
-    ty_term: OnceLock<Term>,
 }
 
 /// What resolving a name found.
@@ -117,7 +108,6 @@ impl Scope {
                 name: None,
                 level: u32::try_from(level).unwrap_or(u32::MAX),
                 ty: Arc::clone(ty),
-                ty_term: OnceLock::new(),
             });
         }
         Self {
@@ -231,7 +221,6 @@ impl Scope {
             name,
             level: self.depth(),
             ty,
-            ty_term: OnceLock::new(),
         })
     }
 
@@ -268,57 +257,4 @@ impl Scope {
         quote_type(meter, Depth(self.depth()), crate::quote::Mode::Keep, value)
     }
 
-    /// Wrap `body` in one Π per binder in scope, outermost first.
-    ///
-    /// This is how a metavariable becomes **closed**: `?α` has type
-    /// `(x₀ : A₀) → … → (xₙ₋₁ : Aₙ₋₁) → T` and is written applied to every
-    /// binder, so its solution abstracts exactly the variables it is allowed to
-    /// mention and §2.1's scope condition is a property of the representation
-    /// rather than a check anyone performs.
-    ///
-    /// # Errors
-    ///
-    /// As [`quote_type`], from reading a binder's type back.
-    pub(crate) fn close(&self, meter: &mut Meter, origin: Origin, body: Term) -> Result<Term, CoreError> {
-        // Innermost first, and each Π is written *outside* the last, so walking
-        // the list in its own order builds the telescope in the right one.
-        let mut closed = body;
-        for binding in self.bindings.iter() {
-            let name = binding.name.clone().unwrap_or_else(|| Arc::from("_"));
-            closed = Term::pi(origin, name, binding.ty_term(meter)?, closed);
-        }
-        Ok(closed)
-    }
-
-    /// Apply `head` to every binder in scope, outermost argument first.
-    ///
-    /// The other half of [`Self::close`]: a closed metavariable is *used*
-    /// spine-applied to its context, which is what puts a constraint in the
-    /// pattern fragment — the arguments are distinct bound variables by
-    /// construction.
-    pub(crate) fn spine(&self, origin: Origin, head: Term) -> Term {
-        let mut applied = head;
-        for steps_out in (0..self.depth()).rev() {
-            applied = Term::app(origin, applied, Term::var(origin, Index(steps_out)));
-        }
-        applied
-    }
-
-    /// How many binders a metavariable created here abstracts.
-    pub(crate) const fn arity(&self) -> u32 {
-        self.depth()
-    }
-}
-
-impl Binding {
-    fn ty_term(&self, meter: &mut Meter) -> Result<Term, CoreError> {
-        if let Some(term) = self.ty_term.get() {
-            return Ok(term.clone());
-        }
-        let term = quote_type(meter, Depth(self.level), crate::quote::Mode::Keep, &self.ty)?;
-        // A second thread losing the race wrote an α-equal term, so which one
-        // wins does not matter; only that one of them does.
-        drop(self.ty_term.set(term.clone()));
-        Ok(term)
-    }
 }

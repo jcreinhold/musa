@@ -119,7 +119,7 @@ fn a_normal_form_carries_no_origin_the_question_did_not() {
 #[test]
 fn beta_answers_the_body_rather_than_the_application() {
     let cx = Cx::new();
-    let type1 = Term::universe(TYPE, Level::ZERO.succ());
+    let type1 = Term::universe(TYPE, Level::One);
     let redex = Term::app(
         USE,
         Term::lam(USE, "z", Term::universe(DEFINITION, Level::ZERO)),
@@ -139,7 +139,7 @@ fn beta_answers_the_body_rather_than_the_application() {
 #[test]
 fn delta_carries_the_definitions_origin() {
     let cx = Cx::new();
-    let type1 = Term::universe(TYPE, Level::ZERO.succ());
+    let type1 = Term::universe(TYPE, Level::One);
     let definition = Term::universe(DEFINITION, Level::ZERO);
 
     let through_let = normalize(
@@ -178,7 +178,7 @@ fn an_assumptions_occurrences_point_at_its_binder() {
         .expect("A : Type 0");
 
     let normal =
-        normalize(&a, &Term::universe(TYPE, Level::ZERO.succ()), &Term::var(USE, Index(0))).expect("normalizes");
+        normalize(&a, &Term::universe(TYPE, Level::One), &Term::var(USE, Index(0))).expect("normalizes");
     assert_eq!(normal.origin(), BINDER_A, "A was written where A was assumed");
 }
 
@@ -329,36 +329,15 @@ fn restamp(term: &Term, origin: Origin) -> Term {
             record: restamp(record, origin),
             field: Name::clone(field),
         },
-        Shape::Id { ty, left, right } => Shape::Id {
-            ty: restamp(ty, origin),
-            left: restamp(left, origin),
-            right: restamp(right, origin),
-        },
-        Shape::Refl(value) => Shape::Refl(restamp(value, origin)),
-        Shape::J {
-            ty,
-            from,
-            motive,
-            base,
-            to,
-            proof,
-        } => Shape::J {
-            ty: restamp(ty, origin),
-            from: restamp(from, origin),
-            motive: restamp(motive, origin),
-            base: restamp(base, origin),
-            to: restamp(to, origin),
-            proof: restamp(proof, origin),
-        },
         Shape::Let { name, ty, value, body } => Shape::Let {
             name: Arc::clone(name),
             ty: restamp(ty, origin),
             value: restamp(value, origin),
             body: restamp(body, origin),
         },
-        // A meta has no subterms to restamp, and its identity is the cell rather
+        // A hole has no subterms to restamp, and its identity is the cell rather
         // than anything written here — cloning it keeps the same unknown.
-        Shape::Meta(meta) => Shape::Meta(meta.clone()),
+        Shape::Hole(hole) => Shape::Hole(hole.clone()),
     };
     Term::new(origin, shape)
 }
@@ -389,17 +368,7 @@ fn children(term: &Term) -> Vec<&Term> {
         Shape::App { function, argument } => vec![function, argument],
         Shape::RecordType(fields) | Shape::Record(fields) => fields.iter().map(|field| &field.term).collect(),
         Shape::Project { record, field: _ } => vec![record],
-        Shape::Id { ty, left, right } => vec![ty, left, right],
-        Shape::Refl(value) => vec![value],
-        Shape::J {
-            ty,
-            from,
-            motive,
-            base,
-            to,
-            proof,
-        } => vec![ty, from, motive, base, to, proof],
         Shape::Let { ty, value, body, .. } => vec![ty, value, body],
-        Shape::Meta(_) => Vec::new(),
+        Shape::Hole(_) => Vec::new(),
     }
 }

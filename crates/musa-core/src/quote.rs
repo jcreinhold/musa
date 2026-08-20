@@ -104,13 +104,9 @@ struct Reading {
 
 /// Why reading a value back did not produce a term.
 ///
-/// Not a [`CoreError`], because [`Self::OutOfScope`] is not a failure: §2.1
-/// answers a constraint it cannot solve by *waiting*, and this is the shape that
-/// waiting has here.
+/// A newtype around [`CoreError`] rather than the error itself, because the
+/// one caller pattern here is a `From` conversion in a walk that returns it.
 enum Escape {
-    /// The value mentions a variable the metavariable's context does not have,
-    /// or the metavariable itself.
-    OutOfScope,
     Core(CoreError),
 }
 
@@ -127,16 +123,10 @@ impl From<Malformed> for Escape {
 }
 
 impl Escape {
-    /// This escape as a [`CoreError`], for a quotation that was not solving.
-    ///
-    /// Total rather than a hidden panic: [`Self::OutOfScope`] is raised only
-    /// under a [`Solving`], which such a quotation does not carry — and if one
-    /// ever arrived anyway, "quotation reached a variable outside the scope it
-    /// was quoting in" is precisely what [`Malformed::EscapedVariable`] says.
+    /// This escape as a [`CoreError`].
     fn core(self) -> CoreError {
         match self {
             Self::Core(error) => error,
-            Self::OutOfScope => Malformed::EscapedVariable.into(),
         }
     }
 }

@@ -12360,7 +12360,9 @@ impl PhaseWork {
     /// estimate on this side, which is what the paragraph above requires.
     const fn of(spent: musa_core::Spend) -> Self {
         Self {
-            type_constraints: spent.metavariables.saturating_add(spent.retries),
+            // No constraints are postponed or retried under the flat
+            // dictionary law, so the checking half's cost is its evaluation.
+            type_constraints: 0,
             evaluation_steps: spent.steps,
         }
     }

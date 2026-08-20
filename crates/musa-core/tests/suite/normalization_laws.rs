@@ -209,28 +209,10 @@ fn is_normal(term: &Term) -> bool {
         }
         Shape::RecordType(fields) | Shape::Record(fields) => fields.iter().all(|field| is_normal(&field.term)),
         Shape::Project { record, field: _ } => !matches!(*record.shape(), Shape::Record(_)) && is_normal(record),
-        Shape::Id { ty, left, right } => is_normal(ty) && is_normal(left) && is_normal(right),
-        Shape::Refl(value) => is_normal(value),
-        Shape::J {
-            ty,
-            from,
-            motive,
-            base,
-            to,
-            proof,
-        } => {
-            !matches!(*proof.shape(), Shape::Refl(_))
-                && is_normal(ty)
-                && is_normal(from)
-                && is_normal(motive)
-                && is_normal(base)
-                && is_normal(to)
-                && is_normal(proof)
-        }
+        Shape::Hole(_) => false,
         Shape::Let { .. } => false,
         // A normal form has none: elaboration either solved it or refused the
         // declaration that left it unsolved (§2.1). Reaching one here means a
         // term went to `normalize` before that happened.
-        Shape::Meta(_) => false,
     }
 }

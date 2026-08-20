@@ -180,9 +180,7 @@ fn measured() -> Cx {
             vec![binder("A", type0())],
             vec![family(
                 "F",
-                Vec::new(),
-                vec![constructor("Wrapped", vec![binder("a", var("A"))], Vec::new())],
-            )],
+                vec![constructor("Wrapped", vec![binder("a", var("A"))])])],
         ),
     )
     .expect("F is a declaration");
@@ -193,13 +191,9 @@ fn measured() -> Cx {
             vec![binder("A", type0()), binder("B", type0())],
             vec![family(
                 "G",
-                Vec::new(),
                 vec![constructor(
                     "Both",
-                    vec![binder("a", var("A")), binder("b", var("B"))],
-                    Vec::new(),
-                )],
-            )],
+                    vec![binder("a", var("A")), binder("b", var("B"))])])],
         ),
     )
     .expect("G is a declaration");
@@ -228,36 +222,36 @@ fn measured_instance(cx: &Cx, context: Vec<RawConstraint>) -> Result<(), musa_co
 }
 
 #[test]
-fn an_instance_context_no_smaller_than_its_head_is_refused() {
+fn an_instance_context_is_refused_however_it_decreases() {
     let cx = measured();
 
-    // `impl<A> C<F A> where D<G A A>` is §4's pathological head: resolving
-    // `C (F τ)` would ask for `D (G τ τ)`, which is larger than what was asked,
-    // so lookup would not terminate. The measure catches it at the declaration,
-    // where the author who wrote it can read the message.
-    let Err(error) = measured_instance(&cx, vec![constraint("D", vec![apply(var("G"), [var("A"), var("A")])])]) else {
-        panic!("an instance whose context grows was accepted");
-    };
-    let refused = refusal("a growing instance context", error);
-    assert!(
-        matches!(refused, Refusal::UnboundedInstance { .. }),
-        "a growing instance context was refused as `{refused}`"
-    );
-
-    // The same instance with a context that *is* smaller is ordinary.
-    assert!(
-        measured_instance(&cx, vec![constraint("D", vec![var("A")])]).is_ok(),
-        "an instance whose context is smaller than its head was refused"
-    );
+    // §4's flat law admits no `where` clause on an instance at all — the
+    // decreasing measure that used to sort them is what the clause would have
+    // been measured *for*, and both went together. `impl<A> C<F A> where
+    // D<G A A>` is the pathological shape; `… where D<A>` would have been the
+    // admissible one; the law refuses both with the same sentence, because what
+    // the author wants is the explicit dictionary-building function.
+    for context in [
+        vec![constraint("D", vec![apply(var("G"), [var("A"), var("A")])])],
+        vec![constraint("D", vec![var("A")])],
+    ] {
+        let Err(error) = measured_instance(&cx, context) else {
+            panic!("an instance carrying a context was accepted");
+        };
+        let refused = refusal("an instance context", error);
+        assert!(
+            matches!(refused, Refusal::ConstrainedInstance { .. }),
+            "an instance context was refused as `{refused}`"
+        );
+    }
 }
 
 #[test]
-fn a_type_variable_may_not_occur_more_often_in_the_context_than_in_the_head() {
+fn an_instance_context_duplicating_a_variable_is_refused_like_any_other() {
     let cx = measured();
 
-    // Small enough by size and still not decreasing: `G A A` inside `F` would
-    // be, but the variable is duplicated, so each round doubles the work even as
-    // the term shrinks. §4 counts occurrences for exactly this.
+    // `G A A` in the context used to be the case the occurrence count existed
+    // for. Under the flat law it is one more context, refused with the rest.
     let Err(error) = declare_impl(
         &cx,
         &instance(
@@ -272,7 +266,7 @@ fn a_type_variable_may_not_occur_more_often_in_the_context_than_in_the_head() {
     };
     let refused = refusal("a duplicated type variable", error);
     assert!(
-        matches!(refused, Refusal::UnboundedInstance { .. }),
+        matches!(refused, Refusal::ConstrainedInstance { .. }),
         "a duplicated type variable was refused as `{refused}`"
     );
 }
