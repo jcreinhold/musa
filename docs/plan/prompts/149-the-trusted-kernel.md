@@ -56,6 +56,19 @@ The third is why this prompt exists at all in the shape it does. **Idris2 gets i
 its scope, so an index that escapes its binder does not typecheck in Idris2 itself. Rust cannot express that, and prompt
 147 chose de Bruijn indices knowing it. The re-checker is the mitigation that decision was taken against.
 
+**A weaker compile-time version does exist in Rust, and the decision is not to take it.** `~/Code/kan`'s
+`crates/kernel/core-world` brands a `WorldView` with an invariant lifetime `'id` and refuses to promote an `OpenTerm` to
+a `ScopedTerm` except through it, so terms minted under different scopes cannot be mixed *at compile time* — the
+generativity trick, applied to exactly the bug this invariant is about. It does not give Idris2's guarantee (index 3 is
+still not statically known to be in range) but it does statically kill the corruption case, so "Rust cannot express
+this" is too strong and should not be repeated. **Musa declines it for a stated reason rather than by omission**: the
+brand is a lifetime parameter on `Term`, and musa's terms are `Arc`-shared and cross into `musa-compiler`, so the
+parameter would thread through the facade 148 just spent a prompt keeping stable. kan pays that cost because its terms
+are arena-allocated behind a `'tcx` already and its kernel is nine crates rather than one module. Musa takes the same
+*shape* one level weaker: `Checked` is that promotion with the check at run time, and the re-checker is what makes a
+run-time check sufficient. If scope corruption ever shows up in practice, the brand is the escalation, and this
+paragraph is where that is written down.
+
 **What the minimal re-checker covers, and what it cannot yet.** After 148 the term language is seven constructors, so
 the pass is small: re-derive the type of `Var`, `Named`, `Bind`, `App`, `Lit` and `Universe` against a context, using
 `convert` for every equality. It cannot yet check a metavariable solution (153), a case-tree branch against an

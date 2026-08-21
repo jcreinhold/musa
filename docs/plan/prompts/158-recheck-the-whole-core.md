@@ -60,6 +60,12 @@ that states a smaller one accurately.
   and the honest limit above.
 - `crates/musa-calculus/tests/suite/recheck_laws.rs`: one negative control per construct, and the standard library
   re-checked end to end.
+- `fuzz/`: the workspace's first fuzz target, and it exists because of this prompt rather than beside it. **The
+  re-checker is an oracle**, which is what fuzzing needs and what musa has never had: generate a program, elaborate it,
+  and assert the kernel accepts whatever elaboration produced — a crash, a rejection, or a scope violation is a bug in
+  *us* by construction, with no expected output to write down. Hand-written negative controls cover the failures
+  somebody thought of; this covers the ones that make de Bruijn indices worth worrying about. `~/Code/kan` fuzzes its
+  kernel, frontend and binding layers separately; one target over the whole pipeline is the right size to start.
 - `docs/plan/prompts/169-core-conformance.md`: the re-checker row added to the obligation matrix.
 - `142i-core-re-checker.md`: `status: superseded` and a banner naming this prompt.
 
