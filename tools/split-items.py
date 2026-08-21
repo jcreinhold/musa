@@ -144,6 +144,13 @@ def main() -> None:
                 depth += row.count("{") - row.count("}")
                 bracks += row.count("[") - row.count("]")
                 closes = "}" in row or row.rstrip().endswith(";")
+                # A `const NAME: T = value;` or `type Alias = ...;` that ends on
+                # its own first line is complete there. Requiring `j > i` would
+                # run on to the next item's closing brace and swallow it.
+                if depth <= 0 and bracks <= 0 and j == i and row.rstrip().endswith(";"):
+                    ended = True
+                    j += 1
+                    break
                 if depth <= 0 and bracks <= 0 and j > i and closes:
                     ended = True
                     j += 1
