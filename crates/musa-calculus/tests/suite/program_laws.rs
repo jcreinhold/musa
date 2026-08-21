@@ -115,7 +115,7 @@ fn size(term: &Term) -> u32 {
         | Shape::Numeral(_)
         | Shape::Hole(_)
         | Shape::Universe(_) => 0,
-        Shape::Refine { ty, index } => size(ty).saturating_add(size(index)),
+        Shape::Indexed { ty, index } => size(ty).saturating_add(size(index)),
         Shape::Pi { domain, codomain, .. } => size(domain).saturating_add(size(codomain)),
         Shape::Lam { body, .. } => size(body),
         Shape::App { function, argument } => size(function).saturating_add(size(argument)),

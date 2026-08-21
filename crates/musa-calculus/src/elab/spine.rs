@@ -171,7 +171,7 @@ impl Elaborator {
             | Shape::RecordType(_)
             | Shape::Record(_)
             | Shape::Project { .. }
-            | Shape::Refine { .. }
+            | Shape::Indexed { .. }
             | Shape::Let { .. } => head,
         };
         let mut walk = Walk::default();

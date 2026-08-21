@@ -91,7 +91,7 @@ fn stor(
         // *representation*, and an index is not part of one: it is erased
         // before evaluation (§1.5), so a value of `Row(12)` holds precisely
         // what a value of `Row` holds and encodes to the same bytes.
-        Form::Refine { ty, .. } => stor(meter, cx, ty, visiting, depth),
+        Form::Indexed { ty, .. } => stor(meter, cx, ty, visiting, depth),
         Form::RecordType(telescope) => {
             let mut env = telescope.env.clone();
             for field in telescope.fields.iter() {

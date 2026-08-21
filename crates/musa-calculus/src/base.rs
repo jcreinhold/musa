@@ -1168,8 +1168,8 @@ impl Registry {
             // Finite data exactly when what it refines is. The index is not
             // checked and could not be: it is erased (§1.5), so no δ-rule ever
             // receives one and a `Datum` cannot hold one. Early, because a
-            // refinement has no arguments applied above it.
-            Shape::Refine { ty, .. } => return self.check_finite_data(builtin, ty),
+            // indexed type has no arguments applied above it.
+            Shape::Indexed { ty, .. } => return self.check_finite_data(builtin, ty),
             Shape::Const(constant) if constant.is_family() => {}
             Shape::Var(_)
             | Shape::Universe(_)

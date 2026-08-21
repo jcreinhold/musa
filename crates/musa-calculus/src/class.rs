@@ -349,7 +349,7 @@ pub(crate) fn occurrences(term: &Term, depth: u32, level: u32) -> u32 {
         // variable can occur in it exactly as it occurs anywhere else, and a
         // count that skipped it would let β discard a binder the index still
         // names.
-        Shape::Refine { ty, index } => deeper(ty, 0).saturating_add(deeper(index, 0)),
+        Shape::Indexed { ty, index } => deeper(ty, 0).saturating_add(deeper(index, 0)),
         // Closed leaves: none of them can be a variable, so none of them can
         // hold an occurrence of one.
         Shape::Const(_)
@@ -384,12 +384,12 @@ pub(crate) fn head_of(term: &Term, depth: u32) -> Option<Head> {
     use crate::term::Shape;
     match term.shape() {
         Shape::Const(constant) => Some(Head::Rigid(constant.name())),
-        // A refinement keys on the type it refines: `impl Transposable<Pc(12)>`
+        // An indexed type keys on the type it refines: `impl Transposable<Pc(12)>`
         // and `impl Transposable<Pc(24)>` are one instance of one head, because
         // the index is erased and an instance table read after erasure could
         // not tell them apart. `10-traits.md` §4's one-instance-per-head rule
         // is therefore unchanged rather than quietly refined.
-        Shape::Refine { ty, .. } => head_of(ty, depth),
+        Shape::Indexed { ty, .. } => head_of(ty, depth),
         // A base type is a rigid type constructor with a name, so it keys the
         // same way a declared family does. Without an `impl` on it, resolution
         // then reports "no instance" rather than postponing a constraint that

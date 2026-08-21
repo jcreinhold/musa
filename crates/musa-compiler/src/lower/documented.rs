@@ -242,13 +242,13 @@ pub(crate) fn spelled(ty: &musa_calculus::Term) -> Option<String> {
         // reader sees in documentation and in a hover, and the index is the
         // whole of what distinguishes the type. It is erased in the *term*
         // (`02-core-calculus.md` §1.5), not in what a type is called.
-        musa_calculus::Shape::Refine { ref ty, ref index } if arguments.is_empty() => {
+        musa_calculus::Shape::Indexed { ref ty, ref index } if arguments.is_empty() => {
             Some(format!("{}({})", spelled(ty)?, spelled_index(index)?))
         }
         // Written out rather than left to a wildcard, so a shape added to the
         // core has to be classified here before this crate builds again —
         // `crate::registry::machine`'s own discipline, and for its reason.
-        musa_calculus::Shape::Refine { .. }
+        musa_calculus::Shape::Indexed { .. }
         | musa_calculus::Shape::Universe(_)
         | musa_calculus::Shape::Pi { .. }
         | musa_calculus::Shape::Var(_)
@@ -266,7 +266,7 @@ pub(crate) fn spelled(ty: &musa_calculus::Term) -> Option<String> {
     }
 }
 
-/// One index as it was written, for [`spelled`]'s refinement arm.
+/// One index as it was written, for [`spelled`]'s indexed-type arm.
 ///
 /// The two canonical index forms and nothing else: an open index — a variable,
 /// or an arithmetic expression under one — has no spelling a documentation

@@ -343,11 +343,11 @@ impl Conversion {
                 // ones.
                 | Form::Lit(_)
                 | Form::Numeral(_) => {}
-                // A refinement has whatever η what it refines has, and no η of
+                // An indexed type has whatever η what it refines has, and no η of
                 // its own: §1.5 gives it no elimination form, so there is
                 // nothing to expand. Left to the match below, which compares the
                 // two values directly and is where the index question is asked.
-                Form::Refine { .. } => {}
+                Form::Indexed { .. } => {}
                 // A type that is still a metavariable says nothing yet, and a λ
                 // under it would be one the elaborator has not pinned down. The
                 // match below reads both sides back, which is the honest answer
@@ -398,11 +398,11 @@ impl Conversion {
             // types are; the indices are handed to the arithmetic decider, which
             // is a different question with a different answer procedure.
             (
-                Form::Refine {
+                Form::Indexed {
                     ty: mine,
                     index: my_index,
                 },
-                Form::Refine {
+                Form::Indexed {
                     ty: theirs,
                     index: their_index,
                 },
@@ -410,13 +410,13 @@ impl Conversion {
                 self.step(meter, depth, At::Type, origin, mine, theirs)?;
                 self.indices(meter, depth, origin, left, right, my_index, their_index)
             }
-            // A refinement never converts with what it refines. `Row(12)` and
+            // An indexed type never converts with what it refines. `Row(12)` and
             // `Row` are two types, and reading them back would print one word
             // twice, because erasure is what quotation does — so the message is
             // built here, where the index is still in hand.
-            (Form::Refine { .. }, _) | (_, Form::Refine { .. }) => Err(Failure::Mismatch {
-                expected: refinement_shown(meter, depth, left)?,
-                found: refinement_shown(meter, depth, right)?,
+            (Form::Indexed { .. }, _) | (_, Form::Indexed { .. }) => Err(Failure::Mismatch {
+                expected: indexed_shown(meter, depth, left)?,
+                found: indexed_shown(meter, depth, right)?,
                 path: Vec::new(),
             }),
             (Form::Neutral(one), Form::Neutral(other)) => self.neutrals(meter, depth, origin, one, other),
@@ -456,8 +456,8 @@ impl Conversion {
     ) -> Step {
         let disagree = |meter: &mut Meter| -> Result<Failure, CoreError> {
             Ok(Failure::Mismatch {
-                expected: refinement_shown(meter, depth, left)?,
-                found: refinement_shown(meter, depth, right)?,
+                expected: indexed_shown(meter, depth, left)?,
+                found: indexed_shown(meter, depth, right)?,
                 path: Vec::new(),
             })
         };
@@ -837,7 +837,7 @@ fn mentions_hole(value: &Value, target: &crate::meta::Hole) -> bool {
         Form::Universe(_) | Form::Lit(_) | Form::Numeral(_) => false,
         // Both halves. `Row(?α)` mentions `?α`, and an occurs check that looked
         // past the index would let a hole be solved by a value that names it.
-        Form::Refine { ty, index } => mentions_hole(ty, target) || mentions_hole(index, target),
+        Form::Indexed { ty, index } => mentions_hole(ty, target) || mentions_hole(index, target),
         Form::Pi { domain, codomain, .. } => {
             mentions_hole(domain, target) || codomain.env.iter().any(|item| mentions_hole(item, target))
         }
@@ -872,7 +872,7 @@ pub(crate) fn mentions_unsolved(value: &Value) -> bool {
         Form::Universe(_) | Form::Lit(_) | Form::Numeral(_) => false,
         // Both halves, for [`mentions_hole`]'s reason read existentially: a
         // slot typed `Row(?n)` has not been determined by the call.
-        Form::Refine { ty, index } => mentions_unsolved(ty) || mentions_unsolved(index),
+        Form::Indexed { ty, index } => mentions_unsolved(ty) || mentions_unsolved(index),
         Form::Pi { domain, codomain, .. } => mentions_unsolved(domain) || codomain.env.iter().any(mentions_unsolved),
         Form::Lam(closure) => closure.env.iter().any(mentions_unsolved),
         Form::RecordType(telescope) => telescope.env.iter().any(mentions_unsolved),
@@ -900,16 +900,16 @@ pub(crate) fn mentions_unsolved(value: &Value) -> bool {
 ///
 /// [`quote_type`] cannot be used for the whole of it: erasure is what quotation
 /// does (§1.5), so reading `Row(12)` back answers `Row`, and a mismatch between
-/// two refinements of one type would print the same word twice. So the wrapper
+/// two indexed types of one type would print the same word twice. So the wrapper
 /// is rebuilt here, where both halves are still values.
 ///
-/// A value that is not a refinement quotes ordinarily — this is the one arm of
-/// the pair where a refinement met a bare type.
-fn refinement_shown(meter: &mut Meter, depth: u32, value: &Value) -> Result<Term, CoreError> {
-    let Form::Refine { ty, index } = &value.form else {
+/// A value that is not an indexed type quotes ordinarily — this is the one arm of
+/// the pair where an indexed type met a bare type.
+fn indexed_shown(meter: &mut Meter, depth: u32, value: &Value) -> Result<Term, CoreError> {
+    let Form::Indexed { ty, index } = &value.form else {
         return quote_type(meter, Depth(depth), Mode::Keep, value);
     };
-    Ok(Term::refine(
+    Ok(Term::indexed(
         value.origin,
         quote_type(meter, Depth(depth), Mode::Keep, ty)?,
         index_shown(meter, depth, index)?,
@@ -931,7 +931,7 @@ fn index_shown(meter: &mut Meter, depth: u32, value: &Value) -> Result<Term, Cor
         | Form::Lam(_)
         | Form::RecordType(_)
         | Form::Record(_)
-        | Form::Refine { .. }
+        | Form::Indexed { .. }
         | Form::Neutral(_) => quote_type(meter, Depth(depth), Mode::Keep, value),
     }
 }
@@ -985,9 +985,9 @@ fn index_of(meter: &mut Meter, value: &Value) -> Result<Option<Expr>, CoreError>
                 _ => Ok(None),
             },
             Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) | Form::RecordType(_) | Form::Record(_) => Ok(None),
-            // A refinement is a type, and §1.5 refuses an index over one: that
+            // An indexed type is a type, and §1.5 refuses an index over one: that
             // would be a universe by another name.
-            Form::Refine { .. } => Ok(None),
+            Form::Indexed { .. } => Ok(None),
         }
     })
 }

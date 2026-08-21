@@ -569,7 +569,7 @@ fn unkeyed(term: &Term) -> bool {
         Shape::Hole(_) => false,
         Shape::App { function, .. } => unkeyed(function),
         // Keyed exactly when what it refines is: see `class::head_of`.
-        Shape::Refine { ty, .. } => unkeyed(ty),
+        Shape::Indexed { ty, .. } => unkeyed(ty),
         // Canonical formers. None of them is a name, so no `impl` could ever be
         // keyed on one, and `02-core-calculus.md` §1.2 says so of the arrow in
         // particular.
@@ -721,9 +721,9 @@ fn constant(term: &Term) -> Option<&Constant> {
     match term.shape() {
         Shape::Const(constant) => Some(constant),
         Shape::App { function, .. } => constant(function),
-        // The orphan rule asks where a type is *declared*, and a refinement
+        // The orphan rule asks where a type is *declared*, and an indexed type
         // declares nothing: `Row(12)` is at home wherever `Row` is.
-        Shape::Refine { ty, .. } => constant(ty),
+        Shape::Indexed { ty, .. } => constant(ty),
         // A head that is not a declared constant is not one §3 can place, and
         // `orphan` reads that as "not at home here" rather than guessing.
         Shape::Var(_)

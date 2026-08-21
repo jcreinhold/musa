@@ -303,7 +303,7 @@ fn restamp(term: &Term, origin: Origin) -> Term {
         Shape::Lit(literal) => Shape::Lit(literal.clone()),
         Shape::Numeral(numeral) => Shape::Numeral(numeral.clone()),
         Shape::Universe(level) => Shape::Universe(*level),
-        Shape::Refine { ty, index } => Shape::Refine {
+        Shape::Indexed { ty, index } => Shape::Indexed {
             ty: restamp(ty, origin),
             index: restamp(index, origin),
         },
@@ -366,7 +366,7 @@ fn children(term: &Term) -> Vec<&Term> {
         | Shape::Builtin(_)
         | Shape::Lit(_)
         | Shape::Numeral(_) => Vec::new(),
-        Shape::Refine { ty, index } => vec![ty, index],
+        Shape::Indexed { ty, index } => vec![ty, index],
         Shape::Pi { domain, codomain, .. } => vec![domain, codomain],
         Shape::Lam { body, .. } => vec![body],
         Shape::App { function, argument } => vec![function, argument],

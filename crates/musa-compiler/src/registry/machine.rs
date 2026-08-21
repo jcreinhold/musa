@@ -406,11 +406,11 @@ fn spelled(ty: &Term) -> Option<String> {
         // erasure is exactly the promise that the index does not reach a stored
         // artifact, and a port spelling is one — it is what a consumer prepares
         // a buffer from.
-        musa_calculus::Shape::Refine { ref ty, .. } if arguments.is_empty() => spelled(ty),
+        musa_calculus::Shape::Indexed { ref ty, .. } if arguments.is_empty() => spelled(ty),
         // Written out rather than left to a wildcard, so that a shape added to
         // the core has to be classified here before this crate builds again —
         // `musa_calculus::canonical`'s own discipline, and for its reason.
-        musa_calculus::Shape::Refine { .. }
+        musa_calculus::Shape::Indexed { .. }
         | musa_calculus::Shape::Base(_)
         | musa_calculus::Shape::Var(_)
         | musa_calculus::Shape::Def(_)

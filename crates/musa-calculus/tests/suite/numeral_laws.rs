@@ -82,7 +82,7 @@ fn depth(term: &Term) -> u32 {
             ref codomain,
             ..
         } => deeper(domain).max(deeper(codomain)),
-        Shape::Refine { ref ty, ref index } => deeper(ty).max(deeper(index)),
+        Shape::Indexed { ref ty, ref index } => deeper(ty).max(deeper(index)),
         Shape::Lam { ref body, .. } => deeper(body),
         Shape::Project { ref record, .. } => deeper(record),
         Shape::Let {

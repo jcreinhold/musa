@@ -99,7 +99,7 @@ impl Lowering<'_> {
         let written = node.children().find(|child| !is_type_node(child.kind()))?;
         let ty = self.ty(&head)?;
         let index = self.expr(&written)?;
-        Some(Raw::refine(origin, ty, index))
+        Some(Raw::indexed(origin, ty, index))
     }
 
     /// `Option<τ>` and `List<τ>`, which have their own node kinds because the

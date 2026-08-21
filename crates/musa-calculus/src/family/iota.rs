@@ -229,7 +229,7 @@ fn ready(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Reduction>, Core
         | Form::Lam(_)
         | Form::RecordType(_)
         | Form::Record(_)
-        | Form::Refine { .. }
+        | Form::Indexed { .. }
         | Form::Lit(_) => {
             return Ok(None);
         }

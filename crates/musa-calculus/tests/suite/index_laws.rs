@@ -158,7 +158,7 @@ fn row_of() -> Builtin {
             TYPES,
             "n",
             count_type(),
-            Term::refine(TYPES, row().term(TYPES), Term::var(TYPES, Index(0))),
+            Term::indexed(TYPES, row().term(TYPES), Term::var(TYPES, Index(0))),
         ),
         Family::Machine,
     )
@@ -179,8 +179,8 @@ fn echo() -> Builtin {
             Term::pi(
                 TYPES,
                 "r",
-                Term::refine(TYPES, row().term(TYPES), Term::var(TYPES, Index(0))),
-                Term::refine(TYPES, row().term(TYPES), Term::var(TYPES, Index(1))),
+                Term::indexed(TYPES, row().term(TYPES), Term::var(TYPES, Index(0))),
+                Term::indexed(TYPES, row().term(TYPES), Term::var(TYPES, Index(1))),
             ),
         ),
         Family::Machine,
@@ -214,7 +214,7 @@ fn var(name: &'static str) -> Raw {
 
 /// `Row(index)`, written the way a program would.
 fn refined(index: Raw) -> Raw {
-    Raw::refine(TYPES, var("Row"), index)
+    Raw::indexed(TYPES, var("Row"), index)
 }
 
 fn literal_index(value: i128) -> Raw {
@@ -363,7 +363,7 @@ fn two_variables_multiplied_are_refused_at_the_type() {
 /// which is what keeps `Syntax<Cat>`'s category from silently becoming an index.
 #[test]
 fn a_literal_of_an_unmeasured_base_type_is_refused_at_the_type() {
-    let unmeasured = Raw::refine(
+    let unmeasured = Raw::indexed(
         TYPES,
         var("Row"),
         Raw::lit(TYPES, Literal::new(opaque().term(TYPES), Arc::new(Count(12)))),

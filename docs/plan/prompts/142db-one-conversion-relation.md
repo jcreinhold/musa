@@ -1,7 +1,7 @@
 ---
 id: 142db
 slug: one-conversion-relation
-status: pending
+status: done
 depends_on: [142da]
 phase: 3
 ---

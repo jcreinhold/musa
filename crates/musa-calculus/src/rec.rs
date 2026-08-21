@@ -422,7 +422,7 @@ impl Rewrite<'_> {
             // Both halves, for the reason the arm above walks both: a call to
             // the definition being measured can stand in either, and one this
             // rule did not see is one it did not check.
-            RawShape::Refine { ty, index } => RawShape::Refine {
+            RawShape::Indexed { ty, index } => RawShape::Indexed {
                 ty: self.term(ty, bound)?,
                 index: self.term(index, bound)?,
             },

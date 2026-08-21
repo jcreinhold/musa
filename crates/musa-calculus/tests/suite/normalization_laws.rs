@@ -201,7 +201,7 @@ fn is_normal(term: &Term) -> bool {
         | Shape::Builtin(_) => true,
         // A refinement has no elimination form, so it is never a redex; both
         // halves still have to be normal.
-        Shape::Refine { ty, index } => is_normal(ty) && is_normal(index),
+        Shape::Indexed { ty, index } => is_normal(ty) && is_normal(index),
         Shape::Pi { domain, codomain, .. } => is_normal(domain) && is_normal(codomain),
         Shape::Lam { body, .. } => is_normal(body),
         Shape::App { function, argument } => {
@@ -218,4 +218,112 @@ fn is_normal(term: &Term) -> bool {
         // declaration that left it unsolved (§2.1). Reaching one here means a
         // term went to `normalize` before that happened.
     }
+}
+
+// ---- §3's conversion strategy ---------------------------------------------
+//
+// Four rules, all four implemented before prompt 142db and none of them written
+// down, which is what that prompt changed: conversion is decidable either way,
+// and these are what make it *cheap*. A checker that lost one would still be
+// correct and would grind, so each is metered here rather than described.
+//
+// The **numeral** rule is pinned twice over: `numeral_laws.rs` holds that a
+// numeral means the tower without costing like it, and the test below holds the
+// half that belongs to conversion — that comparing two of them does not scale
+// with the count.
+//
+// The fourth rule — **the meter is the backstop** — is metered in
+// `budget_laws.rs`, which owns §4 and already states the part that matters here:
+// under a narrowed budget conversion exhausts or agrees, and never reports
+// exhaustion as two types disagreeing. Restating it against a second budget here
+// would be a copy, not a second law.
+
+/// The two contexts these tests measure against: `x : A` assumed, and `d := x`
+/// defined beside it.
+///
+/// Returned together because every assertion below is a *comparison* of two
+/// spends, and two spends are only comparable when the contexts they were
+/// charged in are the same shape.
+fn assumed_and_defined() -> (Cx, Term, Term, Term) {
+    let cx = Cx::new();
+    let type0 = Term::universe(HERE, Level::ZERO);
+    let a = cx.assume(HERE, &type0).expect("A : Type 0");
+    let x = a.assume(HERE, &Term::var(HERE, Index(0))).expect("x : A");
+    let defined = x
+        .define(&Term::var(HERE, Index(1)), &Term::var(HERE, Index(0)))
+        .expect("d := x");
+    (
+        defined,
+        Term::var(HERE, Index(2)),
+        Term::var(HERE, Index(1)),
+        Term::var(HERE, Index(0)),
+    )
+}
+
+/// §3: **rigid heads first** — a definition met by itself is not unfolded.
+///
+/// Measured against an *assumed* variable, which has no δ-rule to fire, so the
+/// two spends can only agree if δ never fired for the definition either. A
+/// checker that unfolded before comparing heads would pay more here and would
+/// pay it once per definition in every type it ever compares.
+#[test]
+fn a_definition_met_by_itself_is_not_unfolded() {
+    let (cx, ty, x, d) = assumed_and_defined();
+    let (agreed, defined) = musa_calculus::convertible_metered(&cx, &ty, &d, &d).expect("d ≡ d");
+    let (also, assumed) = musa_calculus::convertible_metered(&cx, &ty, &x, &x).expect("x ≡ x");
+    assert!(agreed && also);
+    assert_eq!(
+        defined, assumed,
+        "a definition compared with itself cost more than an assumed variable did, so δ fired"
+    );
+}
+
+/// §3: **one side at a time** — a definition met by its own expansion opens one
+/// side, and opens it once.
+///
+/// Exactly one step more than the no-unfold case above. Opening both sides would
+/// be two, and that is the difference this measures: the rule is not "unfold as
+/// little as possible" but "unfold one side, then ask again".
+#[test]
+fn one_side_is_opened_at_a_time() {
+    let (cx, ty, x, d) = assumed_and_defined();
+    let (_, neither) = musa_calculus::convertible_metered(&cx, &ty, &d, &d).expect("d ≡ d");
+    let (agreed, one) = musa_calculus::convertible_metered(&cx, &ty, &d, &x).expect("d ≡ x");
+    assert!(agreed);
+    assert_eq!(
+        one.steps,
+        neither.steps.saturating_add(1),
+        "opening the definition against its expansion cost {} steps against {}, which is not one unfold",
+        one.steps,
+        neither.steps
+    );
+}
+
+/// §3: **a numeral is compared as a number**, so conversion does not scale with
+/// the count.
+///
+/// Stated as equality across three counts three orders of magnitude apart rather
+/// than as a bound, because the claim is not "cheap" but "flat": a checker that
+/// expanded the tower would cost `count` steps, and one that expanded it lazily
+/// would still cost more at 4,000 than at 4.
+#[test]
+fn a_numeral_is_compared_as_a_number_and_not_as_a_tower() {
+    let (cx, _group) = crate::family_laws::nat_context();
+    let nat = musa_calculus::infer(&cx, &crate::family_laws::var("Nat"))
+        .expect("`Nat` is a type")
+        .0;
+    let spend_at = |count: u64| {
+        let raw = musa_calculus::Raw::numeral(crate::programs::WRITTEN, "Nat", count);
+        let term = musa_calculus::check(&cx, &nat, &raw).unwrap_or_else(|error| panic!("{count}: {error}"));
+        musa_calculus::convertible_metered(&cx, &nat, &term, &term)
+            .unwrap_or_else(|error| panic!("{count}: {error}"))
+            .1
+    };
+    let small = spend_at(4);
+    assert_eq!(spend_at(40), small, "comparing 40 with itself cost more than 4 did");
+    assert_eq!(
+        spend_at(4_000),
+        small,
+        "comparing 4,000 with itself cost more than 4 did"
+    );
 }

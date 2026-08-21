@@ -67,7 +67,7 @@ impl Elaborator {
                 domain,
                 codomain,
             } => self.function_type(scope, here, filling.clone(), name, domain, codomain),
-            RawShape::Refine { ty, index } => self.refined_type(scope, here, ty, index),
+            RawShape::Indexed { ty, index } => self.indexed_type_formation(scope, here, ty, index),
             RawShape::ConstrainedPi { constraint, codomain } => {
                 self.constrained_function_type(scope, here, constraint, codomain)
             }
@@ -139,7 +139,7 @@ impl Elaborator {
     /// `T(i) ⇒ Type l` — a type refined by an index (§1.5).
     ///
     /// The refined type carries the whole thing's universe, because the
-    /// refinement adds no inhabitants and no size: `Row(12)` is `Row` under a
+    /// index adds no inhabitants and no size: `Row(12)` is `Row` under a
     /// wrapper that quotation drops, so a universe read off the index would be
     /// reading a level off something erased.
     ///
@@ -153,7 +153,13 @@ impl Elaborator {
     /// It is still read once. [`crate::convert::reads_as_index`] is conversion's
     /// own reader, asked one stage earlier rather than reimplemented, so there
     /// is one grammar rather than two obliged to agree.
-    fn refined_type(&mut self, scope: &Scope, here: Origin, ty: &Raw, index: &Raw) -> Result<Typed, ElabError> {
+    fn indexed_type_formation(
+        &mut self,
+        scope: &Scope,
+        here: Origin,
+        ty: &Raw,
+        index: &Raw,
+    ) -> Result<Typed, ElabError> {
         let (ty, level) = self.check_type(scope, ty)?;
         let index = self.infer(scope, index)?;
         // §1.5's grammar is checked *here*, where the type is formed and the
@@ -184,7 +190,7 @@ impl Elaborator {
             .into());
         }
         Ok(Typed {
-            term: Term::refine(here, ty, index.term),
+            term: Term::indexed(here, ty, index.term),
             ty: Value::new(here, Form::Universe(level)),
         })
     }

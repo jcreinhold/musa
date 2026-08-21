@@ -426,9 +426,9 @@ pub enum RawShape {
     /// `T(i)` — `T` refined by the index expression `i` (§1.5).
     ///
     /// A *wrapper*, not a family index: `Row(12)` is ordinary `Row` under a
-    /// refinement, so `family/` gains nothing, a value of `Row(12)` is a value
+    /// index, so `family/` gains nothing, a value of `Row(12)` is a value
     /// of `Row`, and [`crate::quote`] drops the wrapper and reads back `Row`
-    /// alone. What the refinement changes is which programs are accepted and
+    /// alone. What the index changes is which programs are accepted and
     /// nothing else.
     ///
     /// The index is an ordinary [`Raw`], because §1.5 gives an index no binder
@@ -438,7 +438,7 @@ pub enum RawShape {
     /// compared rather than where one is written — [`crate::convert`] reads an
     /// index position into the index language, or refuses it by naming the
     /// expression.
-    Refine {
+    Indexed {
         /// `T`, the type being refined.
         ty: Raw,
         /// `i`, the index it carries.
@@ -855,8 +855,8 @@ impl Raw {
 
     /// `ty(index)` — `ty` refined by an index expression (§1.5).
     #[must_use]
-    pub fn refine(origin: Origin, ty: Self, index: Self) -> Self {
-        Self::new(origin, RawShape::Refine { ty, index })
+    pub fn indexed(origin: Origin, ty: Self, index: Self) -> Self {
+        Self::new(origin, RawShape::Indexed { ty, index })
     }
 
     /// `function argument`.

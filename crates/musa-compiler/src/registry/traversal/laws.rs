@@ -436,7 +436,7 @@ fn trees(term: &Term, into: &mut Vec<Syntax>) {
         musa_calculus::Shape::Lam { ref body, .. } => trees(body, into),
         // An index can hold a literal — `Bar(3/4)` does — so both halves are
         // walked rather than skipped.
-        musa_calculus::Shape::Refine { ref ty, ref index } => {
+        musa_calculus::Shape::Indexed { ref ty, ref index } => {
             trees(ty, into);
             trees(index, into);
         }

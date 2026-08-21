@@ -88,7 +88,7 @@ impl Elaborator {
             // Both halves. An index is an ordinary term (§1.5), so a hole
             // standing in one is solved and unfolded exactly as anywhere else —
             // which is what `Row(n)` at a call that solved `n` depends on.
-            Shape::Refine { ty, index } => Shape::Refine {
+            Shape::Indexed { ty, index } => Shape::Indexed {
                 ty: self.zonking(ty, depth)?,
                 index: self.zonking(index, depth)?,
             },

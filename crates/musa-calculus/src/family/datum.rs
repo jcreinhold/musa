@@ -64,10 +64,10 @@ pub fn canonical(term: &Term) -> Option<Datum> {
     let (head, arguments) = applied_spine(term);
     match *head.shape() {
         Shape::Hole(_) => None,
-        // A refinement is a *type*, and a type is not data a δ-rule reads. It
+        // An indexed type is a *type*, and a type is not data a δ-rule reads. It
         // reaches here only in a signature, never in an argument position, and
         // "not data" is this function's ordinary answer rather than an error.
-        Shape::Refine { .. } => None,
+        Shape::Indexed { .. } => None,
         Shape::Lit(ref literal) if arguments.is_empty() => Some(Datum::Lit(literal.clone())),
         Shape::Numeral(ref numeral) if arguments.is_empty() => counted(numeral),
         Shape::Const(ref constant) => {
