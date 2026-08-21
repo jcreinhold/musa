@@ -1,8 +1,8 @@
 //! Materials: `senza`, `mobile`, `arranged`, `declared_material`, and the spoken/sounded families.
 
 use musa_calculus::{Origin, Raw};
-use musa_language::SyntaxNode;
-use musa_language::ast::AstNode as _;
+use musa_syntax::SyntaxNode;
+use musa_syntax::ast::AstNode as _;
 use num_rational::Ratio;
 
 use crate::lower::{Lowering, applied, child, is_expr_node, listed, whole};
@@ -66,7 +66,7 @@ impl Lowering<'_> {
         reason = "`Ratio<i64>` addition is exact mathematical arithmetic rather than raw integer ops, the same argument `Lowering::extent` makes; scoped to this function because it is the only arithmetic on it"
     )]
     pub(crate) fn mobile(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
-        let statement = musa_language::ast::MobileStmt::cast(node.clone())?;
+        let statement = musa_syntax::ast::MobileStmt::cast(node.clone())?;
         let span = crate::resolve::trimmed_span(node);
         let names = statement.fragments();
         // One fragment in any order is the fragment. The refusal is the useful
@@ -196,7 +196,7 @@ impl Lowering<'_> {
     /// One pass over the document rather than a search per name, so a mobile of
     /// fifty-three figures costs one walk instead of fifty-three.
     pub(crate) fn declared_material(&self, node: &SyntaxNode) -> Declarations {
-        use musa_language::ast::{BarStmt, FragmentDecl, MotifDecl};
+        use musa_syntax::ast::{BarStmt, FragmentDecl, MotifDecl};
         let Some(root) = node.ancestors().last() else {
             return Declarations::new();
         };
@@ -228,7 +228,7 @@ impl Lowering<'_> {
 
     /// `improvise 8/1 over "Dm7 | G7";` — a frame that sounds as silence.
     pub(crate) fn improvise(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
-        let statement = musa_language::ast::ImproviseStmt::cast(node.clone())?;
+        let statement = musa_syntax::ast::ImproviseStmt::cast(node.clone())?;
         let span = crate::resolve::trimmed_span(node);
         let (_, held, _) = self.notated_duration(node, span, reading)?;
         let over = statement.over().map(|text| plain(origin, "Text", text));
@@ -302,9 +302,9 @@ impl Lowering<'_> {
     /// here. [`crate::registry::track`]'s `respelled` answers them on 141m's
     /// refusal channel instead.
     pub(crate) fn specialized(&mut self, node: &SyntaxNode, origin: Origin, material: Raw) -> Option<Raw> {
-        use musa_language::ast::AstNode as _;
+        use musa_syntax::ast::AstNode as _;
 
-        let Some(call) = musa_language::ast::UseStmt::cast(node.clone()) else {
+        let Some(call) = musa_syntax::ast::UseStmt::cast(node.clone()) else {
             return Some(material);
         };
         let mut named: Vec<u64> = Vec::new();

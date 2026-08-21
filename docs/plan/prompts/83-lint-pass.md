@@ -27,7 +27,7 @@ editors, the desktop — shows lints with no new plumbing.
   question it already answers.
 - Prompt 73 — the gradual tempo change: `Ramp { to: Option<u32>, over }`, and why a worded ramp (`tempo "rit." over
   2/1;`) is a designed spelling, not a missing arrival.
-- `crates/musa-language/src/formatter.rs` — the comment-attachment convention a suppression directive leans on, and the
+- `crates/musa-syntax/src/formatter.rs` — the comment-attachment convention a suppression directive leans on, and the
   law that formatting rewrites whitespace only. Lint fixes are not formatting; they delete or they do nothing.
 
 ## Design
@@ -41,7 +41,7 @@ the snapshot, and the studio — all in scope at that point — and appends warn
 
 One engine, not one per layer. A CST-only rule and a semantic rule share the registry, the suppression mechanism, and
 the emission path; splitting them to match where their *evidence* lives would duplicate all three for no caller.
-musa-language stays silent: it does not know what a name is for.
+musa-syntax stays silent: it does not know what a name is for.
 
 ### The rules
 

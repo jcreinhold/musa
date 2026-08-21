@@ -101,7 +101,7 @@ realization and nothing else; that is exact for what MIDI is.
 
 ## Target
 
-- `crates/musa-language`: `fragment`, `mobile`, `improvise`, and `to` in a duration; recovery and formatting.
+- `crates/musa-syntax`: `fragment`, `mobile`, `improvise`, and `to` in a duration; recovery and formatting.
 - `crates/musa-compiler`: three `FactKind` variants; `Decision::{Order, Duration}` producers; Fisher–Yates over the
   per-path stream; the notated-versus-performed split for free durations.
 - `crates/musa-notation`: the three lossy emissions above, each warning once; `plan.rs` draws the bracket and the box.

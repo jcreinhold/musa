@@ -1,13 +1,13 @@
 /**
  * tree-sitter grammar for musa.
  *
- * Every rule here traces to a function in `crates/musa-language/src/parser.rs`
+ * Every rule here traces to a function in `crates/musa-syntax/src/parser.rs`
  * — the authoritative, hand-written parser — and every token to a regex or
- * literal in `crates/musa-language/src/lexer.rs`. Node names mirror
+ * literal in `crates/musa-syntax/src/lexer.rs`. Node names mirror
  * `syntax_kind.rs`, snake_cased, so the query files read in the language's
  * own vocabulary. Where the trees disagree, the hand parser is right and
  * this file changes: the drift law in
- * `crates/musa-language/tests/suite/tree_sitter_fixtures.rs` is what notices.
+ * `crates/musa-syntax/tests/suite/tree_sitter_fixtures.rs` is what notices.
  *
  * The grammar needs no external scanner: semicolons and braces are explicit
  * (roadmap §7), so the one-token lookahead LR(1) gives is enough for the
@@ -72,7 +72,7 @@ const VOICE_ITEMS = ($) => [
 
 // The words and marks a region may hold, which is every token the lexer
 // writes but the six delimiters. `_syntax_atom` reads them one at a time;
-// the drift law in `crates/musa-language/tests/suite/tree_sitter_fixtures.rs`
+// the drift law in `crates/musa-syntax/tests/suite/tree_sitter_fixtures.rs`
 // is what keeps this list honest.
 const SYNTAX_WORDS = [
   'template', 'signature', 'structure', 'data', 'module', 'make', 'as', 'piece',
@@ -997,14 +997,14 @@ module.exports = grammar({
 
     // Parser::kernel_quote — `kernel EventTrack[WrittenTime, ScoreFact] { … }`.
     //
-    // The body is the *kernel's* grammar, and the kernel owns it: musa-language
+    // The body is the *kernel's* grammar, and the kernel owns it: musa-syntax
     // recognises the shape (matched braces, and `${...}` holes) and hands the
     // text to musa-kernel's reader. This rule says the same thing, for the same
     // reason — a second term grammar here would be a second thing to keep in
     // step with the one in `crates/musa-kernel`.
     //
     // What it does have to agree with is the *lexer*, token for token: the
-    // drift law compares these leaves against musa-language's token stream, and
+    // drift law compares these leaves against musa-syntax's token stream, and
     // a body scanned as one opaque blob would fail it. So the body is a run of
     // the same tokens the rest of the file is made of.
     // `quote at here { … }` — the other quotation
@@ -1452,7 +1452,7 @@ module.exports = grammar({
         optional($.integer),
       ),
 
-    // --- Tokens (crates/musa-language/src/lexer.rs) ----------------------
+    // --- Tokens (crates/musa-syntax/src/lexer.rs) ----------------------
 
     // `[a-g](#+|b+|n)?-?[0-9]+` — a written pitch: letter, accidental,
     // octave. The letter is always first, so the `b` of `bb2` is a flat and

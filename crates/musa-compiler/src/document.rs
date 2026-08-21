@@ -52,8 +52,8 @@ use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use musa_calculus::{Cx, ElabError, Name, Origin, Program, Raw, RawData, RawProgram, RawTopLevel, Term, Visibility};
-use musa_language::ast::AstNode as _;
-use musa_language::{SyntaxKind, SyntaxNode};
+use musa_syntax::ast::AstNode as _;
+use musa_syntax::{SyntaxKind, SyntaxNode};
 
 use crate::elaborate::VoiceTrack;
 use crate::lower::items::{Declared, Definition, Item};
@@ -844,7 +844,7 @@ impl Read {
             return;
         }
         for node in source.root.descendants() {
-            let Some(name) = musa_language::ast::BarStmt::cast(node.clone()).and_then(|bar| bar.name()) else {
+            let Some(name) = musa_syntax::ast::BarStmt::cast(node.clone()).and_then(|bar| bar.name()) else {
                 continue;
             };
             let read = Lowering::new(resolver, sites)
@@ -1109,7 +1109,7 @@ fn record(resolver: &mut Resolver, node: &SyntaxNode, name: &str, source: Option
 /// at all.
 fn bound_name(node: &SyntaxNode) -> Option<String> {
     node.children_with_tokens()
-        .filter_map(musa_language::SyntaxElement::into_token)
+        .filter_map(musa_syntax::SyntaxElement::into_token)
         .find(|token| token.kind() == SyntaxKind::Identifier)
         .map(|token| token.text().to_owned())
 }
@@ -1118,7 +1118,7 @@ fn bound_name(node: &SyntaxNode) -> Option<String> {
 fn visibility_of(node: &SyntaxNode) -> Visibility {
     if node
         .children_with_tokens()
-        .filter_map(musa_language::SyntaxElement::into_token)
+        .filter_map(musa_syntax::SyntaxElement::into_token)
         .any(|token| token.kind() == SyntaxKind::PrivateKw)
     {
         Visibility::Private
@@ -1254,7 +1254,7 @@ fn visit(
 /// Every identifier written anywhere under `node`.
 fn identifiers(node: &SyntaxNode) -> BTreeSet<String> {
     node.descendants_with_tokens()
-        .filter_map(musa_language::SyntaxElement::into_token)
+        .filter_map(musa_syntax::SyntaxElement::into_token)
         .filter(|token| token.kind() == SyntaxKind::Identifier)
         .map(|token| token.text().to_owned())
         .collect()

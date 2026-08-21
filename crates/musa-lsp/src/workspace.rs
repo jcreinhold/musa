@@ -10,8 +10,8 @@
 use std::collections::HashMap;
 
 use lsp_types::Uri;
-use musa_language::DocumentAlternative;
 use musa_project::{ProjectCommand, ProjectSession, ProjectSnapshot};
+use musa_syntax::DocumentAlternative;
 
 use crate::convert::LineIndex;
 
@@ -60,7 +60,7 @@ impl Document {
     ///
     /// Asked of the session rather than of the formatter, because the layout
     /// a project asks for in its `musa.toml` is the session's to know — a
-    /// second caller of `musa_language::format` here is a second answer, and
+    /// second caller of `musa_syntax::format` here is a second answer, and
     /// an editor that disagrees with `musa format` is the whole failure the
     /// setting has to avoid. It is a question, not a command: nothing about
     /// the session changes, so no undo entry appears.
@@ -84,7 +84,7 @@ impl Document {
     /// produced them, which is a different file, so a hover or a definition
     /// resolved that way would point somewhere the user is not.
     pub(crate) fn alternative(&self) -> DocumentAlternative {
-        musa_language::alternative(self.session.snapshot().source())
+        musa_syntax::alternative(self.session.snapshot().source())
     }
 }
 

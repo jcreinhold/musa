@@ -133,7 +133,7 @@ The decision is only worth recording if a later prompt cannot undo it without no
   registered configuration is writable. The prose promise beside `COUNT` is now a compile error. A product is writable
   at two members or more, because `(e)` is a parenthesized expression and the surface's product literal starts at the
   comma.
-- **`crates/musa-language/src/types.rs`** re-words the one line an editor shows beside `Unit`. It read "the type with
+- **`crates/musa-syntax/src/types.rs`** re-words the one line an editor shows beside `Unit`. It read "the type with
   exactly one value", which invites a composer to go looking for the literal; it now says the type carries nothing and
   that no expression writes it.
 

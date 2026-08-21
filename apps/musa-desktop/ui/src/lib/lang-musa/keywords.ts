@@ -2,7 +2,7 @@
  * Every keyword's own documentation, as the language wrote it.
  *
  * The words are `keyword-docs.json`, generated out of `keywords.rs` in
- * `musa-language` — the one table the lexer, the language server, and this
+ * `musa-syntax` — the one table the lexer, the language server, and this
  * tooltip all read — by the same generator that writes `spellings.json`, so
  * a keyword added to the language arrives here as a stale-fixture failure,
  * not as a silent gap. What this module adds is only the reading: a lookup

@@ -29,8 +29,8 @@ canonical, and editing generated music surfaces a real choice instead of silentl
 
 ## Design
 
-- `musa-language` gains the syntax-aware edit computation (it owns text-edit utilities, §15.2): given a CST, a source
-  span (or event origin), and an intent (insert note at position, change pitch token, change duration token), compute
+- `musa-syntax` gains the syntax-aware edit computation (it owns text-edit utilities, §15.2): given a CST, a source span
+  (or event origin), and an intent (insert note at position, change pitch token, change duration token), compute
   `Vec<TextEdit>`. Insertion must place the new statement at the correct sequential position inside a voice block with
   correct indentation; changing pitch/duration is a token replacement. Extract-motif wraps the selected statements into
   a new `motif` declaration and replaces them with `use name();`.
@@ -86,7 +86,7 @@ Two facts the implementation settled, rather than deviations:
 
 ## Target
 
-- `musa-language`: edit-computation API (one deep entry point preferred over four shallow ones).
+- `musa-syntax`: edit-computation API (one deep entry point preferred over four shallow ones).
 - `musa-project`: `EditScore` command path with provenance resolution, impact counts, and transactional apply.
 - `apps/musa-desktop/ui`: keyboard entry, editable inspector fields, the generated-edit choice, extract motif.
 - Tests: edit computation snapshots (insert into empty/nonempty voice, change pitch of an authored note, change pitch of
@@ -97,7 +97,7 @@ Two facts the implementation settled, rather than deviations:
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-project
+cargo nextest run -p musa-syntax -p musa-project
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cd apps/musa-desktop/ui && npm run check && npm run test

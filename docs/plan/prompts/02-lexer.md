@@ -10,7 +10,7 @@ phase: 1
 
 ## Task
 
-Implement the `musa-language` lexer: a `logos`-based tokenizer for the `.musa` language that preserves **all** trivia
+Implement the `musa-syntax` lexer: a `logos`-based tokenizer for the `.musa` language that preserves **all** trivia
 (whitespace, line and block comments) so a lossless syntax tree and a faithful formatter are possible later.
 
 ## Read
@@ -20,9 +20,9 @@ Implement the `musa-language` lexer: a `logos`-based tokenizer for the `.musa` l
 
 ## Design
 
-- Add dependencies to `musa-language`: `logos`, `thiserror`, `miette` (miette is used at the CLI boundary later; the
-  lexer itself returns plain error values — see Stop).
-- Public surface (all in `musa_language` root, internals private):
+- Add dependencies to `musa-syntax`: `logos`, `thiserror`, `miette` (miette is used at the CLI boundary later; the lexer
+  itself returns plain error values — see Stop).
+- Public surface (all in `musa_syntax` root, internals private):
 
   ```rust
   /// Lex `source` into tokens. Trivia tokens are emitted, never discarded.
@@ -57,7 +57,7 @@ Implement the `musa-language` lexer: a `logos`-based tokenizer for the `.musa` l
 
 ## Target
 
-- `crates/musa-language/src/{lib.rs,syntax_kind.rs,lexer.rs}` (module layout is the worker's choice; the public items
+- `crates/musa-syntax/src/{lib.rs,syntax_kind.rs,lexer.rs}` (module layout is the worker's choice; the public items
   above are not).
 - Unit tests: each token class, trivia round-tripping (`concat(tokens.text) == source`), pitch/duration/unit edge cases,
   error recovery continuation.
@@ -65,12 +65,12 @@ Implement the `musa-language` lexer: a `logos`-based tokenizer for the `.musa` l
 ## Check
 
 ```sh
-cargo nextest run -p musa-language
-cargo clippy --all-targets -p musa-language -- -D warnings
+cargo nextest run -p musa-syntax
+cargo clippy --all-targets -p musa-syntax -- -D warnings
 cargo fmt --check
 ```
 
-Commit as `Add musa-language lexer`.
+Commit as `Add musa-syntax lexer`.
 
 ## Stop
 

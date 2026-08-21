@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use musa_language::ast::{AstNode as _, ImportStmt};
-use musa_language::{SyntaxKind, SyntaxNode};
+use musa_syntax::ast::{AstNode as _, ImportStmt};
+use musa_syntax::{SyntaxKind, SyntaxNode};
 
 use crate::compile::{CompileOptions, SourceDocument};
 use musa_score::diagnose::{Code, Diagnostic};
@@ -16,7 +16,7 @@ use super::refusal;
 #[derive(Clone)]
 pub(crate) struct Cached {
     printed: String,
-    output: crate::syntax::Syntax,
+    output: crate::quote::Syntax,
     charges: Charges,
 }
 
@@ -91,9 +91,9 @@ pub(crate) fn expand_one(
         ))
     })?;
     let interior = body.text().to_string();
-    let subject = crate::syntax::read_region(
+    let subject = crate::quote::read_region(
         &body,
-        crate::syntax::ExpansionPath::at(vec![u32::try_from(ordinal).unwrap_or(u32::MAX)]),
+        crate::quote::ExpansionPath::at(vec![u32::try_from(ordinal).unwrap_or(u32::MAX)]),
     );
 
     // A function of the region alone, so the cache hit and the cache miss build
@@ -142,7 +142,7 @@ pub(crate) fn expand_one(
             });
         }
     };
-    let printed = crate::syntax::print(&output);
+    let printed = crate::quote::print(&output);
     ordinary_expression(&printed.text, site)?;
     for generated in &printed.generated_names {
         if written.contains(generated) {
@@ -234,7 +234,7 @@ pub(crate) fn stopped_or_refused(failure: &crate::core::ExpansionFailure, path: 
 /// thing that *is* an expression and still may not be emitted is another
 /// region, so that is asked separately.
 pub(crate) fn ordinary_expression(text: &str, site: SourceSpan) -> Result<(), Box<Diagnostic>> {
-    let parsed = crate::syntax::read_expression(text);
+    let parsed = crate::quote::read_expression(text);
     if !parsed.errors().is_empty() {
         return Err(Box::new(refusal(
             site,
@@ -301,7 +301,7 @@ pub(crate) fn syntax_imports(root: &SyntaxNode) -> Vec<SyntaxImport> {
 /// one the composer cannot already reach, which is the part a renaming alone
 /// cannot promise once the expansion has become ordinary text.
 pub(crate) fn names_written(source: &str) -> BTreeSet<String> {
-    musa_language::lex(source)
+    musa_syntax::lex(source)
         .tokens()
         .iter()
         .filter(|token| token.kind == SyntaxKind::Identifier)

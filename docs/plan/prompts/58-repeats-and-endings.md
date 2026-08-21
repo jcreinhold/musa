@@ -125,7 +125,7 @@ Volta brackets are written in the topmost staff's first lane only, as engravers 
 
 ## Target
 
-- `crates/musa-language`: `EndingKw`; `EndingStmt`; parsing inside `RepeatStmt`; highlighting; recovery through
+- `crates/musa-syntax`: `EndingKw`; `EndingStmt`; parsing inside `RepeatStmt`; highlighting; recovery through
   `VOICE_RECOVERY`.
 - `crates/musa-compiler`: ending placement and count rules, all as `Code::Misplaced`; `FactKind::Repeat` and
   `FactKind::Ending` with their `factext` spellings; `RepeatRegion`/`EndingRegion` on `AnnotationStore`; the
@@ -152,8 +152,8 @@ of bars, and the one-line rule is about bars.
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-notation
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-notation -- -D warnings
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-notation
+cargo clippy --all-targets -p musa-syntax -p musa-compiler -p musa-notation -- -D warnings
 cargo fmt --check
 cargo run -p musa -- render examples/repeats.musa --to mei -o -    # one body, |: :|, two endings
 cargo run -p musa -- render examples/repeats.musa --to midi        # every pass, as before

@@ -19,8 +19,8 @@
 //!   the arguments in order.
 
 use musa_calculus::{Origin, Raw, RawArm, RawPattern};
-use musa_language::ast::AstNode as _;
-use musa_language::{SyntaxKind, SyntaxNode, SyntaxToken};
+use musa_syntax::ast::AstNode as _;
+use musa_syntax::{SyntaxKind, SyntaxNode, SyntaxToken};
 use num_rational::Ratio;
 
 use super::{
@@ -211,7 +211,7 @@ impl Lowering<'_> {
     /// method call and nothing else. So a path is *not* read as a projection
     /// however many dots its core name ends up containing.
     fn path(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
-        let segments = musa_language::ast::PathExpr::cast(node.clone())?.segments();
+        let segments = musa_syntax::ast::PathExpr::cast(node.clone())?.segments();
         let written = self.qualified(&segments, crate::resolve::trimmed_span(node))?;
         if self.in_phase
             && let Some(literal) = phase_literal(&written)
@@ -284,7 +284,7 @@ impl Lowering<'_> {
             SyntaxKind::FalseKw => Raw::hosted(origin, "Bool.False"),
             SyntaxKind::Integer => whole(origin, self.whole_number(&token)?),
             SyntaxKind::Rational => plain_literal(origin, "Ratio", self.exact(&token)?),
-            SyntaxKind::String => plain_literal(origin, "Text", musa_language::ast::unquote(token.text())),
+            SyntaxKind::String => plain_literal(origin, "Text", musa_syntax::ast::unquote(token.text())),
             SyntaxKind::PitchLiteral => {
                 let Some(pitch) = musa_score::WrittenPitch::parse(token.text()) else {
                     return self.not_a(&token, "pitch");
@@ -1051,7 +1051,7 @@ impl Lowering<'_> {
     /// A field written without an `=` is the shorthand `01-surface.md` §9.2
     /// gives patterns and withholds from literals: `Dotted { total }` binds the
     /// field to its own name. The grammar records it by writing no nested
-    /// pattern at all ([`musa_language::ast::FieldPattern::pattern`] answers
+    /// pattern at all ([`musa_syntax::ast::FieldPattern::pattern`] answers
     /// `None`), so the binding is made here rather than read.
     fn record_pattern(&mut self, fields: &SyntaxNode, origin: Origin) -> Option<RawPattern> {
         let mut bound = Vec::new();
@@ -1198,8 +1198,8 @@ fn operator_method(kind: SyntaxKind) -> Option<&'static str> {
 fn phase_literal(written: &str) -> Option<musa_calculus::Literal> {
     let (namespace, case) = written.split_once('.')?;
     match namespace {
-        "TokenKind" => crate::syntax::token_kind_named(case).map(crate::registry::token_kind_literal),
-        "Delimiter" => crate::syntax::Delimiter::named(case)
+        "TokenKind" => crate::quote::token_kind_named(case).map(crate::registry::token_kind_literal),
+        "Delimiter" => crate::quote::Delimiter::named(case)
             .map(|held| crate::registry::literal(crate::registry::plain_type("Delimiter"), held)),
         _ => None,
     }
@@ -1248,7 +1248,7 @@ fn written_name(node: &SyntaxNode) -> Option<String> {
 /// The text a written string literal spells, if that is what this node is.
 fn text_of(node: &SyntaxNode) -> Option<String> {
     let token = significant_tokens(node).next()?;
-    (token.kind() == SyntaxKind::String).then(|| musa_language::ast::unquote(token.text()))
+    (token.kind() == SyntaxKind::String).then(|| musa_syntax::ast::unquote(token.text()))
 }
 
 /// The natural a written integer literal spells, if that is what this node is.

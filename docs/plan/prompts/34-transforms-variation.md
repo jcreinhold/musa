@@ -59,7 +59,7 @@ kernel constructor.
 
 ## Target
 
-- `musa-language`/`musa-compiler`: syntax, elaboration semantics, provenance, diagnostics for the three transforms +
+- `musa-syntax`/`musa-compiler`: syntax, elaboration semantics, provenance, diagnostics for the three transforms +
   specialization.
 - `musa-project`/desktop: working `Specialize` edit mode.
 - `examples/`: a variation fixture (theme + stretch + retrograde + inversion + one specialized occurrence).
@@ -69,8 +69,8 @@ kernel constructor.
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-project
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-project -- -D warnings
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-project
+cargo clippy --all-targets -p musa-syntax -p musa-compiler -p musa-project -- -D warnings
 cargo fmt --check
 cargo run -p musa -- check examples/variation.musa
 cd apps/musa-desktop && cargo tauri dev   # manual: specialize a motif occurrence from the score
@@ -105,7 +105,7 @@ Commit as `Add stretch, retrograde, invert, and occurrence specialization`.
 - **Only a pitch can be specialized.** `ChangeDuration` with `Specialize` is refused by name: an override respells one
   note, and renotating one inside an occurrence would move every note after it.
 - **`EditIntent::Specialize` is the language's job.** Adding, merging, and ordering `note n = p;` overrides is syntax
-  work, so it lives in `musa-language::edits` beside the other intents; `musa-project` resolves provenance to
+  work, so it lives in `musa-syntax::edits` beside the other intents; `musa-project` resolves provenance to
   `(call site, position)` and nothing more.
 - **Retrograde needs no kernel primitive**, recorded as §34 evidence in `docs/rules/kernel/08-open-questions.md`: the
   finite kernel's occurrences are already a materialized set, so reversal is a mapping over them.

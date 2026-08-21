@@ -27,7 +27,7 @@ This graduates `docs/rules/kernel/10-term-calculus.md` from candidate to governi
   producer/consumer now exists.
 - `crates/musa/src/main.rs` (command dispatch and help text), `crates/musa-project/src/export.rs` (how exports are
   routed today — kernel text is an export, and should not grow a parallel path).
-- `crates/musa-language/src/lexer.rs` — read it before writing a lexer. Kernel text is *not* musa source and must not
+- `crates/musa-syntax/src/lexer.rs` — read it before writing a lexer. Kernel text is *not* musa source and must not
   share its lexer; the question to answer explicitly is whether anything is genuinely shared (rational literal parsing,
   probably) or whether sharing would couple two languages that change independently.
 

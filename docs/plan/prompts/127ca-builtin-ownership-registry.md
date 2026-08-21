@@ -23,7 +23,7 @@ compiler-owned operation anywhere in the workspace. This frees the name for prom
   *registered primitive* will mean at prompt 127d.
 - `crates/musa-compiler/src/core/mod.rs`: `PrimitiveOwnership`, `PRIMITIVE_OWNERSHIP`, `BUILTIN_OWNERSHIP`, `Family`,
   `Eliminator`, and the ownership law suite at the end of the file.
-- `crates/musa-language/src/types.rs` and its three consumers.
+- `crates/musa-syntax/src/types.rs` and its three consumers.
 
 ## Design
 
@@ -48,7 +48,7 @@ law suite already reaches across both tables to check it. Merge them:
 with the operations that populate it. Do not add an empty variant here.
 
 **Base types are base types.** The same governing paragraph says base types "are called *base types*, never primitives",
-so `musa_language::PRIMITIVE_TYPES` and its four consumers become `BASE_TYPES`. This is beyond the ledger row's literal
+so `musa_syntax::PRIMITIVE_TYPES` and its four consumers become `BASE_TYPES`. This is beyond the ledger row's literal
 text, which covers operations; it is in scope because a prompt whose purpose is to leave the word one meaning cannot
 leave a second one exported from a public facade.
 
@@ -67,7 +67,7 @@ Update the ledger row's replacement column only if the merged registry makes its
 - `Family::{Delta, Eliminator, Track}`, with the doc comment on each citing the §5.8 family it names.
 - The ownership law suite reading one table, with its classified-exactly-once and family-count assertions restated over
   79 entries rather than 71 plus 8.
-- `musa_language::BASE_TYPES` and its consumers in `musa-compiler` and `musa-lsp`.
+- `musa_syntax::BASE_TYPES` and its consumers in `musa-compiler` and `musa-lsp`.
 - Renamed tests, including `every_primitive_is_reachable_from_the_spelling_it_replaced`,
   `every_first_order_primitive_is_total_on_its_declared_domain`, `finite_primitives_agree_with_small_reference_folds`,
   and `the_schema_libraries_add_no_compiler_primitive`. No old test name survives as an alias

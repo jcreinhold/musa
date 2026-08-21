@@ -13,7 +13,7 @@ translates into nothing has no semantics beyond whatever its compiler pass happe
 ## The census
 
 Every keyword the lexer accepts was listed with what it elaborates to. The row list was driven from
-`crates/musa-language/src/keywords.rs` — the table prompt 84 made exhaustive by construction, since `keyword_doc` is a
+`crates/musa-syntax/src/keywords.rs` — the table prompt 84 made exhaustive by construction, since `keyword_doc` is a
 wildcard-free match over `SyntaxKind` and the workspace forbids wildcard arms, so a keyword the lexer accepts and the
 table omits is a compile error. At the time of the decision both sides held 88 spellings.
 

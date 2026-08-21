@@ -485,7 +485,7 @@ Musa uses four front-end forms. Each answers one question.
 
 ### 6.1 Lossless grouped syntax
 
-This is the source text, including errors, comments, spaces, and exact byte ranges. `musa-language` owns it. Formatting,
+This is the source text, including errors, comments, spaces, and exact byte ranges. `musa-syntax` owns it. Formatting,
 syntax highlighting, and text editing use it.
 
 Expansion is an operation over syntax objects and records. It is not a fifth stored program form.

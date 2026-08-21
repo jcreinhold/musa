@@ -1,12 +1,12 @@
 //! One concern of the enclosing module; see its module docs.
 
-use musa_language::{SyntaxKind, SyntaxNode};
+use musa_syntax::{SyntaxKind, SyntaxNode};
 
 use super::Type;
 
 /// The type a written name denotes in an adapter module, and nowhere else.
 ///
-/// Deliberately absent from `musa-language`'s `BASE_TYPES`: these are not
+/// Deliberately absent from `musa-syntax`'s `BASE_TYPES`: these are not
 /// spellings the parser offers, the language server completes, or a composer
 /// can write. They are read only where [`crate::data::TypeScope::in_phase`]
 /// holds, which is the same boundary [`Reading::Expansion`] draws for the
@@ -35,7 +35,7 @@ pub(crate) fn child_of(node: &SyntaxNode, predicate: fn(SyntaxKind) -> bool) -> 
 }
 
 pub(crate) fn is_type_node(kind: SyntaxKind) -> bool {
-    musa_language::ast::is_type(kind)
+    musa_syntax::ast::is_type(kind)
 }
 
 /// The type a declaration or parameter annotates, as a node.

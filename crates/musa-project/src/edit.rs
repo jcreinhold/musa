@@ -14,7 +14,7 @@
 //! doing so changes every occurrence — and why the interface must say so
 //! before it happens, which is what [`EditImpact`] is for.
 
-use musa_language::{Anchor, EditIntent, HeaderField, Statement};
+use musa_syntax::{Anchor, EditIntent, HeaderField, Statement};
 
 use crate::error::ProjectError;
 use crate::facts::{EventFacts, ScoreFacts};
@@ -489,7 +489,7 @@ pub(crate) fn intent_of(facts: &ScoreFacts, command: &EditCommand) -> Result<Edi
             value: value.clone(),
         }),
         // An adapter command has no intent here, and must not be given one:
-        // `musa-language` writes Musa, and a region is not written in Musa.
+        // `musa-syntax` writes Musa, and a region is not written in Musa.
         // The session routes this command to the adapter instead
         // (`ProjectSession::edit_adapter`), and this arm exists so that a
         // caller who reached the wrong door is told so rather than served.

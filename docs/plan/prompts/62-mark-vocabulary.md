@@ -23,9 +23,9 @@ every golden stays byte-identical.
 - `crates/musa-compiler/src/score.rs` — `ArticulationMark` and its `NAMES`/`parse`/`name` triple. Count the `match` arms
   in `resolve.rs` (:558), `elaborate.rs` (:1146), `factext.rs` (:160), `performance.rs`, `project.rs`, `profile.rs`,
   `plan.rs`, `ly.rs`, `mei.rs`, `musicxml.rs` before starting; the count is the argument.
-- `crates/musa-language/src/parser.rs::articulations` (:1198) — it accepts a **greedy list of bare identifiers** and
+- `crates/musa-syntax/src/parser.rs::articulations` (:1198) — it accepts a **greedy list of bare identifiers** and
   validates nothing. This matters: the surface grammar is already open, and only the compiler is closed.
-- `crates/musa-language/src/syntax_kind.rs` :85–87 — studio processor names are deliberately not keywords "so the studio
+- `crates/musa-syntax/src/syntax_kind.rs` :85–87 — studio processor names are deliberately not keywords "so the studio
   vocabulary can grow without lexer changes". This prompt applies the same decision to notation, and cites it as
   precedent rather than inventing a rule.
 - `crates/musa-compiler/src/resolve.rs::articulation_settings` (:588) — the profile side, which reads `gate` and

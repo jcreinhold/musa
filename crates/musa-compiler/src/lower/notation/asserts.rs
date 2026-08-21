@@ -1,8 +1,8 @@
 //! Asserts: `asserted` and the `claimed_predicate`/`claim_arguments` pair that report what a claim refused.
 
 use musa_calculus::{Origin, Raw};
-use musa_language::SyntaxNode;
-use musa_language::ast::AstNode as _;
+use musa_syntax::SyntaxNode;
+use musa_syntax::ast::AstNode as _;
 
 use crate::lower::{Lowering, applied, child, is_expr_node};
 use musa_score::diagnose::{Code, Diagnostic};
@@ -35,7 +35,7 @@ impl Lowering<'_> {
     /// alone would tell a reader an assertion was here and not which one, and
     /// the value the arguments have is a question this reading cannot answer.
     pub(crate) fn asserted(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
-        let statement = musa_language::ast::AssertStmt::cast(node.clone())?;
+        let statement = musa_syntax::ast::AssertStmt::cast(node.clone())?;
         let predicate = self.claimed_predicate(&statement, node)?;
         let arguments = self.claim_arguments(predicate, &statement, node)?;
         let span = crate::resolve::trimmed_span(node);
@@ -71,7 +71,7 @@ impl Lowering<'_> {
     /// better served by reading all six than by being guessed at.
     pub(crate) fn claimed_predicate(
         &mut self,
-        statement: &musa_language::ast::AssertStmt,
+        statement: &musa_syntax::ast::AssertStmt,
         node: &SyntaxNode,
     ) -> Option<&'static musa_score::assert::Predicate> {
         let name = statement.claim().unwrap_or_default();
@@ -100,7 +100,7 @@ impl Lowering<'_> {
     pub(crate) fn claim_arguments(
         &mut self,
         predicate: &'static musa_score::assert::Predicate,
-        statement: &musa_language::ast::AssertStmt,
+        statement: &musa_syntax::ast::AssertStmt,
         node: &SyntaxNode,
     ) -> Option<Vec<Argued>> {
         use musa_score::assert::{Argument, ParamType};

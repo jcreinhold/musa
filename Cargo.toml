@@ -13,11 +13,11 @@ musa-calculus = { path = "crates/musa-calculus", version = "0.1.0" }
 musa-compiler = { path = "crates/musa-compiler", version = "0.1.0" }
 musa-dsp = { path = "crates/musa-dsp", version = "0.1.0" }
 musa-kernel = { path = "crates/musa-kernel", version = "0.1.0" }
-musa-language = { path = "crates/musa-language", version = "0.1.0" }
 musa-notation = { path = "crates/musa-notation", version = "0.1.0" }
 musa-playback = { path = "crates/musa-playback", version = "0.1.0" }
 musa-project = { path = "crates/musa-project", version = "0.1.0" }
 musa-score = { path = "crates/musa-score", version = "0.1.0" }
+musa-syntax = { path = "crates/musa-syntax", version = "0.1.0" }
 
 [workspace.lints.rust]
 future-incompatible = "warn"

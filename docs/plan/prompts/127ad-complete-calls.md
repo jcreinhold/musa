@@ -113,8 +113,8 @@ report, not a silent edit.
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-project -p musa-lsp
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp
+cargo clippy --all-targets -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 find examples stdlib -name '*.musa' -print0 | xargs -0 -n1 cargo run -q -p musa -- check

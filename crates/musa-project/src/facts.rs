@@ -10,11 +10,11 @@
 //! rational so the interface can typeset a real fraction
 //! (`01-visual-language.md` §3) rather than a decimal.
 
-use musa_language::HeaderField;
 use musa_score::{
     ExpansionStep, IntegratedTempoMap, Interval, Mode, MusicalTime, Origin, PerformanceOptions, PitchClass, Scope,
     ScoreEventKind, ScoreSnapshot, WrittenPitch,
 };
+use musa_syntax::HeaderField;
 use serde::Serialize;
 use serde::ser::SerializeStruct;
 
@@ -565,7 +565,7 @@ impl ScoreFacts {
                 .iter()
                 .map(|field| HeaderFact {
                     field: *field,
-                    value: musa_language::read_header(source, *field),
+                    value: musa_syntax::read_header(source, *field),
                 })
                 .collect(),
         }

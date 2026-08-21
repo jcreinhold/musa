@@ -1,7 +1,0 @@
----
-source: crates/musa-language/tests/parser.rs
-expression: print_errors(&doc)
----
-25..25: missing `;`
-  label: it goes here
-  fix: add `;` -> ";"

@@ -1,8 +1,0 @@
----
-source: crates/musa-language/tests/parser.rs
-expression: print_errors(&doc)
----
-9..15: `module` no longer declares one
-  label: this provides a signature, so it is a `structure`
-  help: a `module` is a node of a package's tree, declared with `mod`; a `structure` provides a `signature`
-  fix: write `structure` -> "structure"

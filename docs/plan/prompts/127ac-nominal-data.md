@@ -27,7 +27,7 @@ own data instead of asking the compiler for another built-in type.
   are sealed behind, and which already implements transparent by-name matching.
 - `crates/musa-compiler/src/{module,resolve,template}.rs`, and the `Shape`/`Base` registry in `core.rs` that the
   built-in musical domains use today.
-- `crates/musa-language` and `editors/tree-sitter-musa`, held together by the drift law.
+- `crates/musa-syntax` and `editors/tree-sitter-musa`, held together by the drift law.
 
 ## Design
 
@@ -65,8 +65,8 @@ Nominal ids, constructor tables, and the sealed declaration tables stay private 
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-project -p musa-lsp
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp
+cargo clippy --all-targets -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 find examples stdlib -name '*.musa' -print0 | xargs -0 -n1 cargo run -q -p musa -- check

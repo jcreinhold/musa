@@ -2347,8 +2347,8 @@ dependencies = [
  "insta",
  "musa-calculus",
  "musa-kernel",
- "musa-language",
  "musa-score",
+ "musa-syntax",
  "num-rational",
  "proptest",
  "serde",
@@ -2361,8 +2361,8 @@ dependencies = [
 name = "musa-desktop"
 version = "0.1.0"
 dependencies = [
- "musa-language",
  "musa-project",
+ "musa-syntax",
  "serde",
  "serde_json",
  "tauri",
@@ -2396,27 +2396,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "musa-language"
-version = "0.1.0"
-dependencies = [
- "insta",
- "logos",
- "num_enum",
- "proptest",
- "rowan",
- "text-size",
- "thiserror 2.0.20",
-]
-
-[[package]]
 name = "musa-lsp"
 version = "0.1.0"
 dependencies = [
  "fluent-uri",
  "lsp-server",
  "lsp-types",
- "musa-language",
  "musa-project",
+ "musa-syntax",
  "serde_json",
  "tracing",
 ]
@@ -2457,10 +2444,10 @@ dependencies = [
  "hound",
  "musa-compiler",
  "musa-dsp",
- "musa-language",
  "musa-notation",
  "musa-playback",
  "musa-score",
+ "musa-syntax",
  "num-rational",
  "serde",
  "serde_json",
@@ -2479,10 +2466,23 @@ dependencies = [
  "indexmap 2.14.0",
  "insta",
  "musa-kernel",
- "musa-language",
+ "musa-syntax",
  "num-rational",
  "proptest",
  "serde",
+ "thiserror 2.0.20",
+]
+
+[[package]]
+name = "musa-syntax"
+version = "0.1.0"
+dependencies = [
+ "insta",
+ "logos",
+ "num_enum",
+ "proptest",
+ "rowan",
+ "text-size",
  "thiserror 2.0.20",
 ]
 

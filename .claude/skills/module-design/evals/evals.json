@@ -27,7 +27,7 @@
     },
     {
       "id": 5,
-      "prompt": "A module in `musa-language` has 14 public free functions that each just call one method on `SyntaxNode` and return the result (e.g., `pub fn node_kind(n: &SyntaxNode) -> SyntaxKind { n.kind() }`). They were added to make call sites read better. Is that bad design, and what would a depth-improving fix look like?",
+      "prompt": "A module in `musa-syntax` has 14 public free functions that each just call one method on `SyntaxNode` and return the result (e.g., `pub fn node_kind(n: &SyntaxNode) -> SyntaxKind { n.kind() }`). They were added to make call sites read better. Is that bad design, and what would a depth-improving fix look like?",
       "expected_output": "A diagnosis that flags this as shallow surface area (each wrapper adds a name without hiding complexity), names the depth ratio problem, and proposes either calling the methods directly, replacing the wrappers with a small set of general operations, or keeping them private if they're internal helpers — without simply deleting helpful API.",
       "files": []
     },

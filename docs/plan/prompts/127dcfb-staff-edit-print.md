@@ -33,9 +33,9 @@ land §2.6's structured edit changing one pitch and no other byte, and prove the
   `implementation-of-functional-programming-languages/03-translating-a-high-level-functional-language-into-the-lambda-calculus.md`)
   — why a language handed to a programmer is the calculus *enriched* with local definitions rather than the bare
   calculus, and root `AGENTS.md`'s "No sublanguage by subtraction", which is that argument as a standard of this repo.
-- `crates/musa-language/src/parser.rs`'s `block_expr` — "Exactly one expression, because there is no statement here to
-  be the second one". This is the fact that turns the point above from a preference into an obstruction: musa has no
-  `let` expression, so an operation read as a bare expression has *no* way to bind a local name.
+- `crates/musa-syntax/src/parser.rs`'s `block_expr` — "Exactly one expression, because there is no statement here to be
+  the second one". This is the fact that turns the point above from a preference into an obstruction: musa has no `let`
+  expression, so an operation read as a bare expression has *no* way to bind a local name.
 - `docs/notes/research/language-design-closure/39-totality-and-structural-abstraction.md` §1, §4, §6.4–6.5 and §12.3 —
   the course correction this prompt sits after. All five of its recommendations have landed; per-type duplication is
   §6.5's accepted cost with a stated reopening rule, and more total recursion is §12.3's open question. Neither is this

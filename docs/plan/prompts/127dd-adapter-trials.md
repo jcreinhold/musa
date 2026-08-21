@@ -88,8 +88,8 @@ and each repair under `docs/notes/research/`, beside the notes that failed the l
 
 ```sh
 ./scripts/check-syntax-adapter-conformance.sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-project -p musa-lsp
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp
+cargo clippy --all-targets -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cd editors/tree-sitter-musa && tree-sitter test

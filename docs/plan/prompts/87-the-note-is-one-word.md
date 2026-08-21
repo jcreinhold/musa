@@ -22,9 +22,9 @@ prompt is green with every example exactly as it stands.
   editor may display familiar note symbols and accept shortcuts such as `q`, `h`, or `e`, but those should elaborate
   into exact values."* A shorthand that elaborates to the same rational is already sanctioned; this is that sentence
   taken up, with `/4` instead of `q` because `/4` says which fraction.
-- `crates/musa-language/src/lexer.rs` — `logos`, maximal munch with backtracking. `c4` and `1/4` are each **one** token,
+- `crates/musa-syntax/src/lexer.rs` — `logos`, maximal munch with backtracking. `c4` and `1/4` are each **one** token,
   there is no `/` token at all, and a lone `/` lexes as an error.
-- `crates/musa-compiler/src/resolve.rs` `parse_duration`, and `crates/musa-language/src/edits.rs` `set_duration`. Both
+- `crates/musa-compiler/src/resolve.rs` `parse_duration`, and `crates/musa-syntax/src/edits.rs` `set_duration`. Both
   take *the first `Rational`-or-`Integer` token under the statement node*. That pattern is why this prompt introduces a
   node.
 - `crates/musa-notation/src/plan.rs` `beam_unit`.
@@ -44,7 +44,7 @@ and it lets the short and long forms use the same character for the same idea.
 `plan::beam_unit` returns `1/8` for 7/8: it has no irregular-meter table, so an engraved bar of 7/8 beams as seven
 separate eighths. Prompt 90's formatter needs the same fact to group `2+2+3` in the text, and two readers disagreeing
 about one musical fact is what this repo's drift tests exist to prevent. So the table goes at the bottom of the graph,
-in `musa-language`, and `beam_unit` calls it:
+in `musa-syntax`, and `beam_unit` calls it:
 
 ```rust
 /// How a bar of `numerator/denominator` divides into the groups a player
@@ -59,7 +59,7 @@ of three when the denominator is 8 and the numerator is a multiple of 3 greater 
 
 The groups are counted in denominator units rather than returned as `Ratio<i64>` because both callers already hold the
 denominator and neither is helped by the fraction: `beam_unit` divides an onset by the group anyway, and prompt 91
-accumulates exact `(u64, u64)` pairs precisely so that `musa-language` — the bottom of the graph — does not grow
+accumulates exact `(u64, u64)` pairs precisely so that `musa-syntax` — the bottom of the graph — does not grow
 `num-rational` for one table. Every group in every case above is a whole number of denominator units, so nothing is
 lost.
 
@@ -103,19 +103,19 @@ and `score.rs`'s doc comment saying otherwise is amended in this commit.
 
 ## Target
 
-- `crates/musa-language/src/meter.rs` (new): `beat_groups`, exported from `lib.rs` and re-exported by `musa-compiler`
+- `crates/musa-syntax/src/meter.rs` (new): `beat_groups`, exported from `lib.rs` and re-exported by `musa-compiler`
   beside `musa_kernel::SemanticHash`, so `musa-notation` reaches it without a new edge in the graph. `musa-notation`'s
   `beam_unit` loses its own answer and becomes `beat_group_at`, which returns the group a given onset falls in — a
   uniform unit cannot describe 2+2+3.
-- `crates/musa-language/src/lexer.rs`, `syntax_kind.rs`, `highlight.rs` (`SPELLINGS` and `TokenClass::of`),
-  `keywords.rs`, and `tests/tree_sitter_fixtures.rs`'s `tree_sitter_name`: five tokens, five exhaustive matches.
-- `crates/musa-language/src/parser.rs`: `Parser::duration` wraps a `Duration` node and accepts the short form.
-- `crates/musa-language/src/ast.rs`: a `Duration` wrapper; `NoteStmt`/`RestStmt`/`ImproviseStmt::duration` and `held_to`
+- `crates/musa-syntax/src/lexer.rs`, `syntax_kind.rs`, `highlight.rs` (`SPELLINGS` and `TokenClass::of`), `keywords.rs`,
+  and `tests/tree_sitter_fixtures.rs`'s `tree_sitter_name`: five tokens, five exhaustive matches.
+- `crates/musa-syntax/src/parser.rs`: `Parser::duration` wraps a `Duration` node and accepts the short form.
+- `crates/musa-syntax/src/ast.rs`: a `Duration` wrapper; `NoteStmt`/`RestStmt`/`ImproviseStmt::duration` and `held_to`
   go through it.
-- `crates/musa-language/src/formatter.rs`: `Slash` tight both sides; `Dot` leaves `closes_right`; `ParamPath` joins
+- `crates/musa-syntax/src/formatter.rs`: `Slash` tight both sides; `Dot` leaves `closes_right`; `ParamPath` joins
   `Position | ChordSymbol` in the tight-node list, which is where the `Dot` rule actually belonged.
 - `crates/musa-compiler/src/resolve.rs`: `parse_duration` reads the node, and understands `/N` and dots.
-- `crates/musa-language/src/edits.rs`: `set_duration` replaces the `Duration` node's value range — which stops before
+- `crates/musa-syntax/src/edits.rs`: `set_duration` replaces the `Duration` node's value range — which stops before
   `to`, so rewriting a note's value leaves the performer's bound alone. The `spell_duration` helper this prompt once
   listed here arrives in prompt 89 instead, with the `Statement::text()` rewrite that is its only caller: a helper
   landed a commit before anything calls it is a public item with no caller, which this repo does not keep.

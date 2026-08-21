@@ -24,7 +24,7 @@
 
 use std::collections::HashMap;
 
-use musa_language::ast::{AstNode as _, LibraryDecl};
+use musa_syntax::ast::{AstNode as _, LibraryDecl};
 
 use crate::package::Package;
 use crate::resolve::Resolver;
@@ -180,7 +180,7 @@ pub(crate) fn standard_library_faults() -> Vec<Diagnostic> {
 /// declaration is always registered after the ones it may refer to.
 pub(crate) struct Libraries {
     /// Kept alive so the AST nodes below stay valid.
-    documents: Vec<musa_language::ParsedDocument>,
+    documents: Vec<musa_syntax::ParsedDocument>,
     /// One entry per imported file, in registration order.
     order: Vec<Entry>,
 }
@@ -245,7 +245,7 @@ impl Entry {
 pub(crate) fn load(
     resolver: &mut Resolver,
     importer: &str,
-    imports: &[musa_language::ast::ImportStmt],
+    imports: &[musa_syntax::ast::ImportStmt],
     sources: &ImportSources,
 ) -> Libraries {
     let mut loader = Loader {
@@ -338,7 +338,7 @@ impl Loader<'_> {
             );
             return;
         };
-        let document = musa_language::parse(text);
+        let document = musa_syntax::parse(text);
         if let Some(error) = document.errors().first() {
             resolver.report(
                 Diagnostic::error(Code::Import, format!("`{path}` does not compile"))
@@ -370,7 +370,7 @@ impl Loader<'_> {
             .unwrap_or_default()
             .iter()
             .filter(|import| !import.changes_syntax())
-            .filter_map(musa_language::ast::ImportStmt::path)
+            .filter_map(musa_syntax::ast::ImportStmt::path)
             .collect();
         for import in nested {
             self.load_one(resolver, &path, &import, span, None);
@@ -391,7 +391,7 @@ impl Loader<'_> {
 mod tests {
     #![allow(clippy::expect_used)]
 
-    use musa_language::ast::LibraryDecl;
+    use musa_syntax::ast::LibraryDecl;
 
     use super::*;
 
@@ -402,7 +402,7 @@ mod tests {
             "the embedded source language and manifest must advance together"
         );
         for (uri, source) in standard_library_modules() {
-            let parsed = musa_language::parse(source);
+            let parsed = musa_syntax::parse(source);
             assert!(parsed.errors().is_empty(), "{uri}: {:?}", parsed.errors());
             assert!(
                 LibraryDecl::from_root(&parsed.syntax()).is_some(),

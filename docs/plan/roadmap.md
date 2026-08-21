@@ -1925,7 +1925,7 @@ The workspace should start with seven substantial crates, not dozens of microsco
 musa/
 ├── Cargo.toml
 ├── crates/
-│   ├── musa-language/
+│   ├── musa-syntax/
 │   ├── musa-compiler/
 │   ├── musa-notation/
 │   ├── musa-dsp/
@@ -1947,7 +1947,7 @@ musa/
 ## 15.1 Dependency direction
 
 ```text
-leaves    musa-language        musa-calculus        musa-kernel
+leaves    musa-syntax        musa-calculus        musa-kernel
 
 values                      musa-score
                             ← language, kernel
@@ -1975,17 +1975,17 @@ In particular:
   no pass at all — which is why `musa-notation` depends on it and not on `musa-compiler`;
 - compiler does not depend on rendering;
 - compiler does not depend on audio;
-- the core does not depend on the compiler, on `musa-language`, or on anything musical (§15.12);
+- the core does not depend on the compiler, on `musa-syntax`, or on anything musical (§15.12);
 - the temporal kernel is a leaf on the same terms, and its payloads stay opaque to it (§15.13);
 - audio does not depend on the GUI;
 - render does not know about source-editor widgets;
 - the frontend does not know about CPAL or FunDSP;
-- the language server is the one shell with a second edge, to `musa-language` (§15.11): highlighting and completion must
+- the language server is the one shell with a second edge, to `musa-syntax` (§15.11): highlighting and completion must
   answer on half-typed source, which the session's facts — the last *valid* compile's — cannot describe;
 - the wasm shell sits on `musa-notation` and, like the CLI, on `musa-compiler` directly (§15.14), and nothing in the
   workspace depends on it — `packages/*` consumes its built artifact from TypeScript, below Cargo entirely.
 
-## 15.2 `musa-language`
+## 15.2 `musa-syntax`
 
 Owns:
 
@@ -2036,7 +2036,7 @@ Owns:
 Dependencies:
 
 ```text
-musa-language
+musa-syntax
 musa-calculus
 num-rational
 slotmap
@@ -2194,7 +2194,7 @@ It owns:
 Dependencies:
 
 ```text
-musa-language
+musa-syntax
 musa-compiler
 musa-notation
 musa-dsp
@@ -2300,7 +2300,7 @@ Dependencies:
 
 ```text
 musa-project
-musa-language
+musa-syntax
 lsp-server
 lsp-types
 serde_json
@@ -2310,10 +2310,10 @@ tracing
 (`serde_json` is how the protocol's values are spoken — capabilities, params, and results are `Value`s at the
 `lsp-server` boundary.)
 
-The second edge to `musa-language` is the exception the diagram in §15.1 states. Semantic tokens and completion must
+The second edge to `musa-syntax` is the exception the diagram in §15.1 states. Semantic tokens and completion must
 answer on *half-typed* source, which the session cannot describe — its facts belong to the last valid compile. The
 desktop solved the same problem with a generated vocabulary and a second tokenizer in TypeScript; the server has the
-real lexer in-process and uses it. Formatting likewise calls `musa-language`'s formatter directly, so that a format
+real lexer in-process and uses it. Formatting likewise calls `musa-syntax`'s formatter directly, so that a format
 request never lands in the session's undo history.
 
 The protocol crates are `lsp-server` and `lsp-types`: synchronous, so one main loop owns the sessions, matching the
@@ -2356,7 +2356,7 @@ tracing
 
 Deliberately short. A core that reaches for `num-rational` has started to know what a duration is, and a core that
 reaches for `serde` has started to have a serialized form that something outside it will come to depend on. Nothing in
-this list can pull in `musa-language`. Prompts 133 and 134 use only `thiserror` — the elaborator turned out to want
+this list can pull in `musa-syntax`. Prompts 133 and 134 use only `thiserror` — the elaborator turned out to want
 neither of the other two, because a metavariable is reached by identity rather than looked up by key, and a crate whose
 every failure is a returned diagnostic has nothing left to trace.
 
@@ -2480,13 +2480,13 @@ Dependencies:
 ```text
 indexmap
 musa-kernel
-musa-language
+musa-syntax
 num-rational
 serde
 thiserror
 ```
 
-`musa-language` is here for two things only: the assertion reporter spells a duration with the formatter's speller, and
+`musa-syntax` is here for two things only: the assertion reporter spells a duration with the formatter's speller, and
 `beat_groups` is re-exported so that a caller asking how a bar divides need not know which crate holds the table.
 
 Public interface: wide, and deliberately. This is a vocabulary, not an algorithm behind a facade, and §2's separations —

@@ -90,7 +90,7 @@ between them.
 `$..xs` spread in a **separated** position mints one comma between every pair of elements it ends up with, so the
 commas' paths are `children.len() + k` for a `k` nothing knows until the adapter runs. Writing that as a lowered term
 needs a compiler-generated indexed fold — the `callN` boilerplate prompt 131 abolished, reintroduced one level down —
-and it would compute derived identity a second time beside `crate::syntax::build`, which is the second path
+and it would compute derived identity a second time beside `crate::quote::build`, which is the second path
 `02-core-calculus.md` §5's audit exists to catch. So a template is *data*, its core shape is an inert base type, and
 [`141ga`](141ga-quotation-core.md) is where it and both quotation forms land. This prompt reads every other surface
 form, and refuses a quote at the node with a diagnostic that says which prompt owns it.
@@ -151,8 +151,8 @@ Commit as `Read the surface as a raw term`.
 - No second checker. If a form seems to need an expected type to lower, that is a finding about the form and a repair,
   not a parameter to thread — the one exception the core itself names is `Annot`, which is a raw term and not a
   mechanism.
-- No new language feature and no grammar change. `musa-language` parses what it parses; a form it does not admit is
-  prompt 142's problem or nobody's.
+- No new language feature and no grammar change. `musa-syntax` parses what it parses; a form it does not admit is prompt
+  142's problem or nobody's.
 - No track or machine spelling. `EventTrack` and `Machine` have no core shape until 141h gives them one, and lowering a
   word that denotes nothing would be work thrown away.
 - No quotation. `QuoteExpr` and `QuotePattern` are refused at the node with the prompt that owns them named; 141ga is

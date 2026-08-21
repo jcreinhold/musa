@@ -24,7 +24,7 @@ signatures; no feature code yet.
 - Convert the root `Cargo.toml` to a virtual-workspace layout: `members = crates/*`, root package removed (the roadmap
   §15 tree has no root package; the CLI is the binary). Keep `[workspace.lints]` as-is and add
   `[lints] workspace = true` to each member crate.
-- Create exactly these crates, with only the roadmap §15 dependency edges: `musa-language` (no internal deps),
+- Create exactly these crates, with only the roadmap §15 dependency edges: `musa-syntax` (no internal deps),
   `musa-compiler` (→ language), `musa-notation` (→ compiler), `musa-dsp` (→ compiler), `musa-playback` (→ compiler,
   audio), `musa-project` (→ language, compiler, render, audio, engine), `musa` (→ project).
 - Do **not** add third-party dependencies yet except where a facade signature needs the type (e.g. none do at this

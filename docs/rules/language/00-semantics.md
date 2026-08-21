@@ -167,7 +167,7 @@ means seven diatonic steps and twelve semitones, preserving spelling rather than
 
 | Owner | Knows | Must not know |
 | --- | --- | --- |
-| `musa-language` | tokens, lossless CST, recovery, formatting | musical types, closures, core evaluation |
+| `musa-syntax` | tokens, lossless CST, recovery, formatting | musical types, closures, core evaluation |
 | private `musa-compiler` elaboration subsystem | `Type`, `Value`, `Closure`, modules, theory algorithms, quotation | public backend or DSP types |
 | `musa-kernel` | exact time, coordinates, typed occurrences, term binding, `follow`, `together`, scaling | notes, scales, functions, profiles, samples, seconds, machines |
 | compiler score projection | `ScoreFact`, context tracks, Origin, `ScoreSnapshot` | machine topology and audio buffers |

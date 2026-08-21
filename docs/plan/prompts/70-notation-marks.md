@@ -20,10 +20,10 @@ has somewhere to be written.
 
 - Prompt 62 — `MarkDef`, `Placement`, `ParamTy`, `VOCABULARY`, `lookup`. `Placement::Point` and `Placement::Span` have
   no producer and no emitter; this prompt writes both.
-- `crates/musa-language/src/parser.rs` — `hairpin_stmt` (:1413), `slur_stmt` (:1393), `phrase_stmt` (:1401). These are
+- `crates/musa-syntax/src/parser.rs` — `hairpin_stmt` (:1413), `slur_stmt` (:1393), `phrase_stmt` (:1401). These are
   three statements with the same shape, and the `mark` statement is what they should have been. Read them before
   designing, and decide explicitly whether they collapse into it (see below).
-- `crates/musa-language/src/syntax_kind.rs` :85–87 — the open-vocabulary precedent.
+- `crates/musa-syntax/src/syntax_kind.rs` :85–87 — the open-vocabulary precedent.
 - Prompt 28 — profiles, for the performance meaning of a fermata and a trill.
 
 ## Design
@@ -95,7 +95,7 @@ row whose column is `None`. MEI and MusicXML cover most of the table; LilyPond c
 
 ## Target
 
-- `crates/musa-language`: the `mark` statement — one `SyntaxKind`, one AST wrapper, one `VoiceItem` variant, block and
+- `crates/musa-syntax`: the `mark` statement — one `SyntaxKind`, one AST wrapper, one `VoiceItem` variant, block and
   argument forms, recovery, formatting.
 - `crates/musa-compiler`: the vocabulary rows above; shape checking against `Placement` with prompt 56's diagnostics;
   the profile settings each row needs.

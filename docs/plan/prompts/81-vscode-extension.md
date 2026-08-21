@@ -21,7 +21,7 @@ open. The extension owns no vocabulary and no musical knowledge — both laws th
   design before reaching for a TextMate grammar.
 - `apps/musa-desktop/ui/src/lib/session/generated/` — the committed `spellings.json` / `token-classes.json` fixtures and
   the generator test that keeps them honest. This prompt reuses that mechanism rather than inventing a second one.
-- `crates/musa-language/src/highlight.rs` — `SPELLINGS` and `TokenClass`: the vocabulary, stated once.
+- `crates/musa-syntax/src/highlight.rs` — `SPELLINGS` and `TokenClass`: the vocabulary, stated once.
 
 ## Design
 

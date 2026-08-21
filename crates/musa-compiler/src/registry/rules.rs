@@ -57,7 +57,7 @@ use num_rational::Ratio;
 
 use super::{domain, literal, plain_type, syntax_type, tagged_type};
 use crate::core::{Builtin, Coordinate, SyntaxOp};
-use crate::syntax::{Cat, Syntax, token_kind_spelling};
+use crate::quote::{Cat, Syntax, token_kind_spelling};
 use musa_score::origin::Interval;
 use musa_score::pitch::{PitchClass, WrittenPitch};
 use musa_score::time::{Exact, exact_arithmetic, exact_ratio, written_rational};
@@ -1005,13 +1005,13 @@ fn pc12_listing(members: Vec<musa_score::pc12::Pc12>) -> Datum {
 
 /// A token kind, wrapped so that it can print.
 ///
-/// `musa_language::SyntaxKind` is another crate's, so the orphan rule puts
+/// `musa_syntax::SyntaxKind` is another crate's, so the orphan rule puts
 /// [`std::fmt::Display`] out of reach for it here. The wrapper is the smallest
 /// thing that fixes that, and the spelling it prints is the one the phase
 /// registry offers the kind under — the same table `token_kind_equal` compares
 /// against, so what a diagnostic shows is what an adapter would have written.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) struct Kind(pub(super) musa_language::SyntaxKind);
+pub(super) struct Kind(pub(super) musa_syntax::SyntaxKind);
 
 impl std::fmt::Display for Kind {
     fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1034,13 +1034,13 @@ fn built(node: Syntax) -> Datum {
 }
 
 /// A node path.
-fn where_at(path: crate::syntax::NodePath) -> Datum {
+fn where_at(path: crate::quote::NodePath) -> Datum {
     plain("NodePath", path)
 }
 
 /// The path argument of a builder.
-fn path(datum: &Datum) -> Option<crate::syntax::NodePath> {
-    read::<crate::syntax::NodePath>(datum)
+fn path(datum: &Datum) -> Option<crate::quote::NodePath> {
+    read::<crate::quote::NodePath>(datum)
 }
 
 /// The syntax argument of a builder.
@@ -1072,9 +1072,9 @@ pub(super) fn phase(operation: SyntaxOp) -> Option<Rule> {
             let subject = node(arguments.first()?)?;
             let wanted = path(arguments.get(1)?)?;
             let found = subject.anchor(&wanted).map(|anchor| {
-                crate::syntax::token(
-                    crate::syntax::anchor_place(&wanted),
-                    musa_language::SyntaxKind::Integer,
+                crate::quote::token(
+                    crate::quote::anchor_place(&wanted),
+                    musa_syntax::SyntaxKind::Integer,
                     anchor.to_string(),
                 )
             });
@@ -1089,9 +1089,9 @@ pub(super) fn phase(operation: SyntaxOp) -> Option<Rule> {
         SyntaxOp::Number => |arguments| {
             let found = match node(arguments.first()?)? {
                 Syntax::Token { kind, ref text, .. } => {
-                    if kind == musa_language::SyntaxKind::Integer {
+                    if kind == musa_syntax::SyntaxKind::Integer {
                         text.parse::<i64>().ok().map(Ratio::from_integer)
-                    } else if kind == musa_language::SyntaxKind::Rational {
+                    } else if kind == musa_syntax::SyntaxKind::Rational {
                         text.split_once('/')
                             .and_then(|(numerator, denominator)| {
                                 Some((numerator.parse::<i128>().ok()?, denominator.parse::<i128>().ok()?))
@@ -1111,7 +1111,7 @@ pub(super) fn phase(operation: SyntaxOp) -> Option<Rule> {
         // the position within what that site built.
         SyntaxOp::Built => |arguments| {
             reduced(where_at(
-                crate::syntax::Derived {
+                crate::quote::Derived {
                     origin: path(arguments.first()?)?,
                     quotation: role(arguments.get(1)?)?,
                     path: vec![role(arguments.get(2)?)?],
@@ -1126,14 +1126,14 @@ pub(super) fn phase(operation: SyntaxOp) -> Option<Rule> {
             ))
         },
         SyntaxOp::Token => |arguments| {
-            reduced(built(crate::syntax::token(
+            reduced(built(crate::quote::token(
                 path(arguments.first()?)?,
                 read::<Kind>(arguments.get(1)?)?.0,
                 text(arguments.get(2)?)?,
             )))
         },
         SyntaxOp::Identifier => |arguments| {
-            reduced(built(crate::syntax::identifier(
+            reduced(built(crate::quote::identifier(
                 path(arguments.first()?)?,
                 text(arguments.get(1)?)?,
             )))
@@ -1143,22 +1143,22 @@ pub(super) fn phase(operation: SyntaxOp) -> Option<Rule> {
                 .into_iter()
                 .map(node)
                 .collect::<Option<Vec<_>>>()?;
-            reduced(built(crate::syntax::group(
+            reduced(built(crate::quote::group(
                 path(arguments.first()?)?,
-                read::<crate::syntax::Delimiter>(arguments.get(1)?)?,
+                read::<crate::quote::Delimiter>(arguments.get(1)?)?,
                 children,
             )))
         },
         SyntaxOp::Binder => |arguments| {
-            reduced(built(crate::syntax::binder(
-                &read::<crate::syntax::BindingPath>(arguments.first()?)?,
+            reduced(built(crate::quote::binder(
+                &read::<crate::quote::BindingPath>(arguments.first()?)?,
                 text(arguments.get(1)?)?,
             )))
         },
         SyntaxOp::Reference => |arguments| {
-            reduced(built(crate::syntax::reference(
+            reduced(built(crate::quote::reference(
                 path(arguments.first()?)?,
-                &read::<crate::syntax::BindingPath>(arguments.get(1)?)?,
+                &read::<crate::quote::BindingPath>(arguments.get(1)?)?,
                 text(arguments.get(2)?)?,
             )))
         },
@@ -1169,8 +1169,8 @@ pub(super) fn phase(operation: SyntaxOp) -> Option<Rule> {
         },
         SyntaxOp::DelimiterEqual => |arguments| {
             let (left, right) = (
-                read::<crate::syntax::Delimiter>(arguments.first()?)?,
-                read::<crate::syntax::Delimiter>(arguments.get(1)?)?,
+                read::<crate::quote::Delimiter>(arguments.first()?)?,
+                read::<crate::quote::Delimiter>(arguments.get(1)?)?,
             );
             reduced(boolean(left == right))
         },
@@ -1180,7 +1180,7 @@ pub(super) fn phase(operation: SyntaxOp) -> Option<Rule> {
         // being asked.
         SyntaxOp::AsExpression => |arguments| {
             let subject = node(arguments.first()?)?;
-            let parses = crate::syntax::parses_as_expression(&subject);
+            let parses = crate::quote::parses_as_expression(&subject);
             reduced(optional(parses.then(|| tree(Cat::Expr, subject))))
         },
         // The gate answers with a value either way, which is what keeps it
@@ -1188,7 +1188,7 @@ pub(super) fn phase(operation: SyntaxOp) -> Option<Rule> {
         // decides what to say about it.
         SyntaxOp::Checked => |arguments| {
             let subject = node(arguments.first()?)?;
-            Some(match crate::syntax::check_expression(&subject) {
+            Some(match crate::quote::check_expression(&subject) {
                 Ok(()) => answered(tree(Cat::Expr, subject)),
                 Err(refusal) => errored(&refusal.to_string()),
             })
@@ -1234,19 +1234,19 @@ pub(super) const FORGET: Rule = |arguments| reduced(built(node(arguments.first()
 
 /// A quote's body and the construction site that read it.
 ///
-/// Two fields and one literal, because [`crate::syntax::instantiate`] needs both
+/// Two fields and one literal, because [`crate::quote::instantiate`] needs both
 /// and only one of them is an argument. `11-quotation.md` §3 mints a node's
 /// identity from the anchor, the quotation, and the position in the template; the
 /// anchor is written at the use site and the other two belong to the quote
 /// itself, so they travel with it.
 ///
-/// The wrapper exists for [`Kind`]'s reason as well: [`crate::syntax::Template`]
+/// The wrapper exists for [`Kind`]'s reason as well: [`crate::quote::Template`]
 /// is this crate's, but a payload must print, and what a template should print as
 /// is its site rather than its shape — a diagnostic naming a hundred-node body
 /// would say nothing a reader could use.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct Quotation {
-    pub(super) template: crate::syntax::Template,
+    pub(super) template: crate::quote::Template,
     pub(super) quotation: u32,
 }
 
@@ -1262,21 +1262,21 @@ impl std::fmt::Display for Quotation {
 /// Read off the template rather than carried beside it: the walk that built it
 /// numbered the holes densely from zero, and a count stored next to the body
 /// would be a second answer to a question the body already answers.
-/// [`crate::syntax::matched`] takes the count as an argument for the same reason
+/// [`crate::quote::matched`] takes the count as an argument for the same reason
 /// the checker could supply it — here the template is all there is.
-fn hole_kinds(template: &crate::syntax::Template) -> Vec<bool> {
-    fn walk(template: &crate::syntax::Template, found: &mut Vec<(usize, bool)>) {
+fn hole_kinds(template: &crate::quote::Template) -> Vec<bool> {
+    fn walk(template: &crate::quote::Template, found: &mut Vec<(usize, bool)>) {
         match *template {
-            crate::syntax::Template::Splice(hole) => found.push((hole, false)),
-            crate::syntax::Template::Sequence(hole) => found.push((hole, true)),
-            crate::syntax::Template::Group { ref children, .. } => {
+            crate::quote::Template::Splice(hole) => found.push((hole, false)),
+            crate::quote::Template::Sequence(hole) => found.push((hole, true)),
+            crate::quote::Template::Group { ref children, .. } => {
                 for child in children {
                     walk(child, found);
                 }
             }
-            crate::syntax::Template::Missing
-            | crate::syntax::Template::Token { .. }
-            | crate::syntax::Template::Identifier { .. } => {}
+            crate::quote::Template::Missing
+            | crate::quote::Template::Token { .. }
+            | crate::quote::Template::Identifier { .. } => {}
         }
     }
     let mut found = Vec::new();
@@ -1300,12 +1300,12 @@ enum Matched {
     /// The subject has another shape.
     No,
     /// The subject is this template's, with what each hole bound, in order.
-    Holes(Vec<crate::syntax::Spliced>),
+    Holes(Vec<crate::quote::Spliced>),
 }
 
 impl Matched {
     /// What hole `which` bound, where the subject matched and has one.
-    fn hole(self, which: usize) -> Option<crate::syntax::Spliced> {
+    fn hole(self, which: usize) -> Option<crate::quote::Spliced> {
         match self {
             Self::No => None,
             Self::Holes(holes) => holes.into_iter().nth(which),
@@ -1321,7 +1321,7 @@ fn bound(arguments: &[Datum]) -> Option<Matched> {
     let subject = node(arguments.first()?)?;
     let quoted = read::<Quotation>(arguments.get(1)?)?;
     let holes = hole_kinds(&quoted.template).len();
-    Some(crate::syntax::matched(&quoted.template, &subject, holes).map_or(Matched::No, Matched::Holes))
+    Some(crate::quote::matched(&quoted.template, &subject, holes).map_or(Matched::No, Matched::Holes))
 }
 
 /// The hole a pattern rule was asked about.
@@ -1331,7 +1331,7 @@ fn which(datum: &Datum) -> Option<usize> {
 
 /// `instantiate_quote(anchor, template, splices)`.
 ///
-/// The whole of building a quote, and it is [`crate::syntax::instantiate`] —
+/// The whole of building a quote, and it is [`crate::quote::instantiate`] —
 /// which mints every derived path, carries every spliced node in with the
 /// identity it arrived with, and is the *only* implementation of either. Reading
 /// the arguments and shaping the answer is all that happens here.
@@ -1339,7 +1339,7 @@ fn which(datum: &Datum) -> Option<usize> {
 /// The splices arrive as a list of lists because a hole is a run or a node and
 /// the core has no sum of the two that a lowering could write; which of the two a
 /// hole is, the template says. A single hole handed anything but one node
-/// answers [`None`] — the arity mismatch [`crate::syntax::Spliced`] refuses,
+/// answers [`None`] — the arity mismatch [`crate::quote::Spliced`] refuses,
 /// refused where it was, and unreachable from a lowered quote because the same
 /// template decided both.
 pub(super) const INSTANTIATE: Rule = |arguments| {
@@ -1354,19 +1354,19 @@ pub(super) const INSTANTIATE: Rule = |arguments| {
     for (&sequence, hole) in kinds.iter().zip(written) {
         let nodes = items(hole)?.into_iter().map(node).collect::<Option<Vec<_>>>()?;
         spliced.push(if sequence {
-            crate::syntax::Spliced::Many(nodes)
+            crate::quote::Spliced::Many(nodes)
         } else {
             let [one] = <[Syntax; 1]>::try_from(nodes).ok()?;
-            crate::syntax::Spliced::One(one)
+            crate::quote::Spliced::One(one)
         });
     }
-    let built = crate::syntax::instantiate(&quoted.template, &anchor, quoted.quotation, &spliced)?;
+    let built = crate::quote::instantiate(&quoted.template, &anchor, quoted.quotation, &spliced)?;
     // The certificate the `⟨expr⟩` index claims, checked rather than believed:
     // a splice can carry any tree into the body, so what comes out is an
     // expression only when the parser says so. None is a stuck term, not a
     // diagnostic — the adapter that spliced the tree is the defect, and
     // 147's round-trip obligation owns the reporting of it.
-    if !crate::syntax::parses_as_expression(&built) {
+    if !crate::quote::parses_as_expression(&built) {
         return None;
     }
     reduced(tree(Cat::Expr, built))
@@ -1381,7 +1381,7 @@ pub(super) const MATCHES: Rule = |arguments| reduced(boolean(matches!(bound(argu
 /// A node either way, because what binds it is a `let` and a `let` binds one
 /// type. Reached only under [`MATCHES`], which is what makes the answer for a
 /// subject of another shape a question of totality rather than of meaning: a
-/// [`crate::syntax::Syntax::Missing`] at the subject's own place is the node a
+/// [`crate::quote::Syntax::Missing`] at the subject's own place is the node a
 /// reader expected and did not find, which is exactly the situation.
 ///
 /// One rule body at two categories — [`HOLE`] answers at `⟨token-tree⟩` and
@@ -1403,12 +1403,12 @@ fn hole(arguments: &[Datum], cat: Cat) -> Option<Answer> {
     let held = bound(arguments)?
         .hole(which(arguments.get(2)?)?)
         .and_then(|held| match held {
-            crate::syntax::Spliced::One(one) => Some(one),
-            crate::syntax::Spliced::Many(_) => None,
+            crate::quote::Spliced::One(one) => Some(one),
+            crate::quote::Spliced::Many(_) => None,
         });
     reduced(tree(
         cat,
-        held.unwrap_or_else(|| Syntax::Missing(crate::syntax::SourceInfo::Generated(subject.info().path().clone()))),
+        held.unwrap_or_else(|| Syntax::Missing(crate::quote::SourceInfo::Generated(subject.info().path().clone()))),
     ))
 }
 
@@ -1428,8 +1428,8 @@ fn holes(arguments: &[Datum], cat: Cat) -> Option<Answer> {
     let run = bound(arguments)?
         .hole(which(arguments.get(2)?)?)
         .map_or_else(Vec::new, |held| match held {
-            crate::syntax::Spliced::One(one) => vec![one],
-            crate::syntax::Spliced::Many(many) => many,
+            crate::quote::Spliced::One(one) => vec![one],
+            crate::quote::Spliced::Many(many) => many,
         });
     reduced(listing(run.into_iter().map(|node| tree(cat, node))))
 }

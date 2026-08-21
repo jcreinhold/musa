@@ -53,8 +53,8 @@ demonstrates why a bundle helps without making the module system a language insi
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-project -p musa-lsp
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp
+cargo clippy --all-targets -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
 cargo fmt --check
 cargo run -p musa -- check examples/module-functor-study.musa
 cd editors/tree-sitter-musa && tree-sitter test

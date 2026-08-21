@@ -6,8 +6,8 @@
 //! without a location is a guess — they are left out rather than invented.
 
 use lsp_types::{DocumentSymbolResponse, Location, SymbolInformation, SymbolKind, SymbolTag, Uri};
-use musa_language::DocumentAlternative;
 use musa_project::{NameKind, OutlineKind, Span, kernel_bindings};
+use musa_syntax::DocumentAlternative;
 
 use crate::workspace::Document;
 

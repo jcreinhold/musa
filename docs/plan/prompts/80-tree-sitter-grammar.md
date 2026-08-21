@@ -17,9 +17,9 @@ it is useful to no one if it can quietly drift from the language it claims to de
 
 ## Read
 
-- `crates/musa-language/src/parser.rs`, `lexer.rs`, and `syntax_kind.rs` — the authoritative parser. **Every grammar
-  rule traces back to a specific function here.** Tree-sitter grammars describe concrete syntax trees; do not invent
-  node shapes from examples, and do not guess at disambiguation the hand parser resolves structurally.
+- `crates/musa-syntax/src/parser.rs`, `lexer.rs`, and `syntax_kind.rs` — the authoritative parser. **Every grammar rule
+  traces back to a specific function here.** Tree-sitter grammars describe concrete syntax trees; do not invent node
+  shapes from examples, and do not guess at disambiguation the hand parser resolves structurally.
 - Roadmap §7 — the language design: explicit semicolons and braces, units as syntax, rational durations. These are what
   make the grammar tractable, and the corpus is where they stay true.
 - `apps/musa-desktop/ui/src/lib/lang-musa/` and `crates/musa-project/tests/suite/ui_fixtures_generators.rs` — the
@@ -40,8 +40,8 @@ vocabulary and prompt 82's queries need no translation table. Highlight captures
 
 ### The drift law
 
-A generator test in `musa-language` (the `ui_fixtures_generators` pattern, `UPDATE_FIXTURES=1` to refresh) writes the
-real lexer's token stream for every `examples/*.musa` and every compilable fixture into the grammar's test data. A
+A generator test in `musa-syntax` (the `ui_fixtures_generators` pattern, `UPDATE_FIXTURES=1` to refresh) writes the real
+lexer's token stream for every `examples/*.musa` and every compilable fixture into the grammar's test data. A
 corpus-side test compares the tree-sitter parse's tokens against them, token for token. A grammar that disagrees with
 the lexer about a single token fails CI, not the composer.
 
@@ -51,7 +51,7 @@ crash the parser — editors run the grammar on every keystroke, mid-word.
 ## Target
 
 - `editors/tree-sitter-musa/`: the grammar project above, with a corpus entry per example.
-- `crates/musa-language/tests/`: the fixture generator and its committed output.
+- `crates/musa-syntax/tests/`: the fixture generator and its committed output.
 - `AGENTS.md` and `README.md`: one row each.
 
 ## Check
@@ -59,20 +59,20 @@ crash the parser — editors run the grammar on every keystroke, mid-word.
 ```sh
 cd editors/tree-sitter-musa && tree-sitter generate && tree-sitter test
 node editors/tree-sitter-musa/test/compare-tokens.js
-cargo nextest run -p musa-language
-cargo clippy --all-targets -p musa-language -- -D warnings && cargo fmt --check
+cargo nextest run -p musa-syntax
+cargo clippy --all-targets -p musa-syntax -- -D warnings && cargo fmt --check
 ```
 
 Behavior: every example parses without `ERROR`; every broken fixture parses without a panic, and exactly the fixtures
 the real parser calls syntactically broken (`test/broken.json`, written from `ParsedDocument::errors`) parse *with*
 `ERROR` — most of `examples/broken/` is semantically broken and syntactically fine, and the grammar must agree fixture
 by fixture, not blanket-fail. The token-for-token comparison against the real lexer is green
-(`UPDATE_FIXTURES=1 cargo test -p musa-language tree_sitter` refreshes the committed streams).
+(`UPDATE_FIXTURES=1 cargo test -p musa-syntax tree_sitter` refreshes the committed streams).
 
 ## Stop
 
 - No editor extensions — prompts 81 and 82 consume this grammar; this prompt ships no client.
 - No queries beyond the listed set; injections, textobjects, and overrides wait for an editor that needs them.
-- No replacing `musa-language`'s parser. The hand parser stays authoritative (roadmap §15.2); tree-sitter is a second
+- No replacing `musa-syntax`'s parser. The hand parser stays authoritative (roadmap §15.2); tree-sitter is a second
   reader held honest by the drift law, not a second source of truth.
 - No registry publishing (crates.io, npm) — the grammar is consumed in-repo and by the sibling extension repos.

@@ -67,12 +67,12 @@ kernel.
 ## Repairs made while implementing
 
 - **Four-space indent, not two.** The Design section said "2-space indent matching the formatter"; the formatter
-  (`crates/musa-language/src/formatter.rs`) indents by four. The editor follows the formatter, since the point of the
-  rule is that formatting a file the editor indented changes nothing.
+  (`crates/musa-syntax/src/formatter.rs`) indents by four. The editor follows the formatter, since the point of the rule
+  is that formatting a file the editor indented changes nothing.
 - **`⌘⇧F`, not `⇧⌥F`.** Prompt 23 already registered `edit.format` as `CmdOrCtrl+Shift+F`, and the registry is the one
   source the menu, the palette and the keyboard sheet all read. Moving it would have been a repair to prompt 23 with
   nothing gained; `03-interaction.md` §3 now records the binding it has.
-- **Highlighting is derived twice over, and neither derivation can drift.** `musa-language` gained `TokenClass` (an
+- **Highlighting is derived twice over, and neither derivation can drift.** `musa-syntax` gained `TokenClass` (an
   exhaustive match over `SyntaxKind` — a new kind is a compile error) and `SPELLINGS` (a table proven against the lexer
   by `spellings_lex_as_their_kind`); the frontend tokenizer is then checked token-for-token against the Rust lexer's own
   reading of every file in `examples/` (`tests/unit/highlighting.test.ts`).
@@ -94,7 +94,7 @@ kernel.
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-project
+cargo nextest run -p musa-syntax -p musa-project
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cd apps/musa-desktop/ui && npm run check && npm run test

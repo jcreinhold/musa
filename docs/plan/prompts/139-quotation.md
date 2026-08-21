@@ -23,7 +23,7 @@ and provenance minted by the elaborator rather than allocated by the author. Thi
 - `docs/rules/language/01-surface.md` §7 — the kernel quote, its typed antiquotation, and its four writer's rules. Two
   of those rules generalize and this implementation must satisfy them: a quote is commented like the file around it, and
   the quotation locus is where a hole is *instantiated*, which differs from where its result lands under `let`.
-- `crates/musa-language/src/parser.rs` — the quote body is parsed by this parser and nothing else. A separate template
+- `crates/musa-syntax/src/parser.rs` — the quote body is parsed by this parser and nothing else. A separate template
   parser is the sublanguage-by-subtraction root `AGENTS.md` forbids, and it is also how a quote starts disagreeing with
   the language about what an expression is.
 - Prompt [138](138-typed-syntax.md)'s `Derived` representation and its identity law — quotation is the thing that mints
@@ -70,7 +70,7 @@ identity is distinct per literal position and stable across runs. Charging is at
 
 ## Target
 
-- `musa-language`: the quote grammar, CST, formatter, and highlighting; tree-sitter and its drift test.
+- `musa-syntax`: the quote grammar, CST, formatter, and highlighting; tree-sitter and its drift test.
 - The phase-side elaboration of a quote into a `Syntax<Cat>` construction, with splice checking, hygiene, and minted
   provenance.
 - New `Code` variants and `musa explain` text for category mismatch at a splice, a sequence splice at a non-repetition
@@ -84,9 +84,9 @@ identity is distinct per literal position and stable across runs. Charging is at
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-language -p musa-compiler -p musa-calculus
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-calculus
 cargo nextest run --workspace
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-calculus -- -D warnings
+cargo clippy --all-targets -p musa-syntax -p musa-compiler -p musa-calculus -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cd editors/tree-sitter-musa && tree-sitter test

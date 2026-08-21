@@ -1,7 +1,0 @@
----
-source: crates/musa-language/tests/parser.rs
-expression: print_errors(&doc)
----
-41..41: this `part` block is never closed
-  label: the file ends here
-  fix: add `}` -> "}"

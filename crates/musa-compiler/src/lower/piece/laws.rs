@@ -23,8 +23,8 @@
     reason = "a law that cannot fail loudly is not a law"
 )]
 
-use musa_language::ast::AstNode as _;
-use musa_language::{SyntaxKind, SyntaxNode};
+use musa_syntax::ast::AstNode as _;
+use musa_syntax::{SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 
 use crate::document::{Document, Source, elaborate};
@@ -43,7 +43,7 @@ const DOCUMENT: &str = "law";
 /// The `piece … { … }` node `source` writes, with a loud failure when it does
 /// not parse.
 fn written(source: &str) -> SyntaxNode {
-    let document = musa_language::parse(source);
+    let document = musa_syntax::parse(source);
     assert!(
         document.errors().is_empty(),
         "the law's own source parses: {:?}",
@@ -92,7 +92,7 @@ fn checked(node: &SyntaxNode) -> (Option<musa_calculus::Term>, Vec<String>) {
 fn checked_with(node: &SyntaxNode, libraries: &[Source]) -> (Option<musa_calculus::Term>, Vec<String>) {
     let mut resolver = Resolver::new();
     let root = node.ancestors().last().unwrap_or_else(|| node.clone());
-    let made = musa_language::ast::MakeStmt::from_root(&root).and_then(|site| {
+    let made = musa_syntax::ast::MakeStmt::from_root(&root).and_then(|site| {
         crate::template::Templates::collect(&mut resolver, &root).instance(
             &mut resolver,
             &site,
@@ -102,7 +102,7 @@ fn checked_with(node: &SyntaxNode, libraries: &[Source]) -> (Option<musa_calculu
             DOCUMENT,
         )
     });
-    let declared = musa_language::ast::PieceDecl::from_root(&root)
+    let declared = musa_syntax::ast::PieceDecl::from_root(&root)
         .or_else(|| made.as_ref().and_then(crate::template::Instance::piece))
         .map_or_else(|| node.clone(), |piece| piece.syntax().clone());
     let mut sources = libraries.to_vec();
@@ -813,7 +813,7 @@ fn a_key_is_ordinary_in_a_piece_and_misplaced_in_a_music_value() {
     );
     let mut resolver = Resolver::new();
     let mut sites = crate::lower::Sites::default();
-    let node = musa_language::parse("let held = music { key g major; c4/4 };");
+    let node = musa_syntax::parse("let held = music { key g major; c4/4 };");
     let written = node
         .syntax()
         .descendants()
@@ -966,7 +966,7 @@ fn every_example_elaborates() {
     let libraries = crate::document::laws::library_sources();
     let mut said: Vec<String> = Vec::new();
     for (name, source) in EXAMPLES {
-        let parsed = musa_language::parse(source);
+        let parsed = musa_syntax::parse(source);
         assert!(parsed.errors().is_empty(), "`{name}` parses: {:?}", parsed.errors());
         let Some(node) = piece_of(&parsed.syntax()) else {
             continue;

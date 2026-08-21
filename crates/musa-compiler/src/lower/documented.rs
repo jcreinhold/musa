@@ -28,7 +28,7 @@
 //! nothing: a shape with no written form is left unsaid rather than shown in a
 //! vocabulary the reader cannot write back.
 
-use musa_language::{SyntaxKind, SyntaxNode};
+use musa_syntax::{SyntaxKind, SyntaxNode};
 
 use super::{child, children, is_type_node};
 use crate::docs::{ItemDoc, ItemSource, ParameterDoc, TypeNote};

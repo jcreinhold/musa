@@ -96,7 +96,7 @@ fn every_shorthand_is_one_token_and_names_its_own_row() {
         let Some(shorthand) = def.shorthand else {
             continue;
         };
-        let lexed = musa_language::lex(shorthand);
+        let lexed = musa_syntax::lex(shorthand);
         assert_eq!(
             lexed.tokens().len(),
             1,

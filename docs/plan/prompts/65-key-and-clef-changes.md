@@ -79,7 +79,7 @@ golden, not a semantics prompt.
 
 ## Target
 
-- `crates/musa-language`: `key` and `clef` as voice items; recovery; the formatter's paragraph-break rule.
+- `crates/musa-syntax`: `key` and `clef` as voice items; recovery; the formatter's paragraph-break rule.
 - `crates/musa-compiler`: `FactKind::Key` and `FactKind::Clef` produced at position; the `Latest` and `Override`
   resolutions from prompt 63's table, each with its counterexample test; spelling reads `key_at`.
 - `crates/musa-notation`: the seven exporter rows above; `plan.rs` places a mid-measure clef.

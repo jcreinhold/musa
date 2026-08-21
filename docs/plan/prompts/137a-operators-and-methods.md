@@ -25,7 +25,7 @@ reports it.
 - Prompt 137's `crates/musa-calculus/src/{class.rs, dictionary.rs}` — the tables this prompt queries. Exact-receiver
   lookup is `Classes::method` plus the same resolution 137 already runs; if this prompt finds itself writing a second
   lookup, that is a repair of 137 rather than work here.
-- `crates/musa-language/src/{lexer.rs, parser.rs}` — the token set, and the reason the operators are addable. The lexer
+- `crates/musa-syntax/src/{lexer.rs, parser.rs}` — the token set, and the reason the operators are addable. The lexer
   has no `==`, `+`, or `*` today; `-`, `/`, `<`, and `>` exist and are consumed **only** by music statements (durations,
   negative rationals, type arguments, hairpins), never by `expr()`. So infix operators enter the expression grammar
   without an unresolved ambiguity — but the music statements are the test that proves it, and a fixture for each of the
@@ -89,7 +89,7 @@ tree-sitter grammar agrees with the real lexer under the drift law. Each style r
 
 ## Target
 
-- `musa-language`: the `trait`, `impl`, and `where` keywords, their grammar and CST positions, operator tokens and
+- `musa-syntax`: the `trait`, `impl`, and `where` keywords, their grammar and CST positions, operator tokens and
   precedence, method-call and `Type::item` paths, formatter layout, highlighting, and completion.
 - `editors/tree-sitter-musa`: grammar, queries, and corpus, with the drift test green.
 - `musa-calculus`: exact-receiver method resolution over 137's tables, and the refusal for a method on an unconstrained
@@ -97,7 +97,7 @@ tree-sitter grammar agrees with the real lexer under the drift law. Each style r
 - New `Code` variants with `musa explain` text for: ambiguous instance, and a method on an unconstrained type.
 - `docs/rules/style-guide.md` naming rules and their `lint.rs` diagnostics.
 - `docs/rules/language/01-surface.md` §1.3 — replace the `trait`/`impl` deferral with the rule.
-- `crates/musa-language/tests/suite/` and `crates/musa-calculus/tests/suite/operator_laws.rs`, plus the compile-fail
+- `crates/musa-syntax/tests/suite/` and `crates/musa-calculus/tests/suite/operator_laws.rs`, plus the compile-fail
   suite.
 - `docs/plan/code-map/` rows.
 
@@ -105,9 +105,9 @@ tree-sitter grammar agrees with the real lexer under the drift law. Each style r
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-language -p musa-calculus -p musa-compiler
+cargo nextest run -p musa-syntax -p musa-calculus -p musa-compiler
 cargo nextest run --workspace
-cargo clippy --all-targets -p musa-language -p musa-calculus -p musa-compiler -- -D warnings
+cargo clippy --all-targets -p musa-syntax -p musa-calculus -p musa-compiler -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cd editors/tree-sitter-musa && tree-sitter test

@@ -84,7 +84,7 @@ that produces it is part of the core language. Preparation is one operation rath
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-dsp -p musa-playback -p musa-project
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-dsp -p musa-playback -p musa-project
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject

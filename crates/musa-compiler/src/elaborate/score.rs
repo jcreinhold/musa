@@ -7,13 +7,13 @@ use super::fact::{FactKind, VoiceTrack};
 use super::place::placed;
 use crate::compile::Compilation;
 use crate::resolve::{self, Resolver};
-use musa_language::ast::AstNode as _;
-use musa_language::ast::PieceDecl;
 use musa_score::diagnose::{Code, Diagnostic};
 use musa_score::origin::SourceSpan;
 use musa_score::scope::Scope;
 use musa_score::score::{Meter, Part, PartId, ScoreSnapshot, Voice, VoiceId};
 use musa_score::time::MusicalTime;
+use musa_syntax::ast::AstNode as _;
+use musa_syntax::ast::PieceDecl;
 
 /// The piece, read and evaluated: everything it claims proved, everything it
 /// sounds projected into `snapshot`, and the identity of the whole.
@@ -277,7 +277,7 @@ fn key_of(kind: &FactKind) -> Option<musa_score::Key> {
 /// two different ways.
 pub(super) fn elaborate_material(
     resolver: &mut Resolver,
-    library: &musa_language::ast::LibraryDecl,
+    library: &musa_syntax::ast::LibraryDecl,
     name: &str,
     options: &crate::CompileOptions,
 ) -> Compilation {
@@ -308,7 +308,7 @@ pub(super) fn elaborate_material(
     }
     resolve::register_motifs(resolver, &mut snapshot, &library.motifs(), None);
     resolve::register_fragments(resolver, &mut snapshot, &library.fragments(), None);
-    let studios: Vec<musa_language::ast::StudioDecl> = libraries
+    let studios: Vec<musa_syntax::ast::StudioDecl> = libraries
         .each()
         .filter_map(|(_, imported)| imported.studio())
         .chain(library.studio())

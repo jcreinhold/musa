@@ -25,9 +25,9 @@ grammar or pretending an unknown payload type has Musa score meaning.
 ## Design
 
 The first-line `% musa-kernel-1` header selects the kernel-document alternative. `musa-kernel` remains the one owner of
-the interchange grammar and checked term; `musa-language` owns a lossless document wrapper/dispatch, comments, edits,
-and diagnostics without reimplementing term semantics. Tree-sitter recognizes the same top-level alternative and is held
-to committed kernel fixtures by a drift test.
+the interchange grammar and checked term; `musa-syntax` owns a lossless document wrapper/dispatch, comments, edits, and
+diagnostics without reimplementing term semantics. Tree-sitter recognizes the same top-level alternative and is held to
+committed kernel fixtures by a drift test.
 
 State/test two laws separately:
 
@@ -53,8 +53,8 @@ library or plural declaration set.
 ## Check
 
 ```sh
-cargo nextest run -p musa-kernel -p musa-language -p musa-compiler -p musa-project -p musa-lsp
-cargo clippy --all-targets -p musa-kernel -p musa-language -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
+cargo nextest run -p musa-kernel -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp
+cargo clippy --all-targets -p musa-kernel -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
 cargo fmt --check
 for f in examples/kernel/*.musa.kernel; do cargo run -q -p musa -- check "$f"; done
 cd editors/tree-sitter-musa && tree-sitter test
@@ -67,5 +67,5 @@ Commit as `Accept kernel files as Musa documents`.
 
 - No local quotation/antiquotation — prompt 121.
 - No payload grammar or musical fact knowledge in `musa-kernel`.
-- No second term parser, normalization rule, or kernel meaning in `musa-language`/tree-sitter.
+- No second term parser, normalization rule, or kernel meaning in `musa-syntax`/tree-sitter.
 - No silent conversion from unknown payload text to `ScoreFact` and no dropping facts a backend does not understand.

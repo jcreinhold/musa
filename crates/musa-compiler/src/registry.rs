@@ -567,7 +567,7 @@ pub(crate) fn tagged_type(name: &'static str, which: Coordinate) -> Term {
 }
 
 /// The term naming `Syntax` at one category.
-pub(crate) fn syntax_type(cat: crate::syntax::Cat) -> Term {
+pub(crate) fn syntax_type(cat: crate::quote::Cat) -> Term {
     Term::app(
         HERE,
         indexed("Syntax", "Cat").term(HERE),
@@ -586,7 +586,7 @@ pub(crate) fn coordinate_literal(which: Coordinate) -> Literal {
 }
 
 /// The literal one syntax category is written as, at base type `Cat`.
-pub(crate) fn category_literal(cat: crate::syntax::Cat) -> Literal {
+pub(crate) fn category_literal(cat: crate::quote::Cat) -> Literal {
     literal(plain_type("Cat"), cat)
 }
 
@@ -615,7 +615,7 @@ pub(crate) fn origin_literal(origin: musa_score::origin::Origin) -> Literal {
 /// position, and only the first is an argument. Two quotes with identical bodies
 /// at one anchor must still build distinguishable nodes (`11-quotation.md` §3),
 /// so the counter cannot be recovered from the template and cannot be shared.
-pub(crate) fn template_literal(template: crate::syntax::Template, quotation: u32) -> Literal {
+pub(crate) fn template_literal(template: crate::quote::Template, quotation: u32) -> Literal {
     literal(plain_type("Template"), rules::Quotation { template, quotation })
 }
 
@@ -634,10 +634,10 @@ pub(crate) fn kernel_literal(term: track::Quoted, holes: Vec<String>) -> Literal
 ///
 /// The payload is [`rules::Kind`] and cannot be anything else: `token_kind_equal`
 /// reads its arguments back at that type, so a literal built from the bare
-/// `musa_language::SyntaxKind` would compare equal to nothing. That is why the
+/// `musa_syntax::SyntaxKind` would compare equal to nothing. That is why the
 /// wrapper is reachable only through this function — a caller outside the
 /// registry can write the literal without being able to write a different one.
-pub(crate) fn token_kind_literal(kind: musa_language::SyntaxKind) -> Literal {
+pub(crate) fn token_kind_literal(kind: musa_syntax::SyntaxKind) -> Literal {
     literal(plain_type("TokenKind"), rules::Kind(kind))
 }
 
@@ -815,8 +815,8 @@ fn arrow(arguments: Vec<Term>, result: Term) -> Term {
 /// a compiler defect.
 fn quotation(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
     let template = plain_type("Template");
-    let expression = syntax_type(crate::syntax::Cat::Expr);
-    let read = syntax_type(crate::syntax::Cat::TokenTree);
+    let expression = syntax_type(crate::quote::Cat::Expr);
+    let read = syntax_type(crate::quote::Cat::TokenTree);
     let index = crate::prelude::constant(cx, "Nat")?;
     let splices = applied(cx, "List", [applied(cx, "List", [expression.clone()])?])?;
     let delta = |name: &'static str, arguments: Vec<Term>, result: Term, rule| {
@@ -877,15 +877,15 @@ fn quotation(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
 /// a `Syntax ⟨expr⟩` where its own type says `Syntax ⟨token-tree⟩`, and
 /// [`musa_calculus::well_typed`] would refuse a term this compiler had accepted.
 ///
-/// One direction and one signature, because [`crate::syntax::Cat`] has two
+/// One direction and one signature, because [`crate::quote::Cat`] has two
 /// cases. A third category is a case in [`rules::forgets`] and a second
 /// registration here.
 fn syntax_carrier() -> Builtin {
     Builtin::new(
         rules::FORGOTTEN,
         arrow(
-            vec![syntax_type(crate::syntax::Cat::Expr)],
-            syntax_type(crate::syntax::Cat::TokenTree),
+            vec![syntax_type(crate::quote::Cat::Expr)],
+            syntax_type(crate::quote::Cat::TokenTree),
         ),
         musa_calculus::Family::Delta,
         rules::FORGET,

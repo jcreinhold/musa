@@ -23,7 +23,7 @@ graph. This is the phase; the two real adapters are prompt 127dd.
   `docs/rules/across-stages/02-derivation-diagrams.md` §6's closing paragraph: an expansion record is a source of
   `Generated` steps and nothing more.
 - Prompts 127da and 127db, and their delivered modules.
-- `crates/musa-language/src/{lexer,parser,formatter,highlight}.rs`,
+- `crates/musa-syntax/src/{lexer,parser,formatter,highlight}.rs`,
   `crates/musa-compiler/src/{resolve,imports,elaborate}.rs`, and `editors/tree-sitter-musa` — the drift law holds the
   grammar to the real lexer.
 
@@ -88,8 +88,8 @@ are prompt 127dd's, and this fixture is not a draft of them.
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-project -p musa-lsp
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp
+cargo clippy --all-targets -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cd editors/tree-sitter-musa && tree-sitter test

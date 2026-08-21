@@ -22,7 +22,7 @@ error channel.
 - `docs/rules/language/02-core-calculus.md` §1, §1.1, and §2 — the type grammar, storable data, and the typing rules.
 - Research `05-selected-calculus.md` §2, and its rule that a failing source primitive returns an ordinary `Result`.
 - `docs/rules/style-guide.md` for the spelling of the new keywords and constructors.
-- `crates/musa-language/src/{lexer,keywords,ast,highlight}.rs` and the formatter, and `editors/tree-sitter-musa` — the
+- `crates/musa-syntax/src/{lexer,keywords,ast,highlight}.rs` and the formatter, and `editors/tree-sitter-musa` — the
   drift law holds the grammar to the real lexer, so a new keyword lands in both places in this commit.
 - The inference engine installed by prompt 127aa, and its finding that **no source position in this type set mints a
   data variable** — the storable-data condition is proved at the unifier and first attached to a source position by
@@ -80,8 +80,8 @@ Keep the formatter, highlighting, and tree-sitter grammar in step with the lexer
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-project -p musa-lsp
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp
+cargo clippy --all-targets -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 find examples stdlib -name '*.musa' -print0 | xargs -0 -n1 cargo run -q -p musa -- check

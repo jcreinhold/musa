@@ -34,5 +34,5 @@ thiserror = "2"
 ts-rs = "12"
 
 [dev-dependencies]
-musa-language = { workspace = true }
+musa-syntax = { workspace = true }
 tempfile = "3"

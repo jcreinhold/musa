@@ -49,7 +49,7 @@ into a `StudioGraphSpec`. The bridge stays narrow: parts are assigned to patches
 
 ## Target
 
-- `musa-language`: studio grammar, expression parser, typed wrappers, formatter.
+- `musa-syntax`: studio grammar, expression parser, typed wrappers, formatter.
 - `musa-compiler`: `StudioSpec`, resolution, unit table wired to audio descriptors, diagnostics.
 - `musa-dsp`: spec→graph lowering, placeholder processors with warnings.
 - Restore the §7.1 `studio` block in `examples/glass-mountain.musa` (it compiles and renders audio end-to-end,
@@ -60,8 +60,8 @@ into a `StudioGraphSpec`. The bridge stays narrow: parts are assigned to patches
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-dsp
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-dsp -- -D warnings
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-dsp
+cargo clippy --all-targets -p musa-syntax -p musa-compiler -p musa-dsp -- -D warnings
 cargo fmt --check
 cargo run -p musa -- check examples/glass-mountain.musa
 cargo run -p musa -- render examples/glass-mountain.musa --to wav -o /tmp/gm5.wav

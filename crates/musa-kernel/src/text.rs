@@ -438,7 +438,7 @@ fn write_string(out: &mut String, text: &str) {
 
 /// A hand-written recursive-descent cursor.
 ///
-/// Deliberately not sharing `musa-language`'s lexer: kernel text and musa
+/// Deliberately not sharing `musa-syntax`'s lexer: kernel text and musa
 /// source are two languages that change independently, and the only thing
 /// they genuinely have in common — reading a rational — is four lines. Coupling
 /// them would mean a surface-syntax change could break the interchange format.

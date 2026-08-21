@@ -166,7 +166,7 @@ fn no_mark_is_named_outside_the_table() {
         .and_then(std::path::Path::parent)
         .expect("the workspace root");
     let mut offenders: Vec<String> = Vec::new();
-    for crate_name in ["musa-compiler", "musa-notation", "musa-language"] {
+    for crate_name in ["musa-compiler", "musa-notation", "musa-syntax"] {
         let source = root.join("crates").join(crate_name).join("src");
         let mut stack = vec![source];
         while let Some(directory) = stack.pop() {

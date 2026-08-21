@@ -36,8 +36,9 @@ here rather than two prompts from now. Nothing an adapter writes should still be
   is why `TokenKind.PitchLiteral` needs no namespacing feature in a checker that has none.
 - `stdlib/src/adapters/staff.musa`'s `text_equal(kind, "…")` and `text_equal(delimiter, "…")` call sites — the ones this
   prompt makes ill-typed rather than merely discouraged. There are about ten, and they move mechanically.
-- `crates/musa-compiler/src/syntax.rs` — `SourceInfo`, `NodePath`, `PathStep::Built { role, child }`, and `DELIMITERS`.
-  `Derived` is the name for what `NodePath::built` already computes; it does not start a second representation.
+- `crates/musa-compiler/src/quote/mod.rs` — `SourceInfo`, `NodePath`, `PathStep::Built { role, child }`, and
+  `DELIMITERS`. `Derived` is the name for what `NodePath::built` already computes; it does not start a second
+  representation.
 - `docs/rules/across-stages/04-identity-and-realization.md` — read it to confirm it needs no amendment, which is what
   `11-quotation.md` §3 already records. `Derived` is *how a `Generated` node's path is computed* and is not a case of
   anything above it, so `crates/musa-compiler/src/derivation.rs` — the across-stage DAG — is not where it goes.
@@ -83,7 +84,7 @@ whose values are compiler-owned constants named `TokenKind.PitchLiteral` and `De
 resolved by a `phase_value` lookup mirroring the existing `phase_type`. Nothing collides with an adapter's own `data`,
 nothing about ordinary source changes, and no general namespacing is added to a checker prompt 142 deletes.
 
-The case sets are **generated** from what `musa-language` already owns — `SyntaxKind`'s token variants and `syntax.rs`'s
+The case sets are **generated** from what `musa-syntax` already owns — `SyntaxKind`'s token variants and `syntax.rs`'s
 `DELIMITERS` — rather than hand-written beside them, so the drift law covers them: a token kind the lexer knows and the
 phase does not is a build failure, not a silent gap. `read_token`'s `format!("{:?}", token.kind())` is what generation
 replaces, and it is the exact shape of the mistake — a name written by a `Debug` impl and read back by string
@@ -127,8 +128,8 @@ boundary as data.
   forgetting rule in `reconcile`.
 - `as_expression`, the checked parse, with the round-trip law over the corpus.
 - Generated `TokenKind` and `Delimiter` types, their flat-namespace constants, and `token_kind_equal` /
-  `delimiter_equal`; the generated case sets tied to `musa-language`'s lexer table by a drift test.
-- `Derived { origin, quotation, path }` named in `crates/musa-compiler/src/syntax.rs` as what the phase already
+  `delimiter_equal`; the generated case sets tied to `musa-syntax`'s lexer table by a drift test.
+- `Derived { origin, quotation, path }` named in `crates/musa-compiler/src/quote/mod.rs` as what the phase already
   computes, with its identity law tested directly.
 - `stdlib/src/adapters/staff.musa` moved off `text_equal` on kinds and delimiters, mechanically.
 - The registry survey: new signatures, and the entries marked for deletion in 143 with the reason.
@@ -140,9 +141,9 @@ boundary as data.
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-language -p musa-compiler -p musa-calculus
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-calculus
 cargo nextest run --workspace
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-calculus -- -D warnings
+cargo clippy --all-targets -p musa-syntax -p musa-compiler -p musa-calculus -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check

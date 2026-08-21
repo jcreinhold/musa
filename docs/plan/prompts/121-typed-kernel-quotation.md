@@ -52,8 +52,8 @@ relationships inside raw text do not, unless an explicit assertion wraps the com
 ## Check
 
 ```sh
-cargo nextest run -p musa-kernel -p musa-language -p musa-compiler -p musa-lsp
-cargo clippy --all-targets -p musa-kernel -p musa-language -p musa-compiler -p musa-lsp -- -D warnings
+cargo nextest run -p musa-kernel -p musa-syntax -p musa-compiler -p musa-lsp
+cargo clippy --all-targets -p musa-kernel -p musa-syntax -p musa-compiler -p musa-lsp -- -D warnings
 cargo fmt --check
 cargo run -p musa -- check examples/kernel-splice.musa
 cargo run -p musa -- kernel examples/kernel-splice.musa

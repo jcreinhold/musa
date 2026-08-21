@@ -24,7 +24,7 @@ about — and that neither of them had right. No type is added, none is removed,
 - Open Music Theory `099-pitch-and-pitch-class.md` and `003-reading-clefs.md`, which decide what this type is called:
   the first defines a pitch class as octave *and enharmonic* equivalence, the second calls the octave-free spelled thing
   a letter name.
-- `crates/musa-language/src/parser.rs`, `type_atom` — the whitelist of six keywords a type name is allowed to be is the
+- `crates/musa-syntax/src/parser.rs`, `type_atom` — the whitelist of six keywords a type name is allowed to be is the
   evidence for this prompt, not an incidental detail.
 - Prompt 109 for the migration-diagnostic shape a spelling change takes here, including its applicable fix.
 - Prompt 80 for the tree-sitter drift law, and prompt 84 for the keyword documentation table that is exhaustive by
@@ -79,8 +79,8 @@ point at it, exactly as `module` does in prompt 111.
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-lsp -p musa-project
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-lsp -- -D warnings
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-lsp -p musa-project
+cargo clippy --all-targets -p musa-syntax -p musa-compiler -p musa-lsp -- -D warnings
 cargo fmt --check
 cargo run -p musa -- check examples/tonal-construction.musa
 cargo run -p musa -- check examples/module-functor-study.musa

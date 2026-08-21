@@ -22,7 +22,7 @@ if [ $# -lt 1 ]; then
   echo ""
   echo "Examples:"
   echo "  $0 crates/musa-compiler"
-  echo "  $0 crates/musa-language/src/parser.rs"
+  echo "  $0 crates/musa-syntax/src/parser.rs"
   exit 2
 fi
 

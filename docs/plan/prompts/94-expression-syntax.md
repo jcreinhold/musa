@@ -22,7 +22,7 @@ exact spellings now recorded in that governing file.
 ## Read
 
 - `docs/rules/language/01-surface.md` and `02-core-calculus.md`; implement their chosen spellings exactly.
-- `musa-language` lexer/parser/CST/formatter; prompts 77, 80–82, 84, and 87–90 for the drift, keyword-doc, and readable
+- `musa-syntax` lexer/parser/CST/formatter; prompts 77, 80–82, 84, and 87–90 for the drift, keyword-doc, and readable
   formatting laws.
 - The sibling workspaces `../vscode-musa` and `../zed-musa`; their generated artifacts consume, rather than redefine,
   Musa vocabulary.
@@ -42,19 +42,19 @@ regenerated from it. Compiler behavior for these nodes is a stable `unsupported-
 
 ## Target
 
-- `musa-language`: tokens, `SyntaxKind`s, parser, typed AST wrappers, formatter, edit-safe spans, keyword docs.
+- `musa-syntax`: tokens, `SyntaxKind`s, parser, typed AST wrappers, formatter, edit-safe spans, keyword docs.
 - `editors/tree-sitter-musa`: grammar, highlights, folds, indents, locals, outline/tags, recovery corpus, regenerated
   token comparison data.
 - `musa-lsp` and desktop language support: semantic token/category vocabulary for new syntax on invalid documents.
 - `../vscode-musa` and `../zed-musa`: regenerated syntax/query assets only; no semantic feature yet.
-- `crates/musa-language/tests/suite/expression_syntax_laws.rs`: CST snapshots, parse/format/parse, idempotence, trivia
+- `crates/musa-syntax/tests/suite/expression_syntax_laws.rs`: CST snapshots, parse/format/parse, idempotence, trivia
   preservation, and recovery cases.
 
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-lsp
-cargo clippy --all-targets -p musa-language -p musa-lsp -- -D warnings
+cargo nextest run -p musa-syntax -p musa-lsp
+cargo clippy --all-targets -p musa-syntax -p musa-lsp -- -D warnings
 cargo fmt --check
 cd editors/tree-sitter-musa && tree-sitter generate && tree-sitter test
 node editors/tree-sitter-musa/test/compare-tokens.js

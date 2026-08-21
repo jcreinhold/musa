@@ -499,7 +499,7 @@ export async function stubShell(
           }
           // Formatting is the one command that rewrites the source without the
           // composer typing it. The stub indents by brace depth, which is the
-          // rule `musa-language`'s formatter follows; that its output is
+          // rule `musa-syntax`'s formatter follows; that its output is
           // byte-for-byte the formatter's is a Rust test's business, not this
           // one's. What the interface is judged on here is that a source it did
           // not type still keeps the caret where it was.

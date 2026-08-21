@@ -23,9 +23,9 @@ converts the corpus.
   line is prompt 90's decision and not this one's.
 - `docs/rules/style-guide.md` §1 — a named bar "plays where it stands, so its name is an *address*". A named bar is
   material and keeps its block; an anonymous one is not and does not.
-- `crates/musa-language/src/parser.rs` — `voice_items`, `bar_stmt`, `nested_bar`, `articulations`, `VOICE_RECOVERY`.
-- `crates/musa-language/src/ast.rs` — `voice_items`, which already reads both a `Block` child and direct children.
-- `crates/musa-language/src/edits.rs` — the whole mutation API, and the one place that *writes* note syntax.
+- `crates/musa-syntax/src/parser.rs` — `voice_items`, `bar_stmt`, `nested_bar`, `articulations`, `VOICE_RECOVERY`.
+- `crates/musa-syntax/src/ast.rs` — `voice_items`, which already reads both a `Block` child and direct children.
+- `crates/musa-syntax/src/edits.rs` — the whole mutation API, and the one place that *writes* note syntax.
 
 ## Design
 
@@ -156,15 +156,15 @@ bulgarian's explanatory comment is deleted in the same commit, because the group
 
 ## Target
 
-- `crates/musa-language/src/lexer.rs`: `ChordKw` deleted.
-- `crates/musa-language/src/parser.rs`: `pipe_bar_stmt`, `voice_items`' exit and dispatch, `chord_literal`, the
+- `crates/musa-syntax/src/lexer.rs`: `ChordKw` deleted.
+- `crates/musa-syntax/src/parser.rs`: `pipe_bar_stmt`, `voice_items`' exit and dispatch, `chord_literal`, the
   articulation lookahead, the marks inside `ArticulationList`, `VOICE_RECOVERY`, the stray-`;` arm and the rule in its
   help line, `grace_stmt`'s items and its leading trivia.
-- `crates/musa-language/src/{ast,highlight,keywords}.rs`: `ChordKw` removed from the exhaustive matches; the marks
-  mapped in `articulation_names`.
-- `crates/musa-language/src/edits.rs`: the six rows above.
-- `crates/musa-language/src/formatter.rs`: `>` and `^` close up to the note the way `/` and `.` do; an event ends its
-  own line — nothing inside it does that now the `;` is gone; and `inline_bar` becomes `inline_run`, covering the grace
+- `crates/musa-syntax/src/{ast,highlight,keywords}.rs`: `ChordKw` removed from the exhaustive matches; the marks mapped
+  in `articulation_names`.
+- `crates/musa-syntax/src/edits.rs`: the six rows above.
+- `crates/musa-syntax/src/formatter.rs`: `>` and `^` close up to the note the way `/` and `.` do; an event ends its own
+  line — nothing inside it does that now the `;` is gone; and `inline_bar` becomes `inline_run`, covering the grace
   group for the same reason it covers the bar. None of that is bar *layout*; that is still prompt 90.
 - `crates/musa-compiler/src/marks.rs`: `MarkDef::shorthand`.
 - `crates/musa-project/src/diagnostic.rs`: `explain("syntax")` states the rule, in the same words the parse error uses.

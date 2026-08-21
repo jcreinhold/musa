@@ -23,10 +23,10 @@
 //! the *site*, so two instances with equal arguments are two modules, always.
 
 use indexmap::{IndexMap, IndexSet};
-use musa_language::ast::{
+use musa_syntax::ast::{
     AstNode as _, DataMember, FnDecl, LetDecl, MakeStmt, SignatureDecl, StructureDecl, TemplateDecl,
 };
-use musa_language::{SyntaxKind, SyntaxNode};
+use musa_syntax::{SyntaxKind, SyntaxNode};
 
 use crate::resolve::{NameKind, Resolver, trimmed_span};
 use crate::template::{DIGEST_VERSION, UNIT};
@@ -217,7 +217,7 @@ impl std::fmt::Display for Written {
 /// instance's abstract types are the functor's, so asking the body asks the
 /// right node for a written module and a made one alike.
 fn declares_type(body: &StructureDecl, name: &str) -> bool {
-    musa_language::ast::DataDecl::all_at_root(body.syntax())
+    musa_syntax::ast::DataDecl::all_at_root(body.syntax())
         .iter()
         .any(|declaration| declaration.name().as_deref() == Some(name))
 }
@@ -1139,7 +1139,7 @@ fn alias_span(node: &SyntaxNode) -> SourceSpan {
 
 fn identifier_spans(node: &SyntaxNode) -> impl Iterator<Item = SourceSpan> + '_ {
     node.children_with_tokens()
-        .filter_map(musa_language::SyntaxElement::into_token)
+        .filter_map(musa_syntax::SyntaxElement::into_token)
         .filter(|token| token.kind() == SyntaxKind::Identifier)
         .map(|token| {
             let range = token.text_range();
@@ -1154,7 +1154,7 @@ fn identifier_spans(node: &SyntaxNode) -> impl Iterator<Item = SourceSpan> + '_ 
 /// `Duration<WrittenTime>` or `Pair<Nat, Bool>` was not seen as a value
 /// parameter at all, and the body's use of it could not find its name.
 fn is_type(kind: SyntaxKind) -> bool {
-    musa_language::ast::is_type(kind)
+    musa_syntax::ast::is_type(kind)
 }
 
 #[cfg(test)]

@@ -40,7 +40,7 @@ say what the core actually has. It adds no core term, no typing rule, and no red
   away, rather than left for the author to encode. That is the shape of this change.
 - `stdlib/src/adapters/staff.musa`, `clef_named` at line 1155 and `spelling_named` below it — the staircase this prompt
   flattens.
-- `crates/musa-language/src/parser.rs`, `ast.rs`, `formatter.rs`, `keywords.rs`, and `syntax_kind.rs`; and
+- `crates/musa-syntax/src/parser.rs`, `ast.rs`, `formatter.rs`, `keywords.rs`, and `syntax_kind.rs`; and
   `editors/tree-sitter-musa/grammar.js` with its queries, which the drift law in root `AGENTS.md` holds to the real
   lexer.
 
@@ -88,7 +88,7 @@ they stop being usable as identifiers; the corpus is checked for collisions in t
   match; §5 is unchanged and the prompt states that it is.
 - `docs/rules/language/01-surface.md` — the expression grammar gains `if`, with the mandatory `else`, the `bool`
   condition, the single result type, and the elaboration written out.
-- `crates/musa-language/` — `syntax_kind.rs`, `keywords.rs`, `lexer.rs`, `parser.rs`, and `ast.rs` gain the form;
+- `crates/musa-syntax/` — `syntax_kind.rs`, `keywords.rs`, `lexer.rs`, `parser.rs`, and `ast.rs` gain the form;
   `formatter.rs` lays it out and keeps a chained `else if` on one ladder rather than indenting each rung.
 - `crates/musa-compiler/` — elaboration of the surface form to the boolean match, with the source map carrying the
   conditional's own span so a type error on a branch points at that branch and not at a synthesized match.
@@ -96,16 +96,16 @@ they stop being usable as identifiers; the corpus is checked for collisions in t
   law.
 - `stdlib/src/adapters/staff.musa` — `clef_named`, `spelling_named`, and the other boolean staircases become `if`
   ladders. The expansion produces the same values and the fixtures are expected to be byte-identical.
-- Tests in `crates/musa-language` and `crates/musa-compiler`: parse and format round-trip including a chain; both
-  branches must have one type, with the diagnostic naming the branch that disagrees; a non-`bool` condition is rejected
-  at its own span; `if` and `else` are rejected as identifiers with a diagnostic that says they are keywords; and the
+- Tests in `crates/musa-syntax` and `crates/musa-compiler`: parse and format round-trip including a chain; both branches
+  must have one type, with the diagnostic naming the branch that disagrees; a non-`bool` condition is rejected at its
+  own span; `if` and `else` are rejected as identifiers with a diagnostic that says they are keywords; and the
   elaborated form is observationally the boolean match, evaluated by the one evaluator at the same charge.
 
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-project -p musa-lsp
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp
+cargo clippy --all-targets -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cd editors/tree-sitter-musa && tree-sitter test

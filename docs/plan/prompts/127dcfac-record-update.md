@@ -34,7 +34,7 @@ nothing about what a record means.
   Seven near-identical functions in one standard-library file is that cost, itemized.
 - `stdlib/src/adapters/staff.musa`: `data Pending` at line 274, and `holding_body`, `holding_length`, `holding_dots`,
   `holding_tie`, `holding_numbers`, `holding_voices`, and `holding_word` at lines 896–1003.
-- `crates/musa-language/src/parser.rs`, `ast.rs`, `formatter.rs`, and `syntax_kind.rs`; and
+- `crates/musa-syntax/src/parser.rs`, `ast.rs`, `formatter.rs`, and `syntax_kind.rs`; and
   `editors/tree-sitter-musa/grammar.js` with its queries, held to the lexer by the drift law in root `AGENTS.md`.
 
 ## Design
@@ -83,8 +83,8 @@ evidence rather than assertion, and so that prompts 127dcfae and 127dcfag can at
   elaboration written out.
 - `docs/rules/language/02-core-calculus.md` — a sentence in §5 recording that update is surface elaboration to the
   nominal constructor and adds no core term. §5 is otherwise unchanged and the prompt states that it is.
-- `crates/musa-language/` — `syntax_kind.rs`, `lexer.rs`, `parser.rs`, and `ast.rs` gain the form; `formatter.rs` lays
-  it out, including the one-field and many-field cases.
+- `crates/musa-syntax/` — `syntax_kind.rs`, `lexer.rs`, `parser.rs`, and `ast.rs` gain the form; `formatter.rs` lays it
+  out, including the one-field and many-field cases.
 - `crates/musa-compiler/` — elaboration with the subject bound once; resolution of each field against the declaration;
   the duplicate-field diagnostic naming both mentions; the unknown-field diagnostic naming the declaration; and a source
   map that points a field's type error at that field's right-hand side.
@@ -92,19 +92,19 @@ evidence rather than assertion, and so that prompts 127dcfae and 127dcfag can at
 - `stdlib/src/adapters/staff.musa` — the seven `holding_*` functions collapse to updates at their call sites, or to
   bodies one line long where a named function still earns its name. `holding_length`'s deliberate use of `faulting` is
   behavior and is preserved.
-- Tests in `crates/musa-language` and `crates/musa-compiler`: the subject is evaluated once and each right-hand side
-  once, in order, proved by the meter rather than by inspection; a right-hand side reads the surrounding binding and not
-  the field; an unmentioned field is carried over; duplicate and unknown fields are rejected at their own spans;
-  updating a non-record and updating across two nominal types are rejected; the result's exact identity matches the
-  equivalent full construction; and the charge is one construction.
+- Tests in `crates/musa-syntax` and `crates/musa-compiler`: the subject is evaluated once and each right-hand side once,
+  in order, proved by the meter rather than by inspection; a right-hand side reads the surrounding binding and not the
+  field; an unmentioned field is carried over; duplicate and unknown fields are rejected at their own spans; updating a
+  non-record and updating across two nominal types are rejected; the result's exact identity matches the equivalent full
+  construction; and the charge is one construction.
 - A short note under `docs/notes/research/core-calculus/` with the before/after counts of `holding_*` functions and
   `Pending` constructions, and its entry in that directory's `README.md`.
 
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-project -p musa-lsp
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp
+cargo clippy --all-targets -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cd editors/tree-sitter-musa && tree-sitter test

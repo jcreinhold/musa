@@ -27,7 +27,7 @@ assets, and packages; it does not claim whole-language tooling closure.
 
 Extend the existing thin LSP boundary, not its dependency graph. Compiler/project expose only caller-oriented immutable
 facts needed by more than one surface; do not publish HIR, closures, environments, unification variables, module tables,
-or raw `Music`. Syntax-only features continue to use `musa-language` on invalid source; semantic answers use the last
+or raw `Music`. Syntax-only features continue to use `musa-syntax` on invalid source; semantic answers use the last
 valid compilation and clearly label staleness where relevant.
 
 Required behavior:
@@ -62,8 +62,8 @@ the record around only functions and theory declarations.
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-project -p musa-lsp
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp
+cargo clippy --all-targets -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
 cargo fmt --check
 cd editors/tree-sitter-musa && tree-sitter test
 git -C ../vscode-musa diff --check

@@ -107,7 +107,7 @@ None of this is new language; it is the backends emitting what the plan already 
 
 ## Target
 
-- `musa-language`: `SubtitleKw`, `ComposerKw`, `ArrangerKw`, `CopyrightKw`; the four statements in the CST and the
+- `musa-syntax`: `SubtitleKw`, `ComposerKw`, `ArrangerKw`, `CopyrightKw`; the four statements in the CST and the
   formatter; the highlighter's keyword table.
 - `musa-compiler`: `ScoreSnapshot` carries the four; `resolve` fills them.
 - `musa-project`: the `musa.toml` composer fallback applied once, where the snapshot is built.
@@ -122,7 +122,7 @@ None of this is new language; it is the backends emitting what the plan already 
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-notation -p musa-project
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-notation -p musa-project
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cd apps/musa-desktop/ui && npm run check && npm run test

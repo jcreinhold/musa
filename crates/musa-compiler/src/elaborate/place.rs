@@ -2,7 +2,7 @@
 //! are written at.
 //!
 //! One concern of the `elaborate` module; see its docs for the semantic path.
-use musa_language::ast::AstNode as _;
+use musa_syntax::ast::AstNode as _;
 
 use super::fact::{FactKind, ScoreFact, VoiceTrack};
 use crate::resolve::{self, Resolver};
@@ -24,7 +24,7 @@ use num_rational::Ratio;
 /// it, and that is the end of the core's involvement.
 pub(super) fn placed(
     resolver: &mut Resolver,
-    score: &musa_language::ast::ScoreDecl,
+    score: &musa_syntax::ast::ScoreDecl,
     bars: &musa_score::BarLines,
     extent: Duration<WrittenTime>,
 ) -> VoiceTrack {
@@ -62,7 +62,7 @@ pub(super) fn placed(
             "write every chord in the first one",
         );
     }
-    for chord in lanes.iter().flat_map(musa_language::ast::HarmonyDecl::chords) {
+    for chord in lanes.iter().flat_map(musa_syntax::ast::HarmonyDecl::chords) {
         let span = resolve::trimmed_span(chord.syntax());
         let Some(at) = resolve_position(resolver, chord.position().as_ref(), span, bars, extent_time) else {
             continue;
@@ -117,7 +117,7 @@ fn point_at(at: MusicalTime, fact: ScoreFact) -> Occurrence<WrittenTime, ScoreFa
 /// rest is an occurrence.
 fn resolve_position(
     resolver: &mut Resolver,
-    position: Option<&musa_language::ast::Position>,
+    position: Option<&musa_syntax::ast::Position>,
     span: SourceSpan,
     bars: &musa_score::BarLines,
     extent: MusicalTime,

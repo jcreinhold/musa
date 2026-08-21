@@ -11,7 +11,7 @@
 use std::collections::BTreeSet;
 
 use lsp_types::{FoldingRange, FoldingRangeKind};
-use musa_language::SyntaxKind;
+use musa_syntax::SyntaxKind;
 
 use crate::convert::LineIndex;
 use crate::workspace::Document;
@@ -20,7 +20,7 @@ use crate::workspace::Document;
 pub(crate) fn folding_ranges(document: &Document) -> Option<Vec<FoldingRange>> {
     let snapshot = document.snapshot();
     let source = snapshot.source();
-    let tree = musa_language::parse(source);
+    let tree = musa_syntax::parse(source);
     let index = LineIndex::new(source);
     let mut ranges = brace_folds(&tree.syntax(), &index);
     ranges.extend(comment_folds(&tree.syntax(), &index));
@@ -31,7 +31,7 @@ pub(crate) fn folding_ranges(document: &Document) -> Option<Vec<FoldingRange>> {
 /// A `region` fold for every matched brace pair whose lines differ. Matching
 /// is the walk's own stack, so an unclosed `{` — the composer mid-thought —
 /// simply never pairs, and a stray `}` pairs with nothing.
-fn brace_folds(tree: &musa_language::SyntaxNode, index: &LineIndex) -> Vec<FoldingRange> {
+fn brace_folds(tree: &musa_syntax::SyntaxNode, index: &LineIndex) -> Vec<FoldingRange> {
     let mut open: Vec<u32> = Vec::new();
     let mut ranges = Vec::new();
     for element in tree.descendants_with_tokens() {
@@ -68,7 +68,7 @@ fn brace_folds(tree: &musa_language::SyntaxNode, index: &LineIndex) -> Vec<Foldi
 /// "Comment-only" is said from the tree: a line some comment covers and no
 /// non-trivia token touches. Line runs are computed on line numbers, so a
 /// block comment's middle lines are comment lines too.
-fn comment_folds(tree: &musa_language::SyntaxNode, index: &LineIndex) -> Vec<FoldingRange> {
+fn comment_folds(tree: &musa_syntax::SyntaxNode, index: &LineIndex) -> Vec<FoldingRange> {
     let mut code_lines: BTreeSet<u32> = BTreeSet::new();
     let mut comment_lines: BTreeSet<u32> = BTreeSet::new();
     for element in tree.descendants_with_tokens() {

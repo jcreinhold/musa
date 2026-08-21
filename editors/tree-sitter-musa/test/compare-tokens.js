@@ -2,7 +2,7 @@
 /**
  * The corpus side of the drift law.
  *
- * `crates/musa-language/tests/suite/tree_sitter_fixtures.rs` commits the *real*
+ * `crates/musa-syntax/tests/suite/tree_sitter_fixtures.rs` commits the *real*
  * lexer's token stream for every compilable fixture, and the *real*
  * parser's syntax verdict on every broken one. This script holds the
  * tree-sitter grammar to both: it parses each fixture through the CLI's
@@ -152,7 +152,7 @@ function checkTokens(manifestPath) {
 }
 
 /**
- * Hold the grammar to `musa-language` on the top-level alternative: which
+ * Hold the grammar to `musa-syntax` on the top-level alternative: which
  * files are kernel documents, and by what marker.
  *
  * `docs/rules/language/01-surface.md` §7 gives one language two surfaces, and the
@@ -188,7 +188,7 @@ function checkKernel(covered) {
     const marker = found.find((node) => node.kind === 'kernel_marker');
     if (!marker) {
       const kinds = found.map((node) => node.kind).filter(Boolean).slice(0, 8).join(', ');
-      fail(`${entry.file}: the grammar read [${kinds}] where musa-language read a kernel document`);
+      fail(`${entry.file}: the grammar read [${kinds}] where musa-syntax read a kernel document`);
       continue;
     }
     const text = sliceText(readFileSync(path, 'utf8'))(marker).trim();
@@ -226,4 +226,4 @@ if (failures > 0) {
   console.error(`\n${failures} drift-law failure(s)`);
   process.exit(1);
 }
-console.log('drift law holds: every token, alternative, and verdict agrees with musa-language');
+console.log('drift law holds: every token, alternative, and verdict agrees with musa-syntax');

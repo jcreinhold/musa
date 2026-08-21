@@ -17,7 +17,7 @@
 
 use std::path::{Path, PathBuf};
 
-use musa_language::BarSpacing;
+use musa_syntax::BarSpacing;
 use serde::Deserialize;
 
 use crate::contents::{ContentsFacts, Entry, EntryFacts, Layout};

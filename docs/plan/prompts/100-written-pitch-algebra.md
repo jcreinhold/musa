@@ -63,8 +63,8 @@ representability diagnostic. They never silently clamp, respell enharmonically, 
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-notation -p musa-project
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-notation -p musa-project -- -D warnings
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-notation -p musa-project
+cargo clippy --all-targets -p musa-syntax -p musa-compiler -p musa-notation -p musa-project -- -D warnings
 cargo fmt --check
 cargo run -p musa -- check examples/pitch-arithmetic.musa
 cargo run -p musa -- render examples/pitch-arithmetic.musa --to mei -o /tmp/pitch-algebra.mei

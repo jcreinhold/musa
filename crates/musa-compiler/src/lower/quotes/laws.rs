@@ -29,12 +29,12 @@
 )]
 
 use musa_calculus::{Cx, Origin, Raw, Term};
-use musa_language::SyntaxKind;
+use musa_syntax::SyntaxKind;
 
 use super::super::{Lowering, Sites};
+use crate::quote::{Cat, Delimiter, ExpansionPath, Syntax, read_region};
 use crate::registry::{held, literal, owned, plain_type, syntax_type};
 use crate::resolve::Resolver;
-use crate::syntax::{Cat, Delimiter, ExpansionPath, Syntax, read_region};
 use musa_score::diagnose::Diagnostic;
 
 /// Where a law's own terms are written, which is nowhere a composer can see.
@@ -59,7 +59,7 @@ fn expansion() -> ExpansionPath {
 
 /// The tree both sides read, exactly as the compiler reads it for an adapter.
 fn subject() -> Syntax {
-    read_region(&musa_language::parse(REGION).syntax(), expansion())
+    read_region(&musa_syntax::parse(REGION).syntax(), expansion())
 }
 
 // ---- the two sides ----------------------------------------------------------
@@ -152,7 +152,7 @@ fn lowered(written: &str) -> Raw {
 /// The same, keeping whatever it complained about.
 fn lowering(written: &str) -> (Option<Raw>, Vec<Diagnostic>) {
     let source = format!("library {{ fn probe() -> Nat {{ {written} }} }}");
-    let document = musa_language::parse(&source);
+    let document = musa_syntax::parse(&source);
     assert!(
         document.errors().is_empty(),
         "the law's own source parses: {:?}",
@@ -191,11 +191,11 @@ fn category(cat: Cat) -> Raw {
 /// A whole region rather than a node assembled here, so that a spliced node is
 /// one with real source information — which is what a splice is supposed to
 /// carry through unchanged. The redundant layout wrapping a region comes in is
-/// dropped, because `crate::syntax::matched` drops it too: §4 matches on shape,
+/// dropped, because `crate::quote::matched` drops it too: §4 matches on shape,
 /// and a group of one child is not a shape a pattern can write.
 fn spliceable(source: &str, at: u64) -> Syntax {
     let mut node = read_region(
-        &musa_language::parse(source).syntax(),
+        &musa_syntax::parse(source).syntax(),
         ExpansionPath::at(vec![u32::try_from(at).unwrap_or(u32::MAX)]),
     );
     while let Syntax::Group {
@@ -253,7 +253,7 @@ fn a_quote_inhabits_the_expression_category_at_the_anchor_it_was_given() {
 ///
 /// Not "a tree of the same shape" — the same tree, so every derived path, every
 /// minted comma, and every hygienic renaming has to agree. That is the whole
-/// claim of moving quotation onto a δ-rule: `crate::syntax::instantiate` is
+/// claim of moving quotation onto a δ-rule: `crate::quote::instantiate` is
 /// reached a second way rather than reimplemented, and if it were not, identity
 /// is exactly where the disagreement would show.
 #[test]
@@ -278,7 +278,7 @@ fn a_lowered_quote_builds_what_the_old_evaluator_builds() {
 /// `Template::Group::separated` exists.
 ///
 /// The printed text with its whitespace removed, because the claim is about the
-/// separators and the printer's spacing is `crate::syntax::print`'s own business
+/// separators and the printer's spacing is `crate::quote::print`'s own business
 /// — a law that fixed it here would fail the next time the printer is tuned.
 #[test]
 fn a_spread_is_separated_by_the_commas_its_position_supplies() {
@@ -298,7 +298,7 @@ fn a_spread_is_separated_by_the_commas_its_position_supplies() {
             anchor(),
             Raw::bind(HERE, "xs", splices(members), quoted.clone()),
         );
-        let printed = crate::syntax::print(&answer(&cx, &program, Cat::Expr));
+        let printed = crate::quote::print(&answer(&cx, &program, Cat::Expr));
         assert_eq!(
             printed.text.split_whitespace().collect::<String>(),
             expected,

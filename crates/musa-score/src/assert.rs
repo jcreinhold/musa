@@ -568,7 +568,7 @@ pub fn fills_meter(passage: &Passage, settled: &Settled<'_>) -> Option<Diagnosti
         // guesses is worse than a help line that does not.
         diagnostic.help("shorten a duration, or move the last of these into the next bar")
     } else {
-        let rest = format!("rest{}", musa_language::spell_duration(&fraction(difference)));
+        let rest = format!("rest{}", musa_syntax::spell_duration(&fraction(difference)));
         let filled = diagnostic.help(format!("add `{rest}`, or lengthen one of the durations"));
         match passage.content_end {
             Some(at) => filled.fix(format!("add `{rest}`"), SourceSpan::new(at, at), format!(" {rest}")),

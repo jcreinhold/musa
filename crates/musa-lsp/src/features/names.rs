@@ -106,11 +106,11 @@ fn edit(document: &Document, span: musa_project::Span, new_name: &str) -> TextEd
 /// Would `new_name` still be this name: one identifier token, and free in
 /// the name's namespace.
 fn check_new_name(document: &Document, entry: &NameFact, new_name: &str) -> Result<(), String> {
-    let tokens = musa_language::lex(new_name);
+    let tokens = musa_syntax::lex(new_name);
     let [token] = tokens.tokens() else {
         return Err(format!("`{new_name}` is not a valid name"));
     };
-    if token.kind != musa_language::SyntaxKind::Identifier {
+    if token.kind != musa_syntax::SyntaxKind::Identifier {
         return Err(format!("`{new_name}` is not a valid name"));
     }
     let names = document.snapshot().names();

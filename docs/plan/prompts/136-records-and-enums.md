@@ -12,8 +12,8 @@ phase: 3
 
 Add the first two surface forms of the new language: structural records with field projection and `with` update along a
 path, and nominal enums whose constructors live in their type's namespace. Grammar, CST, formatter, and tree-sitter in
-`musa-language`; elaboration into the core in `musa-calculus`. This is where `data Pending`'s eight-field destructure
-dies and where the `Untied` collision that forced `names_a_phase_type` into the compiler stops being possible.
+`musa-syntax`; elaboration into the core in `musa-calculus`. This is where `data Pending`'s eight-field destructure dies
+and where the `Untied` collision that forced `names_a_phase_type` into the compiler stops being possible.
 
 ## Read
 
@@ -24,7 +24,7 @@ dies and where the `Untied` collision that forced `names_a_phase_type` into the 
 - `stdlib/src/adapters/staff.musa`'s `data Pending` and every site that destructures it, and the `Tying`/`Tie`
   constructor collision together with `names_a_phase_type` in `crates/musa-compiler/src/core/mod.rs`. Those are the two
   concrete programs this prompt has to improve, and prompt 145 measures whether it did.
-- `crates/musa-language/src/{keywords.rs, parser.rs, highlight.rs}` and the formatter — where a new keyword actually
+- `crates/musa-syntax/src/{keywords.rs, parser.rs, highlight.rs}` and the formatter — where a new keyword actually
   enters the language, and what else has to move with it.
 - `editors/tree-sitter-musa` and the drift law that binds it to the real lexer. A new keyword that does not reach the
   grammar is drift, and the drift test is in the Check for that reason.
@@ -34,7 +34,7 @@ dies and where the `Untied` collision that forced `names_a_phase_type` into the 
 ## Design
 
 **Where each half lands, and why the compiler is not wired up yet.** The grammar, CST, formatter, and highlighting go
-into `musa-language`; the elaboration of records and enums into core terms goes into `musa-calculus`, over the raw term
+into `musa-syntax`; the elaboration of records and enums into core terms goes into `musa-calculus`, over the raw term
 prompt 134 introduced. `musa-compiler` connects the two exactly once, in prompt 142. Until then a `record` declaration
 parses, formats, and highlights, and then fails resolution with the existing unknown-declaration diagnostic. That is
 deliberate: wiring a second checking path through the old compiler and then deleting it in 142 would mean building the
@@ -76,11 +76,11 @@ collide.
 
 ## Target
 
-- `musa-language`: grammar, CST nodes, typed AST wrappers, formatter, highlighting, and completion for record and enum
+- `musa-syntax`: grammar, CST nodes, typed AST wrappers, formatter, highlighting, and completion for record and enum
   declarations, path update, and namespaced constructor paths.
 - `editors/tree-sitter-musa`: grammar and queries, with the drift test green.
 - `musa-calculus`: elaboration of records and enums into core records and families, and their laws.
-- `crates/musa-language/tests/suite/` and `crates/musa-calculus/tests/suite/` cases, including the collision program.
+- `crates/musa-syntax/tests/suite/` and `crates/musa-calculus/tests/suite/` cases, including the collision program.
 - `docs/plan/code-map/` rows for both crates.
 - No `stdlib/` or `examples/` change: nothing is migrated until 142.
 
@@ -88,9 +88,9 @@ collide.
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-language -p musa-calculus
+cargo nextest run -p musa-syntax -p musa-calculus
 cargo nextest run --workspace
-cargo clippy --all-targets -p musa-language -p musa-calculus -- -D warnings
+cargo clippy --all-targets -p musa-syntax -p musa-calculus -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cd editors/tree-sitter-musa && tree-sitter test

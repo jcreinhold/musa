@@ -551,7 +551,7 @@ pub(crate) fn parse_value(number: &str, suffix: Option<&str>) -> Option<Value> {
 
 // --- Resolution -------------------------------------------------------------
 
-use musa_language::ast::{
+use musa_syntax::ast::{
     Arg, AstNode as _, BusDecl, CallExpr, PatchDecl, SendStmt, SignalChain, SignalStage, StudioDecl, StudioItem,
 };
 
@@ -559,7 +559,7 @@ use crate::resolve::{span_of, trimmed_span};
 use musa_score::diagnose::{Code, Diagnostic};
 
 /// What a library's `studio` may not write.
-fn complain(node: &musa_language::SyntaxNode, what: &str, diagnostics: &mut Vec<Diagnostic>) {
+fn complain(node: &musa_syntax::SyntaxNode, what: &str, diagnostics: &mut Vec<Diagnostic>) {
     diagnostics.push(
         Diagnostic::error(
             Code::Misplaced,
@@ -636,7 +636,7 @@ pub(crate) fn resolve(
             let name = patch.name().unwrap_or_default();
             if !name.is_empty()
                 && spec.has_patch(&name)
-                && let Some(span) = crate::resolve::token_span(patch.syntax(), musa_language::SyntaxKind::Identifier)
+                && let Some(span) = crate::resolve::token_span(patch.syntax(), musa_syntax::SyntaxKind::Identifier)
             {
                 references.declare(crate::resolve::NameKind::Patch, &name, span);
             }
@@ -907,8 +907,8 @@ fn declare_bus(decl: &BusDecl, spec: &mut StudioSpec, diagnostics: &mut Vec<Diag
 /// The shared body of a patch or a bus: named signals, then chains, with the
 /// names visible to the chains that follow them.
 fn build_container(
-    signals: &[musa_language::ast::SignalBinding],
-    chains: &[musa_language::ast::ChainStmt],
+    signals: &[musa_syntax::ast::SignalBinding],
+    chains: &[musa_syntax::ast::ChainStmt],
     diagnostics: &mut Vec<Diagnostic>,
 ) -> Option<Patch> {
     let mut patch = Patch::default();

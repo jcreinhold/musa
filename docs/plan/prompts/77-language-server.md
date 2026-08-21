@@ -32,13 +32,13 @@ through provenance, outline symbols, certain fixes, semantic tokens, and complet
 
 `crates/musa-lsp`, a thin shell beside `musa` and the desktop: the dependency direction becomes
 `project → {cli, desktop, lsp}`. Repair roadmap §15 with a §15.11 entry in the same commit, naming the crate and its
-dependency list: `musa-project`, `musa-language`, `lsp-server`, `lsp-types`.
+dependency list: `musa-project`, `musa-syntax`, `lsp-server`, `lsp-types`.
 
-The second edge to `musa-language` — which no other shell has — is deliberate and the repair must state its reason:
+The second edge to `musa-syntax` — which no other shell has — is deliberate and the repair must state its reason:
 semantic tokens and completion must answer on *half-typed* source, which the session cannot describe (its facts are the
 last valid compile's). The desktop solved this with a second tokenizer in TypeScript fed a generated vocabulary; the
-server has the real lexer in-process and uses it. Formatting likewise calls `musa_language::format` directly and
-**never** issues `ProjectCommand::Format`: a format request must not land in the session's undo history.
+server has the real lexer in-process and uses it. Formatting likewise calls `musa_syntax::format` directly and **never**
+issues `ProjectCommand::Format`: a format request must not land in the session's undo history.
 
 ### Protocol crate
 
@@ -63,7 +63,7 @@ One public function, `serve`, over stdio; `src/main.rs` calls it. Everything els
 | --- | --- |
 | lifecycle, `didOpen`/`didChange`/`didClose` | `from_text`, `SetSource`; diagnostics published after every change |
 | `publishDiagnostics` | `snapshot().diagnostics()`: severity, code, primary label as range, secondary labels as related information |
-| `formatting` | `musa_language::format(&parse(source))`, one whole-document edit, session untouched |
+| `formatting` | `musa_syntax::format(&parse(source))`, one whole-document edit, session untouched |
 | `hover` | event at the position (origin span): spelled pitch, duration, bar:beat, key/clef, origin path; occurrences at use-sites; studio nodes |
 | `definition` | `use` → motif `declaration`; generated event → `definition_span` (the statement that spells it) |
 | `documentSymbol` | the outline: sections and phrases |
@@ -76,7 +76,7 @@ One public function, `serve`, over stdio; `src/main.rs` calls it. Everything els
 - `crates/musa-lsp/`: `Cargo.toml` (workspace lints), `src/lib.rs` (`serve`), `src/main.rs`, private `workspace`,
   `convert`, `handlers` modules, `tests/lsp_laws.rs`.
 - Roadmap §15.11 entry; `AGENTS.md` navigation row and dependency-direction line; `README.md` crate-table row.
-- No changes to `musa-project` or `musa-language`: the facts this prompt needs, prompt 39 and 56 already shipped.
+- No changes to `musa-project` or `musa-syntax`: the facts this prompt needs, prompt 39 and 56 already shipped.
 
 ## Check
 

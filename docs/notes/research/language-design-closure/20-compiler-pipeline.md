@@ -82,7 +82,7 @@ convenience in a separate, checkable step. Musa combines that method with rustc'
 
 > What did the musician write, including incomplete or invalid text?
 
-`musa-language` already owns this form. It retains every token, comment, space, and byte range. The formatter, syntax
+`musa-syntax` already owns this form. It retains every token, comment, space, and byte range. The formatter, syntax
 highlighter, text edits, and editor recovery use it.
 
 This form should contain no resolved names, inferred types, pitches computed from context, expanded motifs, or audio
@@ -392,7 +392,7 @@ different musical outputs.
 
 | Form or operation | Owner | Public? |
 | --- | --- | --- |
-| lossless syntax tree and typed syntax wrappers | `musa-language` | narrow parsing and editing facade |
+| lossless syntax tree and typed syntax wrappers | `musa-syntax` | narrow parsing and editing facade |
 | resolved program, typed body, inference tables | `musa-compiler` | no |
 | evaluation core and source evaluator | `musa-compiler` | no |
 | contextual recipes and target adapters | `musa-compiler` | recipes private; caller-ready facts public |

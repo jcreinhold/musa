@@ -20,8 +20,8 @@
 //! declarations.
 
 use indexmap::IndexMap;
-use musa_language::SyntaxNode;
-use musa_language::ast::{AstNode as _, MakeStmt, PieceDecl, TemplateDecl, VoiceDecl};
+use musa_syntax::SyntaxNode;
+use musa_syntax::ast::{AstNode as _, MakeStmt, PieceDecl, TemplateDecl, VoiceDecl};
 
 use crate::resolve::{Resolver, trimmed_span};
 use musa_score::diagnose::{Code, Diagnostic};
@@ -366,7 +366,7 @@ fn arguments_of(resolver: &mut Resolver, stmt: &MakeStmt, entry: &Entry, name: &
     let mut arguments = Vec::with_capacity(written.len());
     for argument in &written {
         let node = argument.syntax();
-        if crate::resolve::token_span(node, musa_language::SyntaxKind::Colon).is_some() {
+        if crate::resolve::token_span(node, musa_syntax::SyntaxKind::Colon).is_some() {
             resolver.report(
                 Diagnostic::error(Code::WrongArity, "template arguments are positional")
                     .at(trimmed_span(node), "this argument is named")

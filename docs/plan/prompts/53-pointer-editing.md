@@ -136,7 +136,7 @@ value, and the whole point of the signature is that the composer is watching the
 
 ## Target
 
-- `musa-language`: nothing new. `ChangePitch`, `ChangeDuration`, and `InsertNote` already compute the edits.
+- `musa-syntax`: nothing new. `ChangePitch`, `ChangeDuration`, and `InsertNote` already compute the edits.
 - `musa-project`: nothing new, unless the impact-count path needs to answer *before* a command is applied for the live
   preview — in which case a query that returns the candidate text edits without applying them, so the frontend can show
   the token it will replace. One entry point, not four.
@@ -159,7 +159,7 @@ value, and the whole point of the signature is that the composer is watching the
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-project
+cargo nextest run -p musa-syntax -p musa-project
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cd apps/musa-desktop/ui && npm run check && npm run test

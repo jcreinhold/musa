@@ -1,0 +1,17 @@
+---
+source: crates/musa-syntax/tests/formatter.rs
+expression: formatted
+---
+piece "B" {
+    meter 4/4;
+
+    key c major;
+
+    score {
+        part p {
+            voice v {
+                c5/1
+            }
+        }
+    }
+}

@@ -1,5 +1,5 @@
 #![allow(clippy::arithmetic_side_effects)]
-use musa_language::ast::{AstNode as _, DynamicRule, MarkRule, PerformanceDecl, ProfileDecl, SettingStmt};
+use musa_syntax::ast::{AstNode as _, DynamicRule, MarkRule, PerformanceDecl, ProfileDecl, SettingStmt};
 use num_rational::Ratio;
 
 use musa_score::diagnose::{Code, Diagnostic};

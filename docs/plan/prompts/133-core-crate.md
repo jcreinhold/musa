@@ -77,8 +77,8 @@ Each law names the §5 obligation it partially discharges and says what prompt 1
 - `crates/musa-calculus/tests/suite/{main.rs, conversion_laws.rs, normalization_laws.rs, budget_laws.rs}` — one test
   binary, one module per file, per root `AGENTS.md`.
 - `docs/plan/code-map/`: `musa-calculus`'s row, marked for what is implemented here and what is absent.
-- No change to `musa-compiler`, `musa-language`, or any shell. The crate is a leaf with no callers yet, and it stays
-  that way until prompt 142.
+- No change to `musa-compiler`, `musa-syntax`, or any shell. The crate is a leaf with no callers yet, and it stays that
+  way until prompt 142.
 
 ## Check
 

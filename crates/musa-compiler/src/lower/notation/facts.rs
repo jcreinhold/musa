@@ -1,8 +1,8 @@
 //! Facts: `context`, `fact`, `region`, `notated_duration`, `held`, the pitch and interval readings, and the written scale.
 
 use musa_calculus::{Origin, Raw};
-use musa_language::ast::AstNode as _;
-use musa_language::{SyntaxKind, SyntaxNode};
+use musa_syntax::ast::AstNode as _;
+use musa_syntax::{SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 
 use crate::lower::{Lowering, applied, child, children, is_expr_node, writes};
@@ -63,7 +63,7 @@ impl Lowering<'_> {
     pub(crate) fn fact(&mut self, node: &SyntaxNode, origin: Origin, span: SourceSpan, which: Context) -> Option<Raw> {
         match which {
             Context::Key => {
-                let statement = musa_language::ast::KeyStmt::cast(node.clone())?;
+                let statement = musa_syntax::ast::KeyStmt::cast(node.clone())?;
                 // `key k;` names a key rather than spelling one, and the parser
                 // wrote the name as an expression child for exactly this
                 // reading. The ordinary value reading answers it, so a key a
@@ -82,7 +82,7 @@ impl Lowering<'_> {
                 Some(keyed(origin, key))
             }
             Context::Meter => {
-                let statement = musa_language::ast::MeterStmt::cast(node.clone())?;
+                let statement = musa_syntax::ast::MeterStmt::cast(node.clone())?;
                 let Some(meter) = crate::resolve::parse_meter(&statement) else {
                     return self.refuse(
                         Diagnostic::error(Code::NotAValue, "this meter cannot be read")
@@ -92,12 +92,12 @@ impl Lowering<'_> {
                 Some(metered(origin, meter))
             }
             Context::Tempo => {
-                let statement = musa_language::ast::TempoStmt::cast(node.clone())?;
+                let statement = musa_syntax::ast::TempoStmt::cast(node.clone())?;
                 let marking = crate::resolve::tempo_marking(self.resolver, &statement);
                 Some(tempo(origin, &marking))
             }
             Context::Clef => {
-                let written = musa_language::ast::ClefStmt::cast(node.clone())
+                let written = musa_syntax::ast::ClefStmt::cast(node.clone())
                     .and_then(|statement| statement.name())
                     .unwrap_or_default();
                 let Some(clef) = musa_score::score::Clef::parse(&written) else {
@@ -174,7 +174,7 @@ impl Lowering<'_> {
     ) -> Option<(Raw, Raw, Option<musa_score::score::FreeDuration>)> {
         let origin = self.origin(node);
         let Some(duration) = crate::resolve::parse_duration(node) else {
-            if let Some(parameter) = musa_language::ast::Duration::of(node).and_then(|written| written.parameter()) {
+            if let Some(parameter) = musa_syntax::ast::Duration::of(node).and_then(|written| written.parameter()) {
                 let term = if reading.tuplet == Ratio::ONE {
                     Raw::var(origin, parameter)
                 } else {
@@ -193,7 +193,7 @@ impl Lowering<'_> {
                     .note("a duration is a fraction or a whole number of whole notes: `1/4`, `3/8`, `1`"),
             );
         };
-        let (duration, free) = match musa_language::ast::Duration::of(node).and_then(|written| written.held_to()) {
+        let (duration, free) = match musa_syntax::ast::Duration::of(node).and_then(|written| written.held_to()) {
             None => reading.lasting((duration, None)),
             Some(most) => reading.lasting(self.held(duration, &most, span)?),
         };
@@ -264,7 +264,7 @@ impl Lowering<'_> {
     /// identifier, and the statement's own tokens say which is there.
     pub(crate) fn pitch_term(
         &mut self,
-        statement: &musa_language::ast::NoteStmt,
+        statement: &musa_syntax::ast::NoteStmt,
         node: &SyntaxNode,
         origin: Origin,
         reading: Reading,

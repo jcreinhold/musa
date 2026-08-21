@@ -11,13 +11,13 @@ phase: 3
 ## Task
 
 Every keyword in the language carries its own plain-English documentation — what the construct *is* and how to use it —
-and hovering a keyword in any editor shows it. The table lives in `musa-language`, which owns the spellings; the
-language server serves it over hover, so both editors inherit it; and `musa-project` re-exports it so the desktop's own
-hover, when it arrives, reads the same words.
+and hovering a keyword in any editor shows it. The table lives in `musa-syntax`, which owns the spellings; the language
+server serves it over hover, so both editors inherit it; and `musa-project` re-exports it so the desktop's own hover,
+when it arrives, reads the same words.
 
 ## Read
 
-- `crates/musa-language/src/lexer.rs` — the logos `#[token(...)]` table: the keyword spellings' single source.
+- `crates/musa-syntax/src/lexer.rs` — the logos `#[token(...)]` table: the keyword spellings' single source.
 - `crates/musa-score/src/diagnose.rs` and `musa_project::explain` — the exhaustiveness discipline this table copies: a
   `Code` without an explanation does not compile. A keyword without a doc must not compile either.
 - Prompt 77 — the hover feature and its markdown `answer` shape; prompt 78 — `token_at_offset` on the CST, the way a
@@ -27,7 +27,7 @@ hover, when it arrives, reads the same words.
 
 ### The table
 
-`crates/musa-language/src/keywords.rs`, public:
+`crates/musa-syntax/src/keywords.rs`, public:
 
 ```rust
 pub struct KeywordDoc {
@@ -51,7 +51,7 @@ the language has not finished explaining.
 
 ### The hover
 
-`musa-lsp`'s `features/hover.rs` gains a keyword lookup: token at the caret via `musa_language::parse` and
+`musa-lsp`'s `features/hover.rs` gains a keyword lookup: token at the caret via `musa_syntax::parse` and
 `token_at_offset`; if its kind is a keyword, answer with the doc as markdown (`**tempo** — *summary*`, the doc, the
 example fenced). It sits *after* the score-fact lookups: a `use` keyword is its use site, and the expansion is the
 better answer there — the law tests pin both answers.
@@ -63,7 +63,7 @@ deliverable; the UI consumes it when it builds hover.
 
 ## Target
 
-- `crates/musa-language`: `src/keywords.rs` (the table), `src/lib.rs` (module + re-export); a unit test that round-trips
+- `crates/musa-syntax`: `src/keywords.rs` (the table), `src/lib.rs` (module + re-export); a unit test that round-trips
   every spelling through the lexer and requires non-empty summary, doc, and example.
 - `crates/musa-lsp`: the keyword lookup in `features/hover.rs`; one law test — hovering `tempo` in the hand-counted
   fixture returns the doc, and hovering a pitch still returns the score fact.
@@ -73,8 +73,8 @@ deliverable; the UI consumes it when it builds hover.
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-lsp -p musa-project
-cargo clippy --all-targets -p musa-language -p musa-lsp -p musa-project -- -D warnings
+cargo nextest run -p musa-syntax -p musa-lsp -p musa-project
+cargo clippy --all-targets -p musa-syntax -p musa-lsp -p musa-project -- -D warnings
 cargo fmt --check
 ```
 

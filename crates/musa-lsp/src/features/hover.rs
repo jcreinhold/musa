@@ -8,8 +8,8 @@
 //! and studio values last because their spans never overlap the score's.
 
 use lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind, Position};
-use musa_language::DocumentAlternative;
 use musa_project::{EventFacts, EventKind, KernelTokenClass, ScoreFacts, Span, kernel_classify, kernel_keyword_doc};
+use musa_syntax::DocumentAlternative;
 
 use crate::convert::{LineIndex, covers};
 use crate::workspace::Document;
@@ -59,11 +59,11 @@ fn at_item(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, lines: &Line
 }
 
 fn at_builtin(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, lines: &LineIndex) -> Option<Hover> {
-    let parsed = musa_language::parse(snapshot.source());
+    let parsed = musa_syntax::parse(snapshot.source());
     let token = parsed.syntax().token_at_offset(byte.into()).find(|token| {
-        token.kind() == musa_language::SyntaxKind::Identifier && musa_language::builtin_doc(token.text()).is_some()
+        token.kind() == musa_syntax::SyntaxKind::Identifier && musa_syntax::builtin_doc(token.text()).is_some()
     })?;
-    let doc = musa_language::builtin_doc(token.text())?;
+    let doc = musa_syntax::builtin_doc(token.text())?;
     let range = token.text_range();
     Some(answer(
         lines,
@@ -79,12 +79,12 @@ fn at_builtin(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, lines: &L
 /// a `use` keyword *is* its use site, and the expansion is the better answer
 /// there — and before the studio's, whose spans never overlap a keyword.
 fn at_keyword(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, lines: &LineIndex) -> Option<Hover> {
-    let parsed = musa_language::parse(snapshot.source());
+    let parsed = musa_syntax::parse(snapshot.source());
     let token = parsed
         .syntax()
         .token_at_offset(byte.into())
-        .find(|token| musa_language::keyword_doc(token.kind()).is_some())?;
-    let doc = musa_language::keyword_doc(token.kind())?;
+        .find(|token| musa_syntax::keyword_doc(token.kind()).is_some())?;
+    let doc = musa_syntax::keyword_doc(token.kind())?;
     let range = token.text_range();
     let span = Span {
         start: u32::from(range.start()),
@@ -106,11 +106,11 @@ fn at_keyword(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, lines: &L
 /// both sentences are shown. Which one the writer meant is settled by the
 /// keyword before it, and saying both is more useful than guessing.
 fn at_vocabulary(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, lines: &LineIndex) -> Option<Hover> {
-    let parsed = musa_language::parse(snapshot.source());
+    let parsed = musa_syntax::parse(snapshot.source());
     let token = parsed
         .syntax()
         .token_at_offset(byte.into())
-        .find(|token| token.kind() == musa_language::SyntaxKind::Identifier)?;
+        .find(|token| token.kind() == musa_syntax::SyntaxKind::Identifier)?;
     let word = token.text();
     let mut said = Vec::new();
     if let Some((name, doc)) = musa_project::scale_collections().find(|(spelling, _)| *spelling == word) {

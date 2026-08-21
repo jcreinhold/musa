@@ -71,7 +71,7 @@ pub(crate) enum Type {
     Sum(Box<Self>, Box<Self>),
     Option(Box<Self>),
     List(Box<Self>),
-    /// A finite syntax value ([`crate::syntax::Syntax`]), by how it parses.
+    /// A finite syntax value ([`crate::quote::Syntax`]), by how it parses.
     ///
     /// Phase-local: `../rules/language/02-core-calculus.md` §5 closes the
     /// source type grammar and says the source language has no syntax value,
@@ -85,22 +85,22 @@ pub(crate) enum Type {
     /// (`../rules/language/11-quotation.md` §1). Forgetting the claim is
     /// [`Checker::reconcile`]'s acceptance rule and not an operation, and
     /// establishing one is `as_expression`'s checked parse.
-    Syntax(crate::syntax::Cat),
-    /// How the lexer classified one token ([`musa_language::SyntaxKind`]).
+    Syntax(crate::quote::Cat),
+    /// How the lexer classified one token ([`musa_syntax::SyntaxKind`]).
     ///
     /// Phase-local, and *generated*: its values are the lexer's own kinds, so
     /// there is no second table for a new token kind to be missing from. It
     /// replaces the `Text` that `syntax_token` took and every
     /// `text_equal(kind, "…")` an adapter wrote against it.
     TokenKind,
-    /// How one group is delimited ([`crate::syntax::Delimiter`]).
+    /// How one group is delimited ([`crate::quote::Delimiter`]).
     ///
     /// Phase-local, four values, and what `syntax_group` used to claim to hide
     /// as "the fixed grouper's delimiter set".
     Delimiter,
-    /// Where one node sits ([`crate::syntax::NodePath`]).
+    /// Where one node sits ([`crate::quote::NodePath`]).
     NodePath,
-    /// Which name a binder declares ([`crate::syntax::BindingPath`]).
+    /// Which name a binder declares ([`crate::quote::BindingPath`]).
     BindingPath,
     /// `SyntaxStep<C, A>` — one suspended recursive call, sealed to the child
     /// it descends to and the algebra that exposed it.

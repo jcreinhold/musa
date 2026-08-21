@@ -21,7 +21,7 @@ until this and prompt 11 pass.
   test there, and this prompt must make that cross-reference real.
 - `docs/rules/kernel/04-algebraic-laws.md` in full — the laws, the non-distributivity non-law, the synchronized
   interchange with its duration-equality preconditions), §30 Step 3 (the checklist).
-- Prompt 09's `musa-kernel` public surface; the proptest conventions already used in `musa-language`/`musa-compiler`
+- Prompt 09's `musa-kernel` public surface; the proptest conventions already used in `musa-syntax`/`musa-compiler`
   (module-level `arithmetic_side_effects` allowance with justification, small case counts).
 
 ## Design

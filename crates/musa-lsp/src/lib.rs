@@ -23,7 +23,7 @@
 //! semantic tokens and completion are answered from the lexer rather than
 //! the facts, because they must work on half-typed source that has no valid
 //! compile — the one reason this shell, alone among the shells, also depends
-//! on `musa-language`.
+//! on `musa-syntax`.
 //!
 //! ```no_run
 //! fn main() -> std::process::ExitCode {
@@ -434,7 +434,7 @@ fn execute_command(
 /// because for them the kernel case is a different answer rather than no
 /// answer.
 fn surface_only(document: &Document) -> Option<&Document> {
-    (document.alternative() == musa_language::DocumentAlternative::Surface).then_some(document)
+    (document.alternative() == musa_syntax::DocumentAlternative::Surface).then_some(document)
 }
 
 /// Extract the params, compute the answer, serialize it. A method that

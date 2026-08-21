@@ -1,6 +1,6 @@
 #![allow(clippy::arithmetic_side_effects)]
-use musa_language::ast::{AstNode as _, KeyStmt, TempoStmt};
-use musa_language::{SyntaxElement, SyntaxKind, SyntaxNode};
+use musa_syntax::ast::{AstNode as _, KeyStmt, TempoStmt};
+use musa_syntax::{SyntaxElement, SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 
 use musa_score::diagnose::{Code, Diagnostic};
@@ -30,7 +30,7 @@ pub(crate) struct PartFacts {
 }
 
 /// The part-level facts both semantic paths read the same way.
-pub(crate) fn part_facts(resolver: &mut Resolver, part: &musa_language::ast::PartDecl) -> PartFacts {
+pub(crate) fn part_facts(resolver: &mut Resolver, part: &musa_syntax::ast::PartDecl) -> PartFacts {
     let mut clef: Option<(Clef, SourceSpan)> = None;
     for node in part.syntax().children() {
         if node.kind() != SyntaxKind::ClefStmt {
@@ -176,7 +176,7 @@ fn tempo_ramp(resolver: &mut Resolver, tempo: &TempoStmt, printed: bool) -> Opti
     })
 }
 
-pub(crate) fn parse_meter(meter: &musa_language::ast::MeterStmt) -> Option<Meter> {
+pub(crate) fn parse_meter(meter: &musa_syntax::ast::MeterStmt) -> Option<Meter> {
     if meter.is_unmeasured() {
         return Some(Meter::NONE);
     }
@@ -233,7 +233,7 @@ pub(crate) fn parse_ratio(text: &str) -> Option<Ratio<i64>> {
 /// reaches diagnostics, the desktop inspector and every kernel golden, and one
 /// duration must not arrive there under two names.
 pub(crate) fn parse_duration(node: &SyntaxNode) -> Option<NotatedDuration> {
-    let text = musa_language::ast::Duration::of(node)?.value()?;
+    let text = musa_syntax::ast::Duration::of(node)?.value()?;
     let value = if text.contains('/') {
         parse_ratio(&text)?
     } else {

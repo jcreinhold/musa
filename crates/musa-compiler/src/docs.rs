@@ -22,7 +22,7 @@
 //! how prompt 169's instruments, controls, processors, assets, and packages
 //! arrive, and every consumer's match is exhaustive, so they arrive loudly.
 
-use musa_language::SyntaxNode;
+use musa_syntax::SyntaxNode;
 
 use crate::resolve::NameKind;
 use musa_score::origin::SourceSpan;
@@ -54,7 +54,7 @@ pub struct ItemSource {
 /// class" in ordinary speech and are different objects in this language —
 /// spelled versus modulo twelve — and the same is true of `Key` against
 /// `Scale` and `ChordClass` against `Voicing`. The sentences come from
-/// `musa_language::BASE_TYPES`, which is the vocabulary the compiler
+/// `musa_syntax::BASE_TYPES`, which is the vocabulary the compiler
 /// reads a type from, so a hover cannot describe a type the language lacks.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeNote {
@@ -69,7 +69,7 @@ pub struct TypeNote {
 impl TypeNote {
     /// Read the distinction, if the whole spelling names one primitive.
     pub(crate) fn new(name: String) -> Self {
-        let distinction = musa_language::BASE_TYPES
+        let distinction = musa_syntax::BASE_TYPES
             .iter()
             .find(|(base, _)| *base == name)
             .map(|(_, line)| *line);
@@ -152,20 +152,20 @@ pub(crate) fn summary_above(node: &SyntaxNode) -> Option<String> {
         .find(|token| {
             !matches!(
                 token.kind(),
-                musa_language::SyntaxKind::Whitespace
-                    | musa_language::SyntaxKind::LineComment
-                    | musa_language::SyntaxKind::BlockComment
+                musa_syntax::SyntaxKind::Whitespace
+                    | musa_syntax::SyntaxKind::LineComment
+                    | musa_syntax::SyntaxKind::BlockComment
             )
         })?;
     let mut token = first.prev_token();
     while let Some(current) = token {
-        if current.kind() == musa_language::SyntaxKind::Whitespace {
+        if current.kind() == musa_syntax::SyntaxKind::Whitespace {
             // One newline separates a comment from what it documents; two end
             // the block.
             if current.text().matches('\n').count() > 1 {
                 break;
             }
-        } else if current.kind() == musa_language::SyntaxKind::LineComment {
+        } else if current.kind() == musa_syntax::SyntaxKind::LineComment {
             lines.push(current.text().trim_start_matches('/').trim().to_owned());
         } else {
             // Code, and code above a declaration belongs to the declaration

@@ -38,7 +38,7 @@ Hover/signature/completion/definition/references cover:
 - musical clips versus fixed-media cues and their tempo/transform behavior.
 
 Generate these from compiler/project catalogues and format support matrices. Syntax answers on invalid source remain in
-`musa-language`; semantic answers may use last-valid artifacts with explicit staleness. No editor parses SFZ/SoundFont,
+`musa-syntax`; semantic answers may use last-valid artifacts with explicit staleness. No editor parses SFZ/SoundFont,
 resolves packages, or interprets control curves independently.
 
 Extend the handbook's musician path with choosing/swapping sounds, expression/articulation, rooms/sends, sample banks,
@@ -58,7 +58,7 @@ and generated table is checked.
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-project -p musa-lsp
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 ./scripts/check-docs.sh

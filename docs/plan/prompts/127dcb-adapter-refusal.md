@@ -23,8 +23,8 @@ came from.
   required to produce. "staff tie changes pitch … continuation at a9" is an adapter's sentence about an input node, not
   a compiler complaint about the region.
 - `crates/musa-compiler/src/core/mod.rs`: `expand_syntax` and the `Syntax -> Syntax` type it demands.
-- `crates/musa-compiler/src/syntax.rs`: `SourceInfo`, which is inside a node and has no eliminator, and
-  `crate::syntax::read_region`, which is where an original range enters a node.
+- `crates/musa-compiler/src/quote/mod.rs`: `SourceInfo`, which is inside a node and has no eliminator, and
+  `crate::quote::read_region`, which is where an original range enters a node.
 - `crates/musa-compiler/src/expand/mod.rs`: `ExpansionFailure`, `stopped_or_refused`, and how a refusal reaches a
   `Diagnostic`.
 - Prompt 127dc's delivered phase, and prompt 127dd's Design.

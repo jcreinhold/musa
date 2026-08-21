@@ -1,8 +1,8 @@
 //! One concern of the enclosing module; see its module docs.
 
-#[cfg(test)]
-use musa_language::ast::AstNode as _;
 use musa_score::diagnose::{Code, Diagnostic};
+#[cfg(test)]
+use musa_syntax::ast::AstNode as _;
 
 #[cfg(test)]
 use crate::resolve::Resolver;
@@ -23,11 +23,11 @@ use super::{read_adapter_module, refusal_of, region};
 /// printing is allowed to normalize.
 #[cfg(test)]
 pub(crate) fn evaluate_text(expression: &str) -> Option<String> {
-    let parsed = musa_language::parse(&format!("library {{\n  let it: Text = {expression};\n}}"));
+    let parsed = musa_syntax::parse(&format!("library {{\n  let it: Text = {expression};\n}}"));
     if !parsed.errors().is_empty() {
         return None;
     }
-    let library = musa_language::ast::LibraryDecl::from_root(&parsed.syntax())?;
+    let library = musa_syntax::ast::LibraryDecl::from_root(&parsed.syntax())?;
     let mut resolver = Resolver::new();
     let document = crate::document::elaborate(&mut resolver, &[crate::document::Source::own(library.syntax())], None)?;
     let (normal, _ty) = document
@@ -46,8 +46,8 @@ pub(crate) fn evaluate_text(expression: &str) -> Option<String> {
 pub(crate) fn expand_syntax(
     adapter_source: &str,
     imports: PhaseImports<'_>,
-    subject: &crate::syntax::Syntax,
-) -> (Result<crate::syntax::Syntax, ExpansionFailure>, PhaseWork) {
+    subject: &crate::quote::Syntax,
+) -> (Result<crate::quote::Syntax, ExpansionFailure>, PhaseWork) {
     // Built here and lent inwards rather than made on the other side of
     // `with_room`: what a run charged is reported by the caller that asked for
     // it, and a total kept on a scoped thread would go out of scope with it.
@@ -76,9 +76,9 @@ pub(crate) fn expand_syntax(
 fn with_room(
     adapter_source: &str,
     imports: PhaseImports<'_>,
-    subject: &crate::syntax::Syntax,
+    subject: &crate::quote::Syntax,
     spent: &mut musa_calculus::Spend,
-) -> Result<crate::syntax::Syntax, ExpansionFailure> {
+) -> Result<crate::quote::Syntax, ExpansionFailure> {
     let room = usize::try_from(crate::core_budget::NESTING.saturating_mul(crate::core_budget::FRAME_CEILING))
         .unwrap_or(usize::MAX);
     let mut answer = None;
@@ -101,9 +101,9 @@ fn with_room(
 fn run_transformer(
     adapter_source: &str,
     imports: PhaseImports<'_>,
-    subject: crate::syntax::Syntax,
+    subject: crate::quote::Syntax,
     spent: &mut musa_calculus::Spend,
-) -> Result<crate::syntax::Syntax, ExpansionFailure> {
+) -> Result<crate::quote::Syntax, ExpansionFailure> {
     let module = read_adapter_module(adapter_source, imports).map_err(|fault| match fault {
         ModuleFault::Stopped => ExpansionFailure::Stopped,
         ModuleFault::Broken(diagnostics) => ExpansionFailure::NotATransformer(diagnostics),
@@ -122,7 +122,7 @@ fn run_transformer(
     // The gate again, here rather than only in `checked_expression`: a
     // transformer that never called the builtin has still produced output the
     // rest of the compiler will have to anchor diagnostics against.
-    crate::syntax::check_expression(&produced).map_err(ExpansionFailure::NotAnExpression)?;
+    crate::quote::check_expression(&produced).map_err(ExpansionFailure::NotAnExpression)?;
     Ok(produced)
 }
 
@@ -132,7 +132,7 @@ fn run_transformer(
 /// [`ExpansionFailure::Refused`]'s: a transformer that answers `Err` has
 /// *worked*, and what it says is the adapter package's sentence about the
 /// composer's text.
-fn expanded(answer: &musa_calculus::Datum) -> Option<Result<crate::syntax::Syntax, ExpansionFailure>> {
+fn expanded(answer: &musa_calculus::Datum) -> Option<Result<crate::quote::Syntax, ExpansionFailure>> {
     let musa_calculus::Datum::Case {
         ref constructor,
         ref fields,
@@ -146,7 +146,7 @@ fn expanded(answer: &musa_calculus::Datum) -> Option<Result<crate::syntax::Synta
             let musa_calculus::Datum::Lit(ref produced) = *held else {
                 return None;
             };
-            Some(Ok(crate::registry::held::<crate::syntax::Syntax>(produced)?.clone()))
+            Some(Ok(crate::registry::held::<crate::quote::Syntax>(produced)?.clone()))
         }
         "Result.Err" => Some(Err(refusal_of(held)?)),
         _ => None,

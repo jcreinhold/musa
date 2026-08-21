@@ -48,7 +48,7 @@ use musa_calculus::{Builtin, Cx, ElabError, Index, Literal, Term};
 
 use super::rules::Kind;
 use super::{HERE, held, literal, plain_type, syntax_type, type0};
-use crate::syntax::{Cat, Delimiter, Syntax};
+use crate::quote::{Cat, Delimiter, Syntax};
 
 /// The two traversals, registered against the context that declared the prelude.
 ///
@@ -364,7 +364,7 @@ fn text(spelling: &str) -> Term {
     literal(plain_type("Text"), spelling.to_owned()).term(HERE)
 }
 
-fn kind(which: musa_language::SyntaxKind) -> Term {
+fn kind(which: musa_syntax::SyntaxKind) -> Term {
     literal(plain_type("TokenKind"), Kind(which)).term(HERE)
 }
 

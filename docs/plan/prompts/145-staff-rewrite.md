@@ -58,9 +58,9 @@ A rather than an implementation.
   at one path and `check_expression`'s duplicate-path gate would refuse the expansion. An author writing quotes has no
   operation that mints a fresh place, because `syntax_built` is exactly what quotation removed. The Design section
   decides the shape; it is not a change to make quietly inside the rewrite.
-- `crates/musa-compiler/src/syntax.rs`'s `Derived` and `check_expression`, and `crates/musa-compiler/src/core/mod.rs`'s
-  `syntax_quote` — how a quote mints provenance without an author supplying a number, which is the mechanism the anchor
-  either adopts or argues against.
+- `crates/musa-compiler/src/quote/mod.rs`'s `Derived` and `check_expression`, and
+  `crates/musa-compiler/src/core/mod.rs`'s `syntax_quote` — how a quote mints provenance without an author supplying a
+  number, which is the mechanism the anchor either adopts or argues against.
 
 ## Design
 

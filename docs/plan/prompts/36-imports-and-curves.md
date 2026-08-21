@@ -51,7 +51,7 @@ dynamic curves over time) flowing from source through the integrated tempo map t
 
 ## Target
 
-- `musa-language`/`musa-compiler`: import syntax, resolution, cycle diagnostics; piecewise tempo + hairpin dynamics.
+- `musa-syntax`/`musa-compiler`: import syntax, resolution, cycle diagnostics; piecewise tempo + hairpin dynamics.
 - `musa-notation`: tempo/hairpin notation in all three backends.
 - `musa-project`: import-closure tracking, minimal `musa.toml` reading.
 - Tests: import resolution (shared, cycles, missing files, score-in-library rejection); exact tempo-integration tests
@@ -96,7 +96,7 @@ dynamic curves over time) flowing from source through the integrated tempo map t
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-notation -p musa-project
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-notation -p musa-project
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo run -p musa -- check examples/album/pieces/01-opening.musa

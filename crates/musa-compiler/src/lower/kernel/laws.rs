@@ -40,7 +40,7 @@ fn assembled(quote: &str) -> (Option<VoiceTrack>, Vec<String>) {
          score {{ part strings {{ voice line {{ use held; }} }} }}\n\
          }}"
     );
-    let document = musa_language::parse(&source);
+    let document = musa_syntax::parse(&source);
     assert!(
         document.errors().is_empty(),
         "the law's own source parses: {:?}",
@@ -49,7 +49,7 @@ fn assembled(quote: &str) -> (Option<VoiceTrack>, Vec<String>) {
     let node = document
         .syntax()
         .descendants()
-        .find(|node| node.kind() == musa_language::SyntaxKind::PieceDecl)
+        .find(|node| node.kind() == musa_syntax::SyntaxKind::PieceDecl)
         .expect("the source writes a piece");
     let mut resolver = Resolver::new();
     let sources = [Source::own(&node)];

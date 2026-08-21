@@ -17,10 +17,10 @@ accidental appears without an octave, and migrates the whole corpus.
 
 ## Read
 
-- `crates/musa-language/src/lexer.rs` — the pitch regex, and the test asserting a bare `a`–`g` lexes as an `Identifier`
+- `crates/musa-syntax/src/lexer.rs` — the pitch regex, and the test asserting a bare `a`–`g` lexes as an `Identifier`
   and not a pitch.
 - `crates/musa-compiler/src/pitch.rs` — `WrittenPitch::parse`, `PitchClass::parse`, and their `Display`s.
-- `crates/musa-language/src/parser.rs` — `key_stmt`, which expects two `Identifier`s, and `chord_symbol`, which takes an
+- `crates/musa-syntax/src/parser.rs` — `key_stmt`, which expects two `Identifier`s, and `chord_symbol`, which takes an
   `Identifier`-or-`PitchLiteral` then an optional `Integer`.
 
 ## Design
@@ -57,14 +57,14 @@ source and confined to one node.
 
 ## Target
 
-- `crates/musa-language/src/lexer.rs`: the regex, and cases for `b2`/`bb2`/`bbb2`/`f#3`/`c##3`/`en5`/`a-1`.
-- `crates/musa-language/src/parser.rs`, `ast.rs`, `syntax_kind.rs`: the `PitchClass` node, used by `key` and
+- `crates/musa-syntax/src/lexer.rs`: the regex, and cases for `b2`/`bb2`/`bbb2`/`f#3`/`c##3`/`en5`/`a-1`.
+- `crates/musa-syntax/src/parser.rs`, `ast.rs`, `syntax_kind.rs`: the `PitchClass` node, used by `key` and
   `chord_symbol`. **Not `invert around`**, whose axis is a whole pitch (`invert around c5`) and so is one `PitchLiteral`
   however it is spelled — the node exists only where the octave is absent.
-- `crates/musa-language/src/formatter.rs`: `PitchClass` joins the tight-node list.
+- `crates/musa-syntax/src/formatter.rs`: `PitchClass` joins the tight-node list.
 - `crates/musa-compiler/src/pitch.rs`: `WrittenPitch::parse`, `PitchClass::parse`, both `Display`s.
 - `crates/musa-compiler/src/resolve.rs` and `elaborate.rs`: the two diagnostics that offer "an optional `s` or `f`".
-- `crates/musa-language/tests/suite/formatter.rs`: the proptest `pitch()` generator.
+- `crates/musa-syntax/tests/suite/formatter.rs`: the proptest `pitch()` generator.
 - `editors/tree-sitter-musa/grammar.js` (`pitch_literal`, `pitch_class`, `chord_symbol`) + regenerated `src/parser.c`
   and the corpus expectations; `apps/musa-desktop/ui/src/lib/lang-musa/tokenize.ts` (`bb2` already works; `f#3` needs
   the `#`).

@@ -1,6 +1,6 @@
 #![allow(clippy::arithmetic_side_effects)]
-use musa_language::SyntaxKind;
-use musa_language::ast::{AstNode as _, FrontMatterRole, PieceDecl};
+use musa_syntax::SyntaxKind;
+use musa_syntax::ast::{AstNode as _, FrontMatterRole, PieceDecl};
 
 use musa_score::diagnose::{Code, Diagnostic};
 use musa_score::origin::SourceSpan;
@@ -18,7 +18,7 @@ pub(crate) fn lower_studio(
     resolver: &mut Resolver,
     piece: &PieceDecl,
     snapshot: &ScoreSnapshot,
-    imported: &[musa_language::ast::StudioDecl],
+    imported: &[musa_syntax::ast::StudioDecl],
 ) -> crate::studio::StudioSpec {
     let studio = piece.studio();
     if studio.is_none() && imported.is_empty() {
@@ -117,7 +117,7 @@ fn lower_front_matter(resolver: &mut Resolver, piece: &PieceDecl, snapshot: &mut
 pub(crate) fn register_motifs(
     resolver: &mut Resolver,
     snapshot: &mut ScoreSnapshot,
-    motifs: &[musa_language::ast::MotifDecl],
+    motifs: &[musa_syntax::ast::MotifDecl],
     from: Option<&str>,
 ) {
     for motif in motifs {
@@ -148,7 +148,7 @@ pub(crate) fn register_motifs(
 pub(crate) fn register_fragments(
     resolver: &mut Resolver,
     snapshot: &mut ScoreSnapshot,
-    fragments: &[musa_language::ast::FragmentDecl],
+    fragments: &[musa_syntax::ast::FragmentDecl],
     from: Option<&str>,
 ) {
     for fragment in fragments {
@@ -182,7 +182,7 @@ pub(crate) fn register_fragments(
 pub(crate) fn register_bars(
     resolver: &mut Resolver,
     snapshot: &mut ScoreSnapshot,
-    score: &musa_language::ast::ScoreDecl,
+    score: &musa_syntax::ast::ScoreDecl,
 ) {
     for bar in named_bars(score) {
         let Some(name) = bar.name() else { continue };
@@ -202,11 +202,11 @@ pub(crate) fn register_bars(
 }
 
 /// Every named bar in the score, outermost first and in source order.
-fn named_bars(score: &musa_language::ast::ScoreDecl) -> Vec<musa_language::ast::BarStmt> {
+fn named_bars(score: &musa_syntax::ast::ScoreDecl) -> Vec<musa_syntax::ast::BarStmt> {
     let mut found = Vec::new();
     for node in score.syntax().descendants() {
         if node.kind() == SyntaxKind::BarStmt
-            && let Some(bar) = musa_language::ast::BarStmt::cast(node)
+            && let Some(bar) = musa_syntax::ast::BarStmt::cast(node)
             && bar.name().is_some()
         {
             found.push(bar);

@@ -1,6 +1,6 @@
 #![allow(clippy::arithmetic_side_effects)]
 use indexmap::IndexSet;
-use musa_language::{SyntaxElement, SyntaxKind, SyntaxNode};
+use musa_syntax::{SyntaxElement, SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 
 use musa_score::diagnose::{Code, Diagnostic};
@@ -25,7 +25,7 @@ pub(crate) struct Resolver {
     /// Which construction site the next `quote at …` is
     /// (`docs/rules/language/11-quotation.md` §3).
     ///
-    /// The middle component of a [`crate::syntax::Derived`] path, and the one
+    /// The middle component of a [`crate::quote::Derived`] path, and the one
     /// number in it the elaborator has to allocate rather than derive: the
     /// origin comes from the anchor and the path from the quote's own tree,
     /// but "which quote wrote this" is a fact about the program and not about
@@ -273,7 +273,7 @@ pub(crate) fn token_text(node: &SyntaxNode, kind: SyntaxKind) -> Option<String> 
 }
 
 /// The span of a token, in the record's measure.
-pub(crate) fn source_span_of(token: &musa_language::SyntaxToken) -> SourceSpan {
+pub(crate) fn source_span_of(token: &musa_syntax::SyntaxToken) -> SourceSpan {
     let range = token.text_range();
     SourceSpan::new(u32::from(range.start()), u32::from(range.end()))
 }

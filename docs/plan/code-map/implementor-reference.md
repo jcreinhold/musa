@@ -9,14 +9,14 @@ specification does not.
 Dependency direction is one-way and never points back:
 
 ```text
-musa-language → musa-compiler → {musa-notation, musa-dsp} → musa-playback → musa-project → {musa, musa-lsp, musa-desktop}
+musa-syntax → musa-compiler → {musa-notation, musa-dsp} → musa-playback → musa-project → {musa, musa-lsp, musa-desktop}
                      ↑
                 musa-kernel (leaf)
 ```
 
 | Crate | Owns | Never exposes |
 | --- | --- | --- |
-| `musa-language` | tokens, lexer, parser, lossless CST, formatter, text edits | Rowan types |
+| `musa-syntax` | tokens, lexer, parser, lossless CST, formatter, text edits | Rowan types |
 | `musa-kernel` | exact time, coordinates, typed occurrences, `empty`/`event`/`follow`/`together`/`map_payloads`/`duration`, normalization | anything musical |
 | `musa-calculus` | the dependently typed core calculus: terms, NbE, elaboration, inductive families | `Value`, the evaluator, quotation |
 | `musa-score` | the musical values: pitch, chords, scales, exact time, marks, score and performance snapshots, provenance, diagnostics, analysis | any way to *build* one from text |
@@ -24,7 +24,7 @@ musa-language → musa-compiler → {musa-notation, musa-dsp} → musa-playback 
 | `musa-notation` | `NotationPlan`, MEI, LilyPond, MusicXML, MIDI | intermediate plan internals |
 | `musa-project` | `ProjectSession`: documents, revisions, commands, exports, facts | compiler internals, byte offsets |
 
-`musa-lsp` is the one shell that also depends on `musa-language`, because highlighting and completion must answer on
+`musa-lsp` is the one shell that also depends on `musa-syntax`, because highlighting and completion must answer on
 half-typed source, which a session's facts cannot describe.
 
 Three rules follow, and they are the ones most often reached for:

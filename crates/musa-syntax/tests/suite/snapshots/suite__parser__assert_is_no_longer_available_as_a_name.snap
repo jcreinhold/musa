@@ -1,0 +1,17 @@
+---
+source: crates/musa-syntax/tests/suite/parser.rs
+expression: print_errors(&doc)
+---
+18..24: expected a binding name, found `assert`
+  label: expected a binding name
+17..17: missing `=`
+  label: it goes here
+  fix: add `=` -> "="
+18..24: expected an expression, found `assert`
+  label: expected an expression
+17..17: missing `;`
+  label: it goes here
+  fix: add `;` -> ";"
+18..24: expected a declaration, found `assert`
+  label: expected a declaration
+  help: a piece holds imports, value/function declarations, score declarations, performance, and studio

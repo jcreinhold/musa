@@ -104,8 +104,8 @@ mod repeats;
 mod statement;
 
 use musa_calculus::Raw;
-use musa_language::ast::AstNode as _;
-use musa_language::{SyntaxKind, SyntaxNode};
+use musa_syntax::ast::AstNode as _;
+use musa_syntax::{SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 
 use super::significant_tokens;
@@ -415,7 +415,7 @@ impl Context {
 
 /// Whether a node kind is one of the written notation statements.
 ///
-/// The kinds [`musa_language::ast::VoiceItem`] admits, which is the grammar's
+/// The kinds [`musa_syntax::ast::VoiceItem`] admits, which is the grammar's
 /// own answer to "what may stand in a block". Written out rather than derived
 /// from the typed enum because this module reads nodes, and a kind the grammar
 /// grows without a reading here should fail [`Lowering::statement`]'s table
@@ -479,7 +479,7 @@ pub(super) fn word(node: &SyntaxNode) -> String {
 /// one, which is the only difference this allows itself from the bytes.
 pub(super) fn spelled_claim(
     predicate: &musa_score::assert::Predicate,
-    statement: &musa_language::ast::AssertStmt,
+    statement: &musa_syntax::ast::AssertStmt,
 ) -> String {
     let arguments: Vec<String> = statement
         .args()
@@ -497,7 +497,7 @@ pub(super) fn spelled_claim(
 }
 
 /// Where a claim's name is written, falling back to the whole statement.
-pub(super) fn claim_span(statement: &musa_language::ast::AssertStmt, node: &SyntaxNode) -> SourceSpan {
+pub(super) fn claim_span(statement: &musa_syntax::ast::AssertStmt, node: &SyntaxNode) -> SourceSpan {
     statement.claim_span().map_or_else(
         || crate::resolve::trimmed_span(node),
         |(start, end)| SourceSpan::new(start, end),

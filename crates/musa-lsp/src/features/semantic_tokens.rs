@@ -1,18 +1,18 @@
 //! Semantic tokens: the language's own classification, delta-encoded.
 //!
 //! Highlighting must answer on half-typed source, which the session's facts
-//! cannot describe — so this handler reads `musa-language`'s [`classify`],
+//! cannot describe — so this handler reads `musa-syntax`'s [`classify`],
 //! which is total (the lexer is total and the parse recovers, so an
 //! unrecognized span is still a token), never the facts. `classify` also
 //! knows *where* a token stands: `harmony` in `import std::harmony;` is a
 //! module name, and only a parse-informed pass can say so. The classes are
-//! `musa-language`'s [`TokenClass`]: adding a token kind without classifying
+//! `musa-syntax`'s [`TokenClass`]: adding a token kind without classifying
 //! it does not compile there, so this legend cannot learn a word the lexer
 //! does not know.
 
 use lsp_types::{SemanticToken, SemanticTokenType, SemanticTokens, SemanticTokensResult};
-use musa_language::{DocumentAlternative, SyntaxKind, TokenClass, classify};
 use musa_project::{KernelTokenClass, Span, kernel_classify};
+use musa_syntax::{DocumentAlternative, SyntaxKind, TokenClass, classify};
 
 use crate::workspace::Document;
 

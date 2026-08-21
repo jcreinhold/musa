@@ -1,0 +1,21 @@
+[package]
+description = "Tokens, lexer, parser, lossless CST, formatter, and text edits for the .musa language"
+edition.workspace = true
+license.workspace = true
+name = "musa-syntax"
+repository.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+logos = "0.16"
+num_enum = "0.7"
+rowan = "0.17"
+text-size = "1"
+thiserror = "2"
+
+[dev-dependencies]
+insta = "1"
+proptest = "1"

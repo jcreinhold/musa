@@ -8,7 +8,7 @@
  *
  * What these tests assert is the *commands the interface issued*: the stub is
  * not a compiler, and what a command does to the source is asserted by
- * `musa-language`'s and `musa-project`'s editing laws.
+ * `musa-syntax`'s and `musa-project`'s editing laws.
  */
 
 import { expect, test, type Page } from "@playwright/test";

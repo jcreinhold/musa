@@ -21,7 +21,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use musa_language::ast::ModDecl;
+use musa_syntax::ast::ModDecl;
 
 /// A package's module tree, and everything wrong with it.
 ///
@@ -112,7 +112,7 @@ impl<'a> Package<'a> {
         source: &'a str,
     ) {
         let directory = declared_in.rsplit_once('/').map_or("", |(head, _)| head);
-        let parsed = musa_language::parse(source);
+        let parsed = musa_syntax::parse(source);
         for declaration in ModDecl::all_at_root(&parsed.syntax()) {
             let Some(name) = declaration.name() else { continue };
             let path = format!("{prefix}{name}");

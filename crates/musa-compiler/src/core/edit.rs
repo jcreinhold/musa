@@ -89,7 +89,7 @@ pub(crate) type AdapterPatch = (u64, String);
 pub(crate) fn edit_syntax(
     adapter_source: &str,
     imports: PhaseImports<'_>,
-    subject: crate::syntax::Syntax,
+    subject: crate::quote::Syntax,
     command: &str,
     anchor: u64,
     argument: &str,
@@ -102,7 +102,7 @@ pub(crate) fn edit_syntax(
 fn run_editor(
     adapter_source: &str,
     imports: PhaseImports<'_>,
-    subject: crate::syntax::Syntax,
+    subject: crate::quote::Syntax,
     command: &str,
     anchor: u64,
     argument: &str,
@@ -214,10 +214,10 @@ pub(crate) fn said(held: &musa_calculus::Datum) -> Option<String> {
 }
 
 /// One region, as the term the phase hands an operation.
-pub(crate) fn region(subject: crate::syntax::Syntax) -> Raw {
+pub(crate) fn region(subject: crate::quote::Syntax) -> Raw {
     Raw::lit(
         musa_calculus::Origin::UNKNOWN,
-        crate::registry::literal(crate::registry::syntax_type(crate::syntax::Cat::TokenTree), subject),
+        crate::registry::literal(crate::registry::syntax_type(crate::quote::Cat::TokenTree), subject),
     )
 }
 

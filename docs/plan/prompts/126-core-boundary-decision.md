@@ -45,7 +45,7 @@ Produce one table with a row for **every** construct the surface language accept
 declaration, and block — and three columns: the construct, the kernel term or `ScoreFact` variant it elaborates to, and
 the elaboration site in `crates/musa-compiler/src/elaborate.rs`. A construct that elaborates into no kernel term gets
 the word **none** and a note on what happens to it instead. Exhaustiveness is checkable, not a matter of care: drive the
-row list from `crates/musa-language/src/keywords.rs`, the table prompt 84 made exhaustive by construction, and fail the
+row list from `crates/musa-syntax/src/keywords.rs`, the table prompt 84 made exhaustive by construction, and fail the
 prompt if a keyword has no row.
 
 Two claims made in conversation are premises the census must confirm or refute, not assume:
@@ -129,9 +129,9 @@ cargo fmt --check
 ```
 
 The audit must report no duplicate ranks, no unused ranks, and no dependency on a prompt that does not exist. The census
-must have a row for every spelling in `crates/musa-language/src/keywords.rs`; state in the document how that was
-verified and by what command. The Rust checks must pass **unchanged** — a green tree is the evidence that this prompt
-decided rather than implemented. Commit as `Decide what the core is a calculus of`.
+must have a row for every spelling in `crates/musa-syntax/src/keywords.rs`; state in the document how that was verified
+and by what command. The Rust checks must pass **unchanged** — a green tree is the evidence that this prompt decided
+rather than implemented. Commit as `Decide what the core is a calculus of`.
 
 ## Stop
 

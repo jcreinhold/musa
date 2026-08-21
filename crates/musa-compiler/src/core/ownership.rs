@@ -115,10 +115,10 @@ pub(crate) enum SyntaxOp {
     /// not with the number because a transformer may emit a place and may not
     /// read one (`26-language-design-decision.md` §3.4) — this hands back
     /// something to splice, and nothing to compare. The answer stands at
-    /// [`crate::syntax::anchor_place`] of the anchored node: the place derives
+    /// [`crate::quote::anchor_place`] of the anchored node: the place derives
     /// from the arguments alone, because a δ rule is a function of its
     /// arguments and nothing else (§5.8's D3), and the reservation it uses is
-    /// [`crate::syntax::path::DELTA_QUOTATION`]'s.
+    /// [`crate::quote::path::DELTA_QUOTATION`]'s.
     Anchor,
     /// `syntax_number(node)` — the exact rational a numeric token spells.
     ///
@@ -199,8 +199,8 @@ impl SyntaxOp {
         // tree nobody has parsed. `Expr` is reached only by `as_expression` and
         // by the gate, which are the two operations that run the real parser
         // (`../rules/language/11-quotation.md` §1).
-        let syntax = || Type::Syntax(crate::syntax::Cat::TokenTree);
-        let expression = || Type::Syntax(crate::syntax::Cat::Expr);
+        let syntax = || Type::Syntax(crate::quote::Cat::TokenTree);
+        let expression = || Type::Syntax(crate::quote::Cat::Expr);
         let path = || Type::NodePath;
         match self {
             Self::Fold => {
@@ -264,7 +264,7 @@ impl SyntaxOp {
             // the node it is *about*; the place its answer stands at is no
             // argument at all, because a δ rule is a function of its
             // arguments (§5.8's D3) and the place derives from them —
-            // `crate::syntax::anchor_place` is the derivation.
+            // `crate::quote::anchor_place` is the derivation.
             Self::At | Self::Anchor => {
                 Type::Function(vec![syntax(), path()], Box::new(Type::Option(Box::new(syntax()))))
             }

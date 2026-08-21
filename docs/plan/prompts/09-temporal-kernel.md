@@ -28,7 +28,7 @@ changes, no compiler changes (elaboration is prompt 11).
 ## Design
 
 - New workspace crate `crates/musa-kernel`, depending only on `num-rational` (+ `serde` if the spec's serialization
-  needs it). It must not depend on `musa-language` or `musa-compiler`: `Timeline<A>` is generic over its payload and the
+  needs it). It must not depend on `musa-syntax` or `musa-compiler`: `Timeline<A>` is generic over its payload and the
   kernel never learns what a `Note` is (§12).
 - Public surface (doc-commented with invariants before implementation, per conventions):
 

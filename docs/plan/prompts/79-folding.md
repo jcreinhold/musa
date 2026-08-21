@@ -16,7 +16,7 @@ a part to work on another *while* the piece is broken — so it reads the lossle
 
 ## Read
 
-- `crates/musa-language/src/parser.rs` and `syntax_kind.rs` — the tree is lossless and total; braces are the language's
+- `crates/musa-syntax/src/parser.rs` and `syntax_kind.rs` — the tree is lossless and total; braces are the language's
   explicit structure (roadmap §7.2), which is what makes folding a tree walk rather than a heuristic.
 - Prompt 77 — the server and its `convert` module; this prompt is one handler plus one tree walk.
 - Prompt 26 — the desktop's source workspace folds too, from the same tree through CodeMirror; the two must agree on
@@ -53,4 +53,4 @@ none (there is no closing line to fold to); single-line blocks offer none.
 - No custom folding-range kinds and no client-specific extensions.
 - No indentation- or blank-line-based folding. Braces are the structure; anything else is guessing.
 - No folding of imports, no folding in the desktop — CodeMirror's fold comes from the same tree, prompt 26's path.
-- No changes to `musa-language`: the tree prompt 03 built already says everything this prompt asks.
+- No changes to `musa-syntax`: the tree prompt 03 built already says everything this prompt asks.

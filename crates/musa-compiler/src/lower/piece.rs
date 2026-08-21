@@ -61,8 +61,8 @@
 mod laws;
 
 use musa_calculus::{Origin, Raw};
-use musa_language::SyntaxNode;
-use musa_language::ast::AstNode as _;
+use musa_syntax::SyntaxNode;
+use musa_syntax::ast::AstNode as _;
 
 use super::notation::{Context, Reading};
 use super::{Lowering, applied, expansion};
@@ -164,7 +164,7 @@ impl Lowering<'_> {
         namespace: &str,
         standing: Option<&musa_score::origin::Origin>,
     ) -> Option<Piece> {
-        let declaration = musa_language::ast::PieceDecl::cast(node.clone())?;
+        let declaration = musa_syntax::ast::PieceDecl::cast(node.clone())?;
         let origin = self.origin(node);
         let mut whole = true;
         let mut instances = Instances::of(self.resolver, node, namespace);
@@ -209,12 +209,12 @@ impl Lowering<'_> {
                 // branch because "this part already has a voice called that"
                 // is one question about both.
                 let (voice_name, span, named_at) = match item {
-                    musa_language::ast::PartItem::Voice(ref held) => (
+                    musa_syntax::ast::PartItem::Voice(ref held) => (
                         held.name().unwrap_or_default(),
                         crate::resolve::trimmed_span(held.syntax()),
-                        crate::resolve::token_span(held.syntax(), musa_language::SyntaxKind::Identifier),
+                        crate::resolve::token_span(held.syntax(), musa_syntax::SyntaxKind::Identifier),
                     ),
-                    musa_language::ast::PartItem::Make(ref site) => (
+                    musa_syntax::ast::PartItem::Make(ref site) => (
                         site.alias().unwrap_or_default(),
                         crate::resolve::trimmed_span(site.syntax()),
                         Some(crate::resolve::trimmed_span(site.syntax())),
@@ -239,10 +239,8 @@ impl Lowering<'_> {
                     None => read_under,
                 };
                 let read = match item {
-                    musa_language::ast::PartItem::Voice(held) => {
-                        self.plain(&held, voice, voice_name, named_at, held_at)
-                    }
-                    musa_language::ast::PartItem::Make(site) => self.made(
+                    musa_syntax::ast::PartItem::Voice(held) => self.plain(&held, voice, voice_name, named_at, held_at),
+                    musa_syntax::ast::PartItem::Make(site) => self.made(
                         &mut instances,
                         &site,
                         &format!("score/part[{name}]/{index}"),
@@ -268,7 +266,7 @@ impl Lowering<'_> {
             }
             parts.push(Part {
                 id,
-                name_span: crate::resolve::token_span(written.syntax(), musa_language::SyntaxKind::Identifier),
+                name_span: crate::resolve::token_span(written.syntax(), musa_syntax::SyntaxKind::Identifier),
                 name,
                 meter: counted,
                 profile: written.profile().map(|statement| {
@@ -357,7 +355,7 @@ impl Lowering<'_> {
     /// performance layer's default rather than something the piece said.
     fn header(
         &mut self,
-        declaration: &musa_language::ast::PieceDecl,
+        declaration: &musa_syntax::ast::PieceDecl,
         whole: &mut bool,
     ) -> Vec<(musa_score::Scope, Origin, Raw)> {
         let mut said = Vec::new();
@@ -400,7 +398,7 @@ impl Lowering<'_> {
     /// so a half-read context is a term nobody will look at.
     fn part_context(
         &mut self,
-        part: &musa_language::ast::PartDecl,
+        part: &musa_syntax::ast::PartDecl,
         id: u32,
         whole: &mut bool,
     ) -> (Vec<(musa_score::Scope, Origin, Raw)>, Option<musa_score::Meter>) {
@@ -441,7 +439,7 @@ impl Lowering<'_> {
     /// anything.
     fn plain(
         &mut self,
-        held: &musa_language::ast::VoiceDecl,
+        held: &musa_syntax::ast::VoiceDecl,
         voice: u32,
         name: String,
         name_span: Option<musa_score::origin::SourceSpan>,
@@ -494,7 +492,7 @@ impl Lowering<'_> {
     fn made(
         &mut self,
         instances: &mut Instances,
-        site: &musa_language::ast::MakeStmt,
+        site: &musa_syntax::ast::MakeStmt,
         path: &str,
         voice: u32,
         name_span: Option<musa_score::origin::SourceSpan>,
@@ -598,7 +596,7 @@ impl Instances {
             namespace: namespace.to_owned(),
             enclosing: node
                 .parent()
-                .and_then(musa_language::ast::TemplateDecl::cast)
+                .and_then(musa_syntax::ast::TemplateDecl::cast)
                 .and_then(|template| template.name()),
         }
     }

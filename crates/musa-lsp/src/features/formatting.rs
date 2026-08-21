@@ -1,6 +1,6 @@
 //! Formatting: the canonical layout, without touching the session.
 //!
-//! A format request is answered by `musa-language`'s formatter directly —
+//! A format request is answered by `musa-syntax`'s formatter directly —
 //! never by `ProjectCommand::Format`, which is a source-changing command and
 //! would land in the session's undo history. The client applies the edit and
 //! the change comes back through `didChange` like any other, so the session's

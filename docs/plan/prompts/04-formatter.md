@@ -22,7 +22,7 @@ preserves comments predictably.
 
 ## Design
 
-- `musa-language` gains:
+- `musa-syntax` gains:
 
   ```rust
   /// Format a parsed document. Lossless: every comment and token survives;
@@ -40,7 +40,7 @@ preserves comments predictably.
   calls of which four ended in a comma and one did not. The formatter now writes that comma when a list opens down the
   page and drops it when the list joins back onto one line. Nothing else about the claim changes: every comment and
   every token that says something still survives, and the amendment is written out where the rule is, at
-  `ends_its_list` in `crates/musa-language/src/formatter.rs`. The formatting law it has to keep is roadmap §17.3's, and
+  `ends_its_list` in `crates/musa-syntax/src/formatter.rs`. The formatting law it has to keep is roadmap §17.3's, and
   that law is stated over `semantic(parse(…))`, which a trailing comma does not reach.
 
 - Formatting rules: 4-space indent per block level; one statement per line; `;` terminates; blank line between top-level
@@ -57,8 +57,8 @@ preserves comments predictably.
 
 ## Target
 
-- `musa-language`: `format`, `FormattedSource`, `apply_edits`, `TextEdit`.
-- `musa`: `format` and `check` subcommands calling `musa_language` directly for now (the project-session indirection
+- `musa-syntax`: `format`, `FormattedSource`, `apply_edits`, `TextEdit`.
+- `musa`: `format` and `check` subcommands calling `musa_syntax` directly for now (the project-session indirection
   arrives in prompt 14 — per roadmap §15.8 the CLI must not recreate orchestration, but at this stage there is no
   orchestration to reuse; keep the call sites one-liners so the swap is trivial).
 - Tests: idempotence `format(format(x)) == format(x)` and semantic preservation `parse(format(parse(x)))` equals
@@ -69,8 +69,8 @@ preserves comments predictably.
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa
-cargo clippy --all-targets -p musa-language -p musa -- -D warnings
+cargo nextest run -p musa-syntax -p musa
+cargo clippy --all-targets -p musa-syntax -p musa -- -D warnings
 cargo fmt --check
 cargo run -p musa -- format --check examples/glass-mountain.musa
 cargo run -p musa -- format examples/invention.musa && git diff --exit-code examples/  # formats to itself

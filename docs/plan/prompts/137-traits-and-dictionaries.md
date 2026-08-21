@@ -141,9 +141,9 @@ Commit as `Add traits, dictionaries, and coherence`.
 
 ## Stop
 
-- **No `musa-language` change.** No `trait`, `impl`, or `where` keyword, no grammar, no CST, no formatter, no
-  tree-sitter. `musa-calculus` takes a `RawTrait` the way it takes every other `Raw`, and a test builds one directly —
-  which is how every prompt since 133 has tested this crate.
+- **No `musa-syntax` change.** No `trait`, `impl`, or `where` keyword, no grammar, no CST, no formatter, no tree-sitter.
+  `musa-calculus` takes a `RawTrait` the way it takes every other `Raw`, and a test builds one directly — which is how
+  every prompt since 133 has tested this crate.
 - No operators, no method-call syntax, no `Type::item` paths, and no exact-receiver resolution. 137a.
 - No `docs/rules/style-guide.md` rule and no `lint.rs` diagnostic. Their subject is spelling, and nothing is spellable
   yet.

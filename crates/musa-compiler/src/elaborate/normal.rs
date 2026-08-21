@@ -10,9 +10,9 @@ use super::score::{meter_of, stated};
 use crate::compile::SourceDocument;
 use crate::resolve::{self, Resolver};
 use musa_kernel::WrittenTime;
-use musa_language::ast::AstNode as _;
-use musa_language::ast::PieceDecl;
 use musa_score::score::ScoreSnapshot;
+use musa_syntax::ast::AstNode as _;
+use musa_syntax::ast::PieceDecl;
 
 /// The normalized human-display text of a source's piece timeline, for golden
 /// snapshots (docs/rules/kernel/05 N5). Semantic hashing uses separate framed N6
@@ -51,7 +51,7 @@ pub(crate) fn piece_term(
     musa_kernel::Term<WrittenTime, ScoreFact>,
     Vec<musa_score::DecisionRecord>,
 )> {
-    let document = musa_language::parse(source.text());
+    let document = musa_syntax::parse(source.text());
     if !document.errors().is_empty() {
         return None;
     }
@@ -61,7 +61,7 @@ pub(crate) fn piece_term(
     // A made piece is this document's piece, so the term of a document whose
     // piece is an instance is the term of what the instance makes.
     let mut templates = crate::template::Templates::collect(&mut resolver, &root);
-    let made = musa_language::ast::MakeStmt::from_root(&root).and_then(|site| {
+    let made = musa_syntax::ast::MakeStmt::from_root(&root).and_then(|site| {
         templates.instance(
             &mut resolver,
             &site,
@@ -76,7 +76,7 @@ pub(crate) fn piece_term(
     // The same closure full compilation reads: a `use` of imported material
     // is the piece's own music, and an export that could not name it would be
     // an export some pieces cannot make.
-    let mut wanted = musa_language::ast::ImportStmt::all_at_root(&root);
+    let mut wanted = musa_syntax::ast::ImportStmt::all_at_root(&root);
     wanted.extend(piece.imports());
     let libraries = crate::imports::load(&mut resolver, source.name(), &wanted, imports);
     let sources = declaring(&root, &libraries, piece.syntax());

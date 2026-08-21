@@ -34,7 +34,7 @@ type class.
 - Peyton Jones ch. 3 §3.2 and ch. 6 — the enriched calculus and its transformations. A construct the author needs is
   added and translated away; `?` is one transformation, not a new evaluation mechanism.
 - `stdlib/src/adapters/staff.musa`: `document_read` at line 1988, and `read_body` and `taken_piece` above it.
-- `crates/musa-language/src/parser.rs`, `ast.rs`, `formatter.rs`, and `syntax_kind.rs`; and
+- `crates/musa-syntax/src/parser.rs`, `ast.rs`, `formatter.rs`, and `syntax_kind.rs`; and
   `editors/tree-sitter-musa/grammar.js` with its queries, held to the lexer by the drift law in root `AGENTS.md`.
 
 ## Design
@@ -86,7 +86,7 @@ prompts 127dcfae and 127dcfag can attribute later improvements to the traversal 
   inferred-or-written enclosing-result constraint, and the elaboration written out.
 - `docs/rules/language/02-core-calculus.md` — a sentence in §5 recording that `?` is surface elaboration to the
   exhaustive `Result` match and adds no core term. §5 is otherwise unchanged and the prompt states that it is.
-- `crates/musa-language/` — `syntax_kind.rs`, `lexer.rs`, `parser.rs`, and `ast.rs` gain the postfix form with its
+- `crates/musa-syntax/` — `syntax_kind.rs`, `lexer.rs`, `parser.rs`, and `ast.rs` gain the postfix form with its
   precedence fixed against application, projection, and update; `formatter.rs` lays it out.
 - `crates/musa-compiler/` — the elaboration and inference constraint, without requiring an explicit return annotation;
   the diagnostic for `?` in a non-`Result` function; the diagnostic for mismatched error types, naming both; and a
@@ -94,7 +94,7 @@ prompts 127dcfae and 127dcfag can attribute later improvements to the traversal 
 - `editors/tree-sitter-musa/grammar.js` and `queries/` — the form and its highlighting.
 - `stdlib/src/adapters/staff.musa` — `document_read` and the other `Result` staircases flatten. The refusal node and its
   text survive propagation unchanged.
-- Tests in `crates/musa-language` and `crates/musa-compiler`: the subject is evaluated once, proved by the meter; a
+- Tests in `crates/musa-syntax` and `crates/musa-compiler`: the subject is evaluated once, proved by the meter; a
   failure propagates the identical `Err` payload, including a refusal's node; an unannotated named function and an
   unannotated anonymous function infer through `?`; `?` in a genuinely non-`Result` function is rejected at its own
   span; two different error types are rejected with both named; `?` chained several times in one expression evaluates
@@ -106,8 +106,8 @@ prompts 127dcfae and 127dcfag can attribute later improvements to the traversal 
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-project -p musa-lsp
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp
+cargo clippy --all-targets -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cd editors/tree-sitter-musa && tree-sitter test

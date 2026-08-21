@@ -47,7 +47,7 @@ let them drift silently.
 
 | Path | What lives there |
 | --- | --- |
-| `crates/musa-language` | tokens, lexer, parser, lossless CST, formatter, text edits |
+| `crates/musa-syntax` | tokens, lexer, parser, lossless CST, formatter, text edits |
 | `crates/musa-kernel` | finite temporal kernel: exact time, typed occurrences, timeline/sequence/overlay, normalization |
 | `crates/musa-calculus` | the dependently typed core calculus a checked term lives in: NbE, elaboration, inductive families |
 | `crates/musa-score` | the musical values: pitch, chords, scales, exact time, marks, score/performance snapshots, provenance, diagnostics, analysis |
@@ -57,7 +57,7 @@ let them drift silently.
 | `crates/musa-playback` | CPAL stream, transport, real-time queues, MIDI input |
 | `crates/musa-project` | ProjectSession facade: documents, revisions, commands, exports |
 | `crates/musa` | thin CLI over musa-project, installed as the `musa` binary |
-| `crates/musa-lsp` | thin language server (LSP) over musa-project + musa-language |
+| `crates/musa-lsp` | thin language server (LSP) over musa-project + musa-syntax |
 | `crates/musa-wasm` | wasm-bindgen shell: musa source → MEI for `@musa/web` |
 | `apps/musa-desktop` | thin Tauri shell + Svelte UI over musa-project |
 | `packages/musa-engrave` | shared worker engraver: Verovio behind the `Engraver` interface |
@@ -78,7 +78,7 @@ let them drift silently.
 
 Dependency direction is one-way: language → score → compiler → audio → engine → project → {cli, lsp, desktop}, with
 `musa-notation` sitting on `musa-score` alone, and with `musa-calculus` and `musa-kernel` two leaves that
-`musa-compiler` (and later consumers) depend on, and `musa-lsp` the one shell that also depends on `musa-language`
+`musa-compiler` (and later consumers) depend on, and `musa-lsp` the one shell that also depends on `musa-syntax`
 (highlighting and completion answer on half-typed source, which the session's facts cannot describe — roadmap §15.11).
 `musa-wasm` is a fourth shell, over compiler + render, and `packages/*` sits below it in TypeScript. No dependency
 points upward.

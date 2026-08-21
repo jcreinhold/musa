@@ -83,10 +83,10 @@ pub use crate::utf16::Utf16Offsets;
 pub use musa_compiler::DocumentKind;
 pub use musa_compiler::standard_library_source;
 pub use musa_compiler::{KernelTokenClass, kernel_bindings, kernel_classify, kernel_keyword_doc};
-pub use musa_language::{BarSpacing, HeaderField, KeywordDoc, keyword_doc};
 pub use musa_notation::MidiMode;
 pub use musa_score::{
     AnalysisKind, AnalysisProfile, AnalysisRequest, AnalysisScope, ChoicePath, ChoiceStep, ClaimDoc, Decision,
     DecisionRecord, Key, Mode, MusicalTime, Realization, Segmentation, assertion_claims, chord_types,
     realization_policies, rule_names, scale_collections,
 };
+pub use musa_syntax::{BarSpacing, HeaderField, KeywordDoc, keyword_doc};

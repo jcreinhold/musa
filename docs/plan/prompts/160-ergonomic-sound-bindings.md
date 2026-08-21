@@ -53,7 +53,7 @@ identity/signature detail follows.
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-dsp -p musa-project -p musa-lsp
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-dsp -p musa-project -p musa-lsp
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject

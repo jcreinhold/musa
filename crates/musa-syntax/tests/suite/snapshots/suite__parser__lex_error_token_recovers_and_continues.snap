@@ -1,0 +1,7 @@
+---
+source: crates/musa-syntax/tests/parser.rs
+expression: print_errors(&doc)
+---
+82..83: musa does not read this
+  label: not part of the language
+  help: check for a stray character, or a word from another notation

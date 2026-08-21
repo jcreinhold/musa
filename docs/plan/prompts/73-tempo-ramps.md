@@ -91,7 +91,7 @@ observation total, and this inherits it rather than adding a diagnostic.
 
 ## Target
 
-- `crates/musa-language`: `ramp to … over … [curve …]` in the tempo statement.
+- `crates/musa-syntax`: `ramp to … over … [curve …]` in the tempo statement.
 - `crates/musa-compiler`: the `Progress` payload on `FactKind::Tempo`; the bpm→seconds-per-beat conversion;
   `IntegratedTempoMap`'s piecewise-linear integration and its cross-check property.
 - `crates/musa-notation` and `crates/musa-project/src/midi.rs`: the four exporters above.

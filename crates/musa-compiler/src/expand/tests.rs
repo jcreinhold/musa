@@ -1,5 +1,5 @@
-use musa_language::SyntaxKind;
-use musa_language::ast::{AstNode as _, ImportStmt};
+use musa_syntax::SyntaxKind;
+use musa_syntax::ast::{AstNode as _, ImportStmt};
 
 use crate::compile::{CompileOptions, SourceDocument};
 use musa_score::diagnose::Code;
@@ -47,12 +47,12 @@ fn module(expand: &str) -> String {
 }
 
 /// Expand one region's worth of text through `transformer`, and print it.
-fn answer(transformer: &str, region: &str) -> Result<crate::syntax::Printed, crate::core::ExpansionFailure> {
-    let read = musa_language::parse(region);
-    let subject = crate::syntax::read_region(&read.syntax(), crate::syntax::ExpansionPath::at(vec![0]));
+fn answer(transformer: &str, region: &str) -> Result<crate::quote::Printed, crate::core::ExpansionFailure> {
+    let read = musa_syntax::parse(region);
+    let subject = crate::quote::read_region(&read.syntax(), crate::quote::ExpansionPath::at(vec![0]));
     crate::core::expand_syntax(&module(transformer), crate::core::PhaseImports::bundled(), &subject)
         .0
-        .map(|output| crate::syntax::print(&output))
+        .map(|output| crate::quote::print(&output))
 }
 
 #[test]
@@ -261,7 +261,7 @@ fn expansion_terminates_because_the_bootstrap_is_adapter_free() {
     // answer may hold none, so there is no second round to bound.
     let adapter = crate::imports::standard_library_source("musa-stdlib:/std/adapters/doubled.musa")
         .expect("the fixture adapter is bundled");
-    let read = musa_language::parse(adapter);
+    let read = musa_syntax::parse(adapter);
     assert!(
         !read.syntax().descendants().any(|node| {
             node.kind() == SyntaxKind::SyntaxRegion
@@ -319,8 +319,8 @@ fn a_refusal_that_points_at_a_generated_node_lands_on_the_region_and_says_so() {
         "fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ syntax_fold_from_leaves(fn (here) {{ {refused} }}, fn (here, kind, text) {{ {refused} }}, \
              fn (here, name) {{ {refused} }}, fn (here, delimiter, children) {{ {refused} }}, region) }}"
     );
-    let read = musa_language::parse("c4");
-    let subject = crate::syntax::read_region(&read.syntax(), crate::syntax::ExpansionPath::at(vec![0]));
+    let read = musa_syntax::parse("c4");
+    let subject = crate::quote::read_region(&read.syntax(), crate::quote::ExpansionPath::at(vec![0]));
     let Err(generated) =
         crate::core::expand_syntax(&module(&refusing), crate::core::PhaseImports::bundled(), &subject).0
     else {
@@ -777,7 +777,7 @@ fn expanding_a_printed_region_gives_back_the_value_it_was_printed_from() {
     let expansion = expand(&SourceDocument::new(&source, "laws.musa"), &options);
     assert!(messages(&expansion).is_empty(), "{:?}", messages(&expansion));
     let record = expansion.records.first().expect("one record");
-    let expression = crate::syntax::print(&record.output).text;
+    let expression = crate::quote::print(&record.output).text;
     let round_tripped = crate::core::evaluate_text(&expression);
     assert_eq!(
         round_tripped,
@@ -974,8 +974,8 @@ fn printed(transformer: &str, region: &str) -> String {
 
 /// What one transformer charged, over one region.
 fn charged(transformer: &str, region: &str) -> u64 {
-    let read = musa_language::parse(region);
-    let subject = crate::syntax::read_region(&read.syntax(), crate::syntax::ExpansionPath::at(vec![0]));
+    let read = musa_syntax::parse(region);
+    let subject = crate::quote::read_region(&read.syntax(), crate::quote::ExpansionPath::at(vec![0]));
     let (answered, work) =
         crate::core::expand_syntax(&module(transformer), crate::core::PhaseImports::bundled(), &subject);
     if let Err(fault) = answered {
@@ -998,11 +998,11 @@ const NONE_AT_ALL: &str = r"syntax_group(syntax_built(here, 3, 0), delimiter, []
 /// and the parser flattens nesting it does not need, so a region written
 /// out as text would say how deep the *parser* goes and not how deep the
 /// recursor may.
-fn nested_region(levels: usize) -> crate::syntax::Syntax {
-    let root = crate::syntax::NodePath::root(crate::syntax::ExpansionPath::at(vec![0]));
-    let mut subject = crate::syntax::identifier(root.clone(), "a".to_owned());
+fn nested_region(levels: usize) -> crate::quote::Syntax {
+    let root = crate::quote::NodePath::root(crate::quote::ExpansionPath::at(vec![0]));
+    let mut subject = crate::quote::identifier(root.clone(), "a".to_owned());
     for _ in 0..levels {
-        subject = crate::syntax::group(root.clone(), crate::syntax::Delimiter::Parentheses, vec![subject]);
+        subject = crate::quote::group(root.clone(), crate::quote::Delimiter::Parentheses, vec![subject]);
     }
     subject
 }

@@ -66,16 +66,16 @@ fn compiled(name: &str, text: &str) -> musa_compiler::Compilation {
 /// The marker is the kernel's own version string.
 ///
 /// Two crates spell this: `musa-kernel` writes `% musa-kernel-2` as the first
-/// line of every document it prints, and `musa-language` decides the top-level
+/// line of every document it prints, and `musa-syntax` decides the top-level
 /// alternative by matching that line. They cannot depend on each other —
-/// `musa-language` is below the kernel and stays there — so the law lives in
+/// `musa-syntax` is below the kernel and stays there — so the law lives in
 /// the one crate that sees both. Bumping the format version without teaching
 /// the reader would otherwise make every new document silently surface Musa,
 /// which fails as a wall of parse errors rather than as one honest refusal.
 #[test]
 fn kernel_document_marker_matches_the_kernel() {
     assert_eq!(
-        musa_language::KERNEL_MARKER,
+        musa_syntax::KERNEL_MARKER,
         format!("% {}", musa_kernel::FORMAT_VERSION),
         "the alternative's marker and the format's version have drifted",
     );
@@ -86,8 +86,8 @@ fn kernel_document_marker_matches_the_kernel() {
 fn every_kernel_file_is_a_musa_document() {
     for (name, text) in corpus() {
         assert_eq!(
-            musa_language::alternative(&text),
-            musa_language::DocumentAlternative::Kernel,
+            musa_syntax::alternative(&text),
+            musa_syntax::DocumentAlternative::Kernel,
             "{name} is not read as the kernel alternative",
         );
         let compilation = compiled(&name, &text);
@@ -203,10 +203,10 @@ fn a_whole_score_document_projects_a_whole_score() {
 #[test]
 fn formatting_a_kernel_document_is_the_kernels_printing() {
     for (name, text) in corpus() {
-        let once = format_document(&text, musa_language::BarSpacing::default())
+        let once = format_document(&text, musa_syntax::BarSpacing::default())
             .unwrap_or_else(|| panic!("{name} would not format"));
         assert_eq!(once, text, "{name} is not canonical");
-        let twice = format_document(&once, musa_language::BarSpacing::default()).expect("format again");
+        let twice = format_document(&once, musa_syntax::BarSpacing::default()).expect("format again");
         assert_eq!(twice, once, "formatting {name} is not idempotent");
     }
 }
@@ -226,7 +226,7 @@ fn formatting_keeps_a_kernel_documents_notes() {
                 occurrence \"voice 0 0 note c4 1/4 [0:0 #4]\" from 0 to 1/4;\n    \
                 };\n\
                 }\n";
-    let formatted = format_document(text, musa_language::BarSpacing::default()).expect("format");
+    let formatted = format_document(text, musa_syntax::BarSpacing::default()).expect("format");
     assert!(
         formatted.contains("% generated from examples/twinkle.musa by musa-compiler"),
         "the note did not survive: {formatted}",
@@ -290,8 +290,8 @@ fn an_unknown_format_version_is_refused() {
         // surface Musa is where the parse errors come from. Either way it is
         // refused; what must not happen is silent acceptance.
         assert_eq!(
-            musa_language::alternative(&text),
-            musa_language::DocumentAlternative::Surface,
+            musa_syntax::alternative(&text),
+            musa_syntax::DocumentAlternative::Surface,
             "{version} claimed to be this kernel",
         );
     }

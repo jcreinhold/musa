@@ -47,9 +47,9 @@ pub(crate) struct ExpansionRecord {
     /// The region, in the composer's own text.
     pub(crate) use_site: SourceSpan,
     /// What the adapter was handed.
-    pub(crate) input: crate::syntax::Syntax,
+    pub(crate) input: crate::quote::Syntax,
     /// What it answered with.
-    pub(crate) output: crate::syntax::Syntax,
+    pub(crate) output: crate::quote::Syntax,
     /// Every node of the region, by range, in the order `syntax_anchor`
     /// numbers them.
     ///

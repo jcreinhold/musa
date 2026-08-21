@@ -48,10 +48,10 @@ type, `Vec` is a mechanism nobody asked for and this prompt builds `List` alone.
 fixed-arity constructions and the studio adapter's parameter lists are the candidates — then `Vec` ships with that
 program as its fixture. Do not ship it on the strength of it being the standard example of a dependent type.
 
-**Where each half lands.** Grammar, CST, formatter, and highlighting in `musa-language`; the families, the trait pair,
-and their laws in `musa-calculus`; the `.musa` prelude modules that expose them to authors in prompt 142's migration,
-with everything else. This is the split prompts 136 and 137 established, for the same reason: a second checking path
-through the old compiler would be built and deleted within six prompts.
+**Where each half lands.** Grammar, CST, formatter, and highlighting in `musa-syntax`; the families, the trait pair, and
+their laws in `musa-calculus`; the `.musa` prelude modules that expose them to authors in prompt 142's migration, with
+everything else. This is the split prompts 136 and 137 established, for the same reason: a second checking path through
+the old compiler would be built and deleted within six prompts.
 
 **Totality reaches indexing.** `Vec` indexing with an in-range proof is total; `List` indexing is not, and returns an
 `option` rather than acquiring a partial operator. That is the same rule prompt 137 applied to failing arithmetic, and
@@ -64,7 +64,7 @@ be. And the direction law from 127dcfaa still holds, unchanged.
 
 ## Target
 
-- `musa-language`: list-literal grammar, CST, formatter, highlighting; tree-sitter and its drift test.
+- `musa-syntax`: list-literal grammar, CST, formatter, highlighting; tree-sitter and its drift test.
 - `musa-calculus`: `List`, `Vec A n` (if the trial justified it), `Buildable`, `Iterable`, `map`, `filter`, `fold`,
   `collect`, indexing, and their laws.
 - `crates/musa-calculus/tests/suite/collection_laws.rs`, with note 41 §7's forward-accumulating traversal as a fixture.
@@ -75,9 +75,9 @@ be. And the direction law from 127dcfaa still holds, unchanged.
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-language -p musa-calculus
+cargo nextest run -p musa-syntax -p musa-calculus
 cargo nextest run --workspace
-cargo clippy --all-targets -p musa-language -p musa-calculus -- -D warnings
+cargo clippy --all-targets -p musa-syntax -p musa-calculus -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cd editors/tree-sitter-musa && tree-sitter test

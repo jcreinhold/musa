@@ -1,7 +1,7 @@
 //! Extent: how long a written passage holds — `reached`, `lasts`, `played`.
 
-use musa_language::ast::AstNode as _;
-use musa_language::{SyntaxKind, SyntaxNode};
+use musa_syntax::ast::AstNode as _;
+use musa_syntax::{SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 
 use crate::lower::Lowering;
@@ -87,7 +87,7 @@ impl Lowering<'_> {
         if let Some(decided) = self.counts.get(&span) {
             return *decided;
         }
-        musa_language::ast::RepeatStmt::cast(node.clone())
+        musa_syntax::ast::RepeatStmt::cast(node.clone())
             .and_then(|statement| statement.count())
             .and_then(|text| count_of(&text))
             .unwrap_or_default()

@@ -253,7 +253,7 @@ mod editing {
     /// command and the editor's format-on-save both pay.
     #[divan::bench]
     fn e0_format(bencher: divan::Bencher<'_, '_>) {
-        bencher.bench_local(|| format_document(divan::black_box(LARGE), musa_language::BarSpacing::Compact));
+        bencher.bench_local(|| format_document(divan::black_box(LARGE), musa_syntax::BarSpacing::Compact));
     }
 
     /// E1 — a document with a brace missing and a bar that does not add up:

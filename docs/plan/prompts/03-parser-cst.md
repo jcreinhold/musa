@@ -23,7 +23,7 @@ declaration boundaries.
 
 ## Design
 
-- Add dependencies to `musa-language`: `rowan`, `insta` (dev).
+- Add dependencies to `musa-syntax`: `rowan`, `insta` (dev).
 - Architecture follows §10.3 exactly: the parser emits events (`StartNode`/`Token`/`FinishNode`/`Error`), a second pass
   builds the Rowan green tree. Parser code never constructs Rowan nodes directly.
 - Recovery sets (§10.4): `;`, `}`, and the next declaration keyword (`piece`, `part`, `voice`, `motif`, `patch`, `bus`,
@@ -58,7 +58,7 @@ declaration boundaries.
 
 ## Target
 
-- `musa-language`: event-based parser, Rowan tree builder, typed wrappers, `parse`.
+- `musa-syntax`: event-based parser, Rowan tree builder, typed wrappers, `parse`.
 - `insta` snapshot tests: CST shape for both examples, diagnostic output for a set of malformed inputs (missing `;`,
   unclosed `{`, bad duration, unknown keyword), recovery continuing after each error class.
 - Trivia round-trip property: `parse(source).syntax().text() == source` for generated inputs.
@@ -66,8 +66,8 @@ declaration boundaries.
 ## Check
 
 ```sh
-cargo nextest run -p musa-language
-cargo clippy --all-targets -p musa-language -- -D warnings
+cargo nextest run -p musa-syntax
+cargo clippy --all-targets -p musa-syntax -- -D warnings
 cargo fmt --check
 cargo insta review        # snapshots reviewed and accepted
 ```

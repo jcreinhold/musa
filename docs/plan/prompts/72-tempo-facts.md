@@ -87,7 +87,7 @@ The text-only form emits the words and no `<sound>`, which is what makes the exp
 
 ## Target
 
-- `crates/musa-language`: `tempo` as a voice item; the three forms; recovery and formatting.
+- `crates/musa-syntax`: `tempo` as a voice item; the three forms; recovery and formatting.
 - `crates/musa-compiler`: `FactKind::Tempo`; `ScoreSnapshot::tempo_at` and its `ContextTrack`; `TempoMap` and
   `TempoChange` **deleted**; `performance.rs` derives `IntegratedTempoMap` from the markings.
 - `crates/musa-notation`: the four exporters; `plan.rs` prints the marking and no longer computes seconds.

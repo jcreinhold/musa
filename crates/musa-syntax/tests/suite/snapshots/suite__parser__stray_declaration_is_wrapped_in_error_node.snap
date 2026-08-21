@@ -1,0 +1,24 @@
+---
+source: crates/musa-syntax/tests/parser.rs
+expression: print_tree(&doc.syntax())
+---
+Root@0..45
+  PieceDecl@0..44
+    PieceKw@0..5 "piece"
+    Whitespace@5..6 " "
+    String@6..9 "\"x\""
+    Whitespace@9..10 " "
+    LBrace@10..11 "{"
+    Error@11..27
+      Whitespace@11..16 "\n    "
+      Identifier@16..26 "frobnicate"
+      Semicolon@26..27 ";"
+    MeterStmt@27..42
+      Whitespace@27..32 "\n    "
+      MeterKw@32..37 "meter"
+      Whitespace@37..38 " "
+      Rational@38..41 "4/4"
+      Semicolon@41..42 ";"
+    Whitespace@42..43 "\n"
+    RBrace@43..44 "}"
+  Whitespace@44..45 "\n"

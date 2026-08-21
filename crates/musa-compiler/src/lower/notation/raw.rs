@@ -1,8 +1,8 @@
 //! Raw notation payload builders; see `notation` module docs.
 
 use musa_calculus::{Origin, Raw};
-use musa_language::ast::AstNode as _;
-use musa_language::{SyntaxKind, SyntaxNode};
+use musa_syntax::ast::AstNode as _;
+use musa_syntax::{SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 
 use crate::lower::{applied, whole};
@@ -43,9 +43,9 @@ pub(crate) fn last_at_most(iteration: u32, endings: usize) -> Option<usize> {
 }
 
 /// The endings a repeat writes, in written order.
-pub(crate) fn endings_of(node: &SyntaxNode) -> Vec<musa_language::ast::EndingStmt> {
+pub(crate) fn endings_of(node: &SyntaxNode) -> Vec<musa_syntax::ast::EndingStmt> {
     statements(node)
-        .filter_map(musa_language::ast::EndingStmt::cast)
+        .filter_map(musa_syntax::ast::EndingStmt::cast)
         .collect()
 }
 
@@ -361,7 +361,7 @@ pub(crate) fn tuplet_ratio(text: &str) -> Option<(u32, u32)> {
 /// own sentence by [`Lowering::statement`] and a length nothing will ask for is
 /// better left unscaled than guessed at.
 pub(crate) fn tuplet_factor(node: &SyntaxNode) -> Ratio<i64> {
-    musa_language::ast::TupletStmt::cast(node.clone())
+    musa_syntax::ast::TupletStmt::cast(node.clone())
         .and_then(|statement| statement.ratio())
         .and_then(|text| tuplet_ratio(&text))
         .map_or(Ratio::ONE, |(num, den)| Ratio::new(i64::from(den), i64::from(num)))

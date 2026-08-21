@@ -13,10 +13,10 @@ workspace = true
 hound = "3"
 musa-compiler = { workspace = true }
 musa-dsp = { workspace = true }
-musa-language = { workspace = true }
 musa-notation = { workspace = true }
 musa-playback = { workspace = true }
 musa-score = { workspace = true }
+musa-syntax = { workspace = true }
 num-rational = "0.4"
 serde = { version = "1", features = ["derive"] }
 # `preserve_order` so the wire snapshot keeps the field order `SnapshotWire`

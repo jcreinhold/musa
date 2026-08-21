@@ -42,7 +42,7 @@ in the middle. It absorbs prompt 127e, whose file stays as a superseded record r
   observable; the argument is 141e's, one level up. What is left here is the *wiring*: the passes that call it, the
   readback out of normal forms, and the deletion of what it replaces.
 - [`141ga`](141ga-quotation-core.md), which gave a template an inert core shape and moved both quotation forms onto
-  δ-rules that call `crate::syntax::instantiate` and `crate::syntax::matched` rather than a second copy of either. It
+  δ-rules that call `crate::quote::instantiate` and `crate::quote::matched` rather than a second copy of either. It
   exists because 141g's own implementation proved that building a quote out of the phase builders cannot express a
   spread in a separated position without a compiler-generated indexed fold. What is left here is deleting
   `ExprKind::SyntaxQuote` and the checker's own copy of the body walk — and **§1's forgetting rule**, which 141ga's

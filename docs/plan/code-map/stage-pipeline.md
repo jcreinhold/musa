@@ -67,7 +67,7 @@ closed Term<ScoreFact>            <- kernel documents and typed quotation read t
 EventTrack<WrittenTime, ScoreFact>
 ```
 
-None of these intermediate types crosses a crate boundary. The CST is Rowan-backed and stays inside `musa-language`; the
+None of these intermediate types crosses a crate boundary. The CST is Rowan-backed and stays inside `musa-syntax`; the
 HIR and the evaluator's values stay inside `musa-compiler`. What crosses is the closed term and the event track.
 
 The event-track core in particular is not spread through the compiler. Its public interface is roughly: construct and
@@ -79,7 +79,7 @@ track and a machine meet only at `schedule`.
 
 | Work | Owning crate | Public API should expose |
 | --- | --- | --- |
-| Tokens, concrete syntax tree, formatting, and text edits | `musa-language` | parsing and edit operations |
+| Tokens, concrete syntax tree, formatting, and text edits | `musa-syntax` | parsing and edit operations |
 | Name resolution, type checking, total evaluation, score and gesture compilation | `musa-compiler` | `compile` and caller-ready snapshot facts |
 | Exact finite event tracks and their laws | `musa-kernel` | `Term`, the track type, construction, queries, equality, and hash |
 | Engraving plan and file export | `musa-notation` | `render_notation` and export results |

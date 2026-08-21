@@ -65,6 +65,7 @@ mod package;
 /// The compiler's own `data` declarations, reachable only from [`registry`].
 mod prelude;
 mod project;
+mod quote;
 mod reference;
 /// The compiler's own operations as `musa-calculus` registrations.
 ///
@@ -76,7 +77,6 @@ mod reference;
 mod registry;
 mod resolve;
 mod studio;
-mod syntax;
 mod template;
 
 pub use crate::compile::{Compilation, CompileOptions, DocumentKind, SourceDocument, compile, format_document};
@@ -97,7 +97,7 @@ pub use crate::kernel_text::{
 /// and without depending on `musa-kernel` itself.
 ///
 /// The names carry `kernel` because a shell holds these beside
-/// `musa-language`'s classification of *surface* text. Two classifiers over
+/// `musa-syntax`'s classification of *surface* text. Two classifiers over
 /// two grammars are two things, and the unqualified word belongs to the
 /// language a composer actually writes.
 pub use musa_kernel::{KernelTokenClass, kernel_bindings, kernel_classify, kernel_keyword_doc};

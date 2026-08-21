@@ -1,8 +1,8 @@
 //! Marking lowering: `marked` and `mark_argument` turn marks and articulations into payloads.
 
 use musa_calculus::{Origin, Raw};
-use musa_language::SyntaxNode;
-use musa_language::ast::AstNode as _;
+use musa_syntax::SyntaxNode;
+use musa_syntax::ast::AstNode as _;
 use num_rational::Ratio;
 
 use crate::lower::{Lowering, applied, listed};
@@ -36,7 +36,7 @@ impl Lowering<'_> {
     pub(crate) fn marked(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
         use musa_score::marks::Anchor;
 
-        let statement = musa_language::ast::MarkStmt::cast(node.clone())?;
+        let statement = musa_syntax::ast::MarkStmt::cast(node.clone())?;
         let span = crate::resolve::trimmed_span(node);
         let text = statement.name().unwrap_or_default();
         let Some(mark) = musa_score::Mark::parse(&text) else {
@@ -96,7 +96,7 @@ impl Lowering<'_> {
     pub(crate) fn mark_argument(
         &mut self,
         mark: musa_score::Mark,
-        statement: &musa_language::ast::MarkStmt,
+        statement: &musa_syntax::ast::MarkStmt,
         origin: Origin,
         span: SourceSpan,
     ) -> Option<Raw> {

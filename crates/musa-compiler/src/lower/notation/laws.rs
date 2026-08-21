@@ -31,7 +31,7 @@
 )]
 
 use musa_calculus::{Cx, Origin, Raw, RawShape, Term};
-use musa_language::{SyntaxKind, SyntaxNode};
+use musa_syntax::{SyntaxKind, SyntaxNode};
 
 use super::super::items::{Declared, Definition, Item};
 use super::super::{Lowering, Sites};
@@ -48,7 +48,7 @@ use musa_score::diagnose::{Code, Diagnostic};
 /// items directly and `transpose up M3 { … }` holds them under a `Block`, which
 /// is a fact about the parser that no hand-assembled tree would have contained.
 fn parsed(source: &str) -> SyntaxNode {
-    let document = musa_language::parse(source);
+    let document = musa_syntax::parse(source);
     assert!(
         document.errors().is_empty(),
         "the law's own source parses: {:?}",

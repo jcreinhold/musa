@@ -3,7 +3,7 @@
 This document defines the **kernel interchange syntax**: the concrete notation for the terms of `10-term-calculus.md`.
 It is a semantic/interchange language for golden tests, semantic comparison, and cross-tool exchange. Parsing and
 evaluation produce the event track whose separately framed N6 bytes are hashed. **It is not the syntax musicians
-write**; the musician-facing surface language is the `.musa` grammar handled by `musa-language`, and its elaboration is
+write**; the musician-facing surface language is the `.musa` grammar handled by `musa-syntax`, and its elaboration is
 specified in `06-surface-elaboration.md`.
 
 **Grammar here, calculus there.** This document says how a term is written; `10-term-calculus.md` says what it means,

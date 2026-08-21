@@ -1,6 +1,6 @@
 ---
 name: tree-sitter-grammar
-description: Use for tree-sitter grammars (grammar.js, queries/*.scm, test/corpus/*.txt); wrong parse trees, missing highlights, grammar conflicts, editors/tree-sitter-musa/, the drift law against crates/musa-language.
+description: Use for tree-sitter grammars (grammar.js, queries/*.scm, test/corpus/*.txt); wrong parse trees, missing highlights, grammar conflicts, editors/tree-sitter-musa/, the drift law against crates/musa-syntax.
 ---
 
 # Tree-Sitter Grammar Authoring
@@ -23,8 +23,8 @@ incomplete/invalid input.
 
 ## Critical Rule: Read the Source-of-Truth Parser First
 
-**Before writing any tree-sitter rule, read the authoritative parser (`crates/musa-language/src/parser.rs`) and lexer
-(`crates/musa-language/src/lexer.rs`) to understand:**
+**Before writing any tree-sitter rule, read the authoritative parser (`crates/musa-syntax/src/parser.rs`) and lexer
+(`crates/musa-syntax/src/lexer.rs`) to understand:**
 
 - Exact token dispatch (what leading token triggers which production — musa's hand parser dispatches one statement per
   first token, e.g. `Parser::voice_items`)
@@ -35,7 +35,7 @@ incomplete/invalid input.
 **Every grammar rule should trace back to a specific function or production in the authoritative parser, and every token
 to a regex or literal in the lexer.** Node names mirror `syntax_kind.rs`, snake_cased, so queries read in the language's
 own vocabulary. Where the trees disagree, the hand parser is right and the grammar changes — the drift law
-(`crates/musa-language/tests/tree_sitter_fixtures.rs` + `editors/tree-sitter-musa/test/compare-tokens.js`) is what
+(`crates/musa-syntax/tests/tree_sitter_fixtures.rs` + `editors/tree-sitter-musa/test/compare-tokens.js`) is what
 notices.
 
 ## When to Use
@@ -45,9 +45,9 @@ notices.
 - Adding test cases (`test/corpus/*.txt`)
 - Resolving grammar conflicts or precedence issues
 - Improving parse tree structure (reducing nesting, adding field names)
-- Keeping the grammar in lockstep with `crates/musa-language` under the drift law
+- Keeping the grammar in lockstep with `crates/musa-syntax` under the drift law
 
-**When NOT to use:** For the hand-written lexer/parser itself (that's `musa-language` work), PEG grammars, or
+**When NOT to use:** For the hand-written lexer/parser itself (that's `musa-syntax` work), PEG grammars, or
 non-tree-sitter parser generators.
 
 ## Quick Reference
@@ -189,7 +189,7 @@ Precedence Taxonomy. If you do add one, follow **external-scanner-reference.md**
 1. **Anonymous nodes omit text in test output.** Write `operator:` not `operator: "+"`. Use `tree-sitter test -u` to
    auto-generate correct expectations, then verify field names are present.
 
-1. **The drift law is the binding check.** `crates/musa-language/tests/tree_sitter_fixtures.rs` commits the *real*
+1. **The drift law is the binding check.** `crates/musa-syntax/tests/tree_sitter_fixtures.rs` commits the *real*
    lexer's token stream for every compilable fixture and the *real* parser's verdict on every broken one;
    `test/compare-tokens.js` parses each fixture through the CLI's `--cst` and compares token for token. A grammar that
    disagrees with the lexer about a single token fails in CI. Run `npm test` before committing grammar changes.
@@ -220,7 +220,7 @@ The hand parser looks ahead one token *kind*; the tree-sitter grammar resolves t
 `conflicts` plus `prec.dynamic` — see the comment block at the top of `grammar.js`.
 
 When a new statement form creates a similar boundary ambiguity, follow the preference order in Conflict Resolution — and
-never change the language syntax to accommodate tree-sitter. The grammar must accept exactly what `crates/musa-language`
+never change the language syntax to accommodate tree-sitter. The grammar must accept exactly what `crates/musa-syntax`
 accepts.
 
 ## Conflict Resolution Strategy
@@ -261,7 +261,7 @@ which branch `prec.dynamic` prefers. `grammar.js` does this in its header commen
 ## Musa-Specific Guidance
 
 The musa tree-sitter grammar lives at `editors/tree-sitter-musa/`. The authoritative parser is
-`crates/musa-language/src/parser.rs` (with `lexer.rs` and `syntax_kind.rs`). Key musa facts requiring careful grammar
+`crates/musa-syntax/src/parser.rs` (with `lexer.rs` and `syntax_kind.rs`). Key musa facts requiring careful grammar
 design:
 
 - **One statement per first token.** The hand parser dispatches on the leading token; the grammar mirrors this with the
@@ -284,7 +284,7 @@ design:
   `name_expression` borrows — must never sit in a flat `[ ... ] @keyword` list: the list fires on token text and paints
   `std::harmony` as a keyword. Scope the keyword positions (`(harmony_declaration "harmony" @keyword)`) and capture the
   name positions positively (`(import_statement "harmony" @module)`). The authoritative contextual classification is
-  `musa_language::classify` (highlight.rs); the VS Code TextMate grammar gets the same words from the generated
+  `musa_syntax::classify` (highlight.rs); the VS Code TextMate grammar gets the same words from the generated
   `module-names.json` fixture. Never `alias` a keyword token to `identifier` to fix this — the drift law compares leaf
   names with the real lexer and will fail.
 - **After grammar changes:** `npm test` (generate + corpus + drift law), commit all three generated files, then update

@@ -103,14 +103,14 @@ pub fn sharing_source(shape: Sharing, calls: usize, body: usize) -> String {
 /// A parsed document, held so a benchmark can exclude parsing from its
 /// measurement.
 pub struct Parsed {
-    document: musa_language::ParsedDocument,
+    document: musa_syntax::ParsedDocument,
     name: String,
 }
 
 /// Parse only — the stage P2 excludes.
 pub fn parse(source: &SourceDocument) -> Parsed {
     Parsed {
-        document: musa_language::parse(source.text()),
+        document: musa_syntax::parse(source.text()),
         name: source.name().to_string(),
     }
 }

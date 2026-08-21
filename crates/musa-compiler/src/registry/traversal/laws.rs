@@ -24,9 +24,9 @@
 use musa_calculus::{Cx, Raw, RawArm, RawPattern, Term};
 
 use crate::core::expand_region;
+use crate::quote::{Cat, Delimiter, ExpansionPath, Syntax, read_region};
 use crate::registry::rules::Kind;
 use crate::registry::{HERE, held, literal, owned, plain_type, syntax_type};
-use crate::syntax::{Cat, Delimiter, ExpansionPath, Syntax, read_region};
 
 /// The region both sides read.
 ///
@@ -41,7 +41,7 @@ fn expansion() -> ExpansionPath {
 
 /// The tree, read once, exactly as the compiler reads it for an adapter.
 fn subject() -> Syntax {
-    read_region(&musa_language::parse(REGION).syntax(), expansion())
+    read_region(&musa_syntax::parse(REGION).syntax(), expansion())
 }
 
 /// What the old evaluator answers for `transformer` on the region.
@@ -286,7 +286,7 @@ fn a_branch_the_node_does_not_select_is_never_evaluated() {
                 built(0),
                 Raw::lit(
                     HERE,
-                    literal(plain_type("TokenKind"), Kind(musa_language::SyntaxKind::Error)),
+                    literal(plain_type("TokenKind"), Kind(musa_syntax::SyntaxKind::Error)),
                 ),
                 text(""),
             ],
@@ -315,12 +315,12 @@ fn a_branch_the_node_does_not_select_is_never_evaluated() {
     let mut kinds = Vec::new();
     collect_kinds(&answer, &mut kinds);
     assert!(
-        !kinds.contains(&musa_language::SyntaxKind::Error),
+        !kinds.contains(&musa_syntax::SyntaxKind::Error),
         "the missing branch was evaluated on a region with no missing node"
     );
 }
 
-fn collect_kinds(node: &Syntax, into: &mut Vec<musa_language::SyntaxKind>) {
+fn collect_kinds(node: &Syntax, into: &mut Vec<musa_syntax::SyntaxKind>) {
     match *node {
         Syntax::Missing(_) | Syntax::Identifier { .. } => {}
         Syntax::Token { kind, .. } => into.push(kind),

@@ -8,7 +8,7 @@
 //! MEI, `LilyPond`, and `MusicXML`.
 //!
 //! The repository already contains the decision this module applies. Studio
-//! processor names are deliberately not keywords (`musa-language`'s
+//! processor names are deliberately not keywords (`musa-syntax`'s
 //! `syntax_kind`), "so the studio vocabulary can grow without lexer changes".
 //! Notation gets the same treatment: a mark is a row, and the backends read
 //! the row rather than each carrying their own five-way `match` that could

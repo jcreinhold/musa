@@ -1,8 +1,8 @@
 //! One concern of the enclosing module; see its module docs.
 
 use musa_calculus::Raw;
-use musa_language::SyntaxKind;
-use musa_language::ast::AstNode as _;
+use musa_syntax::SyntaxKind;
+use musa_syntax::ast::AstNode as _;
 
 use crate::resolve::Resolver;
 use musa_score::diagnose::{Code, Diagnostic};
@@ -194,7 +194,7 @@ impl PhaseImports<'static> {
 /// the composer's file is exactly what the source map exists to prevent. The
 /// caller decides which of its own spans to restate them at.
 pub(crate) fn read_adapter_module(source: &str, imports: PhaseImports<'_>) -> Result<AdapterModule, ModuleFault> {
-    let parsed = musa_language::parse(source);
+    let parsed = musa_syntax::parse(source);
     if let Some(error) = parsed.errors().first() {
         return Err(ModuleFault::Broken(vec![Diagnostic::error(
             Code::Expansion,
@@ -202,7 +202,7 @@ pub(crate) fn read_adapter_module(source: &str, imports: PhaseImports<'_>) -> Re
         )]));
     }
     let root = parsed.syntax();
-    let Some(library) = musa_language::ast::LibraryDecl::from_root(&root) else {
+    let Some(library) = musa_syntax::ast::LibraryDecl::from_root(&root) else {
         return Err(ModuleFault::Broken(vec![
             Diagnostic::error(Code::Expansion, "an adapter module is a `library`").help(
                 "write the module as `library { let level = …; let expand = …; }`, the way `stdlib/src/adapters/` does",
@@ -219,9 +219,9 @@ pub(crate) fn read_adapter_module(source: &str, imports: PhaseImports<'_>) -> Re
     // Root and library both, for the reason [`ordinary_imports`] reads both: an
     // import stands at a document's lexical root or inside its `library`, and
     // which one an author chose is not something the phase should depend on.
-    let written: Vec<musa_language::ast::ImportStmt> = root
+    let written: Vec<musa_syntax::ast::ImportStmt> = root
         .descendants()
-        .filter_map(musa_language::ast::ImportStmt::cast)
+        .filter_map(musa_syntax::ast::ImportStmt::cast)
         .collect();
     if let Some(reader) = written.iter().find(|import| import.changes_syntax()) {
         return Err(ModuleFault::Broken(vec![

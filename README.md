@@ -87,7 +87,7 @@ language → compiler → { render, audio } → engine → project → { cli, ls
 
 | Crate | What it owns |
 | --- | --- |
-| `musa-language` | tokens, parser, a lossless syntax tree, formatting, text edits |
+| `musa-syntax` | tokens, parser, a lossless syntax tree, formatting, text edits |
 | `musa-kernel` | the temporal kernel: exact rational time, typed occurrences, timeline/sequence/overlay |
 | `musa-compiler` | name resolution, units, elaboration through the kernel, score and performance snapshots |
 | `musa-notation` | engraving plan, MEI, LilyPond, MusicXML, MIDI |

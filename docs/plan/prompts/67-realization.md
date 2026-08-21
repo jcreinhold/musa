@@ -125,7 +125,7 @@ that is a test: run the whole `examples/` corpus under three seeds and diff.
 
 - `crates/musa-compiler/src/realize.rs` (new): `Realization`, `Decision`, `draw`; `CompileOptions::realization`.
 - `crates/musa-compiler/src/origin.rs`: `ChoicePath`, `ChoiceStep`, `canonical`.
-- `crates/musa-language`: `repeat n to m { … }` — the range in the existing `repeat` statement.
+- `crates/musa-syntax`: `repeat n to m { … }` — the range in the existing `repeat` statement.
 - `crates/musa-compiler/src/elaborate.rs`: the path is threaded through elaboration; the ranged repeat draws its count
   and records the decision.
 - `crates/musa-kernel/src/text.rs`: the realization header line, written and read.

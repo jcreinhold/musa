@@ -1,8 +1,8 @@
 //! Statement lowering: `music`, `motif`, `fragment`, `note`, and the fold that turns written statements into claims.
 
 use musa_calculus::{Origin, Raw};
-use musa_language::ast::AstNode as _;
-use musa_language::{SyntaxKind, SyntaxNode};
+use musa_syntax::ast::AstNode as _;
+use musa_syntax::{SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 
 use crate::lower::{Lowering, applied, child, is_type_node, listed, whole, writes};
@@ -59,7 +59,7 @@ impl Lowering<'_> {
     /// A `fn`'s parameter is a [`SyntaxKind::Param`] node and a motif's is not:
     /// the motif grammar writes the name as a bare token beside a `TypeName`,
     /// which is why [`crate::lower::items::written_parameters`] finds none here.
-    /// [`musa_language::ast::MotifDecl::params`] is the grammar's own reading of
+    /// [`musa_syntax::ast::MotifDecl::params`] is the grammar's own reading of
     /// that shape, so it is used rather than re-derived — and because it yields
     /// names without nodes, each binder is numbered at the declaration. That is
     /// the honest answer: there is no node to point at, and inventing a
@@ -182,7 +182,7 @@ impl Lowering<'_> {
             // *before* the statement that wrote it is folded and stays in force
             // for everything after — which is the whole of what makes the
             // restoring half of `senza` the meter a composer expects.
-            if let Some(written) = musa_language::ast::MeterStmt::cast(statement.clone())
+            if let Some(written) = musa_syntax::ast::MeterStmt::cast(statement.clone())
                 && let Some(meter) = crate::resolve::parse_meter(&written)
             {
                 reading = reading.metered(meter);
@@ -191,7 +191,7 @@ impl Lowering<'_> {
             // force from where it is written, and what it puts in force for a
             // `step` is the collection it suggests. Two statements read
             // lexically, and both write only forward.
-            if let Some(written) = musa_language::ast::KeyStmt::cast(statement.clone())
+            if let Some(written) = musa_syntax::ast::KeyStmt::cast(statement.clone())
                 && let Some(key) = crate::resolve::parse_key(&written)
             {
                 reading = reading.keyed(key);
@@ -289,7 +289,7 @@ impl Lowering<'_> {
             // the fold of its body, which is the whole of §3's "the function and
             // block spellings invoke the same semantic action".
             SyntaxKind::TransposeStmt => {
-                let text = musa_language::ast::TransposeStmt::cast(node.clone())
+                let text = musa_syntax::ast::TransposeStmt::cast(node.clone())
                     .and_then(|stmt| stmt.interval())
                     .unwrap_or_default();
                 let Some(interval) = musa_score::Interval::parse(&text, writes(node, SyntaxKind::DownKw)) else {
@@ -308,7 +308,7 @@ impl Lowering<'_> {
                 })
             }
             SyntaxKind::StretchStmt => {
-                let text = musa_language::ast::StretchStmt::cast(node.clone())
+                let text = musa_syntax::ast::StretchStmt::cast(node.clone())
                     .and_then(|stmt| stmt.factor())
                     .unwrap_or_default();
                 let factor = crate::resolve::parse_ratio(&text)
@@ -332,7 +332,7 @@ impl Lowering<'_> {
                 Raw::app(origin, Raw::hosted(origin, "retrograde"), body)
             }),
             SyntaxKind::InvertStmt => {
-                let text = musa_language::ast::InvertStmt::cast(node.clone())
+                let text = musa_syntax::ast::InvertStmt::cast(node.clone())
                     .and_then(|stmt| stmt.axis())
                     .unwrap_or_default();
                 let Some(axis) = musa_score::WrittenPitch::parse(&text) else {
@@ -356,7 +356,7 @@ impl Lowering<'_> {
             // `eb4` is the same written pitch whether the source wrote it or a
             // step arrived at it, and Origin view is where a reader asks which.
             SyntaxKind::InScaleStmt => {
-                let Some(written) = musa_language::ast::InScaleStmt::cast(node.clone()).and_then(|s| s.scale_expr())
+                let Some(written) = musa_syntax::ast::InScaleStmt::cast(node.clone()).and_then(|s| s.scale_expr())
                 else {
                     return self.refuse(
                         Diagnostic::error(Code::NotAValue, "`in scale` needs a scale")
@@ -371,14 +371,14 @@ impl Lowering<'_> {
             // The region annotations: a fact over the span its body covers.
             SyntaxKind::SlurStmt => self.region(node, origin, reading, Raw::hosted(origin, "Fact.Slur")),
             SyntaxKind::PhraseStmt => {
-                let name = musa_language::ast::PhraseStmt::cast(node.clone())
+                let name = musa_syntax::ast::PhraseStmt::cast(node.clone())
                     .and_then(|stmt| stmt.name())
                     .unwrap_or_default();
                 let fact = Raw::app(origin, Raw::hosted(origin, "Fact.Phrase"), plain(origin, "Text", name));
                 self.region(node, origin, reading, fact)
             }
             SyntaxKind::TupletStmt => {
-                let text = musa_language::ast::TupletStmt::cast(node.clone())
+                let text = musa_syntax::ast::TupletStmt::cast(node.clone())
                     .and_then(|stmt| stmt.ratio())
                     .unwrap_or_default();
                 let Some((num, den)) = tuplet_ratio(&text) else {
@@ -403,7 +403,7 @@ impl Lowering<'_> {
                 self.region(node, origin, reading.inside(tuplet_factor(node)), fact)
             }
             SyntaxKind::HairpinStmt => {
-                let statement = musa_language::ast::HairpinStmt::cast(node.clone())?;
+                let statement = musa_syntax::ast::HairpinStmt::cast(node.clone())?;
                 let text = statement.target().unwrap_or_default();
                 let Some(target) = musa_score::score::DynamicMark::parse(&text) else {
                     return self.refuse(Self::not_a_dynamic(&text, span));
@@ -431,7 +431,7 @@ impl Lowering<'_> {
 
             // The point annotations: a fact at the instant it is written.
             SyntaxKind::DynamicStmt => {
-                let text = musa_language::ast::DynamicStmt::cast(node.clone())
+                let text = musa_syntax::ast::DynamicStmt::cast(node.clone())
                     .and_then(|stmt| stmt.mark())
                     .unwrap_or_default();
                 let Some(mark) = musa_score::score::DynamicMark::parse(&text) else {
@@ -445,14 +445,14 @@ impl Lowering<'_> {
                 Some(self.sounded(origin, reading, fact, Ratio::ZERO))
             }
             SyntaxKind::SectionStmt => {
-                let name = musa_language::ast::SectionStmt::cast(node.clone())
+                let name = musa_syntax::ast::SectionStmt::cast(node.clone())
                     .and_then(|stmt| stmt.name())
                     .unwrap_or_default();
                 let fact = Raw::app(origin, Raw::hosted(origin, "Fact.Section"), plain(origin, "Text", name));
                 Some(self.sounded(origin, reading, fact, Ratio::ZERO))
             }
             SyntaxKind::HarmonyStmt => {
-                let text = musa_language::ast::HarmonyStmt::cast(node.clone())
+                let text = musa_syntax::ast::HarmonyStmt::cast(node.clone())
                     .and_then(|stmt| stmt.symbol())
                     .map(|symbol| symbol.text())
                     .unwrap_or_default();
@@ -493,7 +493,7 @@ impl Lowering<'_> {
     /// for the reason 141j's Design gives: `play` is what turns written pitches
     /// into `Note` facts, and a note is a chord of one.
     pub(crate) fn note(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
-        let statement = musa_language::ast::NoteStmt::cast(node.clone())?;
+        let statement = musa_syntax::ast::NoteStmt::cast(node.clone())?;
         let span = crate::resolve::trimmed_span(node);
         let pitch = self.pitch_term(&statement, node, origin, reading)?;
         let (field, held, free) = self.notated_duration(node, span, reading)?;
@@ -524,7 +524,7 @@ impl Lowering<'_> {
     /// `[c4 c#4]` names no chord class and is still a sounding. `stack` is the
     /// statement that names one.
     pub(crate) fn chord_statement(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
-        let statement = musa_language::ast::ChordStmt::cast(node.clone())?;
+        let statement = musa_syntax::ast::ChordStmt::cast(node.clone())?;
         let span = crate::resolve::trimmed_span(node);
         let (field, held, free) = self.notated_duration(node, span, reading)?;
         let articulations = self.articulations(origin, &statement.articulations(), span);
@@ -569,7 +569,7 @@ impl Lowering<'_> {
     /// the one that names a chord class: `[c4 e4 g4]` is three pitches and
     /// `stack c4 major/2` is a C major triad voiced upward from `c4`.
     pub(crate) fn stack(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
-        let statement = musa_language::ast::StackStmt::cast(node.clone())?;
+        let statement = musa_syntax::ast::StackStmt::cast(node.clone())?;
         let span = crate::resolve::trimmed_span(node);
         let text = statement.root().unwrap_or_default();
         let Some(bass) = musa_score::WrittenPitch::parse(&text) else {
@@ -629,7 +629,7 @@ impl Lowering<'_> {
     pub(crate) fn grace(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
         let span = crate::resolve::trimmed_span(node);
         let mut built = Raw::lit(origin, crate::registry::empty_track());
-        for (index, note) in musa_language::ast::GraceStmt::cast(node.clone())?
+        for (index, note) in musa_syntax::ast::GraceStmt::cast(node.clone())?
             .notes()
             .into_iter()
             .enumerate()

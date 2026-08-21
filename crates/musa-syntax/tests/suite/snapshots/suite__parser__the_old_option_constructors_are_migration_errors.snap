@@ -1,0 +1,16 @@
+---
+source: crates/musa-syntax/tests/parser.rs
+expression: print_errors(&doc)
+---
+40..44: a constructor is spelled with a capital
+  label: this is `Some`
+  help: `Some` and `None` are the two constructors of `Option`, and they are spelled the way it is
+  fix: write `Some` -> "Some"
+83..87: a constructor is spelled with a capital
+  label: this is `None`
+  help: `Some` and `None` are the two constructors of `Option`, and they are spelled the way it is
+  fix: write `None` -> "None"
+95..99: a constructor is spelled with a capital
+  label: this is `Some`
+  help: `Some` and `None` are the two constructors of `Option`, and they are spelled the way it is
+  fix: write `Some` -> "Some"

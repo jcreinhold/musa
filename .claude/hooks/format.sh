@@ -10,7 +10,7 @@
 #
 # Each formatter is best-effort and skipped if its tool is absent, so the
 # hook is safe on machines without taplo/mdwright installed. .musa files
-# are intentionally skipped: formatting them belongs to musa-language's own
+# are intentionally skipped: formatting them belongs to musa-syntax's own
 # formatter, not this hook.
 set -euo pipefail
 

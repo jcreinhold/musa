@@ -18,8 +18,8 @@
 use std::collections::BTreeMap;
 
 use lsp_types::{CompletionItem, CompletionItemKind, CompletionItemTag, CompletionResponse, Position};
-use musa_language::{BASE_TYPES, SPELLINGS, SyntaxKind, TokenClass};
 use musa_project::NameKind;
+use musa_syntax::{BASE_TYPES, SPELLINGS, SyntaxKind, TokenClass};
 
 use crate::workspace::Document;
 
@@ -151,7 +151,7 @@ pub(crate) fn completions(document: &Document, position: Position) -> Completion
 fn at_site(document: &Document, position: Position, items: &mut BTreeMap<String, CompletionItem>) {
     let byte = document.lines().byte(position);
     let snapshot = document.snapshot();
-    let parsed = musa_language::parse(snapshot.source());
+    let parsed = musa_syntax::parse(snapshot.source());
     if in_kernel_hole(&parsed.syntax(), byte) {
         // A hole splices music and nothing else, so the names that fit are
         // exactly the ones whose declared result is `EventTrack<WrittenTime>`.
@@ -207,7 +207,7 @@ fn at_site(document: &Document, position: Position, items: &mut BTreeMap<String,
 }
 
 /// Whether the caret sits inside a `${ … }` kernel hole.
-fn in_kernel_hole(tree: &musa_language::SyntaxNode, byte: u32) -> bool {
+fn in_kernel_hole(tree: &musa_syntax::SyntaxNode, byte: u32) -> bool {
     tree.descendants().any(|node| {
         node.kind() == SyntaxKind::KernelHole && {
             let range = node.text_range();
@@ -243,7 +243,7 @@ fn keyword_item(
         kind: Some(item_kind),
         ..CompletionItem::default()
     };
-    let Some(doc) = musa_language::keyword_doc(kind) else {
+    let Some(doc) = musa_syntax::keyword_doc(kind) else {
         return CompletionItem {
             detail: Some(class.to_owned()),
             ..base

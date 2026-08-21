@@ -45,7 +45,7 @@ pub(crate) enum ExpansionFailure {
     /// language effect.
     NoAnswer,
     /// It answered with something that is not a well-formed expression.
-    NotAnExpression(crate::syntax::NotAnExpression),
+    NotAnExpression(crate::quote::NotAnExpression),
 }
 
 /// Run one transformer expression over one region, in the phase environment.
@@ -63,9 +63,9 @@ pub(crate) enum ExpansionFailure {
 pub(crate) fn expand_region(
     transformer: &str,
     region: &str,
-    expansion: crate::syntax::ExpansionPath,
-) -> Result<crate::syntax::Syntax, ExpansionFailure> {
-    let subject = crate::syntax::read_region(&musa_language::parse(region).syntax(), expansion);
+    expansion: crate::quote::ExpansionPath,
+) -> Result<crate::quote::Syntax, ExpansionFailure> {
+    let subject = crate::quote::read_region(&musa_syntax::parse(region).syntax(), expansion);
     expand_syntax(
         &format!("library {{\n    let level = \"readable\";\n\n    let expand = {transformer};\n}}\n"),
         PhaseImports::bundled(),
@@ -93,10 +93,10 @@ pub(crate) fn refusal_of(held: &musa_calculus::Datum) -> Option<ExpansionFailure
     let [musa_calculus::Datum::Lit(ref node), ref message] = fields[..] else {
         return None;
     };
-    let node = crate::registry::held::<crate::syntax::Syntax>(node)?;
+    let node = crate::registry::held::<crate::quote::Syntax>(node)?;
     let at = match node.info() {
-        crate::syntax::SourceInfo::Original { span, .. } => Some(*span),
-        crate::syntax::SourceInfo::Generated(_) => None,
+        crate::quote::SourceInfo::Original { span, .. } => Some(*span),
+        crate::quote::SourceInfo::Generated(_) => None,
     };
     Some(ExpansionFailure::Refused {
         message: said(message)?,

@@ -40,7 +40,7 @@ patterns, and make the operator and index forms desugar to it the way §1.5 says
 - `crates/musa-compiler/src/lower/values.rs` — `value`'s `PathExpr` arm, `application`'s dotted-head split, `operator`,
   `indexing`, `pattern`, and `phase_literal`. Five readings, one of which is right and four of which this prompt
   changes; see Design for which is which.
-- `crates/musa-language/src/ast.rs`'s `PathExpr::segments`, which already hands the reading exactly what it needs.
+- `crates/musa-syntax/src/ast.rs`'s `PathExpr::segments`, which already hands the reading exactly what it needs.
   Re-deriving the segments from `node.to_string()` would be the shape of mistake root `AGENTS.md` names: "an adapter
   re-parsing `3/8` out of a token's spelling".
 - `crates/musa-calculus/src/class.rs`'s `Classes::method`, `crate::dictionary::method_at`, and `elab::constant`. The
@@ -155,7 +155,7 @@ Commit as `Read the qualified path`.
   until 142 migrates them; this prompt makes `TokenKind::Comma` read to the same literal, and migrating is not reading.
 - No trait declared. `Eq`, `Ord`, `Add`, `Sub`, `Mul`, `Div`, and `Index` are prompt 143's, and a trait declared here to
   make a law green would be 143's survey answered in advance by the prompt with no argument for it.
-- No grammar change. `musa-language` already parses both path positions; a path form it does not admit is not this
+- No grammar change. `musa-syntax` already parses both path positions; a path form it does not admit is not this
   prompt's to add.
 - No type-position path. The type grammar has no `::` production, and inventing one is a language change rather than a
   reading.

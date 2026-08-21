@@ -14,7 +14,7 @@
 //! arbitrary expression evaluates to and guessing is the failure this module
 //! exists to prevent.
 
-use musa_language::{SyntaxKind, SyntaxNode};
+use musa_syntax::{SyntaxKind, SyntaxNode};
 
 /// A call site the caret sits in the arguments of.
 pub(crate) struct CallSite {

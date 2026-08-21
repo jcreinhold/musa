@@ -97,7 +97,7 @@ MIDI export **does** apply it, because a MIDI file is a performance. That asymme
 
 ## Target
 
-- `crates/musa-language`: `groove` as a profile rule; the parameter forms.
+- `crates/musa-syntax`: `groove` as a profile rule; the parameter forms.
 - `crates/musa-compiler/src/profile.rs`: `Groove`, the four-entry vocabulary, parameter validation with prompt 56's
   suggestions.
 - `crates/musa-compiler/src/performance.rs`: the warp, applied to written times before `IntegratedTempoMap`; the

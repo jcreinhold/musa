@@ -94,4 +94,4 @@ Commit as `Let a core term say where it came from`.
 - No connection to `crates/musa-compiler/src/derivation.rs`, no `Derived { origin, quotation, path }`. Prompt 138.
 - No span, no file identity, no source text in `musa-calculus`.
 - No origin in conversion, and no "compare origins too" option. A knob here is a second semantics.
-- No change to `musa-compiler`, `musa-language`, or any shell.
+- No change to `musa-compiler`, `musa-syntax`, or any shell.

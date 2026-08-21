@@ -105,8 +105,8 @@ and `07-backend-contract.md`.
 
 ## Target
 
-- `crates/musa-language`: `grace { … }` before a note statement; pitches without durations inside it; recovery,
-  formatting (a grace group stays inline).
+- `crates/musa-syntax`: `grace { … }` before a note statement; pitches without durations inside it; recovery, formatting
+  (a grace group stays inline).
 - `crates/musa-compiler`: `FactKind::Grace`; the `index`; the N2 ordering test that fails without it; the `grace`
   profile settings — which are the second and third settings prompt 62 deferred generalizing for, so the per-mark
   settings table is designed **here**, with three examples rather than one.

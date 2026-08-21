@@ -15,7 +15,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 
 use musa_compiler::{ImportSources, resolve_import};
-use musa_language::ast::{ImportStmt, LibraryDecl, PieceDecl};
+use musa_syntax::ast::{ImportStmt, LibraryDecl, PieceDecl};
 
 /// Everything `source` imports, transitively.
 ///
@@ -47,7 +47,7 @@ pub(crate) fn closure(name: &str, source: &str) -> (ImportSources, Vec<PathBuf>)
 
 /// The paths one file's `import` statements name, as written.
 fn written_imports(text: &str) -> Vec<String> {
-    let document = musa_language::parse(text);
+    let document = musa_syntax::parse(text);
     let root = document.syntax();
     // The file's lexical root imports too, and a document whose piece is
     // made by a template has its `import` statements only there.

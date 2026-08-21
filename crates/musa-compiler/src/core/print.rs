@@ -1,7 +1,7 @@
 //! One concern of the enclosing module; see its module docs.
 
 use indexmap::IndexSet;
-use musa_language::ast::AstNode as _;
+use musa_syntax::ast::AstNode as _;
 
 use crate::resolve::Resolver;
 use musa_score::diagnose::{Code, Diagnostic};
@@ -140,7 +140,7 @@ fn run_printer(
     source.push_str(value);
     source.push_str(");\n}\n");
 
-    let parsed = musa_language::parse(&source);
+    let parsed = musa_syntax::parse(&source);
     if let Some(error) = parsed.errors().first() {
         return Err(PrintFailure::NotAPrinter(vec![Diagnostic::error(
             Code::Expansion,
@@ -148,13 +148,13 @@ fn run_printer(
         )]));
     }
     let root = parsed.syntax();
-    let Some(piece) = musa_language::ast::PieceDecl::from_root(&root) else {
+    let Some(piece) = musa_syntax::ast::PieceDecl::from_root(&root) else {
         return Err(PrintFailure::NotAPrinter(vec![not_the_operation("print")]));
     };
     let mut resolver = Resolver::new();
     // The statements come back in the order they were written above, so the
     // split is where `mine` said it was.
-    let statements = musa_language::ast::ImportStmt::all_at_root(piece.syntax());
+    let statements = musa_syntax::ast::ImportStmt::all_at_root(piece.syntax());
     let (here, there) = statements.split_at(mine.min(statements.len()));
     let composers = crate::imports::load(&mut resolver, at.name(), here, imports.sources);
     let adapters = crate::imports::load(&mut resolver, imports.document, there, imports.sources);
@@ -224,10 +224,10 @@ fn answered(printed: &musa_calculus::Term) -> Option<Result<String, PrintFailure
 /// Verbatim because an import means what it says: re-spelling `import std::x as
 /// y;` from its parts would be this function deciding what the composer wrote.
 fn ordinary_imports(text: &str) -> Vec<String> {
-    let parsed = musa_language::parse(text);
+    let parsed = musa_syntax::parse(text);
     let root = parsed.syntax();
     root.descendants()
-        .filter_map(musa_language::ast::ImportStmt::cast)
+        .filter_map(musa_syntax::ast::ImportStmt::cast)
         .collect::<Vec<_>>()
         .iter()
         .filter(|import| !import.changes_syntax())

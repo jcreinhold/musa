@@ -92,7 +92,7 @@ Each backend's constant case must produce byte-identical output to before, which
 
 ## Target
 
-- `crates/musa-language`: `meter` as a voice item — one `SyntaxKind`, one AST wrapper, one `VoiceItem` variant, the
+- `crates/musa-syntax`: `meter` as a voice item — one `SyntaxKind`, one AST wrapper, one `VoiceItem` variant, the
   recovery set, and the formatter's blank-line rule (a meter change is a paragraph break, like a section).
 - `crates/musa-compiler`: the meter-resolution pass; `BarLines::from_changes`; the barline and motif-body diagnostics;
   `bar 5/4 { … }` and the pickup, which are now expressible and must be accepted.

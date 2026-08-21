@@ -13,7 +13,7 @@ phase: 3
 Give the language one visibility marker. `private` before a top-level declaration makes that declaration nameable only
 inside its own module; `private` before an enum's cases keeps the type public and makes its constructors module-local,
 so a package can maintain an invariant its clients cannot break. Grammar, CST, formatter, highlighting, and tree-sitter
-in `musa-language`; the resolution rule and its diagnostics in `musa-calculus`. Record the rule in
+in `musa-syntax`; the resolution rule and its diagnostics in `musa-calculus`. Record the rule in
 `docs/rules/language/01-surface.md` §1.3 and `docs/rules/language/04-templates-and-modules.md` §4.
 
 ## Read
@@ -129,13 +129,13 @@ name it. Parsing round-trips losslessly and formatting is idempotent with the ma
 
 ## Target
 
-- `musa-language`: the `private` keyword, its grammar and CST positions, formatter layout, highlighting, and completion.
+- `musa-syntax`: the `private` keyword, its grammar and CST positions, formatter layout, highlighting, and completion.
 - `editors/tree-sitter-musa`: grammar and queries, with the drift test green.
 - `musa-calculus`: an opaque module identity on `Cx` and on a declared group, the visibility a `RawData` and its cases
   carry, the resolution filter, the mixed-enum refusal, the outside-`match` refusal, and their diagnostics with `musa
   explain` codes. A context with no module named is inside every module, which is what keeps every existing test and
   every existing caller unchanged.
-- `crates/musa-language/tests/suite/` and `crates/musa-calculus/tests/suite/` cases, including the `Chord` program from
+- `crates/musa-syntax/tests/suite/` and `crates/musa-calculus/tests/suite/` cases, including the `Chord` program from
   note 43 §5.1 written out as a fixture: the package builds a `NamedChord` through `build`, and the client that tries to
   build one directly is refused.
 - `docs/rules/language/01-surface.md` §1.3 and §1 grammar, and `docs/rules/language/04-templates-and-modules.md` §4 —
@@ -147,9 +147,9 @@ name it. Parsing round-trips losslessly and formatting is idempotent with the ma
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-language -p musa-calculus
+cargo nextest run -p musa-syntax -p musa-calculus
 cargo nextest run --workspace
-cargo clippy --all-targets -p musa-language -p musa-calculus -- -D warnings
+cargo clippy --all-targets -p musa-syntax -p musa-calculus -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cd editors/tree-sitter-musa && tree-sitter test

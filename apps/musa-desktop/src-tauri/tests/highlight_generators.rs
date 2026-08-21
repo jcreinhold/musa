@@ -18,7 +18,7 @@
 
 use std::path::{Path, PathBuf};
 
-use musa_language::{MODULE_NAME_KEYWORDS, SPELLINGS, SyntaxKind, TokenClass, keyword_doc, lex};
+use musa_syntax::{MODULE_NAME_KEYWORDS, SPELLINGS, SyntaxKind, TokenClass, keyword_doc, lex};
 
 type Result = std::result::Result<(), Box<dyn std::error::Error>>;
 

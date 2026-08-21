@@ -1,6 +1,6 @@
 //! The unit source offsets are measured in, on each side of the wire.
 //!
-//! Rust measures the source in **bytes**. `musa-language` is built on Rowan
+//! Rust measures the source in **bytes**. `musa-syntax` is built on Rowan
 //! and `text-size`, whose ranges are byte ranges; this crate passes that
 //! measure through, so a [`Span`](crate::Span) on a diagnostic, on a fact,
 //! and on a [`TextEdit`](crate::TextEdit) are all the same kind of thing, and

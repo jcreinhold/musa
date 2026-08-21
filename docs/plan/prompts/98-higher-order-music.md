@@ -53,13 +53,13 @@ field, placement, and realization; no field may be removed without a dependency-
   distinction is not audible from the source.
 - `crates/musa-compiler/tests/suite/higher_order_music_laws.rs`: reference examples, laws, provenance, negative type
   cases, and cache-key separation cases.
-- Keyword/LSP hover documentation for the new source-visible constructs, sourced from `musa-language`.
+- Keyword/LSP hover documentation for the new source-visible constructs, sourced from `musa-syntax`.
 
 ## Check
 
 ```sh
-cargo nextest run -p musa-compiler -p musa-language -p musa-lsp
-cargo clippy --all-targets -p musa-compiler -p musa-language -p musa-lsp -- -D warnings
+cargo nextest run -p musa-compiler -p musa-syntax -p musa-lsp
+cargo clippy --all-targets -p musa-compiler -p musa-syntax -p musa-lsp -- -D warnings
 cargo fmt --check
 cargo run -p musa -- check examples/canon-functions.musa
 cargo run -p musa -- check examples/harmonize-function.musa

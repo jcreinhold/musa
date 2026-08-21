@@ -1,8 +1,8 @@
 //! Repetition lowering: `repeat`, `passes`, `brackets`, and `ending` unroll written repetition.
 
 use musa_calculus::{Origin, Raw};
-use musa_language::ast::AstNode as _;
-use musa_language::{SyntaxKind, SyntaxNode};
+use musa_syntax::ast::AstNode as _;
+use musa_syntax::{SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 
 use crate::lower::{Lowering, applied, whole};
@@ -46,7 +46,7 @@ impl Lowering<'_> {
     /// ordinary exact repeat, which is the whole of
     /// `../../../rules/kernel/11-realization.md`'s design in one place.
     pub(crate) fn repeat(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
-        let statement = musa_language::ast::RepeatStmt::cast(node.clone())?;
+        let statement = musa_syntax::ast::RepeatStmt::cast(node.clone())?;
         let span = crate::resolve::trimmed_span(node);
         let (times, range) = self.passes(&statement, span)?;
         let brackets = self.brackets(&statement, times);
@@ -142,7 +142,7 @@ impl Lowering<'_> {
     /// [`crate::lower::Lowering::counts`].
     pub(crate) fn passes(
         &mut self,
-        statement: &musa_language::ast::RepeatStmt,
+        statement: &musa_syntax::ast::RepeatStmt,
         span: SourceSpan,
     ) -> Option<(u32, Option<(u32, u32)>)> {
         let text = statement.count().unwrap_or_default();
@@ -171,17 +171,17 @@ impl Lowering<'_> {
     /// dropping it would answer a shorter piece than the one written.
     pub(crate) fn brackets(
         &mut self,
-        statement: &musa_language::ast::RepeatStmt,
+        statement: &musa_syntax::ast::RepeatStmt,
         times: u32,
-    ) -> Vec<musa_language::ast::EndingStmt> {
-        let mut endings: Vec<musa_language::ast::EndingStmt> = Vec::new();
+    ) -> Vec<musa_syntax::ast::EndingStmt> {
+        let mut endings: Vec<musa_syntax::ast::EndingStmt> = Vec::new();
         // The last ending written so far, until something that is not an ending
         // follows it — which is the one thing about their placement that is
         // wrong: every pass plays the body and then its ending, so music after
         // an ending belongs to no pass.
-        let mut open: Option<musa_language::ast::EndingStmt> = None;
+        let mut open: Option<musa_syntax::ast::EndingStmt> = None;
         for child in statements(statement.syntax()) {
-            let Some(written) = musa_language::ast::EndingStmt::cast(child.clone()) else {
+            let Some(written) = musa_syntax::ast::EndingStmt::cast(child.clone()) else {
                 if let Some(before) = open.take() {
                     self.refuse::<()>(
                         Diagnostic::error(Code::Misplaced, "an ending is the last thing in a repeat")
@@ -246,7 +246,7 @@ impl Lowering<'_> {
     /// repeats and an ending with no pass to belong to had nowhere to go, and the
     /// fact this writes says which bracket it is and that it was played once.
     pub(crate) fn ending(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
-        let statement = musa_language::ast::EndingStmt::cast(node.clone())?;
+        let statement = musa_syntax::ast::EndingStmt::cast(node.clone())?;
         let span = crate::resolve::trimmed_span(node);
         let text = statement.number().unwrap_or_default();
         let Some(bracket) = count_of(&text) else {
@@ -275,7 +275,7 @@ impl Lowering<'_> {
     /// rather than a statement in this block, and reading it here would put the
     /// same name in scope once per voice that mentions it.
     pub(crate) fn bar(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
-        let statement = musa_language::ast::BarStmt::cast(node.clone())?;
+        let statement = musa_syntax::ast::BarStmt::cast(node.clone())?;
         let passage = self.notated(node, reading)?;
         self.claims.push(Claimed {
             predicate: musa_score::assert::predicate("fills_meter")?,

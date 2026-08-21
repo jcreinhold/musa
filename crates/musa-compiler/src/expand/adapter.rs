@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use musa_language::{SyntaxKind, SyntaxNode};
+use musa_syntax::{SyntaxKind, SyntaxNode};
 
 use crate::compile::{CompileOptions, SourceDocument};
 use musa_score::diagnose::{Code, Diagnostic};
@@ -14,7 +14,7 @@ use musa_score::origin::Replacement;
 
 /// Run step 4 of the fixed order over `source`.
 pub(crate) fn expand(source: &SourceDocument, options: &CompileOptions) -> Expansion {
-    let parsed = musa_language::parse(source.text());
+    let parsed = musa_syntax::parse(source.text());
     let root = parsed.syntax();
     let regions: Vec<SyntaxNode> = root
         .descendants()
@@ -191,7 +191,7 @@ pub fn adapter_edits(
     anchor: u64,
     argument: &str,
 ) -> Result<Vec<AdapterEdit>, AdapterEditError> {
-    let parsed = musa_language::parse(source.text());
+    let parsed = musa_syntax::parse(source.text());
     let root = parsed.syntax();
     let regions: Vec<SyntaxNode> = root
         .descendants()
@@ -242,9 +242,9 @@ pub fn adapter_edits(
     })?;
     // The same reading the expansion gets, at the same ordinal, so the anchors
     // a command names are the anchors the expansion minted.
-    let subject = crate::syntax::read_region(
+    let subject = crate::quote::read_region(
         &body,
-        crate::syntax::ExpansionPath::at(vec![u32::try_from(ordinal).unwrap_or(u32::MAX)]),
+        crate::quote::ExpansionPath::at(vec![u32::try_from(ordinal).unwrap_or(u32::MAX)]),
     );
     let anchors = subject.spans(site);
     let (answer, _work) = crate::core::edit_syntax(

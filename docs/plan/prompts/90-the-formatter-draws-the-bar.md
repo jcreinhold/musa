@@ -19,7 +19,7 @@ beam groups the beats a player hears, and a double space is what a beam looks li
 - `docs/plan/roadmap.md`: *"The formatter should operate on syntax, not on the expanded semantic model."* That is the
   constraint the whole design bends around — the formatter may not ask `musa-notation` for a `NotationPlan`, because
   that is upward in the dependency graph.
-- `crates/musa-language/src/formatter.rs` — all of it, especially `MEASURE`'s nineteen lines of rationale, `inline_bar`,
+- `crates/musa-syntax/src/formatter.rs` — all of it, especially `MEASURE`'s nineteen lines of rationale, `inline_bar`,
   `format_token`, and `spaced_before`.
 - Prompt 87's `beat_groups`, which is the shared answer this prompt spaces by and `beam_unit` beams by.
 
@@ -44,7 +44,7 @@ guess:
 
 Per bar, not per file: one unmeasurable bar does not silence its neighbours. What falls back, and why each is right:
 
-- a bar containing `use foo()` — the material's duration is a compiler fact and `musa-language` does not have it;
+- a bar containing `use foo()` — the material's duration is a compiler fact and `musa-syntax` does not have it;
 - a duration that is a parameter reference — same reason;
 - `improvise` — it frames unnotated music, and drawing its interior to scale would claim something false;
 - a `tuplet`, `grace`, `slur`, `repeat`, `ending`, hairpin, or any other nested block;
@@ -65,9 +65,9 @@ cannot drift from itself.
 
 ## Target
 
-- `crates/musa-language/src/formatter.rs`: the meter pre-walk, `bar_line`, the measurability whitelist, the wrap rule,
-  and `spaced_before` deleted.
-- `crates/musa-language/tests/suite/formatter.rs`: `examples_format_to_themselves` re-pinned; the proptest `item()`
+- `crates/musa-syntax/src/formatter.rs`: the meter pre-walk, `bar_line`, the measurability whitelist, the wrap rule, and
+  `spaced_before` deleted.
+- `crates/musa-syntax/tests/suite/formatter.rs`: `examples_format_to_themselves` re-pinned; the proptest `item()`
   generator producing `|`-bars.
 - `examples/*.musa` re-formatted by the formatter itself, which is the check that it agrees with prompt 89's hand
   conversion.

@@ -59,8 +59,8 @@ mod laws;
 
 use musa_calculus::{Origin, Raw};
 use musa_kernel::{Duration, Term, WrittenTime};
-use musa_language::ast::AstNode as _;
-use musa_language::{SyntaxElement, SyntaxKind, SyntaxNode};
+use musa_syntax::ast::AstNode as _;
+use musa_syntax::{SyntaxElement, SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 
 use super::{Lowering, applied, expansion, listed};
@@ -83,7 +83,7 @@ impl Lowering<'_> {
     /// reports two.
     pub(super) fn kernel_quote(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
         let span = crate::resolve::trimmed_span(node);
-        let quote = musa_language::ast::KernelQuote::cast(node.clone())?;
+        let quote = musa_syntax::ast::KernelQuote::cast(node.clone())?;
         self.instantiation(&quote)?;
 
         let text = quote_text(node);
@@ -150,7 +150,7 @@ impl Lowering<'_> {
     /// checked before the payload because it is the stronger claim: a track in
     /// performed time is not a score, whatever its payloads say, and nothing
     /// converts one coordinate into another.
-    fn instantiation(&mut self, quote: &musa_language::ast::KernelQuote) -> Option<()> {
+    fn instantiation(&mut self, quote: &musa_syntax::ast::KernelQuote) -> Option<()> {
         if let Some((constructor, at)) = quote.constructor()
             && constructor != "EventTrack"
         {
@@ -255,7 +255,7 @@ impl Lowering<'_> {
     fn hole(
         &mut self,
         term: &Quoted,
-        hole: &musa_language::ast::KernelHole,
+        hole: &musa_syntax::ast::KernelHole,
         name: &str,
         span: SourceSpan,
     ) -> Option<Raw> {
@@ -340,7 +340,7 @@ pub(crate) fn substitute_holes(
     body_start: u32,
     body_end: u32,
     stem: &str,
-    holes: &[musa_language::ast::KernelHole],
+    holes: &[musa_syntax::ast::KernelHole],
 ) -> (String, Vec<(usize, u32)>) {
     let relative = |absolute: u32| usize::try_from(absolute.saturating_sub(base)).unwrap_or_default();
     let mut source = String::with_capacity(text.len());

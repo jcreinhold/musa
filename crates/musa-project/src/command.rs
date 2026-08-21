@@ -24,8 +24,8 @@ impl TextEdit {
         }
     }
 
-    pub(crate) fn to_language(&self) -> musa_language::TextEdit {
-        musa_language::TextEdit::new(
+    pub(crate) fn to_language(&self) -> musa_syntax::TextEdit {
+        musa_syntax::TextEdit::new(
             text_size::TextRange::new(self.span.start.into(), self.span.end.into()),
             self.replacement.clone(),
         )

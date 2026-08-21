@@ -99,8 +99,8 @@ table says what each owes. A law whose evidence is a paragraph is asserted, not 
   why.
 - `crates/musa-compiler/src/core_budget.rs` — reduction kinds for minting and running a step, with their printed
   spellings.
-- `crates/musa-language/`, `editors/tree-sitter-musa/` — only if the frozen surface needs syntax. If `run_syntax_step`
-  is a builtin rather than a form, neither changes and the prompt says so.
+- `crates/musa-syntax/`, `editors/tree-sitter-musa/` — only if the frozen surface needs syntax. If `run_syntax_step` is
+  a builtin rather than a form, neither changes and the prompt says so.
 - Tests in `crates/musa-compiler`, one per law: sealed formation; association under nesting, using prompt 127dcfae's
   hostile program including restart on the original subject and function-valued `C`/`A` that capture a step; inherited
   context delivered exactly; path uniqueness; local structural decrease with a captured step run later; repeatability
@@ -113,9 +113,9 @@ table says what each owes. A law whose evidence is a paragraph is asserted, not 
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-project -p musa-lsp
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp
 cargo nextest run --run-ignored all -p musa-compiler
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
+cargo clippy --all-targets -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cd editors/tree-sitter-musa && tree-sitter test

@@ -6,7 +6,7 @@
 //! the two spellings reach *one term* — not that a desugaring produced some
 //! particular syntax, which is a fact about a printer.
 //!
-//! The surface spellings themselves are `musa-language`'s: this crate has no
+//! The surface spellings themselves are `musa-syntax`'s: this crate has no
 //! `+`, and prompt 142 is where source text starts reaching either. What is here
 //! is the half that decides meaning, and the negative half is the point of the
 //! feature — §6's three rules exist to keep a lookup from becoming a search.

@@ -1,0 +1,7 @@
+---
+source: crates/musa-syntax/tests/parser.rs
+expression: print_errors(&doc)
+---
+51..54: a block holds one expression
+  label: a second expression begins here
+  help: braces delimit a body, they do not sequence one: `{ e }` is `e`

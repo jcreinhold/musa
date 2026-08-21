@@ -10,14 +10,14 @@
 //! One pass, not one per layer: the CST-only rules and the semantic rules
 //! share the suppression helper and the emission path, and splitting them to
 //! match where their *evidence* lives would duplicate both for no caller.
-//! musa-language stays silent — it does not know what a name is for.
+//! musa-syntax stays silent — it does not know what a name is for.
 //!
 //! The pass runs only on a piece that compiles (advice about a piece that
 //! does not exist is noise), and every rule is silent on every file in
 //! `examples/` — which is a law in `tests/lint_laws.rs`, not a hope.
 
-use musa_language::ast::{AstNode, BarStmt, EnumDecl, ImplDecl, PieceDecl, RecordDecl, TraitDecl, VoiceItem};
-use musa_language::{ParsedDocument, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken};
+use musa_syntax::ast::{AstNode, BarStmt, EnumDecl, ImplDecl, PieceDecl, RecordDecl, TraitDecl, VoiceItem};
+use musa_syntax::{ParsedDocument, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken};
 
 use crate::resolve::{NameKind, ReferenceIndex};
 use crate::studio::StudioSpec;
@@ -403,7 +403,7 @@ fn copied_bars(piece: &PieceDecl, lints: &mut Vec<Diagnostic>) {
 }
 
 /// The voices of the piece, wherever the score puts them.
-fn voices_of(piece: &PieceDecl) -> Vec<musa_language::ast::VoiceDecl> {
+fn voices_of(piece: &PieceDecl) -> Vec<musa_syntax::ast::VoiceDecl> {
     piece
         .score()
         .into_iter()
@@ -527,7 +527,7 @@ mod tests {
     /// be asked here and answered honestly.
     fn lints(body: &str) -> Vec<Diagnostic> {
         let source = format!("library {{\n{body}}}\n");
-        let document = musa_language::parse(&source);
+        let document = musa_syntax::parse(&source);
         assert!(
             document.errors().is_empty(),
             "fixture must parse: {:?}",

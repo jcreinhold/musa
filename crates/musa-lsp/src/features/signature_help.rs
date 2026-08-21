@@ -24,7 +24,7 @@ use crate::workspace::Document;
 pub(crate) fn signature_help(document: &Document, position: Position) -> Option<SignatureHelp> {
     let byte = document.lines().byte(position);
     let snapshot = document.snapshot();
-    let parsed = musa_language::parse(snapshot.source());
+    let parsed = musa_syntax::parse(snapshot.source());
     let call = super::call::at(&parsed.syntax(), byte)?;
     let signature = declared(&snapshot, &call.name).or_else(|| claimed(&call.name))?;
     // Clamped to the signature's own length: a caller who wrote one comma too

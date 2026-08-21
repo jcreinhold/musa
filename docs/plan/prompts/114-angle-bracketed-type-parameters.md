@@ -20,9 +20,8 @@ constructor, and the language still has exactly two.
   `docs/notes/research/60-language-decision-record.md` for why this is not the introduction of parametric polymorphism.
 - `docs/rules/language/01-surface.md` §1, whose `type` production carries `"option" "[" type "]"` beside a `list`
   expression production and a list pattern that both also spell `[`.
-- `crates/musa-language/src/parser.rs`, `type_atom` and `expr_atom` — the two readings of `[` that this prompt
-  separates.
-- `crates/musa-language/src/parser.rs`, `at_articulation` — `>` is already a token, as the accent inside a bar. That is
+- `crates/musa-syntax/src/parser.rs`, `type_atom` and `expr_atom` — the two readings of `[` that this prompt separates.
+- `crates/musa-syntax/src/parser.rs`, `at_articulation` — `>` is already a token, as the accent inside a bar. That is
   the one place the new bracket has to be shown not to collide.
 - Prompt 109 for the migration-diagnostic shape, and prompt 80 for the tree-sitter drift law.
 
@@ -68,8 +67,8 @@ The `[τ]` spelling becomes a **hard error with an applicable fix**, on prompt 1
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-lsp -p musa-project
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-lsp -- -D warnings
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-lsp -p musa-project
+cargo clippy --all-targets -p musa-syntax -p musa-compiler -p musa-lsp -- -D warnings
 cargo fmt --check
 cargo run -p musa -- check examples/tonal-construction.musa
 cargo run -p musa -- check examples/serial-forms.musa

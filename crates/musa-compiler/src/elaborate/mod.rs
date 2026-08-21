@@ -37,11 +37,11 @@
 
 use crate::compile::{Compilation, SourceDocument};
 use crate::resolve::{self, Resolver};
-use musa_language::SyntaxNode;
-use musa_language::ast::{AstNode as _, PieceDecl};
 use musa_score::diagnose::{Code, Diagnostic};
 use musa_score::origin::SourceSpan;
 use musa_score::score::ScoreSnapshot;
+use musa_syntax::SyntaxNode;
+use musa_syntax::ast::{AstNode as _, PieceDecl};
 
 mod bars;
 mod canonical;
@@ -63,7 +63,7 @@ use score::{elaborate_libraries, elaborate_material, elaborate_score};
 /// Elaborate `source` through the temporal kernel and adapt the result into
 /// a `ScoreSnapshot` (docs/rules/kernel/06).
 pub(crate) fn elaborate(source: &SourceDocument, options: &crate::CompileOptions) -> Compilation {
-    let document = musa_language::parse(source.text());
+    let document = musa_syntax::parse(source.text());
     // Parsing is the one phase with its own timing question — a large file
     // that is slow to *parse* and a large file that is slow to *elaborate*
     // are different bugs — and the boundary between them is this line.
@@ -78,7 +78,7 @@ pub(crate) fn elaborate(source: &SourceDocument, options: &crate::CompileOptions
 /// measured apart; `resolver` arrives from the caller for the same reason
 /// (see `crate::bench`). The production path passes a fresh one.
 pub(crate) fn elaborate_parsed(
-    document: &musa_language::ParsedDocument,
+    document: &musa_syntax::ParsedDocument,
     name: &str,
     options: &crate::CompileOptions,
     resolver: &mut Resolver,
@@ -112,14 +112,14 @@ pub(crate) fn elaborate_parsed(
     // The piece a document declares: written out, or made by an instance
     // standing where it would be. Both are one piece, and everything after
     // this line reads the same `PieceDecl` either way.
-    let made = musa_language::ast::MakeStmt::from_root(&root)
+    let made = musa_syntax::ast::MakeStmt::from_root(&root)
         .and_then(|site| templates.instance(resolver, &site, "piece", crate::template::Kind::Piece, None, name));
     let Some(piece) = PieceDecl::from_root(&root).or_else(|| made.as_ref().and_then(crate::template::Instance::piece))
     else {
-        if let Some(library) = musa_language::ast::LibraryDecl::from_root(&root) {
+        if let Some(library) = musa_syntax::ast::LibraryDecl::from_root(&root) {
             return elaborate_material(resolver, &library, name, options);
         }
-        if musa_language::ast::MakeStmt::from_root(&root).is_none() {
+        if musa_syntax::ast::MakeStmt::from_root(&root).is_none() {
             resolver.report(
                 Diagnostic::error(Code::Misplaced, "this file declares no piece")
                     .at(SourceSpan::new(0, 0), "expected `piece \"…\" { … }`")
@@ -139,7 +139,7 @@ pub(crate) fn elaborate_parsed(
 
     resolver.realization = options.realization.clone();
     let mut snapshot = ScoreSnapshot::default();
-    let mut imports = musa_language::ast::ImportStmt::all_at_root(&root);
+    let mut imports = musa_syntax::ast::ImportStmt::all_at_root(&root);
     imports.extend(piece.imports());
     let libraries = crate::imports::load(resolver, name, &imports, &options.imports);
     let sources = declaring(&root, &libraries, piece.syntax());
@@ -175,7 +175,7 @@ pub(crate) fn elaborate_parsed(
     if reported_an_error(resolver) {
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     }
-    let imported_studios: Vec<musa_language::ast::StudioDecl> =
+    let imported_studios: Vec<musa_syntax::ast::StudioDecl> =
         libraries.each().filter_map(|(_, library)| library.studio()).collect();
     let studio = resolve::lower_studio(resolver, &piece, &snapshot, &imported_studios);
     if resolver

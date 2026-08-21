@@ -25,7 +25,7 @@ musa that can be *wrong* in a way musa can point at.
   piece, not a map, and that is what defers irregular durations (see Design).
 - Prompt 49 — `repeat` and motifs elaborate to kernel `let`. A named bar is a `let`, bound where it is written.
 - Prompt 56 — the secondary-label and help machinery. The bar-duration diagnostic is unreadable without it.
-- `crates/musa-language/src/{lexer,parser,ast,formatter}.rs`; `crates/musa-compiler/src/elaborate.rs`.
+- `crates/musa-syntax/src/{lexer,parser,ast,formatter}.rs`; `crates/musa-compiler/src/elaborate.rs`.
 
 ## Design
 
@@ -155,7 +155,7 @@ is now the narrower claim; widening the column is an interface change and is not
 
 ## Target
 
-- `crates/musa-language`: `BarKw`; the `BarStmt` syntax kind and AST wrapper; parsing with recovery and the
+- `crates/musa-syntax`: `BarKw`; the `BarStmt` syntax kind and AST wrapper; parsing with recovery and the
   bars-do-not-nest error; `use name;` without parentheses; the formatter's inline-bar rule and its `proptest`
   idempotence check. No `BarRef` kind — a bar is played by the `use` that already exists.
 - `crates/musa-compiler`: bar-duration checking against the prevailing meter with the diagnostic above, under prompt
@@ -173,8 +173,8 @@ is now the narrower claim; widening the column is an interface change and is not
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler
-cargo clippy --all-targets -p musa-language -p musa-compiler -- -D warnings
+cargo nextest run -p musa-syntax -p musa-compiler
+cargo clippy --all-targets -p musa-syntax -p musa-compiler -- -D warnings
 cargo fmt --check
 cargo run -p musa -- check examples/refrain.musa                   # a named bar, played three times
 cargo run -p musa -- check examples/broken/bar-too-long.musa       # the diagnostic above

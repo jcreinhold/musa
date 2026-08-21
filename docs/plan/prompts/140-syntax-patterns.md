@@ -71,7 +71,7 @@ does not affect matching. Two open sequence splices in one group are refused.
 
 ## Target
 
-- `musa-language`: pattern-position quote grammar, CST, formatter, highlighting; tree-sitter and its drift test.
+- `musa-syntax`: pattern-position quote grammar, CST, formatter, highlighting; tree-sitter and its drift test.
 - Pattern elaboration through prompt 135's case-tree compiler, with category checking, splice binding, sequence
   patterns, and trivia-insensitive matching.
 - New `Code` variants and `musa explain` text for a literal identifier in a pattern quote, two open sequence splices,
@@ -85,9 +85,9 @@ does not affect matching. Two open sequence splices in one group are refused.
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-language -p musa-compiler -p musa-calculus
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-calculus
 cargo nextest run --workspace
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-calculus -- -D warnings
+cargo clippy --all-targets -p musa-syntax -p musa-compiler -p musa-calculus -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cd editors/tree-sitter-musa && tree-sitter test

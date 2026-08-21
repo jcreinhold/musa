@@ -50,7 +50,7 @@ nothing. Per roadmap §8.2, harmony is annotation, not ontology.
 
 ## Target
 
-- `musa-language`/`musa-compiler`: syntax + annotation kinds + chord-symbol model.
+- `musa-syntax`/`musa-compiler`: syntax + annotation kinds + chord-symbol model.
 - `musa-notation`: MEI + LilyPond + MusicXML rendering of annotations.
 - `apps/musa-desktop`: outline navigation pane.
 - Tests: annotation snapshots at each backend; chord-symbol parse table; position validation diagnostics.

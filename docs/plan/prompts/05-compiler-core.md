@@ -22,7 +22,7 @@ lowering of plain voices (notes, rests, chords — no motifs yet) into an immuta
 
 ## Design
 
-- Add dependencies to `musa-compiler`: `musa-language`, `num-rational`, `slotmap`, `indexmap`, `serde` (derive),
+- Add dependencies to `musa-compiler`: `musa-syntax`, `num-rational`, `slotmap`, `indexmap`, `serde` (derive),
   `thiserror`. Follow §15.3: slotmap keys are transient arena keys, never serialized as permanent identities.
 - Core public types (fixed by the roadmap; internals private):
 

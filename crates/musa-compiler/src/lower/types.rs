@@ -8,7 +8,7 @@
 //! *index* rather than a type argument.
 
 use musa_calculus::{Origin, Raw};
-use musa_language::{SyntaxKind, SyntaxNode};
+use musa_syntax::{SyntaxKind, SyntaxNode};
 
 use super::{Lowering, applied, child, children, is_type_node, paired};
 use crate::core::Coordinate;
@@ -119,7 +119,7 @@ impl Lowering<'_> {
         // with the capital that replaces it. Reading it as the type it named
         // leaves the rest of the declaration checked and keeps one complaint one
         // complaint.
-        if let Some(now) = musa_language::respelled_type(written) {
+        if let Some(now) = musa_syntax::respelled_type(written) {
             return compiler_type(now).map(|spelled| Raw::var(origin, spelled));
         }
         Some(Raw::var(origin, written))
@@ -229,7 +229,7 @@ impl Lowering<'_> {
         let word = self.single_index(written, node, arguments, &help)?;
         let literal = match index {
             Index::Coordinate => coordinate_named(&word).map(crate::registry::coordinate_literal),
-            Index::Category => crate::syntax::Cat::named(&word).map(crate::registry::category_literal),
+            Index::Category => crate::quote::Cat::named(&word).map(crate::registry::category_literal),
         };
         let Some(literal) = literal else {
             return self.refuse(

@@ -8,7 +8,7 @@
 //!
 //! # What a quote becomes
 //!
-//! A [`crate::syntax::Template`] is a **literal of an inert base type**
+//! A [`crate::quote::Template`] is a **literal of an inert base type**
 //! (`02-core-calculus.md` §5.8's D1), so the body of a quote is not a term at all
 //! — it is a constant, and building the tree it describes is one δ-application:
 //!
@@ -22,7 +22,7 @@
 //! contributes its own list. The rule reads them back the same way.
 //!
 //! Nothing here computes a derived path or mints a scope.
-//! [`crate::syntax::instantiate`] does both, once, and this module's whole claim
+//! [`crate::quote::instantiate`] does both, once, and this module's whole claim
 //! is that a lowered quote reaches *that* function rather than a second copy of
 //! it — which is `02-core-calculus.md` §5's second-path audit applied where two
 //! answers would be worst, since a disagreement about identity is not a wrong
@@ -55,11 +55,11 @@ use musa_calculus::{Origin, Raw, RawArm, RawPattern};
 #[cfg(test)]
 mod laws;
 
-use musa_language::ast::AstNode;
-use musa_language::{SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken};
+use musa_syntax::ast::AstNode;
+use musa_syntax::{SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken};
 
 use super::{Lowering, applied, child, is_expr_node, listed, significant_tokens, whole};
-use crate::syntax::{Hygiene, Template};
+use crate::quote::{Hygiene, Template};
 use musa_score::diagnose::{Code, Diagnostic};
 use musa_score::origin::SourceSpan;
 
@@ -105,7 +105,7 @@ impl Lowering<'_> {
     /// `quote at a { … }` — one application of `instantiate_quote`.
     pub(super) fn quote(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
         self.quotable(node)?;
-        let quote = musa_language::ast::QuoteExpr::cast(node.clone())?;
+        let quote = musa_syntax::ast::QuoteExpr::cast(node.clone())?;
         let anchor = self.value(&quote.anchor()?)?;
         let mut walk = Walk::building();
         let (template, quotation) = self.body(&quote.body()?, &mut walk)?;
@@ -181,7 +181,7 @@ impl Lowering<'_> {
             };
             let mut walk = Walk::matching();
             let (template, quotation) = self.body(
-                &musa_language::ast::QuotePattern::cast(quoted.clone())?.body()?,
+                &musa_syntax::ast::QuotePattern::cast(quoted.clone())?.body()?,
                 &mut walk,
             )?;
             self.holes_are_distinct(&walk, span)?;
@@ -304,7 +304,7 @@ impl Lowering<'_> {
     fn body(&mut self, node: &SyntaxNode, walk: &mut Walk) -> Option<(Template, u32)> {
         let quotation = self.resolver.next_quotation;
         self.resolver.next_quotation = quotation.saturating_add(1);
-        let template = self.template(node, &mut crate::syntax::template_root(), walk, false)?;
+        let template = self.template(node, &mut crate::quote::template_root(), walk, false)?;
         Some((template, quotation))
     }
 
@@ -346,20 +346,20 @@ impl Lowering<'_> {
             .children_with_tokens()
             .filter(|piece| !piece.kind().is_trivia())
             // A separated position supplies its own commas
-            // ([`crate::syntax::Template::Group::separated`]), so the ones
+            // ([`crate::quote::Template::Group::separated`]), so the ones
             // written here are not children of it.
             .filter(|piece| !(separated && piece.kind() == SyntaxKind::Comma))
             .collect();
-        let (delimiter, pieces) = crate::syntax::delimited(pieces);
+        let (delimiter, pieces) = crate::quote::delimited(pieces);
         // Where a spread may stand, which is the one rule the two directions do
         // not share. Building a run needs the separator its position supplies,
         // so only a comma-separated position has room for one. Matching one
         // needs no separator and only a run to bind, so any group that survives
-        // [`crate::syntax::matched`]'s peeling will do — and a layout group
+        // [`crate::quote::matched`]'s peeling will do — and a layout group
         // holding one node does not survive it, which is why the body of
         // `quote { $..xs }` is still a position that holds one node.
         let spreads = if walk.matching {
-            delimiter != crate::syntax::Delimiter::Layout || pieces.len() >= 2
+            delimiter != crate::quote::Delimiter::Layout || pieces.len() >= 2
         } else {
             separated
         };
@@ -618,7 +618,7 @@ fn spread_argument(node: &SyntaxNode) -> SyntaxNode {
 
 /// Whether a name is spelled the way the printer renames a generated binder.
 ///
-/// `crate::syntax::print` appends `_g` and the scope's ordinal, so a name ending
+/// `crate::quote::print` appends `_g` and the scope's ordinal, so a name ending
 /// that way is one the printer could have written — and a quote that writes it by
 /// hand would be a name a generated binder could capture. The test is on the
 /// spelling because the collision is on the spelling: the printed text is where

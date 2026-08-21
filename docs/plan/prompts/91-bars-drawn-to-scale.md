@@ -58,7 +58,7 @@ the grid at its end. Columns are measured from the `|`, indent excluded.
 
 **No `f64` anywhere.** `log2` is not bit-identical across libm implementations, and a formatter whose output depended on
 the platform's libm would make `musa format --check` fail in CI on a machine other than the one that wrote the file.
-Time accumulates as an exact `(u64, u64)` reduced by `gcd`; `musa-language` does not grow `num-rational` for this.
+Time accumulates as an exact `(u64, u64)` reduced by `gcd`; `musa-syntax` does not grow `num-rational` for this.
 
 Three rungs, in order: proportional if the bar is measurable and it fits `MEASURE`; else compact if it fits; else wrap.
 Because `col(k) ≥ col(k-1) + len + 1`, the proportional line is **never narrower** than the compact one — which gives
@@ -117,7 +117,7 @@ the `Format` command and the `formatted_source` preview cannot disagree.
 The composer fallback looks like a precedent and is not, and the commit message should say so: that sets a scalar on a
 *finished* artifact — the score exists and the field is empty. Spacing is a decision *inside* the layout algorithm, and
 the only post-hoc version of it is a second formatter living in the crate whose doc says formatting belongs to
-`musa-language`.
+`musa-syntax`.
 
 ### The editor and the command line must agree
 
@@ -127,8 +127,8 @@ on a URI — is being made separately. **This prompt depends on it and must not 
 
 ## Target
 
-- `crates/musa-language/src/formatter.rs`: `BarSpacing`, the grid, the three rungs.
-- `crates/musa-language/src/lib.rs` and `crates/musa-project/src/lib.rs`: `BarSpacing` exported and re-exported.
+- `crates/musa-syntax/src/formatter.rs`: `BarSpacing`, the grid, the three rungs.
+- `crates/musa-syntax/src/lib.rs` and `crates/musa-project/src/lib.rs`: `BarSpacing` exported and re-exported.
 - `crates/musa-project/src/project.rs`: the `[format]` section, `ProjectMeta::bar_spacing`, the warn-and-default.
 - `crates/musa-project/src/session.rs`: `bar_spacing()`, and the two call sites.
 - `examples/album/musa.toml`: the section, so the fixture exercises it.

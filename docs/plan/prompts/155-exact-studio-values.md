@@ -50,8 +50,8 @@ conversion and differential parity for previously accepted values.
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-dsp -p musa-project -p musa-lsp
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-dsp -p musa-project -p musa-lsp -- -D warnings
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-dsp -p musa-project -p musa-lsp
+cargo clippy --all-targets -p musa-syntax -p musa-compiler -p musa-dsp -p musa-project -p musa-lsp -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 rg -n "WrittenQuantity|exact decimal|DSP boundary" docs/rules/language crates/musa-compiler crates/musa-dsp

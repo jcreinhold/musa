@@ -24,9 +24,9 @@ stops printing a byte offset where a location belongs.
 - `docs/rules/desktop/05-states.md` §4 (a problem is a place, not a notification), §2 (empty states).
 - `docs/rules/desktop/03-interaction.md` §7 — what the frontend may compute. Line and column are **not** on that list,
   so Rust computes them.
-- `crates/musa-language/src/edits.rs` — `TextEdit` already exists and is already how the app writes source. A fix is a
+- `crates/musa-syntax/src/edits.rs` — `TextEdit` already exists and is already how the app writes source. A fix is a
   `Vec<TextEdit>` and nothing new.
-- The current messages: `crates/musa-language/src/parser.rs` (about thirty `error_here` calls),
+- The current messages: `crates/musa-syntax/src/parser.rs` (about thirty `error_here` calls),
   `crates/musa-compiler/src/resolve.rs`, `elaborate.rs`, `studio.rs`, `imports.rs`, `harmony.rs`.
 
 ## Design
@@ -120,8 +120,8 @@ run: `3 problems (2 errors, 1 warning)`.
 
 ## Target
 
-- `crates/musa-language`: `SyntaxError` gains `code`, secondary labels, `help`, and `fixes`; parser messages rewritten
-  to the standard above; the recovery fixtures re-snapshotted.
+- `crates/musa-syntax`: `SyntaxError` gains `code`, secondary labels, `help`, and `fixes`; parser messages rewritten to
+  the standard above; the recovery fixtures re-snapshotted.
 - `crates/musa-compiler`: `Diagnostic` as above; `Code`; a private `nearest` name-suggester; every `Diagnostic::error` /
   `warning` call site given a code and a labelled span, and a help line where one exists.
 - `crates/musa-project`: the restated `Diagnostic` with `Position` on every label; `explain(code)`.
@@ -136,8 +136,8 @@ run: `3 problems (2 errors, 1 warning)`.
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-project -p musa
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-project -p musa -- -D warnings
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-project -p musa
+cargo clippy --all-targets -p musa-syntax -p musa-compiler -p musa-project -p musa -- -D warnings
 cargo fmt --check
 cargo run -p musa -- check examples/broken/missing-semicolon.musa   # renders with a fix
 cargo run -p musa -- explain unknown-name

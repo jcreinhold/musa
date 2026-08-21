@@ -1,0 +1,17 @@
+---
+source: crates/musa-syntax/tests/parser.rs
+assertion_line: 693
+expression: print_errors(&doc)
+---
+30..37: a type parameter is angle-bracketed
+  label: this is `<…>`
+  help: `[` means a list here — the literal `[c4, d4]` and the pattern `[x, ..xs]` — so the type layer takes `<` and `>` and the character reads one way
+  fix: write `<…>` -> "<Pitch>"
+67..74: a type parameter is angle-bracketed
+  label: this is `<…>`
+  help: `[` means a list here — the literal `[c4, d4]` and the pattern `[x, ..xs]` — so the type layer takes `<` and `>` and the character reads one way
+  fix: write `<…>` -> "<Pitch>"
+60..75: a type parameter is angle-bracketed
+  label: this is `<…>`
+  help: `[` means a list here — the literal `[c4, d4]` and the pattern `[x, ..xs]` — so the type layer takes `<` and `>` and the character reads one way
+  fix: write `<…>` -> "<Option[Pitch]>"

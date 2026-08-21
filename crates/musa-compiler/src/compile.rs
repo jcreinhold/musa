@@ -320,7 +320,7 @@ impl Compilation {
 /// running beside it: it has no surface syntax to elaborate, so reading and
 /// checking the term replaces everything up to the kernel, and the projection
 /// and every backend after it are shared. Which alternative a text is, is a
-/// question about its first line and is asked by `musa-language`.
+/// question about its first line and is asked by `musa-syntax`.
 pub fn compile(source: &SourceDocument, options: &CompileOptions) -> Compilation {
     // One span for the whole compilation, named by the document. Everything
     // the pipeline says about a piece hangs under it, so two compilations
@@ -328,10 +328,10 @@ pub fn compile(source: &SourceDocument, options: &CompileOptions) -> Compilation
     // fields are the caller's own arguments: nothing is computed to fill them.
     let span = tracing::info_span!("compile", document = source.name(), bytes = source.text().len());
     let _entered = span.enter();
-    let alternative = musa_language::alternative(source.text());
+    let alternative = musa_syntax::alternative(source.text());
     let compilation = match alternative {
-        musa_language::DocumentAlternative::Kernel => crate::kernel_text::compile_kernel(source),
-        musa_language::DocumentAlternative::Surface => {
+        musa_syntax::DocumentAlternative::Kernel => crate::kernel_text::compile_kernel(source),
+        musa_syntax::DocumentAlternative::Surface => {
             // Step 4 of the fixed order, and the only place it happens. What
             // `elaborate` then reads is a text with every adapter region
             // replaced by the expression its adapter answered with; what the
@@ -365,14 +365,14 @@ pub fn compile(source: &SourceDocument, options: &CompileOptions) -> Compilation
 /// `musa format` idempotent on a file `musa kernel` produced. `None` means
 /// the text cannot be read at all, and an unreadable document is left exactly
 /// as its author has it.
-pub fn format_document(text: &str, spacing: musa_language::BarSpacing) -> Option<String> {
+pub fn format_document(text: &str, spacing: musa_syntax::BarSpacing) -> Option<String> {
     let span = tracing::debug_span!("format", bytes = text.len());
     let _entered = span.enter();
-    match musa_language::alternative(text) {
-        musa_language::DocumentAlternative::Kernel => crate::kernel_text::format_kernel(text),
-        musa_language::DocumentAlternative::Surface => {
-            let document = musa_language::parse(text);
-            Some(musa_language::format(&document, spacing).text().to_owned())
+    match musa_syntax::alternative(text) {
+        musa_syntax::DocumentAlternative::Kernel => crate::kernel_text::format_kernel(text),
+        musa_syntax::DocumentAlternative::Surface => {
+            let document = musa_syntax::parse(text);
+            Some(musa_syntax::format(&document, spacing).text().to_owned())
         }
     }
 }

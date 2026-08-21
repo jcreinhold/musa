@@ -3,7 +3,7 @@
 //! `docs/rules/language/02-core-calculus.md` §2 elaborates a surface term into a
 //! core term, and [`musa_calculus::Raw`] is what it reads. This module is the half
 //! that knows about `.musa`: it walks the lossless CST that
-//! [`musa_language`](musa_language) produced and writes the raw term that
+//! [`musa_syntax`](musa_syntax) produced and writes the raw term that
 //! `musa-calculus` checks. Nothing here decides a type — that is the core's, and the
 //! whole reason this module is a fraction of the size of the checker it replaces.
 //!
@@ -71,7 +71,7 @@ use std::collections::HashMap;
 use num_rational::Ratio;
 
 use musa_calculus::{Origin, Raw};
-use musa_language::{SyntaxKind, SyntaxNode, SyntaxToken};
+use musa_syntax::{SyntaxKind, SyntaxNode, SyntaxToken};
 
 use crate::module::{Modules, NameScope};
 use crate::resolve::Resolver;
@@ -702,7 +702,7 @@ fn whole(origin: Origin, value: u64) -> Raw {
 /// The tokens of `node` that carry meaning, in order.
 fn significant_tokens(node: &SyntaxNode) -> impl Iterator<Item = SyntaxToken> + '_ {
     node.descendants_with_tokens()
-        .filter_map(musa_language::SyntaxElement::into_token)
+        .filter_map(musa_syntax::SyntaxElement::into_token)
         .filter(|token| !token.kind().is_trivia())
 }
 
@@ -713,7 +713,7 @@ fn significant_tokens(node: &SyntaxNode) -> impl Iterator<Item = SyntaxToken> + 
 /// `down` inside the expression `n` would otherwise answer for it.
 fn own_tokens(node: &SyntaxNode) -> impl Iterator<Item = SyntaxToken> + '_ {
     node.children_with_tokens()
-        .filter_map(musa_language::SyntaxElement::into_token)
+        .filter_map(musa_syntax::SyntaxElement::into_token)
         .filter(|token| !token.kind().is_trivia())
 }
 

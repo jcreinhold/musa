@@ -4,9 +4,9 @@ use std::path::{Path, PathBuf};
 
 use musa_compiler::{CompileOptions, SourceDocument};
 
-use musa_language::BarSpacing;
 use musa_playback::{AudioEngine, EngineConfig, MidiInput, TransportCommand};
 use musa_score::{MusicalTime, Scope};
+use musa_syntax::BarSpacing;
 
 use crate::command::{DocumentId, ProjectCommand, ProjectUpdate, Revision, TextEdit, TransportRequest, Validity};
 use crate::diagnostic::Diagnostic;
@@ -274,7 +274,7 @@ impl ProjectSession {
             ProjectCommand::EditStudio(edit) => self.edit_studio(&edit),
             ProjectCommand::ApplyEdits(edits) => {
                 let edits: Vec<_> = edits.iter().map(TextEdit::to_language).collect();
-                let text = musa_language::apply_edits(&self.source, &edits);
+                let text = musa_syntax::apply_edits(&self.source, &edits);
                 Ok(self.set_source(text))
             }
             ProjectCommand::Format => {
@@ -410,7 +410,7 @@ impl ProjectSession {
         }
         impact.writes = crate::edit::intent_of(facts, command)
             .ok()
-            .and_then(|intent| musa_language::compute_edits(&self.source, &intent).ok())
+            .and_then(|intent| musa_syntax::compute_edits(&self.source, &intent).ok())
             .unwrap_or_default()
             .iter()
             .map(|edit| crate::edit::CandidateEdit {
@@ -693,9 +693,9 @@ impl ProjectSession {
         }
         let facts = &self.valid.as_ref().ok_or(ProjectError::NoValidScore)?.facts;
         let intent = crate::edit::intent_of(facts, command)?;
-        let edits = musa_language::compute_edits(&self.source, &intent)
+        let edits = musa_syntax::compute_edits(&self.source, &intent)
             .map_err(|error| ProjectError::Uneditable(error.to_string()))?;
-        let candidate = musa_language::apply_edits(&self.source, &edits);
+        let candidate = musa_syntax::apply_edits(&self.source, &edits);
         if let Some(reason) = self.first_error(&candidate) {
             return Err(ProjectError::RejectedEdit {
                 intent: crate::edit::describe(command),
@@ -716,16 +716,16 @@ impl ProjectSession {
     /// rather than as a compiler complaint.
     fn edit_adapter(&mut self, command: &crate::edit::EditCommand) -> Result<ProjectUpdate, ProjectError> {
         let edits = self.adapter_edits(command)?;
-        let edits: Vec<musa_language::TextEdit> = edits
+        let edits: Vec<musa_syntax::TextEdit> = edits
             .iter()
             .map(|edit| {
-                musa_language::TextEdit::new(
+                musa_syntax::TextEdit::new(
                     text_size::TextRange::new(edit.start.into(), edit.end.into()),
                     edit.text.clone(),
                 )
             })
             .collect();
-        let candidate = musa_language::apply_edits(&self.source, &edits);
+        let candidate = musa_syntax::apply_edits(&self.source, &edits);
         if let Some(reason) = self.first_error(&candidate) {
             return Err(ProjectError::RejectedEdit {
                 intent: crate::edit::describe(command),
@@ -797,7 +797,7 @@ impl ProjectSession {
         let studio = &self.valid.as_ref().ok_or(ProjectError::NoValidScore)?.studio;
         let edits = crate::studio::edits_for(studio, &self.source, edit)?;
         let edits: Vec<_> = edits.iter().map(TextEdit::to_language).collect();
-        let candidate = musa_language::apply_edits(&self.source, &edits);
+        let candidate = musa_syntax::apply_edits(&self.source, &edits);
         if let Some(reason) = self.first_error(&candidate) {
             return Err(ProjectError::RejectedEdit {
                 intent: crate::studio::describe(edit),

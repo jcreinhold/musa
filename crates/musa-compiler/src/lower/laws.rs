@@ -27,7 +27,7 @@
 )]
 
 use musa_calculus::{Cx, Level, Plicity, Raw, RawData, RawPattern, RawShape, Term};
-use musa_language::{SyntaxKind, SyntaxNode};
+use musa_syntax::{SyntaxKind, SyntaxNode};
 
 use super::items::{Declared, Definition, Item};
 use super::{Lowering, Sites, is_type_node};
@@ -43,7 +43,7 @@ use musa_score::diagnose::{Code, Diagnostic};
 /// deliberate: the shape of a `Pattern` under a `MatchArm` is the parser's, and
 /// a grammar change that moved it is exactly what these should notice.
 fn parsed(source: &str) -> SyntaxNode {
-    let document = musa_language::parse(source);
+    let document = musa_syntax::parse(source);
     assert!(
         document.errors().is_empty(),
         "the law's own source parses: {:?}",

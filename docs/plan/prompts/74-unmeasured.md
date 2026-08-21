@@ -90,7 +90,7 @@ no meter. The diagnostic says that.
 
 ## Target
 
-- `crates/musa-language`: `meter none` and `senza { … }`.
+- `crates/musa-syntax`: `meter none` and `senza { … }`.
 - `crates/musa-compiler`: the unbounded stretch in `BarLines`; the bar-inside-`senza` diagnostic; the
   groove-without-meter diagnostic; `ContextTrack`'s unmeasured value.
 - `crates/musa-notation/src/plan.rs`: proportional spacing for unmeasured stretches; no barline; the four exporters.

@@ -25,7 +25,7 @@
     reason = "a law that cannot fail loudly is not a law"
 )]
 
-use musa_language::{SyntaxKind, SyntaxNode};
+use musa_syntax::{SyntaxKind, SyntaxNode};
 
 use super::{Document, Source, elaborate};
 use crate::resolve::Resolver;
@@ -35,7 +35,7 @@ use crate::resolve::Resolver;
 /// The `library { … }` node `source` writes, with a loud failure when it does
 /// not parse.
 fn library(source: &str) -> SyntaxNode {
-    let document = musa_language::parse(source);
+    let document = musa_syntax::parse(source);
     assert!(
         document.errors().is_empty(),
         "the law's own source parses: {:?}",
@@ -356,7 +356,7 @@ pub(crate) fn library_sources() -> Vec<Source> {
     STANDARD_LIBRARY
         .iter()
         .map(|&(name, source)| {
-            let held = musa_language::parse(source);
+            let held = musa_syntax::parse(source);
             assert!(held.errors().is_empty(), "`{name}` parses: {:?}", held.errors());
             let path = format!("stdlib/src/{name}.musa");
             Source::imported(

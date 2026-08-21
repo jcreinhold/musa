@@ -54,7 +54,7 @@ use musa_calculus::{
     Level, Name, Origin, Raw, RawBinder, RawConstraint, RawConstructor, RawData, RawDefinition, RawFamily, RawImpl,
     RawMethod, RawTrait, Visibility,
 };
-use musa_language::{SyntaxKind, SyntaxNode};
+use musa_syntax::{SyntaxKind, SyntaxNode};
 
 use super::types::compiler_type;
 use super::{Lowering, child, children, is_expr_node, is_type_node, own_tokens, writes};

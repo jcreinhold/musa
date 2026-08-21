@@ -29,7 +29,7 @@ language proof, and the one every other adapter step waits on.
 - Prompt 127ac (library-declared finite data and its generated fold) and prompt 127d
   (`crates/musa-compiler/src/machine.rs`, `core.rs`) — 127d is the worked precedent for adding a finite core type with
   its own builtins, kinding, exact encoding, and law suite.
-- `crates/musa-language/src/{document,ast,syntax_kind}.rs` — the lossless CST this type is built from.
+- `crates/musa-syntax/src/{document,ast,syntax_kind}.rs` — the lossless CST this type is built from.
 - Peyton Jones ch. 4–5 for how a fold over a finite structured type is derived from its declaration, which is what makes
   the path-aware fold a derivation rather than an invention.
 
@@ -122,8 +122,8 @@ it. The compiler order, the adapter import, adapter resolution, and expansion re
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler
-cargo clippy --all-targets -p musa-language -p musa-compiler -- -D warnings
+cargo nextest run -p musa-syntax -p musa-compiler
+cargo clippy --all-targets -p musa-syntax -p musa-compiler -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 bash .agents/skills/module-design/scripts/audit-module.sh crates/musa-compiler

@@ -6,7 +6,7 @@
  * editor needs is enough structure to *set* the text — tokens, blocks,
  * comments — and nothing that could disagree with the core about meaning.
  *
- * Folding and indentation follow the formatter (`musa-language`'s: four
+ * Folding and indentation follow the formatter (`musa-syntax`'s: four
  * spaces, `{` trailing the declaration line), so formatting a file the editor
  * indented changes nothing.
  */

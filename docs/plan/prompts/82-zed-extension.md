@@ -13,7 +13,7 @@ phase: 3
 Build `zed-musa`: the Zed extension that embeds the prompt 80 grammar for structure and highlighting, and starts the
 prompt 77 server for everything semantic. Zed's extension model makes the division explicit — tree-sitter answers "what
 shape is this text" on every keystroke, the language server answers "what does it mean" — which is the same division
-this repository drew between `musa-language` and `musa-project`.
+this repository drew between `musa-syntax` and `musa-project`.
 
 ## Read
 

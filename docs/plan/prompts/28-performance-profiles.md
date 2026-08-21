@@ -53,7 +53,7 @@ performance MIDI (interpreted) via `midly`.
 
 ## Target
 
-- `musa-language`/`musa-compiler`: `performance` blocks, profile model, interpreted `lower_performance`.
+- `musa-syntax`/`musa-compiler`: `performance` blocks, profile model, interpreted `lower_performance`.
 - `musa-notation`: `render_midi` both modes; CLI + project + desktop export wiring.
 - Tests: profile gate/velocity unit tests; default-profile WAV byte-identity regression; midly round-trip snapshots;
   determinism.

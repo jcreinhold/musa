@@ -37,12 +37,12 @@ pub(crate) fn code_lenses(document: &Document, uri: &Uri) -> Option<Vec<CodeLens
     // itself and a lens has to sit somewhere a reader is looking. Finding the
     // keyword is reading, which is what the lossless tree is for.
     snapshot.score()?;
-    let parsed = musa_language::parse(snapshot.source());
+    let parsed = musa_syntax::parse(snapshot.source());
     let keyword = parsed
         .syntax()
         .descendants_with_tokens()
         .filter_map(|element| element.into_token())
-        .find(|token| token.kind() == musa_language::SyntaxKind::PieceKw)?;
+        .find(|token| token.kind() == musa_syntax::SyntaxKind::PieceKw)?;
     let range = document.lines().range(musa_project::Span {
         start: u32::from(keyword.text_range().start()),
         end: u32::from(keyword.text_range().end()),

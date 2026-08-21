@@ -1,8 +1,8 @@
 //! One concern of the enclosing module; see its module docs.
 
 use indexmap::IndexSet;
-use musa_language::ast::AstNode as _;
-use musa_language::{SyntaxKind, SyntaxNode};
+use musa_syntax::ast::AstNode as _;
+use musa_syntax::{SyntaxKind, SyntaxNode};
 
 use super::phase_type;
 
@@ -121,7 +121,7 @@ pub(crate) fn printer_source(library: &SyntaxNode) -> Option<Printer> {
                     written(range.start().into(), range.end().into())?,
                 ));
             }
-        } else if let Some(declaration) = musa_language::ast::DataDecl::cast(node.clone()) {
+        } else if let Some(declaration) = musa_syntax::ast::DataDecl::cast(node.clone()) {
             // A `data` is reached by its type, by any of its constructors, or
             // by the fold generated for it: those are the whole of what naming
             // it can look like from a printer.
@@ -227,7 +227,7 @@ fn names_in(node: &SyntaxNode) -> IndexSet<String> {
 /// The same over source text, for the printer's own body, which is text by the
 /// time anything asks what it names.
 fn names_in_text(source: &str) -> IndexSet<String> {
-    names_in(&musa_language::parse(&format!("library {{ let named = {source}; }}")).syntax())
+    names_in(&musa_syntax::parse(&format!("library {{ let named = {source}; }}")).syntax())
 }
 
 /// The name a `let` declares.

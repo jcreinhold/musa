@@ -29,7 +29,7 @@ on `Text`.
 - `crates/musa-compiler/src/core/mod.rs`: `run_transformer`, which is the splice; `check_and_evaluate_metered` and
   `root_checker`, which are how an ordinary module is checked, and where `Reading::Source` is written in by hand;
   `Reading::Expansion`; `SyntaxOp::instantiate`; `BUILTIN_OWNERSHIP` and the δ-family entries around `ratio_equal`.
-- `crates/musa-language/src/syntax_kind.rs`: `Integer`, `Rational`, and `Float` — the lexer already keeps `3/8` whole,
+- `crates/musa-syntax/src/syntax_kind.rs`: `Integer`, `Rational`, and `Float` — the lexer already keeps `3/8` whole,
   which is the number this prompt hands back rather than re-derives.
 - `docs/rules/language/02-core-calculus.md` §5, whose "no syntax value" sentence is about ordinary source and stays
   exactly true here, and §5.8's D1–D4 with Theorem 5, under which `text_equal` is a conservative extension and needs no
@@ -116,8 +116,8 @@ resolves imports is a later question and not this prompt's.
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-project -p musa-lsp
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
+cargo nextest run -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp
+cargo clippy --all-targets -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
