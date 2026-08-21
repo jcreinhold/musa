@@ -251,6 +251,37 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
         assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
         reached.insert(kind(&refusal));
     }
+    // §1.5's refusals, which need a registry that declares an index — the two
+    // arity refusals are about a head that has one and a head that has not.
+    for crate::index_laws::RefusedIndex {
+        name,
+        cx,
+        raw,
+        expected,
+    } in crate::index_laws::refused_indexes()
+    {
+        let Err(error) = infer(&cx, &raw) else {
+            panic!("{name}: elaboration accepted a program §1.5 must refuse");
+        };
+        let refusal = refusal(name, error);
+        assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
+        reached.insert(kind(&refusal));
+    }
+    // And §1.5's third, which is about a *declaration*: the sort an index is
+    // drawn from is written where the family is, and no use site has an opinion
+    // about it.
+    {
+        let (name, cx, group) = crate::index_laws::refused_index_declaration();
+        let Err(error) = musa_calculus::declare(&cx, &group) else {
+            panic!("{name}: the declaration was admitted, and §1.5 refuses it");
+        };
+        let refusal = refusal(name, error);
+        assert!(
+            matches!(refusal, Refusal::NotAnIndexSort { .. }),
+            "{name}: refused, but as `{refusal}`"
+        );
+        reached.insert(kind(&refusal));
+    }
     // §5.8's registration refusals are answered by a *table* rather than by a
     // program, which is what makes them the host's mistakes rather than an
     // author's: a registry is refused before anything is elaborated under it.
@@ -337,7 +368,7 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
 }
 
 /// Every refusal this crate can answer with.
-const ALL_REFUSALS: [&str; 56] = [
+const ALL_REFUSALS: [&str; 59] = [
     "super-class",
     "constrained-instance",
     "beyond-universes",
@@ -394,6 +425,9 @@ const ALL_REFUSALS: [&str; 56] = [
     "not-finite-data",
     "builtin-refused",
     "not-a-numeral-family",
+    "not-indexed",
+    "missing-index",
+    "not-an-index-sort",
 ];
 
 /// Which refusal this is, as a tag the coverage gate can compare.
@@ -459,6 +493,9 @@ fn kind(refusal: &Refusal) -> &'static str {
         Refusal::BuiltinRefused { .. } => "builtin-refused",
         Refusal::NotANumeralFamily { .. } => "not-a-numeral-family",
         Refusal::UnreadableIndex { .. } => "unreadable-index",
+        Refusal::NotIndexed { .. } => "not-indexed",
+        Refusal::MissingIndex { .. } => "missing-index",
+        Refusal::NotAnIndexSort { .. } => "not-an-index-sort",
     }
 }
 

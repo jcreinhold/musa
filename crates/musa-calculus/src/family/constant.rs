@@ -289,6 +289,18 @@ impl Constant {
             .flatten()
     }
 
+    /// The index this family is declared to carry, if it declares one (§1.5).
+    ///
+    /// Asked of the [`Role::Family`] constant for [`Self::counting`]'s reason:
+    /// an index sits on the *type* — `Pc(12)` — and a constructor of it carries
+    /// no index, because [`Shape::Indexed`](crate::Shape::Indexed) is a wrapper
+    /// and a value of `Pc(12)` is a value of `Pc`.
+    pub(crate) fn declared_index(&self) -> Option<&super::group::Binder> {
+        matches!(self.role, Role::Family)
+            .then(|| self.group.family_at(self.family)?.index.as_ref())
+            .flatten()
+    }
+
     /// Why this constant is *not* a counting family, as the first condition of
     /// [`Counting`]'s rule that it fails.
     ///

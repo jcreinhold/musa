@@ -478,6 +478,47 @@ impl Term {
         &self.shape
     }
 
+    /// The index this type is declared to carry, if its head declares one
+    /// (§1.5).
+    ///
+    /// A type is written applied to its parameters — `Row<Nat>` — so the head
+    /// is found by walking down [`Shape::App`], and both kinds of head can
+    /// declare an index: a family a program declared, and a base type its host
+    /// registered. Neither answers for the other, which is the whole content of
+    /// the question — `Nat(12)` is refused because `Nat` declares none, and
+    /// `Pc(12)` is admitted because `Pc` does.
+    ///
+    /// Asked of a [`Term`] rather than of a [`Value`](crate::Value) because the
+    /// elaborator asks it of what it has just built, before anything is
+    /// evaluated. An already-indexed type answers for *its own* head, not for
+    /// the wrapper: `Pc(12)` is a `Pc`, and the wrapper is what the answer was
+    /// used to build.
+    pub(crate) fn declared_index(&self) -> Option<&crate::family::Binder> {
+        let mut head = self;
+        while let Shape::App { function, .. } = head.shape() {
+            head = function;
+        }
+        match head.shape() {
+            Shape::Const(constant) => constant.declared_index(),
+            Shape::Base(base) => base.declared_index(),
+            Shape::Hole(_)
+            | Shape::Var(_)
+            | Shape::Def(_)
+            | Shape::Numeral(_)
+            | Shape::Lit(_)
+            | Shape::Builtin(_)
+            | Shape::Universe(_)
+            | Shape::Pi { .. }
+            | Shape::Lam { .. }
+            | Shape::App { .. }
+            | Shape::RecordType(_)
+            | Shape::Record(_)
+            | Shape::Project { .. }
+            | Shape::Indexed { .. }
+            | Shape::Let { .. } => None,
+        }
+    }
+
     /// The same term, said to have come from somewhere else.
     ///
     /// Shares the shape rather than copying it, so re-stamping a large term is

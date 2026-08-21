@@ -172,6 +172,22 @@ pub enum Code {
     ClassArity,
     /// A number written at a type that does not count.
     NotANumeralFamily,
+    /// An index written on a type that declares none, or a type that declares
+    /// one written without it (`02-core-calculus.md` §1.5).
+    ///
+    /// One code for both, because they are one arity question asked from the
+    /// two sides an author can be on, and both are repaired by looking at the
+    /// declaration. Distinct from [`Self::TypeMismatch`], which is the *sort*
+    /// question: `Pc(3/4)` where `Pc` counts whole numbers is an index at the
+    /// wrong type, and this is an index where none was declared at all.
+    IndexArity,
+    /// A declaration's index binder standing at a type no index can be drawn
+    /// from.
+    ///
+    /// Separate from [`Self::IndexArity`] because it is not about a use site:
+    /// nothing has yet been written at the type, and the repair is to the
+    /// declaration.
+    NotAnIndexSort,
     /// A source `impl Storable`, behind any spelling.
     HandWrittenStorable,
     /// An `impl` whose head argument is a bare type variable.
@@ -333,6 +349,8 @@ code_table! {
     DuplicateMethod => "duplicate-method",
     ClassArity => "class-arity",
     NotANumeralFamily => "not-a-numeral-family",
+    IndexArity => "index-arity",
+    NotAnIndexSort => "not-an-index-sort",
     HandWrittenStorable => "hand-written-storable",
     BlanketInstance => "blanket-instance",
     DuplicateInstance => "duplicate-instance",

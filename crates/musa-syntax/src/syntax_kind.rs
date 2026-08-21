@@ -662,6 +662,15 @@ pub enum SyntaxKind {
     TypeParams,
     /// One type parameter: a name, standing for a type inside the declaration.
     TypeParam,
+    /// `(n: Nat)` on a declaration — the index it carries
+    /// (`02-core-calculus.md` §1.5).
+    ///
+    /// Parentheses and not angle brackets, and that is the whole distinction:
+    /// `Pc<A>` takes a type and `Pc(12)` takes a number, so the grammar tells a
+    /// parameter from an index rather than leaving it to the checker. A
+    /// parameter says *what this is a type of* and survives into the elaborated
+    /// term; an index says *how many*, is decided by arithmetic, and is erased.
+    IndexParam,
     /// `Sounded(pitch: Pitch, held: Duration)` — one constructor of a `data`
     /// declaration, with its fields.
     DataVariant,

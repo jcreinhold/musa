@@ -118,6 +118,19 @@ pub struct Declared {
     /// Which of them make it count, when its shape says it does — see
     /// [`Counting`].
     pub(crate) counting: Option<Counting>,
+    /// The index it is declared to carry, if it declares one (§1.5).
+    ///
+    /// The binder's type is one of §1.5's sorts, which
+    /// [`declare`](crate::declare) checked at the declaration and which are all
+    /// *closed* types — so a use site may evaluate it under any scope, and does.
+    /// That is the property the declaration check buys, and it is why an index
+    /// sort may not mention a parameter.
+    ///
+    /// `None` is a family that takes no index, and the two answers are what
+    /// make `Pc(12)` and `Nat(12)` different questions: the first is a family
+    /// carrying the index it declared, and the second is an index written on a
+    /// type that never asked for one.
+    pub(crate) index: Option<Binder>,
 }
 
 /// A declaration group: families declared together, over shared parameters.

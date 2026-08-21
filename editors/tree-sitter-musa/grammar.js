@@ -239,10 +239,17 @@ module.exports = grammar({
         'data',
         field('name', $.identifier),
         optional($.type_parameter_list),
+        optional($.index_parameter),
         '{',
         optional(seq($.data_variant, repeat(seq(',', $.data_variant)), optional(','))),
         '}',
       ),
+
+    // Parser::index_param — `02-core-calculus.md` §1.5's index, written in
+    // parentheses where a type parameter is written in angle brackets. Exactly
+    // one binder: a type carries one index, so there is no comma here.
+    index_parameter: ($) =>
+      seq('(', field('name', $.identifier), ':', field('sort', $.type_expression), ')'),
 
     data_variant: ($) =>
       seq(
@@ -586,6 +593,7 @@ module.exports = grammar({
       choice(
         $.type_name,
         $.applied_type,
+        $.indexed_type,
         $.option_type,
         $.list_type,
         $.result_type,
@@ -603,6 +611,14 @@ module.exports = grammar({
     // parser (Parser::type_atom).
     applied_type: ($) =>
       seq(field('name', $.type_name), '<', $.type_expression, repeat(seq(',', $.type_expression)), '>'),
+    // `Pc(12)` — a type carrying an index. An index is spelled in parentheses
+    // precisely so that it is not the angle-bracket form above: `Pc<A>` takes a
+    // type and `Pc(12)` takes a number, and the grammar tells them apart rather
+    // than the checker (Parser::type_atom). The index is an ordinary
+    // expression, because what an index may *say* is a restriction the checker
+    // applies and not a second syntax.
+    indexed_type: ($) =>
+      seq(field('name', $.type_name), '(', field('index', $.expression), ')'),
     option_type: ($) => seq('Option', '<', $.type_expression, '>'),
     list_type: ($) => seq('List', '<', $.type_expression, '>'),
     // The binary sum, in its one surface spelling (Parser::type_atom).

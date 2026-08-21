@@ -20,11 +20,15 @@
 //!
 //! # Why the match is written out
 //!
-//! Fifty-three variants, each named once. The alternative — asking `musa-calculus` for
-//! a refusal's origin and its severity through accessors — would put the same
-//! fifty-four arms in the core *as well*, because the code still has to be chosen
-//! here. One list of the variants is the smaller arrangement, and a variant
-//! added to the core fails to compile here until somebody says where it belongs.
+//! Every variant, named once. The alternative — asking `musa-calculus` for a
+//! refusal's origin and its severity through accessors — would put the same
+//! arms in the core *as well*, because the code still has to be chosen here.
+//! One list of the variants is the smaller arrangement, and a variant added to
+//! the core fails to compile here until somebody says where it belongs.
+//!
+//! No count is written down. The three that were went stale as the core grew,
+//! and a number in prose is a fact nothing checks — the exhaustive `match` is
+//! the check, and it is the only one worth having.
 
 use musa_calculus::{ElabError, Origin, Refusal};
 
@@ -57,12 +61,12 @@ struct Filed {
     /// The sentence, where the core's own names a thing the composer did not
     /// write.
     ///
-    /// [`None`] for fifty-two of the fifty-three, and the module documentation
-    /// says why: a refusal's wording is the core's, written beside the rule
-    /// that raises it, and prompt 144 owns the pass over all of them. This is
-    /// not that pass — it is the narrower case where the core's vocabulary and
-    /// the language's are *different words for the same thing*, so forwarding
-    /// the core's would teach a composer a term the language does not use.
+    /// [`None`] for nearly all of them, and the module documentation says why:
+    /// a refusal's wording is the core's, written beside the rule that raises
+    /// it, and prompt 144 owns the pass over all of them. This is not that pass
+    /// — it is the narrower case where the core's vocabulary and the language's
+    /// are *different words for the same thing*, so forwarding the core's would
+    /// teach a composer a term the language does not use.
     said: Option<String>,
 }
 
@@ -223,6 +227,33 @@ fn file(refusal: &Refusal) -> Filed {
                  projection, and two variables multiplied are each outside it",
             )),
             ..one(Code::TypeMismatch, *at)
+        },
+        // §1.5's arity, from the two sides an author can be on. Both name the
+        // *declaration* in their help, because that is what decides and what
+        // has to be looked at: an index is written where a declaration said one
+        // would be, and nowhere else.
+        Refusal::NotIndexed { ty, at } => Filed {
+            said: Some(format!("`{ty}` takes no index")),
+            label: Some("written with one here".to_owned()),
+            help: Some(std::borrow::Cow::Borrowed(
+                "a type carries an index only when its declaration writes one, as `data Pc(n: Nat)`",
+            )),
+            ..one(Code::IndexArity, *at)
+        },
+        Refusal::MissingIndex { ty, binder, at } => Filed {
+            said: Some(format!("`{ty}` carries an index, and none is written")),
+            label: Some(format!("write the `{binder}` it was declared with, as `{ty}(…)`")),
+            help: None,
+            ..one(Code::IndexArity, *at)
+        },
+        // And the declaration's own mistake, which no use site can repair.
+        Refusal::NotAnIndexSort { binder, ty, at } => Filed {
+            said: Some(format!("`{binder}` is not a sort an index can be drawn from")),
+            label: Some(format!("`{ty}` is declared to carry one of these")),
+            help: Some(std::borrow::Cow::Borrowed(
+                "an index is a whole number, an exact fraction, or one of a finite set of literals",
+            )),
+            ..one(Code::NotAnIndexSort, *at)
         },
         Refusal::Private { at, .. } => one(Code::PrivateName, *at),
         Refusal::MixedVisibility { at, .. } => one(Code::MixedVisibility, *at),

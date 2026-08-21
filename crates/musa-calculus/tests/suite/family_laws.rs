@@ -35,6 +35,7 @@ pub(crate) fn family(name: &str, constructors: Vec<RawConstructor>) -> RawFamily
     RawFamily {
         name: Arc::from(name),
         visibility: Visibility::Public,
+        index: None,
         constructors,
     }
 }

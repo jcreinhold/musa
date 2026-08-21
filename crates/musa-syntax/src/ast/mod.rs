@@ -290,7 +290,7 @@ pub use performance::{DynamicRule, GraceRule, GrooveRule, MarkRule, PerformanceD
 
 pub use declarations::{
     Constraint, DataDecl, DataField, DataMember, DataVariant, EnumCase, EnumDecl, FieldDecl, FnDecl, FnParam, ImplDecl,
-    LetDecl, Param, ParamList, RecordDecl, SignatureDecl, SignatureMember, StructureDecl, TraitDecl,
+    IndexParam, LetDecl, Param, ParamList, RecordDecl, SignatureDecl, SignatureMember, StructureDecl, TraitDecl,
 };
 
 pub use types::{

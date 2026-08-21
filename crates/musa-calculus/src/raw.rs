@@ -102,6 +102,26 @@ pub struct RawFamily {
     /// Independent of its cases': a public type with private cases is the shape
     /// `01-surface.md` §1.3 exists for.
     pub visibility: Visibility,
+    /// The index this family is declared to carry, if it declares one:
+    /// `data Pc(n: Nat)` (§1.5).
+    ///
+    /// Beside the group's parameters rather than among them, because the two
+    /// answer different questions and §1.5 spells them differently for that
+    /// reason. A parameter says *what this is a type of*, is written in angle
+    /// brackets, survives into the elaborated term, and is compared by §3's
+    /// ordinary conversion. An index says *how many*, is written in
+    /// parentheses, is decided by arithmetic, and is erased.
+    ///
+    /// Per family and not per group, because it is written at the family's own
+    /// name — `data Pc(n: Nat)` — while the parameters are shared by every
+    /// family a group declares. `None` is a family that takes no index, which
+    /// is every family declared before §1.5 existed and every family since
+    /// that had no reason to.
+    ///
+    /// At most one, because [`Term::indexed`](crate::Term::indexed) carries one
+    /// index and the use-site grammar reads one expression. A longer telescope
+    /// is a change to the term representation and to erasure.
+    pub index: Option<RawBinder>,
     /// Its constructors.
     pub constructors: Vec<RawConstructor>,
 }

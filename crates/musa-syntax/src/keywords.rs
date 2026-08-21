@@ -1107,6 +1107,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::DataDecl
         | SyntaxKind::TypeParams
         | SyntaxKind::TypeParam
+        | SyntaxKind::IndexParam
         | SyntaxKind::DataVariant
         | SyntaxKind::DataField
         | SyntaxKind::AppliedType

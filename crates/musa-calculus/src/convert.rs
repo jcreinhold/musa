@@ -1046,6 +1046,23 @@ fn measured(literal: &crate::base::Literal) -> Option<Expr> {
 /// enums are decided by [`crate::base::Payload::same`] at an ordinary base type
 /// and have nothing linear to normalize. A variable of any other type is
 /// outside the grammar, which is the refusal §1.5 names.
+/// Whether `ty` is one of `02-core-calculus.md` §1.5's index sorts.
+///
+/// [`crate::declare`]'s check on an index telescope's binder, and [`sort_of`]
+/// with the sort thrown away — which is the point of writing it here rather
+/// than beside the declaration. The question "may an index be drawn from this
+/// type?" is answered once, by the module that has to read the values, so a
+/// declaration cannot admit a sort a comparison then cannot decide.
+///
+/// §1.5 names three sorts and this admits two shapes, which is the same set:
+/// `Nat` is a counting family, and exact `Ratio` and a finite literal enum are
+/// both base types whose owner registered [`crate::base::Measures`]. A finite
+/// enum is not a third mechanism — it is the second one at a bounded set of
+/// literals.
+pub(crate) fn is_index_sort(ty: &Value) -> bool {
+    sort_of(ty).is_some()
+}
+
 fn sort_of(ty: &Value) -> Option<Sort> {
     let Form::Neutral(neutral) = &ty.form else {
         return None;

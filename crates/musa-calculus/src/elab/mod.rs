@@ -230,6 +230,51 @@ impl Elaborator {
 
     /// Elaborate a term standing in type position, answering its universe.
     pub(crate) fn check_type(&mut self, scope: &Scope, raw: &Raw) -> Result<(Term, Level), ElabError> {
+        let (term, level) = self.formed_type(scope, raw)?;
+        // §1.5's arity check, on the side an indexed type is *not* written.
+        // `Pc` alone is not a type when `Pc` was declared `Pc(n : Nat)`: it is
+        // a type still waiting for the number it carries, and admitting it
+        // would make the index optional, which is the same as not having one —
+        // two values at two indices would meet at the bare type.
+        //
+        // **It is a check on what was written, not on what a term may hold**,
+        // and the difference is erasure. `quote` drops the wrapper, so the
+        // read-back of `Pc(12)` *is* the bare `Pc` and every stored artifact
+        // holds one: a check over terms would refuse the erasure this stratum
+        // exists to produce. A [`Raw`] is the one thing erasure never makes, so
+        // asking here — where a written type expression arrives and nowhere
+        // else — refuses the author and leaves the term language exactly as
+        // prompt 142d left it.
+        //
+        // The one written form that is not a mistake is the head of `Pc(12)`,
+        // which is holding the index this would say was missing; that caller
+        // reads [`Self::formed_type`] instead.
+        if !matches!(term.shape(), crate::term::Shape::Indexed { .. })
+            && let Some(binder) = term.declared_index()
+        {
+            return Err(Refusal::MissingIndex {
+                ty: crate::show::head_spelled(&term),
+                binder: Arc::clone(&binder.name),
+                at: raw.origin(),
+            }
+            .into());
+        }
+        Ok((term, level))
+    }
+
+    /// `raw` read as a type expression, with §1.5's arity check left to the
+    /// caller.
+    ///
+    /// [`Self::check_type`] is this and that check; the split exists for one
+    /// caller — `indexed_type_formation`, which is reading the *head* of
+    /// `Pc(12)` and so is holding the index the check would complain was
+    /// missing.
+    ///
+    /// # Errors
+    ///
+    /// [`Refusal::NotAType`] when the expression's own type is not a universe,
+    /// and otherwise as [`crate::check`].
+    pub(crate) fn formed_type(&mut self, scope: &Scope, raw: &Raw) -> Result<(Term, Level), ElabError> {
         let inferred = self.infer(scope, raw)?;
         let unfolded = opened(&mut self.meter, &inferred.ty)?;
         let ty = unfolded.as_ref().unwrap_or(&inferred.ty);

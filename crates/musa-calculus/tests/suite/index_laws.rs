@@ -73,8 +73,13 @@ fn count() -> Base {
 }
 
 /// `Row : Type 0` — a type that carries an index and knows nothing about it.
+///
+/// It *declares* the index, which is what makes `Row(12)` a type and `Row`
+/// alone an error: §1.5's index is written where the declaration said one
+/// would be, at the sort the declaration named, and a host declares that the
+/// same way a program does.
 fn row() -> Base {
-    Base::new("Row", Term::universe(TYPES, Level::ZERO))
+    Base::new("Row", Term::universe(TYPES, Level::ZERO)).indexed_by("n", count_type())
 }
 
 /// `Opaque : Type 0` — a base type that registered *no* measure, so a literal
@@ -361,14 +366,96 @@ fn two_variables_multiplied_are_refused_at_the_type() {
 
 /// A base type that registered no measure has no literals the solver can read,
 /// which is what keeps `Syntax<Cat>`'s category from silently becoming an index.
+///
+/// Refused at the *table*, one stage earlier than the refusal this law used to
+/// assert. Before prompt 142f a type carried whatever index was written on it,
+/// so an unreadable one could only be caught at the type that wrote it; now a
+/// head declares the sort its index is drawn from, and `Opaque` is not a sort,
+/// so the declaration is what is wrong. §1.5's guarantee is the stronger of the
+/// two: no program can put an `Opaque` in an index position, because no type
+/// has one to put it in.
 #[test]
-fn a_literal_of_an_unmeasured_base_type_is_refused_at_the_type() {
+fn a_type_indexed_by_an_unmeasured_base_type_is_refused_at_the_registry() {
+    let unmeasured = Base::new("Bad", Term::universe(TYPES, Level::ZERO)).indexed_by("n", opaque().term(TYPES));
+    let Err(refusal) = Registry::new(vec![count(), opaque(), unmeasured], vec![]) else {
+        panic!("a base type indexed by an unmeasured base type was registered");
+    };
+    let Refusal::NotAnIndexSort { binder, ty, .. } = &refusal else {
+        panic!("refused as {refusal:?} rather than for its sort");
+    };
+    assert_eq!(&**binder, "n");
+    assert_eq!(&**ty, "Bad");
+}
+
+/// And what the declared sort buys at a use site: an index of the wrong sort is
+/// a type error, at the sort the head declared.
+///
+/// The bidirectional half of prompt 142f. `Row` declares `Count`, so the
+/// expression in the parentheses is *checked* at `Count` rather than inferred
+/// and accepted for whatever it turned out to be — which is the only thing that
+/// can tell `Row(12)` from `Row(<an opaque literal>)` when both are literals
+/// the reader would happily take a number out of.
+#[test]
+fn an_index_at_another_sort_than_the_head_declared_is_refused() {
     let unmeasured = Raw::indexed(
         TYPES,
         var("Row"),
         Raw::lit(TYPES, Literal::new(opaque().term(TYPES), Arc::new(Count(12)))),
     );
-    assert!(refuses_the_index(&unmeasured));
+    let Err(musa_calculus::ElabError::Refused(refusal)) = infer(&cx(), &unmeasured) else {
+        panic!("`Row(<an Opaque literal>)` was formed");
+    };
+    assert!(
+        matches!(refusal, Refusal::Mismatch(_)),
+        "refused as {refusal:?} rather than at the sort"
+    );
+}
+
+/// §1.5's arity check, on the side an index is written: a type that declares
+/// none does not take one.
+///
+/// The refusal that makes `Nat(12)` an error rather than a second spelling of
+/// `Nat`, and the one erasure rests on — a form nothing declares is a form
+/// nothing can be erased from, so admitting it would leave a type whose
+/// read-back is a different type for no reason anything recorded.
+#[test]
+fn an_index_on_a_type_that_declares_none_is_refused() {
+    let Err(musa_calculus::ElabError::Refused(refusal)) =
+        infer(&cx(), &Raw::indexed(TYPES, var("Opaque"), literal_index(12)))
+    else {
+        panic!("`Opaque(12)` was formed");
+    };
+    let Refusal::NotIndexed { ty, .. } = &refusal else {
+        panic!("refused as {refusal:?} rather than for taking no index");
+    };
+    assert_eq!(
+        ty, "Opaque",
+        "the refusal names the type, which is what could have declared one"
+    );
+}
+
+/// And the other side: a type that declares one is not a type without it.
+///
+/// Asked of what is *written*, and that is the whole of where it is asked.
+/// `quote` erases the wrapper, so the bare `Row` is what a read-back and every
+/// stored artifact hold — [`bare_row`] is that term — and a check over terms
+/// would refuse the erasure this stratum exists to produce. A [`Raw`] is the
+/// one thing erasure never makes.
+#[test]
+fn a_type_that_declares_an_index_is_not_a_type_without_one() {
+    // A type *position*, because that is where the question is asked: `Row`
+    // standing alone is an inhabitant of `Type 0` and infers, and the parameter
+    // it is written as the type of is where a program actually meets it.
+    let written = Raw::pi(TYPES, "r", var("Row"), var("Count"));
+    let Err(musa_calculus::ElabError::Refused(refusal)) = infer(&cx(), &written) else {
+        panic!("a parameter at a bare `Row` was accepted");
+    };
+    let Refusal::MissingIndex { ty, binder, .. } = &refusal else {
+        panic!("refused as {refusal:?} rather than for its missing index");
+    };
+    assert_eq!(ty, "Row");
+    assert_eq!(&**binder, "n", "the message names what to supply");
+    normalize_type(&cx(), &bare_row()).expect("and the same type, as a term, is still a type");
 }
 
 /// The refusal names the expression, which is the reason for its site.
@@ -456,9 +543,20 @@ fn a_refusal_names_the_index_and_never_the_solver() {
 #[test]
 fn quotation_drops_the_index() {
     let refined = elaborated("a refined type", &refined(literal_index(12)));
-    let bare = elaborated("the bare type", &var("Row"));
     let read_back = normalize_type(&cx(), &refined).expect("a refined type normalizes");
-    assert_eq!(read_back, bare);
+    assert_eq!(read_back, bare_row());
+}
+
+/// The bare `Row`, built as a term rather than elaborated from one written.
+///
+/// Erasure is what makes this the *only* way to say it: `Row` declares an
+/// index, so writing it without one is refused, and this is exactly the shape
+/// erasure produces. Building it here rather than writing it is the two facts
+/// stated together — a term may hold a bare indexed type and a program may not
+/// write one — and a fixture that wrote it would be asserting the second is
+/// false in order to check the first.
+fn bare_row() -> Term {
+    row().term(TYPES)
 }
 
 /// The same, for an index no literal fixes: an open index is dropped too, so
@@ -466,9 +564,9 @@ fn quotation_drops_the_index() {
 #[test]
 fn quotation_drops_an_open_index() {
     let written = over_one(refined(applied("count_add", [var("n"), var("n")])));
-    let erased = over_one(var("Row"));
+    let erased = Term::pi(TYPES, "n", count_type(), bare_row());
     let read_back = normalize_type(&cx(), &elaborated("an open index", &written)).expect("it normalizes");
-    assert_eq!(read_back, elaborated("the erased type", &erased));
+    assert_eq!(read_back, erased);
 }
 
 // ---- a constructor carries its index ---------------------------------------
@@ -485,7 +583,7 @@ fn a_constructor_carries_its_index_out() {
     let built = Raw::app(TERMS, var("row_of"), literal_index(12));
     check(&cx(), &elaborated("Row(12)", &refined(literal_index(12))), &built).expect("`row_of 12` is a `Row(12)`");
     let (_, read_back) = infer(&cx(), &built).expect("`row_of 12` infers");
-    assert_eq!(read_back, elaborated("the bare type", &var("Row")));
+    assert_eq!(read_back, bare_row());
 }
 
 /// And the index it carries is checked at the use.
@@ -543,4 +641,72 @@ fn a_pathological_index_expression_exhausts_rather_than_hanging() {
         Err(other) => panic!("the narrow budget failed for another reason: {other}"),
         Ok(answer) => assert!(answer, "if it fits the budget it is the same type as itself"),
     }
+}
+
+// ---- the coverage gate's share ---------------------------------------------
+
+/// One program whose refusal is §1.5's, for `elaboration_laws`' coverage gate.
+///
+/// Supplied from here rather than written there, because the registry these
+/// need is this suite's: §1.5's refusals are all about a type that declares an
+/// index, and the gate's own context declares none.
+pub(crate) struct RefusedIndex {
+    /// What the program exercises.
+    pub(crate) name: &'static str,
+    /// The context it is written in.
+    pub(crate) cx: Cx,
+    pub(crate) raw: Raw,
+    /// Whether the refusal is the one this program is about.
+    pub(crate) expected: fn(&Refusal) -> bool,
+}
+
+/// The two refusals a written index can earn.
+pub(crate) fn refused_indexes() -> Vec<RefusedIndex> {
+    vec![
+        RefusedIndex {
+            name: "an index on a type that declares none",
+            cx: cx(),
+            raw: Raw::indexed(TYPES, var("Opaque"), literal_index(12)),
+            expected: |refusal| matches!(refusal, Refusal::NotIndexed { .. }),
+        },
+        RefusedIndex {
+            name: "a type that declares an index, written without one",
+            cx: cx(),
+            raw: Raw::pi(TYPES, "r", var("Row"), var("Count")),
+            expected: |refusal| matches!(refusal, Refusal::MissingIndex { .. }),
+        },
+    ]
+}
+
+/// A `data` declaration §1.5 refuses, and why.
+///
+/// A declaration rather than a term, because that is where an index *sort* is
+/// written: the refusal is about the binder in `data Bad(n : Opaque)`, and no
+/// use site has an opinion about it. It reaches the gate through
+/// [`declare`](musa_calculus::declare) for that reason.
+pub(crate) fn refused_index_declaration() -> (&'static str, Cx, musa_calculus::RawData) {
+    let only = musa_calculus::RawConstructor {
+        origin: TYPES,
+        name: Arc::from("Only"),
+        visibility: musa_calculus::Visibility::Public,
+        fields: vec![],
+    };
+    let bad = musa_calculus::RawFamily {
+        name: Arc::from("Bad"),
+        visibility: musa_calculus::Visibility::Public,
+        index: Some(musa_calculus::RawBinder {
+            name: Arc::from("n"),
+            ty: var("Opaque"),
+        }),
+        constructors: vec![only],
+    };
+    (
+        "a family indexed by a type that is not an index sort",
+        cx(),
+        musa_calculus::RawData {
+            origin: TYPES,
+            params: vec![],
+            families: vec![bad],
+        },
+    )
 }

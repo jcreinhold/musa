@@ -1179,6 +1179,7 @@ fn sealed(name: &str, fields: Vec<RawBinder>) -> RawConstructor {
 
 fn family(name: &str, constructors: Vec<RawConstructor>) -> RawFamily {
     RawFamily {
+        index: None,
         name: Arc::from(name),
         visibility: Visibility::Public,
         constructors,

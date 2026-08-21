@@ -160,8 +160,37 @@ impl Elaborator {
         ty: &Raw,
         index: &Raw,
     ) -> Result<Typed, ElabError> {
-        let (ty, level) = self.check_type(scope, ty)?;
-        let index = self.infer(scope, index)?;
+        // The *head*, so §1.5's arity check is not asked of a type whose index
+        // is one line away — [`Elaborator::formed_type`] is `check_type` without
+        // it, and this is its one caller.
+        let (ty, level) = self.formed_type(scope, ty)?;
+        // §1.5's other half of the arity check: an index written on a type that
+        // declares none. `Nat(12)` is refused here, and it has to be refused
+        // somewhere — a form nothing declares is a form nothing can be erased
+        // from, so admitting it would leave a type whose read-back is a
+        // different type for no reason anything recorded.
+        let Some(binder) = ty.declared_index() else {
+            return Err(Refusal::NotIndexed {
+                ty: crate::show::head_spelled(&ty),
+                at: here,
+            }
+            .into());
+        };
+        // **Checked, never inferred, at the sort the head declares.** This is
+        // the bidirectional rule the rest of the elaborator follows, and the
+        // reason it matters here is `Pc(3/4)`: inferring answers "an exact
+        // fraction" and has nothing to compare that against, so a type declared
+        // over whole numbers silently carries a rational and two use sites that
+        // disagree about what `Pc` counts are both accepted.
+        //
+        // The sort is evaluated under this scope even though it was elaborated
+        // closed, which is sound because §1.5's sorts *are* closed —
+        // [`crate::declare`]'s check on the telescope is what guarantees it.
+        let sort = scope.eval(&mut self.meter, &binder.ty)?;
+        let index = Typed {
+            term: self.check(scope, index, &sort)?,
+            ty: sort,
+        };
         // §1.5's grammar is checked *here*, where the type is formed and the
         // expression that broke it is still on the page. Two things follow, and
         // both are the reason the check is not left to the comparison:

@@ -89,6 +89,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
 
+use crate::family::Binder;
 use crate::origin::Origin;
 use crate::refuse::Refusal;
 use crate::term::{Name, Shape, Term};
@@ -113,6 +114,7 @@ struct BaseDeclaration {
     storable: bool,
     accepts: Option<Accepts>,
     measures: Option<Measures>,
+    index: Option<Binder>,
 }
 
 /// Whether a position of an indexed base type accepts a value of it at a
@@ -203,7 +205,34 @@ impl Base {
             storable: false,
             accepts: None,
             measures: None,
+            index: None,
         }))
+    }
+
+    /// The same base type, declared to carry an index of sort `sort`, written
+    /// `name` (§1.5).
+    ///
+    /// Beside [`Self::measuring`] and its neighbours, and the pair is worth
+    /// reading together: [`Self::measuring`] says *my literals are index
+    /// values*, and this says *I am written with one*. A type is at most one of
+    /// the two — an index is drawn from a sort and carried by something else —
+    /// and nothing stops a host declaring both, which is a host's mistake and
+    /// not one this crate can see.
+    ///
+    /// The sort is checked when the registry is built, not here, for
+    /// [`Registry::new`]'s reason: a base type is a value a host writes down,
+    /// and the table is where a host's table is refused.
+    #[must_use]
+    pub fn indexed_by(&self, name: impl Into<Name>, sort: Term) -> Self {
+        Self(Arc::new(BaseDeclaration {
+            index: Some(Binder::written(name.into(), sort)),
+            ..self.declaration()
+        }))
+    }
+
+    /// The index it is declared to carry, if it declares one.
+    pub(crate) fn declared_index(&self) -> Option<&Binder> {
+        self.0.index.as_ref()
     }
 
     /// The same base type, with its owner's guarantee that it is storable data.
@@ -286,6 +315,18 @@ impl Base {
         self.0.measures
     }
 
+    /// Whether its owner registered one.
+    ///
+    /// The [`Measures`] question without the `fn` pointer, because a host that
+    /// wants to check its own table has no use for the pointer and every use
+    /// for the answer: a base type written at one site and registered at
+    /// another compares equal by name and can still differ here, which is a
+    /// defect nothing else can see.
+    #[must_use]
+    pub fn reads_an_index(&self) -> bool {
+        self.0.measures.is_some()
+    }
+
     /// This declaration's fields, for a method that replaces one of them.
     fn declaration(&self) -> BaseDeclaration {
         BaseDeclaration {
@@ -294,6 +335,7 @@ impl Base {
             storable: self.0.storable,
             accepts: self.0.accepts,
             measures: self.0.measures,
+            index: self.0.index.clone(),
         }
     }
 
@@ -1055,6 +1097,7 @@ impl Registry {
         let registry = Self { names };
         registry.check_delta_signatures()?;
         registry.check_structural_targets()?;
+        registry.check_index_sorts()?;
         Ok(registry)
     }
 
@@ -1094,6 +1137,46 @@ impl Registry {
                 return Err(Refusal::UnknownBase {
                     name: Arc::clone(base.name()),
                     at: domain.origin(),
+                });
+            }
+        }
+        Ok(())
+    }
+
+    /// Every registered index telescope's sort, checked against §1.5's three.
+    ///
+    /// A host declares an index the way a program does — [`Base::indexed_by`] —
+    /// and the sort it names has to be one whose values [`crate::index`] can
+    /// read, or the type carries an index no comparison could decide. A base
+    /// type answers that with [`Base::measuring`], which is registered here, so
+    /// the check is a lookup in this table and needs no evaluation.
+    ///
+    /// A declared family is admitted too, and left to [`crate::declare`] rather
+    /// than looked at: `Nat` is a family, families are not in this table, and a
+    /// registry that refused what it cannot see would refuse `Nat` for being
+    /// declared elsewhere. The counting condition is checked where a family is,
+    /// which is the same split every other question about a family takes here.
+    fn check_index_sorts(&self) -> Result<(), Refusal> {
+        for entry in self.names.values() {
+            let Extern::Base(base) = entry else {
+                continue;
+            };
+            let Some(binder) = base.declared_index() else {
+                continue;
+            };
+            let readable = match head_base(&binder.ty) {
+                Some(sort) => self
+                    .named(sort.name())
+                    .is_some_and(|found| matches!(found, Extern::Base(sort) if sort.measures().is_some())),
+                // Not a base type at all: a declared family, which this table
+                // cannot see and `declare` already checks.
+                None => true,
+            };
+            if !readable {
+                return Err(Refusal::NotAnIndexSort {
+                    binder: Arc::clone(&binder.name),
+                    ty: Arc::clone(base.name()),
+                    at: binder.ty.origin(),
                 });
             }
         }

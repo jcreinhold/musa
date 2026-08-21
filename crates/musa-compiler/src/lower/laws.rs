@@ -242,25 +242,24 @@ fn a_bare_indexed_type_is_refused_where_it_is_written() {
 /// `02-core-calculus.md` §1.5 lets a type carry an index and the grammar spells
 /// it `T(i)`, so the whole of the path — parser to `IndexedType`, [`Lowering::ty`]
 /// to `Raw::indexed`, elaborator to a formed type — has to hold. Nothing tested
-/// that it did, and it did not: two lists that had to agree with the grammar
-/// had each quietly stopped.
+/// that it did, and it did not: [`is_type_node`] was a copy of
+/// `musa_syntax::ast::is_type` made before `IndexedType` was a node kind, so
+/// every reader of an annotation looked straight past `Nat(12)`; the parameter
+/// lowered as a λ with no domain, and the author was told their parameter could
+/// not be given a type on its own.
 ///
-/// The first was [`is_type_node`], which this module's own [`lowered_type`] uses
-/// to find the type a parameter writes. It was a copy of `musa_syntax::ast::is_type`
-/// made before `IndexedType` was a node kind, so every reader of an annotation
-/// looked straight past `Nat(12)`; the parameter lowered as a λ with no domain,
-/// and the author was told their parameter could not be given a type on its own.
-///
-/// The second was the `Ratio` case. A base type carries its owner's rule for
-/// reading its literals as index values, [`Base`](musa_calculus::Base) compares
-/// by *name*, and `3/4` lowered to a literal at a second `Ratio` built without
-/// the rule — accepted everywhere the registration was, and then not an index
-/// when §1.5 asked. Both are why this law writes source rather than a `Raw`.
+/// The *refusal* is what the law ends at, and that is prompt 142f's doing. `Nat`
+/// is the sort an index is drawn from and declares none of its own, so an index
+/// written on it is refused — and refused for taking no index, which is a
+/// refusal only a lowering that reached the core as `Raw::indexed` could have
+/// earned. A lowering that dropped the parentheses would have accepted `Nat`.
 #[test]
 fn an_index_written_in_a_type_reaches_the_core_as_the_type_it_forms() {
     let cx = host();
-    // `Nat(12)`, whose index the core holds itself as a numeral, and `Ratio(3/4)`,
-    // whose index only the compiler that put the fraction in can read back.
+    // `Nat(12)`, whose index the core holds itself as a numeral, and
+    // `Ratio(3/4)`, whose index only the compiler that put the fraction in can
+    // read back. Neither head declares an index, so both end at the same
+    // refusal — which is the evidence that both arrived as indexed types.
     for written in ["Nat(12)", "Ratio(3/4)"] {
         let (raw, complaints) = lowered_type(written);
         assert!(complaints.is_empty(), "`{written}` lowers without complaint");
@@ -269,10 +268,40 @@ fn an_index_written_in_a_type_reaches_the_core_as_the_type_it_forms() {
             matches!(*raw.shape(), RawShape::Indexed { .. }),
             "`{written}` lowers to the indexed type it writes, not to its head alone"
         );
-        musa_calculus::check(&cx, &type0(), &raw).unwrap_or_else(|failure| {
-            panic!("`{written}` lowers to a type the core forms, not {failure:?}");
-        });
+        let Err(musa_calculus::ElabError::Refused(refusal)) = musa_calculus::check(&cx, &type0(), &raw) else {
+            panic!("`{written}` was formed, and neither head declares an index");
+        };
+        assert!(
+            matches!(refusal, musa_calculus::Refusal::NotIndexed { .. }),
+            "`{written}`: refused as {refusal:?} rather than for its index"
+        );
     }
+}
+
+/// A base type's literals reach §1.5's reader at the base type that registered
+/// how to read them.
+///
+/// [`Base`](musa_calculus::Base) compares by *name*, so a second `Ratio` built
+/// without [`measuring`](musa_calculus::Base::measuring) is accepted everywhere
+/// the registered one is and then answers differently when asked whether a
+/// literal of it is a number. That is what `crate::registry::registered` exists
+/// to prevent, and reading the measure back off a lowered literal's own type is
+/// how the prevention is checked rather than assumed.
+#[test]
+fn a_literal_carries_the_base_type_that_registered_how_to_read_it() {
+    let (raw, complaints) = lowered_expr("3/4");
+    assert!(complaints.is_empty(), "`3/4` lowers without complaint");
+    let raw = raw.expect("`3/4` lowers");
+    let RawShape::Lit(literal) = raw.shape() else {
+        panic!("`3/4` lowers to a literal, not to {:?}", raw.shape());
+    };
+    let musa_calculus::Shape::Base(base) = literal.ty().shape() else {
+        panic!("a `Ratio` literal stands at a base type");
+    };
+    assert!(
+        base.reads_an_index(),
+        "`Ratio` registers how to read its literals as index values, and this literal stands at a `Ratio` that does not"
+    );
 }
 
 #[test]

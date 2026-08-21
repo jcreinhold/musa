@@ -1,7 +1,7 @@
 ---
 id: 142f
 slug: writable-index
-status: in-progress
+status: done
 depends_on: [142db]
 phase: 3
 ---
