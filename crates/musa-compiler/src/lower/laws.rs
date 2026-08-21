@@ -26,7 +26,7 @@
     reason = "a law that cannot fail loudly is not a law"
 )]
 
-use musa_calculus::{Cx, Filling, Level, Raw, RawData, RawPattern, RawShape, Term};
+use musa_calculus::{Cx, Level, Raw, RawData, RawPattern, RawShape, Term};
 use musa_syntax::{SyntaxKind, SyntaxNode};
 
 use super::items::{Declared, Definition, Item};
@@ -663,44 +663,43 @@ fn a_binding_carries_the_type_it_wrote_and_no_other() {
     musa_calculus::infer(&cx, &bare.value).expect("and its value infers, which is why it needs none");
 }
 
-/// A trait and an instance of it, both read out of source and both admitted.
+/// An `impl` block, read out of source and admitted: every `fn` in it is an
+/// ordinary definition in the type's namespace.
+///
+/// §1.5's whole mechanism, seen at the lowering. There is no class, no instance,
+/// and no table — `impl Same { fn same(…) }` is the definition `Same.same`, and
+/// what the core admits is a definition like any other.
 #[test]
-fn a_trait_and_an_instance_lower_to_declarations_the_core_admits() {
+fn an_impl_block_lowers_to_definitions_in_the_types_namespace() {
     let cx = host();
-    let Item::Class(class) = item("trait Same<A> { fn same(x: A, y: A) -> Bool; }", SyntaxKind::TraitDecl) else {
-        panic!("a `trait` is a class declaration");
+    let Item::Namespace(members) = item(
+        "impl Same { fn same(x: Nat, y: Nat) -> Bool { true } }",
+        SyntaxKind::ImplDecl,
+    ) else {
+        panic!("an `impl` declares a namespace");
     };
-    assert_eq!(class.params.len(), 1, "the head every instance is keyed on");
-    assert_eq!(class.methods.len(), 1, "and one required method");
-    assert!(
-        class.methods.first().expect("one method").body.is_none(),
-        "required, because it wrote `;`"
-    );
-    let declared = musa_calculus::declare_trait(&cx, &class).expect("the core declares the trait");
-    let cx = cx.declaring_class(&declared);
-
-    let Item::Instance(instance) = item("impl Same<Nat> { fn same(x, y) { true } }", SyntaxKind::ImplDecl) else {
-        panic!("an `impl` is an instance declaration");
-    };
-    assert_eq!(&*instance.name, "Same", "the head name is the trait");
-    assert_eq!(instance.args.len(), 1, "applied to what it is an instance for");
-    musa_calculus::declare_impl(&cx, &instance).expect("the core declares the instance");
+    assert_eq!(members.len(), 1, "one member, because one `fn` was written");
+    let (_, defined) = members.first().expect("one member");
+    assert_eq!(&*defined.name, "Same.same", "filed under the head, as a dotted name");
+    inhabits_its_written_type(&cx, "fn same(x: Nat, y: Nat) -> Bool { true }", defined);
 }
 
-/// A derived method is written once at the trait, and its body is the λ its own
-/// Π binds.
+/// Two `fn`s in one block are two definitions, and the block itself is nothing.
+///
+/// The negative half of the law above: an `impl` is not a declaration with
+/// members, it is a *spelling* for several declarations. Nothing about the block
+/// survives into the core, which is why a second block at the same head is not a
+/// duplicate of anything.
 #[test]
-fn a_method_with_a_block_is_derived_and_its_body_binds_what_its_type_quantifies() {
-    let cx = host();
-    let Item::Class(class) = item(
-        "trait Same<A> { fn same(x: A, y: A) -> Bool; fn apart(x: A, y: A) -> Bool { false } }",
-        SyntaxKind::TraitDecl,
+fn a_second_block_at_one_head_adds_to_the_same_namespace() {
+    let Item::Namespace(members) = item(
+        "impl Same { fn same(x: Nat, y: Nat) -> Bool { true } fn apart(x: Nat, y: Nat) -> Bool { false } }",
+        SyntaxKind::ImplDecl,
     ) else {
-        panic!("a `trait` is a class declaration");
+        panic!("an `impl` declares a namespace");
     };
-    let derived = class.methods.get(1).expect("the second method");
-    assert!(derived.body.is_some(), "derived, because it wrote a block");
-    musa_calculus::declare_trait(&cx, &class).expect("the core declares the trait");
+    let named: Vec<&str> = members.iter().map(|(_, defined)| &*defined.name).collect();
+    assert_eq!(named, vec!["Same.same", "Same.apart"], "in the order they were written");
 }
 
 // ---- refusals ----
@@ -754,116 +753,39 @@ fn a_definition_is_numbered_at_the_declaration_that_wrote_it() {
     );
 }
 
-/// A context holding `trait Same<A> { fn same(x: A, y: A) -> Bool; }` and one
-/// instance of it at `Nat`.
+/// A context holding every `fn` of one `impl` block, in the head's namespace.
 ///
-/// The smallest thing a `where` clause can be *about*: a trait with a head, a
-/// method a body can call, and a global instance a use site at a known type can
-/// find. Every law below writes its constraint against this one.
-fn with_same() -> Cx {
+/// The whole of what a namespace needs, and it is the ordinary definition door:
+/// an `impl` lowers to definitions, and a context that has them is a context
+/// that has definitions.
+fn namespacing(written: &str) -> Cx {
+    let Item::Namespace(members) = item(written, SyntaxKind::ImplDecl) else {
+        panic!("an `impl` declares a namespace");
+    };
+    let definitions = members
+        .into_iter()
+        .map(|(_, defined)| musa_calculus::RawTopLevel {
+            origin: defined.origin,
+            name: defined.name,
+            visibility: musa_calculus::Visibility::Public,
+            module: None,
+            ty: defined.ty,
+            value: defined.value,
+        })
+        .collect();
     let cx = host();
-    let Item::Class(class) = item("trait Same<A> { fn same(x: A, y: A) -> Bool; }", SyntaxKind::TraitDecl) else {
-        panic!("a `trait` is a class declaration");
-    };
-    let declared = musa_calculus::declare_trait(&cx, &class).expect("the core declares the trait");
-    let cx = cx.declaring_class(&declared);
-    let Item::Instance(instance) = item("impl Same<Nat> { fn same(x, y) { true } }", SyntaxKind::ImplDecl) else {
-        panic!("an `impl` is an instance declaration");
-    };
-    let instance = musa_calculus::declare_impl(&cx, &instance).expect("the core declares the instance");
-    cx.declaring_instance(&instance)
+    let declared = musa_calculus::declare_program(&cx, &musa_calculus::RawProgram { definitions })
+        .expect("a namespace member is a definition");
+    cx.defining(&declared)
 }
 
-/// §1.4's own program, lowered and admitted.
+/// A context in which `Nat.same` is defined.
 ///
-/// The law that changed sides at prompt 141i. It used to assert the refusal
-/// `Lowering::unconstrained` raised; what it asserts now is that the same source
-/// becomes a definition the core checks, with the binder in §1.4's own position
-/// — after the type parameters, so the constraint may mention them, and before
-/// the value parameters, so a caller answers it before supplying arguments.
-///
-/// The body does not *use* the dictionary, which is what this law is about and
-/// all it is about: the binder's position. Prompt 141l gave §1.5's qualified
-/// path its reading, so a body that reaches its own method is the law beside
-/// it — [`a_trait_method_under_a_where_is_reached_by_the_path_that_names_its_trait`].
-#[test]
-fn a_constraint_on_a_free_definition_is_admitted_where_it_is_written() {
-    let cx = with_same();
-    let written = "fn alike<A>(x: A, y: A) -> Bool where Same<A> { true }";
-    let defined = definition(written, SyntaxKind::FnDecl);
-    let ty = defined.ty.as_ref().expect("the declaration wrote its type");
-    let RawShape::Pi { filling, codomain, .. } = ty.shape() else {
-        panic!("the type parameter is the outermost binder");
-    };
-    assert_eq!(*filling, Filling::Parameter, "a function's type parameter is implicit");
-    assert!(
-        matches!(codomain.shape(), RawShape::ConstrainedPi { .. }),
-        "and the `where` clause is the binder just inside it"
-    );
-    inhabits_its_written_type(&cx, written, &defined);
-}
-
-/// §1.2's sentence, lowered: the constraint is a parameter of the type former.
-///
-/// A `where` on a record is refused where it is written — §1's flat law is the
-/// same answer the enum above gets: a constraint lives on the function that
-/// uses the type, not on the type.
-#[test]
-fn a_constraint_on_a_record_is_refused_where_it_is_written() {
-    let (item, complaints) = lowered_item(
-        "record Cell<A> where Same<A> { index: Nat; value: A; }",
-        SyntaxKind::RecordDecl,
-    );
-    assert!(item.is_none(), "a constrained record is not a declaration");
-    assert_eq!(complaints.len(), 1, "one complaint, at the clause");
-    assert_eq!(
-        complaints.first().expect("one complaint").code,
-        Code::ConstrainedData,
-        "the flat law's answer"
-    );
-}
-
-/// The same at a family: §1's flat law admits no `where` on an enum either —
-/// the refusal lands where the clause is written.
-#[test]
-fn a_constraint_on_an_enum_is_refused_where_it_is_written() {
-    let (item, complaints) = lowered_item("enum Held<A> where Same<A> { Empty, Full(A) }", SyntaxKind::EnumDecl);
-    assert!(item.is_none(), "a constrained family is not a declaration");
-    assert_eq!(complaints.len(), 1, "one complaint, at the clause");
-    assert_eq!(
-        complaints.first().expect("one complaint").code,
-        Code::ConstrainedData,
-        "the flat law's answer"
-    );
-}
-
-/// An impl method's `where` is misplaced rather than unsupported, and the
-/// difference is that no later prompt is going to admit it.
-#[test]
-fn a_constraint_on_an_impl_method_is_refused_where_it_is_written() {
-    let (item, complaints) = lowered_item(
-        "impl Same<Nat> { fn same(x, y) where Same<Nat> { true } }",
-        SyntaxKind::ImplDecl,
-    );
-    assert!(item.is_none(), "an impl method's type is the trait's");
-    assert_eq!(complaints.len(), 1, "one complaint, at the clause");
-    let complaint = complaints.first().expect("one complaint");
-    assert_eq!(complaint.code, Code::Misplaced, "a permanent answer, not a promise");
-    assert!(
-        complaint.message.contains("impl method"),
-        "and it names what it is about: {}",
-        complaint.message
-    );
-}
-
-/// A constraint with no signature to hang on is refused rather than dropped.
-#[test]
-fn a_constraint_on_an_unsigned_definition_is_refused_where_it_is_written() {
-    let (item, complaints) = lowered_item("fn alike<A>(x, y) where Same<A> { same(x, y) }", SyntaxKind::FnDecl);
-    assert!(item.is_none(), "there is no declared type for the binder to join");
-    assert_eq!(complaints.len(), 1, "one complaint, at the clause");
-    let complaint = complaints.first().expect("one complaint");
-    assert_eq!(complaint.code, Code::Misplaced, "a permanent answer, not a promise");
+/// The smallest thing §1.5's member rule can be *about*: a head, and a member
+/// spelled in its namespace that a use site can reach. Every law below writes
+/// its call against this one.
+fn with_same() -> Cx {
+    namespacing("impl Nat { fn same(x: Nat, y: Nat) -> Bool { true } }")
 }
 
 /// The other half of [`Sites`]: a refusal the core raised, pointed back at the
@@ -935,52 +857,21 @@ fn a_site_answers_the_span_it_was_numbered_for() {
 
 // ---- the qualified path ----
 
-/// A context holding `trait Eq<A> { fn equal(x: A, y: A) -> Bool; }` and one
-/// instance of it at `Nat`.
+/// The three ways one definition is reached, and the law that they are one
+/// definition.
 ///
-/// Declared out of source in the law rather than in [`crate::registry::owned`],
-/// which is [`with_same`]'s arrangement and is what prompt 141l's Stop asks for:
-/// `Eq` is prompt 164's to *ship*, and what a law needs is something for `==` to
-/// resolve to while it checks that it resolves at all.
-fn with_equality() -> Cx {
-    let cx = host();
-    let Item::Class(class) = item("trait Eq<A> { fn equal(x: A, y: A) -> Bool; }", SyntaxKind::TraitDecl) else {
-        panic!("a `trait` is a class declaration");
-    };
-    let declared = musa_calculus::declare_trait(&cx, &class).expect("the core declares the trait");
-    let cx = cx.declaring_class(&declared);
-    let Item::Instance(instance) = item("impl Eq<Nat> { fn equal(x, y) { true } }", SyntaxKind::ImplDecl) else {
-        panic!("an `impl` is an instance declaration");
-    };
-    let instance = musa_calculus::declare_impl(&cx, &instance).expect("the core declares the instance");
-    cx.declaring_instance(&instance)
-}
-
-/// The escape hatch, opened: §6's "any use that lookup refuses can be written
-/// out".
-///
-/// A generic receiver is refused by design, so the qualified path is the *only*
-/// way a constrained body reaches its own method — which is why §1.5 calls it
-/// "the escape hatch that makes the strictness above affordable" and why the law
-/// beside [`a_constraint_on_a_free_definition_is_admitted_where_it_is_written`]
-/// could not use the dictionary before this prompt.
+/// §1.5's whole claim about access. `Nat.same` is defined once by [`with_same`];
+/// the path writes its name out, method syntax finds it by the head of the
+/// receiver's type, and neither is a different program from the other.
 #[test]
-fn a_trait_method_under_a_where_is_reached_by_the_path_that_names_its_trait() {
+fn a_member_is_reached_by_the_path_and_by_the_receiver_alike() {
     let cx = with_same();
-    let written = "fn alike<A>(x: A, y: A) -> Bool where Same<A> { Same::same(x, y) }";
-    inhabits_its_written_type(&cx, written, &definition(written, SyntaxKind::FnDecl));
-}
-
-/// The same path at a *known* head, where the global instance answers.
-///
-/// One spelling, two ways of discharging it: `dictionary::method_at` opens the
-/// trait's arguments as metavariables, and what solves them is the `where`
-/// binder above or the argument's own type here.
-#[test]
-fn a_trait_method_at_a_known_head_resolves_from_the_global_instance() {
-    let cx = with_same();
-    let written = "fn probe() -> Bool { Same::same(1, 2) }";
-    inhabits_its_written_type(&cx, written, &definition(written, SyntaxKind::FnDecl));
+    for written in [
+        "fn probe() -> Bool { Nat::same(1, 2) }",
+        "fn probe() -> Bool { 1.same(2) }",
+    ] {
+        inhabits_its_written_type(&cx, written, &definition(written, SyntaxKind::FnDecl));
+    }
 }
 
 /// §1.5's own reading, on §1.5's own example shape: the modules are dropped and
@@ -1034,20 +925,24 @@ fn an_enum_case_is_reached_by_its_type_in_an_expression_and_in_a_pattern() {
     );
 }
 
-/// §5's operator table, and the rule §1.5 states about it: an operator resolves
-/// at a known head **or** under a `where`.
+/// §5's operator table, and the rule §1.5 states about it: an operator is
+/// method syntax on its left operand.
 ///
-/// Method syntax on the left operand gives only the first, because a generic
-/// receiver has no head an instance is filed under. The qualified spelling gives
-/// both, which is the whole reason `x == y` reads as `Eq::equal(x, y)` rather
-/// than as `x.equal(y)`.
+/// The repair prompt 146 made. `x == y` used to lower to `Eq::equal(x, y)` for
+/// one reason, stated in the old lowering's own comment: an operator under a
+/// `where` had to resolve against the supplied dictionary. There is no `where`,
+/// so there is no second path — the operator writes `equal` on the left operand
+/// and the receiver's head picks the definition. The two spellings below are one
+/// program, which is what makes the table a *sugar* rather than a mechanism.
+///
+/// `Nat.equal` is written here rather than shipped: the prelude gives the five
+/// base types an `equal` and gives `Nat` none, on the stated ground that `Nat`
+/// is a declared family and ι already answers. What a law needs is something for
+/// `==` to resolve to while it checks that it resolves at all.
 #[test]
-fn an_operator_checks_under_a_where_and_at_a_known_head() {
-    let cx = with_equality();
-    for written in [
-        "fn alike<A>(x: A, y: A) -> Bool where Eq<A> { x == y }",
-        "fn probe() -> Bool { 1 == 2 }",
-    ] {
+fn an_operator_is_method_syntax_on_its_left_operand() {
+    let cx = namespacing("impl Nat { fn equal(x: Nat, y: Nat) -> Bool { true } }");
+    for written in ["fn probe() -> Bool { 1.equal(2) }", "fn probe() -> Bool { 1 == 2 }"] {
         inhabits_its_written_type(&cx, written, &definition(written, SyntaxKind::FnDecl));
     }
 }

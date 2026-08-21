@@ -245,11 +245,11 @@ impl Lowering<'_> {
     ///
     /// `01-surface.md` §1.5 fixes the whole reading and leaves none of it open:
     /// "lowercase segments are modules, the first capitalized segment names a
-    /// type or a trait, and exactly one segment follows it." So the modules are
+    /// type, and exactly one segment follows it." So the modules are
     /// dropped — what a module name *reaches* is `use` and `import`'s question,
     /// and this module resolves nothing — and what is left is joined with `.`,
     /// which is how `musa-calculus` spells a qualified name: `Nat.Succ`,
-    /// `Bool.True`, `Eq.equal`. The result goes through as a variable like every
+    /// `Bool.True`, `Pitch.act`. The result goes through as a variable like every
     /// other name, so an item nothing declares is the core's `UnknownName` at
     /// the origin this node was numbered with, and `Lowering`'s "No scope"
     /// stays true.
@@ -261,9 +261,9 @@ impl Lowering<'_> {
     /// can make without becoming a checker.
     ///
     /// A path *ending* at the capitalized segment is not refused — it names the
-    /// type or trait itself, and §1.5's refusal-table row is about "the extra
+    /// type itself, and §1.5's refusal-table row is about "the extra
     /// segment". Nor is a lowercase item: `Duration::of(r)` is the row below it
-    /// and `Trait::method(x)` is §1.5's own sentence, so a blanket ban on a
+    /// and `Head::member(x)` is §1.5's own sentence, so a blanket ban on a
     /// lowercase segment after a capitalized one would forbid the two spellings
     /// the section exists to make available.
     ///
@@ -648,21 +648,20 @@ impl Lowering<'_> {
         Some(built)
     }
 
-    /// `x ⊕ y` — one trait method, per `10-traits.md` §5's table.
+    /// `x ⊕ y` — one member call on the left operand, per `01-surface.md`
+    /// §1.5's table.
     ///
-    /// Written as the qualified call `01-surface.md` §1.5 spells — `x == y` is
-    /// `Eq::equal(x, y)` — rather than as method syntax on the left operand.
-    /// The two differ exactly where §5 says an operator must still resolve:
-    /// method syntax needs an exact receiver, so `x == y` inside
-    /// `fn same<A>(x: A, y: A) -> Bool where Eq<A>` would be refused for a
-    /// generic receiver, which is §1.4's "`x == y` inside `same` is
-    /// `d.equal(x, y)` for the `d` the caller supplied" not happening.
+    /// Method syntax and not a written-out path, so that `x == y` and
+    /// `x.equal(y)` are the same term and resolve by the same rule. There is no
+    /// longer a case where the two would differ: the receiver's head is what
+    /// names the definition, and a receiver with no rigid head is refused with
+    /// the qualified spelling as the repair.
     fn operator(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
         let method = own_tokens(node).find_map(|token| operator_method(token.kind()))?;
         let parts = children(node, is_expr_node);
         let left = self.value(parts.first()?)?;
         let right = self.value(parts.get(1)?)?;
-        Some(applied(origin, Raw::var(origin, method), [left, right]))
+        Some(Raw::app(origin, Raw::method(origin, left, method), right))
     }
 
     /// `e.m(y)` where `e` is not a name — `[1, 2].collect()`, `f(x).m(y)`,
@@ -690,13 +689,12 @@ impl Lowering<'_> {
         Some(sectioned(Raw::call(origin, method, arguments), slots))
     }
 
-    /// `xs[i]` — `Index::at(xs, i)`, which is §5's last row and §1.5's own
-    /// spelling for it.
+    /// `xs[i]` — `xs.at(i)`, which is §1.5's last row.
     fn indexing(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
         let parts = children(node, is_expr_node);
         let container = self.value(parts.first()?)?;
         let index = self.value(parts.get(1)?)?;
-        Some(applied(origin, Raw::hosted(origin, "Index.at"), [container, index]))
+        Some(Raw::app(origin, Raw::method(origin, container, "at"), index))
     }
 
     // ---- the musical forms ----
@@ -1214,25 +1212,22 @@ fn path_segments(written: &[SyntaxToken]) -> (Vec<String>, &[SyntaxToken]) {
     (segments, rest)
 }
 
-/// The trait method an operator token stands for (`10-traits.md` §5), as the
-/// core's own qualified name.
+/// The member an operator token stands for — `01-surface.md` §1.5's table.
 ///
-/// The trait is half of what §5's table says and it is the half that matters
-/// here: an operator written as method syntax resolves by exact receiver, so
-/// `x == y` inside `fn same<A>(x: A, y: A) -> Bool where Eq<A>` would be
-/// `MethodOnVariable` — against §5's "an operator resolves only when the
-/// concrete head type is known **or a `where` supplies the dictionary**".
-/// Naming the trait is what makes both work at once: `dictionary::method_at`
-/// opens the trait's arguments as metavariables, a `where` binder discharges
-/// them and a known head answers from the global instance.
+/// The member alone, because that is now all there is to say: `x == y` is
+/// `x.equal(y)`, which the receiver's head resolves to `Text.equal` or
+/// `Ratio.equal` or whichever definition the type names. The old table wrote a
+/// trait beside each word so that an operator under a `where` could resolve
+/// against the supplied dictionary; `where` is deleted, so the trait half has
+/// nothing left to say and the two spellings became one path.
 fn operator_method(kind: SyntaxKind) -> Option<&'static str> {
     Some(match kind {
-        SyntaxKind::EqualsEquals => "Eq.equal",
-        SyntaxKind::Less => "Ord.less",
-        SyntaxKind::Plus => "Add.add",
-        SyntaxKind::Minus => "Sub.sub",
-        SyntaxKind::Star => "Mul.mul",
-        SyntaxKind::Slash => "Div.div",
+        SyntaxKind::EqualsEquals => "equal",
+        SyntaxKind::Less => "less",
+        SyntaxKind::Plus => "add",
+        SyntaxKind::Minus => "sub",
+        SyntaxKind::Star => "mul",
+        SyntaxKind::Slash => "div",
         _ => return None,
     })
 }

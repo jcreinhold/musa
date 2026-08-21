@@ -89,12 +89,8 @@
   "data"
   "record"
   "enum"
-  ; `trait`, `impl`, and `where` (`10-traits.md` §2, §3, §4). A constraint is
-  ; part of the signature it constrains, so `where` keeps the company of the
-  ; word that opened the declaration.
-  "trait"
+  ; `impl` — the word that opens a type's namespace (`01-surface.md` §1.5).
   "impl"
-  "where"
   ; The one visibility marker (`01-surface.md` §1.3). It reads as a keyword of
   ; the declaration it stands before, because that is what it is.
   "private"
@@ -273,10 +269,8 @@
 ; vocabulary colour further down instead.
 (record_declaration name: (identifier) @type)
 
-; A trait names a type the same way a record does (`10-traits.md` §2), and an
-; instance names none: `impl Eq<Pitch>` writes its head as a type expression,
-; which the type rules above already paint.
-(trait_declaration name: (identifier) @type)
+; An `impl` block names no type of its own: `impl Pitch` writes its head as a
+; type expression, which the type rules above already paint.
 (enum_declaration name: (identifier) @type)
 (record_literal_expression type: (identifier) @type)
 (path_expression type: (identifier) @type)

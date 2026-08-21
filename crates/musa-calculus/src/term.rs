@@ -24,7 +24,6 @@
 
 use std::sync::Arc;
 
-use crate::class::Constraint;
 use crate::family::Constant;
 use crate::level::Level;
 use crate::origin::Origin;
@@ -50,9 +49,9 @@ pub type Name = Arc<str>;
 ///
 /// Three arms because there are three answers, and none of them is the
 /// implicit-argument insertion this type was once named for: an author writes
-/// the argument, or §2.1's first-order matching solves it, or `10-traits.md`
-/// §4's lookup answers it. The elaborator's own walk spells the same three —
-/// see `elab::spine`'s `Slot`.
+/// the argument, or §2.1's first-order matching solves it, or the checker
+/// computes it. The elaborator's own walk spells the same three — see
+/// `elab::spine`'s `Slot`.
 #[derive(Clone, Debug)]
 pub enum Filling {
     /// Written at every use.
@@ -65,20 +64,55 @@ pub enum Filling {
     /// parameter, and the author writes the argument. A use site may write it
     /// too, which is the one place a filling appears on an application.
     Parameter,
-    /// Answered at every use by `10-traits.md` §4's lookup, and never written.
+    /// Computed at every use, and never written.
     ///
-    /// Never appears in a [`Raw`](crate::Raw): a surface `where` clause is
-    /// [`RawShape::ConstrainedPi`](crate::RawShape), whose constraint is
-    /// unelaborated, and elaboration is what turns one into the other.
+    /// **`Storable` and nothing else**, since prompt 146 deleted the trait
+    /// system: `02-core-calculus.md` §1.2's fact about a type's shape, which a
+    /// machine port's signature states and `crate::storable` discharges by
+    /// walking the type it turned out to have. No source program can write one
+    /// — there is no `where` clause in the surface — so this arm is reachable
+    /// only through [`crate::requiring_storable`].
     ///
     /// The constraint travels **on the binder** rather than in a table beside
-    /// the definition, because a definition is a value: `same` may be passed,
-    /// stored, or returned, and at that use site there is no name to look up
-    /// and only the type is in hand. It cannot be recovered from the domain
-    /// either — [`crate::Trait`]'s dictionary is a closed `λp⃗. { … }`, so
-    /// `Eq A` β-reduces to a record type and the trait's name is gone by the
-    /// time anything asks.
+    /// the definition, because a definition is a value: a constructor may be
+    /// passed, stored, or returned, and at that use site there is no name to
+    /// look up and only the type is in hand.
     Constraint(Arc<Constraint>),
+}
+
+/// What a [`Filling::Constraint`] binder demands: a name and its arguments.
+///
+/// One name only — `Storable` — and this type stays a name-and-arguments pair
+/// rather than collapsing to the one argument because the refusal a failed
+/// discharge produces names what was asked for, and a nameless demand would
+/// make that diagnostic a constant string.
+///
+/// The arguments are [`Term`]s and are read under whatever telescope the
+/// constraint was written under, which is why [`Constraint::at`] exists.
+#[derive(Clone, Debug)]
+pub struct Constraint {
+    /// Where it was written.
+    pub(crate) origin: Origin,
+    /// The demand's name.
+    pub(crate) class: Name,
+    /// One argument per parameter of the demand.
+    pub(crate) args: Arc<[Term]>,
+}
+
+impl Constraint {
+    /// The same demand, with its arguments read somewhere else.
+    ///
+    /// A constraint travels: it is written under one telescope and asked under
+    /// another — a use site's, a recursor's, a nested telescope's. What changes
+    /// is only how the arguments are spelled, so the name and the origin come
+    /// along unexamined and there is one place that says so.
+    pub(crate) fn at(&self, args: Arc<[Term]>) -> Self {
+        Self {
+            origin: self.origin,
+            class: Arc::clone(&self.class),
+            args,
+        }
+    }
 }
 
 /// Two binders agree when a use site fills them the same way.
@@ -619,13 +653,13 @@ impl Term {
         Self::function(origin, Filling::Parameter, name, domain, codomain)
     }
 
-    /// `[Class a⃗] → codomain` — the binder `01-surface.md` §1.4's `where`
-    /// elaborates to, whose argument every use site answers by `10-traits.md`
-    /// §4 rather than writing.
+    /// `[Storable a] → codomain` — a binder whose argument the use site does not
+    /// write and no instance table answers: it is discharged by computation, in
+    /// [`crate::storable::discharge`].
     ///
-    /// The domain is the dictionary's *record type*, which is what makes this
-    /// one Π and not a new form; the constraint rides along so that resolution
-    /// can key on the trait after the domain has β-reduced past it.
+    /// The domain is an ordinary record type, which is what makes this one Π and
+    /// not a new form; the constraint rides along so that discharge can still
+    /// name what it is answering after the domain has β-reduced past it.
     #[must_use]
     pub(crate) fn constrained_pi(
         origin: Origin,
@@ -728,6 +762,45 @@ fn collect_fields<'a>(fields: impl IntoIterator<Item = (&'a str, Term)>) -> Arc<
             term,
         })
         .collect()
+}
+
+/// How many times the variable at `level` occurs in `term`.
+///
+/// A structural count and nothing cleverer. Its one caller is
+/// [`crate::family`] deciding whether a closure's binder is absent from its
+/// body, where β can then discard the argument without evaluating it.
+pub(crate) fn occurrences(term: &Term, depth: u32, level: u32) -> u32 {
+    let deeper = |term: &Term, by: u32| occurrences(term, depth.saturating_add(by), level);
+    match term.shape() {
+        Shape::Var(index) => u32::from(depth.checked_sub(index.0.saturating_add(1)) == Some(level)),
+        // Both halves. An index is an ordinary term, so a variable can occur
+        // in it exactly as it occurs anywhere else, and a count that skipped it
+        // would let β discard a binder the index still names.
+        Shape::Indexed { ty, index } => deeper(ty, 0).saturating_add(deeper(index, 0)),
+        // Closed leaves: none of them can be a variable, so none of them can
+        // hold an occurrence of one.
+        Shape::Const(_)
+        | Shape::Def(_)
+        | Shape::Base(_)
+        | Shape::Builtin(_)
+        | Shape::Lit(_)
+        | Shape::Numeral(_)
+        | Shape::Hole(_)
+        | Shape::Universe(_) => 0,
+        Shape::Pi { domain, codomain, .. } => deeper(domain, 0).saturating_add(deeper(codomain, 1)),
+        Shape::Lam { body, .. } => deeper(body, 1),
+        Shape::App { function, argument, .. } => deeper(function, 0).saturating_add(deeper(argument, 0)),
+        Shape::RecordType(fields) => fields.iter().enumerate().fold(0, |total, (which, field)| {
+            total.saturating_add(deeper(&field.term, u32::try_from(which).unwrap_or(u32::MAX)))
+        }),
+        Shape::Record(fields) => fields
+            .iter()
+            .fold(0, |total, field| total.saturating_add(deeper(&field.term, 0))),
+        Shape::Project { record, .. } => deeper(record, 0),
+        Shape::Let { ty, value, body, .. } => deeper(ty, 0)
+            .saturating_add(deeper(value, 0))
+            .saturating_add(deeper(body, 1)),
+    }
 }
 
 #[cfg(test)]

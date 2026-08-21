@@ -7,10 +7,8 @@
 (motif_declaration) @local.scope
 (block) @local.scope
 (function_declaration) @local.scope
-; A trait and an instance each bind their type parameters over a body of
-; methods, so each is a scope; a method inside one is a scope of its own by
+; An `impl` block is a scope: a function inside one is a scope of its own by
 ; the line above.
-(trait_declaration) @local.scope
 (impl_declaration) @local.scope
 (music_expression) @local.scope
 (events_quote) @local.scope
@@ -33,7 +31,6 @@
 (data_variant name: (identifier) @local.definition)
 (record_declaration name: (identifier) @local.definition)
 (enum_declaration name: (identifier) @local.definition)
-(trait_declaration name: (identifier) @local.definition)
 (type_parameter (identifier) @local.definition)
 (enum_case name: (identifier) @local.definition)
 (record_literal_expression type: (identifier) @local.reference)

@@ -4,11 +4,11 @@
 
 use std::sync::Arc;
 
-use crate::class::{Head, Key, head_of};
 use crate::eval::{apply_closure, eval, opened};
 use crate::level::Level;
+use crate::namespace;
 use crate::origin::Origin;
-use crate::raw::{Raw, RawConstraint, RawShape};
+use crate::raw::{Raw, RawShape};
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
 use crate::term::{Filling, Name, Shape, Term};
@@ -68,9 +68,6 @@ impl Elaborator {
                 codomain,
             } => self.function_type(scope, here, filling.clone(), name, domain, codomain),
             RawShape::Indexed { ty, index } => self.indexed_type_formation(scope, here, ty, index),
-            RawShape::ConstrainedPi { constraint, codomain } => {
-                self.constrained_function_type(scope, here, constraint, codomain)
-            }
             RawShape::Lam {
                 filling,
                 name,
@@ -244,43 +241,6 @@ impl Elaborator {
         })
     }
 
-    /// `[Class a⃗] → B ⇒ Type (max l l')` — `01-surface.md` §1.4's `where`.
-    ///
-    /// It adds no term to the calculus, which is §1.4's own claim: what this
-    /// builds is the Π that was already there, at a domain the author did not
-    /// have to write because the trait and its arguments determine it. The
-    /// level is asked of the assembled dictionary type rather than read off a
-    /// raw one, since there is no raw one — [`crate::dictionary`] hands back a
-    /// term, and `Class a⃗` β-reduces to the record type whose universe is the
-    /// answer.
-    ///
-    /// The binder takes the trait's own name, which is what makes a body's
-    /// `Eq` and the dictionary it stands at the same word in a diagnostic.
-    fn constrained_function_type(
-        &mut self,
-        scope: &Scope,
-        here: Origin,
-        raw: &RawConstraint,
-        codomain: &Raw,
-    ) -> Result<Typed, ElabError> {
-        let classes = scope.cx().classes().clone();
-        let (constraint, domain_term) = crate::dictionary::constraint_at(self, scope, &classes, raw)?;
-        let domain_value = scope.eval(&mut self.meter, &domain_term)?;
-        let domain_level = Term::level_of(&domain_term)?;
-        let name: Name = Arc::clone(&constraint.class);
-        let constraint = Arc::new(constraint);
-        // Discharged as well as assumed, for [`Self::discharging`]'s reason: a
-        // codomain that mentions the trait's own methods is answered by the
-        // binder standing right there.
-        let inner = self.discharging(scope, &Filling::Constraint(Arc::clone(&constraint)), scope.env())?;
-        let inner = inner.assume(Some(Arc::clone(&name)), here, Arc::new(domain_value));
-        let (codomain_term, codomain_level) = self.check_type(&inner, codomain)?;
-        Ok(Typed {
-            term: Term::constrained_pi(here, constraint, name, domain_term, codomain_term),
-            ty: Value::new(here, Form::Universe(domain_level.max(codomain_level))),
-        })
-    }
-
     /// `λx. e ⇒ (x : A) → B`, where `A` is the annotation §2 asks for.
     fn infer_lambda(
         &mut self,
@@ -403,68 +363,42 @@ impl Elaborator {
         self.apply_spine(scope, here, inferred, &[argument], None)
     }
 
-    /// `x.m` — `10-traits.md` §6's method syntax, resolved by exact receiver.
+    /// `x.m` — `01-surface.md` §1.5's method syntax, resolved by exact receiver.
     ///
-    /// Three steps and no search. The receiver is inferred, the head of its
-    /// type is read, and the traits that declare a method spelled `m` are
-    /// intersected with the ones that have a dictionary at that head. Exactly
-    /// one survivor is the call; none and two are the two refusals §6 names.
+    /// Two steps and no search. The receiver is inferred, the rigid head of its
+    /// type is read, and `Head.m` is looked up among the definitions in scope.
+    /// A hit is the call; a miss is [`Refusal::NoMethodForType`] naming the type
+    /// and the member, and a receiver whose type has no rigid head at all is
+    /// [`Refusal::MethodOnVariable`].
     ///
-    /// What makes this a lookup rather than a search is that both operands are
-    /// tables: [`Classes::declaring_method`](crate::class::Classes::declaring_method)
-    /// is an index read and the dictionary test is the same keyed read §4 step 2
-    /// already was. Nothing is tried and undone, so nothing can be tried in a
-    /// different order and answer differently.
+    /// What makes this a lookup rather than a search is that there is one
+    /// candidate by construction: the head names the namespace, the namespace
+    /// and the member spell one name, and a name resolves to one definition.
+    /// Nothing is tried and undone, so nothing can be tried in a different
+    /// order and answer differently.
     ///
-    /// The survivor is then elaborated as if the author had written
-    /// `Class.m(x)`: the same [`method_at`](crate::dictionary::method_at) a
-    /// qualified name goes through, applied to the receiver already in hand.
-    /// That is what makes "a method is a spelling" true of the elaboration and
-    /// not only of the prose — `x.m(y)` and `Class.m(x, y)` are one term.
+    /// The hit is then elaborated as if the author had written `Head::m(x)`:
+    /// the same definition a qualified path reaches, applied to the receiver
+    /// already in hand. That is what makes "a method is a spelling" true of the
+    /// elaboration and not only of the prose — `x.m(y)` and `Head::m(x, y)` are
+    /// one term.
     fn method(&mut self, scope: &Scope, here: Origin, receiver: &Raw, method: &Name) -> Result<Typed, ElabError> {
         let inferred = self.infer(scope, receiver)?;
         let unfolded = opened(&mut self.meter, &inferred.ty)?;
         let receiver_ty = unfolded.as_ref().unwrap_or(&inferred.ty);
         let stated = scope.quote_type(&mut self.meter, receiver_ty)?;
-        // A local head is §6's generic parameter and `None` is a type with no
-        // name at its head. Neither is a key, and the message is the same
-        // because the repair is: write the trait.
-        let Some(Head::Rigid(head)) = head_of(&stated, scope.depth()) else {
+        // A variable head is §1.5's generic receiver and `None` is a type with
+        // no name at its head. Neither names a namespace, and the message is
+        // the same because the repair is: write the type.
+        let Some(head) = namespace::head_name(&stated) else {
             return Err(Refusal::MethodOnVariable {
                 at: here,
                 method: Arc::clone(method),
             }
             .into());
         };
-        let classes = scope.cx().classes().clone();
-        let candidates: Vec<Name> = classes
-            .declaring_method(method)
-            .iter()
-            .filter(|class| {
-                let key = Key::rigid(class, &head);
-                scope.discharged(&key).is_some() || classes.instance(&key).is_some()
-            })
-            .map(Arc::clone)
-            .collect();
-        let [class] = candidates.as_slice() else {
-            return Err(if candidates.is_empty() {
-                Refusal::NoMethodForType {
-                    at: here,
-                    head,
-                    method: Arc::clone(method),
-                }
-            } else {
-                Refusal::AmbiguousMethod {
-                    at: here,
-                    head,
-                    method: Arc::clone(method),
-                    classes: candidates,
-                }
-            }
-            .into());
-        };
-        let qualified: Name = Arc::from(format!("{class}.{method}"));
-        let Some((term, ty)) = crate::dictionary::method_at(self, scope, here, &qualified)? else {
+        let qualified = crate::namespace::qualified(&head, method);
+        let Some(found) = Self::namespaced(scope, here, &qualified)? else {
             return Err(Refusal::NoMethodForType {
                 at: here,
                 head,
@@ -472,7 +406,36 @@ impl Elaborator {
             }
             .into());
         };
-        self.receiving(scope, here, Typed { term, ty }, &inferred)
+        self.receiving(scope, here, found, &inferred)
+    }
+
+    /// The definition a namespaced name denotes, when one is in scope.
+    ///
+    /// The same visibility check every other name gets, for the same reason: a
+    /// private `Pitch.act` is *private* rather than absent, and a diagnostic
+    /// that said "no such member" would send its reader looking for a typo.
+    /// No `self`: a namespaced name is *looked up* and never elaborated
+    /// against, which is the whole claim §1.5 makes about the mechanism. A rule
+    /// that needed the elaborator would need holes, and a hole here would be
+    /// the trial elaboration this design does not have.
+    pub(super) fn namespaced(scope: &Scope, here: Origin, qualified: &Name) -> Result<Option<Typed>, ElabError> {
+        let Some(defined) = scope.cx().definition(qualified) else {
+            return Ok(None);
+        };
+        if let Some(module) = defined.hidden_from(scope.cx().module()) {
+            return Err(Refusal::Private {
+                name: Arc::clone(qualified),
+                module,
+                at: here,
+            }
+            .into());
+        }
+        let def = crate::program::one(defined);
+        let ty = Value::clone(&def.ty());
+        Ok(Some(Typed {
+            term: def.term(here),
+            ty,
+        }))
     }
 
     /// A method applied to the receiver it was found for.
@@ -482,7 +445,7 @@ impl Elaborator {
     /// separate function rather than a parameter on that one because the two
     /// differ in what they do with the domain: there the argument is *checked*
     /// against it, here the two types are unified, which is what solves the
-    /// trait arguments `method_at` left as metavariables.
+    /// definition's own type parameters from the receiver.
     fn receiving(
         &mut self,
         scope: &Scope,

@@ -1,7 +1,7 @@
 ---
 id: 146
 slug: delete-the-trait-system
-status: in-progress
+status: done
 depends_on: [145]
 phase: 3
 ---

@@ -32,11 +32,12 @@
 //!
 //! # What it does not have
 //!
-//! No operators and no method syntax. `10-traits.md` §5 and §6 make both of them
-//! *surface* spellings for terms this type can already hold: `x == y` is
-//! `Eq.equal x y` and `x.m(y)` is a name and an application, so the elaborator
-//! never learns an operator table and the surface never has to explain one to
-//! this crate.
+//! No operators. `01-surface.md` §1.5 makes them *surface* spellings for terms
+//! this type can already hold: `x == y` is `equal x y`, so the elaborator never
+//! learns an operator table and the surface never has to explain one to this
+//! crate. Method syntax survives as [`RawShape::Method`] for the one reason
+//! given there: the name the call is to is not known until the receiver's type
+//! is.
 
 use std::sync::Arc;
 
@@ -154,23 +155,18 @@ pub struct RawData {
 /// and [`declare_program`](crate::declare_program) computes the order they are
 /// elaborated in from what each one names.
 ///
-/// # Why the instances travel with the definitions
+/// # Why a namespaced definition is one of these
 ///
-/// Because each can name the other, and neither comes first. An `impl`'s method
-/// bodies are ordinary terms and may call the document's functions; a function
-/// may write `x.m(y)`, and `10-traits.md` §6 resolves that by finding the
-/// instance at the receiver's head. Declaring one kind and then the other makes
-/// whichever went second invisible to the first — with instances last, no
-/// definition in a document can use a trait the same document implements, which
-/// is most of what a standard library's traits are for. One dependency
-/// analysis over both kinds is what §2.4's forward reference already means,
-/// widened by one word.
+/// `impl Pitch { fn act(…) }` writes a definition called `Pitch.act`, and it
+/// arrives here as an ordinary [`RawTopLevel`] with a dotted name. Nothing else
+/// distinguishes it, which is the point: a function may write `x.act(i)` and
+/// the definition answering it may call the document's functions, so the two
+/// have to be ordered by one dependency analysis, and §2.4's forward reference
+/// already is that analysis.
 #[derive(Clone, Debug)]
 pub struct RawProgram {
     /// The definitions, in the order the document wrote them.
     pub definitions: Vec<RawTopLevel>,
-    /// The instances, in the order the document wrote them.
-    pub instances: Vec<RawImpl>,
 }
 
 /// One top-level definition, before elaboration.
@@ -203,129 +199,17 @@ pub struct RawTopLevel {
     pub value: Raw,
 }
 
-/// One constraint, before elaboration: a trait applied to type arguments.
+/// A name and a value, and no type: what a `let` inside a declaration writes.
 ///
-/// `Eq<A>` in a `where` clause, in a trait's own context, or as an `impl`'s
-/// head. One type rather than three, because `10-traits.md` §4's lookup is the
-/// same question in all three positions — the difference is what is done with
-/// the dictionary, not how the constraint is read.
-#[derive(Clone, Debug)]
-pub struct RawConstraint {
-    /// Where it was written.
-    pub origin: Origin,
-    /// The trait's name.
-    pub name: Name,
-    /// One argument per trait parameter, in declaration order.
-    pub args: Vec<Raw>,
-}
-
-/// One method of a trait declaration.
-///
-/// [`RawMethod::body`] is what separates §1's two kinds. A method **declared
-/// with `;`** is required: it is a field of the dictionary and an impl supplies
-/// it. A method **declared with a block** is derived: it is an ordinary function
-/// of the dictionary, defined once here, and an impl may not replace it. That
-/// is why §9 can refuse specialization as a *mechanism* rather than as a rule —
-/// there is no overridable definition to specialize.
-///
-/// A method may quantify over parameters of its **own** and require its own
-/// constraints — `fn map<D, B>(source: C, f: A -> B) -> D where Buildable<D, B>`
-/// (`01-surface.md` §1.6). They are separate fields rather than binders written
-/// into [`RawMethod::ty`] because the surface writes them separately, and
-/// because a use site has to fill them by two different mechanisms: a parameter
-/// by unification and a constraint by §4's lookup.
-#[derive(Clone, Debug)]
-pub struct RawMethod {
-    /// Where it was written.
-    pub origin: Origin,
-    /// Its name, unqualified: the trait qualifies it.
-    pub name: Name,
-    /// The type parameters it quantifies over, read under the trait's own.
-    ///
-    /// Solved at every use: `xs.map(f)` writes neither `D` nor `B`.
-    pub params: Vec<RawBinder>,
-    /// Its own constraints, read under the trait's parameters and then its own.
-    ///
-    /// Only a **derived** method may have them. A required method is a field of
-    /// the dictionary, and a field whose type demanded a dictionary the impl
-    /// never wrote would be a second resolution site inside the first — see
-    /// [`Refusal::ConstrainedField`](crate::Refusal::ConstrainedField).
-    pub context: Vec<RawConstraint>,
-    /// Its type, read under the trait's parameters and then its own.
-    pub ty: Raw,
-    /// Its definition, when the trait derives it.
-    ///
-    /// Read under the trait's parameters, a binder for the dictionary, the
-    /// trait's own methods, this method's parameters, and a binder per
-    /// constraint — a derived method is written in terms of the required ones,
-    /// which is the whole reason for the form.
-    pub body: Option<Raw>,
-}
-
-/// A `trait` declaration, before elaboration.
-#[derive(Clone, Debug)]
-pub struct RawTrait {
-    /// Where it was written.
-    pub origin: Origin,
-    /// Its name.
-    pub name: Name,
-    /// Whether `private` was written before it (`01-surface.md` §1.3).
-    pub visibility: Visibility,
-    /// Its parameters. The first is the head every instance is keyed on; §1
-    /// refuses a trait none of whose parameters its head determines.
-    pub params: Vec<RawBinder>,
-    /// Its own constraints — `trait Ord<A> where Eq<A>` — read under the
-    /// parameters.
-    ///
-    /// Read in order to be **refused**: a supertrait is a dictionary obligation
-    /// synthesized at every use, which is the search `10-traits.md` §9 refuses,
-    /// and the flat `(trait, head)` table has nowhere to put one. The field
-    /// survives the refusal because a diagnostic needs the constraint's own
-    /// origin to point at — see
-    /// [`Refusal::SuperClass`](crate::Refusal::SuperClass).
-    pub context: Vec<RawConstraint>,
-    /// Its methods, in declaration order.
-    pub methods: Vec<RawMethod>,
-}
-
-/// An `impl` declaration, before elaboration.
-#[derive(Clone, Debug)]
-pub struct RawImpl {
-    /// Where it was written.
-    pub origin: Origin,
-    /// The trait being implemented.
-    pub name: Name,
-    /// The type variables the instance abstracts over — `impl<A> Eq<List<A>>`.
-    pub params: Vec<RawBinder>,
-    /// The head arguments, read under those parameters.
-    pub args: Vec<Raw>,
-    /// Its `where` clause, read under the same parameters, and refused there:
-    /// an `impl` that carried one would make resolution recursive, and §4 is a
-    /// single table read. Kept for the refusal's origin, as
-    /// [`RawTrait::context`] is.
-    pub context: Vec<RawConstraint>,
-    /// The required methods it supplies, in any order: they are matched to the
-    /// trait's fields by name, since an impl that had to repeat the
-    /// declaration's order would be restating what the trait already said.
-    pub methods: Vec<RawDefinition>,
-}
-
-/// One method an `impl` supplies: a name and a value, and no type.
-///
-/// A separate type from [`RawMethod`] rather than that one with its type field
-/// unused, because the difference is the point: a trait *declares* a method and
-/// so writes its type, and an impl *defines* one and so writes only what it is.
-/// The type comes from the trait's dictionary field, which is what makes an
-/// instance's methods checked against the declaration rather than merely beside
-/// it — and what leaves an impl no place to write a type that disagrees.
+/// A separate type from [`RawTopLevel`] because it carries neither a type nor a
+/// visibility — the enclosing declaration supplies both.
 #[derive(Clone, Debug)]
 pub struct RawDefinition {
     /// Where it was written.
     pub origin: Origin,
-    /// Which method it defines.
+    /// The name it binds.
     pub name: Name,
-    /// Its value, read under the instance's parameters and its `where`
-    /// dictionaries.
+    /// Its value.
     pub value: Raw,
 }
 
@@ -416,22 +300,6 @@ pub enum RawShape {
     /// `Type l`, at a level the writer states — or bare `Type`, whose level is
     /// §2.1's third metavariable site.
     Universe(Option<Level>),
-    /// `[Class a⃗] → B` — the binder `01-surface.md` §1.4's `where` clause
-    /// elaborates to.
-    ///
-    /// Its own shape rather than a [`Filling`] on [`Self::Pi`], because what a
-    /// `where` writes is a *raw* constraint: a trait name and raw arguments,
-    /// which nothing has resolved yet. [`Filling::Constraint`] carries an
-    /// elaborated [`Constraint`](crate::Trait), and turning one into the other
-    /// is what elaboration does here. There is no domain to write either — the
-    /// dictionary's type is the trait applied to those arguments, so writing it
-    /// would be writing the answer.
-    ConstrainedPi {
-        /// The constraint the binder answers.
-        constraint: RawConstraint,
-        /// `B`, under the dictionary binder.
-        codomain: Raw,
-    },
     /// `(x : A) → B`, at whichever [`Filling`] the binder has.
     Pi {
         /// Whether uses of the function must write this argument.
@@ -521,18 +389,19 @@ pub enum RawShape {
     RecordType(Arc<[RawField]>),
     /// `{ f₁ = e₁, …, fₙ = eₙ }`, in the order the record type declares.
     Record(Arc<[RawField]>),
-    /// `x.m(…)` before its arguments — `10-traits.md` §6's method syntax.
+    /// `x.m(…)` before its arguments — `01-surface.md` §1.5's method syntax.
     ///
-    /// **Infers**, and holds no arguments: `x.m(y, z)` is this applied to `y`
-    /// and then to `z` through the ordinary [`Self::App`] rule, so filling,
+    /// **Infers**, and holds no arguments: `x.m(y, z)` is this applied to `x`,
+    /// `y`, and then `z` through the ordinary [`Self::App`] rule, so filling,
     /// parameter solving, and argument checking are the ones that were already
-    /// written. What is new here is only *which name* the call is to, and that
-    /// question needs the receiver's type, which is why the surface cannot
-    /// answer it and this shape exists.
+    /// written. What is new here is only *which name* the call is to: `Head.m`,
+    /// where `Head` is the rigid head of the receiver's type. That question
+    /// needs the receiver's type, which is why the surface cannot answer it and
+    /// this shape exists.
     Method {
-        /// `x`. Its inferred type's head is what the lookup is keyed on.
+        /// `x`. Its inferred type's head names the namespace.
         receiver: Raw,
-        /// `m`, unqualified. The trait it belongs to is what resolution finds.
+        /// `m`, unqualified. `Head.m` is the definition the lookup finds.
         method: Name,
     },
     /// `e.f`.
@@ -776,18 +645,6 @@ impl Raw {
         Self::binder(origin, Filling::Parameter, name, domain, codomain)
     }
 
-    /// `[constraint] → codomain` — a `where` clause's binder.
-    ///
-    /// There is no `constrained_lam` to go with it, and there is not meant to
-    /// be: `02-core-calculus.md` §2 wraps a term checked against a binder the
-    /// author did not write in the λ it needs, and a constraint binder is that
-    /// sentence a third time. A caller writes the *signature* and the core
-    /// writes the abstraction.
-    #[must_use]
-    pub fn constrained_pi(origin: Origin, constraint: RawConstraint, codomain: Self) -> Self {
-        Self::new(origin, RawShape::ConstrainedPi { constraint, codomain })
-    }
-
     fn binder(origin: Origin, filling: Filling, name: impl Into<Name>, domain: Self, codomain: Self) -> Self {
         Self::new(
             origin,
@@ -934,7 +791,7 @@ impl Raw {
         Self::new(origin, RawShape::Record(collect(fields)))
     }
 
-    /// `x.m` — the method `m` of whichever trait answers for `x`'s type.
+    /// `x.m` — the definition `Head.m`, where `Head` heads `x`'s type.
     ///
     /// Arguments are applied to the result, so `x.m(y)` is
     /// `Raw::app(origin, Raw::method(origin, x, "m"), y)`.

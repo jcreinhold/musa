@@ -25,12 +25,9 @@
 (enum_declaration
   name: (identifier) @name) @item
 
-(trait_declaration
-  name: (identifier) @name) @item
-
-; An instance has no name to outline. It is listed by the type it is an
-; instance for, which is the only thing that distinguishes one `impl` in a
-; file from the next.
+; An `impl` block has no name to outline. It is listed by the type whose
+; namespace it opens, which is the only thing that distinguishes one `impl` in
+; a file from the next.
 (impl_declaration
   head: (type_expression) @name) @item
 

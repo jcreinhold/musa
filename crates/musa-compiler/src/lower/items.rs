@@ -22,11 +22,11 @@
 //!   the same fields at the same types denote the same type. A `RawData` here
 //!   would have made `record` nominal by construction and quietly contradicted
 //!   the sentence the whole feature rests on.
-//! - **`trait` and `impl`** become [`RawTrait`] and [`RawImpl`]. An `impl` is
-//!   *always* the latter, including the inherent `impl Duration { … }` form,
-//!   because §6 decides which one a block is "by whether its head name resolves
-//!   to a trait or to a type" — a resolution question, and resolution is the
-//!   core's.
+//! - **`impl` is a namespace**, so `impl Pitch { fn act(…) { … } }` becomes the
+//!   ordinary definition `Pitch.act`. §1.5: a member is reached by taking the
+//!   head of the receiver's type and looking up one dotted name, so an `impl`
+//!   block declares nothing a `fn` at the top level does not — it only spells
+//!   the prefix once for every definition inside it.
 //! - **`let` and `fn`** become a [`Definition`]: a name, the type the
 //!   declaration wrote, and a value.
 //!
@@ -50,10 +50,7 @@
 
 use std::sync::Arc;
 
-use musa_calculus::{
-    Level, Name, Origin, Raw, RawBinder, RawConstraint, RawConstructor, RawData, RawDefinition, RawFamily, RawImpl,
-    RawMethod, RawTrait, Visibility,
-};
+use musa_calculus::{Level, Name, Origin, Raw, RawBinder, RawConstructor, RawData, RawFamily, Visibility};
 use musa_syntax::{SyntaxKind, SyntaxNode};
 
 use super::types::compiler_type;
@@ -63,21 +60,23 @@ use musa_score::diagnose::{Code, Diagnostic};
 
 /// One declaration, read.
 ///
-/// Four variants because `musa-calculus` has four doors — [`musa_calculus::declare`],
-/// [`musa_calculus::declare_trait`], [`musa_calculus::declare_impl`], and
-/// [`musa_calculus::check`] — and this is the type that says which one a written
-/// declaration goes through. A caller matches once and calls; it never has to
-/// ask what word the source used.
+/// Three variants because `musa-calculus` has two doors — [`musa_calculus::declare`]
+/// and [`musa_calculus::declare_program`] — and one of them is reached with a
+/// list. A caller matches once and calls; it never has to ask what word the
+/// source used.
 #[derive(Debug)]
 pub(crate) enum Item {
     /// A `data` or an `enum`.
     Data(RawData),
-    /// A `trait`.
-    Class(RawTrait),
-    /// An `impl`, whether it implements a trait or opens a type's namespace.
-    Instance(RawImpl),
     /// A `let`, a `fn`, or a `record`.
     Definition(Definition),
+    /// An `impl` — every `fn` inside it, under the type's name, beside the node
+    /// each was written at.
+    ///
+    /// The node travels with the definition because a caller files documentation
+    /// and duplicate-name reports against the declaration a reader can see, and
+    /// that is the `fn` rather than the block around it.
+    Namespace(Vec<(SyntaxNode, Definition)>),
 }
 
 /// A name, the type its declaration wrote, and its value.
@@ -144,8 +143,7 @@ impl Lowering<'_> {
             SyntaxKind::DataDecl => read(self.nominal(node).map(Item::Data)),
             SyntaxKind::EnumDecl => read(self.enumeration(node).map(Item::Data)),
             SyntaxKind::RecordDecl => read(self.structural(node).map(Item::Definition)),
-            SyntaxKind::TraitDecl => read(self.class(node).map(Item::Class)),
-            SyntaxKind::ImplDecl => read(self.instance(node).map(Item::Instance)),
+            SyntaxKind::ImplDecl => read(self.namespace(node).map(Item::Namespace)),
             SyntaxKind::FnDecl => read(self.function(node).map(Item::Definition)),
             SyntaxKind::LetDecl => read(self.binding(node).map(Item::Definition)),
             // `01-surface.md` §2's two notation declarations, which desugar to
@@ -220,16 +218,6 @@ impl Lowering<'_> {
         let origin = self.origin(node);
         let name = declared_name(node)?;
         let params = self.type_parameters(node);
-        // `10-traits.md` §4's flat law reaches declarations too: a constraint
-        // on a type is a dictionary every construction would have to synthesize,
-        // which is the recursion that document refuses.
-        if let Some(clause) = child(node, |kind| kind == SyntaxKind::WhereClause) {
-            return self.refuse(
-                Diagnostic::error(Code::ConstrainedData, "an `enum` does not take a `where` clause")
-                    .at(trimmed_span(&clause), "written here")
-                    .help("a constraint lives on the function that uses the type, not on the type itself"),
-            );
-        }
         let mut constructors = Vec::new();
         for written in children(node, |kind| kind == SyntaxKind::EnumCase) {
             constructors.push(self.case(&written)?);
@@ -290,15 +278,6 @@ impl Lowering<'_> {
         let origin = self.origin(node);
         let name = declared_name(node)?;
         let params = self.type_parameters(node);
-        // As [`Lowering::enumeration`]: a constraint on a type would be a
-        // dictionary every construction had to synthesize.
-        if let Some(clause) = child(node, |kind| kind == SyntaxKind::WhereClause) {
-            return self.refuse(
-                Diagnostic::error(Code::ConstrainedData, "a `record` does not take a `where` clause")
-                    .at(trimmed_span(&clause), "written here")
-                    .help("a constraint lives on the function that uses the type, not on the type itself"),
-            );
-        }
         let mut names = Vec::new();
         let mut types = Vec::new();
         for written in children(node, |kind| kind == SyntaxKind::FieldDecl) {
@@ -320,120 +299,57 @@ impl Lowering<'_> {
         })
     }
 
-    // ---- traits and instances ----
+    // ---- namespaces ----
 
-    /// `trait Ord<A> where Eq<A> { fn less(x: A, y: A) -> Bool; }`.
-    fn class(&mut self, node: &SyntaxNode) -> Option<RawTrait> {
-        let origin = self.origin(node);
-        let name = declared_name(node)?;
-        let params = self.type_parameters(node);
-        let context = self.written_constraints(node)?;
-        let mut methods = Vec::new();
-        for written in children(node, |kind| kind == SyntaxKind::FnDecl) {
-            methods.push(self.method(&written)?);
-        }
-        Some(RawTrait {
-            origin,
-            name,
-            visibility: visibility_of(node),
-            params,
-            context,
-            methods,
-        })
-    }
-
-    /// One method of a trait, required or derived.
+    /// `impl Pitch { fn act(subject: Pitch, operation: Interval) -> Pitch { … } }`.
     ///
-    /// Its type is assembled here and an `impl`'s is not, and the asymmetry is
-    /// [`RawMethod`]'s own: a trait *declares* a method and so writes its type,
-    /// while an impl *defines* one and takes the type from the dictionary field
-    /// it fills. So this is the one place a written signature has to become a Π,
-    /// and the one place an unwritten parameter type is fatal rather than
-    /// optional — a dictionary field whose type had a hole in it would be a hole
-    /// every instance inherited.
-    fn method(&mut self, node: &SyntaxNode) -> Option<RawMethod> {
-        let origin = self.origin(node);
-        let name = declared_name(node)?;
-        let params = self.type_parameters(node);
-        let context = self.written_constraints(node)?;
-        let Some(result) = child(node, is_type_node) else {
+    /// One block is *n* ordinary definitions, named `Pitch.act` and so on. There
+    /// is no second declaration form here and nothing the core has to be told:
+    /// `01-surface.md` §1.5 resolves `p.act(i)` by taking the head of `p`'s type
+    /// and looking up that one name, so what an `impl` contributes is the prefix,
+    /// written once instead of on every definition inside it.
+    ///
+    /// The head is a bare type name and the block takes no parameters of its
+    /// own, both refused rather than read. A namespace is keyed on the head
+    /// constant — `Duration<WrittenTime>` and `Duration<PhysicalTime>` share
+    /// `Duration`'s — so arguments written here would be read by nobody, and a
+    /// type parameter of the block would be a binder with no signature to sit
+    /// on. Each `fn` writes its own, which is where a reader looks anyway.
+    fn namespace(&mut self, node: &SyntaxNode) -> Option<Vec<(SyntaxNode, Definition)>> {
+        let head = self.namespace_head(node)?;
+        if let Some(list) = child(node, |kind| kind == SyntaxKind::TypeParams) {
             return self.refuse(
-                Diagnostic::error(Code::UnsolvedMetavariable, "this method writes no result type")
-                    .at(trimmed_span(node), "declared here")
-                    .help("a trait's method is a field of its dictionary, so its type is written in full"),
+                Diagnostic::error(Code::Misplaced, "an `impl` block takes no type parameters")
+                    .at(trimmed_span(&list), "written here")
+                    .note("the block names a namespace, and a namespace is one name")
+                    .help("write the parameters on each `fn` inside it"),
             );
-        };
-        let mut ty = self.ty(&result)?;
-        // Innermost binder first, which is the order both folds below want: the
-        // Π is built from its codomain outwards, and the λ from its body.
-        let mut bound: Vec<(Origin, Name)> = Vec::new();
-        for parameter in self.parameters(node)?.iter().rev() {
-            let at = self.origin(parameter);
-            let name = declared_name(parameter)?;
-            let Some(written) = child(parameter, is_type_node) else {
-                return self.refuse(
-                    Diagnostic::error(Code::UnsolvedMetavariable, "this parameter writes no type")
-                        .at(trimmed_span(parameter), "declared here")
-                        .help("a trait's method is a field of its dictionary, so its type is written in full"),
-                );
-            };
-            ty = Raw::pi(at, Arc::clone(&name), self.ty(&written)?, ty);
-            bound.push((at, name));
         }
-        let body = match child(node, is_expr_node) {
-            Some(block) => {
-                let mut built = self.expr(&block)?;
-                for (at, name) in &bound {
-                    built = Raw::lam(*at, Arc::clone(name), built);
-                }
-                Some(built)
-            }
-            None => None,
-        };
-        Some(RawMethod {
-            origin,
-            name,
-            params,
-            context,
-            ty,
-            body,
-        })
+        let mut declared = Vec::new();
+        for written in children(node, |kind| kind == SyntaxKind::FnDecl) {
+            let mut definition = self.function(&written)?;
+            definition.name = Name::from(format!("{head}{}{}", crate::module::DOT, definition.name));
+            declared.push((written, definition));
+        }
+        Some(declared)
     }
 
-    /// `impl<A> Eq<List<A>> where Eq<A> { fn equal(x, y) { … } }`, and
-    /// `impl Duration { … }`.
-    ///
-    /// One reading for both, because the surface is one declaration and §6 says
-    /// which it is by resolving the head name. A reading that guessed would be
-    /// guessing at exactly the fact the core holds.
-    fn instance(&mut self, node: &SyntaxNode) -> Option<RawImpl> {
-        let origin = self.origin(node);
-        let params = self.type_parameters(node);
-        let head = child(node, is_type_node)?;
-        let (name, args) = self.head_and_arguments(&head)?;
-        let context = self.written_constraints(node)?;
-        let mut methods = Vec::new();
-        for written in children(node, |kind| kind == SyntaxKind::FnDecl) {
-            let at = self.origin(&written);
-            self.misplaced_constraint(&written)?;
-            methods.push(RawDefinition {
-                origin: at,
-                name: declared_name(&written)?,
-                // The annotations stay on the λ here, because a
-                // [`RawDefinition`] has nowhere else to put them: the type is
-                // the trait's, and what the author wrote about a parameter is
-                // checked against it rather than dropped.
-                value: self.lambda(&written, at)?,
-            });
+    /// The type name an `impl` block opens, refusing anything that is not one.
+    fn namespace_head(&mut self, node: &SyntaxNode) -> Option<Name> {
+        let written = child(node, is_type_node)?;
+        let inner = match written.kind() {
+            SyntaxKind::TypeExpr => child(&written, is_type_node)?,
+            _ => written,
+        };
+        match inner.kind() {
+            SyntaxKind::TypeName => Some(written_head(&inner)),
+            _ => self.refuse(
+                Diagnostic::error(Code::Misplaced, "an `impl` block is opened by a type's name")
+                    .at(trimmed_span(&inner), "written here")
+                    .note("a namespace is keyed on the head of a type and not on its arguments")
+                    .help("write the name alone, and let each `fn` inside write the arguments it needs"),
+            ),
         }
-        Some(RawImpl {
-            origin,
-            name,
-            params,
-            args,
-            context,
-            methods,
-        })
     }
 
     // ---- the definitions ----
@@ -456,14 +372,12 @@ impl Lowering<'_> {
     fn function(&mut self, node: &SyntaxNode) -> Option<Definition> {
         let origin = self.origin(node);
         let name = declared_name(node)?;
-        let context = self.written_constraints(node)?;
         let parameters = self.parameters(node)?;
         let signed = child(node, is_type_node).is_some()
             && parameters
                 .iter()
                 .all(|parameter| child(parameter, is_type_node).is_some());
         if !signed {
-            self.unsigned_constraint(node, &context)?;
             return Some(Definition {
                 origin,
                 name,
@@ -485,13 +399,6 @@ impl Lowering<'_> {
             let written = child(parameter, is_type_node)?;
             ty = Raw::pi(at, Arc::clone(&bound), self.ty(&written)?, ty);
             value = Raw::lam(at, bound, value);
-        }
-        // §1.4's `fn same<A>(x: A, y: A) -> Bool where Eq<A>` is
-        // `{A : Type} → [Eq A] → (x : A) → (y : A) → Bool`: after the type
-        // parameters, so the constraint can mention them, and before the value
-        // parameters, so a caller answers it before supplying arguments.
-        for constraint in context.into_iter().rev() {
-            ty = Raw::constrained_pi(origin, constraint, ty);
         }
         for parameter in self.type_parameters(node).iter().rev() {
             ty = Raw::parameter_pi(origin, Arc::clone(&parameter.name), parameter.ty.clone(), ty);
@@ -611,112 +518,6 @@ impl Lowering<'_> {
                 })
             })
             .collect()
-    }
-
-    /// `where Eq<A>, Ord<B>` — the constraints a trait, a method, or an `impl`
-    /// wrote.
-    fn written_constraints(&mut self, node: &SyntaxNode) -> Option<Vec<RawConstraint>> {
-        let Some(clause) = child(node, |kind| kind == SyntaxKind::WhereClause) else {
-            return Some(Vec::new());
-        };
-        children(&clause, |kind| kind == SyntaxKind::Constraint)
-            .iter()
-            .map(|written| {
-                let origin = self.origin(written);
-                let (name, args) = self.head_and_arguments(written)?;
-                Some(RawConstraint { origin, name, args })
-            })
-            .collect()
-    }
-
-    /// A `where` clause on an `impl`'s method, refused where it was written.
-    ///
-    /// An impl method takes its type from the dictionary field it fills, so a
-    /// constraint of its own has nowhere to go and never will — the same
-    /// reasoning `musa-calculus` gives for one on a *required* trait method. The
-    /// parser attaches a `WhereClause` to every `FnDecl`, including these, and
-    /// before this refusal existed the clause was read and dropped.
-    ///
-    /// [`Code::Misplaced`] rather than [`Code::UnsupportedLanguageStage`]: this
-    /// is a permanent answer, and the other code promises a later prompt.
-    fn misplaced_constraint(&mut self, node: &SyntaxNode) -> Option<()> {
-        let Some(clause) = child(node, |kind| kind == SyntaxKind::WhereClause) else {
-            return Some(());
-        };
-        self.refuse(
-            Diagnostic::error(Code::Misplaced, "an impl method cannot carry a `where` clause")
-                .at(trimmed_span(&clause), "written here")
-                .note("its type is the trait's, so there is no binder of its own for a dictionary")
-                .help("write the constraint on the `impl`, or on the method in the `trait`"),
-        )
-    }
-
-    /// A `where` clause on a `fn` that wrote no signature, refused where it was
-    /// written.
-    ///
-    /// A constraint elaborates to a binder *on the type*, and this branch has no
-    /// type: §1.4's `where Eq<A>` names `A`, which is a type parameter, and a
-    /// declaration that annotates nothing quantifies over none. Reading the
-    /// clause and dropping it would leave every method use inside the body
-    /// resolving against a global instance.
-    fn unsigned_constraint(&mut self, node: &SyntaxNode, context: &[RawConstraint]) -> Option<()> {
-        if context.is_empty() {
-            return Some(());
-        }
-        let clause = child(node, |kind| kind == SyntaxKind::WhereClause)?;
-        self.refuse(
-            Diagnostic::error(Code::Misplaced, "a `where` clause needs the signature it constrains")
-                .at(trimmed_span(&clause), "written here")
-                .note("the constraint becomes a binder on the declared type, and none was written")
-                .help("annotate every parameter and the result type"),
-        )
-    }
-
-    /// A written type read as the name at its head and the arguments it was
-    /// applied to.
-    ///
-    /// The one thing [`Lowering::ty`] cannot answer, and the reason is that a
-    /// constraint is not a type: `Eq<List<A>>` names a trait and a head, and a
-    /// [`RawConstraint`] holds the two apart because `10-traits.md` §4's lookup
-    /// is keyed on them. The arguments *are* types and go through the ordinary
-    /// reading.
-    fn head_and_arguments(&mut self, node: &SyntaxNode) -> Option<(Name, Vec<Raw>)> {
-        match node.kind() {
-            // A `where` clause's entry is a `Constraint` wrapping the written
-            // type, and an `impl`'s head is the written type itself. Both reach
-            // here, so the wrapper is transparent.
-            SyntaxKind::Constraint | SyntaxKind::TypeExpr => {
-                let inner = child(node, is_type_node)?;
-                self.head_and_arguments(&inner)
-            }
-            SyntaxKind::TypeName => Some((written_head(node), Vec::new())),
-            SyntaxKind::AppliedType => {
-                let parts = children(node, is_type_node);
-                let (head, written) = parts.split_first()?;
-                let arguments: Option<Vec<Raw>> = written.iter().map(|argument| self.ty(argument)).collect();
-                Some((written_head(head), arguments?))
-            }
-            // The three the grammar gives their own node kinds. Reachable as an
-            // inherent `impl List<A> { … }`, and as nothing else: a trait is
-            // named by an identifier.
-            SyntaxKind::OptionType | SyntaxKind::ListType | SyntaxKind::ResultType => {
-                let name = match node.kind() {
-                    SyntaxKind::OptionType => "Option",
-                    SyntaxKind::ListType => "List",
-                    _ => "Result",
-                };
-                let arguments: Option<Vec<Raw>> = children(node, is_type_node)
-                    .iter()
-                    .map(|argument| self.ty(argument))
-                    .collect();
-                Some((Name::from(name), arguments?))
-            }
-            _ => self.refuse(
-                Diagnostic::error(Code::UnknownName, "this names no trait and no type")
-                    .at(trimmed_span(node), "written here")
-                    .help("an `impl` head and a constraint are a name, and the type arguments it is applied to"),
-            ),
-        }
     }
 }
 

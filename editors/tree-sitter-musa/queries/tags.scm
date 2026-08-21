@@ -49,9 +49,6 @@
 (enum_declaration
   name: (identifier) @name) @definition.type
 
-(trait_declaration
-  name: (identifier) @name) @definition.type
-
 (patch_declaration
   name: (identifier) @name) @definition.type
 

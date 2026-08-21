@@ -46,30 +46,10 @@ impl Parser<'_> {
         self.finish();
     }
 
-    /// A trait's method: the same declaration, with `;` where a body would be.
-    ///
-    /// The `;` is admitted *here* and not in [`Self::fn_decl`], so that a
-    /// bodiless `fn f() -> Nat;` written anywhere else still gets the one
-    /// complaint it got before. A required method is only meaningful where
-    /// something is required to fill it.
-    pub(super) fn trait_method(&mut self) {
-        self.start(SyntaxKind::FnDecl);
-        self.fn_signature();
-        if self.at(SyntaxKind::Semicolon) {
-            self.bump();
-        } else if self.at(SyntaxKind::Equals) {
-            self.old_function_body();
-        } else {
-            self.block_expr();
-        }
-        self.finish();
-    }
-
     /// Everything a function declaration writes before its body.
     ///
-    /// Shared by [`Self::fn_decl`] and [`Self::trait_method`] because the two
-    /// differ in exactly one place, and a signature read in two functions
-    /// would be a signature that could come to mean two things.
+    /// Its own function because a signature read in two places would be a
+    /// signature that could come to mean two things.
     pub(super) fn fn_signature(&mut self) {
         self.visibility();
         self.bump(); // fn
@@ -82,7 +62,6 @@ impl Parser<'_> {
             self.bump();
             self.type_expr();
         }
-        self.where_clause();
     }
 
     /// The one complaint a file written against `fn f() -> τ = e;` gets.

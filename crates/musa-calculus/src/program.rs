@@ -65,12 +65,11 @@
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
-use crate::class::Instance;
 use crate::context::Cx;
 use crate::elab::Elaborator;
 use crate::eval::eval;
 use crate::origin::Origin;
-use crate::raw::{RawImpl, RawPattern, RawProgram, RawShape, RawTopLevel};
+use crate::raw::{RawPattern, RawProgram, RawShape, RawTopLevel};
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
 use crate::term::{Name, Shape, Term};
@@ -115,21 +114,17 @@ impl core::fmt::Debug for Defined {
     }
 }
 
-/// A document's top level, elaborated: its definitions and its instances.
+/// A document's top level, elaborated.
 ///
 /// Opaque for [`crate::Group`]'s reason: a caller brings it into scope with
-/// [`Cx::defining`] — one call, both kinds — and then writes the names in
-/// ordinary raw terms. It never assembles a definition's type itself, because
-/// the elaboration that produced it is the only thing that knows what the type
-/// came out as.
+/// [`Cx::defining`] and then writes the names in ordinary raw terms. It never
+/// assembles a definition's type itself, because the elaboration that produced
+/// it is the only thing that knows what the type came out as.
 ///
-/// Both kinds together because [`crate::RawProgram`] holds both together and
-/// for the same reason: the order they were elaborated in was computed from
-/// what they name, and handing a caller two lists to re-combine would be handing
-/// back the question this module exists to answer.
+/// A namespaced definition — `Pitch.act` — is a member like any other. That is
+/// the whole of what an `impl Pitch { … }` block leaves here.
 pub struct Program {
     members: Arc<[Arc<Defined>]>,
-    instances: Arc<[Arc<Instance>]>,
 }
 
 impl Program {
@@ -137,38 +132,16 @@ impl Program {
     pub(crate) fn members(&self) -> &[Arc<Defined>] {
         &self.members
     }
-
-    /// Every instance in the group, in the order they were written.
-    pub(crate) fn instances(&self) -> &[Arc<Instance>] {
-        &self.instances
-    }
 }
 
-/// A group's instances as the keys they answer, in the order they are held.
+/// The definitions, in the order the document wrote them.
 ///
-/// A wrapper rather than a `Debug` on [`Instance`], because what a reader of a
-/// group's dump is looking for is which instances are in it and in what order,
-/// and an instance's own derived dump is mostly its dictionary term.
-struct Keyed<'a>(&'a [Arc<Instance>]);
-
-impl core::fmt::Debug for Keyed<'_> {
-    fn fmt(&self, out: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        out.debug_list().entries(self.0.iter().map(|held| &held.key)).finish()
-    }
-}
-
-/// Both kinds, in the order the document wrote them.
-///
-/// Two named lists rather than one bare list: the group holds two kinds now,
-/// and a dump that showed only the definitions would be one a reader draws the
-/// wrong conclusion from. What the order shows is the *written* order, which
-/// [`declare_program`] restores after elaborating in the order it computed.
+/// A named list rather than a bare one: what the order shows is the *written*
+/// order, which [`declare_program`] restores after elaborating in the order it
+/// computed.
 impl core::fmt::Debug for Program {
     fn fmt(&self, out: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        out.debug_struct("Program")
-            .field("definitions", &self.members)
-            .field("instances", &Keyed(&self.instances))
-            .finish()
+        out.debug_struct("Program").field("definitions", &self.members).finish()
     }
 }
 
@@ -253,76 +226,51 @@ impl Def {
 /// group goes through it unchanged; and otherwise as [`crate::check`] — each
 /// declaration is ordinary elaboration and fails in the ordinary ways.
 pub(crate) fn declare_program(cx: &Cx, program: &RawProgram) -> Result<(Arc<Program>, crate::Spend), ElabError> {
-    let nodes = graph(cx, program);
+    let nodes = graph(program);
     let mut extended = cx.clone();
     // Positions rather than the values themselves, because the elaboration
     // order is not the written order and the written order is what comes back.
     let mut members: Vec<(usize, Arc<Defined>)> = Vec::with_capacity(program.definitions.len());
-    let mut instances: Vec<(usize, Arc<Instance>)> = Vec::with_capacity(program.instances.len());
     let mut spent = crate::Spend::default();
     for node in ordering(&nodes)? {
-        match node.held {
-            Held::Definition(index, held) => {
-                let (defined, spend) = elaborate(&extended, held, node.recursive)?;
-                let defined = Arc::new(defined);
-                spent = spent.and(spend);
-                extended = extended.defining_one(&defined);
-                members.push((index, defined));
-            }
-            Held::Instance(index, raw) => {
-                let (declared, spend) = crate::dictionary::declare_impl(&extended, raw)?;
-                spent = spent.and(spend);
-                extended = extended.declaring_instance(&declared);
-                instances.push((index, declared));
-            }
-        }
+        let Held::Definition(index, held) = node.held;
+        let (defined, spend) = elaborate(&extended, held, node.recursive)?;
+        let defined = Arc::new(defined);
+        spent = spent.and(spend);
+        extended = extended.defining_one(&defined);
+        members.push((index, defined));
     }
     // Written order, not elaboration order: what a caller brings into scope is
     // the document's own list, and the order the analysis found is a fact about
     // this call rather than about the group.
     members.sort_by_key(|&(index, _)| index);
-    instances.sort_by_key(|&(index, _)| index);
     let declared = Arc::new(Program {
         members: members.into_iter().map(|(_, defined)| defined).collect(),
-        instances: instances.into_iter().map(|(_, declared)| declared).collect(),
     });
     Ok((declared, spent))
 }
 
-/// The dependency graph over a document's definitions and instances.
+/// The dependency graph over a document's definitions.
 ///
-/// One index space, definitions first, so that an edge from either kind to
-/// either kind is one number and [`ordering`] never has to ask which list it is
-/// walking. `cx` supplies the trait declarations — an edge to an instance is
-/// found by the *method spelling* a body writes, and only the classes know
-/// which trait declares a given spelling.
-fn graph<'a>(cx: &Cx, program: &'a RawProgram) -> Vec<Node<'a>> {
+/// Two kinds of edge, and the second is why this is not a plain name graph. A
+/// **hard** edge is a definition naming another by its own name. A **soft** edge
+/// is a definition writing `x.m(y)`: the spelling `m` stands for "whichever
+/// namespace declares it", so it reaches every `Head.m` in this group, and an
+/// edge the analysis could not narrow is dropped by [`ordering`] rather than
+/// refused as a cycle.
+fn graph<'a>(program: &'a RawProgram) -> Vec<Node<'a>> {
     let names: Vec<&Name> = program.definitions.iter().map(|held| &held.name).collect();
-    let classes = cx.classes();
-    // Which instance each trait name has here, so a method spelling reaches an
-    // instance in two lookups rather than a scan per call site.
-    let instanced: Vec<(&Name, usize)> = program
-        .instances
-        .iter()
-        .enumerate()
-        .map(|(index, raw)| (&raw.name, program.definitions.len().saturating_add(index)))
-        .collect();
-    // The soft half of the edges: every instance in this group of every trait
-    // declaring a spelling the declaration writes. Sorted and deduplicated
-    // because two spellings may reach one instance, and disjoint from the hard
-    // half by construction — a hard edge is a definition's position and this
-    // only ever answers an instance's.
-    let implementing = |methods: &[Name]| {
+    // The soft half of the edges: every namespaced definition in this group
+    // whose member spelling a declaration writes. Sorted and deduplicated
+    // because two spellings may reach one definition.
+    let namespaced = |methods: &[Name]| {
         let mut found: Vec<usize> = Vec::new();
         for method in methods {
-            for class in classes.declaring_method(method) {
-                found.extend(
-                    instanced
-                        .iter()
-                        .filter(|&&(name, _)| **name == **class)
-                        .map(|&(_, index)| index),
-                );
-            }
+            found.extend(names.iter().enumerate().filter_map(|(index, name)| {
+                crate::namespace::split(name)
+                    .filter(|&(_, member)| member == &**method)
+                    .map(|_| index)
+            }));
         }
         found.sort_unstable();
         found.dedup();
@@ -333,7 +281,7 @@ fn graph<'a>(cx: &Cx, program: &'a RawProgram) -> Vec<Node<'a>> {
         found.dedup();
         found.into_iter().map(|to| Edge { to, hard: true })
     };
-    let mut nodes: Vec<Node<'a>> = Vec::with_capacity(names.len().saturating_add(program.instances.len()));
+    let mut nodes: Vec<Node<'a>> = Vec::with_capacity(names.len());
     for (index, held) in program.definitions.iter().enumerate() {
         let mut written = Written::default();
         if let Some(ty) = &held.ty {
@@ -344,34 +292,10 @@ fn graph<'a>(cx: &Cx, program: &'a RawProgram) -> Vec<Node<'a>> {
         nodes.push(Node {
             recursive,
             held: Held::Definition(index, held),
-            edges: naming(written.found).chain(implementing(&written.methods)).collect(),
-        });
-    }
-    for (index, raw) in program.instances.iter().enumerate() {
-        let mut written = Written::default();
-        for binder in &raw.params {
-            written.walk(&binder.ty, &names);
-        }
-        for argument in &raw.args {
-            written.walk(argument, &names);
-        }
-        for constraint in &raw.context {
-            for argument in &constraint.args {
-                written.walk(argument, &names);
-            }
-        }
-        for method in &raw.methods {
-            written.walk(&method.value, &names);
-        }
-        nodes.push(Node {
-            // An instance is never `rec`: a dictionary is a closed term with no
-            // name to tie itself back to, so a self-edge is dropped by
-            // [`ordering`] and the method body refuses at the call it wrote.
-            // Its own spelling reaches itself here, which is exactly the soft
-            // edge that has to be droppable.
-            recursive: false,
-            held: Held::Instance(program.definitions.len().saturating_add(index), raw),
-            edges: naming(written.found).chain(implementing(&written.methods)).collect(),
+            edges: naming(written.found)
+                .chain(namespaced(&written.methods))
+                .filter(|edge| edge.hard || edge.to != index)
+                .collect(),
         });
     }
     nodes
@@ -382,8 +306,8 @@ fn graph<'a>(cx: &Cx, program: &'a RawProgram) -> Vec<Node<'a>> {
 ///
 /// The two are collected in one walk because they are found in the same places,
 /// and separately because they are resolved differently — a name is matched
-/// against this group's definitions, and a spelling has to go through the
-/// declared traits before it names anything at all.
+/// against this group's definitions by itself, and a spelling matches every
+/// namespaced definition that ends in it.
 #[derive(Default)]
 struct Written {
     /// The positions in the group of the definitions it names.
@@ -465,8 +389,9 @@ fn elaborate(cx: &Cx, held: &RawTopLevel, recursive: bool) -> Result<(Defined, c
 /// spurious edge is a spurious *cycle*, and a cycle is refused.
 ///
 /// A method spelling is collected in the same walk and is *not* shadowed by a
-/// binder, because a method name is not a variable: `10-traits.md` §6 resolves
-/// `x.m` by the receiver's type and never against the binders around it.
+/// binder, because a method name is not a variable: `01-surface.md` §1.5
+/// resolves `x.m` by the receiver's type and never against the binders around
+/// it.
 fn free(raw: &crate::raw::Raw, bound: &mut Vec<Name>, names: &[&Name], found: &mut Written) {
     let mut walk = |term: &crate::raw::Raw, bound: &mut Vec<Name>| free(term, bound, names, found);
     match raw.shape() {
@@ -480,12 +405,6 @@ fn free(raw: &crate::raw::Raw, bound: &mut Vec<Name>, names: &[&Name], found: &m
         // No edge: a hosted name is the reader's, resolved in the host's
         // namespaces, and cannot be the definition standing beside it.
         RawShape::Hosted(_) | RawShape::Lit(_) | RawShape::Numeral { .. } | RawShape::Universe(_) => {}
-        RawShape::ConstrainedPi { constraint, codomain } => {
-            for argument in &constraint.args {
-                walk(argument, bound);
-            }
-            walk(codomain, bound);
-        }
         RawShape::Pi {
             name, domain, codomain, ..
         } => {
@@ -596,27 +515,19 @@ fn binders_of(pattern: &RawPattern, binders: &mut Vec<Name>) {
 enum Held<'a> {
     /// A definition, at `.0` in [`RawProgram::definitions`].
     Definition(usize, &'a RawTopLevel),
-    /// An instance, at `.0` in the combined index space — so subtracting the
-    /// definition count gives its position in [`RawProgram::instances`].
-    Instance(usize, &'a RawImpl),
 }
 
 impl Held<'_> {
-    /// What to call this in a cycle: a definition's name, or the trait an
-    /// instance implements.
-    fn name(&self) -> &Name {
-        match self {
-            Self::Definition(_, held) => &held.name,
-            Self::Instance(_, raw) => &raw.name,
-        }
+    /// What to call this in a cycle.
+    const fn name(&self) -> &Name {
+        let Self::Definition(_, held) = self;
+        &held.name
     }
 
     /// Where it was written.
-    fn origin(&self) -> Origin {
-        match self {
-            Self::Definition(_, held) => held.origin,
-            Self::Instance(_, raw) => raw.origin,
-        }
+    const fn origin(&self) -> Origin {
+        let Self::Definition(_, held) = self;
+        held.origin
     }
 }
 
@@ -646,20 +557,18 @@ struct Node<'a> {
 ///
 /// A **hard** edge is a free name: this declaration writes that definition's
 /// name, so that one has to be elaborated first, and a cycle in hard edges is
-/// [`Refusal::DefinitionCycle`] exactly as it was before instances joined the
-/// group.
+/// [`Refusal::DefinitionCycle`].
 ///
-/// A **soft** edge is a method spelling: this declaration writes `x.m(y)`, and
-/// `10-traits.md` §6 will resolve that against whichever instance sits at the
+/// A **soft** edge is a member spelling: this declaration writes `x.m(y)`, and
+/// `01-surface.md` §1.5 resolves that against whichever namespace sits at the
 /// head of `x`'s type — which is not known until this declaration has been
-/// elaborated. So the edge points at *every* instance in the group of *every*
-/// trait declaring `m`, and it means "before one of these" rather than "before
-/// that one". An over-approximation cannot be allowed to refuse: two instances
-/// of one trait whose bodies both write that trait's own spelling name each
-/// other under this rule and name each other in no other sense, and refusing
-/// them as a cycle would reject a document a reader would order without
-/// hesitating. So a soft back edge is dropped, and what it costs is stated in
-/// [`ordering`].
+/// elaborated. So the edge points at *every* `Head.m` in the group, and it
+/// means "before one of these" rather than "before that one". An
+/// over-approximation cannot be allowed to refuse: two namespaced definitions
+/// of one member whose bodies both write that spelling name each other under
+/// this rule and name each other in no other sense, and refusing them as a
+/// cycle would reject a document a reader would order without hesitating. So a
+/// soft back edge is dropped, and what it costs is stated in [`ordering`].
 ///
 /// Peyton Jones ch. 6 §6.2.8's minimal groups is the property being protected:
 /// a declaration put into a recursive group it does not belong in may fail to
@@ -697,16 +606,16 @@ struct Frame {
 /// contains an edge that may be dropped. A soft back edge is one, and is
 /// dropped where it is found. A *hard* back edge is not — but the cycle it
 /// closes may still have been entered through a soft edge, and that is the
-/// shape a definition and an instance make when each names the other:
+/// shape a definition and a namespaced member make when each names the other:
 ///
 /// ```text
-/// seed        = Nat.Zero.tag        // soft: before one of the Tagged instances
-/// impl Tagged<Nat> { tag = seed }   // hard: before seed, and only seed
+/// seed     = Nat.Zero.tag    // soft: before every definition spelling `tag`
+/// Nat.tag  = seed            // hard: before seed, and only seed
 /// ```
 ///
 /// Refusing that pair as a cycle would be the over-approximation refusing, and
-/// dropping the *hard* edge instead would elaborate the instance first and
-/// report an unknown name in its body — a sentence about the wrong half of the
+/// dropping the *hard* edge instead would elaborate `Nat.tag` first and report
+/// an unknown name in its body — a sentence about the wrong half of the
 /// program. So the walk unwinds to the deepest declaration on the cycle that
 /// was reached softly and drops *that* edge, which leaves the definition first
 /// and its call the thing that refuses. A dropped edge is remembered, so the
@@ -714,15 +623,12 @@ struct Frame {
 ///
 /// # What a dropped soft edge costs, said rather than hidden
 ///
-/// The declaration is elaborated with that instance not yet in
-/// [`crate::Classes`]. If it really did call that instance's method, the call
-/// refuses with `NoMethodForType` **at the call**, naming the method and the
-/// head type — which is a sentence about the program, and what a genuine mutual
-/// dependency between a definition and a dictionary deserves. An instance is
-/// never `rec`, so a cycle through one has nowhere to go even where the graph
-/// admitted it. What must not happen instead is the same program refused as a
-/// cycle among declarations that never named each other, which is what a hard
-/// method edge produces and what [`Edge`] is for.
+/// The declaration is elaborated with that member not yet defined. If it really
+/// did call it, the call refuses with `NoMethodForType` **at the call**, naming
+/// the method and the head type — which is a sentence about the program, and
+/// what a genuine mutual dependency deserves. What must not happen instead is
+/// the same program refused as a cycle among declarations that never named each
+/// other, which is what a hard method edge produces and what [`Edge`] is for.
 ///
 /// # Errors
 ///

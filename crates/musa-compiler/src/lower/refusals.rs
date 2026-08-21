@@ -281,9 +281,7 @@ fn file(refusal: &Refusal) -> Filed {
         | Refusal::NotStorable { at, .. }
         | Refusal::RecordShape { at, .. } => one(Code::TypeMismatch, *at),
         // Too many, too few, or the wrong kind of argument.
-        Refusal::FillingMismatch { at, .. } | Refusal::ClassArity { at, .. } | Refusal::Underapplied { at, .. } => {
-            one(Code::WrongArity, *at)
-        }
+        Refusal::FillingMismatch { at, .. } | Refusal::Underapplied { at, .. } => one(Code::WrongArity, *at),
         // A name the declaration it is read against does not have.
         Refusal::NoSuchField { at, .. } | Refusal::NoSuchConstructor { at, .. } => one(Code::UnknownName, *at),
         // One name written twice, in a record type, an enum, or a `with`.
@@ -301,45 +299,23 @@ fn file(refusal: &Refusal) -> Filed {
         // checker filed the same mistake under: a reader who has seen
         // `dependency-cycle` once has seen this.
         Refusal::DefinitionCycle { at, .. } => one(Code::DependencyCycle, *at),
-        Refusal::ReservedClass { at, .. } => one(Code::ReservedClass, *at),
-        Refusal::HeadlessClass { at, .. } => one(Code::HeadlessClass, *at),
-        Refusal::ConstrainedField { at, .. } => one(Code::ConstrainedField, *at),
-        Refusal::DuplicateMethod { at, previous, .. } => {
-            two(Code::DuplicateMethod, *at, *previous, "first declared here")
-        }
         Refusal::NotANumeralFamily { at, .. } => one(Code::NotANumeralFamily, *at),
-        Refusal::HandWrittenStorable { at, .. } => one(Code::HandWrittenStorable, *at),
-        Refusal::BlanketInstance { at, .. } => one(Code::BlanketInstance, *at),
-        Refusal::DuplicateInstance { at, previous, .. } => {
-            two(Code::DuplicateInstance, *at, *previous, "already answered here")
-        }
-        Refusal::OrphanInstance { at, .. } => one(Code::OrphanInstance, *at),
-        Refusal::SuperClass { at, .. } => one(Code::SuperClass, *at),
-        Refusal::ConstrainedInstance { at, .. } => one(Code::ConstrainedInstance, *at),
-        Refusal::DerivedMethod { at, .. } => one(Code::DerivedMethod, *at),
-        Refusal::NoSuchMethod { at, .. } => one(Code::NoSuchMethod, *at),
-        Refusal::MissingMethod { at, .. } => one(Code::MissingMethod, *at),
-        Refusal::UnresolvedInstance { at, .. } => one(Code::UnresolvedInstance, *at),
-        Refusal::UnconstrainedVariable { at, .. } => one(Code::UnconstrainedVariable, *at),
         // The one refusal whose repair the core cannot name. `01-surface.md`
-        // §1.5's refusal table gives both halves — "with the `where` or
-        // `Trait::m(x, y)` as the fix" — and `Trait::m` is a *surface* spelling
-        // the core has never seen: it reaches the core already read, as the
-        // qualified name `Trait.m`. So the sentence belongs here, and it is
-        // true here because this prompt is what gives the path a reading.
+        // §1.5 gives it — write the path out — and `Head::m` is a *surface*
+        // spelling the core has never seen: it reaches the core already read,
+        // as the dotted name `Head.m`. So the sentence belongs here.
         Refusal::MethodOnVariable { at, .. } => Filed {
             code: Code::MethodOnVariable,
             at: *at,
             also: None,
             label: None,
             help: Some(std::borrow::Cow::Borrowed(
-                "name the trait — `Trait::m(x, y)` resolves wherever its dictionary does, and a `where` clause on this signature is what supplies one",
+                "write the namespace out — `Head::m(x, y)` names the definition without asking what `x`'s type is",
             )),
             said: None,
         },
         Refusal::NoMethodForType { at, .. } => one(Code::NoMethodForType, *at),
         Refusal::AmbiguousMethod { at, .. } => one(Code::AmbiguousMethod, *at),
-        Refusal::UnkeyedConstraint { at, .. } => one(Code::UnkeyedConstraint, *at),
         // The registry's own five. Reachable from source only through a
         // compiler defect — nobody writes a δ-builtin in `.musa` — but filed
         // rather than folded together, because the person who reads one of

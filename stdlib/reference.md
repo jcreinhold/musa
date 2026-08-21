@@ -5,6 +5,12 @@ editor shows on hover. Standard definitions are ordinary Musa definitions; impor
 searches the filesystem. Under a `structure`, only the members its signature exports are listed, because the rest are
 private to it.
 
+## `std::algebra`
+
+- `record Group<G>` — A set with an associative composition, a unit, and inverses.  Laws: `compose(unit(g), g)` and `compose(g, unit(g))` are `g`; composition is associative; `compose(g, inverse(g))` is `unit(g)`.  Not every set of movers is one. A duration composes and has a zero and has no inverse, because a duration is a length and not a displacement, and `Action` below is stated so that such a mover is still admitted.  `unit` takes an element, which looks redundant and is not: the element is read for its *type* and never for its value, so `P5.unit()` is `P1` and so is `m2.unit()`. Written as a field it is what a caller of the record supplies; written as `Interval.unit` it is what `P5.unit()` finds.
+- `record Action<X, G>` — A carrier moved by a set of movers.  Laws: `act(x, unit(g))` is `x`, and `act(x, compose(g, h))` is `act(act(x, h), g)`. Both are stated over whatever unit and composition the mover has, so a monoid acting is an action here and not an approximation of one; where the mover is also a `Group`, the action is invertible and the second law reads backwards as well as forwards.  The second law is what makes a transformation an object rather than a call: if composing two movers and acting once agrees with acting twice, a chain can be built before anything is applied.  **The carrier comes first** (`docs/rules/style-guide.md` §6). One mover moves several carriers — an interval moves both a pitch and a spelled pitch class — and the carrier is what a reader is asking about, so it is what the parameter list says first. It is also where `x.act(g)` looks: the receiver decides which `act` runs.
+- `record Torsor<P, V>` — A carrier on which the movers act *simply transitively*: every ordered pair of points is joined by exactly one mover.  That uniqueness is the whole content, so `difference` is the whole record. The movement itself is an `Action`'s `act` and is not declared twice; the law joining them is `act(a, difference(a, b))` is `b`, for every `a` and `b`.  **Two points never add.** `a + b` for two pitches or two positions is the single arithmetic error the point/mover split exists to catch, so there is no field here that could spell it.
+
 ## `std::collections`
 
 - `fn major_on(tonic: NoteName) -> Scale` — The major collection, W–W–H–W–W–W–H, rooted on tonic.

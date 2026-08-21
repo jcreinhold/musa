@@ -98,8 +98,7 @@ pub enum Refusal {
         /// already computed"): which names are near the written one is the
         /// surface's judgment to make, but what the candidates *are* is a
         /// fact of the context at the refusal point. Empty where the raiser
-        /// has no such list — a trait name looked up among classes is a
-        /// different namespace than a value among binders.
+        /// has no such list.
         candidates: Vec<Name>,
     },
     /// §2's `Switch` called conversion and conversion said no.
@@ -500,238 +499,30 @@ pub enum Refusal {
         /// The term.
         at: Origin,
     },
-    /// A `trait` declaration using a name this crate generates instances for.
-    ///
-    /// `Storable` is the one trait `02-core-calculus.md` §1.2 reserves, and
-    /// reserving the *word* rather than only the declaration is what closes the
-    /// spelling: an author who declares their own `Storable` would otherwise
-    /// shadow the generated instances with hand-written ones and the event track
-    /// payload boundary would have a hole in it.
-    #[error("`{class}` is generated for every storable type and cannot be declared")]
-    ReservedClass {
-        /// The declaration.
-        at: Origin,
-        /// The name it used.
-        class: Name,
-    },
-    /// A `trait` with no parameters.
-    ///
-    /// `10-traits.md` §1: the first parameter is the head, and lookup is keyed
-    /// on it. A trait with none has nothing to key on, so it could only ever be
-    /// a global value wearing a trait's syntax.
-    #[error("`{class}` has no parameters, so nothing can be an instance of it")]
-    HeadlessClass {
-        /// The declaration.
-        at: Origin,
-        /// Its name.
-        class: Name,
-    },
-    /// A **required** method carrying a `where` clause of its own.
-    ///
-    /// `10-traits.md` §1 makes a required method a *field* of the dictionary,
-    /// and a field is filled by the impl that writes the instance. A constraint
-    /// in its type would have to be discharged by somebody, and neither
-    /// candidate works: the impl never wrote the field's type, and a use site
-    /// resolving it would be a second lookup hidden inside a projection. A
-    /// derived method has the `where` clause because it is a *function*, which
-    /// is the half of §1's split that can take a dictionary.
-    #[error("`{class}.{method}` is required, and a required method cannot carry a `where` clause")]
-    ConstrainedField {
-        /// The method.
-        at: Origin,
-        /// The trait.
-        class: Name,
-        /// Its name.
-        method: Name,
-    },
-    /// A trait declaring a `where` clause: a supertrait, which is synthesized
-    /// dictionary search under a quieter spelling.
-    ///
-    /// `10-traits.md` §9's first row. What the author wanted is stated at the
-    /// use instead: the method or function takes the second dictionary as an
-    /// argument, or states it in its own `where`, and the trait stays a record
-    /// of exactly its methods.
-    #[error("`{class}` declares a super-constraint; take the dictionary as an argument instead")]
-    SuperClass {
-        /// The clause.
-        at: Origin,
-        /// The trait.
-        class: Name,
-    },
-    /// An `impl` declaring a `where` clause.
-    ///
-    /// `10-traits.md` §4: resolution is three steps and no recursion, and an
-    /// instance whose own constraints had to be synthesized is the recursion.
-    /// The explicit spelling is an ordinary function from the dictionaries to
-    /// the dictionary — `fn list_eq<A>(eq: Eq<A>) -> Eq<List<A>>` — or a macro
-    /// that writes the concrete instances out.
-    #[error("`impl {class}` carries a `where` clause; write the dictionary-building function instead")]
-    ConstrainedInstance {
-        /// The clause.
-        at: Origin,
-        /// The trait.
-        class: Name,
-    },
-    /// A trait declaring one method name twice.
-    #[error("`{class}` declares `{method}` twice")]
-    DuplicateMethod {
-        /// The second declaration.
-        at: Origin,
-        /// The first.
-        previous: Origin,
-        /// The trait.
-        class: Name,
-        /// The method.
-        method: Name,
-    },
-    /// A trait or instance applied to the wrong number of arguments.
-    #[error("`{class}` takes {wanted} argument(s), and {written} were written")]
-    ClassArity {
-        /// Where it was written.
-        at: Origin,
-        /// The trait.
-        class: Name,
-        /// How many parameters it has.
-        wanted: usize,
-        /// How many arguments were written.
-        written: usize,
-    },
-    /// A source `impl Storable`, behind any spelling.
-    ///
-    /// Its own variant rather than [`Self::ReservedClass`] because it is the
-    /// refusal §3 calls the single exception in the system, and the sentence an
-    /// author needs is about *why* they cannot write it rather than about the
-    /// name being taken.
-    #[error("`Storable` instances are generated from the declaration and are never written")]
-    HandWrittenStorable {
-        /// The declaration.
-        at: Origin,
-    },
-    /// An `impl` whose head argument is a bare type variable.
-    ///
-    /// `10-traits.md` §9's blanket-instance refusal. A head that is a variable
-    /// matches everything, so it is not a key — admitting one would make every
-    /// lookup that missed fall back to it, which is the search §4 forbids.
-    #[error("`{class}` is implemented here for every type, which would make lookup a search")]
-    BlanketInstance {
-        /// The declaration.
-        at: Origin,
-        /// The trait.
-        class: Name,
-    },
-    /// A second `impl` answering a key another already answers.
-    ///
-    /// §2's coherence, reported at the *second* declaration and naming the
-    /// first, because that is the pair an author has to choose between.
-    #[error("`{class}` is already implemented for `{head}`")]
-    DuplicateInstance {
-        /// The second declaration.
-        at: Origin,
-        /// The first.
-        previous: Origin,
-        /// The trait.
-        class: Name,
-        /// The head type both answer for.
-        head: Name,
-    },
-    /// An `impl` in a package that declares neither its trait nor its head type.
-    #[error("`{class}` for `{head}` belongs in the package that declares one of them")]
-    OrphanInstance {
-        /// The declaration.
-        at: Origin,
-        /// The trait.
-        class: Name,
-        /// The head type.
-        head: Name,
-    },
-    /// An `impl` supplying a method the trait derives.
-    ///
-    /// §1: a derived method is written once, in the trait. An impl that could
-    /// replace one would make two dictionaries for the same instance
-    /// distinguishable, which is what coherence exists to prevent.
-    #[error("`{class}` derives `{method}`, so an instance does not define it")]
-    DerivedMethod {
-        /// The definition.
-        at: Origin,
-        /// The trait.
-        class: Name,
-        /// The method.
-        method: Name,
-    },
-    /// An `impl` supplying a method the trait does not declare.
-    #[error("`{class}` has no method `{method}`")]
-    NoSuchMethod {
-        /// The definition.
-        at: Origin,
-        /// The trait.
-        class: Name,
-        /// The name written.
-        method: Name,
-        /// The methods it does have, in declaration order.
-        methods: Vec<Name>,
-    },
-    /// An `impl` leaving a required method undefined.
-    #[error("this instance of `{class}` does not define `{method}`")]
-    MissingMethod {
-        /// The declaration.
-        at: Origin,
-        /// The trait.
-        class: Name,
-        /// The method not defined.
-        method: Name,
-    },
-    /// A constraint no instance and no enclosing `where` answers.
-    ///
-    /// The one refusal here that an ordinary author sees often, so it says both
-    /// halves of the key: an author fixes it either by writing the instance or
-    /// by adding the constraint to the signature they are inside.
-    #[error("nothing implements `{class}` for `{head}`")]
-    UnresolvedInstance {
-        /// The use.
-        at: Origin,
-        /// The trait.
-        class: Name,
-        /// The head its first argument has, as written.
-        head: Name,
-    },
-    /// A constraint on a type variable that no enclosing `where` supplies.
-    ///
-    /// Told apart from [`Self::UnresolvedInstance`] because the fix is
-    /// different and the checker knows which one it is: a variable can never
-    /// acquire a global instance, so the only repair is a constraint on the
-    /// signature.
-    #[error("`{class}` is not available for this type variable; constrain it with `where {class}`")]
-    UnconstrainedVariable {
-        /// The use.
-        at: Origin,
-        /// The trait.
-        class: Name,
-    },
     /// `x.m(…)` where `x`'s type is not a declared type constructor.
     ///
-    /// §6: a value of a generic parameter `A` never acquires a method, because
-    /// finding one would mean scanning every trait in scope and adding a trait
-    /// to a package would change what existing code means. The same is true of
-    /// a receiver whose type is a function type, a universe, or a record type
-    /// written out, and of one still unknown here — none of them is a name a
+    /// §1.5: `x.m(…)` is `Head.m(x, …)` where `Head` is the rigid head of `x`'s
+    /// type, so a receiver whose type has no rigid head names no definition. A
+    /// generic parameter `A`, a function type, a universe, a record type written
+    /// out, and a type still unknown here are all of them: none is a name a
     /// lookup could be keyed on.
     ///
-    /// Qualification is the repair and always available (§6): `Add.add(x, y)`
-    /// says which trait, so it needs no receiver type to say it, and under a
-    /// `where` it resolves exactly as an operator does.
-    #[error("`.{method}` needs a receiver whose type is a declared type; write `Trait.{method}(…)` instead")]
+    /// Qualification is the repair and always available: `Head::m(x, …)` writes
+    /// the namespace out, so it needs no receiver type to say it.
+    #[error("`.{method}` needs a receiver whose type is a declared type; write `Head::{method}(…)` instead")]
     MethodOnVariable {
         /// The use.
         at: Origin,
         /// The method, as written.
         method: Name,
     },
-    /// `x.m(…)` where no trait with a dictionary at `x`'s head declares `m`.
+    /// `x.m(…)` where nothing named `Head.m` is in scope for `x`'s head.
     ///
-    /// §6's "none is an error naming the type and the method". Told apart from
-    /// [`Self::UnresolvedInstance`] because no trait was named: the question was
-    /// which one, and the answer was that none of the candidates is in scope for
-    /// this head.
+    /// §1.5's "none is an error naming the type and the method". This is an
+    /// ordinary unresolved name wearing the spelling the author used: the term
+    /// it would have elaborated to is a top-level definition, and the reason it
+    /// is a refusal of its own is that reporting `Pitch.act` unresolved would
+    /// name a spelling the author never wrote.
     #[error("no method `{method}` for `{head}`")]
     NoMethodForType {
         /// The use.
@@ -741,42 +532,25 @@ pub enum Refusal {
         /// The method, as written.
         method: Name,
     },
-    /// `x.m(…)` where two traits with a dictionary at `x`'s head declare `m`.
+    /// A bare member spelling that the expected type did not narrow to one
+    /// namespace.
     ///
-    /// §6's "two is an error naming both". Coherence cannot rule this out: it
-    /// keeps one instance per (trait, head) pair, and two *different* traits at
-    /// one head are exactly what a package that imports two libraries has.
-    #[error("`{method}` for `{head}` is declared by more than one trait")]
+    /// §1.5's "two is an error naming both", and the failure mode that replaced
+    /// "no instance found". The candidates are listed because the repair is to
+    /// write one of them: `Head::m` is always available and always unambiguous.
+    /// An *empty* narrowing reports here too — the member exists and the
+    /// expected type ruled every namespace out, which the reader needs to see
+    /// with the same list.
+    #[error("`{method}` is declared in more than one namespace")]
     AmbiguousMethod {
         /// The use.
         at: Origin,
-        /// The head of the receiver's type.
+        /// The head the site fixed, or the member itself where it fixed none.
         head: Name,
-        /// The method, as written.
+        /// The member, as written.
         method: Name,
-        /// The traits that declare it, sorted.
-        classes: Vec<Name>,
-    },
-    /// A constraint on a type no instance could ever be keyed on.
-    ///
-    /// §4 postpones a constraint whose head is not known *yet*; a function
-    /// type, a universe, or a record type is as known as it will ever be, and
-    /// none of them is a declared name a key can hold. Told apart from
-    /// [`Self::UnresolvedInstance`] because there is no instance anyone could
-    /// write to repair it — which is exactly what `02-core-calculus.md` §1.2
-    /// says about `Storable` and an arrow.
-    #[error("`{class}` cannot be implemented for `{}`: only a declared type has instances", crate::show::spelled(.ty))]
-    UnkeyedConstraint {
-        /// The use.
-        at: Origin,
-        /// The trait.
-        class: Name,
-        /// The first argument, which is the type no key could hold.
-        ///
-        /// Said rather than described, for [`Mismatch`]'s reason: a machine port
-        /// that turned out to be `Ratio → Ratio` is a sentence a reader can act
-        /// on, and "this type" is one they have to go and reconstruct.
-        ty: Term,
+        /// The namespaces that declare it, sorted.
+        candidates: Vec<Name>,
     },
     /// One name registered twice in a [`Registry`](crate::Registry).
     ///

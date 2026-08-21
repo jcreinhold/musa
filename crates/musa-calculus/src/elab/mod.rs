@@ -136,15 +136,15 @@ pub(crate) struct Elaborator {
     /// can do to the table, and an assignment is justified by the match that
     /// made it wherever the variable was created.
     conversion: Conversion,
-    /// The constraints the walks have met, each with the hole its dictionary
-    /// will fill — resolved once, at [`Self::settled`], when matching has said
-    /// everything it can.
+    /// The `Storable` constraints the walks have met, each with the hole its
+    /// evidence will fill — discharged once, at [`Self::settled`], when matching
+    /// has said everything it can.
     ///
-    /// Declaration-end rather than walk-end because a method's constraint is
-    /// created before the receiver that solves its parameter is applied, and
-    /// walk-end would be a second, earlier place the same failure could be
-    /// reported — one place, one message.
-    constraints: Vec<(Arc<crate::class::Constraint>, Scope, Env, Origin, crate::meta::Hole)>,
+    /// Declaration-end rather than walk-end because a constraint is created
+    /// before the argument that solves its parameter is applied, and walk-end
+    /// would be a second, earlier place the same failure could be reported —
+    /// one place, one message.
+    constraints: Vec<(Arc<crate::term::Constraint>, Scope, Env, Origin, crate::meta::Hole)>,
     /// Every hole an instantiation walk has created, in creation order.
     ///
     /// Kept so that [`Self::settled`] names the *first* parameter nothing
@@ -286,19 +286,5 @@ impl Elaborator {
             .into());
         };
         Ok((inferred.term, *level))
-    }
-
-    /// # Errors
-    ///
-    /// [`Refusal::Mismatch`] when they cannot be made equal, or exhaustion.
-    pub(crate) fn unify_types(
-        &mut self,
-        scope: &Scope,
-        at: Origin,
-        left: &Value,
-        right: &Value,
-    ) -> Result<(), ElabError> {
-        self.conversion
-            .unify_types(&mut self.meter, scope.depth(), at, left, right)
     }
 }

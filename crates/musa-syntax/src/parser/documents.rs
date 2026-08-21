@@ -39,7 +39,6 @@ const PIECE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::DataKw,
     SyntaxKind::RecordKw,
     SyntaxKind::EnumKw,
-    SyntaxKind::TraitKw,
     SyntaxKind::ImplKw,
 ];
 
@@ -53,7 +52,6 @@ const ROOT_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::DataKw,
     SyntaxKind::RecordKw,
     SyntaxKind::EnumKw,
-    SyntaxKind::TraitKw,
     SyntaxKind::ImplKw,
     SyntaxKind::PieceKw,
     SyntaxKind::LibraryKw,
@@ -92,8 +90,8 @@ impl Parser<'_> {
                 self.signature_decl();
             } else if self.at_type_decl() {
                 self.type_decl();
-            } else if self.at_trait_or_impl() {
-                self.trait_or_impl();
+            } else if self.at_impl() {
+                self.impl_decl();
             } else if self.opens_any(&[SyntaxKind::StructureKw, SyntaxKind::ModuleKw]) {
                 self.structure_decl();
             } else if self.at(SyntaxKind::PrivateKw) {
@@ -174,8 +172,8 @@ impl Parser<'_> {
                 self.fn_decl();
             } else if self.at_type_decl() {
                 self.type_decl();
-            } else if self.at_trait_or_impl() {
-                self.trait_or_impl();
+            } else if self.at_impl() {
+                self.impl_decl();
             } else if self.at(SyntaxKind::PrivateKw) {
                 self.misplaced_private();
             } else if self.at(SyntaxKind::ScoreKw) {
@@ -286,8 +284,8 @@ impl Parser<'_> {
                 self.signature_decl();
             } else if self.at_type_decl() {
                 self.type_decl();
-            } else if self.at_trait_or_impl() {
-                self.trait_or_impl();
+            } else if self.at_impl() {
+                self.impl_decl();
             } else if self.opens_any(&[SyntaxKind::StructureKw, SyntaxKind::ModuleKw]) {
                 self.structure_decl();
             } else if self.at(SyntaxKind::PrivateKw) {

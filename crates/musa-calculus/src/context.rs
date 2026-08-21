@@ -17,11 +17,10 @@
 //! context and leave the old one usable — because an elaborator descends into
 //! two branches from one context and neither may see the other's binders.
 
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 
 use crate::base::Registry;
 use crate::budget::{Budget, Meter};
-use crate::class::{Classes, Instance, PackageId, Trait};
 use crate::error::CoreError;
 use crate::eval::eval;
 use crate::family::{Constant, Found, Group};
@@ -69,25 +68,11 @@ pub struct Cx {
     /// invisible to a caller that has no packages — see
     /// [`crate::visibility`]. This crate never mints one.
     module: Option<ModuleId>,
-    /// The package a term elaborated here is written in, for §3's orphan rule.
-    ///
-    /// [`ModuleId`]'s bargain at the wider boundary, and `None` is inside every
-    /// package for the same reason. See [`PackageId`].
-    package: Option<PackageId>,
-    /// The traits and instances in scope.
-    ///
-    /// Behind an [`Arc`] rather than held by value, and that is not incidental:
-    /// a context is cloned on every binder push, the tables behind this are two
-    /// `HashMap`s, and copying them per binder would make elaboration's cost
-    /// depend on how many traits a program declares. `None` is the empty
-    /// table — which is what every caller that declares no traits has, so they
-    /// pay one null check rather than an allocation.
-    classes: Option<Arc<Classes>>,
     /// The host's base types and builtins (§5.8).
     ///
-    /// Behind an [`Arc`] and optional for exactly the reasons `classes` is: a
-    /// context is cloned per binder, and a caller that registers nothing pays a
-    /// null check rather than an allocation. `None` is the empty registry, so a
+    /// Behind an [`Arc`] and optional because a context is cloned per binder,
+    /// and a caller that registers nothing pays a null check rather than an
+    /// allocation. `None` is the empty registry, so a
     /// context that names no base type is the one every test written before
     /// this rule existed already had.
     ///
@@ -119,8 +104,6 @@ impl Cx {
             declared: List::EMPTY,
             definitions: List::EMPTY,
             module: None,
-            package: None,
-            classes: None,
             externs: None,
             depth: 0,
             budget,
@@ -142,8 +125,6 @@ impl Cx {
             declared: self.declared.clone(),
             definitions: self.definitions.clone(),
             module: self.module,
-            package: self.package,
-            classes: self.classes.clone(),
             externs: self.externs.clone(),
             depth: 0,
             budget: self.budget,
@@ -170,35 +151,6 @@ impl Cx {
         self.module
     }
 
-    /// This context, elaborating inside the package the caller numbers
-    /// `package`.
-    ///
-    /// What §3's orphan rule compares. A context that never says this is inside
-    /// every package, so an impl declared in one is never an orphan — which is
-    /// what leaves every caller that has no packages, and every test written
-    /// before this rule existed, unchanged.
-    #[must_use]
-    pub fn in_package(&self, package: PackageId) -> Self {
-        Self {
-            package: Some(package),
-            ..self.clone()
-        }
-    }
-
-    /// The package terms elaborated here are written in, if the caller named
-    /// one.
-    pub(crate) const fn package(&self) -> Option<PackageId> {
-        self.package
-    }
-
-    /// The traits and instances in scope.
-    pub(crate) fn classes(&self) -> &Classes {
-        static EMPTY: OnceLock<Classes> = OnceLock::new();
-        self.classes
-            .as_deref()
-            .unwrap_or_else(|| EMPTY.get_or_init(Classes::default))
-    }
-
     /// This context, with the host's base types and builtins in scope.
     ///
     /// Registered once by the caller and then immutable, which is what keeps a
@@ -215,30 +167,6 @@ impl Cx {
     /// What `name` names among the host's registrations, if anything.
     pub(crate) fn extern_named(&self, name: &str) -> Option<&crate::base::Extern> {
         self.externs.as_deref()?.named(name)
-    }
-
-    /// This context with `declared` in scope as a trait.
-    #[must_use]
-    pub fn declaring_class(&self, declared: &Arc<Trait>) -> Self {
-        Self {
-            classes: Some(Arc::new(self.classes().declaring_class(declared))),
-            ..self.clone()
-        }
-    }
-
-    /// This context with `instance` in scope, answering the key it was
-    /// declared for.
-    ///
-    /// Coherence was decided when the instance was elaborated, not here: this
-    /// takes an [`Instance`] that [`declare_impl`](crate::declare_impl) already
-    /// produced, and that function is where a second one for the same key was
-    /// refused.
-    #[must_use]
-    pub fn declaring_instance(&self, instance: &Arc<Instance>) -> Self {
-        Self {
-            classes: Some(Arc::new(self.classes().declaring_instance(instance))),
-            ..self.clone()
-        }
     }
 
     /// This context with `group`'s families, constructors, and recursors in
@@ -293,16 +221,16 @@ impl Cx {
             .collect()
     }
 
-    /// This context with `program`'s definitions in scope as global names, and
-    /// its instances answering the keys they were declared for.
+    /// This context with `program`'s definitions in scope as global names.
     ///
     /// What a caller brings a declared program into scope with, so that the
     /// next document — or the next `check` against a term the caller wrote by
     /// hand — may name what it defined. The group arrives whole because that is
     /// the unit [`declare_program`](crate::declare_program) answers: §2.4
     /// collects signatures before bodies, so no member of a group is finished
-    /// until all of them are — and an instance is a member, because a
-    /// definition may name one and one may name a definition.
+    /// until all of them are. A namespaced definition — `Pitch.act` — is a
+    /// member like any other, which is what makes `p.act(i)` and the definition
+    /// answering it visible to each other.
     #[must_use]
     pub fn defining(&self, program: &Program) -> Self {
         let extended = program
@@ -311,12 +239,8 @@ impl Cx {
             .fold(self.definitions.clone(), |scope, defined| {
                 scope.push(Arc::clone(defined))
             });
-        let instances = program.instances();
         Self {
             definitions: extended,
-            classes: (!instances.is_empty())
-                .then(|| Arc::new(self.classes().declaring_instances(instances)))
-                .or_else(|| self.classes.clone()),
             ..self.clone()
         }
     }
@@ -478,8 +402,6 @@ impl Cx {
             declared: self.declared.clone(),
             definitions: self.definitions.clone(),
             module: self.module,
-            package: self.package,
-            classes: self.classes.clone(),
             externs: self.externs.clone(),
             depth: self.depth.saturating_add(1),
             budget: self.budget,

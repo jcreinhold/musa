@@ -25,7 +25,6 @@
 use std::sync::Arc;
 
 use crate::budget::Meter;
-use crate::class::Key;
 use crate::context::Cx;
 use crate::error::CoreError;
 use crate::family::Found;
@@ -60,39 +59,6 @@ pub(crate) struct Resolved {
 pub(crate) struct Scope {
     cx: Cx,
     bindings: List<Binding>,
-    /// The dictionaries an enclosing `where` bound, innermost first.
-    ///
-    /// Beside the bindings rather than among them because they answer a
-    /// different question: a binding is found by *name* and one of these is
-    /// found by the constraint it discharges, and `10-traits.md` §4 step 1 is
-    /// exactly that lookup. Keeping them apart is also what makes
-    /// local-beats-global a property of the code — nothing can reach a local
-    /// dictionary except by asking for a key.
-    locals: List<Local>,
-}
-
-/// A dictionary an enclosing `where` bound, and the level its binder stands at.
-///
-/// The level rather than the index, because these outlive the scope they were
-/// made in: a `where` dictionary is looked up while checking a body nested
-/// arbitrarily deep inside it, and an index would have to be corrected at every
-/// one of those depths. A level is corrected once, where it is read.
-#[derive(Clone)]
-pub(crate) struct Local {
-    /// What it answers.
-    pub(crate) key: Key,
-    /// Where its binder stands, counted from the outside.
-    pub(crate) level: u32,
-    /// The arguments it was written at, as values for the same reason.
-    ///
-    /// `10-traits.md` §1: "once the head is known the whole instance is known,
-    /// and with it every other parameter." A global instance makes that true by
-    /// unifying its written arguments against the ones asked for
-    /// (`apply_instance`), and a local has to do the same or the rule would hold
-    /// for one of §4's two lookups. It is `Buildable<D, B>` that shows it: a use
-    /// of `empty : C` mentions the first parameter and not the second, so
-    /// nothing else in the program could ever determine `B`.
-    pub(crate) args: Arc<[Value]>,
 }
 
 impl Scope {
@@ -113,7 +79,6 @@ impl Scope {
         Self {
             cx: cx.clone(),
             bindings,
-            locals: List::EMPTY,
         }
     }
 
@@ -128,25 +93,6 @@ impl Scope {
             .filter_map(|binding| binding.name.clone())
             .chain(self.cx.defined_names())
             .collect()
-    }
-
-    /// This scope with `key` discharged by the binder at `level`.
-    ///
-    /// Recorded when a `where` constraint's dictionary is assumed, so that a use
-    /// inside it prefers this to any global instance for the same key (§4 step
-    /// 1). Under coherence the two can never disagree; what the rule buys is
-    /// determinacy, so instantiating a parameter later cannot reroute a call
-    /// that was already elaborated.
-    pub(crate) fn discharging(&self, key: Key, level: u32, args: Arc<[Value]>) -> Self {
-        Self {
-            locals: self.locals.push(Local { key, level, args }),
-            ..self.clone()
-        }
-    }
-
-    /// The innermost local dictionary answering `key`.
-    pub(crate) fn discharged(&self, key: &Key) -> Option<&Local> {
-        self.locals.iter().find(|local| local.key == *key)
     }
 
     /// The context these binders make up.
@@ -196,7 +142,6 @@ impl Scope {
         Self {
             cx: self.cx.assumed(binder, Arc::clone(&ty)),
             bindings: self.pushed(name, ty),
-            locals: self.locals.clone(),
         }
     }
 
@@ -212,7 +157,6 @@ impl Scope {
         Ok(Self {
             cx: self.cx.defined(meter, Arc::clone(&ty), value)?,
             bindings: self.pushed(Some(name), ty),
-            locals: self.locals.clone(),
         })
     }
 

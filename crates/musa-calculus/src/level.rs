@@ -19,8 +19,8 @@
 pub enum Level {
     /// `Type 0` — where every type a program writes lives.
     Zero,
-    /// `Type 1` — where a type of types stands: a dictionary type constructor,
-    /// an enumeration's own signature.
+    /// `Type 1` — where a type of types stands: a record type constructor over
+    /// `Type`, an enumeration's own signature.
     One,
 }
 

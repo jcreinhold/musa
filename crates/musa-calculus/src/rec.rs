@@ -369,21 +369,6 @@ impl Rewrite<'_> {
             RawShape::Hosted(_) | RawShape::Universe(_) | RawShape::Lit(_) | RawShape::Numeral { .. } => {
                 return Ok(raw.clone());
             }
-            // The dictionary binder takes the trait's own name — see
-            // [`crate::elab`]'s constrained Π — so the codomain is walked under
-            // it for the same reason an ordinary Π's is.
-            RawShape::ConstrainedPi { constraint, codomain } => RawShape::ConstrainedPi {
-                constraint: crate::raw::RawConstraint {
-                    origin: constraint.origin,
-                    name: Arc::clone(&constraint.name),
-                    args: constraint
-                        .args
-                        .iter()
-                        .map(|argument| self.term(argument, bound))
-                        .collect::<Result<Vec<_>, _>>()?,
-                },
-                codomain: self.under(&constraint.name, codomain, bound)?,
-            },
             RawShape::Pi {
                 filling,
                 name,

@@ -130,9 +130,7 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         SyntaxKind::EnumKw => "enum",
         SyntaxKind::ModuleKw => "module",
         SyntaxKind::PrivateKw => "private",
-        SyntaxKind::TraitKw => "trait",
         SyntaxKind::ImplKw => "impl",
-        SyntaxKind::WhereKw => "where",
         SyntaxKind::MakeKw => "make",
         SyntaxKind::AsKw => "as",
         SyntaxKind::PieceKw => "piece",
@@ -371,10 +369,7 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::SequenceSplice
         | SyntaxKind::SyntaxRegion
         | SyntaxKind::SyntaxGroup
-        | SyntaxKind::TraitDecl
         | SyntaxKind::ImplDecl
-        | SyntaxKind::WhereClause
-        | SyntaxKind::Constraint
         | SyntaxKind::BinaryExpr
         | SyntaxKind::MethodCallExpr
         | SyntaxKind::IndexExpr

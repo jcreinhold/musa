@@ -13,6 +13,5 @@ mod parser;
 mod quotation_syntax_laws;
 mod record_syntax_laws;
 mod text_encoding_laws;
-mod trait_syntax_laws;
 mod tree_sitter_fixtures;
 mod visibility_syntax_laws;

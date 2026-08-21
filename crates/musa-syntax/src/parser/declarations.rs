@@ -88,17 +88,17 @@ impl Parser<'_> {
         self.opens_any(&[SyntaxKind::DataKw, SyntaxKind::RecordKw, SyntaxKind::EnumKw])
     }
 
-    /// Whether a `trait` or an `impl` opens here, `private` or not.
+    /// Whether an `impl` opens here, `private` or not.
     ///
     /// Separate from [`Self::at_type_decl`] rather than folded into it,
     /// because the two do not stand in the same places: `01-surface.md` §1's
-    /// `document` production admits a trait and an impl at a file's root, in a
-    /// piece, and in a library, and a structure's body holds bindings and
-    /// functions only. An instance declared inside a sealed structure would be
-    /// a coherence question — the table `10-traits.md` §2 keeps is one table
-    /// for the whole program — and admitting the syntax would be asking it.
-    pub(super) fn at_trait_or_impl(&self) -> bool {
-        self.opens_any(&[SyntaxKind::TraitKw, SyntaxKind::ImplKw])
+    /// `document` production admits an impl at a file's root, in a piece, and
+    /// in a library, and a structure's body holds bindings and functions only.
+    /// A type's namespace is the whole program's, so opening one inside a
+    /// sealed structure would name a type from somewhere its members could not
+    /// be reached.
+    pub(super) fn at_impl(&self) -> bool {
+        self.opens(SyntaxKind::ImplKw)
     }
 
     /// A `private` standing in front of something it cannot mark.
@@ -184,7 +184,6 @@ impl Parser<'_> {
         if self.at(SyntaxKind::Less) {
             self.type_params();
         }
-        self.where_clause();
         self.expect(SyntaxKind::LBrace, "`{`");
         while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
             if self.at(SyntaxKind::Identifier) {
@@ -224,7 +223,6 @@ impl Parser<'_> {
         if self.at(SyntaxKind::Less) {
             self.type_params();
         }
-        self.where_clause();
         self.expect(SyntaxKind::LBrace, "`{`");
         // An enum with no cases at all is admitted, and deliberately: `enum
         // Empty {}` is the type with no closed inhabitant, which is what
@@ -277,71 +275,18 @@ impl Parser<'_> {
         self.finish();
     }
 
-    /// Whichever of `trait` and `impl` opens here.
+    /// `impl Duration { … }` — one type's namespace, opened.
     ///
-    /// One dispatch for the two because they stand in the same places and are
-    /// halves of one mechanism: a trait declares the record and an impl
-    /// declares a value of it (`10-traits.md` §1).
-    pub(super) fn trait_or_impl(&mut self) {
-        if self.opens(SyntaxKind::TraitKw) {
-            self.trait_decl();
-        } else {
-            self.impl_decl();
-        }
-    }
-
-    /// `trait Eq<A> where Storable<A> { fn equal(x: A, y: A) -> Bool; }`
-    ///
-    /// A trait's items are ordinary function declarations, and a `;` where the
-    /// body would be is how one says *required*: `10-traits.md` §1 makes a
-    /// trait a dependent record, so a method with a body is a field with a
-    /// default and a method without one is a field an instance must fill. They
-    /// share a node kind with every other function for that reason — asking
-    /// whether a method is required is asking whether it has a body, which is
-    /// one child lookup rather than a second declaration form to read.
-    pub(super) fn trait_decl(&mut self) {
-        self.start(SyntaxKind::TraitDecl);
-        self.visibility();
-        self.bump(); // trait
-        self.expect(SyntaxKind::Identifier, "a trait name");
-        // Written and not optional: a trait with no parameter has nothing to
-        // dispatch on, which `10-traits.md` §9 refuses by name.
-        if self.at(SyntaxKind::Less) {
-            self.type_params();
-        } else {
-            self.expected("a type parameter, such as `<A>` — a trait dispatches on one");
-        }
-        self.where_clause();
-        self.expect(SyntaxKind::LBrace, "`{`");
-        while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
-            if self.at(SyntaxKind::FnKw) {
-                self.trait_method();
-            } else {
-                self.expected("a method, such as `fn equal(x: A, y: A) -> Bool;`");
-                self.recover(&[SyntaxKind::FnKw, SyntaxKind::RBrace]);
-            }
-        }
-        self.expect(SyntaxKind::RBrace, "`}`");
-        self.finish();
-    }
-
-    /// `impl<A> Eq<List<A>> where Eq<A> { fn equal(x, y) { … } }`, and
-    /// `impl Duration { … }` — the same declaration read two ways.
-    ///
-    /// The head is parsed as a type, because that is the one shape both forms
-    /// have: `Eq<List<A>>` and `Duration` are the same syntax, and which of
-    /// them is a constraint and which a type namespace is decided by what the
-    /// head *name* resolves to (`10-traits.md` §6), which the parser has no
-    /// way to know and no business guessing.
+    /// The head is a type's name and nothing more: `01-surface.md` §1.5 keys a
+    /// namespace on the head of a type, so arguments written here would be read
+    /// by nobody. The block's whole contribution is that name in front of every
+    /// `fn` inside it, which is why its items are ordinary function
+    /// declarations and not a form of their own.
     pub(super) fn impl_decl(&mut self) {
         self.start(SyntaxKind::ImplDecl);
         self.visibility();
         self.bump(); // impl
-        if self.at(SyntaxKind::Less) {
-            self.type_params();
-        }
         self.type_expr();
-        self.where_clause();
         self.expect(SyntaxKind::LBrace, "`{`");
         while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
             if self.opens(SyntaxKind::FnKw) {
@@ -352,32 +297,6 @@ impl Parser<'_> {
             }
         }
         self.expect(SyntaxKind::RBrace, "`}`");
-        self.finish();
-    }
-
-    /// `where Eq<A>, Ord<B>` — the constraints a declaration carries, if it
-    /// wrote any.
-    ///
-    /// Written in one place for every declaration that takes one, because
-    /// `01-surface.md` §1 gives functions, records, enums, traits, and impls
-    /// the same clause: a constraint means the same thing wherever it is
-    /// written, and reading it in five places would be five chances to let one
-    /// of them drift.
-    pub(super) fn where_clause(&mut self) {
-        if !self.at(SyntaxKind::WhereKw) {
-            return;
-        }
-        self.start(SyntaxKind::WhereClause);
-        self.bump(); // where
-        loop {
-            self.start(SyntaxKind::Constraint);
-            self.type_expr();
-            self.finish();
-            if !self.at(SyntaxKind::Comma) {
-                break;
-            }
-            self.bump();
-        }
         self.finish();
     }
 

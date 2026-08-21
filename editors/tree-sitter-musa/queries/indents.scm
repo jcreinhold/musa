@@ -8,7 +8,6 @@
   (data_declaration)
   (record_declaration)
   (enum_declaration)
-  (trait_declaration)
   (impl_declaration)
   (score_declaration)
   (part_declaration)

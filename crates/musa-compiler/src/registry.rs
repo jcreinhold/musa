@@ -327,13 +327,13 @@ pub(crate) fn owned() -> Result<Cx, ElabError> {
         cx = cx.declaring(&group);
     }
     let builtins = builtins(&cx)?;
-    // The traits last, because an instance body *is* a δ-builtin's name: `impl
-    // Eq<Text>`'s `equal` is `text_equal` and nothing else, so the trait cannot
-    // be declared until the registry that resolves that name is the context's.
-    // `Iterable`'s bodies name no builtin, but they name `List.Cons`, and one
-    // ordering for all of them is one thing to remember rather than two.
+    // The namespaced definitions last, because `Text.equal`'s body *is* a
+    // δ-builtin's name — `text_equal` and nothing else — so it cannot be defined
+    // until the registry that resolves that name is the context's. `List`'s
+    // traversals name no builtin, but they name `List.Cons`, and one ordering
+    // for all of them is one thing to remember rather than two.
     let cx = crate::prelude::equality(&cx.with_externs(Arc::new(Registry::new(bases, builtins)?)))?;
-    crate::prelude::collections(cx)
+    crate::prelude::collections(&cx)
 }
 
 /// A base type at `Type 0`.

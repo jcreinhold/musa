@@ -12,8 +12,8 @@
 //! - `document` — file shapes: piece/library/module bodies, imports,
 //!   templates, makes, front matter
 //! - `performance` — performance declarations and their rule settings
-//! - `declarations` — `let`/`fn`/signature/structure/data/record/enum/trait/
-//!   impl declarations and their members
+//! - `declarations` — `let`/`fn`/signature/structure/data/record/enum/impl
+//!   declarations and their members
 //! - `types` — type expressions
 //! - `expressions` — the expression grammar and match patterns
 //! - `score` — score/part/voice scaffolding and the motif/fragment constructs
@@ -289,8 +289,8 @@ pub use document::{
 pub use performance::{DynamicRule, GraceRule, GrooveRule, MarkRule, PerformanceDecl, ProfileDecl, SettingStmt};
 
 pub use declarations::{
-    Constraint, DataDecl, DataField, DataMember, DataVariant, EnumCase, EnumDecl, FieldDecl, FnDecl, FnParam, ImplDecl,
-    IndexParam, LetDecl, Param, ParamList, RecordDecl, SignatureDecl, SignatureMember, StructureDecl, TraitDecl,
+    DataDecl, DataField, DataMember, DataVariant, EnumCase, EnumDecl, FieldDecl, FnDecl, FnParam, ImplDecl, IndexParam,
+    LetDecl, Param, ParamList, RecordDecl, SignatureDecl, SignatureMember, StructureDecl,
 };
 
 pub use types::{

@@ -159,7 +159,6 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
         positive: Arc::from(positive),
         families: Arc::from(families),
         module: cx.module(),
-        package: cx.package(),
     });
     Ok((group, elaborator.spent()))
 }
@@ -284,7 +283,6 @@ fn index_binder(elaborator: &mut Elaborator, closed: &Scope, family: &RawFamily)
 fn assumed(elaborator: &mut Elaborator, scope: &Scope, binders: &[Binder]) -> Result<Scope, ElabError> {
     let mut inner = scope.clone();
     for binder in binders {
-        inner = elaborator.discharging(&inner, &binder.filling, inner.env())?;
         inner = assume(elaborator, &inner, binder.ty.origin(), &binder.name, &binder.ty)?;
     }
     Ok(inner)

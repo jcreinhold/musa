@@ -6,7 +6,6 @@
 use super::constant::Constant;
 use super::iota::spine;
 use crate::budget::Meter;
-use crate::class::PackageId;
 use crate::error::CoreError;
 use crate::level::Level;
 use crate::list::List;
@@ -27,11 +26,10 @@ pub struct Binder {
     /// How a use site supplies its argument.
     ///
     /// [`Filling::Written`] for everything a declaration writes — §1.1's
-    /// parameters are written at every use, which is what `List<Nat>` is. A
-    /// group's `where` clause appends
-    /// [`Filling::Constraint`] parameters after the written ones, and those are
-    /// answered by `10-traits.md` §4 instead of written; see
-    /// [`RawData::context`](crate::RawData).
+    /// parameters are written at every use, which is what `List<Nat>` is.
+    /// [`Filling::Constraint`] appears here only for `Storable`, which is
+    /// discharged by computation rather than written; see
+    /// [`crate::storable::discharge`].
     pub filling: Filling,
 }
 
@@ -167,10 +165,6 @@ pub struct Group {
     /// named one. Stamped once at [`crate::declare`] rather than asked for
     /// again, because a group is immutable and a second answer could disagree.
     pub(crate) module: Option<ModuleId>,
-    /// The package it was written in, stamped the same way and for §3's orphan
-    /// rule: an `impl` is at home if it shares a package with the *declaration*
-    /// of its head type, and this is where that package is recorded.
-    pub(crate) package: Option<PackageId>,
 }
 
 /// A type that turned out to be a family applied to its arguments.

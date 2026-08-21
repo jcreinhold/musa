@@ -167,17 +167,8 @@ impl FnDecl {
         params_of(&self.0)
     }
 
-    /// The constraints its `where` clause carries, in source order.
-    pub fn constraints(&self) -> Vec<Constraint> {
-        constraints_of(&self.0)
-    }
-
-    /// Its body, or `None` where a trait wrote `;` instead of one.
-    ///
-    /// The absence *is* the meaning inside a trait: a method with no body is
-    /// one an instance must fill (`10-traits.md` §1). Everywhere else a body
-    /// is required, so `None` there is a file the parser has already
-    /// complained about.
+    /// Its body, or `None` for a file the parser has already complained
+    /// about.
     pub fn body(&self) -> Option<SyntaxNode> {
         self.0.children().find(|child| child.kind() == SyntaxKind::BlockExpr)
     }
@@ -374,59 +365,11 @@ impl EnumCase {
     }
 }
 
-/// `trait Eq<A> { fn equal(x: A, y: A) -> Bool; }` — an interface, and the
-/// dependent record it elaborates to (`10-traits.md` §1).
-pub struct TraitDecl(SyntaxNode);
-wrapper!(TraitDecl, SyntaxKind::TraitDecl);
-
-impl TraitDecl {
-    /// Every `trait` declaration among this node's children, in source order.
-    pub fn all_at_root(node: &SyntaxNode) -> Vec<Self> {
-        children(node)
-    }
-
-    /// The trait's name, which is also the namespace its methods are
-    /// qualified in: `Eq.equal`.
-    pub fn name(&self) -> Option<String> {
-        token_text(&self.0, SyntaxKind::Identifier)
-    }
-
-    /// The names of its type parameters, in source order. A trait dispatches
-    /// on the first.
-    pub fn parameters(&self) -> Vec<String> {
-        type_parameters(&self.0)
-    }
-
-    /// Its methods, in declaration order — which is the order the record's
-    /// fields are read in.
-    ///
-    /// A method whose [`FnDecl::body`] is `None` is *required*: an instance
-    /// must fill it. One with a body is a derived method an instance may
-    /// replace.
-    pub fn methods(&self) -> Vec<FnDecl> {
-        children(&self.0)
-    }
-
-    /// The super-constraints it carries, in source order.
-    pub fn constraints(&self) -> Vec<Constraint> {
-        constraints_of(&self.0)
-    }
-
-    /// Whether it is marked `private`, and so nameable only inside the module
-    /// that declares it (`01-surface.md` §1.3). The marker hides the *name*
-    /// and never the instances: coherence is one table for the whole program.
-    pub fn is_private(&self) -> bool {
-        is_private(&self.0)
-    }
-}
-
-/// `impl<A> Eq<List<A>> where Eq<A> { … }`, and `impl Duration { … }` — an
-/// instance, or a type's own namespace.
+/// `impl Duration { … }` — one type's namespace, opened.
 ///
-/// Which of the two a block is depends on whether [`Self::head`]'s name
-/// resolves to a trait or to a type (`10-traits.md` §6), and this wrapper does
-/// not decide it: the two are the same syntax, and answering here would be
-/// answering a question about what is declared elsewhere.
+/// The block declares nothing a top-level `fn` does not: each item inside it is
+/// the definition `Duration.name`, and `01-surface.md` §1.5 reaches it from
+/// `d.name(…)`, from `Duration::name(…)`, and from the operator that spells it.
 pub struct ImplDecl(SyntaxNode);
 wrapper!(ImplDecl, SyntaxKind::ImplDecl);
 
@@ -436,19 +379,9 @@ impl ImplDecl {
         children(node)
     }
 
-    /// The trait or type this block is written for.
+    /// The type whose namespace this block opens.
     pub fn head(&self) -> Option<SyntaxNode> {
         written_type(&self.0)
-    }
-
-    /// The names of its own type parameters, in source order.
-    pub fn parameters(&self) -> Vec<String> {
-        type_parameters(&self.0)
-    }
-
-    /// The constraints its parameters carry, in source order.
-    pub fn constraints(&self) -> Vec<Constraint> {
-        constraints_of(&self.0)
     }
 
     /// The functions it declares, in source order.
@@ -460,28 +393,6 @@ impl ImplDecl {
     pub fn is_private(&self) -> bool {
         is_private(&self.0)
     }
-}
-
-/// `Eq<A>` — one constraint of a `where` clause.
-pub struct Constraint(SyntaxNode);
-wrapper!(Constraint, SyntaxKind::Constraint);
-
-impl Constraint {
-    /// The trait it names, with its arguments.
-    pub fn ty(&self) -> Option<SyntaxNode> {
-        written_type(&self.0)
-    }
-}
-
-/// The constraints of `node`'s `where` clause, in source order.
-///
-/// A declaration has at most one clause, and a declaration that wrote none has
-/// no constraints — which is the same answer, so no caller has to ask twice.
-pub(crate) fn constraints_of(node: &SyntaxNode) -> Vec<Constraint> {
-    node.children()
-        .find(|child| child.kind() == SyntaxKind::WhereClause)
-        .map(|clause| children(&clause))
-        .unwrap_or_default()
 }
 
 /// The one written type among `node`'s children.

@@ -314,12 +314,8 @@ pub enum SyntaxKind {
     ModuleKw,
     /// `private`, the one visibility marker (`01-surface.md` §1.3).
     PrivateKw,
-    /// `trait`
-    TraitKw,
     /// `impl`
     ImplKw,
-    /// `where`
-    WhereKw,
 
     /// A span the lexer could not recognize; emitted so the token stream
     /// stays lossless even for invalid input. Also used for parser error
@@ -765,32 +761,18 @@ pub enum SyntaxKind {
     /// packages do not extend the lexer, so this is the whole of the structure
     /// an adapter sees above the token stream.
     SyntaxGroup,
-    /// `trait Eq<A> { fn equal(x: A, y: A) -> Bool; }` — a record of methods.
+    /// `impl Duration { … }` — one namespace of items on a type.
     ///
     /// Its items are [`SyntaxKind::FnDecl`]s and not a kind of their own,
-    /// because a trait item *is* a function declaration: the one difference is
-    /// that a required method writes `;` where a derived one writes its body,
-    /// so `body()` returning `None` is what "required" means and every
-    /// accessor a function has still reads it.
-    TraitDecl,
-    /// `impl Eq<Tying> { … }`, or `impl Duration { … }` — one instance, or one
-    /// namespace of inherent items.
-    ///
-    /// One node for both, because nothing in the text decides which: whether
-    /// the head names a trait or a type is a question about what is
-    /// *declared*, answered where names resolve and not here
-    /// (`01-surface.md` §1.4).
+    /// because an item here *is* a function declaration: what the block adds is
+    /// the type's name in front of every one of them (`01-surface.md` §1.5).
     ImplDecl,
-    /// `where Eq<A>, Ord<B>` — the constraints a declaration states.
-    WhereClause,
-    /// `Eq<A>` — one constraint: a trait name and the arguments it is asked at.
-    Constraint,
     /// `x + y`, `x == y` — an operator and its two operands.
     ///
-    /// Surface syntax with no core term behind it: `10-traits.md` §5 fixes
-    /// which trait method each operator spells, and the elaborator sees the
-    /// application a hand-written `Add::add(x, y)` would have produced. The
-    /// operator token stands between the two expression children.
+    /// Surface syntax with no core term behind it: `01-surface.md` §1.5 fixes
+    /// which member each operator spells, and the elaborator sees the method
+    /// call a hand-written `x.add(y)` would have produced. The operator token
+    /// stands between the two expression children.
     BinaryExpr,
     /// `xs.fold_from_end(zero, step)` — a call resolved by the receiver's type.
     ///

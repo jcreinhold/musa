@@ -86,7 +86,7 @@ const SYNTAX_WORDS = [
   'ending', 'fragment', 'mobile', 'improvise', 'over', 'let', 'fn', 'music',
   'events', 'Option', 'List', 'Result', 'match', 'Some', 'None', 'Ok',
   'Err', 'true', 'false', 'scale', 'degree', 'frame', 'in', 'step',
-  'chord', 'stack', 'private', 'trait', 'impl', 'where',
+  'chord', 'stack', 'private', 'impl',
 ];
 
 const SYNTAX_MARKS = [
@@ -147,8 +147,7 @@ module.exports = grammar({
               $.data_declaration,
               $.record_declaration,
               $.enum_declaration,
-              $.trait_declaration,
-              $.impl_declaration,
+                $.impl_declaration,
               $.template_declaration,
               $.signature_declaration,
               $.structure_declaration,
@@ -273,7 +272,6 @@ module.exports = grammar({
         'record',
         field('name', $.identifier),
         optional($.type_parameter_list),
-        optional($.where_clause),
         '{',
         repeat($.field_declaration),
         '}',
@@ -291,7 +289,6 @@ module.exports = grammar({
         'enum',
         field('name', $.identifier),
         optional($.type_parameter_list),
-        optional($.where_clause),
         '{',
         optional(seq($.enum_case, repeat(seq(',', $.enum_case)), optional(','))),
         '}',
@@ -313,56 +310,18 @@ module.exports = grammar({
         ),
       ),
 
-    // Parser::trait_decl — `10-traits.md` §1's interface, which elaborates to
-    // a dependent record. Its methods are ordinary function declarations, and
-    // a `;` where a body would be is how one says *required*: a method with
-    // no body is a field an instance must fill, one with a body is a field it
-    // may replace.
-    trait_declaration: ($) =>
-      seq(
-        optional('private'),
-        'trait',
-        field('name', $.identifier),
-        $.type_parameter_list,
-        optional($.where_clause),
-        '{',
-        repeat($.trait_method),
-        '}',
-      ),
-
-    trait_method: ($) =>
-      seq(
-        'fn',
-        field('name', $.identifier),
-        optional($.type_parameter_list),
-        $.parameter_list,
-        optional(seq('->', field('result', $.type_expression))),
-        optional($.where_clause),
-        choice(';', field('body', $.block_expression)),
-      ),
-
-    // Parser::impl_decl — an instance (`impl Eq<Nat> { … }`) and a type's own
-    // namespace (`impl Duration { … }`), which are the same syntax. Which one
-    // a block is depends on whether the head's name resolves to a trait or to
-    // a type (§6), and no parser knows that.
+    // Parser::impl_decl — a type's namespace, opened. Every function inside is
+    // the definition `Head.name`, so the block is a prefix written once rather
+    // than a declaration form of its own (`01-surface.md` §1.5).
     impl_declaration: ($) =>
       seq(
         optional('private'),
         'impl',
-        optional($.type_parameter_list),
         field('head', $.type_expression),
-        optional($.where_clause),
         '{',
         repeat($.function_declaration),
         '}',
       ),
-
-    // Parser::where_clause — the constraints a declaration carries. One rule
-    // for every declaration that takes one, because a constraint means the
-    // same thing wherever it is written.
-    where_clause: ($) => seq('where', $.constraint, repeat(seq(',', $.constraint))),
-
-    constraint: ($) => $.type_expression,
 
     // Parser::type_params — the types a declaration abstracts over. A
     // parameter is a name and nothing else: it has no kind to write, because
@@ -408,7 +367,6 @@ module.exports = grammar({
             $.data_declaration,
             $.record_declaration,
             $.enum_declaration,
-            $.trait_declaration,
             $.impl_declaration,
             $.score_declaration,
             $.performance_declaration,
@@ -433,7 +391,6 @@ module.exports = grammar({
             $.data_declaration,
             $.record_declaration,
             $.enum_declaration,
-            $.trait_declaration,
             $.impl_declaration,
             $.performance_declaration,
             $.studio_declaration,
@@ -570,7 +527,6 @@ module.exports = grammar({
         optional($.type_parameter_list),
         $.parameter_list,
         optional(seq('->', field('result', $.type_expression))),
-        optional($.where_clause),
         field('body', $.block_expression),
       ),
 
@@ -687,6 +643,13 @@ module.exports = grammar({
         ),
       ),
 
+    // Every receiver a name cannot spell, which is every form but
+    // `name_expression` itself: a literal (`c4.act(M3)`, `P5.unit()`), an
+    // injection (`Some(e4).fold_from_end(…)`), a written path
+    // (`Tying::Untied.tag()`), a quoted region, and every postfix form above.
+    // The exclusion is one alternative and not a list, because the reason for
+    // it is one fact: `low.rise()` and `x.equal(y)` are three tokens a name
+    // already reads, and only what no name reads needs a node of its own.
     _computed_receiver: ($) =>
       choice(
         $.method_call_expression,
@@ -695,9 +658,15 @@ module.exports = grammar({
         $.question_expression,
         $.record_update_expression,
         $.record_literal_expression,
+        $.path_expression,
+        $.literal_expression,
+        $.option_expression,
+        $.result_expression,
         $.list_expression,
         $.product_expression,
         $.block_expression,
+        $.lambda_expression,
+        $.syntax_region,
         seq('(', $.expression, ')'),
       ),
 

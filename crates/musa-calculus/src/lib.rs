@@ -57,8 +57,8 @@
 //!   conversion compares levels for equality, and there is no subtyping inside
 //!   conversion.
 //! - **Records are primitive with η**, not Σ sugar, so two records with the same
-//!   projections are convertible without a rule that inspects both at once —
-//!   the property `10-traits.md`'s coherence argument rests on.
+//!   projections are convertible without a rule that inspects both at once.
+//!   Prompt 157 turns records into data and this is what it must preserve.
 //! - **One evaluator.** The one that decides conversion and the one that will
 //!   run an accepted program are the same, because a second would be a second
 //!   semantics obliged to agree with the first by a law nobody could state.
@@ -83,11 +83,9 @@
 mod base;
 mod budget;
 mod case;
-mod class;
 mod context;
 mod convert;
 mod declare;
-mod dictionary;
 mod elab;
 mod error;
 mod eval;
@@ -96,6 +94,7 @@ mod index;
 mod level;
 mod list;
 mod meta;
+mod namespace;
 mod origin;
 mod program;
 mod quote;
@@ -115,7 +114,6 @@ pub use crate::base::{
     Rule,
 };
 pub use crate::budget::{Budget, Metric, ResourceError, Spend};
-pub use crate::class::{Constraint, Instance, PackageId, Trait};
 pub use crate::context::Cx;
 pub use crate::error::{CoreError, Malformed};
 pub use crate::family::{Binder, Constant, Constructor, Declared, Group, canonical};
@@ -124,11 +122,12 @@ pub use crate::meta::MetaSource;
 pub use crate::origin::Origin;
 pub use crate::program::{Def, Program};
 pub use crate::raw::{
-    ARROW_BINDER, Raw, RawArm, RawBinder, RawConstraint, RawConstructor, RawData, RawDefinition, RawFamily, RawField,
-    RawImpl, RawMethod, RawPattern, RawProgram, RawShape, RawTopLevel, RawTrait,
+    ARROW_BINDER, Raw, RawArm, RawBinder, RawConstructor, RawData, RawDefinition, RawFamily, RawField, RawPattern,
+    RawProgram, RawShape, RawTopLevel,
 };
 pub use crate::refuse::{ElabError, Mismatch, PathStep, Refusal};
 pub use crate::storable::requiring_storable;
+pub use crate::term::Constraint;
 pub use crate::term::{DbLevel, Field, Filling, Index, Name, Shape, Term};
 pub use crate::visibility::{ModuleId, Visibility};
 
@@ -172,38 +171,36 @@ pub fn declare_metered(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, Spend), E
     with_room(|| crate::declare::declare(cx, data))
 }
 
-/// Elaborate a document's top-level definitions and instances, in context `cx`.
+/// Elaborate a document's top-level definitions, in context `cx`.
 ///
 /// The other half of a document, and the same arrangement [`declare`] has for
 /// the first: one call takes all of them, because `02-core-calculus.md` §2.4
 /// lets a body name a declaration written later, and the result is brought into
 /// scope with [`Cx::defining`].
 ///
-/// Instances go through here rather than through a [`declare_impl`] loop of the
-/// caller's own, because they are the same question: an `impl`'s method bodies
-/// name the document's definitions, and a definition writing `x.m(y)` names an
-/// `impl`. Whichever were declared second would be invisible to the first, and
-/// `declare_impl` is left public only for a caller declaring an instance against
-/// a context that is already finished.
+/// A namespaced definition — `Pitch.act`, what an `impl Pitch { … }` block
+/// writes — is one of these and not a second kind. That is the whole of what
+/// prompt 146 left where the instance table used to be: a dotted name, declared
+/// in the same group as every other definition, so that a body naming `p.act(i)`
+/// and the definition answering it are ordered by the same dependency analysis.
 ///
 /// # Errors
 ///
-/// [`Refusal::DefinitionCycle`] for *definitions* that name each other, never
-/// for an instance: a definition reaches an instance only through a method
-/// spelling, which stands for "one of these" rather than for a particular one,
-/// and an edge the analysis guessed at is dropped rather than refused. A
-/// definition and an instance that genuinely need each other are refused where
-/// the need is written, as the call's [`Refusal::NoMethodForType`].
+/// [`Refusal::DefinitionCycle`] for definitions that name each other, except
+/// through a bare member spelling: `x.m(y)` stands for "whichever namespace
+/// declares `m`" rather than for a particular definition, so an edge the
+/// analysis guessed at is dropped rather than refused, and a genuine need is
+/// refused where it is written as the call's [`Refusal::NoMethodForType`].
 /// [`Refusal::UntypedRecursion`] for a self-recursive definition that wrote no
-/// type, and otherwise as [`check`] and [`declare_impl`].
+/// type, and otherwise as [`check`].
 pub fn declare_program(cx: &Cx, program: &RawProgram) -> Result<Arc<Program>, ElabError> {
     declare_program_metered(cx, program).map(|(declared, _)| declared)
 }
 
 /// [`declare_program`], and what elaborating the group charged.
 ///
-/// The sum over its definitions and instances, which is what a caller keeping a
-/// budget of its own wants: `26-language-design-decision.md` §3.5 charges the
+/// The sum over its definitions, which is what a caller keeping a budget of its
+/// own wants: `26-language-design-decision.md` §3.5 charges the
 /// expansion phase for reading its adapter module, and reading a module *is*
 /// declaring the program it holds.
 ///
@@ -212,51 +209,6 @@ pub fn declare_program(cx: &Cx, program: &RawProgram) -> Result<Arc<Program>, El
 /// As [`declare_program`].
 pub fn declare_program_metered(cx: &Cx, program: &RawProgram) -> Result<(Arc<Program>, Spend), ElabError> {
     with_room(|| crate::program::declare_program(cx, program))
-}
-
-/// Elaborate a `trait` declaration, in context `cx`.
-///
-/// The result is a dictionary *record type* wrapped in whatever the declaration
-/// said about it, and a caller brings it into scope with
-/// [`Cx::declaring_class`]. It never sees the record: `10-traits.md` §1 makes a
-/// trait a record of methods, but a caller that assembled that record itself
-/// could assemble one the derived methods do not fit.
-///
-/// # Errors
-///
-/// [`Refusal::ReservedClass`] for a trait named `Storable`,
-/// [`Refusal::HeadlessClass`] for one with no parameters,
-/// [`Refusal::DuplicateMethod`] for a repeated name, and otherwise as
-/// [`check`] — a trait's parameters, constraints, and method types are ordinary
-/// elaboration and fail in the ordinary ways.
-pub fn declare_trait(cx: &Cx, raw: &RawTrait) -> Result<Arc<Trait>, ElabError> {
-    declare_trait_metered(cx, raw).map(|(class, _)| class)
-}
-
-/// [`declare_trait`], and what elaborating the declaration charged.
-///
-/// # Errors
-///
-/// As [`declare_trait`].
-pub fn declare_trait_metered(cx: &Cx, raw: &RawTrait) -> Result<(Arc<Trait>, Spend), ElabError> {
-    with_room(|| crate::dictionary::declare_trait(cx, raw))
-}
-
-/// Elaborate an `impl` declaration, in context `cx`.
-///
-/// Every check `10-traits.md` makes at a declaration happens here and none
-/// happens at a use site, which is §4's rule and not an implementation choice:
-/// the author reading a use-site failure is not the author who can fix it.
-///
-/// # Errors
-///
-/// [`Refusal::DuplicateInstance`] naming both declarations,
-/// [`Refusal::OrphanInstance`], [`Refusal::BlanketInstance`],
-/// [`Refusal::HandWrittenStorable`], the method
-/// mismatches [`Refusal::DerivedMethod`], [`Refusal::NoSuchMethod`] and
-/// [`Refusal::MissingMethod`], and otherwise as [`check`].
-pub fn declare_impl(cx: &Cx, raw: &RawImpl) -> Result<Arc<Instance>, ElabError> {
-    with_room(|| crate::dictionary::declare_impl(cx, raw)).map(|(instance, _)| instance)
 }
 
 /// Elaborate `raw` against the type `ty`, in context `cx`.

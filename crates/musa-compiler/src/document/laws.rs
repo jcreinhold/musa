@@ -206,54 +206,48 @@ fn a_count_and_a_list_read_back_as_canonical_data() {
     );
 }
 
-/// Every container reachable from a piece that imports nothing folds, and the
-/// three derived methods come with the two written ones.
+/// Every container reachable from a piece that imports nothing folds, and finds
+/// its traversal by the head of its own type.
 ///
-/// This is the collection half of prompt 141 arriving at the surface, and the
-/// claim is deliberately made over *source*: `01-surface.md` §1.6 says a
-/// container earns `map`, `filter`, and `collect` by writing `fold_from_start`
-/// and `fold_from_end`, and the prelude's two impls write exactly two methods
-/// each. If the derived bodies were not inherited, `xs.collect()` below would
-/// fail to resolve rather than answer.
+/// This is the collection half of prompt 141 arriving at the surface, as prompt
+/// 146 leaves it. `01-surface.md` §1.6's two folds are two definitions in each
+/// container's own namespace, and the claim is deliberately made over *source*:
+/// `xs.fold_from_end(…)` and `held.fold_from_end(…)` are the same two words at
+/// two different heads, and each reaches its own definition because the
+/// receiver's type says which.
 ///
 /// # Why over the prelude and not over `stdlib/`
 ///
-/// `List` and `Option` are prelude families and their instances are prelude
-/// instances, so the source here writes no `import`. A law that imported would
-/// be checking the module system, which
-/// [`the_standard_library_elaborates`] already does; what this one checks is
-/// that a piece which imports nothing can still fold, which is what makes the
-/// traits reachable from an adapter and from `examples/named-answer.musa`
-/// alike.
+/// `List` and `Option` are prelude families and their traversals are prelude
+/// definitions, so the source here writes no `import`. A law that imported would
+/// be checking the module system, which [`the_standard_library_elaborates`]
+/// already does; what this one checks is that a piece which imports nothing can
+/// still fold, which is what makes a container reachable from an adapter and
+/// from `examples/named-answer.musa` alike.
 ///
 /// # The directions
 ///
-/// `rebuilt` and `gathered` are the pair that decides the builder is right.
-/// `fold_from_end` with `Cons` is the identity on lists, and `collect` is
-/// `fold_from_start` with a snoc `push`; they have to answer the same list or
-/// the builder is reversing, which is note 41 §7's whole complaint.
+/// `rebuilt` is what decides `fold_from_end` is the catamorphism its name says:
+/// the fold with `Cons` is the identity on lists, and a fold that ran the other
+/// way would answer the reverse, which is note 41 §7's whole complaint.
 ///
 /// # `nothing` is bound and `Some(5)` is not
 ///
-/// Deliberate, and the difference is `10-traits.md` §6. A method resolves by
-/// *exact receiver*: `Some(5)` says `Option` and `None` on its own does not,
-/// because its parameter is the only thing that fixes the type and nothing here
-/// fixes it. So `None.fold_from_end(…)` is refused by design and an author
-/// writes the annotation once at the binding — which is what the corpus does
-/// anyway, since the empty case usually arrives in a variable rather than
-/// spelled at the call.
+/// Deliberate, and the difference is §1.5's member rule. A member resolves by
+/// the **rigid head of the receiver's type**: `Some(5)` says `Option` and `None`
+/// on its own does not, because its parameter is the only thing that fixes the
+/// type and nothing here fixes it. So `None.fold_from_end(…)` is refused by
+/// design and an author writes the annotation once at the binding — which is
+/// what the corpus does anyway, since the empty case usually arrives in a
+/// variable rather than spelled at the call.
 #[test]
-fn a_prelude_container_folds_and_earns_its_derived_methods() {
+fn a_prelude_container_folds_at_the_head_of_its_own_type() {
     let document = document(
         "library {
             let length: Nat = [1, 2, 3].fold_from_start(0, fn (built: Nat, item: Nat) -> Nat { Succ(built) });
             let rebuilt: List<Nat> =
                 [1, 2].fold_from_end([], fn (item: Nat, later: List<Nat>) -> List<Nat> { Cons(item, later) });
-            let gathered: List<Nat> = [1, 2].collect();
             let doubled: List<Bool> = [1, 2].map(fn (item: Nat) -> Bool { True });
-            let kept: List<Nat> = [0, 1, 2].filter(fn (item: Nat) -> Bool {
-                match item { Zero -> False, Succ(fewer) -> True }
-            });
             let held: Nat = Some(5).fold_from_end(0, fn (found: Nat, fallback: Nat) -> Nat { found });
             let nothing: Option<Nat> = None;
             let missing: Nat = nothing.fold_from_end(7, fn (found: Nat, fallback: Nat) -> Nat { found });
@@ -287,19 +281,9 @@ fn a_prelude_container_folds_and_earns_its_derived_methods() {
         "and the catamorphism with `Cons` is the identity"
     );
     assert_eq!(
-        read("gathered"),
-        listed(vec![whole(1), whole(2)]),
-        "so `collect` — a forward fold and a snoc — must answer the same, not the reverse"
-    );
-    assert_eq!(
         read("doubled"),
         listed(vec![case("Bool.True", Vec::new()), case("Bool.True", Vec::new())]),
-        "`map` builds at the type its answer is checked against"
-    );
-    assert_eq!(
-        read("kept"),
-        listed(vec![whole(1), whole(2)]),
-        "and `filter` keeps what the predicate admits, in order"
+        "`map` is the same walk, applying the function in order"
     );
     assert_eq!(read("held"), whole(5), "an `Option` fold reaches the held value");
     assert_eq!(read("missing"), whole(7), "and answers the seed when there is none");

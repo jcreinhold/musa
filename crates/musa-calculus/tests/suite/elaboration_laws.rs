@@ -217,35 +217,38 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
         assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
         reached.insert(kind(&refusal));
     }
-    // Traits and instances are refused at a *declaration* rather than at a term
-    // checked against a type, so they carry their outcome rather than a program:
-    // §4 makes that the rule, and a suite that reached these through a use site
-    // would be testing the opposite of it.
-    for crate::trait_laws::RefusedDeclaration {
+    // §1.5's three are use sites again, but each needs a context of its own: one
+    // namespace spelling the member, none, and two. A single context cannot hold
+    // all three questions, which is why they arrive carrying theirs.
+    for crate::namespace_laws::RefusedMethod {
         name,
-        outcome,
+        cx,
+        raw,
         expected,
-    } in crate::trait_laws::refused_declarations()
+    } in crate::namespace_laws::refused_methods()
     {
-        let Err(error) = outcome else {
-            panic!("{name}: elaboration accepted a declaration it must refuse");
+        let Err(error) = infer(&cx, &raw) else {
+            panic!("{name}: elaboration accepted a program it must refuse");
         };
         let refusal = refusal(name, error);
         assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
         reached.insert(kind(&refusal));
     }
-    // §6's three are use sites again, but each needs a context of its own: one
-    // trait in scope for the head, none, and two. A single context cannot hold
-    // all three questions, which is why they arrive carrying theirs.
-    for crate::operator_laws::RefusedMethod {
-        name,
-        cx,
-        raw,
-        expected,
-    } in crate::operator_laws::refused_methods()
-    {
+    // §1.6's one, which needs the container fixture: a traversal whose answer
+    // type nothing determines is an unsolved hole rather than a guess.
+    for (name, cx, raw, expected) in crate::collection_laws::refused_collections() {
         let Err(error) = infer(&cx, &raw) else {
-            panic!("{name}: elaboration accepted a program it must refuse");
+            panic!("{name}: elaboration accepted a program §1.6 must refuse");
+        };
+        let refusal = refusal(name, error);
+        assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
+        reached.insert(kind(&refusal));
+    }
+    // §1.2's one, which is asked by a *signature* rather than by a program:
+    // `Storable` has no written form, so its corpus carries a core type.
+    for (name, cx, ty, raw, expected) in crate::storable_laws::refused_ports() {
+        let Err(error) = check(&cx, &ty, &raw) else {
+            panic!("{name}: elaboration accepted a port §1.2 must refuse");
         };
         let refusal = refusal(name, error);
         assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
@@ -368,9 +371,7 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
 }
 
 /// Every refusal this crate can answer with.
-const ALL_REFUSALS: [&str; 59] = [
-    "super-class",
-    "constrained-instance",
+const ALL_REFUSALS: [&str; 42] = [
     "beyond-universes",
     "not-storable",
     "unknown-name",
@@ -398,21 +399,6 @@ const ALL_REFUSALS: [&str; 59] = [
     "private",
     "mixed-visibility",
     "abstract-match",
-    "reserved-class",
-    "headless-class",
-    "constrained-field",
-    "duplicate-method",
-    "class-arity",
-    "hand-written-storable",
-    "blanket-instance",
-    "duplicate-instance",
-    "orphan-instance",
-    "derived-method",
-    "no-such-method",
-    "missing-method",
-    "unresolved-instance",
-    "unconstrained-variable",
-    "unkeyed-constraint",
     "method-on-variable",
     "no-method-for-type",
     "ambiguous-method",
@@ -436,8 +422,6 @@ const ALL_REFUSALS: [&str; 59] = [
 /// missing entry in [`ALL_REFUSALS`], and then a missing program.
 fn kind(refusal: &Refusal) -> &'static str {
     match refusal {
-        Refusal::SuperClass { .. } => "super-class",
-        Refusal::ConstrainedInstance { .. } => "constrained-instance",
         Refusal::BeyondUniverses { .. } => "beyond-universes",
         Refusal::NotStorable { .. } => "not-storable",
         Refusal::UnknownName { .. } => "unknown-name",
@@ -465,21 +449,6 @@ fn kind(refusal: &Refusal) -> &'static str {
         Refusal::Private { .. } => "private",
         Refusal::MixedVisibility { .. } => "mixed-visibility",
         Refusal::AbstractMatch { .. } => "abstract-match",
-        Refusal::ReservedClass { .. } => "reserved-class",
-        Refusal::HeadlessClass { .. } => "headless-class",
-        Refusal::ConstrainedField { .. } => "constrained-field",
-        Refusal::DuplicateMethod { .. } => "duplicate-method",
-        Refusal::ClassArity { .. } => "class-arity",
-        Refusal::HandWrittenStorable { .. } => "hand-written-storable",
-        Refusal::BlanketInstance { .. } => "blanket-instance",
-        Refusal::DuplicateInstance { .. } => "duplicate-instance",
-        Refusal::OrphanInstance { .. } => "orphan-instance",
-        Refusal::DerivedMethod { .. } => "derived-method",
-        Refusal::NoSuchMethod { .. } => "no-such-method",
-        Refusal::MissingMethod { .. } => "missing-method",
-        Refusal::UnresolvedInstance { .. } => "unresolved-instance",
-        Refusal::UnconstrainedVariable { .. } => "unconstrained-variable",
-        Refusal::UnkeyedConstraint { .. } => "unkeyed-constraint",
         Refusal::MethodOnVariable { .. } => "method-on-variable",
         Refusal::NoMethodForType { .. } => "no-method-for-type",
         Refusal::AmbiguousMethod { .. } => "ambiguous-method",

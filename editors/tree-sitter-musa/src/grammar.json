@@ -44,10 +44,6 @@
                   },
                   {
                     "type": "SYMBOL",
-                    "name": "trait_declaration"
-                  },
-                  {
-                    "type": "SYMBOL",
                     "name": "impl_declaration"
                   },
                   {
@@ -687,18 +683,6 @@
           ]
         },
         {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "SYMBOL",
-              "name": "where_clause"
-            },
-            {
-              "type": "BLANK"
-            }
-          ]
-        },
-        {
           "type": "STRING",
           "value": "{"
         },
@@ -777,18 +761,6 @@
             {
               "type": "SYMBOL",
               "name": "type_parameter_list"
-            },
-            {
-              "type": "BLANK"
-            }
-          ]
-        },
-        {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "SYMBOL",
-              "name": "where_clause"
             },
             {
               "type": "BLANK"
@@ -966,153 +938,6 @@
         }
       ]
     },
-    "trait_declaration": {
-      "type": "SEQ",
-      "members": [
-        {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "STRING",
-              "value": "private"
-            },
-            {
-              "type": "BLANK"
-            }
-          ]
-        },
-        {
-          "type": "STRING",
-          "value": "trait"
-        },
-        {
-          "type": "FIELD",
-          "name": "name",
-          "content": {
-            "type": "SYMBOL",
-            "name": "identifier"
-          }
-        },
-        {
-          "type": "SYMBOL",
-          "name": "type_parameter_list"
-        },
-        {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "SYMBOL",
-              "name": "where_clause"
-            },
-            {
-              "type": "BLANK"
-            }
-          ]
-        },
-        {
-          "type": "STRING",
-          "value": "{"
-        },
-        {
-          "type": "REPEAT",
-          "content": {
-            "type": "SYMBOL",
-            "name": "trait_method"
-          }
-        },
-        {
-          "type": "STRING",
-          "value": "}"
-        }
-      ]
-    },
-    "trait_method": {
-      "type": "SEQ",
-      "members": [
-        {
-          "type": "STRING",
-          "value": "fn"
-        },
-        {
-          "type": "FIELD",
-          "name": "name",
-          "content": {
-            "type": "SYMBOL",
-            "name": "identifier"
-          }
-        },
-        {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "SYMBOL",
-              "name": "type_parameter_list"
-            },
-            {
-              "type": "BLANK"
-            }
-          ]
-        },
-        {
-          "type": "SYMBOL",
-          "name": "parameter_list"
-        },
-        {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "SEQ",
-              "members": [
-                {
-                  "type": "STRING",
-                  "value": "->"
-                },
-                {
-                  "type": "FIELD",
-                  "name": "result",
-                  "content": {
-                    "type": "SYMBOL",
-                    "name": "type_expression"
-                  }
-                }
-              ]
-            },
-            {
-              "type": "BLANK"
-            }
-          ]
-        },
-        {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "SYMBOL",
-              "name": "where_clause"
-            },
-            {
-              "type": "BLANK"
-            }
-          ]
-        },
-        {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "STRING",
-              "value": ";"
-            },
-            {
-              "type": "FIELD",
-              "name": "body",
-              "content": {
-                "type": "SYMBOL",
-                "name": "block_expression"
-              }
-            }
-          ]
-        }
-      ]
-    },
     "impl_declaration": {
       "type": "SEQ",
       "members": [
@@ -1133,36 +958,12 @@
           "value": "impl"
         },
         {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "SYMBOL",
-              "name": "type_parameter_list"
-            },
-            {
-              "type": "BLANK"
-            }
-          ]
-        },
-        {
           "type": "FIELD",
           "name": "head",
           "content": {
             "type": "SYMBOL",
             "name": "type_expression"
           }
-        },
-        {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "SYMBOL",
-              "name": "where_clause"
-            },
-            {
-              "type": "BLANK"
-            }
-          ]
         },
         {
           "type": "STRING",
@@ -1180,39 +981,6 @@
           "value": "}"
         }
       ]
-    },
-    "where_clause": {
-      "type": "SEQ",
-      "members": [
-        {
-          "type": "STRING",
-          "value": "where"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "constraint"
-        },
-        {
-          "type": "REPEAT",
-          "content": {
-            "type": "SEQ",
-            "members": [
-              {
-                "type": "STRING",
-                "value": ","
-              },
-              {
-                "type": "SYMBOL",
-                "name": "constraint"
-              }
-            ]
-          }
-        }
-      ]
-    },
-    "constraint": {
-      "type": "SYMBOL",
-      "name": "type_expression"
     },
     "type_parameter_list": {
       "type": "SEQ",
@@ -1412,10 +1180,6 @@
               },
               {
                 "type": "SYMBOL",
-                "name": "trait_declaration"
-              },
-              {
-                "type": "SYMBOL",
                 "name": "impl_declaration"
               },
               {
@@ -1486,10 +1250,6 @@
               {
                 "type": "SYMBOL",
                 "name": "enum_declaration"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "trait_declaration"
               },
               {
                 "type": "SYMBOL",
@@ -2179,18 +1939,6 @@
           ]
         },
         {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "SYMBOL",
-              "name": "where_clause"
-            },
-            {
-              "type": "BLANK"
-            }
-          ]
-        },
-        {
           "type": "FIELD",
           "name": "body",
           "content": {
@@ -2848,6 +2596,22 @@
         },
         {
           "type": "SYMBOL",
+          "name": "path_expression"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "literal_expression"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "option_expression"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "result_expression"
+        },
+        {
+          "type": "SYMBOL",
           "name": "list_expression"
         },
         {
@@ -2857,6 +2621,14 @@
         {
           "type": "SYMBOL",
           "name": "block_expression"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "lambda_expression"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "syntax_region"
         },
         {
           "type": "SEQ",
@@ -3912,15 +3684,7 @@
         },
         {
           "type": "STRING",
-          "value": "trait"
-        },
-        {
-          "type": "STRING",
           "value": "impl"
-        },
-        {
-          "type": "STRING",
-          "value": "where"
         },
         {
           "type": "STRING",

@@ -14,14 +14,13 @@
 //! definitions from being quadratic in the corpus.
 
 use musa_calculus::{
-    Cx, ModuleId, Program, Raw, RawArm, RawImpl, RawPattern, RawProgram, RawTopLevel, RawTrait, Refusal, Shape, Term,
-    Visibility,
+    Cx, ModuleId, Program, Raw, RawArm, RawPattern, RawProgram, RawTopLevel, Refusal, Shape, Term, Visibility,
 };
 
 use crate::coverage_laws::nat_vec_context;
-use crate::family_laws::{apply, binder, type0, var};
+use crate::family_laws::{apply, var};
+use crate::namespace_laws::boxed_context;
 use crate::programs::{WRITTEN, refusal};
-use crate::trait_laws::{boxed_context, class, defines, instance, method};
 
 /// The module the private definitions below are written in.
 const INSIDE: ModuleId = ModuleId::new(1);
@@ -58,10 +57,7 @@ fn private_in(module: ModuleId, name: &str, ty: Option<Raw>, value: Raw) -> RawT
 }
 
 fn program(definitions: Vec<RawTopLevel>) -> RawProgram {
-    RawProgram {
-        definitions,
-        instances: Vec::new(),
-    }
+    RawProgram { definitions }
 }
 
 fn number(count: u32) -> Raw {
@@ -336,41 +332,19 @@ fn a_use_of_a_definition_does_not_grow_with_its_body() {
     assert_eq!(size(&small), 1, "one node");
 }
 
-/// `trait Tagged<A> { fn tag : A → Nat; }`.
+/// `Nat`, `Vec`, and `Box` declared, with nothing in any namespace yet.
 ///
-/// One parameter and one required method whose type *takes* the parameter,
-/// which is the smallest trait a receiver can be found for: `10-traits.md` §6
-/// resolves `x.tag` by the head of `x`'s type, and a method whose type is not a
-/// function has no receiver position to look at.
-fn tagged() -> RawTrait {
-    class(
-        "Tagged",
-        vec![binder("A", type0())],
-        Vec::new(),
-        vec![method("tag", arrow(var("A"), var("Nat")))],
-    )
-}
-
-/// `Nat`, `Vec`, and `Box` declared, with `Tagged` in scope and no instances.
-///
-/// Three families because the laws below need three distinct instance heads: an
-/// instance is filed under the head of its first argument, so two instances of
-/// one trait at two heads is the smallest program in which a soft edge can
-/// point somewhere other than at itself.
+/// Three families because the laws below need three distinct heads: a member is
+/// filed under the head it is written on, so two definitions of one member
+/// spelling at two heads is the smallest program in which a soft edge can point
+/// somewhere other than at itself.
 fn tagged_context() -> Cx {
-    let cx = boxed_context(&nat_vec_context());
-    let declared = musa_calculus::declare_trait(&cx, &tagged()).expect("Tagged is a declaration");
-    cx.declaring_class(&declared)
+    boxed_context(&nat_vec_context())
 }
 
-/// `impl Tagged<head> { tag = body; }`.
-fn tags(head: Raw, body: Raw) -> RawImpl {
-    instance("Tagged", Vec::new(), vec![head], Vec::new(), vec![defines("tag", body)])
-}
-
-/// A group with both kinds in it.
-fn group(definitions: Vec<RawTopLevel>, instances: Vec<RawImpl>) -> RawProgram {
-    RawProgram { definitions, instances }
+/// `Head.tag : head → Nat`, defined as `body`.
+fn tags(head_name: &str, head: Raw, body: Raw) -> RawTopLevel {
+    definition(&format!("{head_name}.tag"), Some(arrow(head, var("Nat"))), body)
 }
 
 /// `Nat.Zero.tag`, the call every law below turns on.
@@ -401,148 +375,91 @@ fn counts(name: &str, cx: &Cx, subject: &Raw, count: u32) -> bool {
     musa_calculus::convertible(cx, &ty, &normal, &expected).expect("conversion answers")
 }
 
-/// 141r: a definition may call a method of an instance its own document
-/// declares.
+/// 141r, as prompt 146 leaves it: a member call is a **soft** edge, and a soft
+/// edge orders rather than refuses.
 ///
-/// The reproduction the prompt was written for. Before the two kinds were one
-/// group, a document's `impl`s were declared *after* its definitions, so
-/// `10-traits.md` §6 found no instance at `Nat` and refused a call the reader
-/// can see is answered twenty lines below. Nothing about resolution changed to
-/// fix it — only *when* the instance is in scope.
-#[test]
-fn a_definition_may_call_a_method_its_own_document_implements() {
-    let cx = tagged_context();
-    let written = group(
-        vec![definition("labelled", Some(var("Nat")), tag_of(var("Nat.Zero")))],
-        vec![tags(
-            var("Nat"),
-            Raw::lam(WRITTEN, "n", apply(var("Nat.Succ"), [var("n")])),
-        )],
-    );
-    let program = declared("a definition calling its document's instance", &cx, &written);
-    let inside = cx.defining(&program);
-    assert!(
-        counts("the method ran", &inside, &var("labelled"), 1),
-        "`Nat.Zero.tag` is one, so the instance was in scope when the definition was elaborated"
-    );
-}
-
-/// 141r: an `impl`'s method body may name a definition in the same document.
-///
-/// The other direction, and the reason the order cannot simply be swapped. A
-/// method body is an ordinary term; if instances went first it would be blind to
-/// every function in the library it is written in, which is the same bug
-/// pointing the other way.
-#[test]
-fn an_instance_method_may_name_a_definition_in_the_same_document() {
-    let cx = tagged_context();
-    let written = group(
-        vec![definition(
-            "increment",
-            Some(arrow(var("Nat"), var("Nat"))),
-            Raw::lam(WRITTEN, "n", apply(var("Nat.Succ"), [var("n")])),
-        )],
-        vec![tags(var("Nat"), var("increment"))],
-    );
-    let program = declared("an instance naming its document's definition", &cx, &written);
-    let inside = cx.defining(&program);
-    assert!(
-        counts("the method ran", &inside, &tag_of(var("Nat.Zero")), 1),
-        "the definition was elaborated before the instance whose method names it"
-    );
-}
-
-/// 141r: a soft edge orders and never refuses.
-///
-/// Three instances of one trait, two of which write that trait's own spelling.
-/// The edge from a method call is an over-approximation — it points at *every*
-/// instance of every trait declaring the spelling, because which one it means
-/// depends on a receiver type nobody knows yet — so all three name each other
-/// under it and none of them names another in any other sense.
+/// Three definitions spelling one member, two of which call it. The edge from
+/// `x.tag` is an over-approximation — it points at *every* `Head.tag` in the
+/// group, because which one it means depends on a receiver type nobody knows
+/// until the body is elaborated — so all three name each other under it and none
+/// of them names another in any other sense.
 ///
 /// That the group is *declared at all* is the law: with the edge treated as
 /// hard, the two callers close a cycle and the document is refused; with it
-/// soft, the walk drops the back edges and reaches `Tagged<Nat>` first, which is
-/// the order a reader would have picked. The instance written **last** is the
-/// one the other two call, so a walk that fell back on written order would fail
+/// soft, the walk drops the back edges and reaches `Nat.tag` first, which is the
+/// order a reader would have picked. The definition written **last** is the one
+/// the other two call, so a walk that fell back on written order would fail
 /// this.
 #[test]
-fn instances_that_write_one_spelling_order_rather_than_refuse() {
+fn definitions_sharing_a_member_spelling_order_rather_than_refuse() {
     let cx = tagged_context();
     let boxed = apply(var("Box"), [var("Nat")]);
     let vector = apply(var("Vec"), [var("Nat")]);
-    let written = group(
-        Vec::new(),
-        vec![
-            tags(boxed, Raw::lam(WRITTEN, "held", tag_of(var("Nat.Zero")))),
-            tags(vector, Raw::lam(WRITTEN, "held", tag_of(var("Nat.Zero")))),
-            tags(var("Nat"), Raw::lam(WRITTEN, "n", var("n"))),
-        ],
-    );
-    let program = declared("three instances of one trait", &cx, &written);
-    let inside = cx.defining(&program);
+    let written = program(vec![
+        tags("Box", boxed, Raw::lam(WRITTEN, "held", tag_of(var("Nat.Zero")))),
+        tags("Vec", vector, Raw::lam(WRITTEN, "held", tag_of(var("Nat.Zero")))),
+        tags("Nat", var("Nat"), Raw::lam(WRITTEN, "n", var("n"))),
+    ]);
+    let declared = declared("three definitions of one member spelling", &cx, &written);
+    let inside = cx.defining(&declared);
     assert!(
         counts(
-            "the borrowed method ran",
+            "the borrowed member ran",
             &inside,
             &tag_of(apply(var("Box.Boxed"), [var("Nat"), var("Nat.Zero")])),
             0
         ),
-        "`Tagged<Box>`'s body called `Tagged<Nat>`'s method, so that one was declared first"
+        "`Box.tag`'s body called `Nat.tag`, so that one was declared first"
     );
 }
 
-/// 141r: a definition and an instance that name each other are refused at the
-/// call, not as a cycle.
+/// 141r: two definitions that need each other through a member call are refused
+/// at the call, not as a cycle.
 ///
-/// What a dropped soft edge costs, stated as a law. `seed` needs the instance
-/// and the instance needs `seed`, which is a genuine mutual dependency between a
-/// definition and a dictionary — and an instance is never `rec`, so there is
-/// nowhere for it to go. The refusal is `NoMethodForType` at the call that could
-/// not be answered, naming the method and the head, rather than
-/// `DefinitionCycle` over two declarations whose relationship a reader would
-/// have to reconstruct.
+/// What a dropped soft edge costs, stated as a law. `seed` needs `Nat.tag` and
+/// `Nat.tag` needs `seed`, which is a genuine mutual dependency; neither is
+/// `rec`, so there is nowhere for it to go. The refusal is `NoMethodForType` at
+/// the call that could not be answered, naming the member and the head, rather
+/// than `DefinitionCycle` over two declarations whose relationship a reader
+/// would have to reconstruct.
 #[test]
-fn a_definition_and_an_instance_that_need_each_other_refuse_at_the_call() {
+fn two_definitions_that_need_each_other_refuse_at_the_call() {
     let cx = tagged_context();
-    let written = group(
-        vec![definition("seed", Some(var("Nat")), tag_of(var("Nat.Zero")))],
-        vec![tags(var("Nat"), Raw::lam(WRITTEN, "n", var("seed")))],
-    );
-    let refusal = refused("a definition and an instance that need each other", &cx, &written);
+    let written = program(vec![
+        definition("seed", Some(var("Nat")), tag_of(var("Nat.Zero"))),
+        tags("Nat", var("Nat"), Raw::lam(WRITTEN, "n", var("seed"))),
+    ]);
+    let refusal = refused("two definitions that need each other", &cx, &written);
     let Refusal::NoMethodForType { method, head, .. } = &refusal else {
         panic!("refused, but as `{refusal}`");
     };
-    assert_eq!(**method, *"tag", "the refusal names the method: {refusal}");
+    assert_eq!(**method, *"tag", "the refusal names the member: {refusal}");
     assert_eq!(**head, *"Nat", "and the head it could not answer for: {refusal}");
 }
 
-/// 141r: both kinds come back in the order the document wrote them.
+/// 141r: the definitions come back in the order the document wrote them.
 ///
 /// The order the analysis found is a fact about this call rather than about the
 /// group, so it does not travel with the answer. Here the definitions are
-/// written in reverse dependency order and the instances so that the one
-/// declared first is written last, which makes elaboration order differ from
-/// written order in both lists at once.
+/// written in reverse dependency order twice over — once through a free name and
+/// once through a member call — which makes elaboration order differ from
+/// written order throughout.
 #[test]
-fn both_kinds_come_back_in_the_order_the_document_wrote_them() {
+fn the_definitions_come_back_in_the_order_the_document_wrote_them() {
     let cx = tagged_context();
-    let written = group(
-        vec![
-            definition("earlier", Some(var("Nat")), apply(var("Nat.Succ"), [var("later")])),
-            definition("later", Some(var("Nat")), var("Nat.Zero")),
-        ],
-        vec![
-            tags(
-                apply(var("Box"), [var("Nat")]),
-                Raw::lam(WRITTEN, "held", tag_of(var("Nat.Zero"))),
-            ),
-            tags(var("Nat"), Raw::lam(WRITTEN, "n", var("n"))),
-        ],
-    );
-    let program = declared("a group written against its dependency order", &cx, &written);
-    let shown = format!("{program:?}");
-    for (first, second) in [("earlier", "later"), ("\"Box\"", "\"Nat\"")] {
+    let written = program(vec![
+        definition("earlier", Some(var("Nat")), apply(var("Nat.Succ"), [var("later")])),
+        definition("later", Some(var("Nat")), var("Nat.Zero")),
+        tags(
+            "Box",
+            apply(var("Box"), [var("Nat")]),
+            Raw::lam(WRITTEN, "held", tag_of(var("Nat.Zero"))),
+        ),
+        tags("Nat", var("Nat"), Raw::lam(WRITTEN, "n", var("n"))),
+    ]);
+    let declared = declared("a group written against its dependency order", &cx, &written);
+    let shown = format!("{declared:?}");
+    for (first, second) in [("earlier", "later"), ("Box.tag", "Nat.tag")] {
         let at = shown
             .find(first)
             .unwrap_or_else(|| panic!("`{first}` is shown: {shown}"));

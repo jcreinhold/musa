@@ -557,7 +557,6 @@ pub(crate) fn elaborate(
                 structural.push(Arc::clone(&held.name));
                 let program = RawProgram {
                     definitions: vec![held],
-                    instances: Vec::new(),
                 };
                 match musa_calculus::declare_program_metered(&cx, &program) {
                     Ok((declared, spent)) => {
@@ -572,18 +571,6 @@ pub(crate) fn elaborate(
             }
         }
     }
-    for raw in &read.classes {
-        match musa_calculus::declare_trait_metered(&cx, raw) {
-            Ok((declared, spent)) => {
-                spend = spend.and(spent);
-                cx = cx.declaring_class(&declared);
-            }
-            Err(error) => {
-                resolver.report(refusals::restate(&sites, &error));
-                refused = true;
-            }
-        }
-    }
     let names: Vec<Name> = structural
         .into_iter()
         .chain(read.definitions.iter().map(|held| Arc::clone(&held.name)))
@@ -592,7 +579,6 @@ pub(crate) fn elaborate(
     refused |= !imports_agree(resolver, &brought);
     let program = RawProgram {
         definitions: read.definitions,
-        instances: read.instances,
     };
     let declared = match musa_calculus::declare_program_metered(&cx, &program) {
         Ok((declared, spent)) => {
@@ -740,8 +726,6 @@ struct Read {
     /// Each type declaration beside the node it was written at, because the node
     /// is what [`order_types`] reads its dependencies off.
     types: Vec<(SyntaxNode, TypeDecl)>,
-    classes: Vec<musa_calculus::RawTrait>,
-    instances: Vec<musa_calculus::RawImpl>,
     definitions: Vec<RawTopLevel>,
     /// Each definition's declaration beside the name it bound, held until the
     /// document is elaborated. See [`documented`].
@@ -797,8 +781,22 @@ impl Read {
             };
             match item {
                 Declared::Item(Item::Data(data)) => self.types.push((node, TypeDecl::Family(data))),
-                Declared::Item(Item::Class(class)) => self.classes.push(class),
-                Declared::Item(Item::Instance(instance)) => self.instances.push(instance),
+                // An `impl`'s definitions are filed flat and never under an
+                // alias, for the reason the paragraph above gives: the block
+                // names a *type's* namespace, which the importing document does
+                // not get to rename.
+                Declared::Item(Item::Namespace(members)) => {
+                    for (written, definition) in members {
+                        record(
+                            resolver,
+                            &written,
+                            &definition.name,
+                            source.from.as_ref().map(|from| from.path.as_str()),
+                        );
+                        self.declaring.push(Declaring::at(&written, &definition, source));
+                        self.definitions.push(top_level(definition, visibility));
+                    }
+                }
                 Declared::Item(Item::Definition(mut definition)) => {
                     if let Some(alias) = alias {
                         definition.name = Name::from(format!("{alias}{}{}", crate::module::DOT, definition.name));

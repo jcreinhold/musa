@@ -156,9 +156,9 @@ fn write(out: &mut String, term: &Term, level: Level, names: &mut Vec<Name>) {
                     write(out, domain, Level::Outer, names);
                     out.push_str("} → ");
                 }
-                // The constraint and not the dictionary type, because `{}` is
-                // what every one of them reduces to and the trait is the whole
-                // of what the binder means.
+                // The constraint and not its domain, because `{}` is what the
+                // domain always is and the constraint is the whole of what the
+                // binder means.
                 Filling::Constraint(constraint) => {
                     let _ = write!(out, "[{}", constraint.class);
                     for argument in constraint.args.iter() {

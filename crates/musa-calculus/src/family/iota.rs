@@ -49,7 +49,7 @@ pub(super) fn spine(neutral: &Neutral) -> Option<(Constant, Vec<Value>)> {
 /// `n = 12` spent the whole 200,000-step budget on values no method read. That
 /// is Peyton Jones ch. 22's analysis with its sign reversed — not "this argument
 /// is certainly needed" but "this binder is certainly absent" — and
-/// [`crate::class::occurrences`] decides it exactly, so nothing is skipped that
+/// [`crate::term::occurrences`] decides it exactly, so nothing is skipped that
 /// a body could have named.
 ///
 /// The saving is in *what is built*, not in what is charged: an unread
@@ -95,7 +95,7 @@ fn unread(method: &Value) -> Option<Value> {
     };
     // Depth one and level zero: at the top of a closure body the binder just
     // pushed is the innermost, and `occurrences` counts from the outside.
-    (crate::class::occurrences(&closure.body, 1, 0) == 0)
+    (crate::term::occurrences(&closure.body, 1, 0) == 0)
         .then(|| Value::new(method.origin, Form::Universe(crate::level::Level::ZERO)))
 }
 

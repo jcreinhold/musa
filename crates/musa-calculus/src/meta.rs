@@ -6,10 +6,9 @@
 //! one instantiation walk, for one binder the author did not write, and it is
 //! solved by that same walk or by the expected type at its end. Nothing here
 //! postpones, retries, or generalizes. [`MetaSource`] survives beside it
-//! because the two failures it names survive — a type parameter nothing in the
-//! call determined, and a constraint no dictionary answers — and a diagnostic
-//! is better where the failure is described as what the *program* left
-//! unsaid.
+//! because the failure it names survives — a type parameter nothing in the call
+//! determined — and a diagnostic is better where the failure is described as
+//! what the *program* left unsaid.
 use crate::origin::Origin;
 
 /// Which of `02-core-calculus.md` §2.1's sites an unsolved unknown came from.
@@ -18,8 +17,6 @@ pub enum MetaSource {
     /// A type parameter of the called function that no written argument
     /// determined.
     TypeParameter,
-    /// A constraint that no dictionary in scope and no instance answers.
-    Constraint,
 }
 
 impl MetaSource {
@@ -32,7 +29,6 @@ impl MetaSource {
     pub const fn describe(self) -> &'static str {
         match self {
             Self::TypeParameter => "a type parameter",
-            Self::Constraint => "the instance a constraint needs",
         }
     }
 }
@@ -43,7 +39,7 @@ use crate::error::Malformed;
 use crate::value::Value;
 
 /// A placeholder for an argument the instantiation walk has not yet solved:
-/// a type parameter, or a constraint's dictionary.
+/// a type parameter, or a constraint's evidence.
 ///
 /// This is what remains of the metavariable after the course correction, and
 /// the list of what it is *not* is the point: not contextual (it is closed —

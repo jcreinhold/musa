@@ -11,17 +11,16 @@
 // # Where the folds went
 //
 // A list is read by `xs.fold_from_start(seed, combine)` and
-// `xs.fold_from_end(seed, combine)`, which are `Iterable<List<A>, A>`'s two
-// required methods and not functions of this module. One trait, one spelling
-// per direction, and every container that can be walked answers to the same two
-// words — which is what a per-type `list_fold_from_start` beside an
-// `option_fold` beside a `nat_fold` could never be.
+// `xs.fold_from_end(seed, combine)`, which are `List`'s own two definitions and
+// not functions of this module. One spelling per direction, and every container
+// that can be walked answers to the same two words in its own namespace — which
+// is what a per-type `list_fold_from_start` beside an `option_fold` beside a
+// `nat_fold` could never be.
 //
-// What stays here is what the trait cannot say. `Iterable`'s derived `map` and
-// `filter` build their answer through `Buildable`, whose `push` for a list is
-// snoc, so they cost the square of the length; the two below are written over
-// `List`'s own constructors and cost the length. A caller who knows the
-// container is a list should say so.
+// What stays here is what a fold does not say as well. `map` and `filter` below
+// are written over `List`'s own constructors and cost the length; building an
+// answer by folding and appending costs its square, because appending to the
+// end of a list walks it.
 library {
     // The natural numbers from `first`, `count` of them, ascending.
     //

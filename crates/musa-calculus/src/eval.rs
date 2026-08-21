@@ -13,8 +13,7 @@
 //!   fields and one induction hypothesis per recursive field.
 //! - **η** is *not* here. It is performed by [`crate::quote`], which is why
 //!   quotation is type-directed and why two records with the same projections
-//!   are convertible without a rule that inspects both at once — the property
-//!   `10-traits.md`'s coherence argument rests on.
+//!   are convertible without a rule that inspects both at once.
 //!
 //! **Origins follow the value, not the use site** (§7). Evaluating a variable
 //! answers whatever the environment holds, with the origin that value already

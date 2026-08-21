@@ -716,8 +716,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 1896,
-        "end": 1909
+        "start": 1805,
+        "end": 1818
       }
     },
     {
@@ -744,8 +744,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 2166,
-        "end": 2171
+        "start": 2075,
+        "end": 2080
       }
     },
     {
@@ -780,8 +780,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 2510,
-        "end": 2518
+        "start": 2419,
+        "end": 2427
       }
     },
     {
@@ -816,8 +816,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 2742,
-        "end": 2745
+        "start": 2651,
+        "end": 2654
       }
     },
     {
@@ -852,8 +852,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 3013,
-        "end": 3019
+        "start": 2922,
+        "end": 2928
       }
     },
     {
@@ -880,8 +880,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 3366,
-        "end": 3374
+        "start": 3275,
+        "end": 3283
       }
     },
     {
@@ -916,8 +916,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 3497,
-        "end": 3508
+        "start": 3406,
+        "end": 3417
       }
     },
     {
@@ -952,8 +952,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 3675,
-        "end": 3689
+        "start": 3584,
+        "end": 3598
       }
     },
     {
@@ -988,8 +988,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 3871,
-        "end": 3883
+        "start": 3780,
+        "end": 3792
       }
     },
     {

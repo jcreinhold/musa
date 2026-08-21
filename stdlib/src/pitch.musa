@@ -30,7 +30,7 @@ library {
     // `compose_intervals` and `inverse_interval` kept their spellings as
     // ordinary functions, so a piece that reads better naming the operation
     // than naming the structure still can.
-    impl Group<Interval> {
+    impl Interval {
         fn unit(element: Interval) -> Interval { P1 }
 
         fn compose(first: Interval, second: Interval) -> Interval { interval_add(first, second) }
@@ -57,15 +57,15 @@ library {
     // absorb the rest, and whether an octave is carried along changes nothing
     // about that. What the two domains do not share is the answer — a `Pitch`
     // stays a `Pitch` and a `NoteName` stays a `NoteName` — so the receiver
-    // decides which operation runs, which is what a trait is for.
+    // decides which operation runs, which is what a namespace is for.
     //
-    // `down` is not a second method. It is the interval that undoes this one,
-    // and `Group<Interval>`'s `inverse` above already names it.
+    // `down` is not a second operation. It is the interval that undoes this
+    // one, and `Interval.inverse` above already names it.
     //
     // A written pitch moved by a written interval. Partial: the pitch grid is
     // finite in both coordinates, so a transposition can leave it, and what
     // leaves it is refused rather than wrapped.
-    impl Action<Pitch, Interval> {
+    impl Pitch {
         fn act(subject: Pitch, operation: Interval) -> Pitch {
             pitch_transposed(subject, operation)
         }
@@ -79,8 +79,8 @@ library {
     // moves every spelled class to itself, so two classes are joined by
     // infinitely many intervals rather than by one. `03-musical-domains.md` §1
     // proves that as the lemma that the action descends; the missing
-    // `Torsor<NoteName, Interval>` is that lemma read as a structure.
-    impl Action<NoteName, Interval> {
+    // `NoteName.difference` is that lemma read as a structure.
+    impl NoteName {
         fn act(subject: NoteName, operation: Interval) -> NoteName {
             pitchclass_transposed(subject, operation)
         }
@@ -96,7 +96,7 @@ library {
     //
     // Written and not sounding: `c4` to `fb4` is `d4` and never `M3`, because
     // the two count to different letters.
-    impl Torsor<Pitch, Interval> {
+    impl Pitch {
         fn difference(start: Pitch, finish: Pitch) -> Interval { pitch_between(start, finish) }
     }
 }

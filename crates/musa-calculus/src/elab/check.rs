@@ -30,7 +30,20 @@ impl Elaborator {
             None => {
                 let inferred = match self.constructed(scope, raw, ty)? {
                     Some(supplied) => supplied,
-                    None => self.infer(scope, raw)?,
+                    // §1.5's bare member rule, and the only place in the
+                    // elaborator where the expected type decides which *name* a
+                    // spelling means. It is here because this is where a type is
+                    // expected: `Switch` is the one rule that has both a goal
+                    // and a term that has not been read yet, so a filter
+                    // anywhere else would be guessing at the goal or would have
+                    // already resolved the name. Nothing is elaborated in order
+                    // to be discarded — the head is compared, not tried.
+                    None => match (raw.shape(), crate::namespace::head_of(ty)) {
+                        (RawShape::Var(name), Some(head)) if scope.lookup(name).is_none() => {
+                            self.constant_at(scope, raw.origin(), name, Some(&head))?
+                        }
+                        _ => self.infer(scope, raw)?,
+                    },
                 };
                 // The host's index-acceptance rule answers before conversion
                 // is asked: it is a *carrying*, not an equality, and a unify
@@ -219,7 +232,6 @@ impl Elaborator {
             | RawShape::Numeral { .. }
             | RawShape::Universe(_)
             | RawShape::Pi { .. }
-            | RawShape::ConstrainedPi { .. }
             | RawShape::Indexed { .. }
             | RawShape::App { .. }
             | RawShape::Call { .. }
@@ -250,13 +262,17 @@ impl Elaborator {
         if *filling == Filling::Written {
             return Ok(None);
         }
-        let (filling, name, domain, codomain) =
-            (filling.clone(), Arc::clone(name), Arc::clone(domain), codomain.clone());
+        let (name, domain, codomain) = (Arc::clone(name), Arc::clone(domain), codomain.clone());
         let here = raw.origin();
         let variable = scope.fresh_var(here, Arc::clone(&domain));
         let body_ty = apply_closure(&mut self.meter, &codomain, variable)?;
-        let discharged = self.discharging(scope, &filling, &codomain.env)?;
-        let inner = discharged.assume(Some(Arc::clone(&name)), here, domain);
+        // Nothing stands between the binder and the scope. Before prompt 146
+        // a constraint binder discharged its key here, so that a body writing
+        // `x == y` inside a constrained `same` reached *that* binder rather
+        // than a global instance. `Storable` is the only constraint left, no
+        // source program can write one, and nothing in a machine constructor's
+        // body asks for the evidence by name.
+        let inner = scope.assume(Some(Arc::clone(&name)), here, domain);
         Ok(Some(Term::lam(here, name, self.check(&inner, raw, &body_ty)?)))
     }
 

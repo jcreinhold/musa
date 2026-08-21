@@ -83,7 +83,6 @@ pub(crate) fn documented(
         });
         signature.push_str(&result.name);
     }
-    signature.push_str(&constraints(node));
     let summary = crate::docs::summary_above(node);
     Some(ItemDoc {
         name: name.to_owned(),
@@ -142,17 +141,6 @@ fn type_parameters(node: &SyntaxNode) -> String {
     } else {
         format!("<{}>", written.join(", "))
     }
-}
-
-/// ` where Eq<A>`, or nothing where no clause was written.
-///
-/// Part of the signature because it is part of what a caller must supply: a
-/// reader who copies the line and leaves the clause off has written a
-/// declaration this one is not.
-fn constraints(node: &SyntaxNode) -> String {
-    child(node, |kind| kind == SyntaxKind::WhereClause)
-        .map(|clause| format!(" {}", collapsed(&clause)))
-        .unwrap_or_default()
 }
 
 /// The parameters this declaration wrote, in order.

@@ -1,42 +1,48 @@
-//! `01-surface.md` §1.6 and `10-traits.md` §8, stated as tests.
+//! `01-surface.md` §1.6, stated as tests.
 //!
 //! # Why the library is a fixture
 //!
-//! `List`, `Option`, `Buildable`, `Iterable`, and `Index` are declared *here*
-//! rather than shipped as items of this crate, and that is
-//! [`musa_calculus`](musa_calculus)'s own boundary rather than a convenience: the core is
-//! a calculus, it has no base types at all — no `Bool`, no `Nat`, no `Option` —
-//! and everything above it is library code elaborated *into* it. A container
-//! declared in `src/` would be the first exception, and it would be an exception
-//! that buys nothing: the mechanism a container needs is a trait with a derived
-//! method that quantifies and constrains, and that mechanism is what this prompt
-//! actually added. Prompt 142 writes these declarations once more, in `.musa`,
-//! where authors can reach them.
+//! `List` and `Option` are declared *here* rather than shipped as items of this
+//! crate, and that is [`musa_calculus`](musa_calculus)'s own boundary rather than a convenience:
+//! the core is a calculus, it has no base types at all — no `Bool`, no `Nat`, no
+//! `Option` — and everything above it is library code elaborated *into* it. A
+//! container declared in `src/` would be the first exception, and it would be an
+//! exception that buys nothing: what a container needs is a family, a type
+//! parameter, and a name in its own namespace, all of which the core already has.
 //!
-//! So what the suite states is that the mechanism is enough to write the library
-//! — the same argument `operator_laws.rs` makes for `Add` and `trait_laws.rs` for
-//! `Eq`, at the size where the argument can fail.
+//! So what the suite states is that the mechanism is enough to write the library,
+//! at the size where the argument can fail.
+//!
+//! # Why there is no `Buildable` and no `Iterable`
+//!
+//! There was, and prompt 146 deleted both. A container's traversal is a
+//! definition in the container's own namespace — `List.fold_from_start`, and
+//! `Option.fold_from_start` beside it — reached by the head of the receiver's
+//! type and by nothing else. The trait around them dispatched on a set with two
+//! members and constrained no signature at all; what is left here is the two
+//! folds themselves, which is what every call site was ever reaching.
+//!
+//! The three derived methods went with it — `map`, `filter`, and `collect` had
+//! zero call sites, and `map` and `filter` are ordinary functions over `List`'s
+//! constructors in `stdlib/src/list.musa`, where they cost the length rather than
+//! its square.
 //!
 //! # Why there is no `Vec A n`
 //!
 //! Prompt 141's Design made the length-indexed vector conditional on prompt 132's
 //! trial finding a program that needed one, and note 43 §7's table records the
-//! answer it found: `Vec A n` — *nothing*. §10 says why. The two fixed-arity
-//! things the staff adapter has are up to two numbers and up to two words, and
-//! both are enums whose cases are named, which reads better than `Vec Syntax<Expr>
-//! 2` would. The index machinery is built and tested regardless
-//! (`family_laws.rs`, `coverage_laws.rs`, `termination_laws.rs` all use `Vec`);
-//! what is not built is a *collection library* around it, because no program asks
-//! for one.
+//! answer it found: `Vec A n` — *nothing*. The two fixed-arity things the staff
+//! adapter has are up to two numbers and up to two words, and both are enums
+//! whose cases are named, which reads better than `Vec Syntax<Expr> 2` would. The
+//! index machinery is built and tested regardless (`family_laws.rs`,
+//! `coverage_laws.rs`, `termination_laws.rs` all use `Vec`); what is not built is
+//! a *collection library* around it, because no program asks for one.
 
-use musa_calculus::{
-    Cx, Raw, RawArm, RawData, RawImpl, RawPattern, RawTrait, Refusal, Term, check, convertible, declare_impl,
-    declare_trait, infer,
-};
+use musa_calculus::{Cx, Raw, RawArm, RawData, RawPattern, Refusal, Term, check, convertible, infer};
 
 use crate::family_laws::{apply, binder, constructor, data, family, nat_context, type0, var};
+use crate::namespace_laws::{defining, definition};
 use crate::programs::WRITTEN;
-use crate::trait_laws::{class, constraint, defines, derived, generic, instance, method};
 
 fn arrow(domain: Raw, codomain: Raw) -> Raw {
     Raw::pi(WRITTEN, "_", domain, codomain)
@@ -74,9 +80,8 @@ fn option_of(element: Raw) -> Raw {
 
 /// `data Bool where False : Bool; True : Bool`.
 ///
-/// `filter`'s predicate answers one, so the trait pair cannot be declared
-/// without it. Two constructors and no fields, which is the whole of what a
-/// `match` in a derived body needs.
+/// Two constructors and no fields, which is the whole of what a `match` in a
+/// traversal's step needs.
 fn booleans() -> RawData {
     data(
         Vec::new(),
@@ -123,406 +128,232 @@ fn lists() -> RawData {
     )
 }
 
-/// `trait Buildable<C, A> { fn empty() -> C; fn push(target: C, item: A) -> C; }`.
-fn buildable() -> RawTrait {
-    class(
-        "Buildable",
-        vec![binder("C", type0()), binder("A", type0())],
-        Vec::new(),
-        vec![
-            method("empty", var("C")),
-            method("push", arrow(var("C"), arrow(var("A"), var("C")))),
-        ],
+/// `{A : Type 0} → {B : Type 0} → List A → B → step → B`.
+///
+/// The element and the answer are both implicit and both are read off the
+/// arguments a call supplies: `xs.fold_from_end(seed, combine)` learns `A` from
+/// the receiver and `B` from `seed`. Writing either would make the receiver's own
+/// type something a call had to repeat.
+fn folding(step: Raw) -> Raw {
+    let body = arrow(list_of(var("A")), arrow(var("B"), arrow(step, var("B"))));
+    Raw::parameter_pi(WRITTEN, "A", type0(), Raw::parameter_pi(WRITTEN, "B", type0(), body))
+}
+
+/// `λ{A}. λ{B}. λsource. λzero. λstep. …`, the shape both traversals share.
+fn traversal(body: Raw) -> Raw {
+    Raw::parameter_lam(
+        WRITTEN,
+        "A",
+        Raw::parameter_lam(WRITTEN, "B", lam("source", lam("zero", lam("step", body)))),
     )
 }
 
-/// §1.6's `Iterable<C, A>`: two required folds and three derived methods.
+/// `List.fold_from_start`: accumulate forwards.
 ///
-/// The three carry the whole point of the design. Each is written once, in terms
-/// of `fold_from_start` and a `Buildable` its *caller* supplies, and every
-/// container that writes the two folds gets all three. `map` and `collect`
-/// quantify over the container they build into, which is why the target need not
-/// be the source's own type; `filter` does not, because a filtered container is
-/// the same container with fewer things in it.
-fn iterable() -> RawTrait {
-    let step_from_start = arrow(var("B"), arrow(var("A"), var("B")));
-    let step_from_end = arrow(var("A"), arrow(var("B"), var("B")));
-    class(
-        "Iterable",
-        vec![binder("C", type0()), binder("A", type0())],
-        Vec::new(),
-        vec![
-            generic(
-                method(
-                    "fold_from_start",
-                    arrow(var("C"), arrow(var("B"), arrow(step_from_start, var("B")))),
-                ),
-                vec![binder("B", type0())],
-                Vec::new(),
-            ),
-            generic(
-                method(
-                    "fold_from_end",
-                    arrow(var("C"), arrow(var("B"), arrow(step_from_end, var("B")))),
-                ),
-                vec![binder("B", type0())],
-                Vec::new(),
-            ),
-            generic(
-                derived(
-                    "map",
-                    arrow(var("C"), arrow(arrow(var("A"), var("B")), var("D"))),
-                    lam(
-                        "source",
-                        lam("f", accumulating(var("D"), apply(var("f"), [var("item")]))),
-                    ),
-                ),
-                vec![binder("D", type0()), binder("B", type0())],
-                vec![constraint("Buildable", vec![var("D"), var("B")])],
-            ),
-            generic(
-                derived(
-                    "filter",
-                    arrow(var("C"), arrow(arrow(var("A"), var("Bool")), var("C"))),
-                    filtering(),
-                ),
-                Vec::new(),
-                vec![constraint("Buildable", vec![var("C"), var("A")])],
-            ),
-            generic(
-                derived(
-                    "collect",
-                    arrow(var("C"), var("D")),
-                    lam("source", accumulating(var("D"), var("item"))),
-                ),
-                vec![binder("D", type0())],
-                vec![constraint("Buildable", vec![var("D"), var("A")])],
-            ),
-        ],
-    )
-}
-
-/// The fold `map` and `collect` share: build forwards, pushing `contributed`.
-///
-/// `fold_from_start` and `push` in that combination is the whole of §1.6's
-/// claim, and it is also note 41 §4's missing operation: the accumulator travels
-/// *with* the traversal, so a reader written this way runs in the direction the
-/// source is written in. The two derived methods differ only in what reaches the
-/// accumulator and in how many parameters they bind, which is why the fold is one
-/// function here and the λs around it are not.
-///
-/// `source` and `item` are free, and `contributed` may mention `f`: this is an
-/// expression written under whichever binders its method has, not a closed one.
-///
-/// `fold_from_start` is reached by its bare name and not as `source.fold_…`,
-/// because `source : C` and `C` is a trait parameter — §6's first refusal, and
-/// the one the trait machinery answers rather than works around. A required
-/// method stands in a derived body as an ordinary definition bound to its
-/// projection out of the dictionary, which is what §1 means by "a derived method
-/// is an ordinary function that takes the dictionary".
-fn accumulating(accumulator: Raw, contributed: Raw) -> Raw {
-    apply(
-        var("fold_from_start"),
-        [
-            var("source"),
-            var("Buildable.empty"),
-            // §2.1: the fold's `B` is still the walk's hole here, so the step
-            // carries its type — which is what `B` is solved from.
-            Raw::annotated_lam(
-                WRITTEN,
-                "built",
-                accumulator,
-                Raw::lam(
-                    WRITTEN,
-                    "item",
-                    apply(var("Buildable.push"), [var("built"), contributed]),
-                ),
-            ),
-        ],
-    )
-}
-
-/// `filter`'s body: the same forward fold, pushing only what `keep` admits.
-fn filtering() -> Raw {
-    lam(
-        "source",
-        lam(
-            "keep",
-            apply(
-                var("fold_from_start"),
-                [
-                    var("source"),
-                    var("Buildable.empty"),
-                    // §2.1: the fold's `B` is the walk's hole here, so the step
-                    // carries its type, as in `map`.
-                    Raw::annotated_lam(
-                        WRITTEN,
-                        "built",
-                        var("C"),
-                        Raw::lam(
-                            WRITTEN,
-                            "item",
-                            matching(
-                                apply(var("keep"), [var("item")]),
-                                vec![
-                                    arm(
-                                        vec![con("Bool.True", [])],
-                                        apply(var("Buildable.push"), [var("built"), var("item")]),
-                                    ),
-                                    arm(vec![con("Bool.False", [])], var("built")),
-                                ],
+/// Note 41 §4's missing operation. The accumulator travels *with* the traversal,
+/// so a reader written this way runs in the direction the source is written in.
+fn from_start() -> Raw {
+    let walk_ty = arrow(list_of(var("A")), arrow(var("B"), var("B")));
+    traversal(Raw::annotated_bind(
+        WRITTEN,
+        "walk",
+        walk_ty.clone(),
+        Raw::rec(
+            WRITTEN,
+            "walk",
+            walk_ty,
+            lam(
+                "xs",
+                lam(
+                    "built",
+                    matching(
+                        var("xs"),
+                        vec![
+                            arm(vec![con("List.Nil", [])], var("built")),
+                            arm(
+                                vec![con("List.Cons", [bind("head"), bind("tail")])],
+                                apply(
+                                    var("walk"),
+                                    [var("tail"), apply(var("step"), [var("built"), var("head")])],
+                                ),
                             ),
-                        ),
+                        ],
                     ),
-                ],
+                ),
             ),
         ),
-    )
+        apply(var("walk"), [var("source"), var("zero")]),
+    ))
 }
 
-/// `trait Index<C, I, R> { fn at(source: C, index: I) -> R; }`.
-///
-/// `10-traits.md` §5's third column is the reason `R` is a parameter rather than
-/// `Option<A>`: an index type that cannot be out of range answers the element
-/// itself, and a trait that fixed the `Option` would make every total container
-/// pay for `List`'s partiality.
-fn indexing() -> RawTrait {
-    class(
-        "Index",
-        vec![binder("C", type0()), binder("I", type0()), binder("R", type0())],
-        Vec::new(),
-        vec![method("at", arrow(var("C"), arrow(var("I"), var("R"))))],
-    )
-}
-
-/// `impl<A> Buildable<List A, A>`, whose `push` is **snoc**.
-///
-/// Snoc rather than cons, and the choice is forced: `fold_from_start` hands the
-/// accumulator the elements in source order, so a `push` that prepended would
-/// make `collect` reverse and `map` reverse with it — the exact reversal note 41
-/// §4 is about. It costs a walk per push, which makes `collect` quadratic; that
-/// is the price of `Buildable` having only `empty` and `push`, it is paid on
-/// compile-time lists of the size an adapter reads, and a cheaper builder is a
-/// third method with a program behind it rather than a redesign of this one.
-fn buildable_list() -> RawImpl {
-    let list_a = list_of(var("A"));
-    let snoc = Raw::rec(
+/// `List.fold_from_end`: the catamorphism, which is what prompt 156's generated
+/// recursor will be.
+fn from_end() -> Raw {
+    let fold_ty = arrow(list_of(var("A")), var("B"));
+    traversal(Raw::annotated_bind(
         WRITTEN,
-        "snoc",
-        arrow(list_a.clone(), arrow(var("A"), list_a)),
-        lam(
-            "xs",
+        "walk",
+        fold_ty.clone(),
+        Raw::rec(
+            WRITTEN,
+            "walk",
+            fold_ty,
             lam(
-                "item",
+                "xs",
                 matching(
                     var("xs"),
                     vec![
-                        arm(
-                            vec![con("List.Nil", [])],
-                            apply(
-                                var("List.Cons"),
-                                [var("A"), var("item"), apply(var("List.Nil"), [var("A")])],
-                            ),
-                        ),
+                        arm(vec![con("List.Nil", [])], var("zero")),
                         arm(
                             vec![con("List.Cons", [bind("head"), bind("tail")])],
-                            apply(
-                                var("List.Cons"),
-                                [var("A"), var("head"), apply(var("snoc"), [var("tail"), var("item")])],
-                            ),
+                            apply(var("step"), [var("head"), apply(var("walk"), [var("tail")])]),
                         ),
                     ],
                 ),
             ),
         ),
-    );
-    instance(
-        "Buildable",
-        vec![binder("A", type0())],
-        vec![list_of(var("A")), var("A")],
-        Vec::new(),
-        vec![
-            defines("empty", apply(var("List.Nil"), [var("A")])),
-            defines("push", snoc),
-        ],
-    )
+        apply(var("walk"), [var("source")]),
+    ))
 }
 
-/// `impl<A> Iterable<List A, A>`: the two folds, and nothing else.
+/// `List.push`, which is **snoc**.
 ///
-/// Three methods arrive with them, which is §8's "a container earns five
-/// operations by writing two" as a thing the type checker enforces rather than a
-/// claim in prose — an impl that tried to write `map` is refused as supplying a
-/// derived method.
-fn iterable_list() -> RawImpl {
+/// Snoc rather than cons, and the choice is forced by the direction its callers
+/// walk in: `fold_from_start` hands the step the elements in source order, so a
+/// `push` that prepended would build the reverse — the exact reversal note 41 §4
+/// is about. It costs a walk per push, which is the price of building a list by
+/// pushing at all, and it is paid on compile-time lists of the size an adapter
+/// reads.
+fn push() -> Raw {
     let list_a = list_of(var("A"));
-
-    // `λ{B}. λsource. λzero. λstep. walk source zero`, accumulating forwards.
-    let walk_ty = arrow(list_a.clone(), arrow(var("B"), var("B")));
-    let from_start = Raw::parameter_lam(
+    let snoc_ty = arrow(list_a.clone(), arrow(var("A"), list_a));
+    Raw::parameter_lam(
         WRITTEN,
-        "B",
-        lam(
-            "source",
+        "A",
+        Raw::rec(
+            WRITTEN,
+            "snoc",
+            snoc_ty,
             lam(
-                "zero",
+                "xs",
                 lam(
-                    "step",
-                    Raw::annotated_bind(
-                        WRITTEN,
-                        "walk",
-                        walk_ty.clone(),
-                        Raw::rec(
-                            WRITTEN,
-                            "walk",
-                            walk_ty,
-                            lam(
-                                "xs",
-                                lam(
-                                    "built",
-                                    matching(
-                                        var("xs"),
-                                        vec![
-                                            arm(vec![con("List.Nil", [])], var("built")),
-                                            arm(
-                                                vec![con("List.Cons", [bind("head"), bind("tail")])],
-                                                apply(
-                                                    var("walk"),
-                                                    [var("tail"), apply(var("step"), [var("built"), var("head")])],
-                                                ),
-                                            ),
-                                        ],
-                                    ),
+                    "item",
+                    matching(
+                        var("xs"),
+                        vec![
+                            arm(
+                                vec![con("List.Nil", [])],
+                                apply(
+                                    var("List.Cons"),
+                                    [var("A"), var("item"), apply(var("List.Nil"), [var("A")])],
                                 ),
                             ),
-                        ),
-                        apply(var("walk"), [var("source"), var("zero")]),
+                            arm(
+                                vec![con("List.Cons", [bind("head"), bind("tail")])],
+                                apply(
+                                    var("List.Cons"),
+                                    [var("A"), var("head"), apply(var("snoc"), [var("tail"), var("item")])],
+                                ),
+                            ),
+                        ],
                     ),
                 ),
             ),
         ),
-    );
+    )
+}
 
-    // `λ{B}. λsource. λzero. λstep. walk source`, the catamorphism.
-    let fold_ty = arrow(list_a, var("B"));
-    let from_end = Raw::parameter_lam(
+/// `List.at`, which answers an `Option` because a list index can be out of range.
+///
+/// The Design's rule read at the one operation that usually gets an exception:
+/// every index answers, including the ones past the end. There is no partial
+/// operator to reach for and nothing panics — the out-of-range case is a value
+/// the author has to read.
+fn at() -> Raw {
+    let at_ty = arrow(list_of(var("A")), arrow(var("Nat"), option_of(var("A"))));
+    Raw::parameter_lam(
         WRITTEN,
-        "B",
-        lam(
-            "source",
+        "A",
+        Raw::rec(
+            WRITTEN,
+            "at",
+            at_ty,
             lam(
-                "zero",
+                "xs",
                 lam(
-                    "step",
-                    Raw::annotated_bind(
-                        WRITTEN,
-                        "walk",
-                        fold_ty.clone(),
-                        Raw::rec(
-                            WRITTEN,
-                            "walk",
-                            fold_ty,
-                            lam(
-                                "xs",
+                    "wanted",
+                    matching(
+                        var("xs"),
+                        vec![
+                            arm(vec![con("List.Nil", [])], apply(var("Option.None"), [var("A")])),
+                            arm(
+                                vec![con("List.Cons", [bind("head"), bind("tail")])],
                                 matching(
-                                    var("xs"),
+                                    var("wanted"),
                                     vec![
-                                        arm(vec![con("List.Nil", [])], var("zero")),
                                         arm(
-                                            vec![con("List.Cons", [bind("head"), bind("tail")])],
-                                            apply(var("step"), [var("head"), apply(var("walk"), [var("tail")])]),
+                                            vec![con("Nat.Zero", [])],
+                                            apply(var("Option.Some"), [var("A"), var("head")]),
+                                        ),
+                                        arm(
+                                            vec![con("Nat.Succ", [bind("earlier")])],
+                                            apply(var("at"), [var("tail"), var("earlier")]),
                                         ),
                                     ],
                                 ),
                             ),
-                        ),
-                        apply(var("walk"), [var("source")]),
+                        ],
                     ),
                 ),
             ),
         ),
-    );
-
-    instance(
-        "Iterable",
-        vec![binder("A", type0())],
-        vec![list_of(var("A")), var("A")],
-        Vec::new(),
-        vec![
-            defines("fold_from_start", from_start),
-            defines("fold_from_end", from_end),
-        ],
     )
 }
 
-/// `impl<A> Index<List A, Nat, Option A>`.
-fn index_list() -> RawImpl {
-    let at_ty = arrow(list_of(var("A")), arrow(var("Nat"), option_of(var("A"))));
-    let at = Raw::rec(
-        WRITTEN,
-        "at",
-        at_ty,
-        lam(
-            "xs",
-            lam(
-                "wanted",
-                matching(
-                    var("xs"),
-                    vec![
-                        arm(vec![con("List.Nil", [])], apply(var("Option.None"), [var("A")])),
-                        arm(
-                            vec![con("List.Cons", [bind("head"), bind("tail")])],
-                            matching(
-                                var("wanted"),
-                                vec![
-                                    arm(
-                                        vec![con("Nat.Zero", [])],
-                                        apply(var("Option.Some"), [var("A"), var("head")]),
-                                    ),
-                                    arm(
-                                        vec![con("Nat.Succ", [bind("earlier")])],
-                                        apply(var("at"), [var("tail"), var("earlier")]),
-                                    ),
-                                ],
-                            ),
-                        ),
-                    ],
-                ),
-            ),
-        ),
-    );
-    instance(
-        "Index",
-        vec![binder("A", type0())],
-        vec![list_of(var("A")), var("Nat"), option_of(var("A"))],
-        Vec::new(),
-        vec![defines("at", at)],
-    )
-}
-
-/// `Nat`, `Bool`, `Option`, and `List`, with the three traits and their instances.
+/// `Nat`, `Bool`, `Option`, and `List`, with `List`'s namespace written out.
 ///
 /// # Panics
 ///
 /// If any declaration is refused, which would be a defect in this crate rather
 /// than a property of any law.
-pub(crate) fn context() -> Cx {
+fn context() -> Cx {
     let (cx, _) = nat_context();
     let mut cx = cx;
     for declaration in [booleans(), options(), lists()] {
         let group = musa_calculus::declare(&cx, &declaration).expect("a collection family is a declaration");
         cx = cx.declaring(&group);
     }
-    // `Buildable` before `Iterable`, because `Iterable`'s derived bodies name it.
-    for declaration in [buildable(), iterable(), indexing()] {
-        let declared = declare_trait(&cx, &declaration).expect("a collection trait is a declaration");
-        cx = cx.declaring_class(&declared);
-    }
-    for declaration in [buildable_list(), iterable_list(), index_list()] {
-        let declared = declare_impl(&cx, &declaration).expect("a collection instance is a declaration");
-        cx = cx.declaring_instance(&declared);
-    }
-    cx
+    let list_a = list_of(var("A"));
+    defining(
+        &cx,
+        vec![
+            definition(
+                "List.fold_from_start",
+                folding(arrow(var("B"), arrow(var("A"), var("B")))),
+                from_start(),
+            ),
+            definition(
+                "List.fold_from_end",
+                folding(arrow(var("A"), arrow(var("B"), var("B")))),
+                from_end(),
+            ),
+            definition(
+                "List.push",
+                Raw::parameter_pi(WRITTEN, "A", type0(), arrow(list_a.clone(), arrow(var("A"), list_a))),
+                push(),
+            ),
+            definition(
+                "List.at",
+                Raw::parameter_pi(
+                    WRITTEN,
+                    "A",
+                    type0(),
+                    arrow(list_of(var("A")), arrow(var("Nat"), option_of(var("A")))),
+                ),
+                at(),
+            ),
+        ],
+    )
 }
 
 /// A written type as a core term.
@@ -551,21 +382,20 @@ fn listed(element: &Raw, items: impl IntoIterator<Item = Raw>) -> Raw {
 }
 
 /// `[m, n, …] : List Nat`.
-pub(crate) fn numbers(items: impl IntoIterator<Item = u32>) -> Raw {
+fn numbers(items: impl IntoIterator<Item = u32>) -> Raw {
     listed(&var("Nat"), items.into_iter().map(number))
 }
 
 /// Assert two terms at `ty` are definitionally equal, and that both re-check.
 ///
-/// The re-check is not extra: every one of these programs is a trait method
-/// reached through a dictionary, and a dictionary elaboration that produced a
-/// well-*believed* term rather than a well-typed one would still pass a
-/// convertibility test against another term it produced the same way.
+/// The re-check is not extra: every one of these programs reaches a definition
+/// through a member spelling, and a resolution that produced a well-*believed*
+/// term rather than a well-typed one would still pass a convertibility test
+/// against another term it produced the same way.
 ///
 /// # Panics
 ///
-/// If either side is not a term at `ty`, if either is rejected by the
-/// or if they are not convertible.
+/// If either side is not a term at `ty`, or if they are not convertible.
 fn same(cx: &Cx, name: &str, ty: &Term, left: &Raw, right: &Raw) {
     let left = check(cx, ty, left).unwrap_or_else(|error| panic!("{name} (left): {error}"));
     let right = check(cx, ty, right).unwrap_or_else(|error| panic!("{name} (right): {error}"));
@@ -608,115 +438,7 @@ fn the_two_folds_run_in_the_directions_their_names_say() {
     );
 }
 
-/// The round trip: what `collect` builds is what the fold read.
-///
-/// This is where `push` being snoc is load-bearing rather than a comment. The
-/// law is stated at a list whose elements are distinct, so a `push` that
-/// prepended would build the reverse and fail here rather than pass on a
-/// palindrome.
-#[test]
-fn collecting_a_list_gives_back_the_list() {
-    let cx = context();
-    let list_nat = core(&cx, "List Nat", &list_of(var("Nat")));
-    same(
-        &cx,
-        "collect at the source's own type is the identity",
-        &list_nat,
-        &Raw::method(WRITTEN, numbers([0, 1, 2]), "collect"),
-        &numbers([0, 1, 2]),
-    );
-}
-
-/// §1.6's `map`: the function applied to every element, in order.
-#[test]
-fn mapping_applies_the_function_to_every_element_in_order() {
-    let cx = context();
-    let list_nat = core(&cx, "List Nat", &list_of(var("Nat")));
-    same(
-        &cx,
-        "map",
-        &list_nat,
-        &apply(Raw::method(WRITTEN, numbers([0, 1, 2]), "map"), [var("Nat.Succ")]),
-        &numbers([1, 2, 3]),
-    );
-}
-
-/// `collect` and `map` commute, which is the prompt's law and also the check
-/// that the two derived methods share one traversal.
-///
-/// They are written from one body ([`accumulating`]) so a failure here would be
-/// a failure of the *dictionary* rather than of either method: the two are
-/// reached at different own-parameters and different `Buildable` constraints, and
-/// this is where a use site that filled either wrongly shows up.
-#[test]
-fn collecting_and_mapping_commute() {
-    let cx = context();
-    let list_nat = core(&cx, "List Nat", &list_of(var("Nat")));
-    let source = numbers([0, 1, 2]);
-    let written = list_of(var("Nat"));
-    // Both intermediates are annotated for the same reason: `map` and `collect`
-    // fix their target by *checking*, and a receiver position infers. §1.6's
-    // refusal and §6's exact-receiver rule are one rule seen twice, and this is
-    // the annotation both diagnostics ask for.
-    same(
-        &cx,
-        "map then collect is collect then map",
-        &list_nat,
-        &Raw::method(
-            WRITTEN,
-            Raw::annot(
-                WRITTEN,
-                apply(Raw::method(WRITTEN, source.clone(), "map"), [var("Nat.Succ")]),
-                written.clone(),
-            ),
-            "collect",
-        ),
-        &apply(
-            Raw::method(
-                WRITTEN,
-                Raw::annot(WRITTEN, Raw::method(WRITTEN, source, "collect"), written),
-                "map",
-            ),
-            [var("Nat.Succ")],
-        ),
-    );
-}
-
-/// §1.6's `filter`, and the one derived method with no own parameters: a
-/// filtered container is the same container.
-#[test]
-fn filtering_keeps_the_elements_the_predicate_admits() {
-    let cx = context();
-    let list_nat = core(&cx, "List Nat", &list_of(var("Nat")));
-    // `A` is postponed with the dictionary, so the predicate's binder is checked
-    // against a metavariable and the `match` has no constructors to look at.
-    // Naming `Nat` is §6's repair, and the one an author writes.
-    let is_zero = Raw::annotated_lam(
-        WRITTEN,
-        "n",
-        var("Nat"),
-        matching(
-            var("n"),
-            vec![
-                arm(vec![con("Nat.Zero", [])], var("Bool.True")),
-                arm(vec![con("Nat.Succ", [bind("earlier")])], var("Bool.False")),
-            ],
-        ),
-    );
-    same(
-        &cx,
-        "filter",
-        &list_nat,
-        &apply(Raw::method(WRITTEN, numbers([0, 1, 0, 2]), "filter"), [is_zero]),
-        &numbers([0, 0]),
-    );
-}
-
-/// §5's indexing, and the Design's rule that it stays total.
-///
-/// Every index answers, including the ones past the end. There is no partial
-/// operator to reach for and nothing panics, which is the whole of what "total"
-/// buys: the out-of-range case is a value the author has to read.
+/// §1.6's indexing, and the rule that it stays total.
 #[test]
 fn indexing_a_list_answers_at_every_index() {
     let cx = context();
@@ -738,35 +460,12 @@ fn indexing_a_list_answers_at_every_index() {
     }
 }
 
-/// §1.6's refusal: `collect` in an inferring position names what it could not
-/// determine.
-///
-/// The rule this states is the one the feature is priced against. `collect`'s
-/// target is fixed by *checking*, and a checking position is something an author
-/// wrote; choosing the instance from a result type nobody has written down is
-/// return-type-directed overloading, which makes elaboration depend on the order
-/// constraints are reached. So the refusal is not a gap in inference — it is the
-/// design, and the diagnostic is an unsolved metavariable rather than a special
-/// case invented for `collect`.
-#[test]
-fn collect_in_an_inferring_position_is_refused() {
-    let cx = context();
-    let Err(error) = infer(&cx, &Raw::method(WRITTEN, numbers([0, 1]), "collect")) else {
-        panic!("`xs.collect()` with nothing to check against must be refused, not guessed at");
-    };
-    let refusal = crate::programs::refusal("collect with no target", error);
-    assert!(
-        matches!(refusal, Refusal::Unsolved { .. }),
-        "the report is the unsolved target, got `{refusal}`"
-    );
-}
-
 /// Note 41 §4's `voiced_inside`, written the way the finding said it could not be.
 ///
 /// The trial's words: a chord's pitches must come out as one list, a nested
 /// group may hold several, "and the phase language has no operation that builds a
 /// list or joins two", so a group written inside brackets contributed no pitch.
-/// `map` alone cannot close it, because a `map` is length-preserving and this
+/// A `map` alone cannot close it, because a `map` is length-preserving and this
 /// traversal is not — three children yield three pitches here only by accident of
 /// the fixture, and the second child yields none.
 ///
@@ -785,7 +484,7 @@ fn a_nested_forward_traversal_joins_what_a_map_could_not() {
         apply(
             Raw::method(WRITTEN, var("groups"), "fold_from_start"),
             [
-                var("Buildable.empty"),
+                apply(var("List.Nil"), [var("Nat")]),
                 lam(
                     "done",
                     Raw::annotated_lam(
@@ -798,7 +497,7 @@ fn a_nested_forward_traversal_joins_what_a_map_could_not() {
                                 var("done"),
                                 lam(
                                     "built",
-                                    lam("pitch", apply(var("Buildable.push"), [var("built"), var("pitch")])),
+                                    lam("pitch", apply(var("List.push"), [var("built"), var("pitch")])),
                                 ),
                             ],
                         ),
@@ -824,4 +523,42 @@ fn a_nested_forward_traversal_joins_what_a_map_could_not() {
         ),
         &numbers([0, 1, 2]),
     );
+}
+
+/// §1.6's refusal: a fold in an inferring position names what it could not
+/// determine.
+///
+/// The rule this states is the one the feature is priced against. A fold's
+/// answer type is fixed by what its seed and its step say, and a *use* with
+/// neither — `xs.fold_from_start` standing alone — has nothing to read it off.
+/// Choosing it from a result type nobody has written down is return-type-directed
+/// overloading, which makes elaboration depend on the order constraints are
+/// reached. So the refusal is not a gap in inference — it is the design, and the
+/// diagnostic is an unsolved metavariable rather than a special case invented for
+/// traversals.
+#[test]
+fn a_fold_with_no_answer_type_is_refused_as_the_hole_it_is() {
+    let cx = context();
+    let Err(error) = infer(&cx, &Raw::method(WRITTEN, numbers([0, 1]), "fold_from_start")) else {
+        panic!("`xs.fold_from_start` with nothing to read `B` off must be refused, not guessed at");
+    };
+    let refusal = crate::programs::refusal("a fold with no answer type", error);
+    assert!(
+        matches!(refusal, Refusal::Unsolved { .. }),
+        "the report is the unsolved answer type, got `{refusal}`"
+    );
+}
+
+/// The refusal this suite owns, for `elaboration_laws.rs`'s coverage gate.
+///
+/// Beside the law rather than inside it because the gate asks a different
+/// question — *every* refusal has a program that reaches it — and it needs the
+/// container context, which no other corpus has a reason to declare.
+pub(crate) fn refused_collections() -> Vec<(&'static str, Cx, Raw, fn(&Refusal) -> bool)> {
+    vec![(
+        "a fold with no answer type",
+        context(),
+        Raw::method(WRITTEN, numbers([0, 1]), "fold_from_start"),
+        |refusal| matches!(refusal, Refusal::Unsolved { .. }),
+    )]
 }

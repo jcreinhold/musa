@@ -299,10 +299,9 @@ impl Elaborator {
                 }
                 Filling::Constraint(constraint) => {
                     let constraint = Arc::clone(constraint);
-                    // The codomain reads the dictionary off its binder; a hole
-                    // stands for it, and [`Self::settled`] writes the resolved
-                    // dictionary in — the one place resolution runs, for the
-                    // reason the field's doc gives.
+                    // The codomain reads the evidence off its binder; a hole
+                    // stands for it, and [`Self::settled`] writes the computed
+                    // evidence in — the one place a constraint is answered.
                     let hole = self.fresh_hole(current.origin, domain);
                     self.constraints.push((
                         constraint,
@@ -311,7 +310,7 @@ impl Elaborator {
                         current.origin,
                         hole.clone(),
                     ));
-                    walk.slots.push(Slot::Dictionary(hole.clone()));
+                    walk.slots.push(Slot::Evidence(hole.clone()));
                     let value = Value::neutral(Neutral::head(current.origin, crate::value::Head::Hole(hole)));
                     *ty = apply_closure(&mut self.meter, codomain, value)?;
                 }
@@ -336,7 +335,7 @@ impl Elaborator {
         let mut term = head;
         for slot in &walk.slots {
             let argument = match slot {
-                Slot::Parameter(hole) | Slot::Dictionary(hole) => Term::hole(here, hole.clone()),
+                Slot::Parameter(hole) | Slot::Evidence(hole) => Term::hole(here, hole.clone()),
                 Slot::Argument(term) => term.clone(),
                 // The placeholder is the fallback rather than a panic because
                 // it is a *correct* term: the second pass solved it to the
@@ -382,8 +381,8 @@ pub(super) enum Slot {
     /// An implicit parameter: the hole stands in the term whether or not the
     /// walk solved it, and [`Elaborator::settled`] audits at declaration end.
     Parameter(crate::meta::Hole),
-    /// A constraint's dictionary, resolved at declaration end.
-    Dictionary(crate::meta::Hole),
+    /// A constraint's evidence, computed at declaration end.
+    Evidence(crate::meta::Hole),
     /// An argument the author wrote, elaborated.
     Argument(Term),
     /// An argument the walk deferred, standing at the placeholder that held

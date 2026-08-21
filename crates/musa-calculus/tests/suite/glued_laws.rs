@@ -30,10 +30,7 @@ fn definition(name: &str, ty: Option<Raw>, value: Raw) -> RawTopLevel {
 }
 
 fn program(definitions: Vec<RawTopLevel>) -> RawProgram {
-    RawProgram {
-        definitions,
-        instances: Vec::new(),
-    }
+    RawProgram { definitions }
 }
 
 fn arrow(domain: Raw, codomain: Raw) -> Raw {

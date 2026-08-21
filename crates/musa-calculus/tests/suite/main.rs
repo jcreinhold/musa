@@ -17,7 +17,6 @@
 
 mod base_laws;
 mod budget_laws;
-mod coherence_laws;
 mod collection_laws;
 mod conversion_laws;
 mod coverage_laws;
@@ -25,15 +24,15 @@ mod elaboration_laws;
 mod family_laws;
 mod glued_laws;
 mod index_laws;
+mod namespace_laws;
 mod nesting_laws;
 mod normalization_laws;
 mod numeral_laws;
-mod operator_laws;
 mod program_laws;
 mod provenance_laws;
 mod record_laws;
+mod storable_laws;
 mod termination_laws;
-mod trait_laws;
 mod unification_laws;
 mod visibility_laws;
 

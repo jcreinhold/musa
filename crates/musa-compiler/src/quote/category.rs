@@ -156,9 +156,7 @@ token_kinds!(
     EnumKw,
     ModuleKw,
     PrivateKw,
-    TraitKw,
     ImplKw,
-    WhereKw,
     QuoteKw,
     Error,
 );

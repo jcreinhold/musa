@@ -445,12 +445,8 @@ enum RawToken {
     ModKw,
     #[token("private", priority = 3)]
     PrivateKw,
-    #[token("trait", priority = 3)]
-    TraitKw,
     #[token("impl", priority = 3)]
     ImplKw,
-    #[token("where", priority = 3)]
-    WhereKw,
 }
 
 impl RawToken {
@@ -597,9 +593,7 @@ impl RawToken {
             | Self::ModuleKw
             | Self::ModKw
             | Self::PrivateKw
-            | Self::TraitKw
-            | Self::ImplKw
-            | Self::WhereKw => None,
+            | Self::ImplKw => None,
         }
     }
 
@@ -743,9 +737,7 @@ impl RawToken {
             Self::ModuleKw => SyntaxKind::ModuleKw,
             Self::ModKw => SyntaxKind::ModKw,
             Self::PrivateKw => SyntaxKind::PrivateKw,
-            Self::TraitKw => SyntaxKind::TraitKw,
             Self::ImplKw => SyntaxKind::ImplKw,
-            Self::WhereKw => SyntaxKind::WhereKw,
         }
     }
 }

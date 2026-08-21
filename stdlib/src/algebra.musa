@@ -3,16 +3,26 @@ library {
     //
     // Every one of them was already in the library, written by hand under a
     // different name: `interval_add` and `interval_inverse` are a group, and
-    // the `Transposable` trait was an action. Naming them is not abstraction
-    // for its own sake — it is what lets a reader recognize in one module the
-    // structure they already read in another, and what stops the same
-    // operation acquiring a third spelling in a fourth place.
+    // `pitch_transposed` beside `pitchclass_transposed` is one action spelled
+    // twice. Naming them is not abstraction for its own sake — it is what lets
+    // a reader recognize in one module the structure they already read in
+    // another, and what stops the same operation acquiring a third spelling in
+    // a fourth place.
     //
     // The laws each one is expected to satisfy are prose here and law suites in
-    // `docs/rules/language/05-verification.md` §4. A trait declaration in this
-    // language carries methods and never obligations, for the reason
-    // `docs/rules/language/10-traits.md` §9 states: an obligation needs
-    // evidence, and evidence needs a term witnessing an equality.
+    // `docs/rules/language/05-verification.md` §4. A record in this language
+    // carries fields and never obligations: an obligation needs evidence, and
+    // evidence needs a term witnessing an equality.
+    //
+    // # Records, and what the operations are
+    //
+    // Each structure is a record, so it is a *value*: a function may take two
+    // groups, return one, or hold one in a list, none of which the interface
+    // these replaced could do. What a record cannot do is decide which
+    // operation a call means — and nothing has to, because the operations live
+    // in each carrier's own namespace. `P5.unit()` is `Interval.unit(P5)` and
+    // `c4.act(M3)` is `Pitch.act(c4, M3)`, each an ordinary definition found by
+    // the head of the receiver's type.
 
     // A set with an associative composition, a unit, and inverses.
     //
@@ -22,23 +32,21 @@ library {
     // Not every set of movers is one. A duration composes and has a zero and
     // has no inverse, because a duration is a length and not a displacement,
     // and `Action` below is stated so that such a mover is still admitted.
-    trait Group<G> {
+    //
+    // `unit` takes an element, which looks redundant and is not: the element is
+    // read for its *type* and never for its value, so `P5.unit()` is `P1` and so
+    // is `m2.unit()`. Written as a field it is what a caller of the record
+    // supplies; written as `Interval.unit` it is what `P5.unit()` finds.
+    record Group<G> {
         // The element that changes nothing.
-        //
-        // It takes one, which looks redundant and is not. A method with no
-        // argument of the trait's own type gives resolution nothing to key on:
-        // `10-traits.md` §4 finds an instance from a written type, and §6
-        // refuses to choose one from a return type nobody supplied. So the
-        // element is read for its *type* and never for its value —
-        // `P5.unit()` is `P1`, and so is `m2.unit()`.
-        fn unit(element: G) -> G;
+        unit: G -> G;
 
-        // Apply `second`, then `first`. The order is the one `std::core`'s
+        // Apply the second, then the first. The order is the one `std::core`'s
         // `compose` already uses, so a reader who knows that knows this.
-        fn compose(first: G, second: G) -> G;
+        compose: G -> G -> G;
 
         // The element that undoes this one.
-        fn inverse(element: G) -> G;
+        inverse: G -> G;
     }
 
     // A carrier moved by a set of movers.
@@ -53,30 +61,30 @@ library {
     // call: if composing two movers and acting once agrees with acting twice,
     // a chain can be built before anything is applied.
     //
-    // **The carrier comes first**, because `10-traits.md` §2 keys an instance
-    // on the first parameter and one mover moves several carriers — an interval
-    // moves both a pitch and a spelled pitch class, which is the two impls
-    // `Transposable` had. Writing the mover first would make those one head and
-    // one of them an error. It also puts the head where §6's method syntax
-    // looks, since `x.act(g)` resolves on `x`.
-    trait Action<X, G> {
+    // **The carrier comes first** (`docs/rules/style-guide.md` §6). One mover
+    // moves several carriers — an interval moves both a pitch and a spelled
+    // pitch class — and the carrier is what a reader is asking about, so it is
+    // what the parameter list says first. It is also where `x.act(g)` looks:
+    // the receiver decides which `act` runs.
+    record Action<X, G> {
         // Move one member of the carrier by one mover.
-        fn act(subject: X, operation: G) -> X;
+        act: X -> G -> X;
     }
 
     // A carrier on which the movers act *simply transitively*: every ordered
     // pair of points is joined by exactly one mover.
     //
-    // That uniqueness is the whole content, so `difference` is the whole trait.
-    // The movement itself is `Action::act` and is not declared twice; the law
-    // joining them is `act(a, difference(a, b))` is `b`, for every `a` and `b`.
+    // That uniqueness is the whole content, so `difference` is the whole record.
+    // The movement itself is an `Action`'s `act` and is not declared twice; the
+    // law joining them is `act(a, difference(a, b))` is `b`, for every `a` and
+    // `b`.
     //
     // **Two points never add.** `a + b` for two pitches or two positions is the
     // single arithmetic error the point/mover split exists to catch, so there
-    // is no method here that could spell it.
-    trait Torsor<P, V> {
+    // is no field here that could spell it.
+    record Torsor<P, V> {
         // The mover carrying `start` to `finish`. Unique — that is the claim.
-        fn difference(start: P, finish: P) -> V;
+        difference: P -> P -> V;
     }
 
     // Written musical time, moved by a written length.
@@ -90,9 +98,10 @@ library {
     //
     // At written time, and not at clock time. `Position<PhysicalTime>` is a
     // performance coordinate and the two do not unify, which is roadmap §2's
-    // layer table; an instance at both would be one word claiming the pair is
-    // one structure.
-    impl Action<Position<WrittenTime>, Duration<WrittenTime>> {
+    // layer table; a second `act` at that coordinate would be one word claiming
+    // the pair is one structure. The namespace is keyed on `Position` alone, so
+    // the coordinate is written where it belongs — in the signature.
+    impl Position {
         fn act(
             subject: Position<WrittenTime>,
             operation: Duration<WrittenTime>,
