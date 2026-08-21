@@ -20,7 +20,7 @@
 //! A `StudioSpec` is **editable intent**, not a render plan: written values
 //! keep the unit they were written in (`-15 dB` stays decibels), and the
 //! conversion to whatever the DSP wants happens once, at the graph boundary
-//! in `musa-audio`. That is what lets a studio UI show the user what they
+//! in `musa-dsp`. That is what lets a studio UI show the user what they
 //! typed rather than what the compiler made of it.
 
 use indexmap::IndexMap;
@@ -29,7 +29,7 @@ use musa_score::origin::SourceSpan;
 
 /// A parameter's physical unit (§7.2: units are part of the syntax).
 ///
-/// This is the **one** unit declaration in the workspace: `musa-audio`
+/// This is the **one** unit declaration in the workspace: `musa-dsp`
 /// re-exports it rather than defining its own, so a language-level `1400 Hz`
 /// and a DSP-level cutoff descriptor cannot disagree about what `Hz` is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -134,7 +134,7 @@ pub struct ParamSpec {
     /// from −60 to +12, not from 0 to 1.
     ///
     /// This is the *writable* range, which is not the DSP's clamp: a graph
-    /// parameter's descriptor in `musa-audio` bounds what the processor will
+    /// parameter's descriptor in `musa-dsp` bounds what the processor will
     /// accept in linear terms, and this bounds what a composer means by
     /// turning a knob all the way up. They answer different questions, and a
     /// slider needs this one.

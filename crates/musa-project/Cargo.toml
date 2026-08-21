@@ -11,11 +11,11 @@ workspace = true
 
 [dependencies]
 hound = "3"
-musa-audio = { workspace = true }
 musa-compiler = { workspace = true }
-musa-engine = { workspace = true }
+musa-dsp = { workspace = true }
 musa-language = { workspace = true }
 musa-notation = { workspace = true }
+musa-playback = { workspace = true }
 musa-score = { workspace = true }
 num-rational = "0.4"
 serde = { version = "1", features = ["derive"] }

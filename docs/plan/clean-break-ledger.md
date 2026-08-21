@@ -56,7 +56,7 @@ best-effort translation.
 | `Scheduled<A>` | `Schedule<A>`, matching the existing `ScheduleError` | 151 |
 | `musa_compiler::core::Music`, `MusicOperation`, `MusicRole` | ordinary values of ordinary types | 142 |
 | the private `close` and `instantiate_music` elaboration path, and the fragment type they close | building and closing over ordinary values | 142 |
-| `musa_audio::compile_graph` and public `StudioGraphSpec` as a semantic alternative | machine construction and `prepare_audio(format, machine)` | 152 |
+| `musa_dsp::compile_graph` and public `StudioGraphSpec` as a semantic alternative | machine construction and `prepare_audio(format, machine)` | 152 |
 | `RenderPlan` / `PreparedExecution` as the public prepared artifact | `PreparedMachine` | 150, 152 |
 | a caller- or preparation-chosen "semantic step" option | one audio step is one sample frame; batching is a checked `batch(n)` contract | 152 |
 

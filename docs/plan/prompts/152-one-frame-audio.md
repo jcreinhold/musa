@@ -16,7 +16,7 @@ machine reference semantics. Delete host-block-defined sound and the old public 
 ## Read
 
 - The prompt-127a audio rules, research `05-selected-calculus.md` §6, and `17-final-review.md` current-code audit.
-- Current `musa-audio/src/{plan,spec,effects,filter,envelope,synth}.rs`, `musa-engine`, prompt 31 laws, and RT tests.
+- Current `musa-dsp/src/{plan,spec,effects,filter,envelope,synth}.rs`, `musa-playback`, prompt 31 laws, and RT tests.
 - `docs/rules/obligations.md` real-time and whole-processor rules after prompt 127a.
 
 ## Design
@@ -46,13 +46,13 @@ preparation. Private flattening may retain arrays and schedules but must preserv
 ## Check
 
 ```sh
-cargo nextest run -p musa-audio -p musa-engine -p musa-project -p musa
-cargo nextest run --run-ignored all -p musa-audio -p musa-engine
+cargo nextest run -p musa-dsp -p musa-playback -p musa-project -p musa
+cargo nextest run --run-ignored all -p musa-dsp -p musa-playback
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
-cargo bench -p musa-audio
-bash .agents/skills/module-design/scripts/audit-module.sh crates/musa-audio
-bash .agents/skills/module-design/scripts/audit-module.sh crates/musa-engine
+cargo bench -p musa-dsp
+bash .agents/skills/module-design/scripts/audit-module.sh crates/musa-dsp
+bash .agents/skills/module-design/scripts/audit-module.sh crates/musa-playback
 ```
 
 Commit as `Make one audio frame the reference meaning`.

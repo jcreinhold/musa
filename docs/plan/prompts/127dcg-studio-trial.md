@@ -26,7 +26,7 @@ one syntax machinery is what the trial is for; one adapter proves nothing about 
   differ in every musical row and in no compiler-facing row.
 - `docs/rules/constitution.md` §4 and §7 — the finite-process/running-signal distinction, and why a graph *description*
   is finite data while the process it describes is not. The adapter neither allocates a processor nor steps audio.
-- `crates/musa-audio/src/`: the existing studio graph spec and its render-plan compiler. The adapter produces a
+- `crates/musa-dsp/src/`: the existing studio graph spec and its render-plan compiler. The adapter produces a
   description; what already exists consumes one, and the two must not become two ontologies.
 - Prompts 127dcc–127dcfb: anchors, `edit`, `print`, the levels, and the staff trial the boundary is now shared with.
 - Prompt [127dcfaf](127dcfaf-syntax-step-recursor.md) and the paper trial [127dcfae](127dcfae-recursor-trial.md) — the
@@ -69,8 +69,8 @@ asymmetry in the compiler-facing rows is the finding the trial exists to produce
 ## Check
 
 ```sh
-cargo nextest run -p musa-compiler -p musa-project -p musa-lsp -p musa-audio
-cargo clippy --all-targets -p musa-compiler -p musa-project -p musa-lsp -p musa-audio -- -D warnings
+cargo nextest run -p musa-compiler -p musa-project -p musa-lsp -p musa-dsp
+cargo clippy --all-targets -p musa-compiler -p musa-project -p musa-lsp -p musa-dsp -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
@@ -81,7 +81,7 @@ Commit as `Write the studio adapter as an unprivileged package`.
 ## Stop
 
 - No compiler privilege, no private parser or checker access, and no inferred type reaching the adapter.
-- No allocation of processors, no audio stepping, and no change to `musa-audio`'s render-plan compiler — the adapter
+- No allocation of processors, no audio stepping, and no change to `musa-dsp`'s render-plan compiler — the adapter
   produces a description and stops.
 - No surface cutover and no removal of existing studio syntax; prompt 127e owns that.
 - No freeze, no proofs, and no conformance script; prompt 127dd carries those.

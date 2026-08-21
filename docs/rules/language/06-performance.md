@@ -79,8 +79,8 @@ The declaration-heavy fixture is deliberately small after evaluation: its cost i
 not note production. The open/higher-order pair has the opposite purpose: similar denotations with different source
 structure expose traversal or sharing regressions.
 
-`cargo bench -p musa-audio --bench audio_bridge` measures a fresh prepared plan per sample, with plan preparation
-outside the timed region. At 48 kHz, block size 128, and 240,000 rendered frames, the clean prompt-93 baseline is:
+`cargo bench -p musa-dsp --bench audio_bridge` measures a fresh prepared plan per sample, with plan preparation outside
+the timed region. At 48 kHz, block size 128, and 240,000 rendered frames, the clean prompt-93 baseline is:
 
 | median | observed range | samples | allocations | bytes allocated | maximum live allocator bytes |
 | ---: | ---: | ---: | ---: | ---: | ---: |

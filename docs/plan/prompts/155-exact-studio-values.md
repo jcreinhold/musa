@@ -31,7 +31,7 @@ enough spelling/span information for diagnostics and token-scoped edits. Decimal
 rational; unit normalization (`ms` versus `s`) is exact. Equality used for compilation is exact value plus dimension;
 source equality still distinguishes spellings where the lossless CST does.
 
-Conversion to `f32`/`f64`, dB→linear, filter coefficients, sample-rate ratios, and frame counts happens in `musa-audio`
+Conversion to `f32`/`f64`, dB→linear, filter coefficients, sample-rate ratios, and frame counts happens in `musa-dsp`
 plan preparation or the existing performance frame boundary, never during parsing or `StudioSpec` construction. Specify
 rounding and finite/range failure. A UI edit preserves the written unit and replaces only its token; it does not rewrite
 `30 ms` as `0.03 s`.
@@ -42,7 +42,7 @@ conversion and differential parity for previously accepted values.
 ## Target
 
 - Exact written quantity in `musa-compiler`; migrated `StudioSpec`, processor arguments, sends, and compiler facts.
-- One audited conversion module in `musa-audio`, private to plan preparation.
+- One audited conversion module in `musa-dsp`, private to plan preparation.
 - Laws for decimal/ratio equality, unit conversion, edit spelling preservation, range diagnostics, and migrated-corpus
   audio behavior within the documented floating tolerance.
 - Remove prompt 93's eager-float ledger entry.
@@ -50,11 +50,11 @@ conversion and differential parity for previously accepted values.
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-audio -p musa-project -p musa-lsp
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-audio -p musa-project -p musa-lsp -- -D warnings
+cargo nextest run -p musa-language -p musa-compiler -p musa-dsp -p musa-project -p musa-lsp
+cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-dsp -p musa-project -p musa-lsp -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
-rg -n "WrittenQuantity|exact decimal|DSP boundary" docs/rules/language crates/musa-compiler crates/musa-audio
+rg -n "WrittenQuantity|exact decimal|DSP boundary" docs/rules/language crates/musa-compiler crates/musa-dsp
 ```
 
 Commit as `Keep written studio values exact`.

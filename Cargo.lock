@@ -2332,19 +2332,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "musa-audio"
-version = "0.1.0"
-dependencies = [
- "divan",
- "hound",
- "insta",
- "musa-compiler",
- "musa-score",
- "thiserror 2.0.20",
- "tracing",
-]
-
-[[package]]
 name = "musa-calculus"
 version = "0.1.0"
 dependencies = [
@@ -2387,15 +2374,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "musa-engine"
+name = "musa-dsp"
 version = "0.1.0"
 dependencies = [
- "cpal",
- "midir",
- "musa-audio",
+ "divan",
+ "hound",
+ "insta",
  "musa-compiler",
  "musa-score",
- "rtrb",
  "thiserror 2.0.20",
  "tracing",
 ]
@@ -2451,15 +2437,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "musa-playback"
+version = "0.1.0"
+dependencies = [
+ "cpal",
+ "midir",
+ "musa-compiler",
+ "musa-dsp",
+ "musa-score",
+ "rtrb",
+ "thiserror 2.0.20",
+ "tracing",
+]
+
+[[package]]
 name = "musa-project"
 version = "0.1.0"
 dependencies = [
  "hound",
- "musa-audio",
  "musa-compiler",
- "musa-engine",
+ "musa-dsp",
  "musa-language",
  "musa-notation",
+ "musa-playback",
  "musa-score",
  "num-rational",
  "serde",

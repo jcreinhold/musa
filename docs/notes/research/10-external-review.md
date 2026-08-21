@@ -41,7 +41,7 @@ I also ran these targeted tests on the review worktree:
 ```text
 cargo test -p musa-kernel interchange -- --nocapture
 cargo test -p musa-compiler a_classs_degree_is_its_framed_degree_with_the_register_forgotten -- --nocapture
-cargo test -p musa-audio mismatch -- --nocapture
+cargo test -p musa-dsp mismatch -- --nocapture
 ```
 
 All passed: three kernel interchange tests, the named scale test, and the two audio mismatch tests. There were unrelated
@@ -500,7 +500,7 @@ they show why following the exact consumer matters.
 ### 6.2 `StudioGraphSpec` does cross a crate boundary
 
 **VERIFIED.** The syntactic observation in P-3 is true: downstream code seldom spells the type name. The semantic
-conclusion is false. `musa_audio::lower_studio` publicly returns `(StudioGraphSpec, StudioLowering)`.
+conclusion is false. `musa_dsp::lower_studio` publicly returns `(StudioGraphSpec, StudioLowering)`.
 `musa-project/src/playback.rs` calls it, binds the inferred `spec`, and passes that value to `compile_graph`. Rust type
 inference does not make a public type stop crossing a crate boundary.
 
@@ -528,7 +528,7 @@ not a second mutable studio AST. That is a good boundary.
 
 ### 6.4 The audio layer already checks the advertised bug class
 
-**VERIFIED.** `musa-audio` defines `PortKind` variants for audio channel counts, control, gate, and note events.
+**VERIFIED.** `musa-dsp` defines `PortKind` variants for audio channel counts, control, gate, and note events.
 `compile_graph` validates port compatibility and graph output. The tests `port_mismatch_is_rejected` and
 `channel_mismatch_requires_adapter` pass. Rate is currently a graph option rather than a per-node symbolic index;
 channel shape is attached to ports.

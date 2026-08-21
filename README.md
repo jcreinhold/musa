@@ -91,8 +91,8 @@ language → compiler → { render, audio } → engine → project → { cli, ls
 | `musa-kernel` | the temporal kernel: exact rational time, typed occurrences, timeline/sequence/overlay |
 | `musa-compiler` | name resolution, units, elaboration through the kernel, score and performance snapshots |
 | `musa-notation` | engraving plan, MEI, LilyPond, MusicXML, MIDI |
-| `musa-audio` | the studio graph, DSP processors, offline rendering |
-| `musa-engine` | audio device, transport, real-time queues, MIDI input |
+| `musa-dsp` | the studio graph, DSP processors, offline rendering |
+| `musa-playback` | audio device, transport, real-time queues, MIDI input |
 | `musa-project` | the session facade: documents, revisions, commands, exports |
 | `musa`, `apps/musa-desktop`, `musa-lsp` | thin shells over `musa-project` |
 | `editors/tree-sitter-musa` | tree-sitter grammar and editor queries; a second reader held honest by the lexer |

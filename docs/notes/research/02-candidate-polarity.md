@@ -43,7 +43,7 @@ An identifier may be bound only to a value, so contexts hold value types only. `
 | computation type | a signal: an unbounded sample stream, defined by what it produces when observed |
 | `F A` | a computation that yields a score value — the compiler's own pipeline stage |
 | `U B` | **the prepared render plan**: a *value* that suspends a signal computation |
-| `force` | what `musa-engine` does in the audio callback |
+| `force` | what `musa-playback` does in the audio callback |
 | `thunk` | what `prepare(M, B, s)` returns |
 
 The claim is narrow and checkable: `docs/core-boundary.md` §5 says signals are coinductive, the kernel is inductive, and
@@ -86,7 +86,7 @@ calculus — is preserved exactly. *What does the work:* patches are finite and 
 **G-1. CBPV as published has no recursive types.** Levy: *"We omit recursive types, as these are beyond the scope of
 this paper."* A sample stream needs a recursive computation type (`νX. A → X`, or a resumption). So P gives the right
 *shape* for the boundary and does not, on its own, supply the object on the far side. This is the largest gap and it is
-not fatal — the far side is `musa-audio`, which is not asking the kernel for a type — but it must not be papered over.
+not fatal — the far side is `musa-dsp`, which is not asking the kernel for a type — but it must not be papered over.
 
 **G-2. Negative ≠ coinductive, exactly.** CBPV computation types are algebras for a strong monad (Levy §3); "codata
 defined by its observations" is the polarized reading, which is compatible but not identical. `A → B` pops, `Πᵢ Bᵢ` pops

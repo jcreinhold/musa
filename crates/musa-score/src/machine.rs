@@ -503,7 +503,7 @@ impl SpecNode {
 /// bytes, so a cache keyed on it cannot confuse two units that differ only in
 /// a configuration value.
 ///
-/// Its named consumer is `musa-audio`, at prompt 152's `prepare_audio`.
+/// Its named consumer is `musa-dsp`, at prompt 152's `prepare_audio`.
 ///
 /// [`digest`]: MachineSpec::digest
 #[derive(Clone, Debug, PartialEq, Eq)]

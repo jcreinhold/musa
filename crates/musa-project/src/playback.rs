@@ -7,7 +7,7 @@
 
 use musa_compiler::StudioSpec;
 
-use musa_engine::PreparedPlaybackPlan;
+use musa_playback::PreparedPlaybackPlan;
 use musa_score::{PerformanceEvent, PerformanceOptions, PerformancePlan, ScoreSnapshot, lower_performance};
 
 use crate::error::ProjectError;
@@ -25,19 +25,19 @@ pub(crate) fn sample_rate() -> u32 {
 fn build(
     score: &ScoreSnapshot,
     studio: &StudioSpec,
-) -> Result<(musa_audio::RenderPlan, Vec<PerformanceEvent>, u64), ProjectError> {
+) -> Result<(musa_dsp::RenderPlan, Vec<PerformanceEvent>, u64), ProjectError> {
     let performance = lower_performance(score, &PerformanceOptions::default())
         .map_err(|e| ProjectError::Performance(e.to_string()))?;
     let sample_rate = sample_rate();
     let events = collect_events(&performance);
-    let options = musa_audio::GraphOptions {
+    let options = musa_dsp::GraphOptions {
         sample_rate,
         block_size: BLOCK_SIZE,
     };
     // An empty studio lowers to the default instrument, so this one call
     // covers both the zero-setup piece and the fully patched one (§14.8).
-    let (spec, lowering) = musa_audio::lower_studio(studio, &options);
-    let plan = musa_audio::compile_graph(&spec, &options).map_err(|e| ProjectError::Performance(e.to_string()))?;
+    let (spec, lowering) = musa_dsp::lower_studio(studio, &options);
+    let plan = musa_dsp::compile_graph(&spec, &options).map_err(|e| ProjectError::Performance(e.to_string()))?;
     // A second of room, plus however long the studio's longest release is:
     // an export must contain the end of the sound, not the end of the notes.
     let tail =
@@ -67,7 +67,7 @@ pub(crate) fn prepare(score: &ScoreSnapshot, studio: &StudioSpec) -> Result<Prep
 /// encoding fails.
 pub(crate) fn to_wav(score: &ScoreSnapshot, studio: &StudioSpec) -> Result<Vec<u8>, ProjectError> {
     let (mut plan, events, frames) = build(score, studio)?;
-    let audio = musa_audio::render_offline(&mut plan, &events, frames);
+    let audio = musa_dsp::render_offline(&mut plan, &events, frames);
     wav_bytes(&audio)
 }
 
@@ -133,7 +133,7 @@ fn collect_events(performance: &PerformancePlan) -> Vec<PerformanceEvent> {
 }
 
 /// Encode rendered audio as a 32-bit float stereo WAV (§13.8).
-fn wav_bytes(audio: &musa_audio::RenderedAudio) -> Result<Vec<u8>, ProjectError> {
+fn wav_bytes(audio: &musa_dsp::RenderedAudio) -> Result<Vec<u8>, ProjectError> {
     let spec = hound::WavSpec {
         channels: 2,
         sample_rate: audio.sample_rate(),

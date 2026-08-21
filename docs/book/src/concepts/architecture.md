@@ -14,8 +14,8 @@ Dependencies point one way only. No dependency points upward.
 | `musa-kernel` | The temporal kernel: exact rational time, typed occurrences, track/follow/together |
 | `musa-compiler` | Name resolution, units, elaboration through the kernel, score and performance snapshots |
 | `musa-notation` | The engraving plan; MEI, LilyPond, MusicXML, and MIDI export |
-| `musa-audio` | The studio graph, DSP processors, offline rendering |
-| `musa-engine` | The audio device, transport, real-time queues, MIDI input |
+| `musa-dsp` | The studio graph, DSP processors, offline rendering |
+| `musa-playback` | The audio device, transport, real-time queues, MIDI input |
 | `musa-project` | The session facade: documents, revisions, commands, exports |
 | `musa`, `musa-lsp`, `apps/musa-desktop` | Thin shells over `musa-project` |
 | `editors/tree-sitter-musa` | A tree-sitter grammar held honest by the real lexer |
@@ -29,7 +29,7 @@ the CLI's check, and the app's score all come from one session over one compiler
 ## The boundaries are load-bearing
 
 Types from implementation libraries never cross crate boundaries. Parser internals stay in `musa-language`, DSP
-internals in `musa-audio`, device types in `musa-engine`. Public facades are narrow: `parse`, `compile`,
+internals in `musa-dsp`, device types in `musa-playback`. Public facades are narrow: `parse`, `compile`,
 `render_notation`, `compile_graph`, `AudioEngine`, `ProjectSession`. A consumer that needs something the facade does not
 offer is evidence the facade is missing a feature, not a reason to reach around it.
 

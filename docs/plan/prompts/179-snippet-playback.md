@@ -16,7 +16,7 @@ with the playhead's position mapped back onto the engraved score via the provena
 
 ## Read
 
-- Prompt 173 (the wasm shell this extends — the audio pipeline must join it without CPAL or `musa-engine`, which are
+- Prompt 173 (the wasm shell this extends — the audio pipeline must join it without CPAL or `musa-playback`, which are
   native-only) and prompts 15–17 (performance plan, offline audio core), 164–165 (clip/cue semantics the playback must
   respect).
 - Prompt 177's provenance interaction — playhead highlighting is `highlight(eventId)` driven by a clock, not a new
@@ -25,7 +25,7 @@ with the playhead's position mapped back onto the engraved score via the provena
 ## Design
 
 To be written when this prompt is scheduled. The shape it must take, fixed now so earlier prompts do not foreclose it:
-`musa-audio`'s prepared machine and offline renderer cross to wasm behind a feature flag (CPAL and the engine stay
+`musa-dsp`'s prepared machine and offline renderer cross to wasm behind a feature flag (CPAL and the engine stay
 native); the web package gains `playback?: boolean` per score; playback state (playhead time → covering events) is
 computed from the scheduled event decisions, not by parsing SVG. Determinism and exact rational time are inherited, not
 re-derived.

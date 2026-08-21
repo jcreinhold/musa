@@ -251,7 +251,7 @@ impl Compilation {
     ///
     /// A [`musa_score::MachineSpec`] is immutable, flat, and exact, and it is the
     /// only form a machine leaves the compiler in. Its named consumer is
-    /// `musa-audio`, which prepares one into something that can be stepped.
+    /// `musa-dsp`, which prepares one into something that can be stepped.
     pub fn machine(&self, name: &str) -> Option<&musa_score::MachineSpec> {
         self.machines
             .iter()

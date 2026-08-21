@@ -9,7 +9,7 @@ specification does not.
 Dependency direction is one-way and never points back:
 
 ```text
-musa-language → musa-compiler → {musa-notation, musa-audio} → musa-engine → musa-project → {musa, musa-lsp, musa-desktop}
+musa-language → musa-compiler → {musa-notation, musa-dsp} → musa-playback → musa-project → {musa, musa-lsp, musa-desktop}
                      ↑
                 musa-kernel (leaf)
 ```
@@ -51,8 +51,7 @@ The shape to hold in mind:
    `shift`, `scale`, and `restrict`, with `let` for sharing.
 5. **Normalize** the term (`../../rules/kernel/05-normalization.md`), which fixes occurrence order, payload
    serialization, semantic equality, and the semantic hash.
-6. **Project** into a `ScoreSnapshot` and a performance snapshot, which is what `musa-notation` and `musa-audio`
-   consume.
+6. **Project** into a `ScoreSnapshot` and a performance snapshot, which is what `musa-notation` and `musa-dsp` consume.
 
 The kernel is a leaf and stays one. A surface convenience must never become a seventh basis operation: if a construct
 cannot be elaborated from the six that exist (`../../rules/kernel/00-purpose.md`), the specification is what changes,

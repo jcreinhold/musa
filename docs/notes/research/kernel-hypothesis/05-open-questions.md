@@ -42,7 +42,7 @@ layers are an analysis, a claim in the sense of Amendment VI, and the kernel car
 itself just the layer the engraver chose to bar.
 
 **What settles it.** Whether any *non-analytic* consumer needs a layer. `musa-notation` needs one to bar and beam; that
-is satisfied by the notated meter alone. `musa-engine` needs one for a click; same. If no consumer outside analysis
+is satisfied by the notated meter alone. `musa-playback` needs one for a click; same. If no consumer outside analysis
 needs the non-notated layers, answer (ii) wins and Amendment III narrows to "the notated meter is a layer, not a region"
 — which is still enough to refute the region model and still enough to represent explicit polymeter.
 

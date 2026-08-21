@@ -25,7 +25,7 @@ signatures; no feature code yet.
   §15 tree has no root package; the CLI is the binary). Keep `[workspace.lints]` as-is and add
   `[lints] workspace = true` to each member crate.
 - Create exactly these crates, with only the roadmap §15 dependency edges: `musa-language` (no internal deps),
-  `musa-compiler` (→ language), `musa-notation` (→ compiler), `musa-audio` (→ compiler), `musa-engine` (→ compiler,
+  `musa-compiler` (→ language), `musa-notation` (→ compiler), `musa-dsp` (→ compiler), `musa-playback` (→ compiler,
   audio), `musa-project` (→ language, compiler, render, audio, engine), `musa` (→ project).
 - Do **not** add third-party dependencies yet except where a facade signature needs the type (e.g. none do at this
   stage). Each prompt adds its own dependencies from the roadmap §15 lists; this keeps `deny.toml` review incremental.

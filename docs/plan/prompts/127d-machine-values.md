@@ -19,7 +19,7 @@ descriptions; it never runs their open-ended histories.
 - Current source type/value representation, exact codecs, studio declarations, audio processor descriptors, and crate
   dependency direction.
 - The module-design skill; compare a public evaluator value with a narrow exact `MachineSpec` projection consumed by
-  `musa-audio`.
+  `musa-dsp`.
 
 ## Design
 
@@ -32,7 +32,7 @@ from connecting. A machine value is finite, exact, and contains primitive id, ve
 configuration; it contains no source closure or running state.
 
 Keep the evaluator's `Value` private. Expose one immutable, exact, caller-oriented `MachineSpec` projection only because
-`musa-audio` is its named consumer. Compare this boundary against adding a new crate; do not add a crate unless two
+`musa-dsp` is its named consumer. Compare this boundary against adding a new crate; do not add a crate unless two
 independent current consumers need the same stable representation and the new crate hides more than it exposes.
 
 The build-local primitive descriptor table rejects one id/version paired with unequal schema or configuration codec.

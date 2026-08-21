@@ -10,7 +10,7 @@ phase: 1
 
 ## Task
 
-Implement `musa-audio`'s foundation: the declarative `StudioGraphSpec` → compiled, preallocated `RenderPlan` pipeline,
+Implement `musa-dsp`'s foundation: the declarative `StudioGraphSpec` → compiled, preallocated `RenderPlan` pipeline,
 typed ports, and the first processors (sine oscillator, gain, pan, mixer, constant), plus deterministic offline block
 rendering. No CPAL, no live stream — this prompt produces the pure DSP engine everything real-time later executes.
 
@@ -24,11 +24,11 @@ rendering. No CPAL, no live stream — this prompt produces the pure DSP engine 
 
 ## Design
 
-- Create `musa-audio` with dependencies: `musa-compiler`, `hound` (WAV writing is used by the offline render test
-  harness and prompt 17), `rtrb` (not needed until 13 — defer unless a type requires it), `thiserror`. Do **not** add
-  `fundsp` yet; decide at this prompt whether the first processors are hand-rolled (recommended for sine / gain / pan /
-  mixer — they are small and the roadmap §13.6 only lists fundsp as "an implementation backend or reference"). If you do
-  adopt fundsp, its types must not appear in any public signature (§13.6).
+- Create `musa-dsp` with dependencies: `musa-compiler`, `hound` (WAV writing is used by the offline render test harness
+  and prompt 17), `rtrb` (not needed until 13 — defer unless a type requires it), `thiserror`. Do **not** add `fundsp`
+  yet; decide at this prompt whether the first processors are hand-rolled (recommended for sine / gain / pan / mixer —
+  they are small and the roadmap §13.6 only lists fundsp as "an implementation backend or reference"). If you do adopt
+  fundsp, its types must not appear in any public signature (§13.6).
 - Public surface:
 
   ```rust
@@ -64,8 +64,8 @@ rendering. No CPAL, no live stream — this prompt produces the pure DSP engine 
 
 ## Target
 
-- `musa-audio`: `StudioGraphSpec`, `PortKind`, `compile_graph`, `RenderPlan`, processor set above, allocation-free
-  render harness.
+- `musa-dsp`: `StudioGraphSpec`, `PortKind`, `compile_graph`, `RenderPlan`, processor set above, allocation-free render
+  harness.
 - Tests (§17.5): oscillator frequency accuracy (zero-crossing/FFT-lite) and phase continuity across blocks; mixer/gain
   arithmetic; cycle rejection; disconnected-graph silence; determinism (two renders, byte equality); NaN/infinity
   absence with adversarial parameters; allocation-free `render`.
@@ -74,8 +74,8 @@ rendering. No CPAL, no live stream — this prompt produces the pure DSP engine 
 ## Check
 
 ```sh
-cargo nextest run -p musa-audio
-cargo clippy --all-targets -p musa-audio -- -D warnings
+cargo nextest run -p musa-dsp
+cargo clippy --all-targets -p musa-dsp -- -D warnings
 cargo fmt --check
 ```
 

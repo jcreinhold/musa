@@ -10,8 +10,8 @@ phase: 3
 
 ## Task
 
-Implement the reference machine semantics in `musa-audio`: a functional build-local primitive registry, validated
-machine preparation, private combined state, explicit start, and one total deterministic next step.
+Implement the reference machine semantics in `musa-dsp`: a functional build-local primitive registry, validated machine
+preparation, private combined state, explicit start, and one total deterministic next step.
 
 ## Read
 
@@ -32,7 +32,7 @@ schedule ports or infer a loop delay from graph shape.
 
 Keep state, buffers, primitive instances, node order, and flattened layout private. The first implementation may execute
 the structural tree directly. A later flattening is valid only when differential tests show the same state and outputs.
-`musa-engine` receives an opaque prepared machine.
+`musa-playback` receives an opaque prepared machine.
 
 This prompt uses small deterministic reference primitives, not the full studio catalogue. Prompt 152 migrates existing
 DSP units after the semantics pass.
@@ -48,11 +48,11 @@ DSP units after the semantics pass.
 ## Check
 
 ```sh
-cargo nextest run -p musa-compiler -p musa-audio -p musa-engine
-cargo clippy --all-targets -p musa-compiler -p musa-audio -p musa-engine -- -D warnings
+cargo nextest run -p musa-compiler -p musa-dsp -p musa-playback
+cargo clippy --all-targets -p musa-compiler -p musa-dsp -p musa-playback -- -D warnings
 cargo fmt --check
-bash .agents/skills/module-design/scripts/audit-module.sh crates/musa-audio
-bash .agents/skills/module-design/scripts/audit-module.sh crates/musa-engine
+bash .agents/skills/module-design/scripts/audit-module.sh crates/musa-dsp
+bash .agents/skills/module-design/scripts/audit-module.sh crates/musa-playback
 ```
 
 Commit as `Define one exact step for every machine`.

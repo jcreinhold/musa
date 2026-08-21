@@ -9,7 +9,7 @@ category of artifacts.
 | --- | --- | --- |
 | Engraving | MEI, LilyPond, MusicXML — notated symbols with spelling, stems, beams, barlines | `musa-notation` |
 | Performance | gestures and control curves on exact rational time | `musa-compiler` |
-| Sound | a sample stream | `musa-audio`, `musa-engine` |
+| Sound | a sample stream | `musa-dsp`, `musa-playback` |
 | Analysis | harmonic function, set class, voice-leading verdicts, form | `musa-compiler::analysis` |
 | MIDI | note numbers, velocities, physical onsets | `musa-notation` |
 | Identity | the semantic hash — when two pieces are the same piece | `musa-kernel` |

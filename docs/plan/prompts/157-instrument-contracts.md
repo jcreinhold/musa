@@ -24,7 +24,7 @@ hides whether it is implemented by oscillators, samples, or later adapters. Its 
   one-frame semantics, and batching premises.
 - `docs/rules/language/08-performance-and-sound.md`; roadmap §§2, 6.5, 10.6, 13, 15.
 - Current `StudioSpec`, `StudioGraphSpec`, `RenderPlan`, project/CLI/offline/engine callers, and prompts 29–31 repairs.
-- Module-design audit of `musa-compiler`, `musa-audio`, and `musa-engine`; compare recent history for their facades.
+- Module-design audit of `musa-compiler`, `musa-dsp`, and `musa-playback`; compare recent history for their facades.
 
 ## Design
 
@@ -40,12 +40,12 @@ state.
 Compare two real module boundaries in completion notes:
 
 1. project/compiler pass separate gesture, machine, and routing internals through every caller; or
-2. `musa-audio` exposes one preparation operation over caller-oriented event tracks, machine values, bindings, and
-   options and returns an opaque prepared machine consumed by offline rendering and the engine.
+2. `musa-dsp` exposes one preparation operation over caller-oriented event tracks, machine values, bindings, and options
+   and returns an opaque prepared machine consumed by offline rendering and the engine.
 
 Choose the second unless caller inspection proves otherwise. Primitive state, resolved parameter indices, buffers,
-sample voices, and DSP instances remain private to `musa-audio`. The engine receives only a prepared, RT-safe machine
-and transport commands.
+sample voices, and DSP instances remain private to `musa-dsp`. The engine receives only a prepared, RT-safe machine and
+transport commands.
 
 **The prepared machine is the runnable result.** An audio history is not a finite source value, but the finite machine
 that produces it is part of the core language. Preparation is one operation rather than several:
@@ -70,7 +70,7 @@ that produces it is part of the core language. Preparation is one operation rath
 ## Target
 
 - Instrument/signature declarations in language/compiler and hard-error migration fixes for removed patches.
-- Native machine implementation hidden behind `musa-audio` preparation; curated facade and documented invariants.
+- Native machine implementation hidden behind `musa-dsp` preparation; curated facade and documented invariants.
 - Instrument-body checking against the machine constructors and registered primitive catalogue from prompts 150–128.
 - Static checking for duplicate/missing controls, incompatible mappings, private-node access, technique support, and
   channel shape.
@@ -84,12 +84,12 @@ that produces it is part of the core language. Preparation is one operation rath
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-audio -p musa-engine -p musa-project
+cargo nextest run -p musa-language -p musa-compiler -p musa-dsp -p musa-playback -p musa-project
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
-bash .agents/skills/module-design/scripts/audit-module.sh crates/musa-audio
-bash .agents/skills/module-design/scripts/audit-module.sh crates/musa-engine
+bash .agents/skills/module-design/scripts/audit-module.sh crates/musa-dsp
+bash .agents/skills/module-design/scripts/audit-module.sh crates/musa-playback
 ```
 
 Commit as `Give instruments typed sound contracts`.
@@ -99,6 +99,6 @@ Commit as `Give instruments typed sound contracts`.
 - No trait or plug-in registry for hypothetical implementations; use the concrete closed implementation family with a
   native machine as the current case and add sample bodies at prompt 163.
 - No part routing yet, no sample decoding, and no GUI node canvas.
-- No score, context, measure, or notation type crosses into `musa-audio`.
+- No score, context, measure, or notation type crosses into `musa-dsp`.
 - No signal or audio history as a finite source value, and no written-time coordinate past scheduling. The separate
   lineage query cannot mutate execution.

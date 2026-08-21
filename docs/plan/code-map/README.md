@@ -17,7 +17,7 @@ Read them in this order:
 
 1. [stage-pipeline.md](stage-pipeline.md) maps compiler stages to crates and public APIs.
 2. [identity-and-storage.md](identity-and-storage.md) explains exact encodings, hashes, caches, and saved origin data.
-3. [process-runtime.md](process-runtime.md) explains how `musa-audio` prepares a machine for the real-time engine.
+3. [process-runtime.md](process-runtime.md) explains how `musa-dsp` prepares a machine for the real-time engine.
 4. [spec-to-implementation-map.md](spec-to-implementation-map.md) marks each planned feature as implemented, partial, or
    absent.
 5. [implementor-reference.md](implementor-reference.md) is the orientation for someone changing the compiler: grammar to

@@ -23,7 +23,7 @@ deterministic WAV file offline.
 
 ## Design
 
-- `musa-audio` additions:
+- `musa-dsp` additions:
   - A `VoiceAllocator` (fixed voice pool, e.g. 16 voices, steal-oldest policy) turning `NoteOn`/`NoteOff` events into
     per-voice gate + frequency control.
   - A sine polysynth instrument built from prompt 16's processors: per-voice oscillator + simple attack/release gain
@@ -43,7 +43,7 @@ deterministic WAV file offline.
 
 - Where does orchestration live? `musa`'s `render --to wav` currently must chain compile → lower_performance →
   compile_graph → render_offline. That chain is exactly what `musa-project` will own (prompt 19). Until then, put the
-  chain in **one** function `musa_audio::render_piece_wav(...)` — no, do not: audio must not depend on language parsing.
+  chain in **one** function `musa_dsp::render_piece_wav(...)` — no, do not: audio must not depend on language parsing.
   Instead put a small `pub fn render_to_wav(source, options)` in `musa` behind one `orchestrate` module with a `//
   TODO(prompt-14): move to musa-project` marker. Keep it under 50 lines so the migration is mechanical.
 - WAV: 32-bit float, stereo, 48 kHz default via `hound` (§13.8). Duration = piece span
@@ -52,7 +52,7 @@ deterministic WAV file offline.
 
 ## Target
 
-- `musa-audio`: voice allocator, sine polysynth default instrument, `render_offline`.
+- `musa-dsp`: voice allocator, sine polysynth default instrument, `render_offline`.
 - `musa`: `render --to wav` with the marked orchestration shim.
 - Tests: allocator voice-stealing and note-off matching; click-free on/off ramps (max sample discontinuity bound);
   end-to-end WAV determinism for all examples; a golden-frequency test (render a single 440 Hz A4, verify dominant
@@ -62,8 +62,8 @@ deterministic WAV file offline.
 ## Check
 
 ```sh
-cargo nextest run -p musa-audio -p musa
-cargo clippy --all-targets -p musa-audio -p musa -- -D warnings
+cargo nextest run -p musa-dsp -p musa
+cargo clippy --all-targets -p musa-dsp -p musa -- -D warnings
 cargo fmt --check
 cargo run -p musa -- render examples/glass-mountain.musa --to wav -o /tmp/gm.wav
 cargo run -p musa -- render examples/glass-mountain.musa --to wav -o /tmp/gm2.wav

@@ -5,7 +5,7 @@ gap found in [25](25-proof-review.md) and makes it concrete against the current 
 
 ## 1. What the code does now
 
-**Verified in `crates/musa-audio/src/plan.rs`.** `schedule_order`:
+**Verified in `crates/musa-dsp/src/plan.rs`.** `schedule_order`:
 
 1. finds every `ProcessorSpec::Delay` node which lies on a graph cycle;
 2. removes every incoming scheduling dependency to each such node;

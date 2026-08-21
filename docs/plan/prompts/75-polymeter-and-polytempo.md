@@ -70,7 +70,7 @@ hand to another program rather than something only musa knows.
   new rule.
 - Prompt 61 `bars.rs` — `BarLines` is per-piece today. Polymeter makes it per-scope, which is the real change.
 - `crates/musa-notation/src/plan.rs::plan_staff` (:820) — the measure walk, which assumes one barline grid.
-- `crates/musa-engine/src/playback.rs` (:90) — the frame merge. Read it before worrying about polytempo's engine cost;
+- `crates/musa-playback/src/playback.rs` (:90) — the frame merge. Read it before worrying about polytempo's engine cost;
   the news is good (see below).
 - `docs/rules/kernel/08-open-questions.md` and §34.
 

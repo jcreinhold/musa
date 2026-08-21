@@ -11,7 +11,7 @@ phase: 2
 ## Task
 
 Implement the `studio` block of the language: patch declarations with signal-chain syntax, buses,
-`assign`/`route`/`send` bindings, and `modulate` connections — compiled into a `StudioSpec` that `musa-audio` can turn
+`assign`/`route`/`send` bindings, and `modulate` connections — compiled into a `StudioSpec` that `musa-dsp` can turn
 into a `StudioGraphSpec`. The bridge stays narrow: parts are assigned to patches; the studio never sees notes (roadmap
 §6.5).
 
@@ -37,10 +37,10 @@ into a `StudioGraphSpec`. The bridge stays narrow: parts are assigned to patches
 - Compiler produces `StudioSpec` (§6.3/§10.6 pipeline: `ScoreSnapshot + StudioSpec`): patches (node trees from the `|>`
   chains — desugared to spec nodes + connections), buses, bindings (`assign violin -> glass_pad`), routing, sends,
   modulation connections. All names resolved; unknown part/patch/parameter → diagnostic with spans.
-- `musa-audio` gains `From<StudioSpec>`-style lowering to `StudioGraphSpec` (a function `studio_spec_to_graph`,
-  direction: audio depends on compiler per §15.1). Desugaring rules: `a |> gain(x) |> output` = node chain; `mix(...)` =
-  mixer node; `modulate lfo -> glass_pad.lowpass.cutoff` = control connection to a parameter port. Processors that don't
-  exist yet in DSP (envelope, lowpass, reverb, lfo, scale, bias — prompts 30–26) are represented in the graph as typed
+- `musa-dsp` gains `From<StudioSpec>`-style lowering to `StudioGraphSpec` (a function `studio_spec_to_graph`, direction:
+  audio depends on compiler per §15.1). Desugaring rules: `a |> gain(x) |> output` = node chain; `mix(...)` = mixer
+  node; `modulate lfo -> glass_pad.lowpass.cutoff` = control connection to a parameter port. Processors that don't exist
+  yet in DSP (envelope, lowpass, reverb, lfo, scale, bias — prompts 30–26) are represented in the graph as typed
   placeholders that render as pass-through/silence **with a compile warning**, so language work isn't blocked on DSP
   work. Remove placeholders as 20–21 land.
 - Default studio (no `studio` block) is unchanged: every part → default sine polysynth → master. Once a `studio` block
@@ -51,7 +51,7 @@ into a `StudioGraphSpec`. The bridge stays narrow: parts are assigned to patches
 
 - `musa-language`: studio grammar, expression parser, typed wrappers, formatter.
 - `musa-compiler`: `StudioSpec`, resolution, unit table wired to audio descriptors, diagnostics.
-- `musa-audio`: spec→graph lowering, placeholder processors with warnings.
+- `musa-dsp`: spec→graph lowering, placeholder processors with warnings.
 - Restore the §7.1 `studio` block in `examples/glass-mountain.musa` (it compiles and renders audio end-to-end,
   placeholders and all).
 - Tests: snapshot StudioSpec debug rendering; unit diagnostics (bare `1400` rejected); unknown-name diagnostics;
@@ -60,8 +60,8 @@ into a `StudioGraphSpec`. The bridge stays narrow: parts are assigned to patches
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-audio
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-audio -- -D warnings
+cargo nextest run -p musa-language -p musa-compiler -p musa-dsp
+cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-dsp -- -D warnings
 cargo fmt --check
 cargo run -p musa -- check examples/glass-mountain.musa
 cargo run -p musa -- render examples/glass-mountain.musa --to wav -o /tmp/gm5.wav
@@ -75,7 +75,7 @@ Commit as `Add studio language and StudioSpec`.
   documents (§10.6), and putting the studio inside the score would conflate the two layers §2 keeps apart. `Compilation`
   gained `studio()` and `into_parts()`; `ProjectSession` keeps the pair in `ValidArtifacts`, so a render can never use
   one piece's sound with another's notes.
-- **The one `Unit` declaration lives in `musa-compiler`** and `musa-audio` re-exports it. The prompt asked for one
+- **The one `Unit` declaration lives in `musa-compiler`** and `musa-dsp` re-exports it. The prompt asked for one
   declaration rather than two; since the dependency runs compiler → audio, the language side is where it has to be. The
   per-processor *descriptors* still differ — the language names `lowpass`, the DSP names `Sine` — and unify when prompts
   30–31 give those processors real implementations.

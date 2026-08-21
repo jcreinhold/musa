@@ -77,15 +77,15 @@ bounded queue, underrun semantics, and offline determinism must then be specifie
 
 ```sh
 cargo bench -p musa-compiler
-cargo bench -p musa-audio
+cargo bench -p musa-dsp
 cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo deny check
 cd apps/musa-desktop/ui && npx pnpm run check && npx pnpm run test:unit
 cd apps/musa-desktop/ui && npx playwright test --project=budgets
-bash .agents/skills/module-design/scripts/audit-module.sh crates/musa-audio
-bash .agents/skills/module-design/scripts/audit-module.sh crates/musa-engine
+bash .agents/skills/module-design/scripts/audit-module.sh crates/musa-dsp
+bash .agents/skills/module-design/scripts/audit-module.sh crates/musa-playback
 ```
 
 Commit as `Close audio performance against measured works`.

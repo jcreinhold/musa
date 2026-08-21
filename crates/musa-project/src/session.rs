@@ -4,8 +4,8 @@ use std::path::{Path, PathBuf};
 
 use musa_compiler::{CompileOptions, SourceDocument};
 
-use musa_engine::{AudioEngine, EngineConfig, MidiInput, TransportCommand};
 use musa_language::BarSpacing;
+use musa_playback::{AudioEngine, EngineConfig, MidiInput, TransportCommand};
 use musa_score::{MusicalTime, Scope};
 
 use crate::command::{DocumentId, ProjectCommand, ProjectUpdate, Revision, TextEdit, TransportRequest, Validity};

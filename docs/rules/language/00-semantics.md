@@ -172,8 +172,8 @@ means seven diatonic steps and twelve semitones, preserving spelling rather than
 | `musa-kernel` | exact time, coordinates, typed occurrences, term binding, `follow`, `together`, scaling | notes, scales, functions, profiles, samples, seconds, machines |
 | compiler score projection | `ScoreFact`, context tracks, Origin, `ScoreSnapshot` | machine topology and audio buffers |
 | compiler performance preparation | profiles, gestures, tempo, tuning, part lanes | a primitive's private state |
-| `musa-audio` | registered primitives, machine construction and validation, scheduling, prepared buffers | notation semantics and source CST |
-| `musa-engine` | prepared machine, transport, real-time queues | parsing, allocation or machine construction in the callback |
+| `musa-dsp` | registered primitives, machine construction and validation, scheduling, prepared buffers | notation semantics and source CST |
+| `musa-playback` | prepared machine, transport, real-time queues | parsing, allocation or machine construction in the callback |
 
 The rejected alternative is a public `musa-elaboration` crate. Its only actual caller would be `musa-compiler`, while
 its proposed public `Type`, `Value`, `Closure`, module environment, and theory APIs are volatile pass details. The

@@ -41,7 +41,7 @@ expected-change ledger entry only when the positive isolation law passes offline
 
 ## Target
 
-- Part-aware prepared event routing in `musa-audio` and the minimal compiler/project facts it consumes.
+- Part-aware prepared event routing in `musa-dsp` and the minimal compiler/project facts it consumes.
 - Removal of distinct-patch/global-event-stream lowering and its warning.
 - Per-part output routing/send behavior and instrument-instance-safe voice identity.
 - Differential audio fixtures proving no cross-talk and unchanged single-part/default output.
@@ -49,8 +49,8 @@ expected-change ledger entry only when the positive isolation law passes offline
 ## Check
 
 ```sh
-cargo nextest run -p musa-compiler -p musa-audio -p musa-engine -p musa-project
-cargo clippy --all-targets -p musa-compiler -p musa-audio -p musa-engine -p musa-project -- -D warnings
+cargo nextest run -p musa-compiler -p musa-dsp -p musa-playback -p musa-project
+cargo clippy --all-targets -p musa-compiler -p musa-dsp -p musa-playback -p musa-project -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cargo run -p musa -- render tests/fixtures/audio-bridge.musa --to wav -o /tmp/musa-routing.wav

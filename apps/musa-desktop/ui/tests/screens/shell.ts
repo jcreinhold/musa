@@ -607,7 +607,7 @@ export async function stubShell(
           return current;
         },
         // A machine with a keyboard plugged in; the no-device case is
-        // `musa-engine`'s test, since it is about the host and not about this.
+        // `musa-playback`'s test, since it is about the host and not about this.
         listen_to_midi: (args) => {
           current = {
             ...current,

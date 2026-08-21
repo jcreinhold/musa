@@ -45,7 +45,7 @@ and denormal/NaN safety. Asset failure prevents plan installation rather than fa
 
 ## Target
 
-- Concrete sample implementation variant and private region/voice runtime in `musa-audio`.
+- Concrete sample implementation variant and private region/voice runtime in `musa-dsp`.
 - Project/audio asset preparation and bounded-memory reporting; no decoder state in compiler facts.
 - Tiny native sample-map fixture exercising pitch regions, velocity layers, round-robin, loop, release, pedal, and
   instrument swapping.
@@ -55,11 +55,11 @@ and denormal/NaN safety. Asset failure prevents plan installation rather than fa
 ## Check
 
 ```sh
-cargo nextest run -p musa-audio -p musa-engine -p musa-project -p musa
-cargo clippy --all-targets -p musa-audio -p musa-engine -p musa-project -p musa -- -D warnings
+cargo nextest run -p musa-dsp -p musa-playback -p musa-project -p musa
+cargo clippy --all-targets -p musa-dsp -p musa-playback -p musa-project -p musa -- -D warnings
 cargo fmt --check
 cargo deny check
-cargo bench -p musa-audio
+cargo bench -p musa-dsp
 ```
 
 Commit as `Add the deterministic sampler runtime`.

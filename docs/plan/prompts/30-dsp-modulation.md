@@ -23,7 +23,7 @@ modulation-combination policies. After this prompt the `glass_pad` patch from §
 
 ## Design
 
-- New processors in `musa-audio` (all satisfying prompt 16's RT contract):
+- New processors in `musa-dsp` (all satisfying prompt 16's RT contract):
   - **ADSR**: gate-triggered, segment-exact state machine; per-voice in polysynth patches. Times from unit-typed
     parameters (`ms`/`s`), sustain a level (0..1).
   - **LFO**: oscillator at control rate (or audio rate with control output — pick control rate for cost; document),
@@ -48,7 +48,7 @@ modulation-combination policies. After this prompt the `glass_pad` patch from §
 
 ## Target
 
-- `musa-audio`: ADSR, LFO, one-pole, biquads, control stages; modulation connection execution; per-voice patch
+- `musa-dsp`: ADSR, LFO, one-pole, biquads, control stages; modulation connection execution; per-voice patch
   integration.
 - Tests (§17.5): ADSR stage timing (frame-exact segment boundaries), biquad frequency response (sine sweep at cutoff ≈
   −3 dB), one-pole impulse response, modulation combination/clamping at range extremes, NaN/infinity absence under
@@ -59,8 +59,8 @@ modulation-combination policies. After this prompt the `glass_pad` patch from §
 ## Check
 
 ```sh
-cargo nextest run -p musa-audio
-cargo clippy --all-targets -p musa-audio -- -D warnings
+cargo nextest run -p musa-dsp
+cargo clippy --all-targets -p musa-dsp -- -D warnings
 cargo fmt --check
 cargo run -p musa -- render examples/glass-mountain.musa --to wav -o /tmp/gm6.wav
 ```

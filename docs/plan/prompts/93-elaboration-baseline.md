@@ -24,8 +24,8 @@ one named repairing prompt.
 - Prompt 49's sharing workload and provenance-byte-identity requirement.
 - `docs/rules/language/05-verification.md` and `docs/rules/desktop/06-performance.md` B1/B2.
 - `crates/musa-compiler/src/bench.rs`, `benches/pipeline.rs`, and every caller of `musa_compiler::compile`.
-- `crates/musa-compiler/src/{profile,performance,studio}.rs`, `crates/musa-audio/src/{studio,plan,offline}.rs`, and
-  `crates/musa-engine`'s prepared-plan handoff. Read the actual code paths: do not copy claims about exact studio
+- `crates/musa-compiler/src/{profile,performance,studio}.rs`, `crates/musa-dsp/src/{studio,plan,offline}.rs`, and
+  `crates/musa-playback`'s prepared-plan handoff. Read the actual code paths: do not copy claims about exact studio
   values, event routing, or parameter consumption from prose without verifying them.
 
 ## Design

@@ -21,7 +21,7 @@ desktop, and generated reference material consume the same facts.
 ## Read
 
 - `docs/rules/language/08-performance-and-sound.md`; roadmap §§7.2, 13.6–13.7, 14.4; prompts 29–31 and 84.
-- `crates/musa-compiler/src/studio.rs`, especially `Processor::params`/`ParamSpec`; `musa-audio` parameter descriptors;
+- `crates/musa-compiler/src/studio.rs`, especially `Processor::params`/`ParamSpec`; `musa-dsp` parameter descriptors;
   keyword docs and `musa-lsp/src/features/hover.rs::at_studio`.
 - Existing Sound/Mix facts and all hard-coded processor/parameter name matches. Count them before choosing an owner.
 - The revised machine and audio specifications and `docs/plan/code-map/process-runtime.md`; the catalogue's stable
@@ -51,7 +51,7 @@ entry and compatible audio descriptor.
 
 ## Target
 
-- Authoritative compiler catalogue and schema-agreement checks against `musa-audio` descriptors.
+- Authoritative compiler catalogue and schema-agreement checks against `musa-dsp` descriptors.
 - LSP hover/signature/completion for processors and parameters, including invalid/half-typed studio source.
 - Sound/Mix labels, descriptions, accessible names, and generated reference page from the same facts.
 - Hard-error `q` diagnostic/fix and migrated canonical examples, with no alias in the checker or runtime.
@@ -59,8 +59,8 @@ entry and compatible audio descriptor.
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-audio -p musa-project -p musa-lsp
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-audio -p musa-project -p musa-lsp -- -D warnings
+cargo nextest run -p musa-language -p musa-compiler -p musa-dsp -p musa-project -p musa-lsp
+cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-dsp -p musa-project -p musa-lsp -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cd apps/musa-desktop/ui && npx pnpm run check && npx pnpm run test:unit

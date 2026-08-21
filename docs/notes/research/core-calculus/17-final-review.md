@@ -133,13 +133,12 @@ representations, but the examples did not force them into the execution core.
 
 - `crates/musa-kernel/src/timeline.rs` already implements the untagged heart of `EventTrack`: exact rational length,
   finite occurrences, sequence by shifting, overlay by maximum and multiset union, and payload mapping.
-- `crates/musa-audio/src/effects.rs` contains stateful per-sample DSP units that can become registered machine
-  primitives.
-- `crates/musa-audio/src/plan.rs` does **not** yet implement the candidate machine semantics. It defers cycle inputs at
+- `crates/musa-dsp/src/effects.rs` contains stateful per-sample DSP units that can become registered machine primitives.
+- `crates/musa-dsp/src/plan.rs` does **not** yet implement the candidate machine semantics. It defers cycle inputs at
   delay nodes to the previous host block, and its modulation path runs once per block. Host block size can therefore
   affect meaning. The candidate instead requires one-frame reference behavior and separately checked batching.
 
-The focused current tests passed: 123 tests across `musa-kernel` and `musa-audio`. That shows the existing code remains
+The focused current tests passed: 123 tests across `musa-kernel` and `musa-dsp`. That shows the existing code remains
 healthy. It does not prove conformance to this proposal.
 
 ## Judgments

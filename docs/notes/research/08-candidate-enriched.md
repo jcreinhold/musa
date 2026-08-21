@@ -82,9 +82,9 @@ over *instrument bindings* `B`, not over the studio patch graph — `docs/core-b
 hashable, because R1's cache is only well-defined if it is.
 
 Where Prop 7 *does* bite is the seam this directory noticed at the outset and then walked past:
-`musa_compiler::StudioSpec` and `musa_audio::StudioGraphSpec` are two independent representations of the same graph.
-Prop 7 asks the question that settles it — name the pass that needs the second one's structure, or let the first survive
-to that pass. That question is open and does not depend on anything else in this directory.
+`musa_compiler::StudioSpec` and `musa_dsp::StudioGraphSpec` are two independent representations of the same graph. Prop
+7 asks the question that settles it — name the pass that needs the second one's structure, or let the first survive to
+that pass. That question is open and does not depend on anything else in this directory.
 
 ## 4. What else this changes
 
@@ -146,5 +146,5 @@ first.
 Case 5 has since been run and closed ([07](07-probe-log.md) P-3): the editor is not a consumer of the studio's term
 structure, so the erasure point does not move. What remains is one well-posed question, which needs no further research
 to *ask* and none of this directory's other machinery to *answer*: `musa_compiler::StudioSpec` and
-`musa_audio::StudioGraphSpec` are two representations of one graph — name the pass that needs the second, or let the
-first survive to it.
+`musa_dsp::StudioGraphSpec` are two representations of one graph — name the pass that needs the second, or let the first
+survive to it.

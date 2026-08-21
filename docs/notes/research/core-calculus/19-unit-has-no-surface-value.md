@@ -80,7 +80,7 @@ not something a composer writes. On the five-unit reference family the constrain
 rather than promised (§5).
 
 **It will not stay free.** Six processors in the current studio catalogue declare no parameters at all —
-`crates/musa-audio/src/spec.rs`'s `Noise`, `Passthrough`, `Mixer`, `Splitter`, `MonoToStereo`, and `StereoToMono` — and
+`crates/musa-dsp/src/spec.rs`'s `Noise`, `Passthrough`, `Mixer`, `Splitter`, `MonoToStereo`, and `StereoToMono` — and
 prompt 152 is *Register each current DSP unit as a registered primitive*, naming the mixer among them: "a mixer is a
 primitive from a tuple of frames to one frame". Three of the six are wiring that the structural forms already cover
 (`copy` is `Splitter`; the channel adapters are adapters), and `Passthrough` is `identity`. Two are not. `Noise` and a

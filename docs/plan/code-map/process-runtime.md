@@ -1,12 +1,12 @@
 # Preparing a machine for real-time use
 
-This page maps the machine rules of `../../rules/across-stages/03-machine-calculus.md` to `musa-audio` and
-`musa-engine`. The Rust identifiers in the workspace still carry their pre-127a spellings; the pairs are in
+This page maps the machine rules of `../../rules/across-stages/03-machine-calculus.md` to `musa-dsp` and
+`musa-playback`. The Rust identifiers in the workspace still carry their pre-127a spellings; the pairs are in
 [`../clean-break-ledger.md`](../clean-break-ledger.md).
 
 ## 1. Crate boundary
 
-`musa-audio` owns:
+`musa-dsp` owns:
 
 - machine construction from registered primitives, `identity`, `connect`, `beside`, `feedback`, `copy`, `drop`, `swap`;
 - machine validation and whole-machine step ordering;
@@ -15,7 +15,7 @@ This page maps the machine rules of `../../rules/across-stages/03-machine-calcul
 - scheduling and audio preparation; and
 - the offline implementation of one audio step, which is one sample frame.
 
-`musa-engine` owns:
+`musa-playback` owns:
 
 - device negotiation;
 - installing and retiring prepared machines;

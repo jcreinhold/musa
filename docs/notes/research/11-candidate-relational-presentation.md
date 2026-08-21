@@ -468,7 +468,7 @@ This candidate is a layer around deep domain modules, not a demand to discard wo
 - A prepared render plan remains a valuable real-time boundary object.
 - The source remains canonical, and the joint presentation is derived and disposable.
 - Signals remain coinductive denotations rather than occurrence payloads.
-- Studio graph validation and compilation remain owned by `musa-audio`.
+- Studio graph validation and compilation remain owned by `musa-dsp`.
 
 What changes is the claimed outer shape. The occurrence kernel is one native theory in a larger presentation language,
 not the universal ontology of every realization. The audio graph is another finite native theory, not merely coefficient

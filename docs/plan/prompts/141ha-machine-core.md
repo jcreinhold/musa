@@ -152,5 +152,5 @@ Commit as `Give the machine a core shape`.
   them a representation, not a runtime.
 - No deletion of `Type::Machine`, `Type::Primitive`, `MachineOp`, or the old checker's machine path. 142 owns them.
 - No amendment to `03-machine-calculus.md` or to §5.8. A form that cannot be written in the core's terms is a finding.
-- No change to `musa-audio` or `musa-engine`. The machine's core spelling is a description; what runs one is downstream
+- No change to `musa-dsp` or `musa-playback`. The machine's core spelling is a description; what runs one is downstream
   and unchanged.

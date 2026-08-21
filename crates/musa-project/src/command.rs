@@ -161,7 +161,7 @@ impl ProjectCommand {
 }
 
 /// Transport requests, in the session's own vocabulary. The engine's own
-/// command type never leaves `musa-engine`.
+/// command type never leaves `musa-playback`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum TransportRequest {

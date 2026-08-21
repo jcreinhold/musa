@@ -52,8 +52,8 @@ output frame `j`; positive occurrences use `[start,end)`.
 ## Check
 
 ```sh
-cargo nextest run -p musa-kernel -p musa-compiler -p musa-audio -p musa-project
-cargo clippy --all-targets -p musa-kernel -p musa-compiler -p musa-audio -p musa-project -- -D warnings
+cargo nextest run -p musa-kernel -p musa-compiler -p musa-dsp -p musa-project
+cargo clippy --all-targets -p musa-kernel -p musa-compiler -p musa-dsp -p musa-project -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 ```

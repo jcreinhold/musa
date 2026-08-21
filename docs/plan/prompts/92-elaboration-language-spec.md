@@ -35,9 +35,9 @@ governing documents until prompt 172's audit graduates it.
   instrument-dependent realization, sampled/percussive timbre, fixed-time notation, and orchestration. Do not infer a
   DSP mapping from a notation term merely because both affect perceived sound.
 - Roadmap §§6.4–6.5, 13, 14.4, 16, and 18 Phase 4; `docs/rules/kernel/07-backend-contract.md`; the current
-  `musa-compiler` performance/profile/studio code and `musa-audio` graph/plan code. Treat the shared-note-stream
-  warning, ignored `PerformanceEvent::Parameter`, graph-addressing surface, and eager `f64` studio values as named
-  design debts, not architectural precedents.
+  `musa-compiler` performance/profile/studio code and `musa-dsp` graph/plan code. Treat the shared-note-stream warning,
+  ignored `PerformanceEvent::Parameter`, graph-addressing surface, and eager `f64` studio values as named design debts,
+  not architectural precedents.
 
 ## Design
 

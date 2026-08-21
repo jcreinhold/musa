@@ -1928,8 +1928,8 @@ musa/
 │   ├── musa-language/
 │   ├── musa-compiler/
 │   ├── musa-notation/
-│   ├── musa-audio/
-│   ├── musa-engine/
+│   ├── musa-dsp/
+│   ├── musa-playback/
 │   ├── musa-project/
 │   └── musa/
 ├── apps/
@@ -1955,10 +1955,10 @@ values                      musa-score
 passes                     musa-compiler
                      ← calculus, kernel, language, score
 
-outputs         musa-notation                  musa-audio
+outputs         musa-notation                  musa-dsp
                  ← score                  ← score, compiler
                                                  │
-                                             musa-engine
+                                             musa-playback
                                           ← score, audio
 
 shells    musa-wasm ← compiler, render, score
@@ -2104,7 +2104,7 @@ pub fn render_midi(
 ) -> Result<Vec<u8>, RenderError>;
 ```
 
-## 15.5 `musa-audio`
+## 15.5 `musa-dsp`
 
 Owns:
 
@@ -2133,7 +2133,7 @@ tracing
 
 The public API must expose the project’s own graph and processor concepts—not FunDSP’s generic types.
 
-## 15.6 `musa-engine`
+## 15.6 `musa-playback`
 
 Owns platform and real-time integration:
 
@@ -2150,7 +2150,7 @@ Dependencies:
 
 ```text
 musa-compiler
-musa-audio
+musa-dsp
 cpal
 midir
 rtrb
@@ -2197,8 +2197,8 @@ Dependencies:
 musa-language
 musa-compiler
 musa-notation
-musa-audio
-musa-engine
+musa-dsp
+musa-playback
 serde
 serde_json
 toml

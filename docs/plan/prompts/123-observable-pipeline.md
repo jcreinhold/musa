@@ -10,7 +10,7 @@ phase: 3
 
 ## Task
 
-Give musa a diagnostic voice. Today nine `tracing::warn!` calls sit in `musa-engine` and `musa-project` reporting
+Give musa a diagnostic voice. Today nine `tracing::warn!` calls sit in `musa-playback` and `musa-project` reporting
 swallowed errors — a MIDI port that would not open, a recovery copy that could not be written, an unknown `musa.toml`
 value — and not one of them is ever seen, because no shell installs a subscriber. That is worse than no logging: it is
 logging that lies about being there. This prompt installs the subscriber in the three shells, gives the semantic
@@ -22,9 +22,9 @@ Spans on the facades and counts at the boundaries answer exactly that and nothin
 
 ## Read
 
-- Roadmap §15.6 and §15.7 — `tracing` is already a listed dependency of `musa-engine` and `musa-project`; §15.3–§15.5,
+- Roadmap §15.6 and §15.7 — `tracing` is already a listed dependency of `musa-playback` and `musa-project`; §15.3–§15.5,
   §15.8 and §15.11 are silent and this prompt repairs them.
-- Roadmap §13 (real-time rules) and `crates/musa-engine/tests/suite/rt.rs` — the callback allocates nothing, locks
+- Roadmap §13 (real-time rules) and `crates/musa-playback/tests/suite/rt.rs` — the callback allocates nothing, locks
   nothing, and does no I/O. Logging is I/O.
 - `crates/musa-compiler/src/compile.rs` and `src/elaborate.rs` — `compile` dispatches on the document alternative and
   `elaborate_parsed` is already split from parsing so the two can be measured apart (`crate::bench`).
@@ -104,23 +104,23 @@ each session command produced.
 
 ### The callback stays silent
 
-`musa-engine`'s control side is instrumented; its callback is not, and cannot become so by accident. Device negotiation
-in `open` — the chosen device's name and the stream configuration CPAL agreed to — is precisely what a bug report needs
-and precisely what no user can otherwise see. The name is the one field that is not already to hand, so it goes behind
-`tracing::enabled!`; the configuration is free. Everything downstream of the `rtrb` boundary logs nothing.
+`musa-playback`'s control side is instrumented; its callback is not, and cannot become so by accident. Device
+negotiation in `open` — the chosen device's name and the stream configuration CPAL agreed to — is precisely what a bug
+report needs and precisely what no user can otherwise see. The name is the one field that is not already to hand, so it
+goes behind `tracing::enabled!`; the configuration is free. Everything downstream of the `rtrb` boundary logs nothing.
 
 ## Target
 
 - Roadmap repair: add `tracing` to the dependency lists of §15.3 `musa-compiler`, §15.4 `musa-notation`, §15.5
-  `musa-audio`, and §15.11 `musa-lsp`; add `tracing-subscriber` to §15.7 `musa-project`; state in §15.8 that the CLI
+  `musa-dsp`, and §15.11 `musa-lsp`; add `tracing-subscriber` to §15.7 `musa-project`; state in §15.8 that the CLI
   installs the subscriber and reads `MUSA_LOG`. The lists are closed, so this is the prompt that opens them.
 - `musa-project`: a new `logging` module exposing `Logging` and `FILTER_VARIABLE` on the facade, and spans on
   `ProjectSession::open`, `apply`, `export`, and `analyze`, with the realization's seed recorded where it changes. The
   autosave, MIDI, realization, and `musa.toml` warnings already exist and become audible without being touched.
 - `musa-compiler`: spans on `compile` and `format_document`; events at the parse / check / elaborate / adapt boundaries
   and in `imports::load`.
-- `musa-notation`, `musa-audio`: a span per public entry, recording the plan or graph size the caller already knows.
-- `musa-engine`: spans on `open`, `install`, and `command`, recording the negotiated device and stream configuration.
+- `musa-notation`, `musa-dsp`: a span per public entry, recording the plan or graph size the caller already knows.
+- `musa-playback`: spans on `open`, `install`, and `command`, recording the negotiated device and stream configuration.
   Nothing below the queue boundary.
 - `musa-lsp`: a span per request carrying the method and the request id — the same id the client's own log records, so a
   slow completion in an editor can be matched to the request that served it — a span per notification, and
@@ -142,7 +142,7 @@ and precisely what no user can otherwise see. The name is the one field that is 
   thread-local, so no global is claimed: a compilation opens exactly one `compile` span naming its document; a session
   command opens one `apply` span naming the command and *not* carrying the source; a second `install` returns `false`
   rather than panicking.
-- A law that no logging macro appears below `musa-engine`'s queue boundary, held the way the tree-sitter drift law is
+- A law that no logging macro appears below `musa-playback`'s queue boundary, held the way the tree-sitter drift law is
   held: over the source of `core.rs`, with the real-time rule named in its failure message. Held rather than measured
   because the allocation test beside it catches a logging macro only when it happens to allocate, and a fieldless
   `trace!` does not.
@@ -152,8 +152,8 @@ and precisely what no user can otherwise see. The name is the one field that is 
 ## Check
 
 ```sh
-cargo nextest run -p musa-compiler -p musa-notation -p musa-audio -p musa-engine -p musa-project -p musa-lsp -p musa
-cargo nextest run -p musa-engine --run-ignored all
+cargo nextest run -p musa-compiler -p musa-notation -p musa-dsp -p musa-playback -p musa-project -p musa-lsp -p musa
+cargo nextest run -p musa-playback --run-ignored all
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 taplo fmt --check

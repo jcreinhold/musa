@@ -83,12 +83,12 @@ track and a machine meet only at `schedule`.
 | Name resolution, type checking, total evaluation, score and gesture compilation | `musa-compiler` | `compile` and caller-ready snapshot facts |
 | Exact finite event tracks and their laws | `musa-kernel` | `Term`, the track type, construction, queries, equality, and hash |
 | Engraving plan and file export | `musa-notation` | `render_notation` and export results |
-| Studio checking, machine construction and scheduling, audio preparation, and offline rendering | `musa-audio` | `prepare_execution` and an opaque prepared machine |
-| Audio-device negotiation, transport, and callback | `musa-engine` | `AudioEngine` and transport commands |
+| Studio checking, machine construction and scheduling, audio preparation, and offline rendering | `musa-dsp` | `prepare_execution` and an opaque prepared machine |
+| Audio-device negotiation, transport, and callback | `musa-playback` | `AudioEngine` and transport commands |
 | Source documents, revisions, commands, and derived-result coordination | `musa-project` | `ProjectSession` |
 | CLI, LSP, desktop, and web entry points | shell crates and apps | user-facing commands and results |
 
-`musa-audio` keeps registered primitives, buffers, state layout, and step orders private. `musa-engine` receives a
+`musa-dsp` keeps registered primitives, buffers, state layout, and step orders private. `musa-playback` receives a
 prepared machine it can step; it does not inspect the machine. Audio crates do not depend on compiler score types.
 
 ## 3. What each conversion must provide

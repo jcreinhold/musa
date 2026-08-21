@@ -221,7 +221,7 @@ fn digest(bytes: &[u8]) -> u64 {
 /// the performance layer may act as though it did.
 ///
 /// The third re-pin is the loudness repair: the voice pool now sums with a
-/// fixed `1/√voices` headroom (musa-audio `voice.rs`), and the limiter grew a
+/// fixed `1/√voices` headroom (musa-dsp `voice.rs`), and the limiter grew a
 /// 5 ms lookahead with a smoothed attack (`effects.rs`), because per-sample
 /// gain on a continuously over-ceiling mix waveshaped it into audible static.
 /// Verified against the previous build: this fixture now peaks at 0.47 — the

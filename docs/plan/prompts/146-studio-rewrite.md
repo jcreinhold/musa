@@ -30,7 +30,7 @@ prompt absorbs 127dcg, whose file is deleted rather than repaired.
   differ in every musical row and in no compiler-facing row.
 - `docs/rules/constitution.md` §4 and §7 — a graph *description* is finite data; the process it describes is not. The
   adapter neither allocates a processor nor steps audio.
-- `crates/musa-audio/src/` — the existing studio graph spec and its render-plan compiler. The adapter produces a
+- `crates/musa-dsp/src/` — the existing studio graph spec and its render-plan compiler. The adapter produces a
   description; what already exists consumes one, and the two must not become two ontologies.
 - Prompt [145](145-staff-rewrite.md)'s measurement and its per-section breakdown — the method this prompt reuses, and
   the staff numbers this adapter's numbers are compared against.
@@ -92,7 +92,7 @@ Commit as `Write the studio adapter as an unprivileged package`.
 
 - No compiler privilege, no private parser or checker access, and no inferred type reaching the adapter. An adapter that
   needs one is evidence against the boundary and is reported as such rather than granted.
-- No allocation of processors, no audio stepping, and no change to `musa-audio`'s render-plan compiler — the adapter
+- No allocation of processors, no audio stepping, and no change to `musa-dsp`'s render-plan compiler — the adapter
   produces a description and stops.
 - No freeze, no proofs, and no conformance script. Prompt 147.
 - No change to `docs/rules/`.

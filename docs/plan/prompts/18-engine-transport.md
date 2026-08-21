@@ -10,7 +10,7 @@ phase: 1
 
 ## Task
 
-Implement `musa-engine`: CPAL device negotiation and output stream lifecycle, the real-time command boundary (`rtrb`
+Implement `musa-playback`: CPAL device negotiation and output stream lifecycle, the real-time command boundary (`rtrb`
 queues, plan installation, retired-plan return), and transport (play, stop, seek, loop). `musa play piece.musa` plays
 the piece live. This completes the Phase 1 CLI slice.
 
@@ -22,7 +22,7 @@ the piece live. This completes the Phase 1 CLI slice.
 
 ## Design
 
-- Create `musa-engine` with dependencies: `musa-compiler`, `musa-audio`, `cpal`, `rtrb`, `tracing`, `thiserror`.
+- Create `musa-playback` with dependencies: `musa-compiler`, `musa-dsp`, `cpal`, `rtrb`, `tracing`, `thiserror`.
   (`midir` arrives at prompt 33.)
 - Public surface exactly per §15.6:
 
@@ -61,7 +61,7 @@ the piece live. This completes the Phase 1 CLI slice.
 
 ## Target
 
-- `musa-engine`: `AudioEngine`, `EngineConfig`, `PreparedPlaybackPlan`, `TransportCommand`, RT queues, callback,
+- `musa-playback`: `AudioEngine`, `EngineConfig`, `PreparedPlaybackPlan`, `TransportCommand`, RT queues, callback,
   instrumentation tests.
 - `musa`: `play` subcommand.
 - Tests: command queue round-trips; seek/loop state machine; callback instrumentation; graceful behavior when no audio
@@ -70,8 +70,8 @@ the piece live. This completes the Phase 1 CLI slice.
 ## Check
 
 ```sh
-cargo nextest run -p musa-engine -p musa
-cargo clippy --all-targets -p musa-engine -p musa -- -D warnings
+cargo nextest run -p musa-playback -p musa
+cargo clippy --all-targets -p musa-playback -p musa -- -D warnings
 cargo fmt --check
 # manual, on a machine with audio:
 cargo run -p musa -- play examples/glass-mountain.musa

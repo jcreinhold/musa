@@ -23,7 +23,7 @@ edit commands, not because their scope changed.
 
 ## Design
 
-- `musa-engine` (add `midir`): `EngineConfig` gains optional MIDI input selection (default: first available port,
+- `musa-playback` (add `midir`): `EngineConfig` gains optional MIDI input selection (default: first available port,
   documented). Incoming note-on/note-off becomes `MidiInputEvent`s delivered to the control side via a dedicated `rtrb`
   queue — the callback never touches midir callbacks directly beyond queueing (§13.2 rules apply to the MIDI thread too:
   no allocation, no locks; midir gives you a callback thread, treat it like the audio one).
@@ -42,7 +42,7 @@ edit commands, not because their scope changed.
 
 ## Target
 
-- `musa-engine`: MIDI input queue and event type.
+- `musa-playback`: MIDI input queue and event type.
 - `musa-project`: autosave/recovery policy; MIDI event surfacing.
 - `apps/musa-desktop`: step entry with MIDI, chord entry, indicators.
 - Tests: MIDI queue round-trips with synthetic events; spelling heuristic table tests; autosave/recovery round-trips on
@@ -51,7 +51,7 @@ edit commands, not because their scope changed.
 ## Check
 
 ```sh
-cargo nextest run -p musa-engine -p musa-project
+cargo nextest run -p musa-playback -p musa-project
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 # manual with a MIDI keyboard:
@@ -65,7 +65,7 @@ Commit as `Add MIDI step entry and autosave`.
 - **MIDI input is its own facade, not a field of `EngineConfig`.** The Design sketched the keyboard as engine
   configuration, but a composer entering notes has not necessarily pressed play, and an entry path that depended on an
   open audio stream would make "write a melody" require a working output device. `MidiInput::open` is therefore a small
-  independent type in `musa-engine`, and `ProjectSession::listen_to_midi` opens it on demand.
+  independent type in `musa-playback`, and `ProjectSession::listen_to_midi` opens it on demand.
 - **The keyboard is read while note entry is on, and at no other time.** There is no MIDI thread polling in the
   background: the desktop session thread blocks until something happens, and only entry mode gives it a 15 ms tick. This
   keeps roadmap §14.8's "nothing is scheduled at rest" true of the keyboard as well as of the transport.

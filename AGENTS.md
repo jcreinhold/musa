@@ -53,8 +53,8 @@ let them drift silently.
 | `crates/musa-score` | the musical values: pitch, chords, scales, exact time, marks, score/performance snapshots, provenance, diagnostics, analysis |
 | `crates/musa-compiler` | resolution, units, imports, expansion, elaboration through the kernel — the passes that compute those values |
 | `crates/musa-notation` | NotationPlan, MEI, LilyPond, MusicXML, MIDI export |
-| `crates/musa-audio` | studio graph spec→render-plan compiler, processors, offline rendering |
-| `crates/musa-engine` | CPAL stream, transport, real-time queues, MIDI input |
+| `crates/musa-dsp` | studio graph spec→render-plan compiler, processors, offline rendering |
+| `crates/musa-playback` | CPAL stream, transport, real-time queues, MIDI input |
 | `crates/musa-project` | ProjectSession facade: documents, revisions, commands, exports |
 | `crates/musa` | thin CLI over musa-project, installed as the `musa` binary |
 | `crates/musa-lsp` | thin language server (LSP) over musa-project + musa-language |

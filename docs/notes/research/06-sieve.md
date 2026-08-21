@@ -109,8 +109,8 @@ Per the working rules: what emerged that was not put in.
    §4). What is composition of two correspondences, and do idempotents split? Until this has an answer, form has no
    account and the motive is incomplete in a way the other gaps are not.
 5. **Settle `StudioSpec` versus `StudioGraphSpec`** — the question P-3 opened, and the only one in this list that is
-   both fully posed and independent of the motive. Two representations of one graph, in `musa-compiler` and
-   `musa-audio`. Prop 7's test decides it: name the pass that needs the second, or let the first survive to that pass.
+   both fully posed and independent of the motive. Two representations of one graph, in `musa-compiler` and `musa-dsp`.
+   Prop 7's test decides it: name the pass that needs the second, or let the first survive to that pass.
 
 ## 7. Did we find the motive?
 

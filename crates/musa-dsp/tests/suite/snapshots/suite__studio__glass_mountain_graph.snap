@@ -1,0 +1,245 @@
+---
+source: crates/musa-dsp/tests/studio.rs
+expression: "format!(\"{graph:#?}\")"
+---
+StudioGraphSpec {
+    nodes: [
+        Node {
+            id: NodeId(
+                0,
+            ),
+            processor: PolySine {
+                voices: 16,
+            },
+            params: [
+                (
+                    "ratio",
+                    2.0,
+                ),
+                (
+                    "blend",
+                    0.17782794,
+                ),
+                (
+                    "attack",
+                    0.03,
+                ),
+                (
+                    "decay",
+                    1.8,
+                ),
+                (
+                    "sustain",
+                    0.65,
+                ),
+                (
+                    "release",
+                    3.5,
+                ),
+            ],
+        },
+        Node {
+            id: NodeId(
+                1,
+            ),
+            processor: Biquad {
+                kind: LowPass,
+            },
+            params: [
+                (
+                    "cutoff",
+                    1400.0,
+                ),
+                (
+                    "q",
+                    0.7,
+                ),
+            ],
+        },
+        Node {
+            id: NodeId(
+                2,
+            ),
+            processor: StereoGain,
+            params: [
+                (
+                    "gain",
+                    0.19952624,
+                ),
+            ],
+        },
+        Node {
+            id: NodeId(
+                3,
+            ),
+            processor: Reverb,
+            params: [
+                (
+                    "room",
+                    0.82,
+                ),
+                (
+                    "damping",
+                    0.55,
+                ),
+                (
+                    "mix",
+                    1.0,
+                ),
+            ],
+        },
+        Node {
+            id: NodeId(
+                4,
+            ),
+            processor: Mixer {
+                inputs: 2,
+            },
+            params: [],
+        },
+        Node {
+            id: NodeId(
+                5,
+            ),
+            processor: Limiter,
+            params: [],
+        },
+        Node {
+            id: NodeId(
+                6,
+            ),
+            processor: Lfo {
+                waveform: Sine,
+            },
+            params: [
+                (
+                    "frequency",
+                    0.08,
+                ),
+            ],
+        },
+        Node {
+            id: NodeId(
+                7,
+            ),
+            processor: Scale,
+            params: [
+                (
+                    "factor",
+                    250.0,
+                ),
+            ],
+        },
+        Node {
+            id: NodeId(
+                8,
+            ),
+            processor: Bias,
+            params: [
+                (
+                    "offset",
+                    1400.0,
+                ),
+            ],
+        },
+    ],
+    connections: [
+        Connection {
+            from: NodeId(
+                0,
+            ),
+            from_port: 0,
+            to: NodeId(
+                1,
+            ),
+            to_port: 0,
+        },
+        Connection {
+            from: NodeId(
+                1,
+            ),
+            from_port: 0,
+            to: NodeId(
+                2,
+            ),
+            to_port: 0,
+        },
+        Connection {
+            from: NodeId(
+                2,
+            ),
+            from_port: 0,
+            to: NodeId(
+                3,
+            ),
+            to_port: 0,
+        },
+        Connection {
+            from: NodeId(
+                1,
+            ),
+            from_port: 0,
+            to: NodeId(
+                4,
+            ),
+            to_port: 0,
+        },
+        Connection {
+            from: NodeId(
+                3,
+            ),
+            from_port: 0,
+            to: NodeId(
+                4,
+            ),
+            to_port: 1,
+        },
+        Connection {
+            from: NodeId(
+                4,
+            ),
+            from_port: 0,
+            to: NodeId(
+                5,
+            ),
+            to_port: 0,
+        },
+        Connection {
+            from: NodeId(
+                6,
+            ),
+            from_port: 0,
+            to: NodeId(
+                7,
+            ),
+            to_port: 0,
+        },
+        Connection {
+            from: NodeId(
+                7,
+            ),
+            from_port: 0,
+            to: NodeId(
+                8,
+            ),
+            to_port: 0,
+        },
+    ],
+    modulations: [
+        ModulationEdge {
+            from: NodeId(
+                8,
+            ),
+            from_port: 0,
+            to: NodeId(
+                1,
+            ),
+            param: "cutoff",
+        },
+    ],
+    output: Some(
+        NodeId(
+            5,
+        ),
+    ),
+}

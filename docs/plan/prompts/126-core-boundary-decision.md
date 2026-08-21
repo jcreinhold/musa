@@ -29,7 +29,7 @@ document and a repaired prompt stack. It produces no code.
 - `crates/musa-kernel/src/timeline.rs` and `src/occurrence.rs` — the payload type parameter as it actually stands.
 - `crates/musa-compiler/src/elaborate.rs` — every existing surface-to-kernel translation, which is the census's
   evidence.
-- `crates/musa-audio/src/spec.rs` and roadmap §13 — the studio graph, the largest surface with no calculus under it.
+- `crates/musa-dsp/src/spec.rs` and roadmap §13 — the studio graph, the largest surface with no calculus under it.
 - Roadmap §2's layer table, which any answer must leave standing.
 - OMT `007-other-aspects-of-notation.md` (dynamics, articulation, and marks as *notation*), `074-swing-rhythms.md` and
   `118-metrical-dissonance.md` (performed time that is not notated duration), and `114-core-principles-of-

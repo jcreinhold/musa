@@ -60,9 +60,9 @@ because they set the size of prompts 127b–127e and 150–153:
 - `crates/musa-kernel` already implements the untagged heart of the event track — exact rational duration, finite
   occurrences, succession by shifting, simultaneity by maximum and multiset union, payload mapping. What it lacks is the
   coordinate tag and the renamed surface.
-- `crates/musa-audio`'s per-sample DSP units are close to registered primitives already; the gap is the registry and the
+- `crates/musa-dsp`'s per-sample DSP units are close to registered primitives already; the gap is the registry and the
   reference step, not the arithmetic.
-- `crates/musa-audio`'s plan does **not** implement the machine semantics. It defers cycle inputs at delay nodes to the
+- `crates/musa-dsp`'s plan does **not** implement the machine semantics. It defers cycle inputs at delay nodes to the
   previous host block, and its modulation path runs once per block, so host block size can affect meaning. That is the
   precise defect `constitution.md` §4 now forbids.
 

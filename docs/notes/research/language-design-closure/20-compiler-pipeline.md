@@ -398,8 +398,8 @@ different musical outputs.
 | contextual recipes and target adapters | `musa-compiler` | recipes private; caller-ready facts public |
 | exact temporal term and timeline | `musa-kernel` | yes, through its small algebra |
 | notation plan and exporters | `musa-notation` | plan private; render operations public |
-| process validation and prepared execution | `musa-audio` | graph private; preparation public |
-| live stepping and device transport | `musa-engine` | engine facade only |
+| process validation and prepared execution | `musa-dsp` | graph private; preparation public |
+| live stepping and device transport | `musa-playback` | engine facade only |
 | revision inputs and query coordination | `musa-project` | session facade only |
 
 No dependency direction changes.

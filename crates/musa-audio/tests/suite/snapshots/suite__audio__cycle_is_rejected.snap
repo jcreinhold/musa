@@ -1,5 +1,0 @@
----
-source: crates/musa-audio/tests/audio.rs
-expression: "compile_graph(&spec, &OPTIONS).err().expect(\"cycle\").to_string()"
----
-the graph has a cycle (legal only through an explicit delay node)

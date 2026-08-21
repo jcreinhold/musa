@@ -166,7 +166,7 @@ Separately, this probe found an error in [08](08-candidate-enriched.md)'s own D-
 So the UI consumes a *projection* and emits *source edits*. That is roadmap §11 and `AGENTS.md`'s "the source is
 canonical" working exactly as specified. The editor is a consumer of facts and of text, not of the term structure.
 
-**`StudioGraphSpec` appears nowhere outside `crates/musa-audio/`** — grep across `crates/` and `apps/` returns no
+**`StudioGraphSpec` appears nowhere outside `crates/musa-dsp/`** — grep across `crates/` and `apps/` returns no
 occurrence. It crosses no crate boundary at all.
 
 ### The correction to [08](08-candidate-enriched.md) D-1
@@ -192,7 +192,7 @@ is smaller and forward-looking, and it belongs to the prompt stack rather than t
 ### Where Proposition 7 does still bite
 
 Not at the editor, and not at `B`. At the seam this directory noticed at the outset: there are two independent studio
-graph representations, `musa_compiler::StudioSpec` and `musa_audio::StudioGraphSpec`, and the compiler-side one is
+graph representations, `musa_compiler::StudioSpec` and `musa_dsp::StudioGraphSpec`, and the compiler-side one is
 projected a third time into `StudioFacts` for display. The facts projection is legitimate and mirrors the score's own
 facts layer. The first two are the open question, and Prop 7's test applies to them directly: *name the pass that needs
 the second representation's structure, or let the first survive to it.* That question is untouched by P-3 and is now the

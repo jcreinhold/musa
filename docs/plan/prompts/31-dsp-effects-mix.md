@@ -23,7 +23,7 @@ buses, sends, and levels are visible and adjustable — as structured editors of
 
 ## Design
 
-- Processors (`musa-audio`): mono/stereo delay (time in `ms`, max preallocated), feedback delay (feedback gain — this is
+- Processors (`musa-dsp`): mono/stereo delay (time in `ms`, max preallocated), feedback delay (feedback gain — this is
   the graph's legal cycle: it must pass through the delay node, §13.3), chorus (modulated short delay, LFO-driven),
   algorithmic reverb (Schroeder/Freeverb-class: comb + allpass network; `room`, `damping` parameters per §7.1). Peak
   limiter on the master bus.
@@ -45,7 +45,7 @@ buses, sends, and levels are visible and adjustable — as structured editors of
 
 ## Target
 
-- `musa-audio`: delay, feedback delay, chorus, reverb, limiter; bus/send execution.
+- `musa-dsp`: delay, feedback delay, chorus, reverb, limiter; bus/send execution.
 - `musa-project`: studio edit commands (`AssignPatch`, parameter-change text edits).
 - `apps/musa-desktop`: Sound and Mix workspaces with structured editing.
 - Tests (§17.5): delay timing frame-exactness, feedback stability (bounded output at high feedback), reverb decay time
@@ -55,7 +55,7 @@ buses, sends, and levels are visible and adjustable — as structured editors of
 ## Check
 
 ```sh
-cargo nextest run -p musa-audio -p musa-project
+cargo nextest run -p musa-dsp -p musa-project
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo run -p musa -- check examples/glass-mountain.musa   # no placeholder warnings
@@ -87,7 +87,7 @@ Commit as `Add time effects, buses, and mix workspaces`.
 - **Those spans are trimmed.** `span_of` includes a node's leading trivia, so the first fader move produced `at-6.5 dB`.
   They use `trimmed_span` now.
 - **`ParamSpec` gained a writable `range`.** A slider needs bounds in the unit the composer writes (`-60`…`+12` dB), and
-  `musa-audio`'s `ParameterDescriptor` bounds something else — what the DSP accepts, in linear terms. Two questions, two
+  `musa-dsp`'s `ParameterDescriptor` bounds something else — what the DSP accepts, in linear terms. Two questions, two
   answers; the doc on `ParamSpec::range` says which is which.
 - **Mix shows only the levels the language has.** There is no per-part fader in `.musa`, so the Mix workspace does not
   draw one: a part's level is the `gain` stage its patch actually writes, plus its sends. Inventing a control would have

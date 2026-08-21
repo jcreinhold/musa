@@ -40,14 +40,14 @@ carry their pre-127a spellings, and the pairs are in [`../clean-break-ledger.md`
 | Building and closing a fragment into a core term | compiler to kernel | implemented, but over the deleted contextual `music` type | prompt 142 rebuilds it over ordinary values; differential and closure tests |
 | Finite `EventTrack<C,A>` operations, including unequal-duration `together` | `musa-kernel` | implemented at the old names and without the coordinate index | prompts 127b–127c; current 62 kernel tests and final conformance audit |
 | Versioned exact bytes for event-track equality | `musa-kernel` | implemented; the coordinate tag is not yet in the encoding | prompt 127c, then a migration test when a persisted reader is added |
-| `Machine<K,A,B>` as a core value of the source language | `musa-compiler`/`musa-audio` | absent | prompts 150–152 |
-| `schedule(format, policy, time map, track)` with a recorded decision list | `musa-audio` | absent | prompt 152 |
+| `Machine<K,A,B>` as a core value of the source language | `musa-compiler`/`musa-dsp` | absent | prompts 150–152 |
+| `schedule(format, policy, time map, track)` with a recorded decision list | `musa-dsp` | absent | prompt 152 |
 | Gesture event track | `musa-compiler` | absent | prompt 156 and its admission tests |
 | Engraving plan and current exports | `musa-notation` | implemented for current score facts | language graduation matrix |
 | Analysis packages with their own hidden value types and evidence | `musa-compiler` | partial built-in analyses; no general package mechanism | accepted source type design and real package examples |
-| Valid whole-machine step order | `musa-audio` | partial and not conforming to the new ordering rule | known ordering counterexample, machine-law tests |
-| Feedback through initialized one-step state | `musa-audio` | current behavior depends on caller buffer size | one-frame step, `batch` contract, and partition tests (R1-batch) |
-| Complete `prepare_execution` operation returning a `PreparedMachine` | `musa-audio` | absent in the specified form | instrument and preparation prompts |
+| Valid whole-machine step order | `musa-dsp` | partial and not conforming to the new ordering rule | known ordering counterexample, machine-law tests |
+| Feedback through initialized one-step state | `musa-dsp` | current behavior depends on caller buffer size | one-frame step, `batch` contract, and partition tests (R1-batch) |
+| Complete `prepare_execution` operation returning a `PreparedMachine` | `musa-dsp` | absent in the specified form | instrument and preparation prompts |
 | Cache that confirms complete audio arguments after hash lookup | audio/project | absent | exact `ExecArgs` record and forced-collision test |
 | Versioned registry of source and derived representations | `musa-project` | absent | exact descriptor and merge validation |
 | Complete origin paths with loss records | compiler/render/audio/project | partial source provenance only | generated-event and multi-pass path prototype |

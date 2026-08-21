@@ -57,7 +57,7 @@ staccato regions rather than receiving only a gate multiplier.
 
 Keep the public compiler facade narrow. Compare (and record) a separate public `PerformanceIntent` artifact with the
 chosen design in which private exact gestures are scheduled into a caller-oriented `PerformancePlan`; publish only the
-minimum immutable lane/control information required by MIDI and `musa-audio`. `ParameterId(u32)` is not reused as
+minimum immutable lane/control information required by MIDI and `musa-dsp`. `ParameterId(u32)` is not reused as
 `ControlKey`.
 
 ## Target

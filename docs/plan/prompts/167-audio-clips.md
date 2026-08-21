@@ -52,11 +52,11 @@ shipping it. Do not perform best-effort file I/O in the callback.
 ## Check
 
 ```sh
-cargo nextest run -p musa-compiler -p musa-audio -p musa-engine -p musa-project -p musa
+cargo nextest run -p musa-compiler -p musa-dsp -p musa-playback -p musa-project -p musa
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo deny check
-cargo bench -p musa-audio
+cargo bench -p musa-dsp
 cargo insta test --workspace --unreferenced=reject
 ```
 

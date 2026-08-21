@@ -291,8 +291,8 @@ The recursion is well founded because frame `n` never asks for `xₙ₊₁` to c
 frame of stateful delay. Instantaneous cycles have no such derivation and are rejected.
 
 This matches the existing studio rule at the level “only a cycle through `Delay` is admitted,” but not yet at the exact
-tick semantics. **Verified in `crates/musa-audio/src/plan.rs`:** the current scheduler cuts edges *into* a delay node on
-a cycle and lets that node read the upstream buffer from the end of the previous **block**. That is strictly causal by
+tick semantics. **Verified in `crates/musa-dsp/src/plan.rs`:** the current scheduler cuts edges *into* a delay node on a
+cycle and lets that node read the upstream buffer from the end of the previous **block**. That is strictly causal by
 more than one frame, but it is not the one-frame recurrence written above. A K₁ implementation must choose and specify
 one of two honest models: make the process tick a render block and treat the delay's internal sample loop separately, or
 compile guarded feedback to a finer frame schedule. It may not claim byte-identical operational correspondence while

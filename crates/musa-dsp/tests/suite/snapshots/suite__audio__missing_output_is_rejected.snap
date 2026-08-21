@@ -1,0 +1,5 @@
+---
+source: crates/musa-dsp/tests/audio.rs
+expression: "compile_graph(&spec, &OPTIONS).err().expect(\"no output\").to_string()"
+---
+no output node designated; call `set_output`
