@@ -2,7 +2,7 @@
 id: 143
 slug: builtin-collapse
 status: pending
-depends_on: [142e]
+depends_on: [142e, 142f]
 phase: 3
 ---
 
@@ -21,6 +21,13 @@ language had no way to overload a name. Traits, methods, and type namespaces exi
 `nat_add`/`ratio_add`/`duration_add` into `Add`, `text_equal` into `==`, `duration_of`/`position_of` into
 `Duration::of`/`Position::of`, and every other entry whose ownership entry no longer names anything the compiler
 actually hides. Record what shrank and what did not, and why.
+
+**The seventeen modulus-12 entries are the largest single case, and they are collapsed here rather than at 142e.** That
+prompt named the algebra; this one supplies the carrier it acts on. `Pc12`, `PcSet12`, and `Row12` become `Pc(n)`,
+`PcSet(n)`, and `Row(n)` over 142d's index and 142f's declaration form; `Group<Ti>` and `Action<Ti, Pc(n)>` are the
+instances; and `orbit` and `stabilizer` — ordinary functions of a finite action, taking the modulus as the number it is
+— replace `row12_symmetries`, `row12_forms`, and `row12_matrix`. Note 52 §2.3 is the argument that those three builtins
+are one question asked three times.
 
 *Repaired ordering:* this prompt now follows the staff rewrite — prompt 145 was pulled ahead of it and of 144 when the
 step-budget measurement said the rewrite could not wait for the cost table. That is the order prompt 140 already assumed
@@ -45,6 +52,11 @@ step-budget measurement said the rewrite could not wait for the cost table. That
 - `docs/rules/language/02-core-calculus.md` §5.8's four builtin families — collapsing entries must not change how many
   families there are, and an operation that moves from the compiler to `stdlib/` leaves the registry rather than moving
   between families.
+- [`52-the-musical-algebra.md`](../../notes/research/language-design-closure/52-the-musical-algebra.md) §2.3 and §5, and
+  `docs/rules/language/03-musical-domains.md` §5. §2.3 is the observation that a set class, Messiaen's modes, and a
+  row's symmetries are orbit and stabilizer and nothing else; §5 is what the index buys, counted. §5's falsifier — the
+  post-tonal rewrite for arbitrary n, substantially shorter than today's 213 lines plus 17 builtins — is this prompt's
+  to pass or to fail.
 - The `rust-performance` skill's workflow, and `docs/rules/language/06-elaboration-baseline.md`'s P1/P2 baseline. A
   dictionary indirection where there used to be a direct call is exactly the kind of change that is invisible in a
   microbenchmark and visible in a pipeline.
@@ -88,6 +100,9 @@ decision, or a budget?
   recording for each of the 131 entries whether it was kept, replaced, or moved to `stdlib/`, and the hidden information
   that decided it.
 - `stdlib/` gaining the operations that left the compiler, with their laws.
+- `stdlib/src/post_tonal/` rewritten over `Pc(n)`: `Group<Ti>`, `Action<Ti, Pc(n)>`, and `orbit`/`stabilizer` as
+  ordinary functions, with the modulus reaching them as the number it is.
+- `examples/`: the two fixtures the Check names.
 - P1/P2 measurements against `06-elaboration-baseline.md`'s baseline, and any mitigation applied, measured.
 - The privacy audit, recorded.
 - `docs/rules/language/` repaired wherever it named an operation that no longer exists.
@@ -112,11 +127,17 @@ prompt 142's Check and closed at 144 — and nothing else. The staff class is gr
 The oracle stays fixed: a collapse that changes a semantic hash, a diagnostic code, or a rendered corpus file has
 changed behaviour, and behaviour changes belonged to prompt 142.
 
+And the musical check the moved half brings with it: `orbit` under `Action<Ti, Pc(n)>` at modulus 12, applied to the
+committed set-class fixtures, reproduces `102-set-class-and-prime-form.md`'s prime forms, and `stabilizer` applied to
+the whole-tone and octatonic collections reproduces `106-collections.md`'s modes of limited transposition. Both as
+fixtures in `examples/`, both cited by `make docs-check`'s theory-citation pass.
+
 Commit as `Collapse the builtin registry behind traits and namespaces`.
 
 ## Stop
 
-- No new builtin. This prompt only removes and moves.
+- No new builtin. This prompt only removes and moves — `orbit` and `stabilizer` arrive in `stdlib/`, written in Musa, or
+  the three they replace have not actually left.
 - No change to the four builtin families of §5.8, and no fifth registry.
 - No behaviour change. Same values, same diagnostics, same rendered output.
 - No deletion of an entry whose ownership field still names something a library cannot express, however tempting the
