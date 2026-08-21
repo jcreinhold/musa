@@ -1,12 +1,12 @@
 # The one total source language
 
 The source language is a pure, strict, **total** calculus with lightweight dependency: two universes, one function type
-whose result may mention its argument, records with named fields, parameterized enumerations, pattern matching,
-structural recursion, definitional equality decided by normalization by evaluation, and exact resource checking. Its
-metaprogramming — hygienic quotation, splicing, provenance, and syntax traversal — is the primary extension mechanism
-and is specified in `11-quotation.md`. Surface conveniences elaborate into the calculus before evaluation. It is
-deliberately more expressive than the event-track term calculus and deliberately less expressive than a general-purpose
-programming language, because it may not diverge.
+whose result may mention its argument, records with named fields, parameterized enumerations, types refined by an
+**index** from a decidable arithmetic domain (§1.5), pattern matching, structural recursion, definitional equality
+decided by normalization by evaluation, and exact resource checking. Its metaprogramming — hygienic quotation, splicing,
+provenance, and syntax traversal — is the primary extension mechanism and is specified in `11-quotation.md`. Surface
+conveniences elaborate into the calculus before evaluation. It is deliberately more expressive than the event-track term
+calculus and deliberately less expressive than a general-purpose programming language, because it may not diverge.
 
 It is **one** language, and it builds **both** core values: an event track and a machine (`../constitution.md` §9).
 There is no second calculus for the studio, and nothing about audio lives outside it — only the audio *history* does,
@@ -23,6 +23,15 @@ ascribes a universe level, states an instance constraint, or presents a non-stru
 describes the surviving design: the same totality, the same exactness, the same macros, and the dependency real programs
 use, with everything else deleted rather than wrapped. Where a section below refuses a feature the checklist would have
 included, the refusal is priced here and is re-opened only by a committed program that needs it.
+
+**And one step of the correction was taken back, by measuring what the corpus writes instead.** The audit's rule — every
+mechanism names the committed program that requires it — proves nothing about a feature a self-written standard library
+never had, because absence of use is evidence of the workaround, not of the absence of demand.
+[`../../notes/research/language-design-closure/51-the-terseness-audit.md`](../../notes/research/language-design-closure/51-the-terseness-audit.md)
+asked the question the audit did not, exhibited the workaround — seventeen compiler builtins spent on a single modulus,
+a `fallback` parameter in a public signature, a bar summed at run time — and §1.5 is what deletes it. It is Xi and
+Pfenning's stratified index and not a step back toward indexed families: the index language is separate, the solver
+decides it, and every piece of machinery the audit removed stays removed.
 
 ## 1. Syntax
 
@@ -60,13 +69,13 @@ rule to ignore. A generic function's type parameters are ordinary leading parame
 *omitted*, which is an elaboration rule of §2.1 and not a binder property. Nothing downstream — traits, `Syntax<Cat>`,
 `Duration C` — needs a second binder form, and now nothing anywhere has one.
 
-**Dependency where programs use it.** A result type may mention an earlier explicit parameter — `fn f(n: Nat) -> Vec<n>`
-in schema — and a type constructor may be indexed by a value where a domain needs one: `Duration C`, `Position C`, and
-`Syntax C` are the committed cases, all compiler-owned base types with the index a closed literal of an ordinary
-enumeration. Records are named products: a field's type may mention the type parameters in scope at the declaration, and
-no field's type mentions a sibling field's *value*, because no committed program has one that does. That last
-restriction is the difference between records and a telescope, and it is what keeps projection a lookup rather than an
-instantiation.
+**Dependency where programs use it, in two forms.** A result type may mention an earlier explicit parameter, and a type
+may carry **index arguments** from the decidable domain of §1.5 — `Pc(12)`, `Row(n)`, `Bar(p + q)`. `Duration C`,
+`Position C`, and `Syntax<Cat>` are the same mechanism in the special-cased form that predates it: a compiler-owned base
+type at a closed literal of a finite enum. Records are named products: a field's type may mention the type parameters in
+scope at the declaration, and no field's type mentions a sibling field's *value*, because no committed program has one
+that does. That last restriction is the difference between records and a telescope, and it is what keeps projection a
+lookup rather than an instantiation.
 
 ### 1.1 Enumerations
 
@@ -81,9 +90,14 @@ data Tree<A> {
 
 There are no per-constructor indices. A constructor's fields are ordinary types written under the parameters, and a
 constructor at known parameters checks or infers like any function value. The index was the previous calculus's one
-machine for making a `match` narrow a *type*; no committed program narrows a type by matching, and the one
-indexed-looking type the tooling needs, `Syntax<Cat>`, is a parameterized base type with the category a closed literal —
-`11-quotation.md` §1 states why that is the whole of what quotation asks of the type system.
+machine for making a `match` narrow a *type*; no committed program narrows a type by matching, and `11-quotation.md` §1
+states why that is the whole of what quotation asks of the type system.
+
+**This is not the index of §1.5, and the two must not be confused.** §1.5's index is an arithmetic argument the *type*
+carries, decided by a solver and erased before evaluation; a constructor never chooses one, no `match` reads one, and
+nothing in this section changes to admit it. What stays deleted here is the machinery that made a constructor's choice
+of index a fact a pattern could learn: index unification, the dependent motive, and the forced and inaccessible patterns
+that go with them.
 
 **Strict positivity is checked on the declaration group**, so mutually recursive enumerations are checked together. A
 recursive occurrence may not appear to the left of an arrow at any depth: a negative occurrence admits a fixed point,
@@ -192,8 +206,11 @@ The course correction adds to this list, and each addition is priced in note 50'
   priced in §1.4 dissolves with the type it was asked about.
 - **No implicit arguments.** A type parameter is explicit at the definition and may be omitted at the call, where §2.1's
   one rule solves it or refuses. There is no second binder form, no insertion, and nothing for conversion not to read.
-- **No indexed families.** Enumerations have parameters only (§1.1), and the one indexed-looking type in the tooling,
-  `Syntax<Cat>`, is a base type with a literal index.
+- **No indexed families, which is a narrower refusal than it was.** An *enumeration* has parameters only (§1.1): a
+  constructor never chooses an index, so there is no index unification, no dependent motive, and no forced pattern. A
+  *type* may carry an index, by §1.5, decided by a solver and erased before evaluation. The refusal is about what a
+  constructor may determine and what a `match` may learn, and it is unchanged; it was never about whether `Row(24)` may
+  be a type.
 - **No metavariables in the term language, and no postponed constraints.** A generic argument the call site does not
   determine is an error there, not a hole that waits.
 - **No termination measures.** Structural descent is the whole rule (§2.4).
@@ -229,6 +246,135 @@ correct response to an unused equality type in a language that is not a proof as
 version of it. Equality here is definitional (§3, deciding types) or computational (`==`, deciding values), and those
 two are each documented where they live. Re-opening is an ordinary amendment, and the evidence it needs is stated in
 advance: a committed program that states an equality between two values and eliminates it.
+
+### 1.5 Index refinement
+
+A type may carry **index arguments**. An index is a value of a fixed decidable arithmetic domain, written in parentheses
+after the type name so that it is distinguishable at a glance from a parameter in angle brackets:
+
+```text
+Pc(12)            % a pitch class in a 12-fold division
+Row(n)            % a bijection onto Pc(n)
+Bar(3/4)          % a bar whose contents sum to three quarters
+Voicing(4)        % four voices, not a list that happens to have four
+```
+
+`Pc<A>` would be a type built from another type. `Pc(12)` is a type built from a *number*, and the whole of this section
+is what that number is allowed to be, who decides when two of them agree, and what it is forbidden to do.
+
+**The rule, in one sentence.** A type may carry index arguments drawn from a fixed decidable domain; indices are erased
+before evaluation, never matched on, and two indexed types are the same type when the solver proves their indices equal.
+
+#### The domain
+
+Three sorts, all decidable, and all already in the language: `Nat`, exact `Ratio`, and **finite literal enums** — which
+is the sort `Syntax<Cat>`'s category has always been. The expression language over them is:
+
+```text
+i ::= n                 % a literal of the sort
+    | x                 % an index variable
+    | i + i  |  i - i   % addition and subtraction
+    | k * i             % multiplication by a literal
+    | i = i  |  i < i   % comparison, where a condition is wanted
+```
+
+That is Presburger arithmetic, so equality and entailment in it are decidable, and the fragment the corpus generates —
+equality of two linear forms — is decidable by normalizing both and comparing. **Nothing else enters.** An expression
+outside the grammar is a refusal that names the expression, not a constraint that is postponed, approximated, or
+assumed. Multiplication of two variables, division, an arbitrary function call, and any mention of a term variable are
+each that refusal.
+
+An **index variable** is introduced by appearing in a signature and is solved at the call by §2.1's first-order
+matching, from the written arguments' types:
+
+```text
+fn row(pcs: List<Pc(n)>) -> Result<Row(n), RowFault>
+fn follow(a: Bar(p), b: Bar(q)) -> Bar(p + q)
+```
+
+`n` in the first is read off the argument, and `p + q` in the second is computed rather than matched. An index variable
+no written argument determines is the same refusal §2.1 already gives for a type parameter, naming the index.
+
+#### What this is not
+
+This is the confusion that costs the most, so it is stated before anything else about the mechanism.
+
+**It is not inductive-family indices.** Enumerations have parameters only (§1.1), and that is unchanged. A constructor
+never chooses an index; there is no index unification, no dependent motive, no forced or inaccessible pattern, and no
+`J`. `family/` does not grow by one line. An indexed type is a **declared or base type applied to index expressions**,
+and its refinements are the constructor judgments §2.2 already describes, now with a type to say what they enforced.
+
+**It is not a dependent type.** A dependent type may mention a *term*, which is why deciding one needs the evaluator,
+and why an ill-typed mention could diverge. An index cannot mention a term variable at all. The two strata do not meet:
+`index.rs` is specified in prompt 142d as a module that does not import `value.rs`, and if it ever needs a `Value` the
+stratification has been broken.
+
+**It is not a constraint, and not a trait.** There is no instance table, no dictionary, nothing to resolve, and nothing
+an author can hand-write an instance for. §1.2 makes the same argument about storability, for the same reason.
+
+#### Erasure is total
+
+An index is erased **at quotation**. `quote` drops index arguments, so a read-back term carries none, and everything
+downstream of elaboration is byte-identical to what it was before this section existed: a compiled term, an event track,
+the `% musa-events-3` interchange format, `../across-stages/43-semantic-identity.md`'s digests, and every snapshot in
+the suite. This is not a property to be tested for and hoped about; it is where the erasure happens, so that
+byte-identity is the check.
+
+The consequence worth stating plainly: **an index changes which programs are accepted and nothing else.** It cannot
+change a value, a sound, a rendering, or a file. A design that let one would have made the index a runtime quantity, and
+a runtime quantity is a term.
+
+#### Conversion asks the solver
+
+`Γ ⊢ T(a) ≡ T(b)` holds exactly when the solver decides `a = b` in the index domain. §3's normalization by evaluation is
+not involved and cannot be: it decides *terms*, and an index is not one. The conversion checker meets an index the way
+it meets any opaque payload — it asks, and takes the answer.
+
+This separation is the whole design, and the reason to state it as a rule rather than as an implementation note. The
+calculus this one replaced braided two questions into one procedure: *are these terms equal* and *are these indices
+equal* were both settled by unification, and the second is where the machinery and the cost lived. Two independent
+deciders, neither of which knows the other exists, is not a smaller version of that procedure; it is a different shape,
+and it is why the term core does not grow to buy this.
+
+A mismatch is reported in the domain's own words. "a `Row(12)` where a `Row(24)` was expected" is the diagnostic; the
+solver's internal linear form never appears in a message.
+
+#### What is honestly checkable
+
+An index says something statically only when something static determines it, and this section says which case each type
+is in rather than implying the strong one everywhere.
+
+| Type | The index is | Checked |
+| --- | --- | --- |
+| `Pc(n)`, `Ic(n)` | a parameter fixed where the value is constructed | statically |
+| `Row(n)`, `Icv(n)` | derived arithmetically from the carrier's | statically |
+| `Voicing(k)` | a literal at the declaration | statically |
+| `Bar(m)` | the sum of the contents' durations | statically **when the durations are**; otherwise a checked constructor and a runtime refusal, exactly as today |
+
+The `Bar(m)` row is the honest one and the reason this table exists. `follow(a: Bar(p), b: Bar(q)) -> Bar(p + q)`
+settles a bar written out note by note, which is the common case in notated music and in every expansion an adapter
+produces. A bar folded out of a list whose length the checker does not know has no static sum, and gets the constructor
+and the diagnostic it has now. Promising more would be promising a length-indexed list, and a length-indexed list is a
+dependent type.
+
+#### The refusals
+
+Each of these is a refusal that names what it refused, and each is re-opened only by a committed program that needs it,
+under `../README.md`:
+
+- **An index expression outside the grammar above** — two variables multiplied, a division, a call.
+- **Matching on an index.** There is no pattern that inspects one, because there is no value to inspect: it is erased.
+- **An index in an eliminator's motive.** §1.1's eliminator is non-dependent and stays so.
+- **An existential index** — a value carrying an index the type does not name. `Row(n)` for *some* `n` is not a type.
+- **An index-level function.** The grammar is closed; a user cannot extend it, and neither can the standard library.
+- **A proof term.** Nothing witnesses an index equality, because the solver decides it and produces no evidence a
+  program could hold. The identity type stays deleted (§1.4).
+- **An index over a type**, which would be a universe by another name (§1.3).
+
+`EventTrack C δ`, `Duration C`, `Position C`, `Primitive K δ δ`, `Machine K δ δ`, and `Syntax<Cat>` are this mechanism
+in special-cased form and predate it: a compiler-owned base type applied to a closed literal from a finite enum. Prompt
+142d reworks them onto the general mechanism or records why one cannot move, since a feature the compiler gave itself
+and withheld from the source language is the exact shape root `AGENTS.md` names as a mistake.
 
 ## 2. Static semantics: bidirectional checking
 
@@ -307,10 +453,17 @@ diagnostic, while accepted constants are mathematical booleans, bounded natural 
 rationals, or already-validated musical values. It is not a partial term operation.
 
 Literal constructors enforce refinements such as nonnegative `Duration`, finite scale members, and row bijectivity.
-These are constructor judgments returning a value or a located diagnostic, and they are deliberately not dependent: a
-refinement moved into a type index becomes load-bearing in every operation that touches the value, and no committed
-program manipulates such evidence before evaluation. Named predicates used by `assert` return finite evidence that the
-assertion layer can report.
+These are constructor judgments returning a value or a located diagnostic, and the value they return may be **indexed**
+by §1.5: `fn row(pcs: List<Pc(n)>) -> Result<Row(n), RowFault>` performs the same runtime check it always did and now
+says in its type which modulus it checked against. That is this section's mechanism gaining a type, not a second one.
+
+The refinement does not thereby become load-bearing in every operation that touches the value, and the reason is
+erasure. An index is not evidence a program holds, constructs, or passes; it is arithmetic the checker does and then
+discards, so an operation that does not care about `n` mentions `n` nowhere. The earlier statement of this section
+refused type-level refinements on the grounds that no committed program manipulates such evidence before evaluation,
+which is still true and is now the argument *for* the stratified form rather than against any form: there is no evidence
+to manipulate. Named predicates used by `assert` return finite evidence that the assertion layer can report, and that is
+a different thing — evidence a program does hold, about a value the checker could not settle.
 
 ### 2.3 Track and machine construction
 
@@ -364,6 +517,12 @@ quote : Level → Value → Term         % reads a value back at a de Bruijn lev
 η at functions and at records is performed by `quote` rather than by a conversion rule, which is why two record values
 with the same projections are convertible without a rule that inspects both at once — the property `10-traits.md`'s
 one-instance-per-head rule rests on when two projections of the same dictionary meet.
+
+**An index is not decided here.** Where conversion meets two indexed types at the same head, it asks §1.5's solver
+whether the index arguments are equal and takes the answer; normalization is not involved, because an index is not a
+term and cannot be evaluated. There are two deciders and they are independent: this one settles terms by NbE, that one
+settles indices by arithmetic, and neither calls the other. `quote` drops indices, so a normal form never carries one —
+which is what makes erasure a fact about where the code sits rather than a property a test has to keep watching.
 
 **The dependency chain runs one way, and it is the reason totality is kept rather than a matter of taste:**
 

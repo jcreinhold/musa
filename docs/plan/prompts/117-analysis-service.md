@@ -39,7 +39,7 @@ theory values stay private.
 domain its findings live in, the abstraction map from the concrete `Timeline<ScoreFact>` projection to that domain, and
 the soundness claim relating them — what a finding does and does not license a caller to conclude. An analysis whose
 soundness claim cannot be written is an analysis that must not ship, because a finding with no stated relationship to
-the score is exactly the false claim `docs/rules/language/03-musical-domains.md` §5 forbids. This is what makes the
+the score is exactly the false claim `docs/rules/language/03-musical-domains.md` §6 forbids. This is what makes the
 fact/candidate/conflict classification below mean something precise — candidates are concrete interpretations the
 abstraction cannot separate — rather than being severity labels chosen by feel, and it is what prompt 118 inherits.
 

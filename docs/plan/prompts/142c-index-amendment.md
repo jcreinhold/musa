@@ -1,7 +1,7 @@
 ---
 id: 142c
 slug: index-amendment
-status: pending
+status: done
 depends_on: [142b]
 phase: 3
 ---
@@ -88,3 +88,5 @@ opens only `constitution.md` and `rules/README.md` learns what changed, why, wha
   that is a repair to this prompt first, committed before the code.
 - Do not reopen `Id`, universes, measures, or constraint-based traits. Note 51 §7 keeps them deleted and this amendment
   does not touch them.
+
+Commit as `Admit a stratified index, and specify it before building it`.

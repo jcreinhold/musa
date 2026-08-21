@@ -213,7 +213,7 @@ are:
 
 **Adding a base type.** A new base type is admitted by a registry entry rather than a new induction
 ([`02-core-calculus.md`](../../rules/language/02-core-calculus.md) §5.8). The price of that cheap admission is a row in
-[`03-musical-domains.md`](../../rules/language/03-musical-domains.md) §6 stating what the type means, where the meaning
+[`03-musical-domains.md`](../../rules/language/03-musical-domains.md) §7 stating what the type means, where the meaning
 comes from, and a falsifying example. A row with no falsifier is a type that has not said what it is for, and could have
 been a `Nat`.
 

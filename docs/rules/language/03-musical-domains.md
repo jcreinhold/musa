@@ -129,7 +129,66 @@ group” is false; a symmetric row may also identify several labelled results.
 each transformation is a permutation of `Fin 12` followed, where applicable, by a bijection on `pc12`. Thus every row
 operation is total and finite.
 
-## 5. Construction, assertion, and analysis
+## 5. Indexed domains: the modulus is a parameter, not a constant
+
+Everything above §4 is written for one division of the octave, and the corpus is not. OMT
+`068-equal-divisions-of-the-octave.md` is *about* dividing the octave into n parts and asking which n admit which
+symmetries; quarter-tone practice needs 24, Turkish and Arabic theory are usually modelled at 24 or 53, and a 19- or
+31-tone meantone keyboard is an ordinary object. Bohlen–Pierce divides the *tritave* (3:1) into 13, so the period is a
+parameter too. `02-core-calculus.md` §1.5's index is what lets one type say all of that, and this section fixes what
+each indexed domain means.
+
+Define, for a period `P` (a frequency ratio, by default 2:1) and a division `n ≥ 1`:
+
+```text
+Cyclic(n)         % the cyclic group ℤ/nℤ — an element, not a set
+Pc(n)  =  Cyclic(n)   in a pitch reading
+Ic(n)              % an interval class: the vector type acting on Pc(n)
+Row(n)             % a bijection Fin n → Pc(n)
+Icv(n)             % the interval-class vector: ⌊n/2⌋ entries
+Voicing(k)         % exactly k voices, in fixed order low to high
+```
+
+`pc12` of §1 is `Pc(12)` and `Row12` of §4 is `Row(12)`; the definitions there are unchanged and are the `n = 12`
+instances of these. Every count that was a literal in §4 is now derived: a row's matrix is `n` rows and not twelve, and
+the T/I group on `Pc(n)` has exactly `2n` elements and not 24. The interval-class vector's `⌊n/2⌋` entries generalize
+§4's six for the reason §4 already gives — interval class `n − k` is interval class `k` heard the other way round — and
+the entry at `n/2` for even `n` is its own inverse, which is why the tritone counts once at `n = 12`.
+
+**`Cyclic(n)` serves pitch class and rhythmic cycle alike, and that is the point of naming it.** A pitch-class set in
+ℤ/12 and a bell pattern in a 12-pulse cycle are the same mathematical object: transposition is rotation, inversion is
+reflection, and the interval-class vector is the pattern's autocorrelation. So `102-set-class-and-prime-form.md`'s prime
+form and a rhythm's canonical rotation are one algorithm, and a Carnatic tala, a West African bell pattern, and
+`098-twentieth-century-rhythmic-techniques.md`'s additive meters are cycles of n pulses with an onset set. A language
+that names the structure once serves all of them; one that names `pc12` twelve times serves none of them well. The pitch
+reading and the rhythmic reading are separate *types* over the shared carrier, because a listener does not hear them as
+the same thing and Musa never identifies what practice distinguishes — but they share their operations, their laws, and
+their algorithm.
+
+**The period is a parameter and equal division is a special case.** A scale is an interval pattern that sums to the
+period; equal division is the pattern where every step is the same. Gamelan slendro and pelog are unequal and
+instrument-specific, so `Scale` (§2) keeps its ordered pattern of offsets and gains the period it sums to; `Pc(n)`
+describes a division only where one has been chosen, and a scale in an unequal tuning has no `n` at all. Naming the
+division is therefore something an author does, not something that happens to them — the same commitment §4 and note 52
+§2.4 make about forgetting a spelling.
+
+**What the index buys is counted, not claimed.** `Pc(n)` gives the checker the carrier's size, so a finite carrier's
+laws are decidable by enumeration inside the existing budget: orbit, stabilizer, and prime form become ordinary
+functions of a finite action rather than one compiler builtin per question. Messiaen's modes of limited transposition
+(`106-collections.md`) are exactly the collections with a nontrivial stabilizer under T, and a row's symmetries
+(`110-row-properties.md`) are its stabilizer — two chapters that are this and nothing else. The seventeen `pc12_*` and
+`row12_*` builtins §4 is implemented by exist because the modulus could not be said; prompt 143 removes them, and if it
+does not, the argument in
+[`../../notes/research/language-design-closure/51-the-terseness-audit.md`](../../notes/research/language-design-closure/51-the-terseness-audit.md)
+was wrong.
+
+**What the index does not buy.** `Bar(m)` — a bar whose contents sum to the meter `m` — is checkable exactly when the
+durations are statically known, which is the common case in written notation and in every expansion an adapter produces.
+A bar folded out of a list whose length the checker cannot see keeps the constructor and the runtime refusal it has
+today. `02-core-calculus.md` §1.5 states which case each type is in; a governing document that implied the strong one
+everywhere would be promising a length-indexed list, and that is a dependent type this language does not have.
+
+## 6. Construction, assertion, and analysis
 
 - A constructor returns a value only after enforcing its representation invariant (`row12`, `scale`, `voice`).
 - An assertion is a decidable proposition over constructed finite values or music and either returns its input with
@@ -144,7 +203,7 @@ operation is total and finite.
 This split prevents a theory algorithm from silently changing construction and prevents one analytic convention from
 becoming type checking.
 
-## 6. Source map and falsifiers
+## 7. Source map and falsifiers
 
 Every base type this document adds owes a row here. That is `02-core-calculus.md` §5.8's standing budget: a new base
 type is admitted by a registry entry rather than a new induction, and the price of the cheap admission is that the type
@@ -168,6 +227,10 @@ example is a type that has not yet said what it is *for*, since a domain that ru
 | row12 | bijection `Fin 12 → pc12` | OMT `108-basics-of-twelve-tone-theory.md`; finite-closure lemma | a repeated pc rejects construction | 105 |
 | row convention | explicit naming policy | OMT `109-naming-conventions-for-rows.md` | bare `P7` in a convention-free API is ambiguous | 105 |
 | symmetric row | row with nontrivial stabilizer | OMT `110-row-properties.md` | requiring exactly 48 distinct forms rejects valid rows | 105 |
+| `Cyclic(n)` / `Pc(n)` | ℤ/nℤ as an indexed type, with the pitch and pulse readings separate over one carrier | OMT `068-equal-divisions-of-the-octave.md`, `099-pitch-and-pitch-class.md`, `098-twentieth-century-rhythmic-techniques.md`; note 52 §1 | a 12-pulse bell pattern and a pcset in ℤ/12 must share `transposed` and `prime form`, and must still be two types | 142c–142d |
+| `Row(n)` | bijection `Fin n → Pc(n)`, with `2n` T/I forms and an `n`-row matrix | OMT `108-basics-of-twelve-tone-theory.md`, `110-row-properties.md`; finite-closure lemma, read at `n` | a 24-EDO row cannot be typed `Row12`, and asserting 48 forms is false at every `n` | 142c–142d |
+| `Icv(n)` | interval-class vector of `⌊n/2⌋` entries | OMT `103-interval-class-vectors.md`, generalized | six entries is the `n = 12` case, not the definition | 142c–142d |
+| period and division | a scale is an interval pattern summing to its period; equal division is the special case | note 52 §1, after OMT `068-equal-divisions-of-the-octave.md`, `106-collections.md` | Bohlen–Pierce divides 3:1 and slendro divides nothing equally, so neither has an `n` by default | 142c–142d |
 | harmonic transform | library operation over typed harmony | OMT `061`–`073`, especially `072-neo-riemannian-triadic-progressions.md` | calling every common-tone move an event track primitive | 106–113 |
 | assertion | decidable, evidence-producing check | Musa definition; style evidence OMT `023`–`028` | species rules applied as universal well-formedness | 109, 112 |
 | analysis result | named method, assumptions, alternatives, evidence | OMT `020`, `021`, `050`, `051` | one Roman-numeral reading mutates the chord facts | 115–116 |

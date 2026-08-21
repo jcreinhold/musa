@@ -122,7 +122,7 @@ step, returning what repeated and what never arrived.
 
 ## 8. Counterpoint and voice leading
 
-Every style rule Musa checks is in the registry at `crates/musa-compiler/src/analysis/rules.rs`, and **every row of that
+Every style rule Musa checks is in the registry at `crates/musa-score/src/analysis/rules.rs`, and **every row of that
 registry carries a citation** — a rule whose source is "everyone knows" is exactly what the registry exists to refuse.
 The full table, with each rule's strength and the section it cites, is
 [`07-analysis.md`](07-analysis.md#voice-leading-and-counterpoint).
@@ -237,6 +237,7 @@ verified by `scripts/check-docs.sh`: the corpus is outside the repository and is
 | the base case Musa's assignment rule is: a hole applied to nothing takes its solution directly, which is the pattern fragment's easiest instance and the only one still in force — the fragment itself is **not** implemented (note 51 §7) | Miller (1991), "A logic programming language with lambda-abstraction, function variables, and simple unification" |
 | bidirectional type checking: check and infer modes and the two rules that switch | Pierce and Turner (2000), "Local type inference"; Coquand (1996), "An algorithm for type-checking dependent types" |
 | coverage, and compiling `match` to eliminators. Dependent pattern matching and index unification are **not** implemented: §1.1 admits no indices, and §1.1's eliminator is non-dependent | Coquand (1992), "Pattern matching with dependent types"; Goguen, McBride, and McKinna (2006), "Eliminating dependent pattern matching" |
+| the **stratified index**: a type refined by a value of a separate decidable arithmetic domain, erased before evaluation, with equality decided by a solver rather than by unification (`02-core-calculus.md` §1.5). Musa takes the stratification and the erasure; it takes neither existential indices nor the assertion-and-obligation discipline, because the fragment the corpus generates is equality of two linear forms | Xi and Pfenning (1999), "Dependent types in practical programming"; Xi (2007), "Dependent ML: an approach to practical programming with dependent types" |
 | strict positivity as the admission condition for an inductive family | Coquand and Paulin (1990), "Inductively defined types" |
 | the predicative universe hierarchy and its consistency consequence | Martin-Löf (1984), *Intuitionistic Type Theory* |
 | K, uniqueness of identity proofs, and what admitting it as an axiom would foreclose — cited to record the decision `02-core-calculus.md` §1.4 replaced, which is deleting the identity type rather than choosing a K for it | Streicher (1993), "Investigations into intensional type theory"; Hofmann and Streicher (1998), "The groupoid interpretation of type theory"; Hedberg (1998), "A coherence theorem for Martin-Löf's type theory" |

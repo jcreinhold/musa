@@ -4,8 +4,14 @@
 core values (`../rules/constitution.md`, `../rules/README.md`).
 
 This page names every source spelling, Rust API, serialized form, fixture, and test name that prompts 127b–127d, 142,
-and 150–153 **delete** rather than keep working through an alias, a deprecation shim, or a compatibility reader. It
+143, and 150–153 **delete** rather than keep working through an alias, a deprecation shim, or a compatibility reader. It
 exists so that "clean break" is a checkable list rather than an intention.
+
+Prompt 143's row is the one that arrived by a different route. It is not a rename the event-track amendment forced; it
+is the **count that admitted the index**, entered here so that admitting a feature on a workaround obliges removing the
+workaround (`../rules/obligations.md` §10). Seventeen of the compiler's 121 `Builtin` variants are one modulus spelled
+into the compiler because the language could not say it, and a prompt that lands the index without deleting them has not
+finished.
 
 ## Why a ledger rather than aliases
 
@@ -59,6 +65,7 @@ best-effort translation.
 | `musa_dsp::compile_graph` and public `StudioGraphSpec` as a semantic alternative | machine construction and `prepare_audio(format, machine)` | 152 |
 | `RenderPlan` / `PreparedExecution` as the public prepared artifact | `PreparedMachine` | 150, 152 |
 | a caller- or preparation-chosen "semantic step" option | one audio step is one sample frame; batching is a checked `batch(n)` contract | 152 |
+| the seventeen `Builtin` variants `Pc12Of`, `Pc12Number`, `Pc12Forget`, `Pc12Transposed`, `Pc12Inverted`, `Pc12Spelled`, `Row12Of`, `Row12Pcs`, `Row12Head`, `Row12Transposed`, `Row12Inverted`, `Row12Retrograde`, `Row12Matrix`, `Row12Forms`, `Row12Symmetries`, `Row12Repeats`, `Row12Missing`, and the surface spellings `pc12_*` / `row12_*` they register | operations over `Pc(n)` and `Row(n)`, written in `.musa` against the index of `../rules/language/02-core-calculus.md` §1.5 | 143 |
 
 The event track stays a leaf through all of this: no machine type, audio type, or frame index enters `musa-events`.
 

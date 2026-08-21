@@ -113,6 +113,19 @@ revision; its size measured in lines and bytes; the compensating constructs enum
 later prompt that rewrites the same program on the new feature and reports the new measurement. A prediction is not
 evidence and a rewrite that does not shrink the program is the feature failing, whatever else it improved.
 
+**The compiler counts as the deformed program, and this is the clause that took an amendment to learn.** Both routes ask
+what a committed program *does*, and the answer "nothing, there is no such program" is ambiguous between *no demand* and
+*the workaround*. A standard library we wrote ourselves in a language that lacked the feature will not exhibit the
+feature; it will exhibit whatever was written instead, and if what was written instead lives in the compiler rather than
+in `.musa`, a survey of `.musa` finds nothing and concludes wrongly. So a mechanism is also admitted when the corpus
+contains a **named, counted workaround that the mechanism deletes** — exhibited and measured, not described. Seventeen
+`Builtin` variants spent on a single modulus is such a count; "it would be nicer" is not one, and neither is a feature
+that would delete a workaround nobody has actually written.
+
+The symmetric obligation is what keeps this from being a licence. A feature admitted on a workaround owes the *removal*:
+the prompt that lands it names the count it deletes, and a later prompt reports the count afterwards. A workaround that
+survives the feature meant for it is the same failure as a rewrite that does not shrink.
+
 `stdlib/src/adapters/staff.musa` is the first admission on this route: 2,404 lines and 93,252 bytes of Musa to read
 staff notation, of which six hand-written `call1`–`call7` argument builders, 27 distinct hand-allocated role integers
 across 56 `syntax_built` calls, an eight-field product destructured in full to read one field, 21 `text_equal` tests

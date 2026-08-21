@@ -191,18 +191,21 @@ something different depending on where it is used.
 Five properties are load-bearing, and each of them is a refusal:
 
 - **Total.** There is no general recursion and no partial call. Every accepted program finishes, and the reason it
-  finishes is visible to the checker: every recursive definition decreases a **well-founded measure the checker
-  verifies**, whether that measure is constructor size or something the author states and proves. There is no `partial`
+  finishes is visible to the checker: every recursive call **descends structurally**, on an argument an enclosing
+  pattern bound to a strict subterm of what was matched. There is no measure language and no decreasingness proof to
+  write, because there is nothing for an author to state that the case tree does not already show. There is no `partial`
   keyword and no escape hatch; a definition whose termination the checker cannot see is rejected rather than trusted. A
   resource budget may stop an evaluation, but it may not change the value an accepted program produces.
 - **Checked bidirectionally.** Types are checked by **bidirectional elaboration**: a term is checked against a known
-  type or its type is inferred, with metavariables and pattern-fragment unification filling in what the program
-  determines. Annotations are written where a public signature or separate checking needs one, not to teach the compiler
-  what the program already determines. A signature may mention a value, so there are no principal types and no global
-  inference: what a program means is fixed by what it says, and what it does not say is solved locally or reported.
-- **Complete.** A call supplies every argument. A function of several parameters takes one product argument. Partial
-  application, default parameters, and named hole filling are not features whose absence needs a workaround; they are
-  ambiguity about what a call means.
+  type or its type is inferred, and a type parameter the call omits is solved **once, at that call**, by first-order
+  matching against the written arguments. There is no constraint queue and nothing that waits. Annotations are written
+  where a public signature or separate checking needs one, not to teach the compiler what the program already
+  determines. A signature may mention a value, so there are no principal types and no global inference: what a program
+  means is fixed by what it says, and what it does not say is solved locally or reported.
+- **Complete.** A call names every parameter. Either it supplies an argument or it writes `_`, and a call that does
+  neither is a type error rather than a function-valued result. Default parameters and named hole filling stay refused
+  for the same reason: they are ambiguity about what a call means. A written `_` is not that ambiguity — it is the
+  section itself, spelled at the call site, so a reader still counts the parameters without opening the declaration.
 - **Split into values and storable data.** Every type is a value type. A type is also **storable data** when it contains
   no source function at any depth and has a versioned, finite, exact encoding. Only storable data may be an occurrence
   payload, a machine port, a feedback value, a primitive configuration, or an argument to a foreign primitive. A source
@@ -219,10 +222,39 @@ close a safety boundary the current rules cannot state, or carry measured engine
 program the language made unwritable.
 
 Two of those refusals were narrowed rather than kept, and the narrowing is stated here so nobody has to reconstruct it
-from a diff. **Dependent and refinement types are admitted**: a type may mention a value, indexed families are ordinary
-declarations, and the identity type is part of the core. **Typed quotation is admitted** as the one form of
-metaprogramming: a quotation produces syntax of a stated category, its provenance is derived rather than written, and it
-runs during elaboration. What stays refused is the type-directed macro proper — expansion that inspects an inferred type
-to decide what code to produce, which makes a program's meaning depend on the order in which the checker solved it.
-[`docs/notes/research/language-design-closure/42-dependent-core-decision.md`](../notes/research/language-design-closure/42-dependent-core-decision.md)
-is the record: the evidence, the cost, and the arguments this narrowing overturned.
+from a diff.
+
+**Typed quotation is admitted** as the one form of metaprogramming: a quotation produces syntax of a stated category,
+its provenance is derived rather than written, and it runs during elaboration. What stays refused is the type-directed
+macro proper — expansion that inspects an inferred type to decide what code to produce, which makes a program's meaning
+depend on the order in which the checker solved it.
+
+**Dependency is admitted in two forms and no others.** A result type may mention an earlier argument, and a type may
+carry **index arguments** drawn from a fixed decidable arithmetic domain — ℕ, exact ℚ, and finite literal enums, under
+variables, literals, addition, subtraction, multiplication by a literal, and comparison. `Row(n)`, `Pc(n)`, and `Bar(m)`
+are types in that sense; the index says how many, or how much, and the checker settles two of them by arithmetic.
+Indices are **erased before evaluation**, so nothing an index says survives into a value, a stored file, or a rendered
+sound: what changes is which programs are accepted, and nothing else at all.
+
+The three properties that make this an index and not a dependent type are the ones that hold the refusals below in
+place. An index is drawn from a **separate language** that cannot mention a term variable, evaluate, or diverge. It is
+decided by a **solver, never by the conversion checker** — the checker asks whether two indices are equal and takes the
+answer, exactly as it takes any opaque payload's. And it is **never matched on**: no constructor chooses an index, no
+eliminator's motive mentions one, and nothing is constructed or eliminated to witness one.
+
+So the proof-assistant machinery stays refused, and this narrowing does not touch it: **no identity type**, no `refl`,
+`J`, or K; **no universe levels** beyond the two the language has, and no polymorphism over them; **no termination
+measures**; **no dependent motive and no index unification**; **no proof terms, no existential indices, and no
+index-level functions**; and **no constraint-solving traits** — a trait is a flat table read in one step. Each of those
+was implemented, audited against every committed Musa program, found to have no user, and deleted. Re-opening one is an
+ordinary amendment under [`README.md`](README.md) with a committed program as its evidence.
+
+Three records stand, and they were written in this order and stay unedited beside each other:
+[`../notes/research/language-design-closure/42-dependent-core-decision.md`](../notes/research/language-design-closure/42-dependent-core-decision.md)
+admitted the dependent foundation on the evidence of `stdlib/src/adapters/staff.musa`;
+[`../notes/research/language-design-closure/50-the-course-correction-audit.md`](../notes/research/language-design-closure/50-the-course-correction-audit.md)
+deleted the machinery none of it used; and
+[`../notes/research/language-design-closure/51-the-terseness-audit.md`](../notes/research/language-design-closure/51-the-terseness-audit.md)
+found that the deletion took one step too many and exhibited what the corpus writes instead — seventeen compiler
+builtins spent on one modulus, a `fallback` parameter in a public signature, and a bar whose contents cannot be summed
+before it is played.

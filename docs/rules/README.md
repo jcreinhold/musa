@@ -42,10 +42,54 @@ Read [`constitution.md`](constitution.md) for the answers, then [`obligations.md
 5. explains how stored files and public APIs will migrate; and
 6. records the change in [`../notes/research/`](../notes/research/README.md) so the old argument stays visible.
 
-The most recent such amendment is prompt 128's, narrowed by the course correction. §9's *Inferred* property is now
-*Checked bidirectionally*; its *Total* property stands, enforced structurally; its refusal of dependent and refinement
-types is narrowed to the lightweight dependency programs use — a result type may mention an earlier explicit argument —
-with the proof-assistant machinery the amendment had admitted (indexed families, an identity type, universe levels,
+The most recent such amendment is prompt 142c's, which admits a **stratified index** to §9 and answers the six
+requirements here rather than by reference.
+
+1. **The reason.** It is an engineering one, and it is counted. `stdlib/src/post_tonal/` needs pitch classes and
+   twelve-tone rows; with no way to index a type by a number, the modulus is baked into **seventeen of the compiler's
+   121 `Builtin` variants** — `pc12_of` through `row12_missing` — and every further modulus the repertoire needs (24 for
+   quarter-tone practice, 19 or 31 for meantone, 13 for Bohlen–Pierce) is another seventeen. `stdlib/src/`
+   `transformational.musa` carries a `fallback: Triad` parameter in a public signature, invented at every call site,
+   because the type cannot say that a major triad is a triad. And a bar's contents summing to its meter — a linear
+   equation over exact rationals, and the most common error in written music — is checked at run time. The record is
+   [`../notes/research/language-design-closure/51-the-terseness-audit.md`](../notes/research/language-design-closure/51-the-terseness-audit.md).
+2. **Which current examples no longer work.** None. Indices are additive: every existing declaration is an index-free
+   one, and `examples/` and `stdlib/` compile unchanged. The rewrites this enables are ones we choose, not ones the
+   change forces.
+3. **The replacement rule in plain language.** A type may carry index arguments drawn from a fixed decidable arithmetic
+   domain — ℕ, exact ℚ, and finite literal enums, under variables, literals, `+`, `-`, `*` by a literal, and comparison.
+   Indices are erased before evaluation, are never matched on, and two indexed types are the same type when the solver
+   proves their indices equal. Nothing else about the calculus changes, and every piece of proof-assistant machinery §9
+   refuses stays refused — no identity type, no universe levels, no measures, no dependent motive, no index unification,
+   no proof terms.
+4. **The formal specification and the code map.** [`language/02-core-calculus.md`](language/02-core-calculus.md) gains
+   §1.5, *Index refinement*, with the domain, the erasure rule, the conversion rule, and the refusals; §1.3's "no
+   indexed families" is repaired to say what is still refused, which is inductive-family indices and index unification,
+   and not this. [`language/03-musical-domains.md`](language/03-musical-domains.md) gains the indexed domains.
+   [`language/citations.md`](language/citations.md) gains Xi and Pfenning, whose Dependent ML this follows.
+   [`../plan/code-map/spec-to-implementation-map.md`](../plan/code-map/spec-to-implementation-map.md) carries the row,
+   marked absent until prompt 142d.
+5. **How stored files and public APIs migrate.** No stored format changes at all: indices are erased at quotation, so a
+   compiled term, an event track, the `% musa-events-3` interchange format, and every pinned digest are byte-identical
+   before and after — 142d's load-bearing check. The public API change is the seventeen builtins collapsing at prompt
+   143, which is a clean break under [`../plan/clean-break-ledger.md`](../plan/clean-break-ledger.md) and touches no
+   file a user has written.
+6. **The record.** Note 51 above, with note 50 standing unedited beside it as
+   [`../notes/research/core-calculus/18-vocabulary-amendment.md`](../notes/research/core-calculus/18-vocabulary-amendment.md)
+   established.
+   [`../notes/research/language-design-closure/52-the-musical-algebra.md`](../notes/research/language-design-closure/52-the-musical-algebra.md)
+   is its other half: what the index is *for*, and why a pitch-class set in ℤ/12 and a bell pattern in a 12-pulse cycle
+   are the same object.
+
+It inherits the measurement its predecessor is answerable to, and adds one. The staff adapter is rewritten on the
+surviving language and must be dramatically shorter than 2,404 lines; and `stdlib/src/post_tonal/` is rewritten for
+arbitrary n and must lose the seventeen builtins without getting longer. If either number does not move, the diagnosis
+was wrong whatever the checker's own line counts say.
+
+Before it, prompt 128's amendment, narrowed by the course correction. §9's *Inferred* property is now *Checked
+bidirectionally*; its *Total* property stands, enforced structurally; its refusal of dependent and refinement types is
+narrowed to the lightweight dependency programs use — a result type may mention an earlier explicit argument — with the
+proof-assistant machinery the amendment had admitted (indexed families, an identity type, universe levels,
 constraint-solving traits, well-founded measures) deleted again after an audit found no committed program behind any of
 it; its refusal of type-directed macros is narrowed to admit typed quotation; and obligations §10's second admission
 route for measured engineering evidence stands. The reason is not musical. `stdlib/src/adapters/staff.musa` is 2,404
