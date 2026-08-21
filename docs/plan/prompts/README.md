@@ -118,6 +118,19 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 
 ## Sequence overview
 
+The table says what each prompt delivers, and deliberately does **not** say whether it is done: status lives in one
+place, each prompt's own `status` frontmatter, so that a column here cannot go stale against it. To see where the work
+stands:
+
+```sh
+grep -l 'status: pending' docs/plan/prompts/*.md      # queued
+grep -l 'status: in-progress' docs/plan/prompts/*.md  # being worked now
+python3 scripts/renumber-prompts.py audit             # the whole stack, in dependency order
+```
+
+A `done` prompt's file stays here after it lands. It is the record of what that commit was asked to do, and later
+prompts cite it by number, so it is history rather than clutter — most of this directory is finished work.
+
 | # | Prompt | Phase | Delivers |
 | --- | --- | --- | --- |
 | 01 | workspace-skeleton | 0 | Seven crates, facades, CLI stub |
@@ -131,7 +144,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 09 | event-track | 1 | `musa-events`: timeline/sequence/overlay/restrict/scale/normalize |
 | 10 | events-laws | 1 | Algebraic law proofs incl. non-laws |
 | 11 | events-elaboration | 1 | Surface → event-track elaboration + differential parity |
-| 12 | events-switch | 1 | Kernel becomes the canonical semantics |
+| 12 | events-switch | 1 | The event track becomes the canonical semantics |
 | 13 | mei-export | 1 | `musa render --to mei` |
 | 14 | lilypond-export | 1 | `musa render --to lilypond` |
 | 15 | performance-plan | 1 | Tempo as `Beat → Second`; frame scheduling |
